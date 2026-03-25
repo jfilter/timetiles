@@ -73,6 +73,12 @@ export interface ClusteredMapHandle {
   fitBounds: (bounds: SimpleBounds, options?: { padding?: number; animate?: boolean }) => void;
 }
 
+type MapEventTarget = {
+  getBounds: () => LngLatBounds;
+  getZoom: () => number;
+  getCenter: () => { lng: number; lat: number };
+};
+
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   (
     {
@@ -120,12 +126,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const globalStats = computeGlobalStats(clusterStats);
     const viewportStats = computeViewportStats(clusters);
 
-    const handleLoad = (evt: {
-      target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
-    }) => {
+    const handleLoad = (evt: { target: MapEventTarget }) => {
       const map = evt.target as MapRef;
-
-      // Use initialViewState if provided (URL position), otherwise fall back to initialBounds
       if (initialViewState) {
         map.flyTo({
           center: [initialViewState.longitude, initialViewState.latitude],
@@ -137,18 +139,13 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         fitMapToBounds(map, initialBounds, { animate: false });
         hasAppliedBoundsRef.current = true;
       }
-
-      // Reveal map now that it's positioned (loading overlay can be removed)
       setIsMapPositioned(true);
-
       const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
       const center = map.getCenter();
       onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
     };
 
-    const handleMoveEnd = (evt: {
-      target: { getBounds: () => LngLatBounds; getZoom: () => number; getCenter: () => { lng: number; lat: number } };
-    }) => {
+    const handleMoveEnd = (evt: { target: MapEventTarget }) => {
       const map = evt.target as MapRef;
       const { bounds, zoom } = logMapViewportChanged(map);
       const center = map.getCenter();
@@ -161,9 +158,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const eventPointLayer = { ...buildEventPointLayerConfig(mapColors), filter: eventPointFilter };
     const clusterLayer = buildClusterLayerConfig(globalStats, viewportStats, clusterFilter, mapColors);
 
-    // Show loading overlay until map is positioned at the correct location.
-    // The map renders underneath (hidden by overlay) so onLoad can fire and
-    // reposition before revealing — this avoids flashing the NYC default.
+    // Show loading overlay until map is positioned (opaque overlay hides default position)
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
     const showLoading = isLoadingBounds || !isMapPositioned;
 
     return (
