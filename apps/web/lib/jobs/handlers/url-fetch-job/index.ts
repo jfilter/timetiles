@@ -95,10 +95,14 @@ const handleDuplicateCheck = async (
 const buildImportFileData = (sourceUrl: string, dataHash: string, context: ImportContext): Record<string, unknown> => {
   const { originalName, catalogId, userId, scheduledIngestId, scheduledIngest } = context;
 
+  // catalogId/userId may arrive as strings from workflow input schemas — coerce to numbers
+  const numericCatalogId = typeof catalogId === "string" ? Number(catalogId) : catalogId;
+  const numericUserId = typeof userId === "string" ? Number(userId) : userId;
+
   const data: Record<string, unknown> = {
     originalName,
-    catalog: catalogId,
-    user: userId,
+    catalog: numericCatalogId || undefined,
+    user: numericUserId || undefined,
     status: "pending",
     metadata: {
       urlFetch: { sourceUrl, contentHash: dataHash, isDuplicate: false, fetchedAt: new Date().toISOString() },
