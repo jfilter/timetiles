@@ -53,11 +53,13 @@ export interface StepUploadProps {
 const ACCEPTED_TYPES = [
   "text/csv",
   "application/json",
+  "application/geo+json",
   "application/vnd.ms-excel",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.oasis.opendocument.spreadsheet",
   ".csv",
   ".json",
+  ".geojson",
   ".xls",
   ".xlsx",
   ".ods",

@@ -78,6 +78,7 @@ const ALLOWED_MIME_TYPES = [
   "application/vnd.oasis.opendocument.spreadsheet",
   "application/vnd.google-apps.spreadsheet",
   "application/json",
+  "application/geo+json",
 ];
 
 // Note: File size limits are enforced per user's trust level via quota service in beforeValidate hook

@@ -33,6 +33,52 @@ import {
 import type { SheetInfo } from "./dataset-detection/parse-files";
 import { buildSheetsFromWizardMetadata, processCSVFile, processExcelFile } from "./dataset-detection/parse-files";
 
+/**
+ * Convert GeoJSON or JSON files to CSV for pipeline processing.
+ * Returns updated filePath and fileExtension, or null if no conversion needed.
+ */
+const convertToCsvIfNeeded = async (
+  filePath: string,
+  fileExtension: string
+): Promise<{ filePath: string; fileExtension: string; logInfo: Record<string, unknown> } | null> => {
+  if (fileExtension === ".geojson") {
+    const { convertGeoJsonToCsv } = await import("@/lib/ingest/geojson-to-csv");
+    const buffer = fs.readFileSync(filePath);
+    const result = convertGeoJsonToCsv(buffer);
+    const csvPath = filePath.replace(/\.geojson$/i, ".csv");
+    fs.writeFileSync(csvPath, result.csv);
+    return {
+      filePath: csvPath,
+      fileExtension: ".csv",
+      logInfo: { format: "geojson", featureCount: result.featureCount },
+    };
+  }
+
+  if (fileExtension === ".json") {
+    const { isGeoJsonBuffer, convertGeoJsonToCsv } = await import("@/lib/ingest/geojson-to-csv");
+    const buffer = fs.readFileSync(filePath);
+
+    if (isGeoJsonBuffer(buffer)) {
+      const result = convertGeoJsonToCsv(buffer);
+      const csvPath = filePath.replace(/\.json$/i, ".csv");
+      fs.writeFileSync(csvPath, result.csv);
+      return {
+        filePath: csvPath,
+        fileExtension: ".csv",
+        logInfo: { format: "geojson-json", featureCount: result.featureCount },
+      };
+    }
+
+    const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
+    const result = convertJsonToCsv(buffer);
+    const csvPath = filePath.replace(/\.json$/i, ".csv");
+    fs.writeFileSync(csvPath, result.csv);
+    return { filePath: csvPath, fileExtension: ".csv", logInfo: { format: "json", recordCount: result.recordCount } };
+  }
+
+  return null;
+};
+
 const normalizeIngestFileRelationId = (ingestFileId: string | number): number => {
   const normalizedIngestFileId = typeof ingestFileId === "number" ? ingestFileId : parseStrictInteger(ingestFileId);
   if (normalizedIngestFileId == null) {
@@ -231,27 +277,22 @@ export const datasetDetectionJob = {
       } else {
         let fileExtension = path.extname(filePath).toLowerCase();
 
-        // JSON files need conversion to CSV before processing (same pattern as preview route).
+        // GeoJSON/JSON files need conversion to CSV before processing.
         // Write CSV alongside original and update the ingest-file record so downstream tasks
         // (analyze-duplicates, create-events, etc.) also read the converted CSV.
-        if (fileExtension === ".json") {
-          const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
-          const jsonBuffer = fs.readFileSync(filePath);
-          const result = convertJsonToCsv(jsonBuffer);
-          const csvPath = filePath.replace(/\.json$/i, ".csv");
-          fs.writeFileSync(csvPath, result.csv);
-          filePath = csvPath;
-          fileExtension = ".csv";
+        const conversion = await convertToCsvIfNeeded(filePath, fileExtension);
+        if (conversion) {
+          filePath = conversion.filePath;
+          fileExtension = conversion.fileExtension;
 
-          const csvFilename = path.basename(csvPath);
           await payload.update({
             collection: COLLECTION_NAMES.INGEST_FILES,
             id: ingestFileId,
-            data: { filename: csvFilename, mimeType: "text/csv" },
+            data: { filename: path.basename(conversion.filePath), mimeType: "text/csv" },
             overrideAccess: true,
           });
 
-          logger.info("Converted JSON to CSV for dataset detection", { ingestFileId, recordCount: result.recordCount });
+          logger.info("Converted file to CSV for dataset detection", { ingestFileId, ...conversion.logInfo });
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files

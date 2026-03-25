@@ -22,6 +22,43 @@ import { ALLOWED_MIME_TYPES, buildPreviewResult, FILE_EXTENSION_REGEX, getPrevie
 const logger = createLogger("api-preview-schema-upload");
 
 /**
+ * Convert an uploaded file buffer to CSV if it's GeoJSON or JSON.
+ * Returns the (possibly converted) buffer and extension.
+ */
+const convertUploadToCsv = async (
+  fileBuffer: Buffer,
+  fileExtension: string,
+  fileMimeType: string,
+  previewId: string
+): Promise<{ buffer: Buffer; extension: string }> => {
+  // GeoJSON by extension or MIME type
+  if (fileExtension === ".geojson" || fileMimeType === "application/geo+json") {
+    const { convertGeoJsonToCsv } = await import("@/lib/ingest/geojson-to-csv");
+    const result = convertGeoJsonToCsv(fileBuffer);
+    logger.info({ previewId, featureCount: result.featureCount }, "GeoJSON converted to CSV for preview");
+    return { buffer: Buffer.from(result.csv), extension: ".csv" };
+  }
+
+  // .json files — content-sniff to distinguish GeoJSON from JSON API
+  if (fileExtension === ".json" || fileMimeType === "application/json") {
+    const { isGeoJsonBuffer, convertGeoJsonToCsv } = await import("@/lib/ingest/geojson-to-csv");
+
+    if (isGeoJsonBuffer(fileBuffer)) {
+      const result = convertGeoJsonToCsv(fileBuffer);
+      logger.info({ previewId, featureCount: result.featureCount }, "GeoJSON (.json) converted to CSV for preview");
+      return { buffer: Buffer.from(result.csv), extension: ".csv" };
+    }
+
+    const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
+    const result = convertJsonToCsv(fileBuffer);
+    logger.info({ previewId, recordCount: result.recordCount }, "JSON converted to CSV for preview");
+    return { buffer: Buffer.from(result.csv), extension: ".csv" };
+  }
+
+  return { buffer: fileBuffer, extension: fileExtension };
+};
+
+/**
  * Preview file schema from upload.
  *
  * Accepts a file via FormData, saves it to a temp directory, parses it to
@@ -44,47 +81,38 @@ export const POST = apiRoute({
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type) && !FILE_EXTENSION_REGEX.test(file.name)) {
-      throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, ODS, or JSON file.");
+      throw new ValidationError("Unsupported file type. Please upload a CSV, Excel, ODS, JSON, or GeoJSON file.");
     }
 
     const fileExtension = path.extname(file.name).toLowerCase();
 
     if (!FILE_EXTENSION_REGEX.test(file.name)) {
-      throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, ODS, or JSON file.");
+      throw new ValidationError("Unsupported file extension. Please upload a CSV, Excel, ODS, JSON, or GeoJSON file.");
     }
 
     const previewId = uuidv4();
     const previewDir = getPreviewDir();
 
     const arrayBuffer = await file.arrayBuffer();
-    let fileBuffer = Buffer.from(arrayBuffer);
-    let finalExtension = fileExtension;
+    const rawBuffer = Buffer.from(arrayBuffer);
 
-    // JSON upload → convert to CSV before preview
-    if (fileExtension === ".json" || file.type === "application/json") {
-      try {
-        const { convertJsonToCsv } = await import("@/lib/ingest/json-to-csv");
-        const result = convertJsonToCsv(fileBuffer);
-        fileBuffer = Buffer.from(result.csv);
-        finalExtension = ".csv";
-        logger.info(
-          { previewId, recordCount: result.recordCount, detectedPath: result.detectedPath },
-          "JSON converted to CSV for preview"
-        );
-      } catch (jsonError) {
-        const message = jsonError instanceof Error ? jsonError.message : "Unknown error";
-        throw new ValidationError(`Failed to parse JSON file: ${message}`);
-      }
+    // Convert GeoJSON/JSON uploads to CSV before preview
+    let converted: { buffer: Buffer; extension: string };
+    try {
+      converted = await convertUploadToCsv(rawBuffer, fileExtension, file.type, previewId);
+    } catch (convError) {
+      const message = convError instanceof Error ? convError.message : "Unknown error";
+      throw new ValidationError(`Failed to parse file: ${message}`);
     }
 
-    const previewFilePath = path.join(previewDir, `${previewId}${finalExtension}`);
-    fs.writeFileSync(previewFilePath, fileBuffer);
+    const previewFilePath = path.join(previewDir, `${previewId}${converted.extension}`);
+    fs.writeFileSync(previewFilePath, converted.buffer);
 
     logger.info({ previewId, fileName: file.name, fileSize: file.size, userId: user.id }, "File saved for preview");
 
     const { sheets, configSuggestions } = await buildPreviewResult({
       previewFilePath,
-      fileExtension: finalExtension,
+      fileExtension: converted.extension,
       metadata: {
         previewId,
         userId: user.id,
