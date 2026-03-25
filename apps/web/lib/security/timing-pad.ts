@@ -40,10 +40,18 @@ export const TIMING_PAD_MS = {
 
 export const withTimingPad = async <T>(minDurationMs: number, fn: () => Promise<T>): Promise<T> => {
   const startTime = Date.now();
-  const result = await fn();
+  let result: T;
+  let caughtError: unknown;
+  try {
+    result = await fn();
+  } catch (error) {
+    caughtError = error;
+  }
   const elapsed = Date.now() - startTime;
   if (elapsed < minDurationMs) {
     await new Promise((resolve) => setTimeout(resolve, minDurationMs - elapsed));
   }
-  return result;
+  // eslint-disable-next-line @typescript-eslint/only-throw-error -- re-throwing the original caught error preserves stack trace
+  if (caughtError) throw caughtError;
+  return result!;
 };

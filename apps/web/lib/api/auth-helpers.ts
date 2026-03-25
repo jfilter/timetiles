@@ -27,16 +27,6 @@ export const canManageResource = (user: { id: number; role?: string | null }, ow
 };
 
 /**
- * Require that the user can manage a resource based on role or ownership.
- * @throws {ForbiddenError} if access is denied
- */
-export const requireResourceAccess = (user: { id: number; role?: string | null }, ownerId: OwnerId): void => {
-  if (!canManageResource(user, ownerId)) {
-    throw new ForbiddenError("Access denied");
-  }
-};
-
-/**
  * Require that the user has admin role.
  * @throws {ForbiddenError} if user is not an admin
  */
