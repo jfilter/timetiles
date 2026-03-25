@@ -46,7 +46,7 @@ const getSystemUserConfig = () => ({
   lastName: "User",
   role: "user" as const,
   isActive: false, // Cannot login
-  trustLevel: "0" as const, // UNTRUSTED - no quotas
+  trustLevel: "5" as const, // UNLIMITED - owns transferred data and demo imports
   registrationSource: "admin" as const,
   // Password is required by Payload auth but will never be used
   password: generateSecurePassword(),

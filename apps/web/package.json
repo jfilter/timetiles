@@ -33,7 +33,8 @@
     "test:e2e:debug": "playwright test --debug --headed",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "openapi:generate": "tsx scripts/generate-openapi.ts"
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "demo-data": "dotenv -e ../../.env -e .env.local -- tsx scripts/load-demo-data.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "^8.5.0",

@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -171,9 +171,10 @@ jobs: ensure-infra
 	cd apps/web && pnpm payload jobs:run --cron "* * * * *" --all-queues --handle-schedules
 
 # Start development server (requires infrastructure)
+# Only starts the web app; use `make timescrape-dev` or `pnpm dev` for all packages
 dev: ensure-infra
 	@echo "🚀 Starting development server..."
-	exec pnpm dev
+	exec pnpm --filter web dev
 
 # Start Storybook component explorer for the UI package
 storybook:
@@ -322,6 +323,13 @@ coverage-check:
 # Set LOG_LEVEL=info by default for cleaner output (use LOG_LEVEL=debug for verbose)
 seed:
 	@LOG_LEVEL=info pnpm --filter web seed $(ARGS)
+
+# Load public demo datasets from Berlin Open Data (daten.berlin.de)
+# Usage: make demo-data               # Create catalog + scheduled ingests
+#        make demo-data ARGS="--trigger"  # Also trigger immediate import
+#        make demo-data ARGS="--clean"    # Remove demo data
+demo-data:
+	@LOG_LEVEL=info pnpm --filter web demo-data $(ARGS)
 
 # Complete first-time initialization (setup + database + seed + start dev)
 init: setup up wait-db

@@ -59,7 +59,7 @@ describe.sequential("Quota System", () => {
       testUser: {
         role: "user",
         trustLevel: String(TRUST_LEVELS.BASIC),
-        quotas: {
+        customQuotas: {
           maxFileUploadsPerDay: 2,
           maxUrlFetchesPerDay: 3,
           maxActiveSchedules: 1,

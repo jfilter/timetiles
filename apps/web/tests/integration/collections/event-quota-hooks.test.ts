@@ -56,7 +56,9 @@ describe.sequential("Event quota and denormalization hooks", () => {
 
   describe("checkEventQuota", () => {
     it("enforces TOTAL_EVENTS quota via hook (checkAndIncrementUsage)", async () => {
-      const { users } = await withUsers(testEnv, { quotaEditor: { role: "editor", quotas: { maxTotalEvents: 3 } } });
+      const { users } = await withUsers(testEnv, {
+        quotaEditor: { role: "editor", customQuotas: { maxTotalEvents: 3 } },
+      });
       const quotaEditor = users.quotaEditor;
 
       const catalog = await createCatalog(true, quotaEditor.id);
@@ -92,7 +94,9 @@ describe.sequential("Event quota and denormalization hooks", () => {
     });
 
     it("allows event creation when under quota", async () => {
-      const { users } = await withUsers(testEnv, { okEditor: { role: "editor", quotas: { maxTotalEvents: 100 } } });
+      const { users } = await withUsers(testEnv, {
+        okEditor: { role: "editor", customQuotas: { maxTotalEvents: 100 } },
+      });
       const okEditor = users.okEditor;
 
       const catalog = await createCatalog(true, okEditor.id);

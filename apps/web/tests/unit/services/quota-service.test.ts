@@ -69,6 +69,89 @@ describe("QuotaService", () => {
 
       expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR]);
     });
+
+    it("returns unlimited quotas (-1) for trust level 5 (UNLIMITED)", () => {
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      const quotas = service.getEffectiveQuotas({ id: 42, trustLevel: "5", quotas: null } as never);
+
+      expect(quotas.maxUrlFetchesPerDay).toBe(-1);
+      expect(quotas.maxActiveSchedules).toBe(-1);
+      expect(quotas.maxFileUploadsPerDay).toBe(-1);
+      expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.UNLIMITED]);
+    });
+
+    it("returns untrusted quotas (0) for trust level 0", () => {
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      const quotas = service.getEffectiveQuotas({ id: 42, trustLevel: "0", quotas: null } as never);
+
+      expect(quotas.maxUrlFetchesPerDay).toBe(0);
+      expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.UNTRUSTED]);
+    });
+
+    it("returns correct quotas for each trust level", () => {
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      for (const [, level] of Object.entries(TRUST_LEVELS)) {
+        const quotas = service.getEffectiveQuotas({ id: 42, trustLevel: String(level), quotas: null } as never);
+        expect(quotas).toEqual(DEFAULT_QUOTAS[level]);
+      }
+    });
+
+    it("trust level upgrade overrides stale quotas snapshot", () => {
+      // Bug: system user created with trustLevel "0" gets quotas { maxUrlFetchesPerDay: 0 }
+      // baked into the user record. After upgrading to trustLevel "5", the stale
+      // quotas.maxUrlFetchesPerDay=0 overrides the default -1 (unlimited).
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      const userWithStaleQuotas = {
+        id: 42,
+        trustLevel: "5", // upgraded to UNLIMITED
+        quotas: {
+          // stale snapshot from when trustLevel was "0" (UNTRUSTED)
+          maxUrlFetchesPerDay: 0,
+          maxActiveSchedules: 0,
+          maxFileUploadsPerDay: 1,
+          maxEventsPerImport: 100,
+          maxTotalEvents: 100,
+          maxIngestJobsPerDay: 0,
+          maxFileSizeMB: 1,
+          maxCatalogsPerUser: 0,
+          maxScraperRepos: 0,
+          maxScraperRunsPerDay: 0,
+        },
+      } as never;
+
+      const quotas = service.getEffectiveQuotas(userWithStaleQuotas);
+
+      // Should return UNLIMITED quotas, not the stale snapshot
+      expect(quotas.maxUrlFetchesPerDay).toBe(-1);
+      expect(quotas.maxActiveSchedules).toBe(-1);
+      expect(quotas).toEqual(DEFAULT_QUOTAS[TRUST_LEVELS.UNLIMITED]);
+    });
+
+    it("customQuotas override trust level defaults", () => {
+      const { payload } = createMockPayload();
+      const service = new QuotaService(payload);
+
+      const user = {
+        id: 42,
+        trustLevel: "2", // REGULAR: maxUrlFetchesPerDay=20
+        quotas: null,
+        customQuotas: { maxUrlFetchesPerDay: 50 },
+      } as never;
+
+      const quotas = service.getEffectiveQuotas(user);
+
+      expect(quotas.maxUrlFetchesPerDay).toBe(50);
+      // Other quotas should still use REGULAR defaults
+      expect(quotas.maxFileUploadsPerDay).toBe(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR].maxFileUploadsPerDay);
+    });
   });
 
   describe("getOrCreateUsageRecord", () => {

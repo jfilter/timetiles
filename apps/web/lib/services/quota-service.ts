@@ -265,34 +265,20 @@ export class QuotaService {
     const trustLevel = normalizeTrustLevel(user.trustLevel);
     const defaultQuotas = DEFAULT_QUOTAS[trustLevel];
 
-    // Check if user has quota fields directly on the user object (from database)
-    const userQuotas = user.quotas ?? {};
+    // Trust-level defaults are authoritative. The user.quotas snapshot is only
+    // used as a performance hint — if trust level changes, the snapshot may be
+    // stale (e.g., user created with trustLevel 0 → quotas.maxUrlFetchesPerDay=0,
+    // later upgraded to trustLevel 5 where the default is -1). Always derive
+    // effective quotas from the current trust level.
+    const effectiveQuotas: UserQuotas = { ...defaultQuotas };
 
-    // Build effective quotas from user fields, falling back to defaults
-    const effectiveQuotas: UserQuotas = {
-      maxActiveSchedules: userQuotas.maxActiveSchedules ?? defaultQuotas.maxActiveSchedules,
-      maxUrlFetchesPerDay: userQuotas.maxUrlFetchesPerDay ?? defaultQuotas.maxUrlFetchesPerDay,
-      maxFileUploadsPerDay: userQuotas.maxFileUploadsPerDay ?? defaultQuotas.maxFileUploadsPerDay,
-      maxEventsPerImport: userQuotas.maxEventsPerImport ?? defaultQuotas.maxEventsPerImport,
-      maxTotalEvents: userQuotas.maxTotalEvents ?? defaultQuotas.maxTotalEvents,
-      maxIngestJobsPerDay: userQuotas.maxIngestJobsPerDay ?? defaultQuotas.maxIngestJobsPerDay,
-      maxFileSizeMB: userQuotas.maxFileSizeMB ?? defaultQuotas.maxFileSizeMB,
-      maxCatalogsPerUser: userQuotas.maxCatalogsPerUser ?? defaultQuotas.maxCatalogsPerUser,
-      maxScraperRepos: userQuotas.maxScraperRepos ?? defaultQuotas.maxScraperRepos,
-      maxScraperRunsPerDay: userQuotas.maxScraperRunsPerDay ?? defaultQuotas.maxScraperRunsPerDay,
-    };
-
-    // If user has custom quotas JSON field, merge those too (with runtime validation)
+    // If user has custom quotas JSON field, merge those (admin-set overrides)
     if (user.customQuotas && typeof user.customQuotas === "object") {
-      const validKeys: Set<string> = new Set(Object.keys(DEFAULT_QUOTAS[TRUST_LEVELS.REGULAR]));
-      const validated: Partial<UserQuotas> = {};
+      const validKeys: Set<string> = new Set(Object.keys(defaultQuotas));
       for (const [key, value] of Object.entries(user.customQuotas as Record<string, unknown>)) {
         if (validKeys.has(key) && typeof value === "number") {
-          (validated as Record<string, number>)[key] = value;
+          (effectiveQuotas as unknown as Record<string, number>)[key] = value;
         }
-      }
-      if (Object.keys(validated).length > 0) {
-        return { ...effectiveQuotas, ...validated };
       }
     }
 

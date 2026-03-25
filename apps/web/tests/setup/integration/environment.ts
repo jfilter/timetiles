@@ -633,7 +633,8 @@ export interface UserConfig {
   firstName?: string;
   lastName?: string;
   trustLevel?: string;
-  quotas?: {
+  /** Per-user quota overrides (applied via customQuotas field) */
+  customQuotas?: {
     maxFileUploadsPerDay?: number;
     maxUrlFetchesPerDay?: number;
     maxActiveSchedules?: number;
@@ -641,6 +642,9 @@ export interface UserConfig {
     maxTotalEvents?: number;
     maxIngestJobsPerDay?: number;
     maxFileSizeMB?: number;
+    maxCatalogsPerUser?: number;
+    maxScraperRepos?: number;
+    maxScraperRunsPerDay?: number;
   };
   isActive?: boolean;
   _verified?: boolean;
@@ -670,7 +674,7 @@ type UserRole = "admin" | "editor" | "user";
  *   limitedUser: {
  *     role: 'user',
  *     trustLevel: '1',
- *     quotas: { maxFileUploadsPerDay: 2, maxEventsPerImport: 100 }
+ *     customQuotas: { maxFileUploadsPerDay: 2, maxEventsPerImport: 100 }
  *   },
  *   superAdmin: {
  *     role: 'admin',
@@ -712,7 +716,7 @@ export const withUsers = async (
       if (config.firstName !== undefined) userData.firstName = config.firstName;
       if (config.lastName !== undefined) userData.lastName = config.lastName;
       if (config.trustLevel !== undefined) userData.trustLevel = config.trustLevel;
-      if (config.quotas !== undefined) userData.quotas = config.quotas;
+      if (config.customQuotas !== undefined) userData.customQuotas = config.customQuotas;
       if (config.isActive !== undefined) userData.isActive = config.isActive;
       if (config._verified !== undefined) userData._verified = config._verified;
 

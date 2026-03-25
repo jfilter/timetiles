@@ -122,11 +122,11 @@ describe.sequential("Catalog validation hooks", () => {
     const createUserWithCatalogQuota = async (key: string, maxCatalogs: number) => {
       const { users } = await withUsers(testEnv, { [key]: { role: "user" } });
       const user = users[key];
-      // Set the catalog quota directly (not exposed in withUsers quotas interface)
+      // Set the catalog quota via customQuotas override
       return payload.update({
         collection: "users",
         id: user.id,
-        data: { quotas: { maxCatalogsPerUser: maxCatalogs } },
+        data: { customQuotas: { maxCatalogsPerUser: maxCatalogs } },
         overrideAccess: true,
       });
     };

@@ -38,7 +38,9 @@ while true; do
     login
   else
     STATUS=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE_URL/api/admin/jobs/run" \
-      -H "Authorization: JWT $TOKEN")
+      -H "Authorization: JWT $TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{}')
     if [ "$STATUS" = "401" ]; then
       TOKEN=""
       login
