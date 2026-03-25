@@ -38,12 +38,12 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
-import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
 import { IconMapper } from "@/components/icon-mapper";
 import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
+import { submitNewsletterSubscription } from "@/lib/blocks/newsletter";
 import { SiteProvider } from "@/lib/context/site-context";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
