@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { Button, Card, CardContent } from "@timetiles/ui";
+import { Button, Card, CardContent, useConfirmDialog } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   AlertCircleIcon,
@@ -28,6 +28,10 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
+import {
+  getScraperStatusVariant,
+  groupScrapersByRepo,
+} from "@/app/[locale]/(frontend)/account/_components/scraper-view-model";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
 import {
@@ -53,21 +57,24 @@ const getSyncStatusBadge = (repo: ScraperRepo, t: TranslateFn) => {
   return <StatusBadge variant="success" label={t("synced")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
 };
 
+const RUN_STATUS_ICONS: Record<string, React.ReactNode> = {
+  info: <Loader2Icon className="h-3 w-3 animate-spin" />,
+  success: <CheckCircle2Icon className="h-3 w-3" />,
+  warning: <AlertCircleIcon className="h-3 w-3" />,
+  error: <XCircleIcon className="h-3 w-3" />,
+};
+
+const getRunStatusLabel = (variant: string, t: TranslateFn): string => {
+  if (variant === "info") return t("running");
+  if (variant === "success") return t("success");
+  if (variant === "warning") return t("timeout");
+  if (variant === "error") return t("failedStatus");
+  return t("neverRun");
+};
+
 const getRunStatusBadge = (scraper: Scraper, t: TranslateFn) => {
-  const status = scraper.lastRunStatus;
-  if (!status) {
-    return <StatusBadge variant="muted" label={t("neverRun")} />;
-  }
-  if (status === "running") {
-    return <StatusBadge variant="info" label={t("running")} icon={<Loader2Icon className="h-3 w-3 animate-spin" />} />;
-  }
-  if (status === "success") {
-    return <StatusBadge variant="success" label={t("success")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
-  }
-  if (status === "timeout") {
-    return <StatusBadge variant="warning" label={t("timeout")} icon={<AlertCircleIcon className="h-3 w-3" />} />;
-  }
-  return <StatusBadge variant="error" label={t("failedStatus")} icon={<XCircleIcon className="h-3 w-3" />} />;
+  const variant = getScraperStatusVariant(scraper.lastRunStatus);
+  return <StatusBadge variant={variant} label={getRunStatusLabel(variant, t)} icon={RUN_STATUS_ICONS[variant]} />;
 };
 
 interface ScraperCardProps {
@@ -287,10 +294,19 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
     syncMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
   };
 
+  const { requestConfirm, confirmDialog } = useConfirmDialog();
+
   const handleDelete = (repoId: number) => {
-    if (!confirm(t("confirmDeleteRepo"))) return;
-    setRepoLoading(repoId, "deleting");
-    deleteMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
+    requestConfirm({
+      title: t("deleteRepo"),
+      description: t("confirmDeleteRepo"),
+      confirmLabel: t("deleteRepo"),
+      variant: "destructive",
+      onConfirm: () => {
+        setRepoLoading(repoId, "deleting");
+        deleteMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
+      },
+    });
   };
 
   const handleRunScraper = (scraperId: number) => {
@@ -298,13 +314,7 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
     runMutation.mutate(scraperId, { onSettled: () => clearScraperLoading(scraperId) });
   };
 
-  // Group scrapers by repo
-  const scrapersByRepo = allScrapers.reduce<Record<number, Scraper[]>>((acc, scraper) => {
-    const repoId = typeof scraper.repo === "object" ? scraper.repo.id : scraper.repo;
-    acc[repoId] ??= [];
-    acc[repoId].push(scraper);
-    return acc;
-  }, {});
+  const scrapersByRepo = groupScrapersByRepo(allScrapers);
 
   if (repos.length === 0) {
     return (
@@ -317,20 +327,23 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
   }
 
   return (
-    <div className="space-y-4">
-      {repos.map((repo) => (
-        <RepoCard
-          key={repo.id}
-          repo={repo}
-          scrapers={scrapersByRepo[repo.id] ?? []}
-          loadingState={repoLoadingStates[repo.id]}
-          scraperLoadingStates={scraperLoadingStates}
-          onSync={() => handleSync(repo.id)}
-          onDelete={() => handleDelete(repo.id)}
-          onRunScraper={handleRunScraper}
-          t={t}
-        />
-      ))}
-    </div>
+    <>
+      <div className="space-y-4">
+        {repos.map((repo) => (
+          <RepoCard
+            key={repo.id}
+            repo={repo}
+            scrapers={scrapersByRepo[repo.id] ?? []}
+            loadingState={repoLoadingStates[repo.id]}
+            scraperLoadingStates={scraperLoadingStates}
+            onSync={() => handleSync(repo.id)}
+            onDelete={() => handleDelete(repo.id)}
+            onRunScraper={handleRunScraper}
+            t={t}
+          />
+        ))}
+      </div>
+      {confirmDialog}
+    </>
   );
 };

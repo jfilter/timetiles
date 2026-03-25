@@ -18,12 +18,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  useConfirmDialog,
 } from "@timetiles/ui";
 import { ClockIcon, MoreHorizontalIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useRouter } from "@/i18n/navigation";
 import {
   useDeleteScheduledIngestMutation,
@@ -34,17 +35,15 @@ import { useScheduledIngestsQuery } from "@/lib/hooks/use-scheduled-ingests-quer
 import { formatDateLocale } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
+import {
+  getScheduleFrequencyKey,
+  getScheduleStatusVariant,
+} from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
 import { ScheduleRunHistory } from "./schedule-run-history";
 
 interface ScheduledIngestsTableProps {
   readonly initialData: ScheduledIngest[];
 }
-
-const getStatusVariant = (schedule: ScheduledIngest): StatusVariant => {
-  if (!schedule.enabled) return "muted";
-  if (schedule.lastStatus === "failed") return "error";
-  return "success";
-};
 
 const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
   const t = useTranslations("ImportActivity");
@@ -52,6 +51,7 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
   const toggleMutation = useToggleScheduledIngestMutation();
   const deleteMutation = useDeleteScheduledIngestMutation();
   const triggerMutation = useTriggerScheduledIngestMutation();
+  const { requestConfirm, confirmDialog } = useConfirmDialog();
 
   const handleToggle = () => {
     toggleMutation.mutate({ id: schedule.id, enabled: !schedule.enabled });
@@ -66,55 +66,40 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
   };
 
   const handleDelete = () => {
-    if (!confirm(t("confirmDeleteSchedule"))) return;
-    deleteMutation.mutate(schedule.id);
+    requestConfirm({
+      title: t("delete"),
+      description: t("confirmDeleteSchedule"),
+      confirmLabel: t("delete"),
+      variant: "destructive",
+      onConfirm: () => deleteMutation.mutate(schedule.id),
+    });
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label={t("actions")}>
-          <MoreHorizontalIcon className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleToggle}>{schedule.enabled ? t("disable") : t("enable")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleEdit}>{t("edit")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleRunNow}>{t("runNow")}</DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-          {t("delete")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" aria-label={t("actions")}>
+            <MoreHorizontalIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleToggle}>{schedule.enabled ? t("disable") : t("enable")}</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEdit}>{t("edit")}</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleRunNow}>{t("runNow")}</DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+            {t("delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {confirmDialog}
+    </>
   );
 };
-
-const FREQUENCY_KEY_MAP = { hourly: "hourly", daily: "daily", weekly: "weekly", monthly: "monthly" } as const;
 
 export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProps) => {
   const t = useTranslations("ImportActivity");
   const { data: schedules = [], isLoading } = useScheduledIngestsQuery(initialData);
-
-  const getStatusLabel = useCallback(
-    (schedule: ScheduledIngest): string => {
-      if (!schedule.enabled) return t("statusDisabled");
-      if (schedule.lastStatus === "failed") return t("statusFailed");
-      return t("statusActive");
-    },
-    [t]
-  );
-
-  const getFrequencyDisplay = useCallback(
-    (schedule: ScheduledIngest): string => {
-      if (schedule.scheduleType === "cron" && schedule.cronExpression) {
-        return schedule.cronExpression;
-      }
-      const freq = schedule.frequency ?? "daily";
-      const key = FREQUENCY_KEY_MAP[freq];
-      return key ? t(key) : freq;
-    },
-    [t]
-  );
 
   const columns = useMemo<ColumnDef<ScheduledIngest, unknown>[]>(
     () => [
@@ -126,9 +111,12 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
       {
         accessorKey: "enabled",
         header: t("status"),
-        cell: ({ row }) => (
-          <StatusBadge variant={getStatusVariant(row.original)} label={getStatusLabel(row.original)} />
-        ),
+        cell: ({ row }) => {
+          const variant = getScheduleStatusVariant(row.original);
+          const label =
+            variant === "muted" ? t("statusDisabled") : variant === "error" ? t("statusFailed") : t("statusActive");
+          return <StatusBadge variant={variant} label={label} />;
+        },
       },
       {
         accessorKey: "sourceUrl",
@@ -142,7 +130,11 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
       {
         accessorKey: "frequency",
         header: t("frequency"),
-        cell: ({ row }) => <span className="text-muted-foreground text-sm">{getFrequencyDisplay(row.original)}</span>,
+        cell: ({ row }) => {
+          const freq = getScheduleFrequencyKey(row.original);
+          const label = freq.type === "cron" ? freq.value : t(freq.value as "hourly" | "daily" | "weekly" | "monthly");
+          return <span className="text-muted-foreground text-sm">{label}</span>;
+        },
       },
       {
         accessorKey: "lastRun",
@@ -165,7 +157,7 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
         cell: ({ row }) => <ActionsCell schedule={row.original} />,
       },
     ],
-    [t, getStatusLabel, getFrequencyDisplay]
+    [t]
   );
 
   return (
