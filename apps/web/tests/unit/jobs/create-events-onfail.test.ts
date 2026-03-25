@@ -8,6 +8,8 @@
  * @module
  * @category Tests
  */
+/* eslint-disable promise/prefer-await-to-then, unicorn/no-thenable */
+/* oxlint-disable promise/prefer-await-to-then, unicorn/no-thenable */
 // Import centralized mocks FIRST
 import "@/tests/mocks/services/logger";
 
@@ -53,9 +55,7 @@ describe.sequential("create-events-batch onFail isolation", () => {
       for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
         chain[m] = vi.fn().mockReturnValue(chain);
       }
-      // oxlint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
       chain.then = (resolve: any, reject?: any) =>
-        // oxlint-disable-next-line promise/prefer-await-to-then
         rejectWith
           ? Promise.reject(rejectWith).then(resolve, reject)
           : Promise.resolve(resolveValue).then(resolve, reject);
