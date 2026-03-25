@@ -12,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetEnv } from "@/lib/config/env";
 import { scraperExecutionJob } from "@/lib/jobs/handlers/scraper-execution-job";
 
+const mockIsEnabled = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+
 // Mock dependencies
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -19,7 +21,9 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mockIsEnabled }),
+}));
 
 vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }));
 
@@ -101,8 +105,7 @@ describe.sequential("scraperExecutionJob", () => {
     };
 
     // Re-apply mocks after clearAllMocks
-    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-    (isFeatureEnabled as any).mockResolvedValue(true);
+    mockIsEnabled.mockResolvedValue(true);
 
     const { createQuotaService } = await import("@/lib/services/quota-service");
     (createQuotaService as any).mockReturnValue(mockQuotaService);
@@ -135,8 +138,7 @@ describe.sequential("scraperExecutionJob", () => {
   });
 
   it("should return early when enableScrapers flag is off", async () => {
-    const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-    (isFeatureEnabled as any).mockResolvedValue(false);
+    mockIsEnabled.mockResolvedValue(false);
 
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
 

@@ -8,22 +8,20 @@
  * @category API
  */
 import { apiRoute } from "@/lib/api";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import { logError } from "@/lib/logger";
-import { DISABLED_FLAGS, getFeatureFlags } from "@/lib/services/feature-flag-service";
+import { DISABLED_FLAGS, getFeatureFlagService } from "@/lib/services/feature-flag-service";
 
 export const GET = apiRoute({
   auth: "none",
   handler: async ({ payload }) => {
     try {
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
 
       // Custom Cache-Control header requires explicit Response
       return new Response(JSON.stringify(flags), {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-        },
+        headers: { "Content-Type": "application/json", ...cacheHeaders("short") },
       });
     } catch (error) {
       logError(error, "Failed to fetch feature flags");

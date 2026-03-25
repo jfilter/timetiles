@@ -24,6 +24,7 @@ import sharp from "sharp";
 
 import Users from "@/lib/collections/users";
 import { getEnv } from "@/lib/config/env";
+import { logger } from "@/lib/logger";
 import { schemaDetectionPlugin } from "@/lib/services/schema-detection";
 
 import type { CollectionName } from "./payload-shared-config";
@@ -117,8 +118,7 @@ const getEtherealCredentials = async (): Promise<EtherealCredentials> => {
     // Non-fatal, just won't persist
   }
 
-  // oxlint-disable-next-line no-console -- Intentional dev output before logger init
-  console.log(`E-mail: NEW ethereal.email (${credentials.user} / ${credentials.pass}) - https://ethereal.email/login`);
+  logger.info(`E-mail: NEW ethereal.email (${credentials.user} / ${credentials.pass}) - https://ethereal.email/login`);
 
   // eslint-disable-next-line require-atomic-updates -- Single-threaded init, no race condition
   cachedEtherealCredentials = credentials;

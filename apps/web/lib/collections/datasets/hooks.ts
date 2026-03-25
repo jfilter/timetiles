@@ -16,13 +16,13 @@ import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
 /** Check if private imports are allowed */
 const validatePrivateImportAllowed = async (req: PayloadRequest, isPublic: boolean | undefined): Promise<void> => {
-  const allowPrivate = await isFeatureEnabled(req.payload, "allowPrivateImports");
+  const allowPrivate = await getFeatureFlagService(req.payload).isEnabled("allowPrivateImports");
   if (!allowPrivate && isPublic === false) {
     throw new Error("Private datasets are currently disabled. Please make the dataset public.");
   }

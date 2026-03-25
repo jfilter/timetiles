@@ -18,7 +18,9 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
-vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: vi.fn().mockResolvedValue(true) }));
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: vi.fn().mockResolvedValue(true) }),
+}));
 
 describe.sequential("scheduleManagerJob timezone support", () => {
   beforeEach(() => {

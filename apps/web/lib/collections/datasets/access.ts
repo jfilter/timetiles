@@ -54,8 +54,8 @@ export const create: Access = denyPendingDeletion(async ({ req: { user, payload 
   if (!user) return false;
 
   // Check feature flag - allow any authenticated user, hook validates catalog ownership/publicity
-  const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-  return isFeatureEnabled(payload, "enableDatasetCreation");
+  const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+  return getFeatureFlagService(payload).isEnabled("enableDatasetCreation");
 });
 
 /**

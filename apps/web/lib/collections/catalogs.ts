@@ -37,8 +37,8 @@ const logger = createLogger("catalogs");
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
-  const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-  const allowPrivate = await isFeatureEnabled(req.payload, "allowPrivateImports");
+  const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+  const allowPrivate = await getFeatureFlagService(req.payload).isEnabled("allowPrivateImports");
   if (!allowPrivate && data.isPublic === false) {
     throw new Error("Private catalogs are currently disabled. Please make the catalog public.");
   }

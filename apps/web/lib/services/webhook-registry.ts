@@ -124,8 +124,11 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
 };
 
 /**
- * Atomically claim "running" status on a scraper to prevent concurrent webhook triggers.
+ * Atomically claim "running" status on a scraper to prevent concurrent triggers.
  * Returns true if the claim succeeded, false if already running.
+ *
+ * Uses a single SQL UPDATE with a WHERE guard so that PostgreSQL row-level
+ * locking prevents two concurrent callers from both succeeding.
  */
 export const claimScraperRunning = async (payload: Payload, scraperId: number): Promise<boolean> => {
   const result = (await payload.db.drizzle.execute(sql`
@@ -133,6 +136,29 @@ export const claimScraperRunning = async (payload: Payload, scraperId: number): 
     SET last_run_status = 'running'
     WHERE id = ${scraperId}
       AND (last_run_status IS NULL OR last_run_status != 'running')
+    RETURNING id
+  `)) as { rows: Array<{ id: number }> };
+
+  return result.rows.length > 0;
+};
+
+/**
+ * Atomically claim "running" status on a scheduled ingest to prevent concurrent triggers.
+ * Returns true if the claim succeeded, false if already running.
+ *
+ * Uses a single SQL UPDATE with a WHERE guard so that PostgreSQL row-level
+ * locking prevents two concurrent callers from both succeeding.
+ *
+ * Only sets `last_status` to "running". Callers that need to set additional
+ * fields (last_run, current_retries, next_run) atomically should use the
+ * dedicated SQL in {@link triggerScheduledIngest} instead.
+ */
+export const claimScheduledIngestRunning = async (payload: Payload, scheduledIngestId: number): Promise<boolean> => {
+  const result = (await payload.db.drizzle.execute(sql`
+    UPDATE payload.scheduled_ingests
+    SET last_status = 'running'
+    WHERE id = ${scheduledIngestId}
+      AND (last_status IS NULL OR last_status != 'running')
     RETURNING id
   `)) as { rows: Array<{ id: number }> };
 

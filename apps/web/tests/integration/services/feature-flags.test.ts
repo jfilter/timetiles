@@ -9,8 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
   getDefaultFeatureFlags,
-  getFeatureFlags,
-  isFeatureEnabled,
+  getFeatureFlagService,
   resetFeatureFlagService,
 } from "@/lib/services/feature-flag-service";
 
@@ -61,7 +60,7 @@ describe.sequential("Feature Flag Service", () => {
 
   describe("Default Values", () => {
     it("should have all flags enabled by default", async () => {
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
 
       expect(flags.allowPrivateImports).toBe(true);
       expect(flags.enableScheduledIngests).toBe(true);
@@ -94,7 +93,7 @@ describe.sequential("Feature Flag Service", () => {
 
       // Default values should match service defaults
       // Note: Payload returns undefined for unset checkboxes, service should apply defaults
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.allowPrivateImports).toBe(true);
       expect(flags.enableScheduledIngests).toBe(true);
       expect(flags.enableRegistration).toBe(true);
@@ -120,7 +119,7 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.allowPrivateImports).toBe(false);
     });
 
@@ -128,7 +127,7 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: false } } });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.enableScheduledIngests).toBe(false);
     });
 
@@ -136,7 +135,7 @@ describe.sequential("Feature Flag Service", () => {
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableRegistration: false } } });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.enableRegistration).toBe(false);
     });
 
@@ -149,7 +148,7 @@ describe.sequential("Feature Flag Service", () => {
       });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.allowPrivateImports).toBe(false);
       expect(flags.enableScheduledIngests).toBe(false);
       expect(flags.enableRegistration).toBe(false);
@@ -164,7 +163,7 @@ describe.sequential("Feature Flag Service", () => {
       });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.enableEventCreation).toBe(false);
       expect(flags.enableDatasetCreation).toBe(false);
       expect(flags.enableImportCreation).toBe(false);
@@ -177,13 +176,13 @@ describe.sequential("Feature Flag Service", () => {
       });
       resetFeatureFlagService();
 
-      const flags = await getFeatureFlags(payload);
+      const flags = await getFeatureFlagService(payload).getAll();
       expect(flags.enableScheduledJobExecution).toBe(false);
       expect(flags.enableUrlFetchCaching).toBe(false);
     });
   });
 
-  describe("isFeatureEnabled Helper", () => {
+  describe("isEnabled Method", () => {
     beforeEach(async () => {
       await payload.updateGlobal({
         slug: "settings",
@@ -193,12 +192,12 @@ describe.sequential("Feature Flag Service", () => {
     });
 
     it("should return true for enabled flags", async () => {
-      expect(await isFeatureEnabled(payload, "allowPrivateImports")).toBe(true);
-      expect(await isFeatureEnabled(payload, "enableRegistration")).toBe(true);
+      expect(await getFeatureFlagService(payload).isEnabled("allowPrivateImports")).toBe(true);
+      expect(await getFeatureFlagService(payload).isEnabled("enableRegistration")).toBe(true);
     });
 
     it("should return false for disabled flags", async () => {
-      expect(await isFeatureEnabled(payload, "enableScheduledIngests")).toBe(false);
+      expect(await getFeatureFlagService(payload).isEnabled("enableScheduledIngests")).toBe(false);
     });
   });
 
@@ -210,20 +209,20 @@ describe.sequential("Feature Flag Service", () => {
 
     it("should return cached values on subsequent calls", async () => {
       // First call loads from DB
-      const flags1 = await getFeatureFlags(payload);
+      const flags1 = await getFeatureFlagService(payload).getAll();
       expect(flags1.allowPrivateImports).toBe(true);
 
       // Update directly in DB without resetting service
       await payload.updateGlobal({ slug: "settings", data: { featureFlags: { allowPrivateImports: false } } });
 
       // Second call should return cached (stale) value
-      const flags2 = await getFeatureFlags(payload);
+      const flags2 = await getFeatureFlagService(payload).getAll();
       expect(flags2.allowPrivateImports).toBe(true);
     });
 
     it("should return fresh data after service is reset", async () => {
       // First call loads from DB
-      const flags1 = await getFeatureFlags(payload);
+      const flags1 = await getFeatureFlagService(payload).getAll();
       expect(flags1.allowPrivateImports).toBe(true);
 
       // Update and reset service
@@ -231,7 +230,7 @@ describe.sequential("Feature Flag Service", () => {
       resetFeatureFlagService();
 
       // Should get fresh value
-      const flags2 = await getFeatureFlags(payload);
+      const flags2 = await getFeatureFlagService(payload).getAll();
       expect(flags2.allowPrivateImports).toBe(false);
     });
   });

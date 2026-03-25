@@ -302,8 +302,8 @@ export const urlFetchJob = {
       await checkAndTrackQuota(payload, resolvedUserId, scheduledIngest);
 
       // Check if URL fetch caching is enabled
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      const cachingEnabled = await isFeatureEnabled(payload, "enableUrlFetchCaching");
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      const cachingEnabled = await getFeatureFlagService(payload).isEnabled("enableUrlFetchCaching");
 
       // Fetch + detect file type + convert JSON to CSV (single call)
       const result = await fetchRemoteData(buildFetchOptions(input, scheduledIngest, cachingEnabled));

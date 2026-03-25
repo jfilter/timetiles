@@ -18,10 +18,10 @@ vi.mock("@/lib/logger", () => ({
   logError: vi.fn(),
 }));
 
-const mockIsFeatureEnabled = vi.fn();
+const mockIsEnabled = vi.fn();
 
 vi.mock("@/lib/services/feature-flag-service", () => ({
-  isFeatureEnabled: (...args: unknown[]) => mockIsFeatureEnabled(...args),
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: (...args: unknown[]) => mockIsEnabled(...args) }),
 }));
 
 vi.mock("@/lib/ingest/trigger-service", () => ({ triggerScheduledIngest: vi.fn().mockResolvedValue(undefined) }));
@@ -38,7 +38,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     vi.useFakeTimers();
 
     // By default: scheduled job execution enabled, scrapers enabled
-    mockIsFeatureEnabled.mockImplementation((_payload: unknown, flag: string) => {
+    mockIsEnabled.mockImplementation((flag: string) => {
       if (flag === "enableScheduledJobExecution") return Promise.resolve(true);
       if (flag === "enableScrapers") return Promise.resolve(true);
       return Promise.resolve(false);
@@ -86,7 +86,7 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
   it("should skip scraper processing when enableScrapers flag is off", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
-    mockIsFeatureEnabled.mockImplementation((_payload: unknown, flag: string) => {
+    mockIsEnabled.mockImplementation((flag: string) => {
       if (flag === "enableScheduledJobExecution") return Promise.resolve(true);
       if (flag === "enableScrapers") return Promise.resolve(false);
       return Promise.resolve(false);

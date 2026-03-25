@@ -62,8 +62,8 @@ const Events: CollectionConfig = {
       if (!user) return false;
 
       // Check feature flag
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      if (!(await isFeatureEnabled(payload, "enableEventCreation"))) return false;
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      if (!(await getFeatureFlagService(payload).isEnabled("enableEventCreation"))) return false;
 
       return isPrivileged(user);
     },

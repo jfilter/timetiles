@@ -11,9 +11,9 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { type FeatureFlags, getFeatureFlags, resetFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { type FeatureFlags, getFeatureFlagService, resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 
-describe.sequential("getFeatureFlags", () => {
+describe.sequential("getFeatureFlagService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetFeatureFlagService();
@@ -22,7 +22,7 @@ describe.sequential("getFeatureFlags", () => {
   it("should return all flags as false when payload.findGlobal throws", async () => {
     const mockPayload = { findGlobal: vi.fn().mockRejectedValue(new Error("DB down")) };
 
-    const flags = await getFeatureFlags(mockPayload as any);
+    const flags = await getFeatureFlagService(mockPayload as any).getAll();
 
     for (const [key, value] of Object.entries(flags)) {
       expect(value, `flag "${key}" should be false on error`).toBe(false);
@@ -36,7 +36,7 @@ describe.sequential("getFeatureFlags", () => {
         .mockResolvedValue({ featureFlags: { allowPrivateImports: false, enableScheduledIngests: true } }),
     };
 
-    const flags = await getFeatureFlags(mockPayload as any);
+    const flags = await getFeatureFlagService(mockPayload as any).getAll();
 
     expect(flags.allowPrivateImports).toBe(false);
     expect(flags.enableScheduledIngests).toBe(true);
@@ -45,7 +45,7 @@ describe.sequential("getFeatureFlags", () => {
   it("should use default (true) for missing individual flags when settings load succeeds", async () => {
     const mockPayload = { findGlobal: vi.fn().mockResolvedValue({ featureFlags: { allowPrivateImports: false } }) };
 
-    const flags = await getFeatureFlags(mockPayload as any);
+    const flags = await getFeatureFlagService(mockPayload as any).getAll();
 
     expect(flags.allowPrivateImports).toBe(false);
     // Missing flags should default to true (from DEFAULT_FLAGS)
@@ -56,8 +56,8 @@ describe.sequential("getFeatureFlags", () => {
   it("should cache flags and reuse them on subsequent calls", async () => {
     const mockPayload = { findGlobal: vi.fn().mockResolvedValue({ featureFlags: { allowPrivateImports: false } }) };
 
-    await getFeatureFlags(mockPayload as any);
-    await getFeatureFlags(mockPayload as any);
+    await getFeatureFlagService(mockPayload as any).getAll();
+    await getFeatureFlagService(mockPayload as any).getAll();
 
     expect(mockPayload.findGlobal).toHaveBeenCalledTimes(1);
   });
@@ -70,14 +70,14 @@ describe.sequential("getFeatureFlags", () => {
         .mockResolvedValueOnce({ featureFlags: { allowPrivateImports: true } }),
     };
 
-    const errorFlags = await getFeatureFlags(mockPayload as any);
+    const errorFlags = await getFeatureFlagService(mockPayload as any).getAll();
     expect(errorFlags.allowPrivateImports).toBe(false);
 
     // Reset singleton to clear state after error (errors are not cached,
     // but the singleton instance persists)
     resetFeatureFlagService();
 
-    const successFlags = await getFeatureFlags(mockPayload as any);
+    const successFlags = await getFeatureFlagService(mockPayload as any).getAll();
     expect(successFlags.allowPrivateImports).toBe(true);
     expect(mockPayload.findGlobal).toHaveBeenCalledTimes(2);
   });
@@ -85,7 +85,7 @@ describe.sequential("getFeatureFlags", () => {
   it("should return all expected flag keys on error", async () => {
     const mockPayload = { findGlobal: vi.fn().mockRejectedValue(new Error("DB down")) };
 
-    const flags = await getFeatureFlags(mockPayload as any);
+    const flags = await getFeatureFlagService(mockPayload as any).getAll();
     const expectedKeys: (keyof FeatureFlags)[] = [
       "allowPrivateImports",
       "enableScheduledIngests",

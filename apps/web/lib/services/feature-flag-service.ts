@@ -118,16 +118,6 @@ export const resetFeatureFlagService = (): void => {
   featureFlagService = null;
 };
 
-// Convenience wrappers — preserve existing API, no call site changes needed.
-
-/** Retrieves all feature flags with caching. */
-export const getFeatureFlags = async (payload: Payload): Promise<FeatureFlags> =>
-  getFeatureFlagService(payload).getAll();
-
-/** Checks if a specific feature flag is enabled. */
-export const isFeatureEnabled = async (payload: Payload, flag: keyof FeatureFlags): Promise<boolean> =>
-  getFeatureFlagService(payload).isEnabled(flag);
-
 /**
  * Returns the default feature flags.
  *

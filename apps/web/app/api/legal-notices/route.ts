@@ -9,6 +9,7 @@
  */
 import { type Locale, SUPPORTED_LOCALES } from "@/i18n/config";
 import { apiRoute } from "@/lib/api";
+import { cacheHeaders } from "@/lib/api/cache-headers";
 import type { LegalNotices } from "@/lib/hooks/use-legal-notices";
 import { logError } from "@/lib/logger";
 
@@ -35,10 +36,7 @@ export const GET = apiRoute({
 
       return new Response(JSON.stringify(notices), {
         status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
-        },
+        headers: { "Content-Type": "application/json", ...cacheHeaders("medium") },
       });
     } catch (error) {
       logError(error, "Failed to fetch legal notices");

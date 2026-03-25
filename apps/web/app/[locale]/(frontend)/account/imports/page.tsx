@@ -12,7 +12,7 @@ import { getPayload } from "payload";
 
 import { redirect } from "@/i18n/navigation";
 import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
-import { isFeatureEnabled } from "@/lib/services/feature-flag-service";
+import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import config from "@/payload.config";
 
 import { AccountPageShell } from "../_components/account-page-shell";
@@ -36,7 +36,7 @@ export default async function ImportsPage() {
 
   await redirectIfNotDefaultSite(payload, headers, locale);
 
-  const scrapersEnabled = await isFeatureEnabled(payload, "enableScrapers");
+  const scrapersEnabled = await getFeatureFlagService(payload).isEnabled("enableScrapers");
 
   const [ingestFilesResult, schedulesResult, reposResult, scrapersResult] = await Promise.all([
     payload.find({
