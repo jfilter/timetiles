@@ -28,7 +28,7 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
     { name: "userId", type: "text" },
     { name: "triggeredBy", type: "text" },
   ],
-  concurrency: ({ input }) => `sched:${input.scheduledIngestId}`,
+  concurrency: () => "ingest-pipeline",
   handler: async ({ job, tasks, req }) => {
     const { scheduledIngestId, sourceUrl } = job.input;
     logger.info("scheduled-ingest workflow started", { scheduledIngestId, sourceUrl });

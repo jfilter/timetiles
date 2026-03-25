@@ -114,11 +114,11 @@ describe.sequential("scraperIngestWorkflow", () => {
 
   // ── 5. Verify concurrency key format ──────────────────────────────────
 
-  it("should produce concurrency key scraper:${scraperId}", () => {
-    const concurrency = scraperIngestWorkflow.concurrency as (args: { input: Record<string, any> }) => string;
-    const key = concurrency({ input: { scraperId: 42 } });
+  it("should produce global concurrency key ingest-pipeline", () => {
+    const concurrency = scraperIngestWorkflow.concurrency as () => string;
+    const key = concurrency();
 
-    expect(key).toBe("scraper:42");
+    expect(key).toBe("ingest-pipeline");
   });
 
   // ── 6. Scraper returns numeric ingestFileId — converted to string ─────

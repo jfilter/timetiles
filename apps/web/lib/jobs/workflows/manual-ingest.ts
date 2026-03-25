@@ -21,7 +21,7 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
   label: "Manual Ingest",
   queue: "ingest",
   inputSchema: [{ name: "ingestFileId", type: "text", required: true }],
-  concurrency: ({ input }) => `file:${input.ingestFileId}`,
+  concurrency: () => "ingest-pipeline",
   handler: async ({ job, tasks, req }) => {
     const { ingestFileId } = job.input;
     const workflowStart = Date.now();

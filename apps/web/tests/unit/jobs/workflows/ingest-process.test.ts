@@ -91,11 +91,11 @@ describe.sequential("ingestProcessWorkflow", () => {
 
   // ── 4. Verify concurrency key format ──────────────────────────────────
 
-  it("should produce concurrency key ingest:${ingestJobId}", () => {
-    const concurrency = ingestProcessWorkflow.concurrency as (args: { input: Record<string, any> }) => string;
-    const key = concurrency({ input: { ingestJobId: "ij-42" } });
+  it("should produce global concurrency key ingest-pipeline", () => {
+    const concurrency = ingestProcessWorkflow.concurrency as () => string;
+    const key = concurrency();
 
-    expect(key).toBe("ingest:ij-42");
+    expect(key).toBe("ingest-pipeline");
   });
 
   // ── 5. Verify no other tasks are called ───────────────────────────────

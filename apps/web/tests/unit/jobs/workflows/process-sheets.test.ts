@@ -46,21 +46,23 @@ describe.sequential("processSheets", () => {
 
     // Verify each task was called once with expected taskId and input
     expect(tasks["analyze-duplicates"]).toHaveBeenCalledOnce();
-    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-0", { input: { ingestJobId: "job-0" } });
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-duplicates-0", {
+      input: { ingestJobId: "job-0" },
+    });
 
     expect(tasks["detect-schema"]).toHaveBeenCalledOnce();
     expect(tasks["detect-schema"]).toHaveBeenCalledWith("detect-schema-0", { input: { ingestJobId: "job-0" } });
 
     expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
-    expect(tasks["validate-schema"]).toHaveBeenCalledWith("validate-0", { input: { ingestJobId: "job-0" } });
+    expect(tasks["validate-schema"]).toHaveBeenCalledWith("validate-schema-0", { input: { ingestJobId: "job-0" } });
 
     expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
-    expect(tasks["create-schema-version"]).toHaveBeenCalledWith("create-version-0", {
+    expect(tasks["create-schema-version"]).toHaveBeenCalledWith("create-schema-version-0", {
       input: { ingestJobId: "job-0" },
     });
 
     expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
-    expect(tasks["geocode-batch"]).toHaveBeenCalledWith("geocode-0", {
+    expect(tasks["geocode-batch"]).toHaveBeenCalledWith("geocode-batch-0", {
       input: { ingestJobId: "job-0", batchNumber: 0 },
     });
 
@@ -88,9 +90,9 @@ describe.sequential("processSheets", () => {
     }
 
     // Verify IDs contain sheet index
-    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-0", expect.any(Object));
-    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-1", expect.any(Object));
-    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-2", expect.any(Object));
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-duplicates-0", expect.any(Object));
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-duplicates-1", expect.any(Object));
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze-duplicates-2", expect.any(Object));
 
     expect(tasks["create-events"]).toHaveBeenCalledWith("create-events-0", { input: { ingestJobId: "j0" } });
     expect(tasks["create-events"]).toHaveBeenCalledWith("create-events-1", { input: { ingestJobId: "j1" } });
@@ -261,8 +263,8 @@ describe.sequential("processSheets", () => {
 
     // Sheet 1 should start processing before sheet 0 finishes analyzing
     // (because Promise.all starts both concurrently)
-    const analyzeSheet1Index = callOrder.indexOf("analyze-analyze-1");
-    const analyzeSheet0Index = callOrder.indexOf("analyze-analyze-0");
+    const analyzeSheet1Index = callOrder.indexOf("analyze-analyze-duplicates-1");
+    const analyzeSheet0Index = callOrder.indexOf("analyze-analyze-duplicates-0");
 
     // Sheet 1's analyze should appear before sheet 0's analyze completes
     // (sheet 0 has a 50ms delay, sheet 1 has none)

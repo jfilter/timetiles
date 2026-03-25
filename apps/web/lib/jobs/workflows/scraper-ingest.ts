@@ -24,7 +24,7 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
     { name: "scraperId", type: "number", required: true },
     { name: "triggeredBy", type: "text", required: true },
   ],
-  concurrency: ({ input }) => `scraper:${input.scraperId}`,
+  concurrency: () => "ingest-pipeline",
   handler: async ({ job, tasks, req }) => {
     const { scraperId, triggeredBy } = job.input;
     logger.info("scraper-ingest workflow started", { scraperId, triggeredBy });

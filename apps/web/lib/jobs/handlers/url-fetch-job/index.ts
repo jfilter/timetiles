@@ -271,6 +271,7 @@ const createImportFromFetchResult = async (
 
 export const urlFetchJob = {
   slug: "url-fetch",
+  queue: "ingest" as const,
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
