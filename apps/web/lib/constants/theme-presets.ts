@@ -42,7 +42,7 @@ export const PRESET_THEMES: Record<string, PresetThemeConfig> = {
     },
     map: {
       mapPoint: "#4f46e5",
-      mapClusterGradient: ["#c7d2fe", "#a5b4fc", "#818cf8", "#6366f1", "#4338ca"],
+      mapClusterGradient: ["#ddd6fe", "#a78bfa", "#7c3aed", "#5b21b6", "#3b0764"],
       mapStroke: "#ffffff",
     },
   },

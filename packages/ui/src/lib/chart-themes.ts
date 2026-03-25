@@ -30,11 +30,11 @@ const defaultColors = {
   // Map visualization colors (cartographic palette)
   mapPoint: "#0089a7", // cartographic-blue for individual event points
   mapClusterGradient: [
-    "#f5e6d3", // p0-p20: very light terracotta
-    "#e8c9a0", // p20-p40: light terracotta
-    "#cd853f", // p40-p60: medium (cartographic-terracotta)
-    "#b06c2e", // p60-p80: dark terracotta
-    "#8b4513", // p80-p100: very dark terracotta (saddle brown)
+    "#f0dcc6", // p0-p20: warm cream
+    "#d4a55a", // p20-p40: golden terracotta
+    "#b87333", // p40-p60: copper/bronze
+    "#8b4513", // p60-p80: saddle brown
+    "#5c2d0e", // p80-p100: dark chocolate
   ] as const,
   mapStroke: "#ffffff", // White stroke for circles
 };
