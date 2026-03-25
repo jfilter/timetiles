@@ -243,7 +243,8 @@ export const datasetDetectionJob = {
     const { ingestFileId, catalogId } = input;
     const jobId = String(context.job?.id ?? "unknown");
 
-    logger.info("Starting dataset detection job", { jobId, ingestFileId, catalogId });
+    const taskStart = Date.now();
+    logger.info("[dataset-detection] starting", { jobId, ingestFileId, catalogId });
 
     try {
       const ingestFile = await payload.findByID({
@@ -280,6 +281,7 @@ export const datasetDetectionJob = {
         // GeoJSON/JSON files need conversion to CSV before processing.
         // Write CSV alongside original and update the ingest-file record so downstream tasks
         // (analyze-duplicates, create-events, etc.) also read the converted CSV.
+        const conversionStart = Date.now();
         const conversion = await convertToCsvIfNeeded(filePath, fileExtension);
         if (conversion) {
           filePath = conversion.filePath;
@@ -292,7 +294,11 @@ export const datasetDetectionJob = {
             overrideAccess: true,
           });
 
-          logger.info("Converted file to CSV for dataset detection", { ingestFileId, ...conversion.logInfo });
+          logger.info("[dataset-detection] converted file to CSV", {
+            ingestFileId,
+            durationMs: Date.now() - conversionStart,
+            ...conversion.logInfo,
+          });
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files
@@ -303,8 +309,9 @@ export const datasetDetectionJob = {
         throw new Error("No valid sheets found in file");
       }
 
-      logger.info("Detected sheets", {
+      logger.info("[dataset-detection] detected sheets", {
         ingestFileId,
+        durationMs: Date.now() - taskStart,
         sheetCount: sheets.length,
         sheets: sheets.map((s) => ({ name: s.name, rows: s.rowCount })),
       });
@@ -327,8 +334,9 @@ export const datasetDetectionJob = {
           ? [await handleSingleSheet(payload, ingestFile, resolvedCatalogId, datasetMapping, userId)]
           : await handleMultipleSheets(payload, ingestFile, sheets, resolvedCatalogId, datasetMapping, userId);
 
-      logger.info("Created import jobs", {
+      logger.info("[dataset-detection] created import jobs", {
         ingestFileId,
+        durationMs: Date.now() - taskStart,
         jobCount: createdJobs.length,
         jobIds: createdJobs.map((j) => j.id),
       });

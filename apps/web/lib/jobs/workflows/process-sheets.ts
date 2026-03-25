@@ -71,34 +71,38 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   const s = sheet.index;
   const id = sheet.ingestJobId;
   const sheetCtx = { sheetIndex: s, sheetName: sheet.name, ingestJobId: id };
+  const pipelineStart = Date.now();
 
-  logger.info(`Sheet ${s} (${sheet.name}): starting pipeline`, sheetCtx);
+  const runStep = async <T>(name: string, slug: string, input: Record<string, unknown>): Promise<T> => {
+    const stepStart = Date.now();
+    logger.info(`[sheet-${s}] ${name} starting`, sheetCtx);
+    const result = (await tasks[slug as keyof RunTaskFunctions](`${slug}-${s}`, { input })) as T;
+    logger.info(`[sheet-${s}] ${name} done`, { ...sheetCtx, durationMs: Date.now() - stepStart });
+    return result;
+  };
+
+  logger.info(`[sheet-${s}] pipeline starting`, sheetCtx);
 
   // Step 1: Analyze duplicates
-  const analyze = (await tasks["analyze-duplicates"](`analyze-${s}`, {
-    input: { ingestJobId: id },
-  })) as AnalyzeDuplicatesOutput;
-
+  const analyze = await runStep<AnalyzeDuplicatesOutput>("analyze-duplicates", "analyze-duplicates", {
+    ingestJobId: id,
+  });
   if (analyze.needsReview) {
-    logger.info(`Sheet ${s}: needs review after analyze`, sheetCtx);
+    logger.info(`[sheet-${s}] needs review after analyze-duplicates`, sheetCtx);
     return;
   }
 
   // Step 2: Detect schema
-  const detect = (await tasks["detect-schema"](`detect-schema-${s}`, {
-    input: { ingestJobId: id },
-  })) as DetectSchemaOutput;
+  const detect = await runStep<DetectSchemaOutput>("detect-schema", "detect-schema", { ingestJobId: id });
   if (detect.needsReview) {
-    logger.info(`Sheet ${s}: needs review after detect-schema`, sheetCtx);
+    logger.info(`[sheet-${s}] needs review after detect-schema`, sheetCtx);
     return;
   }
 
   // Step 3: Validate schema
-  const validate = (await tasks["validate-schema"](`validate-${s}`, {
-    input: { ingestJobId: id },
-  })) as ValidateSchemaOutput;
+  const validate = await runStep<ValidateSchemaOutput>("validate-schema", "validate-schema", { ingestJobId: id });
   if (validate.needsReview) {
-    logger.info(`Sheet ${s}: needs review after validate`, {
+    logger.info(`[sheet-${s}] needs review after validate-schema`, {
       ...sheetCtx,
       requiresApproval: validate.requiresApproval,
     });
@@ -106,28 +110,26 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   }
 
   // Step 4: Create schema version
-  await tasks["create-schema-version"](`create-version-${s}`, { input: { ingestJobId: id } });
+  await runStep("create-schema-version", "create-schema-version", { ingestJobId: id });
 
   // Step 5: Geocode
-  const geocode = (await tasks["geocode-batch"](`geocode-${s}`, {
-    input: { ingestJobId: id, batchNumber: 0 },
-  })) as GeocodeBatchOutput;
-
+  const geocode = await runStep<GeocodeBatchOutput>("geocode-batch", "geocode-batch", {
+    ingestJobId: id,
+    batchNumber: 0,
+  });
   if (geocode.needsReview) {
-    logger.info(`Sheet ${s}: needs review after geocode`, sheetCtx);
+    logger.info(`[sheet-${s}] needs review after geocode-batch`, sheetCtx);
     return;
   }
 
   // Step 6: Create events
-  const events = (await tasks["create-events"](`create-events-${s}`, {
-    input: { ingestJobId: id },
-  })) as CreateEventsOutput;
+  const events = await runStep<CreateEventsOutput>("create-events", "create-events", { ingestJobId: id });
   if (events.needsReview) {
-    logger.info(`Sheet ${s}: needs review after create-events`, sheetCtx);
+    logger.info(`[sheet-${s}] needs review after create-events`, sheetCtx);
     return;
   }
 
-  logger.info(`Sheet ${s} (${sheet.name}): pipeline completed`, sheetCtx);
+  logger.info(`[sheet-${s}] pipeline completed`, { ...sheetCtx, totalDurationMs: Date.now() - pipelineStart });
 };
 
 /**

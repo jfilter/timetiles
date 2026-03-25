@@ -24,25 +24,30 @@ export const manualIngestWorkflow: WorkflowConfig<"manual-ingest"> = {
   concurrency: ({ input }) => `file:${input.ingestFileId}`,
   handler: async ({ job, tasks, req }) => {
     const { ingestFileId } = job.input;
-    logger.info("manual-ingest workflow started", { ingestFileId });
+    const workflowStart = Date.now();
+    logger.info("[manual-ingest] started", { ingestFileId, jobId: job.id });
 
+    const detectStart = Date.now();
     const detection = (await tasks["dataset-detection"]("detect-sheets", {
       input: { ingestFileId },
     })) as DatasetDetectionOutput;
+    logger.info("[manual-ingest] dataset-detection done", {
+      ingestFileId,
+      durationMs: Date.now() - detectStart,
+      sheetCount: detection.sheets?.length ?? 0,
+    });
 
     if (!detection.sheets?.length) {
-      logger.info("manual-ingest: no sheets detected", { ingestFileId });
+      logger.info("[manual-ingest] no sheets detected, finishing", { ingestFileId });
       return;
     }
 
-    logger.info("manual-ingest: detected sheets, starting pipeline", {
-      ingestFileId,
-      sheetCount: detection.sheets.length,
-    });
-
+    const processStart = Date.now();
     await processSheets(tasks, detection.sheets, req);
+    logger.info("[manual-ingest] processSheets done", { ingestFileId, durationMs: Date.now() - processStart });
+
     await updateIngestFileStatus(req.payload, detection.sheets);
 
-    logger.info("manual-ingest workflow completed", { ingestFileId });
+    logger.info("[manual-ingest] completed", { ingestFileId, totalDurationMs: Date.now() - workflowStart });
   },
 };

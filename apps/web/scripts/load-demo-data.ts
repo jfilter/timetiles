@@ -208,6 +208,12 @@ const createScheduledIngestForSource = async (
       timezone: "Europe/Berlin",
       schemaMode: "additive",
       authConfig: { type: "none" },
+      advancedOptions: {
+        reviewChecks: {
+          // Berlin WFS datasets are POI data without timestamps
+          skipTimestampCheck: true,
+        },
+      },
     },
     overrideAccess: true,
     context: { skipQuotaChecks: true },
@@ -279,10 +285,20 @@ const cleanDemoData = async (payload: PayloadInstance) => {
   });
 
   for (const dataset of datasets) {
+    // Delete ingest jobs referencing this dataset
+    await payload.delete({
+      collection: "ingest-jobs",
+      where: { dataset: { equals: dataset.id } },
+      overrideAccess: true,
+    });
+    // Delete events
     await payload.delete({ collection: "events", where: { dataset: { equals: dataset.id } }, overrideAccess: true });
     await payload.delete({ collection: "datasets", id: dataset.id, overrideAccess: true });
   }
   logger.info("Deleted %d datasets and their events", datasets.length);
+
+  // Delete ingest files for this catalog
+  await payload.delete({ collection: "ingest-files", where: { catalog: { equals: catalogId } }, overrideAccess: true });
 
   // Delete catalog
   await payload.delete({ collection: "catalogs", id: catalogId, overrideAccess: true });
