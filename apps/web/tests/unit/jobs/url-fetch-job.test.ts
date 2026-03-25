@@ -10,6 +10,7 @@
  */
 
 // Import centralized logger mock
+import { mockLogger } from "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -819,6 +820,96 @@ describe.sequential("urlFetchJob", () => {
       });
 
       vi.spyOn(Date, "now").mockRestore();
+    });
+
+    it("should not call logError when scheduled ingest is disabled", async () => {
+      // Bug: loadScheduledIngestConfig throws "disabled" inside try block,
+      // which is caught and logged via logError — treating expected behavior as an error
+      mockPayload.findByID.mockResolvedValue({
+        id: "scheduled-123",
+        enabled: false, // Disabled — this is expected, not an error
+        statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
+      });
+
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/data.csv",
+            catalogId: "catalog-123",
+            originalName: "Disabled Import",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow(/disabled/i);
+
+      // logError should NOT be called — disabled is expected behavior, not an error
+      expect(mockLogger.logError).not.toHaveBeenCalled();
+    });
+
+    it("should not dilute averageDuration with zero when duplicate is detected", async () => {
+      // Bug: handleDuplicateCheck calls updateScheduledIngestSuccess with duration=0,
+      // which progressively dilutes the averageDuration toward 0 with each duplicate
+      mockPayload.findByID.mockResolvedValue({
+        id: "scheduled-123",
+        enabled: true,
+        advancedOptions: { skipDuplicateChecking: false },
+        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        statistics: {
+          totalRuns: 1,
+          successfulRuns: 1,
+          failedRuns: 0,
+          averageDuration: 10, // 10 seconds average
+        },
+        catalog: "catalog-123",
+        createdBy: "user-123",
+      });
+
+      // Mock existing file with matching hash (hash of "data")
+      const expectedHash = "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7";
+      mockPayload.find.mockResolvedValue({
+        docs: [
+          { id: "existing-file-999", filename: "existing.csv", metadata: { urlFetch: { contentHash: expectedHash } } },
+        ],
+      });
+
+      const mockResponse = createMockResponse("data", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      // Mock timing: job takes 2 seconds
+      const startTime = Date.now();
+      vi.spyOn(Date, "now")
+        .mockReturnValueOnce(startTime) // Start time in handler
+        .mockReturnValue(startTime + 2000); // All subsequent calls: 2 seconds later
+
+      await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "scheduled-123",
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-123",
+          originalName: "Duplicate Duration Test",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      vi.spyOn(Date, "now").mockRestore();
+
+      // Verify that update was called
+      expect(mockPayload.update).toHaveBeenCalled();
+      const updateCall = mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests");
+      expect(updateCall).toBeDefined();
+
+      // The duration in executionHistory should NOT be 0
+      const executionEntry = updateCall[0].data.executionHistory[0];
+      expect(executionEntry.duration).toBeGreaterThan(0);
+
+      // The averageDuration should incorporate real time, not be diluted by 0
+      // Previous: 10s avg over 1 run. With 2s real duration: (10*1 + 2)/2 = 6
+      // Bug would give: (10*1 + 0)/2 = 5
+      const stats = updateCall[0].data.statistics;
+      expect(stats.averageDuration).toBeGreaterThan(5);
     });
 
     it("should pass through dataset mapping configuration", async () => {

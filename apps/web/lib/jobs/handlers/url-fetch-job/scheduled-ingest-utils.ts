@@ -11,7 +11,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
-import { logError } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import type { ScheduledIngest } from "@/payload-types";
 
 /**
@@ -32,7 +32,8 @@ export const loadScheduledIngestConfig = async (
     });
 
     if (!scheduledIngest.enabled) {
-      throw new Error("scheduled ingest is disabled");
+      logger.info("Scheduled ingest is disabled, skipping", { scheduledIngestId });
+      return null;
     }
 
     return scheduledIngest;
