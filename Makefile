@@ -172,9 +172,10 @@ jobs: ensure-infra
 
 # Start development server (requires infrastructure)
 # Only starts the web app; use `make timescrape-dev` or `pnpm dev` for all packages
+# Logs are written to apps/web/dev.log for debugging (in addition to stdout)
 dev: ensure-infra
 	@echo "🚀 Starting development server..."
-	exec pnpm --filter web dev
+	LOG_FILE=dev.log exec pnpm --filter web dev
 
 # Start Storybook component explorer for the UI package
 storybook:

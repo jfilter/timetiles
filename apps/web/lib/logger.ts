@@ -68,7 +68,23 @@ const createProductionLogger = (): pino.Logger => {
   return pino(baseConfig);
 };
 
-export const logger = isDevelopment && !isTest ? pino(developmentConfig) : createProductionLogger();
+// In development: pretty-print to stdout + optionally write structured JSON to LOG_FILE
+// In production: structured JSON to stdout + optionally to LOG_FILE
+const createDevLogger = (): pino.Logger => {
+  if (logFile) {
+    // Pretty-print to stdout AND structured JSON to file (for post-mortem debugging)
+    return pino(
+      baseConfig,
+      pino.multistream([
+        { stream: pino.transport(developmentConfig.transport!) },
+        { stream: pino.destination(logFile) },
+      ])
+    );
+  }
+  return pino(developmentConfig);
+};
+
+export const logger = isDevelopment && !isTest ? createDevLogger() : createProductionLogger();
 
 // Create child loggers for different modules
 export const createLogger = (module: string) => {
