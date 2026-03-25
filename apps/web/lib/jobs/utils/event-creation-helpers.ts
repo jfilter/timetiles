@@ -111,26 +111,11 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
  * Returns null if no end date is found (most events don't have one).
  */
 export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPath?: string | null): Date | null => {
-  if (endTimestampPath && row[endTimestampPath]) {
-    const date = parseDateInput(row[endTimestampPath] as string | number);
-    if (date) {
-      return date;
-    }
+  if (!endTimestampPath || !row[endTimestampPath]) {
+    return null;
   }
 
-  // Fallback to common end date fields
-  const endDateFields = ["end_date", "end_time", "end_at", "endDate", "endTime", "finish_date", "finish_time"];
-
-  for (const field of endDateFields) {
-    if (row[field]) {
-      const date = parseDateInput(row[field] as string | number);
-      if (date) {
-        return date;
-      }
-    }
-  }
-
-  return null;
+  return parseDateInput(row[endTimestampPath] as string | number);
 };
 
 /**

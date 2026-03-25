@@ -166,6 +166,7 @@ services:
         "50",
       ]
     environment:
+      NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
@@ -216,6 +217,7 @@ services:
         "--handle-schedules",
       ]
     environment:
+      NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
@@ -265,6 +267,7 @@ services:
         "10",
       ]
     environment:
+      NODE_PATH: /app/node_modules/.pnpm/node_modules
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}

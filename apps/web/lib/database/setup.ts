@@ -251,7 +251,6 @@ const shouldSkipSetup = async (
   verbose: boolean
 ): Promise<boolean> => {
   const exists = await databaseExists(dbName);
-  logger.info({ dbName, exists, skipIfExists, dropIfExists }, "shouldSkipSetup check");
 
   if (exists && skipIfExists && !dropIfExists) {
     logVerbose(verbose, `Database ${dbName} already exists, skipping setup`);
