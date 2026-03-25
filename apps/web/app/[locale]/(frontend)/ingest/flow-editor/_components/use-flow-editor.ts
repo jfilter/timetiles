@@ -372,30 +372,38 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     [nodes, edges, setEdges, setNodes]
   );
 
-  // Handle edge deletion
+  // Handle edge deletion — pre-compute sets to avoid stale closure and nested callbacks
   const onEdgesDelete = useCallback(
     (deletedEdges: FlowEdge[]) => {
-      for (const edge of deletedEdges) {
-        setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === edge.source && node.type === NODE_TYPE_SOURCE) {
-              // eslint-disable-next-line sonarjs/no-nested-functions -- Callback required by React state setter pattern
-              const stillConnected = edges.some((e) => e.source === edge.source && e.id !== edge.id);
-              return {
-                ...node,
-                data: { ...(node.data as SourceColumnNodeData), isConnected: stillConnected },
-              } as FlowNode;
-            }
-            if (node.id === edge.target && node.type === NODE_TYPE_TARGET) {
-              return {
-                ...node,
-                data: { ...(node.data as TargetFieldNodeData), isConnected: false, connectedColumn: null },
-              } as FlowNode;
-            }
-            return node;
-          })
-        );
-      }
+      const deletedIds = new Set(deletedEdges.map((e) => e.id));
+      const remainingEdges = edges.filter((e) => !deletedIds.has(e.id));
+      const affectedSources = new Set(deletedEdges.map((e) => e.source));
+      const affectedTargets = new Set(deletedEdges.map((e) => e.target));
+      const connectedSources = new Set(remainingEdges.map((e) => e.source));
+      const connectedTargets = new Set(remainingEdges.map((e) => e.target));
+
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.type === NODE_TYPE_SOURCE && affectedSources.has(node.id)) {
+            return {
+              ...node,
+              data: { ...(node.data as SourceColumnNodeData), isConnected: connectedSources.has(node.id) },
+            } as FlowNode;
+          }
+          if (node.type === NODE_TYPE_TARGET && affectedTargets.has(node.id)) {
+            const stillConnected = connectedTargets.has(node.id);
+            return {
+              ...node,
+              data: {
+                ...(node.data as TargetFieldNodeData),
+                isConnected: stillConnected,
+                connectedColumn: stillConnected ? (node.data as TargetFieldNodeData).connectedColumn : null,
+              },
+            } as FlowNode;
+          }
+          return node;
+        })
+      );
     },
     [edges, setNodes]
   );

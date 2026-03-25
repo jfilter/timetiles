@@ -77,7 +77,7 @@ import {
   getSampleValue,
 } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-mapping-table";
 import { getTransformChipLabel } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-row";
-import { applyPreviewTransforms } from "@/app/[locale]/(frontend)/ingest/_components/steps/step-field-mapping";
+import { applyPreviewTransforms } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { FieldMapping, SuggestedMappings } from "@/lib/types/ingest-wizard";
 import { isFieldMappingComplete } from "@/lib/types/ingest-wizard";
@@ -342,8 +342,8 @@ describe("applyPreviewTransforms", () => {
       },
     ];
     const result = applyPreviewTransforms(data, transforms);
-    // Expression is not handled in the preview (only uppercase, lowercase, replace)
-    expect(result[0]!.price).toBe("42.5");
+    // Expression is now evaluated using the real transform engine
+    expect(result[0]!.price).toBe(42.5);
   });
 
   it("should skip split on non-string values", () => {
