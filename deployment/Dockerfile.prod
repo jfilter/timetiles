@@ -73,9 +73,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 # not included in Next.js standalone output — see payloadcms/payload#7176)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# pnpm doesn't hoist binaries to node_modules/.bin/ — create symlink so
-# docker-compose worker commands can use the standard path
-RUN ln -sf /app/node_modules/.pnpm/node_modules/.bin /app/node_modules/.bin
+# pnpm doesn't hoist binaries to node_modules/.bin/ — replace the empty
+# directory with a symlink so docker-compose worker commands work
+RUN rm -rf /app/node_modules/.bin \
+    && ln -s /app/node_modules/.pnpm/node_modules/.bin /app/node_modules/.bin
 
 # Create uploads directory with proper ownership for volume mount
 RUN mkdir -p /app/apps/web/uploads \
