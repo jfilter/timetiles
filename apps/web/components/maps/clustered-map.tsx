@@ -43,7 +43,7 @@ export interface ClusterFeature {
   type: "Feature";
   id?: string | number;
   geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { type: "event-cluster" | "event-point"; count?: number; title?: string };
+  properties: { type: "event-cluster" | "event-point"; count?: number; title?: string; extentRadius?: number };
 }
 
 /**

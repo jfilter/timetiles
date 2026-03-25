@@ -41,7 +41,7 @@ export const GET = apiRoute({
     }
 
     const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters);
-    const clusters = transformResultToClusters(result.rows);
+    const clusters = transformResultToClusters(result.rows, query.zoom);
 
     return { type: "FeatureCollection", features: clusters };
   },
@@ -54,7 +54,11 @@ interface ClusterRow {
   cluster_id: string | number | null;
   event_id: string | number | null;
   event_title: string | null;
+  extent_degrees: string | number | null;
 }
+
+/** Convert degrees to pixels at a given zoom level. */
+const degreesToPixels = (degrees: number, zoom: number) => (degrees / 360) * 512 * Math.pow(2, zoom);
 
 const executeClusteringQuery = async (
   payload: Payload,
@@ -73,7 +77,7 @@ const executeClusteringQuery = async (
     )
   `)) as unknown as { rows: ClusterRow[] };
 
-const transformResultToClusters = (rows: ClusterRow[]) =>
+const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
   rows
     .filter((row) => {
       // Skip rows with missing or non-numeric coordinates instead of defaulting to (0, 0)
@@ -84,6 +88,7 @@ const transformResultToClusters = (rows: ClusterRow[]) =>
     .map((row) => {
       const isCluster = Number(row.event_count) > 1;
       const featureId = row.cluster_id ?? row.event_id;
+      const extentDeg = row.extent_degrees != null ? Number(row.extent_degrees) : 0;
 
       return {
         type: "Feature",
@@ -96,6 +101,7 @@ const transformResultToClusters = (rows: ClusterRow[]) =>
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
           ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
+          ...(isCluster && extentDeg > 0 ? { extentRadius: Math.round(degreesToPixels(extentDeg, zoom)) } : {}),
         },
       };
     });

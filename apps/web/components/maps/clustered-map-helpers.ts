@@ -73,22 +73,28 @@ export const buildClusterLayerConfig = (
     type: "circle" as const,
     filter: clusterFilter,
     paint: {
-      // Continuous sqrt-based radius: area proportional to count
-      // sqrt(count) → linear interpolation to pixel radius
+      // Radius = max(count-based sqrt, geographic extent)
+      // sqrt sizing provides visual hierarchy; extent ensures coverage
       "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["sqrt", ["get", "count"]],
-        1,
-        8, // sqrt(1)=1 → 8px (single event)
-        5,
-        16, // sqrt(25)=5 → 16px
-        10,
-        24, // sqrt(100)=10 → 24px
-        18,
-        34, // sqrt(~324)=18 → 34px
-        25,
-        50, // sqrt(625)=25 → 50px (largest clusters)
+        "max",
+        // Count-based radius (visual hierarchy via sqrt)
+        [
+          "interpolate",
+          ["linear"],
+          ["sqrt", ["get", "count"]],
+          1,
+          8, // sqrt(1)=1 → 8px
+          5,
+          16, // sqrt(25)=5 → 16px
+          10,
+          24, // sqrt(100)=10 → 24px
+          18,
+          34, // sqrt(~324)=18 → 34px
+          25,
+          50, // sqrt(625)=25 → 50px
+        ],
+        // Geographic extent radius (pixels, pre-computed server-side)
+        ["coalesce", ["get", "extentRadius"], 0],
       ],
       // Continuous color gradient based on sqrt(count)
       "circle-color": [
