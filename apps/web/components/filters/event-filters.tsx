@@ -13,11 +13,14 @@
 
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useMemo } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
+import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
 
 import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
@@ -32,6 +35,20 @@ export const EventFilters = () => {
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
+  const { data: dataSources } = useDataSourcesQuery();
+
+  // Determine whether to show temporal filters based on visible datasets
+  const showTemporalFilters = useMemo(
+    () => hasVisibleTemporalData(dataSources?.datasets, filters),
+    [dataSources?.datasets, filters]
+  );
+
+  // Clear date filters when temporal UI becomes hidden (e.g. user switches to non-temporal dataset)
+  useEffect(() => {
+    if (!showTemporalFilters && (filters.startDate != null || filters.endDate != null)) {
+      clearDateRange();
+    }
+  }, [showTemporalFilters]); // eslint-disable-line react-hooks/exhaustive-deps -- only react to visibility change
 
   // Fetch enum fields for categorical filters (only when single dataset selected)
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
@@ -78,20 +95,22 @@ export const EventFilters = () => {
         </FilterSection>
       )}
 
-      {/* Time Range Section */}
-      <FilterSection title={t("timeRange")} defaultOpen activeCount={timeRangeActiveCount}>
-        <TimeRangeSlider filters={filters} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
+      {/* Time Range Section — hidden when no visible datasets have temporal data */}
+      {showTemporalFilters && (
+        <FilterSection title={t("timeRange")} defaultOpen activeCount={timeRangeActiveCount}>
+          <TimeRangeSlider filters={filters} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
 
-        {(filters.startDate != null || filters.endDate != null) && (
-          <button
-            type="button"
-            onClick={clearDateRange}
-            className="text-muted-foreground hover:text-secondary dark:text-foreground/50 dark:hover:text-secondary mt-1 w-full text-center font-mono text-xs transition-colors"
-          >
-            {tExplore("clearDateFilters")}
-          </button>
-        )}
-      </FilterSection>
+          {(filters.startDate != null || filters.endDate != null) && (
+            <button
+              type="button"
+              onClick={clearDateRange}
+              className="text-muted-foreground hover:text-secondary dark:text-foreground/50 dark:hover:text-secondary mt-1 w-full text-center font-mono text-xs transition-colors"
+            >
+              {tExplore("clearDateFilters")}
+            </button>
+          )}
+        </FilterSection>
+      )}
     </div>
   );
 };

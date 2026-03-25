@@ -17,6 +17,7 @@ const mockDataSources: DataSourcesResponse = {
     id: d.id,
     name: d.name,
     catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
+    hasTemporalData: true,
   })),
 };
 

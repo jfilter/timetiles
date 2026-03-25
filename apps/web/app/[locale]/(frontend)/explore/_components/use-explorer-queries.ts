@@ -9,6 +9,8 @@
  */
 "use client";
 
+import { useMemo } from "react";
+
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import {
@@ -20,6 +22,7 @@ import {
 } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/types/filter-state";
 import type { SimpleBounds, ViewScope } from "@/lib/utils/event-params";
+import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
 
 export const useExplorerQueries = (
   filters: FilterState,
@@ -51,6 +54,11 @@ export const useExplorerQueries = (
   const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
   const events = eventsData?.events ?? EMPTY_ARRAY;
 
+  const hasTemporalData = useMemo(
+    () => hasVisibleTemporalData(dataSources?.datasets, filters),
+    [dataSources?.datasets, filters]
+  );
+
   return {
     dataSources,
     catalogs: dataSources?.catalogs ?? [],
@@ -64,5 +72,6 @@ export const useExplorerQueries = (
     eventsData,
     eventsLoading,
     totalEventsData,
+    hasTemporalData,
   };
 };

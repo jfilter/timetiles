@@ -52,10 +52,10 @@ describe("DataSourceSelector", () => {
         { id: 3, name: "Social Data", isOwned: false },
       ],
       datasets: [
-        { id: 10, name: "Air Quality", catalogId: 1 },
-        { id: 11, name: "Water Quality", catalogId: 1 },
-        { id: 20, name: "GDP Growth", catalogId: 2 },
-        { id: 30, name: "Census Data", catalogId: 3 },
+        { id: 10, name: "Air Quality", catalogId: 1, hasTemporalData: true },
+        { id: 11, name: "Water Quality", catalogId: 1, hasTemporalData: true },
+        { id: 20, name: "GDP Growth", catalogId: 2, hasTemporalData: true },
+        { id: 30, name: "Census Data", catalogId: 3, hasTemporalData: true },
       ],
     };
     // Default to anonymous
@@ -267,8 +267,8 @@ describe("DataSourceSelector", () => {
           { id: 2, name: "Public Events", isOwned: false },
         ],
         datasets: [
-          { id: 10, name: "Dataset A", catalogId: 1 },
-          { id: 20, name: "Dataset B", catalogId: 2 },
+          { id: 10, name: "Dataset A", catalogId: 1, hasTemporalData: true },
+          { id: 20, name: "Dataset B", catalogId: 2, hasTemporalData: true },
         ],
       };
 

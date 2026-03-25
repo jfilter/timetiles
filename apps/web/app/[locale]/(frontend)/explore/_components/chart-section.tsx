@@ -25,6 +25,8 @@ interface ChartSectionProps {
   bounds?: SimpleBounds | null;
   /** When true, the chart will fill available height instead of using fixed heights */
   fillHeight?: boolean;
+  /** Whether visible datasets have temporal data. When false, histogram is excluded. */
+  hasTemporalData?: boolean;
 }
 
 /**
@@ -58,7 +60,7 @@ const getChartHeight = (type: ChartType): number => {
   }
 };
 
-export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSectionProps>) => {
+export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = true }: Readonly<ChartSectionProps>) => {
   const getChartMeta = useChartMeta();
   const [selectedChartType, setSelectedChartType] = useState<ChartType>("histogram");
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -66,9 +68,14 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
   // Get filter state to determine which chart types are relevant
   const { filters } = useFilters();
 
-  // Determine which chart types should be available based on filters
+  // Determine which chart types should be available based on filters and data capabilities
   const availableChartTypes = useMemo<ChartType[]>(() => {
-    const types: ChartType[] = ["histogram"]; // Always available
+    const types: ChartType[] = [];
+
+    // Only show histogram if visible datasets have temporal data
+    if (hasTemporalData) {
+      types.push("histogram");
+    }
 
     // Show "By Dataset" when no datasets are selected (show all) or multiple are selected
     // Hide when exactly 1 dataset is selected (would show only 1 bar)
@@ -83,10 +90,12 @@ export const ChartSection = ({ bounds, fillHeight = false }: Readonly<ChartSecti
     }
 
     return types;
-  }, [filters.datasets.length, filters.catalog]);
+  }, [filters.datasets.length, filters.catalog, hasTemporalData]);
 
-  // Derive effective chart type — falls back to histogram if selection becomes unavailable
-  const chartType = availableChartTypes.includes(selectedChartType) ? selectedChartType : "histogram";
+  // Derive effective chart type — falls back to first available if selection becomes unavailable
+  const chartType = availableChartTypes.includes(selectedChartType)
+    ? selectedChartType
+    : (availableChartTypes[0] ?? "histogram");
 
   const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
