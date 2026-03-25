@@ -152,7 +152,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command: ["node_modules/.bin/payload", "jobs:run", "--cron", "*/1 * * * *", "--queue", "ingest", "--limit", "50"]
+    # Override node entrypoint — payload CLI is a shell script wrapper
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["node_modules/.bin/payload jobs:run --cron '*/1 * * * *' --queue ingest --limit 50"]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -189,19 +191,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
-        "node",
-        "node_modules/.bin/payload",
-        "jobs:run",
-        "--cron",
-        "*/1 * * * *",
-        "--queue",
-        "default",
-        "--limit",
-        "20",
-        "--handle-schedules",
-      ]
+    # Override node entrypoint — payload CLI is a shell script wrapper
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["node_modules/.bin/payload jobs:run --cron '*/1 * * * *' --queue default --limit 20 --handle-schedules"]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
@@ -238,18 +230,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
-        "node",
-        "node_modules/.bin/payload",
-        "jobs:run",
-        "--cron",
-        "*/5 * * * *",
-        "--queue",
-        "maintenance",
-        "--limit",
-        "10",
-      ]
+    # Override node entrypoint — payload CLI is a shell script wrapper
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["node_modules/.bin/payload jobs:run --cron '*/5 * * * *' --queue maintenance --limit 10"]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
