@@ -45,53 +45,56 @@ export interface FetchOptions {
  */
 export const calculateDataHash = (data: Buffer): string => crypto.createHash("sha256").update(data).digest("hex");
 
-/**
- * Detects file type from content type header or data inspection.
- */
+/** Single source of truth for supported file types — derive both content-type and extension lookups. */
+const FILE_TYPE_REGISTRY: Array<{ mimeType: string; fileExtension: string; contentTypes: string[] }> = [
+  { mimeType: "text/csv", fileExtension: ".csv", contentTypes: ["text/csv", "application/csv"] },
+  { mimeType: "application/vnd.ms-excel", fileExtension: ".xls", contentTypes: ["application/vnd.ms-excel"] },
+  {
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    fileExtension: ".xlsx",
+    contentTypes: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  },
+  { mimeType: "text/plain", fileExtension: ".txt", contentTypes: ["text/plain"] },
+  { mimeType: "application/json", fileExtension: ".json", contentTypes: ["application/json"] },
+  {
+    mimeType: "application/geo+json",
+    fileExtension: ".geojson",
+    contentTypes: ["application/geo+json", "application/vnd.geo+json"],
+  },
+];
+
+type FileTypeInfo = { mimeType: string; fileExtension: string };
+
+const contentTypeMap = new Map<string, FileTypeInfo>(
+  FILE_TYPE_REGISTRY.flatMap((entry) =>
+    entry.contentTypes.map((ct) => [ct, { mimeType: entry.mimeType, fileExtension: entry.fileExtension }])
+  )
+);
+
+const extensionMap = new Map<string, FileTypeInfo>(
+  FILE_TYPE_REGISTRY.map((entry) => [
+    entry.fileExtension,
+    { mimeType: entry.mimeType, fileExtension: entry.fileExtension },
+  ])
+);
+
 export const detectFileTypeFromResponse = (
   contentType: string | undefined,
   data: Buffer,
   sourceUrl: string
-): { mimeType: string; fileExtension: string } => {
+): FileTypeInfo => {
   // Try to detect from content type header
   if (contentType) {
     const normalizedType = contentType.split(";")[0]?.trim().toLowerCase();
-
-    const typeMap: Record<string, { mimeType: string; fileExtension: string }> = {
-      "text/csv": { mimeType: "text/csv", fileExtension: ".csv" },
-      "application/csv": { mimeType: "text/csv", fileExtension: ".csv" },
-      "application/vnd.ms-excel": { mimeType: "application/vnd.ms-excel", fileExtension: ".xls" },
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
-        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        fileExtension: ".xlsx",
-      },
-      "text/plain": { mimeType: "text/plain", fileExtension: ".txt" },
-      "application/json": { mimeType: "application/json", fileExtension: ".json" },
-      "application/geo+json": { mimeType: "application/geo+json", fileExtension: ".geojson" },
-      "application/vnd.geo+json": { mimeType: "application/geo+json", fileExtension: ".geojson" },
-    };
-
-    if (normalizedType && typeMap[normalizedType]) {
-      return typeMap[normalizedType];
-    }
+    const match = normalizedType ? contentTypeMap.get(normalizedType) : undefined;
+    if (match) return match;
   }
 
   // Try to detect from URL extension
   const urlPath = new URL(sourceUrl).pathname;
   const urlExtension = path.extname(urlPath).toLowerCase();
-
-  const extensionMap: Record<string, { mimeType: string; fileExtension: string }> = {
-    ".csv": { mimeType: "text/csv", fileExtension: ".csv" },
-    ".xls": { mimeType: "application/vnd.ms-excel", fileExtension: ".xls" },
-    ".xlsx": { mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileExtension: ".xlsx" },
-    ".txt": { mimeType: "text/plain", fileExtension: ".txt" },
-    ".json": { mimeType: "application/json", fileExtension: ".json" },
-    ".geojson": { mimeType: "application/geo+json", fileExtension: ".geojson" },
-  };
-
-  if (extensionMap[urlExtension]) {
-    return extensionMap[urlExtension];
-  }
+  const extMatch = extensionMap.get(urlExtension);
+  if (extMatch) return extMatch;
 
   // Try to detect from file content
   const header = data.subarray(0, 8).toString("hex");

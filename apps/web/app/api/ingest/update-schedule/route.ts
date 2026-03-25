@@ -12,6 +12,7 @@
 import { z } from "zod";
 
 import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { getOrCreateCatalog, processSheetMappings, translateSchemaMode } from "@/lib/ingest/configure-service";
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
@@ -23,7 +24,7 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
-import { createLogger, logError } from "@/lib/logger";
+import { createLogger } from "@/lib/logger";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -163,28 +164,29 @@ export const PATCH = apiRoute({
 
       if (claimResult.docs.length > 0) {
         try {
-          await payload.jobs.queue({
-            task: "url-fetch",
-            input: {
-              scheduledIngestId: body.scheduledIngestId,
-              sourceUrl: updatedSchedule.sourceUrl,
-              authConfig: updatedSchedule.authConfig,
-              originalName: updatedSchedule.name,
-              triggeredBy: "manual",
+          await queueJobWithRollback(
+            payload,
+            {
+              task: "url-fetch",
+              input: {
+                scheduledIngestId: body.scheduledIngestId,
+                sourceUrl: updatedSchedule.sourceUrl,
+                authConfig: updatedSchedule.authConfig,
+                originalName: updatedSchedule.name,
+                triggeredBy: "manual",
+              },
             },
-          });
+            {
+              collection: COLLECTION,
+              where: { id: { equals: body.scheduledIngestId } },
+              data: { lastStatus: "failed", lastError: "Failed to queue import job" },
+            },
+            "Failed to queue job after schedule update"
+          );
           logger.info({ scheduledIngestId: body.scheduledIngestId }, "Triggered run after schedule update");
-        } catch (queueError) {
-          // Revert status so the schedule doesn't get stuck as "running"
-          logError(queueError, "Failed to queue job after schedule update, reverting status", {
-            scheduledIngestId: body.scheduledIngestId,
-          });
-          await payload.update({
-            collection: COLLECTION,
-            where: { id: { equals: body.scheduledIngestId } },
-            data: { lastStatus: "failed", lastError: "Failed to queue import job" },
-            overrideAccess: true,
-          });
+        } catch {
+          // Swallow — queueJobWithRollback already logged and reverted status.
+          // The schedule update itself succeeded, so we return success.
         }
       } else {
         logger.info({ scheduledIngestId: body.scheduledIngestId }, "Schedule already running, skipping trigger");

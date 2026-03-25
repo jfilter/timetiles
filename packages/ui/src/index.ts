@@ -120,6 +120,7 @@ export {
   TableRow,
 } from "./components/table";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/tabs";
+export { useConfirmDialog } from "./hooks/use-confirm-dialog";
 
 // Page blocks - generic CMS components
 export {

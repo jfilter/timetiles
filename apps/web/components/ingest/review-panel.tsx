@@ -19,6 +19,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { type ApproveIngestJobRequest, useApproveIngestJobMutation } from "@/lib/hooks/use-ingest-approval";
+import { REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import type { FormattedJobProgress } from "@/lib/types/progress-tracking";
 
 export interface ReviewPanelProps {
@@ -32,24 +33,24 @@ interface ReasonConfig {
   approveWithoutLabel?: string;
 }
 
-/** Build reason config with translated labels. */
+/** Build reason config with translated labels. Keyed by REVIEW_REASONS values. */
 const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, ReasonConfig> => ({
-  "no-timestamp": {
+  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: {
     icon: CalendarOffIcon,
     approveLabel: t("approveUseColumn"),
     approveWithoutLabel: t("approveContinueWithoutDates"),
   },
-  "no-location": {
+  [REVIEW_REASONS.NO_LOCATION_DETECTED]: {
     icon: MapPinOffIcon,
     approveLabel: t("approveUseColumn"),
     approveWithoutLabel: t("approveContinueWithoutLocations"),
   },
-  "high-duplicates": { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
-  "high-empty-rows": { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
-  "high-row-errors": { icon: AlertTriangleIcon, approveLabel: t("approveAcceptPartial") },
-  "geocoding-partial": { icon: AlertTriangleIcon, approveLabel: t("approveContinuePartialGeocoding") },
-  "quota-exceeded": { icon: AlertTriangleIcon, approveLabel: t("approveContactAdmin") },
-  "schema-drift": { icon: AlertTriangleIcon, approveLabel: t("approveSchemaChanges") },
+  [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
+  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
+  [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveAcceptPartial") },
+  [REVIEW_REASONS.GEOCODING_PARTIAL]: { icon: AlertTriangleIcon, approveLabel: t("approveContinuePartialGeocoding") },
+  [REVIEW_REASONS.QUOTA_EXCEEDED]: { icon: AlertTriangleIcon, approveLabel: t("approveContactAdmin") },
+  [REVIEW_REASONS.SCHEMA_DRIFT]: { icon: AlertTriangleIcon, approveLabel: t("approveSchemaChanges") },
 });
 
 /** Column picker for no-timestamp / no-location reviews. */
@@ -110,7 +111,7 @@ const ReasonStats = ({
   t: ReturnType<typeof useTranslations>;
 }) => {
   switch (reason) {
-    case "high-duplicates":
+    case REVIEW_REASONS.HIGH_DUPLICATE_RATE:
       return (
         <StatsContainer>
           <StatRow label={t("totalRows")} value={String(Number(details.totalRows ?? 0))} />
@@ -118,7 +119,7 @@ const ReasonStats = ({
           <StatRow label={t("duplicateRate")} value={formatRate(details.duplicateRate)} />
         </StatsContainer>
       );
-    case "high-empty-rows":
+    case REVIEW_REASONS.HIGH_EMPTY_ROW_RATE:
       return (
         <StatsContainer>
           <StatRow label={t("totalRows")} value={String(Number(details.totalRows ?? 0))} />
@@ -126,7 +127,7 @@ const ReasonStats = ({
           <StatRow label={t("emptyRate")} value={formatRate(details.emptyRate)} />
         </StatsContainer>
       );
-    case "high-row-errors":
+    case REVIEW_REASONS.HIGH_ROW_ERROR_RATE:
       return (
         <StatsContainer>
           <StatRow label={t("eventsCreated")} value={String(Number(details.totalEvents ?? 0))} />
@@ -134,7 +135,7 @@ const ReasonStats = ({
           <StatRow label={t("errorRate")} value={formatRate(details.errorRate)} />
         </StatsContainer>
       );
-    case "geocoding-partial":
+    case REVIEW_REASONS.GEOCODING_PARTIAL:
       return (
         <StatsContainer>
           <StatRow label={t("geocoded")} value={String(Number(details.geocoded ?? 0))} />
@@ -142,7 +143,7 @@ const ReasonStats = ({
           <StatRow label={t("failRate")} value={formatRate(details.failRate)} />
         </StatsContainer>
       );
-    case "quota-exceeded":
+    case REVIEW_REASONS.QUOTA_EXCEEDED:
       return (
         <StatsContainer>
           <StatRow label={t("currentEvents")} value={String(Number(details.current ?? 0))} />
@@ -171,7 +172,8 @@ const ReviewActions = ({
   onApprove: () => void;
   onApproveWithout: () => void;
 }) => {
-  const isFieldPickerReason = reason === "no-timestamp" || reason === "no-location";
+  const isFieldPickerReason =
+    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
 
   if (isFieldPickerReason) {
     return (
@@ -187,7 +189,7 @@ const ReviewActions = ({
     );
   }
 
-  if (reason === "quota-exceeded") {
+  if (reason === REVIEW_REASONS.QUOTA_EXCEEDED) {
     return (
       <Button size="sm" variant="outline" disabled>
         <XIcon className="mr-1.5 h-4 w-4" />
@@ -218,16 +220,17 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
   if (!reason || !config) return null;
 
   const availableColumns = (details?.availableColumns as string[]) ?? [];
-  const isFieldPickerReason = reason === "no-timestamp" || reason === "no-location";
+  const isFieldPickerReason =
+    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
   const canApproveWithColumn = isFieldPickerReason && selectedColumn;
 
   const handleApprove = () => {
     const request: ApproveIngestJobRequest = { ingestJobId: String(job.id) };
 
     if (canApproveWithColumn) {
-      if (reason === "no-timestamp") {
+      if (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED) {
         request.timestampPath = selectedColumn;
-      } else if (reason === "no-location") {
+      } else if (reason === REVIEW_REASONS.NO_LOCATION_DETECTED) {
         request.locationPath = selectedColumn;
       }
     }
@@ -260,7 +263,9 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           <div className="bg-background rounded-sm border p-4">
             <ColumnPicker
               columns={availableColumns}
-              label={reason === "no-timestamp" ? t("selectTimestampColumn") : t("selectLocationColumn")}
+              label={
+                reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ? t("selectTimestampColumn") : t("selectLocationColumn")
+              }
               placeholder={t("selectColumnPlaceholder")}
               value={selectedColumn}
               onChange={setSelectedColumn}

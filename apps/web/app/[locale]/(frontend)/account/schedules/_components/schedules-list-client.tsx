@@ -8,7 +8,7 @@
  */
 "use client";
 
-import { Button, Card, CardContent } from "@timetiles/ui";
+import { Button, Card, CardContent, useConfirmDialog } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import {
   CalendarIcon,
@@ -26,6 +26,7 @@ import {
 import { useTranslations } from "next-intl";
 
 import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
+import { getScheduleStatusVariant } from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useRouter } from "@/i18n/navigation";
 import { useLoadingStates } from "@/lib/hooks/use-loading-states";
@@ -59,15 +60,19 @@ const FREQUENCY_KEYS = { hourly: "hourly", daily: "daily", weekly: "weekly", mon
 
 const SCHEMA_MODE_KEYS = { strict: "strict", additive: "additive", flexible: "flexible" } as const;
 
-// Get status badge
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  muted: <PauseCircleIcon className="h-3 w-3" />,
+  error: <XCircleIcon className="h-3 w-3" />,
+  success: <CheckCircle2Icon className="h-3 w-3" />,
+};
+
+// Get status badge using shared variant logic
 const getStatusBadge = (schedule: ScheduledIngest, t: TranslateFn) => {
-  if (!schedule.enabled) {
-    return <StatusBadge variant="muted" label={t("disabled")} icon={<PauseCircleIcon className="h-3 w-3" />} />;
-  }
-  if (schedule.lastStatus === "failed") {
-    return <StatusBadge variant="error" label={t("failed")} icon={<XCircleIcon className="h-3 w-3" />} />;
-  }
-  return <StatusBadge variant="success" label={t("active")} icon={<CheckCircle2Icon className="h-3 w-3" />} />;
+  const variant = getScheduleStatusVariant(schedule);
+  let label = t("active");
+  if (variant === "muted") label = t("disabled");
+  else if (variant === "error") label = t("failed");
+  return <StatusBadge variant={variant} label={label} icon={STATUS_ICONS[variant]} />;
 };
 
 interface ScheduleCardProps {
@@ -203,10 +208,19 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
     triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
   };
 
+  const { requestConfirm, confirmDialog } = useConfirmDialog();
+
   const handleDelete = (id: number) => {
-    if (!confirm(t("confirmDelete"))) return;
-    setLoading(id, "deleting");
-    deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
+    requestConfirm({
+      title: t("deleteSchedule"),
+      description: t("confirmDelete"),
+      confirmLabel: t("deleteSchedule"),
+      variant: "destructive",
+      onConfirm: () => {
+        setLoading(id, "deleting");
+        deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
+      },
+    });
   };
 
   const scheduleCallbacks = Object.fromEntries(
@@ -233,23 +247,26 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   }
 
   return (
-    <div className="space-y-4">
-      {schedules.map((schedule) => {
-        const callbacks = scheduleCallbacks[schedule.id];
-        if (!callbacks) return null;
-        return (
-          <ScheduleCard
-            key={schedule.id}
-            schedule={schedule}
-            loadingState={loadingStates[schedule.id]}
-            onToggle={callbacks.onToggle}
-            onEdit={callbacks.onEdit}
-            onRun={callbacks.onRun}
-            onDelete={callbacks.onDelete}
-            t={t}
-          />
-        );
-      })}
-    </div>
+    <>
+      <div className="space-y-4">
+        {schedules.map((schedule) => {
+          const callbacks = scheduleCallbacks[schedule.id];
+          if (!callbacks) return null;
+          return (
+            <ScheduleCard
+              key={schedule.id}
+              schedule={schedule}
+              loadingState={loadingStates[schedule.id]}
+              onToggle={callbacks.onToggle}
+              onEdit={callbacks.onEdit}
+              onRun={callbacks.onRun}
+              onDelete={callbacks.onDelete}
+              t={t}
+            />
+          );
+        })}
+      </div>
+      {confirmDialog}
+    </>
   );
 };
