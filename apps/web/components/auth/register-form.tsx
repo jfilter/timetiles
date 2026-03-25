@@ -15,7 +15,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { Button, Input, Label } from "@timetiles/ui";
+import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Lock, Mail } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -26,6 +26,7 @@ import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
 import { useInputState } from "@/lib/hooks/use-input-state";
 import { useLegalNotices } from "@/lib/hooks/use-legal-notices";
 
+import { AuthFormField } from "./auth-form-field";
 import { FormError, FormSuccess } from "./form-feedback";
 
 export interface RegisterFormProps {
@@ -100,48 +101,42 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-4", className)}>
-      <div className="space-y-2">
-        <Label htmlFor="register-email">{t("emailLabel")}</Label>
-        <Input
-          id="register-email"
-          type="email"
-          value={email}
-          onChange={handleEmailChange}
-          placeholder={t("registerEmailPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="email"
-        />
-      </div>
+      <AuthFormField
+        id="register-email"
+        label={t("emailLabel")}
+        type="email"
+        value={email}
+        onChange={handleEmailChange}
+        placeholder={t("registerEmailPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="email"
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="register-password">{t("passwordLabel")}</Label>
-        <Input
-          id="register-password"
-          type="password"
-          value={password}
-          onChange={handlePasswordChange}
-          placeholder={t("registerPasswordPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="new-password"
-          minLength={8}
-        />
-      </div>
+      <AuthFormField
+        id="register-password"
+        label={t("passwordLabel")}
+        type="password"
+        value={password}
+        onChange={handlePasswordChange}
+        placeholder={t("registerPasswordPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="new-password"
+        minLength={8}
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="register-confirm-password">{t("confirmPasswordLabel")}</Label>
-        <Input
-          id="register-confirm-password"
-          type="password"
-          value={confirmPassword}
-          onChange={handleConfirmPasswordChange}
-          placeholder={t("confirmPasswordPlaceholder")}
-          disabled={isPending}
-          required
-          autoComplete="new-password"
-        />
-      </div>
+      <AuthFormField
+        id="register-confirm-password"
+        label={t("confirmPasswordLabel")}
+        type="password"
+        value={confirmPassword}
+        onChange={handleConfirmPasswordChange}
+        placeholder={t("confirmPasswordPlaceholder")}
+        disabled={isPending}
+        required
+        autoComplete="new-password"
+      />
 
       <FormError error={error} />
 

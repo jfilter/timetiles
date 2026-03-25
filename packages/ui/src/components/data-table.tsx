@@ -59,6 +59,7 @@ const SkeletonRow = ({ colCount }: { readonly colCount: number }) => (
 const HeaderCell = ({
   header,
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- react-table doesn't export a standalone Header type
   readonly header: ReturnType<ReturnType<typeof useReactTable<any>>["getHeaderGroups"]>[number]["headers"][number];
 }) => {
   if (header.isPlaceholder) return null;

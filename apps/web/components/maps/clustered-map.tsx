@@ -8,25 +8,16 @@
  * @module
  * @category Components
  */
-/* eslint-disable sonarjs/max-lines-per-function -- Map setup requires many sequential configuration steps */
+
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { ContentState } from "@timetiles/ui";
 import { useMapColors } from "@timetiles/ui/hooks/use-chart-theme";
-import { Loader2 } from "lucide-react";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTranslations } from "next-intl";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import Map, {
-  Layer,
-  type MapLayerMouseEvent,
-  type MapRef,
-  NavigationControl,
-  Popup,
-  Source,
-} from "react-map-gl/maplibre";
+import { forwardRef, useImperativeHandle, useRef } from "react";
+import Map, { Layer, type MapRef, NavigationControl, Popup, Source } from "react-map-gl/maplibre";
 
 import { type ClusterStats, MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
 import { useTheme } from "@/lib/hooks/use-theme";
@@ -40,14 +31,15 @@ import {
   computeViewportStats,
   DEFAULT_CLUSTERS,
   fitMapToBounds,
-  getValidCoordinates,
   INITIAL_VIEW_STATE,
   INTERACTIVE_LAYER_IDS,
   logMapInitialized,
   logMapViewportChanged,
   MAP_COMPONENT_STYLE,
 } from "./clustered-map-helpers";
+import { MapErrorOverlay, MapLoadingOverlay } from "./map-overlays";
 import { MapThemeControl } from "./map-theme-control";
+import { useMapInteractions } from "./use-map-interactions";
 
 export interface ClusterFeature {
   type: "Feature";
@@ -81,23 +73,6 @@ export interface ClusteredMapHandle {
   fitBounds: (bounds: SimpleBounds, options?: { padding?: number; animate?: boolean }) => void;
 }
 
-/** Error overlay shown when map data fails to load */
-const MapErrorOverlay = ({ title, subtitle }: { title: string; subtitle: string }) => (
-  <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
-    <ContentState variant="error" title={title} subtitle={subtitle} />
-  </div>
-);
-
-/** Loading overlay shown while computing initial bounds */
-const MapLoadingOverlay = ({ message }: { message: string }) => (
-  <div className="bg-background/60 pointer-events-auto absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm">
-    <div className="flex flex-col items-center gap-3">
-      <Loader2 className="text-primary h-8 w-8 animate-spin" />
-      <span className="text-muted-foreground text-sm font-medium">{message}</span>
-    </div>
-  </div>
-);
-
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
   (
     {
@@ -115,11 +90,12 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const { resolvedTheme } = useTheme();
     const { preset } = useThemePreset();
     const mapColors = useMapColors();
-    const [popupInfo, setPopupInfo] = useState<{ longitude: number; latitude: number; title: string } | null>(null);
     const mapRef = useRef<MapRef | null>(null);
     const presetStyles = MAP_STYLES_BY_PRESET[preset] ?? MAP_STYLES;
     const mapStyleUrl = presetStyles[resolvedTheme];
-    const closePopup = () => setPopupInfo(null);
+    const { popupInfo, closePopup, handleClick } = useMapInteractions({
+      formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
+    });
 
     useImperativeHandle(ref, () => ({
       resize: () => mapRef.current?.resize(),
@@ -159,33 +135,6 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       const { bounds, zoom } = logMapViewportChanged(map);
       const center = map.getCenter();
       onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
-    };
-
-    const handleClusterClick = (event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
-      const coordinates = getValidCoordinates(feature);
-      if (coordinates) {
-        event.target.flyTo({ center: coordinates, zoom: event.target.getZoom() + 2 });
-      }
-    };
-
-    const handleEventPointClick = (feature: GeoJSON.Feature) => {
-      const coordinates = getValidCoordinates(feature);
-      if (coordinates) {
-        const { title } = feature.properties ?? {};
-        setPopupInfo({
-          longitude: coordinates[0],
-          latitude: coordinates[1],
-          title: typeof title === "string" ? title : t("eventFallbackTitle", { id: String(feature.id ?? "Unknown") }),
-        });
-      }
-    };
-
-    const handleClick = (event: MapLayerMouseEvent) => {
-      const feature = event.features?.[0];
-      if (!feature) return;
-      const { type } = feature.properties ?? {};
-      if (type === "event-cluster") handleClusterClick(event, feature);
-      else if (type === "event-point") handleEventPointClick(feature);
     };
 
     const geojsonData = { type: "FeatureCollection" as const, features: clusters };
