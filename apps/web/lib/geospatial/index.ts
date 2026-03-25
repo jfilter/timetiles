@@ -23,9 +23,8 @@ export { calculateCentroid, calculateDistance, findMaxDistance } from "./distanc
 export { createBoundingBox, isValidBounds, isWithinBounds, parseBounds } from "./bounds";
 
 // Coordinate parsing — sub-format parsers and detection helpers are
-// exported directly from ./parsing and ./detection for consumers that
-// need them (tests, schema-detection).  Only the high-level
-// parseCoordinate is re-exported here.
+// imported directly from ./parsing and ./detection by consumers that
+// need them (tests, schema-detection). They are not re-exported here.
 
 // Formatting
 export { formatCenterCoordinates, formatCoordinate, formatEventCount, getCenterFromBounds } from "./formatting";
