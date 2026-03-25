@@ -15,7 +15,7 @@ import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, ChevronDownIcon, FileSpreadsheetIcon, WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
@@ -32,12 +32,20 @@ import {
 } from "./field-mapping-sections";
 import { IdStrategyCard } from "./id-strategy-card";
 import { SheetTabButton } from "./sheet-tab-button";
+import { useFieldMappingCompletion } from "./use-field-mapping-completion";
+import { useIdPreview } from "./use-id-preview";
 
 export interface StepFieldMappingProps {
   className?: string;
 }
 
-/** Manage config suggestion state (applied/dismissed) keyed per sheet. */
+/**
+ * Manage config suggestion state (applied/dismissed) keyed per sheet.
+ *
+ * Uses `useState` for both rendering and as the single source of truth.
+ * The effect uses a functional updater to atomically check-and-set the
+ * applied state, eliminating the previous `useRef` sync risk.
+ */
 const useConfigSuggestion = (
   bestSuggestion: ConfigSuggestion | null,
   sheetMappings: { sheetIndex: number; datasetId?: number | "new" }[],
@@ -46,15 +54,24 @@ const useConfigSuggestion = (
 ) => {
   const [dismissedSheets, setDismissedSheets] = useState<Set<number>>(new Set());
   const [appliedSheets, setAppliedSheets] = useState<Set<number>>(new Set());
-  const appliedSheetsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (appliedSheetsRef.current.has(activeSheetIndex) || !bestSuggestion) return;
+    if (!bestSuggestion) return;
     const mapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
-    if (typeof mapping?.datasetId === "number") {
+    if (typeof mapping?.datasetId !== "number") return;
+
+    // Functional updater: atomically check if already applied and mark if not.
+    // This avoids the previous useRef guard that could drift from state.
+    let alreadyApplied = false;
+    setAppliedSheets((prev) => {
+      if (prev.has(activeSheetIndex)) {
+        alreadyApplied = true;
+        return prev;
+      }
+      return new Set(prev).add(activeSheetIndex);
+    });
+    if (!alreadyApplied) {
       applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
-      appliedSheetsRef.current = new Set(appliedSheetsRef.current).add(activeSheetIndex);
-      setAppliedSheets((prev) => new Set(prev).add(activeSheetIndex));
     }
   }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
 
@@ -186,16 +203,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
   };
 
   // Completion status
-  const requiredFieldsCount = useMemo(() => {
-    if (!activeMapping) return { mapped: 0, total: 3, missing: ["fieldTitle", "fieldDate", "location"] };
-    const missing: string[] = [];
-    if (!activeMapping.titleField) missing.push("fieldTitle");
-    if (!activeMapping.dateField) missing.push("fieldDate");
-    const hasLocation = activeMapping.locationField ?? (activeMapping.latitudeField && activeMapping.longitudeField);
-    if (!hasLocation) missing.push("location");
-    return { mapped: 3 - missing.length, total: 3, missing };
-  }, [activeMapping]);
-
+  const requiredFieldsCount = useFieldMappingCompletion(activeMapping);
   const isComplete = activeMapping ? isFieldMappingComplete(activeMapping) : false;
 
   // Apply transforms to preview data
@@ -207,27 +215,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Add ID preview column — shows the *source* of each ID, not the actual hash.
   // Real ID generation lives in lib/services/id-generation.ts (uses node:crypto, server-only).
-  const previewWithIds = useMemo(() => {
-    if (!activeMapping) return transformedSampleData;
-    const strategy = activeMapping.idStrategy;
-    return transformedSampleData.map((row, i) => {
-      let id: string;
-      const stringify = (v: unknown): string => (typeof v === "object" ? JSON.stringify(v) : String(v as string));
-      if (strategy === "external" && activeMapping.idField) {
-        const val = row[activeMapping.idField];
-        id = val != null ? stringify(val) : "";
-      } else if (strategy === "computed") {
-        const parts = [row[activeMapping.titleField ?? ""], row[activeMapping.dateField ?? ""]].filter(Boolean);
-        id = parts.length > 0 ? `hash(${parts.map(stringify).join(", ")})` : `row-${i + 1}`;
-      } else if (strategy === "hybrid" && activeMapping.idField) {
-        const val = row[activeMapping.idField];
-        id = val != null ? stringify(val) : "hash(...)";
-      } else {
-        id = `auto-${i + 1}`;
-      }
-      return { __id: id, ...row };
-    });
-  }, [transformedSampleData, activeMapping]);
+  const previewWithIds = useIdPreview(transformedSampleData, activeMapping);
 
   // Build preview fields from transformed data (includes new columns from transforms)
   const allPreviewFields = useMemo(() => {
