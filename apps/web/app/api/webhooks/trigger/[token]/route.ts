@@ -16,8 +16,7 @@ import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
-import { claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
-import type { ScheduledIngest } from "@/payload-types";
+import { claimScraperRunning, resolveWebhookToken, type WebhookTarget } from "@/lib/services/webhook-registry";
 
 interface RateLimitResponse {
   success: false;
@@ -82,7 +81,7 @@ export const POST = apiRoute({
 /** Handle webhook trigger for a scheduled ingest. */
 const handleScheduledIngestTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
-  target: { id: number; name: string; record: Record<string, unknown> }
+  target: Extract<WebhookTarget, { type: "scheduled-ingest" }>
 ): Promise<Record<string, unknown>> => {
   // Atomically claim "running" status to prevent concurrent executions
   const claimResult = (await payload.db.drizzle.execute(sql`
@@ -102,7 +101,7 @@ const handleScheduledIngestTrigger = async (
   }
 
   try {
-    const { jobId } = await queueWebhookImport(payload, target.record as unknown as ScheduledIngest);
+    const { jobId } = await queueWebhookImport(payload, target.record);
     return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
   } catch {
     throw new AppError(500, "Failed to queue import job");

@@ -26,12 +26,25 @@ import type {
   PreviewMetadata,
   SheetMapping,
 } from "@/lib/types/ingest-wizard";
-import type { Dataset, User } from "@/payload-types";
+import type { Dataset, IngestFile, User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");
 
-// Build field mapping overrides from wizard configuration
-export const buildFieldMappingOverrides = (fieldMapping: FieldMapping | undefined) => {
+/** Build field mapping overrides from wizard configuration. */
+export const buildFieldMappingOverrides = (
+  fieldMapping: FieldMapping | undefined
+): Partial<
+  Record<
+    | "titlePath"
+    | "descriptionPath"
+    | "locationNamePath"
+    | "timestampPath"
+    | "latitudePath"
+    | "longitudePath"
+    | "locationPath",
+    string | null
+  >
+> => {
   if (!fieldMapping) return {};
   return {
     titlePath: fieldMapping.titleField,
@@ -44,13 +57,17 @@ export const buildFieldMappingOverrides = (fieldMapping: FieldMapping | undefine
   };
 };
 
-// Build ID strategy configuration
+/** Build ID strategy configuration. */
 export const buildIdStrategy = (
   fieldMapping: FieldMapping | undefined,
   deduplicationStrategy: ConfigureIngestRequest["deduplicationStrategy"]
-) => {
+): {
+  type: FieldMapping["idStrategy"] | "auto";
+  externalIdPath?: string | null;
+  duplicateStrategy: ConfigureIngestRequest["deduplicationStrategy"];
+} => {
   if (!fieldMapping) {
-    return { type: "auto" as const, duplicateStrategy: deduplicationStrategy };
+    return { type: "auto", duplicateStrategy: deduplicationStrategy };
   }
   return {
     type: fieldMapping.idStrategy,
@@ -59,15 +76,21 @@ export const buildIdStrategy = (
   };
 };
 
-// Build geo field detection config
-export const buildGeoFieldDetection = (fieldMapping: FieldMapping | undefined, geocodingEnabled: boolean) => ({
+/** Build geo field detection config. */
+export const buildGeoFieldDetection = (
+  fieldMapping: FieldMapping | undefined,
+  geocodingEnabled: boolean
+): { autoDetect: boolean; latitudePath: string | undefined; longitudePath: string | undefined } => ({
   autoDetect: geocodingEnabled,
   latitudePath: fieldMapping?.latitudeField ?? undefined,
   longitudePath: fieldMapping?.longitudeField ?? undefined,
 });
 
-// Build dataset mapping metadata for the import job
-export const buildDatasetMapping = (sheetMappings: SheetMapping[], datasetMappingEntries: DatasetMappingEntry[]) => {
+/** Build dataset mapping metadata for the import job. */
+export const buildDatasetMapping = (
+  sheetMappings: SheetMapping[],
+  datasetMappingEntries: DatasetMappingEntry[]
+): { mappingType: string; singleDataset?: number; sheetMappings?: DatasetMappingEntry[] } => {
   if (sheetMappings.length === 1) {
     return { mappingType: "single", singleDataset: datasetMappingEntries[0]?.dataset };
   }
@@ -77,7 +100,9 @@ export const buildDatasetMapping = (sheetMappings: SheetMapping[], datasetMappin
 /**
  * Translate user-friendly schema mode to dataset schemaConfig fields.
  */
-export const translateSchemaMode = (mode: CreateScheduleConfig["schemaMode"]) => {
+export const translateSchemaMode = (
+  mode: CreateScheduleConfig["schemaMode"]
+): { locked: boolean; autoGrow: boolean; autoApproveNonBreaking: boolean } => {
   switch (mode) {
     case "strict":
       return { locked: true, autoGrow: false, autoApproveNonBreaking: false };
@@ -379,7 +404,7 @@ export const createIngestFileRecord = async (
   finalCatalogId: number,
   datasetIdMap: Map<number, number>,
   datasetMappingEntries: DatasetMappingEntry[]
-) => {
+): Promise<IngestFile> => {
   const fileBuffer = fs.readFileSync(previewMeta.filePath);
   const datasetMapping = buildDatasetMapping(body.sheetMappings, datasetMappingEntries);
   const ingestFile = await payload.create({
@@ -419,6 +444,7 @@ export const createIngestFileRecord = async (
 /**
  * Convert QuotaExceededError to AppError so the framework handles it correctly.
  * Bug 15: surface quota-exceeded as 429 rather than 500.
+ * @throws {AppError} with status 429 if the original error is a QuotaExceededError
  */
 export const rethrowQuotaError = (error: unknown): never => {
   if (error instanceof QuotaExceededError) {

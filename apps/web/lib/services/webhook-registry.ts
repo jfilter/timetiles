@@ -15,22 +15,19 @@ import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/utils/base-url";
+import type { ScheduledIngest, Scraper } from "@/payload-types";
 
 const logger = createLogger("webhook-registry");
 
 /**
  * Result of resolving a webhook token to a triggerable resource.
+ *
+ * Discriminated union keyed on `type` so callers get a narrowed `record`
+ * type after checking `target.type`.
  */
-export interface WebhookTarget {
-  /** Which collection the token belongs to. */
-  type: "scheduled-ingest" | "scraper";
-  /** The record ID in the source collection. */
-  id: number;
-  /** Display name for logging. */
-  name: string;
-  /** The full record (for dispatching). */
-  record: Record<string, unknown>;
-}
+export type WebhookTarget =
+  | { type: "scheduled-ingest"; id: number; name: string; record: ScheduledIngest }
+  | { type: "scraper"; id: number; name: string; record: Scraper };
 
 /**
  * Generate a cryptographically random webhook token.
@@ -97,7 +94,7 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
       type: "scheduled-ingest",
       id: siDoc.id,
       name: siDoc.name ?? `scheduled-ingest-${siDoc.id}`,
-      record: siDoc as unknown as Record<string, unknown>,
+      record: siDoc,
     };
   }
 
@@ -119,7 +116,7 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
       type: "scraper",
       id: scraperDoc.id,
       name: scraperDoc.name ?? `scraper-${scraperDoc.id}`,
-      record: scraperDoc as unknown as Record<string, unknown>,
+      record: scraperDoc,
     };
   }
 
