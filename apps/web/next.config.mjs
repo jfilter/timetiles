@@ -31,7 +31,7 @@ const nextConfig = {
   experimental: {
     // Optimize barrel file imports for faster builds and smaller bundles
     // See: https://vercel.com/blog/how-we-optimized-package-imports-in-next-js
-    optimizePackageImports: ["lucide-react", "@xyflow/react", "@timetiles/ui", "@tanstack/react-query", "date-fns"],
+    optimizePackageImports: ["lucide-react", "@xyflow/react", "@tanstack/react-query", "date-fns"],
     // Enable native View Transitions API for smooth page transitions
     viewTransition: true,
   },
