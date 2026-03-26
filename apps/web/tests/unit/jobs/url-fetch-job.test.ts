@@ -952,4 +952,72 @@ describe.sequential("urlFetchJob", () => {
       expect(createCall.user.id).toBe("user-123");
     });
   });
+
+  describe("no double dataset-detection", () => {
+    it("should not queue manual-ingest workflow (parent workflow handles detection)", async () => {
+      mockPayload.create.mockResolvedValue({ id: "import-456" });
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: string }) => {
+        if (collection === "scheduled-ingests") {
+          return {
+            id,
+            name: "Test Schedule",
+            sourceUrl: "https://example.com/data.csv",
+            enabled: true,
+            createdBy: "user-123",
+            dataset: 10,
+          };
+        }
+        return { id: "user-123", role: "user" };
+      });
+
+      const mockResponse = createMockResponse("id,name\n1,test", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "schedule-1",
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-1",
+          originalName: "Test Import",
+          userId: "user-123",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      // url-fetch must NOT queue any workflow — the parent workflow
+      // (scheduled-ingest / scraper-ingest) runs dataset-detection itself.
+      // Queuing manual-ingest here would cause duplicate ingest jobs.
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+    });
+
+    it("should create ingest file with skipIngestFileHooks to prevent afterChange hook", async () => {
+      mockPayload.create.mockResolvedValue({ id: "import-789" });
+      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+
+      const mockResponse = createMockResponse("id,name\n1,test", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      await urlFetchJob.handler({
+        input: {
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-1",
+          originalName: "Test Import",
+          userId: "user-123",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      // The ingest file must be created with skipIngestFileHooks context
+      // to prevent the afterChange hook from also queuing manual-ingest.
+      const createCall = mockPayload.create.mock.calls.find(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "ingest-files"
+      );
+      expect(createCall).toBeDefined();
+      const createArg = createCall![0] as Record<string, unknown>;
+      const context = createArg.context as Record<string, unknown>;
+      expect(context.skipIngestFileHooks).toBe(true);
+    });
+  });
 });
