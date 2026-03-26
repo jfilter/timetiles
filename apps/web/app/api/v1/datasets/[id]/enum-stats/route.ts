@@ -1,5 +1,14 @@
+/**
+ * Live enum value counts for categorical filters.
+ *
+ * Computes counts via SQL GROUP BY on events.transformed_data JSONB,
+ * using the existing GIN index for performance.
+ *
+ * @module
+ */
 import { sql } from "@payloadcms/db-postgres";
 import { z } from "zod";
+
 import { apiRoute, NotFoundError } from "@/lib/api";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { extractRelationId } from "@/lib/utils/relation-id";
