@@ -60,10 +60,16 @@ const buildScheduledIngestData = (
   datasetId: number,
   userId: number
 ) => {
-  const advancedOptions =
-    manifest.source.format === "json" && manifest.source.jsonApi
-      ? { responseFormat: "json" as const, jsonApiConfig: manifest.source.jsonApi }
-      : undefined;
+  const advancedOptions: Record<string, unknown> = {};
+
+  if (manifest.source.format === "json" && manifest.source.jsonApi) {
+    advancedOptions.responseFormat = "json";
+    advancedOptions.jsonApiConfig = manifest.source.jsonApi;
+  }
+
+  if (manifest.reviewChecks) {
+    advancedOptions.reviewChecks = manifest.reviewChecks;
+  }
 
   return {
     name: manifest.name,
@@ -78,7 +84,7 @@ const buildScheduledIngestData = (
     timezone: manifest.schedule.timezone ?? "UTC",
     schemaMode: manifest.schedule.schemaMode ?? "additive",
     authConfig: manifest.source.auth ?? { type: "none" as const },
-    advancedOptions,
+    advancedOptions: Object.keys(advancedOptions).length > 0 ? advancedOptions : undefined,
     dataPackageSlug: manifest.slug,
   };
 };

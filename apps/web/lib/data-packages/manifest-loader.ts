@@ -106,6 +106,17 @@ const manifestSchema = z.object({
     schemaMode: z.enum(["strict", "additive", "flexible"]).default("additive"),
     timezone: z.string().default("UTC"),
   }),
+
+  reviewChecks: z
+    .object({
+      skipTimestampCheck: z.boolean().optional(),
+      skipLocationCheck: z.boolean().optional(),
+      skipEmptyRowCheck: z.boolean().optional(),
+      skipRowErrorCheck: z.boolean().optional(),
+      skipDuplicateRateCheck: z.boolean().optional(),
+      skipGeocodingCheck: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------

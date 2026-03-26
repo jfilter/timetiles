@@ -40,3 +40,6 @@ schedule:
   frequency: weekly
   schemaMode: additive
   timezone: Europe/Berlin
+
+reviewChecks:
+  skipTimestampCheck: true

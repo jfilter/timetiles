@@ -62,6 +62,16 @@ export interface DataPackageSchedule {
   timezone?: string;
 }
 
+/** Data quality review check overrides. */
+export interface DataPackageReviewChecks {
+  skipTimestampCheck?: boolean;
+  skipLocationCheck?: boolean;
+  skipEmptyRowCheck?: boolean;
+  skipRowErrorCheck?: boolean;
+  skipDuplicateRateCheck?: boolean;
+  skipGeocodingCheck?: boolean;
+}
+
 /** Full data package manifest as defined in YAML. */
 export interface DataPackageManifest {
   slug: string;
@@ -77,6 +87,7 @@ export interface DataPackageManifest {
   dataset: DataPackageDataset;
   fieldMappings: DataPackageFieldMappings;
   schedule: DataPackageSchedule;
+  reviewChecks?: DataPackageReviewChecks;
 }
 
 /** Activation state for a data package. */
