@@ -1,10 +1,9 @@
 /**
  * Per-provider rate limiting for geocoding requests.
  *
- * Implements a simple token bucket algorithm that tracks the last request time
- * for each provider and ensures requests respect the configured rate limit.
- * This is necessary because external geocoding APIs (especially Nominatim/OSM)
- * have strict rate limits that must be respected.
+ * Implements a promise-chain-based rate limiter that serializes concurrent requests
+ * to respect configured rate limits. Includes adaptive backoff that temporarily
+ * suspends providers returning 429/503 responses.
  *
  * @module
  * @category Services
@@ -15,9 +14,23 @@ import { DEFAULT_NOMINATIM_RATE_LIMIT } from "./types";
 
 const logger = createLogger("provider-rate-limiter");
 
+/** Initial backoff duration on first throttle (ms) */
+const INITIAL_BACKOFF_MS = 2000;
+/** Maximum backoff duration (ms) */
+const MAX_BACKOFF_MS = 30_000;
+/** Backoff multiplier for each consecutive throttle */
+const BACKOFF_MULTIPLIER = 2;
+
 interface RateLimitState {
-  lastRequestTime: number;
   requestsPerSecond: number;
+  /** Promise chain that serializes access — each waitForSlot() appends to this chain */
+  lastSlotPromise: Promise<void>;
+  /** Adaptive backoff: don't send requests until this timestamp */
+  backoffUntil: number;
+  /** Current backoff duration, doubles on each consecutive throttle */
+  currentBackoffMs: number;
+  /** Number of consecutive throttle responses (429/503) */
+  consecutiveThrottles: number;
 }
 
 export class ProviderRateLimiter {
@@ -28,40 +41,86 @@ export class ProviderRateLimiter {
    * Should be called when providers are loaded.
    */
   configure(providerName: string, requestsPerSecond: number): void {
-    this.state.set(providerName, { lastRequestTime: 0, requestsPerSecond: Math.max(1, requestsPerSecond) });
+    this.state.set(providerName, {
+      requestsPerSecond: Math.max(1, requestsPerSecond),
+      lastSlotPromise: Promise.resolve(),
+      backoffUntil: 0,
+      currentBackoffMs: INITIAL_BACKOFF_MS,
+      consecutiveThrottles: 0,
+    });
     logger.debug("Configured rate limit", { providerName, requestsPerSecond });
   }
 
   /**
    * Wait for a rate limit slot to become available.
-   * Returns immediately if within rate limit, otherwise waits.
+   * Serializes concurrent callers via promise chaining — no TOCTOU race.
    */
   async waitForSlot(providerName: string): Promise<void> {
-    const state = this.state.get(providerName);
+    const state = this.getOrCreateState(providerName);
 
-    if (!state) {
-      // Provider not configured, use conservative default (1 req/sec for Nominatim safety)
-      logger.warn("Provider not configured for rate limiting, using default", { providerName });
-      this.configure(providerName, DEFAULT_NOMINATIM_RATE_LIMIT);
-      return this.waitForSlot(providerName);
-    }
-
+    // If provider is in backoff, wait until backoff expires
     const now = Date.now();
-    const minInterval = 1000 / state.requestsPerSecond;
-    const timeSinceLastRequest = now - state.lastRequestTime;
-
-    if (timeSinceLastRequest < minInterval) {
-      const waitTime = Math.ceil(minInterval - timeSinceLastRequest);
-      logger.debug("Rate limiting: waiting before request", {
-        providerName,
-        waitTimeMs: waitTime,
-        requestsPerSecond: state.requestsPerSecond,
-      });
-      await this.delay(waitTime);
+    if (now < state.backoffUntil) {
+      const backoffWait = state.backoffUntil - now;
+      logger.debug("Provider in backoff, waiting", { providerName, backoffWaitMs: backoffWait });
+      await this.delay(backoffWait);
     }
 
-    // Update last request time
-    state.lastRequestTime = Date.now();
+    // Chain: this caller waits for the previous slot + interval.
+    // Using .then() is intentional here — it chains promises synchronously to
+    // serialize concurrent callers without a TOCTOU race condition.
+    const minInterval = 1000 / state.requestsPerSecond;
+    const previousSlot = state.lastSlotPromise;
+    const mySlot = previousSlot.then(() => this.delay(minInterval));
+    state.lastSlotPromise = mySlot;
+    await mySlot;
+  }
+
+  /**
+   * Report a successful geocoding request — resets backoff state.
+   */
+  reportSuccess(providerName: string): void {
+    const state = this.state.get(providerName);
+    if (!state) return;
+
+    if (state.consecutiveThrottles > 0) {
+      logger.debug("Provider recovered from throttling", {
+        providerName,
+        previousThrottles: state.consecutiveThrottles,
+      });
+    }
+    state.consecutiveThrottles = 0;
+    state.currentBackoffMs = INITIAL_BACKOFF_MS;
+    state.backoffUntil = 0;
+  }
+
+  /**
+   * Report a throttle response (429/503) — applies exponential backoff.
+   */
+  reportThrottle(providerName: string, retryAfterMs?: number): void {
+    const state = this.getOrCreateState(providerName);
+    state.consecutiveThrottles++;
+
+    // Use Retry-After if provided, otherwise exponential backoff
+    const backoffMs = retryAfterMs ?? state.currentBackoffMs;
+    state.backoffUntil = Date.now() + backoffMs;
+    state.currentBackoffMs = Math.min(state.currentBackoffMs * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
+
+    logger.warn("Provider throttled, backing off", {
+      providerName,
+      consecutiveThrottles: state.consecutiveThrottles,
+      backoffMs,
+      nextBackoffMs: state.currentBackoffMs,
+    });
+  }
+
+  /**
+   * Check if a provider is currently available (not in backoff).
+   */
+  isAvailable(providerName: string): boolean {
+    const state = this.state.get(providerName);
+    if (!state) return true;
+    return Date.now() >= state.backoffUntil;
   }
 
   /**
@@ -69,23 +128,17 @@ export class ProviderRateLimiter {
    */
   canMakeRequest(providerName: string): boolean {
     const state = this.state.get(providerName);
-    if (!state) return true; // Not configured, allow (will use default on actual request)
-
-    const minInterval = 1000 / state.requestsPerSecond;
-    const timeSinceLastRequest = Date.now() - state.lastRequestTime;
-    return timeSinceLastRequest >= minInterval;
+    if (!state) return true;
+    return this.isAvailable(providerName);
   }
 
   /**
-   * Get time in ms until next request is allowed.
+   * Get time in ms until provider is available again.
    */
   getTimeUntilAllowed(providerName: string): number {
     const state = this.state.get(providerName);
     if (!state) return 0;
-
-    const minInterval = 1000 / state.requestsPerSecond;
-    const timeSinceLastRequest = Date.now() - state.lastRequestTime;
-    return Math.max(0, Math.ceil(minInterval - timeSinceLastRequest));
+    return Math.max(0, state.backoffUntil - Date.now());
   }
 
   /**
@@ -97,6 +150,16 @@ export class ProviderRateLimiter {
     } else {
       this.state.clear();
     }
+  }
+
+  private getOrCreateState(providerName: string): RateLimitState {
+    let state = this.state.get(providerName);
+    if (!state) {
+      logger.warn("Provider not configured for rate limiting, using default", { providerName });
+      this.configure(providerName, DEFAULT_NOMINATIM_RATE_LIMIT);
+      state = this.state.get(providerName)!;
+    }
+    return state;
   }
 
   private delay(ms: number): Promise<void> {

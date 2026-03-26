@@ -49,8 +49,10 @@ export const GeocodingProviders: CollectionConfig = {
       required: true,
       options: [
         { label: "Google Maps", value: "google" },
+        { label: "LocationIQ", value: "locationiq" },
         { label: "Nominatim (OpenStreetMap)", value: "nominatim" },
         { label: "OpenCage", value: "opencage" },
+        { label: "Photon (Komoot)", value: "photon" },
       ],
       admin: { description: "The geocoding service provider" },
     },
@@ -79,6 +81,16 @@ export const GeocodingProviders: CollectionConfig = {
       min: 1,
       max: 100,
       admin: { description: "Maximum requests per second for this provider" },
+    },
+    {
+      name: "group",
+      type: "text",
+      label: "Provider Group",
+      admin: {
+        description:
+          "Providers in the same group are queried in parallel (first success wins). Leave empty for sequential fallback.",
+        placeholder: "e.g., photon",
+      },
     },
     {
       name: "config",
@@ -250,6 +262,182 @@ export const GeocodingProviders: CollectionConfig = {
               label: "Abbreviate Results",
               defaultValue: false,
               admin: { description: "Abbreviate street names and components" },
+            },
+          ],
+        },
+        {
+          name: "locationiq",
+          type: "group",
+          label: "LocationIQ Settings",
+          admin: { condition: (data) => (data as { type?: string })?.type === "locationiq" },
+          fields: [
+            {
+              name: "apiKey",
+              type: "text",
+              label: "API Key",
+              required: true,
+              access: { read: ({ req: { user } }) => user?.role === "admin" },
+              admin: { description: "LocationIQ API key", placeholder: "Enter your LocationIQ API key" },
+            },
+            {
+              name: "countrycodes",
+              type: "text",
+              label: "Country Codes",
+              admin: {
+                description: "Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')",
+                placeholder: "us,ca,gb",
+              },
+            },
+          ],
+        },
+        {
+          name: "photon",
+          type: "group",
+          label: "Photon (Komoot) Settings",
+          admin: { condition: (data) => (data as { type?: string })?.type === "photon" },
+          fields: [
+            {
+              name: "baseUrl",
+              type: "text",
+              label: "Base URL",
+              defaultValue: "https://photon.komoot.io",
+              required: true,
+              admin: { description: "Photon server URL (default: public Komoot instance)" },
+            },
+            {
+              name: "language",
+              type: "text",
+              label: "Language",
+              admin: {
+                description: "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')",
+                placeholder: "e.g., en, de, fr",
+              },
+            },
+            {
+              name: "limit",
+              type: "number",
+              label: "Result Limit",
+              defaultValue: 5,
+              min: 1,
+              max: 50,
+              admin: { description: "Maximum number of results to return" },
+            },
+            {
+              name: "locationBias",
+              type: "group",
+              label: "Location Bias",
+              admin: { description: "Bias results towards a specific location" },
+              fields: [
+                { name: "enabled", type: "checkbox", label: "Enable Location Bias", defaultValue: false },
+                {
+                  name: "lat",
+                  type: "number",
+                  label: "Latitude",
+                  min: -90,
+                  max: 90,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+                {
+                  name: "lon",
+                  type: "number",
+                  label: "Longitude",
+                  min: -180,
+                  max: 180,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+                {
+                  name: "zoom",
+                  type: "number",
+                  label: "Zoom Level",
+                  min: 1,
+                  max: 18,
+                  defaultValue: 10,
+                  admin: {
+                    description: "Map zoom level (1=world, 18=building). Controls bias radius.",
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+              ],
+            },
+            {
+              name: "bbox",
+              type: "group",
+              label: "Bounding Box Filter",
+              admin: { description: "Restrict results to a geographic area" },
+              fields: [
+                { name: "enabled", type: "checkbox", label: "Enable Bounding Box", defaultValue: false },
+                {
+                  name: "minLon",
+                  type: "number",
+                  label: "Min Longitude",
+                  min: -180,
+                  max: 180,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+                {
+                  name: "minLat",
+                  type: "number",
+                  label: "Min Latitude",
+                  min: -90,
+                  max: 90,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+                {
+                  name: "maxLon",
+                  type: "number",
+                  label: "Max Longitude",
+                  min: -180,
+                  max: 180,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+                {
+                  name: "maxLat",
+                  type: "number",
+                  label: "Max Latitude",
+                  min: -90,
+                  max: 90,
+                  admin: {
+                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+                  },
+                },
+              ],
+            },
+            {
+              name: "osmTag",
+              type: "text",
+              label: "OSM Tag Filter",
+              admin: {
+                description:
+                  "Filter by OSM tag (e.g., 'place:city', '!highway', ':!construction'). See Photon docs for syntax.",
+                placeholder: "e.g., place:city",
+              },
+            },
+            {
+              name: "layer",
+              type: "select",
+              label: "Layer Filter",
+              hasMany: true,
+              options: [
+                { label: "House", value: "house" },
+                { label: "Street", value: "street" },
+                { label: "Locality", value: "locality" },
+                { label: "District", value: "district" },
+                { label: "City", value: "city" },
+                { label: "County", value: "county" },
+                { label: "State", value: "state" },
+                { label: "Country", value: "country" },
+              ],
+              admin: { description: "Restrict results to specific geographic layers", isClearable: true },
             },
           ],
         },

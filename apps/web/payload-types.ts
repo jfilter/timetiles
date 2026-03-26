@@ -2407,7 +2407,7 @@ export interface GeocodingProvider {
   /**
    * The geocoding service provider
    */
-  type: 'google' | 'nominatim' | 'opencage';
+  type: 'google' | 'locationiq' | 'nominatim' | 'opencage' | 'photon';
   /**
    * Enable this provider instance
    */
@@ -2420,6 +2420,10 @@ export interface GeocodingProvider {
    * Maximum requests per second for this provider
    */
   rateLimit?: number | null;
+  /**
+   * Providers in the same group are queried in parallel (first success wins). Leave empty for sequential fallback.
+   */
+  group?: string | null;
   /**
    * Provider-specific settings
    */
@@ -2499,6 +2503,60 @@ export interface GeocodingProvider {
        * Abbreviate street names and components
        */
       abbrv?: boolean | null;
+    };
+    locationiq?: {
+      /**
+       * LocationIQ API key
+       */
+      apiKey: string;
+      /**
+       * Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')
+       */
+      countrycodes?: string | null;
+    };
+    photon?: {
+      /**
+       * Photon server URL (default: public Komoot instance)
+       */
+      baseUrl: string;
+      /**
+       * ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')
+       */
+      language?: string | null;
+      /**
+       * Maximum number of results to return
+       */
+      limit?: number | null;
+      /**
+       * Bias results towards a specific location
+       */
+      locationBias?: {
+        enabled?: boolean | null;
+        lat?: number | null;
+        lon?: number | null;
+        /**
+         * Map zoom level (1=world, 18=building). Controls bias radius.
+         */
+        zoom?: number | null;
+      };
+      /**
+       * Restrict results to a geographic area
+       */
+      bbox?: {
+        enabled?: boolean | null;
+        minLon?: number | null;
+        minLat?: number | null;
+        maxLon?: number | null;
+        maxLat?: number | null;
+      };
+      /**
+       * Filter by OSM tag (e.g., 'place:city', '!highway', ':!construction'). See Photon docs for syntax.
+       */
+      osmTag?: string | null;
+      /**
+       * Restrict results to specific geographic layers
+       */
+      layer?: ('house' | 'street' | 'locality' | 'district' | 'city' | 'county' | 'state' | 'country')[] | null;
     };
   };
   /**
@@ -4810,6 +4868,7 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
   enabled?: T;
   priority?: T;
   rateLimit?: T;
+  group?: T;
   config?:
     | T
     | {
@@ -4855,6 +4914,38 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
                   };
               annotations?: T;
               abbrv?: T;
+            };
+        locationiq?:
+          | T
+          | {
+              apiKey?: T;
+              countrycodes?: T;
+            };
+        photon?:
+          | T
+          | {
+              baseUrl?: T;
+              language?: T;
+              limit?: T;
+              locationBias?:
+                | T
+                | {
+                    enabled?: T;
+                    lat?: T;
+                    lon?: T;
+                    zoom?: T;
+                  };
+              bbox?:
+                | T
+                | {
+                    enabled?: T;
+                    minLon?: T;
+                    minLat?: T;
+                    maxLon?: T;
+                    maxLat?: T;
+                  };
+              osmTag?: T;
+              layer?: T;
             };
       };
   tags?: T;
