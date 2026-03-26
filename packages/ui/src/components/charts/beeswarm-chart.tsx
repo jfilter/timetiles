@@ -167,11 +167,19 @@ const computeBeeswarmLayout = (allSeries: BeeswarmSeries[], dotSize: number, max
     n.x = px;
   }
 
+  // Density-aware collision radius: when items are sparse (spacing >> radius),
+  // inflate the collision zone so circles still push each other into a beeswarm
+  // shape. When dense (many overlaps already), keep collision tight.
+  const avgSpacing = nodes.length > 1 ? CHART_PX / nodes.length : CHART_PX;
+  const avgR = nodes.reduce((s, n) => s + n.r, 0) / (nodes.length || 1);
+  const sparsity = avgSpacing / Math.max(avgR * 2, 1); // >1 = sparse, <1 = dense
+  const collisionScale = sparsity > 1 ? Math.min(sparsity, 3) : 1.1;
+
   const sim = forceSimulation(nodes)
-    .alphaDecay(0.005) // Very slow decay — keeps gravity strong so dots pack tightly
+    .alphaDecay(0.005)
     .force("x", forceX<ForceNode>((d) => d.fx).strength(1))
     .force("y", forceY<ForceNode>(0).strength(0.6))
-    .force("collide", forceCollide<ForceNode>((d) => d.r * 1.1).iterations(4))
+    .force("collide", forceCollide<ForceNode>((d) => d.r * collisionScale).iterations(4))
     .stop();
 
   const ticks = getIterations(nodes.length);
