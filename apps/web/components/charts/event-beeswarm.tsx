@@ -26,6 +26,8 @@ interface EventBeeswarmProps {
   height?: number | string;
   className?: string;
   onEventClick?: (eventId: number) => void;
+  /** Display variant — compact hides chrome, fullscreen shows event count */
+  variant?: "compact" | "fullscreen";
 }
 
 /** Group items by datasetId and build one BeeswarmSeries per dataset. */
@@ -86,7 +88,13 @@ const transformToSeries = (
   return { series, maxClusterCount };
 };
 
-export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }: Readonly<EventBeeswarmProps>) => {
+export const EventBeeswarm = ({
+  bounds,
+  height = 300,
+  className,
+  onEventClick,
+  variant = "compact",
+}: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
   const { filters } = useFilters();
@@ -115,7 +123,7 @@ export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }:
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
       />
-      {total > 0 && !isInitialLoad && (
+      {variant === "fullscreen" && total > 0 && !isInitialLoad && (
         <div className="text-muted-foreground absolute top-1 right-3 font-mono text-xs">
           {total.toLocaleString()} {t("eventsLabel")}
         </div>

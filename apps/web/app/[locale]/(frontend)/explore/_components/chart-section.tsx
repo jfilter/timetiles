@@ -167,10 +167,12 @@ export const ChartSection = ({
   const chartHeight = getChartHeight(chartType);
   const containerStyle = fillHeight ? undefined : { minHeight: chartHeight };
 
-  const renderChart = (height: number | string) => (
+  const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => (
     <>
       {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} />}
-      {chartType === "beeswarm" && <EventBeeswarm bounds={bounds} height={height} onEventClick={onEventClick} />}
+      {chartType === "beeswarm" && (
+        <EventBeeswarm bounds={bounds} height={height} onEventClick={onEventClick} variant={variant} />
+      )}
       {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
       {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
     </>
@@ -233,7 +235,7 @@ export const ChartSection = ({
               </DialogClose>
             </div>
           </DialogHeader>
-          <div className="h-0 flex-1">{renderChart("100%")}</div>
+          <div className="h-0 flex-1">{renderChart("100%", "fullscreen")}</div>
           {chartType === "histogram" && (filters.startDate != null || filters.endDate != null) && (
             <div className="flex items-center justify-between px-6 pt-1 pb-0">
               <span className="text-muted-foreground font-mono text-xs">
