@@ -9,11 +9,11 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
-import type { ClusterDensityMode } from "@timetiles/ui/components/cluster-density-panel";
 import type { MapBounds } from "@/lib/geospatial/types";
 import type { ClusterDensitySettings } from "@/lib/hooks/use-events-queries";
 
-export type { ClusterDensityMode } from "@timetiles/ui/components/cluster-density-panel";
+/** Cluster density preset or expert mode. */
+export type ClusterDensityMode = "fine" | "normal" | "coarse" | "expert";
 
 /** Preset values for cluster density. */
 export const CLUSTER_DENSITY_PRESETS: Record<Exclude<ClusterDensityMode, "expert">, ClusterDensitySettings> = {
