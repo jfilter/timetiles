@@ -36,12 +36,37 @@ export class GeocodingError extends Error {
   constructor(
     message: string,
     public code: string,
-    public retryable: boolean = false
+    public retryable: boolean = false,
+    public httpStatus?: number,
+    public retryAfterMs?: number
   ) {
     super(message);
     this.name = "GeocodingError";
   }
 }
+
+/** Error codes for structured error handling */
+export const GEOCODING_ERROR_CODES = {
+  RATE_LIMITED: "RATE_LIMITED",
+  SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
+  PROVIDER_TIMEOUT: "PROVIDER_TIMEOUT",
+  AUTH_FAILURE: "AUTH_FAILURE",
+  NO_RESULTS: "NO_RESULTS",
+  VALIDATION_FAILED: "VALIDATION_FAILED",
+  ALL_PROVIDERS_FAILED: "ALL_PROVIDERS_FAILED",
+  GEOCODING_FAILED: "GEOCODING_FAILED",
+} as const;
+
+/** Check if an error is transient (worth retrying). */
+export const isTransientError = (error: unknown): boolean => {
+  if (!(error instanceof GeocodingError)) return false;
+  return (
+    error.retryable ||
+    error.code === GEOCODING_ERROR_CODES.RATE_LIMITED ||
+    error.code === GEOCODING_ERROR_CODES.SERVICE_UNAVAILABLE ||
+    error.code === GEOCODING_ERROR_CODES.PROVIDER_TIMEOUT
+  );
+};
 
 export interface ProviderConfig {
   name: string;
@@ -49,6 +74,7 @@ export interface ProviderConfig {
   priority: number;
   enabled: boolean;
   rateLimit: number; // requests per second
+  group?: string; // providers in the same group are queried in parallel
 }
 
 /** Default rate limit for Nominatim public instance (1 request/second per OSM policy) */

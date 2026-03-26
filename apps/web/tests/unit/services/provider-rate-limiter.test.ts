@@ -2,7 +2,8 @@
  * Unit tests for the ProviderRateLimiter.
  *
  * Tests the per-provider rate limiting functionality used to respect
- * external geocoding API rate limits (e.g., Nominatim's 1 req/sec policy).
+ * external geocoding API rate limits (e.g., Nominatim's 1 req/sec policy),
+ * as well as adaptive backoff on 429/503 throttle responses.
  *
  * @module
  * @category Unit Tests
@@ -31,208 +32,186 @@ describe("ProviderRateLimiter", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
-      // Should be able to make request immediately after configuration
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(true);
+      // Should be available immediately after configuration (no backoff)
+      expect(rateLimiter.isAvailable("test-provider")).toBe(true);
     });
 
     it("should enforce minimum rate limit of 1 req/sec", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 0); // Invalid - should become 1
 
-      // With 1 req/sec, interval is 1000ms
       expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(0);
     });
   });
 
   describe("waitForSlot", () => {
-    it("should allow immediate request when under rate limit", async () => {
+    it("should serialize concurrent requests via promise chaining", async () => {
+      vi.useRealTimers(); // Real timers needed for promise-chain serialization
       const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("test-provider", 10); // 10 req/sec = 100ms interval
+      rateLimiter.configure("test-provider", 100); // 100 req/sec = 10ms interval
+
+      const start = Date.now();
+
+      // Fire two requests concurrently — second must wait for first's interval
+      await Promise.all([rateLimiter.waitForSlot("test-provider"), rateLimiter.waitForSlot("test-provider")]);
+
+      const elapsed = Date.now() - start;
+      // Two serial 10ms delays = ~20ms minimum
+      expect(elapsed).toBeGreaterThanOrEqual(15);
+    });
+
+    it("should use default rate limit for unconfigured provider", async () => {
+      vi.useRealTimers();
+      const rateLimiter = new ProviderRateLimiter();
+
+      // Should not throw, uses default 1 req/sec — will take ~1s with real timers
+      await rateLimiter.waitForSlot("unconfigured-provider");
+      // Provider is now configured (auto-configured on first use)
+      expect(rateLimiter.isAvailable("unconfigured-provider")).toBe(true);
+    }, 3000);
+
+    it("should wait for backoff to expire before proceeding", async () => {
+      vi.useRealTimers();
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 100); // fast rate limit
+
+      // Simulate throttle with short backoff for fast test
+      rateLimiter.reportThrottle("test-provider", 50); // 50ms backoff
+
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
 
       const start = Date.now();
       await rateLimiter.waitForSlot("test-provider");
       const elapsed = Date.now() - start;
 
-      expect(elapsed).toBe(0);
-    });
-
-    it("should wait when rate limit would be exceeded", async () => {
-      const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("test-provider", 1); // 1 req/sec = 1000ms interval
-
-      // First request - immediate
-      await rateLimiter.waitForSlot("test-provider");
-
-      // Second request should need to wait (not allowed immediately)
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(false);
-
-      const waitPromise = rateLimiter.waitForSlot("test-provider");
-
-      // Advance time by 1000ms
-      await vi.advanceTimersByTimeAsync(1000);
-      await waitPromise;
-
-      // After waiting, request should have been made (provider blocked again)
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(false);
-    });
-
-    it("should use default rate limit for unconfigured provider", async () => {
-      const rateLimiter = new ProviderRateLimiter();
-
-      // Should not throw, uses default 1 req/sec
-      await rateLimiter.waitForSlot("unconfigured-provider");
-
-      // Second request should need to wait (default is 1 req/sec)
-      expect(rateLimiter.canMakeRequest("unconfigured-provider")).toBe(false);
-
-      const waitPromise = rateLimiter.waitForSlot("unconfigured-provider");
-      await vi.advanceTimersByTimeAsync(1000);
-      await waitPromise;
-
-      // After waiting, request should have completed
-      expect(rateLimiter.canMakeRequest("unconfigured-provider")).toBe(false);
-    });
-
-    it("should handle different rate limits for different providers", async () => {
-      const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("fast-provider", 100); // 100 req/sec (10ms interval)
-      rateLimiter.configure("slow-provider", 1); // 1 req/sec (1000ms interval)
-
-      // Both providers start fresh - can make requests immediately
-      expect(rateLimiter.canMakeRequest("fast-provider")).toBe(true);
-      expect(rateLimiter.canMakeRequest("slow-provider")).toBe(true);
-
-      // Make request to fast provider
-      await rateLimiter.waitForSlot("fast-provider");
-
-      // Fast provider now blocked (needs 10ms), slow still available
-      expect(rateLimiter.canMakeRequest("fast-provider")).toBe(false);
-      expect(rateLimiter.canMakeRequest("slow-provider")).toBe(true);
-
-      // Make request to slow provider
-      await rateLimiter.waitForSlot("slow-provider");
-
-      // Both blocked now
-      expect(rateLimiter.canMakeRequest("fast-provider")).toBe(false);
-      expect(rateLimiter.canMakeRequest("slow-provider")).toBe(false);
-
-      // Fast provider needs 10ms, slow needs 1000ms
-      // getTimeUntilAllowed should reflect this difference
-      const fastWait = rateLimiter.getTimeUntilAllowed("fast-provider");
-      const slowWait = rateLimiter.getTimeUntilAllowed("slow-provider");
-
-      // Fast should have much shorter wait than slow
-      expect(fastWait).toBeLessThan(slowWait);
-      expect(fastWait).toBeLessThanOrEqual(10);
-      expect(slowWait).toBeLessThanOrEqual(1000);
-    });
-
-    it("should track providers independently", async () => {
-      const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("provider-a", 1);
-      rateLimiter.configure("provider-b", 1);
-
-      // Request to provider-a
-      await rateLimiter.waitForSlot("provider-a");
-
-      // Request to provider-b should be immediate (different provider)
-      const canMakeB = rateLimiter.canMakeRequest("provider-b");
-      expect(canMakeB).toBe(true);
-
-      await rateLimiter.waitForSlot("provider-b");
-
-      // Now both providers need to wait
-      expect(rateLimiter.canMakeRequest("provider-a")).toBe(false);
-      expect(rateLimiter.canMakeRequest("provider-b")).toBe(false);
+      // Should have waited at least the backoff period
+      expect(elapsed).toBeGreaterThanOrEqual(40);
     });
   });
 
-  describe("canMakeRequest", () => {
-    it("should return true when rate limit allows", () => {
+  describe("adaptive backoff", () => {
+    it("should mark provider unavailable after reportThrottle", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(true);
+      rateLimiter.reportThrottle("test-provider");
+
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBeGreaterThan(0);
     });
 
-    it("should return false immediately after a request", async () => {
+    it("should use Retry-After when provided", () => {
       const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("test-provider", 1); // 1 req/sec
+      rateLimiter.configure("test-provider", 10);
 
-      await rateLimiter.waitForSlot("test-provider");
+      rateLimiter.reportThrottle("test-provider", 5000); // 5s Retry-After
 
-      // Should be blocked immediately after
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(false);
+      const wait = rateLimiter.getTimeUntilAllowed("test-provider");
+      expect(wait).toBeGreaterThan(4500);
+      expect(wait).toBeLessThanOrEqual(5000);
+    });
+
+    it("should apply exponential backoff on consecutive throttles", () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      // First throttle: 2s backoff
+      rateLimiter.reportThrottle("test-provider");
+      const wait1 = rateLimiter.getTimeUntilAllowed("test-provider");
+
+      // Advance past backoff
+      vi.advanceTimersByTime(2100);
+
+      // Second throttle: 4s backoff (doubled)
+      rateLimiter.reportThrottle("test-provider");
+      const wait2 = rateLimiter.getTimeUntilAllowed("test-provider");
+
+      expect(wait2).toBeGreaterThan(wait1);
+    });
+
+    it("should reset backoff on reportSuccess", () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      rateLimiter.reportThrottle("test-provider");
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+
+      rateLimiter.reportSuccess("test-provider");
+      expect(rateLimiter.isAvailable("test-provider")).toBe(true);
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(0);
+    });
+
+    it("should cap backoff at maximum", () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      // Fire many throttles to hit the cap
+      for (let i = 0; i < 20; i++) {
+        vi.advanceTimersByTime(31_000); // advance past any backoff
+        rateLimiter.reportThrottle("test-provider");
+      }
+
+      // Should not exceed 30s cap
+      const wait = rateLimiter.getTimeUntilAllowed("test-provider");
+      expect(wait).toBeLessThanOrEqual(30_000);
+    });
+  });
+
+  describe("isAvailable / canMakeRequest", () => {
+    it("should return true when no backoff active", () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      expect(rateLimiter.isAvailable("test-provider")).toBe(true);
+      expect(rateLimiter.canMakeRequest("test-provider")).toBe(true);
     });
 
     it("should return true for unconfigured provider", () => {
       const rateLimiter = new ProviderRateLimiter();
-
-      // Unconfigured provider - allows first request
       expect(rateLimiter.canMakeRequest("unknown-provider")).toBe(true);
     });
-  });
 
-  describe("getTimeUntilAllowed", () => {
-    it("should return 0 when no wait needed", () => {
+    it("should return false during backoff", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
-      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(0);
-    });
+      rateLimiter.reportThrottle("test-provider");
 
-    it("should return remaining wait time", async () => {
-      const rateLimiter = new ProviderRateLimiter();
-      rateLimiter.configure("test-provider", 1); // 1000ms interval
-
-      await rateLimiter.waitForSlot("test-provider");
-
-      // Immediately after request, should need ~1000ms
-      const waitTime = rateLimiter.getTimeUntilAllowed("test-provider");
-      expect(waitTime).toBeGreaterThan(900);
-      expect(waitTime).toBeLessThanOrEqual(1000);
-    });
-
-    it("should return 0 for unconfigured provider", () => {
-      const rateLimiter = new ProviderRateLimiter();
-
-      expect(rateLimiter.getTimeUntilAllowed("unknown-provider")).toBe(0);
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+      expect(rateLimiter.canMakeRequest("test-provider")).toBe(false);
     });
   });
 
   describe("reset", () => {
-    it("should reset specific provider", async () => {
+    it("should reset specific provider", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("provider-a", 1);
       rateLimiter.configure("provider-b", 1);
 
-      await rateLimiter.waitForSlot("provider-a");
-      await rateLimiter.waitForSlot("provider-b");
+      rateLimiter.reportThrottle("provider-a");
+      rateLimiter.reportThrottle("provider-b");
 
       // Reset only provider-a
       rateLimiter.reset("provider-a");
 
       // provider-a is reset (unconfigured now)
-      expect(rateLimiter.canMakeRequest("provider-a")).toBe(true);
-
-      // provider-b still has state
-      expect(rateLimiter.canMakeRequest("provider-b")).toBe(false);
+      expect(rateLimiter.isAvailable("provider-a")).toBe(true);
+      // provider-b still in backoff
+      expect(rateLimiter.isAvailable("provider-b")).toBe(false);
     });
 
-    it("should reset all providers when no name provided", async () => {
+    it("should reset all providers when no name provided", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("provider-a", 1);
       rateLimiter.configure("provider-b", 1);
 
-      await rateLimiter.waitForSlot("provider-a");
-      await rateLimiter.waitForSlot("provider-b");
+      rateLimiter.reportThrottle("provider-a");
+      rateLimiter.reportThrottle("provider-b");
 
-      // Reset all
       rateLimiter.reset();
 
-      // Both are now unconfigured (first request allowed)
-      expect(rateLimiter.canMakeRequest("provider-a")).toBe(true);
-      expect(rateLimiter.canMakeRequest("provider-b")).toBe(true);
+      expect(rateLimiter.isAvailable("provider-a")).toBe(true);
+      expect(rateLimiter.isAvailable("provider-b")).toBe(true);
     });
   });
 
@@ -251,9 +230,7 @@ describe("ProviderRateLimiter", () => {
       resetProviderRateLimiter();
 
       const instance2 = getProviderRateLimiter();
-
-      // New instance should not have the old configuration
-      expect(instance2.canMakeRequest("test")).toBe(true); // Not configured = allow
+      expect(instance2.isAvailable("test")).toBe(true);
     });
   });
 });
