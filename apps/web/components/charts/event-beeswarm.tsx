@@ -15,6 +15,7 @@ import { BeeswarmChart, DATASET_COLORS, useChartTheme } from "@timetiles/ui/char
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
+import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
 import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -100,7 +101,16 @@ export const EventBeeswarm = ({
   const { filters } = useFilters();
   const scope = useViewScope();
 
-  const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(filters, bounds ?? null, true, scope);
+  const clusterOptions: TemporalClusterOptions | undefined =
+    variant === "fullscreen" ? { individualThreshold: 1000, targetBuckets: 80 } : undefined;
+
+  const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(
+    filters,
+    bounds ?? null,
+    true,
+    scope,
+    clusterOptions
+  );
 
   const total = data?.metadata.total ?? 0;
   const mode = data?.metadata.mode ?? "individual";

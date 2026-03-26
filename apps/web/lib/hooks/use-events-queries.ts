@@ -141,15 +141,27 @@ const fetchHistogram = async (
   return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`, { signal });
 };
 
+/** Options for temporal cluster granularity. */
+export interface TemporalClusterOptions {
+  /** Max events before switching to clustered mode (default: 500) */
+  individualThreshold?: number;
+  /** Target number of time buckets in clustered mode (default: 40) */
+  targetBuckets?: number;
+}
+
 const fetchTemporalClusters = async (
   filters: FilterState,
   bounds: BoundsType,
   signal?: AbortSignal,
-  scope?: ViewScope
+  scope?: ViewScope,
+  options?: TemporalClusterOptions
 ): Promise<TemporalClustersResponse> => {
-  const params = buildEventParams(filters, bounds, {}, scope);
+  const extra: Record<string, string> = {};
+  if (options?.individualThreshold != null) extra.individualThreshold = options.individualThreshold.toString();
+  if (options?.targetBuckets != null) extra.targetBuckets = options.targetBuckets.toString();
+  const params = buildEventParams(filters, bounds, extra, scope);
 
-  logger.debug("Fetching temporal clusters", { filters, bounds });
+  logger.debug("Fetching temporal clusters", { filters, bounds, options });
 
   return fetchJson<TemporalClustersResponse>(`/api/v1/events/temporal-clusters?${params.toString()}`, { signal });
 };
@@ -208,8 +220,8 @@ export const eventsQueryKeys = {
   boundsFiltered: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.bounds(), { filters, scope }] as const,
   temporalClusters: () => [...eventsQueryKeys.all, "temporal-clusters"] as const,
-  temporalCluster: (filters: FilterState, bounds: BoundsType, scope?: ViewScope) =>
-    [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope }] as const,
+  temporalCluster: (filters: FilterState, bounds: BoundsType, scope?: ViewScope, options?: TemporalClusterOptions) =>
+    [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope, options }] as const,
 };
 
 // Query hooks
@@ -283,11 +295,12 @@ export const useTemporalClustersQuery = (
   filters: FilterState,
   bounds: BoundsType,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  options?: TemporalClusterOptions
 ): ChartQueryResult<TemporalClustersResponse> => {
   const query = useQuery({
-    queryKey: eventsQueryKeys.temporalCluster(filters, bounds, scope),
-    queryFn: ({ signal }) => fetchTemporalClusters(filters, bounds, signal, scope),
+    queryKey: eventsQueryKeys.temporalCluster(filters, bounds, scope, options),
+    queryFn: ({ signal }) => fetchTemporalClusters(filters, bounds, signal, scope, options),
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.expensive,
 
