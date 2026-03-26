@@ -398,17 +398,17 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `content-hash-id-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: { type: "content-hash", duplicateStrategy: "version" },
+          idStrategy: { type: "content-hash", duplicateStrategy: "update" },
         },
       });
 
       expect(contentHashDataset.idStrategy.type).toBe("content-hash");
-      expect(contentHashDataset.idStrategy.duplicateStrategy).toBe("version");
+      expect(contentHashDataset.idStrategy.duplicateStrategy).toBe("update");
     });
   });
 
   describe("Deduplication Configuration", () => {
-    it("stores skip deduplication strategy", async () => {
+    it("stores skip duplicate strategy via idStrategy", async () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
@@ -418,15 +418,16 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `skip-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: { enabled: true, strategy: "skip" },
+          idStrategy: { type: "external", duplicateStrategy: "skip" },
+          deduplicationConfig: { enabled: true },
         },
       });
 
       expect(dataset.deduplicationConfig.enabled).toBe(true);
-      expect(dataset.deduplicationConfig.strategy).toBe("skip");
+      expect(dataset.idStrategy.duplicateStrategy).toBe("skip");
     });
 
-    it("stores update deduplication strategy", async () => {
+    it("stores update duplicate strategy via idStrategy", async () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
@@ -436,28 +437,29 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `update-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: { enabled: true, strategy: "update" },
+          idStrategy: { type: "external", duplicateStrategy: "update" },
+          deduplicationConfig: { enabled: true },
         },
       });
 
-      expect(dataset.deduplicationConfig.strategy).toBe("update");
+      expect(dataset.idStrategy.duplicateStrategy).toBe("update");
     });
 
-    it("stores version deduplication strategy", async () => {
+    it("stores deduplication enabled flag", async () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
 
       const dataset = await payload.create({
         collection: "datasets",
         data: {
-          name: "Version Dedup Dataset",
-          slug: `version-dedup-${Date.now()}`,
+          name: "Dedup Enabled Dataset",
+          slug: `dedup-enabled-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          deduplicationConfig: { enabled: true, strategy: "version" },
+          deduplicationConfig: { enabled: true },
         },
       });
 
-      expect(dataset.deduplicationConfig.strategy).toBe("version");
+      expect(dataset.deduplicationConfig.enabled).toBe(true);
     });
   });
 });

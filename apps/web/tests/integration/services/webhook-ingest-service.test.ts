@@ -260,7 +260,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(catalogId).toBe(testCatalog.id);
       // scheduledIngest field may not be set on ingest-files
       // The relationship is tracked in metadata instead
-      expect(ingestFile.status).toBe("parsing");
+      expect(ingestFile.status).toBe("pending");
 
       // Verify metadata
       expect(ingestFile.metadata).toMatchObject({
@@ -752,14 +752,14 @@ describe.sequential("Webhook Import Service Integration", () => {
       }
       expect(ingestFile.metadata.datasetMapping).toBeDefined();
       const datasetMapping = ingestFile.metadata.datasetMapping as {
-        enabled: boolean;
-        sheets: Array<{ sheetIdentifier: string }>;
+        mappingType: string;
+        sheetMappings: Array<{ sheetIdentifier: string }>;
       };
-      expect(datasetMapping.enabled).toBe(true);
-      expect(datasetMapping.sheets).toHaveLength(2);
+      expect(datasetMapping.mappingType).toBe("multiple");
+      expect(datasetMapping.sheetMappings).toHaveLength(2);
       // Check sheet identifiers only
-      expect(datasetMapping.sheets[0]?.sheetIdentifier).toBe("Events");
-      expect(datasetMapping.sheets[1]?.sheetIdentifier).toBe("Speakers");
+      expect(datasetMapping.sheetMappings[0]?.sheetIdentifier).toBe("Events");
+      expect(datasetMapping.sheetMappings[1]?.sheetIdentifier).toBe("Speakers");
     });
   });
 

@@ -15,6 +15,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
+import { resetProviderRateLimiter } from "../../../lib/services/geocoding/provider-rate-limiter";
 
 const mockGoogleGeocode = vi.fn();
 const mockNominatimGeocode = vi.fn();
@@ -134,6 +135,9 @@ describe.sequential("Geocoding Cache Integration", () => {
   });
 
   beforeEach(async () => {
+    // Reset rate limiter to prevent promise-chain buildup across tests
+    resetProviderRateLimiter();
+
     // Re-apply the ProviderManager spy BEFORE draining jobs to ensure any
     // lingering geocoding jobs from the prior test use the mock instead of
     // real providers (the global afterEach restores all mocks between tests).

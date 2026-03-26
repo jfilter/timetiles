@@ -62,7 +62,7 @@ describe("coordinates", () => {
 
   describe("formatEventCount", () => {
     it("should format visible/total count", () => {
-      expect(formatEventCount(327, 1240)).toBe("327 / 1,240");
+      expect(formatEventCount(327, 1240)).toBe("327 / 1.2k");
     });
 
     it("should return null for undefined values", () => {

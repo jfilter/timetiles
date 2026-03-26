@@ -410,7 +410,7 @@ describe.sequential("scheduled ingests Integration", () => {
         filename: expect.stringMatching(/^url-import-.*\.csv$/),
         mimeType: "text/csv",
         filesize: mockCsvData.length,
-        status: "parsing",
+        status: "pending",
         // originalName should be what we passed in
         originalName: "test-import.csv",
       });
@@ -794,8 +794,8 @@ describe.sequential("scheduled ingests Integration", () => {
 
       // The dataset field might be populated with the full object
       expect(ingestFile.metadata.datasetMapping).toMatchObject({
-        enabled: true,
-        sheets: expect.arrayContaining([
+        mappingType: "multiple",
+        sheetMappings: expect.arrayContaining([
           expect.objectContaining({
             sheetIdentifier: "Sheet1",
             skipIfMissing: false,
@@ -902,7 +902,7 @@ describe.sequential("scheduled ingests Integration", () => {
       const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
 
       expect(ingestFile).toMatchObject({
-        status: "parsing",
+        status: "pending",
         // The attempts are not tracked in metadata, only in the job handler
       });
     });
@@ -1034,7 +1034,7 @@ describe.sequential("scheduled ingests Integration", () => {
 
       expect(importFiles.docs).toHaveLength(1);
       expect(importFiles.docs[0]).toMatchObject({
-        status: "parsing",
+        status: "pending",
         filename: expect.stringMatching(/^url-import-.*\.csv$/),
         mimeType: "text/csv",
         filesize: mockCsvData.length,

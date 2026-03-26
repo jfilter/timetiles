@@ -16,6 +16,9 @@ import { beforeChangeHook } from "@/lib/collections/scheduled-ingests/hooks";
 describe("scheduled-ingests beforeChange hook timezone support", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Ensure real timers are restored first before re-enabling fakes
+    // (handles leaked fake timer state from other test files in isolate: false)
+    vi.useRealTimers();
     vi.useFakeTimers();
   });
 

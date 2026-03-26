@@ -71,7 +71,7 @@ describe.sequential("Combined Transformations Integration", () => {
 
   // Helper functions
 
-  const runJobsUntilComplete = async (ingestFileId: string, maxIterations = 50) => {
+  const runJobsUntilComplete = async (ingestFileId: string | number, maxIterations = 100) => {
     const result = await runJobsUntilImportSettled(payload, ingestFileId, { maxIterations });
     return result.settled;
   };
@@ -137,7 +137,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Combined Transform Dataset ${Date.now()}`,
       language: "deu", // German
-      schemaConfig: { allowTransformations: true },
+      schemaConfig: { autoGrow: true },
       ingestTransforms: [
         {
           id: `transform-1-${uid1}`,
@@ -247,7 +247,7 @@ describe.sequential("Combined Transformations Integration", () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Order Test Dataset ${Date.now()}`,
       language: "deu",
-      schemaConfig: { allowTransformations: true },
+      schemaConfig: { autoGrow: true },
       // First: rename attendee_count → Teilnehmer_Anzahl, then convert to number
       ingestTransforms: [
         {
@@ -271,9 +271,10 @@ describe.sequential("Combined Transformations Integration", () => {
     });
 
     // Create CSV with original field name "attendee_count"
-    const csvContent = `event_name,attendee_count,description,date,location
-Conference,150,Technical conference,2024-01-15,Berlin
-Festival,2500,Music festival,2024-02-20,Munich`;
+    // Include lat/lng so geocoding is skipped (no external service calls in tests)
+    const csvContent = `event_name,attendee_count,description,date,lat,lng
+Conference,150,Technical conference,2024-01-15,52.52,13.405
+Festival,2500,Music festival,2024-02-20,48.135,11.582`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,
@@ -371,7 +372,7 @@ Workshop,Learning session,2024-02-20,Munich`;
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       name: `Type Interaction Dataset ${Date.now()}`,
       language: "eng",
-      schemaConfig: { allowTransformations: true },
+      schemaConfig: { autoGrow: true },
       ingestTransforms: [
         { id: `transform-1-${uid4}`, type: "rename", from: "count", to: "anzahl", active: true, autoDetected: false },
         {
@@ -386,9 +387,10 @@ Workshop,Learning session,2024-02-20,Munich`;
       idStrategy: { type: "content-hash" },
     });
 
-    const csvContent = `name,count,description,date,location
-Event A,100,First event,2024-01-15,Berlin
-Event B,200,Second event,2024-02-20,Munich`;
+    // Include lat/lng so geocoding is skipped (no external service calls in tests)
+    const csvContent = `name,count,description,date,lat,lng
+Event A,100,First event,2024-01-15,52.52,13.405
+Event B,200,Second event,2024-02-20,48.135,11.582`;
 
     const { ingestFile } = await withIngestFile(testEnv, testCatalogId, Buffer.from(csvContent), {
       user: approverUser.id,

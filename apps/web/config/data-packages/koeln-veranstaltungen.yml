@@ -1,0 +1,51 @@
+slug: koeln-veranstaltungen
+name: Kölner Veranstaltungen
+description: >-
+  Public events from the City of Cologne open data portal. The API returns
+  upcoming events with title, dates, venue, address, district, and geographic
+  coordinates. Updated daily with a 90-day lookahead.
+category: events
+region: Köln, Germany
+tags:
+  - events
+  - veranstaltungen
+  - koeln
+  - cologne
+  - nrw
+  - germany
+license: dl-de/by-2-0
+estimatedRecords: 500
+
+source:
+  url: "http://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=90"
+  format: json
+
+catalog:
+  name: Offene Daten Köln
+  description: Open data portal of the City of Cologne
+  isPublic: true
+
+dataset:
+  name: Kölner Veranstaltungen
+  language: deu
+  idStrategy:
+    type: content-hash
+    duplicateStrategy: update
+
+fieldMappings:
+  titlePath: title
+  descriptionPath: description
+  timestampPath: beginndatum
+  endTimestampPath: endedatum
+  locationNamePath: veranstaltungsort
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: daily
+  schemaMode: additive
+  timezone: Europe/Berlin
+
+reviewChecks:
+  skipDuplicateRateCheck: true

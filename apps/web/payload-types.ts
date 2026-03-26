@@ -2459,134 +2459,66 @@ export interface GeocodingProvider {
    */
   rateLimit?: number | null;
   /**
-   * Providers in the same group are queried in parallel (first success wins). Leave empty for sequential fallback.
+   * Providers in the same group share batch work proportionally to their rate limit. Leave empty for sequential fallback.
    */
   group?: string | null;
   /**
-   * Provider-specific settings
+   * ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')
+   */
+  language?: string | null;
+  /**
+   * Comma-separated ISO 3166-1 alpha-2 codes to restrict/bias results (e.g., 'de,at,ch')
+   */
+  countryCodes?: string | null;
+  /**
+   * Bias results towards a specific location. Supported by Photon and Google Maps.
+   */
+  locationBias?: {
+    enabled?: boolean | null;
+    lat?: number | null;
+    lon?: number | null;
+    /**
+     * Map zoom level (1=world, 18=building). Controls bias radius. Used by Photon.
+     */
+    zoom?: number | null;
+  };
+  /**
+   * Restrict results to a geographic area. Supported by Photon and OpenCage.
+   */
+  boundingBox?: {
+    enabled?: boolean | null;
+    minLon?: number | null;
+    minLat?: number | null;
+    maxLon?: number | null;
+    maxLat?: number | null;
+  };
+  /**
+   * API key for paid providers (Google, OpenCage, LocationIQ)
+   */
+  apiKey?: string | null;
+  /**
+   * Server URL (for self-hosted Photon or Nominatim instances)
+   */
+  baseUrl?: string | null;
+  /**
+   * User agent string sent with requests (required by Nominatim/Photon usage policies)
+   */
+  userAgent?: string | null;
+  /**
+   * Maximum number of results to return per geocode request
+   */
+  resultLimit?: number | null;
+  /**
+   * Provider-specific options
    */
   config?: {
-    google?: {
-      /**
-       * Google Maps Geocoding API key
-       */
-      apiKey: string;
-      /**
-       * ISO 3166-1 alpha-2 country code for result bias (e.g., 'US', 'GB')
-       */
-      region?: string | null;
-      /**
-       * Language for returned results (e.g., 'en', 'de', 'fr')
-       */
-      language?: string | null;
-    };
     nominatim?: {
       /**
-       * Nominatim server URL
-       */
-      baseUrl: string;
-      /**
-       * User agent string for requests (required by Nominatim policy)
-       */
-      userAgent: string;
-      /**
-       * Contact email for high-volume usage (recommended)
+       * Contact email for high-volume usage (recommended by Nominatim policy)
        */
       email?: string | null;
-      /**
-       * Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')
-       */
-      countrycodes?: string | null;
-      /**
-       * Include detailed address components in results
-       */
-      addressdetails?: boolean | null;
-      /**
-       * Include additional OSM tags in results
-       */
-      extratags?: boolean | null;
-    };
-    opencage?: {
-      /**
-       * OpenCage Geocoding API key
-       */
-      apiKey: string;
-      /**
-       * ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')
-       */
-      language?: string | null;
-      /**
-       * ISO 3166-1 alpha-2 country code to restrict results (e.g., 'US', 'DE')
-       */
-      countrycode?: string | null;
-      /**
-       * Restrict results to a specific geographic area
-       */
-      bounds?: {
-        enabled?: boolean | null;
-        southwest?: {
-          lat?: number | null;
-          lng?: number | null;
-        };
-        northeast?: {
-          lat?: number | null;
-          lng?: number | null;
-        };
-      };
-      /**
-       * Include additional metadata like timezone, currency, etc.
-       */
-      annotations?: boolean | null;
-      /**
-       * Abbreviate street names and components
-       */
-      abbrv?: boolean | null;
-    };
-    locationiq?: {
-      /**
-       * LocationIQ API key
-       */
-      apiKey: string;
-      /**
-       * Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')
-       */
-      countrycodes?: string | null;
     };
     photon?: {
-      /**
-       * Photon server URL (default: public Komoot instance)
-       */
-      baseUrl: string;
-      /**
-       * ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')
-       */
-      language?: string | null;
-      /**
-       * Maximum number of results to return
-       */
-      limit?: number | null;
-      /**
-       * Bias results towards a specific location
-       */
-      locationBias?: {
-        enabled?: boolean | null;
-        lat?: number | null;
-        lon?: number | null;
-        /**
-         * Map zoom level (1=world, 18=building). Controls bias radius.
-         */
-        zoom?: number | null;
-      };
-      /**
-       * Restrict results to a geographic area
-       */
-      bbox?: {
-        enabled?: boolean | null;
-        minLon?: number | null;
-        minLat?: number | null;
-        maxLon?: number | null;
-        maxLat?: number | null;
-      };
       /**
        * Filter by OSM tag (e.g., 'place:city', '!highway', ':!construction'). See Photon docs for syntax.
        */
@@ -4923,81 +4855,40 @@ export interface GeocodingProvidersSelect<T extends boolean = true> {
   priority?: T;
   rateLimit?: T;
   group?: T;
+  language?: T;
+  countryCodes?: T;
+  locationBias?:
+    | T
+    | {
+        enabled?: T;
+        lat?: T;
+        lon?: T;
+        zoom?: T;
+      };
+  boundingBox?:
+    | T
+    | {
+        enabled?: T;
+        minLon?: T;
+        minLat?: T;
+        maxLon?: T;
+        maxLat?: T;
+      };
+  apiKey?: T;
+  baseUrl?: T;
+  userAgent?: T;
+  resultLimit?: T;
   config?:
     | T
     | {
-        google?:
-          | T
-          | {
-              apiKey?: T;
-              region?: T;
-              language?: T;
-            };
         nominatim?:
           | T
           | {
-              baseUrl?: T;
-              userAgent?: T;
               email?: T;
-              countrycodes?: T;
-              addressdetails?: T;
-              extratags?: T;
-            };
-        opencage?:
-          | T
-          | {
-              apiKey?: T;
-              language?: T;
-              countrycode?: T;
-              bounds?:
-                | T
-                | {
-                    enabled?: T;
-                    southwest?:
-                      | T
-                      | {
-                          lat?: T;
-                          lng?: T;
-                        };
-                    northeast?:
-                      | T
-                      | {
-                          lat?: T;
-                          lng?: T;
-                        };
-                  };
-              annotations?: T;
-              abbrv?: T;
-            };
-        locationiq?:
-          | T
-          | {
-              apiKey?: T;
-              countrycodes?: T;
             };
         photon?:
           | T
           | {
-              baseUrl?: T;
-              language?: T;
-              limit?: T;
-              locationBias?:
-                | T
-                | {
-                    enabled?: T;
-                    lat?: T;
-                    lon?: T;
-                    zoom?: T;
-                  };
-              bbox?:
-                | T
-                | {
-                    enabled?: T;
-                    minLon?: T;
-                    minLat?: T;
-                    maxLon?: T;
-                    maxLat?: T;
-                  };
               osmTag?: T;
               layer?: T;
             };

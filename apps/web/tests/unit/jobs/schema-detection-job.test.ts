@@ -711,8 +711,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockSchemaBuilderInstance.getSchema.mockResolvedValue(mockSchema);
       mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
       mocks.startStage.mockResolvedValue(undefined);
-      mocks.updateStageProgress.mockResolvedValue(undefined);
-      mocks.completeBatch.mockResolvedValue(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValue(undefined);
 
       const result = await schemaDetectionJob.handler(mockContext);
 

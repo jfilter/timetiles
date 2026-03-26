@@ -9,7 +9,7 @@ import "@/tests/mocks/services/logger";
 const mocks = vi.hoisted(() => ({
   isPrivileged: vi.fn(() => false),
   isEditorOrAdmin: vi.fn(() => false),
-  isFeatureEnabled: vi.fn(),
+  mockIsEnabled: vi.fn(),
   extractRelationId: vi.fn((v: any) => (typeof v === "object" && v !== null ? v?.id : v)),
   requireRelationId: vi.fn((v: any) => {
     const id = typeof v === "object" && v !== null ? v?.id : v;
@@ -23,7 +23,9 @@ vi.mock("@/lib/collections/shared-fields", () => ({
   isEditorOrAdmin: mocks.isEditorOrAdmin,
 }));
 
-vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: mocks.isFeatureEnabled }));
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mocks.mockIsEnabled }),
+}));
 
 vi.mock("@/lib/utils/relation-id", () => ({
   extractRelationId: mocks.extractRelationId,
@@ -175,7 +177,7 @@ describe.sequential("ingestJobsAccess", () => {
     });
 
     it("should allow when feature is enabled", async () => {
-      mocks.isFeatureEnabled.mockResolvedValue(true);
+      mocks.mockIsEnabled.mockResolvedValue(true);
       const req = { user: { id: 1, role: "user" }, payload: {} };
 
       const result = await ingestJobsAccess.create({ req } as any);
@@ -184,7 +186,7 @@ describe.sequential("ingestJobsAccess", () => {
     });
 
     it("should deny when feature is disabled", async () => {
-      mocks.isFeatureEnabled.mockResolvedValue(false);
+      mocks.mockIsEnabled.mockResolvedValue(false);
       const req = { user: { id: 1, role: "user" }, payload: {} };
 
       const result = await ingestJobsAccess.create({ req } as any);

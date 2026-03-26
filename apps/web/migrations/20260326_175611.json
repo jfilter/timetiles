@@ -7238,6 +7238,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "auth_config_token_url": {
+          "name": "auth_config_token_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "auth_config_client_id": {
+          "name": "auth_config_client_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
         "auth_config_username": {
           "name": "auth_config_username",
           "type": "varchar",
@@ -8220,6 +8232,18 @@
         },
         "version_auth_config_bearer_token": {
           "name": "version_auth_config_bearer_token",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_auth_config_token_url": {
+          "name": "version_auth_config_token_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_auth_config_client_id": {
+          "name": "version_auth_config_client_id",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
@@ -13369,6 +13393,90 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "payload.geocoding_providers_config_photon_layer": {
+      "name": "geocoding_providers_config_photon_layer",
+      "schema": "payload",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum_geocoding_providers_config_photon_layer",
+          "typeSchema": "payload",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "geocoding_providers_config_photon_layer_order_idx": {
+          "name": "geocoding_providers_config_photon_layer_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "geocoding_providers_config_photon_layer_parent_idx": {
+          "name": "geocoding_providers_config_photon_layer_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "geocoding_providers_config_photon_layer_parent_fk": {
+          "name": "geocoding_providers_config_photon_layer_parent_fk",
+          "tableFrom": "geocoding_providers_config_photon_layer",
+          "tableTo": "geocoding_providers",
+          "schemaTo": "payload",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "payload.geocoding_providers_tags": {
       "name": "geocoding_providers_tags",
       "schema": "payload",
@@ -13497,38 +13605,106 @@
           "notNull": false,
           "default": 10
         },
-        "config_google_api_key": {
-          "name": "config_google_api_key",
+        "group": {
+          "name": "group",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "config_google_region": {
-          "name": "config_google_region",
+        "language": {
+          "name": "language",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "config_google_language": {
-          "name": "config_google_language",
+        "country_codes": {
+          "name": "country_codes",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'en'"
+          "notNull": false
         },
-        "config_nominatim_base_url": {
-          "name": "config_nominatim_base_url",
-          "type": "varchar",
+        "location_bias_enabled": {
+          "name": "location_bias_enabled",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
-          "default": "'https://nominatim.openstreetmap.org'"
+          "default": false
         },
-        "config_nominatim_user_agent": {
-          "name": "config_nominatim_user_agent",
+        "location_bias_lat": {
+          "name": "location_bias_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location_bias_lon": {
+          "name": "location_bias_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location_bias_zoom": {
+          "name": "location_bias_zoom",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 10
+        },
+        "bounding_box_enabled": {
+          "name": "bounding_box_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "bounding_box_min_lon": {
+          "name": "bounding_box_min_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bounding_box_min_lat": {
+          "name": "bounding_box_min_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bounding_box_max_lon": {
+          "name": "bounding_box_max_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bounding_box_max_lat": {
+          "name": "bounding_box_max_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "api_key": {
+          "name": "api_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_url": {
+          "name": "base_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false,
           "default": "'TimeTiles-App/1.0'"
+        },
+        "result_limit": {
+          "name": "result_limit",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 5
         },
         "config_nominatim_email": {
           "name": "config_nominatim_email",
@@ -13536,89 +13712,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "config_nominatim_countrycodes": {
-          "name": "config_nominatim_countrycodes",
+        "config_photon_osm_tag": {
+          "name": "config_photon_osm_tag",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
-        },
-        "config_nominatim_addressdetails": {
-          "name": "config_nominatim_addressdetails",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "config_nominatim_extratags": {
-          "name": "config_nominatim_extratags",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "config_opencage_api_key": {
-          "name": "config_opencage_api_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_language": {
-          "name": "config_opencage_language",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'en'"
-        },
-        "config_opencage_countrycode": {
-          "name": "config_opencage_countrycode",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_bounds_enabled": {
-          "name": "config_opencage_bounds_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "config_opencage_bounds_southwest_lat": {
-          "name": "config_opencage_bounds_southwest_lat",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_bounds_southwest_lng": {
-          "name": "config_opencage_bounds_southwest_lng",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_bounds_northeast_lat": {
-          "name": "config_opencage_bounds_northeast_lat",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_bounds_northeast_lng": {
-          "name": "config_opencage_bounds_northeast_lng",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "config_opencage_annotations": {
-          "name": "config_opencage_annotations",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "config_opencage_abbrv": {
-          "name": "config_opencage_abbrv",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         },
         "statistics_total_requests": {
           "name": "statistics_total_requests",
@@ -13772,6 +13870,90 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "payload._geocoding_providers_v_version_config_photon_layer": {
+      "name": "_geocoding_providers_v_version_config_photon_layer",
+      "schema": "payload",
+      "columns": {
+        "order": {
+          "name": "order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parent_id": {
+          "name": "parent_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "enum__geocoding_providers_v_version_config_photon_layer",
+          "typeSchema": "payload",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "_geocoding_providers_v_version_config_photon_layer_order_idx": {
+          "name": "_geocoding_providers_v_version_config_photon_layer_order_idx",
+          "columns": [
+            {
+              "expression": "order",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "_geocoding_providers_v_version_config_photon_layer_parent_idx": {
+          "name": "_geocoding_providers_v_version_config_photon_layer_parent_idx",
+          "columns": [
+            {
+              "expression": "parent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "_geocoding_providers_v_version_config_photon_layer_parent_fk": {
+          "name": "_geocoding_providers_v_version_config_photon_layer_parent_fk",
+          "tableFrom": "_geocoding_providers_v_version_config_photon_layer",
+          "tableTo": "_geocoding_providers_v",
+          "schemaTo": "payload",
+          "columnsFrom": [
+            "parent_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "payload._geocoding_providers_v_version_tags": {
       "name": "_geocoding_providers_v_version_tags",
       "schema": "payload",
@@ -13906,38 +14088,106 @@
           "notNull": false,
           "default": 10
         },
-        "version_config_google_api_key": {
-          "name": "version_config_google_api_key",
+        "version_group": {
+          "name": "version_group",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "version_config_google_region": {
-          "name": "version_config_google_region",
+        "version_language": {
+          "name": "version_language",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
-        "version_config_google_language": {
-          "name": "version_config_google_language",
+        "version_country_codes": {
+          "name": "version_country_codes",
           "type": "varchar",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'en'"
+          "notNull": false
         },
-        "version_config_nominatim_base_url": {
-          "name": "version_config_nominatim_base_url",
-          "type": "varchar",
+        "version_location_bias_enabled": {
+          "name": "version_location_bias_enabled",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": false,
-          "default": "'https://nominatim.openstreetmap.org'"
+          "default": false
         },
-        "version_config_nominatim_user_agent": {
-          "name": "version_config_nominatim_user_agent",
+        "version_location_bias_lat": {
+          "name": "version_location_bias_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_location_bias_lon": {
+          "name": "version_location_bias_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_location_bias_zoom": {
+          "name": "version_location_bias_zoom",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 10
+        },
+        "version_bounding_box_enabled": {
+          "name": "version_bounding_box_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "version_bounding_box_min_lon": {
+          "name": "version_bounding_box_min_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_bounding_box_min_lat": {
+          "name": "version_bounding_box_min_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_bounding_box_max_lon": {
+          "name": "version_bounding_box_max_lon",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_bounding_box_max_lat": {
+          "name": "version_bounding_box_max_lat",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_api_key": {
+          "name": "version_api_key",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_base_url": {
+          "name": "version_base_url",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version_user_agent": {
+          "name": "version_user_agent",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false,
           "default": "'TimeTiles-App/1.0'"
+        },
+        "version_result_limit": {
+          "name": "version_result_limit",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 5
         },
         "version_config_nominatim_email": {
           "name": "version_config_nominatim_email",
@@ -13945,89 +14195,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "version_config_nominatim_countrycodes": {
-          "name": "version_config_nominatim_countrycodes",
+        "version_config_photon_osm_tag": {
+          "name": "version_config_photon_osm_tag",
           "type": "varchar",
           "primaryKey": false,
           "notNull": false
-        },
-        "version_config_nominatim_addressdetails": {
-          "name": "version_config_nominatim_addressdetails",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "version_config_nominatim_extratags": {
-          "name": "version_config_nominatim_extratags",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "version_config_opencage_api_key": {
-          "name": "version_config_opencage_api_key",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_language": {
-          "name": "version_config_opencage_language",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'en'"
-        },
-        "version_config_opencage_countrycode": {
-          "name": "version_config_opencage_countrycode",
-          "type": "varchar",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_bounds_enabled": {
-          "name": "version_config_opencage_bounds_enabled",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
-        },
-        "version_config_opencage_bounds_southwest_lat": {
-          "name": "version_config_opencage_bounds_southwest_lat",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_bounds_southwest_lng": {
-          "name": "version_config_opencage_bounds_southwest_lng",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_bounds_northeast_lat": {
-          "name": "version_config_opencage_bounds_northeast_lat",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_bounds_northeast_lng": {
-          "name": "version_config_opencage_bounds_northeast_lng",
-          "type": "numeric",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_config_opencage_annotations": {
-          "name": "version_config_opencage_annotations",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": true
-        },
-        "version_config_opencage_abbrv": {
-          "name": "version_config_opencage_abbrv",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         },
         "version_statistics_total_requests": {
           "name": "version_statistics_total_requests",
@@ -30553,8 +30725,7 @@
       "schema": "payload",
       "values": [
         "skip",
-        "update",
-        "version"
+        "update"
       ]
     },
     "payload.enum_datasets_schema_config_enum_mode": {
@@ -30630,8 +30801,7 @@
       "schema": "payload",
       "values": [
         "skip",
-        "update",
-        "version"
+        "update"
       ]
     },
     "payload.enum__datasets_v_version_schema_config_enum_mode": {
@@ -30810,7 +30980,8 @@
         "none",
         "api-key",
         "bearer",
-        "basic"
+        "basic",
+        "oauth"
       ]
     },
     "payload.si_response_format": {
@@ -30890,7 +31061,8 @@
         "none",
         "api-key",
         "bearer",
-        "basic"
+        "basic",
+        "oauth"
       ]
     },
     "payload.enum__scheduled_ingests_v_version_last_status": {
@@ -31188,6 +31360,20 @@
         "de"
       ]
     },
+    "payload.enum_geocoding_providers_config_photon_layer": {
+      "name": "enum_geocoding_providers_config_photon_layer",
+      "schema": "payload",
+      "values": [
+        "house",
+        "street",
+        "locality",
+        "district",
+        "city",
+        "county",
+        "state",
+        "country"
+      ]
+    },
     "payload.enum_geocoding_providers_tags": {
       "name": "enum_geocoding_providers_tags",
       "schema": "payload",
@@ -31213,8 +31399,10 @@
       "schema": "payload",
       "values": [
         "google",
+        "locationiq",
         "nominatim",
-        "opencage"
+        "opencage",
+        "photon"
       ]
     },
     "payload.enum_geocoding_providers_status": {
@@ -31223,6 +31411,20 @@
       "values": [
         "draft",
         "published"
+      ]
+    },
+    "payload.enum__geocoding_providers_v_version_config_photon_layer": {
+      "name": "enum__geocoding_providers_v_version_config_photon_layer",
+      "schema": "payload",
+      "values": [
+        "house",
+        "street",
+        "locality",
+        "district",
+        "city",
+        "county",
+        "state",
+        "country"
       ]
     },
     "payload.enum__geocoding_providers_v_version_tags": {
@@ -31250,8 +31452,10 @@
       "schema": "payload",
       "values": [
         "google",
+        "locationiq",
         "nominatim",
-        "opencage"
+        "opencage",
+        "photon"
       ]
     },
     "payload.enum__geocoding_providers_v_version_status": {
@@ -32170,6 +32374,6 @@
     "tables": {},
     "columns": {}
   },
-  "id": "951ebcb7-571e-460b-b2c2-8ba69c44ed64",
+  "id": "2c85ec18-8827-49f2-8a43-ee348ade06e3",
   "prevId": "00000000-0000-0000-0000-000000000000"
 }

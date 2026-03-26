@@ -18,8 +18,10 @@ vi.mock("@/lib/logger", () => ({
   logError: mockLogError,
 }));
 
-const mockIsFeatureEnabled = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/services/feature-flag-service", () => ({ isFeatureEnabled: mockIsFeatureEnabled }));
+const mockIsEnabled = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mockIsEnabled }),
+}));
 
 const mockIsResourceStuck = vi.hoisted(() => vi.fn());
 const mockHasActivePayloadJob = vi.hoisted(() => vi.fn());
@@ -68,13 +70,13 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     };
 
     // Defaults: feature enabled, resource stuck, no active job
-    mockIsFeatureEnabled.mockResolvedValue(true);
+    mockIsEnabled.mockResolvedValue(true);
     mockIsResourceStuck.mockReturnValue(true);
     mockHasActivePayloadJob.mockResolvedValue(false);
   });
 
   it("should return skipped when scrapers feature is disabled", async () => {
-    mockIsFeatureEnabled.mockResolvedValue(false);
+    mockIsEnabled.mockResolvedValue(false);
 
     const context = createMockContext();
     const result = await cleanupStuckScrapersJob.handler(context as any);

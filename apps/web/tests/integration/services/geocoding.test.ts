@@ -24,6 +24,7 @@ import {
   type GeocodingService,
 } from "../../../lib/services/geocoding/geocoding-service";
 import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
+import { resetProviderRateLimiter } from "../../../lib/services/geocoding/provider-rate-limiter";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
@@ -65,6 +66,9 @@ describe("GeocodingService", () => {
     mockGoogleGeocode.mockReset();
     mockNominatimGeocode.mockReset();
 
+    // Reset rate limiter to prevent promise-chain buildup across tests
+    resetProviderRateLimiter();
+
     // Don't create the service here - let each test create it after setting up providers
     // This ensures clean state for each test
     geocodingService = null as any;
@@ -85,7 +89,8 @@ describe("GeocodingService", () => {
           enabled: true,
           priority: 1,
           rateLimit: 50,
-          config: { google: { apiKey: TEST_CREDENTIALS.apiKey.key, language: "en" } },
+          apiKey: TEST_CREDENTIALS.apiKey.key,
+          language: "en",
           tags: ["testing"],
         },
       });
@@ -157,7 +162,8 @@ describe("GeocodingService", () => {
           enabled: true,
           priority: 1,
           rateLimit: 50,
-          config: { google: { apiKey: TEST_CREDENTIALS.apiKey.key, language: "en" } },
+          apiKey: TEST_CREDENTIALS.apiKey.key,
+          language: "en",
           tags: ["testing", "production"],
         },
       });

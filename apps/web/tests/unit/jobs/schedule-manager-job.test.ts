@@ -484,8 +484,8 @@ describe.sequential("scheduleManagerJob", () => {
 
     it("should handle feature flag disabled", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
-      const { isFeatureEnabled } = await import("@/lib/services/feature-flag-service");
-      (isFeatureEnabled as any).mockResolvedValueOnce(false);
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      (getFeatureFlagService as any).mockReturnValueOnce({ isEnabled: vi.fn().mockResolvedValue(false) });
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 

@@ -656,11 +656,9 @@ describe.sequential("Network Error Handling Tests", () => {
         // Verify the import file was created
         const ingestFile = await payload.findByID({ collection: "ingest-files", id: successOutput.ingestFileId });
         expect(ingestFile).toBeDefined();
-        // Status should be "parsing" because afterChange hook queues dataset-detection job immediately
-        expect(ingestFile.status).toBe("parsing");
-
-        // The real job queue was called to queue schema detection
-        // The status is "parsing" after the afterChange hook completes
+        // Status is "pending" after url-fetch creates the file (hooks skipped via skipIngestFileHooks context);
+        // the workflow's next task handles progression to "parsing".
+        expect(ingestFile.status).toBe("pending");
       }
     });
   });
