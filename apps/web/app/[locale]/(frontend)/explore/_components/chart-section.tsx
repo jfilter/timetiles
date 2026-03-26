@@ -29,6 +29,7 @@ import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
+import { formatMonthYear, parseISODate } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { type ChartMeta, type ChartType, VisualizationPanel } from "./visualization-panel";
@@ -211,6 +212,16 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
             </div>
           </DialogHeader>
           <div className="flex-1">{renderChart("100%")}</div>
+          {chartType === "histogram" && (filters.startDate != null || filters.endDate != null) && (
+            <div className="flex items-center justify-between px-6 pt-1 pb-0">
+              <span className="text-muted-foreground font-mono text-xs">
+                {filters.startDate ? formatMonthYear(parseISODate(filters.startDate)) : ""}
+              </span>
+              <span className="text-muted-foreground font-mono text-xs">
+                {filters.endDate ? formatMonthYear(parseISODate(filters.endDate)) : ""}
+              </span>
+            </div>
+          )}
           {chartType === "histogram" && (
             <div className="border-t px-6 pt-4 pb-2">
               <TimeRangeSlider
