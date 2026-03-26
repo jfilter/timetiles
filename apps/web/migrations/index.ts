@@ -32,6 +32,7 @@ import * as migration_20260327_000004_add_temporal_clustering from './20260327_0
 import * as migration_20260327_005403 from './20260327_005403';
 import * as migration_20260327_011307 from './20260327_011307';
 import * as migration_20260327_014705 from './20260327_014705';
+import * as migration_20260327_000005_temporal_clustering_groupby from './20260327_000005_temporal_clustering_groupby';
 
 export const migrations = [
   {
@@ -202,6 +203,11 @@ export const migrations = [
   {
     up: migration_20260327_014705.up,
     down: migration_20260327_014705.down,
-    name: '20260327_014705'
+    name: '20260327_014705',
+  },
+  {
+    up: migration_20260327_000005_temporal_clustering_groupby.up,
+    down: migration_20260327_000005_temporal_clustering_groupby.down,
+    name: '20260327_000005_temporal_clustering_groupby',
   },
 ];

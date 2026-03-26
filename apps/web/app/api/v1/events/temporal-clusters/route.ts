@@ -2,8 +2,8 @@
  * Adaptive temporal clustering for the beeswarm chart.
  *
  * Returns individual events when the total count is below the threshold,
- * or per-dataset-per-bucket clusters when above. This allows the chart
- * to scale from 12 to 100k+ events with a single API call.
+ * or per-group-per-bucket clusters when above. Supports grouping by
+ * dataset (default), catalog, or any arbitrary JSONB field.
  *
  * @module
  */
@@ -12,6 +12,7 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { TemporalClustersQuery, TemporalClustersResponse } from "@/lib/schemas/events";
@@ -21,8 +22,8 @@ interface TemporalClusterRow {
   bucket_start: string;
   bucket_end: string;
   bucket_size_seconds: number;
-  dataset_id: number;
-  dataset_name: string;
+  group_id: string;
+  group_name: string;
   event_count: number;
   event_id: number | null;
   event_title: string | null;
@@ -33,44 +34,53 @@ export const GET = apiRoute({
   auth: "optional",
   query: TemporalClustersQuerySchema,
   handler: async ({ query, user, payload }) => {
-    const ctx = await resolveEventQueryContext({ payload, user, query });
-    if (ctx.denied) {
-      return buildEmptyResponse();
+    // Validate groupBy field if it's a custom field path
+    const groupBy = query.groupBy ?? "dataset";
+    if (groupBy !== "dataset" && groupBy !== "catalog" && !isValidFieldKey(groupBy)) {
+      return buildEmptyResponse(groupBy);
     }
 
-    const rows = await executeTemporalClusters(payload, query, ctx.filters);
-    return buildResponse(rows);
+    const ctx = await resolveEventQueryContext({ payload, user, query });
+    if (ctx.denied) {
+      return buildEmptyResponse(groupBy);
+    }
+
+    const rows = await executeTemporalClusters(payload, query, ctx.filters, groupBy);
+    return buildResponse(rows, groupBy);
   },
 });
 
 const executeTemporalClusters = async (
   payload: Payload,
   query: TemporalClustersQuery,
-  filters: CanonicalEventFilters
+  filters: CanonicalEventFilters,
+  groupBy: string
 ): Promise<TemporalClusterRow[]> => {
   const result = (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events_temporal(
       ${toHistogramJsonb(filters)}::jsonb,
       ${query.targetBuckets}::integer,
-      ${query.individualThreshold}::integer
+      ${query.individualThreshold}::integer,
+      ${groupBy}::text
     )
   `)) as unknown as { rows: TemporalClusterRow[] };
   return result.rows;
 };
 
-const buildEmptyResponse = (): TemporalClustersResponse => ({
+const buildEmptyResponse = (groupBy: string): TemporalClustersResponse => ({
   items: [],
   metadata: {
     total: 0,
     mode: "individual",
+    groupBy,
     bucketSizeSeconds: null,
     bucketCount: 0,
     dateRange: { min: null, max: null },
   },
 });
 
-const buildResponse = (rows: TemporalClusterRow[]): TemporalClustersResponse => {
-  if (rows.length === 0) return buildEmptyResponse();
+const buildResponse = (rows: TemporalClusterRow[], groupBy: string): TemporalClustersResponse => {
+  if (rows.length === 0) return buildEmptyResponse(groupBy);
 
   const isIndividual = rows[0]!.event_id != null;
   const total = isIndividual ? rows.length : rows.reduce((sum, r) => sum + Number(r.event_count), 0);
@@ -84,8 +94,8 @@ const buildResponse = (rows: TemporalClusterRow[]): TemporalClustersResponse => 
     return {
       bucketStart,
       bucketEnd,
-      datasetId: Number(row.dataset_id),
-      datasetName: row.dataset_name,
+      groupId: String(row.group_id),
+      groupName: row.group_name,
       count: Number(row.event_count),
       ...(isIndividual
         ? {
@@ -102,6 +112,7 @@ const buildResponse = (rows: TemporalClusterRow[]): TemporalClustersResponse => 
     metadata: {
       total,
       mode: isIndividual ? "individual" : "clustered",
+      groupBy,
       bucketSizeSeconds: rows[0]!.bucket_size_seconds ?? null,
       bucketCount: bucketStarts.size,
       dateRange: {

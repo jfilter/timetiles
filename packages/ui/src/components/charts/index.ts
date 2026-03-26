@@ -12,6 +12,7 @@ export type { ChartEmptyStateProps } from "./chart-empty-state";
 export { ChartEmptyState } from "./chart-empty-state";
 export type { ChartSkeletonProps } from "./chart-skeleton";
 export { ChartSkeleton } from "./chart-skeleton";
+export type { TimeHistogramSeries } from "./time-histogram";
 export { TimeHistogram } from "./time-histogram";
 export type {
   BarChartDataItem,

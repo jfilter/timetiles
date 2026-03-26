@@ -147,6 +147,8 @@ export interface TemporalClusterOptions {
   individualThreshold?: number;
   /** Target number of time buckets in clustered mode (default: 40) */
   targetBuckets?: number;
+  /** Group by field: "dataset" (default), "catalog", or any JSONB field path */
+  groupBy?: string;
 }
 
 const fetchTemporalClusters = async (
@@ -159,6 +161,7 @@ const fetchTemporalClusters = async (
   const extra: Record<string, string> = {};
   if (options?.individualThreshold != null) extra.individualThreshold = options.individualThreshold.toString();
   if (options?.targetBuckets != null) extra.targetBuckets = options.targetBuckets.toString();
+  if (options?.groupBy) extra.groupBy = options.groupBy;
   const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching temporal clusters", { filters, bounds, options });
