@@ -62,6 +62,24 @@ export interface DataPackageSchedule {
   timezone?: string;
 }
 
+/** Transform rule for data package imports. */
+export interface DataPackageTransform {
+  type: "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "parse-json-array";
+  from: string;
+  to?: string;
+  delimiter?: string;
+  toFields?: string[];
+  inputFormat?: string;
+  outputFormat?: string;
+  timezone?: string;
+  operation?: "uppercase" | "lowercase" | "replace" | "expression";
+  pattern?: string;
+  replacement?: string;
+  expression?: string;
+  fromFields?: string[];
+  separator?: string;
+}
+
 /** Data quality review check overrides. */
 export interface DataPackageReviewChecks {
   skipTimestampCheck?: boolean;
@@ -118,6 +136,7 @@ export interface DataPackageManifest {
   catalog: DataPackageCatalog;
   dataset: DataPackageDataset;
   fieldMappings: DataPackageFieldMappings;
+  transforms?: DataPackageTransform[];
   schedule: DataPackageSchedule;
   reviewChecks?: DataPackageReviewChecks;
   geocodingBias?: DataPackageGeocodingBias;

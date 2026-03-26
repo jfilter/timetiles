@@ -107,6 +107,31 @@ const manifestSchema = z.object({
     timezone: z.string().default("UTC"),
   }),
 
+  transforms: z
+    .array(
+      z.object({
+        type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "parse-json-array"]),
+        from: z.string(),
+        to: z.string().optional(),
+        // split
+        delimiter: z.string().optional(),
+        toFields: z.array(z.string()).optional(),
+        // date-parse
+        inputFormat: z.string().optional(),
+        outputFormat: z.string().optional(),
+        timezone: z.string().optional(),
+        // string-op
+        operation: z.enum(["uppercase", "lowercase", "replace", "expression"]).optional(),
+        pattern: z.string().optional(),
+        replacement: z.string().optional(),
+        expression: z.string().optional(),
+        // concatenate
+        fromFields: z.array(z.string()).optional(),
+        separator: z.string().optional(),
+      })
+    )
+    .optional(),
+
   reviewChecks: z
     .object({
       skipTimestampCheck: z.boolean().optional(),

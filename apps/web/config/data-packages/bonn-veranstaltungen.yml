@@ -40,6 +40,10 @@ fieldMappings:
   locationNamePath: locationName
   locationPath: locationAddress
 
+transforms:
+  - type: parse-json-array
+    from: category
+
 schedule:
   type: frequency
   frequency: daily

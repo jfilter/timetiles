@@ -15,7 +15,7 @@ import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import { createLogger } from "@/lib/logger";
 import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/types/data-packages";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { User } from "@/payload-types";
+import type { Dataset, User } from "@/payload-types";
 
 const logger = createLogger("data-packages");
 
@@ -234,6 +234,28 @@ export const activateDataPackage = async (
         longitudePath: resolved.fieldMappings.longitudePath,
       },
       deduplicationConfig: { enabled: true },
+      ingestTransforms: resolved.transforms?.map(
+        (t) =>
+          ({
+            id: crypto.randomUUID(),
+            type: t.type,
+            active: true,
+            autoDetected: false,
+            from: t.from,
+            to: t.to,
+            delimiter: t.delimiter,
+            toFields: t.toFields,
+            inputFormat: t.inputFormat,
+            outputFormat: t.outputFormat,
+            timezone: t.timezone,
+            operation: t.operation,
+            pattern: t.pattern,
+            replacement: t.replacement,
+            expression: t.expression,
+            fromFields: t.fromFields,
+            separator: t.separator,
+          }) as NonNullable<Dataset["ingestTransforms"]>[number]
+      ),
     },
     overrideAccess: true,
   });
