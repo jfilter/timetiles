@@ -26,6 +26,7 @@ import * as migration_20260327_000000_cluster_zoom_refinement_v2 from './2026032
 import * as migration_20260327_000001_cluster_extent from './20260327_000001_cluster_extent';
 import * as migration_20260327_000002_drop_adaptive_scaling from './20260327_000002_drop_adaptive_scaling';
 import * as migration_20260327_000003_cluster_density_params from './20260327_000003_cluster_density_params';
+import * as migration_20260327_000004_add_temporal_clustering from './20260327_000004_add_temporal_clustering';
 
 export const migrations = [
   {
@@ -167,5 +168,10 @@ export const migrations = [
     up: migration_20260327_000003_cluster_density_params.up,
     down: migration_20260327_000003_cluster_density_params.down,
     name: '20260327_000003_cluster_density_params'
+  },
+  {
+    up: migration_20260327_000004_add_temporal_clustering.up,
+    down: migration_20260327_000004_add_temporal_clustering.down,
+    name: '20260327_000004_add_temporal_clustering',
   },
 ];

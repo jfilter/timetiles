@@ -1,15 +1,17 @@
 /**
  * Beeswarm scatter chart for visualizing individual events on a timeline.
  *
- * Each point represents one event, positioned by timestamp on the X-axis.
- * Points within the same time bucket are vertically spread (jittered) to
- * avoid overlap, creating a beeswarm pattern that reveals density.
+ * Each point represents one event or cluster, positioned by timestamp on the
+ * X-axis. The chart automatically computes Y positions using a collision-avoidance
+ * algorithm: items are placed as close to y=0 as possible without overlapping,
+ * so dense time regions naturally bulge outward (the classic beeswarm shape).
  *
  * @module
  * @category Components
  */
 "use client";
 
+import { forceCollide, forceSimulation, forceX, forceY } from "d3-force";
 import type { EChartsOption } from "echarts";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
@@ -20,7 +22,7 @@ import type { ChartTheme, EChartsEventParams } from "./types";
 export interface BeeswarmDataItem {
   /** Timestamp (ms) for X position */
   x: number;
-  /** Jitter offset for Y position (computed externally) */
+  /** Y position — overridden by the internal beeswarm layout */
   y: number;
   /** Event ID for click handling */
   id: number;
@@ -59,6 +61,12 @@ export interface BeeswarmChartProps {
   emptyMessage?: string;
   /** Max cluster count for sizing proportional circles */
   maxClusterCount?: number;
+  /**
+   * Layout mode:
+   * - `"merged"` (default): all series share the same Y space
+   * - `"rows"`: each series gets its own horizontal lane with a label
+   */
+  layout?: "merged" | "rows";
 }
 
 /** Dataset color palette matching the cartographic design system */
@@ -75,27 +83,219 @@ const DATASET_COLORS = [
 
 export { DATASET_COLORS };
 
-/** Compute tight axis bounds from all series data so the chart fills its container. */
-const computeAxisBounds = (allSeries: BeeswarmSeries[]) => {
-  let maxY = 1;
-  const xValues: number[] = [];
+// ---------------------------------------------------------------------------
+// Sizing
+// ---------------------------------------------------------------------------
+
+/** Adaptive dot size based on total point count */
+const computeDotSize = (totalPoints: number): number => {
+  if (totalPoints < 50) return 14;
+  if (totalPoints < 200) return 10;
+  if (totalPoints < 500) return 8;
+  if (totalPoints < 1000) return 6;
+  return 4;
+};
+
+/** Logarithmic cluster sizing for better visual differentiation across magnitudes */
+const computeClusterSize = (count: number, maxCount: number): number => {
+  const MIN_SIZE = 14;
+  const MAX_SIZE = 56;
+  if (maxCount <= 1 || count <= 1) return MIN_SIZE;
+  const ratio = Math.log(count) / Math.log(maxCount);
+  return Math.round(MIN_SIZE + ratio * (MAX_SIZE - MIN_SIZE));
+};
+
+// ---------------------------------------------------------------------------
+// Beeswarm layout — d3-force simulation
+// ---------------------------------------------------------------------------
+
+interface ForceNode {
+  /** Index for writing back the result */
+  idx: number;
+  /** X position in pixel-space (fixed via fx) */
+  fx: number;
+  /** Visual radius in pixels */
+  r: number;
+  /** d3-force managed positions */
+  x?: number;
+  y?: number;
+}
+
+/** Estimated chart content width in pixels (after margins) */
+const CHART_PX = 500;
+
+/** Simulation ticks — scales with dataset size for performance. */
+const getIterations = (n: number): number => {
+  if (n < 100) return 200;
+  if (n < 300) return 150;
+  if (n < 600) return 100;
+  return 60;
+};
+
+/**
+ * d3-force beeswarm layout.
+ *
+ * Uses d3-force with:
+ * - `forceX(fx)` with strength 1: locks each node to its time position
+ * - `forceY(0)`: gravity pulling toward the center line
+ * - `forceCollide(r)`: prevents circle overlap with per-node radii
+ *
+ * Dense time regions naturally bulge outward, creating the connected
+ * beeswarm shape.
+ */
+const computeBeeswarmLayout = (allSeries: BeeswarmSeries[], dotSize: number, maxClusterCount: number): number[] => {
+  const nodes: ForceNode[] = [];
   for (const s of allSeries) {
     for (const item of s.data) {
-      const absY = Math.abs(item.y);
-      if (absY > maxY) maxY = absY;
-      xValues.push(item.x);
+      const r = item.count ? computeClusterSize(item.count, maxClusterCount) / 2 : dotSize / 2;
+      nodes.push({ idx: nodes.length, fx: item.x, r, x: item.x, y: 0 });
     }
   }
-  if (xValues.length === 0) return { yPadding: 1, xMin: undefined, xMax: undefined };
+  if (nodes.length === 0) return [];
 
-  // Use 2nd/98th percentile to avoid outliers stretching the axis
-  xValues.sort((a, b) => a - b);
-  const p02 = xValues[Math.floor(xValues.length * 0.02)] ?? xValues[0]!;
-  const p98 = xValues[Math.ceil(xValues.length * 0.98) - 1] ?? xValues[xValues.length - 1]!;
-  const xRange = p98 - p02;
-  const xPad = xRange > 0 ? xRange * 0.05 : 86400000;
-  return { yPadding: Math.max(maxY * 1.05, 1), xMin: p02 - xPad, xMax: p98 + xPad };
+  // Scale X to pixel space so collision radii are meaningful
+  let xMin = nodes[0]!.fx;
+  let xMax = nodes[0]!.fx;
+  for (const n of nodes) {
+    if (n.fx < xMin) xMin = n.fx;
+    if (n.fx > xMax) xMax = n.fx;
+  }
+  const xScale = CHART_PX / (xMax - xMin || 1);
+  for (const n of nodes) {
+    const px = (n.fx - xMin) * xScale;
+    n.fx = px;
+    n.x = px;
+  }
+
+  const sim = forceSimulation(nodes)
+    .alphaDecay(0.005) // Very slow decay — keeps gravity strong so dots pack tightly
+    .force("x", forceX<ForceNode>((d) => d.fx).strength(1))
+    .force("y", forceY<ForceNode>(0).strength(0.6))
+    .force("collide", forceCollide<ForceNode>((d) => d.r * 1.1).iterations(4))
+    .stop();
+
+  const ticks = getIterations(nodes.length);
+  for (let i = 0; i < ticks; i++) sim.tick();
+
+  const yPositions = new Array<number>(nodes.length).fill(0);
+  for (const n of nodes) yPositions[n.idx] = n.y ?? 0;
+  return yPositions;
 };
+
+/** Spacing between rows in the value-axis coordinate space. */
+const ROW_SPACING = 100;
+
+/**
+ * Row-based beeswarm layout — runs d3-force per series independently,
+ * then offsets each series to its own Y band.
+ *
+ * Uses a value axis (not category) so fractional Y positions work correctly.
+ */
+const computeRowLayout = (
+  allSeries: BeeswarmSeries[],
+  dotSize: number,
+  maxClusterCount: number
+): { yPositions: number[]; rowCount: number } => {
+  const rowCount = allSeries.length;
+  if (rowCount === 0) return { yPositions: [], rowCount: 0 };
+
+  const yPositions: number[] = [];
+
+  for (let si = 0; si < allSeries.length; si++) {
+    const s = allSeries[si]!;
+    if (s.data.length === 0) continue;
+
+    const localY = computeBeeswarmLayout([s], dotSize, maxClusterCount);
+    const rowCenter = si * ROW_SPACING;
+    for (const ly of localY) yPositions.push(rowCenter + ly);
+  }
+
+  return { yPositions, rowCount };
+};
+
+// ---------------------------------------------------------------------------
+// X-axis bounds
+// ---------------------------------------------------------------------------
+
+/** Compute X-axis bounds — full range for small datasets, percentile clipping for large ones */
+const computeXBounds = (allSeries: BeeswarmSeries[]) => {
+  const xValues: number[] = [];
+  for (const s of allSeries) {
+    for (const item of s.data) xValues.push(item.x);
+  }
+  if (xValues.length === 0) return { xMin: undefined, xMax: undefined };
+
+  xValues.sort((a, b) => a - b);
+  const usePercentile = xValues.length >= 200;
+  const lo = usePercentile ? (xValues[Math.floor(xValues.length * 0.02)] ?? xValues[0]!) : xValues[0]!;
+  const hi = usePercentile
+    ? (xValues[Math.ceil(xValues.length * 0.98) - 1] ?? xValues[xValues.length - 1]!)
+    : xValues[xValues.length - 1]!;
+  const range = hi - lo;
+  const pad = range > 0 ? range * 0.05 : 86400000;
+  return { xMin: lo - pad, xMax: hi + pad };
+};
+
+// ---------------------------------------------------------------------------
+// Layout config builders
+// ---------------------------------------------------------------------------
+
+/** Build Y positions + axis config for merged (single-row) layout. */
+const computeMergedLayoutConfig = (allSeries: BeeswarmSeries[], dotSize: number, maxClusterCount: number) => {
+  const yPositions = computeBeeswarmLayout(allSeries, dotSize, maxClusterCount);
+
+  let maxAbsY = 1;
+  for (const y of yPositions) {
+    if (Math.abs(y) > maxAbsY) maxAbsY = Math.abs(y);
+  }
+  const yPadding = Math.max(maxAbsY * 1.2, 1);
+
+  return { yPositions, yAxisConfig: { type: "value" as const, show: false, min: -yPadding, max: yPadding } };
+};
+
+/** Build Y positions + axis config for row (per-series lanes) layout. */
+const computeRowLayoutConfig = (
+  allSeries: BeeswarmSeries[],
+  dotSize: number,
+  maxClusterCount: number,
+  effectiveTheme: ChartTheme
+) => {
+  const { yPositions, rowCount } = computeRowLayout(allSeries, dotSize, maxClusterCount);
+
+  // Value axis with custom labels at row centers and dashed separators between rows
+  const yMin = -ROW_SPACING * 0.5;
+  const yMax = (rowCount - 1) * ROW_SPACING + ROW_SPACING * 0.5;
+
+  return {
+    yPositions,
+    yAxisConfig: {
+      type: "value" as const,
+      show: true,
+      min: yMin,
+      max: yMax,
+      inverse: true, // first series at top
+      axisLabel: {
+        color: effectiveTheme.textColor,
+        fontSize: 11,
+        formatter: (value: number) => {
+          const idx = Math.round(value / ROW_SPACING);
+          return allSeries[idx]?.name ?? "";
+        },
+        interval: 0,
+      },
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: {
+        show: rowCount > 1,
+        lineStyle: { color: effectiveTheme.axisLineColor, opacity: 0.15, type: "dashed" as const },
+      },
+    },
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export const BeeswarmChart = ({
   series,
@@ -109,19 +309,38 @@ export const BeeswarmChart = ({
   onRetry,
   emptyMessage = "No data available",
   maxClusterCount = 1,
+  layout = "merged",
 }: BeeswarmChartProps) => {
   const isDark = theme?.axisLineColor === defaultDarkTheme.axisLineColor;
   const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
 
   const totalPoints = series.reduce((sum, s) => sum + s.data.length, 0);
-  const defaultDotSize = totalPoints < 200 ? 6 : 4;
+  const dotSize = computeDotSize(totalPoints);
+  const isRowLayout = layout === "rows" && series.length > 1;
 
-  const { yPadding, xMin, xMax } = computeAxisBounds(series);
+  // Compute beeswarm layout — merged or per-row
+  const { yPositions, yAxisConfig } = isRowLayout
+    ? computeRowLayoutConfig(series, dotSize, maxClusterCount, effectiveTheme)
+    : computeMergedLayoutConfig(series, dotSize, maxClusterCount);
+
+  const { xMin, xMax } = computeXBounds(series);
+  const showLegend = !isRowLayout && series.length > 1;
+
+  // Rebuild series data with layout Y positions
+  let flatIdx = 0;
+  const layoutSeries = series.map((s) => {
+    const data: Array<unknown[]> = [];
+    for (const item of s.data) {
+      data.push([item.x, yPositions[flatIdx] ?? 0, item.id, item]);
+      flatIdx++;
+    }
+    return { ...s, layoutData: data };
+  });
 
   const chartOption: EChartsOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: 50, right: 20, bottom: 25, top: 5 },
+    grid: { left: isRowLayout ? "2%" : "3%", right: "4%", bottom: "8%", top: showLegend ? 30 : 10, containLabel: true },
     xAxis: {
       type: "time",
       min: xMin,
@@ -130,32 +349,35 @@ export const BeeswarmChart = ({
       axisLine: { lineStyle: { color: effectiveTheme.axisLineColor } },
       splitLine: { show: false },
     },
-    yAxis: { type: "value", show: false, min: -yPadding, max: yPadding },
+    yAxis: yAxisConfig,
     tooltip: {
       trigger: "item",
       backgroundColor: effectiveTheme.tooltipBackground,
       borderColor: effectiveTheme.axisLineColor,
       textStyle: { color: effectiveTheme.tooltipForeground },
       formatter: (params: unknown) => {
-        const p = params as { data?: unknown };
+        const p = params as { data?: unknown; seriesName?: string };
         if (!p.data || !Array.isArray(p.data) || p.data.length < 4) return "";
         const [, , , item] = p.data as [number, number, number, BeeswarmDataItem];
         const date = new Date(item.x);
         const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
         if (item.count) {
-          return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div></div>`;
+          const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${p.seriesName}</div>` : "";
+          return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div>${datasetLine}</div>`;
         }
         return `
           <div style="padding: 4px 8px; max-width: 250px;">
             <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.label ?? dateStr}</div>
             <div>${dateStr}</div>
-            ${item.dataset ? `<div style="opacity: 0.7;">${item.dataset}</div>` : ""}
+            ${(item.dataset ?? p.seriesName) ? `<div style="opacity: 0.7;">${item.dataset ?? p.seriesName}</div>` : ""}
           </div>
         `;
       },
     },
-    legend: { show: false },
-    series: series.map((s) => {
+    legend: showLegend
+      ? { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } }
+      : { show: false },
+    series: layoutSeries.map((s) => {
       const hasClusterData = s.data.some((item) => item.count != null && item.count > 0);
       return {
         type: "scatter" as const,
@@ -163,16 +385,15 @@ export const BeeswarmChart = ({
         symbolSize: hasClusterData
           ? (value: number[]) => {
               const item = value[3] as unknown as BeeswarmDataItem;
-              if (!item?.count) return 4;
-              return Math.max(8, Math.min(40, 8 + Math.sqrt(item.count / maxClusterCount) * 32));
+              if (!item?.count) return dotSize;
+              return computeClusterSize(item.count, maxClusterCount);
             }
-          : defaultDotSize,
+          : dotSize,
         itemStyle: { color: s.color, opacity: hasClusterData ? 0.5 : 0.8 },
         emphasis: {
           itemStyle: { color: effectiveTheme.emphasisColor, opacity: 1, borderWidth: 2, borderColor: "#fff" },
         },
-        // Data format: [x, y, id, fullItem] — id for click, fullItem for tooltip
-        data: s.data.map((item) => [item.x, item.y, item.id, item] as unknown as number[]),
+        data: s.layoutData as unknown as number[][],
       };
     }),
     animation: true,
@@ -182,7 +403,8 @@ export const BeeswarmChart = ({
   const handleClick = (params: EChartsEventParams) => {
     if (!onPointClick || !params.data || !Array.isArray(params.data) || params.data.length < 3) return;
     const eventId = params.data[2] as number;
-    if (typeof eventId === "number") onPointClick(eventId);
+    // Only fire for individual events (positive IDs), not clusters
+    if (typeof eventId === "number" && eventId > 0) onPointClick(eventId);
   };
 
   const chartEvents = { click: handleClick };
@@ -204,7 +426,7 @@ export const BeeswarmChart = ({
       theme={theme}
       config={chartOption}
       onEvents={chartEvents}
-      skeletonVariant="histogram"
+      skeletonVariant="scatter"
     />
   );
 };
