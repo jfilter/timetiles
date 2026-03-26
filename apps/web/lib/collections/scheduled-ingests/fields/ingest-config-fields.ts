@@ -90,6 +90,7 @@ const authFields: Field[] = [
           { label: "API Key (Header)", value: "api-key" },
           { label: "Bearer Token", value: "bearer" },
           { label: "Basic Auth", value: "basic" },
+          { label: "OAuth 2.0 (Password Grant)", value: "oauth" },
         ],
         defaultValue: "none",
       },
@@ -121,19 +122,33 @@ const authFields: Field[] = [
         hooks: credentialHooks,
       },
       {
+        name: "tokenUrl",
+        type: "text",
+        admin: {
+          condition: (_, siblingData) => siblingData?.type === "oauth",
+          description: "OAuth token endpoint URL",
+          placeholder: "https://example.com/oauth/token",
+        },
+      },
+      {
+        name: "clientId",
+        type: "text",
+        admin: { condition: (_, siblingData) => siblingData?.type === "oauth", description: "OAuth client ID" },
+      },
+      {
         name: "username",
         type: "text",
         admin: {
-          condition: (_, siblingData) => siblingData?.type === "basic",
-          description: "Username for basic authentication",
+          condition: (_, siblingData) => siblingData?.type === "basic" || siblingData?.type === "oauth",
+          description: "Username / email for authentication",
         },
       },
       {
         name: "password",
         type: "text",
         admin: {
-          condition: (_, siblingData) => siblingData?.type === "basic",
-          description: "Password for basic authentication",
+          condition: (_, siblingData) => siblingData?.type === "basic" || siblingData?.type === "oauth",
+          description: "Password for authentication",
         },
         hooks: credentialHooks,
       },

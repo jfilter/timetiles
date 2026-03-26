@@ -243,13 +243,13 @@ const getOrCreateSystemUser = async (payload: PayloadInstance) => {
 /** Parse `--param key=value` flags from args into a record. */
 const parseParams = (args: string[]): Record<string, string> => {
   const params: Record<string, string> = {};
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--param" && args[i + 1]) {
-      const [key, ...rest] = args[i + 1]!.split("=");
-      if (key && rest.length > 0) {
-        params[key] = rest.join("=");
-        i++; // skip next arg
-      }
+  const len = args.length;
+  for (let idx = 0; idx < len; idx++) {
+    if (args[idx] !== "--param" || !args[idx + 1]) continue;
+    const nextArg = args[idx + 1]!;
+    const eqIdx = nextArg.indexOf("=");
+    if (eqIdx > 0) {
+      params[nextArg.slice(0, eqIdx)] = nextArg.slice(eqIdx + 1);
     }
   }
   return params;

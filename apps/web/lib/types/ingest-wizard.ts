@@ -53,13 +53,17 @@ export interface SheetInfo {
 
 /** Auth configuration for imports (matches ScheduledIngest authConfig structure) */
 export interface AuthConfig {
-  type: "none" | "api-key" | "bearer" | "basic";
+  type: "none" | "api-key" | "bearer" | "basic" | "oauth";
   apiKey?: string;
   apiKeyHeader?: string;
   bearerToken?: string;
   username?: string;
   password?: string;
   customHeaders?: string | Record<string, string>;
+  /** OAuth token endpoint URL (for type "oauth"). */
+  tokenUrl?: string;
+  /** OAuth client ID (for type "oauth"). */
+  clientId?: string;
 }
 
 /** Narrowed auth config for URL imports (UI does not expose customHeaders) */

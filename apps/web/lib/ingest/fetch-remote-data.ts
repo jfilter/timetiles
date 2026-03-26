@@ -122,7 +122,7 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     responseFormat = "auto",
   } = options;
 
-  const authHeaders = buildAuthHeaders(authConfig);
+  const authHeaders = await buildAuthHeaders(authConfig);
 
   // Normalize WFS URLs to ensure they return GeoJSON
   const normalizedUrl = normalizeWfsUrl(sourceUrl);

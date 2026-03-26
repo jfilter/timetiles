@@ -1480,7 +1480,7 @@ export interface ScheduledIngest {
    * Authentication configuration for accessing the URL
    */
   authConfig?: {
-    type?: ('none' | 'api-key' | 'bearer' | 'basic') | null;
+    type?: ('none' | 'api-key' | 'bearer' | 'basic' | 'oauth') | null;
     /**
      * API key to include in request header
      */
@@ -1494,11 +1494,19 @@ export interface ScheduledIngest {
      */
     bearerToken?: string | null;
     /**
-     * Username for basic authentication
+     * OAuth token endpoint URL
+     */
+    tokenUrl?: string | null;
+    /**
+     * OAuth client ID
+     */
+    clientId?: string | null;
+    /**
+     * Username / email for authentication
      */
     username?: string | null;
     /**
-     * Password for basic authentication
+     * Password for authentication
      */
     password?: string | null;
     /**
@@ -4497,6 +4505,8 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
         apiKey?: T;
         apiKeyHeader?: T;
         bearerToken?: T;
+        tokenUrl?: T;
+        clientId?: T;
         username?: T;
         password?: T;
         customHeaders?: T;
