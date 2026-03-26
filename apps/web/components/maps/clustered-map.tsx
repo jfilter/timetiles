@@ -35,6 +35,7 @@ import {
   logMapViewportChanged,
   MAP_COMPONENT_STYLE,
 } from "./clustered-map-helpers";
+import { ClusterDensityControl } from "./cluster-density-control";
 import { MapErrorOverlay, MapLoadingOverlay } from "./map-overlays";
 import { MapThemeControl } from "./map-theme-control";
 import { useMapInteractions } from "./use-map-interactions";
@@ -161,7 +162,8 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           cursor="auto"
         >
           <NavigationControl position="bottom-right" showCompass={false} />
-          <div className="absolute bottom-2 left-2 z-10">
+          <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-1.5">
+            <ClusterDensityControl />
             <MapThemeControl />
           </div>
           <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">

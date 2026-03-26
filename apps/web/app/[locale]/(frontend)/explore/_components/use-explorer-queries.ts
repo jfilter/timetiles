@@ -19,6 +19,7 @@ import {
   useEventsTotalQuery,
   useMapClustersQuery,
 } from "@/lib/hooks/use-events-queries";
+import { useUIStore } from "@/lib/store";
 import type { FilterState } from "@/lib/types/filter-state";
 import type { SimpleBounds, ViewScope } from "@/lib/utils/event-params";
 import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
@@ -30,13 +31,15 @@ export const useExplorerQueries = (
   scope?: ViewScope
 ) => {
   const { data: dataSources } = useDataSourcesQuery();
+  const clusterDensity = useUIStore((s) => s.ui.clusterDensity);
 
   const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
     filters,
     debouncedSimpleBounds,
     mapZoom,
     true,
-    scope
+    scope,
+    clusterDensity
   );
   const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
