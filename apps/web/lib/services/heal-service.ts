@@ -142,10 +142,14 @@ const generateFieldMetadataFromEvents = async (
   payload: Payload,
   datasetId: number
 ): Promise<Record<string, FieldStatistics> | null> => {
+  // Sort by id ascending to get a representative sample from the start of the dataset.
+  // Default sort (-createdAt) would return the last batch which may have atypical data
+  // (e.g. the tail end of a WFS response where optional fields are null).
   const events = await payload.find({
     collection: COLLECTION_NAMES.EVENTS,
     where: { dataset: { equals: datasetId } },
     limit: EVENT_SAMPLE_SIZE,
+    sort: "id",
     depth: 0,
     overrideAccess: true,
   });
