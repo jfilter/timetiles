@@ -12,8 +12,10 @@
 
 import type { BeeswarmDataItem, BeeswarmSeries } from "@timetiles/ui/charts";
 import { BeeswarmChart, DATASET_COLORS, useChartTheme } from "@timetiles/ui/charts";
+import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
+import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
 import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
@@ -27,9 +29,15 @@ interface EventBeeswarmProps {
   height?: number | string;
   className?: string;
   onEventClick?: (eventId: number) => void;
-  /** Display variant — compact hides chrome, fullscreen shows event count */
+  /** Display variant — compact hides chrome, fullscreen shows event count + controls */
   variant?: "compact" | "fullscreen";
 }
+
+/** Default cluster options per variant */
+const DEFAULTS = {
+  compact: { individualThreshold: 500, targetBuckets: 40 },
+  fullscreen: { individualThreshold: 1000, targetBuckets: 80 },
+} as const;
 
 /** Group items by datasetId and build one BeeswarmSeries per dataset. */
 const groupByDataset = (items: TemporalClusterItem[]): Map<number, { name: string; items: TemporalClusterItem[] }> => {
@@ -101,8 +109,12 @@ export const EventBeeswarm = ({
   const { filters } = useFilters();
   const scope = useViewScope();
 
-  const clusterOptions: TemporalClusterOptions | undefined =
-    variant === "fullscreen" ? { individualThreshold: 1000, targetBuckets: 80 } : undefined;
+  const defaults = DEFAULTS[variant];
+  const [threshold, setThreshold] = useState<number>(defaults.individualThreshold);
+  const [buckets, setBuckets] = useState<number>(defaults.targetBuckets);
+  const [showControls, setShowControls] = useState(false);
+
+  const clusterOptions: TemporalClusterOptions = { individualThreshold: threshold, targetBuckets: buckets };
 
   const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(
     filters,
@@ -133,9 +145,54 @@ export const EventBeeswarm = ({
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
       />
-      {variant === "fullscreen" && total > 0 && !isInitialLoad && (
-        <div className="text-muted-foreground absolute top-1 right-3 font-mono text-xs">
-          {total.toLocaleString()} {t("eventsLabel")}
+
+      {/* Top-right: event count + settings toggle */}
+      {total > 0 && !isInitialLoad && (
+        <div className="absolute top-1 right-2 flex items-center gap-2">
+          {variant === "fullscreen" && (
+            <span className="text-muted-foreground font-mono text-xs">
+              {total.toLocaleString()} {t("eventsLabel")}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowControls((v) => !v)}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Chart settings"
+          >
+            <Settings2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Expert controls panel */}
+      {showControls && (
+        <div className="bg-background/95 border-border absolute top-7 right-2 z-10 flex flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+          <LabeledSlider
+            label="Detail threshold"
+            value={threshold}
+            onChange={setThreshold}
+            min={100}
+            max={2000}
+            step={100}
+            minLabel="Cluster"
+            maxLabel="Individual"
+            formatValue={(v) => `${v}`}
+          />
+          <LabeledSlider
+            label="Time buckets"
+            value={buckets}
+            onChange={setBuckets}
+            min={10}
+            max={150}
+            step={10}
+            minLabel="Fewer"
+            maxLabel="More"
+            formatValue={(v) => `${v}`}
+          />
+          <div className="text-muted-foreground text-center font-mono text-[10px]">
+            {mode === "individual" ? "Showing dots" : `${data?.items.length ?? 0} clusters`}
+          </div>
         </div>
       )}
     </div>
