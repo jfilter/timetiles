@@ -353,6 +353,12 @@ install-package:
 uninstall-package:
 	@LOG_LEVEL=info pnpm --filter web packages uninstall $(PKG) $(ARGS)
 
+# Detect and fix data inconsistencies (fieldMetadata sync, etc.)
+# Usage: make heal                    # Run all checks + fix
+#        make heal ARGS="--dry-run"   # Report only, don't fix
+heal:
+	@LOG_LEVEL=info pnpm --filter web heal $(ARGS)
+
 # Full demo: site setup + all data packages with immediate import
 demo-berlin: setup-site
 	@$(MAKE) demo-data ARGS="--trigger"

@@ -36,6 +36,7 @@
     "openapi:generate": "tsx scripts/generate-openapi.ts",
     "demo-data": "dotenv -e ../../.env -e .env.local -- tsx scripts/load-demo-data.ts",
     "packages": "dotenv -e ../../.env -e .env.local -- tsx scripts/manage-packages.ts",
+    "heal": "dotenv -e ../../.env -e .env.local -- tsx scripts/heal.ts",
     "setup-site": "dotenv -e ../../.env -e .env.local -- tsx scripts/setup-site.ts"
   },
   "dependencies": {
