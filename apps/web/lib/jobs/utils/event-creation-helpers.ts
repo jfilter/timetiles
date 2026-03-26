@@ -8,6 +8,7 @@
  * @category Jobs
  */
 import { parseCoordinate } from "@/lib/geospatial/parsing";
+import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -38,15 +39,8 @@ export const extractCoordinates = (
     const parsedLat = parseCoordinate(row[latitudePath]);
     const parsedLng = parseCoordinate(row[longitudePath]);
 
-    // Validate both type and coordinate bounds
-    if (
-      parsedLat !== null &&
-      parsedLng !== null &&
-      parsedLat >= -90 &&
-      parsedLat <= 90 &&
-      parsedLng >= -180 &&
-      parsedLng <= 180
-    ) {
+    // Validate coordinates — rejects null, NaN, out-of-range, and (0,0)
+    if (parsedLat !== null && parsedLng !== null && isValidCoordinate(parsedLat, parsedLng)) {
       return {
         location: { latitude: parsedLat, longitude: parsedLng },
         coordinateSource: { type: "source-data" as const },

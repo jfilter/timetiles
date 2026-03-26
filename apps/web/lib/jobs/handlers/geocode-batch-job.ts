@@ -15,11 +15,13 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
+import type { GeocodingBias } from "@/lib/services/geocoding/types";
 import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
 import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
@@ -40,13 +42,25 @@ const extractUniqueLocations = async (
   filePath: string,
   sheetIndex: number,
   locationField: string,
+  coordinateFields: { latitudeField?: string; longitudeField?: string },
   logger: ReturnType<typeof createJobLogger>
-): Promise<{ uniqueLocations: Set<string>; totalRows: number }> => {
+): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
   const uniqueLocations = new Set<string>();
   let totalRows = 0;
+  let skippedWithCoords = 0;
 
   for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
     for (const row of rows) {
+      // Skip rows that already have valid source coordinates — no geocoding needed
+      if (coordinateFields.latitudeField && coordinateFields.longitudeField) {
+        const lat = Number(row[coordinateFields.latitudeField]);
+        const lng = Number(row[coordinateFields.longitudeField]);
+        if (isValidCoordinate(lat, lng)) {
+          skippedWithCoords++;
+          continue;
+        }
+      }
+
       const location = row[locationField];
       if (location && typeof location === "string") {
         const normalized = normalizeGeocodingAddress(location);
@@ -58,8 +72,8 @@ const extractUniqueLocations = async (
     totalRows += rows.length;
   }
 
-  logger.info("Extracted unique locations", { totalRows, uniqueLocations: uniqueLocations.size });
-  return { uniqueLocations, totalRows };
+  logger.info("Extracted unique locations", { totalRows, uniqueLocations: uniqueLocations.size, skippedWithCoords });
+  return { uniqueLocations, totalRows, skippedWithCoords };
 };
 
 /**
@@ -84,6 +98,7 @@ const geocodeUniqueLocations = async (
   payload: Payload,
   job: IngestJob,
   locations: Set<string>,
+  bias: GeocodingBias | undefined,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
   results: ImportGeocodingResultsMap;
@@ -104,7 +119,7 @@ const geocodeUniqueLocations = async (
     const chunk = allLocations.slice(i, i + PROGRESS_CHUNK_SIZE);
 
     // batchGeocode processes BATCH_CONCURRENCY addresses in parallel via Promise.allSettled
-    const batchResult = await geocodingService.batchGeocode(chunk, BATCH_CONCURRENCY);
+    const batchResult = await geocodingService.batchGeocode(chunk, BATCH_CONCURRENCY, bias);
 
     // Convert BatchGeocodingResult to ImportGeocodingResultsMap format
     for (const [address, resultOrError] of batchResult.results) {
@@ -189,13 +204,21 @@ export const geocodeBatchJob = {
       const filePath = getIngestFilePath(ingestFile.filename ?? "");
       const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
 
-      // Stream file to extract unique locations (memory-efficient)
-      const { uniqueLocations, totalRows } = await extractUniqueLocations(
+      // Stream file to extract unique locations — only for rows missing valid coordinates
+      const { uniqueLocations, totalRows, skippedWithCoords } = await extractUniqueLocations(
         filePath,
         sheetIndex,
         geocodingCandidate.locationField,
+        { latitudeField: geocodingCandidate.latitudeField, longitudeField: geocodingCandidate.longitudeField },
         logger
       );
+
+      // Skip geocoding entirely if all rows already have coordinates
+      if (uniqueLocations.size === 0 && skippedWithCoords > 0) {
+        logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
+        await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+        return { output: { skipped: true, skippedWithCoords } };
+      }
 
       // Start tracking with unique locations count as total
       await ProgressTrackingService.startStage(
@@ -205,17 +228,24 @@ export const geocodeBatchJob = {
         uniqueLocations.size
       );
 
+      // Extract geocoding bias from processing options (set by data package or scheduled ingest)
+      const processingOptions = (ingestFile.processingOptions as Record<string, unknown> | null) ?? {};
+      const geocodingBias = processingOptions.geocodingBias as GeocodingBias | undefined;
+
       // Geocode unique locations
       const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
         geocodingService,
         payload,
         job,
         uniqueLocations,
+        geocodingBias,
         logger
       );
 
-      // Fail the job if ALL geocoding failed - events without coordinates are useless on a map
-      if (uniqueLocations.size > 0 && successCount === 0) {
+      // Fail the job only if ALL geocoding failed AND most rows depend on geocoding.
+      // When most rows already have source coordinates (skippedWithCoords > 0),
+      // a few geocoding failures should not block the entire import.
+      if (uniqueLocations.size > 0 && successCount === 0 && skippedWithCoords === 0) {
         logger.error("All geocoding failed - cannot create events without coordinates", {
           totalLocations: uniqueLocations.size,
           failureCount,

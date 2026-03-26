@@ -398,7 +398,7 @@ export const schemaDetectionJob = {
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
-      const duplicateRows = extractDuplicateRows(job);
+      const { skipRows: duplicateRows } = extractDuplicateRows(job);
 
       const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
       let batchNumber = 0;

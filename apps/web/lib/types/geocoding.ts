@@ -10,6 +10,10 @@
 export interface GeocodingCandidate {
   /** Field name containing location information (address, city, venue, etc.) */
   locationField?: string;
+  /** Field name containing latitude values (used to skip geocoding for rows with existing coordinates) */
+  latitudeField?: string;
+  /** Field name containing longitude values (used to skip geocoding for rows with existing coordinates) */
+  longitudeField?: string;
 }
 
 export interface ImportGeocodingResult {
@@ -77,5 +81,8 @@ export const getGeocodingCandidate = (job: { detectedFieldMappings?: unknown }):
     return null;
   }
 
-  return { locationField };
+  const latitudeField = typeof mappings.latitudePath === "string" ? mappings.latitudePath : undefined;
+  const longitudeField = typeof mappings.longitudePath === "string" ? mappings.longitudePath : undefined;
+
+  return { locationField, latitudeField, longitudeField };
 };
