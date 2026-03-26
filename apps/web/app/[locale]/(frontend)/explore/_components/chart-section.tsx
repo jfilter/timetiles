@@ -71,8 +71,8 @@ const useChartMeta = () => {
 const getChartHeight = (type: ChartType): number => {
   switch (type) {
     case "histogram":
-      return 200;
     case "beeswarm":
+      return 200;
     case "dataset-bar":
     case "catalog-bar":
       return 300;

@@ -94,7 +94,7 @@ const computeAxisBounds = (allSeries: BeeswarmSeries[]) => {
   const p98 = xValues[Math.ceil(xValues.length * 0.98) - 1] ?? xValues[xValues.length - 1]!;
   const xRange = p98 - p02;
   const xPad = xRange > 0 ? xRange * 0.05 : 86400000;
-  return { yPadding: Math.max(maxY * 1.3, 1), xMin: p02 - xPad, xMax: p98 + xPad };
+  return { yPadding: Math.max(maxY * 1.05, 1), xMin: p02 - xPad, xMax: p98 + xPad };
 };
 
 export const BeeswarmChart = ({
@@ -121,7 +121,7 @@ export const BeeswarmChart = ({
   const chartOption: EChartsOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: 50, right: 20, bottom: 30, top: series.length > 1 ? 30 : 10 },
+    grid: { left: 50, right: 20, bottom: 25, top: 5 },
     xAxis: {
       type: "time",
       min: xMin,
