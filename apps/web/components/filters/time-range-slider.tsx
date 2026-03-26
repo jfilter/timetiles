@@ -109,16 +109,6 @@ export const TimeRangeSlider = ({
 
   return (
     <div className="space-y-3 px-2 select-none">
-      {/* Date range labels */}
-      <div className="-mx-2 flex items-center justify-between">
-        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatMonthYear(minTimestamp)}
-        </span>
-        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatMonthYear(maxTimestamp)}
-        </span>
-      </div>
-
       {/* Slider track with handles */}
       <div
         ref={trackRef}
@@ -191,6 +181,16 @@ export const TimeRangeSlider = ({
             />
           ))}
         </div>
+      </div>
+
+      {/* Total date range labels */}
+      <div className="-mx-2 flex items-center justify-between">
+        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
+          {formatMonthYear(minTimestamp)}
+        </span>
+        <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
+          {formatMonthYear(maxTimestamp)}
+        </span>
       </div>
 
       {/* Selected range display / Date picker */}
