@@ -672,13 +672,6 @@ export interface Dataset {
         autoDetected?: boolean | null;
       }[]
     | null;
-  enumDetection?: {
-    mode?: ('count' | 'percentage' | 'disabled') | null;
-    /**
-     * Max unique values (count mode) or min percentage (percentage mode)
-     */
-    threshold?: number | null;
-  };
   geoFieldDetection?: {
     /**
      * Automatically detect latitude/longitude fields
@@ -4163,12 +4156,6 @@ export interface DatasetsSelect<T extends boolean = true> {
         addedBy?: T;
         confidence?: T;
         autoDetected?: T;
-      };
-  enumDetection?:
-    | T
-    | {
-        mode?: T;
-        threshold?: T;
       };
   geoFieldDetection?:
     | T
