@@ -46,7 +46,7 @@ export const MapPanel = ({
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}
     />
-    <div className="absolute bottom-12 left-2 z-10">
+    <div className="absolute bottom-20 left-2 z-10">
       <ZoomToDataButton visible={showZoomToData} onClick={onZoomToData} />
     </div>
   </div>
