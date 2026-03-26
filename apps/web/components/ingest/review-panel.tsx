@@ -18,8 +18,8 @@ import { AlertTriangleIcon, CalendarOffIcon, CheckIcon, MapPinOffIcon, XIcon } f
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { type ApproveIngestJobRequest, useApproveIngestJobMutation } from "@/lib/hooks/use-ingest-approval";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
+import { type ApproveIngestJobRequest, useApproveIngestJobMutation } from "@/lib/hooks/use-ingest-approval";
 import type { FormattedJobProgress } from "@/lib/types/progress-tracking";
 
 export interface ReviewPanelProps {

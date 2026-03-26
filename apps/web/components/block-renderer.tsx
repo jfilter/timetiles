@@ -46,8 +46,8 @@ import {
 } from "@timetiles/ui";
 import React from "react";
 
-import { NEWSLETTER_MESSAGES } from "@/lib/blocks/newsletter";
 import { NewsletterCTAClient, NewsletterFormClient } from "@/components/newsletter-form-client";
+import { NEWSLETTER_MESSAGES } from "@/lib/blocks/newsletter";
 import type {
   Block,
   BlockRendererProps,

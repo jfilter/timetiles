@@ -6,6 +6,22 @@
  */
 
 /**
+ * Convert a raw field key (camelCase, snake_case, etc.) to a human-readable Title Case label.
+ *
+ * Examples: "stadtbezirk" → "Stadtbezirk", "locationName" → "Location Name",
+ * "start_date" → "Start Date", "oepnv" → "Oepnv"
+ */
+export const formatFieldLabel = (key: string): string =>
+  key
+    // Insert space before uppercase letters (camelCase → camel Case)
+    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+    // Replace underscores/hyphens with spaces
+    .replaceAll(/[_-]+/g, " ")
+    // Title case each word
+    .replaceAll(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+
+/**
  * Convert an unknown value to a string safely.
  *
  * Handles null/undefined, primitives, Dates, and objects.
