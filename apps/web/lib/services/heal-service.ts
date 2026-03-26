@@ -53,14 +53,24 @@ export interface HealOptions {
 const healFieldMetadata = async (payload: Payload, dryRun: boolean): Promise<HealResult> => {
   const result: HealResult = { check: "field-metadata-sync", fixed: 0, skipped: 0, errors: 0, details: [] };
 
-  // Find datasets with events but no fieldMetadata
-  const datasets = await payload.find({
+  // Find datasets with events but missing or stale fieldMetadata
+  // (includes datasets where occurrencePercent was never calculated)
+  const allDatasets = await payload.find({
     collection: COLLECTION_NAMES.DATASETS,
-    where: { fieldMetadata: { exists: false } },
     limit: 500,
     depth: 0,
     overrideAccess: true,
   });
+
+  const datasets = {
+    docs: allDatasets.docs.filter((d) => {
+      if (!d.fieldMetadata) return true;
+      // Check for stale fieldMetadata (occurrencePercent = 0 on all fields)
+      const fm = d.fieldMetadata as Record<string, { occurrencePercent?: number }>;
+      const fields = Object.values(fm);
+      return fields.length > 0 && fields.every((f) => !f.occurrencePercent);
+    }),
+  };
 
   for (const dataset of datasets.docs) {
     // Check if dataset actually has events
@@ -88,9 +98,13 @@ const healFieldMetadata = async (payload: Payload, dryRun: boolean): Promise<Hea
 
       let fieldMetadata: Record<string, FieldStatistics> | null = null;
 
-      if (schemas.docs[0]?.fieldMetadata && Object.keys(schemas.docs[0].fieldMetadata as object).length > 0) {
-        fieldMetadata = schemas.docs[0].fieldMetadata as Record<string, FieldStatistics>;
-        result.details.push(`${dataset.name}: copied from schema v${schemas.docs[0].versionNumber}`);
+      const schemaFm = schemas.docs[0]?.fieldMetadata as Record<string, FieldStatistics> | undefined;
+      const schemaHasValidStats =
+        schemaFm && Object.keys(schemaFm).length > 0 && Object.values(schemaFm).some((f) => f.occurrencePercent > 0);
+
+      if (schemaHasValidStats) {
+        fieldMetadata = schemaFm;
+        result.details.push(`${dataset.name}: copied from schema v${schemas.docs[0]!.versionNumber}`);
       } else {
         // Generate from event sample
         fieldMetadata = await generateFieldMetadataFromEvents(payload, dataset.id);
