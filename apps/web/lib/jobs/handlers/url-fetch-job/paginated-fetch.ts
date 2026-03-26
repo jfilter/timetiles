@@ -8,6 +8,7 @@
  * @category Jobs/UrlFetch
  */
 
+import { flattenGeoJsonFeature, isGeoJson } from "@/lib/ingest/geojson-to-csv";
 import { extractRecordsFromJson } from "@/lib/ingest/json-to-csv";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
@@ -189,7 +190,14 @@ export const fetchPaginated = async (
     const json: unknown = JSON.parse(fetchResult.data.toString("utf-8"));
     let pageRecords: Record<string, unknown>[];
     try {
-      pageRecords = extractRecordsFromJson(json, recordsPath).records;
+      // GeoJSON FeatureCollections need special handling: flatten properties,
+      // extract coordinates, and preserve feature.id as _feature_id.
+      if (isGeoJson(json)) {
+        const features = (json as { features: Array<Record<string, unknown>> }).features;
+        pageRecords = features.map((f) => flattenGeoJsonFeature(f as never));
+      } else {
+        pageRecords = extractRecordsFromJson(json, recordsPath).records;
+      }
     } catch {
       // No records found on this page — treat as empty
       pageRecords = [];

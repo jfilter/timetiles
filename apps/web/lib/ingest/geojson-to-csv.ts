@@ -136,6 +136,28 @@ const bboxCentroid = (coords: [number, number][]): { latitude: number; longitude
 // ---------------------------------------------------------------------------
 
 /**
+ * Flatten a single GeoJSON feature into a plain record.
+ *
+ * Extracts properties, centroid coordinates (as latitude/longitude),
+ * and preserves `feature.id` as `_feature_id`.
+ */
+export const flattenGeoJsonFeature = (feature: GeoJsonFeature): Record<string, unknown> => {
+  const row = flattenObject(feature.properties ?? {});
+
+  const centroid = extractCentroid(feature.geometry);
+  if (centroid) {
+    row.latitude = centroid.latitude;
+    row.longitude = centroid.longitude;
+  }
+
+  if (feature.id != null) {
+    row._feature_id = feature.id;
+  }
+
+  return row;
+};
+
+/**
  * Check whether a parsed JSON value looks like GeoJSON.
  *
  * Returns `true` for `FeatureCollection` with a `features` array or a
@@ -205,23 +227,7 @@ export const convertGeoJsonToCsv = (buffer: Buffer): GeoJsonToCsvResult => {
     if (feature.geometry?.type) {
       geometryTypes.add(feature.geometry.type);
     }
-
-    // Flatten properties into columns
-    const row = flattenObject(feature.properties ?? {});
-
-    // Extract coordinates from geometry
-    const centroid = extractCentroid(feature.geometry);
-    if (centroid) {
-      row.latitude = centroid.latitude;
-      row.longitude = centroid.longitude;
-    }
-
-    // Preserve feature ID if present
-    if (feature.id != null) {
-      row._feature_id = feature.id;
-    }
-
-    rows.push(row);
+    rows.push(flattenGeoJsonFeature(feature));
   }
 
   const csvString = Papa.unparse(rows);
