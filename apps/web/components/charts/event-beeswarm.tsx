@@ -205,6 +205,7 @@ const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
   }, [enumFieldsQuery.data]);
 };
 
+// oxlint-disable-next-line complexity
 export const EventBeeswarm = ({
   bounds,
   height = 300,
