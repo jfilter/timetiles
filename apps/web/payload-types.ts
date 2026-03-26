@@ -1488,6 +1488,10 @@ export interface ScheduledIngest {
    */
   ingestNameTemplate?: string | null;
   /**
+   * Data package slug (set automatically when activated via data packages)
+   */
+  dataPackageSlug?: string | null;
+  /**
    * How to handle schema changes during scheduled executions. Strict: fail if schema differs. Additive: auto-accept new fields. Flexible: require approval for changes.
    */
   schemaMode?: ('strict' | 'additive' | 'flexible') | null;
@@ -1634,6 +1638,10 @@ export interface ScheduledIngest {
          * Maximum number of pages to fetch (safety limit)
          */
         maxPages?: number | null;
+        /**
+         * Maximum total records to fetch across all pages. Default: 100,000. Increase for large datasets (e.g. 500,000 for tree inventories).
+         */
+        maxRecords?: number | null;
       };
     };
     /**
@@ -4424,6 +4432,7 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
   cronExpression?: T;
   timezone?: T;
   ingestNameTemplate?: T;
+  dataPackageSlug?: T;
   schemaMode?: T;
   sourceIngestFile?: T;
   authConfig?:
@@ -4471,6 +4480,7 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                     nextCursorPath?: T;
                     totalPath?: T;
                     maxPages?: T;
+                    maxRecords?: T;
                   };
             };
         reviewChecks?:

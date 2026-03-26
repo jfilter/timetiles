@@ -1,0 +1,40 @@
+slug: berlin-polizeiwachen
+name: Berliner Polizeiwachen
+description: >-
+  Standorte der Polizeiwachen in Berlin.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: public-safety
+region: Berlin, Germany
+tags:
+  - police
+  - public-safety
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 60
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/polizei?service=WFS&version=2.0.0&request=GetFeature&typeNames=polizei:a_polizei_wachen&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Polizeiwachen
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

@@ -125,6 +125,7 @@ export interface JsonApiScheduleConfig {
     nextCursorPath?: string;
     totalPath?: string;
     maxPages?: number;
+    maxRecords?: number;
   };
 }
 

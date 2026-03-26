@@ -79,6 +79,31 @@ const convertToCsvIfNeeded = async (
   return null;
 };
 
+type DatasetMapping = { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] };
+
+/**
+ * Resolve the dataset mapping for an ingest file.
+ *
+ * Prefers explicit metadata (set by the wizard flow), then falls back to the
+ * `targetDataset` relationship (set by url-fetch for scheduled ingests with a
+ * single target dataset). Without this fallback, dataset-detection would ignore
+ * the scheduled ingest's configured dataset and create a new one.
+ */
+const resolveDatasetMapping = (ingestFile: {
+  metadata?: unknown;
+  targetDataset?: unknown;
+}): DatasetMapping | undefined => {
+  const metadataMapping = (ingestFile.metadata as Record<string, unknown>)?.datasetMapping as
+    | DatasetMapping
+    | undefined;
+  if (metadataMapping) return metadataMapping;
+
+  const targetDatasetId = extractRelationId(ingestFile.targetDataset);
+  if (targetDatasetId) return { mappingType: "single", singleDataset: targetDatasetId };
+
+  return undefined;
+};
+
 const normalizeIngestFileRelationId = (ingestFileId: string | number): number => {
   const normalizedIngestFileId = typeof ingestFileId === "number" ? ingestFileId : parseStrictInteger(ingestFileId);
   if (normalizedIngestFileId == null) {
@@ -322,9 +347,7 @@ export const datasetDetectionJob = {
         data: { ...(!wizardSheets && { datasetsCount: sheets.length }), sheetMetadata: sheets },
       });
 
-      const datasetMapping = (ingestFile.metadata as Record<string, unknown>)?.datasetMapping as
-        | { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] }
-        | undefined;
+      const datasetMapping = resolveDatasetMapping(ingestFile);
 
       // Extract userId from import file for setting createdBy on auto-created catalogs/datasets
       const userId = extractRelationId(ingestFile.user) as number;

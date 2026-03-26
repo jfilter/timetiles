@@ -1,0 +1,40 @@
+slug: berlin-spielplaetze
+name: Berliner Spielplaetze
+description: >-
+  Oeffentliche Spielplaetze im Berliner Gruenanlagenbestand.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: recreation
+region: Berlin, Germany
+tags:
+  - playgrounds
+  - recreation
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 1900
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/gruenanlagen?service=WFS&version=2.0.0&request=GetFeature&typeNames=gruenanlagen:spielplaetze&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Spielplaetze
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin
