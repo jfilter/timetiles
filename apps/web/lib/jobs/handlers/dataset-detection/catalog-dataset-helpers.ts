@@ -151,14 +151,8 @@ export const findOrCreateDataset = async (
       },
       language: "eng",
       // Use default configurations
-      deduplicationConfig: { enabled: true, strategy: "skip" },
-      schemaConfig: {
-        autoGrow: true,
-        autoApproveNonBreaking: true,
-        locked: false,
-        strictValidation: false,
-        allowTransformations: true,
-      },
+      deduplicationConfig: { enabled: true },
+      schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
       _status: "published" as const,
       ...(userId ? { createdBy: userId } : {}),

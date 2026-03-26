@@ -511,10 +511,6 @@ export interface Dataset {
   };
   schemaConfig?: {
     /**
-     * Enable schema detection and validation
-     */
-    enabled?: boolean | null;
-    /**
      * Require manual approval for ALL schema changes
      */
     locked?: boolean | null;
@@ -526,14 +522,6 @@ export interface Dataset {
      * Automatically approve non-breaking schema changes
      */
     autoApproveNonBreaking?: boolean | null;
-    /**
-     * Block entire import if any events fail validation
-     */
-    strictValidation?: boolean | null;
-    /**
-     * Allow automatic type transformations during import
-     */
-    allowTransformations?: boolean | null;
     /**
      * Maximum nesting depth for schema detection
      */
@@ -552,10 +540,6 @@ export interface Dataset {
      * Enable duplicate detection during imports
      */
     enabled?: boolean | null;
-    /**
-     * What to do when duplicate is found
-     */
-    strategy?: ('skip' | 'update' | 'version') | null;
   };
   /**
    * Statistics and metadata about each field
@@ -4116,12 +4100,9 @@ export interface DatasetsSelect<T extends boolean = true> {
   schemaConfig?:
     | T
     | {
-        enabled?: T;
         locked?: T;
         autoGrow?: T;
         autoApproveNonBreaking?: T;
-        strictValidation?: T;
-        allowTransformations?: T;
         maxSchemaDepth?: T;
         enumThreshold?: T;
         enumMode?: T;
@@ -4130,7 +4111,6 @@ export interface DatasetsSelect<T extends boolean = true> {
     | T
     | {
         enabled?: T;
-        strategy?: T;
       };
   fieldMetadata?: T;
   ingestTransforms?:

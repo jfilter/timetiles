@@ -129,7 +129,7 @@ export const processDataset = async (
 ): Promise<number> => {
   const fieldMappingOverrides = buildFieldMappingOverrides(fieldMapping);
   const idStrategy = buildIdStrategy(fieldMapping, deduplicationStrategy);
-  const deduplicationConfig = { enabled: true, strategy: deduplicationStrategy };
+  const deduplicationConfig = { enabled: true };
   const geoFieldDetection = buildGeoFieldDetection(fieldMapping, geocodingEnabled);
 
   // Auto-approve non-breaking schema changes for wizard imports

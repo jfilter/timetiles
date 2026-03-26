@@ -148,12 +148,6 @@ const Datasets: CollectionConfig = {
       admin: { condition: editorOrAdminCondition },
       fields: [
         {
-          name: "enabled",
-          type: "checkbox",
-          defaultValue: false,
-          admin: { description: "Enable schema detection and validation" },
-        },
-        {
           name: "locked",
           type: "checkbox",
           defaultValue: false,
@@ -170,18 +164,6 @@ const Datasets: CollectionConfig = {
           type: "checkbox",
           defaultValue: false,
           admin: { description: "Automatically approve non-breaking schema changes" },
-        },
-        {
-          name: "strictValidation",
-          type: "checkbox",
-          defaultValue: false,
-          admin: { description: "Block entire import if any events fail validation" },
-        },
-        {
-          name: "allowTransformations",
-          type: "checkbox",
-          defaultValue: true,
-          admin: { description: "Allow automatic type transformations during import" },
         },
         {
           name: "maxSchemaDepth",
@@ -220,17 +202,6 @@ const Datasets: CollectionConfig = {
           type: "checkbox",
           defaultValue: true,
           admin: { description: "Enable duplicate detection during imports" },
-        },
-        {
-          name: "strategy",
-          type: "select",
-          options: [
-            { label: "Skip Duplicates", value: "skip" },
-            { label: "Update Existing", value: "update" },
-            { label: "Create New Version", value: "version" },
-          ],
-          defaultValue: "skip",
-          admin: { description: "What to do when duplicate is found" },
         },
       ],
     },

@@ -181,7 +181,7 @@ export const activateDataPackage = async (
         latitudePath: manifest.fieldMappings.latitudePath,
         longitudePath: manifest.fieldMappings.longitudePath,
       },
-      deduplicationConfig: { enabled: true, strategy: idStrategy.duplicateStrategy ?? "skip" },
+      deduplicationConfig: { enabled: true },
     },
     overrideAccess: true,
   });

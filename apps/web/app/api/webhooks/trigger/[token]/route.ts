@@ -121,7 +121,7 @@ const handleScraperTrigger = async (
 
   try {
     const job = await payload.jobs.queue({
-      task: "scraper-execution",
+      workflow: "scraper-ingest",
       input: { scraperId: target.id, triggeredBy: "webhook" },
     });
     logger.info({ scraperId: target.id, jobId: job.id }, "Scraper triggered via webhook");

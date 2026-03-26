@@ -27,10 +27,11 @@ export const POST = apiRoute({
       throw new ConflictError("Scraper is already running");
     }
 
-    // Queue execution job — revert "running" status on failure
+    // Queue scraper-ingest workflow (execution + auto-import pipeline).
+    // Previously queued standalone task which skipped the import pipeline.
     await queueJobWithRollback(
       payload,
-      { task: "scraper-execution", input: { scraperId: scraper.id, triggeredBy: "manual" } },
+      { workflow: "scraper-ingest", input: { scraperId: scraper.id, triggeredBy: "manual" } },
       { collection: "scrapers", id: scraper.id, data: { lastRunStatus: "failed" } }
     );
 

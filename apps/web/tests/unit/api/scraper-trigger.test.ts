@@ -129,7 +129,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(data.message).toBe("Scraper run queued");
 
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-      task: "scraper-execution",
+      workflow: "scraper-ingest",
       input: { scraperId: 10, triggeredBy: "manual" },
     });
   });
