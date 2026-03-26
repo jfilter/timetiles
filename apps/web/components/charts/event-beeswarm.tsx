@@ -29,14 +29,13 @@ interface EventBeeswarmProps {
   onEventClick?: (eventId: number) => void;
 }
 
-/** Target Y range for jitter distribution */
-const Y_RANGE = 100;
 /** Bucket width for jitter grouping (1 day in ms) */
 const BUCKET_MS = 86400000;
 
 /**
  * Compute jittered Y positions for individual event dots.
- * Events within the same day-bucket are spread symmetrically around Y=0.
+ * Uses a fixed step so dense buckets fan out tall (beeswarm shape)
+ * and sparse buckets stay compact. Y-axis auto-scales to fit.
  */
 const computeJitteredDots = (
   events: Array<{ id: number; eventTimestamp: string; data: Record<string, unknown> }>
@@ -56,12 +55,14 @@ const computeJitteredDots = (
     buckets.get(key)!.push(item);
   }
 
-  // Find max bucket size for normalization
+  // Find max bucket to compute step: biggest bucket fills Y range ±100
   let maxBucketSize = 1;
   for (const bucket of buckets.values()) {
     if (bucket.length > maxBucketSize) maxBucketSize = bucket.length;
   }
-  const step = maxBucketSize > 1 ? (Y_RANGE * 2) / maxBucketSize : 1;
+  // Step sized so the largest bucket spans exactly ±100
+  // Small buckets will be compact near center — that's the beeswarm shape
+  const step = 200 / Math.max(maxBucketSize, 2);
 
   for (const bucket of buckets.values()) {
     const count = bucket.length;
