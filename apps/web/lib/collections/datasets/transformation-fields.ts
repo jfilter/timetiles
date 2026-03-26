@@ -19,6 +19,7 @@ const TRANSFORM_TYPES = {
   STRING_OP: "string-op",
   CONCATENATE: "concatenate",
   SPLIT: "split",
+  PARSE_JSON_ARRAY: "parse-json-array",
 } as const;
 
 export const transformationFields: Field[] = [
@@ -48,6 +49,7 @@ export const transformationFields: Field[] = [
           { label: "String Operation", value: TRANSFORM_TYPES.STRING_OP },
           { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
           { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
+          { label: "Parse JSON Array", value: TRANSFORM_TYPES.PARSE_JSON_ARRAY },
         ],
         defaultValue: TRANSFORM_TYPES.RENAME,
         admin: { description: "Type of transformation to apply" },

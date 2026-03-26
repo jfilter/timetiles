@@ -19,6 +19,7 @@ import type {
   ConcatenateTransform,
   DateParseTransform,
   IngestTransform,
+  ParseJsonArrayTransform,
   RenameTransform,
   SplitTransform,
   StringOpTransform,
@@ -75,6 +76,9 @@ export const applyTransforms = (
         break;
       case "split":
         applySplitTransform(result, transform);
+        break;
+      case "parse-json-array":
+        applyParseJsonArrayTransform(result, transform);
         break;
     }
   }
@@ -323,6 +327,34 @@ const applySplitTransform = (data: Record<string, unknown>, transform: SplitTran
     if (targetField && part !== undefined) {
       setByPath(data, targetField, part.trim());
     }
+  }
+};
+
+/**
+ * Apply a parse-json-array transform to convert a JSON-stringified array back to a native array.
+ *
+ * Handles values like `'["Kabarett","Kultur"]'` from JSON→CSV serialization.
+ * Non-string values and invalid JSON are silently skipped.
+ */
+const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: ParseJsonArrayTransform): void => {
+  const value = getByPath(data, transform.from);
+  if (typeof value !== "string") return;
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[")) return;
+
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      const target = transform.to ?? transform.from;
+      setByPath(
+        data,
+        target,
+        parsed.map((v) => (v == null ? "" : String(v)))
+      );
+    }
+  } catch {
+    // Not valid JSON — keep original string value
   }
 };
 

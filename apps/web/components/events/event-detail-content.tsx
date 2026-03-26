@@ -28,7 +28,7 @@ import {
   getLocationDisplay,
   hasValidCoordinates,
 } from "@/lib/utils/event-detail";
-import { formatFieldLabel, valueToString } from "@/lib/utils/format";
+import { formatFieldLabel, tryParseStringArray, valueToString } from "@/lib/utils/format";
 import type { Event } from "@/payload-types";
 
 import { EventDetailError } from "./event-detail-error";
@@ -167,9 +167,14 @@ export const EventDetailContent = ({
         <div className="border-t pt-4">
           <h4 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">{t("details")}</h4>
           <div className="flex flex-wrap gap-2">
-            {additionalFields.map(([key, value]) => (
-              <FieldBox key={key} label={formatFieldLabel(key)} value={valueToString(value)} />
-            ))}
+            {additionalFields.map(([key, value]) => {
+              const tags = tryParseStringArray(value);
+              return tags ? (
+                <FieldBox key={key} label={formatFieldLabel(key)} tags={tags} />
+              ) : (
+                <FieldBox key={key} label={formatFieldLabel(key)} value={valueToString(value)} />
+              );
+            })}
           </div>
         </div>
       )}

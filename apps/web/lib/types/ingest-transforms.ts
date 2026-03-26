@@ -19,7 +19,7 @@
  * - concatenate: Combine multiple fields into one
  * - split: Split one field into multiple fields
  */
-export type TransformType = "rename" | "date-parse" | "string-op" | "concatenate" | "split";
+export type TransformType = "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "parse-json-array";
 
 /**
  * Base properties shared by all transform rules.
@@ -114,6 +114,20 @@ export interface SplitTransform extends BaseTransform {
 }
 
 /**
+ * Parse JSON array transform - parses a JSON-stringified array back into a native array.
+ *
+ * Used when JSON-to-CSV conversion serialized arrays (e.g. `["Kabarett","Kultur"]`)
+ * and we want to restore them as actual arrays in transformedData for tag/multi-value support.
+ */
+export interface ParseJsonArrayTransform extends BaseTransform {
+  type: "parse-json-array";
+  /** Source field containing the JSON-stringified array */
+  from: string;
+  /** Optional target field (defaults to same as `from`) */
+  to?: string;
+}
+
+/**
  * Union of all transform types.
  *
  * Applied before schema validation and event creation to normalize
@@ -124,7 +138,8 @@ export type IngestTransform =
   | DateParseTransform
   | StringOpTransform
   | ConcatenateTransform
-  | SplitTransform;
+  | SplitTransform
+  | ParseJsonArrayTransform;
 
 /**
  * A suggested transform detected by comparing schema versions.
@@ -183,6 +198,7 @@ export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
   "string-op": "String Operation",
   concatenate: "Concatenate Fields",
   split: "Split Field",
+  "parse-json-array": "Parse JSON Array",
 };
 
 /**
@@ -194,6 +210,7 @@ export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = {
   "string-op": "Apply string operations like uppercase, lowercase, replace, or expression",
   concatenate: "Join multiple fields together with a separator",
   split: "Split a field into multiple fields using a delimiter",
+  "parse-json-array": "Parse a JSON-stringified array into a native array for tag/multi-value fields",
 };
 
 /**
@@ -230,6 +247,8 @@ export const isTransformValid = (transform: IngestTransform): boolean => {
       return Boolean(transform.fromFields.length >= 2 && transform.to);
     case "split":
       return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
+    case "parse-json-array":
+      return Boolean(transform.from);
     default:
       return false;
   }
@@ -252,5 +271,7 @@ export const createTransform = (type: TransformType): IngestTransform => {
       return { ...base, type: "concatenate", fromFields: [], separator: " ", to: "" };
     case "split":
       return { ...base, type: "split", from: "", delimiter: ",", toFields: [] };
+    case "parse-json-array":
+      return { ...base, type: "parse-json-array", from: "" };
   }
 };

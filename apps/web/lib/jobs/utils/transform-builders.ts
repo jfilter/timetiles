@@ -52,12 +52,16 @@ const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): Ing
     ? { ...base, type: "split", from: t.from, delimiter: t.delimiter, toFields: t.toFields as string[] }
     : null;
 
+const buildParseJsonArrayTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
+  t.from ? { ...base, type: "parse-json-array", from: t.from, to: t.to ?? undefined } : null;
+
 const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: TransformBase) => IngestTransform | null> = {
   rename: buildRenameTransform,
   "date-parse": buildDateParseTransform,
   "string-op": buildStringOpTransform,
   concatenate: buildConcatenateTransform,
   split: buildSplitTransform,
+  "parse-json-array": buildParseJsonArrayTransform,
 };
 
 /** Build typed IngestTransform[] from a dataset's ingestTransforms configuration. */
