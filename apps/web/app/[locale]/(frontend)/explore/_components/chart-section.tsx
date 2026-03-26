@@ -153,7 +153,7 @@ export const ChartSection = ({
 
     // After fade out, swap chart type
     transitionTimer.current = setTimeout(() => {
-      setSelectedChartType(newType);
+      void setSelectedChartType(newType);
       // Small delay then fade in
       requestAnimationFrame(() => {
         setIsTransitioning(false);
