@@ -18,8 +18,9 @@ import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 const logger = createLogger("heal");
 
-const MAX_UNIQUE_VALUES = 100;
-const ENUM_CONFIG = { enumThreshold: 30, enumMode: "count" as const };
+import { DEFAULT_ENUM_CONFIG } from "@/lib/services/schema-builder";
+
+const MAX_UNIQUE_VALUES = 200;
 
 /** Sample 5% of events, min 100, max 2000. */
 const sampleSize = (total: number) => Math.min(2000, Math.max(100, Math.ceil(total * 0.05)));
@@ -193,7 +194,7 @@ const generateFieldMetadataFromEvents = async (
   for (const stats of Object.values(fieldStats)) {
     stats.occurrencePercent = (stats.occurrences / events.docs.length) * 100;
   }
-  enrichEnumFields(fieldStats, ENUM_CONFIG);
+  enrichEnumFields(fieldStats, DEFAULT_ENUM_CONFIG);
 
   const meaningful = Object.fromEntries(
     Object.entries(fieldStats).filter(([, s]) => s.occurrences > 0 && s.occurrencePercent >= 10)

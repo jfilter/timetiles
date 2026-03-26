@@ -251,7 +251,8 @@ const processBatchSchema = async (
   previousState: SchemaBuilderState | null,
   globalRowOffset: number,
   duplicateRows: Set<number>,
-  transforms: IngestTransform[]
+  transforms: IngestTransform[],
+  builderConfig?: Partial<{ enumThreshold: number; enumMode: "count" | "percentage" }>
 ) => {
   // Filter out duplicate rows
   const nonDuplicateRows = rows.filter((_row, index) => {
@@ -263,7 +264,7 @@ const processBatchSchema = async (
   const transformedRows = transforms.length > 0 ? applyTransformsBatch(nonDuplicateRows, transforms) : nonDuplicateRows;
 
   // Build schema progressively
-  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined);
+  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined, builderConfig);
 
   if (transformedRows.length > 0) {
     schemaBuilder.processBatch(transformedRows);
@@ -425,7 +426,11 @@ export const schemaDetectionJob = {
           previousState,
           totalRowsProcessed,
           duplicateRows,
-          transforms
+          transforms,
+          {
+            enumThreshold: dataset?.schemaConfig?.enumThreshold ?? undefined,
+            enumMode: (dataset?.schemaConfig?.enumMode as "count" | "percentage") ?? undefined,
+          }
         );
 
         totalRowsProcessed += rows.length;

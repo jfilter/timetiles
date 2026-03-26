@@ -30,6 +30,9 @@ import { compareSchemas } from "./schema-comparison";
 /** A row of imported data. Values are genuinely untyped — CSV/Excel sources produce arbitrary field/value pairs. */
 type DataRecord = Record<string, unknown>;
 
+/** Default enum detection config — percentage mode scales across dataset sizes. */
+export const DEFAULT_ENUM_CONFIG = { enumThreshold: 10, enumMode: "percentage" as const };
+
 export class ProgressiveSchemaBuilder {
   private readonly state: SchemaBuilderState;
   private readonly config: {
@@ -41,14 +44,7 @@ export class ProgressiveSchemaBuilder {
   };
 
   constructor(initialState?: SchemaBuilderState, config?: Partial<ProgressiveSchemaBuilder["config"]>) {
-    this.config = {
-      maxSamples: 100,
-      maxUniqueValues: 100,
-      enumThreshold: 50,
-      enumMode: "count",
-      maxDepth: 3,
-      ...config,
-    };
+    this.config = { maxSamples: 100, maxUniqueValues: 100, ...DEFAULT_ENUM_CONFIG, maxDepth: 3, ...config };
 
     this.state = initialState ?? {
       version: 0,

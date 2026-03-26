@@ -617,9 +617,10 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 1 } });
 
-      // ProgressiveSchemaBuilder must be constructed with undefined (from null),
-      // NOT with the persisted state — single-job pattern always starts fresh
-      expect(mocks.ProgressiveSchemaBuilder).toHaveBeenCalledWith(undefined);
+      // ProgressiveSchemaBuilder must be constructed with undefined initial state (from null),
+      // NOT with the persisted state — single-job pattern always starts fresh.
+      // Second arg is the dataset's enum config.
+      expect(mocks.ProgressiveSchemaBuilder).toHaveBeenCalledWith(undefined, expect.any(Object));
     });
   });
 

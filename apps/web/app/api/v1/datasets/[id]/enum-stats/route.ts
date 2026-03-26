@@ -32,10 +32,8 @@ export const GET = apiRoute({
     const fm = dataset.fieldMetadata as Record<string, FieldStatistics> | null;
     if (!fm) return { fields: [] };
 
-    // Find enum candidate fields
-    const candidates = Object.values(fm).filter(
-      (f) => f.isEnumCandidate && f.enumValues && f.enumValues.length >= 2 && f.occurrencePercent >= 50
-    );
+    // Find enum candidate fields — trust isEnumCandidate from schema detection
+    const candidates = Object.values(fm).filter((f) => f.isEnumCandidate);
     if (candidates.length === 0) return { fields: [] };
 
     // Sort by cardinality — fields closer to 5-15 unique values are most useful for filtering

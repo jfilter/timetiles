@@ -241,33 +241,6 @@ const Datasets: CollectionConfig = {
     },
     // Type Transformations and Import Transforms (extracted to separate file)
     ...transformationFields,
-    // Enum Detection Configuration
-    {
-      name: "enumDetection",
-      type: "group",
-      admin: { condition: editorOrAdminCondition },
-      fields: [
-        {
-          name: "mode",
-          type: "select",
-          options: [
-            { label: "By Unique Value Count", value: "count" },
-            { label: "By Percentage of Total", value: "percentage" },
-            { label: "Disabled", value: "disabled" },
-          ],
-          defaultValue: "count",
-        },
-        {
-          name: "threshold",
-          type: "number",
-          defaultValue: 50,
-          admin: {
-            condition: (data) => data?.enumDetection?.mode !== "disabled",
-            description: "Max unique values (count mode) or min percentage (percentage mode)",
-          },
-        },
-      ],
-    },
     // Geographic Field Detection (integrates with existing)
     {
       name: "geoFieldDetection",
