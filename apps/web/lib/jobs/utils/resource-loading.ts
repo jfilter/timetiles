@@ -210,34 +210,32 @@ export interface DuplicateRowInfo {
  * When `duplicateStrategy` is "update", external duplicates are NOT skipped
  * but instead mapped to their existing event IDs for updating.
  */
+const isDuplicateEntry = (d: unknown): d is { rowNumber: number; existingEventId?: string | number } =>
+  typeof d === "object" && d !== null && "rowNumber" in d;
+
+const parseDuplicateArray = (arr: unknown): Array<{ rowNumber: number; existingEventId?: string | number }> =>
+  Array.isArray(arr) ? arr.filter(isDuplicateEntry) : [];
+
 export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string): DuplicateRowInfo => {
   const skipRows = new Set<number>();
   const updateRows = new Map<number, string | number>();
-  const shouldUpdate = duplicateStrategy === "update";
 
   const duplicates = job.duplicates;
-  if (duplicates && typeof duplicates === "object" && !Array.isArray(duplicates)) {
-    // Internal duplicates are always skipped (can't "update" a row with itself)
-    if (Array.isArray(duplicates.internal)) {
-      for (const d of duplicates.internal) {
-        if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          skipRows.add((d as { rowNumber: number }).rowNumber);
-        }
-      }
-    }
+  if (!duplicates || typeof duplicates !== "object" || Array.isArray(duplicates)) {
+    return { skipRows, updateRows };
+  }
 
-    // External duplicates: skip or update depending on strategy
-    if (Array.isArray(duplicates.external)) {
-      for (const d of duplicates.external) {
-        if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          const dup = d as { rowNumber: number; existingEventId?: string | number };
-          if (shouldUpdate && dup.existingEventId != null) {
-            updateRows.set(dup.rowNumber, dup.existingEventId);
-          } else {
-            skipRows.add(dup.rowNumber);
-          }
-        }
-      }
+  // Internal duplicates are always skipped
+  for (const d of parseDuplicateArray(duplicates.internal)) {
+    skipRows.add(d.rowNumber);
+  }
+
+  // External duplicates: skip or update depending on strategy
+  for (const d of parseDuplicateArray(duplicates.external)) {
+    if (duplicateStrategy === "update" && d.existingEventId != null) {
+      updateRows.set(d.rowNumber, d.existingEventId);
+    } else {
+      skipRows.add(d.rowNumber);
     }
   }
 
