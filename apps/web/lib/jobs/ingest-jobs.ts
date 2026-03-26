@@ -38,6 +38,9 @@ export { dataExportJob } from "./handlers/data-export-job";
 // Audit log job handlers
 export { auditLogIpCleanupJob } from "./handlers/audit-log-ip-cleanup-job";
 
+// Job cleanup handler
+export { jobCleanupJob } from "./handlers/job-cleanup-job";
+
 // Account management job handlers
 export { executeAccountDeletionJob } from "./handlers/execute-account-deletion-job";
 

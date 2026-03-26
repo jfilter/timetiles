@@ -51,6 +51,7 @@ import {
   datasetDetectionJob,
   executeAccountDeletionJob,
   geocodeBatchJob,
+  jobCleanupJob,
   quotaResetJobConfig,
   scheduleManagerJob,
   schemaDetectionJob,
@@ -120,6 +121,7 @@ export const ALL_JOBS = [
   executeAccountDeletionJob,
   scraperExecutionJob,
   scraperRepoSyncJob,
+  jobCleanupJob,
 ];
 
 // Common upload configuration
