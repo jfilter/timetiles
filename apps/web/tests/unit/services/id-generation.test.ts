@@ -281,7 +281,7 @@ describe("id-generation", () => {
 
   describe("generateUniqueId wrapper", () => {
     const mockDatasetId = 42;
-    const withDataset = (idStrategy: Record<string, unknown>) => ({ id: mockDatasetId, idStrategy });
+    const withDataset = (idStrategy: NonNullable<Dataset["idStrategy"]>) => ({ id: mockDatasetId, idStrategy });
 
     it("throws error when external ID is missing", () => {
       const data = { name: "Test Event" }; // Missing external ID field

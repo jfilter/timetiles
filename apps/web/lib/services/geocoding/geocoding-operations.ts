@@ -20,7 +20,7 @@ import { createLogger, logError, logPerformance } from "@/lib/logger";
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
 import { getProviderRateLimiter } from "./provider-rate-limiter";
-import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
+import type { BatchGeocodingResult, GeocodingBias, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
 import { GeocodingError, isTransientError } from "./types";
 
 const logger = createLogger("geocoding-operations");
@@ -267,7 +267,11 @@ export class GeocodingOperations {
     return null;
   }
 
-  async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
+  async batchGeocode(
+    addresses: string[],
+    batchSize: number = 10,
+    _bias?: GeocodingBias
+  ): Promise<BatchGeocodingResult> {
     const results = new Map<string, GeocodingResult | GeocodingError>();
     const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
 

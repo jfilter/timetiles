@@ -95,9 +95,13 @@ describe("import-configure-service", () => {
     });
 
     it("passes through each deduplication strategy", () => {
-      for (const strategy of ["skip", "update", "version"] as const) {
+      for (const strategy of ["skip", "update"] as const) {
         expect(buildIdStrategy(undefined, strategy)).toMatchObject({ duplicateStrategy: strategy });
       }
+    });
+
+    it("maps removed 'version' strategy to 'skip'", () => {
+      expect(buildIdStrategy(undefined, "version" as any)).toMatchObject({ duplicateStrategy: "skip" });
     });
 
     it("includes null idField as externalIdPath", () => {

@@ -12,7 +12,7 @@ const cronMocks = vi.hoisted(() => ({ calculateNextCronRun: vi.fn() }));
 
 // Keep original implementation as default, override in specific tests
 vi.mock("@/lib/ingest/cron-parser", async (importOriginal) => {
-  const original = await importOriginal();
+  const original = await importOriginal<Record<string, unknown>>();
   const realCalculateNextCronRun = original.calculateNextCronRun as (...args: unknown[]) => unknown;
   return {
     ...original,

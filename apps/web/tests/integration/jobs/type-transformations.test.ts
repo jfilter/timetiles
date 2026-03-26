@@ -91,7 +91,6 @@ describe.sequential("Expression Transforms Integration", () => {
         name: "Transform Test Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        schemaConfig: { allowTransformations: true },
         ingestTransforms: [
           {
             id: "transform-age",
@@ -166,7 +165,6 @@ describe.sequential("Expression Transforms Integration", () => {
         name: "No Transform Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        schemaConfig: { allowTransformations: false },
         ingestTransforms: [
           {
             id: "transform-age-disabled",

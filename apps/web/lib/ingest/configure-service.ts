@@ -61,19 +61,16 @@ export const buildFieldMappingOverrides = (
 export const buildIdStrategy = (
   fieldMapping: FieldMapping | undefined,
   deduplicationStrategy: ConfigureIngestRequest["deduplicationStrategy"]
-): {
-  type: FieldMapping["idStrategy"];
-  externalIdPath?: string | null;
-  duplicateStrategy: ConfigureIngestRequest["deduplicationStrategy"];
-} => {
+): NonNullable<Dataset["idStrategy"]> => {
+  // Map API deduplication strategy to dataset-level duplicate strategy
+  // "version" is an API-level concept that maps to "skip" at the dataset level
+  const duplicateStrategy: NonNullable<Dataset["idStrategy"]>["duplicateStrategy"] =
+    deduplicationStrategy === "version" ? "skip" : deduplicationStrategy;
+
   if (!fieldMapping) {
-    return { type: "content-hash", duplicateStrategy: deduplicationStrategy };
+    return { type: "content-hash", duplicateStrategy };
   }
-  return {
-    type: fieldMapping.idStrategy,
-    externalIdPath: fieldMapping.idField,
-    duplicateStrategy: deduplicationStrategy,
-  };
+  return { type: fieldMapping.idStrategy, externalIdPath: fieldMapping.idField, duplicateStrategy };
 };
 
 /** Build geo field detection config. */

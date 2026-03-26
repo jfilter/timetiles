@@ -180,7 +180,7 @@ describe("findConfigSuggestions", () => {
     const config = results[0]!.config;
     expect(config.ingestTransforms).toEqual([]);
     expect(config.idStrategy).toEqual({ type: "content-hash" });
-    expect(config.deduplicationConfig).toEqual({ strategy: "skip" });
+    expect(config.deduplicationConfig).toEqual({ enabled: true });
     expect(config.geocodingEnabled).toBe(false);
   });
 

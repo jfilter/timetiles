@@ -68,8 +68,6 @@ describe.sequential("Schema Approval Workflow", () => {
       schemaConfig: {
         locked: true, // Require approval for all changes
         autoGrow: false,
-        strictValidation: true,
-        allowTransformations: true,
         maxSchemaDepth: 3,
       },
       currentSchema: {
@@ -259,7 +257,7 @@ describe.sequential("Schema Approval Workflow", () => {
       await payload.update({
         collection: "datasets",
         id: testDatasetId,
-        data: { schemaConfig: { locked: false, autoGrow: true, strictValidation: false } },
+        data: { schemaConfig: { locked: false, autoGrow: true } },
       });
 
       const autoApprovedSchema = await payload.create({

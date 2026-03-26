@@ -364,7 +364,7 @@ export const useWizardStore = create<WizardStore>()(
               fieldMappings: updatedFieldMappings,
               transforms: updatedTransforms,
               deduplicationStrategy:
-                (config.deduplicationConfig?.strategy as WizardState["deduplicationStrategy"]) ??
+                (config.idStrategy?.duplicateStrategy as WizardState["deduplicationStrategy"]) ??
                 s.deduplicationStrategy,
               geocodingEnabled: config.geocodingEnabled ?? s.geocodingEnabled,
             };

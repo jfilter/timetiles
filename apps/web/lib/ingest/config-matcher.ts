@@ -107,7 +107,7 @@ export const findConfigSuggestions = (
         fieldMappingOverrides: overrides ?? {},
         ingestTransforms: (dataset.ingestTransforms ?? []) as IngestTransform[],
         idStrategy: dataset.idStrategy ?? { type: "content-hash" },
-        deduplicationConfig: dataset.deduplicationConfig ?? { strategy: "skip" },
+        deduplicationConfig: dataset.deduplicationConfig ?? { enabled: true },
         geocodingEnabled: dataset.geoFieldDetection?.autoDetect ?? false,
       },
     });

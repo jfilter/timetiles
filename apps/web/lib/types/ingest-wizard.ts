@@ -201,7 +201,7 @@ export interface ConfigSuggestion {
     };
     ingestTransforms?: IngestTransform[];
     idStrategy?: { type?: string; externalIdPath?: string | null; duplicateStrategy?: string | null };
-    deduplicationConfig?: { strategy?: string | null };
+    deduplicationConfig?: { enabled?: boolean | null };
     geocodingEnabled?: boolean;
   };
 }

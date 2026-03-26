@@ -25,7 +25,7 @@ export interface GeoJsonToCsvResult {
 
 interface GeoJsonGeometry {
   type: string;
-  coordinates: unknown;
+  coordinates?: unknown;
   geometries?: GeoJsonGeometry[];
 }
 
