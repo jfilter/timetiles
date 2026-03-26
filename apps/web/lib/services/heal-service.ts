@@ -20,7 +20,9 @@ const logger = createLogger("heal");
 
 const MAX_UNIQUE_VALUES = 100;
 const ENUM_CONFIG = { enumThreshold: 30, enumMode: "count" as const };
-const EVENT_SAMPLE_SIZE = 500;
+
+/** Sample 5% of events, min 100, max 2000. */
+const sampleSize = (total: number) => Math.min(2000, Math.max(100, Math.ceil(total * 0.05)));
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,19 +144,39 @@ const generateFieldMetadataFromEvents = async (
   payload: Payload,
   datasetId: number
 ): Promise<Record<string, FieldStatistics> | null> => {
-  // Sort by id ascending to get a representative sample from the start of the dataset.
-  // Default sort (-createdAt) would return the last batch which may have atypical data
-  // (e.g. the tail end of a WFS response where optional fields are null).
-  const events = await payload.find({
+  // Sample 5% of events spread across multiple pages for a representative
+  // cross-section. Sequential sampling from one region produces skewed results
+  // when data is geographically ordered.
+  const totalCount = await payload.count({
     collection: COLLECTION_NAMES.EVENTS,
     where: { dataset: { equals: datasetId } },
-    limit: EVENT_SAMPLE_SIZE,
-    sort: "id",
-    depth: 0,
     overrideAccess: true,
   });
 
-  if (events.docs.length === 0) return null;
+  if (totalCount.totalDocs === 0) return null;
+
+  const targetSamples = sampleSize(totalCount.totalDocs);
+  const pageSize = Math.min(100, targetSamples);
+  const totalPages = Math.ceil(totalCount.totalDocs / pageSize);
+  const pagesToFetch = Math.ceil(targetSamples / pageSize);
+  const stride = Math.max(1, Math.floor(totalPages / pagesToFetch));
+
+  const allDocs = [];
+  for (let i = 0; i < pagesToFetch && allDocs.length < targetSamples; i++) {
+    const page = Math.min(i * stride + 1, totalPages);
+    const result = await payload.find({
+      collection: COLLECTION_NAMES.EVENTS,
+      where: { dataset: { equals: datasetId } },
+      limit: pageSize,
+      page,
+      sort: "id",
+      depth: 0,
+      overrideAccess: true,
+    });
+    allDocs.push(...result.docs);
+  }
+
+  const events = { docs: allDocs };
 
   const fieldStats: Record<string, FieldStatistics> = {};
 
