@@ -375,25 +375,32 @@
   color: hsl(212 100% 65%);
 }
 
-/* ── Funding badge ────────────────────────────────────────────── */
+/* ── Funding badge (landing page) ─────────────────────────────── */
 .tt-funded {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  padding: 1.5rem;
+  gap: 1.25rem;
+  padding: 2rem 1.5rem;
   margin-top: 2rem;
   border-radius: 0.75rem;
   background: rgb(249 250 251);
   border: 1px solid rgb(229 231 235);
   font-size: 0.875rem;
   color: rgb(107 114 128);
+  text-align: center;
 }
 
 :is(html[class~="dark"]) .tt-funded {
   background: rgb(17 24 39);
   border-color: rgb(55 65 81);
   color: rgb(156 163 175);
+}
+
+.tt-funded-text {
+  margin: 0;
+  line-height: 1.6;
 }
 
 .tt-funded a {
@@ -404,6 +411,104 @@
 
 .tt-funded a:hover {
   color: hsl(212 100% 45%);
+}
+
+.tt-funded-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.tt-funded-logos a {
+  text-decoration: none;
+}
+
+.tt-funded-logos img {
+  display: block;
+}
+
+.tt-funded-logos img.tt-logo-dark {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-funded-logos img.tt-logo-light {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-funded-logos img.tt-logo-dark {
+  display: block;
+}
+
+.tt-funded-logos .tt-funding-logo-bmftr img {
+  height: 100px;
+  width: auto;
+}
+
+.tt-funded-logos .tt-funding-logo-ptf img {
+  height: 28px;
+  width: auto;
+}
+
+.tt-funded .tt-funding-fkz {
+  font-size: 0.75rem;
+  color: rgb(156 163 175);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Funding logos (footer) ──────────────────────────────────── */
+.tt-footer-funding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+  padding: 1.5rem 0;
+  border-top: 1px solid rgb(229 231 235);
+  margin-bottom: 0.5rem;
+}
+
+:is(html[class~="dark"]) .tt-footer-funding {
+  border-color: rgb(55 65 81);
+}
+
+.tt-funding-logo img {
+  display: block;
+  height: 28px;
+  width: auto;
+}
+
+.tt-funding-logo img.tt-logo-dark {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-funding-logo img.tt-logo-light {
+  display: none;
+}
+
+:is(html[class~="dark"]) .tt-funding-logo img.tt-logo-dark {
+  display: block;
+}
+
+.tt-funding-logo-bmftr img {
+  height: 100px;
+  width: auto;
+  border-radius: 4px;
+}
+
+.tt-funding-fkz {
+  font-size: 0.75rem;
+  color: rgb(156 163 175);
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-footer-funding .tt-funding-text {
+  font-size: 0.75rem;
+  color: rgb(156 163 175);
+  max-width: 14rem;
+  text-align: center;
+  line-height: 1.4;
 }
 
 /* ── Responsive ───────────────────────────────────────────────── */

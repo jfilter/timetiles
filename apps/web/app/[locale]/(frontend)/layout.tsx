@@ -15,11 +15,9 @@ import LogoCompactLight from "@timetiles/assets/logos/latest/light/transparent/p
 import {
   Footer,
   FooterBottom,
-  FooterBottomContent,
   FooterBrand,
   FooterColumn,
   FooterContent,
-  FooterCopyright,
   FooterLink,
   FooterLinks,
   FooterLogo,
@@ -38,11 +36,11 @@ import { getPayload } from "payload";
 
 import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
 import { IconMapper } from "@/components/icon-mapper";
+import { NewsletterFormClient } from "@/components/newsletter-form-client";
 import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
-import { NewsletterFormClient } from "@/components/newsletter-form-client";
 import { SiteProvider } from "@/lib/context/site-context";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
@@ -102,11 +100,19 @@ export const generateMetadata = async (): Promise<Metadata> => {
 
 interface SiteFooterProps {
   footerData: FooterType;
+  locale: Locale;
+  footerMessages: { fundingText: string; bmftrAlt: string; openSource: string; madeIn: string };
   newsletterMessages: { success: string; error: string; networkError: string };
   newsletterButtonLabels: { submitting: string; submitted: string };
 }
 
-const SiteFooter = ({ footerData, newsletterMessages, newsletterButtonLabels }: Readonly<SiteFooterProps>) => {
+const SiteFooter = ({
+  footerData,
+  locale,
+  footerMessages,
+  newsletterMessages,
+  newsletterButtonLabels,
+}: Readonly<SiteFooterProps>) => {
   return (
     <Footer>
       <FooterContent
@@ -176,26 +182,59 @@ const SiteFooter = ({ footerData, newsletterMessages, newsletterButtonLabels }: 
         )}
       </FooterContent>
       <FooterBottom>
-        <FooterBottomContent>
-          <FooterCopyright>{footerData.copyright}</FooterCopyright>
-          {footerData.credits && <p className="text-muted-foreground text-sm">{footerData.credits}</p>}
-        </FooterBottomContent>
+        <div className="flex w-full flex-col items-center justify-between gap-4 sm:flex-row">
+          <div className="flex items-center gap-4">
+            <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/ptf-logo-black.svg" alt="Prototype Fund" className="h-5 w-auto dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/ptf-logo-white.svg" alt="Prototype Fund" className="hidden h-5 w-auto dark:block" />
+            </a>
+            <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={locale === "de" ? "/logos/bmftr-de.svg" : "/logos/bmftr-en.svg"}
+                alt={footerMessages.bmftrAlt}
+                className="h-16 w-auto rounded"
+              />
+            </a>
+            <span className="text-muted-foreground text-xs">{footerMessages.fundingText}</span>
+          </div>
+          <span className="text-muted-foreground text-sm">
+            <a
+              href="https://github.com/jfilter/timetiles/blob/main/LICENSE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-foreground transition-colors"
+            >
+              {footerMessages.openSource}
+            </a>
+            {` · ${footerMessages.madeIn}`}
+          </span>
+        </div>
       </FooterBottom>
     </Footer>
   );
 };
 
 export default async function FrontendLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const [locale, messages, tNewsletter] = await Promise.all([
+  const [locale, messages, tNewsletter, tFooter] = await Promise.all([
     getLocale() as Promise<Locale>,
     getMessages(),
     getTranslations("Newsletter"),
+    getTranslations("Footer"),
   ]);
   const footerData = await getFooterData(locale);
   const newsletterMessages = {
     success: tNewsletter("success"),
     error: tNewsletter("error"),
     networkError: tNewsletter("networkError"),
+  };
+  const footerMessages = {
+    fundingText: tFooter("fundingText"),
+    bmftrAlt: tFooter("bmftrAlt"),
+    openSource: tFooter("openSource"),
+    madeIn: tFooter("madeIn"),
   };
   const payload = await getPayload({ config });
   const headersList = await headers();
@@ -233,6 +272,8 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
               {children}
               <SiteFooter
                 footerData={footerData}
+                locale={locale}
+                footerMessages={footerMessages}
                 newsletterMessages={newsletterMessages}
                 newsletterButtonLabels={{
                   submitting: tNewsletter("subscribing"),

@@ -213,12 +213,18 @@
     "failedToLoad": "Failed to Load Event",
     "failedToLoadDescription": "There was a problem loading the event details. Please try again.",
     "coordinates": "Coordinates",
+    "coordinateSource": "Source",
+    "coordinateSourceData": "From data",
+    "coordinateSourceGeocoded": "Geocoded",
+    "coordinateSourceNone": "None",
     "geocoding": "Geocoding",
     "confidence": "Confidence",
     "status": "Status",
     "eventDate": "Event Date",
     "shareEvent": "Share event",
     "linkCopied": "Link copied",
+    "details": "Details",
+    "technicalInfo": "Technical Info",
     "metadata": "Metadata",
     "created": "Created",
     "updated": "Updated",
@@ -911,5 +917,11 @@
     "errorSubtitle": "Please try again later",
     "emptyTitle": "No data packages available",
     "emptySubtitle": "Check back later for curated data sources"
+  },
+  "Footer": {
+    "fundingText": "Funded 2025–2026 by the BMFTR (FKZ 16IS25S03)",
+    "bmftrAlt": "Funded by the German Federal Ministry for Research, Technology and Space",
+    "openSource": "Open source",
+    "madeIn": "Made in Berlin"
   }
 }

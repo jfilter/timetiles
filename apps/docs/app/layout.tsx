@@ -95,6 +95,28 @@ const footer = (
         </div>
       </div>
 
+      <div className="tt-footer-funding">
+        <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer" className="tt-funding-logo">
+          <img src="/logos/ptf-logo-black.svg" alt="Prototype Fund" className="tt-logo-light" height={40} />
+          <img src="/logos/ptf-logo-white.svg" alt="Prototype Fund" className="tt-logo-dark" height={40} />
+        </a>
+        <a
+          href="https://www.bmftr.bund.de"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tt-funding-logo tt-funding-logo-bmftr"
+        >
+          <img
+            src="/logos/bmftr-en.svg"
+            alt="Funded by the German Federal Ministry for Research, Technology and Space"
+            height={60}
+          />
+        </a>
+        <span className="tt-funding-text">
+          Funded in 2025–2026 by the German Federal Ministry for Research, Technology and Space (FKZ 16IS25S03)
+        </span>
+      </div>
+
       <div className="tt-footer-bottom">
         <div className="tt-footer-social">
           <SocialIcon href={SOCIAL_LINKS.mastodon} label="Mastodon">
@@ -129,15 +151,10 @@ const footer = (
           </SocialIcon>
         </div>
         <p className="tt-footer-copy">
-          © {new Date().getFullYear()} TimeTiles &middot;{" "}
           <a href="https://github.com/jfilter/timetiles/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">
-            AGPL-3.0
+            Open source
           </a>{" "}
-          &middot; Funded by the{" "}
-          <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
-            Prototype Fund
-          </a>{" "}
-          (BMBF)
+          &middot; Made in Berlin
         </p>
       </div>
     </div>

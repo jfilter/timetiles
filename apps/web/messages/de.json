@@ -156,7 +156,6 @@
     "beeswarm": "Zeitleiste",
     "eventAnalysis": "Ereignisanalyse",
     "eventScatter": "Zeitleiste",
-
     "individualEvents": "Einzelne Ereignisse im Zeitverlauf",
     "showingLimited": "Zeige {visible} von {total} Ereignissen",
     "countDatasets": "{count} Datensätze",
@@ -916,5 +915,11 @@
     "errorSubtitle": "Bitte versuche es spaeter erneut",
     "emptyTitle": "Keine Datenpakete verfuegbar",
     "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen"
+  },
+  "Footer": {
+    "fundingText": "Gefördert 2025–2026 vom BMFTR (FKZ 16IS25S03)",
+    "bmftrAlt": "Gefördert vom Bundesministerium für Forschung, Technologie und Raumfahrt",
+    "openSource": "Open Source",
+    "madeIn": "Made in Berlin"
   }
 }

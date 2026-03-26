@@ -75,9 +75,16 @@
 </div>
 
 <div className="tt-funded">
-  {"TimeTiles is open-source software ("}
-  <a href="https://github.com/jfilter/timetiles/blob/main/LICENSE">{"AGPL-3.0"}</a>
-  {") funded by the "}
-  <a href="https://prototypefund.de">{"Prototype Fund"}</a>
-  {" from the German Federal Ministry of Education and Research (BMBF)."}
+  <div className="tt-funded-logos">
+    <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer" className="tt-funding-logo-ptf">
+      <img src="/logos/ptf-logo-black.svg" alt="Prototype Fund" className="tt-logo-light" />
+      <img src="/logos/ptf-logo-white.svg" alt="Prototype Fund" className="tt-logo-dark" />
+    </a>
+    <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer" className="tt-funding-logo-bmftr">
+      <img src="/logos/bmftr-en.svg" alt="Funded by the German Federal Ministry for Research, Technology and Space" />
+    </a>
+  </div>
+  <p className="tt-funded-text">
+    {"Funded in 2025–2026 by the German Federal Ministry for Research, Technology and Space (FKZ 16IS25S03)."}
+  </p>
 </div>

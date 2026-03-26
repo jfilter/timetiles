@@ -121,7 +121,15 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Acknowledgments
 
-Funded by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry of Education and Research.
+<a href="https://prototypefund.de"><picture>
+
+  <source media="(prefers-color-scheme: dark)" srcset="apps/docs/public/logos/ptf-logo-white.svg">
+  <source media="(prefers-color-scheme: light)" srcset="apps/docs/public/logos/ptf-logo-black.svg">
+  <img alt="Prototype Fund" src="apps/docs/public/logos/ptf-logo-black.svg" height="35">
+</picture></a>&nbsp;&nbsp;&nbsp;
+<a href="https://www.bmftr.bund.de"><img src="apps/docs/public/logos/bmftr-en.svg" alt="Funded by the German Federal Ministry for Research, Technology and Space" height="60"></a>
+
+Funded in 2025 and 2026 by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry for Research, Technology and Space (BMFTR). FKZ 16IS25S03.
 
 ## Contact
 
