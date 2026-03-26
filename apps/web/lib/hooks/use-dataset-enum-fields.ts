@@ -1,9 +1,9 @@
 /**
- * React Query hook for fetching enum field metadata from a dataset.
+ * React Query hook for fetching live enum field counts from a dataset.
  *
- * Used by categorical filter components to display enum field dropdowns.
- * Extracts fields where `isEnumCandidate` is true from the dataset's
- * fieldMetadata and selects the top N fields by cardinality heuristics.
+ * Fetches from `/api/v1/datasets/{id}/enum-stats` which computes counts
+ * via SQL aggregation on events.transformed_data. Returns fresh counts
+ * instead of stale fieldMetadata values.
  *
  * @module
  */
@@ -12,7 +12,6 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "@/lib/api/http-error";
-import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 import { QUERY_PRESETS } from "./query-presets";
 
@@ -30,70 +29,9 @@ export interface EnumField {
   cardinality: number;
 }
 
-/**
- * Humanize a field path to a readable label.
- * Converts snake_case/camelCase to Title Case with spaces.
- */
-const humanizeFieldPath = (path: string): string => {
-  // Get the last segment if path contains dots
-  const lastSegment = path.split(".").pop() ?? path;
-
-  return lastSegment
-    .replaceAll("_", " ")
-    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
-    .replaceAll(/\b\w/g, (c) => c.toUpperCase());
-};
-
-/**
- * Select top enum fields using cardinality heuristics.
- *
- * Prefers fields with:
- * - 2-30 unique values (good for filtering)
- * - High occurrence percentage (present in most records)
- * - Cardinality close to 5-15 (ideal for dropdown selection)
- */
-const selectTopEnumFields = (
-  fieldMetadata: Record<string, FieldStatistics> | null | undefined,
-  maxFields = 5
-): EnumField[] => {
-  if (!fieldMetadata) return [];
-
-  const enumCandidates = Object.values(fieldMetadata).filter(
-    (field): field is FieldStatistics & { enumValues: NonNullable<FieldStatistics["enumValues"]> } =>
-      field.isEnumCandidate &&
-      field.enumValues != null &&
-      field.enumValues.length >= 2 &&
-      field.enumValues.length <= 30 &&
-      field.occurrencePercent >= 50
-  );
-
-  // Sort by cardinality preference (prefer 5-15 unique values)
-  const idealCardinality = 10;
-  enumCandidates.sort((a, b) => {
-    const aDistance = Math.abs(a.enumValues.length - idealCardinality);
-    const bDistance = Math.abs(b.enumValues.length - idealCardinality);
-    return aDistance - bDistance;
-  });
-
-  return enumCandidates
-    .slice(0, maxFields)
-    .map((field) => ({
-      path: field.path,
-      label: humanizeFieldPath(field.path),
-      values: field.enumValues.map((v) => ({ value: String(v.value), count: v.count, percent: v.percent })),
-      cardinality: field.enumValues.length,
-    }));
-};
-
-/**
- * Fetch dataset and extract fieldMetadata.
- */
-const fetchDatasetFieldMetadata = async (datasetId: string): Promise<Record<string, FieldStatistics> | null> => {
-  const dataset = await fetchJson<{ fieldMetadata?: Record<string, FieldStatistics> }>(
-    `/api/datasets/${datasetId}?depth=0`
-  );
-  return dataset.fieldMetadata ?? null;
-};
+interface EnumStatsResponse {
+  fields: EnumField[];
+}
 
 export const datasetEnumFieldsKeys = {
   all: ["dataset-enum-fields"] as const,
@@ -101,19 +39,18 @@ export const datasetEnumFieldsKeys = {
 };
 
 /**
- * Hook to fetch enum fields for a dataset.
+ * Hook to fetch live enum field counts for a dataset.
  *
- * Returns the top N enum candidate fields from the dataset's fieldMetadata,
- * ready for display in categorical filter dropdowns.
+ * Returns the top enum candidate fields with accurate counts computed
+ * from SQL aggregation on the events table.
  *
  * @param datasetId - The dataset ID to fetch enum fields for
- * @param maxFields - Maximum number of fields to return (default: 5)
  */
-export const useDatasetEnumFieldsQuery = (datasetId: string | null, maxFields = 5) =>
+export const useDatasetEnumFieldsQuery = (datasetId: string | null, _maxFields = 5) =>
   useQuery({
     queryKey: datasetEnumFieldsKeys.byDataset(datasetId),
-    queryFn: () => fetchDatasetFieldMetadata(datasetId ?? ""),
+    queryFn: () => fetchJson<EnumStatsResponse>(`/api/v1/datasets/${datasetId}/enum-stats`),
     enabled: datasetId != null,
     ...QUERY_PRESETS.stable,
-    select: (data) => selectTopEnumFields(data, maxFields),
+    select: (data) => data.fields,
   });
