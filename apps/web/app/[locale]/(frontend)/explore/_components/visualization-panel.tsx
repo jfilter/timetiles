@@ -89,14 +89,9 @@ export const VisualizationPanel = ({
       padding="none"
       className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex h-full flex-col" : ""}`}
     >
-      <CardHeader className="flex flex-row items-start justify-between gap-4 border-b px-4 py-3 md:px-6 md:py-4">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b px-4 py-2 md:px-6 md:py-3">
         <div className="min-w-0 flex-1">
-          {/* Section Label - cartographic monospace style */}
-          <div className="text-muted-foreground mb-1 font-mono text-xs tracking-wider uppercase">{chartMeta.label}</div>
-          {/* Heading - serif per design system */}
-          <h2 className="text-foreground font-serif text-xl font-bold">{chartMeta.heading}</h2>
-          {/* Subtitle - editorial polish */}
-          <p className="text-muted-foreground mt-1 text-sm">{chartMeta.subtitle}</p>
+          <h2 className="text-foreground font-serif text-base font-bold">{chartMeta.heading}</h2>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">

@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
@@ -99,7 +100,10 @@ export const ChartSection = ({
   const t = useTranslations("Explore");
   const getChartMeta = useChartMeta();
   const chartTypeLabels = useChartTypeLabels();
-  const [selectedChartType, setSelectedChartType] = useState<ChartType>("histogram");
+  const [selectedChartType, setSelectedChartType] = useQueryState(
+    "chart",
+    parseAsStringEnum<ChartType>(["histogram", "beeswarm", "dataset-bar", "catalog-bar"]).withDefault("histogram")
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
