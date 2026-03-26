@@ -20,6 +20,7 @@ import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
+import { useUIStore } from "@/lib/store";
 import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
 
 import { CategoricalFilters } from "./categorical-filters";
@@ -32,6 +33,7 @@ export const EventFilters = () => {
   const tExplore = useTranslations("Explore");
   const { filters, setStartDate, setEndDate, clearDateRange, clearAllFilters, hasActiveFilters, activeFilterCount } =
     useFilters();
+  const mapBounds = useUIStore((state) => state.ui.mapBounds);
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
@@ -98,7 +100,12 @@ export const EventFilters = () => {
       {/* Time Range Section — hidden when no visible datasets have temporal data */}
       {showTemporalFilters && (
         <FilterSection title={t("timeRange")} defaultOpen activeCount={timeRangeActiveCount}>
-          <TimeRangeSlider filters={filters} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />
+          <TimeRangeSlider
+            filters={filters}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+            bounds={mapBounds}
+          />
 
           {(filters.startDate != null || filters.endDate != null) && (
             <button

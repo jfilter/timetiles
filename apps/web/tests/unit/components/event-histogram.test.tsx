@@ -54,8 +54,6 @@ vi.mock("../../../lib/store", () => ({
 // Mock the React Query hook — loading phase is now computed inside the hook
 vi.mock("../../../lib/hooks/use-events-queries", () => ({ useHistogramQuery: vi.fn() }));
 
-// useChartFilters deleted — setSingleDayFilter is now part of useFilters (mocked above)
-
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
   default: ({ option }: any) => {

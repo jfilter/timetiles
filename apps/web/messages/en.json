@@ -152,6 +152,7 @@
     "histogramBarTitle": "{date}: {count} events",
     "allEvents": "All Events",
     "eventsLabel": "Events",
+    "expandChart": "Expand chart",
     "countDatasets": "{count} Datasets",
     "dateRangeFrom": "From {date}",
     "dateRangeUntil": "Until {date}",

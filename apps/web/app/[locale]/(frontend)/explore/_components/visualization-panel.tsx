@@ -10,9 +10,14 @@
  */
 "use client";
 
+import { Button } from "@timetiles/ui/components/button";
 import { Card, CardContent, CardHeader } from "@timetiles/ui/components/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
+import { Maximize2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import * as React from "react";
+
+type IconComponent = React.ComponentType<{ className?: string }>;
 
 export type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
 
@@ -37,6 +42,8 @@ interface VisualizationPanelProps {
   availableChartTypes?: readonly ChartType[];
   /** When true, the panel will fill available height */
   fillHeight?: boolean;
+  /** Callback when the expand/fullscreen button is clicked */
+  onExpandClick?: () => void;
 }
 
 /**
@@ -62,7 +69,9 @@ export const VisualizationPanel = ({
   chartMeta,
   availableChartTypes = ALL_CHART_TYPES,
   fillHeight = false,
+  onExpandClick,
 }: Readonly<VisualizationPanelProps>) => {
+  const t = useTranslations("Explore");
   const chartTypeLabels = useChartTypeLabels();
   const handleValueChange = (value: string) => onChartTypeChange(value as ChartType);
 
@@ -85,24 +94,35 @@ export const VisualizationPanel = ({
           <p className="text-muted-foreground mt-1 text-sm">{chartMeta.subtitle}</p>
         </div>
 
-        {/* Chart Type Selector - only show if multiple options available */}
-        {showDropdown && (
-          <Select value={chartType} onValueChange={handleValueChange}>
-            <SelectTrigger
-              aria-label="Chart type"
-              className="border-primary/20 bg-background w-auto min-w-[140px] shrink-0"
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Chart Type Selector - only show if multiple options available */}
+          {showDropdown && (
+            <Select value={chartType} onValueChange={handleValueChange}>
+              <SelectTrigger aria-label="Chart type" className="border-primary/20 bg-background w-auto min-w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableChartTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {chartTypeLabels[type]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {onExpandClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onExpandClick}
+              aria-label={t("expandChart")}
+              title={t("expandChart")}
+              className="h-8 w-8"
             >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableChartTypes.map((type) => (
-                <SelectItem key={type} value={type}>
-                  {chartTypeLabels[type]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+              {React.createElement(Maximize2 as IconComponent, { className: "h-4 w-4" })}
+            </Button>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>

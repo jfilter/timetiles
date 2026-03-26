@@ -48,9 +48,16 @@ interface TimeRangeSliderProps {
   filters: FilterState;
   onStartDateChange: (date: string | null) => void;
   onEndDateChange: (date: string | null) => void;
+  /** Optional map bounds — when set, mini histogram is spatially filtered */
+  bounds?: { north: number; south: number; east: number; west: number } | null;
 }
 
-export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }: Readonly<TimeRangeSliderProps>) => {
+export const TimeRangeSlider = ({
+  filters,
+  onStartDateChange,
+  onEndDateChange,
+  bounds,
+}: Readonly<TimeRangeSliderProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
 
@@ -80,7 +87,7 @@ export const TimeRangeSlider = ({ filters, onStartDateChange, onEndDateChange }:
     handleCloseEditMode,
     handleHistogramKeyDown,
     handleHistogramClick,
-  } = useTimeRangeSlider({ filters, onStartDateChange, onEndDateChange });
+  } = useTimeRangeSlider({ filters, onStartDateChange, onEndDateChange, bounds });
 
   // Loading state
   if (isLoading) {

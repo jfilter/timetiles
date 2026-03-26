@@ -47,6 +47,14 @@ export interface TimeHistogramProps {
   isError?: boolean;
   /** Callback to retry the failed fetch */
   onRetry?: () => void;
+  /** Show DataZoom slider and enable scroll/pinch zoom */
+  showDataZoom?: boolean;
+  /** Controlled DataZoom start position (0-100) */
+  dataZoomStart?: number;
+  /** Controlled DataZoom end position (0-100) */
+  dataZoomEnd?: number;
+  /** Callback when DataZoom range changes */
+  onDataZoomChange?: (start: number, end: number) => void;
 }
 
 /**
@@ -183,6 +191,10 @@ export const TimeHistogram = ({
   bucketSizeSeconds,
   isError = false,
   onRetry,
+  showDataZoom = false,
+  dataZoomStart,
+  dataZoomEnd,
+  onDataZoomChange,
 }: TimeHistogramProps) => {
   // Determine if dark theme based on theme prop
   const isDark = (() => {
@@ -254,16 +266,39 @@ export const TimeHistogram = ({
     },
   ];
 
+  const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number) => {
+    const primaryColor = Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor;
+    return [
+      {
+        type: "slider" as const,
+        show: true,
+        xAxisIndex: 0,
+        bottom: 8,
+        height: 24,
+        ...(start != null ? { start } : {}),
+        ...(end != null ? { end } : {}),
+        borderColor: chartTheme.axisLineColor,
+        fillerColor: `${primaryColor}33`,
+        dataBackground: { lineStyle: { color: chartTheme.axisLineColor }, areaStyle: { color: `${primaryColor}1A` } },
+        selectedDataBackground: { lineStyle: { color: primaryColor }, areaStyle: { color: `${primaryColor}33` } },
+        handleStyle: { color: primaryColor, borderColor: chartTheme.axisLineColor },
+        textStyle: { color: chartTheme.textColor, fontSize: 10 },
+      },
+      { type: "inside" as const, xAxisIndex: 0, ...(start != null ? { start } : {}), ...(end != null ? { end } : {}) },
+    ];
+  };
+
   // Create ECharts option for the histogram
   const axisConfig = getAxisConfig(effectiveTheme);
 
   const chartOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: "3%", right: "4%", bottom: "3%", top: "10%", containLabel: true },
+    grid: { left: "3%", right: "4%", bottom: showDataZoom ? 45 : "3%", top: "10%", containLabel: true },
     ...axisConfig,
     tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
     series: getSeriesConfig(effectiveTheme, data),
+    ...(showDataZoom ? { dataZoom: getDataZoomConfig(effectiveTheme, dataZoomStart, dataZoomEnd) } : {}),
     animation: true,
     animationDuration: 300,
   };
@@ -281,7 +316,15 @@ export const TimeHistogram = ({
     }
   };
 
-  const chartEvents = { click: handleChartClick };
+  const handleDataZoom = (params: EChartsEventParams) => {
+    if (!onDataZoomChange) return;
+    const p = params as unknown as { start?: number; end?: number; batch?: Array<{ start: number; end: number }> };
+    const start = p.batch?.[0]?.start ?? p.start ?? 0;
+    const end = p.batch?.[0]?.end ?? p.end ?? 100;
+    onDataZoomChange(start, end);
+  };
+
+  const chartEvents = { click: handleChartClick, ...(onDataZoomChange ? { datazoom: handleDataZoom } : {}) };
 
   // Handle error state
   if (isError && !isInitialLoad) {

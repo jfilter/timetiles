@@ -14,7 +14,16 @@ import { type ChangeEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // Mock the query hooks
-vi.mock("@/lib/hooks/use-events-queries", () => ({ useFullHistogramQuery: vi.fn() }));
+vi.mock("@/lib/hooks/use-events-queries", () => ({
+  useFullHistogramQuery: vi.fn(),
+  useHistogramQuery: vi.fn(() => ({
+    data: null,
+    isLoading: false,
+    isInitialLoad: false,
+    isUpdating: false,
+    isError: false,
+  })),
+}));
 
 vi.mock("@/lib/hooks/use-view-scope", () => ({ useViewScope: vi.fn().mockReturnValue("explore") }));
 

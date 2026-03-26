@@ -10,12 +10,24 @@
  */
 "use client";
 
+import { Button } from "@timetiles/ui/components/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@timetiles/ui/components/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { EventHistogram } from "@/components/charts/event-histogram";
+import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
@@ -60,13 +72,22 @@ const getChartHeight = (type: ChartType): number => {
   }
 };
 
+/** Labels for chart type selector dropdown. */
+const useChartTypeLabels = (): Record<ChartType, string> => {
+  const t = useTranslations("Explore");
+  return { histogram: t("timeline"), ["dataset-bar"]: t("byDataset"), ["catalog-bar"]: t("byCatalog") };
+};
+
 export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = true }: Readonly<ChartSectionProps>) => {
+  const t = useTranslations("Explore");
   const getChartMeta = useChartMeta();
+  const chartTypeLabels = useChartTypeLabels();
   const [selectedChartType, setSelectedChartType] = useState<ChartType>("histogram");
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Get filter state to determine which chart types are relevant
-  const { filters } = useFilters();
+  const { filters, setStartDate, setEndDate } = useFilters();
 
   // Determine which chart types should be available based on filters and data capabilities
   const availableChartTypes = useMemo<ChartType[]>(() => {
@@ -124,30 +145,84 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
   const chartHeight = getChartHeight(chartType);
   const containerStyle = fillHeight ? undefined : { minHeight: chartHeight };
 
+  const renderChart = (height: number | string) => (
+    <>
+      {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} />}
+      {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
+      {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
+    </>
+  );
+
   return (
-    <VisualizationPanel
-      chartType={chartType}
-      onChartTypeChange={handleChartTypeChange}
-      chartMeta={chartMeta}
-      availableChartTypes={availableChartTypes}
-      fillHeight={fillHeight}
-    >
-      <div
-        className={cn(
-          "relative transition-all duration-300 ease-out",
-          isTransitioning && "opacity-0",
-          fillHeight && "flex-1"
-        )}
-        style={containerStyle}
+    <>
+      <VisualizationPanel
+        chartType={chartType}
+        onChartTypeChange={handleChartTypeChange}
+        chartMeta={chartMeta}
+        availableChartTypes={availableChartTypes}
+        fillHeight={fillHeight}
+        onExpandClick={() => setIsFullscreen(true)}
       >
-        {chartType === "histogram" && <EventHistogram bounds={bounds} height={fillHeight ? "100%" : chartHeight} />}
-        {chartType === "dataset-bar" && (
-          <AggregationBarChart bounds={bounds} type="dataset" height={fillHeight ? "100%" : chartHeight} />
-        )}
-        {chartType === "catalog-bar" && (
-          <AggregationBarChart bounds={bounds} type="catalog" height={fillHeight ? "100%" : chartHeight} />
-        )}
-      </div>
-    </VisualizationPanel>
+        <div
+          className={cn(
+            "relative transition-all duration-300 ease-out",
+            isTransitioning && "opacity-0",
+            fillHeight && "flex-1"
+          )}
+          style={containerStyle}
+        >
+          {renderChart(fillHeight ? "100%" : chartHeight)}
+        </div>
+      </VisualizationPanel>
+
+      <Dialog open={isFullscreen} onOpenChange={(open) => !open && setIsFullscreen(false)}>
+        <DialogContent
+          className="flex h-[95vh] max-h-[95vh] w-[95vw] max-w-none flex-col overflow-hidden"
+          showCloseButton={false}
+        >
+          <DialogHeader className="flex flex-row items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <DialogTitle>{chartMeta.heading}</DialogTitle>
+              <DialogDescription>{chartMeta.subtitle}</DialogDescription>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {availableChartTypes.length > 1 && (
+                <Select value={chartType} onValueChange={(v) => handleChartTypeChange(v as ChartType)}>
+                  <SelectTrigger
+                    aria-label={t("timeline")}
+                    className="border-primary/20 bg-background w-auto min-w-[140px]"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableChartTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {chartTypeLabels[type]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <DialogClose asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogClose>
+            </div>
+          </DialogHeader>
+          <div className="flex-1">{renderChart("100%")}</div>
+          {chartType === "histogram" && (
+            <div className="border-t px-6 pt-4 pb-2">
+              <TimeRangeSlider
+                filters={filters}
+                onStartDateChange={setStartDate}
+                onEndDateChange={setEndDate}
+                bounds={bounds}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };

@@ -22,4 +22,6 @@ export interface BaseChartProps {
   className?: string;
   /** Map bounds for filtering data (optional) */
   bounds?: SimpleBounds | null;
+  /** Show DataZoom slider for interactive time range zooming */
+  showDataZoom?: boolean;
 }

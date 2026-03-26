@@ -28,7 +28,7 @@ import type { BaseChartProps } from "./types";
  * Fetches histogram data from the API and renders it using the TimeHistogram
  * component. Handles filter state and click interactions.
  */
-export const EventHistogram = ({ height = 200, className, bounds }: Readonly<BaseChartProps>) => {
+export const EventHistogram = ({ height = 200, className, bounds, showDataZoom }: Readonly<BaseChartProps>) => {
   const chartTheme = useChartTheme();
   const { filters, setSingleDayFilter } = useFilters();
   const scope = useViewScope();
@@ -54,6 +54,7 @@ export const EventHistogram = ({ height = 200, className, bounds }: Readonly<Bas
       isUpdating={isUpdating}
       isError={isError}
       bucketSizeSeconds={bucketSizeSeconds}
+      showDataZoom={showDataZoom}
     />
   );
 };

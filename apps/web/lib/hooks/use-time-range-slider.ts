@@ -12,7 +12,7 @@
 import type React from "react";
 import { useMemo, useRef, useState } from "react";
 
-import { useFullHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useFullHistogramQuery, useHistogramQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import type { HistogramResponse } from "@/lib/schemas/events";
@@ -26,6 +26,8 @@ interface UseTimeRangeSliderProps {
   filters: FilterState;
   onStartDateChange: (date: string | null) => void;
   onEndDateChange: (date: string | null) => void;
+  /** Optional map bounds — when set, histogram data is spatially filtered */
+  bounds?: { north: number; south: number; east: number; west: number } | null;
 }
 
 interface NormalizedBar {
@@ -92,6 +94,7 @@ export const useTimeRangeSlider = ({
   filters,
   onStartDateChange,
   onEndDateChange,
+  bounds,
 }: UseTimeRangeSliderProps): UseTimeRangeSliderReturn => {
   const { startDate, endDate } = filters;
   const trackRef = useRef<HTMLDivElement>(null);
@@ -100,8 +103,14 @@ export const useTimeRangeSlider = ({
   const [isEditingDates, setIsEditingDates] = useState(false);
 
   // Fetch histogram data for full date range (no date filter applied)
+  // When bounds are provided, spatially filter the histogram to match the map viewport
   const scope = useViewScope();
-  const { data: histogramData, isLoading } = useFullHistogramQuery(filters, scope);
+  const fullRangeFilters = useMemo(() => ({ ...filters, startDate: null, endDate: null }), [filters]);
+  const unboundedQuery = useFullHistogramQuery(filters, scope);
+  const boundedQuery = useHistogramQuery(fullRangeFilters, bounds ?? null, bounds != null, scope);
+  const histogramQuery = bounds != null ? boundedQuery : unboundedQuery;
+  const histogramData = histogramQuery.data;
+  const isLoading = histogramQuery.isLoading;
 
   const histogram = histogramData?.histogram ?? EMPTY_HISTOGRAM;
 
