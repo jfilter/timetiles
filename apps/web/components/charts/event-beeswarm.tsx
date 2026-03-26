@@ -17,8 +17,8 @@ import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
-import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
 import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -205,7 +205,6 @@ const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
   }, [enumFieldsQuery.data]);
 };
 
-// eslint-disable-next-line complexity -- slightly over threshold due to grouped chart features
 export const EventBeeswarm = ({
   bounds,
   height = 300,
