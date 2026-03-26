@@ -118,6 +118,24 @@ const manifestSchema = z.object({
     })
     .optional(),
 
+  parameters: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .min(1)
+          .regex(/^[a-z][a-z0-9_]*$/, "Parameter name must be lowercase alphanumeric"),
+        label: z.string().min(1),
+        required: z.boolean().default(false),
+        example: z.string().optional(),
+      })
+    )
+    .optional(),
+
+  setup: z
+    .object({ instructions: z.string().min(1), url: z.string().optional(), envVars: z.array(z.string()) })
+    .optional(),
+
   geocodingBias: z
     .object({
       countryCodes: z.array(z.string().regex(/^[a-z]{2}$/)).optional(),

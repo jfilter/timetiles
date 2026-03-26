@@ -23,6 +23,48 @@ const logger = createLogger("data-packages");
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Substitute `{{key}}` placeholders in a string with parameter values. */
+const substituteTemplate = (s: string, params: Record<string, string>): string =>
+  s.replace(/\{\{(\w+)\}\}/g, (match, key: string) => params[key] ?? match);
+
+/** Resolve template parameters in a manifest, returning a new manifest with substituted values. */
+const resolveManifestParameters = (
+  manifest: DataPackageManifest,
+  params: Record<string, string>
+): DataPackageManifest => {
+  for (const p of manifest.parameters ?? []) {
+    if (p.required && !params[p.name]) {
+      throw new Error(`Missing required parameter: "${p.name}" (${p.label})`);
+    }
+  }
+
+  const sub = (s: string) => substituteTemplate(s, params);
+
+  return {
+    ...manifest,
+    name: sub(manifest.name),
+    description: sub(manifest.description),
+    region: manifest.region ? sub(manifest.region) : undefined,
+    source: { ...manifest.source, url: sub(manifest.source.url) },
+    catalog: {
+      ...manifest.catalog,
+      name: sub(manifest.catalog.name),
+      description: manifest.catalog.description ? sub(manifest.catalog.description) : undefined,
+    },
+    dataset: { ...manifest.dataset, name: sub(manifest.dataset.name) },
+  };
+};
+
+/** Build activation key from slug + parameters for uniqueness. */
+const buildActivationKey = (slug: string, params: Record<string, string>): string => {
+  if (Object.keys(params).length === 0) return slug;
+  const sorted = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${k}=${v}`)
+    .join(",");
+  return `${slug}:${sorted}`;
+};
+
 /** Build Lexical rich text from a plain string. */
 const toRichText = (text: string) => ({
   root: {
@@ -99,6 +141,7 @@ const buildScheduledIngestData = (
 
 interface ActivateOptions {
   triggerFirstImport?: boolean;
+  parameters?: Record<string, string>;
 }
 
 interface ActivateResult {
@@ -114,25 +157,29 @@ export const activateDataPackage = async (
   user: User,
   options: ActivateOptions = {}
 ): Promise<ActivateResult> => {
-  const { triggerFirstImport = true } = options;
+  const { triggerFirstImport = true, parameters = {} } = options;
 
-  // Check not already activated
+  // Resolve template parameters if the manifest defines any
+  const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
+  const activationKey = buildActivationKey(manifest.slug, parameters);
+
+  // Check not already activated (with these parameters)
   const existing = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    where: { dataPackageSlug: { equals: manifest.slug } },
+    where: { dataPackageSlug: { equals: activationKey } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
   });
 
   if (existing.docs.length > 0) {
-    throw new Error(`Data package "${manifest.slug}" is already activated`);
+    throw new Error(`Data package "${activationKey}" is already activated`);
   }
 
   // Find or create catalog (multiple packages can share a catalog)
   const existingCatalog = await payload.find({
     collection: COLLECTION_NAMES.CATALOGS,
-    where: { name: { equals: manifest.catalog.name } },
+    where: { name: { equals: resolved.catalog.name } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -143,64 +190,66 @@ export const activateDataPackage = async (
     (await payload.create({
       collection: COLLECTION_NAMES.CATALOGS,
       data: {
-        name: manifest.catalog.name,
-        description: manifest.catalog.description ? toRichText(manifest.catalog.description) : undefined,
-        isPublic: manifest.catalog.isPublic ?? true,
+        name: resolved.catalog.name,
+        description: resolved.catalog.description ? toRichText(resolved.catalog.description) : undefined,
+        isPublic: resolved.catalog.isPublic ?? true,
         createdBy: user.id,
       },
       overrideAccess: true,
     }));
 
   logger.info(
-    { catalogId: catalog.id, name: manifest.catalog.name, reused: !!existingCatalog.docs[0] },
+    { catalogId: catalog.id, name: resolved.catalog.name, reused: !!existingCatalog.docs[0] },
     existingCatalog.docs[0] ? "Reusing existing catalog" : "Created catalog for data package"
   );
 
   // Build dataset config
-  const idStrategy = manifest.dataset.idStrategy ?? {
+  const idStrategy = resolved.dataset.idStrategy ?? {
     type: "content-hash" as const,
     duplicateStrategy: "skip" as const,
   };
-  const schemaConfig = translateSchemaMode(manifest.schedule.schemaMode ?? "additive");
-  const fieldMappingOverrides = buildFieldMappingOverrides(manifest.fieldMappings);
+  const schemaConfig = translateSchemaMode(resolved.schedule.schemaMode ?? "additive");
+  const fieldMappingOverrides = buildFieldMappingOverrides(resolved.fieldMappings);
 
   // Create dataset
   const dataset = await payload.create({
     collection: COLLECTION_NAMES.DATASETS,
     data: {
-      name: manifest.dataset.name,
+      name: resolved.dataset.name,
       catalog: catalog.id,
-      language: manifest.dataset.language ?? "eng",
-      isPublic: manifest.catalog.isPublic ?? true,
+      language: resolved.dataset.language ?? "eng",
+      isPublic: resolved.catalog.isPublic ?? true,
       createdBy: user.id,
       idStrategy: {
         type: idStrategy.type,
         externalIdPath: idStrategy.externalIdPath,
-        duplicateStrategy: idStrategy.duplicateStrategy ?? "skip",
+        duplicateStrategy: (idStrategy.duplicateStrategy ?? "skip") as "skip" | "update",
       },
       schemaConfig,
       fieldMappingOverrides,
       geoFieldDetection: {
         autoDetect: true,
-        latitudePath: manifest.fieldMappings.latitudePath,
-        longitudePath: manifest.fieldMappings.longitudePath,
+        latitudePath: resolved.fieldMappings.latitudePath,
+        longitudePath: resolved.fieldMappings.longitudePath,
       },
       deduplicationConfig: { enabled: true },
     },
     overrideAccess: true,
   });
 
-  logger.info({ datasetId: dataset.id, name: manifest.dataset.name }, "Created dataset for data package");
+  logger.info({ datasetId: dataset.id, name: resolved.dataset.name }, "Created dataset for data package");
 
-  // Create scheduled ingest
+  // Create scheduled ingest (use resolved manifest for URL/name, activationKey for tracking)
+  const ingestData = buildScheduledIngestData(resolved, catalog.id, dataset.id, user.id);
+  ingestData.dataPackageSlug = activationKey;
   const scheduledIngest = await payload.create({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    data: buildScheduledIngestData(manifest, catalog.id, dataset.id, user.id),
+    data: ingestData,
     overrideAccess: true,
   });
 
   logger.info(
-    { scheduledIngestId: scheduledIngest.id, slug: manifest.slug },
+    { scheduledIngestId: scheduledIngest.id, slug: activationKey },
     "Created scheduled ingest for data package"
   );
 

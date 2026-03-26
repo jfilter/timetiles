@@ -63,7 +63,12 @@ const listPackages = async (payload: PayloadInstance) => {
   }
 };
 
-const installPackage = async (payload: PayloadInstance, slug: string, shouldTrigger: boolean) => {
+const installPackage = async (
+  payload: PayloadInstance,
+  slug: string,
+  shouldTrigger: boolean,
+  parameters: Record<string, string> = {}
+) => {
   const manifest = loadManifest(slug);
   if (!manifest) {
     logger.error("Package not found: %s", slug);
@@ -71,13 +76,34 @@ const installPackage = async (payload: PayloadInstance, slug: string, shouldTrig
     process.exit(1);
   }
 
+  // Show required parameters if not provided
+  const requiredParams = (manifest.parameters ?? []).filter((p) => p.required);
+  const missingParams = requiredParams.filter((p) => !parameters[p.name]);
+  if (missingParams.length > 0) {
+    logger.error("Missing required parameters:");
+    for (const p of missingParams) {
+      logger.error("  --param %s=<%s>%s", p.name, p.label, p.example ? ` (e.g. ${p.example})` : "");
+    }
+    process.exit(1);
+  }
+
   const systemUser = await getOrCreateSystemUser(payload);
 
   try {
-    const result = await activateDataPackage(payload, manifest, systemUser, { triggerFirstImport: shouldTrigger });
+    const result = await activateDataPackage(payload, manifest, systemUser, {
+      triggerFirstImport: shouldTrigger,
+      parameters,
+    });
+    const paramInfo =
+      Object.keys(parameters).length > 0
+        ? ` [${Object.entries(parameters)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ")}]`
+        : "";
     logger.info(
-      "Installed: %s (catalog=%d, dataset=%d, schedule=%d)",
+      "Installed: %s%s (catalog=%d, dataset=%d, schedule=%d)",
       slug,
+      paramInfo,
       result.catalogId,
       result.datasetId,
       result.scheduledIngestId
@@ -106,6 +132,59 @@ const installAllPackages = async (payload: PayloadInstance, shouldTrigger: boole
     await installPackage(payload, manifest.slug, shouldTrigger);
   }
   logger.info("Done. Installed %d packages.", manifests.length);
+};
+
+const printParameters = (manifest: ReturnType<typeof loadManifest>) => {
+  if (!manifest?.parameters?.length) return;
+  logger.info("");
+  logger.info("  Parameters:");
+  for (const p of manifest.parameters) {
+    logger.info("    --param %s=<%s>%s", p.name, p.label, p.example ? `  (e.g. ${p.example})` : "");
+  }
+};
+
+const setupPackage = (slug: string) => {
+  const manifest = loadManifest(slug);
+  if (!manifest) {
+    logger.error("Package not found: %s", slug);
+    process.exit(1);
+  }
+
+  logger.info("");
+  logger.info("  %s", manifest.name);
+  if (manifest.description) logger.info("  %s", manifest.description);
+  logger.info("");
+
+  if (!manifest.setup) {
+    logger.info("  No setup required — this package has no external credentials.");
+    printParameters(manifest);
+    return;
+  }
+
+  logger.info("  Setup instructions:");
+  logger.info("");
+  for (const line of manifest.setup.instructions.trim().split("\n")) {
+    logger.info("    %s", line);
+  }
+
+  if (manifest.setup.url) {
+    logger.info("");
+    logger.info("  Documentation: %s", manifest.setup.url);
+  }
+
+  logger.info("");
+  logger.info("  Environment variables:");
+  for (const envVar of manifest.setup.envVars) {
+    logger.info("    %s %s", process.env[envVar] ? "✓" : "✗", envVar);
+  }
+
+  printParameters(manifest);
+
+  const paramHint = manifest.parameters?.length ? " --param ..." : "";
+  logger.info("");
+  logger.info("  Install command:");
+  logger.info("    pnpm packages install %s%s --trigger", slug, paramHint);
+  logger.info("");
 };
 
 const uninstallPackage = async (payload: PayloadInstance, slug: string) => {
@@ -161,16 +240,33 @@ const getOrCreateSystemUser = async (payload: PayloadInstance) => {
   return service.getOrCreateSystemUser();
 };
 
+/** Parse `--param key=value` flags from args into a record. */
+const parseParams = (args: string[]): Record<string, string> => {
+  const params: Record<string, string> = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--param" && args[i + 1]) {
+      const [key, ...rest] = args[i + 1]!.split("=");
+      if (key && rest.length > 0) {
+        params[key] = rest.join("=");
+        i++; // skip next arg
+      }
+    }
+  }
+  return params;
+};
+
 const printUsage = () => {
   logger.info("Usage: pnpm packages <command> [options]");
   logger.info("");
   logger.info("Commands:");
-  logger.info("  list                          List available data packages");
-  logger.info("  install <slug>                Install a data package");
-  logger.info("  install --all                 Install all data packages");
-  logger.info("  install --all --trigger       Install all + trigger first import");
-  logger.info("  uninstall <slug>              Uninstall (disable) a data package");
-  logger.info("  uninstall --all               Uninstall all data packages");
+  logger.info("  list                                    List available data packages");
+  logger.info("  setup <slug>                            Show setup instructions + env var status");
+  logger.info("  install <slug>                          Install a data package");
+  logger.info("  install <slug> --param key=value        Install with parameters");
+  logger.info("  install --all                           Install all data packages");
+  logger.info("  install --all --trigger                 Install all + trigger first import");
+  logger.info("  uninstall <slug>                        Uninstall (disable) a data package");
+  logger.info("  uninstall --all                         Uninstall all data packages");
 };
 
 // ---------------------------------------------------------------------------
@@ -193,12 +289,16 @@ const runCommand = async (payload: PayloadInstance, command: string, args: strin
     case "ls":
       return listPackages(payload);
 
+    case "setup":
+      return setupPackage(parseSlug(args, command));
+
     case "install":
     case "add": {
       const shouldTrigger = args.includes("--trigger");
+      const parameters = parseParams(args);
       return args.includes("--all")
         ? installAllPackages(payload, shouldTrigger)
-        : installPackage(payload, parseSlug(args, command), shouldTrigger);
+        : installPackage(payload, parseSlug(args, command), shouldTrigger, parameters);
     }
 
     case "uninstall":

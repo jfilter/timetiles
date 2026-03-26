@@ -82,6 +82,28 @@ export interface DataPackageGeocodingBias {
   bounded?: boolean;
 }
 
+/** Parameter definition for parametric data packages. */
+export interface DataPackageParameter {
+  /** Parameter name used in `{{name}}` template placeholders. */
+  name: string;
+  /** Human-readable label for CLI/UI display. */
+  label: string;
+  /** Whether the parameter must be provided at activation time. */
+  required?: boolean;
+  /** Example value shown in help output. */
+  example?: string;
+}
+
+/** Setup instructions for data packages requiring external credentials. */
+export interface DataPackageSetup {
+  /** Step-by-step instructions for obtaining credentials. */
+  instructions: string;
+  /** URL for registration or documentation. */
+  url?: string;
+  /** Environment variable names that must be set. */
+  envVars: string[];
+}
+
 /** Full data package manifest as defined in YAML. */
 export interface DataPackageManifest {
   slug: string;
@@ -99,6 +121,8 @@ export interface DataPackageManifest {
   schedule: DataPackageSchedule;
   reviewChecks?: DataPackageReviewChecks;
   geocodingBias?: DataPackageGeocodingBias;
+  parameters?: DataPackageParameter[];
+  setup?: DataPackageSetup;
 }
 
 /** Activation state for a data package. */
