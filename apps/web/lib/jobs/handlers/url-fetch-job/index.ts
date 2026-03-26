@@ -112,6 +112,8 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
   const numericCatalogId = typeof catalogId === "string" ? Number(catalogId) : catalogId;
   const numericUserId = typeof userId === "string" ? Number(userId) : userId;
 
+  const advancedOpts = scheduledIngest?.advancedOptions;
+
   const data: Record<string, unknown> = {
     originalName,
     catalog: numericCatalogId || undefined,
@@ -125,10 +127,11 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
       datasetMapping: buildDatasetMapping(scheduledIngest),
     },
     processingOptions: {
-      skipDuplicateChecking: scheduledIngest?.advancedOptions?.skipDuplicateChecking ?? false,
-      autoApproveSchema: scheduledIngest?.advancedOptions?.autoApproveSchema ?? false,
+      skipDuplicateChecking: advancedOpts?.skipDuplicateChecking ?? false,
+      autoApproveSchema: advancedOpts?.autoApproveSchema ?? false,
       schemaMode: scheduledIngest?.schemaMode ?? undefined,
-      reviewChecks: scheduledIngest?.advancedOptions?.reviewChecks ?? undefined,
+      reviewChecks: advancedOpts?.reviewChecks,
+      geocodingBias: advancedOpts?.geocodingBias,
     },
   };
 

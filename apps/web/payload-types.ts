@@ -507,7 +507,7 @@ export interface Dataset {
     /**
      * What to do when duplicate is found
      */
-    duplicateStrategy?: ('skip' | 'update' | 'version') | null;
+    duplicateStrategy?: ('skip' | 'update') | null;
   };
   schemaConfig?: {
     /**
@@ -1665,6 +1665,36 @@ export interface ScheduledIngest {
        * Override geocoding failure rate threshold (0–1). Leave blank for global default.
        */
       geocodingFailureThreshold?: number | null;
+    };
+    /**
+     * Bias geocoding results towards a known region. Helps avoid ambiguous results (e.g. 'Odessa' → Ukraine instead of Texas).
+     */
+    geocodingBias?: {
+      /**
+       * ISO 3166-1 alpha-2 country codes as JSON array (e.g. ["ua", "pl"]). Restricts geocoding results to these countries.
+       */
+      countryCodes?:
+        | {
+            [k: string]: unknown;
+          }
+        | unknown[]
+        | string
+        | number
+        | boolean
+        | null;
+      /**
+       * Bounding box to prefer results within a geographic area.
+       */
+      viewBox?: {
+        minLon?: number | null;
+        minLat?: number | null;
+        maxLon?: number | null;
+        maxLat?: number | null;
+      };
+      /**
+       * Strictly restrict results to the view box (not just prefer)
+       */
+      bounded?: boolean | null;
     };
   };
   /**
@@ -4463,6 +4493,20 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
               rowErrorThreshold?: T;
               duplicateRateThreshold?: T;
               geocodingFailureThreshold?: T;
+            };
+        geocodingBias?:
+          | T
+          | {
+              countryCodes?: T;
+              viewBox?:
+                | T
+                | {
+                    minLon?: T;
+                    minLat?: T;
+                    maxLon?: T;
+                    maxLat?: T;
+                  };
+              bounded?: T;
             };
       };
   lastRun?: T;

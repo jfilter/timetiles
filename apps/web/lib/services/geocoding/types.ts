@@ -61,6 +61,16 @@ export interface GeocodingSettings {
   caching: { enabled: boolean; ttlDays: number };
 }
 
+/** Bias parameters to improve geocoding accuracy for a known region. */
+export interface GeocodingBias {
+  /** ISO 3166-1 alpha-2 country codes to restrict results (e.g. ["ua", "pl"]). */
+  countryCodes?: string[];
+  /** Bounding box to prefer results within a geographic area. */
+  viewBox?: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  /** Strictly restrict results to the view box (not just prefer). */
+  bounded?: boolean;
+}
+
 // Constants
 export const LOCATION_CACHE_COLLECTION = "location-cache";
 export const NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";

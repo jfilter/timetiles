@@ -18,7 +18,7 @@ import { createLogger } from "@/lib/logger";
 import { CacheManager } from "./cache-manager";
 import { GeocodingOperations } from "./geocoding-operations";
 import { ProviderManager } from "./provider-manager";
-import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings } from "./types";
+import type { BatchGeocodingResult, GeocodingBias, GeocodingResult, GeocodingSettings } from "./types";
 
 const logger = createLogger("geocoding-service");
 
@@ -70,9 +70,9 @@ export class GeocodingService {
     return this.geocodingOperations!.geocode(address);
   }
 
-  async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
+  async batchGeocode(addresses: string[], batchSize: number = 10, bias?: GeocodingBias): Promise<BatchGeocodingResult> {
     await this.initialize();
-    return this.geocodingOperations!.batchGeocode(addresses, batchSize);
+    return this.geocodingOperations!.batchGeocode(addresses, batchSize, bias);
   }
 
   async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {

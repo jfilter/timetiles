@@ -117,6 +117,14 @@ const manifestSchema = z.object({
       skipGeocodingCheck: z.boolean().optional(),
     })
     .optional(),
+
+  geocodingBias: z
+    .object({
+      countryCodes: z.array(z.string().regex(/^[a-z]{2}$/)).optional(),
+      viewBox: z.object({ minLon: z.number(), minLat: z.number(), maxLon: z.number(), maxLat: z.number() }).optional(),
+      bounded: z.boolean().optional(),
+    })
+    .optional(),
 });
 
 // ---------------------------------------------------------------------------

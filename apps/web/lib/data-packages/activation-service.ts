@@ -71,6 +71,10 @@ const buildScheduledIngestData = (
     advancedOptions.reviewChecks = manifest.reviewChecks;
   }
 
+  if (manifest.geocodingBias) {
+    advancedOptions.geocodingBias = manifest.geocodingBias;
+  }
+
   return {
     name: manifest.name,
     sourceUrl: manifest.source.url,

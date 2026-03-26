@@ -339,6 +339,44 @@ const executionFields: Field[] = [
           },
         ],
       },
+      {
+        name: "geocodingBias",
+        type: "group",
+        label: "Geocoding Region Bias",
+        admin: {
+          description:
+            "Bias geocoding results towards a known region. Helps avoid ambiguous results " +
+            "(e.g. 'Odessa' → Ukraine instead of Texas).",
+        },
+        fields: [
+          {
+            name: "countryCodes",
+            type: "json",
+            admin: {
+              description:
+                'ISO 3166-1 alpha-2 country codes as JSON array (e.g. ["ua", "pl"]). ' +
+                "Restricts geocoding results to these countries.",
+            },
+          },
+          {
+            name: "viewBox",
+            type: "group",
+            admin: { description: "Bounding box to prefer results within a geographic area." },
+            fields: [
+              { name: "minLon", type: "number", admin: { width: "25%", step: 0.001 } },
+              { name: "minLat", type: "number", admin: { width: "25%", step: 0.001 } },
+              { name: "maxLon", type: "number", admin: { width: "25%", step: 0.001 } },
+              { name: "maxLat", type: "number", admin: { width: "25%", step: 0.001 } },
+            ],
+          },
+          {
+            name: "bounded",
+            type: "checkbox",
+            defaultValue: false,
+            admin: { description: "Strictly restrict results to the view box (not just prefer)" },
+          },
+        ],
+      },
     ],
   },
 

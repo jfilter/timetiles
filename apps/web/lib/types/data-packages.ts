@@ -72,6 +72,16 @@ export interface DataPackageReviewChecks {
   skipGeocodingCheck?: boolean;
 }
 
+/** Geocoding region bias to improve accuracy. */
+export interface DataPackageGeocodingBias {
+  /** ISO 3166-1 alpha-2 country codes (e.g. ["ua", "pl"]). */
+  countryCodes?: string[];
+  /** Bounding box to prefer results within a geographic area. */
+  viewBox?: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  /** Strictly restrict results to the view box. */
+  bounded?: boolean;
+}
+
 /** Full data package manifest as defined in YAML. */
 export interface DataPackageManifest {
   slug: string;
@@ -88,6 +98,7 @@ export interface DataPackageManifest {
   fieldMappings: DataPackageFieldMappings;
   schedule: DataPackageSchedule;
   reviewChecks?: DataPackageReviewChecks;
+  geocodingBias?: DataPackageGeocodingBias;
 }
 
 /** Activation state for a data package. */

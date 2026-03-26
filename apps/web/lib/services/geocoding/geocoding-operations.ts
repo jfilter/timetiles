@@ -20,7 +20,7 @@ import { createLogger, logError, logPerformance } from "@/lib/logger";
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
 import { getProviderRateLimiter } from "./provider-rate-limiter";
-import type { BatchGeocodingResult, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
+import type { BatchGeocodingResult, GeocodingBias, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
 import { GeocodingError } from "./types";
 
 const logger = createLogger("geocoding-operations");
@@ -38,7 +38,7 @@ export class GeocodingOperations {
     private readonly settings: GeocodingSettings | null
   ) {}
 
-  async geocode(address: string): Promise<GeocodingResult> {
+  async geocode(address: string, bias?: GeocodingBias): Promise<GeocodingResult> {
     const startTime = Date.now();
     logger.debug("Starting geocoding request", { address });
 
@@ -49,7 +49,7 @@ export class GeocodingOperations {
     }
 
     // Try geocoding with enabled providers
-    const result = await this.tryProvidersSequentially(address);
+    const result = await this.tryProvidersSequentially(address, bias);
     if (result != null) {
       // Validate the result before accepting it
       if (!this.isResultAcceptable(result)) {
@@ -77,12 +77,12 @@ export class GeocodingOperations {
     return null;
   }
 
-  private async tryProvidersSequentially(address: string): Promise<GeocodingResult | null> {
+  private async tryProvidersSequentially(address: string, bias?: GeocodingBias): Promise<GeocodingResult | null> {
     const enabledProviders = this.providerManager.getEnabledProviders();
 
     for (const provider of enabledProviders) {
       try {
-        const result = await this.tryProvider(provider, address);
+        const result = await this.tryProvider(provider, address, bias);
         if (result != null) {
           return result;
         }
@@ -108,12 +108,16 @@ export class GeocodingOperations {
     return null;
   }
 
-  private async tryProvider(provider: ProviderConfig, address: string): Promise<GeocodingResult | null> {
+  private async tryProvider(
+    provider: ProviderConfig,
+    address: string,
+    bias?: GeocodingBias
+  ): Promise<GeocodingResult | null> {
     // Wait for rate limit slot before making request
     const rateLimiter = getProviderRateLimiter();
     await rateLimiter.waitForSlot(provider.name);
 
-    const results = await this.geocodeWithProvider(provider.geocoder, address);
+    const results = await this.geocodeWithProvider(provider.geocoder, address, bias);
     if (this.hasValidResults(results)) {
       const firstResult = results[0];
       if (firstResult) {
@@ -123,7 +127,7 @@ export class GeocodingOperations {
     return null;
   }
 
-  async batchGeocode(addresses: string[], batchSize: number = 10): Promise<BatchGeocodingResult> {
+  async batchGeocode(addresses: string[], batchSize: number = 10, bias?: GeocodingBias): Promise<BatchGeocodingResult> {
     const results = new Map<string, GeocodingResult | GeocodingError>();
     const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
 
@@ -132,7 +136,7 @@ export class GeocodingOperations {
     for (const batch of batches) {
       const batchPromises = batch.map(async (address) => {
         try {
-          const result = await this.geocode(address);
+          const result = await this.geocode(address, bias);
           if (result.fromCache === true) summary.cached++;
           summary.successful++;
           return { address, result };
@@ -198,10 +202,25 @@ export class GeocodingOperations {
   }
 
   private async geocodeWithProvider(
-    geocoder: { geocode: (address: string) => Promise<Entry[]> },
-    address: string
+    geocoder: { geocode: (address: string | Record<string, unknown>) => Promise<Entry[]> },
+    address: string,
+    bias?: GeocodingBias
   ): Promise<Entry[]> {
-    const geocodePromise = geocoder.geocode(address);
+    // Build query — use object form to pass bias parameters (e.g. countrycodes, viewbox for Nominatim)
+    const vb = bias?.viewBox;
+    const hasViewBox = vb?.minLon != null && vb?.minLat != null && vb?.maxLon != null && vb?.maxLat != null;
+    const hasBias = (bias?.countryCodes?.length ?? 0) > 0 || hasViewBox;
+    let query: string | Record<string, unknown> = address;
+    if (hasBias && bias) {
+      const params: Record<string, unknown> = { q: address };
+      if (bias.countryCodes?.length) params.countrycodes = bias.countryCodes.join(",");
+      if (hasViewBox) {
+        params.viewbox = `${bias.viewBox!.minLon},${bias.viewBox!.minLat},${bias.viewBox!.maxLon},${bias.viewBox!.maxLat}`;
+        if (bias.bounded) params.bounded = 1;
+      }
+      query = params;
+    }
+    const geocodePromise = geocoder.geocode(query);
     const timeoutPromise = new Promise((_resolve, reject) =>
       setTimeout(() => reject(new Error("Provider timeout")), GEOCODING_OPERATION_TIMEOUT_MS)
     );
