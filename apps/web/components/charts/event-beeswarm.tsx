@@ -17,6 +17,7 @@ import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
 import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -170,7 +171,14 @@ export const EventBeeswarm = ({
   const [dotSize, setDotSize] = useState(8);
   const [clusterSize, setClusterSize] = useState(40);
 
-  const clusterOptions: TemporalClusterOptions = { individualThreshold: threshold, targetBuckets: buckets };
+  // Debounce API-triggering params to avoid excessive requests while dragging sliders
+  const debouncedThreshold = useDebounce(threshold, 400);
+  const debouncedBuckets = useDebounce(buckets, 400);
+
+  const clusterOptions: TemporalClusterOptions = {
+    individualThreshold: debouncedThreshold,
+    targetBuckets: debouncedBuckets,
+  };
 
   const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(
     filters,
