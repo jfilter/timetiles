@@ -153,6 +153,11 @@
     "allEvents": "All Events",
     "eventsLabel": "Events",
     "expandChart": "Expand chart",
+    "beeswarm": "Beeswarm",
+    "eventAnalysis": "Event Analysis",
+    "eventScatter": "Event Distribution",
+    "individualEvents": "Individual events over time",
+    "showingLimited": "Showing {visible} of {total} events",
     "countDatasets": "{count} Datasets",
     "dateRangeFrom": "From {date}",
     "dateRangeUntil": "Until {date}",
@@ -166,7 +171,13 @@
     "clusterMore": "More",
     "clusterFewer": "Fewer",
     "clusterStable": "Stable",
-    "clusterAdaptive": "Adaptive"
+    "clusterAdaptive": "Adaptive",
+    "preferences": "Preferences",
+    "prefLanguage": "Language",
+    "prefStyle": "Style",
+    "prefMode": "Mode",
+    "prefLight": "Light",
+    "prefDark": "Dark"
   },
   "Filters": {
     "dataSources": "Data Sources",

@@ -24,6 +24,7 @@ import { useTheme } from "@/lib/hooks/use-theme";
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
+import { ClusterDensityControl } from "./cluster-density-control";
 import {
   buildClusterLayerConfig,
   buildEventPointLayerConfig,
@@ -35,9 +36,8 @@ import {
   logMapViewportChanged,
   MAP_COMPONENT_STYLE,
 } from "./clustered-map-helpers";
-import { ClusterDensityControl } from "./cluster-density-control";
 import { MapErrorOverlay, MapLoadingOverlay } from "./map-overlays";
-import { MapThemeControl } from "./map-theme-control";
+import { MapPreferencesControl } from "./map-preferences-control";
 import { useMapInteractions } from "./use-map-interactions";
 
 export interface ClusterFeature {
@@ -164,7 +164,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           <NavigationControl position="bottom-right" showCompass={false} />
           <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-1.5">
             <ClusterDensityControl />
-            <MapThemeControl />
+            <MapPreferencesControl />
           </div>
           <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
             <Layer {...eventPointLayer} />

@@ -153,6 +153,11 @@
     "allEvents": "Alle Ereignisse",
     "eventsLabel": "Ereignisse",
     "expandChart": "Diagramm vergrößern",
+    "beeswarm": "Beeswarm",
+    "eventAnalysis": "Ereignisanalyse",
+    "eventScatter": "Ereignisverteilung",
+    "individualEvents": "Einzelne Ereignisse im Zeitverlauf",
+    "showingLimited": "Zeige {visible} von {total} Ereignissen",
     "countDatasets": "{count} Datensätze",
     "dateRangeFrom": "Ab {date}",
     "dateRangeUntil": "Bis {date}",
@@ -166,7 +171,13 @@
     "clusterMore": "Mehr",
     "clusterFewer": "Weniger",
     "clusterStable": "Stabil",
-    "clusterAdaptive": "Adaptiv"
+    "clusterAdaptive": "Adaptiv",
+    "preferences": "Einstellungen",
+    "prefLanguage": "Sprache",
+    "prefStyle": "Stil",
+    "prefMode": "Modus",
+    "prefLight": "Hell",
+    "prefDark": "Dunkel"
   },
   "Filters": {
     "dataSources": "Datenquellen",
