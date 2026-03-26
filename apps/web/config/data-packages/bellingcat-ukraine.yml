@@ -1,0 +1,55 @@
+slug: bellingcat-ukraine
+name: Bellingcat Civilian Harm in Ukraine
+description: >-
+  Verified civilian harm incidents in Ukraine documented by Bellingcat's
+  investigation team, including geolocation, impact categories, and weapon
+  system classifications.
+category: conflict
+region: Ukraine
+tags:
+  - ukraine
+  - conflict
+  - civilian-harm
+  - osint
+  - bellingcat
+  - human-rights
+license: CC-BY-4.0
+estimatedRecords: 2500
+
+source:
+  url: "https://bellingcat-embeds.ams3.cdn.digitaloceanspaces.com/production/ukr/timemap/api.json"
+  format: json
+
+catalog:
+  name: Bellingcat
+  description: Open source investigation datasets by Bellingcat
+  isPublic: true
+
+dataset:
+  name: Civilian Harm in Ukraine
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+
+fieldMappings:
+  descriptionPath: description
+  timestampPath: date
+  locationNamePath: location
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: daily
+  schemaMode: additive
+  timezone: UTC
+
+reviewChecks:
+  skipGeocodingCheck: true
+
+geocodingBias:
+  countryCodes:
+    - ua
+    - ru
