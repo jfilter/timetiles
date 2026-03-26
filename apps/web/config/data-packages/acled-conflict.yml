@@ -1,0 +1,80 @@
+slug: acled-conflict
+name: "ACLED Conflict & Protest — {{country}}"
+description: >-
+  Political violence, protests, and strategic events in {{country}}
+  from the Armed Conflict Location & Event Data Project (ACLED).
+category: conflict
+region: "{{country}}"
+tags:
+  - conflict
+  - protest
+  - acled
+  - political
+  - violence
+license: ACLED Terms of Use
+
+parameters:
+  - name: country
+    label: Country name
+    required: true
+    example: "Ukraine"
+
+source:
+  url: "https://acleddata.com/api/acled/read?_format=json&limit=5000&country={{country}}"
+  format: json
+  auth:
+    type: oauth
+    tokenUrl: "https://acleddata.com/oauth/token"
+    clientId: "acled"
+    username: $ENV:ACLED_USERNAME
+    password: $ENV:ACLED_PASSWORD
+  jsonApi:
+    recordsPath: data
+    pagination:
+      enabled: true
+      type: offset
+      pageParam: offset
+      limitParam: limit
+      limitValue: 5000
+      maxRecords: 500000
+
+catalog:
+  name: ACLED
+  description: Armed Conflict Location & Event Data Project
+  isPublic: true
+
+dataset:
+  name: "Conflict & Protest — {{country}}"
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: event_id_cnty
+    duplicateStrategy: update
+
+fieldMappings:
+  titlePath: event_type
+  descriptionPath: notes
+  timestampPath: event_date
+  locationNamePath: location
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: UTC
+
+reviewChecks:
+  skipGeocodingCheck: true
+
+setup:
+  instructions: |
+    1. Register at https://acleddata.com (use institutional email)
+    2. Add your credentials to .env:
+       ACLED_USERNAME=your-email@institution.edu
+       ACLED_PASSWORD=your-password
+  url: https://acleddata.com
+  envVars:
+    - ACLED_USERNAME
+    - ACLED_PASSWORD

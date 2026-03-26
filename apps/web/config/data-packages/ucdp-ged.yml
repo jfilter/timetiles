@@ -1,0 +1,79 @@
+slug: ucdp-ged
+name: "UCDP Conflict Events — {{country}}"
+description: >-
+  Georeferenced conflict events in {{country}} from the Uppsala
+  Conflict Data Program (UCDP). Covers state-based, non-state, and
+  one-sided violence with casualty estimates.
+category: conflict
+region: "{{country}}"
+tags:
+  - conflict
+  - violence
+  - ucdp
+  - academic
+  - casualties
+license: CC-BY-4.0
+
+parameters:
+  - name: country
+    label: Country name
+    required: true
+    example: "Ukraine"
+
+source:
+  url: "https://ucdpapi.pcr.uu.se/api/gedevents/25.1?Country={{country}}"
+  format: json
+  auth:
+    type: bearer
+    bearerToken: $ENV:UCDP_API_TOKEN
+  jsonApi:
+    recordsPath: Result
+    pagination:
+      enabled: true
+      type: page
+      pageParam: page
+      limitParam: pagesize
+      limitValue: 1000
+      totalPath: TotalCount
+      maxPages: 400
+      maxRecords: 400000
+
+catalog:
+  name: UCDP
+  description: Uppsala Conflict Data Program
+  isPublic: true
+
+dataset:
+  name: "Conflict Events — {{country}}"
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+
+fieldMappings:
+  descriptionPath: source_headline
+  timestampPath: date_start
+  endTimestampPath: date_end
+  locationNamePath: where_description
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: UTC
+
+reviewChecks:
+  skipGeocodingCheck: true
+
+setup:
+  instructions: |
+    1. Email mertcan.yilmaz@pcr.uu.se to request an API token
+    2. Describe your research project in the email
+    3. Add the received token to .env:
+       UCDP_API_TOKEN=your-token-here
+  url: https://ucdp.uu.se/apidocs/
+  envVars:
+    - UCDP_API_TOKEN
