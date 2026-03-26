@@ -85,6 +85,7 @@ const buildFieldMappingOverrides = (mappings: DataPackageFieldMappings): Record<
     "descriptionPath",
     "locationNamePath",
     "timestampPath",
+    "endTimestampPath",
     "locationPath",
     "latitudePath",
     "longitudePath",
