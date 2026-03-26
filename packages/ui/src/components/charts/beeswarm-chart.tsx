@@ -78,23 +78,23 @@ export { DATASET_COLORS };
 /** Compute tight axis bounds from all series data so the chart fills its container. */
 const computeAxisBounds = (allSeries: BeeswarmSeries[]) => {
   let maxY = 1;
-  let minX = Infinity;
-  let maxX = -Infinity;
+  const xValues: number[] = [];
   for (const s of allSeries) {
     for (const item of s.data) {
       const absY = Math.abs(item.y);
       if (absY > maxY) maxY = absY;
-      if (item.x < minX) minX = item.x;
-      if (item.x > maxX) maxX = item.x;
+      xValues.push(item.x);
     }
   }
-  const xRange = maxX - minX;
-  const xPad = xRange > 0 ? xRange * 0.03 : 86400000;
-  return {
-    yPadding: Math.max(maxY * 1.3, 1),
-    xMin: Number.isFinite(minX) ? minX - xPad : undefined,
-    xMax: Number.isFinite(maxX) ? maxX + xPad : undefined,
-  };
+  if (xValues.length === 0) return { yPadding: 1, xMin: undefined, xMax: undefined };
+
+  // Use 2nd/98th percentile to avoid outliers stretching the axis
+  xValues.sort((a, b) => a - b);
+  const p02 = xValues[Math.floor(xValues.length * 0.02)] ?? xValues[0]!;
+  const p98 = xValues[Math.ceil(xValues.length * 0.98) - 1] ?? xValues[xValues.length - 1]!;
+  const xRange = p98 - p02;
+  const xPad = xRange > 0 ? xRange * 0.05 : 86400000;
+  return { yPadding: Math.max(maxY * 1.3, 1), xMin: p02 - xPad, xMax: p98 + xPad };
 };
 
 export const BeeswarmChart = ({
@@ -121,7 +121,7 @@ export const BeeswarmChart = ({
   const chartOption: EChartsOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: "3%", right: "4%", bottom: "8%", top: series.length > 1 ? 30 : "8%", containLabel: true },
+    grid: { left: 50, right: 20, bottom: 30, top: series.length > 1 ? 30 : 10 },
     xAxis: {
       type: "time",
       min: xMin,
