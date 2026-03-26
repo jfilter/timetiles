@@ -95,31 +95,57 @@ export const processEventBatch = async (
   globalRowOffset: number
 ) => {
   const { payload, job, dataset, logger: log } = ctx;
-  const duplicateRows = extractDuplicateRows(job);
+  const duplicateStrategy = (job.configSnapshot as Record<string, unknown>)?.idStrategy
+    ? ((job.configSnapshot as Record<string, { duplicateStrategy?: string }>).idStrategy?.duplicateStrategy ?? "skip")
+    : "skip";
+  const { skipRows, updateRows } = extractDuplicateRows(job, duplicateStrategy);
   const geocodingResults = getImportGeocodingResults(job);
   const transforms = buildTransformsFromDataset(dataset);
 
   let eventsSkipped = 0;
+  let eventsUpdated = 0;
   const eventsToInsert: BulkEventData[] = [];
   const errors: Array<{ row: number; error: string }> = [];
 
   for (const [index, row] of rows.entries()) {
     const rowNumber = globalRowOffset + index;
 
-    if (duplicateRows.has(rowNumber)) {
+    if (skipRows.has(rowNumber)) {
       eventsSkipped++;
       continue;
     }
 
     try {
-      eventsToInsert.push(buildBulkEventFromRow(row, transforms, ctx, geocodingResults));
+      const eventData = buildBulkEventFromRow(row, transforms, ctx, geocodingResults);
+
+      // External duplicates with "update" strategy: update existing event via Payload API
+      const existingEventId = updateRows.get(rowNumber);
+      if (existingEventId != null) {
+        await payload.update({
+          collection: "events",
+          id: existingEventId,
+          data: {
+            transformedData: eventData.transformedData,
+            sourceData: eventData.sourceData,
+            location: eventData.location,
+            eventTimestamp: eventData.eventTimestamp,
+            eventEndTimestamp: eventData.eventEndTimestamp,
+            ingestJob: eventData.ingestJob,
+          },
+          overrideAccess: true,
+        });
+        eventsUpdated++;
+        continue;
+      }
+
+      eventsToInsert.push(eventData);
     } catch (error) {
-      log.warn("Failed to create event data", { rowNumber, error });
+      log.warn("Failed to process event", { rowNumber, error });
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
     }
   }
 
-  // Bulk insert all collected events in one operation
+  // Bulk insert new events
   let eventsCreated = 0;
   if (eventsToInsert.length > 0) {
     try {
@@ -133,5 +159,5 @@ export const processEventBatch = async (
     }
   }
 
-  return { eventsCreated, eventsSkipped, errors };
+  return { eventsCreated: eventsCreated + eventsUpdated, eventsSkipped, eventsUpdated, errors };
 };

@@ -134,7 +134,6 @@ const Datasets: CollectionConfig = {
           options: [
             { label: "Skip Duplicates", value: "skip" },
             { label: "Update Existing", value: "update" },
-            { label: "Create New Version", value: "version" },
           ],
           defaultValue: "skip",
           admin: { description: "What to do when duplicate is found" },

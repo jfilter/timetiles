@@ -196,32 +196,50 @@ export const setJobStage = async (payload: Payload, jobId: string | number, stag
   await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: jobId, data: { stage } });
 };
 
-/**
- * Extract duplicate row numbers from import job
- */
-export const extractDuplicateRows = (job: IngestJob): Set<number> => {
-  const duplicateRows = new Set<number>();
+/** Duplicate row info with optional update mapping for "update" strategy. */
+export interface DuplicateRowInfo {
+  /** Rows to skip entirely (internal dupes + external dupes when strategy=skip). */
+  skipRows: Set<number>;
+  /** External duplicate rows to update: rowNumber → existingEventId (only when strategy=update). */
+  updateRows: Map<number, string | number>;
+}
 
-  // Handle the duplicates field which can be of various types
+/**
+ * Extract duplicate row info from import job.
+ *
+ * When `duplicateStrategy` is "update", external duplicates are NOT skipped
+ * but instead mapped to their existing event IDs for updating.
+ */
+export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string): DuplicateRowInfo => {
+  const skipRows = new Set<number>();
+  const updateRows = new Map<number, string | number>();
+  const shouldUpdate = duplicateStrategy === "update";
+
   const duplicates = job.duplicates;
   if (duplicates && typeof duplicates === "object" && !Array.isArray(duplicates)) {
-    // Check for internal duplicates
+    // Internal duplicates are always skipped (can't "update" a row with itself)
     if (Array.isArray(duplicates.internal)) {
-      duplicates.internal.forEach((d: unknown) => {
+      for (const d of duplicates.internal) {
         if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+          skipRows.add((d as { rowNumber: number }).rowNumber);
         }
-      });
+      }
     }
-    // Check for external duplicates
+
+    // External duplicates: skip or update depending on strategy
     if (Array.isArray(duplicates.external)) {
-      duplicates.external.forEach((d: unknown) => {
+      for (const d of duplicates.external) {
         if (typeof d === "object" && d !== null && "rowNumber" in d) {
-          duplicateRows.add((d as { rowNumber: number }).rowNumber);
+          const dup = d as { rowNumber: number; existingEventId?: string | number };
+          if (shouldUpdate && dup.existingEventId != null) {
+            updateRows.set(dup.rowNumber, dup.existingEventId);
+          } else {
+            skipRows.add(dup.rowNumber);
+          }
         }
-      });
+      }
     }
   }
 
-  return duplicateRows;
+  return { skipRows, updateRows };
 };
