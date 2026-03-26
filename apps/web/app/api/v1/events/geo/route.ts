@@ -40,7 +40,14 @@ export const GET = apiRoute({
       return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
-    const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters);
+    const result = await executeClusteringQuery(
+      payload,
+      bounds,
+      query.zoom,
+      ctx.filters,
+      query.clusterRadius ?? 60,
+      query.clusterZoomFactor ?? 1.4
+    );
     const clusters = transformResultToClusters(result.rows, query.zoom);
 
     return { type: "FeatureCollection", features: clusters };
@@ -64,7 +71,9 @@ const executeClusteringQuery = async (
   payload: Payload,
   bounds: MapBounds,
   zoom: number,
-  filters: CanonicalEventFilters
+  filters: CanonicalEventFilters,
+  baseRadius: number = 60,
+  zoomFactor: number = 1.4
 ) =>
   (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
@@ -73,7 +82,9 @@ const executeClusteringQuery = async (
       ${bounds.east}::double precision,
       ${bounds.north}::double precision,
       ${zoom}::integer,
-      ${toClusteringJsonb(filters)}::jsonb
+      ${toClusteringJsonb(filters)}::jsonb,
+      ${baseRadius}::double precision,
+      ${zoomFactor}::double precision
     )
   `)) as unknown as { rows: ClusterRow[] };
 

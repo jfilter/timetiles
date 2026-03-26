@@ -98,14 +98,24 @@ const fetchEventsInternal = async (
   };
 };
 
+/** Cluster density settings for the map clustering API. */
+export interface ClusterDensitySettings {
+  clusterRadius?: number;
+  clusterZoomFactor?: number;
+}
+
 const fetchMapClusters = async (
   filters: FilterState,
   bounds: BoundsType,
   zoom: number,
   signal?: AbortSignal,
-  scope?: ViewScope
+  scope?: ViewScope,
+  density?: ClusterDensitySettings
 ): Promise<MapClustersResponse> => {
-  const params = buildEventParams(filters, bounds, { zoom: zoom.toString() }, scope);
+  const extra: Record<string, string> = { zoom: zoom.toString() };
+  if (density?.clusterRadius != null) extra.clusterRadius = density.clusterRadius.toString();
+  if (density?.clusterZoomFactor != null) extra.clusterZoomFactor = density.clusterZoomFactor.toString();
+  const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
 
@@ -156,8 +166,13 @@ export const eventsQueryKeys = {
   infiniteList: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
     [...eventsQueryKeys.infinite(), { filters, bounds, limit, scope }] as const,
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
-  cluster: (filters: FilterState, bounds: BoundsType, zoom: number, scope?: ViewScope) =>
-    [...eventsQueryKeys.clusters(), { filters, bounds, zoom, scope }] as const,
+  cluster: (
+    filters: FilterState,
+    bounds: BoundsType,
+    zoom: number,
+    scope?: ViewScope,
+    density?: ClusterDensitySettings
+  ) => [...eventsQueryKeys.clusters(), { filters, bounds, zoom, scope, density }] as const,
   clusterStats: () => [...eventsQueryKeys.all, "cluster-stats"] as const,
   clusterStat: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.clusterStats(), { filters, scope }] as const,
@@ -206,11 +221,12 @@ export const useMapClustersQuery = (
   bounds: BoundsType,
   zoom: number,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  density?: ClusterDensitySettings
 ) =>
   useQuery({
-    queryKey: eventsQueryKeys.cluster(filters, bounds, zoom, scope),
-    queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal, scope),
+    queryKey: eventsQueryKeys.cluster(filters, bounds, zoom, scope, density),
+    queryFn: ({ signal }) => fetchMapClusters(filters, bounds, zoom, signal, scope, density),
     enabled: enabled && bounds != null, // Only run when bounds are available
     ...QUERY_PRESETS.standard,
 
