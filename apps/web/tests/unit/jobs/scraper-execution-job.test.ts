@@ -30,7 +30,7 @@ vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }))
 vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid-1234") }));
 
 vi.mock("@/lib/ingest/create-ingest-file", () => ({
-  createIngestFileAndQueueDetection: vi.fn().mockResolvedValue({ ingestFileId: 42 }),
+  createIngestFile: vi.fn().mockResolvedValue({ ingestFileId: 42 }),
 }));
 
 describe.sequential("scraperExecutionJob", () => {
@@ -377,9 +377,9 @@ describe.sequential("scraperExecutionJob", () => {
         return Promise.resolve(null);
       });
 
-      // Re-apply createIngestFileAndQueueDetection mock
-      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
-      (createIngestFileAndQueueDetection as any).mockResolvedValue({ ingestFileId: 42 });
+      // Re-apply createIngestFile mock
+      const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
+      (createIngestFile as any).mockResolvedValue({ ingestFileId: 42 });
     });
 
     it("should trigger auto-import when autoImport=true and run succeeds with download_url", async () => {
@@ -391,9 +391,9 @@ describe.sequential("scraperExecutionJob", () => {
       // The output should include the ingestFileId
       expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success", ingestFileId: 42 }));
 
-      // createIngestFileAndQueueDetection should have been called
-      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
-      expect(createIngestFileAndQueueDetection).toHaveBeenCalledWith(
+      // createIngestFile should have been called
+      const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
+      expect(createIngestFile).toHaveBeenCalledWith(
         expect.objectContaining({
           payload: mockPayload,
           importFileData: expect.objectContaining({ status: "pending", catalog: 100, user: 200 }),
@@ -412,9 +412,9 @@ describe.sequential("scraperExecutionJob", () => {
     it("should still succeed when auto-import fails", async () => {
       setupAutoImportFetch();
 
-      // Make createIngestFileAndQueueDetection throw
-      const { createIngestFileAndQueueDetection } = await import("@/lib/ingest/create-ingest-file");
-      (createIngestFileAndQueueDetection as any).mockRejectedValue(new Error("Disk full"));
+      // Make createIngestFile throw
+      const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
+      (createIngestFile as any).mockRejectedValue(new Error("Disk full"));
 
       const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
       // Job should NOT throw even though auto-import fails

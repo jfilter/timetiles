@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { getEnv } from "@/lib/config/env";
-import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
+import { createIngestFile } from "@/lib/ingest/create-ingest-file";
 import {
   fetchRemoteData,
   type FetchRemoteDataOptions,
@@ -262,7 +262,7 @@ const createImportFromFetchResult = async (
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
   const filename = `url-import-${timestamp}-${uuidv4()}${result.fileExtension}`;
   const importFileData = buildImportFileData(input.sourceUrl, result.contentHash, importContext);
-  const { ingestFileId } = await createIngestFileAndQueueDetection({
+  const { ingestFileId } = await createIngestFile({
     payload,
     importFileData,
     file: { data: result.data, mimetype: result.mimeType, name: filename, size: result.data.length },

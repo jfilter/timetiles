@@ -1,15 +1,9 @@
 /**
- * Shared helper for creating an import-files record and queuing the ingest workflow.
+ * Shared helper for creating import-files records.
  *
- * Both the url-fetch and scraper-execution steps follow the same three-step
- * pipeline after obtaining file data:
- *
- *   1. Create an import-files record with the attached file buffer.
- *   2. Queue a manual-ingest workflow for the new record.
- *   3. Update the record to status "parsing" with the queued job ID.
- *
- * This module extracts that pipeline into a single reusable function so changes
- * to the pipeline only need to be made in one place.
+ * Provides two functions:
+ * - `createIngestFile` — creates the record only (for workflow-managed pipelines)
+ * - `createIngestFileAndQueueDetection` — creates record + queues manual-ingest
  *
  * @module
  * @category Import
@@ -51,17 +45,18 @@ export interface CreateIngestFileResult {
 }
 
 /**
- * Create an import-files record, queue the manual-ingest workflow, and mark the
- * record as "parsing". This is the shared pipeline used by url-fetch and
- * scraper-execution steps.
+ * Create an import-files record without queuing any workflow.
+ *
+ * Use this when the caller's workflow already handles the pipeline
+ * (e.g. `scheduled-ingest` and `scraper-ingest` workflows run their
+ * own `dataset-detection` task after this step).
  */
-export const createIngestFileAndQueueDetection = async ({
+export const createIngestFile = async ({
   payload,
   importFileData,
   file,
   user,
 }: CreateIngestFileParams): Promise<CreateIngestFileResult> => {
-  // Step 1: Create import-files record with attached file
   const ingestFile = await payload.create({
     collection: COLLECTION_NAMES.INGEST_FILES,
     data: importFileData as Omit<IngestFile, "id" | "createdAt" | "updatedAt">,
@@ -70,19 +65,30 @@ export const createIngestFileAndQueueDetection = async ({
     context: { skipIngestFileHooks: true },
   });
 
-  // Step 2: Queue manual-ingest workflow
-  const workflowJob = await payload.jobs.queue({
+  return { ingestFileId: ingestFile.id };
+};
+
+/**
+ * Create an import-files record AND queue a `manual-ingest` workflow.
+ *
+ * Only use this when no parent workflow is managing the pipeline.
+ */
+export const createIngestFileAndQueueDetection = async (
+  params: CreateIngestFileParams
+): Promise<CreateIngestFileResult> => {
+  const { ingestFileId } = await createIngestFile(params);
+
+  const workflowJob = await params.payload.jobs.queue({
     workflow: "manual-ingest",
-    input: { ingestFileId: String(ingestFile.id) },
+    input: { ingestFileId: String(ingestFileId) },
   });
 
-  // Step 3: Update status to "parsing" with the workflow job ID
-  await payload.update({
+  await params.payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
-    id: ingestFile.id,
+    id: ingestFileId,
     data: { status: "parsing", jobId: String(workflowJob.id) },
     context: { skipIngestFileHooks: true },
   });
 
-  return { ingestFileId: ingestFile.id };
+  return { ingestFileId };
 };

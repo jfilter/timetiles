@@ -10,7 +10,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { getEnv } from "@/lib/config/env";
-import { createIngestFileAndQueueDetection } from "@/lib/ingest/create-ingest-file";
+import { createIngestFile } from "@/lib/ingest/create-ingest-file";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo, User } from "@/payload-types";
@@ -112,7 +112,7 @@ export const triggerAutoImport = async (
   };
 
   // Create import file, queue detection, and mark as parsing
-  const { ingestFileId } = await createIngestFileAndQueueDetection({
+  const { ingestFileId } = await createIngestFile({
     payload,
     importFileData,
     file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: outputBytes },

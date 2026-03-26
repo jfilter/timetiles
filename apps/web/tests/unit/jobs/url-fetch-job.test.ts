@@ -169,11 +169,9 @@ describe.sequential("urlFetchJob", () => {
       );
       expect(ingestFileCall).toBeDefined();
 
-      // Verify manual-ingest workflow was queued
-      expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
-        workflow: "manual-ingest",
-        input: { ingestFileId: "import-123" },
-      });
+      // url-fetch no longer queues manual-ingest — the parent workflow
+      // (scheduled-ingest or scraper-ingest) handles dataset-detection directly.
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
 
       // Verify result
       expect(result).toEqual({
