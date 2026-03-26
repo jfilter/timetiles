@@ -62,23 +62,22 @@ export class ProviderManager {
       });
 
       if (providerResults.docs.length === 0) {
-        logger.warn("No geocoding providers found in database, using default configuration");
-        this.providers = this.buildDefaultProviderConfigs();
-      } else {
-        logger.info(`Found ${providerResults.docs.length} providers in database`);
-        this.initializeProvidersFromDocs(providerResults.docs);
+        throw new Error(
+          "No geocoding providers configured. Add providers at /dashboard/collections/geocoding-providers"
+        );
       }
 
-      // Configure rate limiter for each provider
+      logger.info(`Found ${providerResults.docs.length} providers in database`);
+      this.initializeProvidersFromDocs(providerResults.docs);
       this.configureRateLimiter();
 
       return this.providers;
     } catch (error) {
+      if (error instanceof Error && error.message.includes("No geocoding providers configured")) {
+        throw error;
+      }
       logger.error("Error loading providers from database", { error });
-      logger.info("Falling back to default provider configuration");
-      this.providers = this.buildDefaultProviderConfigs();
-      this.configureRateLimiter();
-      return this.providers;
+      throw new Error("Failed to load geocoding providers from database");
     }
   }
 
@@ -106,30 +105,6 @@ export class ProviderManager {
     logger.debug("Configured rate limiter for providers", {
       providers: this.providers.map((p) => ({ name: p.name, rateLimit: p.rateLimit })),
     });
-  }
-
-  private buildDefaultProviderConfigs(): ProviderConfig[] {
-    // Return only Nominatim as default fallback
-    // Providers should be configured through the Payload admin panel
-    return [this.createNominatimProviderConfig()];
-  }
-
-  private createNominatimProviderConfig(): ProviderConfig {
-    return {
-      name: "nominatim",
-      geocoder: NodeGeocoder({
-        provider: "openstreetmap",
-        osmServer: NOMINATIM_BASE_URL,
-        apiKey: undefined,
-        formatter: null,
-        fetch: this.createStatusCheckingFetch(),
-        // as unknown as Options: @types/node-geocoder expects node-fetch Response,
-        // but we pass standard web fetch — the runtime behavior is compatible.
-      } as unknown as Options),
-      priority: 10,
-      enabled: true,
-      rateLimit: DEFAULT_NOMINATIM_RATE_LIMIT,
-    };
   }
 
   /**
@@ -166,7 +141,8 @@ export class ProviderManager {
     doc: GeocodingProvider,
     geocoder: NodeGeocoder.Geocoder,
     defaultPriority: number,
-    defaultRateLimit: number = 10
+    defaultRateLimit: number = 10,
+    geocodeParams?: Record<string, string | number>
   ): ProviderConfig {
     return {
       name: doc.name ?? doc.type,
@@ -175,6 +151,7 @@ export class ProviderManager {
       enabled: doc.enabled ?? false,
       rateLimit: doc.rateLimit ?? defaultRateLimit,
       group: doc.group ?? undefined,
+      geocodeParams,
     };
   }
 
@@ -210,11 +187,12 @@ export class ProviderManager {
       }
       case "locationiq": {
         const geocoder = this.createLocationIQGeocoder(doc);
-        return geocoder ? this.createProviderEntry(doc, geocoder, 5, 2) : null;
+        return geocoder ? this.createProviderEntry(doc, geocoder, 5, 2, this.buildGeocodeParams(doc)) : null;
       }
       case "opencage": {
-        const geocoder = this.createOpenCageGeocoder(doc);
-        return geocoder ? this.createProviderEntry(doc, geocoder, 5, 10) : null;
+        const result = this.createOpenCageGeocoder(doc);
+        if (!result) return null;
+        return this.createProviderEntry(doc, result.geocoder, 5, 10, result.geocodeParams);
       }
       case "nominatim": {
         const geocoder = this.createNominatimGeocoder(doc);
@@ -235,131 +213,151 @@ export class ProviderManager {
     docs.forEach((doc) => this.initializeSingleProvider(doc));
   }
 
+  /** Extract the first country code from the comma-separated list (for providers that only accept one). */
+  private getFirstCountryCode(doc: GeocodingProvider): string | undefined {
+    return doc.countryCodes?.split(",")[0]?.trim() || undefined;
+  }
+
+  /** Convert generic boundingBox to "minLon,minLat,maxLon,maxLat" (OpenCage/Nominatim viewbox format). */
+  private getViewboxString(doc: GeocodingProvider): string | undefined {
+    const bb = doc.boundingBox;
+    if (!bb?.enabled || bb.minLon == null || bb.minLat == null || bb.maxLon == null || bb.maxLat == null) {
+      return undefined;
+    }
+    return `${bb.minLon},${bb.minLat},${bb.maxLon},${bb.maxLat}`;
+  }
+
+  /** Build geocodeParams for providers that need object-form geocode() calls. */
+  private buildGeocodeParams(doc: GeocodingProvider): Record<string, string | number> | undefined {
+    const params: Record<string, string | number> = {};
+
+    const viewbox = this.getViewboxString(doc);
+    if (viewbox) {
+      params.viewbox = viewbox;
+      params.bounded = 1;
+    }
+    if (doc.countryCodes) {
+      params.countrycodes = doc.countryCodes;
+    }
+    if (doc.language) {
+      params["accept-language"] = doc.language;
+    }
+
+    return Object.keys(params).length > 0 ? params : undefined;
+  }
+
+  /** Check if the doc has a valid API key. */
+  private hasApiKey(doc: GeocodingProvider): boolean {
+    return typeof doc.apiKey === "string" && doc.apiKey.trim() !== "";
+  }
+
   private createGoogleGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
-    const googleConfig = doc.config?.google;
-    if (
-      googleConfig?.apiKey == null ||
-      googleConfig?.apiKey == undefined ||
-      (typeof googleConfig.apiKey === "string" && googleConfig.apiKey.trim() === "")
-    ) {
+    if (!this.hasApiKey(doc)) {
       logger.warn(`Google provider ${doc.name} has no API key configured`);
       return null;
     }
 
     return NodeGeocoder({
       provider: "google",
-      apiKey: googleConfig.apiKey,
+      apiKey: doc.apiKey,
+      language: doc.language ?? undefined,
+      region: this.getFirstCountryCode(doc),
       formatter: null,
-      fetch: this.createStatusCheckingFetch(),
+      fetch: this.createStatusCheckingFetch(doc.userAgent ?? undefined),
     } as unknown as Options);
   }
 
   private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
-    const nominatimConfig = doc.config?.nominatim;
-    const baseUrl = nominatimConfig?.baseUrl ?? NOMINATIM_BASE_URL;
-    const userAgent = nominatimConfig?.userAgent ?? TIMETILES_USER_AGENT;
+    const baseUrl = doc.baseUrl ?? NOMINATIM_BASE_URL;
+    const userAgent = doc.userAgent ?? TIMETILES_USER_AGENT;
 
     logger.debug("Creating Nominatim geocoder", { baseUrl, userAgent });
 
+    const viewbox = this.getViewboxString(doc);
     return NodeGeocoder({
       provider: "openstreetmap",
       osmServer: baseUrl,
+      language: doc.language ?? undefined,
+      ...(viewbox ? { viewbox, bounded: doc.boundingBox?.enabled ? 1 : 0 } : {}),
+      ...(doc.countryCodes ? { countrycodes: doc.countryCodes } : {}),
       apiKey: undefined,
       formatter: null,
       fetch: this.createStatusCheckingFetch(userAgent),
-      // as unknown as Options: @types/node-geocoder expects node-fetch Response,
-      // but we pass standard web fetch — the runtime behavior is compatible.
     } as unknown as Options);
   }
 
-  private getOpenCageBoundsString(
-    bounds:
-      | {
-          enabled?: boolean | null;
-          southwest?: { lat?: number | null; lng?: number | null };
-          northeast?: { lat?: number | null; lng?: number | null };
-        }
-      | undefined
-  ): string | null {
-    if (!bounds?.enabled) return null;
-    const { southwest, northeast } = bounds;
-    if (southwest?.lat == null || southwest?.lng == null) return null;
-    if (northeast?.lat == null || northeast?.lng == null) return null;
-    return `${southwest.lat},${southwest.lng},${northeast.lat},${northeast.lng}`;
-  }
-
-  private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
-    const openCageConfig = (doc.config as Record<string, unknown>)?.opencage as Record<string, unknown> | undefined;
-    if (
-      openCageConfig?.apiKey == null ||
-      openCageConfig?.apiKey == undefined ||
-      (typeof openCageConfig?.apiKey === "string" && openCageConfig.apiKey.trim() === "")
-    ) {
+  private createOpenCageGeocoder(
+    doc: GeocodingProvider
+  ): { geocoder: NodeGeocoder.Geocoder; geocodeParams?: Record<string, string | number> } | null {
+    if (!this.hasApiKey(doc)) {
       logger.warn(`OpenCage provider ${doc.name} has no API key configured`);
       return null;
     }
 
-    const config: { provider: "opencage"; apiKey: unknown; formatter: null; bounds?: string } = {
+    const bias = doc.locationBias;
+    const geocodeParams =
+      bias?.enabled && bias.lat != null && bias.lon != null ? { proximity: `${bias.lat},${bias.lon}` } : undefined;
+
+    const geocoder = NodeGeocoder({
       provider: "opencage",
-      apiKey: openCageConfig.apiKey,
+      apiKey: doc.apiKey,
+      language: doc.language ?? undefined,
+      countryCode: this.getFirstCountryCode(doc),
+      bounds: this.getViewboxString(doc),
       formatter: null,
-    };
+      fetch: this.createStatusCheckingFetch(doc.userAgent ?? undefined),
+    } as unknown as Options);
 
-    const boundsString = this.getOpenCageBoundsString(
-      openCageConfig.bounds as Parameters<ProviderManager["getOpenCageBoundsString"]>[0]
-    );
-    if (boundsString) {
-      config.bounds = boundsString;
-    }
-
-    return NodeGeocoder({ ...config, fetch: this.createStatusCheckingFetch() } as unknown as Options);
+    return { geocoder, geocodeParams };
   }
 
   private createLocationIQGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
-    const locationiqConfig = doc.config?.locationiq;
-    if (
-      locationiqConfig?.apiKey == null ||
-      locationiqConfig?.apiKey == undefined ||
-      (typeof locationiqConfig.apiKey === "string" && locationiqConfig.apiKey.trim() === "")
-    ) {
+    if (!this.hasApiKey(doc)) {
       logger.warn(`LocationIQ provider ${doc.name} has no API key configured`);
       return null;
     }
 
     return NodeGeocoder({
       provider: "locationiq",
-      apiKey: locationiqConfig.apiKey,
+      apiKey: doc.apiKey,
       formatter: null,
-      fetch: this.createStatusCheckingFetch(),
+      fetch: this.createStatusCheckingFetch(doc.userAgent ?? undefined),
     } as unknown as Options);
   }
 
-  private createPhotonGeocoderInstance(doc: GeocodingProvider): NodeGeocoder.Geocoder {
-    const photonConfig = doc.config?.photon;
-    if (!photonConfig?.baseUrl) {
-      logger.warn(`Photon provider ${doc.name} has no base URL configured`);
-      return createPhotonGeocoder({ baseUrl: "https://photon.komoot.io" }) as unknown as NodeGeocoder.Geocoder;
+  /** Convert generic locationBias to Photon format. */
+  private getLocationBias(doc: GeocodingProvider): { lat: number; lon: number; zoom?: number } | undefined {
+    const bias = doc.locationBias;
+    if (!bias?.enabled || bias.lat == null || bias.lon == null) return undefined;
+    return { lat: bias.lat, lon: bias.lon, zoom: bias.zoom ?? undefined };
+  }
+
+  /** Convert generic boundingBox to Photon bbox format. */
+  private getBoundingBox(
+    doc: GeocodingProvider
+  ): { minLon: number; minLat: number; maxLon: number; maxLat: number } | undefined {
+    const bb = doc.boundingBox;
+    if (!bb?.enabled || bb.minLon == null || bb.minLat == null || bb.maxLon == null || bb.maxLat == null) {
+      return undefined;
     }
+    return { minLon: bb.minLon, minLat: bb.minLat, maxLon: bb.maxLon, maxLat: bb.maxLat };
+  }
 
-    logger.debug("Creating Photon geocoder", { baseUrl: photonConfig.baseUrl });
+  private createPhotonGeocoderInstance(doc: GeocodingProvider): NodeGeocoder.Geocoder {
+    const baseUrl = doc.baseUrl ?? "https://photon.komoot.io";
 
-    const locationBias = photonConfig.locationBias;
-    const bbox = photonConfig.bbox;
+    logger.debug("Creating Photon geocoder", { baseUrl });
 
     return createPhotonGeocoder({
-      baseUrl: photonConfig.baseUrl,
-      language: photonConfig.language ?? undefined,
-      limit: photonConfig.limit ?? 5,
-      locationBias:
-        locationBias?.enabled && locationBias.lat != null && locationBias.lon != null
-          ? { lat: locationBias.lat, lon: locationBias.lon, zoom: locationBias.zoom ?? undefined }
-          : undefined,
-      bbox:
-        bbox?.enabled && bbox.minLon != null && bbox.minLat != null && bbox.maxLon != null && bbox.maxLat != null
-          ? { minLon: bbox.minLon, minLat: bbox.minLat, maxLon: bbox.maxLon, maxLat: bbox.maxLat }
-          : undefined,
-      osmTag: photonConfig.osmTag ?? undefined,
-      layer: (photonConfig.layer as string[] | undefined)?.length ? (photonConfig.layer as string[]) : undefined,
+      baseUrl,
+      language: doc.language ?? undefined,
+      limit: doc.resultLimit ?? 5,
+      locationBias: this.getLocationBias(doc),
+      bbox: this.getBoundingBox(doc),
+      osmTag: doc.config?.photon?.osmTag ?? undefined,
+      layer: (doc.config?.photon?.layer as string[] | undefined)?.length
+        ? (doc.config?.photon?.layer as string[])
+        : undefined,
     }) as unknown as NodeGeocoder.Geocoder;
   }
 }

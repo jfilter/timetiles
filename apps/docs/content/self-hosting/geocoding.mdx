@@ -1,0 +1,162 @@
+import { Callout } from "nextra/components";
+
+# Geocoding
+
+TimeTiles geocodes text addresses into map coordinates during imports. Three free providers work out of the box — no API keys required.
+
+## How It Works
+
+When you import a file with address data (e.g., "Berlin, Germany"), TimeTiles:
+
+1. Extracts unique addresses from the file (10,000 rows with 200 unique locations = 200 API calls, not 10,000)
+2. Checks the location cache for previously geocoded addresses
+3. Distributes uncached addresses across configured providers
+4. Stores results for event creation
+
+Cached results are reused for 30 days by default, so re-importing the same data is nearly instant.
+
+## Providers
+
+Configure providers at `/dashboard/collections/geocoding-providers`.
+
+### Free Providers (enabled by default)
+
+| Provider            | Rate Limit | Batch Share | Notes                                                            |
+| ------------------- | ---------- | ----------- | ---------------------------------------------------------------- |
+| Photon (VersaTiles) | 30 req/s   | ~75%        | Primary. Fast (p50 ~40ms), very stable                           |
+| Photon (Komoot)     | 10 req/s   | ~25%        | Secondary. Throttles on burst >16 concurrent                     |
+| Nominatim (OSM)     | 1 req/s    | Fallback    | Only used when both Photon instances fail. Strict 1 req/s policy |
+
+Combined default throughput: **~40 requests/second**. A file with 1,000 unique addresses geocodes in about 25 seconds.
+
+### Paid Providers (disabled by default)
+
+| Provider    | Rate Limit | Notes                                         |
+| ----------- | ---------- | --------------------------------------------- |
+| Google Maps | 50 req/s   | Highest accuracy. Requires API key            |
+| OpenCage    | 10 req/s   | Good international coverage. Requires API key |
+| LocationIQ  | 2 req/s    | OSM-based with API key. Free tier available   |
+
+Enable and configure API keys at `/dashboard/collections/geocoding-providers`.
+
+<Callout type="warning">
+  The free Photon and Nominatim providers are community services without guaranteed availability or SLAs. There are no
+  published rate limits for VersaTiles or Komoot — the defaults are based on empirical testing (March 2026). Please use
+  them responsibly. For high-volume production use, consider self-hosting a [Photon
+  instance](https://github.com/komoot/photon) or using a paid provider.
+</Callout>
+
+## Weighted Distribution
+
+During batch geocoding (imports), requests are distributed across providers proportional to their `rateLimit` setting. Providers with the same `group` value share the work:
+
+**Default configuration**:
+
+- VersaTiles (`rateLimit: 30`, `group: "photon"`) gets ~75% of requests
+- Komoot (`rateLimit: 10`, `group: "photon"`) gets ~25%
+- Nominatim (no group) is only tried as fallback when both Photon providers fail
+
+Adjust the `rateLimit` values in the admin panel to change the distribution. For example, setting both Photon providers to `rateLimit: 10` gives each 50%.
+
+For single-address geocoding (e.g., the map search), providers are tried sequentially by priority.
+
+## Throttling and Resilience
+
+The system handles rate limiting automatically:
+
+- **429 (Too Many Requests)**: Retries once after exponential backoff, then falls back to the next provider
+- **503 (Service Unavailable)**: Same retry + fallback behavior
+- **404 from Photon**: Treated as throttle signal (Photon returns 200 with empty results for genuine "not found")
+- **Retry-After header**: Respected when present
+
+Backoff escalates: 2s → 4s → 8s → 16s → max 30s on consecutive throttles. Resets on success.
+
+If a provider is in backoff, it is temporarily skipped — requests go to available providers instead.
+
+## Geographic Filtering
+
+All settings are configured once per provider — the system maps them to each provider's API automatically.
+
+### Language
+
+Set the `Language` field (ISO 639-1 code, e.g., `de`) to get results in the preferred language. Supported by all providers.
+
+### Country Codes
+
+Set `Country Codes` (comma-separated ISO 3166-1 alpha-2, e.g., `de,at,ch`) to restrict or bias results to specific countries. Supported by all providers.
+
+### Location Bias
+
+Bias results towards a geographic center point. Results outside the bias area still appear, but are ranked lower.
+
+- **Latitude / Longitude**: Center point
+- **Zoom level** (Photon only): 1 (world) to 18 (building). Controls bias radius. Default: 10
+
+Example: For a German dataset, set bias to `lat: 51.1, lon: 10.4, zoom: 5` to prefer German results for ambiguous addresses like "Frankfurt".
+
+How it maps per provider:
+
+- **Photon**: `lat`, `lon`, `zoom` query parameters
+- **OpenCage**: `proximity=lat,lon` parameter
+- **Nominatim / LocationIQ**: `viewbox` centered on the bias point
+- **Google**: `region` country code from Country Codes field
+
+### Bounding Box
+
+Hard geographic filter — only return results within the box. Set Min/Max Longitude and Latitude.
+
+How it maps per provider:
+
+- **Photon**: `bbox` parameter
+- **OpenCage**: `bounds` parameter
+- **Nominatim**: `viewbox` + `bounded=1` constructor options
+- **LocationIQ**: `viewbox` + `bounded=1` query parameters
+- **Google**: `region` country code (no bbox support in free tier)
+
+### Photon-Only Filters
+
+These are specific to Photon and configured in the provider-specific settings:
+
+- **Layer filter**: Restrict to geographic layers (`house`, `street`, `city`, `state`, `country`). Useful for avoiding street-level noise when geocoding city names.
+- **OSM tag filter**: Filter by OpenStreetMap tags (`place:city`, `!highway`, `:!construction`).
+
+## Global Settings
+
+Configure at `/dashboard/globals/settings` under the Geocoding section:
+
+| Setting            | Default  | Description                                     |
+| ------------------ | -------- | ----------------------------------------------- |
+| Enabled            | On       | Master switch for all geocoding                 |
+| Fallback enabled   | On       | Try next provider when one fails                |
+| Selection strategy | Priority | `priority` (by number) or `tag-based` (by tags) |
+| Cache enabled      | On       | Use location cache to avoid re-geocoding        |
+| Cache TTL          | 30 days  | How long cached results are kept                |
+
+## Caching
+
+The location cache (`/dashboard/collections/location-cache`) stores geocoded results:
+
+- Addresses are normalized before lookup (lowercased, whitespace collapsed, special characters stripped)
+- Cache hits increment a counter and update the "last used" timestamp
+- Expired entries are cleaned up automatically every 6 hours
+- Admins can manually delete cache entries to force re-geocoding
+
+## Adding a Provider
+
+1. Go to `/dashboard/collections/geocoding-providers`
+2. Click **Create New**
+3. Select the provider type, enter a name, and set priority and rate limit
+4. Configure provider-specific settings (API key, location bias, etc.)
+5. Set `group` if you want the provider to share batch work with others
+6. Enable the provider
+7. Test with the geocoding test panel on the provider list page
+
+## Self-Hosting Photon
+
+For high-volume or private use, you can run your own Photon instance:
+
+1. Follow the [Photon setup guide](https://github.com/komoot/photon)
+2. Create a new Photon provider in the admin panel
+3. Set the **Base URL** to your instance (e.g., `http://photon:2322`)
+4. Set a higher `rateLimit` — your own instance has no external limits
+5. Optionally disable the public Photon providers

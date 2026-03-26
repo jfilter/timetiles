@@ -88,48 +88,157 @@ export const GeocodingProviders: CollectionConfig = {
       label: "Provider Group",
       admin: {
         description:
-          "Providers in the same group are queried in parallel (first success wins). Leave empty for sequential fallback.",
+          "Providers in the same group share batch work proportionally to their rate limit. Leave empty for sequential fallback.",
         placeholder: "e.g., photon",
       },
     },
+
+    // ── Generic geographic settings (apply to all provider types) ──
+    {
+      name: "language",
+      type: "text",
+      label: "Language",
+      admin: {
+        description: "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')",
+        placeholder: "e.g., en, de, fr",
+      },
+    },
+    {
+      name: "countryCodes",
+      type: "text",
+      label: "Country Codes",
+      admin: {
+        description: "Comma-separated ISO 3166-1 alpha-2 codes to restrict/bias results (e.g., 'de,at,ch')",
+        placeholder: "e.g., de, at, ch",
+      },
+    },
+    {
+      name: "locationBias",
+      type: "group",
+      label: "Location Bias",
+      admin: { description: "Bias results towards a specific location. Supported by Photon and Google Maps." },
+      fields: [
+        { name: "enabled", type: "checkbox", label: "Enable Location Bias", defaultValue: false },
+        {
+          name: "lat",
+          type: "number",
+          label: "Latitude",
+          min: -90,
+          max: 90,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+        {
+          name: "lon",
+          type: "number",
+          label: "Longitude",
+          min: -180,
+          max: 180,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+        {
+          name: "zoom",
+          type: "number",
+          label: "Zoom Level",
+          min: 1,
+          max: 18,
+          defaultValue: 10,
+          admin: {
+            description: "Map zoom level (1=world, 18=building). Controls bias radius. Used by Photon.",
+            condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
+          },
+        },
+      ],
+    },
+    {
+      name: "boundingBox",
+      type: "group",
+      label: "Bounding Box",
+      admin: { description: "Restrict results to a geographic area. Supported by Photon and OpenCage." },
+      fields: [
+        { name: "enabled", type: "checkbox", label: "Enable Bounding Box", defaultValue: false },
+        {
+          name: "minLon",
+          type: "number",
+          label: "Min Longitude (West)",
+          min: -180,
+          max: 180,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+        {
+          name: "minLat",
+          type: "number",
+          label: "Min Latitude (South)",
+          min: -90,
+          max: 90,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+        {
+          name: "maxLon",
+          type: "number",
+          label: "Max Longitude (East)",
+          min: -180,
+          max: 180,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+        {
+          name: "maxLat",
+          type: "number",
+          label: "Max Latitude (North)",
+          min: -90,
+          max: 90,
+          admin: { condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true },
+        },
+      ],
+    },
+
+    // ── Connection settings ──
+    {
+      name: "apiKey",
+      type: "text",
+      label: "API Key",
+      access: { read: ({ req: { user } }) => user?.role === "admin" },
+      admin: {
+        description: "API key for paid providers (Google, OpenCage, LocationIQ)",
+        placeholder: "Enter your API key",
+        condition: (data) => ["google", "opencage", "locationiq"].includes((data as { type?: string })?.type ?? ""),
+      },
+    },
+    {
+      name: "baseUrl",
+      type: "text",
+      label: "Base URL",
+      admin: {
+        description: "Server URL (for self-hosted Photon or Nominatim instances)",
+        condition: (data) => ["photon", "nominatim"].includes((data as { type?: string })?.type ?? ""),
+      },
+    },
+    {
+      name: "userAgent",
+      type: "text",
+      label: "User Agent",
+      defaultValue: "TimeTiles-App/1.0",
+      admin: { description: "User agent string sent with requests (required by Nominatim/Photon usage policies)" },
+    },
+    {
+      name: "resultLimit",
+      type: "number",
+      label: "Result Limit",
+      defaultValue: 5,
+      min: 1,
+      max: 50,
+      admin: { description: "Maximum number of results to return per geocode request" },
+    },
+
+    // ── Provider-specific settings (only shown when relevant) ──
     {
       name: "config",
       type: "group",
-      label: "Provider Configuration",
-      admin: { description: "Provider-specific settings" },
+      label: "Advanced Settings",
+      admin: {
+        description: "Provider-specific options",
+        condition: (data) => ["nominatim", "photon"].includes((data as { type?: string })?.type ?? ""),
+      },
       fields: [
-        {
-          name: "google",
-          type: "group",
-          label: "Google Maps Settings",
-          admin: { condition: (data) => (data as { type?: string })?.type === "google" },
-          fields: [
-            {
-              name: "apiKey",
-              type: "text",
-              label: "API Key",
-              required: true,
-              access: { read: ({ req: { user } }) => user?.role === "admin" },
-              admin: { description: "Google Maps Geocoding API key", placeholder: "Enter your Google Maps API key" },
-            },
-            {
-              name: "region",
-              type: "text",
-              label: "Region Bias",
-              admin: {
-                description: "ISO 3166-1 alpha-2 country code for result bias (e.g., 'US', 'GB')",
-                placeholder: "e.g., US, GB, DE",
-              },
-            },
-            {
-              name: "language",
-              type: "text",
-              label: "Language",
-              defaultValue: "en",
-              admin: { description: "Language for returned results (e.g., 'en', 'de', 'fr')" },
-            },
-          ],
-        },
         {
           name: "nominatim",
           type: "group",
@@ -137,155 +246,12 @@ export const GeocodingProviders: CollectionConfig = {
           admin: { condition: (data) => (data as { type?: string })?.type === "nominatim" },
           fields: [
             {
-              name: "baseUrl",
-              type: "text",
-              label: "Base URL",
-              defaultValue: "https://nominatim.openstreetmap.org",
-              required: true,
-              admin: { description: "Nominatim server URL" },
-            },
-            {
-              name: "userAgent",
-              type: "text",
-              label: "User Agent",
-              defaultValue: "TimeTiles-App/1.0",
-              required: true,
-              admin: { description: "User agent string for requests (required by Nominatim policy)" },
-            },
-            {
               name: "email",
               type: "text",
               label: "Email Contact",
               admin: {
-                description: "Contact email for high-volume usage (recommended)",
+                description: "Contact email for high-volume usage (recommended by Nominatim policy)",
                 placeholder: "your-email@domain.com",
-              },
-            },
-            {
-              name: "countrycodes",
-              type: "text",
-              label: "Country Codes",
-              admin: {
-                description: "Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')",
-                placeholder: "us,ca,gb",
-              },
-            },
-            {
-              name: "addressdetails",
-              type: "checkbox",
-              label: "Include Address Details",
-              defaultValue: true,
-              admin: { description: "Include detailed address components in results" },
-            },
-            {
-              name: "extratags",
-              type: "checkbox",
-              label: "Include Extra Tags",
-              defaultValue: false,
-              admin: { description: "Include additional OSM tags in results" },
-            },
-          ],
-        },
-        {
-          name: "opencage",
-          type: "group",
-          label: "OpenCage Settings",
-          admin: { condition: (data) => (data as { type?: string })?.type === "opencage" },
-          fields: [
-            {
-              name: "apiKey",
-              type: "text",
-              label: "API Key",
-              required: true,
-              access: { read: ({ req: { user } }) => user?.role === "admin" },
-              admin: { description: "OpenCage Geocoding API key", placeholder: "Enter your OpenCage API key" },
-            },
-            {
-              name: "language",
-              type: "text",
-              label: "Language Code",
-              defaultValue: "en",
-              admin: { description: "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')" },
-            },
-            {
-              name: "countrycode",
-              type: "text",
-              label: "Country Code",
-              admin: {
-                description: "ISO 3166-1 alpha-2 country code to restrict results (e.g., 'US', 'DE')",
-                placeholder: "e.g., US, GB, DE",
-              },
-            },
-            {
-              name: "bounds",
-              type: "group",
-              label: "Geographic Bounds",
-              admin: { description: "Restrict results to a specific geographic area" },
-              fields: [
-                { name: "enabled", type: "checkbox", label: "Enable Bounds Restriction", defaultValue: false },
-                {
-                  name: "southwest",
-                  type: "group",
-                  label: "Southwest Corner",
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                  fields: [
-                    { name: "lat", type: "number", label: "Latitude", min: -90, max: 90 },
-                    { name: "lng", type: "number", label: "Longitude", min: -180, max: 180 },
-                  ],
-                },
-                {
-                  name: "northeast",
-                  type: "group",
-                  label: "Northeast Corner",
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                  fields: [
-                    { name: "lat", type: "number", label: "Latitude", min: -90, max: 90 },
-                    { name: "lng", type: "number", label: "Longitude", min: -180, max: 180 },
-                  ],
-                },
-              ],
-            },
-            {
-              name: "annotations",
-              type: "checkbox",
-              label: "Include Annotations",
-              defaultValue: true,
-              admin: { description: "Include additional metadata like timezone, currency, etc." },
-            },
-            {
-              name: "abbrv",
-              type: "checkbox",
-              label: "Abbreviate Results",
-              defaultValue: false,
-              admin: { description: "Abbreviate street names and components" },
-            },
-          ],
-        },
-        {
-          name: "locationiq",
-          type: "group",
-          label: "LocationIQ Settings",
-          admin: { condition: (data) => (data as { type?: string })?.type === "locationiq" },
-          fields: [
-            {
-              name: "apiKey",
-              type: "text",
-              label: "API Key",
-              required: true,
-              access: { read: ({ req: { user } }) => user?.role === "admin" },
-              admin: { description: "LocationIQ API key", placeholder: "Enter your LocationIQ API key" },
-            },
-            {
-              name: "countrycodes",
-              type: "text",
-              label: "Country Codes",
-              admin: {
-                description: "Comma-separated ISO 3166-1 alpha-2 codes to limit results (e.g., 'us,ca,gb')",
-                placeholder: "us,ca,gb",
               },
             },
           ],
@@ -293,125 +259,9 @@ export const GeocodingProviders: CollectionConfig = {
         {
           name: "photon",
           type: "group",
-          label: "Photon (Komoot) Settings",
+          label: "Photon Settings",
           admin: { condition: (data) => (data as { type?: string })?.type === "photon" },
           fields: [
-            {
-              name: "baseUrl",
-              type: "text",
-              label: "Base URL",
-              defaultValue: "https://photon.komoot.io",
-              required: true,
-              admin: { description: "Photon server URL (default: public Komoot instance)" },
-            },
-            {
-              name: "language",
-              type: "text",
-              label: "Language",
-              admin: {
-                description: "ISO 639-1 language code for results (e.g., 'en', 'de', 'fr')",
-                placeholder: "e.g., en, de, fr",
-              },
-            },
-            {
-              name: "limit",
-              type: "number",
-              label: "Result Limit",
-              defaultValue: 5,
-              min: 1,
-              max: 50,
-              admin: { description: "Maximum number of results to return" },
-            },
-            {
-              name: "locationBias",
-              type: "group",
-              label: "Location Bias",
-              admin: { description: "Bias results towards a specific location" },
-              fields: [
-                { name: "enabled", type: "checkbox", label: "Enable Location Bias", defaultValue: false },
-                {
-                  name: "lat",
-                  type: "number",
-                  label: "Latitude",
-                  min: -90,
-                  max: 90,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-                {
-                  name: "lon",
-                  type: "number",
-                  label: "Longitude",
-                  min: -180,
-                  max: 180,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-                {
-                  name: "zoom",
-                  type: "number",
-                  label: "Zoom Level",
-                  min: 1,
-                  max: 18,
-                  defaultValue: 10,
-                  admin: {
-                    description: "Map zoom level (1=world, 18=building). Controls bias radius.",
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-              ],
-            },
-            {
-              name: "bbox",
-              type: "group",
-              label: "Bounding Box Filter",
-              admin: { description: "Restrict results to a geographic area" },
-              fields: [
-                { name: "enabled", type: "checkbox", label: "Enable Bounding Box", defaultValue: false },
-                {
-                  name: "minLon",
-                  type: "number",
-                  label: "Min Longitude",
-                  min: -180,
-                  max: 180,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-                {
-                  name: "minLat",
-                  type: "number",
-                  label: "Min Latitude",
-                  min: -90,
-                  max: 90,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-                {
-                  name: "maxLon",
-                  type: "number",
-                  label: "Max Longitude",
-                  min: -180,
-                  max: 180,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-                {
-                  name: "maxLat",
-                  type: "number",
-                  label: "Max Latitude",
-                  min: -90,
-                  max: 90,
-                  admin: {
-                    condition: (_data, siblingData) => (siblingData as { enabled?: boolean })?.enabled === true,
-                  },
-                },
-              ],
-            },
             {
               name: "osmTag",
               type: "text",

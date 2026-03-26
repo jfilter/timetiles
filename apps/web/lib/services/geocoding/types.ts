@@ -74,7 +74,10 @@ export interface ProviderConfig {
   priority: number;
   enabled: boolean;
   rateLimit: number; // requests per second
-  group?: string; // providers in the same group are queried in parallel
+  group?: string; // providers in the same group share batch work
+  /** Extra parameters passed as object to geocode() instead of a plain string.
+   *  Used for providers where constructor options don't propagate (e.g., LocationIQ viewbox). */
+  geocodeParams?: Record<string, string | number>;
 }
 
 /** Default rate limit for Nominatim public instance (1 request/second per OSM policy) */

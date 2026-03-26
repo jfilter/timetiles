@@ -252,7 +252,12 @@ export class GeocodingOperations {
     const rateLimiter = getProviderRateLimiter();
     await rateLimiter.waitForSlot(provider.name);
 
-    const results = await this.geocodeWithProvider(provider.geocoder, address);
+    // Use object form if provider has extra geocode params (bbox, country codes, etc.)
+    const query: string | Record<string, string | number> = provider.geocodeParams
+      ? { q: address, ...provider.geocodeParams }
+      : address;
+
+    const results = await this.geocodeWithProvider(provider.geocoder, query);
     if (this.hasValidResults(results)) {
       const firstResult = results[0];
       if (firstResult) {
@@ -334,8 +339,8 @@ export class GeocodingOperations {
   }
 
   private async geocodeWithProvider(
-    geocoder: { geocode: (address: string) => Promise<Entry[]> },
-    address: string
+    geocoder: { geocode: (address: string | Record<string, string | number>) => Promise<Entry[]> },
+    address: string | Record<string, string | number>
   ): Promise<Entry[]> {
     const geocodePromise = geocoder.geocode(address);
     const timeoutPromise = new Promise((_resolve, reject) =>

@@ -35,17 +35,29 @@ describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
   });
 
   /**
-   * Helper: create a ProviderManager with no DB providers (falls back to default Nominatim),
+   * Helper: create a ProviderManager with a Nominatim provider from the DB,
    * then return the geocoder instance that uses createStatusCheckingFetch internally.
    */
   const getDefaultProvider = async () => {
-    mockPayload.find.mockResolvedValue({ docs: [] });
+    mockPayload.find.mockResolvedValue({
+      docs: [
+        {
+          id: "test-nom",
+          name: "Test Nominatim",
+          type: "nominatim",
+          enabled: true,
+          priority: 1,
+          rateLimit: 1,
+          baseUrl: "https://nominatim.openstreetmap.org",
+          userAgent: "TimeTiles-Test/1.0",
+        },
+      ],
+    });
 
     const manager = new ProviderManager(mockPayload, null);
     const providers = await manager.loadProviders();
 
     expect(providers).toHaveLength(1);
-    expect(providers[0]!.name).toBe("nominatim");
     return providers[0]!;
   };
 
