@@ -532,7 +532,7 @@ When the data contains address fields:
 
 - Extract unique address strings from all rows
 - Normalize addresses so variants (e.g., "123 Main St" vs "123 MAIN ST") are deduplicated
-- Send to geocoding API (Nominatim, Google, etc.)
+- Send to geocoding providers (Photon, Nominatim, Google, etc.) with weighted distribution across grouped providers
 - Receive coordinates with confidence score
 - Store formatted address from geocoding service
 - Handle partial matches and low-confidence results
@@ -564,12 +564,13 @@ Geocoding processes unique locations instead of rows because:
 - Events created without coordinates (validation handles)
 - Errors don't stop batch processing
 
-**Rate Limit Errors**:
+**Rate Limit Errors (429/503/404)**:
 
-- Trigger exponential backoff
-- Retry failed requests after delay
-- Resume from failure point
-- Respect API rate limits
+- Detected at the HTTP level before provider parsing (via `createStatusCheckingFetch`)
+- Photon 404 under load treated as throttling (Photon returns 200 with empty features for real "not found")
+- 1 automatic retry per provider with exponential backoff (2s→4s→8s→max 30s)
+- On retry exhaustion, falls back to next provider in priority order
+- Adaptive rate limiter temporarily suspends throttled providers
 
 **Malformed Addresses**:
 

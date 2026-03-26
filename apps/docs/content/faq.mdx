@@ -28,7 +28,7 @@ CSV, Excel (.xlsx/.xls), ODS, and JSON API endpoints via URL. Files can be uploa
 
 ### My data only has addresses, not coordinates. Will it work?
 
-Yes. TimeTiles geocodes text addresses automatically using Nominatim (free), Google Maps, or OpenCage — with fallback between providers.
+Yes. TimeTiles geocodes text addresses automatically using three free providers out of the box — Photon (VersaTiles), Photon (Komoot), and Nominatim — with weighted distribution and automatic fallback. Paid providers (Google Maps, OpenCage, LocationIQ) can be added for higher accuracy.
 
 ### How much data can it handle?
 
@@ -82,7 +82,7 @@ Check that your location data contains valid coordinates (decimal degrees) or ge
 
 ### Import is slow
 
-Geocoding is the slowest stage — it makes external API calls for each unique address. If your data already has coordinates, geocoding is skipped and imports are much faster. Large files (10,000+ rows) may take several minutes.
+Geocoding is the slowest stage — it makes external API calls for each unique address. The default configuration distributes requests across multiple Photon providers at ~40 req/s combined. If your data already has coordinates, geocoding is skipped and imports are much faster.
 
 ### I'm getting permission errors
 

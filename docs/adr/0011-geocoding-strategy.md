@@ -26,17 +26,23 @@ A simplified entry point (`lib/services/geocoding.ts`) exposes `createGeocodingS
 
 ### Supported Providers
 
-Providers are configured through the Payload admin panel (`geocoding-providers` collection, defined in `lib/collections/geocoding-providers.ts`). Three types are supported:
+Providers are configured through the Payload admin panel (`geocoding-providers` collection, defined in `lib/collections/geocoding-providers.ts`). Five types are supported:
 
-| Provider        | `node-geocoder` mapping | Default Priority | Default Rate Limit | API Key Required |
-| --------------- | ----------------------- | ---------------- | ------------------ | ---------------- |
-| Nominatim (OSM) | `openstreetmap`         | 10               | 1 req/s            | No               |
-| OpenCage        | `opencage`              | 5                | 10 req/s           | Yes              |
-| Google Maps     | `google`                | 1                | 50 req/s           | Yes              |
+| Provider        | Implementation                | Default Priority | Default Rate Limit                       | API Key Required | Default Enabled |
+| --------------- | ----------------------------- | ---------------- | ---------------------------------------- | ---------------- | --------------- |
+| Photon          | Custom wrapper                | 1-2              | 30 req/s (VersaTiles), 10 req/s (Komoot) | No               | Yes             |
+| Nominatim (OSM) | `node-geocoder` openstreetmap | 3                | 1 req/s                                  | No               | Yes (fallback)  |
+| LocationIQ      | `node-geocoder` locationiq    | —                | 2 req/s                                  | Yes              | No              |
+| OpenCage        | `node-geocoder` opencage      | —                | 10 req/s                                 | Yes              | No              |
+| Google Maps     | `node-geocoder` google        | —                | 50 req/s                                 | Yes              | No              |
 
-Each provider document stores: `name`, `type`, `enabled`, `priority`, `rateLimit`, provider-specific config (API keys, region bias, bounds), `tags` for filtering, and read-only usage `statistics`.
+Each provider document stores: `name`, `type`, `enabled`, `priority`, `rateLimit`, `group` (for batch distribution), provider-specific config (API keys, region bias, bounds, location bias), `tags` for filtering, and read-only usage `statistics`.
+
+Photon providers support additional config: location bias (lat/lon/zoom), bounding box filter, OSM tag filter, and layer filter. Two Photon instances (VersaTiles and Komoot) are enabled by default with `group: "photon"` — the batch geocoder distributes work across them proportionally to their `rateLimit`.
 
 When no providers are configured in the database, `ProviderManager.buildDefaultProviderConfigs()` creates a Nominatim provider as the zero-configuration fallback.
+
+> **Fair use**: The free Photon (VersaTiles, Komoot) and Nominatim providers are community services. There are no published rate limits for VersaTiles or Komoot, but heavy abuse may result in throttling. The default rate limits are based on empirical testing (March 2026). For high-volume production use, self-host a Photon instance or use a paid provider.
 
 ### Provider Selection and Fallback
 
@@ -63,9 +69,13 @@ The geocoding flow for a single address (`GeocodingOperations.geocode()`):
 
 ### Rate Limiting
 
-`ProviderRateLimiter` (`lib/services/geocoding/provider-rate-limiter.ts`) is a process-level singleton that enforces per-provider request intervals. It tracks `lastRequestTime` per provider name and sleeps in `waitForSlot()` when the minimum interval (`1000 / requestsPerSecond`) has not elapsed.
+`ProviderRateLimiter` (`lib/services/geocoding/provider-rate-limiter.ts`) is a process-level singleton that serializes concurrent requests via promise chaining (avoiding TOCTOU race conditions) and enforces per-provider request intervals.
 
-This is **in-memory state** tied to the single-process architecture (see ADR 0001). Running multiple processes would allow each to independently hit a provider at its configured rate, effectively doubling (or more) the actual request rate against the external API.
+The rate limiter includes adaptive backoff: when a provider returns 429, 503, or 404-as-throttle (Photon-specific), it applies exponential backoff (2s → 4s → 8s → max 30s) via `reportThrottle()`. On success, `reportSuccess()` resets the backoff. `isAvailable()` checks whether a provider is currently in backoff.
+
+All HTTP responses pass through `createStatusCheckingFetch()` (`provider-manager.ts`) which intercepts 429/503 before `node-geocoder`'s fetch adapter can silently parse them as valid JSON.
+
+This is **in-memory state** tied to the single-process architecture (see ADR 0001). Running multiple processes would allow each to independently hit a provider at its configured rate.
 
 ### Caching
 

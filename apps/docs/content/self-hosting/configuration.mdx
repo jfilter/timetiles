@@ -201,20 +201,9 @@ Configure at `/dashboard/globals/settings` under "Feature Flags":
 
 ### Geocoding
 
-Configure providers at `/dashboard/collections/geocoding-providers`:
+Three free geocoding providers (Photon VersaTiles, Photon Komoot, Nominatim) are enabled by default with ~40 req/s combined throughput. No API keys required.
 
-| Provider    | API Key | Notes                                            |
-| ----------- | ------- | ------------------------------------------------ |
-| Nominatim   | No      | Free, based on OpenStreetMap. Enabled by default |
-| Google Maps | Yes     | Most accurate. Configure key in dashboard        |
-| OpenCage    | Yes     | Good international coverage                      |
-
-Global geocoding settings at `/dashboard/globals/settings`:
-
-- Enable/disable geocoding globally
-- Toggle provider fallback
-- Selection strategy (priority-based or tag-based)
-- Cache TTL
+See the dedicated [Geocoding](/self-hosting/geocoding) page for provider configuration, weighted distribution, throttling behavior, location bias, and self-hosting options.
 
 ### Branding & Content
 
