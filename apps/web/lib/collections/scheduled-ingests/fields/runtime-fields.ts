@@ -226,6 +226,18 @@ const executionFields: Field[] = [
                     siblingData?.enabled === true,
                 },
               },
+              {
+                name: "maxRecords",
+                type: "number",
+                min: 1,
+                admin: {
+                  description:
+                    "Maximum total records to fetch across all pages. " +
+                    "Default: 100,000. Increase for large datasets (e.g. 500,000 for tree inventories).",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
             ],
           },
         ],

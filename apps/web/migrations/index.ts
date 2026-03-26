@@ -11,6 +11,8 @@ import * as migration_20260325_024938 from './20260325_024938';
 import * as migration_20260325_104859 from './20260325_104859';
 import * as migration_20260325_135037 from './20260325_135037';
 import * as migration_20260325_215337 from './20260325_215337';
+import * as migration_20260325_225411 from './20260325_225411';
+import * as migration_20260325_235725 from './20260325_235725';
 import * as migration_20260326_000000_adaptive_cluster_radius from './20260326_000000_adaptive_cluster_radius';
 
 export const migrations = [
@@ -77,11 +79,21 @@ export const migrations = [
   {
     up: migration_20260325_215337.up,
     down: migration_20260325_215337.down,
-    name: '20260325_215337'
+    name: '20260325_215337',
+  },
+  {
+    up: migration_20260325_225411.up,
+    down: migration_20260325_225411.down,
+    name: '20260325_225411',
+  },
+  {
+    up: migration_20260325_235725.up,
+    down: migration_20260325_235725.down,
+    name: '20260325_235725',
   },
   {
     up: migration_20260326_000000_adaptive_cluster_radius.up,
     down: migration_20260326_000000_adaptive_cluster_radius.down,
-    name: '20260326_000000_adaptive_cluster_radius',
+    name: '20260326_000000_adaptive_cluster_radius'
   },
 ];

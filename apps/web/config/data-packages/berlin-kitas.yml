@@ -1,0 +1,40 @@
+slug: berlin-kitas
+name: Berliner Kindertagesstaetten
+description: >-
+  Standorte der oeffentlich gefoerderten Berliner Kindertagesstaetten.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: education
+region: Berlin, Germany
+tags:
+  - kindergarten
+  - childcare
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 2800
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/kita?service=WFS&version=2.0.0&request=GetFeature&typeNames=kita:kita&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Kindertagesstaetten
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

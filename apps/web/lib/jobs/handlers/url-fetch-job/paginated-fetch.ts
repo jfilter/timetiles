@@ -44,6 +44,8 @@ export interface PaginationConfig {
   totalPath?: string;
   /** Safety limit on pages fetched. Default: 50, hard cap: 500. */
   maxPages?: number;
+  /** Maximum total records across all pages. Default: 100,000. */
+  maxRecords?: number;
 }
 
 export interface PaginatedFetchOptions {
@@ -161,6 +163,7 @@ export const fetchPaginated = async (
   options: PaginatedFetchOptions
 ): Promise<PaginatedFetchResult> => {
   const maxPages = Math.min(paginationConfig.maxPages ?? DEFAULT_MAX_PAGES, ABSOLUTE_MAX_PAGES);
+  const maxRecords = paginationConfig.maxRecords ?? MAX_TOTAL_RECORDS;
   const allRecords: Record<string, unknown>[] = [];
   let pagesProcessed = 0;
 
@@ -195,8 +198,8 @@ export const fetchPaginated = async (
     allRecords.push(...pageRecords);
     pagesProcessed++;
 
-    if (allRecords.length >= MAX_TOTAL_RECORDS) {
-      logger.warn("Reached maximum record limit", { maxRecords: MAX_TOTAL_RECORDS, pagesProcessed });
+    if (allRecords.length >= maxRecords) {
+      logger.warn("Reached maximum record limit", { maxRecords, pagesProcessed });
       break;
     }
 

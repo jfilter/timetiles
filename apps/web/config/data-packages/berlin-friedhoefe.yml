@@ -1,0 +1,39 @@
+slug: berlin-friedhoefe
+name: Berliner Friedhoefe
+description: >-
+  Alle geoeffneten und geschlossenen Berliner Friedhoefe.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: infrastructure
+region: Berlin, Germany
+tags:
+  - cemeteries
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 250
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/friedhofsbestand?service=WFS&version=2.0.0&request=GetFeature&typeNames=friedhofsbestand:friedhofsbestand_berlin&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Friedhoefe
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

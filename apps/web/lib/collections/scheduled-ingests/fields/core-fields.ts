@@ -167,4 +167,25 @@ const scheduleFields: Field[] = [
 // Combined export
 // ---------------------------------------------------------------------------
 
-export const coreFields: Field[] = [...basicFields, ...targetFields, ...scheduleFields];
+// ---------------------------------------------------------------------------
+// Data package tracking
+// ---------------------------------------------------------------------------
+
+const dataPackageFields: Field[] = [
+  {
+    name: "dataPackageSlug",
+    type: "text",
+    index: true,
+    admin: {
+      readOnly: true,
+      description: "Data package slug (set automatically when activated via data packages)",
+      condition: (data) => Boolean(data?.dataPackageSlug),
+    },
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Combined export
+// ---------------------------------------------------------------------------
+
+export const coreFields: Field[] = [...basicFields, ...targetFields, ...scheduleFields, ...dataPackageFields];

@@ -603,7 +603,7 @@
     "tfSelectFieldsToConcat": "Select fields to concatenate",
     "tfConfigureSplit": "Configure split operation",
     "tfApplyOpToField": "Apply {operation} to {field}",
-    "tfJoinFieldsTo": "Join {count} fields \u2192 {target}",
+    "tfJoinFieldsTo": "Join {count} fields → {target}",
     "tfSplitFieldInto": "Split {field} into {count} fields",
     "tfSelectField": "Select field",
     "tfSourceField": "Source Field",
@@ -869,5 +869,22 @@
     "networkError": "Network error. Please try again.",
     "subscribing": "Subscribing...",
     "subscribed": "Subscribed"
+  },
+  "DataPackages": {
+    "title": "Data Packages",
+    "subtitle": "Curated data sources ready to activate with one click",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "activated": "Active",
+    "records": "records",
+    "loading": "Loading data packages...",
+    "confirmActivateTitle": "Activate data package?",
+    "confirmActivateDescription": "This will create a catalog, dataset, and scheduled import. The first import will start automatically.",
+    "activationSuccess": "Data package activated successfully",
+    "firstImportStarted": "First import has been triggered",
+    "errorTitle": "Failed to load data packages",
+    "errorSubtitle": "Please try again later",
+    "emptyTitle": "No data packages available",
+    "emptySubtitle": "Check back later for curated data sources"
   }
 }

@@ -1,0 +1,51 @@
+slug: berlin-strassenbaeume
+name: Berliner Strassenbaeume
+description: >-
+  Strassenbaeume in Berlin mit Baumart, Adresse, Pflanzjahr und Kronenhoehe.
+  Grosser Datensatz (~434.000 Records), wird paginiert importiert.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: environment
+region: Berlin, Germany
+tags:
+  - trees
+  - environment
+  - urban-green
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 434000
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/baumbestand?service=WFS&version=2.0.0&request=GetFeature&typeNames=baumbestand:strassenbaeume&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+  jsonApi:
+    pagination:
+      enabled: true
+      type: offset
+      pageParam: startIndex
+      limitParam: count
+      limitValue: 10000
+      maxPages: 50
+      maxRecords: 500000
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Strassenbaeume
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

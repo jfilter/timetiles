@@ -1,0 +1,52 @@
+slug: berlin-anlagenbaeume
+name: Berliner Anlagenbaeume
+description: >-
+  Baeume in Gruenanlagen und Parks mit Baumart, Adresse, Pflanzjahr und Kronenhoehe.
+  Grosser Datensatz (~512.000 Records), wird paginiert importiert.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: environment
+region: Berlin, Germany
+tags:
+  - trees
+  - parks
+  - environment
+  - urban-green
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 512000
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/baumbestand?service=WFS&version=2.0.0&request=GetFeature&typeNames=baumbestand:anlagenbaeume&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+  jsonApi:
+    pagination:
+      enabled: true
+      type: offset
+      pageParam: startIndex
+      limitParam: count
+      limitValue: 10000
+      maxPages: 60
+      maxRecords: 600000
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Anlagenbaeume
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

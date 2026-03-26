@@ -873,5 +873,22 @@
     "networkError": "Netzwerkfehler. Bitte versuche es erneut.",
     "subscribing": "Wird abonniert...",
     "subscribed": "Abonniert"
+  },
+  "DataPackages": {
+    "title": "Datenpakete",
+    "subtitle": "Kuratierte Datenquellen zum Aktivieren mit einem Klick",
+    "activate": "Aktivieren",
+    "deactivate": "Deaktivieren",
+    "activated": "Aktiv",
+    "records": "Eintraege",
+    "loading": "Datenpakete werden geladen...",
+    "confirmActivateTitle": "Datenpaket aktivieren?",
+    "confirmActivateDescription": "Es werden ein Katalog, ein Datensatz und ein geplanter Import erstellt. Der erste Import startet automatisch.",
+    "activationSuccess": "Datenpaket erfolgreich aktiviert",
+    "firstImportStarted": "Erster Import wurde gestartet",
+    "errorTitle": "Fehler beim Laden der Datenpakete",
+    "errorSubtitle": "Bitte versuche es spaeter erneut",
+    "emptyTitle": "Keine Datenpakete verfuegbar",
+    "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen"
   }
 }

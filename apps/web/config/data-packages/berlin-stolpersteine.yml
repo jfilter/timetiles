@@ -1,0 +1,44 @@
+slug: berlin-stolpersteine
+name: Stolpersteine Berlin
+description: >-
+  Stolpersteine (stumbling stones) in Berlin — Messingplatten im Gehweg,
+  die an Opfer des Nationalsozialismus erinnern. Enthaltene Daten:
+  Name, Geburtsjahr, Adresse, Bezirk und Link zur Biografie.
+  Quelle: stolpersteine-berlin.de (CC-BY).
+category: culture
+region: Berlin, Germany
+tags:
+  - stolpersteine
+  - holocaust
+  - memorial
+  - history
+  - culture
+  - berlin
+  - germany
+license: CC-BY
+estimatedRecords: 9000
+
+source:
+  url: "https://www.stolpersteine-berlin.de/de/stolpersteine-finden/download"
+  format: csv
+
+catalog:
+  name: Berlin Kultur & Geschichte
+  description: Kulturelle und historische Datensaetze aus Berlin
+  isPublic: true
+
+dataset:
+  name: Stolpersteine
+  language: deu
+
+fieldMappings:
+  titlePath: Nachname
+  locationNamePath: "Straße + Hausnummer"
+  latitudePath: Breitengrad
+  longitudePath: "Längengrad"
+
+schedule:
+  type: frequency
+  frequency: monthly
+  schemaMode: additive
+  timezone: Europe/Berlin

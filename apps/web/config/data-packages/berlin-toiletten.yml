@@ -1,0 +1,40 @@
+slug: berlin-toiletten
+name: Berliner Oeffentliche Toiletten
+description: >-
+  Standorte der oeffentlichen Toiletten in Berlin.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: infrastructure
+region: Berlin, Germany
+tags:
+  - toilets
+  - public-facilities
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 300
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/toiletten?service=WFS&version=2.0.0&request=GetFeature&typeNames=toiletten:toiletten&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Oeffentliche Toiletten
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

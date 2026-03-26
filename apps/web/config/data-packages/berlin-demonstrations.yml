@@ -1,0 +1,58 @@
+slug: berlin-demonstrations
+name: Berliner Versammlungen
+description: >-
+  Demonstrations and assemblies registered with the Berlin police authority
+  (Versammlungsbehoerde). Data sourced from polizeistressi.de, covering
+  events since 2021 with ~48,000 records. Includes topic, location, date,
+  and route information.
+category: civic-data
+region: Berlin, Germany
+tags:
+  - demonstrations
+  - protests
+  - civic
+  - berlin
+  - germany
+license: Public Domain
+estimatedRecords: 48000
+
+source:
+  url: "https://adrrwafktwmspftyaqpz.supabase.co/rest/v1/versammlungen?select=*"
+  format: json
+  auth:
+    type: api-key
+    apiKeyHeader: apikey
+    apiKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkcnJ3YWZrdHdtc3BmdHlhcXB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODQ1OTcsImV4cCI6MjA4NzE2MDU5N30.p2MJD14vh3xk3J5538Uv-uBGArgthp2HO5cna3yELrc"
+  jsonApi:
+    pagination:
+      enabled: true
+      type: offset
+      pageParam: offset
+      limitParam: limit
+      limitValue: 1000
+      maxPages: 100
+
+catalog:
+  name: polizeistressi.de
+  description: Berlin demonstration registration data from polizeistressi.de
+  isPublic: true
+
+dataset:
+  name: Berliner Versammlungen
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+
+fieldMappings:
+  titlePath: topic
+  timestampPath: start_time
+  endTimestampPath: end_time
+  locationNamePath: place
+
+schedule:
+  type: frequency
+  frequency: daily
+  schemaMode: additive
+  timezone: Europe/Berlin

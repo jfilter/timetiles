@@ -1,0 +1,41 @@
+slug: berlin-denkmale
+name: Berliner Denkmale
+description: >-
+  Daten aus der Berliner Denkmalliste mit Denkmalposition.
+  Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
+category: culture
+region: Berlin, Germany
+tags:
+  - monuments
+  - heritage
+  - culture
+  - berlin
+  - germany
+  - open-data
+license: dl-de/by-2-0
+estimatedRecords: 7000
+
+source:
+  url: "https://gdi.berlin.de/services/wfs/denkmale?service=WFS&version=2.0.0&request=GetFeature&typeNames=denkmale:denkmale&outputFormat=application/json&srsName=EPSG:4326"
+  format: json
+
+catalog:
+  name: Berlin Open Data
+  description: Public datasets from Berlin's open data portal (daten.berlin.de)
+  isPublic: true
+
+dataset:
+  name: Denkmale
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: _feature_id
+    duplicateStrategy: update
+
+fieldMappings: {}
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: Europe/Berlin

@@ -325,10 +325,10 @@ coverage-check:
 seed:
 	@LOG_LEVEL=info pnpm --filter web seed $(ARGS)
 
-# Load public demo datasets from Berlin Open Data (daten.berlin.de)
-# Usage: make demo-data               # Create catalog + scheduled ingests
+# Install all data packages as demo data (Berlin Open Data, polizeistressi.de, etc.)
+# Usage: make demo-data               # Install all data packages
 #        make demo-data ARGS="--trigger"  # Also trigger immediate import
-#        make demo-data ARGS="--clean"    # Remove demo data
+#        make demo-data ARGS="--clean"    # Disable all data packages
 demo-data:
 	@LOG_LEVEL=info pnpm --filter web demo-data $(ARGS)
 
@@ -338,7 +338,22 @@ demo-data:
 setup-site:
 	@LOG_LEVEL=info pnpm --filter web setup-site $(ARGS)
 
-# Full Berlin demo: site setup + 10 public datasets from daten.berlin.de
+# Manage data packages (curated data sources defined as YAML manifests)
+# Usage: make packages                                 # List available packages
+#        make install-package PKG=berlin-demonstrations # Install a single package
+#        make install-package PKG=--all                 # Install all packages
+#        make install-package PKG=--all ARGS="--trigger" # Install all + trigger import
+#        make uninstall-package PKG=berlin-demonstrations # Uninstall a package
+packages:
+	@LOG_LEVEL=info pnpm --filter web packages list
+
+install-package:
+	@LOG_LEVEL=info pnpm --filter web packages install $(PKG) $(ARGS)
+
+uninstall-package:
+	@LOG_LEVEL=info pnpm --filter web packages uninstall $(PKG) $(ARGS)
+
+# Full demo: site setup + all data packages with immediate import
 demo-berlin: setup-site
 	@$(MAKE) demo-data ARGS="--trigger"
 
