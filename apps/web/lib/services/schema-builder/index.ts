@@ -483,10 +483,18 @@ export class ProgressiveSchemaBuilder {
   }
 
   /**
-   * Detect enum candidates in field statistics.
+   * Finalize field statistics and detect enum candidates.
    * Call once after all batches are processed.
    */
   detectEnumFields(): void {
+    // Calculate occurrencePercent before enum detection — downstream consumers
+    // (e.g. the categorical filter UI) filter on occurrencePercent >= 50.
+    if (this.state.recordCount > 0) {
+      for (const stats of Object.values(this.state.fieldStats)) {
+        stats.occurrencePercent = (stats.occurrences / this.state.recordCount) * 100;
+      }
+    }
+
     enrichEnumFields(this.state.fieldStats, this.config);
   }
 
