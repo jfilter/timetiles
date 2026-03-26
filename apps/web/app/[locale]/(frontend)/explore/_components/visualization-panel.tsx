@@ -49,6 +49,8 @@ interface VisualizationPanelProps {
   fillHeight?: boolean;
   /** Callback when the expand/fullscreen button is clicked */
   onExpandClick?: () => void;
+  /** Extra action buttons rendered in the header bar (before expand button) */
+  headerActions?: React.ReactNode;
 }
 
 /**
@@ -75,6 +77,7 @@ export const VisualizationPanel = ({
   availableChartTypes = ALL_CHART_TYPES,
   fillHeight = false,
   onExpandClick,
+  headerActions,
 }: Readonly<VisualizationPanelProps>) => {
   const t = useTranslations("Explore");
   const chartTypeLabels = useChartTypeLabels();
@@ -110,6 +113,7 @@ export const VisualizationPanel = ({
               </SelectContent>
             </Select>
           )}
+          {headerActions}
           {onExpandClick && (
             <Button
               variant="ghost"

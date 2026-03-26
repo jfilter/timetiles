@@ -27,7 +27,7 @@ import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
-import { EventBeeswarm } from "@/components/charts/event-beeswarm";
+import { BeeswarmSettingsButton, EventBeeswarm } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -106,6 +106,7 @@ export const ChartSection = ({
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showBeeswarmSettings, setShowBeeswarmSettings] = useState(false);
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
@@ -171,7 +172,13 @@ export const ChartSection = ({
     <>
       {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} />}
       {chartType === "beeswarm" && (
-        <EventBeeswarm bounds={bounds} height={height} onEventClick={onEventClick} variant={variant} />
+        <EventBeeswarm
+          bounds={bounds}
+          height={height}
+          onEventClick={onEventClick}
+          variant={variant}
+          showControls={showBeeswarmSettings}
+        />
       )}
       {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
       {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
@@ -187,6 +194,14 @@ export const ChartSection = ({
         availableChartTypes={availableChartTypes}
         fillHeight={fillHeight}
         onExpandClick={() => setIsFullscreen(true)}
+        headerActions={
+          chartType === "beeswarm" ? (
+            <BeeswarmSettingsButton
+              showControls={showBeeswarmSettings}
+              onToggle={() => setShowBeeswarmSettings((v) => !v)}
+            />
+          ) : undefined
+        }
       >
         <div
           className={cn(

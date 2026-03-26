@@ -29,8 +29,10 @@ interface EventBeeswarmProps {
   height?: number | string;
   className?: string;
   onEventClick?: (eventId: number) => void;
-  /** Display variant — compact hides chrome, fullscreen shows event count + controls */
+  /** Display variant — compact hides chrome, fullscreen shows event count */
   variant?: "compact" | "fullscreen";
+  /** Whether the expert settings panel is visible (controlled by parent) */
+  showControls?: boolean;
 }
 
 /** Default cluster options per variant */
@@ -66,7 +68,6 @@ const transformToSeries = (
   for (const [, group] of groups) {
     const color = DATASET_COLORS[colorIdx % DATASET_COLORS.length] ?? "#0089a7";
 
-    // Y=0 for all items — the BeeswarmChart handles layout via collision avoidance
     const data: BeeswarmDataItem[] = group.items.map((item, i) => {
       if (item.count > maxClusterCount) maxClusterCount = item.count;
       const start = new Date(item.bucketStart).getTime();
@@ -97,12 +98,66 @@ const transformToSeries = (
   return { series, maxClusterCount };
 };
 
+/** Settings panel for beeswarm expert controls */
+const BeeswarmSettings = ({
+  threshold,
+  setThreshold,
+  buckets,
+  setBuckets,
+  dotSize,
+  setDotSize,
+  clusterSize,
+  setClusterSize,
+  mode,
+  itemCount,
+}: {
+  threshold: number;
+  setThreshold: (v: number) => void;
+  buckets: number;
+  setBuckets: (v: number) => void;
+  dotSize: number;
+  setDotSize: (v: number) => void;
+  clusterSize: number;
+  setClusterSize: (v: number) => void;
+  mode: string;
+  itemCount: number;
+}) => (
+  <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+    <LabeledSlider
+      label="Detail threshold"
+      value={threshold}
+      onChange={setThreshold}
+      min={100}
+      max={2000}
+      step={100}
+      minLabel="Cluster"
+      maxLabel="Individual"
+    />
+    <LabeledSlider
+      label="Time buckets"
+      value={buckets}
+      onChange={setBuckets}
+      min={10}
+      max={150}
+      step={10}
+      minLabel="Fewer"
+      maxLabel="More"
+    />
+    <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
+    <LabeledSlider label="Max cluster size" value={clusterSize} onChange={setClusterSize} min={10} max={80} step={5} />
+    <div className="text-muted-foreground text-center font-mono text-[10px]">
+      {mode === "individual" ? "Showing dots" : `${itemCount} clusters`}
+    </div>
+  </div>
+);
+
 export const EventBeeswarm = ({
   bounds,
   height = 300,
   className,
   onEventClick,
   variant = "compact",
+  showControls = false,
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
@@ -112,7 +167,8 @@ export const EventBeeswarm = ({
   const defaults = DEFAULTS[variant];
   const [threshold, setThreshold] = useState<number>(defaults.individualThreshold);
   const [buckets, setBuckets] = useState<number>(defaults.targetBuckets);
-  const [showControls, setShowControls] = useState(false);
+  const [dotSize, setDotSize] = useState(8);
+  const [clusterSize, setClusterSize] = useState(40);
 
   const clusterOptions: TemporalClusterOptions = { individualThreshold: threshold, targetBuckets: buckets };
 
@@ -144,57 +200,42 @@ export const EventBeeswarm = ({
         visibleCount={total}
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
+        dotSizeOverride={dotSize}
+        clusterMaxSize={clusterSize}
       />
 
-      {/* Top-right: event count + settings toggle */}
-      {total > 0 && !isInitialLoad && (
-        <div className="absolute top-1 right-2 flex items-center gap-2">
-          {variant === "fullscreen" && (
-            <span className="text-muted-foreground font-mono text-xs">
-              {total.toLocaleString()} {t("eventsLabel")}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowControls((v) => !v)}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Chart settings"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-          </button>
+      {variant === "fullscreen" && total > 0 && !isInitialLoad && (
+        <div className="text-muted-foreground absolute right-3 bottom-1 font-mono text-xs">
+          {total.toLocaleString()} {t("eventsLabel")}
         </div>
       )}
 
-      {/* Expert controls panel */}
       {showControls && (
-        <div className="bg-background/95 border-border absolute top-7 right-2 z-10 flex flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
-          <LabeledSlider
-            label="Detail threshold"
-            value={threshold}
-            onChange={setThreshold}
-            min={100}
-            max={2000}
-            step={100}
-            minLabel="Cluster"
-            maxLabel="Individual"
-            formatValue={(v) => `${v}`}
-          />
-          <LabeledSlider
-            label="Time buckets"
-            value={buckets}
-            onChange={setBuckets}
-            min={10}
-            max={150}
-            step={10}
-            minLabel="Fewer"
-            maxLabel="More"
-            formatValue={(v) => `${v}`}
-          />
-          <div className="text-muted-foreground text-center font-mono text-[10px]">
-            {mode === "individual" ? "Showing dots" : `${data?.items.length ?? 0} clusters`}
-          </div>
-        </div>
+        <BeeswarmSettings
+          threshold={threshold}
+          setThreshold={setThreshold}
+          buckets={buckets}
+          setBuckets={setBuckets}
+          dotSize={dotSize}
+          setDotSize={setDotSize}
+          clusterSize={clusterSize}
+          setClusterSize={setClusterSize}
+          mode={mode}
+          itemCount={data?.items.length ?? 0}
+        />
       )}
     </div>
   );
 };
+
+/** Settings button to be placed in the header bar next to fullscreen */
+export const BeeswarmSettingsButton = ({ showControls, onToggle }: { showControls: boolean; onToggle: () => void }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    className={`text-muted-foreground hover:text-foreground rounded p-1 transition-colors ${showControls ? "bg-muted" : ""}`}
+    aria-label="Chart settings"
+  >
+    <Settings2 className="h-4 w-4" />
+  </button>
+);
