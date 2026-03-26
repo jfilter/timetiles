@@ -1108,11 +1108,21 @@ EOF
             REPO_BRANCH="${TIMETILES_REPO_BRANCH:-main}"
             SCRIPT_URL="https://raw.githubusercontent.com/jfilter/timetiles/${REPO_BRANCH}/deployment/timetiles"
             echo -e "${YELLOW}Updating CLI script...${NC}"
-            if curl -fsSL "$SCRIPT_URL" -o "$SCRIPT_DIR/timetiles.new"; then
-                chmod +x "$SCRIPT_DIR/timetiles.new"
-                mv "$SCRIPT_DIR/timetiles.new" "$SCRIPT_DIR/timetiles"
-                echo -e "${GREEN}CLI updated. Re-executing...${NC}"
-                exec "$SCRIPT_DIR/timetiles" update --no-self-update
+            NEW_SCRIPT="$SCRIPT_DIR/timetiles.new"
+            if curl -fsSL "$SCRIPT_URL" -o "$NEW_SCRIPT"; then
+                # Integrity checks: must be a bash script, not truncated
+                if ! head -1 "$NEW_SCRIPT" | grep -q '^#!/bin/bash'; then
+                    echo -e "${RED}Self-update failed: downloaded file is not a valid script${NC}"
+                    rm -f "$NEW_SCRIPT"
+                elif [[ $(wc -c < "$NEW_SCRIPT") -lt 1000 ]]; then
+                    echo -e "${RED}Self-update failed: downloaded file too small (truncated?)${NC}"
+                    rm -f "$NEW_SCRIPT"
+                else
+                    chmod +x "$NEW_SCRIPT"
+                    mv "$NEW_SCRIPT" "$SCRIPT_DIR/timetiles"
+                    echo -e "${GREEN}CLI updated. Re-executing...${NC}"
+                    exec "$SCRIPT_DIR/timetiles" update --no-self-update
+                fi
             else
                 echo -e "${YELLOW}CLI self-update failed, continuing with current version${NC}"
             fi
