@@ -19,7 +19,7 @@ import * as React from "react";
 
 type IconComponent = React.ComponentType<{ className?: string }>;
 
-export type ChartType = "histogram" | "dataset-bar" | "catalog-bar";
+export type ChartType = "histogram" | "dataset-bar" | "catalog-bar" | "beeswarm";
 
 export interface ChartMeta {
   label: string;
@@ -30,7 +30,12 @@ export interface ChartMeta {
 /** Get labels for each chart type in the dropdown using translations */
 const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
-  return { histogram: t("timeline"), "dataset-bar": t("byDataset"), "catalog-bar": t("byCatalog") };
+  return {
+    histogram: t("timeline"),
+    beeswarm: t("beeswarm"),
+    "dataset-bar": t("byDataset"),
+    "catalog-bar": t("byCatalog"),
+  };
 };
 
 interface VisualizationPanelProps {
@@ -60,7 +65,7 @@ interface VisualizationPanelProps {
  * </VisualizationPanel>
  * ```
  */
-const ALL_CHART_TYPES = ["histogram", "dataset-bar", "catalog-bar"] as const satisfies readonly ChartType[];
+const ALL_CHART_TYPES = ["histogram", "beeswarm", "dataset-bar", "catalog-bar"] as const satisfies readonly ChartType[];
 
 export const VisualizationPanel = ({
   children,

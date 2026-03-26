@@ -26,6 +26,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
+import { EventBeeswarm } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -40,6 +41,8 @@ interface ChartSectionProps {
   fillHeight?: boolean;
   /** Whether visible datasets have temporal data. When false, histogram is excluded. */
   hasTemporalData?: boolean;
+  /** Callback to open an event detail (for beeswarm point clicks) */
+  onEventClick?: (eventId: number) => void;
 }
 
 /**
@@ -56,6 +59,8 @@ const useChartMeta = () => {
         return { label: t("dataDistribution"), heading: t("eventsByDataset"), subtitle: t("datasetCounts") };
       case "catalog-bar":
         return { label: t("dataDistribution"), heading: t("eventsByCatalog"), subtitle: t("catalogCounts") };
+      case "beeswarm":
+        return { label: t("eventAnalysis"), heading: t("eventScatter"), subtitle: t("individualEvents") };
     }
   };
 };
@@ -67,6 +72,7 @@ const getChartHeight = (type: ChartType): number => {
   switch (type) {
     case "histogram":
       return 200;
+    case "beeswarm":
     case "dataset-bar":
     case "catalog-bar":
       return 300;
@@ -76,10 +82,20 @@ const getChartHeight = (type: ChartType): number => {
 /** Labels for chart type selector dropdown. */
 const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
-  return { histogram: t("timeline"), ["dataset-bar"]: t("byDataset"), ["catalog-bar"]: t("byCatalog") };
+  return {
+    histogram: t("timeline"),
+    beeswarm: t("beeswarm"),
+    ["dataset-bar"]: t("byDataset"),
+    ["catalog-bar"]: t("byCatalog"),
+  };
 };
 
-export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = true }: Readonly<ChartSectionProps>) => {
+export const ChartSection = ({
+  bounds,
+  fillHeight = false,
+  hasTemporalData = true,
+  onEventClick,
+}: Readonly<ChartSectionProps>) => {
   const t = useTranslations("Explore");
   const getChartMeta = useChartMeta();
   const chartTypeLabels = useChartTypeLabels();
@@ -94,9 +110,10 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
   const availableChartTypes = useMemo<ChartType[]>(() => {
     const types: ChartType[] = [];
 
-    // Only show histogram if visible datasets have temporal data
+    // Only show histogram/beeswarm if visible datasets have temporal data
     if (hasTemporalData) {
       types.push("histogram");
+      types.push("beeswarm");
     }
 
     // Show "By Dataset" when no datasets are selected (show all) or multiple are selected
@@ -149,6 +166,7 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
   const renderChart = (height: number | string) => (
     <>
       {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} />}
+      {chartType === "beeswarm" && <EventBeeswarm bounds={bounds} height={height} onEventClick={onEventClick} />}
       {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
       {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
     </>
@@ -168,7 +186,7 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
           className={cn(
             "relative transition-all duration-300 ease-out",
             isTransitioning && "opacity-0",
-            fillHeight && "flex-1"
+            fillHeight && "h-0 flex-1"
           )}
           style={containerStyle}
         >
@@ -211,7 +229,7 @@ export const ChartSection = ({ bounds, fillHeight = false, hasTemporalData = tru
               </DialogClose>
             </div>
           </DialogHeader>
-          <div className="flex-1">{renderChart("100%")}</div>
+          <div className="h-0 flex-1">{renderChart("100%")}</div>
           {chartType === "histogram" && (filters.startDate != null || filters.endDate != null) && (
             <div className="flex items-center justify-between px-6 pt-1 pb-0">
               <span className="text-muted-foreground font-mono text-xs">

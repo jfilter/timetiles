@@ -115,7 +115,12 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
       <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
         <div className="p-6">
           <div className="mb-6 h-[calc(50vh-3rem)] min-h-[252px]">
-            <ChartSection bounds={debouncedSimpleBounds} fillHeight hasTemporalData={hasTemporalData} />
+            <ChartSection
+              bounds={debouncedSimpleBounds}
+              fillHeight
+              hasTemporalData={hasTemporalData}
+              onEventClick={openEvent}
+            />
           </div>
 
           <div className="border-t pt-6">
