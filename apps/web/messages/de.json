@@ -185,7 +185,9 @@
     "deselectCatalog": "Katalog {name} abwählen",
     "enableDataset": "Datensatz {name} aktivieren",
     "disableDataset": "Datensatz {name} deaktivieren",
-    "clearFieldFilter": "{label}-Filter löschen"
+    "clearFieldFilter": "{label}-Filter löschen",
+    "showMoreCategories": "+{count} weitere Kategorien",
+    "showLessCategories": "Weniger anzeigen"
   },
   "Events": {
     "title": "Ereignisse",

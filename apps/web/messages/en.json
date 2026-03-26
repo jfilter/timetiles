@@ -185,7 +185,9 @@
     "deselectCatalog": "Deselect catalog {name}",
     "enableDataset": "Enable dataset {name}",
     "disableDataset": "Disable dataset {name}",
-    "clearFieldFilter": "Clear {label} filter"
+    "clearFieldFilter": "Clear {label} filter",
+    "showMoreCategories": "+{count} more categories",
+    "showLessCategories": "Show less"
   },
   "Events": {
     "title": "Events",

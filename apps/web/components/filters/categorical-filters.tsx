@@ -11,13 +11,17 @@
  */
 "use client";
 
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import type { EnumField } from "@/lib/hooks/use-dataset-enum-fields";
 import { useFilters } from "@/lib/hooks/use-filters";
 
 import { EnumFieldDropdown } from "./enum-field-dropdown";
+
+const INITIAL_VISIBLE = 5;
 
 /**
  * Loading skeleton for categorical filters.
@@ -53,16 +57,18 @@ export interface CategoricalFiltersProps {
  */
 export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFiltersProps) => {
   const { filters, setFieldFilter } = useFilters();
+  const t = useTranslations("Filters");
+  const [expanded, setExpanded] = useState(false);
 
-  // Show skeleton while loading
   if (isLoading) return <CategoricalFiltersSkeleton />;
-
-  // Don't show if no enum fields
   if (enumFields.length === 0) return null;
+
+  const hasMore = enumFields.length > INITIAL_VISIBLE;
+  const visibleFields = expanded ? enumFields : enumFields.slice(0, INITIAL_VISIBLE);
 
   return (
     <div className="space-y-3">
-      {enumFields.map((field) => (
+      {visibleFields.map((field) => (
         <EnumFieldDropdown
           key={field.path}
           label={field.label}
@@ -71,6 +77,20 @@ export const CategoricalFilters = ({ enumFields, isLoading }: CategoricalFilters
           onSelectionChange={(newValues: string[]) => setFieldFilter(field.path, newValues)}
         />
       ))}
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 py-1 text-xs transition-colors"
+        >
+          {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+          <span>
+            {expanded
+              ? t("showLessCategories")
+              : t("showMoreCategories", { count: enumFields.length - INITIAL_VISIBLE })}
+          </span>
+        </button>
+      )}
     </div>
   );
 };

@@ -38,12 +38,12 @@ export const GET = apiRoute({
     );
     if (candidates.length === 0) return { fields: [] };
 
-    // Sort by ideal cardinality
+    // Sort by cardinality — fields closer to 5-15 unique values are most useful for filtering
     candidates.sort((a, b) => Math.abs((a.enumValues?.length ?? 0) - 10) - Math.abs((b.enumValues?.length ?? 0) - 10));
 
-    // Live SQL counts for each field
+    // Live SQL counts for all qualifying fields
     const fields = [];
-    for (const field of candidates.slice(0, 5)) {
+    for (const field of candidates) {
       const fieldPath = field.path.replaceAll(/[^a-zA-Z0-9_.]/g, "");
       const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(
         sql.raw(`
