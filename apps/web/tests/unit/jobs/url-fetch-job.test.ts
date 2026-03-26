@@ -10,12 +10,12 @@
  */
 
 // Import centralized logger mock
-import { mockLogger } from "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 
@@ -955,10 +955,10 @@ describe.sequential("urlFetchJob", () => {
       expect(mockPayload.create).toHaveBeenCalled();
       const createCall = mockPayload.create.mock.calls[0][0];
       expect(createCall.collection).toBe("ingest-files");
-      expect(createCall.data.metadata.datasetMapping.enabled).toBe(true);
-      expect(createCall.data.metadata.datasetMapping.sheets).toHaveLength(2);
-      expect(createCall.data.metadata.datasetMapping.sheets[0].sheetIdentifier).toBe("Sheet1");
-      expect(createCall.data.metadata.datasetMapping.sheets[1].sheetIdentifier).toBe("Sheet2");
+      expect(createCall.data.metadata.datasetMapping.mappingType).toBe("multiple");
+      expect(createCall.data.metadata.datasetMapping.sheetMappings).toHaveLength(2);
+      expect(createCall.data.metadata.datasetMapping.sheetMappings[0].sheetIdentifier).toBe("Sheet1");
+      expect(createCall.data.metadata.datasetMapping.sheetMappings[1].sheetIdentifier).toBe("Sheet2");
       expect(createCall.user.id).toBe("user-123");
     });
   });

@@ -89,6 +89,19 @@ const handleDuplicateCheck = async (
   return { ingestFileId: existingFile.id, filename: existingFile.filename, contentHash: dataHash, isDuplicate: true };
 };
 
+/** Build the dataset mapping metadata for the ingest file from a scheduled ingest. */
+const buildDatasetMapping = (
+  scheduledIngest: ScheduledIngest | null
+): { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] } | undefined => {
+  if (scheduledIngest?.multiSheetConfig?.enabled) {
+    return { mappingType: "multiple", sheetMappings: scheduledIngest.multiSheetConfig.sheets ?? [] };
+  }
+  if (scheduledIngest?.dataset) {
+    return { mappingType: "single", singleDataset: extractRelationId(scheduledIngest.dataset) };
+  }
+  return undefined;
+};
+
 /**
  * Builds the import file data record with all conditional fields.
  */
@@ -105,9 +118,7 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
       scheduledExecution: scheduledIngestId
         ? { scheduledIngestId, executionTime: new Date().toISOString() }
         : undefined,
-      datasetMapping: scheduledIngest?.multiSheetConfig?.enabled
-        ? { enabled: true, sheets: scheduledIngest.multiSheetConfig.sheets }
-        : undefined,
+      datasetMapping: buildDatasetMapping(scheduledIngest),
     },
     processingOptions: {
       skipDuplicateChecking: scheduledIngest?.advancedOptions?.skipDuplicateChecking ?? false,
