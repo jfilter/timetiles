@@ -154,7 +154,18 @@
     "eventsLabel": "Ereignisse",
     "countDatasets": "{count} Datensätze",
     "dateRangeFrom": "Ab {date}",
-    "dateRangeUntil": "Bis {date}"
+    "dateRangeUntil": "Bis {date}",
+    "clusterDensity": "Cluster-Dichte",
+    "clusterPreset_fine": "Fein",
+    "clusterPreset_normal": "Normal",
+    "clusterPreset_coarse": "Grob",
+    "clusterExpert": "Experte",
+    "clusterRadius": "Basisradius",
+    "clusterZoomFactor": "Zoomfaktor",
+    "clusterMore": "Mehr",
+    "clusterFewer": "Weniger",
+    "clusterStable": "Stabil",
+    "clusterAdaptive": "Adaptiv"
   },
   "Filters": {
     "dataSources": "Datenquellen",
