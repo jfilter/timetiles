@@ -28,7 +28,7 @@ import {
   getLocationDisplay,
   hasValidCoordinates,
 } from "@/lib/utils/event-detail";
-import { formatFieldLabel, tryParseStringArray, valueToString } from "@/lib/utils/format";
+import { formatFieldLabel, valueToString } from "@/lib/utils/format";
 import type { Event } from "@/payload-types";
 
 import { EventDetailError } from "./event-detail-error";
@@ -89,8 +89,15 @@ export const EventDetailContent = ({
   const hasCoordinates = hasValidCoordinates(event.location);
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
+  // Read field type metadata from dataset (computed during schema detection)
+  const fieldTypes =
+    typeof event.dataset === "object" && event.dataset != null
+      ? ((event.dataset as unknown as Record<string, unknown>).fieldTypes as Record<string, string[]> | null)
+      : null;
+  const tagFieldSet = new Set(fieldTypes?.tags ?? []);
+
   const consumedFields = buildConsumedFieldSet(fieldMappings);
-  const additionalFields = Object.entries(eventData).filter(
+  const allAdditionalFields = Object.entries(eventData).filter(
     ([key, value]) =>
       !consumedFields.has(key) &&
       !HIDDEN_KEYS.has(key) &&
@@ -98,6 +105,18 @@ export const EventDetailContent = ({
       value != null &&
       valueToString(value) !== ""
   );
+
+  // Separate tag fields (identified by dataset.fieldTypes) from scalar fields
+  const tagFields: Array<{ key: string; tags: string[] }> = [];
+  const additionalFields: Array<[string, unknown]> = [];
+  for (const [key, value] of allAdditionalFields) {
+    if (tagFieldSet.has(key) && Array.isArray(value)) {
+      const tags = value.filter((v): v is string | number => v != null && v !== "").map(String);
+      if (tags.length > 0) tagFields.push({ key, tags });
+    } else {
+      additionalFields.push([key, value]);
+    }
+  }
 
   const coordinateSourceType = event.coordinateSource?.type;
   const hasGeocodingInfo =
@@ -162,19 +181,27 @@ export const EventDetailContent = ({
         </div>
       )}
 
+      {/* Tag chips (categories, tags, etc.) */}
+      {tagFields.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {tagFields.flatMap(({ tags }) =>
+            tags.map((tag) => (
+              <span key={tag} className="bg-muted dark:bg-muted/60 inline-block rounded-sm px-2 py-0.5 text-xs">
+                {tag}
+              </span>
+            ))
+          )}
+        </div>
+      )}
+
       {/* Source data fields */}
       {additionalFields.length > 0 && (
         <div className="border-t pt-4">
           <h4 className="text-muted-foreground mb-3 text-xs font-bold tracking-wider uppercase">{t("details")}</h4>
           <div className="flex flex-wrap gap-2">
-            {additionalFields.map(([key, value]) => {
-              const tags = tryParseStringArray(value);
-              return tags ? (
-                <FieldBox key={key} label={formatFieldLabel(key)} tags={tags} />
-              ) : (
-                <FieldBox key={key} label={formatFieldLabel(key)} value={valueToString(value)} />
-              );
-            })}
+            {additionalFields.map(([key, value]) => (
+              <FieldBox key={key} label={formatFieldLabel(key)} value={valueToString(value)} />
+            ))}
           </div>
         </div>
       )}

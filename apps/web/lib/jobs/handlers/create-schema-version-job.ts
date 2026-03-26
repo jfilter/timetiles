@@ -14,6 +14,8 @@ import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
+import { buildFieldTypes } from "../utils/event-creation-helpers";
+
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
@@ -130,7 +132,7 @@ export const createSchemaVersionJob = {
         await payload.update({
           collection: COLLECTION_NAMES.DATASETS,
           id: dataset.id,
-          data: { fieldMetadata: fieldStats },
+          data: { fieldMetadata: fieldStats, fieldTypes: buildFieldTypes(fieldStats) },
           overrideAccess: true,
         });
       }

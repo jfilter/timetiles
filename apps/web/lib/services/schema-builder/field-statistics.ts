@@ -35,10 +35,18 @@ const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueVal
     return;
   }
 
-  // Convert value to storable type (Date -> ISO string)
-  let sampleValue: string | number | boolean | null | undefined;
+  // Convert value to storable type (Date -> ISO string, arrays kept as-is)
+  let sampleValue: string | number | boolean | null | Record<string, unknown> | undefined;
   if (value instanceof Date) {
     sampleValue = value.toISOString();
+  } else if (Array.isArray(value)) {
+    // Store array samples for tag field detection (serialized for dedup)
+    const key = JSON.stringify(value);
+    if (!stats.uniqueSamples.some((s) => JSON.stringify(s) === key)) {
+      stats.uniqueSamples.push(value as unknown as Record<string, unknown>);
+      stats.uniqueValues = stats.uniqueSamples.length;
+    }
+    return;
   } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean" || value === null) {
     sampleValue = value;
   }

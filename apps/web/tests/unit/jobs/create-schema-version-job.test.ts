@@ -143,11 +143,11 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         data: { datasetSchemaVersion: "schema-version-101" },
       });
 
-      // Verify fieldMetadata is synced to dataset for categorical filter UI
+      // Verify fieldMetadata and fieldTypes are synced to dataset
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "datasets",
         id: mockDataset.id,
-        data: { fieldMetadata: mockFieldStats },
+        data: { fieldMetadata: mockFieldStats, fieldTypes: expect.any(Object) },
         overrideAccess: true,
       });
     });

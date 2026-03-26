@@ -209,6 +209,15 @@ const Datasets: CollectionConfig = {
       type: "json",
       admin: { readOnly: true, description: "Statistics and metadata about each field" },
     },
+    {
+      name: "fieldTypes",
+      type: "json",
+      admin: {
+        readOnly: true,
+        description:
+          "Field type groups from schema detection: { tags: [...], enum: [...], date: [...], url: [...], number: [...] }",
+      },
+    },
     // Type Transformations and Import Transforms (extracted to separate file)
     ...transformationFields,
     // Geographic Field Detection (integrates with existing)

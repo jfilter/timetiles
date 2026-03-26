@@ -134,6 +134,51 @@ const extractLocationName = (row: Record<string, unknown>, locationNamePath?: st
   return null;
 };
 
+/** Field type groups derived from schema detection fieldMetadata. */
+export interface FieldTypeMap {
+  [key: string]: string[] | undefined;
+  tags?: string[];
+  enum?: string[];
+  date?: string[];
+  url?: string[];
+  number?: string[];
+}
+
+/**
+ * Build field type metadata from dataset fieldMetadata.
+ * Groups field names by their detected type. Only includes non-default types
+ * (string is the default and omitted). Compute once per dataset, not per row.
+ */
+export const buildFieldTypes = (fieldMetadata: unknown): FieldTypeMap | null => {
+  if (!fieldMetadata || typeof fieldMetadata !== "object") return null;
+
+  const fm = fieldMetadata as Record<string, Record<string, unknown>>;
+  const result: FieldTypeMap = {};
+
+  for (const [path, stats] of Object.entries(fm)) {
+    if (!stats || typeof stats !== "object") continue;
+    const group = classifyField(stats);
+    if (group) (result[group] ??= []).push(path);
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+};
+
+/** Classify a single field into a type group based on its statistics. */
+const classifyField = (stats: Record<string, unknown>): string | null => {
+  if (stats.isTagField) return "tags";
+  if (stats.isEnumCandidate) return "enum";
+
+  const dist = (stats.typeDistribution ?? {}) as Record<string, number>;
+  const formats = (stats.formats ?? {}) as Record<string, number>;
+  const occ = (stats.occurrences as number) || 1;
+
+  if ((dist.date ?? 0) / occ > 0.5) return "date";
+  if ((formats.url ?? 0) / occ > 0.5) return "url";
+  if (((dist.number ?? 0) + (dist.integer ?? 0)) / occ > 0.5) return "number";
+  return null;
+};
+
 /**
  * Create event data structure from a row of imported data.
  */
