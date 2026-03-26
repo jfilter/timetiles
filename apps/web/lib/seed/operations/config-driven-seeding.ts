@@ -23,8 +23,6 @@ import {
 } from "../seed.config";
 import type { SeedManager } from "../seed-manager";
 import type { SeedOptions } from "../types";
-import { generateFieldMetadataForAllDatasets } from "./post-seed-field-metadata";
-
 const logger = createLogger("seed");
 
 interface OverallSeedResults {
@@ -69,12 +67,6 @@ export class ConfigDrivenSeeding {
       const datasetsConfig = getCollectionConfig("datasets", preset);
       if (datasetsConfig?.options?.generateSchemas !== false) {
         await this.generateSchemasForDatasets();
-
-        // Generate fieldMetadata for categorical filters
-        const payload = this.seedManager.payloadInstance;
-        if (payload) {
-          await generateFieldMetadataForAllDatasets(payload);
-        }
       }
     }
 

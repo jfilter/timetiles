@@ -142,6 +142,14 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         id: "import-123",
         data: { datasetSchemaVersion: "schema-version-101" },
       });
+
+      // Verify fieldMetadata is synced to dataset for categorical filter UI
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "datasets",
+        id: mockDataset.id,
+        data: { fieldMetadata: mockFieldStats },
+        overrideAccess: true,
+      });
     });
 
     it("should skip when schema version already exists", async () => {

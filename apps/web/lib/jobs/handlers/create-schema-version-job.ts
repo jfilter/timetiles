@@ -124,6 +124,17 @@ export const createSchemaVersionJob = {
 
       logger.info("Schema version created successfully", { ingestJobId, schemaVersionId: schemaVersion.id });
 
+      // Sync fieldMetadata to dataset so categorical filter UI can read it.
+      // Without this, dataset.fieldMetadata stays null and enum filters never appear.
+      if (fieldStats && Object.keys(fieldStats).length > 0) {
+        await payload.update({
+          collection: COLLECTION_NAMES.DATASETS,
+          id: dataset.id,
+          data: { fieldMetadata: fieldStats },
+          overrideAccess: true,
+        });
+      }
+
       // Complete CREATE_SCHEMA_VERSION stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
