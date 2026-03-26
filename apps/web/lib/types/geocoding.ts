@@ -10,6 +10,8 @@
 export interface GeocodingCandidate {
   /** Field name containing location information (address, city, venue, etc.) */
   locationField?: string;
+  /** Field name containing location/venue name (fallback when locationField is absent) */
+  locationNameField?: string;
   /** Field name containing latitude values (used to skip geocoding for rows with existing coordinates) */
   latitudeField?: string;
   /** Field name containing longitude values (used to skip geocoding for rows with existing coordinates) */
@@ -75,14 +77,15 @@ export const getGeocodingCandidate = (job: { detectedFieldMappings?: unknown }):
 
   const mappings = job.detectedFieldMappings as Record<string, unknown>;
   const locationField = typeof mappings.locationPath === "string" ? mappings.locationPath : undefined;
+  const locationNameField = typeof mappings.locationNamePath === "string" ? mappings.locationNamePath : undefined;
 
-  // Return null if no location field was detected
-  if (!locationField) {
+  // Return null if neither location field nor location name field was detected
+  if (!locationField && !locationNameField) {
     return null;
   }
 
   const latitudeField = typeof mappings.latitudePath === "string" ? mappings.latitudePath : undefined;
   const longitudeField = typeof mappings.longitudePath === "string" ? mappings.longitudePath : undefined;
 
-  return { locationField, latitudeField, longitudeField };
+  return { locationField, locationNameField, latitudeField, longitudeField };
 };

@@ -41,7 +41,8 @@ import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "..
 const extractUniqueLocations = async (
   filePath: string,
   sheetIndex: number,
-  locationField: string,
+  locationField: string | undefined,
+  locationNameField: string | undefined,
   coordinateFields: { latitudeField?: string; longitudeField?: string },
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
@@ -61,9 +62,20 @@ const extractUniqueLocations = async (
         }
       }
 
-      const location = row[locationField];
+      // Try primary location field (address), then fallback to location name (venue)
+      const location = locationField ? row[locationField] : undefined;
       if (location && typeof location === "string") {
         const normalized = normalizeGeocodingAddress(location);
+        if (normalized) {
+          uniqueLocations.add(normalized);
+          continue;
+        }
+      }
+
+      // Fallback: use location name field
+      const locationName = locationNameField ? row[locationNameField] : undefined;
+      if (locationName && typeof locationName === "string") {
+        const normalized = normalizeGeocodingAddress(locationName);
         if (normalized) {
           uniqueLocations.add(normalized);
         }
@@ -156,6 +168,59 @@ const geocodeUniqueLocations = async (
   return { results, successCount, failureCount, failures };
 };
 
+/**
+ * Load resources, resolve geocoding candidate, and extract unique locations.
+ * Returns early with `{ skipped: true }` if geocoding should be skipped entirely.
+ */
+const prepareGeocodingLocations = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  logger: ReturnType<typeof createJobLogger>
+): Promise<
+  | { skipped: true; skippedWithCoords?: number }
+  | {
+      skipped: false;
+      geocodingService: GeocodingService;
+      job: IngestJob;
+      ingestFile: { filename?: string | null; processingOptions?: unknown };
+      uniqueLocations: Set<string>;
+      totalRows: number;
+      skippedWithCoords: number;
+    }
+> => {
+  const geocodingService = createGeocodingService(payload);
+  const { job, ingestFile } = await loadJobResources(payload, ingestJobId);
+  const geocodingCandidate = getGeocodingCandidate(job);
+
+  // Skip if neither location field nor location name field detected
+  if (!geocodingCandidate?.locationField && !geocodingCandidate?.locationNameField) {
+    logger.info("No location field detected, moving to event creation");
+    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    return { skipped: true };
+  }
+
+  const filePath = getIngestFilePath(ingestFile.filename ?? "");
+  const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
+
+  const { uniqueLocations, totalRows, skippedWithCoords } = await extractUniqueLocations(
+    filePath,
+    sheetIndex,
+    geocodingCandidate.locationField,
+    geocodingCandidate.locationNameField,
+    { latitudeField: geocodingCandidate.latitudeField, longitudeField: geocodingCandidate.longitudeField },
+    logger
+  );
+
+  // Skip geocoding entirely if all rows already have coordinates
+  if (uniqueLocations.size === 0 && skippedWithCoords > 0) {
+    logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
+    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    return { skipped: true, skippedWithCoords };
+  }
+
+  return { skipped: false, geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords };
+};
+
 export const geocodeBatchJob = {
   slug: JOB_TYPES.GEOCODE_BATCH,
   retries: 3,
@@ -186,39 +251,11 @@ export const geocodeBatchJob = {
       // Set stage for UI progress tracking (workflow controls sequencing)
       await setJobStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
 
-      // Create a geocoding service scoped to this job invocation
-      const geocodingService = createGeocodingService(payload);
-
-      const { job, ingestFile } = await loadJobResources(payload, ingestJobId);
-
-      // Get geocoding candidate (locationPath) from field mappings
-      const geocodingCandidate = getGeocodingCandidate(job);
-
-      // Skip if no location field detected
-      if (!geocodingCandidate?.locationField) {
-        logger.info("No location field detected, moving to event creation");
-        await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-        return { output: { skipped: true } };
+      const skipResult = await prepareGeocodingLocations(payload, ingestJobId, logger);
+      if (skipResult.skipped) {
+        return { output: skipResult };
       }
-
-      const filePath = getIngestFilePath(ingestFile.filename ?? "");
-      const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
-
-      // Stream file to extract unique locations — only for rows missing valid coordinates
-      const { uniqueLocations, totalRows, skippedWithCoords } = await extractUniqueLocations(
-        filePath,
-        sheetIndex,
-        geocodingCandidate.locationField,
-        { latitudeField: geocodingCandidate.latitudeField, longitudeField: geocodingCandidate.longitudeField },
-        logger
-      );
-
-      // Skip geocoding entirely if all rows already have coordinates
-      if (uniqueLocations.size === 0 && skippedWithCoords > 0) {
-        logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
-        await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-        return { output: { skipped: true, skippedWithCoords } };
-      }
+      const { geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords } = skipResult;
 
       // Start tracking with unique locations count as total
       await ProgressTrackingService.startStage(

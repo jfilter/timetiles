@@ -25,14 +25,19 @@ const logger = createLogger("event-creation-helpers");
  */
 export const extractCoordinates = (
   row: Record<string, unknown>,
-  fieldMappings: { latitudePath?: string | null; longitudePath?: string | null; locationPath?: string | null },
+  fieldMappings: {
+    latitudePath?: string | null;
+    longitudePath?: string | null;
+    locationPath?: string | null;
+    locationNamePath?: string | null;
+  },
   geocodingResults: ReturnType<typeof getImportGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
   coordinateSource: { type: "source-data" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
 } => {
   // Try to read coordinates directly from the row (imported data)
-  const { latitudePath, longitudePath, locationPath } = fieldMappings;
+  const { latitudePath, longitudePath, locationPath, locationNamePath } = fieldMappings;
 
   if (latitudePath && longitudePath) {
     // Parse string coordinates (e.g. from split transforms)
@@ -49,20 +54,24 @@ export const extractCoordinates = (
   }
 
   // Try to lookup geocoded location (results are keyed by normalized address)
-  if (locationPath && geocodingResults) {
-    const locationValue = row[locationPath];
-    if (typeof locationValue === "string") {
-      const trimmed = locationValue.trim();
-      const geocoded = geocodingResults[normalizeGeocodingAddress(trimmed)];
-      if (geocoded) {
-        return {
-          location: { latitude: geocoded.coordinates.lat, longitude: geocoded.coordinates.lng },
-          coordinateSource: {
-            type: "geocoded" as const,
-            confidence: geocoded.confidence,
-            normalizedAddress: geocoded.formattedAddress,
-          },
-        };
+  // Check locationPath first, then fallback to locationNamePath
+  const locationFields = [locationPath, locationNamePath].filter(Boolean) as string[];
+  for (const field of locationFields) {
+    if (geocodingResults) {
+      const locationValue = row[field];
+      if (typeof locationValue === "string") {
+        const trimmed = locationValue.trim();
+        const geocoded = geocodingResults[normalizeGeocodingAddress(trimmed)];
+        if (geocoded) {
+          return {
+            location: { latitude: geocoded.coordinates.lat, longitude: geocoded.coordinates.lng },
+            coordinateSource: {
+              type: "geocoded" as const,
+              confidence: geocoded.confidence,
+              normalizedAddress: geocoded.formattedAddress,
+            },
+          };
+        }
       }
     }
   }

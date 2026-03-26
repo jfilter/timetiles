@@ -120,6 +120,63 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.normalizedAddress).toBeUndefined();
     });
   });
+
+  describe("fallback to locationNamePath", () => {
+    it("should use locationNamePath when locationPath is absent", () => {
+      const row = { venue: "Kunstzentrum Wachsfabrik" };
+      const fieldMappings = { locationNamePath: "venue" };
+      const geocodingResults = {
+        "kunstzentrum wachsfabrik": {
+          coordinates: { lat: 50.89, lng: 6.96 },
+          confidence: 0.7,
+          formattedAddress: "Kunstzentrum Wachsfabrik, Köln",
+        },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      expect(result.location).toEqual({ latitude: 50.89, longitude: 6.96 });
+      expect(result.coordinateSource.type).toBe("geocoded");
+    });
+
+    it("should use locationNamePath when source coordinates are empty", () => {
+      const row = { latitude: "", longitude: "", venue: "City Hall" };
+      const fieldMappings = { latitudePath: "latitude", longitudePath: "longitude", locationNamePath: "venue" };
+      // normalizeGeocodingAddress lowercases and trims
+      const geocodingResults = {
+        "city hall": {
+          coordinates: { lat: 50.94, lng: 6.95 },
+          confidence: 0.6,
+          formattedAddress: "City Hall, Cologne",
+        },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      expect(result.location).toEqual({ latitude: 50.94, longitude: 6.95 });
+      expect(result.coordinateSource.type).toBe("geocoded");
+    });
+
+    it("should prefer locationPath over locationNamePath for geocoding lookup", () => {
+      const row = { address: "Main St 1, Cologne", venue: "Art Gallery" };
+      const fieldMappings = { locationPath: "address", locationNamePath: "venue" };
+      // normalizeGeocodingAddress lowercases and strips non-word chars except .,- and spaces
+      const geocodingResults = {
+        "main st 1, cologne": {
+          coordinates: { lat: 50.93, lng: 6.97 },
+          confidence: 0.95,
+          formattedAddress: "Main St 1, Cologne",
+        },
+        "art gallery": { coordinates: { lat: 50.94, lng: 6.96 }, confidence: 0.5, formattedAddress: "Art Gallery" },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      // Should use locationPath (higher confidence address), not locationNamePath
+      expect(result.location).toEqual({ latitude: 50.93, longitude: 6.97 });
+      expect(result.coordinateSource.confidence).toBe(0.95);
+    });
+  });
 });
 
 describe("extractTimestamp", () => {
