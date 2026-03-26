@@ -144,8 +144,11 @@ const BeeswarmSettings = ({
       minLabel="Fewer"
       maxLabel="More"
     />
-    <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
-    <LabeledSlider label="Max cluster size" value={clusterSize} onChange={setClusterSize} min={10} max={80} step={5} />
+    {mode === "individual" ? (
+      <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
+    ) : (
+      <LabeledSlider label="Cluster size" value={clusterSize} onChange={setClusterSize} min={10} max={80} step={5} />
+    )}
     <div className="text-muted-foreground text-center font-mono text-[10px]">
       {mode === "individual" ? "Showing dots" : `${itemCount} clusters`}
     </div>
