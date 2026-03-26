@@ -75,6 +75,28 @@ const DATASET_COLORS = [
 
 export { DATASET_COLORS };
 
+/** Compute tight axis bounds from all series data so the chart fills its container. */
+const computeAxisBounds = (allSeries: BeeswarmSeries[]) => {
+  let maxY = 1;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  for (const s of allSeries) {
+    for (const item of s.data) {
+      const absY = Math.abs(item.y);
+      if (absY > maxY) maxY = absY;
+      if (item.x < minX) minX = item.x;
+      if (item.x > maxX) maxX = item.x;
+    }
+  }
+  const xRange = maxX - minX;
+  const xPad = xRange > 0 ? xRange * 0.03 : 86400000;
+  return {
+    yPadding: Math.max(maxY * 1.3, 1),
+    xMin: Number.isFinite(minX) ? minX - xPad : undefined,
+    xMax: Number.isFinite(maxX) ? maxX + xPad : undefined,
+  };
+};
+
 export const BeeswarmChart = ({
   series,
   onPointClick,
@@ -94,15 +116,7 @@ export const BeeswarmChart = ({
   const totalPoints = series.reduce((sum, s) => sum + s.data.length, 0);
   const defaultDotSize = totalPoints < 200 ? 6 : 4;
 
-  // Compute Y-axis bounds so points fill the full chart height
-  let maxY = 1;
-  for (const s of series) {
-    for (const item of s.data) {
-      const absY = Math.abs(item.y);
-      if (absY > maxY) maxY = absY;
-    }
-  }
-  const yPadding = Math.max(maxY * 1.3, 1); // 30% padding above/below, min 1
+  const { yPadding, xMin, xMax } = computeAxisBounds(series);
 
   const chartOption: EChartsOption = {
     backgroundColor: "transparent",
@@ -110,6 +124,8 @@ export const BeeswarmChart = ({
     grid: { left: "3%", right: "4%", bottom: "8%", top: series.length > 1 ? 30 : "8%", containLabel: true },
     xAxis: {
       type: "time",
+      min: xMin,
+      max: xMax,
       axisLabel: { color: effectiveTheme.textColor, fontSize: 11 },
       axisLine: { lineStyle: { color: effectiveTheme.axisLineColor } },
       splitLine: { show: false },
