@@ -107,8 +107,10 @@ const BeeswarmSettings = ({
   setBuckets,
   dotSize,
   setDotSize,
-  clusterSize,
-  setClusterSize,
+  clusterMin,
+  setClusterMin,
+  clusterMax,
+  setClusterMax,
   mode,
   itemCount,
 }: {
@@ -118,8 +120,10 @@ const BeeswarmSettings = ({
   setBuckets: (v: number) => void;
   dotSize: number;
   setDotSize: (v: number) => void;
-  clusterSize: number;
-  setClusterSize: (v: number) => void;
+  clusterMin: number;
+  setClusterMin: (v: number) => void;
+  clusterMax: number;
+  setClusterMax: (v: number) => void;
   mode: string;
   itemCount: number;
 }) => (
@@ -144,11 +148,9 @@ const BeeswarmSettings = ({
       minLabel="Fewer"
       maxLabel="More"
     />
-    {mode === "individual" ? (
-      <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
-    ) : (
-      <LabeledSlider label="Cluster size" value={clusterSize} onChange={setClusterSize} min={10} max={80} step={5} />
-    )}
+    <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
+    <LabeledSlider label="Cluster min" value={clusterMin} onChange={setClusterMin} min={4} max={30} step={2} />
+    <LabeledSlider label="Cluster max" value={clusterMax} onChange={setClusterMax} min={20} max={80} step={5} />
     <div className="text-muted-foreground text-center font-mono text-[10px]">
       {mode === "individual" ? "Showing dots" : `${itemCount} clusters`}
     </div>
@@ -172,7 +174,8 @@ export const EventBeeswarm = ({
   const [threshold, setThreshold] = useState<number>(defaults.individualThreshold);
   const [buckets, setBuckets] = useState<number>(defaults.targetBuckets);
   const [dotSize, setDotSize] = useState(8);
-  const [clusterSize, setClusterSize] = useState(40);
+  const [clusterMin, setClusterMin] = useState(10);
+  const [clusterMax, setClusterMax] = useState(40);
 
   // Debounce API-triggering params to avoid excessive requests while dragging sliders
   const debouncedThreshold = useDebounce(threshold, 400);
@@ -212,7 +215,8 @@ export const EventBeeswarm = ({
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
         dotSizeOverride={dotSize}
-        clusterMaxSize={clusterSize}
+        clusterMinSize={clusterMin}
+        clusterMaxSize={clusterMax}
       />
 
       {variant === "fullscreen" && total > 0 && !isInitialLoad && (
@@ -229,8 +233,10 @@ export const EventBeeswarm = ({
           setBuckets={setBuckets}
           dotSize={dotSize}
           setDotSize={setDotSize}
-          clusterSize={clusterSize}
-          setClusterSize={setClusterSize}
+          clusterMin={clusterMin}
+          setClusterMin={setClusterMin}
+          clusterMax={clusterMax}
+          setClusterMax={setClusterMax}
           mode={mode}
           itemCount={data?.items.length ?? 0}
         />

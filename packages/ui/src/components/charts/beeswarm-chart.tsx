@@ -69,6 +69,8 @@ export interface BeeswarmChartProps {
   layout?: "merged" | "rows";
   /** Override the auto-computed dot size (pixels). */
   dotSizeOverride?: number;
+  /** Min cluster circle size (pixels). @default 10 */
+  clusterMinSize?: number;
   /** Max cluster circle size (pixels). @default 40 */
   clusterMaxSize?: number;
 }
@@ -101,11 +103,10 @@ const computeDotSize = (totalPoints: number): number => {
 };
 
 /** Logarithmic cluster sizing for better visual differentiation across magnitudes */
-const computeClusterSize = (count: number, maxCount: number, maxSize = 40): number => {
-  const MIN_SIZE = 10;
-  if (maxCount <= 1 || count <= 1) return MIN_SIZE;
+const computeClusterSize = (count: number, maxCount: number, minSize = 10, maxSize = 40): number => {
+  if (maxCount <= 1 || count <= 1) return minSize;
   const ratio = Math.log(count) / Math.log(maxCount);
-  return Math.round(MIN_SIZE + ratio * (maxSize - MIN_SIZE));
+  return Math.round(minSize + ratio * (maxSize - minSize));
 };
 
 // ---------------------------------------------------------------------------
@@ -150,12 +151,15 @@ const computeBeeswarmLayout = (
   allSeries: BeeswarmSeries[],
   dotSize: number,
   maxClusterCount: number,
+  clusterMinSize = 10,
   clusterMaxSize = 40
 ): number[] => {
   const nodes: ForceNode[] = [];
   for (const s of allSeries) {
     for (const item of s.data) {
-      const r = item.count ? computeClusterSize(item.count, maxClusterCount, clusterMaxSize) / 2 : dotSize / 2;
+      const r = item.count
+        ? computeClusterSize(item.count, maxClusterCount, clusterMinSize, clusterMaxSize) / 2
+        : dotSize / 2;
       // Seed with random Y jitter so the force sim has something to resolve —
       // without this, non-overlapping nodes all stay at y=0 (flat line).
       const jitter = (Math.sin(nodes.length * 9301 + 49297) * 0.5 + 0.5 - 0.5) * r * 4;
@@ -206,6 +210,7 @@ const computeRowLayout = (
   allSeries: BeeswarmSeries[],
   dotSize: number,
   maxClusterCount: number,
+  clusterMinSize = 10,
   clusterMaxSize = 40
 ): { yPositions: number[]; rowCount: number } => {
   const rowCount = allSeries.length;
@@ -217,7 +222,7 @@ const computeRowLayout = (
     const s = allSeries[si]!;
     if (s.data.length === 0) continue;
 
-    const localY = computeBeeswarmLayout([s], dotSize, maxClusterCount, clusterMaxSize);
+    const localY = computeBeeswarmLayout([s], dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
     const rowCenter = si * ROW_SPACING;
     for (const ly of localY) yPositions.push(rowCenter + ly);
   }
@@ -257,9 +262,10 @@ const computeMergedLayoutConfig = (
   allSeries: BeeswarmSeries[],
   dotSize: number,
   maxClusterCount: number,
+  clusterMinSize = 10,
   clusterMaxSize = 40
 ) => {
-  const yPositions = computeBeeswarmLayout(allSeries, dotSize, maxClusterCount, clusterMaxSize);
+  const yPositions = computeBeeswarmLayout(allSeries, dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
 
   let maxAbsY = 1;
   for (const y of yPositions) {
@@ -276,9 +282,16 @@ const computeRowLayoutConfig = (
   dotSize: number,
   maxClusterCount: number,
   effectiveTheme: ChartTheme,
+  clusterMinSize = 10,
   clusterMaxSize = 40
 ) => {
-  const { yPositions, rowCount } = computeRowLayout(allSeries, dotSize, maxClusterCount, clusterMaxSize);
+  const { yPositions, rowCount } = computeRowLayout(
+    allSeries,
+    dotSize,
+    maxClusterCount,
+    clusterMinSize,
+    clusterMaxSize
+  );
 
   // Value axis with custom labels at row centers and dashed separators between rows
   const yMin = -ROW_SPACING * 0.5;
@@ -329,6 +342,7 @@ export const BeeswarmChart = ({
   maxClusterCount = 1,
   layout = "merged",
   dotSizeOverride,
+  clusterMinSize = 10,
   clusterMaxSize = 40,
 }: BeeswarmChartProps) => {
   const isDark = theme?.axisLineColor === defaultDarkTheme.axisLineColor;
@@ -340,8 +354,8 @@ export const BeeswarmChart = ({
 
   // Compute beeswarm layout — merged or per-row
   const { yPositions, yAxisConfig } = isRowLayout
-    ? computeRowLayoutConfig(series, dotSize, maxClusterCount, effectiveTheme, clusterMaxSize)
-    : computeMergedLayoutConfig(series, dotSize, maxClusterCount, clusterMaxSize);
+    ? computeRowLayoutConfig(series, dotSize, maxClusterCount, effectiveTheme, clusterMinSize, clusterMaxSize)
+    : computeMergedLayoutConfig(series, dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
 
   const { xMin, xMax } = computeXBounds(series);
   const showLegend = !isRowLayout && series.length > 1;
@@ -406,7 +420,7 @@ export const BeeswarmChart = ({
           ? (value: number[]) => {
               const item = value[3] as unknown as BeeswarmDataItem;
               if (!item?.count) return dotSize;
-              return computeClusterSize(item.count, maxClusterCount, clusterMaxSize);
+              return computeClusterSize(item.count, maxClusterCount, clusterMinSize, clusterMaxSize);
             }
           : dotSize,
         itemStyle: { color: s.color, opacity: hasClusterData ? 0.5 : 0.8 },
