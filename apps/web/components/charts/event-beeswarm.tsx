@@ -1,9 +1,9 @@
 /**
- * Beeswarm visualization showing all events on a timeline.
+ * Beeswarm visualization showing events on a timeline.
  *
- * Uses histogram data (covers all events) to create a hybrid visualization:
- * - Small buckets (≤ threshold): individual dots stacked vertically
- * - Large buckets: a single circle sized proportionally to the count
+ * Shows individual event dots (true beeswarm) from the events API,
+ * plus cluster circles for overflow when there are more events than loaded.
+ * Uses histogram data to determine cluster sizes for unloaded events.
  *
  * @module
  * @category Components
@@ -16,8 +16,9 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
-import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useEventsListQuery, useHistogramQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
+import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
@@ -28,56 +29,97 @@ interface EventBeeswarmProps {
   onEventClick?: (eventId: number) => void;
 }
 
-/** Max events per bucket to show as individual dots */
-const INDIVIDUAL_THRESHOLD = 10;
 /** Target Y range for jitter distribution */
 const Y_RANGE = 100;
+/** Bucket width for jitter grouping (1 day in ms) */
+const BUCKET_MS = 86400000;
 
 /**
- * Transform histogram buckets into beeswarm data points.
- * Small buckets → individual dots, large buckets → sized circles.
+ * Compute jittered Y positions for individual event dots.
+ * Events within the same day-bucket are spread symmetrically around Y=0.
  */
-const computeBeeswarmFromHistogram = (
-  histogram: Array<{ date: string; dateEnd?: string; count: number }>
-): { dots: BeeswarmDataItem[]; clusters: BeeswarmDataItem[]; total: number } => {
-  const dots: BeeswarmDataItem[] = [];
-  const clusters: BeeswarmDataItem[] = [];
-  let total = 0;
-  let maxCount = 1;
+const computeJitteredDots = (
+  events: Array<{ id: number; eventTimestamp: string; data: Record<string, unknown> }>
+): BeeswarmDataItem[] => {
+  const items: BeeswarmDataItem[] = events.map((e) => ({
+    x: new Date(e.eventTimestamp).getTime(),
+    y: 0,
+    id: e.id,
+    label: (e.data?.title as string) ?? (e.data?.name as string) ?? undefined,
+  }));
 
-  for (const bucket of histogram) {
-    if (bucket.count > maxCount) maxCount = bucket.count;
-    total += bucket.count;
+  // Group into day-buckets for jitter
+  const buckets = new Map<number, BeeswarmDataItem[]>();
+  for (const item of items) {
+    const key = Math.floor(item.x / BUCKET_MS);
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key)!.push(item);
   }
 
-  let dotId = -1; // negative IDs for non-clickable dots
+  // Find max bucket size for normalization
+  let maxBucketSize = 1;
+  for (const bucket of buckets.values()) {
+    if (bucket.length > maxBucketSize) maxBucketSize = bucket.length;
+  }
+  const step = maxBucketSize > 1 ? (Y_RANGE * 2) / maxBucketSize : 1;
 
-  for (const bucket of histogram) {
-    if (bucket.count === 0) continue;
-
-    const bucketStart = new Date(bucket.date).getTime();
-    const bucketEnd = bucket.dateEnd ? new Date(bucket.dateEnd).getTime() : bucketStart;
-    const bucketMid = (bucketStart + bucketEnd) / 2;
-
-    if (bucket.count <= INDIVIDUAL_THRESHOLD) {
-      // Individual dots — spread vertically within the bucket
-      const step = bucket.count > 1 ? (Y_RANGE * 2) / Math.max(bucket.count, 1) : 0;
-      for (let i = 0; i < bucket.count; i++) {
-        dots.push({ x: bucketMid, y: (i - (bucket.count - 1) / 2) * step, id: dotId--, label: undefined });
-      }
-    } else {
-      // Cluster circle — size proportional to sqrt(count)
-      clusters.push({
-        x: bucketMid,
-        y: 0,
-        id: dotId--,
-        count: bucket.count,
-        label: `${bucket.count.toLocaleString()} events`,
-      });
+  for (const bucket of buckets.values()) {
+    const count = bucket.length;
+    for (let i = 0; i < count; i++) {
+      bucket[i]!.y = (i - (count - 1) / 2) * step;
     }
   }
 
-  return { dots, clusters, total };
+  return items;
+};
+
+/**
+ * Compute cluster circles for histogram buckets where loaded events
+ * don't cover all events (overflow indication).
+ */
+const computeOverflowClusters = (
+  histogram: Array<{ date: string; dateEnd?: string; count: number }>,
+  loadedEvents: Array<{ eventTimestamp: string }>,
+  totalLoaded: number,
+  totalCount: number
+): BeeswarmDataItem[] => {
+  if (totalLoaded >= totalCount) return [];
+
+  // Count loaded events per histogram bucket
+  const loadedPerBucket = new Map<string, number>();
+  for (const event of loadedEvents) {
+    const ts = new Date(event.eventTimestamp).getTime();
+    for (const bucket of histogram) {
+      const bucketStart = new Date(bucket.date).getTime();
+      const bucketEnd = bucket.dateEnd ? new Date(bucket.dateEnd).getTime() : bucketStart + BUCKET_MS;
+      if (ts >= bucketStart && ts < bucketEnd) {
+        loadedPerBucket.set(bucket.date, (loadedPerBucket.get(bucket.date) ?? 0) + 1);
+        break;
+      }
+    }
+  }
+
+  let clusterId = -1;
+  const clusters: BeeswarmDataItem[] = [];
+
+  for (const bucket of histogram) {
+    const loaded = loadedPerBucket.get(bucket.date) ?? 0;
+    const overflow = bucket.count - loaded;
+    if (overflow <= 0) continue;
+
+    const bucketStart = new Date(bucket.date).getTime();
+    const bucketEnd = bucket.dateEnd ? new Date(bucket.dateEnd).getTime() : bucketStart + BUCKET_MS;
+
+    clusters.push({
+      x: (bucketStart + bucketEnd) / 2,
+      y: 0,
+      id: clusterId--,
+      count: overflow,
+      label: `+${overflow.toLocaleString()}`,
+    });
+  }
+
+  return clusters;
 };
 
 export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }: Readonly<EventBeeswarmProps>) => {
@@ -86,36 +128,34 @@ export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }:
   const { filters } = useFilters();
   const scope = useViewScope();
 
-  const {
-    data: histogramData,
-    isInitialLoad,
-    isUpdating,
-    isError,
-  } = useHistogramQuery(filters, bounds ?? null, true, scope);
+  const eventsQuery = useEventsListQuery(filters, bounds ?? null, 1000, true, scope);
+  const { isInitialLoad, isUpdating } = useLoadingPhase(eventsQuery.isLoading);
 
-  const histogram = histogramData?.histogram ?? EMPTY_ARRAY;
+  const histogramQuery = useHistogramQuery(filters, bounds ?? null, true, scope);
+  const histogram = histogramQuery.data?.histogram ?? EMPTY_ARRAY;
 
-  const { series, total, maxCount } = useMemo(() => {
-    const { dots, clusters, total: totalCount } = computeBeeswarmFromHistogram(histogram);
+  const totalCount = eventsQuery.data?.total ?? 0;
 
-    // Find max cluster count for sizing
+  const { dotSeries, clusterSeries, maxClusterCount } = useMemo(() => {
+    const loadedEvents = eventsQuery.data?.events ?? [];
+    const dots = computeJitteredDots(loadedEvents);
+    const clusters = computeOverflowClusters(histogram, loadedEvents, loadedEvents.length, totalCount);
+
     let maxC = 1;
     for (const c of clusters) {
       if (c.count && c.count > maxC) maxC = c.count;
     }
 
-    const result: BeeswarmSeries[] = [];
+    return {
+      dotSeries: { name: "Events", color: DATASET_COLORS[0] ?? "#0089a7", data: dots } as BeeswarmSeries,
+      clusterSeries: { name: "Overflow", color: DATASET_COLORS[0] ?? "#0089a7", data: clusters } as BeeswarmSeries,
+      maxClusterCount: maxC,
+    };
+  }, [eventsQuery.data?.events, histogram, totalCount]);
 
-    if (dots.length > 0) {
-      result.push({ name: "Events", color: DATASET_COLORS[0] ?? "#0089a7", data: dots });
-    }
-
-    if (clusters.length > 0) {
-      result.push({ name: "Clusters", color: DATASET_COLORS[0] ?? "#0089a7", data: clusters });
-    }
-
-    return { series: result, total: totalCount, maxCount: maxC };
-  }, [histogram]);
+  const series: BeeswarmSeries[] = [];
+  if (dotSeries.data.length > 0) series.push(dotSeries);
+  if (clusterSeries.data.length > 0) series.push(clusterSeries);
 
   return (
     <div className="relative h-full">
@@ -127,15 +167,15 @@ export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }:
         className={className}
         isInitialLoad={isInitialLoad}
         isUpdating={isUpdating}
-        isError={isError}
-        totalCount={total}
-        visibleCount={total}
+        isError={eventsQuery.isError}
+        totalCount={totalCount}
+        visibleCount={dotSeries.data.length}
         emptyMessage={t("noEventsToDisplay")}
-        maxClusterCount={maxCount}
+        maxClusterCount={maxClusterCount}
       />
-      {total > 0 && !isInitialLoad && (
+      {totalCount > 0 && !isInitialLoad && (
         <div className="text-muted-foreground absolute top-1 right-3 font-mono text-xs">
-          {total.toLocaleString()} {t("eventsLabel")}
+          {totalCount.toLocaleString()} {t("eventsLabel")}
         </div>
       )}
     </div>
