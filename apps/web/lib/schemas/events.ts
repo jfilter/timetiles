@@ -227,3 +227,53 @@ export const ClusterStatsResponseSchema = z
   .openapi("ClusterStatsResponse");
 
 export type ClusterStatsResponse = z.infer<typeof ClusterStatsResponseSchema>;
+
+// =============================================================================
+// Temporal Clusters Endpoint
+// =============================================================================
+
+/**
+ * Query parameters for GET /api/v1/events/temporal-clusters
+ */
+export const TemporalClustersQuerySchema = EventFiltersSchema.extend({
+  targetBuckets: z.coerce.number().int().min(1).max(200).default(40),
+  individualThreshold: z.coerce.number().int().min(0).max(2000).default(500),
+}).openapi("TemporalClustersQuery");
+
+export type TemporalClustersQuery = z.infer<typeof TemporalClustersQuerySchema>;
+
+/**
+ * Single item in temporal clusters response (either individual event or cluster).
+ */
+export const TemporalClusterItemSchema = z
+  .object({
+    bucketStart: z.string(),
+    bucketEnd: z.string(),
+    datasetId: z.number().int(),
+    datasetName: z.string(),
+    count: z.number().int(),
+    eventId: z.number().int().optional(),
+    eventTitle: z.string().nullable().optional(),
+    eventTimestamp: z.string().optional(),
+  })
+  .openapi("TemporalClusterItem");
+
+export type TemporalClusterItem = z.infer<typeof TemporalClusterItemSchema>;
+
+/**
+ * Response for GET /api/v1/events/temporal-clusters
+ */
+export const TemporalClustersResponseSchema = z
+  .object({
+    items: z.array(TemporalClusterItemSchema),
+    metadata: z.object({
+      total: z.number().int(),
+      mode: z.enum(["individual", "clustered"]),
+      bucketSizeSeconds: z.number().nullable(),
+      bucketCount: z.number().int(),
+      dateRange: z.object({ min: z.string().nullable(), max: z.string().nullable() }),
+    }),
+  })
+  .openapi("TemporalClustersResponse");
+
+export type TemporalClustersResponse = z.infer<typeof TemporalClustersResponseSchema>;

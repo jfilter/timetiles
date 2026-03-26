@@ -1,9 +1,9 @@
 /**
- * Beeswarm visualization showing all events on a timeline.
+ * Beeswarm visualization showing events on a timeline.
  *
- * Uses histogram data (covers all events) to create a hybrid visualization:
- * - Small buckets (≤ threshold): individual dots stacked vertically
- * - Large buckets: a single circle sized proportionally to the count
+ * Uses the temporal-clusters API which adaptively returns:
+ * - Individual events (with per-dataset grouping) for small result sets
+ * - Per-dataset-per-bucket clusters for large result sets
  *
  * @module
  * @category Components
@@ -15,10 +15,10 @@ import { BeeswarmChart, DATASET_COLORS, useChartTheme } from "@timetiles/ui/char
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-import { EMPTY_ARRAY } from "@/lib/constants/empty";
-import { useHistogramQuery } from "@/lib/hooks/use-events-queries";
+import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
+import type { TemporalClusterItem } from "@/lib/schemas/events";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 interface EventBeeswarmProps {
@@ -28,56 +28,62 @@ interface EventBeeswarmProps {
   onEventClick?: (eventId: number) => void;
 }
 
-/** Max events per bucket to show as individual dots */
-const INDIVIDUAL_THRESHOLD = 10;
-/** Target Y range for jitter distribution */
-const Y_RANGE = 100;
-
-/**
- * Transform histogram buckets into beeswarm data points.
- * Small buckets → individual dots, large buckets → sized circles.
- */
-const computeBeeswarmFromHistogram = (
-  histogram: Array<{ date: string; dateEnd?: string; count: number }>
-): { dots: BeeswarmDataItem[]; clusters: BeeswarmDataItem[]; total: number } => {
-  const dots: BeeswarmDataItem[] = [];
-  const clusters: BeeswarmDataItem[] = [];
-  let total = 0;
-  let maxCount = 1;
-
-  for (const bucket of histogram) {
-    if (bucket.count > maxCount) maxCount = bucket.count;
-    total += bucket.count;
-  }
-
-  let dotId = -1; // negative IDs for non-clickable dots
-
-  for (const bucket of histogram) {
-    if (bucket.count === 0) continue;
-
-    const bucketStart = new Date(bucket.date).getTime();
-    const bucketEnd = bucket.dateEnd ? new Date(bucket.dateEnd).getTime() : bucketStart;
-    const bucketMid = (bucketStart + bucketEnd) / 2;
-
-    if (bucket.count <= INDIVIDUAL_THRESHOLD) {
-      // Individual dots — spread vertically within the bucket
-      const step = bucket.count > 1 ? (Y_RANGE * 2) / Math.max(bucket.count, 1) : 0;
-      for (let i = 0; i < bucket.count; i++) {
-        dots.push({ x: bucketMid, y: (i - (bucket.count - 1) / 2) * step, id: dotId--, label: undefined });
-      }
-    } else {
-      // Cluster circle — size proportional to sqrt(count)
-      clusters.push({
-        x: bucketMid,
-        y: 0,
-        id: dotId--,
-        count: bucket.count,
-        label: `${bucket.count.toLocaleString()} events`,
-      });
+/** Group items by datasetId and build one BeeswarmSeries per dataset. */
+const groupByDataset = (items: TemporalClusterItem[]): Map<number, { name: string; items: TemporalClusterItem[] }> => {
+  const groups = new Map<number, { name: string; items: TemporalClusterItem[] }>();
+  for (const item of items) {
+    if (!groups.has(item.datasetId)) {
+      groups.set(item.datasetId, { name: item.datasetName, items: [] });
     }
+    groups.get(item.datasetId)!.items.push(item);
+  }
+  return groups;
+};
+
+/** Transform API response to BeeswarmSeries[] for the presentational chart. */
+const transformToSeries = (
+  items: TemporalClusterItem[],
+  mode: "individual" | "clustered"
+): { series: BeeswarmSeries[]; maxClusterCount: number } => {
+  if (items.length === 0) return { series: [], maxClusterCount: 1 };
+
+  const groups = groupByDataset(items);
+  const series: BeeswarmSeries[] = [];
+  let maxClusterCount = 1;
+  let colorIdx = 0;
+
+  for (const [, group] of groups) {
+    const color = DATASET_COLORS[colorIdx % DATASET_COLORS.length] ?? "#0089a7";
+
+    // Y=0 for all items — the BeeswarmChart handles layout via collision avoidance
+    const data: BeeswarmDataItem[] = group.items.map((item, i) => {
+      if (item.count > maxClusterCount) maxClusterCount = item.count;
+      const start = new Date(item.bucketStart).getTime();
+      const end = new Date(item.bucketEnd).getTime();
+
+      return mode === "individual"
+        ? {
+            x: item.eventTimestamp ? new Date(item.eventTimestamp).getTime() : start,
+            y: 0,
+            id: item.eventId!,
+            label: item.eventTitle ?? undefined,
+            dataset: group.name,
+          }
+        : {
+            x: (start + end) / 2,
+            y: 0,
+            id: -(colorIdx * 10000 + i + 1),
+            count: item.count,
+            dataset: group.name,
+            label: `${item.count.toLocaleString()} events`,
+          };
+    });
+
+    series.push({ name: group.name, color, data });
+    colorIdx++;
   }
 
-  return { dots, clusters, total };
+  return { series, maxClusterCount };
 };
 
 export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }: Readonly<EventBeeswarmProps>) => {
@@ -86,36 +92,12 @@ export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }:
   const { filters } = useFilters();
   const scope = useViewScope();
 
-  const {
-    data: histogramData,
-    isInitialLoad,
-    isUpdating,
-    isError,
-  } = useHistogramQuery(filters, bounds ?? null, true, scope);
+  const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(filters, bounds ?? null, true, scope);
 
-  const histogram = histogramData?.histogram ?? EMPTY_ARRAY;
+  const total = data?.metadata.total ?? 0;
+  const mode = data?.metadata.mode ?? "individual";
 
-  const { series, total, maxCount } = useMemo(() => {
-    const { dots, clusters, total: totalCount } = computeBeeswarmFromHistogram(histogram);
-
-    // Find max cluster count for sizing
-    let maxC = 1;
-    for (const c of clusters) {
-      if (c.count && c.count > maxC) maxC = c.count;
-    }
-
-    const result: BeeswarmSeries[] = [];
-
-    if (dots.length > 0) {
-      result.push({ name: "Events", color: DATASET_COLORS[0] ?? "#0089a7", data: dots });
-    }
-
-    if (clusters.length > 0) {
-      result.push({ name: "Clusters", color: DATASET_COLORS[0] ?? "#0089a7", data: clusters });
-    }
-
-    return { series: result, total: totalCount, maxCount: maxC };
-  }, [histogram]);
+  const { series, maxClusterCount } = useMemo(() => transformToSeries(data?.items ?? [], mode), [data?.items, mode]);
 
   return (
     <div className="relative h-full">
@@ -131,7 +113,7 @@ export const EventBeeswarm = ({ bounds, height = 300, className, onEventClick }:
         totalCount={total}
         visibleCount={total}
         emptyMessage={t("noEventsToDisplay")}
-        maxClusterCount={maxCount}
+        maxClusterCount={maxClusterCount}
       />
       {total > 0 && !isInitialLoad && (
         <div className="text-muted-foreground absolute top-1 right-3 font-mono text-xs">

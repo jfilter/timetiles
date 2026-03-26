@@ -18,7 +18,13 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import type { ClusterFeature } from "@/components/maps/clustered-map";
-import type { AggregateResponse, ClusterStatsResponse, EventListItem, HistogramResponse } from "@/lib/schemas/events";
+import type {
+  AggregateResponse,
+  ClusterStatsResponse,
+  EventListItem,
+  HistogramResponse,
+  TemporalClustersResponse,
+} from "@/lib/schemas/events";
 import type { Event } from "@/payload-types";
 
 import { fetchJson, HttpError } from "../api/http-error";
@@ -135,6 +141,19 @@ const fetchHistogram = async (
   return fetchJson<HistogramResponse>(`/api/v1/events/temporal?${params.toString()}`, { signal });
 };
 
+const fetchTemporalClusters = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  signal?: AbortSignal,
+  scope?: ViewScope
+): Promise<TemporalClustersResponse> => {
+  const params = buildEventParams(filters, bounds, {}, scope);
+
+  logger.debug("Fetching temporal clusters", { filters, bounds });
+
+  return fetchJson<TemporalClustersResponse>(`/api/v1/events/temporal-clusters?${params.toString()}`, { signal });
+};
+
 const fetchClusterStats = async (
   filters: FilterState,
   signal?: AbortSignal,
@@ -188,6 +207,9 @@ export const eventsQueryKeys = {
   bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
   boundsFiltered: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.bounds(), { filters, scope }] as const,
+  temporalClusters: () => [...eventsQueryKeys.all, "temporal-clusters"] as const,
+  temporalCluster: (filters: FilterState, bounds: BoundsType, scope?: ViewScope) =>
+    [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope }] as const,
 };
 
 // Query hooks
@@ -246,6 +268,30 @@ export const useHistogramQuery = (
     ...QUERY_PRESETS.expensive,
 
     placeholderData: (previousData) => previousData, // Show previous data while loading new
+  });
+  const phase = useLoadingPhase(query.isLoading);
+  return { ...query, ...phase };
+};
+
+/**
+ * Hook to fetch adaptive temporal clusters for the beeswarm chart.
+ *
+ * Returns individual events for small result sets or per-dataset-per-bucket
+ * clusters for large ones. Replaces the dual events+histogram fetch pattern.
+ */
+export const useTemporalClustersQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  enabled: boolean = true,
+  scope?: ViewScope
+): ChartQueryResult<TemporalClustersResponse> => {
+  const query = useQuery({
+    queryKey: eventsQueryKeys.temporalCluster(filters, bounds, scope),
+    queryFn: ({ signal }) => fetchTemporalClusters(filters, bounds, signal, scope),
+    enabled: enabled && bounds != null,
+    ...QUERY_PRESETS.expensive,
+
+    placeholderData: (previousData) => previousData,
   });
   const phase = useLoadingPhase(query.isLoading);
   return { ...query, ...phase };
