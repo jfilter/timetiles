@@ -97,9 +97,6 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
     e.preventDefault();
   };
 
-  // Limit display to top 15 values by count
-  const displayValues = values.slice(0, 15);
-
   return (
     <div className="space-y-1">
       <div className="text-muted-foreground dark:text-foreground/60 font-mono text-xs tracking-wider uppercase">
@@ -146,7 +143,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
             )}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {displayValues.map(({ value, count, percent }) => (
+          {values.map(({ value, count, percent }) => (
             <EnumCheckboxItem
               key={value}
               value={value}
@@ -157,14 +154,6 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
               onPreventSelect={handlePreventSelect}
             />
           ))}
-          {values.length > displayValues.length && (
-            <>
-              <DropdownMenuSeparator />
-              <div className="text-muted-foreground px-2 py-1 text-center text-xs">
-                {t("moreValues", { count: values.length - displayValues.length })}
-              </div>
-            </>
-          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
