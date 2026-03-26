@@ -31,8 +31,10 @@ export const isValidCoordinate = (lat: number | null, lon: number | null): boole
   if (Number.isNaN(lat) || Number.isNaN(lon)) {
     return false;
   }
-  // Check ranges and suspicious (0,0) - exact zero unlikely except in ocean
-  return !(lat < -90 || lat > 90 || lon < -180 || lon > 180 || (lat === 0 && lon === 0));
+  // Check ranges and suspicious near-(0,0) — Null Island region in the Gulf of Guinea.
+  // Coordinates within ~1km of (0,0) are almost certainly data errors, not real locations.
+  const nearNullIsland = Math.abs(lat) < 0.01 && Math.abs(lon) < 0.01;
+  return !(lat < -90 || lat > 90 || lon < -180 || lon > 180 || nearNullIsland);
 };
 
 /**
