@@ -29,6 +29,8 @@ export interface CanonicalEventFilters {
   requireLocation?: boolean;
   /** Field filters for categorical filtering (keys always validated) */
   fieldFilters?: Record<string, string[]>;
+  /** Fields that store arrays (tag/multi-value) — use JSONB containment instead of IN */
+  tagFields?: Set<string>;
   /** When true, filters are valid but should match no rows (access denied) */
   denyResults?: boolean;
 }

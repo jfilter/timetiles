@@ -28,7 +28,7 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
     ...buildDateWhere(filters),
     ...(filters.bounds ? buildBoundsWhere(filters.bounds) : []),
     ...(filters.requireLocation ? buildLocationWhere() : []),
-    ...buildFieldFilterWhere(filters.fieldFilters),
+    ...buildFieldFilterWhere(filters.fieldFilters, filters.tagFields),
   ];
 
   return and.length > 0 ? { and } : {};
@@ -56,11 +56,16 @@ const buildLocationWhere = (): Where[] => [
   { "location.longitude": { exists: true } },
 ];
 
-const buildFieldFilterWhere = (fieldFilters?: Record<string, string[]>): Where[] => {
+const buildFieldFilterWhere = (fieldFilters?: Record<string, string[]>, tagFields?: Set<string>): Where[] => {
   if (!fieldFilters) return [];
-  return Object.entries(fieldFilters)
-    .filter(([fieldPath, values]) => values.length > 0 && isValidFieldKey(fieldPath))
-    .map(([fieldPath, values]) => ({ [`transformedData.${fieldPath}`]: { in: values } }));
+  return (
+    Object.entries(fieldFilters)
+      .filter(([fieldPath, values]) => values.length > 0 && isValidFieldKey(fieldPath))
+      // Tag fields (arrays) can't be expressed via Payload's WHERE — they use @> in raw SQL paths.
+      // Skip them here; the SQL adapter (toSqlConditions) handles them correctly.
+      .filter(([fieldPath]) => !tagFields?.has(fieldPath))
+      .map(([fieldPath, values]) => ({ [`transformedData.${fieldPath}`]: { in: values } }))
+  );
 };
 
 const buildBoundsWhere = (bounds: CanonicalBounds): Where[] => {

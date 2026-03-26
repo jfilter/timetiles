@@ -26,6 +26,7 @@ export const toClusteringJsonb = (filters: CanonicalEventFilters): string =>
     endDate: filters.endDate,
     fieldFilters:
       filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+    tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
   });
 
 /**
@@ -52,4 +53,5 @@ export const toHistogramJsonb = (filters: CanonicalEventFilters): string =>
     requireLocation: filters.requireLocation,
     fieldFilters:
       filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+    tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
   });

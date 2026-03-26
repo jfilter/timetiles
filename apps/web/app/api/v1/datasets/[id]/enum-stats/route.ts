@@ -40,7 +40,6 @@ export const GET = apiRoute({
     if (candidates.length === 0) return { fields: [] };
 
     // Validate field paths against fieldMetadata keys to prevent injection.
-    // Only query fields that actually exist in the metadata.
     const validPaths = new Set(Object.keys(fm));
 
     // Sort by cardinality — fields closer to 5-15 unique values are most useful for filtering
@@ -55,18 +54,23 @@ export const GET = apiRoute({
       const fieldPath = field.path.replaceAll(/[^a-zA-Z0-9_.]/g, "");
       if (fieldPath !== field.path || fieldPath.length === 0 || fieldPath.length > 100) continue;
 
-      // Build query with sql.raw for the JSONB field path. The path is safe because:
-      // 1. It must exist in dataset.fieldMetadata (validated against validPaths set)
-      // 2. It's sanitized to [a-zA-Z0-9_.] and must match the original exactly
-      // 3. It's length-limited to 100 characters
-      const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(
-        sql.raw(
-          `SELECT transformed_data ->> '${fieldPath}' AS value, COUNT(*)::integer AS count ` +
-            `FROM payload.events ` +
-            `WHERE dataset_id = ${String(datasetId)} AND transformed_data ->> '${fieldPath}' IS NOT NULL ` +
-            `GROUP BY transformed_data ->> '${fieldPath}' ORDER BY count DESC LIMIT ${String(MAX_VALUES)}`
-        )
-      );
+      const isTag = field.isTagField === true;
+      const dsId = String(datasetId);
+      const limit = String(MAX_VALUES);
+
+      // Tag fields: explode JSONB arrays to count individual elements.
+      // Scalar fields: extract text value directly.
+      const query = isTag
+        ? `SELECT elem AS value, COUNT(*)::integer AS count ` +
+          `FROM payload.events, jsonb_array_elements_text(transformed_data -> '${fieldPath}') AS elem ` +
+          `WHERE dataset_id = ${dsId} AND jsonb_typeof(transformed_data -> '${fieldPath}') = 'array' ` +
+          `GROUP BY elem ORDER BY count DESC LIMIT ${limit}`
+        : `SELECT transformed_data ->> '${fieldPath}' AS value, COUNT(*)::integer AS count ` +
+          `FROM payload.events ` +
+          `WHERE dataset_id = ${dsId} AND transformed_data ->> '${fieldPath}' IS NOT NULL ` +
+          `GROUP BY transformed_data ->> '${fieldPath}' ORDER BY count DESC LIMIT ${limit}`;
+
+      const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(sql.raw(query));
 
       const total = rows.rows.reduce((s, r) => s + Number(r.count), 0);
       const label = field.path
@@ -77,6 +81,7 @@ export const GET = apiRoute({
       fields.push({
         path: field.path,
         label,
+        isTag,
         values: rows.rows.map((r) => ({
           value: String(r.value),
           count: Number(r.count),

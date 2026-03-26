@@ -114,27 +114,78 @@ export const enrichEnumFields = (
   config: { enumThreshold: number; enumMode: "count" | "percentage" }
 ): void => {
   for (const stats of Object.values(fieldStats)) {
-    const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
-    if (hasStringType && stats.uniqueSamples) {
-      const shouldBeEnum =
-        config.enumMode === "count"
-          ? stats.uniqueValues <= config.enumThreshold
-          : stats.uniqueValues / stats.occurrences <= config.enumThreshold / 100;
+    if ((stats.typeDistribution["array"] ?? 0) > 0) {
+      enrichTagField(stats, config.enumThreshold);
+    }
+    if ((stats.typeDistribution["string"] ?? 0) > 0 && !stats.isEnumCandidate) {
+      enrichScalarEnumField(stats, config);
+    }
+  }
+};
 
-      if (shouldBeEnum && stats.uniqueValues > 1 && stats.uniqueValues < stats.occurrences) {
-        stats.isEnumCandidate = true;
-        // Create enum values from unique samples
-        const valueCounts = new Map<unknown, number>();
-        for (const sample of stats.uniqueSamples) {
-          valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
-        }
-        stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
-          value,
-          count,
-          percent: (count / stats.occurrences) * 100,
-        }));
+/** Detect tag fields (multi-value arrays) by counting unique elements across samples. */
+const enrichTagField = (stats: FieldStatistics, enumThreshold: number): void => {
+  if (!stats.uniqueSamples) return;
+
+  const elementCounts = new Map<string, number>();
+  for (const sample of stats.uniqueSamples) {
+    const arr = Array.isArray(sample) ? sample : tryParseJsonStringArray(sample);
+    if (!arr) continue;
+    for (const item of arr) {
+      if (item != null && item !== "") {
+        elementCounts.set(String(item), (elementCounts.get(String(item)) ?? 0) + 1);
       }
     }
+  }
+
+  const maxCardinality = enumThreshold === 10 ? 50 : enumThreshold * 5;
+  if (elementCounts.size > 1 && elementCounts.size <= maxCardinality) {
+    stats.isTagField = true;
+    stats.isEnumCandidate = true;
+    stats.enumValues = Array.from(elementCounts.entries()).map(([value, count]) => ({
+      value,
+      count,
+      percent: (count / stats.occurrences) * 100,
+    }));
+  }
+};
+
+/** Detect scalar enum fields (low-cardinality strings). */
+const enrichScalarEnumField = (
+  stats: FieldStatistics,
+  config: { enumThreshold: number; enumMode: "count" | "percentage" }
+): void => {
+  if (!stats.uniqueSamples) return;
+
+  const shouldBeEnum =
+    config.enumMode === "count"
+      ? stats.uniqueValues <= config.enumThreshold
+      : stats.uniqueValues / stats.occurrences <= config.enumThreshold / 100;
+
+  if (shouldBeEnum && stats.uniqueValues > 1 && stats.uniqueValues < stats.occurrences) {
+    stats.isEnumCandidate = true;
+    const valueCounts = new Map<unknown, number>();
+    for (const sample of stats.uniqueSamples) {
+      valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
+    }
+    stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
+      value,
+      count,
+      percent: (count / stats.occurrences) * 100,
+    }));
+  }
+};
+
+/** Try to parse a JSON-stringified array from a string value. */
+const tryParseJsonStringArray = (value: unknown): unknown[] | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("[")) return null;
+  try {
+    const parsed: unknown = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
   }
 };
 

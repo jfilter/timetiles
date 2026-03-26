@@ -43,6 +43,9 @@ export interface FieldStatistics {
   isEnumCandidate: boolean;
   enumValues?: Array<{ value: unknown; count: number; percent: number }>;
 
+  // Tag/multi-value detection (arrays stored in transformedData)
+  isTagField?: boolean;
+
   // Geographic detection
   geoHints?: {
     isLatitude: boolean;

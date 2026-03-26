@@ -43,7 +43,7 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
   }
 
   // Field filters (keys already validated by canonical builder, re-validate for defense-in-depth)
-  conditions.push(...buildFieldFilterConditions(filters.fieldFilters));
+  conditions.push(...buildFieldFilterConditions(filters.fieldFilters, filters.tagFields));
 
   return conditions;
 };
@@ -105,7 +105,10 @@ const buildBoundsConditions = (bounds: CanonicalBounds): SqlFragment[] => {
   return conditions;
 };
 
-const buildFieldFilterConditions = (fieldFilters?: Record<string, string[]>): SqlFragment[] => {
+const buildFieldFilterConditions = (
+  fieldFilters?: Record<string, string[]>,
+  tagFields?: Set<string>
+): SqlFragment[] => {
   if (!fieldFilters) return [];
 
   const conditions: SqlFragment[] = [];
@@ -113,12 +116,25 @@ const buildFieldFilterConditions = (fieldFilters?: Record<string, string[]>): Sq
     if (!Array.isArray(values) || values.length === 0) continue;
     // Defense-in-depth: re-validate even though sanitizeFieldFilters ran at construction
     if (!isValidFieldKey(fieldKey)) continue;
-    conditions.push(
-      sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
-        values.map((value) => sql`${value}`),
-        sql`, `
-      )})`
-    );
+
+    if (tagFields?.has(fieldKey)) {
+      // Tag/array fields: match events whose array contains ANY of the selected values.
+      // Uses @> (contains) with OR for each value: (arr @> '["v1"]' OR arr @> '["v2"]')
+      const containsClauses = values.map((value) => {
+        const jsonbLiteral = JSON.stringify([value]);
+        return sql`e.transformed_data -> ${fieldKey} @> ${jsonbLiteral}::jsonb`;
+      });
+      const combined = sql.join(containsClauses, sql` OR `);
+      conditions.push(sql`(${combined})`);
+    } else {
+      // Scalar fields: exact text match via IN
+      conditions.push(
+        sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
+          values.map((value) => sql`${value}`),
+          sql`, `
+        )})`
+      );
+    }
   }
   return conditions;
 };
