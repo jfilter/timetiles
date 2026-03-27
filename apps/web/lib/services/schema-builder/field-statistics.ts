@@ -111,9 +111,15 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
   // Track unique samples
   trackUniqueSamples(stats, value, maxUniqueValues);
 
-  // Track formats for strings
+  // Track formats for strings and array elements
   if (typeof value === "string") {
     detectStringFormats(value, stats);
+  } else if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item === "string") {
+        detectStringFormats(item, stats);
+      }
+    }
   }
 
   // Update unique count

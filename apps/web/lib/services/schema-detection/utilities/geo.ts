@@ -138,6 +138,9 @@ const enrichTagField = (stats: FieldStatistics, _enumThreshold: number): void =>
     }
   }
 
+  // Skip if most values are URLs — those are link arrays, not tags
+  if ((stats.formats.url ?? 0) > stats.occurrences * 0.5) return;
+
   // Tags naturally have higher cardinality than scalar enums — allow up to 200 unique elements
   const maxCardinality = 200;
   if (elementCounts.size > 1 && elementCounts.size <= maxCardinality) {
