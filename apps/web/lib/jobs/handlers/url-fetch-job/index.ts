@@ -241,9 +241,12 @@ const buildFetchOptions = (
     maxRetries: scheduledIngest?.retryConfig?.maxRetries ?? 3,
     cacheOptions: prepareCacheOptions(scheduledIngest, input.triggeredBy, cachingEnabled),
     jsonApiConfig: advancedOptions?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
-    preProcessing: (advancedOptions as Record<string, unknown> | undefined)?.preProcessing as
-      | FetchRemoteDataOptions["preProcessing"]
-      | undefined,
+    preProcessing: scheduledIngest?.preProcessing?.groupBy
+      ? {
+          groupBy: scheduledIngest.preProcessing.groupBy,
+          mergeFields: (scheduledIngest.preProcessing.mergeFields as Record<string, "min" | "max">) ?? {},
+        }
+      : undefined,
     responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
   };
 };

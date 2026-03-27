@@ -380,6 +380,28 @@ const executionFields: Field[] = [
     ],
   },
 
+  // Pre-processing (JSON record grouping/merging before CSV conversion)
+  {
+    name: "preProcessing",
+    type: "group",
+    label: "Pre-Processing",
+    admin: {
+      description:
+        "Group JSON records by a key and merge date fields (e.g. collapse recurring events into date ranges).",
+    },
+    fields: [
+      { name: "groupBy", type: "text", admin: { description: "Field to group records by (e.g. 'uid')", width: "50%" } },
+      {
+        name: "mergeFields",
+        type: "json",
+        admin: {
+          description: 'Fields to merge with min/max: e.g. {"startDate": "min", "endDate": "max"}',
+          width: "50%",
+        },
+      },
+    ],
+  },
+
   // Execution Status Fields
   { name: "lastRun", type: "date", admin: { position: "sidebar", readOnly: true, description: "Last execution time" } },
   {
