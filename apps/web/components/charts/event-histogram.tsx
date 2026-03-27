@@ -41,13 +41,13 @@ export const EventHistogram = ({
   className,
   bounds,
   showDataZoom,
-  groupBy = "dataset",
+  groupBy = "none",
 }: Readonly<EventHistogramProps>) => {
   const chartTheme = useChartTheme();
   const { filters, setSingleDayFilter } = useFilters();
   const scope = useViewScope();
 
-  const isGrouped = groupBy !== "dataset";
+  const isGrouped = groupBy !== "none";
 
   // Standard histogram (ungrouped)
   const histogramQuery = useHistogramQuery(filters, bounds ?? null, !isGrouped, scope);

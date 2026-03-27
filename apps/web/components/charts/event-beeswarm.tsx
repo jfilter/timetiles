@@ -193,6 +193,7 @@ export const useGroupByOptions = (singleDatasetId: string | null): GroupByOption
   const enumFieldsQuery = useDatasetEnumFieldsQuery(singleDatasetId);
   return useMemo<GroupByOption[]>(() => {
     const opts: GroupByOption[] = [
+      { value: "none", label: "No grouping" },
       { value: "dataset", label: "Dataset" },
       { value: "catalog", label: "Catalog" },
     ];
@@ -243,7 +244,7 @@ export const EventBeeswarm = ({
   const clusterOptions: TemporalClusterOptions = {
     individualThreshold: debouncedThreshold,
     targetBuckets: debouncedBuckets,
-    groupBy,
+    groupBy: groupBy === "none" ? undefined : groupBy,
   };
 
   const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(

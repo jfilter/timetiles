@@ -108,7 +108,7 @@ export const ChartSection = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showChartSettings, setShowChartSettings] = useState(false);
-  const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("dataset"));
+  const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("none"));
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
