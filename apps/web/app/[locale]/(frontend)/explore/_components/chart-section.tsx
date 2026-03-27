@@ -193,7 +193,7 @@ export const ChartSection = ({
     ) : null;
 
   const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => (
-    <div className="relative">
+    <div className="relative h-full">
       {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} groupBy={groupBy} />}
       {chartType === "beeswarm" && (
         <EventBeeswarm
