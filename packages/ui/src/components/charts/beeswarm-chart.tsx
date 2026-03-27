@@ -304,6 +304,7 @@ const computeRowLayoutConfig = (
       show: true,
       min: yMin,
       max: yMax,
+      interval: ROW_SPACING, // force ticks at exactly row centers
       inverse: true, // first series at top
       axisLabel: {
         color: effectiveTheme.textColor,
@@ -312,12 +313,12 @@ const computeRowLayoutConfig = (
           const idx = Math.round(value / ROW_SPACING);
           return allSeries[idx]?.name ?? "";
         },
-        interval: 0,
       },
       axisLine: { show: false },
       axisTick: { show: false },
       splitLine: {
         show: rowCount > 1,
+        interval: 0,
         lineStyle: { color: effectiveTheme.axisLineColor, opacity: 0.15, type: "dashed" as const },
       },
     },
