@@ -46,7 +46,7 @@ fieldMappings:
   locationNamePath: "Straße + Hausnummer"
   latitudePath: Breitengrad
   longitudePath: "Längengrad"
-  # Geburtsjahr is not an event timestamp — kept as metadata field
+  timestampPath: Geburtsjahr
 
 schedule:
   type: frequency
