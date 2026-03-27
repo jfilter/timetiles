@@ -1,10 +1,10 @@
 slug: berlin-stolpersteine
 name: Stolpersteine Berlin
 description: >-
-  Stolpersteine (stumbling stones) in Berlin — Messingplatten im Gehweg,
-  die an Opfer des Nationalsozialismus erinnern. Enthaltene Daten:
-  Name, Geburtsjahr, Adresse, Bezirk und Link zur Biografie.
-  Quelle: stolpersteine-berlin.de (CC-BY).
+  Stolpersteine (stumbling stones) in Berlin — brass plaques in the
+  pavement commemorating victims of National Socialism. Includes name,
+  birth year, address, district, and biography link.
+  Source: stolpersteine-berlin.de (CC-BY).
 category: culture
 region: Berlin, Germany
 tags:
@@ -16,11 +16,18 @@ tags:
   - berlin
   - germany
 license: CC-BY
-estimatedRecords: 9000
+estimatedRecords: 10000
 
 source:
   url: "https://www.stolpersteine-berlin.de/de/stolpersteine-finden/download"
   format: csv
+  excludeFields:
+    - Virtueller-Stein
+    - Ortsteil-ID
+    - " Bezirk-ID"
+    - Straße
+    - Hausnummer
+    - Postleitzahl
 
 catalog:
   name: Berlin Kultur & Geschichte
@@ -31,14 +38,30 @@ dataset:
   name: Stolpersteine
   language: deu
 
+transforms:
+  # Build full name as title: "Vorname Nachname"
+  - type: concatenate
+    fromFields: [Vorname, Nachname]
+    separator: " "
+    to: title
+  # Rename biography URL
+  - type: rename
+    from: Url zu Biografie
+    to: link
+
 fieldMappings:
-  titlePath: Nachname
+  titlePath: title
   locationNamePath: "Straße + Hausnummer"
   latitudePath: Breitengrad
   longitudePath: "Längengrad"
+  timestampPath: Geburtsjahr
 
 schedule:
   type: frequency
   frequency: monthly
   schemaMode: additive
   timezone: Europe/Berlin
+
+reviewChecks:
+  skipDuplicateRateCheck: true
+  skipTimestampCheck: true
