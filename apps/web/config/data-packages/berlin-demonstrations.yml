@@ -55,12 +55,29 @@ dataset:
     externalIdPath: id
     duplicateStrategy: update
 
+transforms:
+  # Build full address for geocoding: "Pariser Platz 1, 10117 Berlin"
+  - type: concatenate
+    fromFields: [place, zip]
+    separator: ", "
+    to: fullAddress
+  - type: string-op
+    from: fullAddress
+    operation: expression
+    expression: 'concat(value, " Berlin")'
+  # Short title from topic (first 80 chars), keep topic as description
+  - type: extract
+    from: topic
+    to: title
+    pattern: "^(.{1,80})"
+
 fieldMappings:
-  titlePath: topic
+  titlePath: title
+  descriptionPath: topic
   timestampPath: start_time
   endTimestampPath: end_time
   locationNamePath: place
-  locationPath: place
+  locationPath: fullAddress
 
 schedule:
   type: frequency
