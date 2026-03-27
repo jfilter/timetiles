@@ -19,6 +19,8 @@ estimatedRecords: 2500
 source:
   url: "https://bellingcat-embeds.ams3.cdn.digitaloceanspaces.com/production/ukr/timemap/api.json"
   format: json
+  excludeFields:
+    - graphic
 
 catalog:
   name: Bellingcat
@@ -32,6 +34,14 @@ dataset:
     type: external
     externalIdPath: id
     duplicateStrategy: update
+
+transforms:
+  - type: parse-json-array
+    from: impact
+  - type: parse-json-array
+    from: weapon_system
+  - type: parse-json-array
+    from: sources
 
 fieldMappings:
   descriptionPath: description
