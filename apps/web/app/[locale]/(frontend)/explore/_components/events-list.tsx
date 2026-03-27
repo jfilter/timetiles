@@ -108,6 +108,23 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
           )}
         </div>
       )}
+
+      {/* Tag chips */}
+      {(() => {
+        const tags = Object.values(eventData).flatMap((v) =>
+          Array.isArray(v) ? v.filter((t): t is string => typeof t === "string" && t !== "") : []
+        );
+        return tags.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-1">
+            {tags.slice(0, 6).map((tag) => (
+              <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
+                {tag}
+              </span>
+            ))}
+            {tags.length > 6 && <span className="text-muted-foreground px-1 py-0.5 text-xs">+{tags.length - 6}</span>}
+          </div>
+        ) : null;
+      })()}
     </Card>
   );
 };
