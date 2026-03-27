@@ -598,7 +598,7 @@ export const withDataset = async (
     };
     currentSchema?: any;
     isPublic?: boolean;
-    idStrategy?: { type?: string; duplicateStrategy?: string };
+    idStrategy?: { type?: string; externalIdPath?: string; duplicateStrategy?: string };
     description?: any;
     ingestTransforms?: any[];
   }
