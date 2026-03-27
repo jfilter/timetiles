@@ -89,7 +89,8 @@ export const extractEventFields = (
   const description =
     extractFieldFromData(eventData, fieldMappings?.descriptionPath) ?? extractFieldFromData(eventData, "description");
 
-  return { title, description };
+  // Avoid showing the same text as both title and description
+  return { title, description: description === title ? null : description };
 };
 
 // ---------------------------------------------------------------------------
