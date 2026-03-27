@@ -123,11 +123,14 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
           </div>
         )}
 
-        {/* Tag chips */}
+        {/* Tag chips — skip arrays where elements look like URLs */}
         {(() => {
-          const tags = Object.values(eventData).flatMap((v) =>
-            Array.isArray(v) ? v.filter((t): t is string => typeof t === "string" && t !== "") : []
-          );
+          const tags = Object.values(eventData).flatMap((v) => {
+            if (!Array.isArray(v)) return [];
+            const strings = v.filter((t): t is string => typeof t === "string" && t !== "");
+            const urlCount = strings.filter((s) => /^https?:\/\//i.test(s)).length;
+            return urlCount > strings.length * 0.5 ? [] : strings;
+          });
           return tags.length > 0 ? (
             <div className="mt-3 flex flex-wrap gap-1">
               {tags.slice(0, 6).map((tag) => (
