@@ -205,7 +205,6 @@ export const ChartSection = ({
             variant={variant}
             showControls={showChartSettings}
             groupBy={effectiveGroupBy}
-            setGroupBy={(v) => void setGroupBy(v)}
           />
         )}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}

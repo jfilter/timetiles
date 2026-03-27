@@ -37,8 +37,6 @@ interface EventBeeswarmProps {
   showControls?: boolean;
   /** Group by field (controlled by parent via URL param) */
   groupBy?: string;
-  /** Callback to change groupBy */
-  setGroupBy?: (value: string) => void;
 }
 
 /** Default cluster options per variant */
@@ -219,7 +217,6 @@ export const EventBeeswarm = ({
   variant = "compact",
   showControls = false,
   groupBy: externalGroupBy,
-  setGroupBy: externalSetGroupBy,
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
@@ -232,18 +229,11 @@ export const EventBeeswarm = ({
   const [dotSize, setDotSize] = useState(8);
   const [clusterMin, setClusterMin] = useState(10);
   const [clusterMax, setClusterMax] = useState(40);
-  const [internalGroupBy, setInternalGroupBy] = useState("dataset");
-  // Use external groupBy from parent (URL param) or fallback to internal state
-  const groupBy = externalGroupBy ?? internalGroupBy;
-  const setGroupBy = externalSetGroupBy ?? setInternalGroupBy;
+  const groupBy = externalGroupBy ?? "none";
 
   // Debounce API-triggering params to avoid excessive requests while dragging sliders
   const debouncedThreshold = useDebounce(threshold, 400);
   const debouncedBuckets = useDebounce(buckets, 400);
-
-  // Build groupBy options from enum fields (when single dataset selected)
-  const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
-  const groupByOptions = useGroupByOptions(singleDatasetId);
 
   const clusterOptions: TemporalClusterOptions = {
     individualThreshold: debouncedThreshold,
