@@ -171,29 +171,29 @@ export const parseISODate = (dateStr: string): number => {
   return new Date(dateStr).getTime();
 };
 
-/** Format start/end dates into a human-readable range string */
+/** Format start/end dates into a locale-aware range string using Intl.DateTimeFormat */
 export const formatDateRange = (startDate: unknown, endDate: unknown, locale: string = "en-US"): string | null => {
   const hasStart = startDate != null && valueToString(startDate) !== "";
   const hasEnd = endDate != null && valueToString(endDate) !== "";
 
   if (!hasStart && !hasEnd) return null;
 
-  const parts: string[] = [];
-  if (hasStart) {
-    parts.push(new Date(valueToString(startDate)).toLocaleDateString(locale));
-  }
-  if (hasEnd && valueToString(startDate) !== valueToString(endDate)) {
-    parts.push(new Date(valueToString(endDate)).toLocaleDateString(locale));
+  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const start = hasStart ? new Date(valueToString(startDate)) : null;
+  const end = hasEnd ? new Date(valueToString(endDate)) : null;
+
+  if (start && end && valueToString(startDate) !== valueToString(endDate)) {
+    return fmt.formatRange(start, end);
   }
 
-  return parts.join(" - ");
+  return fmt.format(start ?? end!);
 };
 
 /**
- * Format a date range for display with "From"/"Until" prefixes.
+ * Format a date range for filter labels using locale-aware formatting.
  *
- * Returns `undefined` when both dates are empty. Uses the runtime default locale
- * unless an explicit `locale` is provided.
+ * Returns `undefined` when both dates are empty. Uses `Intl.DateTimeFormat.formatRange`
+ * for proper locale-specific range display.
  */
 export const formatDateRangeLabel = (
   startDate: string | null,
@@ -207,17 +207,15 @@ export const formatDateRangeLabel = (
     return undefined;
   }
 
-  const start = hasStartDate ? new Date(startDate).toLocaleDateString(locale) : "Start";
-  const end = hasEndDate ? new Date(endDate).toLocaleDateString(locale) : "End";
+  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  const start = hasStartDate ? new Date(startDate) : null;
+  const end = hasEndDate ? new Date(endDate) : null;
 
-  if (hasStartDate && hasEndDate) {
-    return `${start} - ${end}`;
-  } else if (hasStartDate) {
-    return `From ${start}`;
-  } else if (hasEndDate) {
-    return `Until ${end}`;
+  if (start && end) {
+    return fmt.formatRange(start, end);
   }
-  return undefined;
+
+  return fmt.format(start ?? end!);
 };
 
 /**

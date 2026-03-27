@@ -11,6 +11,7 @@
  */
 "use client";
 
+import { useLocale } from "next-intl";
 import { useState } from "react";
 
 import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
@@ -47,6 +48,7 @@ interface ListExplorerContentProps {
 }
 
 const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentProps) => {
+  const locale = useLocale();
   const { explorer, filterPanel, mobileFilters } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
@@ -59,7 +61,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
-  const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate);
+  const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate, locale);
 
   if (isDesktop === false) {
     // Mobile Layout — only the active tab is mounted

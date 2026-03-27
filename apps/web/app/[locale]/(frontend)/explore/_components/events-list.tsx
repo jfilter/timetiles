@@ -10,7 +10,7 @@
 import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
@@ -43,12 +43,13 @@ interface EventItemProps {
 }
 
 const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
+  const locale = useLocale();
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
   const description = rawDescription ?? "";
   const datasetInfo = getDatasetInfo(event.dataset);
   const locationDisplay = getLocationDisplay(event);
-  const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp);
+  const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp, locale);
 
   const handleClick = () => {
     if (onEventClick) {

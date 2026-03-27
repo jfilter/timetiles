@@ -43,11 +43,12 @@ export const formatDateRange = formatDateRangeLabel;
 export const getFilterLabels = (
   filters: FilterState,
   catalogs: DataSourceCatalog[],
-  datasets: DataSourceDataset[]
+  datasets: DataSourceDataset[],
+  locale?: string
 ): FilterLabels => ({
   catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(catalogs, filters.catalog) : undefined,
   datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id) })),
-  dateRange: formatDateRange(filters.startDate, filters.endDate),
+  dateRange: formatDateRange(filters.startDate, filters.endDate, locale),
   fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
 });
 
@@ -119,7 +120,7 @@ export const buildEventsDescription = (
 
   // Add date filter
   if (filterLabels.dateRange) {
-    sentence += t("descSpanning", { dateRange: filterLabels.dateRange.toLowerCase().replace(/^from /, "") });
+    sentence += t("descSpanning", { dateRange: filterLabels.dateRange });
   }
 
   return sentence + ".";

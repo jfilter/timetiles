@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
@@ -43,6 +43,7 @@ interface MapExplorerContentProps {
 }
 
 const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProps) => {
+  const locale = useLocale();
   const t = useTranslations("Explore");
   const { explorer, filterPanel } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
@@ -95,7 +96,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   }, [mapRef]);
 
   // Get human-readable filter labels (uses helper function)
-  const filterLabels = getFilterLabels(filters, catalogs, datasets);
+  const filterLabels = getFilterLabels(filters, catalogs, datasets, locale);
 
   // Desktop: Flex layout - both map and list shrink proportionally when filters open
   return (

@@ -205,22 +205,39 @@ describe("formatDateRange", () => {
 
   it("should format single start date", () => {
     const result = formatDateRange("2024-01-15", null);
-    expect(result).toBe("1/15/2024");
+    expect(result).toBe("Jan 15, 2024");
   });
 
   it("should format single end date", () => {
     const result = formatDateRange(null, "2024-01-20");
-    expect(result).toBe("1/20/2024");
+    expect(result).toBe("Jan 20, 2024");
   });
 
   it("should format date range with different dates", () => {
     const result = formatDateRange("2024-01-15", "2024-01-20");
-    expect(result).toBe("1/15/2024 - 1/20/2024");
+    // Intl.DateTimeFormat uses thin spaces (U+2009) around en-dash
+    expect(result).toContain("Jan 15");
+    expect(result).toContain("20, 2024");
+    expect(result).toContain("\u2013"); // en-dash
   });
 
   it("should not duplicate when start and end are the same", () => {
     const result = formatDateRange("2024-01-15", "2024-01-15");
-    expect(result).toBe("1/15/2024");
+    expect(result).toBe("Jan 15, 2024");
+  });
+
+  it("should format German locale range correctly", () => {
+    const result = formatDateRange("2024-01-15", "2024-01-20", "de")!;
+    expect(result).toContain("15.");
+    expect(result).toContain("20.01.2024");
+    expect(result).toContain("\u2013");
+  });
+
+  it("should format German cross-month range correctly", () => {
+    const result = formatDateRange("2024-02-20", "2024-03-23", "de")!;
+    expect(result).toContain("20.02.");
+    expect(result).toContain("23.03.2024");
+    expect(result).toContain("\u2013");
   });
 });
 
