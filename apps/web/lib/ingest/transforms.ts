@@ -437,6 +437,13 @@ const createSafeParser = (): Parser => {
   parser.functions.parseDate = (v: unknown) => parseAsDate(v);
   parser.functions.parseBool = (v: unknown) => parseAsBoolean(v);
 
+  // HTML cleaning
+  parser.functions.stripHtml = (v: unknown) =>
+    String(v)
+      .replaceAll(/<[^>]*>/g, " ")
+      .replaceAll(/\s+/g, " ")
+      .trim();
+
   // Conditional
   parser.functions.ifEmpty = (v: unknown, fallback: unknown) => {
     const s = String(v).trim();

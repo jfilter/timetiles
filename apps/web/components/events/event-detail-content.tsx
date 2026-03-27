@@ -92,8 +92,12 @@ export const EventDetailContent = ({
   const imageFieldSet = new Set(fieldTypes?.image ?? []);
   const urlFieldSet = new Set(fieldTypes?.url ?? []);
 
-  // Fields consumed by dedicated UI sections (title, description, timestamps, location, coordinates)
-  const consumedFields = buildConsumedFieldSet(fieldMappings);
+  // Fields consumed by dedicated UI sections (title, description, timestamps, location, coordinates, external ID)
+  const idStrategy =
+    typeof event.dataset === "object" && event.dataset != null
+      ? ((event.dataset as unknown as Record<string, unknown>).idStrategy as { externalIdPath?: string | null } | null)
+      : null;
+  const consumedFields = buildConsumedFieldSet(fieldMappings, idStrategy);
 
   // Separate fields into rendering groups based on fieldTypes
   const tagFields: Array<{ key: string; tags: string[] }> = [];

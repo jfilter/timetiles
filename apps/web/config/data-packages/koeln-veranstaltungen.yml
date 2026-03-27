@@ -55,6 +55,19 @@ transforms:
   - type: rename
     from: teaserbild
     to: image
+  # Clean HTML from text fields
+  - type: string-op
+    from: preis
+    operation: expression
+    expression: "stripHtml(value)"
+  - type: string-op
+    from: uhrzeit
+    operation: expression
+    expression: "stripHtml(value)"
+  - type: string-op
+    from: description
+    operation: expression
+    expression: "stripHtml(value)"
 
 fieldMappings:
   titlePath: title

@@ -50,7 +50,10 @@ export const extractFieldFromData = (data: unknown, path: string | null | undefi
  * - Literal keys probed by extractEventFields as fallbacks ("title", "name", "description")
  * - "id" (structural, not user data)
  */
-export const buildConsumedFieldSet = (fieldMappings?: FieldMappingOverrides | null): Set<string> => {
+export const buildConsumedFieldSet = (
+  fieldMappings?: FieldMappingOverrides | null,
+  idStrategy?: { externalIdPath?: string | null } | null
+): Set<string> => {
   const keys = new Set<string>(["id", "title", "name", "description"]);
   if (fieldMappings) {
     for (const path of Object.values(fieldMappings)) {
@@ -58,6 +61,9 @@ export const buildConsumedFieldSet = (fieldMappings?: FieldMappingOverrides | nu
         keys.add(path);
       }
     }
+  }
+  if (idStrategy?.externalIdPath) {
+    keys.add(idStrategy.externalIdPath);
   }
   return keys;
 };
