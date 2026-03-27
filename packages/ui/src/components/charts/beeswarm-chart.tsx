@@ -375,7 +375,9 @@ export const BeeswarmChart = ({
   const chartOption: EChartsOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: 10, right: 10, bottom: 25, top: showLegend ? 30 : 10, containLabel: false },
+    grid: isRowLayout
+      ? { left: "15%", right: 10, bottom: 25, top: 10, containLabel: false }
+      : { left: 10, right: 10, bottom: 25, top: showLegend ? 30 : 10, containLabel: false },
     xAxis: {
       type: "time",
       min: xMin,

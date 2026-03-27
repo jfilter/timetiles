@@ -96,20 +96,22 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
     textStyle: { color: theme.textColor },
   };
 
-  // Handle xAxis safely
+  // Handle xAxis safely — deep-merge to preserve custom formatters etc.
+  const xAxis = safeSpreadAxis(option.xAxis);
   result.xAxis = {
-    ...safeSpreadAxis(option.xAxis),
-    axisLine: { lineStyle: { color: theme.axisLineColor } },
-    axisLabel: { color: theme.textColor },
-    splitLine: { lineStyle: { color: theme.splitLineColor } },
+    ...xAxis,
+    axisLine: { ...xAxis.axisLine, lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { ...xAxis.axisLabel, color: theme.textColor },
+    splitLine: { ...xAxis.splitLine, lineStyle: { color: theme.splitLineColor } },
   };
 
-  // Handle yAxis safely
+  // Handle yAxis safely — deep-merge to preserve custom formatters, intervals, etc.
+  const yAxis = safeSpreadAxis(option.yAxis);
   result.yAxis = {
-    ...safeSpreadAxis(option.yAxis),
-    axisLine: { lineStyle: { color: theme.axisLineColor } },
-    axisLabel: { color: theme.textColor },
-    splitLine: { lineStyle: { color: theme.splitLineColor } },
+    ...yAxis,
+    axisLine: { ...yAxis.axisLine, lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { ...yAxis.axisLabel, color: theme.textColor },
+    splitLine: { ...yAxis.splitLine, lineStyle: { color: theme.splitLineColor } },
   };
 
   // Handle series safely
