@@ -177,6 +177,9 @@ const finalizeSchemaDetection = async (
       }));
     }
 
+    // Also detect tag fields (arrays) — the plugin only detects scalar enums
+    schemaBuilder.detectEnumFields();
+
     detectedMappings = toFlatMappings(result.fieldMappings);
 
     // Fill unmapped fields using the dataset's explicit language (for mixed-language files)

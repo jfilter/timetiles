@@ -124,7 +124,7 @@ export const enrichEnumFields = (
 };
 
 /** Detect tag fields (multi-value arrays) by counting unique elements across samples. */
-const enrichTagField = (stats: FieldStatistics, enumThreshold: number): void => {
+const enrichTagField = (stats: FieldStatistics, _enumThreshold: number): void => {
   if (!stats.uniqueSamples) return;
 
   const elementCounts = new Map<string, number>();
@@ -138,7 +138,8 @@ const enrichTagField = (stats: FieldStatistics, enumThreshold: number): void => 
     }
   }
 
-  const maxCardinality = enumThreshold === 10 ? 50 : enumThreshold * 5;
+  // Tags naturally have higher cardinality than scalar enums — allow up to 200 unique elements
+  const maxCardinality = 200;
   if (elementCounts.size > 1 && elementCounts.size <= maxCardinality) {
     stats.isTagField = true;
     stats.isEnumCandidate = true;
