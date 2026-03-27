@@ -380,6 +380,13 @@ const executionFields: Field[] = [
     ],
   },
 
+  // Exclude fields (removed from JSON records before CSV conversion)
+  {
+    name: "excludeFields",
+    type: "json",
+    admin: { description: 'Fields to exclude from import as JSON array (e.g. ["hasStartTime", "pdf"])' },
+  },
+
   // Pre-processing (JSON record grouping/merging before CSV conversion)
   {
     name: "preProcessing",

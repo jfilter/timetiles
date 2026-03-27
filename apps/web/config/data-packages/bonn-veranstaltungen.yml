@@ -18,6 +18,12 @@ estimatedRecords: 300
 source:
   url: "https://www.bonn.de/citykey/events-json.php"
   format: json
+  excludeFields:
+    - hasStartTime
+    - hasEndTime
+    - pdf
+    - thumbnail
+    - thumbnailCredit
   preProcessing:
     groupBy: uid
     mergeFields:

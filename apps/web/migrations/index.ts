@@ -30,6 +30,7 @@ import * as migration_20260327_000002_drop_adaptive_scaling from './20260327_000
 import * as migration_20260327_000003_cluster_density_params from './20260327_000003_cluster_density_params';
 import * as migration_20260327_000004_add_temporal_clustering from './20260327_000004_add_temporal_clustering';
 import * as migration_20260327_005403 from './20260327_005403';
+import * as migration_20260327_011307 from './20260327_011307';
 
 export const migrations = [
   {
@@ -190,6 +191,11 @@ export const migrations = [
   {
     up: migration_20260327_005403.up,
     down: migration_20260327_005403.down,
-    name: '20260327_005403'
+    name: '20260327_005403',
+  },
+  {
+    up: migration_20260327_011307.up,
+    down: migration_20260327_011307.down,
+    name: '20260327_011307'
   },
 ];

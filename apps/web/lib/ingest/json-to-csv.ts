@@ -23,6 +23,8 @@ export interface JsonToCsvOptions {
   recordsPath?: string;
   /** Pre-processing: group records by key and merge fields before CSV conversion. */
   preProcessing?: PreProcessingConfig | null;
+  /** Fields to remove from records before CSV conversion. */
+  excludeFields?: string[];
 }
 
 export interface JsonToCsvResult {
@@ -149,7 +151,17 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
   const { records: rawRecords, detectedPath } = extractRecordsFromJson(json, options?.recordsPath);
 
   // Apply pre-processing (e.g. group-by with date merge) if configured
-  const records = options?.preProcessing ? preProcessRecords(rawRecords, options.preProcessing) : rawRecords;
+  let records = options?.preProcessing ? preProcessRecords(rawRecords, options.preProcessing) : rawRecords;
+
+  // Remove excluded fields before CSV conversion
+  if (options?.excludeFields?.length) {
+    const fieldsToRemove = options.excludeFields;
+    records = records.map((r) => {
+      const copy = { ...r };
+      for (const f of fieldsToRemove) delete copy[f];
+      return copy;
+    });
+  }
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
 

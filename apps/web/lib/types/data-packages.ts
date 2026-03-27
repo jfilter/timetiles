@@ -30,6 +30,8 @@ export interface DataPackageSource {
   auth?: AuthConfig;
   jsonApi?: JsonApiScheduleConfig;
   preProcessing?: DataPackagePreProcessing;
+  /** Fields to exclude from import (removed before CSV conversion). */
+  excludeFields?: string[];
 }
 
 /** Catalog defaults created on activation. */

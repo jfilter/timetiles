@@ -71,6 +71,7 @@ const manifestSchema = z.object({
     preProcessing: z
       .object({ groupBy: z.string(), mergeFields: z.record(z.string(), z.enum(["min", "max"])) })
       .optional(),
+    excludeFields: z.array(z.string()).optional(),
   }),
 
   catalog: z.object({

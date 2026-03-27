@@ -241,6 +241,9 @@ const buildFetchOptions = (
     maxRetries: scheduledIngest?.retryConfig?.maxRetries ?? 3,
     cacheOptions: prepareCacheOptions(scheduledIngest, input.triggeredBy, cachingEnabled),
     jsonApiConfig: advancedOptions?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
+    excludeFields: Array.isArray(scheduledIngest?.excludeFields)
+      ? (scheduledIngest.excludeFields as string[])
+      : undefined,
     preProcessing: scheduledIngest?.preProcessing?.groupBy
       ? {
           groupBy: scheduledIngest.preProcessing.groupBy,

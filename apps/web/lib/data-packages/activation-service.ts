@@ -134,6 +134,7 @@ const buildScheduledIngestData = (
     schemaMode: manifest.schedule.schemaMode ?? "additive",
     authConfig: manifest.source.auth ?? { type: "none" as const },
     advancedOptions: Object.keys(advancedOptions).length > 0 ? advancedOptions : undefined,
+    excludeFields: manifest.source.excludeFields ?? undefined,
     preProcessing: manifest.source.preProcessing
       ? { groupBy: manifest.source.preProcessing.groupBy, mergeFields: manifest.source.preProcessing.mergeFields }
       : undefined,

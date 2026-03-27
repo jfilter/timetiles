@@ -19,6 +19,15 @@ import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-cs
 import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
 import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
 
+/** Remove specified fields from all records in-place. */
+const stripFields = (records: Record<string, unknown>[], fields: string[]): void => {
+  for (const record of records) {
+    for (const field of fields) {
+      delete record[field];
+    }
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -38,6 +47,8 @@ export interface FetchRemoteDataOptions {
   jsonApiConfig?: { recordsPath?: string; pagination?: PaginationConfig };
   /** Pre-processing: group records by key and merge date fields before CSV conversion. */
   preProcessing?: PreProcessingConfig | null;
+  /** Fields to remove from JSON records before CSV conversion. */
+  excludeFields?: string[];
   /** Force response format instead of auto-detecting. */
   responseFormat?: "auto" | "csv" | "json" | "geojson";
 }
@@ -188,6 +199,9 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       if (options.preProcessing) {
         records = preProcessRecords(records, options.preProcessing);
       }
+      if (options.excludeFields?.length) {
+        stripFields(records, options.excludeFields);
+      }
 
       finalData = recordsToCsv(records);
       recordCount = records.length;
@@ -198,16 +212,14 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
         totalRecords: records.length,
       });
     } else {
-      // Single response — convert (with optional pre-processing)
-      if (options.preProcessing) {
-        const result = convertJsonToCsv(fetchResult.data, { recordsPath, preProcessing: options.preProcessing });
-        finalData = result.csv;
-        recordCount = result.recordCount;
-      } else {
-        const result = convertJsonToCsv(fetchResult.data, { recordsPath });
-        finalData = result.csv;
-        recordCount = result.recordCount;
-      }
+      // Single response — convert (with optional pre-processing and field exclusion)
+      const result = convertJsonToCsv(fetchResult.data, {
+        recordsPath,
+        preProcessing: options.preProcessing ?? undefined,
+        excludeFields: options.excludeFields,
+      });
+      finalData = result.csv;
+      recordCount = result.recordCount;
     }
 
     finalMimeType = "text/csv";
