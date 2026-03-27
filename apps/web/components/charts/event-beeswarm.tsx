@@ -48,33 +48,38 @@ const DEFAULTS = {
 } as const;
 
 /**
- * Clean group name: parse JSON arrays like '["Cruise missile"]' → 'Cruise missile',
- * '[]' or '(empty)' → 'Unknown'.
+ * Expand a group name into individual group names.
+ * JSON arrays like '["Cruise missile", "Loitering munition"]' become
+ * two separate entries. Scalar strings return as single-element array.
+ * '[]' or '(empty)' → ['(no value)'].
  */
-export const cleanGroupName = (name: string): string => {
-  if (!name || name === "(empty)" || name === "[]") return "(no value)";
+export const expandGroupNames = (name: string): string[] => {
+  if (!name || name === "(empty)" || name === "[]") return ["(no value)"];
   if (name.startsWith("[")) {
     try {
       const arr = JSON.parse(name) as unknown[];
       if (Array.isArray(arr)) {
-        if (arr.length === 0) return "(no value)";
-        return arr.join(", ");
+        const strings = arr.filter((v): v is string => typeof v === "string" && v.length > 0);
+        return strings.length > 0 ? strings : ["(no value)"];
       }
     } catch {
       // not JSON, use as-is
     }
   }
-  return name;
+  return [name];
 };
 
-/** Group items by groupId and build one BeeswarmSeries per group. */
+/** Group items by groupId, expanding multi-value fields (JSON arrays) into separate groups. */
 const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string; items: TemporalClusterItem[] }> => {
   const groups = new Map<string, { name: string; items: TemporalClusterItem[] }>();
   for (const item of items) {
-    if (!groups.has(item.groupId)) {
-      groups.set(item.groupId, { name: cleanGroupName(item.groupName), items: [] });
+    const names = expandGroupNames(item.groupName);
+    for (const name of names) {
+      if (!groups.has(name)) {
+        groups.set(name, { name, items: [] });
+      }
+      groups.get(name)!.items.push(item);
     }
-    groups.get(item.groupId)!.items.push(item);
   }
   return groups;
 };

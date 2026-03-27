@@ -15,7 +15,7 @@ import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { useMemo } from "react";
 
-import { cleanGroupName } from "@/components/charts/event-beeswarm";
+import { expandGroupNames } from "@/components/charts/event-beeswarm";
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useHistogramQuery, useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -69,16 +69,19 @@ export const EventHistogram = ({
   const groupedData = useMemo<TimeHistogramSeries[] | undefined>(() => {
     if (!isGrouped || !clustersQuery.data?.items) return undefined;
 
-    // Aggregate total counts per group to determine top groups
+    // Aggregate total counts per group, expanding multi-value fields (JSON arrays)
     const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
     for (const item of clustersQuery.data.items) {
-      if (!groupTotals.has(item.groupId)) {
-        groupTotals.set(item.groupId, { name: cleanGroupName(item.groupName), total: 0, items: new Map() });
+      const names = expandGroupNames(item.groupName);
+      for (const name of names) {
+        if (!groupTotals.has(name)) {
+          groupTotals.set(name, { name, total: 0, items: new Map() });
+        }
+        const g = groupTotals.get(name)!;
+        g.total += item.count;
+        const existing = g.items.get(item.bucketStart) ?? 0;
+        g.items.set(item.bucketStart, existing + item.count);
       }
-      const g = groupTotals.get(item.groupId)!;
-      g.total += item.count;
-      const existing = g.items.get(item.bucketStart) ?? 0;
-      g.items.set(item.bucketStart, existing + item.count);
     }
 
     // Sort by total count, take top 4
