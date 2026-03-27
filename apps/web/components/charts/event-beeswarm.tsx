@@ -47,12 +47,32 @@ const DEFAULTS = {
   fullscreen: { individualThreshold: 1000, targetBuckets: 80 },
 } as const;
 
+/**
+ * Clean group name: parse JSON arrays like '["Cruise missile"]' → 'Cruise missile',
+ * '[]' or '(empty)' → 'Unknown'.
+ */
+export const cleanGroupName = (name: string): string => {
+  if (!name || name === "(empty)" || name === "[]") return "Unknown";
+  if (name.startsWith("[")) {
+    try {
+      const arr = JSON.parse(name) as unknown[];
+      if (Array.isArray(arr)) {
+        if (arr.length === 0) return "Unknown";
+        return arr.join(", ");
+      }
+    } catch {
+      // not JSON, use as-is
+    }
+  }
+  return name;
+};
+
 /** Group items by groupId and build one BeeswarmSeries per group. */
 const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string; items: TemporalClusterItem[] }> => {
   const groups = new Map<string, { name: string; items: TemporalClusterItem[] }>();
   for (const item of items) {
     if (!groups.has(item.groupId)) {
-      groups.set(item.groupId, { name: item.groupName, items: [] });
+      groups.set(item.groupId, { name: cleanGroupName(item.groupName), items: [] });
     }
     groups.get(item.groupId)!.items.push(item);
   }

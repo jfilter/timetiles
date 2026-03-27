@@ -15,6 +15,7 @@ import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { useMemo } from "react";
 
+import { cleanGroupName } from "@/components/charts/event-beeswarm";
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useHistogramQuery, useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -72,7 +73,7 @@ export const EventHistogram = ({
     const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
     for (const item of clustersQuery.data.items) {
       if (!groupTotals.has(item.groupId)) {
-        groupTotals.set(item.groupId, { name: item.groupName, total: 0, items: new Map() });
+        groupTotals.set(item.groupId, { name: cleanGroupName(item.groupName), total: 0, items: new Map() });
       }
       const g = groupTotals.get(item.groupId)!;
       g.total += item.count;
