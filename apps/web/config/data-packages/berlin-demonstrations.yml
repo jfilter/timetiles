@@ -17,7 +17,7 @@ license: Public Domain
 estimatedRecords: 48000
 
 source:
-  url: "https://adrrwafktwmspftyaqpz.supabase.co/rest/v1/versammlungen?select=*"
+  url: "https://adrrwafktwmspftyaqpz.supabase.co/rest/v1/versammlungen?select=*&start_time=lt.2100-01-01"
   format: json
   auth:
     type: api-key
