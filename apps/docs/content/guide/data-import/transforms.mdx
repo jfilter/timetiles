@@ -1,0 +1,182 @@
+# Transforms
+
+Transforms modify incoming data during import — before schema detection and event creation. Use them to rename fields, parse dates, split columns, or convert JSON arrays into tags.
+
+Transforms are configured per dataset and applied to every row during import. They run in order: the output of one transform feeds into the next.
+
+## Transform Types
+
+### Rename
+
+Change a field name. Useful when your source renames columns between updates.
+
+| Field  | Description       |
+| ------ | ----------------- |
+| `from` | Source field name |
+| `to`   | Target field name |
+
+```yaml
+transforms:
+  - type: rename
+    from: event_name
+    to: title
+```
+
+### Parse Date
+
+Convert date strings from a specific format into ISO 8601.
+
+| Field          | Description                                       |
+| -------------- | ------------------------------------------------- |
+| `from`         | Field containing the date string                  |
+| `inputFormat`  | Expected format (e.g. `DD/MM/YYYY`, `MM-DD-YYYY`) |
+| `outputFormat` | Output format (typically `YYYY-MM-DD`)            |
+| `timezone`     | Optional timezone for parsing                     |
+
+```yaml
+transforms:
+  - type: date-parse
+    from: datum
+    inputFormat: DD.MM.YYYY
+    outputFormat: YYYY-MM-DD
+```
+
+### String Operation
+
+Apply text operations: uppercase, lowercase, find-and-replace, or safe expressions.
+
+| Field         | Description                                          |
+| ------------- | ---------------------------------------------------- |
+| `from`        | Field to transform                                   |
+| `operation`   | `uppercase`, `lowercase`, `replace`, or `expression` |
+| `pattern`     | Regex pattern (for `replace`)                        |
+| `replacement` | Replacement string (for `replace`)                   |
+| `expression`  | Safe expression using `expr-eval` (for `expression`) |
+
+```yaml
+transforms:
+  - type: string-op
+    from: status
+    operation: lowercase
+```
+
+### Concatenate
+
+Join multiple fields into one with a separator.
+
+| Field        | Description                            |
+| ------------ | -------------------------------------- |
+| `fromFields` | List of source fields                  |
+| `separator`  | String between values (default: space) |
+| `to`         | Target field name                      |
+
+```yaml
+transforms:
+  - type: concatenate
+    fromFields: [street, city, zip]
+    separator: ", "
+    to: full_address
+```
+
+### Split
+
+Split one field into multiple fields by a delimiter.
+
+| Field       | Description                |
+| ----------- | -------------------------- |
+| `from`      | Source field to split      |
+| `delimiter` | Character to split on      |
+| `toFields`  | List of target field names |
+
+```yaml
+transforms:
+  - type: split
+    from: coordinates
+    delimiter: ","
+    toFields: [latitude, longitude]
+```
+
+### Parse JSON Array
+
+Convert a JSON-stringified array back into a native array. Used when a JSON API returns array fields (like categories or tags) that get serialized to strings during CSV conversion.
+
+| Field  | Description                                |
+| ------ | ------------------------------------------ |
+| `from` | Field containing the JSON string           |
+| `to`   | Optional target field (defaults to `from`) |
+
+```yaml
+transforms:
+  - type: parse-json-array
+    from: category
+```
+
+**Before:** `"[\"Sport\",\"Kultur\",\"Erwachsene\"]"` (string)
+
+**After:** `["Sport", "Kultur", "Erwachsene"]` (native array, rendered as tag chips)
+
+## Pre-Processing
+
+For JSON API sources, you can group records before they enter the import pipeline. This is useful when an API returns repeated entries for recurring events — one row per day instead of a single event with a date range.
+
+| Field                              | Description                                  |
+| ---------------------------------- | -------------------------------------------- |
+| `source.preProcessing.groupBy`     | Field to group records by                    |
+| `source.preProcessing.mergeFields` | Fields to merge with `min` or `max` strategy |
+
+### Example: Bonn Event Calendar
+
+The Bonn API returns 5,001 entries for 747 unique events. A daily exhibition appears as 291 separate rows (one per day). Pre-processing collapses them:
+
+```yaml
+source:
+  url: "https://www.bonn.de/citykey/events-json.php"
+  format: json
+  preProcessing:
+    groupBy: uid
+    mergeFields:
+      startDate: min
+      endDate: max
+```
+
+**Result:** 747 events with correct date ranges. An exhibition running March 2026 to February 2027 shows `startDate: 2026-03-27` and `endDate: 2027-02-28` instead of a single day.
+
+## Configuring Transforms
+
+### In Data Package YAMLs
+
+Add a `transforms` array to your data package manifest:
+
+```yaml
+# config/data-packages/bonn-veranstaltungen.yml
+transforms:
+  - type: parse-json-array
+    from: category
+
+source:
+  url: "https://www.bonn.de/citykey/events-json.php"
+  format: json
+  preProcessing:
+    groupBy: uid
+    mergeFields:
+      startDate: min
+      endDate: max
+```
+
+### In the Admin Dashboard
+
+Navigate to **Datasets** in the Payload dashboard. Each dataset has an **Import Transforms** section where you can add, reorder, and toggle transforms.
+
+## Processing Order
+
+```
+Source data (JSON/CSV rows)
+  → Pre-processing (group-by, date merge)     ← JSON APIs only
+    → CSV conversion
+      → Transforms (rename, parse, split...)   ← per row
+        → Schema detection
+          → Geocoding
+            → Event creation
+```
+
+Transforms run after pre-processing but before schema detection. This means the schema sees the transformed field names and values.
