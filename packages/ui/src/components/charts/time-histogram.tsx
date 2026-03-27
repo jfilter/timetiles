@@ -320,12 +320,21 @@ export const TimeHistogram = ({
   const chartOption = {
     backgroundColor: "transparent",
     textStyle: { color: effectiveTheme.textColor },
-    grid: { left: "3%", right: "4%", bottom: showDataZoom ? 45 : "3%", top: "10%", containLabel: true },
+    grid: {
+      left: "3%",
+      right: "4%",
+      bottom: showDataZoom ? 45 : "3%",
+      top: groupedData && groupedData.length > 1 ? 30 : "10%",
+      containLabel: true,
+    },
     ...axisConfig,
     tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
     series: groupedData ? getStackedSeriesConfig(groupedData) : getSeriesConfig(effectiveTheme, data),
     ...(groupedData && groupedData.length > 1
-      ? { legend: { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } } }
+      ? {
+          color: groupedData.map((s) => s.color),
+          legend: { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } },
+        }
       : {}),
     ...(showDataZoom ? { dataZoom: getDataZoomConfig(effectiveTheme, dataZoomStart, dataZoomEnd) } : {}),
     animation: true,
