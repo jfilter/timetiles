@@ -172,6 +172,7 @@ export interface Config {
       'execute-account-deletion': TaskExecuteAccountDeletion;
       'scraper-execution': TaskScraperExecution;
       'scraper-repo-sync': TaskScraperRepoSync;
+      'job-cleanup': TaskJobCleanup;
       inline: {
         input: unknown;
         output: unknown;
@@ -554,6 +555,18 @@ export interface Dataset {
     | boolean
     | null;
   /**
+   * Field type groups from schema detection: { tags: [...], enum: [...], date: [...], url: [...], number: [...] }
+   */
+  fieldTypes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
    * Transform rules applied to incoming data before validation (e.g., field renames)
    */
   ingestTransforms?:
@@ -565,7 +578,7 @@ export interface Dataset {
         /**
          * Type of transformation to apply
          */
-        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split';
+        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split' | 'parse-json-array' | 'extract';
         /**
          * Source field path in import file (e.g., 'date' or 'user.email')
          */
@@ -591,9 +604,13 @@ export interface Dataset {
          */
         operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace' | 'expression') | null;
         /**
-         * Text pattern to find (for replace operation)
+         * Pattern (text for replace, regex for extract)
          */
         pattern?: string | null;
+        /**
+         * Regex capture group index (default: 1)
+         */
+        group?: number | null;
         /**
          * Replacement text
          */
@@ -1704,6 +1721,39 @@ export interface ScheduledIngest {
        */
       bounded?: boolean | null;
     };
+  };
+  /**
+   * Fields to exclude from import as JSON array (e.g. ["hasStartTime", "pdf"])
+   */
+  excludeFields?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Group JSON records by a key and merge date fields (e.g. collapse recurring events into date ranges).
+   */
+  preProcessing?: {
+    /**
+     * Field to group records by (e.g. 'uid')
+     */
+    groupBy?: string | null;
+    /**
+     * Fields to merge with min/max: e.g. {"startDate": "min", "endDate": "max"}
+     */
+    mergeFields?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
   /**
    * Last execution time
@@ -3839,7 +3889,8 @@ export interface PayloadJob {
           | 'audit-log-ip-cleanup'
           | 'execute-account-deletion'
           | 'scraper-execution'
-          | 'scraper-repo-sync';
+          | 'scraper-repo-sync'
+          | 'job-cleanup';
         taskID: string;
         input?:
           | {
@@ -3896,6 +3947,7 @@ export interface PayloadJob {
         | 'execute-account-deletion'
         | 'scraper-execution'
         | 'scraper-repo-sync'
+        | 'job-cleanup'
       )
     | null;
   queue?: string | null;
@@ -4141,6 +4193,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         enabled?: T;
       };
   fieldMetadata?: T;
+  fieldTypes?: T;
   ingestTransforms?:
     | T
     | {
@@ -4153,6 +4206,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         timezone?: T;
         operation?: T;
         pattern?: T;
+        group?: T;
         replacement?: T;
         expression?: T;
         fromFields?: T;
@@ -4508,6 +4562,13 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                   };
               bounded?: T;
             };
+      };
+  excludeFields?: T;
+  preProcessing?:
+    | T
+    | {
+        groupBy?: T;
+        mergeFields?: T;
       };
   lastRun?: T;
   nextRun?: T;
@@ -6089,6 +6150,14 @@ export interface TaskScraperExecution {
  * via the `definition` "TaskScraper-repo-sync".
  */
 export interface TaskScraperRepoSync {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskJob-cleanup".
+ */
+export interface TaskJobCleanup {
   input?: unknown;
   output?: unknown;
 }

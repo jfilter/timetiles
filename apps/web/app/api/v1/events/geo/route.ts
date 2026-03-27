@@ -45,7 +45,7 @@ export const GET = apiRoute({
       bounds,
       query.zoom,
       ctx.filters,
-      query.clusterRadius ?? 60,
+      query.clusterRadius ?? 30,
       query.clusterZoomFactor ?? 1.4
     );
     const clusters = transformResultToClusters(result.rows, query.zoom);
@@ -98,7 +98,8 @@ const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
     })
     .map((row) => {
       const isCluster = Number(row.event_count) > 1;
-      const featureId = row.cluster_id ?? row.event_id;
+      const eventId = row.event_id != null ? Number(row.event_id) : undefined;
+      const featureId = isCluster ? row.cluster_id : eventId;
       const extentDeg = row.extent_degrees != null ? Number(row.extent_degrees) : 0;
 
       return {
@@ -111,6 +112,7 @@ const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
         properties: {
           type: isCluster ? "event-cluster" : "event-point",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
+          ...(!isCluster && eventId != null ? { eventId } : {}),
           ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
           ...(isCluster && extentDeg > 0 ? { extentRadius: Math.round(degreesToPixels(extentDeg, zoom)) } : {}),
         },

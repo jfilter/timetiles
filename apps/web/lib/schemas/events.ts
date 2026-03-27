@@ -177,7 +177,7 @@ export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
  */
 export const MapClustersQuerySchema = EventFiltersSchema.extend({
   zoom: z.coerce.number().int().min(0).max(28).default(10),
-  clusterRadius: z.coerce.number().min(20).max(200).default(60).optional(),
+  clusterRadius: z.coerce.number().min(20).max(200).default(30).optional(),
   clusterZoomFactor: z.coerce.number().min(1.0).max(1.8).default(1.4).optional(),
 }).openapi("MapClustersQuery");
 

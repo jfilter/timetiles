@@ -18,6 +18,7 @@ interface MapPanelProps {
   mapRef?: RefObject<ClusteredMapHandle | null>;
   clusters: ClusterFeature[];
   onBoundsChange: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
+  onEventClick?: (eventId: number) => void;
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds: boolean;
@@ -30,6 +31,7 @@ export const MapPanel = ({
   mapRef,
   clusters,
   onBoundsChange,
+  onEventClick,
   initialBounds,
   initialViewState,
   isLoadingBounds,
@@ -42,6 +44,7 @@ export const MapPanel = ({
       ref={mapRef}
       clusters={clusters}
       onBoundsChange={onBoundsChange}
+      onEventClick={onEventClick}
       initialBounds={initialBounds}
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}

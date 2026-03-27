@@ -23,9 +23,11 @@ export interface PopupInfo {
 interface UseMapInteractionsProps {
   /** Formats a fallback title when an event has no title property */
   formatFallbackTitle: (featureId: string) => string;
+  /** Called when an individual event point is clicked */
+  onEventClick?: (eventId: number) => void;
 }
 
-export const useMapInteractions = ({ formatFallbackTitle }: UseMapInteractionsProps) => {
+export const useMapInteractions = ({ formatFallbackTitle, onEventClick }: UseMapInteractionsProps) => {
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
 
   const closePopup = useCallback(() => setPopupInfo(null), []);
@@ -39,6 +41,14 @@ export const useMapInteractions = ({ formatFallbackTitle }: UseMapInteractionsPr
 
   const handleEventPointClick = useCallback(
     (feature: GeoJSON.Feature) => {
+      const { eventId: rawEventId } = feature.properties ?? {};
+      const eventId = typeof rawEventId === "number" ? rawEventId : Number(rawEventId);
+
+      if (onEventClick && Number.isFinite(eventId)) {
+        onEventClick(eventId);
+        return;
+      }
+
       const coordinates = getValidCoordinates(feature);
       if (coordinates) {
         const { title } = feature.properties ?? {};
@@ -49,7 +59,7 @@ export const useMapInteractions = ({ formatFallbackTitle }: UseMapInteractionsPr
         });
       }
     },
-    [formatFallbackTitle]
+    [formatFallbackTitle, onEventClick]
   );
 
   const handleClick = useCallback(

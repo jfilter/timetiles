@@ -105,6 +105,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
         mapRef={mapRef}
         clusters={clusters}
         onBoundsChange={handleBoundsChange}
+        onEventClick={openEvent}
         initialBounds={boundsData?.bounds}
         initialViewState={initialViewState}
         isLoadingBounds={isLoadingInitialBounds}

@@ -44,7 +44,13 @@ export interface ClusterFeature {
   type: "Feature";
   id?: string | number;
   geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { type: "event-cluster" | "event-point"; count?: number; title?: string; extentRadius?: number };
+  properties: {
+    type: "event-cluster" | "event-point";
+    count?: number;
+    eventId?: number;
+    title?: string;
+    extentRadius?: number;
+  };
 }
 
 /**
@@ -59,6 +65,7 @@ export interface MapViewState {
 
 interface ClusteredMapProps {
   onBoundsChange?: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
+  onEventClick?: (eventId: number) => void;
   clusters?: ClusterFeature[];
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
@@ -78,7 +85,18 @@ type MapEventTarget = {
 };
 
 export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
-  ({ onBoundsChange, clusters = DEFAULT_CLUSTERS, initialBounds, initialViewState, isLoadingBounds, isError }, ref) => {
+  (
+    {
+      onBoundsChange,
+      onEventClick,
+      clusters = DEFAULT_CLUSTERS,
+      initialBounds,
+      initialViewState,
+      isLoadingBounds,
+      isError,
+    },
+    ref
+  ) => {
     const t = useTranslations("Explore");
     const { resolvedTheme } = useTheme();
     const { preset } = useThemePreset();
@@ -88,6 +106,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
     const mapStyleUrl = presetStyles[resolvedTheme];
     const { popupInfo, closePopup, handleClick } = useMapInteractions({
       formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
+      onEventClick,
     });
 
     const hasAppliedBoundsRef = useRef(false);

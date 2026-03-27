@@ -17,9 +17,9 @@ export type ClusterDensityMode = "fine" | "normal" | "coarse" | "expert";
 
 /** Preset values for cluster density. */
 export const CLUSTER_DENSITY_PRESETS: Record<Exclude<ClusterDensityMode, "expert">, ClusterDensitySettings> = {
-  fine: { clusterRadius: 35, clusterZoomFactor: 1.2 },
-  normal: { clusterRadius: 60, clusterZoomFactor: 1.4 },
-  coarse: { clusterRadius: 100, clusterZoomFactor: 1.6 },
+  fine: { clusterRadius: 20, clusterZoomFactor: 1.2 },
+  normal: { clusterRadius: 30, clusterZoomFactor: 1.4 },
+  coarse: { clusterRadius: 60, clusterZoomFactor: 1.6 },
 };
 
 // Define the shape of our UI state (non-URL state)

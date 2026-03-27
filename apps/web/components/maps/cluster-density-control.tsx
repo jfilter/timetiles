@@ -65,7 +65,7 @@ export const ClusterDensityControl = () => {
         <div className="space-y-2 border-t pt-2 dark:border-gray-700">
           <LabeledSlider
             label={t("clusterRadius")}
-            value={density.clusterRadius ?? 60}
+            value={density.clusterRadius ?? 30}
             onChange={(v) => setDensity({ ...density, clusterRadius: v })}
             min={20}
             max={200}
