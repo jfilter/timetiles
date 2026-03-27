@@ -64,27 +64,49 @@ export const EventHistogram = ({
   const histogram = histogramQuery.data?.histogram ?? EMPTY_ARRAY;
   const bucketSizeSeconds = histogramQuery.data?.metadata?.bucketSizeSeconds ?? null;
 
-  // Transform temporal-clusters response to stacked histogram series
+  // Transform temporal-clusters response to stacked histogram series (top 4 + "Other")
   const groupedData = useMemo<TimeHistogramSeries[] | undefined>(() => {
     if (!isGrouped || !clustersQuery.data?.items) return undefined;
 
-    const groups = new Map<string, { name: string; items: Map<string, number> }>();
+    // Aggregate total counts per group to determine top groups
+    const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
     for (const item of clustersQuery.data.items) {
-      if (!groups.has(item.groupId)) {
-        groups.set(item.groupId, { name: item.groupName, items: new Map() });
+      if (!groupTotals.has(item.groupId)) {
+        groupTotals.set(item.groupId, { name: item.groupName, total: 0, items: new Map() });
       }
-      const existing = groups.get(item.groupId)!.items.get(item.bucketStart) ?? 0;
-      groups.get(item.groupId)!.items.set(item.bucketStart, existing + item.count);
+      const g = groupTotals.get(item.groupId)!;
+      g.total += item.count;
+      const existing = g.items.get(item.bucketStart) ?? 0;
+      g.items.set(item.bucketStart, existing + item.count);
     }
 
-    let colorIdx = 0;
-    const series: TimeHistogramSeries[] = [];
-    for (const [, group] of groups) {
-      const color = DATASET_COLORS[colorIdx % DATASET_COLORS.length] ?? "#0089a7";
-      const data = Array.from(group.items.entries()).map(([date, count]) => ({ date, count }));
-      series.push({ name: group.name, color, data });
-      colorIdx++;
+    // Sort by total count, take top 4
+    const MAX_GROUPS = 4;
+    const sorted = [...groupTotals.entries()].sort((a, b) => b[1].total - a[1].total);
+    const topGroups = sorted.slice(0, MAX_GROUPS);
+    const otherGroups = sorted.slice(MAX_GROUPS);
+
+    const series: TimeHistogramSeries[] = topGroups.map(([, group], idx) => ({
+      name: group.name,
+      color: DATASET_COLORS[idx % DATASET_COLORS.length] ?? "#0089a7",
+      data: Array.from(group.items.entries()).map(([date, count]) => ({ date, count })),
+    }));
+
+    // Merge remaining groups into "Other"
+    if (otherGroups.length > 0) {
+      const otherBuckets = new Map<string, number>();
+      for (const [, group] of otherGroups) {
+        for (const [date, count] of group.items) {
+          otherBuckets.set(date, (otherBuckets.get(date) ?? 0) + count);
+        }
+      }
+      series.push({
+        name: `Other (${otherGroups.length})`,
+        color: "#9ca3af", // neutral gray
+        data: Array.from(otherBuckets.entries()).map(([date, count]) => ({ date, count })),
+      });
     }
+
     return series.length > 0 ? series : undefined;
   }, [isGrouped, clustersQuery.data?.items]);
 
