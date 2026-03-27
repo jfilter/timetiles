@@ -21,14 +21,6 @@ estimatedRecords: 10000
 source:
   url: "https://www.stolpersteine-berlin.de/de/stolpersteine-finden/download"
   format: csv
-  excludeFields:
-    - Virtueller-Stein
-    - Ortsteil-ID
-    - " Bezirk-ID"
-    - Straße
-    - Hausnummer
-    - Postleitzahl
-
 catalog:
   name: Berlin Kultur & Geschichte
   description: Kulturelle und historische Datensaetze aus Berlin
