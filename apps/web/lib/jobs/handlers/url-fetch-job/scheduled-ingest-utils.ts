@@ -29,6 +29,7 @@ export const loadScheduledIngestConfig = async (
     const scheduledIngest = await payload.findByID({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngestId,
+      overrideAccess: true,
     });
 
     if (!scheduledIngest.enabled) {

@@ -201,6 +201,7 @@ export const activateDataPackage = async (
         description: resolved.catalog.description ? toRichText(resolved.catalog.description) : undefined,
         isPublic: resolved.catalog.isPublic ?? true,
         createdBy: user.id,
+        _status: "published",
       },
       overrideAccess: true,
     }));
@@ -222,6 +223,7 @@ export const activateDataPackage = async (
   const dataset = await payload.create({
     collection: COLLECTION_NAMES.DATASETS,
     data: {
+      _status: "published",
       name: resolved.dataset.name,
       catalog: catalog.id,
       language: resolved.dataset.language ?? "eng",
@@ -273,7 +275,7 @@ export const activateDataPackage = async (
   ingestData.dataPackageSlug = activationKey;
   const scheduledIngest = await payload.create({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    data: ingestData,
+    data: { ...ingestData, _status: "published" },
     overrideAccess: true,
   });
 
