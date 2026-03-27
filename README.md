@@ -1,7 +1,7 @@
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="packages/assets/logos/latest/dark/no-grid/wordmark_horizontal.svg">
-  <source media="(prefers-color-scheme: light)" srcset="packages/assets/logos/latest/light/no-grid/wordmark_horizontal.svg">
-  <img alt="TimeTiles" src="packages/assets/logos/latest/light/no-grid/wordmark_horizontal.svg" height="56">
+  <source media="(prefers-color-scheme: dark)" srcset="packages/assets/logos/latest/dark/transparent/wordmark_horizontal.svg">
+  <source media="(prefers-color-scheme: light)" srcset="packages/assets/logos/latest/light/transparent/wordmark_horizontal.svg">
+  <img alt="TimeTiles" src="packages/assets/logos/latest/light/transparent/wordmark_horizontal.svg" height="56">
 </picture>
 
 ### Open-source platform that turns spreadsheets into interactive maps. Import tabular data, geocode locations, and explore everything visually.
