@@ -224,6 +224,60 @@ Event C,2024-06-03,http://example.com/events/789/show
     expect(events.docs[0].transformedData?.link).toContain("http://example.com/events/");
   });
 
+  it("should not mark URL arrays as tags", async () => {
+    const csvContent = `title,date,sources
+Event A,2024-06-01,"[""https://example.com/a"",""https://example.com/b""]"
+Event B,2024-06-02,"[""https://example.com/c""]"
+Event C,2024-06-03,"[""https://example.com/d"",""https://example.com/e""]"
+Event D,2024-06-04,"[""https://example.com/f""]"
+Event E,2024-06-05,"[""https://example.com/g"",""https://example.com/h""]"
+`;
+
+    await withDataset(testEnv, testCatalogId, {
+      name: "url-array-test.csv",
+      language: "eng",
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
+      ingestTransforms: [
+        { id: crypto.randomUUID(), type: "parse-json-array", active: true, autoDetected: false, from: "sources" },
+      ],
+    });
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "url-array-test.csv",
+      mimeType: "text/csv",
+      user: testUserId,
+      additionalData: {
+        originalName: "url-array-test.csv",
+        processingOptions: {
+          autoApproveSchema: true,
+          reviewChecks: {
+            skipDuplicateRateCheck: true,
+            skipGeocodingCheck: true,
+            skipTimestampCheck: true,
+            skipLocationCheck: true,
+            skipEmptyRowCheck: true,
+            skipRowErrorCheck: true,
+          },
+        },
+      },
+      triggerWorkflow: true,
+    });
+
+    await runJobsUntilIngestJobStage(
+      payload,
+      ingestFile.id,
+      (ingestJob) => ingestJob.stage === "failed" || ingestJob.stage === "completed",
+      { maxIterations: 50 }
+    );
+
+    const datasets = await payload.find({ collection: "datasets", where: { name: { equals: "url-array-test.csv" } } });
+    const ds = datasets.docs[0];
+    const fieldTypes = ds.fieldTypes as FieldTypeMap | null;
+
+    // sources should NOT be in tags (it's URLs, not categories)
+    expect(fieldTypes?.tags ?? []).not.toContain("sources");
+  });
+
   it("should detect scalar enum fields and set fieldTypes.enum", async () => {
     // CSV with a low-cardinality scalar field
     const csvContent = `title,date,status

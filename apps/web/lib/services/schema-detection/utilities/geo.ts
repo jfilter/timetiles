@@ -10,6 +10,19 @@
 
 import type { DetectionOptions, FieldStatistics, PatternResult } from "../types";
 
+// ---------------------------------------------------------------------------
+// Constants for field type detection
+// ---------------------------------------------------------------------------
+
+/** Maximum unique element count for a field to qualify as a tag field. */
+export const MAX_TAG_CARDINALITY = 200;
+
+/** If >50% of array elements are URLs, skip tag detection (treat as link array). */
+export const TAG_URL_SKIP_THRESHOLD = 0.5;
+
+/** Minimum ratio of a type in the distribution to classify the field (>50%). */
+export const FIELD_TYPE_MAJORITY_THRESHOLD = 0.5;
+
 /**
  * ID field name patterns.
  */
@@ -139,10 +152,10 @@ const enrichTagField = (stats: FieldStatistics, _enumThreshold: number): void =>
   }
 
   // Skip if most values are URLs — those are link arrays, not tags
-  if ((stats.formats.url ?? 0) > stats.occurrences * 0.5) return;
+  if ((stats.formats.url ?? 0) > stats.occurrences * TAG_URL_SKIP_THRESHOLD) return;
 
-  // Tags naturally have higher cardinality than scalar enums — allow up to 200 unique elements
-  const maxCardinality = 200;
+  // Tags naturally have higher cardinality than scalar enums
+  const maxCardinality = MAX_TAG_CARDINALITY;
   if (elementCounts.size > 1 && elementCounts.size <= maxCardinality) {
     stats.isTagField = true;
     stats.isEnumCandidate = true;

@@ -8,6 +8,7 @@
  * @category Jobs
  */
 import { parseCoordinate } from "@/lib/geospatial/parsing";
+import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
@@ -177,16 +178,16 @@ const classifyField = (stats: Record<string, unknown>): string | null => {
   const formats = (stats.formats ?? {}) as Record<string, number>;
   const occ = (stats.occurrences as number) || 1;
 
-  if ((dist.date ?? 0) / occ > 0.5) return "date";
+  if ((dist.date ?? 0) / occ > FIELD_TYPE_MAJORITY_THRESHOLD) return "date";
 
   // Distinguish image URLs from regular URLs by checking samples for image extensions
-  if ((formats.url ?? 0) / occ > 0.5) {
+  if ((formats.url ?? 0) / occ > FIELD_TYPE_MAJORITY_THRESHOLD) {
     const samples = (stats.uniqueSamples ?? []) as unknown[];
     const hasImageSamples = samples.some((s) => typeof s === "string" && IMAGE_URL_PATTERN.test(s));
     return hasImageSamples ? "image" : "url";
   }
 
-  if (((dist.number ?? 0) + (dist.integer ?? 0)) / occ > 0.5) return "number";
+  if (((dist.number ?? 0) + (dist.integer ?? 0)) / occ > FIELD_TYPE_MAJORITY_THRESHOLD) return "number";
   return null;
 };
 
