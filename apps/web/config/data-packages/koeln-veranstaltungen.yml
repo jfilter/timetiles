@@ -19,6 +19,14 @@ estimatedRecords: 500
 source:
   url: "http://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=90"
   format: json
+  jsonApi:
+    recordsPath: items
+  excludeFields:
+    - oepnv
+    - ort
+    - plz
+    - hausnummer
+    - strasse
 
 catalog:
   name: Offene Daten Köln
@@ -29,8 +37,24 @@ dataset:
   name: Kölner Veranstaltungen
   language: deu
   idStrategy:
-    type: content-hash
+    type: external
+    externalIdPath: eventId
     duplicateStrategy: update
+
+transforms:
+  # Extract numeric event ID from link URL for stable deduplication
+  - type: extract
+    from: link
+    to: eventId
+    pattern: '/daten/(\d+)/'
+  # Build full image URL from relative teaserbild path
+  - type: string-op
+    from: teaserbild
+    operation: expression
+    expression: 'concat("https://www.stadt-koeln.de", value)'
+  - type: rename
+    from: teaserbild
+    to: image
 
 fieldMappings:
   titlePath: title

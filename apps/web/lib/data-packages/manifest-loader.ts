@@ -114,7 +114,7 @@ const manifestSchema = z.object({
   transforms: z
     .array(
       z.object({
-        type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "parse-json-array"]),
+        type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "parse-json-array", "extract"]),
         from: z.string(),
         to: z.string().optional(),
         // split
@@ -128,6 +128,8 @@ const manifestSchema = z.object({
         operation: z.enum(["uppercase", "lowercase", "replace", "expression"]).optional(),
         pattern: z.string().optional(),
         replacement: z.string().optional(),
+        // extract
+        group: z.number().int().optional(),
         expression: z.string().optional(),
         // concatenate
         fromFields: z.array(z.string()).optional(),

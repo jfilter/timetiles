@@ -50,6 +50,7 @@ export const transformationFields: Field[] = [
           { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
           { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
           { label: "Parse JSON Array", value: TRANSFORM_TYPES.PARSE_JSON_ARRAY },
+          { label: "Extract (Regex)", value: "extract" },
         ],
         defaultValue: TRANSFORM_TYPES.RENAME,
         admin: { description: "Type of transformation to apply" },
@@ -134,9 +135,15 @@ export const transformationFields: Field[] = [
         name: "pattern",
         type: "text",
         admin: {
-          description: "Text pattern to find (for replace operation)",
-          condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "replace",
+          description: "Pattern (text for replace, regex for extract)",
+          condition: (data) =>
+            (data?.type === TRANSFORM_TYPES.STRING_OP && data?.operation === "replace") || data?.type === "extract",
         },
+      },
+      {
+        name: "group",
+        type: "number",
+        admin: { description: "Regex capture group index (default: 1)", condition: (data) => data?.type === "extract" },
       },
       {
         name: "replacement",

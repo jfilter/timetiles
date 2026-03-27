@@ -31,6 +31,7 @@ import * as migration_20260327_000003_cluster_density_params from './20260327_00
 import * as migration_20260327_000004_add_temporal_clustering from './20260327_000004_add_temporal_clustering';
 import * as migration_20260327_005403 from './20260327_005403';
 import * as migration_20260327_011307 from './20260327_011307';
+import * as migration_20260327_014705 from './20260327_014705';
 
 export const migrations = [
   {
@@ -196,6 +197,11 @@ export const migrations = [
   {
     up: migration_20260327_011307.up,
     down: migration_20260327_011307.down,
-    name: '20260327_011307'
+    name: '20260327_011307',
+  },
+  {
+    up: migration_20260327_014705.up,
+    down: migration_20260327_014705.down,
+    name: '20260327_014705'
   },
 ];

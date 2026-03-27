@@ -18,6 +18,7 @@ import { Parser } from "expr-eval";
 import type {
   ConcatenateTransform,
   DateParseTransform,
+  ExtractTransform,
   IngestTransform,
   ParseJsonArrayTransform,
   RenameTransform,
@@ -79,6 +80,9 @@ export const applyTransforms = (
         break;
       case "parse-json-array":
         applyParseJsonArrayTransform(result, transform);
+        break;
+      case "extract":
+        applyExtractTransform(result, transform);
         break;
     }
   }
@@ -355,6 +359,23 @@ const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: 
     }
   } catch {
     // Not valid JSON — keep original string value
+  }
+};
+
+/**
+ * Apply an extract transform to capture a substring from a field value using a regex.
+ *
+ * Writes the captured group (default: group 1) to a new field. The source field is unchanged.
+ */
+const applyExtractTransform = (data: Record<string, unknown>, transform: ExtractTransform): void => {
+  const value = getByPath(data, transform.from);
+  if (typeof value !== "string") return;
+
+  const match = new RegExp(transform.pattern).exec(value);
+  if (match) {
+    const groupIndex = transform.group ?? 1;
+    const extracted = match[groupIndex] ?? match[0];
+    setByPath(data, transform.to, extracted);
   }
 };
 

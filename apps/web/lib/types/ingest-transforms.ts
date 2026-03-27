@@ -19,7 +19,14 @@
  * - concatenate: Combine multiple fields into one
  * - split: Split one field into multiple fields
  */
-export type TransformType = "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "parse-json-array";
+export type TransformType =
+  | "rename"
+  | "date-parse"
+  | "string-op"
+  | "concatenate"
+  | "split"
+  | "parse-json-array"
+  | "extract";
 
 /**
  * Base properties shared by all transform rules.
@@ -128,6 +135,24 @@ export interface ParseJsonArrayTransform extends BaseTransform {
 }
 
 /**
+ * Extract transform - extracts a substring from a field value using a regex pattern.
+ *
+ * Writes the captured group to a new field. Useful for extracting IDs from URLs
+ * or parsing structured strings.
+ */
+export interface ExtractTransform extends BaseTransform {
+  type: "extract";
+  /** Source field containing the value to extract from */
+  from: string;
+  /** Target field for the extracted value */
+  to: string;
+  /** Regex pattern with capture group(s) */
+  pattern: string;
+  /** Capture group index to use (default: 1) */
+  group?: number;
+}
+
+/**
  * Union of all transform types.
  *
  * Applied before schema validation and event creation to normalize
@@ -139,7 +164,8 @@ export type IngestTransform =
   | StringOpTransform
   | ConcatenateTransform
   | SplitTransform
-  | ParseJsonArrayTransform;
+  | ParseJsonArrayTransform
+  | ExtractTransform;
 
 /**
  * A suggested transform detected by comparing schema versions.
@@ -199,6 +225,7 @@ export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
   concatenate: "Concatenate Fields",
   split: "Split Field",
   "parse-json-array": "Parse JSON Array",
+  extract: "Extract (Regex)",
 };
 
 /**
@@ -211,6 +238,7 @@ export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = {
   concatenate: "Join multiple fields together with a separator",
   split: "Split a field into multiple fields using a delimiter",
   "parse-json-array": "Parse a JSON-stringified array into a native array for tag/multi-value fields",
+  extract: "Extract a substring from a field using a regex pattern into a new field",
 };
 
 /**
@@ -249,6 +277,8 @@ export const isTransformValid = (transform: IngestTransform): boolean => {
       return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
     case "parse-json-array":
       return Boolean(transform.from);
+    case "extract":
+      return Boolean(transform.from && transform.to && transform.pattern);
     default:
       return false;
   }
@@ -273,5 +303,7 @@ export const createTransform = (type: TransformType): IngestTransform => {
       return { ...base, type: "split", from: "", delimiter: ",", toFields: [] };
     case "parse-json-array":
       return { ...base, type: "parse-json-array", from: "" };
+    case "extract":
+      return { ...base, type: "extract", from: "", to: "", pattern: "" };
   }
 };
