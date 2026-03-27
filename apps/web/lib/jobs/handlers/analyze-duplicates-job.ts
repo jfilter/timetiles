@@ -18,7 +18,10 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { applyTransforms } from "@/lib/ingest/transforms";
 import { generateUniqueId } from "@/lib/services/id-generation";
+
+import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
@@ -69,6 +72,19 @@ const skipDeduplication = async (
   return false;
 };
 
+/**
+ * Get only the transforms needed to produce the external ID field.
+ * Returns an empty array if no transforms are needed (ID comes directly from source data).
+ */
+const getIdTransforms = (dataset: Dataset) => {
+  const externalIdPath = dataset.idStrategy?.externalIdPath;
+  if (!externalIdPath || dataset.idStrategy?.type !== "external") return [];
+
+  const allTransforms = buildTransformsFromDataset(dataset);
+  // Find transforms that write to the external ID field
+  return allTransforms.filter((t) => "to" in t && t.to === externalIdPath);
+};
+
 const analyzeInternalDuplicates = async (
   payload: Payload,
   filePath: string,
@@ -86,13 +102,17 @@ const analyzeInternalDuplicates = async (
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
+  // If external ID is produced by a transform, apply only that transform before ID generation
+  const idTransforms = getIdTransforms(dataset);
+
   for await (const rows of streamBatchesFromFile(filePath, {
     sheetIndex: job.sheetIndex ?? undefined,
     batchSize: ANALYSIS_BATCH_SIZE,
   })) {
     for (const [index, row] of rows.entries()) {
       const rowNumber = totalRows + index;
-      const uniqueId = generateUniqueId(row, dataset);
+      const idRow = idTransforms.length > 0 ? applyTransforms(row, idTransforms) : row;
+      const uniqueId = generateUniqueId(idRow, dataset);
 
       if (uniqueIdMap.has(uniqueId)) {
         internalDuplicates.push({ rowNumber, uniqueId, firstOccurrence: uniqueIdMap.get(uniqueId) });

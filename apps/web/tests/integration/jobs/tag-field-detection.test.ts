@@ -154,10 +154,7 @@ Event E,2024-06-05,Frankfurt,"[""Jugend"",""Musik""]"
     expect(fm?.category?.typeDistribution?.array).toBeGreaterThan(0);
   });
 
-  it.skip("should extract IDs from URLs using extract transform", async () => {
-    // TODO: Extract transform works in unit tests (builder + applyTransforms) but fails
-    // in the integration pipeline. The transform is stored and built correctly, but
-    // eventId is missing during event creation. Needs deeper debugging.
+  it("should extract IDs from URLs using extract transform", async () => {
     const csvContent = `title,date,link
 Event A,2024-06-01,http://example.com/events/123/show
 Event B,2024-06-02,http://example.com/events/456/show
