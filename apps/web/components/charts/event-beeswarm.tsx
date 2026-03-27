@@ -146,9 +146,6 @@ const BeeswarmSettings = ({
   setClusterMin,
   clusterMax,
   setClusterMax,
-  groupBy,
-  setGroupBy,
-  groupByOptions,
   mode,
   itemCount,
 }: {
@@ -162,28 +159,10 @@ const BeeswarmSettings = ({
   setClusterMin: (v: number) => void;
   clusterMax: number;
   setClusterMax: (v: number) => void;
-  groupBy: string;
-  setGroupBy: (v: string) => void;
-  groupByOptions: GroupByOption[];
   mode: string;
   itemCount: number;
 }) => (
   <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
-    {/* Group by selector */}
-    <div>
-      <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
-      <select
-        value={groupBy}
-        onChange={(e) => setGroupBy(e.target.value)}
-        className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
-      >
-        {groupByOptions.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
     <LabeledSlider
       label="Detail threshold"
       value={threshold}
@@ -328,9 +307,6 @@ export const EventBeeswarm = ({
           setClusterMin={setClusterMin}
           clusterMax={clusterMax}
           setClusterMax={setClusterMax}
-          groupBy={groupBy}
-          setGroupBy={setGroupBy}
-          groupByOptions={groupByOptions}
           mode={mode}
           itemCount={data?.items.length ?? 0}
         />

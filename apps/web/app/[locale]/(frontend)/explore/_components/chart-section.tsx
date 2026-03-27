@@ -192,25 +192,28 @@ export const ChartSection = ({
       </div>
     ) : null;
 
-  const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => (
-    <div className="relative h-full">
-      {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} groupBy={groupBy} />}
-      {chartType === "beeswarm" && (
-        <EventBeeswarm
-          bounds={bounds}
-          height={height}
-          onEventClick={onEventClick}
-          variant={variant}
-          showControls={showChartSettings}
-          groupBy={groupBy}
-          setGroupBy={(v) => void setGroupBy(v)}
-        />
-      )}
-      {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
-      {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
-      {renderGroupByPicker()}
-    </div>
-  );
+  const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => {
+    const effectiveGroupBy = variant === "fullscreen" ? groupBy : "none";
+    return (
+      <div className="relative h-full">
+        {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} groupBy={effectiveGroupBy} />}
+        {chartType === "beeswarm" && (
+          <EventBeeswarm
+            bounds={bounds}
+            height={height}
+            onEventClick={onEventClick}
+            variant={variant}
+            showControls={showChartSettings}
+            groupBy={effectiveGroupBy}
+            setGroupBy={(v) => void setGroupBy(v)}
+          />
+        )}
+        {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
+        {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
+        {variant === "fullscreen" && renderGroupByPicker()}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -221,11 +224,7 @@ export const ChartSection = ({
         availableChartTypes={availableChartTypes}
         fillHeight={fillHeight}
         onExpandClick={() => setIsFullscreen(true)}
-        headerActions={
-          chartType === "beeswarm" || chartType === "histogram" ? (
-            <BeeswarmSettingsButton showControls={showChartSettings} onToggle={() => setShowChartSettings((v) => !v)} />
-          ) : undefined
-        }
+        headerActions={undefined}
       >
         <div
           className={cn(
