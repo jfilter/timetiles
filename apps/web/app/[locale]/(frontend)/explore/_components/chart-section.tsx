@@ -91,6 +91,7 @@ const useChartTypeLabels = (): Record<ChartType, string> => {
   };
 };
 
+// oxlint-disable-next-line complexity
 export const ChartSection = ({
   bounds,
   fillHeight = false,
