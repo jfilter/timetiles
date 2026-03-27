@@ -104,7 +104,7 @@ const transformToSeries = (
   return { series, maxClusterCount };
 };
 
-interface GroupByOption {
+export interface GroupByOption {
   value: string;
   label: string;
 }
@@ -189,7 +189,7 @@ const BeeswarmSettings = ({
 );
 
 /** Hook to build groupBy dropdown options from enum fields. */
-const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
+export const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
   const enumFieldsQuery = useDatasetEnumFieldsQuery(singleDatasetId);
   return useMemo<GroupByOption[]>(() => {
     const opts: GroupByOption[] = [

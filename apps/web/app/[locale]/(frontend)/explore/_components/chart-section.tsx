@@ -27,7 +27,7 @@ import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
-import { BeeswarmSettingsButton, EventBeeswarm } from "@/components/charts/event-beeswarm";
+import { BeeswarmSettingsButton, EventBeeswarm, useGroupByOptions } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
@@ -169,11 +169,31 @@ export const ChartSection = ({
   const chartHeight = getChartHeight(chartType);
   const containerStyle = fillHeight ? undefined : { minHeight: chartHeight };
 
+  // Shared groupBy options for both histogram and beeswarm
+  const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
+  const groupByOptions = useGroupByOptions(singleDatasetId);
+
+  const renderGroupByPicker = () =>
+    showChartSettings && (chartType === "histogram" || chartType === "beeswarm") ? (
+      <div className="bg-background/95 border-border absolute top-0 right-0 z-10 rounded-md border p-3 shadow-md backdrop-blur-sm">
+        <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
+        <select
+          value={groupBy}
+          onChange={(e) => void setGroupBy(e.target.value)}
+          className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
+        >
+          {groupByOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    ) : null;
+
   const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => (
-    <>
-      {chartType === "histogram" && (
-        <EventHistogram bounds={bounds} height={height} groupBy={groupBy} showControls={showChartSettings} />
-      )}
+    <div className="relative">
+      {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} groupBy={groupBy} />}
       {chartType === "beeswarm" && (
         <EventBeeswarm
           bounds={bounds}
@@ -187,7 +207,8 @@ export const ChartSection = ({
       )}
       {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
       {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
-    </>
+      {renderGroupByPicker()}
+    </div>
   );
 
   return (
@@ -244,6 +265,12 @@ export const ChartSection = ({
                     ))}
                   </SelectContent>
                 </Select>
+              )}
+              {(chartType === "beeswarm" || chartType === "histogram") && (
+                <BeeswarmSettingsButton
+                  showControls={showChartSettings}
+                  onToggle={() => setShowChartSettings((v) => !v)}
+                />
               )}
               <DialogClose asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close">
