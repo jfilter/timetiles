@@ -66,10 +66,16 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
 
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
+  // Find first image URL in event data
+  const imageUrl =
+    Object.values(eventData).find(
+      (v): v is string => typeof v === "string" && /^https?:\/\/.+\.(jpe?g|png|gif|svg|webp)/i.test(v)
+    ) ?? null;
+
   return (
     <Card
       className={cn(
-        "border-border bg-background border-2 p-5",
+        "border-border bg-background overflow-hidden border-2",
         onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
@@ -79,53 +85,61 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
       tabIndex={onEventClick ? 0 : undefined}
       aria-label={onEventClick ? `View details for ${title}` : undefined}
     >
-      {/* Dataset badge */}
-      {datasetInfo && (
-        <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
-          {datasetInfo.name}
-        </span>
+      {/* Thumbnail */}
+      {imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- external URL
+        <img src={imageUrl} alt="" className="h-32 w-full object-cover" loading="lazy" />
       )}
 
-      {/* Title */}
-      <CardTitle className={cn("text-xl", datasetInfo && "mt-3")}>{title}</CardTitle>
+      <div className="p-5">
+        {/* Dataset badge */}
+        {datasetInfo && (
+          <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
+            {datasetInfo.name}
+          </span>
+        )}
 
-      {/* Description - 2 line clamp */}
-      {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
+        {/* Title */}
+        <CardTitle className={cn("text-xl", datasetInfo && "mt-3")}>{title}</CardTitle>
 
-      {/* Location and Date row with icons */}
-      {(locationDisplay != null || eventDate != null) && (
-        <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
-          {locationDisplay && (
-            <div className="flex min-w-0 items-center gap-1.5">
-              <MapPin className="h-4 w-4 shrink-0" />
-              <span className="truncate">{locationDisplay}</span>
-            </div>
-          )}
-          {eventDate && (
-            <div className="flex shrink-0 items-center gap-1.5">
-              <Calendar className="h-4 w-4 shrink-0" />
-              <span>{eventDate}</span>
-            </div>
-          )}
-        </div>
-      )}
+        {/* Description - 2 line clamp */}
+        {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
 
-      {/* Tag chips */}
-      {(() => {
-        const tags = Object.values(eventData).flatMap((v) =>
-          Array.isArray(v) ? v.filter((t): t is string => typeof t === "string" && t !== "") : []
-        );
-        return tags.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1">
-            {tags.slice(0, 6).map((tag) => (
-              <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
-                {tag}
-              </span>
-            ))}
-            {tags.length > 6 && <span className="text-muted-foreground px-1 py-0.5 text-xs">+{tags.length - 6}</span>}
+        {/* Location and Date row with icons */}
+        {(locationDisplay != null || eventDate != null) && (
+          <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
+            {locationDisplay && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                <MapPin className="h-4 w-4 shrink-0" />
+                <span className="truncate">{locationDisplay}</span>
+              </div>
+            )}
+            {eventDate && (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Calendar className="h-4 w-4 shrink-0" />
+                <span>{eventDate}</span>
+              </div>
+            )}
           </div>
-        ) : null;
-      })()}
+        )}
+
+        {/* Tag chips */}
+        {(() => {
+          const tags = Object.values(eventData).flatMap((v) =>
+            Array.isArray(v) ? v.filter((t): t is string => typeof t === "string" && t !== "") : []
+          );
+          return tags.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-1">
+              {tags.slice(0, 6).map((tag) => (
+                <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
+                  {tag}
+                </span>
+              ))}
+              {tags.length > 6 && <span className="text-muted-foreground px-1 py-0.5 text-xs">+{tags.length - 6}</span>}
+            </div>
+          ) : null;
+        })()}
+      </div>
     </Card>
   );
 };

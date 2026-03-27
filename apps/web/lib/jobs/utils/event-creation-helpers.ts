@@ -141,6 +141,7 @@ export interface FieldTypeMap {
   enum?: string[];
   date?: string[];
   url?: string[];
+  image?: string[];
   number?: string[];
 }
 
@@ -164,6 +165,9 @@ export const buildFieldTypes = (fieldMetadata: unknown): FieldTypeMap | null => 
   return Object.keys(result).length > 0 ? result : null;
 };
 
+/** Image URL pattern: common image file extensions. */
+const IMAGE_URL_PATTERN = /\.(jpe?g|png|gif|svg|webp|avif|bmp|tiff?)/i;
+
 /** Classify a single field into a type group based on its statistics. */
 const classifyField = (stats: Record<string, unknown>): string | null => {
   if (stats.isTagField) return "tags";
@@ -174,7 +178,14 @@ const classifyField = (stats: Record<string, unknown>): string | null => {
   const occ = (stats.occurrences as number) || 1;
 
   if ((dist.date ?? 0) / occ > 0.5) return "date";
-  if ((formats.url ?? 0) / occ > 0.5) return "url";
+
+  // Distinguish image URLs from regular URLs by checking samples for image extensions
+  if ((formats.url ?? 0) / occ > 0.5) {
+    const samples = (stats.uniqueSamples ?? []) as unknown[];
+    const hasImageSamples = samples.some((s) => typeof s === "string" && IMAGE_URL_PATTERN.test(s));
+    return hasImageSamples ? "image" : "url";
+  }
+
   if (((dist.number ?? 0) + (dist.integer ?? 0)) / occ > 0.5) return "number";
   return null;
 };

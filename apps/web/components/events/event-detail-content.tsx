@@ -53,13 +53,6 @@ interface EventDetailContentProps {
   onRetry?: () => void;
 }
 
-/** Keys that are internal/structural and should never appear as additional fields */
-const HIDDEN_KEYS = new Set(["_feature_id", "id", "_id", "uid"]);
-
-/** Keys that look like URLs/images and clutter the detail view */
-const isMediaOrLinkKey = (key: string): boolean =>
-  /^(link|url|href|image|thumbnail|teaserbild|pdf)$/i.test(key) || key.toLowerCase().endsWith("credit");
-
 /** Map coordinate source type to a translation key */
 const COORDINATE_SOURCE_KEYS = { "source-data": "coordinateSourceData", geocoded: "coordinateSourceGeocoded" } as const;
 
@@ -95,24 +88,32 @@ export const EventDetailContent = ({
       ? ((event.dataset as unknown as Record<string, unknown>).fieldTypes as Record<string, string[]> | null)
       : null;
   const tagFieldSet = new Set(fieldTypes?.tags ?? []);
+  const imageFieldSet = new Set(fieldTypes?.image ?? []);
+  const urlFieldSet = new Set(fieldTypes?.url ?? []);
 
+  // Fields consumed by dedicated UI sections (title, description, timestamps, location, coordinates)
   const consumedFields = buildConsumedFieldSet(fieldMappings);
-  const allAdditionalFields = Object.entries(eventData).filter(
-    ([key, value]) =>
-      !consumedFields.has(key) &&
-      !HIDDEN_KEYS.has(key) &&
-      !isMediaOrLinkKey(key) &&
-      value != null &&
-      valueToString(value) !== ""
-  );
 
-  // Separate tag fields (identified by dataset.fieldTypes) from scalar fields
+  // Separate fields into rendering groups based on fieldTypes
   const tagFields: Array<{ key: string; tags: string[] }> = [];
   const additionalFields: Array<[string, unknown]> = [];
-  for (const [key, value] of allAdditionalFields) {
-    if (tagFieldSet.has(key) && Array.isArray(value)) {
+  let imageUrl: string | null = null;
+  let imageCredit: string | null = null;
+  let eventLink: string | null = null;
+
+  for (const [key, value] of Object.entries(eventData)) {
+    if (consumedFields.has(key) || value == null || valueToString(value) === "") continue;
+
+    if (imageFieldSet.has(key) && typeof value === "string") {
+      if (!imageUrl) imageUrl = value; // Use first image field
+    } else if (urlFieldSet.has(key) && typeof value === "string") {
+      if (!eventLink) eventLink = value; // Use first URL field
+    } else if (tagFieldSet.has(key) && Array.isArray(value)) {
       const tags = value.filter((v): v is string | number => v != null && v !== "").map(String);
       if (tags.length > 0) tagFields.push({ key, tags });
+    } else if (key.toLowerCase().endsWith("credit") && typeof value === "string") {
+      // Associate credit with the preceding image
+      if (!imageCredit) imageCredit = value;
     } else {
       additionalFields.push([key, value]);
     }
@@ -124,6 +125,21 @@ export const EventDetailContent = ({
 
   return (
     <div className={cn("space-y-5", variant === "page" && "mx-auto max-w-4xl")}>
+      {/* Event image */}
+      {imageUrl && (
+        <div className="overflow-hidden rounded-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element -- external URL, not optimizable */}
+          <img
+            src={imageUrl}
+            alt={title}
+            className="h-auto w-full object-cover"
+            style={{ maxHeight: "240px" }}
+            loading="lazy"
+          />
+          {imageCredit && <p className="text-muted-foreground bg-muted/40 px-2 py-1 text-[10px]">{imageCredit}</p>}
+        </div>
+      )}
+
       {/* Header with badge + action icons */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -179,6 +195,27 @@ export const EventDetailContent = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Link to original source */}
+      {eventLink && (
+        <a
+          href={eventLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span className="underline underline-offset-2">
+            {(() => {
+              try {
+                return new URL(eventLink).hostname;
+              } catch {
+                return eventLink;
+              }
+            })()}
+          </span>
+        </a>
       )}
 
       {/* Tag chips (categories, tags, etc.) */}
