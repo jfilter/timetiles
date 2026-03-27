@@ -174,24 +174,6 @@ export const ChartSection = ({
   const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
   const groupByOptions = useGroupByOptions(singleDatasetId);
 
-  const renderGroupByPicker = () =>
-    showChartSettings && (chartType === "histogram" || chartType === "beeswarm") ? (
-      <div className="bg-background/95 border-border absolute top-0 right-0 z-10 rounded-md border p-3 shadow-md backdrop-blur-sm">
-        <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
-        <select
-          value={groupBy}
-          onChange={(e) => void setGroupBy(e.target.value)}
-          className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
-        >
-          {groupByOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    ) : null;
-
   const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => {
     const effectiveGroupBy = variant === "fullscreen" ? groupBy : "none";
     return (
@@ -205,11 +187,29 @@ export const ChartSection = ({
             variant={variant}
             showControls={showChartSettings}
             groupBy={effectiveGroupBy}
+            groupByOptions={groupByOptions}
+            onGroupByChange={(v) => void setGroupBy(v)}
           />
         )}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
         {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
-        {variant === "fullscreen" && renderGroupByPicker()}
+        {/* GroupBy picker for histogram (beeswarm has its own integrated) */}
+        {variant === "fullscreen" && showChartSettings && chartType === "histogram" && (
+          <div className="bg-background/95 border-border absolute top-0 right-0 z-10 rounded-md border p-3 shadow-md backdrop-blur-sm">
+            <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
+            <select
+              value={groupBy}
+              onChange={(e) => void setGroupBy(e.target.value)}
+              className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
+            >
+              {groupByOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     );
   };

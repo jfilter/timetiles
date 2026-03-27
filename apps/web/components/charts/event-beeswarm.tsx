@@ -37,6 +37,10 @@ interface EventBeeswarmProps {
   showControls?: boolean;
   /** Group by field (controlled by parent via URL param) */
   groupBy?: string;
+  /** Available groupBy options (passed from parent) */
+  groupByOptions?: GroupByOption[];
+  /** Callback when groupBy changes */
+  onGroupByChange?: (value: string) => void;
 }
 
 /** Default cluster options per variant */
@@ -144,6 +148,9 @@ const BeeswarmSettings = ({
   setClusterMin,
   clusterMax,
   setClusterMax,
+  groupBy,
+  onGroupByChange,
+  groupByOptions,
   mode,
   itemCount,
 }: {
@@ -157,10 +164,29 @@ const BeeswarmSettings = ({
   setClusterMin: (v: number) => void;
   clusterMax: number;
   setClusterMax: (v: number) => void;
+  groupBy: string;
+  onGroupByChange?: (v: string) => void;
+  groupByOptions: GroupByOption[];
   mode: string;
   itemCount: number;
 }) => (
   <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+    {groupByOptions.length > 0 && onGroupByChange && (
+      <div>
+        <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
+        <select
+          value={groupBy}
+          onChange={(e) => onGroupByChange(e.target.value)}
+          className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
+        >
+          {groupByOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
     <LabeledSlider
       label="Detail threshold"
       value={threshold}
@@ -217,6 +243,8 @@ export const EventBeeswarm = ({
   variant = "compact",
   showControls = false,
   groupBy: externalGroupBy,
+  groupByOptions = [],
+  onGroupByChange,
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
@@ -287,6 +315,9 @@ export const EventBeeswarm = ({
 
       {showControls && (
         <BeeswarmSettings
+          groupBy={groupBy}
+          onGroupByChange={onGroupByChange}
+          groupByOptions={groupByOptions}
           threshold={threshold}
           setThreshold={setThreshold}
           buckets={buckets}
