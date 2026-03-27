@@ -354,8 +354,9 @@ export const TimeHistogram = ({
     return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;
   }
 
-  // Handle empty state
-  if (data.length === 0 && !isInitialLoad && !isUpdating) {
+  // Handle empty state — check both single-series and grouped data
+  const hasData = groupedData ? groupedData.some((s) => s.data.length > 0) : data.length > 0;
+  if (!hasData && !isInitialLoad && !isUpdating) {
     return <ChartEmptyState variant="no-match" height={height} className={className} message={emptyMessage} />;
   }
 
