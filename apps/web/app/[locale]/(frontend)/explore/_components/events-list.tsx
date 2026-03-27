@@ -10,6 +10,7 @@
 import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
@@ -87,8 +88,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
     >
       {/* Thumbnail */}
       {imageUrl && (
-        // eslint-disable-next-line @next/next/no-img-element -- external URL
-        <img src={imageUrl} alt="" className="h-32 w-full object-cover" loading="lazy" />
+        <Image src={imageUrl} alt="" width={400} height={128} className="h-32 w-full object-cover" unoptimized />
       )}
 
       <div className="p-5">

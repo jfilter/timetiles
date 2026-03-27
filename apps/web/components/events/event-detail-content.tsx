@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@timetiles/
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, ChevronDown, ExternalLink, MapPin, X } from "lucide-react";
+import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
@@ -128,13 +129,13 @@ export const EventDetailContent = ({
       {/* Event image */}
       {imageUrl && (
         <div className="overflow-hidden rounded-sm">
-          {/* eslint-disable-next-line @next/next/no-img-element -- external URL, not optimizable */}
-          <img
+          <Image
             src={imageUrl}
             alt={title}
-            className="h-auto w-full object-cover"
-            style={{ maxHeight: "240px" }}
-            loading="lazy"
+            width={600}
+            height={240}
+            className="h-auto max-h-60 w-full object-cover"
+            unoptimized
           />
           {imageCredit && <p className="text-muted-foreground bg-muted/40 px-2 py-1 text-[10px]">{imageCredit}</p>}
         </div>
