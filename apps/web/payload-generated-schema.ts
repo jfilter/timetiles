@@ -43,7 +43,15 @@ export const enum_data_exports_status = db_schema.enum(
 );
 export const enum_datasets_ingest_transforms_type = db_schema.enum(
   "enum_datasets_ingest_transforms_type",
-  ["rename", "date-parse", "string-op", "concatenate", "split"],
+  [
+    "rename",
+    "date-parse",
+    "string-op",
+    "concatenate",
+    "split",
+    "parse-json-array",
+    "extract",
+  ],
 );
 export const enum_datasets_ingest_transforms_input_format = db_schema.enum(
   "enum_datasets_ingest_transforms_input_format",
@@ -70,19 +78,11 @@ export const enum_datasets_id_strategy_type = db_schema.enum(
 );
 export const enum_datasets_id_strategy_duplicate_strategy = db_schema.enum(
   "enum_datasets_id_strategy_duplicate_strategy",
-  ["skip", "update", "version"],
+  ["skip", "update"],
 );
 export const enum_datasets_schema_config_enum_mode = db_schema.enum(
   "enum_datasets_schema_config_enum_mode",
   ["count", "percentage"],
-);
-export const enum_datasets_deduplication_config_strategy = db_schema.enum(
-  "enum_datasets_deduplication_config_strategy",
-  ["skip", "update", "version"],
-);
-export const enum_datasets_enum_detection_mode = db_schema.enum(
-  "enum_datasets_enum_detection_mode",
-  ["count", "percentage", "disabled"],
 );
 export const enum_datasets_status = db_schema.enum("enum_datasets_status", [
   "draft",
@@ -90,7 +90,15 @@ export const enum_datasets_status = db_schema.enum("enum_datasets_status", [
 ]);
 export const enum__datasets_v_version_ingest_transforms_type = db_schema.enum(
   "enum__datasets_v_version_ingest_transforms_type",
-  ["rename", "date-parse", "string-op", "concatenate", "split"],
+  [
+    "rename",
+    "date-parse",
+    "string-op",
+    "concatenate",
+    "split",
+    "parse-json-array",
+    "extract",
+  ],
 );
 export const enum__datasets_v_version_ingest_transforms_input_format =
   db_schema.enum("enum__datasets_v_version_ingest_transforms_input_format", [
@@ -123,21 +131,10 @@ export const enum__datasets_v_version_id_strategy_duplicate_strategy =
   db_schema.enum("enum__datasets_v_version_id_strategy_duplicate_strategy", [
     "skip",
     "update",
-    "version",
   ]);
 export const enum__datasets_v_version_schema_config_enum_mode = db_schema.enum(
   "enum__datasets_v_version_schema_config_enum_mode",
   ["count", "percentage"],
-);
-export const enum__datasets_v_version_deduplication_config_strategy =
-  db_schema.enum("enum__datasets_v_version_deduplication_config_strategy", [
-    "skip",
-    "update",
-    "version",
-  ]);
-export const enum__datasets_v_version_enum_detection_mode = db_schema.enum(
-  "enum__datasets_v_version_enum_detection_mode",
-  ["count", "percentage", "disabled"],
 );
 export const enum__datasets_v_version_status = db_schema.enum(
   "enum__datasets_v_version_status",
@@ -238,7 +235,7 @@ export const enum_scheduled_ingests_schema_mode = db_schema.enum(
 );
 export const enum_scheduled_ingests_auth_config_type = db_schema.enum(
   "enum_scheduled_ingests_auth_config_type",
-  ["none", "api-key", "bearer", "basic"],
+  ["none", "api-key", "bearer", "basic", "oauth"],
 );
 export const si_response_format = db_schema.enum("si_response_format", [
   "auto",
@@ -281,6 +278,7 @@ export const enum__scheduled_ingests_v_version_auth_config_type =
     "api-key",
     "bearer",
     "basic",
+    "oauth",
   ]);
 export const enum__scheduled_ingests_v_version_last_status = db_schema.enum(
   "enum__scheduled_ingests_v_version_last_status",
@@ -425,6 +423,19 @@ export const enum__location_cache_v_published_locale = db_schema.enum(
   "enum__location_cache_v_published_locale",
   ["en", "de"],
 );
+export const enum_geocoding_providers_config_photon_layer = db_schema.enum(
+  "enum_geocoding_providers_config_photon_layer",
+  [
+    "house",
+    "street",
+    "locality",
+    "district",
+    "city",
+    "county",
+    "state",
+    "country",
+  ],
+);
 export const enum_geocoding_providers_tags = db_schema.enum(
   "enum_geocoding_providers_tags",
   [
@@ -446,12 +457,23 @@ export const enum_geocoding_providers_tags = db_schema.enum(
 );
 export const enum_geocoding_providers_type = db_schema.enum(
   "enum_geocoding_providers_type",
-  ["google", "nominatim", "opencage"],
+  ["google", "locationiq", "nominatim", "opencage", "photon"],
 );
 export const enum_geocoding_providers_status = db_schema.enum(
   "enum_geocoding_providers_status",
   ["draft", "published"],
 );
+export const enum__geocoding_providers_v_version_config_photon_layer =
+  db_schema.enum("enum__geocoding_providers_v_version_config_photon_layer", [
+    "house",
+    "street",
+    "locality",
+    "district",
+    "city",
+    "county",
+    "state",
+    "country",
+  ]);
 export const enum__geocoding_providers_v_version_tags = db_schema.enum(
   "enum__geocoding_providers_v_version_tags",
   [
@@ -473,7 +495,7 @@ export const enum__geocoding_providers_v_version_tags = db_schema.enum(
 );
 export const enum__geocoding_providers_v_version_type = db_schema.enum(
   "enum__geocoding_providers_v_version_type",
-  ["google", "nominatim", "opencage"],
+  ["google", "locationiq", "nominatim", "opencage", "photon"],
 );
 export const enum__geocoding_providers_v_version_status = db_schema.enum(
   "enum__geocoding_providers_v_version_status",
@@ -907,6 +929,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "execute-account-deletion",
     "scraper-execution",
     "scraper-repo-sync",
+    "job-cleanup",
   ],
 );
 export const enum_payload_jobs_log_state = db_schema.enum(
@@ -941,6 +964,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "execute-account-deletion",
     "scraper-execution",
     "scraper-repo-sync",
+    "job-cleanup",
   ],
 );
 export const enum_main_menu_status = db_schema.enum("enum_main_menu_status", [
@@ -1243,6 +1267,7 @@ export const datasets_ingest_transforms = db_schema.table(
     timezone: varchar("timezone"),
     operation: enum_datasets_ingest_transforms_operation("operation"),
     pattern: varchar("pattern"),
+    group: numeric("group", { mode: "number" }),
     replacement: varchar("replacement"),
     expression: varchar("expression"),
     fromFields: jsonb("from_fields"),
@@ -1299,18 +1324,11 @@ export const datasets = db_schema.table(
     idStrategy_duplicateStrategy: enum_datasets_id_strategy_duplicate_strategy(
       "id_strategy_duplicate_strategy",
     ).default("skip"),
-    schemaConfig_enabled: boolean("schema_config_enabled").default(false),
     schemaConfig_locked: boolean("schema_config_locked").default(false),
     schemaConfig_autoGrow: boolean("schema_config_auto_grow").default(true),
     schemaConfig_autoApproveNonBreaking: boolean(
       "schema_config_auto_approve_non_breaking",
     ).default(false),
-    schemaConfig_strictValidation: boolean(
-      "schema_config_strict_validation",
-    ).default(false),
-    schemaConfig_allowTransformations: boolean(
-      "schema_config_allow_transformations",
-    ).default(true),
     schemaConfig_maxSchemaDepth: numeric("schema_config_max_schema_depth", {
       mode: "number",
     }).default(3),
@@ -1323,16 +1341,8 @@ export const datasets = db_schema.table(
     deduplicationConfig_enabled: boolean(
       "deduplication_config_enabled",
     ).default(true),
-    deduplicationConfig_strategy: enum_datasets_deduplication_config_strategy(
-      "deduplication_config_strategy",
-    ).default("skip"),
     fieldMetadata: jsonb("field_metadata"),
-    enumDetection_mode: enum_datasets_enum_detection_mode(
-      "enum_detection_mode",
-    ).default("count"),
-    enumDetection_threshold: numeric("enum_detection_threshold", {
-      mode: "number",
-    }).default(50),
+    fieldTypes: jsonb("field_types"),
     geoFieldDetection_autoDetect: boolean(
       "geo_field_detection_auto_detect",
     ).default(true),
@@ -1366,6 +1376,7 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_locationPath: varchar(
       "field_mapping_overrides_location_path",
     ),
+    hasTemporalData: boolean("has_temporal_data").default(true),
     schemaDetector: integer("schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
       {
         onDelete: "set null",
@@ -1477,6 +1488,7 @@ export const _datasets_v_version_ingest_transforms = db_schema.table(
     operation:
       enum__datasets_v_version_ingest_transforms_operation("operation"),
     pattern: varchar("pattern"),
+    group: numeric("group", { mode: "number" }),
     replacement: varchar("replacement"),
     expression: varchar("expression"),
     fromFields: jsonb("from_fields"),
@@ -1550,9 +1562,6 @@ export const _datasets_v = db_schema.table(
       enum__datasets_v_version_id_strategy_duplicate_strategy(
         "version_id_strategy_duplicate_strategy",
       ).default("skip"),
-    version_schemaConfig_enabled: boolean(
-      "version_schema_config_enabled",
-    ).default(false),
     version_schemaConfig_locked: boolean(
       "version_schema_config_locked",
     ).default(false),
@@ -1562,12 +1571,6 @@ export const _datasets_v = db_schema.table(
     version_schemaConfig_autoApproveNonBreaking: boolean(
       "version_schema_config_auto_approve_non_breaking",
     ).default(false),
-    version_schemaConfig_strictValidation: boolean(
-      "version_schema_config_strict_validation",
-    ).default(false),
-    version_schemaConfig_allowTransformations: boolean(
-      "version_schema_config_allow_transformations",
-    ).default(true),
     version_schemaConfig_maxSchemaDepth: numeric(
       "version_schema_config_max_schema_depth",
       { mode: "number" },
@@ -1583,18 +1586,8 @@ export const _datasets_v = db_schema.table(
     version_deduplicationConfig_enabled: boolean(
       "version_deduplication_config_enabled",
     ).default(true),
-    version_deduplicationConfig_strategy:
-      enum__datasets_v_version_deduplication_config_strategy(
-        "version_deduplication_config_strategy",
-      ).default("skip"),
     version_fieldMetadata: jsonb("version_field_metadata"),
-    version_enumDetection_mode: enum__datasets_v_version_enum_detection_mode(
-      "version_enum_detection_mode",
-    ).default("count"),
-    version_enumDetection_threshold: numeric(
-      "version_enum_detection_threshold",
-      { mode: "number" },
-    ).default(50),
+    version_fieldTypes: jsonb("version_field_types"),
     version_geoFieldDetection_autoDetect: boolean(
       "version_geo_field_detection_auto_detect",
     ).default(true),
@@ -1628,6 +1621,7 @@ export const _datasets_v = db_schema.table(
     version_fieldMappingOverrides_locationPath: varchar(
       "version_field_mapping_overrides_location_path",
     ),
+    version_hasTemporalData: boolean("version_has_temporal_data").default(true),
     version_schemaDetector: integer("version_schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
       {
         onDelete: "set null",
@@ -2942,6 +2936,7 @@ export const scheduled_ingests = db_schema.table(
     ingestNameTemplate: varchar("ingest_name_template").default(
       "{{name}} - {{date}}",
     ),
+    dataPackageSlug: varchar("data_package_slug"),
     schemaMode:
       enum_scheduled_ingests_schema_mode("schema_mode").default("additive"),
     sourceIngestFile: integer("source_ingest_file_id").references(
@@ -2959,6 +2954,8 @@ export const scheduled_ingests = db_schema.table(
       "X-API-Key",
     ),
     authConfig_bearerToken: varchar("auth_config_bearer_token"),
+    authConfig_tokenUrl: varchar("auth_config_token_url"),
+    authConfig_clientId: varchar("auth_config_client_id"),
     authConfig_username: varchar("auth_config_username"),
     authConfig_password: varchar("auth_config_password"),
     authConfig_customHeaders: jsonb("auth_config_custom_headers"),
@@ -3029,6 +3026,10 @@ export const scheduled_ingests = db_schema.table(
       "advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
     ).default(50),
+    advancedOptions_jsonApiConfig_pagination_maxRecords: numeric(
+      "advanced_options_json_api_config_pagination_max_records",
+      { mode: "number" },
+    ),
     advancedOptions_reviewChecks_skipTimestampCheck: boolean(
       "advanced_options_review_checks_skip_timestamp_check",
     ).default(false),
@@ -3063,6 +3064,31 @@ export const scheduled_ingests = db_schema.table(
       "advanced_options_review_checks_geocoding_failure_threshold",
       { mode: "number" },
     ),
+    advancedOptions_geocodingBias_countryCodes: jsonb(
+      "advanced_options_geocoding_bias_country_codes",
+    ),
+    advancedOptions_geocodingBias_viewBox_minLon: numeric(
+      "advanced_options_geocoding_bias_view_box_min_lon",
+      { mode: "number" },
+    ),
+    advancedOptions_geocodingBias_viewBox_minLat: numeric(
+      "advanced_options_geocoding_bias_view_box_min_lat",
+      { mode: "number" },
+    ),
+    advancedOptions_geocodingBias_viewBox_maxLon: numeric(
+      "advanced_options_geocoding_bias_view_box_max_lon",
+      { mode: "number" },
+    ),
+    advancedOptions_geocodingBias_viewBox_maxLat: numeric(
+      "advanced_options_geocoding_bias_view_box_max_lat",
+      { mode: "number" },
+    ),
+    advancedOptions_geocodingBias_bounded: boolean(
+      "advanced_options_geocoding_bias_bounded",
+    ).default(false),
+    excludeFields: jsonb("exclude_fields"),
+    preProcessing_groupBy: varchar("pre_processing_group_by"),
+    preProcessing_mergeFields: jsonb("pre_processing_merge_fields"),
     lastRun: timestamp("last_run", {
       mode: "string",
       withTimezone: true,
@@ -3116,6 +3142,9 @@ export const scheduled_ingests = db_schema.table(
     index("scheduled_ingests_created_by_idx").on(columns.createdBy),
     index("scheduled_ingests_catalog_idx").on(columns.catalog),
     index("scheduled_ingests_dataset_idx").on(columns.dataset),
+    index("scheduled_ingests_data_package_slug_idx").on(
+      columns.dataPackageSlug,
+    ),
     index("scheduled_ingests_source_ingest_file_idx").on(
       columns.sourceIngestFile,
     ),
@@ -3232,6 +3261,7 @@ export const _scheduled_ingests_v = db_schema.table(
     version_ingestNameTemplate: varchar("version_ingest_name_template").default(
       "{{name}} - {{date}}",
     ),
+    version_dataPackageSlug: varchar("version_data_package_slug"),
     version_schemaMode: enum__scheduled_ingests_v_version_schema_mode(
       "version_schema_mode",
     ).default("additive"),
@@ -3248,6 +3278,8 @@ export const _scheduled_ingests_v = db_schema.table(
       "version_auth_config_api_key_header",
     ).default("X-API-Key"),
     version_authConfig_bearerToken: varchar("version_auth_config_bearer_token"),
+    version_authConfig_tokenUrl: varchar("version_auth_config_token_url"),
+    version_authConfig_clientId: varchar("version_auth_config_client_id"),
     version_authConfig_username: varchar("version_auth_config_username"),
     version_authConfig_password: varchar("version_auth_config_password"),
     version_authConfig_customHeaders: jsonb(
@@ -3322,6 +3354,10 @@ export const _scheduled_ingests_v = db_schema.table(
       "version_advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
     ).default(50),
+    version_advancedOptions_jsonApiConfig_pagination_maxRecords: numeric(
+      "version_advanced_options_json_api_config_pagination_max_records",
+      { mode: "number" },
+    ),
     version_advancedOptions_reviewChecks_skipTimestampCheck: boolean(
       "version_advanced_options_review_checks_skip_timestamp_check",
     ).default(false),
@@ -3355,6 +3391,33 @@ export const _scheduled_ingests_v = db_schema.table(
     version_advancedOptions_reviewChecks_geocodingFailureThreshold: numeric(
       "version_advanced_options_review_checks_geocoding_failure_threshold",
       { mode: "number" },
+    ),
+    version_advancedOptions_geocodingBias_countryCodes: jsonb(
+      "version_advanced_options_geocoding_bias_country_codes",
+    ),
+    version_advancedOptions_geocodingBias_viewBox_minLon: numeric(
+      "version_advanced_options_geocoding_bias_view_box_min_lon",
+      { mode: "number" },
+    ),
+    version_advancedOptions_geocodingBias_viewBox_minLat: numeric(
+      "version_advanced_options_geocoding_bias_view_box_min_lat",
+      { mode: "number" },
+    ),
+    version_advancedOptions_geocodingBias_viewBox_maxLon: numeric(
+      "version_advanced_options_geocoding_bias_view_box_max_lon",
+      { mode: "number" },
+    ),
+    version_advancedOptions_geocodingBias_viewBox_maxLat: numeric(
+      "version_advanced_options_geocoding_bias_view_box_max_lat",
+      { mode: "number" },
+    ),
+    version_advancedOptions_geocodingBias_bounded: boolean(
+      "version_advanced_options_geocoding_bias_bounded",
+    ).default(false),
+    version_excludeFields: jsonb("version_exclude_fields"),
+    version_preProcessing_groupBy: varchar("version_pre_processing_group_by"),
+    version_preProcessing_mergeFields: jsonb(
+      "version_pre_processing_merge_fields",
     ),
     version_lastRun: timestamp("version_last_run", {
       mode: "string",
@@ -3439,6 +3502,9 @@ export const _scheduled_ingests_v = db_schema.table(
     ),
     index("_scheduled_ingests_v_version_version_dataset_idx").on(
       columns.version_dataset,
+    ),
+    index("_scheduled_ingests_v_version_version_data_package_slug_idx").on(
+      columns.version_dataPackageSlug,
     ),
     index("_scheduled_ingests_v_version_version_source_ingest_file_idx").on(
       columns.version_sourceIngestFile,
@@ -4587,6 +4653,29 @@ export const _location_cache_v = db_schema.table(
   ],
 );
 
+export const geocoding_providers_config_photon_layer = db_schema.table(
+  "geocoding_providers_config_photon_layer",
+  {
+    order: integer("order").notNull(),
+    parent: integer("parent_id").notNull(),
+    value: enum_geocoding_providers_config_photon_layer("value"),
+    id: serial("id").primaryKey(),
+  },
+  (columns) => [
+    index("geocoding_providers_config_photon_layer_order_idx").on(
+      columns.order,
+    ),
+    index("geocoding_providers_config_photon_layer_parent_idx").on(
+      columns.parent,
+    ),
+    foreignKey({
+      columns: [columns["parent"]],
+      foreignColumns: [geocoding_providers.id],
+      name: "geocoding_providers_config_photon_layer_parent_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const geocoding_providers_tags = db_schema.table(
   "geocoding_providers_tags",
   {
@@ -4615,49 +4704,26 @@ export const geocoding_providers = db_schema.table(
     enabled: boolean("enabled").default(true),
     priority: numeric("priority", { mode: "number" }).default(1),
     rateLimit: numeric("rate_limit", { mode: "number" }).default(10),
-    config_google_apiKey: varchar("config_google_api_key"),
-    config_google_region: varchar("config_google_region"),
-    config_google_language: varchar("config_google_language").default("en"),
-    config_nominatim_baseUrl: varchar("config_nominatim_base_url").default(
-      "https://nominatim.openstreetmap.org",
-    ),
-    config_nominatim_userAgent: varchar("config_nominatim_user_agent").default(
-      "TimeTiles-App/1.0",
-    ),
+    group: varchar("group"),
+    language: varchar("language"),
+    countryCodes: varchar("country_codes"),
+    locationBias_enabled: boolean("location_bias_enabled").default(false),
+    locationBias_lat: numeric("location_bias_lat", { mode: "number" }),
+    locationBias_lon: numeric("location_bias_lon", { mode: "number" }),
+    locationBias_zoom: numeric("location_bias_zoom", {
+      mode: "number",
+    }).default(10),
+    boundingBox_enabled: boolean("bounding_box_enabled").default(false),
+    boundingBox_minLon: numeric("bounding_box_min_lon", { mode: "number" }),
+    boundingBox_minLat: numeric("bounding_box_min_lat", { mode: "number" }),
+    boundingBox_maxLon: numeric("bounding_box_max_lon", { mode: "number" }),
+    boundingBox_maxLat: numeric("bounding_box_max_lat", { mode: "number" }),
+    apiKey: varchar("api_key"),
+    baseUrl: varchar("base_url"),
+    userAgent: varchar("user_agent").default("TimeTiles-App/1.0"),
+    resultLimit: numeric("result_limit", { mode: "number" }).default(5),
     config_nominatim_email: varchar("config_nominatim_email"),
-    config_nominatim_countrycodes: varchar("config_nominatim_countrycodes"),
-    config_nominatim_addressdetails: boolean(
-      "config_nominatim_addressdetails",
-    ).default(true),
-    config_nominatim_extratags: boolean("config_nominatim_extratags").default(
-      false,
-    ),
-    config_opencage_apiKey: varchar("config_opencage_api_key"),
-    config_opencage_language: varchar("config_opencage_language").default("en"),
-    config_opencage_countrycode: varchar("config_opencage_countrycode"),
-    config_opencage_bounds_enabled: boolean(
-      "config_opencage_bounds_enabled",
-    ).default(false),
-    config_opencage_bounds_southwest_lat: numeric(
-      "config_opencage_bounds_southwest_lat",
-      { mode: "number" },
-    ),
-    config_opencage_bounds_southwest_lng: numeric(
-      "config_opencage_bounds_southwest_lng",
-      { mode: "number" },
-    ),
-    config_opencage_bounds_northeast_lat: numeric(
-      "config_opencage_bounds_northeast_lat",
-      { mode: "number" },
-    ),
-    config_opencage_bounds_northeast_lng: numeric(
-      "config_opencage_bounds_northeast_lng",
-      { mode: "number" },
-    ),
-    config_opencage_annotations: boolean("config_opencage_annotations").default(
-      true,
-    ),
-    config_opencage_abbrv: boolean("config_opencage_abbrv").default(false),
+    config_photon_osmTag: varchar("config_photon_osm_tag"),
     statistics_totalRequests: numeric("statistics_total_requests", {
       mode: "number",
     }).default(0),
@@ -4707,6 +4773,30 @@ export const geocoding_providers = db_schema.table(
   ],
 );
 
+export const _geocoding_providers_v_version_config_photon_layer =
+  db_schema.table(
+    "_geocoding_providers_v_version_config_photon_layer",
+    {
+      order: integer("order").notNull(),
+      parent: integer("parent_id").notNull(),
+      value: enum__geocoding_providers_v_version_config_photon_layer("value"),
+      id: serial("id").primaryKey(),
+    },
+    (columns) => [
+      index("_geocoding_providers_v_version_config_photon_layer_order_idx").on(
+        columns.order,
+      ),
+      index("_geocoding_providers_v_version_config_photon_layer_parent_idx").on(
+        columns.parent,
+      ),
+      foreignKey({
+        columns: [columns["parent"]],
+        foreignColumns: [_geocoding_providers_v.id],
+        name: "_geocoding_providers_v_version_config_photon_layer_parent_fk",
+      }).onDelete("cascade"),
+    ],
+  );
+
 export const _geocoding_providers_v_version_tags = db_schema.table(
   "_geocoding_providers_v_version_tags",
   {
@@ -4742,59 +4832,45 @@ export const _geocoding_providers_v = db_schema.table(
     version_rateLimit: numeric("version_rate_limit", {
       mode: "number",
     }).default(10),
-    version_config_google_apiKey: varchar("version_config_google_api_key"),
-    version_config_google_region: varchar("version_config_google_region"),
-    version_config_google_language: varchar(
-      "version_config_google_language",
-    ).default("en"),
-    version_config_nominatim_baseUrl: varchar(
-      "version_config_nominatim_base_url",
-    ).default("https://nominatim.openstreetmap.org"),
-    version_config_nominatim_userAgent: varchar(
-      "version_config_nominatim_user_agent",
-    ).default("TimeTiles-App/1.0"),
+    version_group: varchar("version_group"),
+    version_language: varchar("version_language"),
+    version_countryCodes: varchar("version_country_codes"),
+    version_locationBias_enabled: boolean(
+      "version_location_bias_enabled",
+    ).default(false),
+    version_locationBias_lat: numeric("version_location_bias_lat", {
+      mode: "number",
+    }),
+    version_locationBias_lon: numeric("version_location_bias_lon", {
+      mode: "number",
+    }),
+    version_locationBias_zoom: numeric("version_location_bias_zoom", {
+      mode: "number",
+    }).default(10),
+    version_boundingBox_enabled: boolean(
+      "version_bounding_box_enabled",
+    ).default(false),
+    version_boundingBox_minLon: numeric("version_bounding_box_min_lon", {
+      mode: "number",
+    }),
+    version_boundingBox_minLat: numeric("version_bounding_box_min_lat", {
+      mode: "number",
+    }),
+    version_boundingBox_maxLon: numeric("version_bounding_box_max_lon", {
+      mode: "number",
+    }),
+    version_boundingBox_maxLat: numeric("version_bounding_box_max_lat", {
+      mode: "number",
+    }),
+    version_apiKey: varchar("version_api_key"),
+    version_baseUrl: varchar("version_base_url"),
+    version_userAgent:
+      varchar("version_user_agent").default("TimeTiles-App/1.0"),
+    version_resultLimit: numeric("version_result_limit", {
+      mode: "number",
+    }).default(5),
     version_config_nominatim_email: varchar("version_config_nominatim_email"),
-    version_config_nominatim_countrycodes: varchar(
-      "version_config_nominatim_countrycodes",
-    ),
-    version_config_nominatim_addressdetails: boolean(
-      "version_config_nominatim_addressdetails",
-    ).default(true),
-    version_config_nominatim_extratags: boolean(
-      "version_config_nominatim_extratags",
-    ).default(false),
-    version_config_opencage_apiKey: varchar("version_config_opencage_api_key"),
-    version_config_opencage_language: varchar(
-      "version_config_opencage_language",
-    ).default("en"),
-    version_config_opencage_countrycode: varchar(
-      "version_config_opencage_countrycode",
-    ),
-    version_config_opencage_bounds_enabled: boolean(
-      "version_config_opencage_bounds_enabled",
-    ).default(false),
-    version_config_opencage_bounds_southwest_lat: numeric(
-      "version_config_opencage_bounds_southwest_lat",
-      { mode: "number" },
-    ),
-    version_config_opencage_bounds_southwest_lng: numeric(
-      "version_config_opencage_bounds_southwest_lng",
-      { mode: "number" },
-    ),
-    version_config_opencage_bounds_northeast_lat: numeric(
-      "version_config_opencage_bounds_northeast_lat",
-      { mode: "number" },
-    ),
-    version_config_opencage_bounds_northeast_lng: numeric(
-      "version_config_opencage_bounds_northeast_lng",
-      { mode: "number" },
-    ),
-    version_config_opencage_annotations: boolean(
-      "version_config_opencage_annotations",
-    ).default(true),
-    version_config_opencage_abbrv: boolean(
-      "version_config_opencage_abbrv",
-    ).default(false),
+    version_config_photon_osmTag: varchar("version_config_photon_osm_tag"),
     version_statistics_totalRequests: numeric(
       "version_statistics_total_requests",
       { mode: "number" },
@@ -9580,6 +9656,16 @@ export const relations__location_cache_v = relations(
     }),
   }),
 );
+export const relations_geocoding_providers_config_photon_layer = relations(
+  geocoding_providers_config_photon_layer,
+  ({ one }) => ({
+    parent: one(geocoding_providers, {
+      fields: [geocoding_providers_config_photon_layer.parent],
+      references: [geocoding_providers.id],
+      relationName: "config_photon_layer",
+    }),
+  }),
+);
 export const relations_geocoding_providers_tags = relations(
   geocoding_providers_tags,
   ({ one }) => ({
@@ -9593,11 +9679,22 @@ export const relations_geocoding_providers_tags = relations(
 export const relations_geocoding_providers = relations(
   geocoding_providers,
   ({ many }) => ({
+    config_photon_layer: many(geocoding_providers_config_photon_layer, {
+      relationName: "config_photon_layer",
+    }),
     tags: many(geocoding_providers_tags, {
       relationName: "tags",
     }),
   }),
 );
+export const relations__geocoding_providers_v_version_config_photon_layer =
+  relations(_geocoding_providers_v_version_config_photon_layer, ({ one }) => ({
+    parent: one(_geocoding_providers_v, {
+      fields: [_geocoding_providers_v_version_config_photon_layer.parent],
+      references: [_geocoding_providers_v.id],
+      relationName: "version_config_photon_layer",
+    }),
+  }));
 export const relations__geocoding_providers_v_version_tags = relations(
   _geocoding_providers_v_version_tags,
   ({ one }) => ({
@@ -9616,6 +9713,12 @@ export const relations__geocoding_providers_v = relations(
       references: [geocoding_providers.id],
       relationName: "parent",
     }),
+    version_config_photon_layer: many(
+      _geocoding_providers_v_version_config_photon_layer,
+      {
+        relationName: "version_config_photon_layer",
+      },
+    ),
     version_tags: many(_geocoding_providers_v_version_tags, {
       relationName: "version_tags",
     }),
@@ -11203,8 +11306,6 @@ type DatabaseSchema = {
   enum_datasets_id_strategy_type: typeof enum_datasets_id_strategy_type;
   enum_datasets_id_strategy_duplicate_strategy: typeof enum_datasets_id_strategy_duplicate_strategy;
   enum_datasets_schema_config_enum_mode: typeof enum_datasets_schema_config_enum_mode;
-  enum_datasets_deduplication_config_strategy: typeof enum_datasets_deduplication_config_strategy;
-  enum_datasets_enum_detection_mode: typeof enum_datasets_enum_detection_mode;
   enum_datasets_status: typeof enum_datasets_status;
   enum__datasets_v_version_ingest_transforms_type: typeof enum__datasets_v_version_ingest_transforms_type;
   enum__datasets_v_version_ingest_transforms_input_format: typeof enum__datasets_v_version_ingest_transforms_input_format;
@@ -11213,8 +11314,6 @@ type DatabaseSchema = {
   enum__datasets_v_version_id_strategy_type: typeof enum__datasets_v_version_id_strategy_type;
   enum__datasets_v_version_id_strategy_duplicate_strategy: typeof enum__datasets_v_version_id_strategy_duplicate_strategy;
   enum__datasets_v_version_schema_config_enum_mode: typeof enum__datasets_v_version_schema_config_enum_mode;
-  enum__datasets_v_version_deduplication_config_strategy: typeof enum__datasets_v_version_deduplication_config_strategy;
-  enum__datasets_v_version_enum_detection_mode: typeof enum__datasets_v_version_enum_detection_mode;
   enum__datasets_v_version_status: typeof enum__datasets_v_version_status;
   enum__datasets_v_published_locale: typeof enum__datasets_v_published_locale;
   enum_dataset_schemas_status: typeof enum_dataset_schemas_status;
@@ -11274,9 +11373,11 @@ type DatabaseSchema = {
   enum_location_cache_status: typeof enum_location_cache_status;
   enum__location_cache_v_version_status: typeof enum__location_cache_v_version_status;
   enum__location_cache_v_published_locale: typeof enum__location_cache_v_published_locale;
+  enum_geocoding_providers_config_photon_layer: typeof enum_geocoding_providers_config_photon_layer;
   enum_geocoding_providers_tags: typeof enum_geocoding_providers_tags;
   enum_geocoding_providers_type: typeof enum_geocoding_providers_type;
   enum_geocoding_providers_status: typeof enum_geocoding_providers_status;
+  enum__geocoding_providers_v_version_config_photon_layer: typeof enum__geocoding_providers_v_version_config_photon_layer;
   enum__geocoding_providers_v_version_tags: typeof enum__geocoding_providers_v_version_tags;
   enum__geocoding_providers_v_version_type: typeof enum__geocoding_providers_v_version_type;
   enum__geocoding_providers_v_version_status: typeof enum__geocoding_providers_v_version_status;
@@ -11414,8 +11515,10 @@ type DatabaseSchema = {
   _media_v: typeof _media_v;
   location_cache: typeof location_cache;
   _location_cache_v: typeof _location_cache_v;
+  geocoding_providers_config_photon_layer: typeof geocoding_providers_config_photon_layer;
   geocoding_providers_tags: typeof geocoding_providers_tags;
   geocoding_providers: typeof geocoding_providers;
+  _geocoding_providers_v_version_config_photon_layer: typeof _geocoding_providers_v_version_config_photon_layer;
   _geocoding_providers_v_version_tags: typeof _geocoding_providers_v_version_tags;
   _geocoding_providers_v: typeof _geocoding_providers_v;
   pages_blocks_hero_buttons: typeof pages_blocks_hero_buttons;
@@ -11583,8 +11686,10 @@ type DatabaseSchema = {
   relations__media_v: typeof relations__media_v;
   relations_location_cache: typeof relations_location_cache;
   relations__location_cache_v: typeof relations__location_cache_v;
+  relations_geocoding_providers_config_photon_layer: typeof relations_geocoding_providers_config_photon_layer;
   relations_geocoding_providers_tags: typeof relations_geocoding_providers_tags;
   relations_geocoding_providers: typeof relations_geocoding_providers;
+  relations__geocoding_providers_v_version_config_photon_layer: typeof relations__geocoding_providers_v_version_config_photon_layer;
   relations__geocoding_providers_v_version_tags: typeof relations__geocoding_providers_v_version_tags;
   relations__geocoding_providers_v: typeof relations__geocoding_providers_v;
   relations_pages_blocks_hero_buttons_locales: typeof relations_pages_blocks_hero_buttons_locales;
