@@ -10,7 +10,7 @@ cd timetiles
 make init        # setup + database + seed + dev server
 ```
 
-Open [localhost:3000](http://localhost:3000) to verify everything works. See the [Development Guide](https://docs.timetiles.io/development/development) for detailed setup instructions.
+Open [localhost:3000](http://localhost:3000) to verify everything works. See the [Development Guide](https://docs.timetiles.io/development) for detailed setup instructions.
 
 ## Development Workflow
 
@@ -31,7 +31,7 @@ make test        # unit + integration tests
 make test-e2e    # end-to-end tests (optional for non-UI changes)
 ```
 
-4. Commit using [conventional commits](https://docs.timetiles.io/development/development/commit-guidelines):
+4. Commit using [conventional commits](https://docs.timetiles.io/development/contributing/commit-guidelines):
 
 ```
 feat(import): add support for JSON API sources
@@ -57,7 +57,7 @@ make status      # check environment health
 ```
 apps/
   web/           Next.js application, Payload CMS, API routes
-  scraper/       Scraper runner (optional, requires Podman)
+  timescrape/    Scraper runner (optional, requires Podman)
   docs/          Documentation site (Nextra)
 
 packages/
@@ -80,7 +80,7 @@ packages/
 
 ## Testing
 
-We use real implementations, not mocks. See the [Testing Guidelines](https://docs.timetiles.io/development/development/testing-guidelines) for details.
+We use real implementations, not mocks. See the [Testing Guidelines](https://docs.timetiles.io/development/contributing/testing-guidelines) for details.
 
 | Type        | Location             | Framework           | What to test                                       |
 | ----------- | -------------------- | ------------------- | -------------------------------------------------- |
