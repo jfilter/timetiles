@@ -60,6 +60,11 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
   }
 
   if (typeof date === "number") {
+    // Bare years (1000-9999) should be treated as years, not milliseconds
+    if (Number.isInteger(date) && date >= 1000 && date <= 9999) {
+      const dateObj = new Date(`${date}-01-01T00:00:00Z`);
+      return isValidDate(dateObj) ? dateObj : null;
+    }
     const dateObj = new Date(date);
     return isValidDate(dateObj) ? dateObj : null;
   }
@@ -71,6 +76,12 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
   const trimmedDate = date.trim();
   if (trimmedDate === "") {
     return null;
+  }
+
+  // Bare 4-digit year string: treat as January 1st of that year
+  if (/^\d{4}$/.test(trimmedDate)) {
+    const dateObj = new Date(`${trimmedDate}-01-01T00:00:00Z`);
+    return isValidDate(dateObj) ? dateObj : null;
   }
 
   if (hasInvalidIsoDatePart(trimmedDate)) {
