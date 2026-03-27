@@ -24,9 +24,18 @@ export interface TimeHistogramDataItem {
   count: number;
 }
 
+/** A named series for stacked/grouped histogram display. */
+export interface TimeHistogramSeries {
+  name: string;
+  color: string;
+  data: TimeHistogramDataItem[];
+}
+
 export interface TimeHistogramProps {
-  /** Histogram data items with date and count */
+  /** Histogram data items with date and count (single series) */
   data?: TimeHistogramDataItem[];
+  /** Grouped/stacked series — overrides `data` when provided */
+  groupedData?: TimeHistogramSeries[];
   /** Callback when a bar is clicked, receives the date */
   onBarClick?: (date: Date) => void;
   /** Chart theme configuration */
@@ -181,6 +190,7 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
 export const TimeHistogram = ({
   data = defaultData,
+  groupedData,
   onBarClick,
   theme,
   height = 200,
@@ -266,6 +276,16 @@ export const TimeHistogram = ({
     },
   ];
 
+  const getStackedSeriesConfig = (grouped: TimeHistogramSeries[]) =>
+    grouped.map((s) => ({
+      type: "bar" as const,
+      name: s.name,
+      stack: "total",
+      data: s.data.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
+      itemStyle: { color: s.color, borderRadius: [0, 0, 0, 0] },
+      emphasis: { itemStyle: { opacity: 1 } },
+    }));
+
   const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number) => {
     const primaryColor = Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor;
     return [
@@ -297,7 +317,10 @@ export const TimeHistogram = ({
     grid: { left: "3%", right: "4%", bottom: showDataZoom ? 45 : "3%", top: "10%", containLabel: true },
     ...axisConfig,
     tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
-    series: getSeriesConfig(effectiveTheme, data),
+    series: groupedData ? getStackedSeriesConfig(groupedData) : getSeriesConfig(effectiveTheme, data),
+    ...(groupedData && groupedData.length > 1
+      ? { legend: { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } } }
+      : {}),
     ...(showDataZoom ? { dataZoom: getDataZoomConfig(effectiveTheme, dataZoomStart, dataZoomEnd) } : {}),
     animation: true,
     animationDuration: 300,

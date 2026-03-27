@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
@@ -106,7 +106,8 @@ export const ChartSection = ({
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showBeeswarmSettings, setShowBeeswarmSettings] = useState(false);
+  const [showChartSettings, setShowChartSettings] = useState(false);
+  const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("dataset"));
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
@@ -170,14 +171,18 @@ export const ChartSection = ({
 
   const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => (
     <>
-      {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} />}
+      {chartType === "histogram" && (
+        <EventHistogram bounds={bounds} height={height} groupBy={groupBy} showControls={showChartSettings} />
+      )}
       {chartType === "beeswarm" && (
         <EventBeeswarm
           bounds={bounds}
           height={height}
           onEventClick={onEventClick}
           variant={variant}
-          showControls={showBeeswarmSettings}
+          showControls={showChartSettings}
+          groupBy={groupBy}
+          setGroupBy={(v) => void setGroupBy(v)}
         />
       )}
       {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
@@ -195,11 +200,8 @@ export const ChartSection = ({
         fillHeight={fillHeight}
         onExpandClick={() => setIsFullscreen(true)}
         headerActions={
-          chartType === "beeswarm" ? (
-            <BeeswarmSettingsButton
-              showControls={showBeeswarmSettings}
-              onToggle={() => setShowBeeswarmSettings((v) => !v)}
-            />
+          chartType === "beeswarm" || chartType === "histogram" ? (
+            <BeeswarmSettingsButton showControls={showChartSettings} onToggle={() => setShowChartSettings((v) => !v)} />
           ) : undefined
         }
       >

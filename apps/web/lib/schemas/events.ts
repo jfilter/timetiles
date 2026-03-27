@@ -238,6 +238,7 @@ export type ClusterStatsResponse = z.infer<typeof ClusterStatsResponseSchema>;
 export const TemporalClustersQuerySchema = EventFiltersSchema.extend({
   targetBuckets: z.coerce.number().int().min(1).max(200).default(40),
   individualThreshold: z.coerce.number().int().min(0).max(2000).default(500),
+  groupBy: z.string().max(64).default("dataset"),
 }).openapi("TemporalClustersQuery");
 
 export type TemporalClustersQuery = z.infer<typeof TemporalClustersQuerySchema>;
@@ -249,8 +250,8 @@ export const TemporalClusterItemSchema = z
   .object({
     bucketStart: z.string(),
     bucketEnd: z.string(),
-    datasetId: z.number().int(),
-    datasetName: z.string(),
+    groupId: z.string(),
+    groupName: z.string(),
     count: z.number().int(),
     eventId: z.number().int().optional(),
     eventTitle: z.string().nullable().optional(),
@@ -269,6 +270,7 @@ export const TemporalClustersResponseSchema = z
     metadata: z.object({
       total: z.number().int(),
       mode: z.enum(["individual", "clustered"]),
+      groupBy: z.string(),
       bucketSizeSeconds: z.number().nullable(),
       bucketCount: z.number().int(),
       dateRange: z.object({ min: z.string().nullable(), max: z.string().nullable() }),

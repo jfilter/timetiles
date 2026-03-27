@@ -17,6 +17,7 @@ import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
 import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
@@ -34,6 +35,10 @@ interface EventBeeswarmProps {
   variant?: "compact" | "fullscreen";
   /** Whether the expert settings panel is visible (controlled by parent) */
   showControls?: boolean;
+  /** Group by field (controlled by parent via URL param) */
+  groupBy?: string;
+  /** Callback to change groupBy */
+  setGroupBy?: (value: string) => void;
 }
 
 /** Default cluster options per variant */
@@ -42,14 +47,14 @@ const DEFAULTS = {
   fullscreen: { individualThreshold: 1000, targetBuckets: 80 },
 } as const;
 
-/** Group items by datasetId and build one BeeswarmSeries per dataset. */
-const groupByDataset = (items: TemporalClusterItem[]): Map<number, { name: string; items: TemporalClusterItem[] }> => {
-  const groups = new Map<number, { name: string; items: TemporalClusterItem[] }>();
+/** Group items by groupId and build one BeeswarmSeries per group. */
+const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string; items: TemporalClusterItem[] }> => {
+  const groups = new Map<string, { name: string; items: TemporalClusterItem[] }>();
   for (const item of items) {
-    if (!groups.has(item.datasetId)) {
-      groups.set(item.datasetId, { name: item.datasetName, items: [] });
+    if (!groups.has(item.groupId)) {
+      groups.set(item.groupId, { name: item.groupName, items: [] });
     }
-    groups.get(item.datasetId)!.items.push(item);
+    groups.get(item.groupId)!.items.push(item);
   }
   return groups;
 };
@@ -61,7 +66,7 @@ const transformToSeries = (
 ): { series: BeeswarmSeries[]; maxClusterCount: number } => {
   if (items.length === 0) return { series: [], maxClusterCount: 1 };
 
-  const groups = groupByDataset(items);
+  const groups = groupByField(items);
   const series: BeeswarmSeries[] = [];
   let maxClusterCount = 1;
   let colorIdx = 0;
@@ -99,6 +104,11 @@ const transformToSeries = (
   return { series, maxClusterCount };
 };
 
+interface GroupByOption {
+  value: string;
+  label: string;
+}
+
 /** Settings panel for beeswarm expert controls */
 const BeeswarmSettings = ({
   threshold,
@@ -111,6 +121,9 @@ const BeeswarmSettings = ({
   setClusterMin,
   clusterMax,
   setClusterMax,
+  groupBy,
+  setGroupBy,
+  groupByOptions,
   mode,
   itemCount,
 }: {
@@ -124,10 +137,28 @@ const BeeswarmSettings = ({
   setClusterMin: (v: number) => void;
   clusterMax: number;
   setClusterMax: (v: number) => void;
+  groupBy: string;
+  setGroupBy: (v: string) => void;
+  groupByOptions: GroupByOption[];
   mode: string;
   itemCount: number;
 }) => (
   <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+    {/* Group by selector */}
+    <div>
+      <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
+      <select
+        value={groupBy}
+        onChange={(e) => setGroupBy(e.target.value)}
+        className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
+      >
+        {groupByOptions.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
     <LabeledSlider
       label="Detail threshold"
       value={threshold}
@@ -157,6 +188,24 @@ const BeeswarmSettings = ({
   </div>
 );
 
+/** Hook to build groupBy dropdown options from enum fields. */
+const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
+  const enumFieldsQuery = useDatasetEnumFieldsQuery(singleDatasetId);
+  return useMemo<GroupByOption[]>(() => {
+    const opts: GroupByOption[] = [
+      { value: "dataset", label: "Dataset" },
+      { value: "catalog", label: "Catalog" },
+    ];
+    if (enumFieldsQuery.data) {
+      for (const field of enumFieldsQuery.data) {
+        opts.push({ value: field.path, label: field.label });
+      }
+    }
+    return opts;
+  }, [enumFieldsQuery.data]);
+};
+
+// oxlint-disable-next-line complexity
 export const EventBeeswarm = ({
   bounds,
   height = 300,
@@ -164,6 +213,8 @@ export const EventBeeswarm = ({
   onEventClick,
   variant = "compact",
   showControls = false,
+  groupBy: externalGroupBy,
+  setGroupBy: externalSetGroupBy,
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
@@ -176,14 +227,23 @@ export const EventBeeswarm = ({
   const [dotSize, setDotSize] = useState(8);
   const [clusterMin, setClusterMin] = useState(10);
   const [clusterMax, setClusterMax] = useState(40);
+  const [internalGroupBy, setInternalGroupBy] = useState("dataset");
+  // Use external groupBy from parent (URL param) or fallback to internal state
+  const groupBy = externalGroupBy ?? internalGroupBy;
+  const setGroupBy = externalSetGroupBy ?? setInternalGroupBy;
 
   // Debounce API-triggering params to avoid excessive requests while dragging sliders
   const debouncedThreshold = useDebounce(threshold, 400);
   const debouncedBuckets = useDebounce(buckets, 400);
 
+  // Build groupBy options from enum fields (when single dataset selected)
+  const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
+  const groupByOptions = useGroupByOptions(singleDatasetId);
+
   const clusterOptions: TemporalClusterOptions = {
     individualThreshold: debouncedThreshold,
     targetBuckets: debouncedBuckets,
+    groupBy,
   };
 
   const { data, isInitialLoad, isUpdating, isError } = useTemporalClustersQuery(
@@ -199,6 +259,10 @@ export const EventBeeswarm = ({
 
   const { series, maxClusterCount } = useMemo(() => transformToSeries(data?.items ?? [], mode), [data?.items, mode]);
 
+  // Auto rows layout in fullscreen when multiple groups exist
+  const hasMultipleGroups = series.length > 1;
+  const layout = variant === "fullscreen" && hasMultipleGroups ? "rows" : "merged";
+
   return (
     <div className="relative h-full">
       <BeeswarmChart
@@ -212,6 +276,7 @@ export const EventBeeswarm = ({
         isError={isError}
         totalCount={total}
         visibleCount={total}
+        layout={layout}
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
         dotSizeOverride={dotSize}
@@ -237,6 +302,9 @@ export const EventBeeswarm = ({
           setClusterMin={setClusterMin}
           clusterMax={clusterMax}
           setClusterMax={setClusterMax}
+          groupBy={groupBy}
+          setGroupBy={setGroupBy}
+          groupByOptions={groupByOptions}
           mode={mode}
           itemCount={data?.items.length ?? 0}
         />
