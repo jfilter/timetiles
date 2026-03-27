@@ -277,13 +277,19 @@ export const TimeHistogram = ({
   ];
 
   const getStackedSeriesConfig = (grouped: TimeHistogramSeries[]) =>
-    grouped.map((s) => ({
+    grouped.map((s, i) => ({
       type: "bar" as const,
       name: s.name,
       stack: "total",
       data: s.data.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
-      itemStyle: { color: s.color, borderRadius: [0, 0, 0, 0] },
-      emphasis: { itemStyle: { opacity: 1 } },
+      itemStyle: {
+        color: s.color,
+        borderColor: effectiveTheme.backgroundColor ?? "transparent",
+        borderWidth: 0.5,
+        // Top series gets rounded top corners
+        borderRadius: i === grouped.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0],
+      },
+      emphasis: { itemStyle: { opacity: 1, borderWidth: 1 } },
     }));
 
   const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number) => {
