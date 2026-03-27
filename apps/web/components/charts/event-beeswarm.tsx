@@ -52,12 +52,12 @@ const DEFAULTS = {
  * '[]' or '(empty)' → 'Unknown'.
  */
 export const cleanGroupName = (name: string): string => {
-  if (!name || name === "(empty)" || name === "[]") return "Unknown";
+  if (!name || name === "(empty)" || name === "[]") return "(no value)";
   if (name.startsWith("[")) {
     try {
       const arr = JSON.parse(name) as unknown[];
       if (Array.isArray(arr)) {
-        if (arr.length === 0) return "Unknown";
+        if (arr.length === 0) return "(no value)";
         return arr.join(", ");
       }
     } catch {
