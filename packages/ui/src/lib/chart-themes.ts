@@ -119,9 +119,13 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
         return s;
       }
 
+      // Only apply theme color if the series doesn't have its own color
+      const hasOwnColor = s.itemStyle?.color != null;
       return {
         ...s,
-        itemStyle: { ...s.itemStyle, color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor },
+        itemStyle: hasOwnColor
+          ? s.itemStyle
+          : { ...s.itemStyle, color: Array.isArray(theme.itemColor) ? theme.itemColor[0] : theme.itemColor },
       } satisfies SeriesOption;
     });
   } else {

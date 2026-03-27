@@ -281,12 +281,12 @@ export const TimeHistogram = ({
       type: "bar" as const,
       name: s.name,
       stack: "total",
+      color: s.color, // series-level color for legend + rendering
       data: s.data.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
       itemStyle: {
-        color: s.color,
+        color: s.color, // explicit per-item color
         borderColor: effectiveTheme.backgroundColor ?? "transparent",
         borderWidth: 0.5,
-        // Top series gets rounded top corners
         borderRadius: i === grouped.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0],
       },
       emphasis: { itemStyle: { opacity: 1, borderWidth: 1 } },
