@@ -68,6 +68,9 @@ const manifestSchema = z.object({
     format: z.enum(["json", "csv"]),
     auth: authConfigSchema,
     jsonApi: z.object({ recordsPath: z.string().optional(), pagination: paginationSchema }).optional(),
+    preProcessing: z
+      .object({ groupBy: z.string(), mergeFields: z.record(z.string(), z.enum(["min", "max"])) })
+      .optional(),
   }),
 
   catalog: z.object({

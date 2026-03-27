@@ -15,12 +15,21 @@ import type { AuthConfig, JsonApiScheduleConfig } from "./ingest-wizard";
 // Manifest types (match YAML structure)
 // ---------------------------------------------------------------------------
 
+/** Pre-processing configuration for JSON records before CSV conversion. */
+export interface DataPackagePreProcessing {
+  /** Field to group records by (e.g. "uid"). */
+  groupBy: string;
+  /** Fields to merge with min/max strategy (e.g. { startDate: "min", endDate: "max" }). */
+  mergeFields: Record<string, "min" | "max">;
+}
+
 /** Source configuration for fetching data. */
 export interface DataPackageSource {
   url: string;
   format: "json" | "csv";
   auth?: AuthConfig;
   jsonApi?: JsonApiScheduleConfig;
+  preProcessing?: DataPackagePreProcessing;
 }
 
 /** Catalog defaults created on activation. */

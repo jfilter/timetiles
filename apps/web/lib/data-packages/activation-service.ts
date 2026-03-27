@@ -110,6 +110,10 @@ const buildScheduledIngestData = (
     advancedOptions.jsonApiConfig = manifest.source.jsonApi;
   }
 
+  if (manifest.source.preProcessing) {
+    advancedOptions.preProcessing = manifest.source.preProcessing;
+  }
+
   if (manifest.reviewChecks) {
     advancedOptions.reviewChecks = manifest.reviewChecks;
   }

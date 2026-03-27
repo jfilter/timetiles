@@ -18,6 +18,11 @@ estimatedRecords: 300
 source:
   url: "https://www.bonn.de/citykey/events-json.php"
   format: json
+  preProcessing:
+    groupBy: uid
+    mergeFields:
+      startDate: min
+      endDate: max
 
 catalog:
   name: Offene Daten Bonn

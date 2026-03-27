@@ -12,6 +12,8 @@ import Papa from "papaparse";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 
+import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -19,6 +21,8 @@ import { getByPath } from "@/lib/utils/object-path";
 export interface JsonToCsvOptions {
   /** Dot-path to the records array, e.g. "data.results" */
   recordsPath?: string;
+  /** Pre-processing: group records by key and merge fields before CSV conversion. */
+  preProcessing?: PreProcessingConfig | null;
 }
 
 export interface JsonToCsvResult {
@@ -142,7 +146,10 @@ export const extractRecordsFromJson = (
 export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions): JsonToCsvResult => {
   const json: unknown = JSON.parse(jsonBuffer.toString("utf-8"));
 
-  const { records, detectedPath } = extractRecordsFromJson(json, options?.recordsPath);
+  const { records: rawRecords, detectedPath } = extractRecordsFromJson(json, options?.recordsPath);
+
+  // Apply pre-processing (e.g. group-by with date merge) if configured
+  const records = options?.preProcessing ? preProcessRecords(rawRecords, options.preProcessing) : rawRecords;
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
 

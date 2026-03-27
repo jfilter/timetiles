@@ -17,6 +17,7 @@ import type { ScheduledIngest } from "@/payload-types";
 
 import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-csv";
 import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
+import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +36,8 @@ export interface FetchRemoteDataOptions {
   cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl?: boolean };
   /** JSON API handling — recordsPath and pagination config. */
   jsonApiConfig?: { recordsPath?: string; pagination?: PaginationConfig };
+  /** Pre-processing: group records by key and merge date fields before CSV conversion. */
+  preProcessing?: PreProcessingConfig | null;
   /** Force response format instead of auto-detecting. */
   responseFormat?: "auto" | "csv" | "json" | "geojson";
 }
@@ -181,19 +184,30 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       // Paginated fetch — fetch all pages
       const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, { authHeaders, timeout });
 
-      finalData = recordsToCsv(result.allRecords);
-      recordCount = result.totalRecords;
+      let records = result.allRecords;
+      if (options.preProcessing) {
+        records = preProcessRecords(records, options.preProcessing);
+      }
+
+      finalData = recordsToCsv(records);
+      recordCount = records.length;
       pagesProcessed = result.pagesProcessed;
 
       logger.info("Paginated JSON fetch complete", {
         pagesProcessed: result.pagesProcessed,
-        totalRecords: result.totalRecords,
+        totalRecords: records.length,
       });
     } else {
-      // Single response — convert in-place
-      const result = convertJsonToCsv(fetchResult.data, { recordsPath });
-      finalData = result.csv;
-      recordCount = result.recordCount;
+      // Single response — convert (with optional pre-processing)
+      if (options.preProcessing) {
+        const result = convertJsonToCsv(fetchResult.data, { recordsPath, preProcessing: options.preProcessing });
+        finalData = result.csv;
+        recordCount = result.recordCount;
+      } else {
+        const result = convertJsonToCsv(fetchResult.data, { recordsPath });
+        finalData = result.csv;
+        recordCount = result.recordCount;
+      }
     }
 
     finalMimeType = "text/csv";

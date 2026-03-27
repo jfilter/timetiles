@@ -4,7 +4,7 @@
   <img alt="TimeTiles" src="packages/assets/logos/latest/light/no-grid/wordmark_horizontal.svg" height="56">
 </picture>
 
-### Transform your data into interactive, explorable timelines on a map
+### Open-source platform that turns spreadsheets into interactive maps. Import tabular data, geocode locations, and explore everything visually.
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
@@ -16,9 +16,11 @@ Built for **journalists** documenting events across regions, **researchers** ana
 
 ## Features
 
-**Import & Processing** — CSV, Excel, ODS, and JSON API sources with automatic format detection. Multi-provider geocoding (Nominatim, Google Maps, OpenCage) with fallback. Scheduled URL imports, batch processing with real-time progress, intelligent caching, and optional web scrapers running in isolated containers.
+**Import & Processing** — CSV, Excel, ODS, and JSON API sources with automatic format detection. Multi-provider geocoding (Nominatim, Photon, Google etc.).
+Scheduled URL imports, manual imports with real-time progress, and optional web scrapers running in isolated containers.
+Detects faulty data before importing.
 
-**Visualization** — Interactive maps with clustering, timeline scrubbing, dynamic filters by category/date/location, automatic histograms, and customizable light/dark themes.
+**Visualization** — Interactive maps with clustering, timeline scrubbing, dynamic filters by category/date/location, automatic histograms and timeline charts, customizable UI and light/dark themes. Works for 1M+ events with server-side processing.
 
 **Sharing** — Shareable URLs with filter state preserved, multi-user collaboration, public or private access control, embeddable views, and full data export.
 
@@ -36,14 +38,14 @@ Open [localhost:3000](http://localhost:3000). Go to [localhost:3000/ingest](http
 
 Full docs at **[docs.timetiles.io](https://docs.timetiles.io)**.
 
-|                                                                        |                          |
-| ---------------------------------------------------------------------- | ------------------------ |
-| [Getting Started](https://docs.timetiles.io/guide/getting-started)     | Overview and first steps |
-| [Use Cases](https://docs.timetiles.io/guide/use-cases)                 | Real-world examples      |
-| [Development Guide](https://docs.timetiles.io/development/development) | Setup and workflows      |
-| [Architecture](https://docs.timetiles.io/development/architecture)     | Technical deep dive      |
-| [REST API](https://docs.timetiles.io/development/rest-api)             | API reference            |
-| [Contributing](CONTRIBUTING.md)                                        | How to contribute        |
+|                                                                    |                          |
+| ------------------------------------------------------------------ | ------------------------ |
+| [Getting Started](https://docs.timetiles.io/guide/getting-started) | Overview and first steps |
+| [Use Cases](https://docs.timetiles.io/guide/use-cases)             | Real-world examples      |
+| [Development Guide](https://docs.timetiles.io/development)         | Setup and workflows      |
+| [Architecture](https://docs.timetiles.io/development/architecture) | Technical deep dive      |
+| [REST API](https://docs.timetiles.io/development/api/rest-api)     | API reference            |
+| [Contributing](CONTRIBUTING.md)                                    | How to contribute        |
 
 ## Tech Stack
 
@@ -99,7 +101,7 @@ DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5433/timet
 ```
 apps/
   web/              Next.js app, Payload CMS, API routes, components
-  scraper/          TimeScrape runner (optional, Podman-isolated)
+  timescrape/       TimeScrape runner (optional, Podman-isolated)
   docs/             Documentation site (Nextra)
 
 packages/
