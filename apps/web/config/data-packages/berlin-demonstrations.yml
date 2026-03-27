@@ -31,6 +31,16 @@ source:
       limitParam: limit
       limitValue: 1000
       maxPages: 100
+  excludeFields:
+    - source
+    - reference_key
+    - is_active
+    - first_seen_at
+    - last_seen_at
+    - raw_data
+    - created_at
+    - updated_at
+    - content_hash
 
 catalog:
   name: polizeistressi.de
@@ -50,9 +60,23 @@ fieldMappings:
   timestampPath: start_time
   endTimestampPath: end_time
   locationNamePath: place
+  locationPath: place
 
 schedule:
   type: frequency
   frequency: daily
   schemaMode: additive
   timezone: Europe/Berlin
+
+reviewChecks:
+  skipDuplicateRateCheck: true
+
+geocodingBias:
+  countryCodes:
+    - de
+  viewBox:
+    minLon: 13.08
+    minLat: 52.33
+    maxLon: 13.76
+    maxLat: 52.68
+  bounded: true
