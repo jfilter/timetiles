@@ -9,6 +9,7 @@
 import type { LngLatBounds } from "maplibre-gl";
 import type { RefObject } from "react";
 
+import { ClusterDensityControl } from "@/components/maps/cluster-density-control";
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
@@ -49,7 +50,8 @@ export const MapPanel = ({
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}
     />
-    <div className="absolute bottom-20 left-2 z-10">
+    <div className="absolute bottom-20 left-2 z-10 flex flex-col gap-1.5">
+      <ClusterDensityControl />
       <ZoomToDataButton visible={showZoomToData} onClick={onZoomToData} />
     </div>
   </div>

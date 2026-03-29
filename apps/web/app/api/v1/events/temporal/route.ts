@@ -70,11 +70,17 @@ const buildHistogramResponse = (
 ) => {
   const total = rows.reduce((sum: number, row) => sum + Number.parseInt(String(row.event_count), 10), 0);
 
-  const histogram = rows.map((row) => ({
-    date: new Date(row.bucket_start).toISOString(), // Bucket start as ISO 8601
-    dateEnd: new Date(row.bucket_end).toISOString(), // Bucket end as ISO 8601
-    count: Number.parseInt(String(row.event_count), 10),
-  }));
+  const histogram = rows
+    .filter((row) => {
+      const start = new Date(row.bucket_start);
+      const end = new Date(row.bucket_end);
+      return !Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime());
+    })
+    .map((row) => ({
+      date: new Date(row.bucket_start).toISOString(),
+      dateEnd: new Date(row.bucket_end).toISOString(),
+      count: Number.parseInt(String(row.event_count), 10),
+    }));
 
   return {
     histogram,

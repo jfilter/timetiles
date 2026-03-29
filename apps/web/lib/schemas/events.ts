@@ -175,10 +175,16 @@ export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
 /**
  * Query parameters for GET /api/events/map-clusters
  */
+export const ClusterAlgorithmSchema = z.enum(["h3", "grid-k", "dbscan"]).default("h3");
+export type ClusterAlgorithm = z.infer<typeof ClusterAlgorithmSchema>;
+
 export const MapClustersQuerySchema = EventFiltersSchema.extend({
   zoom: z.coerce.number().int().min(0).max(28).default(10),
-  clusterRadius: z.coerce.number().min(20).max(200).default(30).optional(),
-  clusterZoomFactor: z.coerce.number().min(1.0).max(1.8).default(1.4).optional(),
+  targetClusters: z.coerce.number().int().min(5).max(500).default(25).optional(),
+  clusterAlgorithm: ClusterAlgorithmSchema.optional(),
+  minPoints: z.coerce.number().int().min(2).max(20).default(2).optional(),
+  mergeOverlapping: z.coerce.boolean().default(true).optional(),
+  h3ResolutionScale: z.coerce.number().min(0.3).max(1.2).default(0.6).optional(),
 }).openapi("MapClustersQuery");
 
 export type MapClustersQuery = z.infer<typeof MapClustersQuerySchema>;

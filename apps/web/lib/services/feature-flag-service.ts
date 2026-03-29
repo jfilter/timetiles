@@ -21,6 +21,7 @@ export interface FeatureFlags {
   enableScheduledJobExecution: boolean;
   enableUrlFetchCaching: boolean;
   enableScrapers: boolean;
+  enableExpertMode: boolean;
 }
 
 const DEFAULT_FLAGS: FeatureFlags = {
@@ -33,6 +34,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableScheduledJobExecution: true,
   enableUrlFetchCaching: true,
   enableScrapers: false,
+  enableExpertMode: process.env.NODE_ENV !== "production",
 };
 
 /** Fail-closed defaults returned when the database is unavailable. */
@@ -46,6 +48,7 @@ export const DISABLED_FLAGS: FeatureFlags = {
   enableScheduledJobExecution: false,
   enableUrlFetchCaching: false,
   enableScrapers: false,
+  enableExpertMode: false,
 };
 
 const CACHE_TTL_MS = 60_000; // 1 minute

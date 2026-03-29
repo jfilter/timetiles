@@ -13,8 +13,6 @@ import * as migration_20260325_135037 from './20260325_135037';
 import * as migration_20260325_215337 from './20260325_215337';
 import * as migration_20260325_225411 from './20260325_225411';
 import * as migration_20260325_235725 from './20260325_235725';
-import * as migration_20260326_000000_adaptive_cluster_radius from './20260326_000000_adaptive_cluster_radius';
-import * as migration_20260326_000001_cluster_zoom_refinement from './20260326_000001_cluster_zoom_refinement';
 import * as migration_20260326_105027 from './20260326_105027';
 import * as migration_20260326_112345 from './20260326_112345';
 import * as migration_20260326_113423 from './20260326_113423';
@@ -24,15 +22,11 @@ import * as migration_20260326_163342 from './20260326_163342';
 import * as migration_20260326_175611 from './20260326_175611';
 import * as migration_20260326_230401 from './20260326_230401';
 import * as migration_20260326_233214 from './20260326_233214';
-import * as migration_20260327_000000_cluster_zoom_refinement_v2 from './20260327_000000_cluster_zoom_refinement_v2';
-import * as migration_20260327_000001_cluster_extent from './20260327_000001_cluster_extent';
-import * as migration_20260327_000002_drop_adaptive_scaling from './20260327_000002_drop_adaptive_scaling';
-import * as migration_20260327_000003_cluster_density_params from './20260327_000003_cluster_density_params';
-import * as migration_20260327_000004_add_temporal_clustering from './20260327_000004_add_temporal_clustering';
 import * as migration_20260327_005403 from './20260327_005403';
 import * as migration_20260327_011307 from './20260327_011307';
 import * as migration_20260327_014705 from './20260327_014705';
-import * as migration_20260327_000005_temporal_clustering_groupby from './20260327_000005_temporal_clustering_groupby';
+import * as migration_20260329_000000_h3_map_clustering from './20260329_000000_h3_map_clustering';
+import * as migration_20260329_202709 from './20260329_202709';
 
 export const migrations = [
   {
@@ -111,16 +105,6 @@ export const migrations = [
     name: '20260325_235725',
   },
   {
-    up: migration_20260326_000000_adaptive_cluster_radius.up,
-    down: migration_20260326_000000_adaptive_cluster_radius.down,
-    name: '20260326_000000_adaptive_cluster_radius',
-  },
-  {
-    up: migration_20260326_000001_cluster_zoom_refinement.up,
-    down: migration_20260326_000001_cluster_zoom_refinement.down,
-    name: '20260326_000001_cluster_zoom_refinement',
-  },
-  {
     up: migration_20260326_105027.up,
     down: migration_20260326_105027.down,
     name: '20260326_105027',
@@ -166,31 +150,6 @@ export const migrations = [
     name: '20260326_233214',
   },
   {
-    up: migration_20260327_000000_cluster_zoom_refinement_v2.up,
-    down: migration_20260327_000000_cluster_zoom_refinement_v2.down,
-    name: '20260327_000000_cluster_zoom_refinement_v2',
-  },
-  {
-    up: migration_20260327_000001_cluster_extent.up,
-    down: migration_20260327_000001_cluster_extent.down,
-    name: '20260327_000001_cluster_extent',
-  },
-  {
-    up: migration_20260327_000002_drop_adaptive_scaling.up,
-    down: migration_20260327_000002_drop_adaptive_scaling.down,
-    name: '20260327_000002_drop_adaptive_scaling',
-  },
-  {
-    up: migration_20260327_000003_cluster_density_params.up,
-    down: migration_20260327_000003_cluster_density_params.down,
-    name: '20260327_000003_cluster_density_params',
-  },
-  {
-    up: migration_20260327_000004_add_temporal_clustering.up,
-    down: migration_20260327_000004_add_temporal_clustering.down,
-    name: '20260327_000004_add_temporal_clustering',
-  },
-  {
     up: migration_20260327_005403.up,
     down: migration_20260327_005403.down,
     name: '20260327_005403',
@@ -206,8 +165,13 @@ export const migrations = [
     name: '20260327_014705',
   },
   {
-    up: migration_20260327_000005_temporal_clustering_groupby.up,
-    down: migration_20260327_000005_temporal_clustering_groupby.down,
-    name: '20260327_000005_temporal_clustering_groupby',
+    up: migration_20260329_000000_h3_map_clustering.up,
+    down: migration_20260329_000000_h3_map_clustering.down,
+    name: '20260329_000000_h3_map_clustering',
+  },
+  {
+    up: migration_20260329_202709.up,
+    down: migration_20260329_202709.down,
+    name: '20260329_202709'
   },
 ];

@@ -17,6 +17,15 @@ import type { ClusterFeature } from "./clustered-map";
 /** Circle layer config without `source` (provided by the `<Source>` wrapper). */
 type CircleLayerConfig = Omit<Extract<LayerSpecification, { type: "circle" }>, "source">;
 
+/** Symbol layer config without `source`. */
+type SymbolLayerConfig = Omit<Extract<LayerSpecification, { type: "symbol" }>, "source">;
+
+/** Fill layer config without `source`. */
+type FillLayerConfig = Omit<Extract<LayerSpecification, { type: "fill" }>, "source">;
+
+/** Line layer config without `source`. */
+type LineLayerConfig = Omit<Extract<LayerSpecification, { type: "line" }>, "source">;
+
 const logger = createLogger("ClusteredMap");
 
 /** Default empty clusters array */
@@ -58,68 +67,168 @@ export const getValidCoordinates = (feature: Feature): [number, number] | null =
 };
 
 /**
- * Build the cluster layer configuration using continuous sqrt-based scaling.
+ * Build the cluster circle layer with count-based sizing.
  *
- * Uses MapLibre's native `sqrt` expression for proportional area scaling
- * (cartographic best practice: circle area proportional to event count).
- * Every cluster gets a unique size — no discrete banding.
+ * Circle area is proportional to event count (sqrt scaling).
+ * Color gradient encodes density. Count is shown as a label
+ * by a separate symbol layer (see buildClusterLabelLayerConfig).
+ *
+ * Two clustering algorithms are available (selected via API parameter):
+ * - **Grid**: fast spatial grid (ROUND/GROUP BY), deterministic cells, may split
+ *   clusters at grid boundaries. Best for high event counts.
+ * - **DBSCAN**: density-based (ST_ClusterDBSCAN), no boundary artifacts, projects
+ *   to SRID 3857 for meter-based eps. Falls back to grid above 5000 events.
+ *
+ * Future: cluster-inspect mode (click → dim map + spider-view of events).
  */
 export const buildClusterLayerConfig = (
   clusterFilter: ["==", ["get", string], string],
-  colors: MapColors = defaultMapColors
-) =>
-  ({
+  colors: MapColors = defaultMapColors,
+  maxCount: number = 1
+) => {
+  // Normalize count relative to viewport max using sqrt scaling (0..1)
+  const sqrtMax = Math.max(1, Math.sqrt(maxCount));
+  return {
     id: "event-clusters",
     type: "circle" as const,
     filter: clusterFilter,
     paint: {
-      // Radius = max(count-based sqrt, geographic extent)
-      // sqrt sizing provides visual hierarchy; extent ensures coverage
+      // Circle radius: sqrt-scaled relative to maxCount, capped at hex cell size
       "circle-radius": [
-        "max",
-        // Count-based radius (visual hierarchy via sqrt)
+        "min",
         [
           "interpolate",
           ["linear"],
-          ["sqrt", ["get", "count"]],
+          ["/", ["sqrt", ["get", "count"]], sqrtMax],
+          0,
+          8,
+          0.25,
+          16,
+          0.5,
+          28,
+          0.75,
+          40,
           1,
-          8, // sqrt(1)=1 → 8px
-          5,
-          16, // sqrt(25)=5 → 16px
-          10,
-          24, // sqrt(100)=10 → 24px
-          18,
-          34, // sqrt(~324)=18 → 34px
-          25,
-          50, // sqrt(625)=25 → 50px
+          50,
         ],
-        // Geographic extent radius (pixels, pre-computed server-side)
-        ["coalesce", ["get", "extentRadius"], 0],
+        ["coalesce", ["get", "hexRadius"], 50],
       ],
-      // Continuous color gradient based on sqrt(count)
       "circle-color": [
         "interpolate",
         ["linear"],
-        ["sqrt", ["get", "count"]],
-        1,
-        colors.mapClusterGradient[0], // lightest
-        5,
+        ["/", ["sqrt", ["get", "count"]], sqrtMax],
+        0,
+        colors.mapClusterGradient[0],
+        0.25,
         colors.mapClusterGradient[1],
-        10,
+        0.5,
         colors.mapClusterGradient[2],
-        18,
+        0.75,
         colors.mapClusterGradient[3],
-        25,
-        colors.mapClusterGradient[4], // darkest
+        1,
+        colors.mapClusterGradient[4],
       ],
-      // Continuous opacity
-      "circle-opacity": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 0.55, 25, 0.92],
-      // Continuous stroke width
-      "circle-stroke-width": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 1, 25, 2.5],
+      "circle-opacity": ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 0.55, 1, 0.92],
+      "circle-stroke-width": ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 1, 1, 2.5],
       "circle-stroke-color": colors.mapStroke,
       "circle-stroke-opacity": 0.8,
     },
-  }) satisfies CircleLayerConfig;
+  } satisfies CircleLayerConfig;
+};
+
+/** H3 hex fill layer (debug: shows hex boundaries with count-based color) */
+export const buildH3FillLayerConfig = (colors: MapColors = defaultMapColors, maxCount: number = 1) => {
+  const sqrtMax = Math.max(1, Math.sqrt(maxCount));
+  return {
+    id: "h3-hex-fill",
+    type: "fill" as const,
+    paint: {
+      "fill-color": [
+        "interpolate",
+        ["linear"],
+        ["/", ["sqrt", ["get", "count"]], sqrtMax],
+        0,
+        colors.mapClusterGradient[0],
+        0.25,
+        colors.mapClusterGradient[1],
+        0.5,
+        colors.mapClusterGradient[2],
+        0.75,
+        colors.mapClusterGradient[3],
+        1,
+        colors.mapClusterGradient[4],
+      ],
+      "fill-opacity": 0.4,
+    },
+  } satisfies FillLayerConfig;
+};
+
+/** H3 hex outline layer (debug: shows hex edges) */
+export const buildH3OutlineLayerConfig = (colors: MapColors = defaultMapColors) =>
+  ({
+    id: "h3-hex-outline",
+    type: "line" as const,
+    paint: { "line-color": colors.mapStroke, "line-width": 1, "line-opacity": 0.6 },
+  }) satisfies LineLayerConfig;
+
+/** H3 hover highlight fill layer */
+export const buildH3HoverFillLayerConfig = () =>
+  ({
+    id: "h3-hover-fill",
+    type: "fill" as const,
+    paint: {
+      "fill-color": [
+        "interpolate",
+        ["linear"],
+        ["get", "intensity"],
+        0,
+        "#fef3c7", // light yellow
+        0.5,
+        "#f59e0b", // amber
+        1,
+        "#dc2626", // red
+      ],
+      "fill-opacity": 0.6,
+    },
+  }) satisfies FillLayerConfig;
+
+/** H3 hover highlight outline layer */
+export const buildH3HoverOutlineLayerConfig = () =>
+  ({
+    id: "h3-hover-outline",
+    type: "line" as const,
+    paint: { "line-color": "#ffffff", "line-width": 2.5, "line-opacity": 0.9 },
+  }) satisfies LineLayerConfig;
+
+/**
+ * Build the cluster count label layer.
+ *
+ * Renders the event count as a white number centered on each cluster circle.
+ * Only shown for clusters (count > 1), not individual event points.
+ * Counts ≥ 1000 are shown in compact notation (1.2k, 15k, 1.2M).
+ */
+export const buildClusterLabelLayerConfig = (clusterFilter: ["==", ["get", string], string]) =>
+  ({
+    id: "cluster-count-label",
+    type: "symbol" as const,
+    filter: clusterFilter,
+    layout: {
+      "text-field": [
+        "case",
+        [">=", ["get", "count"], 1000000],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 100000]]], "M"],
+        [">=", ["get", "count"], 10000],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000]]], "k"],
+        [">=", ["get", "count"], 1000],
+        ["concat", ["to-string", ["/", ["round", ["/", ["get", "count"], 100]], 10]], "k"],
+        ["to-string", ["get", "count"]],
+      ],
+      "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 10, 25, 14],
+      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      "text-allow-overlap": true,
+    },
+    paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0, 0, 0, 0.5)", "text-halo-width": 1 },
+  }) satisfies SymbolLayerConfig;
 
 /** Fit map to bounds, handling single-point case */
 export const fitMapToBounds = (

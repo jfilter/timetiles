@@ -279,6 +279,16 @@ export const Settings: GlobalConfig = {
           defaultValue: false,
           admin: { description: "When enabled, users with trust level 3+ can create scraper repos and run scrapers" },
         },
+        {
+          name: "enableExpertMode",
+          type: "checkbox",
+          label: "Enable Expert Mode",
+          defaultValue: false,
+          admin: {
+            description:
+              "When enabled, shows advanced clustering algorithm selection and parameter tuning in the map UI",
+          },
+        },
       ],
     },
   ],

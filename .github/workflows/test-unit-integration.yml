@@ -49,7 +49,7 @@ jobs:
         run: |
           setup_db() {
             psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE \"$1\";"
-            psql -h localhost -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+            psql -h localhost -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE EXTENSION IF NOT EXISTS h3; CREATE SCHEMA IF NOT EXISTS payload;"
           }
 
           setup_db timetiles

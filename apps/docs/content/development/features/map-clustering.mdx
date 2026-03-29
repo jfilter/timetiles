@@ -1,0 +1,118 @@
+# Map Clustering
+
+TimeTiles uses server-side clustering to efficiently visualize large numbers of events on the map.
+Three clustering algorithms are available, with **H3** as the default.
+
+## Algorithms
+
+### H3 (Default)
+
+Uses [Uber's H3](https://h3geo.org/) hexagonal hierarchical grid system. Events are grouped
+into hexagonal cells whose size is determined by the zoom level.
+
+**Key properties:**
+
+- **Hierarchical:** Each parent hex contains exactly 7 children — smooth zoom transitions
+- **16 resolution levels:** From ~1,281km (res 0) to ~4m (res 13)
+- **Deterministic:** Same events at same zoom → same clusters
+- **Pre-computed:** Resolution columns (r2–r13) are stored on the events table for fast lookups
+- **Overlap merge:** Overlapping circles are automatically merged via DBSCAN post-processing
+
+**Zoom → Resolution mapping:** `ROUND(zoom × 0.7)`, capped at 13.
+
+**Hex visualization:** When H3 is active, hexagonal cell boundaries are rendered as
+colored fill + outline polygons. Hovering over a cluster highlights its hex cell.
+
+### Grid-K (Expert)
+
+ROUND-based grid pre-aggregation followed by K-Means merge with automatic
+[elbow detection](<https://en.wikipedia.org/wiki/Elbow_method_(clustering)>).
+
+**Key properties:**
+
+- **Exact cluster count:** K-Means produces exactly _k_ clusters
+- **Automatic _k_:** Elbow method tests k=10,20,30,40,50,60,80,100 and picks the value
+  where within-cluster variance improvement drops below 20%
+- **Viewport-based grid:** Cell size derived from viewport area and target cluster count
+- **Good for controlled visualization:** When you need a specific number of clusters
+
+**Parameters (Expert mode):**
+
+- `targetClusters` — target number of clusters (5–500, default 25)
+
+### DBSCAN (Expert)
+
+Direct density-based clustering using PostGIS
+[ST_ClusterDBSCAN](https://postgis.net/docs/ST_ClusterDBSCAN.html) on projected
+coordinates (SRID 3857).
+
+**Key properties:**
+
+- **Density-based:** Finds natural cluster shapes, no forced count
+- **Projected coordinates:** eps in meters for correct spatial distance
+- **5,000 event limit:** Falls back to Grid-K when viewport contains more events
+- **Noise points:** Events that don't belong to any cluster are returned as individual points
+
+**Parameters (Expert mode):**
+
+- `targetClusters` — influences eps calculation
+- `minPoints` — minimum points to form a cluster (2–20, default 2)
+
+## Architecture
+
+### Server Side
+
+Clustering is performed by the `cluster_events()` PostgreSQL function, which accepts:
+
+| Parameter                                          | Type               | Default | Description                           |
+| -------------------------------------------------- | ------------------ | ------- | ------------------------------------- |
+| `p_min_lng`, `p_min_lat`, `p_max_lng`, `p_max_lat` | `double precision` | —       | Viewport bounds                       |
+| `p_zoom`                                           | `integer`          | —       | Map zoom level                        |
+| `p_filters`                                        | `jsonb`            | `'{}'`  | Dataset, catalog, date, field filters |
+| `p_target_clusters`                                | `integer`          | `25`    | Target cluster count (Grid-K, DBSCAN) |
+| `p_algorithm`                                      | `text`             | `'h3'`  | Algorithm: `h3`, `grid-k`, `dbscan`   |
+| `p_min_points`                                     | `integer`          | `2`     | DBSCAN minPoints                      |
+
+The function returns GeoJSON-compatible rows with `cluster_id`, `longitude`, `latitude`,
+`event_count`, `event_ids`, `event_title`, and `extent_degrees`.
+
+### H3 Pre-computed Columns
+
+The `events` table has generated columns for H3 resolutions 2–13:
+
+```
+h3_r2, h3_r3, h3_r4, ..., h3_r13
+```
+
+Each is a `GENERATED ALWAYS ... STORED` column computed from `location_longitude` and
+`location_latitude`. The H3 branch uses a CASE expression to select the appropriate
+column based on zoom level — no runtime `h3_latlng_to_cell()` calls.
+
+### PostGIS Dependencies
+
+- **PostGIS** — geometry column, GiST index, `ST_ClusterDBSCAN`, `ST_Transform`
+- **h3-pg** — H3 hexagonal grid functions (`h3_latlng_to_cell`, `h3_cell_to_parent`)
+
+### Client Side
+
+- **Cluster rendering:** MapLibre GL JS with `circle` + `symbol` layers
+- **H3 hex polygons:** Generated client-side via `h3-js` `cellToBoundary()`
+- **Zoom transitions:** `useH3Transition` hook animates clusters between zoom levels
+  using exact H3 parent-child relationships
+- **Absolute sizing:** Circle radius based on `sqrt(count)`, consistent across zoom levels
+- **Count labels:** White text with dark halo on each cluster
+
+## Expert Mode
+
+Algorithm selection and parameter tuning are behind the `enableExpertMode` feature flag.
+In development, expert mode is enabled by default. In production, it can be enabled
+via Settings → Feature Flags in the admin dashboard.
+
+When expert mode is disabled, H3 is used automatically with no user-facing controls.
+
+## Future Plans
+
+- **Source cells:** Show all constituent hex cells when hovering over merged clusters
+- **Intra-cluster heatmap:** Color individual source cells by density on hover
+- **Spider view:** Click on cluster → dim map + expand events in a spider layout
+- **H3 as pre-aggregation for Grid-K:** Use H3 cells instead of ROUND grid for merge input

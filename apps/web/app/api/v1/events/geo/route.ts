@@ -40,16 +40,41 @@ export const GET = apiRoute({
       return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
-    const result = await executeClusteringQuery(
-      payload,
-      bounds,
-      query.zoom,
-      ctx.filters,
-      query.clusterRadius ?? 30,
-      query.clusterZoomFactor ?? 1.4
-    );
-    const clusters = transformResultToClusters(result.rows, query.zoom);
+    const algorithm = query.clusterAlgorithm ?? "h3";
+    const mergeOverlapping = query.mergeOverlapping ?? false;
+    const h3Scale = query.h3ResolutionScale ?? 0.6;
+    const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters, {
+      targetClusters: query.targetClusters ?? 60,
+      algorithm,
+      minPoints: query.minPoints ?? 2,
+      mergeOverlapping,
+      h3ResolutionScale: h3Scale,
+    });
 
+    // H3: calculate hex circumradius in pixels so circles fit inside hexagons
+    let hexRadiusPx: number | undefined;
+    if (algorithm === "h3") {
+      const h3Res = Math.min(13, Math.max(2, Math.round(query.zoom * h3Scale)));
+      const edgeMeters: Record<number, number> = {
+        2: 183000,
+        3: 69000,
+        4: 26000,
+        5: 9900,
+        6: 3700,
+        7: 1400,
+        8: 531,
+        9: 201,
+        10: 76,
+        11: 29,
+        12: 11,
+        13: 4,
+      };
+      const centerLat = (bounds.south + bounds.north) / 2;
+      const groundRes = (156543.03 * Math.cos((centerLat * Math.PI) / 180)) / Math.pow(2, query.zoom);
+      hexRadiusPx = (edgeMeters[h3Res] ?? 100) / groundRes;
+    }
+
+    const clusters = transformResultToClusters(result.rows, hexRadiusPx);
     return { type: "FeatureCollection", features: clusters };
   },
 });
@@ -61,21 +86,31 @@ interface ClusterRow {
   cluster_id: string | number | null;
   event_id: string | number | null;
   event_title: string | null;
-  extent_degrees: string | number | null;
 }
 
-/** Convert degrees to pixels at a given zoom level. */
-const degreesToPixels = (degrees: number, zoom: number) => (degrees / 360) * 512 * Math.pow(2, zoom);
+interface ClusteringOptions {
+  targetClusters?: number;
+  algorithm?: string;
+  minPoints?: number;
+  mergeOverlapping?: boolean;
+  h3ResolutionScale?: number;
+}
 
 const executeClusteringQuery = async (
   payload: Payload,
   bounds: MapBounds,
   zoom: number,
   filters: CanonicalEventFilters,
-  baseRadius: number = 60,
-  zoomFactor: number = 1.4
-) =>
-  (await payload.db.drizzle.execute(sql`
+  opts: ClusteringOptions = {}
+) => {
+  const {
+    targetClusters = 60,
+    algorithm = "h3",
+    minPoints = 2,
+    mergeOverlapping = false,
+    h3ResolutionScale = 0.6,
+  } = opts;
+  return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
       ${bounds.west}::double precision,
       ${bounds.south}::double precision,
@@ -83,12 +118,16 @@ const executeClusteringQuery = async (
       ${bounds.north}::double precision,
       ${zoom}::integer,
       ${toClusteringJsonb(filters)}::jsonb,
-      ${baseRadius}::double precision,
-      ${zoomFactor}::double precision
+      ${targetClusters}::integer,
+      ${algorithm}::text,
+      ${minPoints}::integer,
+      ${mergeOverlapping}::boolean,
+      ${h3ResolutionScale}::double precision
     )
   `)) as unknown as { rows: ClusterRow[] };
+};
 
-const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
+const transformResultToClusters = (rows: ClusterRow[], hexRadiusPx?: number) =>
   rows
     .filter((row) => {
       // Skip rows with missing or non-numeric coordinates instead of defaulting to (0, 0)
@@ -100,11 +139,10 @@ const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
       const isCluster = Number(row.event_count) > 1;
       const eventId = row.event_id != null ? Number(row.event_id) : undefined;
       const featureId = isCluster ? row.cluster_id : eventId;
-      const extentDeg = row.extent_degrees != null ? Number(row.extent_degrees) : 0;
 
       return {
         type: "Feature",
-        id: featureId, // Root-level ID for MapLibre feature tracking
+        id: featureId,
         geometry: {
           type: "Point",
           coordinates: [Number.parseFloat(String(row.longitude)), Number.parseFloat(String(row.latitude))],
@@ -114,7 +152,7 @@ const transformResultToClusters = (rows: ClusterRow[], zoom: number) =>
           ...(isCluster ? { count: Number(row.event_count) } : {}),
           ...(!isCluster && eventId != null ? { eventId } : {}),
           ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
-          ...(isCluster && extentDeg > 0 ? { extentRadius: Math.round(degreesToPixels(extentDeg, zoom)) } : {}),
+          ...(hexRadiusPx != null ? { hexRadius: Math.round(hexRadiusPx) } : {}),
         },
       };
     });

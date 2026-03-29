@@ -46,7 +46,7 @@ jobs:
       - name: Setup database
         run: |
           psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE timetiles;"
-          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE SCHEMA IF NOT EXISTS payload;"
+          psql -h localhost -U timetiles_user -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE EXTENSION IF NOT EXISTS h3; CREATE SCHEMA IF NOT EXISTS payload;"
 
       - name: Run database migrations
         timeout-minutes: 2

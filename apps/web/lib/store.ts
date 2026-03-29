@@ -12,14 +12,17 @@ import { devtools } from "zustand/middleware";
 import type { MapBounds } from "@/lib/geospatial/types";
 import type { ClusterDensitySettings } from "@/lib/hooks/use-events-queries";
 
+/** Clustering algorithm. */
+export type ClusterAlgorithm = "h3" | "grid-k" | "dbscan";
+
 /** Cluster density preset or expert mode. */
 export type ClusterDensityMode = "fine" | "normal" | "coarse" | "expert";
 
-/** Preset values for cluster density. */
+/** Preset values for cluster resolution (target number of clusters). */
 export const CLUSTER_DENSITY_PRESETS: Record<Exclude<ClusterDensityMode, "expert">, ClusterDensitySettings> = {
-  fine: { clusterRadius: 20, clusterZoomFactor: 1.2 },
-  normal: { clusterRadius: 30, clusterZoomFactor: 1.4 },
-  coarse: { clusterRadius: 60, clusterZoomFactor: 1.6 },
+  fine: { targetClusters: 50 },
+  normal: { targetClusters: 25 },
+  coarse: { targetClusters: 10 },
 };
 
 // Define the shape of our UI state (non-URL state)
@@ -33,8 +36,11 @@ interface UIState {
    * `totalEvents` directly from React Query via `useEventsTotalQuery`.
    */
   mapStats: { visibleEvents: number } | null;
+  clusterAlgorithm: ClusterAlgorithm;
   clusterDensityMode: ClusterDensityMode;
   clusterDensity: ClusterDensitySettings;
+  showHexBoundaries: boolean;
+  mergeOverlapping: boolean;
 }
 
 // Define the shape of our UI-only store
@@ -46,6 +52,9 @@ interface UIStore {
   toggleFilterDrawer: () => void;
   setMapBounds: (bounds: UIState["mapBounds"]) => void;
   setMapStats: (stats: UIState["mapStats"]) => void;
+  setShowHexBoundaries: (show: boolean) => void;
+  setMergeOverlapping: (merge: boolean) => void;
+  setClusterAlgorithm: (algorithm: ClusterAlgorithm) => void;
   setClusterDensityMode: (mode: ClusterDensityMode) => void;
   setClusterDensity: (density: ClusterDensitySettings) => void;
 }
@@ -63,6 +72,9 @@ export const useUIStore = create<UIStore>()(
       isFilterDrawerOpen: true,
       mapBounds: null,
       mapStats: null,
+      showHexBoundaries: false,
+      mergeOverlapping: true,
+      clusterAlgorithm: "h3" as ClusterAlgorithm,
       clusterDensityMode: "normal",
       clusterDensity: CLUSTER_DENSITY_PRESETS.normal,
     },
@@ -76,13 +88,26 @@ export const useUIStore = create<UIStore>()(
     setMapBounds: createUIStateSetter(set, "mapBounds"),
     setMapStats: createUIStateSetter(set, "mapStats"),
 
+    setShowHexBoundaries: createUIStateSetter(set, "showHexBoundaries"),
+    setMergeOverlapping: createUIStateSetter(set, "mergeOverlapping"),
+    setClusterAlgorithm: (algorithm: ClusterAlgorithm) =>
+      set((state) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          clusterAlgorithm: algorithm,
+          clusterDensity: { ...state.ui.clusterDensity, clusterAlgorithm: algorithm },
+        },
+      })),
     setClusterDensityMode: (mode: ClusterDensityMode) =>
       set((state) => ({
         ...state,
         ui: {
           ...state.ui,
           clusterDensityMode: mode,
-          ...(mode !== "expert" ? { clusterDensity: CLUSTER_DENSITY_PRESETS[mode] } : {}),
+          ...(mode !== "expert"
+            ? { clusterDensity: { ...CLUSTER_DENSITY_PRESETS[mode], clusterAlgorithm: state.ui.clusterAlgorithm } }
+            : {}),
         },
       })),
     setClusterDensity: createUIStateSetter(set, "clusterDensity"),

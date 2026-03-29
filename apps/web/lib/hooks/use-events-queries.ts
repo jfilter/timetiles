@@ -106,8 +106,12 @@ const fetchEventsInternal = async (
 
 /** Cluster density settings for the map clustering API. */
 export interface ClusterDensitySettings {
-  clusterRadius?: number;
-  clusterZoomFactor?: number;
+  targetClusters?: number;
+  clusterAlgorithm?: "h3" | "grid-k" | "dbscan";
+  minPoints?: number;
+  mergeOverlapping?: boolean;
+  /** Zoom-to-H3-resolution multiplier (default 0.7). Higher = finer hexes at same zoom. */
+  h3ResolutionScale?: number;
 }
 
 const fetchMapClusters = async (
@@ -119,8 +123,11 @@ const fetchMapClusters = async (
   density?: ClusterDensitySettings
 ): Promise<MapClustersResponse> => {
   const extra: Record<string, string> = { zoom: zoom.toString() };
-  if (density?.clusterRadius != null) extra.clusterRadius = density.clusterRadius.toString();
-  if (density?.clusterZoomFactor != null) extra.clusterZoomFactor = density.clusterZoomFactor.toString();
+  if (density?.targetClusters != null) extra.targetClusters = density.targetClusters.toString();
+  if (density?.clusterAlgorithm != null) extra.clusterAlgorithm = density.clusterAlgorithm;
+  if (density?.minPoints != null) extra.minPoints = density.minPoints.toString();
+  if (density?.mergeOverlapping != null) extra.mergeOverlapping = density.mergeOverlapping.toString();
+  if (density?.h3ResolutionScale != null) extra.h3ResolutionScale = density.h3ResolutionScale.toString();
   const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });

@@ -5774,6 +5774,10 @@ export interface Setting {
      * When enabled, users with trust level 3+ can create scraper repos and run scrapers
      */
     enableScrapers?: boolean | null;
+    /**
+     * When enabled, shows advanced clustering algorithm selection and parameter tuning in the map UI
+     */
+    enableExpertMode?: boolean | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -5917,6 +5921,7 @@ export interface SettingsSelect<T extends boolean = true> {
         enableScheduledJobExecution?: T;
         enableUrlFetchCaching?: T;
         enableScrapers?: T;
+        enableExpertMode?: T;
       };
   updatedAt?: T;
   createdAt?: T;
