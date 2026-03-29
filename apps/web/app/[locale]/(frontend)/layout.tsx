@@ -186,16 +186,24 @@ const SiteFooter = ({
           <div className="flex items-center gap-4">
             <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/ptf-logo-black.svg" alt="Prototype Fund" className="h-5 w-auto dark:hidden" />
+              <img
+                src={locale === "de" ? "/logos/ptf-banner-de-light.svg" : "/logos/ptf-banner-en-light.svg"}
+                alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
+                className="h-16 w-auto dark:hidden"
+              />
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/ptf-logo-white.svg" alt="Prototype Fund" className="hidden h-5 w-auto dark:block" />
+              <img
+                src={locale === "de" ? "/logos/ptf-banner-de-dark.svg" : "/logos/ptf-banner-en-dark.svg"}
+                alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
+                className="hidden h-16 w-auto dark:block"
+              />
             </a>
             <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={locale === "de" ? "/logos/bmftr-de.svg" : "/logos/bmftr-en.svg"}
                 alt={footerMessages.bmftrAlt}
-                className="h-16 w-auto rounded"
+                className="h-16 w-auto"
               />
             </a>
             <span className="text-muted-foreground text-xs">{footerMessages.fundingText}</span>

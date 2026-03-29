@@ -447,7 +447,7 @@
 }
 
 .tt-funded-logos .tt-funding-logo-ptf img {
-  height: 28px;
+  height: 100px;
   width: auto;
 }
 
@@ -475,7 +475,7 @@
 
 .tt-funding-logo img {
   display: block;
-  height: 28px;
+  height: 100px;
   width: auto;
 }
 
@@ -494,7 +494,6 @@
 .tt-funding-logo-bmftr img {
   height: 100px;
   width: auto;
-  border-radius: 4px;
 }
 
 .tt-funding-fkz {
