@@ -66,7 +66,7 @@ source:
           selector: ".widget_listing_content"
         - name: date_raw
           selector: ".widget_listing_content"
-          pattern: "\\d{1,2}\\.\\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s*\\d{4}"
+          pattern: "\\d{1,2}\\.\\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s*\\d{4}|\\d{1,2}\\.\\d{1,2}\\.\\d{4}"
 
 catalog:
   name: Offener Prozess

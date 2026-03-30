@@ -236,7 +236,7 @@ export const createEventData = (
     sourceData: sourceRow,
     transformedData: row,
     uniqueId,
-    eventTimestamp: (extractTimestamp(row, fieldMappings.timestampPath) ?? new Date()).toISOString(),
+    eventTimestamp: extractTimestamp(row, fieldMappings.timestampPath)?.toISOString() ?? null,
     eventEndTimestamp: extractEndTimestamp(row, fieldMappings.endTimestampPath)?.toISOString() ?? null,
     location,
     locationName,
