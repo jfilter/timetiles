@@ -53,11 +53,12 @@ import { ClusterFocusPanel } from "./cluster-focus-panel";
 import {
   buildClusterLabelLayerConfig,
   buildClusterLayerConfig,
-  buildEventPointLayerConfig,
   buildH3FillLayerConfig,
   buildH3HoverFillLayerConfig,
   buildH3HoverOutlineLayerConfig,
   buildH3OutlineLayerConfig,
+  buildLocationLabelLayerConfig,
+  buildLocationLayerConfig,
   DEFAULT_CLUSTERS,
   fitMapToBounds,
   INITIAL_VIEW_STATE,
@@ -77,12 +78,16 @@ export interface ClusterFeature {
   id?: string | number;
   geometry: { type: "Point"; coordinates: [number, number] };
   properties: {
-    type: "event-cluster" | "event-point";
+    type: "event-cluster" | "event-location";
     count?: number;
+    clusterId?: string;
     eventId?: number;
     title?: string;
     extentRadius?: number;
     sourceCells?: string[];
+    h3Cell?: string;
+    locationName?: string;
+    locationCount?: number;
   };
 }
 
@@ -381,12 +386,10 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
     };
 
-    const eventPointFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-point"];
+    const locationFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-location"];
     const clusterFilter: ["==", ["get", string], string] = ["==", ["get", "type"], "event-cluster"];
-    const eventPointLayer = {
-      ...buildEventPointLayerConfig(mapColors, highlightedCells != null),
-      filter: eventPointFilter,
-    };
+    const locationLayer = buildLocationLayerConfig(locationFilter, mapColors, maxCount, highlightedCells);
+    const locationLabelLayer = buildLocationLabelLayerConfig(locationFilter, highlightedCells);
     const clusterLayer = buildClusterLayerConfig(clusterFilter, mapColors, maxCount, highlightedCells);
     const clusterLabelLayer = buildClusterLabelLayerConfig(clusterFilter, highlightedCells);
 
@@ -607,14 +610,16 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
           {/* Circles + labels always on top so mouse events work */}
           {!hexagonMode && (
             <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
-              <Layer {...eventPointLayer} />
+              <Layer {...locationLayer} />
+              <Layer {...locationLabelLayer} />
               <Layer {...clusterLayer} />
               <Layer {...clusterLabelLayer} />
             </Source>
           )}
           {hexagonMode && (
             <Source type="geojson" data={geojsonData} id="clustered-map-source" key="clustered-map-source">
-              <Layer {...eventPointLayer} />
+              <Layer {...locationLayer} />
+              <Layer {...locationLabelLayer} />
             </Source>
           )}
           {popupInfo && (

@@ -32,8 +32,8 @@ export const EventFiltersSchema = z.object({
   scopeDatasets: ScopeIdsParamSchema.optional(),
   /** H3 cell IDs for precise spatial filtering (comma-separated) */
   clusterCells: z.string().optional(),
-  /** H3 resolution for clusterCells (2-13) */
-  h3Resolution: z.coerce.number().int().min(2).max(13).optional(),
+  /** H3 resolution for clusterCells (2-15) */
+  h3Resolution: z.coerce.number().int().min(2).max(15).optional(),
 });
 
 export type EventFilters = z.infer<typeof EventFiltersSchema>;
@@ -202,7 +202,10 @@ export const MapClustersQuerySchema = EventFiltersSchema.extend({
 export type MapClustersQuery = z.infer<typeof MapClustersQuerySchema>;
 
 /**
- * GeoJSON Feature for a cluster or single event.
+ * GeoJSON Feature for a cluster or unique location.
+ *
+ * - `event-cluster`: zoom-dependent grouping of nearby locations
+ * - `event-location`: zoom-independent grouping of co-located events (H3 r15 cell)
  */
 export const ClusterFeatureSchema = z
   .object({
@@ -210,10 +213,15 @@ export const ClusterFeatureSchema = z
     id: z.union([z.number(), z.string()]),
     geometry: z.object({ type: z.literal("Point"), coordinates: z.tuple([z.number(), z.number()]) }),
     properties: z.object({
-      type: z.enum(["event-cluster", "event-point"]),
+      type: z.enum(["event-cluster", "event-location"]),
       count: z.number().int().optional(),
+      clusterId: z.string().optional(),
       title: z.string().optional(),
       sourceCells: z.array(z.string()).optional(),
+      h3Cell: z.string().optional(),
+      eventId: z.number().int().optional(),
+      locationName: z.string().optional(),
+      locationCount: z.number().int().optional(),
     }),
   })
   .openapi("ClusterFeature");
@@ -254,7 +262,7 @@ export type ClusterStatsResponse = z.infer<typeof ClusterStatsResponseSchema>;
 /** Query parameters for GET /api/v1/events/cluster-summary */
 export const ClusterSummaryQuerySchema = EventFiltersSchema.extend({
   cells: z.string().min(1),
-  h3Resolution: z.coerce.number().int().min(2).max(13),
+  h3Resolution: z.coerce.number().int().min(2).max(15),
 }).openapi("ClusterSummaryQuery");
 
 export type ClusterSummaryQuery = z.infer<typeof ClusterSummaryQuerySchema>;
@@ -262,6 +270,7 @@ export type ClusterSummaryQuery = z.infer<typeof ClusterSummaryQuerySchema>;
 /** Response for GET /api/v1/events/cluster-summary */
 export type ClusterSummaryResponse = {
   totalCount: number;
+  locationCount: number;
   temporalRange: { earliest: string; latest: string } | null;
   datasets: Array<{ id: number; name: string; count: number }>;
   catalogs: Array<{ id: number; name: string; count: number }>;

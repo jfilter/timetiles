@@ -56,8 +56,9 @@ export const GET = apiRoute({
 
     // H3: calculate hex circumradius in pixels so circles fit inside hexagons
     let hexRadiusPx: number | undefined;
+    let h3Res: number | undefined;
     if (algorithm === "h3") {
-      const h3Res = Math.min(13, Math.max(2, Math.round(query.zoom * h3Scale)));
+      h3Res = Math.min(15, Math.max(2, Math.round(query.zoom * h3Scale)));
       const edgeMeters: Record<number, number> = {
         2: 183000,
         3: 69000,
@@ -71,14 +72,16 @@ export const GET = apiRoute({
         11: 29,
         12: 11,
         13: 4,
+        14: 1.5,
+        15: 0.5,
       };
       const centerLat = (bounds.south + bounds.north) / 2;
       const groundRes = (156543.03 * Math.cos((centerLat * Math.PI) / 180)) / Math.pow(2, query.zoom);
       hexRadiusPx = (edgeMeters[h3Res] ?? 100) / groundRes;
     }
 
-    const clusters = transformResultToClusters(result.rows, hexRadiusPx);
-    return { type: "FeatureCollection", features: clusters };
+    const features = transformResultToFeatures(result.rows, hexRadiusPx, h3Res);
+    return { type: "FeatureCollection", features };
   },
 });
 
@@ -90,6 +93,8 @@ interface ClusterRow {
   event_id: string | number | null;
   event_title: string | null;
   source_cells: string[] | null;
+  location_count: string | number | null;
+  location_name: string | null;
 }
 
 interface ClusteringOptions {
@@ -138,33 +143,75 @@ const executeClusteringQuery = async (
   `)) as unknown as { rows: ClusterRow[] };
 };
 
-const transformResultToClusters = (rows: ClusterRow[], hexRadiusPx?: number) =>
-  rows
-    .filter((row) => {
-      // Skip rows with missing or non-numeric coordinates instead of defaulting to (0, 0)
-      const hasLon = typeof row.longitude === "string" || typeof row.longitude === "number";
-      const hasLat = typeof row.latitude === "string" || typeof row.latitude === "number";
-      return hasLon && hasLat;
-    })
-    .map((row) => {
-      const isCluster = Number(row.event_count) > 1;
-      const eventId = row.event_id != null ? Number(row.event_id) : undefined;
-      const featureId = isCluster ? row.cluster_id : eventId;
+/** H3 r15 is the "location" resolution — features at this level are locations, not clusters. */
+const LOCATION_RESOLUTION = 15;
 
-      return {
-        type: "Feature",
-        id: featureId,
-        geometry: {
-          type: "Point",
-          coordinates: [Number.parseFloat(String(row.longitude)), Number.parseFloat(String(row.latitude))],
-        },
-        properties: {
-          type: isCluster ? "event-cluster" : "event-point",
-          ...(isCluster ? { count: Number(row.event_count), clusterId: String(row.cluster_id) } : {}),
-          ...(!isCluster && eventId != null ? { eventId } : {}),
-          ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
-          ...(hexRadiusPx != null ? { hexRadius: Math.round(hexRadiusPx) } : {}),
-          ...(row.source_cells != null && row.source_cells.length > 1 ? { sourceCells: row.source_cells } : {}),
-        },
-      };
-    });
+const hasValidCoords = (row: ClusterRow) => {
+  const hasLon = typeof row.longitude === "string" || typeof row.longitude === "number";
+  const hasLat = typeof row.latitude === "string" || typeof row.latitude === "number";
+  return hasLon && hasLat;
+};
+
+const parseCoords = (row: ClusterRow): [number, number] => [
+  Number.parseFloat(String(row.longitude)),
+  Number.parseFloat(String(row.latitude)),
+];
+
+const buildSharedProps = (row: ClusterRow, hexRadiusPx?: number) => ({
+  ...(row.location_name != null ? { locationName: row.location_name } : {}),
+  ...(row.event_title != null ? { title: row.event_title } : {}),
+  ...(hexRadiusPx != null ? { hexRadius: Math.round(hexRadiusPx) } : {}),
+});
+
+/** Transform a row into an event-location feature (finest H3 resolution). */
+const buildLocationFeature = (row: ClusterRow, hexRadiusPx?: number) => {
+  const count = Number(row.event_count);
+  const eventId = row.event_id != null ? Number(row.event_id) : undefined;
+  return {
+    type: "Feature",
+    id: row.cluster_id ?? eventId,
+    geometry: { type: "Point", coordinates: parseCoords(row) },
+    properties: {
+      type: "event-location" as const,
+      count,
+      h3Cell: String(row.cluster_id),
+      ...(count === 1 && eventId != null ? { eventId } : {}),
+      ...buildSharedProps(row, hexRadiusPx),
+    },
+  };
+};
+
+/** Transform a row into an event-cluster or single-event-location feature. */
+const buildClusterFeature = (row: ClusterRow, hexRadiusPx?: number) => {
+  const count = Number(row.event_count);
+  const eventId = row.event_id != null ? Number(row.event_id) : undefined;
+  const locationCount = row.location_count != null ? Number(row.location_count) : undefined;
+  const isCluster = count > 1;
+
+  return {
+    type: "Feature",
+    id: isCluster ? row.cluster_id : eventId,
+    geometry: { type: "Point", coordinates: parseCoords(row) },
+    properties: {
+      type: isCluster ? ("event-cluster" as const) : ("event-location" as const),
+      ...(isCluster
+        ? { count, clusterId: String(row.cluster_id), ...(locationCount != null ? { locationCount } : {}) }
+        : { count: 1, h3Cell: String(row.cluster_id), ...(eventId != null ? { eventId } : {}) }),
+      ...buildSharedProps(row, hexRadiusPx),
+      ...(row.source_cells != null && row.source_cells.length > 1 ? { sourceCells: row.source_cells } : {}),
+    },
+  };
+};
+
+/**
+ * Transform SQL rows into GeoJSON features.
+ *
+ * When h3Res >= 15 (location resolution), each row becomes an `event-location`.
+ * At coarser resolutions, rows become `event-cluster` with a `locationCount`.
+ */
+const transformResultToFeatures = (rows: ClusterRow[], hexRadiusPx?: number, h3Res?: number) => {
+  const isLocationRes = h3Res != null && h3Res >= LOCATION_RESOLUTION;
+  return rows
+    .filter(hasValidCoords)
+    .map((row) => (isLocationRes ? buildLocationFeature(row, hexRadiusPx) : buildClusterFeature(row, hexRadiusPx)));
+};

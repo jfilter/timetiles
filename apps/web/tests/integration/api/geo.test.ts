@@ -16,7 +16,7 @@ import { GET } from "../../../app/api/v1/events/geo/route";
 interface MapClusterFeature {
   type: "Feature";
   geometry: { type: "Point"; coordinates: [number, number] };
-  properties: { id: string; type: "event-cluster" | "event-point"; count?: number; title?: string };
+  properties: { id: string; type: "event-cluster" | "event-location"; count?: number; title?: string };
 }
 
 describe("/api/v1/events/geo", () => {
@@ -150,7 +150,7 @@ describe("/api/v1/events/geo", () => {
 
     // At zoom level 2, we should have clusters
     const clusters = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-cluster");
-    const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-point");
+    const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-location");
 
     expect(data.features.length).toBeGreaterThan(0);
     expect(clusters.length + singles.length).toBeGreaterThan(0);
@@ -211,7 +211,7 @@ describe("/api/v1/events/geo", () => {
         },
         properties: {
           id: row.cluster_id ?? row.event_id,
-          type: isCluster ? "event-cluster" : "event-point",
+          type: isCluster ? "event-cluster" : "event-location",
           ...(isCluster ? { count: Number(row.event_count) } : {}),
           ...(row.event_title
             ? { title: typeof row.event_title === "string" ? row.event_title : JSON.stringify(row.event_title) }
@@ -235,18 +235,17 @@ describe("/api/v1/events/geo", () => {
       expect(feature.geometry).toHaveProperty("type", "Point");
       expect(feature).toHaveProperty("properties");
       expect(feature.properties).toHaveProperty("type");
-      expect(["event-cluster", "event-point"]).toContain(feature.properties.type);
+      expect(["event-cluster", "event-location"]).toContain(feature.properties.type);
     }
 
-    // If it's an individual event, verify structure
-    const singles = data.features.filter((f: any) => f.properties.type === "event-point");
+    // If it's a single-event location, verify structure
+    const singles = data.features.filter((f: any) => f.properties.type === "event-location");
     if (singles.length > 0) {
       const single = singles[0];
       expect(single).toBeDefined();
       if (single) {
         expect(single.properties).toHaveProperty("id");
         expect(single.properties).toHaveProperty("title");
-        expect(single.properties).not.toHaveProperty("count");
       }
     }
   });
@@ -513,7 +512,7 @@ describe("/api/v1/events/geo", () => {
     const sfCount = Number(clusterResult.rows[0]!.event_count);
 
     // Now query with clusterCells filter — should return fewer or equal results
-    const h3Resolution = Math.min(13, Math.max(2, Math.round(10 * 0.6)));
+    const h3Resolution = Math.min(15, Math.max(2, Math.round(10 * 0.6)));
     const filteredResult = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT COUNT(*)::integer as cnt FROM payload.events e
@@ -546,7 +545,7 @@ describe("/api/v1/events/geo", () => {
     expect(clusterResult.rows.length).toBeGreaterThan(0);
     const sfClusterId = clusterResult.rows[0]!.cluster_id;
     const sfCount = Number(clusterResult.rows[0]!.event_count);
-    const h3Resolution = Math.min(13, Math.max(2, Math.round(10 * 0.6)));
+    const h3Resolution = Math.min(15, Math.max(2, Math.round(10 * 0.6)));
 
     // Query temporal histogram with H3 cell filter via JSONB
     const result = (await testEnv.payload.db.drizzle.execute(

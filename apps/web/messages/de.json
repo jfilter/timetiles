@@ -192,6 +192,7 @@
     "prefLight": "Hell",
     "prefDark": "Dunkel",
     "clusterFocusCount": "{count, plural, one {# Ereignis} other {# Ereignisse}} im Cluster",
+    "clusterFocusCountWithLocations": "{count, plural, one {# Ereignis} other {# Ereignisse}} an {locations, plural, one {# Ort} other {# Orten}}",
     "zoomIn": "Hineinzoomen",
     "filterToCluster": "Filtern",
     "clusterFilterEvents": "Nur diese Ereignisse",

@@ -80,7 +80,7 @@ export const GET = apiRoute({
 
     // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
     if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
-      const res = Math.min(13, Math.max(2, Math.round(ctx.filters.h3Resolution)));
+      const res = Math.min(15, Math.max(2, Math.round(ctx.filters.h3Resolution)));
       const col = "h3_r" + String(res);
       const escaped = ctx.filters.clusterCells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
       const idResult = (await payload.db.drizzle.execute(

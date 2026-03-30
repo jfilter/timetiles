@@ -37,6 +37,7 @@ export const GET = apiRoute({
 
 const emptyResponse = (): ClusterSummaryResponse => ({
   totalCount: 0,
+  locationCount: 0,
   temporalRange: null,
   datasets: [],
   catalogs: [],
@@ -62,10 +63,11 @@ const executeClusterSummary = async (
 
   // Run all queries in parallel
   const [summaryResult, datasetsResult, catalogsResult, previewResult] = await Promise.all([
-    // 1. Total count + temporal range
+    // 1. Total count + temporal range + unique locations
     payload.db.drizzle.execute(sql`
       SELECT
         COUNT(*)::integer as total_count,
+        COUNT(DISTINCT e.h3_r15)::integer as location_count,
         MIN(e.event_timestamp) as earliest,
         MAX(e.event_timestamp) as latest
       FROM payload.events e
@@ -73,7 +75,9 @@ const executeClusterSummary = async (
       WHERE ${whereClause}
         AND e.location_longitude IS NOT NULL
         AND ${cellCondition}
-    `) as Promise<{ rows: Array<{ total_count: number; earliest: string | null; latest: string | null }> }>,
+    `) as Promise<{
+      rows: Array<{ total_count: number; location_count: number; earliest: string | null; latest: string | null }>;
+    }>,
 
     // 2. Dataset breakdown
     payload.db.drizzle.execute(sql`
@@ -130,6 +134,7 @@ const executeClusterSummary = async (
 
   return {
     totalCount: summary?.total_count ?? 0,
+    locationCount: summary?.location_count ?? 0,
     temporalRange:
       summary?.earliest != null ? { earliest: summary.earliest, latest: summary.latest ?? summary.earliest } : null,
     datasets: datasetsResult.rows.map((r) => ({ id: r.id, name: r.name, count: r.count })),

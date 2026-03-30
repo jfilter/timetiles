@@ -64,7 +64,7 @@ export const useMapInteractions = ({
         sourceCells = rawSourceCells as string[];
       }
 
-      const h3Resolution = Math.min(13, Math.max(2, Math.round(zoom * h3ResolutionScale)));
+      const h3Resolution = Math.min(15, Math.max(2, Math.round(zoom * h3ResolutionScale)));
 
       // Toggle: clicking same cluster clears focus, different cluster switches focus
       if (focusedCluster?.clusterId === clusterId) {
@@ -87,16 +87,29 @@ export const useMapInteractions = ({
     [h3ResolutionScale, clearFocusedCluster]
   );
 
-  const handleEventPointClick = useCallback(
+  const setClusterFilterCells = useUIStore((s) => s.setClusterFilterCells);
+
+  /** Handle click on an event-location feature. */
+  const handleLocationClick = useCallback(
     (feature: GeoJSON.Feature) => {
-      const { eventId: rawEventId } = feature.properties ?? {};
+      const count = Number(feature.properties?.count ?? 1);
+      const { eventId: rawEventId, h3Cell } = feature.properties ?? {};
       const eventId = typeof rawEventId === "number" ? rawEventId : Number(rawEventId);
 
-      if (onEventClick && Number.isFinite(eventId)) {
+      // Single event at this location: open event detail directly
+      if (count === 1 && onEventClick && Number.isFinite(eventId)) {
         onEventClick(eventId);
         return;
       }
 
+      // Multiple events: filter everything to this location's H3 r15 cell
+      if (typeof h3Cell === "string" && h3Cell.length > 0) {
+        setClusterFilterCells([h3Cell]);
+        clearFocusedCluster();
+        return;
+      }
+
+      // Fallback: show popup
       const coordinates = getValidCoordinates(feature);
       if (coordinates) {
         const { title } = feature.properties ?? {};
@@ -107,7 +120,7 @@ export const useMapInteractions = ({
         });
       }
     },
-    [formatFallbackTitle, onEventClick]
+    [formatFallbackTitle, onEventClick, setClusterFilterCells, clearFocusedCluster]
   );
 
   const handleClick = useCallback(
@@ -120,9 +133,9 @@ export const useMapInteractions = ({
       }
       const { type } = feature.properties ?? {};
       if (type === "event-cluster") handleClusterClick(feature);
-      else if (type === "event-point") handleEventPointClick(feature);
+      else if (type === "event-location") handleLocationClick(feature);
     },
-    [handleClusterClick, handleEventPointClick, clearFocusedCluster]
+    [handleClusterClick, handleLocationClick, clearFocusedCluster]
   );
 
   return { popupInfo, closePopup, handleClick, handleFocusedClusterZoom, clearFocusedCluster };

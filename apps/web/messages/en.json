@@ -192,6 +192,7 @@
     "prefLight": "Light",
     "prefDark": "Dark",
     "clusterFocusCount": "{count, plural, one {# event} other {# events}} in cluster",
+    "clusterFocusCountWithLocations": "{count, plural, one {# event} other {# events}} at {locations, plural, one {# location} other {# locations}}",
     "zoomIn": "Zoom in",
     "filterToCluster": "Filter",
     "clusterFilterEvents": "Show only these events",
