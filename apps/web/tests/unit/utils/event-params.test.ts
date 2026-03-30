@@ -36,14 +36,12 @@ describe("event-params", () => {
   describe("buildBaseEventParams", () => {
     it("should build params from filter state", () => {
       const filters = {
-        catalog: "my-catalog",
         datasets: ["d1", "d2"],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
         fieldFilters: { type: ["A"] },
       };
       const params = buildBaseEventParams(filters);
-      expect(params.get("catalog")).toBe("my-catalog");
       expect(params.get("datasets")).toBe("d1,d2");
       expect(params.get("startDate")).toBe("2024-01-01");
       expect(params.get("endDate")).toBe("2024-12-31");
@@ -51,13 +49,13 @@ describe("event-params", () => {
     });
 
     it("should skip empty values", () => {
-      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const params = buildBaseEventParams(filters);
       expect(params.toString()).toBe("");
     });
 
     it("should include additional params", () => {
-      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const params = buildBaseEventParams(filters, { extra: "value" });
       expect(params.get("extra")).toBe("value");
     });
@@ -65,7 +63,7 @@ describe("event-params", () => {
 
   describe("buildEventParams", () => {
     it("should include SimpleBounds", () => {
-      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const bounds = { north: 41, south: 40, east: -73, west: -74 };
       const params = buildEventParams(filters, bounds);
       const parsed = JSON.parse(params.get("bounds")!);
@@ -73,7 +71,7 @@ describe("event-params", () => {
     });
 
     it("should handle LngLatBounds-like objects", () => {
-      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const bounds = { getWest: () => -74, getSouth: () => 40, getEast: () => -73, getNorth: () => 41 };
       const params = buildEventParams(filters, bounds as any);
       const parsed = JSON.parse(params.get("bounds")!);
@@ -81,14 +79,14 @@ describe("event-params", () => {
     });
 
     it("should skip null bounds", () => {
-      const filters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
       const params = buildEventParams(filters, null);
       expect(params.get("bounds")).toBeNull();
     });
   });
 
   describe("scope parameter", () => {
-    const emptyFilters = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+    const emptyFilters = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
     it("buildBaseEventParams without scope produces no scope params", () => {
       const params = buildBaseEventParams(emptyFilters);

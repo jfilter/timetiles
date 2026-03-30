@@ -10,7 +10,6 @@ import type { FilterState } from "@/lib/types/filter-state";
 import { formatDateRangeLabel } from "@/lib/utils/date";
 
 export interface FilterLabels {
-  catalog?: string;
   datasets: Array<{ id: string; name: string }>;
   dateRange?: string;
   fieldFilters?: Record<string, string[]>;
@@ -42,11 +41,10 @@ export const formatDateRange = formatDateRangeLabel;
 /** Get human-readable filter labels */
 export const getFilterLabels = (
   filters: FilterState,
-  catalogs: DataSourceCatalog[],
+  _catalogs: DataSourceCatalog[],
   datasets: DataSourceDataset[],
   locale?: string
 ): FilterLabels => ({
-  catalog: filters.catalog != null && filters.catalog !== "" ? getCatalogName(catalogs, filters.catalog) : undefined,
   datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id) })),
   dateRange: formatDateRange(filters.startDate, filters.endDate, locale),
   fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,

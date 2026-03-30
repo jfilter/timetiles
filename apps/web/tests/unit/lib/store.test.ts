@@ -15,32 +15,13 @@ import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter }
 describe("Filter State Helper Functions", () => {
   describe("getActiveFilterCount", () => {
     it("should return 0 for empty filters", () => {
-      const filters: FilterState = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
-
-      expect(getActiveFilterCount(filters)).toBe(0);
-    });
-
-    it("should count catalog filter", () => {
-      const filters: FilterState = {
-        catalog: "catalog-1",
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
-
-      expect(getActiveFilterCount(filters)).toBe(1);
-    });
-
-    it("should not count empty string catalog", () => {
-      const filters: FilterState = { catalog: "", datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(0);
     });
 
     it("should count each dataset separately", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: ["dataset-1", "dataset-2", "dataset-3"],
         startDate: null,
         endDate: null,
@@ -51,50 +32,31 @@ describe("Filter State Helper Functions", () => {
     });
 
     it("should count date range as one filter when both dates present", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: "2024-01-01",
-        endDate: "2024-12-31",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: "2024-12-31", fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(1);
     });
 
     it("should count date range as one filter when only startDate present", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: "2024-01-01",
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: null, fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(1);
     });
 
     it("should count date range as one filter when only endDate present", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: "2024-12-31",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: "2024-12-31", fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(1);
     });
 
     it("should not count empty string dates", () => {
-      const filters: FilterState = { catalog: null, datasets: [], startDate: "", endDate: "", fieldFilters: {} };
+      const filters: FilterState = { datasets: [], startDate: "", endDate: "", fieldFilters: {} };
 
       expect(getActiveFilterCount(filters)).toBe(0);
     });
 
     it("should count field filter values", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: [],
         startDate: null,
         endDate: null,
@@ -107,20 +69,18 @@ describe("Filter State Helper Functions", () => {
 
     it("should count all filter types together", () => {
       const filters: FilterState = {
-        catalog: "catalog-1",
         datasets: ["dataset-1", "dataset-2"],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
         fieldFilters: {},
       };
 
-      // catalog (1) + datasets (2) + date range (1) = 4
-      expect(getActiveFilterCount(filters)).toBe(4);
+      // datasets (2) + date range (1) = 3
+      expect(getActiveFilterCount(filters)).toBe(3);
     });
 
     it("should handle mixed empty and non-empty values", () => {
       const filters: FilterState = {
-        catalog: "",
         datasets: ["dataset-1"],
         startDate: "2024-01-01",
         endDate: null,
@@ -134,68 +94,37 @@ describe("Filter State Helper Functions", () => {
 
   describe("hasActiveFilters", () => {
     it("should return false for empty filters", () => {
-      const filters: FilterState = { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(false);
     });
 
     it("should return false for empty string values", () => {
-      const filters: FilterState = { catalog: "", datasets: [], startDate: "", endDate: "", fieldFilters: {} };
+      const filters: FilterState = { datasets: [], startDate: "", endDate: "", fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(false);
     });
 
-    it("should return true when catalog is set", () => {
-      const filters: FilterState = {
-        catalog: "catalog-1",
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
-
-      expect(hasActiveFilters(filters)).toBe(true);
-    });
-
     it("should return true when datasets are set", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: ["dataset-1"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: ["dataset-1"], startDate: null, endDate: null, fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
     it("should return true when startDate is set", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: "2024-01-01",
-        endDate: null,
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: null, fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
     it("should return true when endDate is set", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: "2024-12-31",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: "2024-12-31", fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
     it("should return true when multiple filters are set", () => {
       const filters: FilterState = {
-        catalog: "catalog-1",
         datasets: ["dataset-1", "dataset-2"],
         startDate: "2024-01-01",
         endDate: "2024-12-31",
@@ -206,109 +135,28 @@ describe("Filter State Helper Functions", () => {
     });
 
     it("should return true even with partial date range", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: "2024-01-01",
-        endDate: "",
-        fieldFilters: {},
-      };
+      const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: "", fieldFilters: {} };
 
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
     it("should return true when fieldFilters have values", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: { category: ["A"] },
-      };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: null, fieldFilters: { category: ["A"] } };
 
       expect(hasActiveFilters(filters)).toBe(true);
     });
 
     it("should return false when fieldFilters are empty arrays", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: { category: [] },
-      };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: null, fieldFilters: { category: [] } };
 
       expect(hasActiveFilters(filters)).toBe(false);
     });
   });
 
   describe("removeFilter", () => {
-    describe("catalog removal", () => {
-      it("should remove catalog filter", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: [],
-          startDate: null,
-          endDate: null,
-          fieldFilters: {},
-        };
-
-        const result = removeFilter(filters, "catalog");
-
-        expect(result.catalog).toBeNull();
-      });
-
-      it("should also clear datasets when removing catalog", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: ["dataset-1", "dataset-2"],
-          startDate: null,
-          endDate: null,
-          fieldFilters: {},
-        };
-
-        const result = removeFilter(filters, "catalog");
-
-        expect(result.catalog).toBeNull();
-        expect(result.datasets).toEqual([]);
-      });
-
-      it("should preserve date filters when removing catalog", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: [],
-          startDate: "2024-01-01",
-          endDate: "2024-12-31",
-          fieldFilters: {},
-        };
-
-        const result = removeFilter(filters, "catalog");
-
-        expect(result.startDate).toBe("2024-01-01");
-        expect(result.endDate).toBe("2024-12-31");
-      });
-
-      it("should not mutate original filter object", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: ["dataset-1"],
-          startDate: null,
-          endDate: null,
-          fieldFilters: {},
-        };
-
-        const result = removeFilter(filters, "catalog");
-
-        expect(filters.catalog).toBe("catalog-1");
-        expect(filters.datasets).toEqual(["dataset-1"]);
-        expect(result).not.toBe(filters);
-      });
-    });
-
     describe("datasets removal", () => {
       it("should remove all datasets when no value provided", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1", "dataset-2", "dataset-3"],
           startDate: null,
           endDate: null,
@@ -322,7 +170,6 @@ describe("Filter State Helper Functions", () => {
 
       it("should remove all datasets when empty string provided", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
@@ -336,7 +183,6 @@ describe("Filter State Helper Functions", () => {
 
       it("should remove specific dataset when value provided", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1", "dataset-2", "dataset-3"],
           startDate: null,
           endDate: null,
@@ -349,36 +195,15 @@ describe("Filter State Helper Functions", () => {
       });
 
       it("should preserve other datasets when removing specific dataset", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: ["dataset-1"],
-          startDate: null,
-          endDate: null,
-          fieldFilters: {},
-        };
+        const filters: FilterState = { datasets: ["dataset-1"], startDate: null, endDate: null, fieldFilters: {} };
 
         const result = removeFilter(filters, "datasets", "dataset-2");
 
         expect(result.datasets).toEqual(["dataset-1"]);
       });
 
-      it("should preserve catalog when removing datasets", () => {
-        const filters: FilterState = {
-          catalog: "catalog-1",
-          datasets: ["dataset-1", "dataset-2"],
-          startDate: null,
-          endDate: null,
-          fieldFilters: {},
-        };
-
-        const result = removeFilter(filters, "datasets");
-
-        expect(result.catalog).toBe("catalog-1");
-      });
-
       it("should not mutate original filter object", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1", "dataset-2"],
           startDate: null,
           endDate: null,
@@ -394,13 +219,7 @@ describe("Filter State Helper Functions", () => {
 
     describe("startDate removal", () => {
       it("should remove startDate filter", () => {
-        const filters: FilterState = {
-          catalog: null,
-          datasets: [],
-          startDate: "2024-01-01",
-          endDate: "2024-12-31",
-          fieldFilters: {},
-        };
+        const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: "2024-12-31", fieldFilters: {} };
 
         const result = removeFilter(filters, "startDate");
 
@@ -410,7 +229,6 @@ describe("Filter State Helper Functions", () => {
 
       it("should preserve other filters when removing startDate", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1"],
           startDate: "2024-01-01",
           endDate: null,
@@ -419,18 +237,11 @@ describe("Filter State Helper Functions", () => {
 
         const result = removeFilter(filters, "startDate");
 
-        expect(result.catalog).toBe("catalog-1");
         expect(result.datasets).toEqual(["dataset-1"]);
       });
 
       it("should not mutate original filter object", () => {
-        const filters: FilterState = {
-          catalog: null,
-          datasets: [],
-          startDate: "2024-01-01",
-          endDate: null,
-          fieldFilters: {},
-        };
+        const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: null, fieldFilters: {} };
 
         const result = removeFilter(filters, "startDate");
 
@@ -441,13 +252,7 @@ describe("Filter State Helper Functions", () => {
 
     describe("endDate removal", () => {
       it("should remove endDate filter", () => {
-        const filters: FilterState = {
-          catalog: null,
-          datasets: [],
-          startDate: "2024-01-01",
-          endDate: "2024-12-31",
-          fieldFilters: {},
-        };
+        const filters: FilterState = { datasets: [], startDate: "2024-01-01", endDate: "2024-12-31", fieldFilters: {} };
 
         const result = removeFilter(filters, "endDate");
 
@@ -457,7 +262,6 @@ describe("Filter State Helper Functions", () => {
 
       it("should preserve other filters when removing endDate", () => {
         const filters: FilterState = {
-          catalog: "catalog-1",
           datasets: ["dataset-1"],
           startDate: null,
           endDate: "2024-12-31",
@@ -466,18 +270,11 @@ describe("Filter State Helper Functions", () => {
 
         const result = removeFilter(filters, "endDate");
 
-        expect(result.catalog).toBe("catalog-1");
         expect(result.datasets).toEqual(["dataset-1"]);
       });
 
       it("should not mutate original filter object", () => {
-        const filters: FilterState = {
-          catalog: null,
-          datasets: [],
-          startDate: null,
-          endDate: "2024-12-31",
-          fieldFilters: {},
-        };
+        const filters: FilterState = { datasets: [], startDate: null, endDate: "2024-12-31", fieldFilters: {} };
 
         const result = removeFilter(filters, "endDate");
 
@@ -490,7 +287,6 @@ describe("Filter State Helper Functions", () => {
   describe("fieldFilters removal", () => {
     it("should remove specific field filter value with colon syntax", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: [],
         startDate: null,
         endDate: null,
@@ -503,13 +299,7 @@ describe("Filter State Helper Functions", () => {
     });
 
     it("should remove entire field when last value removed", () => {
-      const filters: FilterState = {
-        catalog: null,
-        datasets: [],
-        startDate: null,
-        endDate: null,
-        fieldFilters: { category: ["A"] },
-      };
+      const filters: FilterState = { datasets: [], startDate: null, endDate: null, fieldFilters: { category: ["A"] } };
 
       const result = removeFilter(filters, "fieldFilters", "category:A");
 
@@ -518,7 +308,6 @@ describe("Filter State Helper Functions", () => {
 
     it("should clear all field values for a field path without colon", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: [],
         startDate: null,
         endDate: null,
@@ -532,7 +321,6 @@ describe("Filter State Helper Functions", () => {
 
     it("should clear all field filters when no value provided", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: [],
         startDate: null,
         endDate: null,
@@ -544,23 +332,8 @@ describe("Filter State Helper Functions", () => {
       expect(result.fieldFilters).toEqual({});
     });
 
-    it("should also clear fieldFilters when removing catalog", () => {
-      const filters: FilterState = {
-        catalog: "catalog-1",
-        datasets: ["dataset-1"],
-        startDate: null,
-        endDate: null,
-        fieldFilters: { category: ["A"] },
-      };
-
-      const result = removeFilter(filters, "catalog");
-
-      expect(result.fieldFilters).toEqual({});
-    });
-
     it("should also clear fieldFilters when removing datasets", () => {
       const filters: FilterState = {
-        catalog: null,
         datasets: ["dataset-1"],
         startDate: null,
         endDate: null,
@@ -577,7 +350,7 @@ describe("Filter State Helper Functions", () => {
     it("should return empty filter state", () => {
       const result = clearAllFilters();
 
-      expect(result).toEqual({ catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} });
+      expect(result).toEqual({ datasets: [], startDate: null, endDate: null, fieldFilters: {} });
     });
 
     it("should always return same structure", () => {

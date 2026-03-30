@@ -17,7 +17,7 @@ import type { FilterState } from "@/lib/types/filter-state";
  */
 export const hasVisibleTemporalData = (
   datasets: DataSourceDataset[] | undefined,
-  filters: Pick<FilterState, "catalog" | "datasets">
+  filters: Pick<FilterState, "datasets">
 ): boolean => {
   if (!datasets || datasets.length === 0) return true;
 
@@ -26,9 +26,6 @@ export const hasVisibleTemporalData = (
   if (filters.datasets.length > 0) {
     const ids = new Set(filters.datasets.map(Number));
     visible = datasets.filter((d) => ids.has(d.id));
-  } else if (filters.catalog) {
-    const catalogId = Number(filters.catalog);
-    visible = datasets.filter((d) => d.catalogId === catalogId);
   }
 
   return visible.length === 0 || visible.some((d) => d.hasTemporalData);

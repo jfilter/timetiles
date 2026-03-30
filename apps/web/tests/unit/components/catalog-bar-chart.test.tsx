@@ -28,7 +28,16 @@ vi.mock("@/lib/context/view-context", () => ({
 
 // Mock filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
-  useFilters: () => ({ filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } }),
+  useFilters: () => ({
+    filters: { datasets: [], startDate: null, endDate: null, fieldFilters: {} },
+    toggleCatalogDatasets: vi.fn(),
+    toggleDataset: vi.fn(),
+  }),
+}));
+
+// Mock data sources hook
+vi.mock("@/lib/hooks/use-data-sources-query", () => ({
+  useDataSourcesQuery: () => ({ data: { catalogs: [], datasets: [] }, isLoading: false, error: null }),
 }));
 
 vi.mock("@timetiles/ui/charts", () => ({

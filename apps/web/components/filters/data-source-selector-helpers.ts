@@ -6,25 +6,15 @@
  */
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/hooks/use-data-sources-query";
 
-/** Number of catalogs to show before collapsing */
-export const CATALOG_COLLAPSE_THRESHOLD = 6;
-/** Number of catalogs to show when collapsed */
-export const CATALOG_VISIBLE_WHEN_COLLAPSED = 4;
-
-/** Number of datasets to show before collapsing */
+/** Number of datasets within a catalog group before collapsing */
 export const DATASET_COLLAPSE_THRESHOLD = 10;
 
-/** Count datasets per catalog */
-export const countDatasetsByCatalog = (datasets: DataSourceDataset[]): Record<string, number> => {
-  const counts: Record<string, number> = {};
-  for (const dataset of datasets) {
-    if (dataset.catalogId != null) {
-      const catalogId = String(dataset.catalogId);
-      counts[catalogId] = (counts[catalogId] ?? 0) + 1;
-    }
-  }
-  return counts;
-};
+/** A catalog with its child datasets and total event count */
+export interface CatalogGroup {
+  catalog: DataSourceCatalog;
+  datasets: DataSourceDataset[];
+  totalEvents: number;
+}
 
 /** Filter and sort catalogs by event count, applying view scope if present */
 export const filterAndSortCatalogs = (
@@ -45,43 +35,73 @@ export const filterAndSortCatalogs = (
   });
 };
 
-/** Filter and sort datasets by catalog and scope, sorted by event count */
-export const filterAndSortDatasets = (
+/** Sort datasets by event count then name */
+const sortDatasets = (
   datasets: DataSourceDataset[],
-  catalogFilter: string | null,
-  scopeDatasetIds: number[] | undefined,
   eventCounts: Record<string, number> | undefined
-): DataSourceDataset[] => {
-  let filtered = datasets;
-  if (scopeDatasetIds?.length) {
-    const scopeIds = new Set(scopeDatasetIds);
-    filtered = filtered.filter((d) => scopeIds.has(d.id));
-  }
-  const catalogDatasets =
-    catalogFilter == null
-      ? filtered
-      : filtered.filter((d) => d.catalogId != null && String(d.catalogId) === catalogFilter);
-  return [...catalogDatasets].sort((a, b) => {
+): DataSourceDataset[] =>
+  [...datasets].sort((a, b) => {
     const countA = eventCounts?.[String(a.id)] ?? 0;
     const countB = eventCounts?.[String(b.id)] ?? 0;
     if (countB !== countA) return countB - countA;
     return a.name.localeCompare(b.name);
   });
+
+/** Group datasets by catalog, sorted by total event count */
+export const groupDatasetsByCatalog = (
+  datasets: DataSourceDataset[],
+  catalogs: DataSourceCatalog[],
+  scopeCatalogIds: number[] | undefined,
+  scopeDatasetIds: number[] | undefined,
+  eventCountsByCatalog: Record<string, number> | undefined,
+  eventCountsByDataset: Record<string, number> | undefined
+): CatalogGroup[] => {
+  const sortedCatalogs = filterAndSortCatalogs(catalogs, scopeCatalogIds, eventCountsByCatalog);
+
+  // Build a set of allowed dataset IDs if scope is active
+  const scopeIds = scopeDatasetIds?.length ? new Set(scopeDatasetIds) : null;
+
+  // Map datasets to their catalog
+  const datasetsByCatalog = new Map<number, DataSourceDataset[]>();
+  for (const dataset of datasets) {
+    if (dataset.catalogId == null) continue;
+    if (scopeIds && !scopeIds.has(dataset.id)) continue;
+    const list = datasetsByCatalog.get(dataset.catalogId) ?? [];
+    list.push(dataset);
+    datasetsByCatalog.set(dataset.catalogId, list);
+  }
+
+  return sortedCatalogs
+    .map((catalog) => ({
+      catalog,
+      datasets: sortDatasets(datasetsByCatalog.get(catalog.id) ?? [], eventCountsByDataset),
+      totalEvents: eventCountsByCatalog?.[String(catalog.id)] ?? 0,
+    }))
+    .filter((group) => group.datasets.length > 0);
 };
 
 export interface GroupedCatalogs {
-  owned: DataSourceCatalog[];
-  public: DataSourceCatalog[];
+  owned: CatalogGroup[];
+  public: CatalogGroup[];
 }
 
-/** Split catalogs into owned and public groups, each sorted by event count then name */
-export const groupCatalogs = (
-  catalogs: DataSourceCatalog[],
-  scopeCatalogIds: number[] | undefined,
-  eventCounts: Record<string, number> | undefined
-): GroupedCatalogs => {
-  const sorted = filterAndSortCatalogs(catalogs, scopeCatalogIds, eventCounts);
-  return { owned: sorted.filter((c) => c.isOwned), public: sorted.filter((c) => !c.isOwned) };
+/** Split catalog groups into owned and public */
+export const groupCatalogs = (groups: CatalogGroup[]): GroupedCatalogs => ({
+  owned: groups.filter((g) => g.catalog.isOwned),
+  public: groups.filter((g) => !g.catalog.isOwned),
+});
+
+/** Determine the check state of a catalog based on its datasets' selection */
+export const getCatalogCheckState = (
+  catalogDatasetIds: string[],
+  selectedDatasets: string[]
+): "all" | "some" | "none" => {
+  if (catalogDatasetIds.length === 0) return "none";
+  const selectedSet = new Set(selectedDatasets);
+  const selectedCount = catalogDatasetIds.filter((id) => selectedSet.has(id)).length;
+  if (selectedCount === 0) return "none";
+  if (selectedCount === catalogDatasetIds.length) return "all";
+  return "some";
 };
 
 /**
