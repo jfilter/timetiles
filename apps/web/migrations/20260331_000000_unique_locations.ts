@@ -171,7 +171,7 @@ BEGIN
         CASE WHEN d.cnt=1 THEN d.first_title ELSE null END,
         CASE WHEN d.cnt>1 THEN d.ext ELSE 0.0 END,
         CASE WHEN mg.group_size > 1 THEN mg.group_cells ELSE NULL END,
-        d.loc_count, d.loc_nm
+        d.loc_count, d.loc_nm::text
       FROM dbmerge d JOIN merge_groups mg ON d.merge_cid = mg.merge_cid;
     ELSE
       RETURN QUERY
@@ -214,7 +214,7 @@ BEGIN
         CASE WHEN cnt=1 THEN first_id ELSE null END,
         CASE WHEN cnt=1 THEN first_title ELSE null END,
         CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[],
-        loc_count, loc_nm FROM hc;
+        loc_count, loc_nm::text FROM hc;
     END IF;
 
   -- ================================================================
@@ -301,7 +301,7 @@ BEGIN
         CASE WHEN cnt=1 THEN first_id ELSE null END,
         CASE WHEN cnt=1 THEN first_title ELSE null END,
         CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[],
-        loc_count, loc_nm FROM cl;
+        loc_count, loc_nm::text FROM cl;
     ELSE
       CREATE TEMP TABLE _grid_cells ON COMMIT DROP AS
       SELECT ROUND(e.location_longitude/fc)*fc as gx, ROUND(e.location_latitude/fc)*fc as gy,
@@ -344,7 +344,7 @@ BEGIN
         CASE WHEN tc=1 THEN mfirst_id ELSE null END,
         CASE WHEN tc=1 THEN mfirst_title ELSE null END,
         CASE WHEN tc>1 THEN me ELSE 0.0 END, NULL::text[],
-        total_loc_count, merged_loc_nm FROM mg;
+        total_loc_count, merged_loc_nm::text FROM mg;
       DROP TABLE IF EXISTS _grid_cells;
     END IF;
 
@@ -383,10 +383,10 @@ BEGIN
       CASE WHEN cnt=1 THEN first_id ELSE null END,
       CASE WHEN cnt=1 THEN first_title ELSE null END,
       CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[],
-      loc_count, loc_nm FROM cl
+      loc_count, loc_nm::text FROM cl
     UNION ALL
     SELECT ('n:' || id::text), lng, lat, 1, NULL::text[], id::text, title, 0.0, NULL::text[],
-      1::integer, loc_name FROM dr WHERE cid IS NULL;
+      1::integer, loc_name::text FROM dr WHERE cid IS NULL;
 
   END IF;
 END;
