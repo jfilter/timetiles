@@ -38,22 +38,123 @@ export const INITIAL_VIEW_STATE = { longitude: 13.4125, latitude: 52.5219, zoom:
 export const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
 
 /** Layer IDs that respond to click events */
-export const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point", "cluster-count-label"];
+export const INTERACTIVE_LAYER_IDS = ["event-clusters", "event-locations", "cluster-count-label"];
 
-/** Build event point layer configuration with the given map colors. */
-export const buildEventPointLayerConfig = (colors: MapColors = defaultMapColors, highlightActive: boolean = false) =>
-  ({
-    id: "unclustered-point",
+/**
+ * Build location marker layer — same gradient style as clusters but for
+ * individual locations (H3 r15 cells). Scales radius by event count.
+ */
+export const buildLocationLayerConfig = (
+  locationFilter: ["==", ["get", string], string],
+  colors: MapColors = defaultMapColors,
+  maxCount: number = 1,
+  highlightedCells: string[] | null = null
+) => {
+  const sqrtMax = Math.max(1, Math.sqrt(maxCount));
+
+  const isHighlighted =
+    highlightedCells != null
+      ? highlightedCells.length === 1
+        ? ["==", ["get", "h3Cell"], highlightedCells[0]]
+        : ["in", ["get", "h3Cell"], ["literal", highlightedCells]]
+      : null;
+
+  const normalOpacity = [
+    "interpolate",
+    ["linear"],
+    ["/", ["sqrt", ["coalesce", ["get", "count"], 1]], sqrtMax],
+    0,
+    0.55,
+    1,
+    0.92,
+  ];
+  const circleOpacity = isHighlighted ? ["case", isHighlighted, normalOpacity, 0.15] : normalOpacity;
+
+  return {
+    id: "event-locations",
     type: "circle" as const,
+    filter: locationFilter,
     paint: {
-      "circle-color": colors.mapPoint,
-      "circle-radius": 6,
-      "circle-opacity": highlightActive ? 0.15 : 1,
-      "circle-stroke-width": 1,
+      "circle-radius": [
+        "interpolate",
+        ["linear"],
+        ["/", ["sqrt", ["coalesce", ["get", "count"], 1]], sqrtMax],
+        0,
+        6,
+        0.25,
+        10,
+        0.5,
+        16,
+        0.75,
+        22,
+        1,
+        28,
+      ],
+      "circle-color": [
+        "interpolate",
+        ["linear"],
+        ["/", ["sqrt", ["coalesce", ["get", "count"], 1]], sqrtMax],
+        0,
+        colors.mapClusterGradient[0],
+        0.25,
+        colors.mapClusterGradient[1],
+        0.5,
+        colors.mapClusterGradient[2],
+        0.75,
+        colors.mapClusterGradient[3],
+        1,
+        colors.mapClusterGradient[4],
+      ],
+      "circle-opacity": circleOpacity as never,
+      "circle-stroke-width": 1.5,
       "circle-stroke-color": colors.mapStroke,
-      "circle-stroke-opacity": highlightActive ? 0.15 : 0.8,
+      "circle-stroke-opacity": isHighlighted ? (["case", isHighlighted, 0.8, 0.1] as never) : 0.8,
     },
-  }) satisfies CircleLayerConfig;
+  } satisfies CircleLayerConfig;
+};
+
+/**
+ * Build location count label — shows event count on locations with count > 1.
+ */
+export const buildLocationLabelLayerConfig = (
+  locationFilter: ["==", ["get", string], string],
+  highlightedCells: string[] | null = null
+) => {
+  const isHighlighted =
+    highlightedCells != null
+      ? highlightedCells.length === 1
+        ? ["==", ["get", "h3Cell"], highlightedCells[0]]
+        : ["in", ["get", "h3Cell"], ["literal", highlightedCells]]
+      : null;
+  const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
+
+  return {
+    id: "location-count-label",
+    type: "symbol" as const,
+    filter: ["all", locationFilter, [">", ["coalesce", ["get", "count"], 1], 1]],
+    layout: {
+      "text-field": [
+        "case",
+        [">=", ["get", "count"], 1000000],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 100000]]], "M"],
+        [">=", ["get", "count"], 10000],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000]]], "k"],
+        [">=", ["get", "count"], 1000],
+        ["concat", ["to-string", ["/", ["round", ["/", ["get", "count"], 100]], 10]], "k"],
+        ["to-string", ["get", "count"]],
+      ],
+      "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 9, 25, 13],
+      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      "text-allow-overlap": true,
+    },
+    paint: {
+      "text-color": "#ffffff",
+      "text-halo-color": "rgba(0, 0, 0, 0.5)",
+      "text-halo-width": 1,
+      "text-opacity": textOpacity as never,
+    },
+  } satisfies SymbolLayerConfig;
+};
 
 /** Extract valid coordinates from a GeoJSON feature */
 export const getValidCoordinates = (feature: Feature): [number, number] | null => {

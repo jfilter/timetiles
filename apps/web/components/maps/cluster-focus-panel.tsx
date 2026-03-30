@@ -39,7 +39,11 @@ export const ClusterFocusPanel = ({
       {/* Header */}
       <div className="border-border border-b px-3 py-2">
         <div className="flex items-center justify-between">
-          <span className="text-foreground text-sm font-medium">{t("clusterFocusCount", { count })}</span>
+          <span className="text-foreground text-sm font-medium">
+            {summary?.locationCount != null && summary.locationCount > 1
+              ? t("clusterFocusCountWithLocations", { count, locations: summary.locationCount })
+              : t("clusterFocusCount", { count })}
+          </span>
           <Button variant="ghost" size="icon" className="size-6" onClick={onClose}>
             <X className="size-3.5" />
           </Button>
