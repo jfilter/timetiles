@@ -11,21 +11,18 @@ import type { Catalog, Dataset } from "@/payload-types";
  * Build dynamic title based on active filters.
  */
 export const buildDynamicTitle = (
-  filters: { catalog?: string | null; datasets: string[]; startDate?: string | null; endDate?: string | null },
-  catalogs: Catalog[],
+  filters: { datasets: string[]; startDate?: string | null; endDate?: string | null },
+  _catalogs: Catalog[],
   datasets: Dataset[],
   t: (
     key: "allEvents" | "eventsLabel" | "countDatasets" | "dateRangeFrom" | "dateRangeUntil",
     values?: Record<string, string | number>
   ) => string
 ): { title: string; dateRange: string | null } => {
-  // Build title based on catalog/dataset selection
+  // Build title based on dataset selection
   let title = t("allEvents");
 
-  if (filters.catalog) {
-    const catalog = catalogs.find((c) => String(c.id) === filters.catalog);
-    title = catalog?.name ?? t("eventsLabel");
-  } else if (filters.datasets.length > 0) {
+  if (filters.datasets.length > 0) {
     if (filters.datasets.length === 1) {
       const dataset = datasets.find((d) => String(d.id) === filters.datasets[0]);
       title = dataset?.name ?? t("eventsLabel");

@@ -12,6 +12,7 @@
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
 
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -38,8 +39,9 @@ const AggregationBarChartComponent = ({
   type,
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
-  const { filters, setCatalog, toggleDataset } = useFilters();
+  const { filters, toggleCatalogDatasets, toggleDataset } = useFilters();
   const scope = useViewScope();
+  const { data: dataSources } = useDataSourcesQuery();
 
   // Fetch aggregation data using unified endpoint (viewport-filtered)
   const { data, isInitialLoad, isUpdating, isError } = useEventsAggregationQuery(
@@ -64,7 +66,11 @@ const AggregationBarChartComponent = ({
     const itemId = String(items[index].id);
 
     if (type === "catalog") {
-      setCatalog(itemId);
+      // Select all datasets belonging to this catalog
+      const catalogDatasetIds = (dataSources?.datasets ?? [])
+        .filter((d) => d.catalogId != null && String(d.catalogId) === itemId)
+        .map((d) => String(d.id));
+      toggleCatalogDatasets(catalogDatasetIds);
     } else {
       toggleDataset(itemId);
     }

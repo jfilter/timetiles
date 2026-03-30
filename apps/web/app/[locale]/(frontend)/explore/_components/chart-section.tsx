@@ -129,14 +129,11 @@ export const ChartSection = ({
       types.push("dataset-bar");
     }
 
-    // Show "By Catalog" when no catalog is selected (show all catalogs)
-    // Hide when a catalog is selected (would show only 1 bar)
-    if (!filters.catalog) {
-      types.push("catalog-bar");
-    }
+    // Show "By Catalog" when selected datasets span multiple catalogs (or none selected = all)
+    types.push("catalog-bar");
 
     return types;
-  }, [filters.datasets.length, filters.catalog, hasTemporalData]);
+  }, [filters.datasets.length, hasTemporalData]);
 
   // Derive effective chart type — falls back to first available if selection becomes unavailable
   const chartType = availableChartTypes.includes(selectedChartType)

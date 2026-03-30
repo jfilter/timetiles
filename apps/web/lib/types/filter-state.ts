@@ -9,7 +9,6 @@
  */
 
 export interface FilterState {
-  catalog: string | null;
   datasets: string[];
   startDate: string | null;
   endDate: string | null;
@@ -18,7 +17,6 @@ export interface FilterState {
 
 export const getActiveFilterCount = (filters: FilterState): number => {
   let count = 0;
-  if (filters.catalog != null && filters.catalog !== "") count++;
   if (filters.datasets.length > 0) count += filters.datasets.length;
   if ((filters.startDate != null && filters.startDate !== "") || (filters.endDate != null && filters.endDate !== ""))
     count++; // Date range counts as one filter
@@ -32,7 +30,6 @@ export const getActiveFilterCount = (filters: FilterState): number => {
 export const hasActiveFilters = (filters: FilterState): boolean => {
   const hasFieldFilters = filters.fieldFilters && Object.values(filters.fieldFilters).some((vals) => vals.length > 0);
   return !!(
-    (filters.catalog != null && filters.catalog !== "") ||
     filters.datasets.length > 0 ||
     (filters.startDate != null && filters.startDate !== "") ||
     (filters.endDate != null && filters.endDate !== "") ||
@@ -63,11 +60,6 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
   const newFilters = { ...filters, fieldFilters: { ...filters.fieldFilters } };
 
   switch (filterType) {
-    case "catalog":
-      newFilters.catalog = null;
-      newFilters.datasets = [];
-      newFilters.fieldFilters = {};
-      break;
     case "datasets":
       newFilters.datasets = value != null && value !== "" ? newFilters.datasets.filter((id) => id !== value) : [];
       newFilters.fieldFilters = {};
@@ -87,13 +79,7 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
   return newFilters;
 };
 
-export const clearAllFilters = (): FilterState => ({
-  catalog: null,
-  datasets: [],
-  startDate: null,
-  endDate: null,
-  fieldFilters: {},
-});
+export const clearAllFilters = (): FilterState => ({ datasets: [], startDate: null, endDate: null, fieldFilters: {} });
 
 /**
  * Derive a stable string key from the current filter state.

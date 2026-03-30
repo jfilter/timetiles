@@ -97,10 +97,6 @@ export const buildBaseEventParams = (
 ): URLSearchParams => {
   const params = new URLSearchParams();
 
-  if (filters.catalog != null && filters.catalog !== "") {
-    params.append("catalog", filters.catalog);
-  }
-
   if (filters.datasets.length > 0) {
     params.append("datasets", filters.datasets.join(","));
   }
