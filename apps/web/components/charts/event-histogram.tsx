@@ -16,10 +16,13 @@ import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/char
 import { useMemo } from "react";
 
 import { expandGroupNames } from "@/components/charts/event-beeswarm";
+import { getResolution, isValidCell } from "h3-js";
+
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useHistogramQuery, useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
+import { useUIStore } from "@/lib/store";
 
 import type { BaseChartProps } from "./types";
 
@@ -47,11 +50,22 @@ export const EventHistogram = ({
   const chartTheme = useChartTheme();
   const { filters, setSingleDayFilter } = useFilters();
   const scope = useViewScope();
+  const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
+
+  const clusterFilter = useMemo(() => {
+    if (!clusterFilterCells || clusterFilterCells.length === 0) return undefined;
+    try {
+      if (!isValidCell(clusterFilterCells[0]!)) return undefined;
+      return { cells: clusterFilterCells, h3Resolution: getResolution(clusterFilterCells[0]!) };
+    } catch {
+      return undefined;
+    }
+  }, [clusterFilterCells]);
 
   const isGrouped = groupBy !== "none";
 
   // Standard histogram (ungrouped)
-  const histogramQuery = useHistogramQuery(filters, bounds ?? null, !isGrouped, scope);
+  const histogramQuery = useHistogramQuery(filters, bounds ?? null, !isGrouped, scope, clusterFilter);
 
   // Grouped: reuse temporal-clusters API with individualThreshold=0 (force clustered)
   const clustersQuery = useTemporalClustersQuery(

@@ -18,7 +18,7 @@ into hexagonal cells whose size is determined by the zoom level.
 - **Pre-computed:** Resolution columns (r2–r13) are stored on the events table for fast lookups
 - **Overlap merge:** Overlapping circles are automatically merged via DBSCAN post-processing
 
-**Zoom → Resolution mapping:** `ROUND(zoom × 0.7)`, capped at 13.
+**Zoom → Resolution mapping:** `ROUND(zoom × scale)`, capped at 2–13. Default scale is 0.6, configurable via expert mode slider (0.3–1.2).
 
 **Hex visualization:** When H3 is active, hexagonal cell boundaries are rendered as
 colored fill + outline polygons. Hovering over a cluster highlights its hex cell.
@@ -50,7 +50,7 @@ coordinates (SRID 3857).
 
 - **Density-based:** Finds natural cluster shapes, no forced count
 - **Projected coordinates:** eps in meters for correct spatial distance
-- **5,000 event limit:** Falls back to Grid-K when viewport contains more events
+- **5,000 event limit:** Falls back to geohash grid + DBSCAN merge when viewport contains more events
 - **Noise points:** Events that don't belong to any cluster are returned as individual points
 
 **Parameters (Expert mode):**

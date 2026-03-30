@@ -45,6 +45,10 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
   // Field filters (keys already validated by canonical builder, re-validate for defense-in-depth)
   conditions.push(...buildFieldFilterConditions(filters.fieldFilters, filters.tagFields));
 
+  // H3 cell filter (precise spatial filter by pre-computed H3 columns)
+  const h3Condition = buildH3CellCondition(filters.clusterCells, filters.h3Resolution);
+  if (h3Condition) conditions.push(h3Condition);
+
   return conditions;
 };
 
@@ -137,4 +141,15 @@ const buildFieldFilterConditions = (
     }
   }
   return conditions;
+};
+
+/** Filter events by pre-computed H3 cell column at the given resolution. */
+const buildH3CellCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
+  if (!clusterCells || clusterCells.length === 0 || h3Resolution == null) return null;
+  // Validate resolution range (columns h3_r2 through h3_r13 exist)
+  const res = Math.min(13, Math.max(2, Math.round(h3Resolution)));
+  const col = "e.h3_r" + String(res);
+  // Build IN clause with escaped cell IDs
+  const escaped = clusterCells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
+  return sql.raw(col + "::text IN (" + escaped + ")");
 };

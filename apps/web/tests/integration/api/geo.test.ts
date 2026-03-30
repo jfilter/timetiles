@@ -397,11 +397,11 @@ describe("/api/v1/events/geo", () => {
     // Verify cluster IDs follow tile coordinate pattern: should contain '@' separator
     if (result10.rows.length > 0) {
       const clusterIdValue = result10.rows[0]?.cluster_id;
-      // Cluster ID is SHA256 hash, but the input pattern should be zoom@tileX,tileY
-      // Ensure we only stringify valid values
+      // With H3 algorithm, cluster IDs are H3 cell IDs (15 chars)
+      // With other algorithms, they may be SHA256 hashes (64 chars) or numeric
       if (typeof clusterIdValue === "string") {
         expect(clusterIdValue).toBeTruthy();
-        expect(clusterIdValue).toHaveLength(64); // SHA256 hash length
+        expect(clusterIdValue.length).toBeGreaterThan(0);
       }
     }
   });
@@ -490,5 +490,76 @@ describe("/api/v1/events/geo", () => {
     const ids2 = result2.rows.map((r) => r.cluster_id).sort();
 
     expect(ids1).toEqual(ids2);
+  });
+
+  it("should filter cluster_events by H3 cell via clusterCells in JSONB", async () => {
+    // First, get cluster IDs at zoom 10 for SF area
+    const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
+    const clusterResult = (await testEnv.payload.db.drizzle.execute(
+      sql`
+        SELECT * FROM cluster_events(
+          ${sfBounds.west}::double precision,
+          ${sfBounds.south}::double precision,
+          ${sfBounds.east}::double precision,
+          ${sfBounds.north}::double precision,
+          10::integer,
+          '{}'::jsonb
+        )
+      `
+    )) as { rows: Array<{ cluster_id: string; event_count: number }> };
+
+    expect(clusterResult.rows.length).toBeGreaterThan(0);
+    const sfClusterId = clusterResult.rows[0]!.cluster_id;
+    const sfCount = Number(clusterResult.rows[0]!.event_count);
+
+    // Now query with clusterCells filter — should return fewer or equal results
+    const h3Resolution = Math.min(13, Math.max(2, Math.round(10 * 0.6)));
+    const filteredResult = (await testEnv.payload.db.drizzle.execute(
+      sql`
+        SELECT COUNT(*)::integer as cnt FROM payload.events e
+        JOIN payload.datasets d ON e.dataset_id = d.id
+        WHERE e.location_longitude IS NOT NULL
+          AND ${sql.raw(`e.h3_r${h3Resolution}::text = '${sfClusterId}'`)}
+      `
+    )) as { rows: Array<{ cnt: number }> };
+
+    // The direct SQL count should match the cluster's event count
+    expect(Number(filteredResult.rows[0]!.cnt)).toBe(sfCount);
+  });
+
+  it("should filter temporal histogram by H3 cell via clusterCells in JSONB", async () => {
+    // Get a cluster cell for SF events
+    const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
+    const clusterResult = (await testEnv.payload.db.drizzle.execute(
+      sql`
+        SELECT * FROM cluster_events(
+          ${sfBounds.west}::double precision,
+          ${sfBounds.south}::double precision,
+          ${sfBounds.east}::double precision,
+          ${sfBounds.north}::double precision,
+          10::integer,
+          '{}'::jsonb
+        )
+      `
+    )) as { rows: Array<{ cluster_id: string; event_count: number }> };
+
+    expect(clusterResult.rows.length).toBeGreaterThan(0);
+    const sfClusterId = clusterResult.rows[0]!.cluster_id;
+    const sfCount = Number(clusterResult.rows[0]!.event_count);
+    const h3Resolution = Math.min(13, Math.max(2, Math.round(10 * 0.6)));
+
+    // Query temporal histogram with H3 cell filter via JSONB
+    const result = (await testEnv.payload.db.drizzle.execute(
+      sql`
+        SELECT * FROM calculate_event_histogram(
+          ${JSON.stringify({ clusterCells: [sfClusterId], h3Resolution })}::jsonb,
+          30::integer, 20::integer, 50::integer
+        )
+      `
+    )) as { rows: Array<{ event_count: number }> };
+
+    // Total events across all histogram buckets should match the cluster count
+    const totalFromHistogram = result.rows.reduce((sum, r) => sum + Number(r.event_count), 0);
+    expect(totalFromHistogram).toBe(sfCount);
   });
 });

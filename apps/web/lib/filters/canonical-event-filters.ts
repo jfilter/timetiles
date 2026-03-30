@@ -31,6 +31,10 @@ export interface CanonicalEventFilters {
   fieldFilters?: Record<string, string[]>;
   /** Fields that store arrays (tag/multi-value) — use JSONB containment instead of IN */
   tagFields?: Set<string>;
+  /** H3 cell IDs to restrict results to (precise spatial filter) */
+  clusterCells?: string[];
+  /** H3 resolution for clusterCells (2-13) */
+  h3Resolution?: number;
   /** When true, filters are valid but should match no rows (access denied) */
   denyResults?: boolean;
 }

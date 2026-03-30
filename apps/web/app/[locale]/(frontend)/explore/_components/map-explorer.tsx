@@ -14,6 +14,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
 import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
+import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
 import { EventsList } from "./events-list";
@@ -53,7 +54,11 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     catalogs,
     datasets,
     clusters,
+    clusterChildren,
+    clusterSummary,
+    clusterSummaryLoading,
     clustersLoading,
+    effectiveBounds: chartBounds,
     boundsData,
     isLoadingInitialBounds,
     events,
@@ -61,14 +66,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     totalEventsData,
     hasTemporalData,
   } = data;
-  const {
-    ref: mapRef,
-    simpleBounds,
-    debouncedSimpleBounds,
-    showZoomToData,
-    handleZoomToData,
-    handleBoundsChange,
-  } = map;
+  const { ref: mapRef, simpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -104,6 +102,9 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
       <MapPanel
         mapRef={mapRef}
         clusters={clusters}
+        clusterChildren={clusterChildren}
+        clusterSummary={clusterSummary}
+        clusterSummaryLoading={clusterSummaryLoading}
         onBoundsChange={handleBoundsChange}
         onEventClick={openEvent}
         initialBounds={boundsData?.bounds}
@@ -117,15 +118,22 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
       <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
         <div className="p-6">
           <div className="mb-6 h-[calc(55vh-3rem)] min-h-[320px]">
-            <ChartSection
-              bounds={debouncedSimpleBounds}
-              fillHeight
-              hasTemporalData={hasTemporalData}
-              onEventClick={openEvent}
-            />
+            <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} onEventClick={openEvent} />
           </div>
 
           <div className="border-t pt-6">
+            {useUIStore.getState().ui.clusterFilterCells && (
+              <div className="bg-primary/10 text-primary mb-3 flex items-center gap-2 rounded px-3 py-2 text-xs font-medium">
+                <span>{t("clusterFilterActiveDescription")}</span>
+                <button
+                  type="button"
+                  onClick={() => useUIStore.getState().setClusterFilterCells(null)}
+                  className="hover:text-primary/70 ml-auto text-xs underline transition-colors"
+                >
+                  {t("clearClusterFilter")}
+                </button>
+              </div>
+            )}
             <p className="text-muted-foreground mb-4 text-sm">
               {buildEventsDescription(
                 events.length,

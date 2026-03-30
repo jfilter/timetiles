@@ -19,10 +19,11 @@ import { Layers } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
-import { type ClusterAlgorithm, type ClusterDensityMode, useUIStore } from "@/lib/store";
+import { type ClusterAlgorithm, type ClusterDensityMode, type ClusterDisplay, useUIStore } from "@/lib/store";
 
 const PRESET_KEYS: Exclude<ClusterDensityMode, "expert">[] = ["fine", "normal", "coarse"];
 const ALGORITHM_KEYS: ClusterAlgorithm[] = ["h3", "grid-k", "dbscan"];
+const DISPLAY_KEYS: ClusterDisplay[] = ["circles", "hexagons"];
 
 export const ClusterDensityControl = () => {
   const t = useTranslations("Explore");
@@ -76,28 +77,53 @@ export const ClusterDensityControl = () => {
 
       {/* H3 options */}
       {algorithm === "h3" && (
-        <div className="mb-2 space-y-1">
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <input
-              type="checkbox"
-              checked={useUIStore.getState().ui.showHexBoundaries}
-              onChange={(e) => useUIStore.getState().setShowHexBoundaries(e.target.checked)}
-              className="rounded"
-            />
-            {t("showHexBoundaries")}
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <input
-              type="checkbox"
-              checked={useUIStore.getState().ui.mergeOverlapping}
-              onChange={(e) => {
-                useUIStore.getState().setMergeOverlapping(e.target.checked);
-                setDensity({ ...density, mergeOverlapping: e.target.checked });
+        <div className="mb-2 space-y-2">
+          {/* Display mode: circles vs hexagons */}
+          <div>
+            <div className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">{t("clusterDisplayMode")}</div>
+            <PresetButtonGroup
+              options={DISPLAY_KEYS.map((key) => ({ key, label: t(`clusterDisplay_${key}`) }))}
+              value={useUIStore.getState().ui.clusterDisplay}
+              onChange={(key) => {
+                useUIStore.getState().setClusterDisplay(key);
+                if (key === "hexagons") setDensity({ ...density, mergeOverlapping: false });
               }}
-              className="rounded"
             />
-            {t("mergeOverlapping")}
-          </label>
+          </div>
+          {useUIStore.getState().ui.clusterDisplay === "circles" && (
+            <div className="space-y-1">
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={density.useHexCenter ?? false}
+                  onChange={(e) => setDensity({ ...density, useHexCenter: e.target.checked })}
+                  className="rounded"
+                />
+                {t("useHexCenter")}
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={useUIStore.getState().ui.showHexBoundaries}
+                  onChange={(e) => useUIStore.getState().setShowHexBoundaries(e.target.checked)}
+                  className="rounded"
+                />
+                {t("showHexBoundaries")}
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={useUIStore.getState().ui.mergeOverlapping}
+                  onChange={(e) => {
+                    useUIStore.getState().setMergeOverlapping(e.target.checked);
+                    setDensity({ ...density, mergeOverlapping: e.target.checked });
+                  }}
+                  className="rounded"
+                />
+                {t("mergeOverlapping")}
+              </label>
+            </div>
+          )}
         </div>
       )}
 

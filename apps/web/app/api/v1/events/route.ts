@@ -8,6 +8,7 @@
  *
  * @module
  */
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
@@ -76,6 +77,30 @@ export const GET = apiRoute({
     }
 
     const where = toPayloadWhere(ctx.filters);
+
+    // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
+    if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
+      const res = Math.min(13, Math.max(2, Math.round(ctx.filters.h3Resolution)));
+      const col = "h3_r" + String(res);
+      const escaped = ctx.filters.clusterCells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
+      const idResult = (await payload.db.drizzle.execute(
+        sql.raw("SELECT e.id FROM payload.events e WHERE e." + col + "::text IN (" + escaped + ")")
+      )) as { rows: Array<{ id: number }> };
+      const ids = idResult.rows.map((r) => Number(r.id));
+      if (ids.length === 0) {
+        return buildListResponse({
+          docs: [],
+          page: 1,
+          limit: query.limit,
+          totalDocs: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        });
+      }
+      where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { in: ids } }];
+    }
+
     const result = await executeEventsQuery(payload, where, query, user);
     return buildListResponse(result);
   },

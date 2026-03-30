@@ -64,6 +64,16 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     };
   }, []);
 
+  // Auto-exit focus mode and clear cluster filter when filters change
+  const clearFocusedCluster = useUIStore((state) => state.clearFocusedCluster);
+  const setClusterFilterCells = useUIStore((state) => state.setClusterFilterCells);
+  const filterKey = JSON.stringify(filters);
+  useEffect(() => {
+    clearFocusedCluster();
+    setClusterFilterCells(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to filter changes
+  }, [filterKey]);
+
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
   const handleZoomToData = useCallback(() => {

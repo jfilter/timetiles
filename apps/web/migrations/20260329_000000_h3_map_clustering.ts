@@ -219,12 +219,12 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   // 6. cluster_events() function
   // ------------------------------------------------------------------
   await db.execute(sql`
-CREATE OR REPLACE FUNCTION public.cluster_events(p_min_lng double precision, p_min_lat double precision, p_max_lng double precision, p_max_lat double precision, p_zoom integer, p_filters jsonb DEFAULT '{}'::jsonb, p_target_clusters integer DEFAULT 25, p_algorithm text DEFAULT 'h3'::text, p_min_points integer DEFAULT 2, p_merge_overlapping boolean DEFAULT false, p_h3_resolution_scale double precision DEFAULT 0.6)
- RETURNS TABLE(cluster_id text, longitude double precision, latitude double precision, event_count integer, event_ids text[], event_id text, event_title text, extent_degrees double precision)
+CREATE OR REPLACE FUNCTION public.cluster_events(p_min_lng double precision, p_min_lat double precision, p_max_lng double precision, p_max_lat double precision, p_zoom integer, p_filters jsonb DEFAULT '{}'::jsonb, p_target_clusters integer DEFAULT 25, p_algorithm text DEFAULT 'h3'::text, p_min_points integer DEFAULT 2, p_merge_overlapping boolean DEFAULT false, p_h3_resolution_scale double precision DEFAULT 0.6, p_parent_cells text[] DEFAULT NULL, p_use_hex_center boolean DEFAULT false)
+ RETURNS TABLE(cluster_id text, longitude double precision, latitude double precision, event_count integer, event_ids text[], event_id text, event_title text, extent_degrees double precision, source_cells text[])
  LANGUAGE plpgsql
 AS $fn$
 DECLARE
-  st integer; smp integer; optimal_k integer;
+  st integer; smp integer; optimal_k integer; parent_res integer;
   vw double precision; vh double precision; va double precision;
   fc double precision; eiv integer; mc integer;
   h3_res integer;
@@ -250,6 +250,18 @@ BEGIN
     ELSE 100 END;
   -- Circles are capped at hex size, so max overlap = 2 * hex_edge
   merge_eps_m := 2.0 * hex_edge_m;
+
+  -- If drilling into parent cells, refine to higher resolution
+  IF p_parent_cells IS NOT NULL AND p_algorithm = 'h3' THEN
+    parent_res := h3_res;
+    h3_res := LEAST(13, h3_res + 2);
+    hex_edge_m := CASE h3_res
+      WHEN 2 THEN 183000 WHEN 3 THEN 69000 WHEN 4 THEN 26000 WHEN 5 THEN 9900
+      WHEN 6 THEN 3700 WHEN 7 THEN 1400 WHEN 8 THEN 531 WHEN 9 THEN 201
+      WHEN 10 THEN 76 WHEN 11 THEN 29 WHEN 12 THEN 11 WHEN 13 THEN 4
+      ELSE 100 END;
+    merge_eps_m := 2.0 * hex_edge_m;
+  END IF;
 
   -- ================================================================
   -- H3: Hexagonal grid clustering
@@ -277,32 +289,33 @@ BEGIN
           AND (p_filters->>'startDate' IS NULL OR e.event_timestamp >= (p_filters->>'startDate')::timestamp)
           AND (p_filters->>'endDate' IS NULL OR e.event_timestamp <= (p_filters->>'endDate')::timestamp)
           AND (p_filters->'fieldFilters' IS NULL OR NOT EXISTS (SELECT 1 FROM jsonb_each(p_filters->'fieldFilters') AS ff(field_key, field_values) WHERE NOT (e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values))))))
+          AND (p_parent_cells IS NULL OR (CASE parent_res WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(p_parent_cells))
       ), hc AS (
         SELECT h3_cell::text as cell,
-          AVG(lng)::double precision as cx, AVG(lat)::double precision as cy,
+          CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[0] ELSE AVG(lng) END::double precision as cx,
+          CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[1] ELSE AVG(lat) END::double precision as cy,
           COUNT(*)::integer as cnt,
           GREATEST((MAX(lng)-MIN(lng))/2.0,(MAX(lat)-MIN(lat))/2.0)::double precision as ext,
-          ST_Transform(ST_SetSRID(ST_MakePoint(AVG(lng), AVG(lat)), 4326), 3857) as gp,
+          ST_Transform(ST_SetSRID(ST_MakePoint(
+            CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[0] ELSE AVG(lng) END,
+            CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[1] ELSE AVG(lat) END
+          ), 4326), 3857) as gp,
           MIN(id::text) as first_id, MIN(title) as first_title
         FROM fe GROUP BY h3_cell
       ), dbmerge AS (
         SELECT COALESCE(ST_ClusterDBSCAN(gp, eps := merge_eps_m, minpoints := 1) OVER (), -1) as merge_cid,
           cell, cx, cy, cnt, ext, first_id, first_title
         FROM hc
-      ), merged AS (
-        SELECT MIN(cell) as merge_key,
-          (SUM(cx * cnt) / SUM(cnt))::double precision as mcx,
-          (SUM(cy * cnt) / SUM(cnt))::double precision as mcy,
-          SUM(cnt)::integer as mcnt,
-          MAX(ext)::double precision as mext,
-          MIN(first_id) as mfirst_id,
-          MIN(first_title) as mfirst_title
+      ), merge_groups AS (
+        SELECT merge_cid, array_agg(cell ORDER BY cell) as group_cells, COUNT(*)::integer as group_size
         FROM dbmerge GROUP BY merge_cid
       )
-      SELECT merge_key, mcx, mcy, mcnt, NULL::text[],
-        CASE WHEN mcnt=1 THEN mfirst_id ELSE null END,
-        CASE WHEN mcnt=1 THEN mfirst_title ELSE null END,
-        CASE WHEN mcnt>1 THEN mext ELSE 0.0 END FROM merged;
+      SELECT d.cell, d.cx, d.cy, d.cnt, NULL::text[],
+        CASE WHEN d.cnt=1 THEN d.first_id ELSE null END,
+        CASE WHEN d.cnt=1 THEN d.first_title ELSE null END,
+        CASE WHEN d.cnt>1 THEN d.ext ELSE 0.0 END,
+        CASE WHEN mg.group_size > 1 THEN mg.group_cells ELSE NULL END
+      FROM dbmerge d JOIN merge_groups mg ON d.merge_cid = mg.merge_cid;
     ELSE
       RETURN QUERY
       WITH fe AS (
@@ -325,9 +338,11 @@ BEGIN
           AND (p_filters->>'startDate' IS NULL OR e.event_timestamp >= (p_filters->>'startDate')::timestamp)
           AND (p_filters->>'endDate' IS NULL OR e.event_timestamp <= (p_filters->>'endDate')::timestamp)
           AND (p_filters->'fieldFilters' IS NULL OR NOT EXISTS (SELECT 1 FROM jsonb_each(p_filters->'fieldFilters') AS ff(field_key, field_values) WHERE NOT (e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values))))))
+          AND (p_parent_cells IS NULL OR (CASE parent_res WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(p_parent_cells))
       ), hc AS (
         SELECT h3_cell::text as cell,
-          AVG(lng)::double precision as cx, AVG(lat)::double precision as cy,
+          CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[0] ELSE AVG(lng) END::double precision as cx,
+          CASE WHEN p_use_hex_center THEN (h3_cell_to_latlng(h3_cell))[1] ELSE AVG(lat) END::double precision as cy,
           COUNT(*)::integer as cnt,
           GREATEST((MAX(lng)-MIN(lng))/2.0,(MAX(lat)-MIN(lat))/2.0)::double precision as ext,
           MIN(id::text) as first_id, MIN(title) as first_title
@@ -336,7 +351,7 @@ BEGIN
       SELECT cell, cx, cy, cnt, NULL::text[],
         CASE WHEN cnt=1 THEN first_id ELSE null END,
         CASE WHEN cnt=1 THEN first_title ELSE null END,
-        CASE WHEN cnt>1 THEN ext ELSE 0.0 END FROM hc;
+        CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[] FROM hc;
     END IF;
 
   -- ================================================================
@@ -378,7 +393,7 @@ BEGIN
       SELECT e.id::text,
         e.location_longitude::double precision, e.location_latitude::double precision,
         1::integer, ARRAY[e.id::text], e.id::text,
-        (e.transformed_data->>'title')::text, 0.0::double precision
+        (e.transformed_data->>'title')::text, 0.0::double precision, NULL::text[]
       FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE e.location_longitude IS NOT NULL AND e.location_latitude IS NOT NULL
         AND (CASE WHEN p_min_lng <= p_max_lng THEN e.location_longitude BETWEEN p_min_lng AND p_max_lng ELSE (e.location_longitude >= p_min_lng OR e.location_longitude <= p_max_lng) END)
@@ -417,7 +432,7 @@ BEGIN
       SELECT cid::text, clng, clat, cnt, NULL::text[],
         CASE WHEN cnt=1 THEN first_id ELSE null END,
         CASE WHEN cnt=1 THEN first_title ELSE null END,
-        CASE WHEN cnt>1 THEN ext ELSE 0.0 END FROM cl;
+        CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[] FROM cl;
     ELSE
       CREATE TEMP TABLE _grid_cells ON COMMIT DROP AS
       SELECT ROUND(e.location_longitude/fc)*fc as gx, ROUND(e.location_latitude/fc)*fc as gy,
@@ -455,7 +470,7 @@ BEGIN
       SELECT cid::text, clng, clat, tc, NULL::text[],
         CASE WHEN tc=1 THEN mfirst_id ELSE null END,
         CASE WHEN tc=1 THEN mfirst_title ELSE null END,
-        CASE WHEN tc>1 THEN me ELSE 0.0 END FROM mg;
+        CASE WHEN tc>1 THEN me ELSE 0.0 END, NULL::text[] FROM mg;
       DROP TABLE IF EXISTS _grid_cells;
     END IF;
 
@@ -489,9 +504,9 @@ BEGIN
     SELECT cid::text, clng, clat, cnt, NULL::text[],
       CASE WHEN cnt=1 THEN first_id ELSE null END,
       CASE WHEN cnt=1 THEN first_title ELSE null END,
-      CASE WHEN cnt>1 THEN ext ELSE 0.0 END FROM cl
+      CASE WHEN cnt>1 THEN ext ELSE 0.0 END, NULL::text[] FROM cl
     UNION ALL
-    SELECT ('n:' || id::text), lng, lat, 1, NULL::text[], id::text, title, 0.0
+    SELECT ('n:' || id::text), lng, lat, 1, NULL::text[], id::text, title, 0.0, NULL::text[]
     FROM dr WHERE cid IS NULL;
 
   END IF;
@@ -557,6 +572,7 @@ AS $fn$
                    e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))
                  )
                ))
+        AND (p_filters->'clusterCells' IS NULL OR (CASE (p_filters->>'h3Resolution')::int WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(ARRAY(SELECT jsonb_array_elements_text(p_filters->'clusterCells'))))
         AND e.event_timestamp IS NOT NULL;
 
     IF v_total = 0 THEN
@@ -623,6 +639,7 @@ AS $fn$
                    e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))
                  )
                ))
+        AND (p_filters->'clusterCells' IS NULL OR (CASE (p_filters->>'h3Resolution')::int WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(ARRAY(SELECT jsonb_array_elements_text(p_filters->'clusterCells'))))
         AND e.event_timestamp IS NOT NULL
       ORDER BY e.event_timestamp;
       RETURN;
@@ -690,6 +707,7 @@ AS $fn$
                    e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))
                  )
                ))
+        AND (p_filters->'clusterCells' IS NULL OR (CASE (p_filters->>'h3Resolution')::int WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(ARRAY(SELECT jsonb_array_elements_text(p_filters->'clusterCells'))))
         AND e.event_timestamp IS NOT NULL
       GROUP BY group_id, group_name;
       RETURN;
@@ -752,6 +770,7 @@ AS $fn$
                    e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))
                  )
                ))
+        AND (p_filters->'clusterCells' IS NULL OR (CASE (p_filters->>'h3Resolution')::int WHEN 2 THEN e.h3_r2 WHEN 3 THEN e.h3_r3 WHEN 4 THEN e.h3_r4 WHEN 5 THEN e.h3_r5 WHEN 6 THEN e.h3_r6 WHEN 7 THEN e.h3_r7 WHEN 8 THEN e.h3_r8 WHEN 9 THEN e.h3_r9 WHEN 10 THEN e.h3_r10 WHEN 11 THEN e.h3_r11 WHEN 12 THEN e.h3_r12 WHEN 13 THEN e.h3_r13 ELSE e.h3_r13 END)::text = ANY(ARRAY(SELECT jsonb_array_elements_text(p_filters->'clusterCells'))))
         AND e.event_timestamp IS NOT NULL
       ),
       bucket_series AS (

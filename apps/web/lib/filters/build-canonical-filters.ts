@@ -85,6 +85,15 @@ export const buildCanonicalFilters = ({
     }
   }
 
+  // H3 cell filter (precise spatial constraint)
+  if (parameters.clusterCells != null && parameters.h3Resolution != null) {
+    const cells = parameters.clusterCells.split(",").filter(Boolean);
+    if (cells.length > 0) {
+      filters.clusterCells = cells;
+      filters.h3Resolution = parameters.h3Resolution;
+    }
+  }
+
   // Scope constraints (view-level data scope)
   applyScopeConstraints(filters, parameters);
 

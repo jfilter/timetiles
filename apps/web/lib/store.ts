@@ -15,6 +15,9 @@ import type { ClusterDensitySettings } from "@/lib/hooks/use-events-queries";
 /** Clustering algorithm. */
 export type ClusterAlgorithm = "h3" | "grid-k" | "dbscan";
 
+/** How clusters are rendered on the map. */
+export type ClusterDisplay = "circles" | "hexagons" | "points";
+
 /** Cluster density preset or expert mode. */
 export type ClusterDensityMode = "fine" | "normal" | "coarse" | "expert";
 
@@ -41,6 +44,17 @@ interface UIState {
   clusterDensity: ClusterDensitySettings;
   showHexBoundaries: boolean;
   mergeOverlapping: boolean;
+  clusterDisplay: ClusterDisplay;
+  /** H3 cells used to filter all queries to a specific cluster's events. */
+  clusterFilterCells: string[] | null;
+  /** Cluster currently selected in focus mode — transient, not persisted to URL. */
+  focusedCluster: {
+    clusterId: string;
+    center: [number, number];
+    count: number;
+    sourceCells: string[] | null;
+    h3Resolution: number;
+  } | null;
 }
 
 // Define the shape of our UI-only store
@@ -54,9 +68,13 @@ interface UIStore {
   setMapStats: (stats: UIState["mapStats"]) => void;
   setShowHexBoundaries: (show: boolean) => void;
   setMergeOverlapping: (merge: boolean) => void;
+  setClusterDisplay: (display: ClusterDisplay) => void;
   setClusterAlgorithm: (algorithm: ClusterAlgorithm) => void;
   setClusterDensityMode: (mode: ClusterDensityMode) => void;
   setClusterDensity: (density: ClusterDensitySettings) => void;
+  setFocusedCluster: (cluster: UIState["focusedCluster"]) => void;
+  clearFocusedCluster: () => void;
+  setClusterFilterCells: (cells: string[] | null) => void;
 }
 
 // Helper function to create UI state setters
@@ -73,10 +91,13 @@ export const useUIStore = create<UIStore>()(
       mapBounds: null,
       mapStats: null,
       showHexBoundaries: false,
-      mergeOverlapping: true,
+      mergeOverlapping: false,
+      clusterDisplay: "circles" as ClusterDisplay,
+      clusterFilterCells: null,
+      focusedCluster: null,
       clusterAlgorithm: "h3" as ClusterAlgorithm,
       clusterDensityMode: "normal",
-      clusterDensity: CLUSTER_DENSITY_PRESETS.normal,
+      clusterDensity: { ...CLUSTER_DENSITY_PRESETS.normal, mergeOverlapping: false, useHexCenter: true },
     },
 
     // UI actions
@@ -90,6 +111,18 @@ export const useUIStore = create<UIStore>()(
 
     setShowHexBoundaries: createUIStateSetter(set, "showHexBoundaries"),
     setMergeOverlapping: createUIStateSetter(set, "mergeOverlapping"),
+    setClusterDisplay: (display: ClusterDisplay) =>
+      set((state) => ({
+        ...state,
+        ui: {
+          ...state.ui,
+          clusterDisplay: display,
+          // Hexagon view requires no merge — sync both UI flag and API density settings
+          ...(display === "hexagons"
+            ? { mergeOverlapping: false, clusterDensity: { ...state.ui.clusterDensity, mergeOverlapping: false } }
+            : {}),
+        },
+      })),
     setClusterAlgorithm: (algorithm: ClusterAlgorithm) =>
       set((state) => ({
         ...state,
@@ -111,5 +144,8 @@ export const useUIStore = create<UIStore>()(
         },
       })),
     setClusterDensity: createUIStateSetter(set, "clusterDensity"),
+    setFocusedCluster: createUIStateSetter(set, "focusedCluster"),
+    clearFocusedCluster: () => set((state) => ({ ...state, ui: { ...state.ui, focusedCluster: null } })),
+    setClusterFilterCells: createUIStateSetter(set, "clusterFilterCells"),
   }))
 );

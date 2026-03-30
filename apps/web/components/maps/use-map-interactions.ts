@@ -11,6 +11,9 @@
 
 import type { MapLayerMouseEvent } from "maplibre-gl";
 import { useCallback, useState } from "react";
+import type { MapRef } from "react-map-gl/maplibre";
+
+import { useUIStore } from "@/lib/store";
 
 import { getValidCoordinates } from "./clustered-map-helpers";
 
@@ -25,19 +28,64 @@ interface UseMapInteractionsProps {
   formatFallbackTitle: (featureId: string) => string;
   /** Called when an individual event point is clicked */
   onEventClick?: (eventId: number) => void;
+  /** Current zoom level (used to derive H3 resolution for focus mode) */
+  zoom: number;
+  /** H3 resolution scale (default 0.6) */
+  h3ResolutionScale?: number;
 }
 
-export const useMapInteractions = ({ formatFallbackTitle, onEventClick }: UseMapInteractionsProps) => {
+export const useMapInteractions = ({
+  formatFallbackTitle,
+  onEventClick,
+  zoom,
+  h3ResolutionScale = 0.6,
+}: UseMapInteractionsProps) => {
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
+  const focusedCluster = useUIStore((s) => s.ui.focusedCluster);
+  const setFocusedCluster = useUIStore((s) => s.setFocusedCluster);
+  const clearFocusedCluster = useUIStore((s) => s.clearFocusedCluster);
 
   const closePopup = useCallback(() => setPopupInfo(null), []);
 
-  const handleClusterClick = useCallback((event: MapLayerMouseEvent, feature: GeoJSON.Feature) => {
-    const coordinates = getValidCoordinates(feature);
-    if (coordinates) {
-      event.target.flyTo({ center: coordinates, zoom: event.target.getZoom() + 2 });
-    }
-  }, []);
+  const handleClusterClick = useCallback(
+    (feature: GeoJSON.Feature) => {
+      const coordinates = getValidCoordinates(feature);
+      if (!coordinates) return;
+
+      const clusterId = String(feature.properties?.clusterId ?? feature.id ?? "");
+      const count = Number(feature.properties?.count ?? 1);
+
+      // Parse sourceCells from feature properties (MapLibre serializes as JSON string)
+      const rawSourceCells = feature.properties?.sourceCells;
+      let sourceCells: string[] | null = null;
+      if (typeof rawSourceCells === "string") {
+        sourceCells = JSON.parse(rawSourceCells) as string[];
+      } else if (Array.isArray(rawSourceCells)) {
+        sourceCells = rawSourceCells as string[];
+      }
+
+      const h3Resolution = Math.min(13, Math.max(2, Math.round(zoom * h3ResolutionScale)));
+
+      // Toggle: clicking same cluster clears focus, different cluster switches focus
+      if (focusedCluster?.clusterId === clusterId) {
+        clearFocusedCluster();
+      } else {
+        setFocusedCluster({ clusterId, center: coordinates, count, sourceCells, h3Resolution });
+      }
+    },
+    [zoom, h3ResolutionScale, focusedCluster?.clusterId, setFocusedCluster, clearFocusedCluster]
+  );
+
+  const handleFocusedClusterZoom = useCallback(
+    (mapRef: MapRef) => {
+      const cluster = useUIStore.getState().ui.focusedCluster;
+      if (!cluster) return;
+      const targetZoom = Math.min(20, (cluster.h3Resolution + 1) / h3ResolutionScale);
+      clearFocusedCluster();
+      mapRef.flyTo({ center: cluster.center, zoom: targetZoom });
+    },
+    [h3ResolutionScale, clearFocusedCluster]
+  );
 
   const handleEventPointClick = useCallback(
     (feature: GeoJSON.Feature) => {
@@ -65,13 +113,17 @@ export const useMapInteractions = ({ formatFallbackTitle, onEventClick }: UseMap
   const handleClick = useCallback(
     (event: MapLayerMouseEvent) => {
       const feature = event.features?.[0];
-      if (!feature) return;
+      if (!feature) {
+        // Click on background — clear focus
+        clearFocusedCluster();
+        return;
+      }
       const { type } = feature.properties ?? {};
-      if (type === "event-cluster") handleClusterClick(event, feature);
+      if (type === "event-cluster") handleClusterClick(feature);
       else if (type === "event-point") handleEventPointClick(feature);
     },
-    [handleClusterClick, handleEventPointClick]
+    [handleClusterClick, handleEventPointClick, clearFocusedCluster]
   );
 
-  return { popupInfo, closePopup, handleClick };
+  return { popupInfo, closePopup, handleClick, handleFocusedClusterZoom, clearFocusedCluster };
 };

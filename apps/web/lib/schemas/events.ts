@@ -30,6 +30,10 @@ export const EventFiltersSchema = z.object({
   ff: FieldFiltersParamSchema,
   scopeCatalogs: ScopeIdsParamSchema.optional(),
   scopeDatasets: ScopeIdsParamSchema.optional(),
+  /** H3 cell IDs for precise spatial filtering (comma-separated) */
+  clusterCells: z.string().optional(),
+  /** H3 resolution for clusterCells (2-13) */
+  h3Resolution: z.coerce.number().int().min(2).max(13).optional(),
 });
 
 export type EventFilters = z.infer<typeof EventFiltersSchema>;
@@ -183,8 +187,16 @@ export const MapClustersQuerySchema = EventFiltersSchema.extend({
   targetClusters: z.coerce.number().int().min(5).max(500).default(25).optional(),
   clusterAlgorithm: ClusterAlgorithmSchema.optional(),
   minPoints: z.coerce.number().int().min(2).max(20).default(2).optional(),
-  mergeOverlapping: z.coerce.boolean().default(true).optional(),
+  mergeOverlapping: z
+    .preprocess((v) => v === "true" || v === true, z.boolean())
+    .default(true)
+    .optional(),
   h3ResolutionScale: z.coerce.number().min(0.3).max(1.2).default(0.6).optional(),
+  useHexCenter: z
+    .preprocess((v) => v === "true" || v === true, z.boolean())
+    .default(false)
+    .optional(),
+  parentCells: z.string().optional(),
 }).openapi("MapClustersQuery");
 
 export type MapClustersQuery = z.infer<typeof MapClustersQuerySchema>;
@@ -201,6 +213,7 @@ export const ClusterFeatureSchema = z
       type: z.enum(["event-cluster", "event-point"]),
       count: z.number().int().optional(),
       title: z.string().optional(),
+      sourceCells: z.array(z.string()).optional(),
     }),
   })
   .openapi("ClusterFeature");
@@ -233,6 +246,28 @@ export const ClusterStatsResponseSchema = z
   .openapi("ClusterStatsResponse");
 
 export type ClusterStatsResponse = z.infer<typeof ClusterStatsResponseSchema>;
+
+// =============================================================================
+// Cluster Summary Endpoint
+// =============================================================================
+
+/** Query parameters for GET /api/v1/events/cluster-summary */
+export const ClusterSummaryQuerySchema = EventFiltersSchema.extend({
+  cells: z.string().min(1),
+  h3Resolution: z.coerce.number().int().min(2).max(13),
+}).openapi("ClusterSummaryQuery");
+
+export type ClusterSummaryQuery = z.infer<typeof ClusterSummaryQuerySchema>;
+
+/** Response for GET /api/v1/events/cluster-summary */
+export type ClusterSummaryResponse = {
+  totalCount: number;
+  temporalRange: { earliest: string; latest: string } | null;
+  datasets: Array<{ id: number; name: string; count: number }>;
+  catalogs: Array<{ id: number; name: string; count: number }>;
+  categories: Array<{ field: string; values: Array<{ value: string; count: number }> }>;
+  preview: Array<{ id: number; title?: string; timestamp?: string; datasetName: string }>;
+};
 
 // =============================================================================
 // Temporal Clusters Endpoint

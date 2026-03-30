@@ -13,11 +13,15 @@ import { ClusterDensityControl } from "@/components/maps/cluster-density-control
 import type { ClusterFeature } from "@/components/maps/clustered-map";
 import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
+import type { ClusterSummaryResponse } from "@/lib/schemas/events";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 interface MapPanelProps {
   mapRef?: RefObject<ClusteredMapHandle | null>;
   clusters: ClusterFeature[];
+  clusterChildren?: ClusterFeature[] | null;
+  clusterSummary?: ClusterSummaryResponse;
+  clusterSummaryLoading?: boolean;
   onBoundsChange: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
   onEventClick?: (eventId: number) => void;
   initialBounds?: SimpleBounds | null;
@@ -31,6 +35,9 @@ interface MapPanelProps {
 export const MapPanel = ({
   mapRef,
   clusters,
+  clusterChildren,
+  clusterSummary,
+  clusterSummaryLoading,
   onBoundsChange,
   onEventClick,
   initialBounds,
@@ -44,6 +51,9 @@ export const MapPanel = ({
     <ClusteredMap
       ref={mapRef}
       clusters={clusters}
+      clusterChildren={clusterChildren}
+      clusterSummary={clusterSummary}
+      clusterSummaryLoading={clusterSummaryLoading}
       onBoundsChange={onBoundsChange}
       onEventClick={onEventClick}
       initialBounds={initialBounds}

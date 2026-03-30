@@ -21,6 +21,7 @@ import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type {
   AggregateResponse,
   ClusterStatsResponse,
+  ClusterSummaryResponse,
   EventListItem,
   HistogramResponse,
   TemporalClustersResponse,
@@ -77,17 +78,28 @@ interface EventsApiResponse {
   pagination: EventsApiPagination;
 }
 
+/** Optional H3 cell filter for precise spatial filtering. */
+export interface ClusterFilter {
+  cells: string[];
+  h3Resolution: number;
+}
+
 // Shared fetch function for events list (used by both list and infinite queries)
 const fetchEventsInternal = async (
   filters: FilterState,
   bounds: BoundsType,
   options: { page?: number; limit?: number },
   signal?: AbortSignal,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ): Promise<EventsListResponse> => {
   const extra: Record<string, string> = {};
   if (options.limit != null) extra.limit = options.limit.toString();
   if (options.page != null) extra.page = options.page.toString();
+  if (clusterFilter) {
+    extra.clusterCells = clusterFilter.cells.join(",");
+    extra.h3Resolution = clusterFilter.h3Resolution.toString();
+  }
   const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching events", { filters, bounds, ...options });
@@ -112,6 +124,8 @@ export interface ClusterDensitySettings {
   mergeOverlapping?: boolean;
   /** Zoom-to-H3-resolution multiplier (default 0.7). Higher = finer hexes at same zoom. */
   h3ResolutionScale?: number;
+  /** Place circles at hex center instead of event centroid. */
+  useHexCenter?: boolean;
 }
 
 const fetchMapClusters = async (
@@ -128,6 +142,7 @@ const fetchMapClusters = async (
   if (density?.minPoints != null) extra.minPoints = density.minPoints.toString();
   if (density?.mergeOverlapping != null) extra.mergeOverlapping = density.mergeOverlapping.toString();
   if (density?.h3ResolutionScale != null) extra.h3ResolutionScale = density.h3ResolutionScale.toString();
+  if (density?.useHexCenter) extra.useHexCenter = "true";
   const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching map clusters", { filters, bounds, zoom });
@@ -139,9 +154,15 @@ const fetchHistogram = async (
   filters: FilterState,
   bounds: BoundsType,
   signal?: AbortSignal,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ): Promise<HistogramResponse> => {
-  const params = buildEventParams(filters, bounds, {}, scope);
+  const extra: Record<string, string> = {};
+  if (clusterFilter) {
+    extra.clusterCells = clusterFilter.cells.join(",");
+    extra.h3Resolution = clusterFilter.h3Resolution.toString();
+  }
+  const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching histogram", { filters, bounds });
 
@@ -201,8 +222,8 @@ export const eventsQueryKeys = {
   all: ["events"] as const,
   detail: (eventId: number) => [...eventsQueryKeys.all, "detail", eventId] as const,
   lists: () => [...eventsQueryKeys.all, "list"] as const,
-  list: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
-    [...eventsQueryKeys.lists(), { filters, bounds, limit, scope }] as const,
+  list: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope, clusterFilter?: ClusterFilter) =>
+    [...eventsQueryKeys.lists(), { filters, bounds, limit, scope, clusterFilter }] as const,
   infinite: () => [...eventsQueryKeys.all, "infinite"] as const,
   infiniteList: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
     [...eventsQueryKeys.infinite(), { filters, bounds, limit, scope }] as const,
@@ -218,8 +239,8 @@ export const eventsQueryKeys = {
   clusterStat: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.clusterStats(), { filters, scope }] as const,
   histograms: () => [...eventsQueryKeys.all, "histogram"] as const,
-  histogram: (filters: FilterState, bounds: BoundsType, scope?: ViewScope) =>
-    [...eventsQueryKeys.histograms(), { filters, bounds, scope }] as const,
+  histogram: (filters: FilterState, bounds: BoundsType, scope?: ViewScope, clusterFilter?: ClusterFilter) =>
+    [...eventsQueryKeys.histograms(), { filters, bounds, scope, clusterFilter }] as const,
   aggregations: () => [...eventsQueryKeys.all, "aggregation"] as const,
   aggregation: (filters: FilterState, bounds: BoundsType, groupBy: "catalog" | "dataset", scope?: ViewScope) =>
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy, scope }] as const,
@@ -232,6 +253,18 @@ export const eventsQueryKeys = {
   temporalClusters: () => [...eventsQueryKeys.all, "temporal-clusters"] as const,
   temporalCluster: (filters: FilterState, bounds: BoundsType, scope?: ViewScope, options?: TemporalClusterOptions) =>
     [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope, options }] as const,
+  clusterChildren: () => [...eventsQueryKeys.all, "cluster-children"] as const,
+  clusterChild: (
+    filters: FilterState,
+    bounds: BoundsType,
+    zoom: number,
+    parentCells: string[],
+    scope?: ViewScope,
+    density?: ClusterDensitySettings
+  ) => [...eventsQueryKeys.clusterChildren(), { filters, bounds, zoom, parentCells, scope, density }] as const,
+  clusterSummaries: () => [...eventsQueryKeys.all, "cluster-summary"] as const,
+  clusterSummary: (filters: FilterState, cells: string[], h3Resolution: number, scope?: ViewScope) =>
+    [...eventsQueryKeys.clusterSummaries(), { filters, cells, h3Resolution, scope }] as const,
 };
 
 // Query hooks
@@ -240,15 +273,15 @@ export const useEventsListQuery = (
   bounds: BoundsType,
   limit: number = 1000,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ) =>
   useQuery({
-    queryKey: eventsQueryKeys.list(filters, bounds, limit, scope),
-    queryFn: ({ signal }) => fetchEventsInternal(filters, bounds, { limit }, signal, scope),
-    enabled: enabled && bounds != null, // Only run when bounds are available
+    queryKey: eventsQueryKeys.list(filters, bounds, limit, scope, clusterFilter),
+    queryFn: ({ signal }) => fetchEventsInternal(filters, bounds, { limit }, signal, scope, clusterFilter),
+    enabled: enabled && bounds != null,
     ...QUERY_PRESETS.standard,
-
-    placeholderData: (previousData) => previousData, // Show previous data while loading new
+    placeholderData: (previousData) => previousData,
   });
 
 // Hook to get total count without bounds filter (for global statistics)
@@ -277,19 +310,82 @@ export const useMapClustersQuery = (
     placeholderData: (previousData) => previousData, // Show previous data while loading new
   });
 
+/** Fetch sub-cell children of a focused cluster at finer H3 resolution. */
+const fetchClusterChildren = async (
+  filters: FilterState,
+  bounds: BoundsType,
+  zoom: number,
+  parentCells: string[],
+  signal?: AbortSignal,
+  scope?: ViewScope,
+  density?: ClusterDensitySettings
+): Promise<MapClustersResponse> => {
+  const extra: Record<string, string> = { zoom: zoom.toString(), parentCells: parentCells.join(",") };
+  if (density?.targetClusters != null) extra.targetClusters = density.targetClusters.toString();
+  if (density?.clusterAlgorithm != null) extra.clusterAlgorithm = density.clusterAlgorithm;
+  if (density?.minPoints != null) extra.minPoints = density.minPoints.toString();
+  if (density?.mergeOverlapping != null) extra.mergeOverlapping = density.mergeOverlapping.toString();
+  if (density?.h3ResolutionScale != null) extra.h3ResolutionScale = density.h3ResolutionScale.toString();
+  const params = buildEventParams(filters, bounds, extra, scope);
+  return fetchJson<MapClustersResponse>(`/api/v1/events/geo?${params.toString()}`, { signal });
+};
+
+export const useClusterChildrenQuery = (
+  filters: FilterState,
+  bounds: BoundsType,
+  zoom: number,
+  parentCells: string[] | null,
+  enabled: boolean = true,
+  scope?: ViewScope,
+  density?: ClusterDensitySettings
+) =>
+  useQuery({
+    queryKey: eventsQueryKeys.clusterChild(filters, bounds, zoom, parentCells ?? [], scope, density),
+    queryFn: ({ signal }) => fetchClusterChildren(filters, bounds, zoom, parentCells!, signal, scope, density),
+    enabled: enabled && parentCells != null && parentCells.length > 0 && bounds != null,
+    ...QUERY_PRESETS.standard,
+  });
+
+/** Fetch summary data for events within specific H3 cells (cluster focus panel). */
+const fetchClusterSummary = async (
+  filters: FilterState,
+  cells: string[],
+  h3Resolution: number,
+  signal?: AbortSignal,
+  scope?: ViewScope
+): Promise<ClusterSummaryResponse> => {
+  const extra: Record<string, string> = { cells: cells.join(","), h3Resolution: h3Resolution.toString() };
+  const params = buildBaseEventParams(filters, extra, scope);
+  return fetchJson<ClusterSummaryResponse>(`/api/v1/events/cluster-summary?${params.toString()}`, { signal });
+};
+
+export const useClusterSummaryQuery = (
+  filters: FilterState,
+  cells: string[] | null,
+  h3Resolution: number,
+  enabled: boolean = true,
+  scope?: ViewScope
+) =>
+  useQuery({
+    queryKey: eventsQueryKeys.clusterSummary(filters, cells ?? [], h3Resolution, scope),
+    queryFn: ({ signal }) => fetchClusterSummary(filters, cells!, h3Resolution, signal, scope),
+    enabled: enabled && cells != null && cells.length > 0,
+    ...QUERY_PRESETS.standard,
+  });
+
 export const useHistogramQuery = (
   filters: FilterState,
   bounds: BoundsType,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ): ChartQueryResult<HistogramResponse> => {
   const query = useQuery({
-    queryKey: eventsQueryKeys.histogram(filters, bounds, scope),
-    queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal, scope),
-    enabled: enabled && bounds != null, // Only run when bounds are available
+    queryKey: eventsQueryKeys.histogram(filters, bounds, scope, clusterFilter),
+    queryFn: ({ signal }) => fetchHistogram(filters, bounds, signal, scope, clusterFilter),
+    enabled: enabled && bounds != null,
     ...QUERY_PRESETS.expensive,
-
-    placeholderData: (previousData) => previousData, // Show previous data while loading new
+    placeholderData: (previousData) => previousData,
   });
   const phase = useLoadingPhase(query.isLoading);
   return { ...query, ...phase };

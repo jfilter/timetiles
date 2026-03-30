@@ -43,12 +43,15 @@ export const GET = apiRoute({
     const algorithm = query.clusterAlgorithm ?? "h3";
     const mergeOverlapping = query.mergeOverlapping ?? false;
     const h3Scale = query.h3ResolutionScale ?? 0.6;
+    const parentCells = query.parentCells ? query.parentCells.split(",").filter(Boolean) : undefined;
     const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters, {
       targetClusters: query.targetClusters ?? 60,
       algorithm,
       minPoints: query.minPoints ?? 2,
       mergeOverlapping,
       h3ResolutionScale: h3Scale,
+      useHexCenter: query.useHexCenter ?? false,
+      parentCells,
     });
 
     // H3: calculate hex circumradius in pixels so circles fit inside hexagons
@@ -86,6 +89,7 @@ interface ClusterRow {
   cluster_id: string | number | null;
   event_id: string | number | null;
   event_title: string | null;
+  source_cells: string[] | null;
 }
 
 interface ClusteringOptions {
@@ -94,6 +98,8 @@ interface ClusteringOptions {
   minPoints?: number;
   mergeOverlapping?: boolean;
   h3ResolutionScale?: number;
+  useHexCenter?: boolean;
+  parentCells?: string[];
 }
 
 const executeClusteringQuery = async (
@@ -109,7 +115,10 @@ const executeClusteringQuery = async (
     minPoints = 2,
     mergeOverlapping = false,
     h3ResolutionScale = 0.6,
+    useHexCenter = false,
+    parentCells,
   } = opts;
+  const parentCellsParam = parentCells?.length ? `{${parentCells.join(",")}}` : null;
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
       ${bounds.west}::double precision,
@@ -122,7 +131,9 @@ const executeClusteringQuery = async (
       ${algorithm}::text,
       ${minPoints}::integer,
       ${mergeOverlapping}::boolean,
-      ${h3ResolutionScale}::double precision
+      ${h3ResolutionScale}::double precision,
+      ${parentCellsParam}::text[],
+      ${useHexCenter}::boolean
     )
   `)) as unknown as { rows: ClusterRow[] };
 };
@@ -149,10 +160,11 @@ const transformResultToClusters = (rows: ClusterRow[], hexRadiusPx?: number) =>
         },
         properties: {
           type: isCluster ? "event-cluster" : "event-point",
-          ...(isCluster ? { count: Number(row.event_count) } : {}),
+          ...(isCluster ? { count: Number(row.event_count), clusterId: String(row.cluster_id) } : {}),
           ...(!isCluster && eventId != null ? { eventId } : {}),
           ...(row.event_title != null && typeof row.event_title === "string" ? { title: row.event_title } : {}),
           ...(hexRadiusPx != null ? { hexRadius: Math.round(hexRadiusPx) } : {}),
+          ...(row.source_cells != null && row.source_cells.length > 1 ? { sourceCells: row.source_cells } : {}),
         },
       };
     });

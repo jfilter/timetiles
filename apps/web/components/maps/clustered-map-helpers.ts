@@ -38,19 +38,20 @@ export const INITIAL_VIEW_STATE = { longitude: 13.4125, latitude: 52.5219, zoom:
 export const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
 
 /** Layer IDs that respond to click events */
-export const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point"];
+export const INTERACTIVE_LAYER_IDS = ["event-clusters", "unclustered-point", "cluster-count-label"];
 
 /** Build event point layer configuration with the given map colors. */
-export const buildEventPointLayerConfig = (colors: MapColors = defaultMapColors) =>
+export const buildEventPointLayerConfig = (colors: MapColors = defaultMapColors, highlightActive: boolean = false) =>
   ({
     id: "unclustered-point",
     type: "circle" as const,
     paint: {
       "circle-color": colors.mapPoint,
       "circle-radius": 6,
-      "circle-opacity": 1,
+      "circle-opacity": highlightActive ? 0.15 : 1,
       "circle-stroke-width": 1,
       "circle-stroke-color": colors.mapStroke,
+      "circle-stroke-opacity": highlightActive ? 0.15 : 0.8,
     },
   }) satisfies CircleLayerConfig;
 
@@ -84,10 +85,32 @@ export const getValidCoordinates = (feature: Feature): [number, number] | null =
 export const buildClusterLayerConfig = (
   clusterFilter: ["==", ["get", string], string],
   colors: MapColors = defaultMapColors,
-  maxCount: number = 1
+  maxCount: number = 1,
+  highlightedCells: string[] | null = null
 ) => {
   // Normalize count relative to viewport max using sqrt scaling (0..1)
   const sqrtMax = Math.max(1, Math.sqrt(maxCount));
+
+  // When cells are highlighted (focus or filter), dim all others and bold-border the highlighted ones
+  const isHighlighted =
+    highlightedCells != null
+      ? highlightedCells.length === 1
+        ? ["==", ["get", "clusterId"], highlightedCells[0]]
+        : ["in", ["get", "clusterId"], ["literal", highlightedCells]]
+      : null;
+
+  const normalOpacity = ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 0.55, 1, 0.92];
+  const circleOpacity = isHighlighted ? ["case", isHighlighted, normalOpacity, 0.15] : normalOpacity;
+
+  const normalStrokeWidth = ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 1, 1, 2.5];
+  const strokeWidth = isHighlighted ? ["case", isHighlighted, 3.5, normalStrokeWidth] : normalStrokeWidth;
+
+  const normalStrokeColor = colors.mapStroke;
+  const strokeColor = isHighlighted ? ["case", isHighlighted, "#3b82f6", normalStrokeColor] : normalStrokeColor;
+
+  const normalStrokeOpacity = 0.8;
+  const strokeOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.1] : normalStrokeOpacity;
+
   return {
     id: "event-clusters",
     type: "circle" as const,
@@ -128,10 +151,11 @@ export const buildClusterLayerConfig = (
         1,
         colors.mapClusterGradient[4],
       ],
-      "circle-opacity": ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 0.55, 1, 0.92],
-      "circle-stroke-width": ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 1, 1, 2.5],
-      "circle-stroke-color": colors.mapStroke,
-      "circle-stroke-opacity": 0.8,
+
+      "circle-opacity": circleOpacity as never,
+      "circle-stroke-width": strokeWidth as never,
+      "circle-stroke-color": strokeColor as never,
+      "circle-stroke-opacity": strokeOpacity as never,
     },
   } satisfies CircleLayerConfig;
 };
@@ -171,25 +195,12 @@ export const buildH3OutlineLayerConfig = (colors: MapColors = defaultMapColors) 
     paint: { "line-color": colors.mapStroke, "line-width": 1, "line-opacity": 0.6 },
   }) satisfies LineLayerConfig;
 
-/** H3 hover highlight fill layer */
-export const buildH3HoverFillLayerConfig = () =>
+/** H3 hover highlight fill layer — subtle area preview, no color change */
+export const buildH3HoverFillLayerConfig = (colors: MapColors = defaultMapColors) =>
   ({
     id: "h3-hover-fill",
     type: "fill" as const,
-    paint: {
-      "fill-color": [
-        "interpolate",
-        ["linear"],
-        ["get", "intensity"],
-        0,
-        "#fef3c7", // light yellow
-        0.5,
-        "#f59e0b", // amber
-        1,
-        "#dc2626", // red
-      ],
-      "fill-opacity": 0.6,
-    },
+    paint: { "fill-color": colors.mapClusterGradient[1], "fill-opacity": 0.2 },
   }) satisfies FillLayerConfig;
 
 /** H3 hover highlight outline layer */
@@ -207,8 +218,19 @@ export const buildH3HoverOutlineLayerConfig = () =>
  * Only shown for clusters (count > 1), not individual event points.
  * Counts ≥ 1000 are shown in compact notation (1.2k, 15k, 1.2M).
  */
-export const buildClusterLabelLayerConfig = (clusterFilter: ["==", ["get", string], string]) =>
-  ({
+export const buildClusterLabelLayerConfig = (
+  clusterFilter: ["==", ["get", string], string],
+  highlightedCells: string[] | null = null
+) => {
+  const isHighlighted =
+    highlightedCells != null
+      ? highlightedCells.length === 1
+        ? ["==", ["get", "clusterId"], highlightedCells[0]]
+        : ["in", ["get", "clusterId"], ["literal", highlightedCells]]
+      : null;
+  const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
+
+  return {
     id: "cluster-count-label",
     type: "symbol" as const,
     filter: clusterFilter,
@@ -227,8 +249,15 @@ export const buildClusterLabelLayerConfig = (clusterFilter: ["==", ["get", strin
       "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
       "text-allow-overlap": true,
     },
-    paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0, 0, 0, 0.5)", "text-halo-width": 1 },
-  }) satisfies SymbolLayerConfig;
+    paint: {
+      "text-color": "#ffffff",
+      "text-halo-color": "rgba(0, 0, 0, 0.5)",
+      "text-halo-width": 1,
+
+      "text-opacity": textOpacity as never,
+    },
+  } satisfies SymbolLayerConfig;
+};
 
 /** Fit map to bounds, handling single-point case */
 export const fitMapToBounds = (
