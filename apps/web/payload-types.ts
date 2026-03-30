@@ -1591,7 +1591,7 @@ export interface ScheduledIngest {
     /**
      * Expected response format from the URL
      */
-    responseFormat?: ('auto' | 'csv' | 'json') | null;
+    responseFormat?: ('auto' | 'csv' | 'json' | 'html-in-json') | null;
     /**
      * Configure JSON API response handling
      */
@@ -1637,6 +1637,10 @@ export interface ScheduledIngest {
          */
         totalPath?: string | null;
         /**
+         * Dot-path to max page count in response (e.g. "max_num_pages")
+         */
+        maxPagesPath?: string | null;
+        /**
          * Maximum number of pages to fetch (safety limit)
          */
         maxPages?: number | null;
@@ -1646,6 +1650,18 @@ export interface ScheduledIngest {
         maxRecords?: number | null;
       };
     };
+    /**
+     * HTML extraction config for html-in-json sources (htmlPath, recordSelector, fields)
+     */
+    htmlExtractConfig?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
     /**
      * Configure which data quality checks pause the import for review. All checks are enabled by default.
      */
@@ -4530,10 +4546,12 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                     cursorParam?: T;
                     nextCursorPath?: T;
                     totalPath?: T;
+                    maxPagesPath?: T;
                     maxPages?: T;
                     maxRecords?: T;
                   };
             };
+        htmlExtractConfig?: T;
         reviewChecks?:
           | T
           | {

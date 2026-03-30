@@ -109,6 +109,7 @@ const executionFields: Field[] = [
           { label: "Auto-detect", value: "auto" },
           { label: "CSV / Excel", value: "csv" },
           { label: "JSON API", value: "json" },
+          { label: "HTML-in-JSON", value: "html-in-json" },
         ],
         admin: { description: "Expected response format from the URL" },
       },
@@ -118,7 +119,7 @@ const executionFields: Field[] = [
         admin: {
           description: "Configure JSON API response handling",
           condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
-            siblingData?.responseFormat === "json",
+            siblingData?.responseFormat === "json" || siblingData?.responseFormat === "html-in-json",
         },
         fields: [
           {
@@ -215,6 +216,15 @@ const executionFields: Field[] = [
                 },
               },
               {
+                name: "maxPagesPath",
+                type: "text",
+                admin: {
+                  description: 'Dot-path to max page count in response (e.g. "max_num_pages")',
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.type === "page",
+                },
+              },
+              {
                 name: "maxPages",
                 type: "number",
                 defaultValue: 50,
@@ -241,6 +251,15 @@ const executionFields: Field[] = [
             ],
           },
         ],
+      },
+      {
+        name: "htmlExtractConfig",
+        type: "json",
+        admin: {
+          description: "HTML extraction config for html-in-json sources (htmlPath, recordSelector, fields)",
+          condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+            siblingData?.responseFormat === "html-in-json",
+        },
       },
       {
         name: "reviewChecks",

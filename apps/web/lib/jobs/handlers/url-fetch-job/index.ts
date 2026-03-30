@@ -251,6 +251,8 @@ const buildFetchOptions = (
         }
       : undefined,
     responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
+    htmlExtractConfig: (advancedOptions as Record<string, unknown> | undefined)
+      ?.htmlExtractConfig as FetchRemoteDataOptions["htmlExtractConfig"],
   };
 };
 

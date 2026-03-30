@@ -27,6 +27,7 @@ import * as migration_20260327_011307 from './20260327_011307';
 import * as migration_20260327_014705 from './20260327_014705';
 import * as migration_20260329_000000_h3_map_clustering from './20260329_000000_h3_map_clustering';
 import * as migration_20260329_202709 from './20260329_202709';
+import * as migration_20260329_234544 from './20260329_234544';
 
 export const migrations = [
   {
@@ -172,6 +173,11 @@ export const migrations = [
   {
     up: migration_20260329_202709.up,
     down: migration_20260329_202709.down,
-    name: '20260329_202709'
+    name: '20260329_202709',
+  },
+  {
+    up: migration_20260329_234544.up,
+    down: migration_20260329_234544.down,
+    name: '20260329_234544'
   },
 ];

@@ -23,15 +23,57 @@ export interface DataPackagePreProcessing {
   mergeFields: Record<string, "min" | "max">;
 }
 
+/** A single field to extract from each HTML record element. */
+export interface DataPackageHtmlFieldDef {
+  /** Output column name. */
+  name: string;
+  /** CSS selector relative to the record element. Empty or omitted = the record element itself. */
+  selector?: string;
+  /** HTML attribute to read. Omit to extract text content. */
+  attribute?: string;
+}
+
+/** A field to extract from a detail page. */
+export interface DataPackageDetailPageFieldDef {
+  name: string;
+  selector: string;
+  attribute?: string;
+  /** Regex pattern to extract from the element's text (first match). */
+  pattern?: string;
+}
+
+/** Configuration for fetching detail pages to enrich records. */
+export interface DataPackageDetailPage {
+  /** Which record field contains the detail page URL. */
+  urlField: string;
+  /** Delay in ms between detail page requests. Default: 500. */
+  rateLimitMs?: number;
+  fields: DataPackageDetailPageFieldDef[];
+}
+
+/** Configuration for extracting records from HTML embedded in a JSON response. */
+export interface DataPackageHtmlExtract {
+  /** Dot-path to the HTML string inside the JSON response (e.g. "html"). */
+  htmlPath: string;
+  /** CSS selector that matches each record element (e.g. "article.card"). */
+  recordSelector: string;
+  /** Field definitions describing what to extract from each record element. */
+  fields: DataPackageHtmlFieldDef[];
+  /** Optional: fetch each record's detail page to extract additional fields. */
+  detailPage?: DataPackageDetailPage;
+}
+
 /** Source configuration for fetching data. */
 export interface DataPackageSource {
   url: string;
-  format: "json" | "csv";
+  format: "json" | "csv" | "html-in-json";
   auth?: AuthConfig;
   jsonApi?: JsonApiScheduleConfig;
   preProcessing?: DataPackagePreProcessing;
   /** Fields to exclude from import (removed before CSV conversion). */
   excludeFields?: string[];
+  /** HTML extraction config (required when format is "html-in-json"). */
+  htmlExtract?: DataPackageHtmlExtract;
 }
 
 /** Catalog defaults created on activation. */

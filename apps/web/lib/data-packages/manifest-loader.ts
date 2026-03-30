@@ -45,8 +45,37 @@ const paginationSchema = z
     cursorParam: z.string().optional(),
     nextCursorPath: z.string().optional(),
     totalPath: z.string().optional(),
+    maxPagesPath: z.string().optional(),
     maxPages: z.number().int().positive().optional(),
     maxRecords: z.number().int().positive().optional(),
+  })
+  .optional();
+
+const htmlFieldDefSchema = z.object({
+  name: z.string().min(1),
+  selector: z.string().optional(),
+  attribute: z.string().optional(),
+});
+
+const detailPageFieldSchema = z.object({
+  name: z.string().min(1),
+  selector: z.string().min(1),
+  attribute: z.string().optional(),
+  pattern: z.string().optional(),
+});
+
+const htmlExtractSchema = z
+  .object({
+    htmlPath: z.string().min(1),
+    recordSelector: z.string().min(1),
+    fields: z.array(htmlFieldDefSchema).min(1),
+    detailPage: z
+      .object({
+        urlField: z.string().min(1),
+        rateLimitMs: z.number().int().min(100).default(500),
+        fields: z.array(detailPageFieldSchema).min(1),
+      })
+      .optional(),
   })
   .optional();
 
@@ -65,13 +94,14 @@ const manifestSchema = z.object({
 
   source: z.object({
     url: z.string().min(1),
-    format: z.enum(["json", "csv"]),
+    format: z.enum(["json", "csv", "html-in-json"]),
     auth: authConfigSchema,
     jsonApi: z.object({ recordsPath: z.string().optional(), pagination: paginationSchema }).optional(),
     preProcessing: z
       .object({ groupBy: z.string(), mergeFields: z.record(z.string(), z.enum(["min", "max"])) })
       .optional(),
     excludeFields: z.array(z.string()).optional(),
+    htmlExtract: htmlExtractSchema,
   }),
 
   catalog: z.object({

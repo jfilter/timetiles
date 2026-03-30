@@ -60,6 +60,7 @@
     "ajv-formats": "^3.0.1",
     "archiver": "^7.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
+    "cheerio": "^1.2.0",
     "expr-eval": "^2.0.2",
     "franc": "catalog:",
     "graphql": "^16.13.1",

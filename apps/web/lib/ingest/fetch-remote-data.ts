@@ -16,6 +16,7 @@ import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
 import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-csv";
+import { enrichRecordsFromDetailPages, extractRecordsFromHtml, type HtmlExtractionConfig } from "./html-to-records";
 import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
 import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
 
@@ -50,7 +51,9 @@ export interface FetchRemoteDataOptions {
   /** Fields to remove from JSON records before CSV conversion. */
   excludeFields?: string[];
   /** Force response format instead of auto-detecting. */
-  responseFormat?: "auto" | "csv" | "json" | "geojson";
+  responseFormat?: "auto" | "csv" | "json" | "geojson" | "html-in-json";
+  /** HTML extraction config for html-in-json sources. */
+  htmlExtractConfig?: HtmlExtractionConfig;
 }
 
 export interface FetchRemoteDataResult {
@@ -100,18 +103,86 @@ const isJsonDetected = (mimeType: string, responseFormat?: string): boolean => {
   return mimeType === "application/json";
 };
 
+interface ConversionResult {
+  finalData: Buffer;
+  recordCount: number;
+  pagesProcessed?: number;
+}
+
 /** Convert a fetched GeoJSON buffer to CSV. */
-const convertFetchedGeoJson = (
-  data: Buffer,
-  url: string
-): { finalData: Buffer; recordCount: number; finalMimeType: string; finalExtension: string } => {
+const convertFetchedGeoJson = (data: Buffer, url: string): ConversionResult => {
   const result = convertGeoJsonToCsv(data);
   logger.info("GeoJSON conversion complete", {
     url: sanitizeUrlForLogging(url),
     featureCount: result.featureCount,
     geometryTypes: result.geometryTypes,
   });
-  return { finalData: result.csv, recordCount: result.featureCount, finalMimeType: "text/csv", finalExtension: ".csv" };
+  return { finalData: result.csv, recordCount: result.featureCount };
+};
+
+/** Convert HTML-in-JSON response to CSV by extracting records from embedded HTML. */
+const convertHtmlInJson = async (
+  options: FetchRemoteDataOptions,
+  fetchedData: Buffer,
+  authHeaders: Record<string, string>,
+  timeout: number
+): Promise<ConversionResult> => {
+  const { sourceUrl, jsonApiConfig, htmlExtractConfig } = options;
+  if (!htmlExtractConfig) throw new Error("htmlExtractConfig required for html-in-json format");
+
+  let records: Record<string, unknown>[];
+  let pagesProcessed: number | undefined;
+
+  if (jsonApiConfig?.pagination?.enabled) {
+    const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, undefined, {
+      authHeaders,
+      timeout,
+      htmlExtractConfig,
+    });
+    records = result.allRecords;
+    pagesProcessed = result.pagesProcessed;
+  } else {
+    const json: unknown = JSON.parse(fetchedData.toString("utf-8"));
+    records = extractRecordsFromHtml(json, htmlExtractConfig);
+  }
+
+  // Enrich records from detail pages (dates, descriptions, etc.)
+  if (htmlExtractConfig.detailPage) {
+    const fetchFn = async (url: string) => {
+      const result = await fetchWithRetry(url, { authHeaders, timeout });
+      return result.data;
+    };
+    await enrichRecordsFromDetailPages(records, htmlExtractConfig.detailPage, fetchFn);
+  }
+
+  if (options.excludeFields?.length) stripFields(records, options.excludeFields);
+  return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed };
+};
+
+/** Convert a JSON response to CSV, handling pagination and pre-processing. */
+const convertFetchedJson = async (
+  options: FetchRemoteDataOptions,
+  fetchedData: Buffer,
+  authHeaders: Record<string, string>,
+  timeout: number
+): Promise<ConversionResult> => {
+  const { sourceUrl, jsonApiConfig } = options;
+  const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
+
+  if (jsonApiConfig?.pagination?.enabled) {
+    const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, { authHeaders, timeout });
+    let records = result.allRecords;
+    if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
+    if (options.excludeFields?.length) stripFields(records, options.excludeFields);
+    return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed: result.pagesProcessed };
+  }
+
+  const result = convertJsonToCsv(fetchedData, {
+    recordsPath,
+    preProcessing: options.preProcessing ?? undefined,
+    excludeFields: options.excludeFields,
+  });
+  return { finalData: result.csv, recordCount: result.recordCount };
 };
 
 /**
@@ -172,13 +243,28 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   let recordCount: number | undefined;
   let pagesProcessed: number | undefined;
 
+  // HTML-in-JSON response — extract records from HTML embedded in JSON
+  if (responseFormat === "html-in-json" && options.htmlExtractConfig) {
+    logger.info("HTML-in-JSON response, extracting records from HTML", {
+      url: sanitizeUrlForLogging(normalizedUrl),
+      hasPagination: jsonApiConfig?.pagination?.enabled === true,
+    });
+
+    const htmlResult = await convertHtmlInJson(options, fetchResult.data, authHeaders, timeout);
+    finalData = htmlResult.finalData;
+    recordCount = htmlResult.recordCount;
+    pagesProcessed = htmlResult.pagesProcessed;
+    finalMimeType = "text/csv";
+    finalExtension = ".csv";
+    wasConverted = true;
+  }
   // GeoJSON response — convert to CSV (check before JSON since GeoJSON is a subset of JSON)
-  if (isGeoJsonDetected(finalMimeType, responseFormat, fetchResult.data)) {
+  else if (isGeoJsonDetected(finalMimeType, responseFormat, fetchResult.data)) {
     const geoResult = convertFetchedGeoJson(fetchResult.data, normalizedUrl);
     finalData = geoResult.finalData;
     recordCount = geoResult.recordCount;
-    finalMimeType = geoResult.finalMimeType;
-    finalExtension = geoResult.finalExtension;
+    finalMimeType = "text/csv";
+    finalExtension = ".csv";
     wasConverted = true;
   }
   // JSON response — convert to CSV
@@ -189,39 +275,10 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       hasPagination: jsonApiConfig?.pagination?.enabled === true,
     });
 
-    const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
-
-    if (jsonApiConfig?.pagination?.enabled) {
-      // Paginated fetch — fetch all pages
-      const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, { authHeaders, timeout });
-
-      let records = result.allRecords;
-      if (options.preProcessing) {
-        records = preProcessRecords(records, options.preProcessing);
-      }
-      if (options.excludeFields?.length) {
-        stripFields(records, options.excludeFields);
-      }
-
-      finalData = recordsToCsv(records);
-      recordCount = records.length;
-      pagesProcessed = result.pagesProcessed;
-
-      logger.info("Paginated JSON fetch complete", {
-        pagesProcessed: result.pagesProcessed,
-        totalRecords: records.length,
-      });
-    } else {
-      // Single response — convert (with optional pre-processing and field exclusion)
-      const result = convertJsonToCsv(fetchResult.data, {
-        recordsPath,
-        preProcessing: options.preProcessing ?? undefined,
-        excludeFields: options.excludeFields,
-      });
-      finalData = result.csv;
-      recordCount = result.recordCount;
-    }
-
+    const jsonResult = await convertFetchedJson(options, fetchResult.data, authHeaders, timeout);
+    finalData = jsonResult.finalData;
+    recordCount = jsonResult.recordCount;
+    pagesProcessed = jsonResult.pagesProcessed;
     finalMimeType = "text/csv";
     finalExtension = ".csv";
     wasConverted = true;

@@ -105,7 +105,13 @@ const buildScheduledIngestData = (
 ) => {
   const advancedOptions: Record<string, unknown> = {};
 
-  if (manifest.source.format === "json" && manifest.source.jsonApi) {
+  if (manifest.source.format === "html-in-json") {
+    advancedOptions.responseFormat = "html-in-json";
+    advancedOptions.htmlExtractConfig = manifest.source.htmlExtract;
+    if (manifest.source.jsonApi) {
+      advancedOptions.jsonApiConfig = manifest.source.jsonApi;
+    }
+  } else if (manifest.source.format === "json" && manifest.source.jsonApi) {
     advancedOptions.responseFormat = "json";
     advancedOptions.jsonApiConfig = manifest.source.jsonApi;
   }

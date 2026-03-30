@@ -9,6 +9,7 @@
  */
 
 import { flattenGeoJsonFeature, isGeoJson } from "@/lib/ingest/geojson-to-csv";
+import { extractRecordsFromHtml, type HtmlExtractionConfig } from "@/lib/ingest/html-to-records";
 import { extractRecordsFromJson } from "@/lib/ingest/json-to-csv";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
@@ -43,6 +44,8 @@ export interface PaginationConfig {
   nextCursorPath?: string;
   /** Dot-path to total record count in the JSON response. */
   totalPath?: string;
+  /** Dot-path to max page count in the JSON response (page-based pagination). */
+  maxPagesPath?: string;
   /** Safety limit on pages fetched. Default: 50, hard cap: 500. */
   maxPages?: number;
   /** Maximum total records across all pages. Default: 100,000. */
@@ -53,6 +56,8 @@ export interface PaginatedFetchOptions {
   authHeaders?: Record<string, string>;
   timeout?: number;
   cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl: boolean };
+  /** When set, extract records from HTML embedded in the JSON response instead of treating JSON as structured data. */
+  htmlExtractConfig?: HtmlExtractionConfig;
 }
 
 export interface PaginatedFetchResult {
@@ -107,13 +112,22 @@ const hasMorePages = (
   config: PaginationConfig,
   pageRecordCount: number,
   allRecordCount: number,
-  json: unknown
+  json: unknown,
+  currentPage: number
 ): { more: boolean; nextCursor?: string } => {
   const limitValue = config.limitValue ?? DEFAULT_LIMIT;
 
   // Zero records always means we are done
   if (pageRecordCount === 0) {
     return { more: false };
+  }
+
+  // If a maxPagesPath is configured, stop when we've reached the max page
+  if (config.maxPagesPath) {
+    const maxPages = getByPath(json, config.maxPagesPath);
+    if (typeof maxPages === "number" && currentPage >= maxPages) {
+      return { more: false };
+    }
   }
 
   // If a totalPath is configured and we have reached or exceeded it, stop
@@ -190,9 +204,12 @@ export const fetchPaginated = async (
     const json: unknown = JSON.parse(fetchResult.data.toString("utf-8"));
     let pageRecords: Record<string, unknown>[];
     try {
-      // GeoJSON FeatureCollections need special handling: flatten properties,
-      // extract coordinates, and preserve feature.id as _feature_id.
-      if (isGeoJson(json)) {
+      if (options.htmlExtractConfig) {
+        // HTML-in-JSON: extract records from HTML fragment embedded in the JSON response
+        pageRecords = extractRecordsFromHtml(json, options.htmlExtractConfig);
+      } else if (isGeoJson(json)) {
+        // GeoJSON FeatureCollections need special handling: flatten properties,
+        // extract coordinates, and preserve feature.id as _feature_id.
         const features = (json as { features: Array<Record<string, unknown>> }).features;
         pageRecords = features.map((f) => flattenGeoJsonFeature(f as never));
       } else {
@@ -216,7 +233,13 @@ export const fetchPaginated = async (
       break;
     }
 
-    const { more, nextCursor } = hasMorePages(paginationConfig, pageRecords.length, allRecords.length, json);
+    const { more, nextCursor } = hasMorePages(
+      paginationConfig,
+      pageRecords.length,
+      allRecords.length,
+      json,
+      state.page
+    );
 
     if (!more) {
       logger.info("No more pages to fetch", { pagesProcessed, totalRecords: allRecords.length });

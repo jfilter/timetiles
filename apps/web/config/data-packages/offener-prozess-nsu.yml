@@ -1,0 +1,120 @@
+slug: offener-prozess-nsu
+name: NSU-Komplex — Interaktive Karte
+description: >-
+  118 Orte und Ereignisse des NSU-Komplexes, dokumentiert vom
+  Dokumentationszentrum "Offener Prozess" in Chemnitz. Enthält Tatorte
+  der Morde und Anschläge, Raubüberfälle, Wohnorte des Trios,
+  Unterstützer-Netzwerke, Behörden-Standorte und weitere relevante Orte
+  mit Koordinaten, Adressen und Kategorien.
+  Quelle: map.offener-prozess.de (ASA-FF e.V.)
+category: history
+region: Deutschland
+tags:
+  - nsu
+  - rechtsextremismus
+  - terror
+  - history
+  - germany
+  - offener-prozess
+  - dokumentation
+license: unknown
+estimatedRecords: 118
+
+source:
+  url: "https://map.offener-prozess.de/jm-ajax/get_listings/"
+  format: html-in-json
+  jsonApi:
+    pagination:
+      enabled: true
+      type: page
+      pageParam: page
+      limitParam: per_page
+      limitValue: 30
+      maxPagesPath: max_num_pages
+      maxPages: 10
+  htmlExtract:
+    htmlPath: html
+    recordSelector: "article.card"
+    fields:
+      - name: latitude
+        attribute: data-latitude
+      - name: longitude
+        attribute: data-longitude
+      - name: categories
+        attribute: data-categories
+      - name: permalink
+        attribute: data-permalink
+      - name: title
+        selector: "h2.card__title"
+      - name: persons
+        selector: ".card__tagline"
+      - name: street
+        selector: ".address__street"
+      - name: street_no
+        selector: ".address__street-no"
+      - name: city
+        selector: ".address__city"
+      - name: postcode
+        selector: ".address__postcode"
+      - name: state
+        selector: ".address__state-short"
+    detailPage:
+      urlField: permalink
+      rateLimitMs: 200
+      fields:
+        - name: description
+          selector: ".widget_listing_content"
+        - name: date_raw
+          selector: ".widget_listing_content"
+          pattern: "\\d{1,2}\\.\\s*(?:Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\\s*\\d{4}"
+
+catalog:
+  name: Offener Prozess
+  description: Dokumentation des NSU-Komplexes durch das Dokumentationszentrum in Chemnitz
+  isPublic: true
+
+dataset:
+  name: NSU-Komplex Interaktive Karte
+  language: deu
+  idStrategy:
+    type: external
+    externalIdPath: post_id
+    duplicateStrategy: update
+
+transforms:
+  # Extract numeric post ID from permalink URL for use as external ID
+  - type: extract
+    from: permalink
+    to: post_id
+    pattern: "p=(\\d+)"
+  # Build street with number: "Bernhardstraße 11"
+  - type: concatenate
+    fromFields: [street, street_no]
+    separator: " "
+    to: street_full
+  # Build full address: "Bernhardstraße 11, 09126 Chemnitz, SN"
+  - type: concatenate
+    fromFields: [street_full, postcode, city, state]
+    separator: ", "
+    to: address
+fieldMappings:
+  titlePath: title
+  descriptionPath: description
+  timestampPath: date_raw
+  latitudePath: latitude
+  longitudePath: longitude
+  locationNamePath: address
+
+schedule:
+  type: frequency
+  frequency: monthly
+  schemaMode: additive
+  timezone: Europe/Berlin
+
+reviewChecks:
+  skipGeocodingCheck: true
+  skipDuplicateRateCheck: true
+
+geocodingBias:
+  countryCodes:
+    - de
