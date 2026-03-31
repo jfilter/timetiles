@@ -7,7 +7,7 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it } from "vitest";
 
-import { preProcessRecords, type PreProcessingConfig } from "@/lib/ingest/pre-process-records";
+import { type PreProcessingConfig, preProcessRecords } from "@/lib/ingest/pre-process-records";
 
 const config: PreProcessingConfig = { groupBy: "uid", mergeFields: { startDate: "min", endDate: "max" } };
 

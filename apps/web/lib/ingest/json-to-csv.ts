@@ -12,7 +12,7 @@ import Papa from "papaparse";
 import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 
-import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
+import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -116,7 +116,7 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
  */
 export const extractRecordsFromJson = (
   json: unknown,
-  recordsPath?: string
+  recordsPath?: string,
 ): { records: Record<string, unknown>[]; detectedPath: string } => {
   if (recordsPath) {
     const value = getByPath(json, recordsPath);

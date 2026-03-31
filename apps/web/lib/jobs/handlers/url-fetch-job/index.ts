@@ -19,6 +19,7 @@ import {
   type FetchRemoteDataOptions,
   type FetchRemoteDataResult,
 } from "@/lib/ingest/fetch-remote-data";
+import type { PreProcessingConfig } from "@/lib/ingest/pre-process-records";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -244,15 +245,22 @@ const buildFetchOptions = (
     excludeFields: Array.isArray(scheduledIngest?.excludeFields)
       ? (scheduledIngest.excludeFields as string[])
       : undefined,
-    preProcessing: scheduledIngest?.preProcessing?.groupBy
-      ? {
-          groupBy: scheduledIngest.preProcessing.groupBy,
-          mergeFields: (scheduledIngest.preProcessing.mergeFields as Record<string, "min" | "max">) ?? {},
-        }
-      : undefined,
+    preProcessing: (() => {
+      const pp = scheduledIngest?.preProcessing as
+        | { groupBy?: string | null; mergeFields?: unknown; extractFields?: unknown }
+        | null
+        | undefined;
+      if (!pp?.groupBy && !pp?.extractFields) return undefined;
+      return {
+        groupBy: pp.groupBy ?? undefined,
+        mergeFields: (pp.mergeFields as Record<string, "min" | "max">) ?? undefined,
+        extractFields: (pp.extractFields as PreProcessingConfig["extractFields"]) ?? undefined,
+      };
+    })(),
     responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
     htmlExtractConfig: (advancedOptions as Record<string, unknown> | undefined)
       ?.htmlExtractConfig as FetchRemoteDataOptions["htmlExtractConfig"],
+    isFirstRun: (scheduledIngest?.statistics?.successfulRuns ?? 0) === 0,
   };
 };
 

@@ -248,6 +248,42 @@ const executionFields: Field[] = [
                     siblingData?.enabled === true,
                 },
               },
+              {
+                name: "method",
+                type: "select",
+                enumName: "si_json_paging_method",
+                options: [
+                  { label: "GET (query params)", value: "GET" },
+                  { label: "POST (JSON body)", value: "POST" },
+                ],
+                defaultValue: "GET",
+                admin: {
+                  description: "HTTP method for pagination requests",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true,
+                },
+              },
+              {
+                name: "bodyTemplate",
+                type: "textarea",
+                admin: {
+                  description:
+                    "JSON body template for subsequent runs. Supports {{offset}}, {{limit}}, {{days_ago_N}}, {{today}} placeholders.",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.method === "POST",
+                },
+              },
+              {
+                name: "initialBodyTemplate",
+                type: "textarea",
+                admin: {
+                  description:
+                    "Body template used only on the first successful import. " +
+                    "Falls back to bodyTemplate if not set. Use for full historical imports.",
+                  condition: (_data: Record<string, unknown>, siblingData: Record<string, unknown>) =>
+                    siblingData?.enabled === true && siblingData?.method === "POST",
+                },
+              },
             ],
           },
         ],
@@ -423,6 +459,15 @@ const executionFields: Field[] = [
         admin: {
           description: 'Fields to merge with min/max: e.g. {"startDate": "min", "endDate": "max"}',
           width: "50%",
+        },
+      },
+      {
+        name: "extractFields",
+        type: "json",
+        admin: {
+          description:
+            "Extract nested JSON paths into flat fields before CSV conversion. " +
+            'Array of {from, to, joinPath?, separator?}. Example: [{"from": "locations.0.city", "to": "city"}]',
         },
       },
     ],

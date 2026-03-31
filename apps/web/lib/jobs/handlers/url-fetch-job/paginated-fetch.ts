@@ -50,6 +50,12 @@ export interface PaginationConfig {
   maxPages?: number;
   /** Maximum total records across all pages. Default: 100,000. */
   maxRecords?: number;
+  /** HTTP method for pagination requests. Default: "GET". */
+  method?: "GET" | "POST";
+  /** JSON body template with {{offset}}, {{limit}}, {{days_ago_N}}, {{today}} placeholders for POST. */
+  bodyTemplate?: string;
+  /** Body template used only on the first successful run. Falls back to bodyTemplate if absent. */
+  initialBodyTemplate?: string;
 }
 
 export interface PaginatedFetchOptions {
@@ -58,6 +64,8 @@ export interface PaginatedFetchOptions {
   cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl: boolean };
   /** When set, extract records from HTML embedded in the JSON response instead of treating JSON as structured data. */
   htmlExtractConfig?: HtmlExtractionConfig;
+  /** True when this is the first successful import (no prior successful runs). */
+  isFirstRun?: boolean;
 }
 
 export interface PaginatedFetchResult {
@@ -65,6 +73,38 @@ export interface PaginatedFetchResult {
   pagesProcessed: number;
   totalRecords: number;
 }
+
+/**
+ * Resolve dynamic date placeholders in a template string.
+ *
+ * - `{{days_ago_N}}` → ISO date N days before now (at midnight)
+ * - `{{today}}` → today's date at midnight
+ */
+const resolveDynamicDates = (template: string): string =>
+  template
+    .replace(/\{\{days_ago_(\d+)\}\}/g, (_, days) => {
+      const d = new Date();
+      d.setDate(d.getDate() - Number(days));
+      return d.toISOString().split("T")[0] + "T00:00:00";
+    })
+    .replace(/\{\{today\}\}/g, new Date().toISOString().split("T")[0] + "T00:00:00");
+
+/**
+ * Builds a JSON request body for POST-based pagination by substituting
+ * placeholder tokens in the body template.
+ */
+const buildPageBody = (
+  template: string,
+  state: { page: number; offset: number; cursor: string },
+  limitValue: number
+): string =>
+  resolveDynamicDates(
+    template
+      .replace(/\{\{offset\}\}/g, String(state.offset))
+      .replace(/\{\{limit\}\}/g, String(limitValue))
+      .replace(/\{\{page\}\}/g, String(state.page))
+      .replace(/\{\{cursor\}\}/g, state.cursor)
+  );
 
 /**
  * Builds the URL for a specific page by appending or replacing pagination
@@ -184,8 +224,17 @@ export const fetchPaginated = async (
 
   const state = { page: 1, offset: 0, cursor: "" };
 
+  // Select body template: use initialBodyTemplate on first run if available, otherwise bodyTemplate
+  const activeBodyTemplate =
+    options.isFirstRun && paginationConfig.initialBodyTemplate
+      ? paginationConfig.initialBodyTemplate
+      : paginationConfig.bodyTemplate;
+  const isPost = paginationConfig.method === "POST" && !!activeBodyTemplate;
+  const limitValue = paginationConfig.limitValue ?? DEFAULT_LIMIT;
+
   while (pagesProcessed < maxPages) {
-    const pageUrl = buildPageUrl(baseUrl, paginationConfig, state);
+    const pageUrl = isPost ? baseUrl : buildPageUrl(baseUrl, paginationConfig, state);
+    const pageBody = isPost ? buildPageBody(activeBodyTemplate, state, limitValue) : undefined;
 
     logger.info("Fetching page", {
       page: pagesProcessed + 1,
@@ -194,6 +243,8 @@ export const fetchPaginated = async (
     });
 
     const fetchResult = await fetchWithRetry(pageUrl, {
+      method: isPost ? "POST" : undefined,
+      body: pageBody,
       authHeaders: options.authHeaders,
       timeout: options.timeout,
       cacheOptions: options.cacheOptions
@@ -247,7 +298,6 @@ export const fetchPaginated = async (
     }
 
     // Advance pagination state for the next iteration
-    const limitValue = paginationConfig.limitValue ?? DEFAULT_LIMIT;
     state.page += 1;
     state.offset += limitValue;
     if (nextCursor) {

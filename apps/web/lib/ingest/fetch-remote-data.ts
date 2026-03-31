@@ -20,7 +20,7 @@ import type { ScheduledIngest } from "@/payload-types";
 import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-csv";
 import { enrichRecordsFromDetailPages, extractRecordsFromHtml, type HtmlExtractionConfig } from "./html-to-records";
 import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
-import { preProcessRecords, type PreProcessingConfig } from "./pre-process-records";
+import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
 
 /** Remove specified fields from all records in-place. */
 const stripFields = (records: Record<string, unknown>[], fields: string[]): void => {
@@ -56,6 +56,8 @@ export interface FetchRemoteDataOptions {
   responseFormat?: "auto" | "csv" | "json" | "geojson" | "html-in-json";
   /** HTML extraction config for html-in-json sources. */
   htmlExtractConfig?: HtmlExtractionConfig;
+  /** True when this is the first successful import (enables initialBodyTemplate). */
+  isFirstRun?: boolean;
 }
 
 export interface FetchRemoteDataResult {
@@ -127,7 +129,7 @@ const convertHtmlInJson = async (
   options: FetchRemoteDataOptions,
   fetchedData: Buffer,
   authHeaders: Record<string, string>,
-  timeout: number
+  timeout: number,
 ): Promise<ConversionResult> => {
   const { sourceUrl, jsonApiConfig, htmlExtractConfig } = options;
   if (!htmlExtractConfig) throw new Error("htmlExtractConfig required for html-in-json format");
@@ -166,13 +168,17 @@ const convertFetchedJson = async (
   options: FetchRemoteDataOptions,
   fetchedData: Buffer,
   authHeaders: Record<string, string>,
-  timeout: number
+  timeout: number,
 ): Promise<ConversionResult> => {
   const { sourceUrl, jsonApiConfig } = options;
   const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
 
   if (jsonApiConfig?.pagination?.enabled) {
-    const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, { authHeaders, timeout });
+    const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, {
+      authHeaders,
+      timeout,
+      isFirstRun: options.isFirstRun,
+    });
     let records = result.allRecords;
     if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
     if (options.excludeFields?.length) stripFields(records, options.excludeFields);
@@ -185,6 +191,57 @@ const convertFetchedJson = async (
     excludeFields: options.excludeFields,
   });
   return { finalData: result.csv, recordCount: result.recordCount };
+};
+
+/** Check if the API requires POST-based pagination (body template configured). */
+const isPostPaginatedApi = (options: FetchRemoteDataOptions): boolean => {
+  const p = options.jsonApiConfig?.pagination;
+  return !!(p?.enabled && p.method === "POST" && p.bodyTemplate);
+};
+
+/**
+ * Handle POST-based paginated API fetches (e.g. demonstrations.org).
+ * Skips the initial GET probe and goes directly to paginated fetch.
+ */
+const fetchPostPaginated = async (
+  options: FetchRemoteDataOptions,
+  authHeaders: Record<string, string>,
+): Promise<FetchRemoteDataResult> => {
+  const { sourceUrl, jsonApiConfig } = options;
+  const timeout = options.timeout ?? 60_000;
+  const recordsPath = jsonApiConfig!.recordsPath ?? undefined;
+  const result = await fetchPaginated(sourceUrl, jsonApiConfig!.pagination!, recordsPath, {
+    authHeaders,
+    timeout,
+    isFirstRun: options.isFirstRun,
+  });
+
+  let records = result.allRecords;
+  if (options.preProcessing) {
+    records = preProcessRecords(records, options.preProcessing);
+  }
+  if (options.excludeFields?.length) {
+    stripFields(records, options.excludeFields);
+  }
+
+  const finalData = recordsToCsv(records);
+  const contentHash = calculateDataHash(finalData);
+
+  logger.info("POST paginated JSON fetch complete", {
+    pagesProcessed: result.pagesProcessed,
+    totalRecords: records.length,
+  });
+
+  return {
+    data: finalData,
+    mimeType: "text/csv",
+    fileExtension: ".csv",
+    contentHash,
+    originalContentType: "application/json",
+    wasConverted: true,
+    recordCount: records.length,
+    pagesProcessed: result.pagesProcessed,
+  };
 };
 
 /**
@@ -220,6 +277,11 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     maxRetries,
     responseFormat,
   });
+
+  // POST paginated APIs: skip initial GET probe and go directly to paginated fetch
+  if (isPostPaginatedApi(options)) {
+    return fetchPostPaginated(options, authHeaders);
+  }
 
   // Fetch the data
   const fetchResult = await fetchWithRetry(normalizedUrl, {
@@ -301,7 +363,7 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   if (!SUPPORTED_EXTENSIONS.has(finalExtension)) {
     throw new Error(
       `Unsupported file type: ${finalMimeType} (${finalExtension}). ` +
-        "The URL must return CSV, Excel, ODS, JSON, or GeoJSON data."
+        "The URL must return CSV, Excel, ODS, JSON, or GeoJSON data.",
     );
   }
 
