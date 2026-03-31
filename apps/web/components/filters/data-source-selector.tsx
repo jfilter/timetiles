@@ -24,7 +24,7 @@ import { useView } from "@/lib/context/view-context";
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useFilters } from "@/lib/hooks/use-filters";
-import type { DataSourceDataset } from "@/lib/types/data-sources";
+import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
 
 import {
   type CatalogGroup,
@@ -109,6 +109,52 @@ const DatasetInfoPopover = ({
   );
 };
 
+/** Info popover showing catalog metadata */
+const CatalogInfoPopover = ({
+  catalog,
+  eventCount,
+  datasetCount,
+}: {
+  catalog: DataSourceCatalog;
+  eventCount: number;
+  datasetCount: number;
+}) => {
+  const t = useTranslations("Filters");
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+          aria-label={t("datasetInfo", { name: catalog.name })}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="left" align="start" className="w-64">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{catalog.name}</p>
+          {catalog.description && (
+            <p className="text-muted-foreground text-xs leading-relaxed">{catalog.description}</p>
+          )}
+          <dl className="text-xs">
+            <div className="flex justify-between py-0.5">
+              <dt className="text-muted-foreground">{t("datasets")}</dt>
+              <dd>{datasetCount}</dd>
+            </div>
+            <div className="flex justify-between py-0.5">
+              <dt className="text-muted-foreground">{t("events")}</dt>
+              <dd>{eventCount.toLocaleString()}</dd>
+            </div>
+          </dl>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 /** Catalog group header — visually consistent with dataset rows */
 const CatalogGroupHeader = ({
   group,
@@ -147,6 +193,13 @@ const CatalogGroupHeader = ({
           <ChevronRight className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
         )}
       </button>
+      <div className="mt-0.5 shrink-0">
+        <CatalogInfoPopover
+          catalog={group.catalog}
+          eventCount={group.totalEvents}
+          datasetCount={group.datasets.length}
+        />
+      </div>
     </div>
   );
 };
