@@ -60,8 +60,8 @@ source:
     - gwnob
 
 catalog:
-  name: "UCDP (HDX)"
-  description: "Uppsala Conflict Data Program — open data via Humanitarian Data Exchange"
+  name: "UCDP Conflict Events"
+  description: "Georeferenced conflict events from the Uppsala Conflict Data Program (UCDP) via the Humanitarian Data Exchange"
   isPublic: true
   license: CC-BY-IGO
   sourceUrl: "https://data.humdata.org"
