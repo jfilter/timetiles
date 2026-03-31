@@ -1,0 +1,135 @@
+# Data Packages
+
+Data packages are pre-configured, ready-to-activate data sources defined as YAML manifests. They bundle everything needed to import a dataset: source URL, field mappings, schedule, and metadata.
+
+## FtM Compatibility
+
+The data package manifest schema is aligned with the [FollowTheMoney (FtM) dataset metadata standard](https://followthemoney.tech/docs/metadata/) used by [OpenSanctions](https://www.opensanctions.org/) and the broader investigative data ecosystem ([OpenAleph](https://github.com/alephdata/aleph), [yente](https://yente.followthemoney.tech/)).
+
+This means dataset metadata (publisher, coverage, tags) follows the same conventions, making it easier to exchange information between investigative data tools.
+
+### Field Mapping
+
+| FtM Field            | TimeTiles Field      | Notes                                 |
+| -------------------- | -------------------- | ------------------------------------- |
+| `name`               | `slug`               | Unique lowercase identifier           |
+| `title`              | `title`              | Human-readable title                  |
+| `summary`            | `summary`            | Short description                     |
+| `description`        | `description`        | Detailed markdown (optional)          |
+| `url`                | `url`                | Reference/homepage URL                |
+| `tags`               | `tags`               | Category labels                       |
+| `publisher.*`        | `publisher.*`        | Name, URL, acronym, country, official |
+| `coverage.countries` | `coverage.countries` | ISO 3166-1 alpha-2 codes              |
+| `coverage.start`     | `coverage.start`     | Dataset start date                    |
+| `coverage.frequency` | `schedule.frequency` | Update cadence                        |
+| `data.url`           | `source.url`         | Download URL                          |
+| `data.format`        | `source.format`      | File format                           |
+
+Fields intentionally not mapped: `index_url`, `version`, `last_change`, `last_export`, `resources` (auto-managed or not applicable).
+
+## Manifest Structure
+
+```yaml
+# --- FtM-compatible metadata ---
+slug: my-dataset # Unique ID (FtM: name)
+title: My Dataset # Human-readable title
+summary: Short description of the data. # Brief summary
+description: | # Optional detailed markdown
+  Longer description with **formatting**.
+url: https://example.org/ # Source homepage
+license: CC-BY-4.0
+
+publisher:
+  name: Example Organization
+  url: https://example.org/
+  acronym: EXO # Optional short name
+  country: us # ISO 3166-1 alpha-2
+  official: false # true for government/IGO
+
+coverage:
+  countries: [us, ca] # ISO 3166-1 alpha-2
+  start: "2020-01-01" # Dataset start date
+
+tags: [example, open-data]
+estimatedRecords: 5000
+
+# --- Source configuration ---
+source:
+  url: https://api.example.org/data.csv
+  format: csv # csv, json, html-in-json
+  auth: # Optional authentication
+    type: bearer # none, api-key, bearer, basic
+    bearerToken: $ENV:API_TOKEN
+
+# --- Catalog & Dataset ---
+catalog:
+  name: Example Catalog
+  isPublic: true
+
+dataset:
+  name: Example Events
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+
+# --- Field mappings ---
+fieldMappings:
+  titlePath: name
+  timestampPath: date
+  locationNamePath: city
+  latitudePath: latitude
+  longitudePath: longitude
+
+# --- Schedule ---
+schedule:
+  type: frequency # frequency or cron
+  frequency: weekly # hourly, daily, weekly, monthly
+  schemaMode: additive
+  timezone: UTC
+```
+
+## Metadata Inheritance
+
+Metadata follows a **catalog → dataset** inheritance model:
+
+- **Catalog** holds shared defaults (`publisher`, `coverage`, `license`, etc.)
+- **Dataset** can optionally override any field
+
+Top-level `publisher` and `coverage` in the manifest map to the catalog. If a dataset within the same catalog has a different publisher, specify it under `dataset.publisher`.
+
+`coverage.countries` also serves as the default for geocoding country bias — no need to specify `geocodingBias.countryCodes` separately unless it differs from the coverage.
+
+## Activation
+
+Activating a data package creates three records:
+
+1. **Catalog** — with publisher, coverage, and metadata
+2. **Dataset** — with field mappings, ID strategy, and transforms
+3. **Scheduled Ingest** — with source URL, auth, and schedule
+
+```bash
+# List available packages
+pnpm --filter web tsx scripts/manage-packages.ts list
+
+# Activate a package
+pnpm --filter web tsx scripts/manage-packages.ts activate my-dataset
+```
+
+## Adding a New Package
+
+1. Create a YAML file in `apps/web/config/data-packages/`
+2. Follow the manifest structure above
+3. The manifest loader validates all YAML files with Zod on startup
+4. Test activation in development before deploying
+
+## External Data Mirrors
+
+For datasets that require manual download (e.g., from Airtable), data files are hosted as GitHub Release assets in the [timetiles-io/data](https://github.com/timetiles-io/data) repository. The data package `source.url` points to the release asset URL.
+
+To update mirrored data:
+
+```bash
+gh release create YYYY-MM "file.csv" --repo timetiles-io/data
+```

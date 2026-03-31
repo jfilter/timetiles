@@ -8,12 +8,15 @@ Three ways to get data into TimeTiles. All three go through the same pipeline: s
 
 import { Cards } from "nextra/components";
 
-<Cards num={3}>
+<Cards num={2}>
   <Cards.Card title="File Upload" href="./file-upload" arrow>
     Upload CSV, Excel, or ODS files manually.
   </Cards.Card>
   <Cards.Card title="Scheduled Imports" href="./scheduled-imports" arrow>
     Fetch data from a URL on a recurring schedule.
+  </Cards.Card>
+  <Cards.Card title="Data Packages" href="./data-packages" arrow>
+    Pre-configured datasets with FtM-compatible metadata.
   </Cards.Card>
   <Cards.Card title="Scrapers" href="./scrapers" arrow>
     Run custom Python or Node.js scripts to extract data.
