@@ -109,7 +109,7 @@ const DatasetInfoPopover = ({
   );
 };
 
-/** Catalog group header with tri-state checkbox and expand/collapse chevron */
+/** Catalog group header — visually consistent with dataset rows */
 const CatalogGroupHeader = ({
   group,
   checkState,
@@ -126,23 +126,25 @@ const CatalogGroupHeader = ({
   const t = useTranslations("Filters");
 
   return (
-    <div className="flex items-center gap-2 py-1.5">
+    <div className="flex items-start gap-2 py-1">
       <Checkbox
         checked={checkState === "all" ? true : checkState === "some" ? "indeterminate" : false}
         onCheckedChange={onToggleCheck}
         aria-label={t(checkState === "none" ? "selectAllInCatalog" : "deselectAllInCatalog", {
           name: group.catalog.name,
         })}
-        className="h-4 w-4 shrink-0"
+        className="mt-0.5 h-4 w-4 shrink-0"
       />
 
       <button type="button" onClick={onToggleExpand} className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="text-foreground truncate text-sm font-medium">{group.catalog.name}</span>
-        <span className="text-muted-foreground shrink-0 font-mono text-xs">{formatCount(group.totalEvents)}</span>
+        <span className="text-foreground min-w-0 truncate text-left text-sm font-medium">{group.catalog.name}</span>
+        <span className="text-muted-foreground ml-auto shrink-0 font-mono text-xs">
+          {formatCount(group.totalEvents)}
+        </span>
         {isExpanded ? (
-          <ChevronDown className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
+          <ChevronDown className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ChevronRight className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
+          <ChevronRight className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
         )}
       </button>
     </div>
@@ -168,13 +170,13 @@ const DatasetRow = ({
   const colors = getDatasetColors(dataset.id);
 
   return (
-    <div className={cn("flex items-center gap-2 py-1", indent && "pl-6")}>
-      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+    <div className={cn("flex items-start gap-2 py-1", indent && "pl-6")}>
+      <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
         <Checkbox
           checked={isSelected}
           onCheckedChange={onToggle}
           className={cn(
-            "shrink-0",
+            "mt-0.5 shrink-0",
             indent ? "h-3.5 w-3.5" : "h-4 w-4",
             colors.border,
             colors.checkedBg,
@@ -191,9 +193,11 @@ const DatasetRow = ({
         </span>
       </label>
       {eventCount != null && (
-        <span className="text-muted-foreground shrink-0 font-mono text-xs">{formatCount(eventCount)}</span>
+        <span className="text-muted-foreground mt-0.5 shrink-0 font-mono text-xs">{formatCount(eventCount)}</span>
       )}
-      <DatasetInfoPopover dataset={dataset} eventCount={eventCount} catalogName={catalogName} />
+      <div className="mt-0.5 shrink-0">
+        <DatasetInfoPopover dataset={dataset} eventCount={eventCount} catalogName={catalogName} />
+      </div>
     </div>
   );
 };
@@ -254,7 +258,6 @@ const CatalogGroupSection = ({
               isSelected={selectedDatasets.includes(String(dataset.id))}
               eventCount={eventCountsByDataset?.[String(dataset.id)]}
               onToggle={() => onToggleDataset(String(dataset.id))}
-              catalogName={group.catalog.name}
             />
           ))}
 
