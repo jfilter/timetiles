@@ -260,14 +260,10 @@ export const EventDetailContent = ({
 
       {/* Tag chips (categories, tags, etc.) */}
       {tagFields.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {tagFields.flatMap(({ tags }) =>
-            tags.map((tag) => (
-              <span key={tag} className="bg-muted dark:bg-muted/60 inline-block rounded-sm px-2 py-0.5 text-xs">
-                {tag}
-              </span>
-            ))
-          )}
+        <div className="flex flex-wrap gap-2">
+          {tagFields.map(({ key, tags }) => (
+            <FieldBox key={key} label={formatFieldLabel(key)} tags={tags} />
+          ))}
         </div>
       )}
 
