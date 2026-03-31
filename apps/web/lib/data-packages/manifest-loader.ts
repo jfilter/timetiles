@@ -108,11 +108,19 @@ const manifestSchema = z.object({
     name: z.string().min(1),
     description: z.string().optional(),
     isPublic: z.boolean().default(true),
+    license: z.string().optional(),
+    sourceUrl: z.string().optional(),
+    category: z.string().optional(),
+    region: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    publisher: z.object({ name: z.string().optional(), url: z.string().optional() }).optional(),
   }),
 
   dataset: z.object({
     name: z.string().min(1),
     language: z.string().default("eng"),
+    license: z.string().optional(),
+    sourceUrl: z.string().optional(),
     idStrategy: z
       .object({
         type: z.enum(["external", "content-hash", "auto-generate"]),
@@ -274,6 +282,13 @@ export const loadAllManifests = (): DataPackageManifest[] => {
       const validated = manifestSchema.parse(parsed);
 
       const manifest = validated as unknown as DataPackageManifest;
+
+      // Promote top-level metadata to catalog block (backward-compatible fallback)
+      if (manifest.license && !manifest.catalog.license) manifest.catalog.license = manifest.license;
+      if (manifest.region && !manifest.catalog.region) manifest.catalog.region = manifest.region;
+      if (manifest.tags?.length && !manifest.catalog.tags?.length) manifest.catalog.tags = manifest.tags;
+      if (manifest.category && !manifest.catalog.category) manifest.catalog.category = manifest.category;
+
       manifests.push({ ...manifest, source: { ...manifest.source, auth: resolveAuthEnvRefs(manifest.source.auth) } });
     } catch (error) {
       logger.warn({ file, error }, "Failed to load data package manifest");

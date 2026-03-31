@@ -8,6 +8,8 @@
  * @module
  * @category Import
  */
+import Papa from "papaparse";
+
 import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
@@ -282,6 +284,17 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     finalMimeType = "text/csv";
     finalExtension = ".csv";
     wasConverted = true;
+  }
+
+  // Strip excluded fields from native CSV sources (JSON/GeoJSON/HTML paths
+  // already strip before CSV conversion — this handles raw CSV responses).
+  if (!wasConverted && options.excludeFields?.length && finalExtension === ".csv") {
+    const parsed = Papa.parse<Record<string, unknown>>(finalData.toString("utf-8"), {
+      header: true,
+      skipEmptyLines: true,
+    });
+    stripFields(parsed.data, options.excludeFields);
+    finalData = Buffer.from(Papa.unparse(parsed.data), "utf-8");
   }
 
   // Validate file extension
