@@ -758,6 +758,177 @@ describe("string-op edge cases", () => {
   });
 });
 
+describe("string-op expression on numeric values", () => {
+  it("should apply expression to numeric value", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "type",
+        operation: "expression",
+        expression: '(value == 1 ? "State-based" : value == 2 ? "Non-state" : value == 3 ? "One-sided" : value)',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    expect(applyTransforms({ type: 1 }, transforms).type).toBe("State-based");
+    expect(applyTransforms({ type: 2 }, transforms).type).toBe("Non-state");
+    expect(applyTransforms({ type: 3 }, transforms).type).toBe("One-sided");
+  });
+
+  it("should return numeric value unchanged for non-matching expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "type",
+        operation: "expression",
+        expression: '(value == 99 ? "matched" : value)',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ type: 5 }, transforms);
+    expect(result.type).toBe(5);
+  });
+
+  it("should apply numeric comparison in expression", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "count",
+        operation: "expression",
+        expression: '(value > 50 ? "high" : "low")',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    expect(applyTransforms({ count: 100 }, transforms).count).toBe("high");
+    expect(applyTransforms({ count: 10 }, transforms).count).toBe("low");
+  });
+
+  it("should apply expression to boolean value", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "active",
+        operation: "expression",
+        expression: '(value ? "yes" : "no")',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    expect(applyTransforms({ active: true }, transforms).active).toBe("yes");
+    expect(applyTransforms({ active: false }, transforms).active).toBe("no");
+  });
+
+  it("should keep original numeric value when expression fails", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "count",
+        operation: "expression",
+        expression: "invalidFunc(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ count: 42 }, transforms);
+    expect(result.count).toBe(42);
+  });
+
+  it("should skip expression when value is undefined", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "missing",
+        operation: "expression",
+        expression: "value + 1",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ other: "data" }, transforms);
+    expect(result).not.toHaveProperty("missing");
+  });
+
+  it("should still skip uppercase/lowercase/replace on numeric values", () => {
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms({ count: 42 }, transforms);
+    expect(result.count).toBe(42);
+  });
+});
+
+describe("string-op to field support", () => {
+  it("should write expression result to a different field via to", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "type",
+        to: "type_label",
+        operation: "expression",
+        expression: '(value == 1 ? "State-based" : "Other")',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ type: 1 }, transforms);
+    expect(result.type_label).toBe("State-based");
+    expect(result.type).toBe(1); // original preserved
+  });
+
+  it("should write uppercase result to a different field via to", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "name",
+        to: "name_upper",
+        operation: "uppercase",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ name: "hello" }, transforms);
+    expect(result.name_upper).toBe("HELLO");
+    expect(result.name).toBe("hello"); // original preserved
+  });
+
+  it("should write replace result to a different field via to", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "slug",
+        to: "title",
+        operation: "replace",
+        pattern: "-",
+        replacement: " ",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    const result = applyTransforms({ slug: "hello-world" }, transforms);
+    expect(result.title).toBe("hello world");
+    expect(result.slug).toBe("hello-world"); // original preserved
+  });
+
+  it("should default to from field when to is not specified", () => {
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "name", operation: "uppercase", active: true, autoDetected: false },
+    ];
+    const result = applyTransforms({ name: "hello" }, transforms);
+    expect(result.name).toBe("HELLO");
+  });
+});
+
 describe("concatenate edge cases", () => {
   it("should stringify numbers and booleans in concatenation", () => {
     const transforms: IngestTransform[] = [

@@ -254,46 +254,44 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
  * Apply a string operation transform.
  */
 const applyStringOpTransform = (data: Record<string, unknown>, transform: StringOpTransform): void => {
-  const value = getByPath(data, transform.from);
+  const rawValue = getByPath(data, transform.from);
+  if (rawValue === undefined) return;
 
-  if (value === undefined || typeof value !== "string") return;
+  // Expression operations work on any type (numbers, strings, booleans).
+  // Other operations (uppercase, lowercase, replace) require strings.
+  if (transform.operation === "expression") {
+    if (!transform.expression) return;
+    try {
+      const exprResult = runCustomTransform(rawValue, transform.expression);
+      setByPath(data, transform.to ?? transform.from, exprResult);
+    } catch {
+      // Keep original value if expression fails
+    }
+    return;
+  }
+
+  if (typeof rawValue !== "string") return;
 
   let result: string;
   switch (transform.operation) {
     case "uppercase":
-      result = value.toUpperCase();
+      result = rawValue.toUpperCase();
       break;
     case "lowercase":
-      result = value.toLowerCase();
+      result = rawValue.toLowerCase();
       break;
     case "replace":
       if (transform.pattern === undefined) {
-        result = value;
+        result = rawValue;
       } else {
-        result = value.replaceAll(transform.pattern, transform.replacement ?? "");
-      }
-      break;
-    case "expression":
-      if (transform.expression) {
-        try {
-          const exprResult = runCustomTransform(value, transform.expression);
-          if (typeof exprResult === "number" || typeof exprResult === "boolean") {
-            setByPath(data, transform.from, exprResult);
-            return;
-          }
-          result = String(exprResult);
-        } catch {
-          result = value;
-        }
-      } else {
-        result = value;
+        result = rawValue.replaceAll(transform.pattern, transform.replacement ?? "");
       }
       break;
     default:
-      result = value;
+      result = rawValue;
   }
 
-  setByPath(data, transform.from, result);
+  setByPath(data, transform.to ?? transform.from, result);
 };
 
 /**

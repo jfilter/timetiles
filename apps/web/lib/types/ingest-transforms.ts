@@ -84,6 +84,8 @@ export interface StringOpTransform extends BaseTransform {
   type: "string-op";
   /** Source field to transform */
   from: string;
+  /** Target field to write result to (defaults to `from`). */
+  to?: string;
   /** Operation to apply */
   operation: "uppercase" | "lowercase" | "replace" | "expression";
   /** Pattern for replace operation */

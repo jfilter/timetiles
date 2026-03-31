@@ -83,9 +83,9 @@ transforms:
     from: type_of_violence
     operation: expression
     expression: >-
-      (value == "1" ? "State-based" :
-       value == "2" ? "Non-state" :
-       value == "3" ? "One-sided" : value)
+      (value == 1 ? "State-based" :
+       value == 2 ? "Non-state" :
+       value == 3 ? "One-sided" : value)
   # Build description from violence type + conflict parties
   - type: concatenate
     fromFields: [type_of_violence, dyad_name]
