@@ -197,10 +197,10 @@ const findOrCreateCatalog = async (
         collection: COLLECTION_NAMES.CATALOGS,
         id: cat.id,
         data: {
-          license: cat.license || meta.license,
-          sourceUrl: cat.sourceUrl || meta.sourceUrl,
-          category: cat.category || meta.category,
-          region: cat.region || meta.region,
+          license: cat.license ?? meta.license,
+          sourceUrl: cat.sourceUrl ?? meta.sourceUrl,
+          category: cat.category ?? meta.category,
+          region: cat.region ?? meta.region,
         },
         overrideAccess: true,
       });
