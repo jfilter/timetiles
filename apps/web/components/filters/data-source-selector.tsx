@@ -157,14 +157,16 @@ const DatasetRow = ({
   isSelected,
   eventCount,
   onToggle,
-  indent = true,
+  indent = false,
   catalogName,
 }: {
   dataset: DataSourceDataset;
   isSelected: boolean;
   eventCount?: number;
   onToggle: () => void;
+  /** Whether to indent (nested under a catalog group) */
   indent?: boolean;
+  /** Catalog name shown as subtitle (for single-dataset catalogs) */
   catalogName?: string;
 }) => {
   const colors = getDatasetColors(dataset.id);
@@ -175,18 +177,10 @@ const DatasetRow = ({
         <Checkbox
           checked={isSelected}
           onCheckedChange={onToggle}
-          className={cn(
-            "mt-0.5 shrink-0",
-            indent ? "h-3.5 w-3.5" : "h-4 w-4",
-            colors.border,
-            colors.checkedBg,
-            "data-[state=checked]:text-white"
-          )}
+          className={cn("mt-0.5 h-4 w-4 shrink-0", colors.border, colors.checkedBg, "data-[state=checked]:text-white")}
         />
         <span className="min-w-0 flex-1">
-          <span className={cn("block truncate text-sm", indent ? "text-foreground/80" : "text-foreground font-medium")}>
-            {dataset.name}
-          </span>
+          <span className="text-foreground block truncate text-sm font-medium">{dataset.name}</span>
           {catalogName && (
             <span className="text-muted-foreground block truncate text-[11px] leading-tight">{catalogName}</span>
           )}
@@ -258,6 +252,7 @@ const CatalogGroupSection = ({
               isSelected={selectedDatasets.includes(String(dataset.id))}
               eventCount={eventCountsByDataset?.[String(dataset.id)]}
               onToggle={() => onToggleDataset(String(dataset.id))}
+              indent
             />
           ))}
 
