@@ -34,7 +34,7 @@ const buildStringOpTransform = (t: DatasetTransformEntry, base: TransformBase): 
         ...base,
         type: "string-op",
         from: t.from,
-        // Cast needed: Payload-generated enum hasn't been regenerated to include "expression" yet
+        to: t.to ?? undefined,
         operation: t.operation as "uppercase" | "lowercase" | "replace" | "expression",
         pattern: t.pattern ?? undefined,
         replacement: t.replacement ?? undefined,
