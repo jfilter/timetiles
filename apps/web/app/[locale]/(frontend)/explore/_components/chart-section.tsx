@@ -30,6 +30,7 @@ import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { BeeswarmSettingsButton, EventBeeswarm, useGroupByOptions } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { formatMonthYear, parseISODate } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
@@ -112,6 +113,16 @@ export const ChartSection = ({
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
+  const { data: dataSources } = useDataSourcesQuery();
+
+  // Count how many distinct catalogs the selected datasets span
+  const selectedCatalogCount = useMemo(() => {
+    if (filters.datasets.length === 0) return dataSources?.catalogs.length ?? 0;
+    const datasets = dataSources?.datasets ?? [];
+    const selectedIds = new Set(filters.datasets.map(Number));
+    const catalogIds = new Set(datasets.filter((d) => selectedIds.has(d.id)).map((d) => d.catalogId));
+    return catalogIds.size;
+  }, [filters.datasets, dataSources]);
 
   // Determine which chart types should be available based on filters and data capabilities
   const availableChartTypes = useMemo<ChartType[]>(() => {
@@ -129,11 +140,13 @@ export const ChartSection = ({
       types.push("dataset-bar");
     }
 
-    // Show "By Catalog" when selected datasets span multiple catalogs (or none selected = all)
-    types.push("catalog-bar");
+    // Show "By Catalog" only when selected datasets span multiple catalogs
+    if (selectedCatalogCount > 1) {
+      types.push("catalog-bar");
+    }
 
     return types;
-  }, [filters.datasets.length, hasTemporalData]);
+  }, [filters.datasets.length, hasTemporalData, selectedCatalogCount]);
 
   // Derive effective chart type — falls back to first available if selection becomes unavailable
   const chartType = availableChartTypes.includes(selectedChartType)
