@@ -10,7 +10,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { useFilters, useSelectedEvent } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -73,6 +73,27 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     setClusterFilterCells(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to filter changes
   }, [filterKey]);
+
+  // Auto-zoom to data when dataset selection changes
+  const datasetsKey = filters.datasets.join(",");
+  const prevDatasetsKeyRef = useRef(datasetsKey);
+  useEffect(() => {
+    if (prevDatasetsKeyRef.current !== datasetsKey) {
+      prevDatasetsKeyRef.current = datasetsKey;
+      // Reset bounds state so the next boundsData arrival triggers a fit
+      viewport.setBoundsState("initial");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to dataset changes
+  }, [datasetsKey]);
+
+  // Fit map to data bounds on initial load or after dataset change
+  useEffect(() => {
+    if (boundsState === "initial" && boundsData?.bounds && mapRef.current && !boundsLoading) {
+      mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
+      viewport.setBoundsState("bounds-applied");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only fire when bounds arrive for initial/reset state
+  }, [boundsState, boundsData?.bounds, boundsLoading]);
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
