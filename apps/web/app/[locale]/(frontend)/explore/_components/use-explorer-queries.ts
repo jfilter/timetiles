@@ -9,9 +9,8 @@
  */
 "use client";
 
-import { useMemo } from "react";
-
 import { getResolution, isValidCell } from "h3-js";
+import { useMemo } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
