@@ -34,7 +34,7 @@
     "nyc": "^17.1.0",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
-    "oxlint-tsgolint": "^0.17.1",
+    "oxlint-tsgolint": "^0.17.2",
     "tsx": "catalog:",
     "turbo": "^2.8.20",
     "typescript": "catalog:"
