@@ -70,7 +70,7 @@ catalog:
     url: "https://ucdp.uu.se"
 
 dataset:
-  name: "Conflict Events — {{country}}"
+  name: "{{country}}"
   language: eng
   idStrategy:
     type: external
