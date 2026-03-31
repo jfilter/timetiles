@@ -81,12 +81,20 @@ export interface DataPackageCatalog {
   name: string;
   description?: string;
   isPublic?: boolean;
+  license?: string;
+  sourceUrl?: string;
+  category?: string;
+  region?: string;
+  tags?: string[];
+  publisher?: { name?: string; url?: string };
 }
 
 /** Dataset defaults created on activation. */
 export interface DataPackageDataset {
   name: string;
   language?: string;
+  license?: string;
+  sourceUrl?: string;
   idStrategy?: {
     type: "external" | "content-hash" | "auto-generate";
     externalIdPath?: string;

@@ -72,7 +72,7 @@ export const POST = apiRoute({
     let iterationsRun = 0;
     for (let i = 0; i < iterations; i++) {
       iterationsRun++;
-      await payload.jobs.run({ limit });
+      await payload.jobs.run({ limit, allQueues: true });
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 

@@ -235,6 +235,44 @@ export interface Catalog {
    */
   createdBy?: (number | null) | User;
   isPublic?: boolean | null;
+  /**
+   * License identifier (e.g., CC-BY-4.0, CC-BY-IGO, dl-de/by-2-0)
+   */
+  license?: string | null;
+  /**
+   * URL to original data source for attribution
+   */
+  sourceUrl?: string | null;
+  /**
+   * Category (e.g., "conflict", "civic-data", "infrastructure")
+   */
+  category?: string | null;
+  /**
+   * Geographic region (e.g., "Myanmar", "Berlin, Germany")
+   */
+  region?: string | null;
+  /**
+   * Tags for discoverability
+   */
+  tags?:
+    | {
+        tag: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Original data publisher for attribution
+   */
+  publisher?: {
+    /**
+     * Publisher name
+     */
+    name?: string | null;
+    /**
+     * Publisher website URL
+     */
+    url?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -460,6 +498,14 @@ export interface Dataset {
    * User who created this dataset
    */
   createdBy?: (number | null) | User;
+  /**
+   * Override catalog-level license if this dataset has a different license
+   */
+  license?: string | null;
+  /**
+   * Override catalog-level source URL if this dataset has a different source
+   */
+  sourceUrl?: string | null;
   /**
    * Additional metadata for the entity
    */
@@ -4136,6 +4182,22 @@ export interface CatalogsSelect<T extends boolean = true> {
   slug?: T;
   createdBy?: T;
   isPublic?: T;
+  license?: T;
+  sourceUrl?: T;
+  category?: T;
+  region?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  publisher?:
+    | T
+    | {
+        name?: T;
+        url?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -4173,6 +4235,8 @@ export interface DatasetsSelect<T extends boolean = true> {
   language?: T;
   isPublic?: T;
   createdBy?: T;
+  license?: T;
+  sourceUrl?: T;
   metadata?: T;
   idStrategy?:
     | T

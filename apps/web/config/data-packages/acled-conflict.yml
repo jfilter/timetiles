@@ -42,6 +42,11 @@ catalog:
   name: ACLED
   description: Armed Conflict Location & Event Data Project
   isPublic: true
+  license: "ACLED Terms of Use"
+  sourceUrl: "https://acleddata.com"
+  publisher:
+    name: Armed Conflict Location & Event Data Project
+    url: "https://acleddata.com"
 
 dataset:
   name: "Conflict & Protest — {{country}}"

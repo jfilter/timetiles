@@ -15,7 +15,7 @@ import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import { createLogger } from "@/lib/logger";
 import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/types/data-packages";
 import { extractRelationId } from "@/lib/utils/relation-id";
-import type { Dataset, User } from "@/payload-types";
+import type { Catalog, Dataset, User } from "@/payload-types";
 
 const logger = createLogger("data-packages");
 
@@ -50,6 +50,8 @@ const resolveManifestParameters = (
       ...manifest.catalog,
       name: sub(manifest.catalog.name),
       description: manifest.catalog.description ? sub(manifest.catalog.description) : undefined,
+      region: manifest.catalog.region ? sub(manifest.catalog.region) : undefined,
+      sourceUrl: manifest.catalog.sourceUrl ? sub(manifest.catalog.sourceUrl) : undefined,
     },
     dataset: { ...manifest.dataset, name: sub(manifest.dataset.name) },
   };
@@ -163,6 +165,65 @@ interface ActivateResult {
   scheduledIngestId: number;
 }
 
+/** Find an existing catalog by name or create a new one, enriching metadata on reuse. */
+const findOrCreateCatalog = async (
+  payload: Payload,
+  resolved: DataPackageManifest,
+  user: User
+): Promise<{ catalog: Catalog; reused: boolean }> => {
+  const existing = await payload.find({
+    collection: COLLECTION_NAMES.CATALOGS,
+    where: { name: { equals: resolved.catalog.name } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  });
+
+  const meta = {
+    license: resolved.catalog.license,
+    sourceUrl: resolved.catalog.sourceUrl,
+    category: resolved.catalog.category,
+    region: resolved.catalog.region,
+    tags: resolved.catalog.tags?.map((tag) => ({ tag })),
+    publisher: resolved.catalog.publisher,
+  };
+
+  if (existing.docs[0]) {
+    const cat = existing.docs[0];
+    const needsUpdate =
+      (!cat.license && meta.license) || (!cat.sourceUrl && meta.sourceUrl) || (!cat.category && meta.category);
+    if (needsUpdate) {
+      const updated = await payload.update({
+        collection: COLLECTION_NAMES.CATALOGS,
+        id: cat.id,
+        data: {
+          license: cat.license || meta.license,
+          sourceUrl: cat.sourceUrl || meta.sourceUrl,
+          category: cat.category || meta.category,
+          region: cat.region || meta.region,
+        },
+        overrideAccess: true,
+      });
+      return { catalog: updated, reused: true };
+    }
+    return { catalog: cat, reused: true };
+  }
+
+  const created = await payload.create({
+    collection: COLLECTION_NAMES.CATALOGS,
+    data: {
+      name: resolved.catalog.name,
+      description: resolved.catalog.description ? toRichText(resolved.catalog.description) : undefined,
+      isPublic: resolved.catalog.isPublic ?? true,
+      createdBy: user.id,
+      _status: "published",
+      ...meta,
+    },
+    overrideAccess: true,
+  });
+  return { catalog: created, reused: false };
+};
+
 /** Activate a data package: create catalog, dataset, and scheduled ingest. */
 export const activateDataPackage = async (
   payload: Payload,
@@ -189,32 +250,11 @@ export const activateDataPackage = async (
     throw new Error(`Data package "${activationKey}" is already activated`);
   }
 
-  // Find or create catalog (multiple packages can share a catalog)
-  const existingCatalog = await payload.find({
-    collection: COLLECTION_NAMES.CATALOGS,
-    where: { name: { equals: resolved.catalog.name } },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  });
-
-  const catalog =
-    existingCatalog.docs[0] ??
-    (await payload.create({
-      collection: COLLECTION_NAMES.CATALOGS,
-      data: {
-        name: resolved.catalog.name,
-        description: resolved.catalog.description ? toRichText(resolved.catalog.description) : undefined,
-        isPublic: resolved.catalog.isPublic ?? true,
-        createdBy: user.id,
-        _status: "published",
-      },
-      overrideAccess: true,
-    }));
+  const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user);
 
   logger.info(
-    { catalogId: catalog.id, name: resolved.catalog.name, reused: !!existingCatalog.docs[0] },
-    existingCatalog.docs[0] ? "Reusing existing catalog" : "Created catalog for data package"
+    { catalogId: catalog.id, name: resolved.catalog.name, reused },
+    reused ? "Reusing existing catalog" : "Created catalog for data package"
   );
 
   // Build dataset config
@@ -235,6 +275,8 @@ export const activateDataPackage = async (
       language: resolved.dataset.language ?? "eng",
       isPublic: resolved.catalog.isPublic ?? true,
       createdBy: user.id,
+      license: resolved.dataset.license,
+      sourceUrl: resolved.dataset.sourceUrl,
       idStrategy: {
         type: idStrategy.type,
         externalIdPath: idStrategy.externalIdPath,

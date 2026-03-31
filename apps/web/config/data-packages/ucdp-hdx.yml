@@ -1,0 +1,111 @@
+slug: ucdp-hdx
+name: "UCDP Conflict Events — {{country}} (HDX)"
+description: >-
+  Georeferenced conflict events in {{country}} from the Uppsala Conflict
+  Data Program (UCDP) via the Humanitarian Data Exchange. Covers
+  state-based, non-state, and one-sided violence with casualty
+  estimates. Updated monthly.
+category: conflict
+region: "{{country}}"
+tags:
+  - conflict
+  - violence
+  - ucdp
+  - casualties
+  - hdx
+license: CC-BY-IGO
+
+parameters:
+  - name: country
+    label: Country name
+    required: true
+    example: "Myanmar"
+  - name: dataset_id
+    label: HDX dataset UUID
+    required: true
+    example: "e7d38839-fd46-4693-9a5f-b8776262e3f8"
+  - name: resource_id
+    label: HDX resource UUID
+    required: true
+    example: "858cbf79-6c0b-4a9b-9135-cb85ae3bb348"
+
+source:
+  url: "https://data.humdata.org/dataset/{{dataset_id}}/resource/{{resource_id}}/download/"
+  format: csv
+  excludeFields:
+    - relid
+    - active_year
+    - code_status
+    - conflict_dset_id
+    - conflict_new_id
+    - dyad_dset_id
+    - dyad_new_id
+    - side_a_dset_id
+    - side_a_new_id
+    - side_b_dset_id
+    - side_b_new_id
+    - number_of_sources
+    - source_article
+    - source_office
+    - source_date
+    - source_original
+    - where_prec
+    - where_coordinates
+    - geom_wkt
+    - priogrid_gid
+    - country_id
+    - event_clarity
+    - date_prec
+    - gwnoa
+    - gwnob
+
+catalog:
+  name: "UCDP (HDX)"
+  description: "Uppsala Conflict Data Program — open data via Humanitarian Data Exchange"
+  isPublic: true
+  license: CC-BY-IGO
+  sourceUrl: "https://data.humdata.org"
+  publisher:
+    name: Uppsala Conflict Data Program
+    url: "https://ucdp.uu.se"
+
+dataset:
+  name: "Conflict Events — {{country}}"
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+
+transforms:
+  # Map violence type codes to human-readable labels
+  - type: string-op
+    from: type_of_violence
+    operation: expression
+    expression: >-
+      (value == "1" ? "State-based" :
+       value == "2" ? "Non-state" :
+       value == "3" ? "One-sided" : value)
+  # Build description from violence type + conflict parties
+  - type: concatenate
+    fromFields: [type_of_violence, dyad_name]
+    separator: " — "
+    to: event_summary
+
+fieldMappings:
+  titlePath: source_headline
+  descriptionPath: event_summary
+  timestampPath: date_start
+  endTimestampPath: date_end
+  locationNamePath: where_description
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: monthly
+  schemaMode: additive
+  timezone: UTC
+
+reviewChecks:
+  skipGeocodingCheck: true

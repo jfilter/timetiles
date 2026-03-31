@@ -206,6 +206,45 @@ const Catalogs: CollectionConfig = {
     createSlugField("catalogs"),
     createCreatedByField("User who created this catalog"),
     createIsPublicField({ showPrivateNotice: true }),
+    {
+      name: "license",
+      type: "text",
+      maxLength: 255,
+      admin: { description: "License identifier (e.g., CC-BY-4.0, CC-BY-IGO, dl-de/by-2-0)" },
+    },
+    {
+      name: "sourceUrl",
+      type: "text",
+      maxLength: 2048,
+      admin: { description: "URL to original data source for attribution" },
+    },
+    {
+      name: "category",
+      type: "text",
+      maxLength: 100,
+      admin: { description: 'Category (e.g., "conflict", "civic-data", "infrastructure")' },
+    },
+    {
+      name: "region",
+      type: "text",
+      maxLength: 255,
+      admin: { description: 'Geographic region (e.g., "Myanmar", "Berlin, Germany")' },
+    },
+    {
+      name: "tags",
+      type: "array",
+      admin: { description: "Tags for discoverability" },
+      fields: [{ name: "tag", type: "text", required: true, maxLength: 100 }],
+    },
+    {
+      name: "publisher",
+      type: "group",
+      admin: { description: "Original data publisher for attribution" },
+      fields: [
+        { name: "name", type: "text", maxLength: 255, admin: { description: "Publisher name" } },
+        { name: "url", type: "text", maxLength: 2048, admin: { description: "Publisher website URL" } },
+      ],
+    },
   ],
   hooks: {
     beforeChange: [

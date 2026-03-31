@@ -69,6 +69,18 @@ const Datasets: CollectionConfig = {
     },
     createIsPublicField({ showPrivateNotice: true }),
     createCreatedByField("User who created this dataset"),
+    {
+      name: "license",
+      type: "text",
+      maxLength: 255,
+      admin: { description: "Override catalog-level license if this dataset has a different license" },
+    },
+    {
+      name: "sourceUrl",
+      type: "text",
+      maxLength: 2048,
+      admin: { description: "Override catalog-level source URL if this dataset has a different source" },
+    },
     metadataField,
     // ID Strategy Configuration
     {
