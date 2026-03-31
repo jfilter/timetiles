@@ -130,6 +130,12 @@ export interface JsonApiScheduleConfig {
     totalPath?: string;
     maxPages?: number;
     maxRecords?: number;
+    /** HTTP method for pagination requests. Default: "GET". */
+    method?: "GET" | "POST";
+    /** JSON body template with {{offset}}, {{limit}}, {{page}}, {{cursor}}, {{days_ago_N}}, {{today}} placeholders. */
+    bodyTemplate?: string;
+    /** Body template used only on the first successful run. Falls back to bodyTemplate if absent. */
+    initialBodyTemplate?: string;
   };
 }
 

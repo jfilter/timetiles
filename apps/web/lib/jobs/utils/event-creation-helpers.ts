@@ -8,11 +8,11 @@
  * @category Jobs
  */
 import { parseCoordinate } from "@/lib/geospatial/parsing";
-import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
+import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
 import type { getImportGeocodingResults } from "@/lib/types/geocoding";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";

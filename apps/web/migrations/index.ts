@@ -28,6 +28,8 @@ import * as migration_20260327_014705 from './20260327_014705';
 import * as migration_20260329_000000_h3_map_clustering from './20260329_000000_h3_map_clustering';
 import * as migration_20260329_202709 from './20260329_202709';
 import * as migration_20260329_234544 from './20260329_234544';
+import * as migration_20260329_234956 from './20260329_234956';
+import * as migration_20260330_003537 from './20260330_003537';
 import * as migration_20260331_000000_unique_locations from './20260331_000000_unique_locations';
 import * as migration_20260331_200012 from './20260331_200012';
 import * as migration_20260331_220208 from './20260331_220208';
@@ -179,9 +181,20 @@ export const migrations = [
     name: '20260329_202709',
   },
   {
+<<<<<<< HEAD
     up: migration_20260329_234544.up,
     down: migration_20260329_234544.down,
     name: '20260329_234544',
+  },
+  {
+    up: migration_20260329_234956.up,
+    down: migration_20260329_234956.down,
+    name: '20260329_234956',
+  },
+  {
+    up: migration_20260330_003537.up,
+    down: migration_20260330_003537.down,
+    name: '20260330_003537',
   },
   {
     up: migration_20260331_000000_unique_locations.up,
@@ -196,6 +209,6 @@ export const migrations = [
   {
     up: migration_20260331_220208.up,
     down: migration_20260331_220208.down,
-    name: '20260331_220208'
+    name: '20260331_220208',
   },
 ];

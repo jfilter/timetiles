@@ -48,6 +48,9 @@ const paginationSchema = z
     maxPagesPath: z.string().optional(),
     maxPages: z.number().int().positive().optional(),
     maxRecords: z.number().int().positive().optional(),
+    method: z.enum(["GET", "POST"]).optional(),
+    bodyTemplate: z.string().optional(),
+    initialBodyTemplate: z.string().optional(),
   })
   .optional();
 
@@ -120,7 +123,20 @@ const manifestSchema = z.object({
     auth: authConfigSchema,
     jsonApi: z.object({ recordsPath: z.string().optional(), pagination: paginationSchema }).optional(),
     preProcessing: z
-      .object({ groupBy: z.string(), mergeFields: z.record(z.string(), z.enum(["min", "max"])) })
+      .object({
+        groupBy: z.string().optional(),
+        mergeFields: z.record(z.string(), z.enum(["min", "max"])).optional(),
+        extractFields: z
+          .array(
+            z.object({
+              from: z.string().min(1),
+              to: z.string().min(1),
+              joinPath: z.string().optional(),
+              separator: z.string().optional(),
+            })
+          )
+          .optional(),
+      })
       .optional(),
     excludeFields: z.array(z.string()).optional(),
     htmlExtract: htmlExtractSchema,

@@ -1,41 +1,93 @@
 /**
  * Pre-processes JSON records before CSV conversion.
  *
- * Supports grouping records by a key field and merging date/numeric fields
- * using min/max strategies. Used for data sources that return repeated entries
- * for recurring events (e.g. one row per day for a multi-day exhibition).
+ * Supports extracting nested JSON paths into flat fields, grouping
+ * records by a key field, and merging date/numeric fields using min/max
+ * strategies.
  *
  * @module
  * @category Import
  */
 
 import { logger } from "@/lib/logger";
+import { getByPath } from "@/lib/utils/object-path";
 
 /** Merge strategy for a field: keep the minimum or maximum value. */
 type MergeStrategy = "min" | "max";
 
+/** Configuration for extracting nested paths into flat fields. */
+export interface ExtractFieldConfig {
+  /** Dot-path to extract (e.g., "locations.0.geography.coordinates.1"). */
+  from: string;
+  /** Target flat field name (e.g., "latitude"). */
+  to: string;
+  /** For arrays of objects: extract this sub-path from each element and join. */
+  joinPath?: string;
+  /** Join separator (default: ", "). */
+  separator?: string;
+}
+
 /** Configuration for JSON record pre-processing. */
 export interface PreProcessingConfig {
   /** Field path to group records by (e.g. "uid"). */
-  groupBy: string;
+  groupBy?: string;
   /** Fields to merge with min/max strategy (e.g. { startDate: "min", endDate: "max" }). */
-  mergeFields: Record<string, MergeStrategy>;
+  mergeFields?: Record<string, MergeStrategy>;
+  /** Extract nested JSON paths into flat top-level fields before flattening. */
+  extractFields?: ExtractFieldConfig[];
 }
 
 /**
- * Group records by a key and merge specified fields using min/max.
+ * Apply extractFields to a single record: resolve nested dot-paths and
+ * create flat top-level fields.
+ */
+const applyExtractFields = (record: Record<string, unknown>, extractions: ExtractFieldConfig[]): void => {
+  for (const { from, to, joinPath, separator } of extractions) {
+    if (joinPath) {
+      // Array join mode: extract sub-path from each element and join
+      const arr = getByPath(record, from);
+      if (Array.isArray(arr)) {
+        const values = arr
+          .map((item) => (typeof item === "object" && item !== null ? getByPath(item, joinPath) : undefined))
+          .filter((v) => v != null)
+          .map(String);
+        record[to] = values.join(separator ?? ", ");
+      }
+    } else {
+      // Simple extraction: resolve dot-path to a scalar value
+      const value = getByPath(record, from);
+      if (value !== undefined) {
+        record[to] = value;
+      }
+    }
+  }
+};
+
+/**
+ * Pre-process JSON records before CSV conversion.
  *
- * Records sharing the same `groupBy` value are collapsed into a single record.
- * The first record in each group provides the base values; `mergeFields` are
- * then replaced with the min or max across the group.
+ * Processing order:
+ * 1. Extract nested fields (if `extractFields` configured)
+ * 2. Group and merge records (if `groupBy` configured)
  *
- * @returns Deduplicated records with merged date ranges.
+ * @returns Processed records ready for CSV flattening.
  */
 export const preProcessRecords = (
   records: Record<string, unknown>[],
   config?: PreProcessingConfig | null
 ): Record<string, unknown>[] => {
-  if (!config?.groupBy || records.length === 0) return records;
+  if (!config || records.length === 0) return records;
+
+  // Step 1: Extract nested fields into flat top-level fields
+  if (config.extractFields?.length) {
+    for (const record of records) {
+      applyExtractFields(record, config.extractFields);
+    }
+    logger.info("Extract fields complete", { extractedFields: config.extractFields.length, records: records.length });
+  }
+
+  // Step 2: Group and merge (existing behavior)
+  if (!config.groupBy) return records;
 
   const { groupBy, mergeFields } = config;
   const groups = new Map<string, Record<string, unknown>[]>();
@@ -51,7 +103,7 @@ export const preProcessRecords = (
     }
   }
 
-  const merged = Array.from(groups.values()).map((group) => mergeGroup(group, mergeFields));
+  const merged = Array.from(groups.values()).map((group) => mergeGroup(group, mergeFields ?? {}));
 
   logger.info("Pre-processing complete", {
     inputRecords: records.length,

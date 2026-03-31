@@ -1,0 +1,111 @@
+slug: germany-demonstrations
+title: "Versammlungen {{city}}"
+summary: >-
+  Demonstrations and assemblies in and around {{city}} from the
+  demonstrations.org API (CC BY-SA 4.0). Aggregates data from official
+  assembly authority registrations. Updated daily.
+category: civic-data
+region: "{{city}}, Germany"
+tags:
+  - demonstrations
+  - protests
+  - civic
+  - germany
+license: CC BY-SA 4.0
+url: https://demonstrations.org
+publisher:
+  name: Demos Berlin e.V.
+  url: https://demonstrations.org
+  country: de
+  official: false
+coverage:
+  countries:
+    - de
+  start: "2022-11-01"
+
+parameters:
+  - name: city
+    label: City name
+    required: true
+    example: "Rostock"
+  - name: lat
+    label: Latitude of city center
+    required: true
+    example: "54.078"
+  - name: lon
+    label: Longitude of city center
+    required: true
+    example: "12.131"
+  - name: radius
+    label: Search radius in km
+    required: true
+    example: "15"
+
+source:
+  url: "https://api.demonstrations.org/v1/event/perimeter-search?address_language=en"
+  format: json
+  jsonApi:
+    pagination:
+      enabled: true
+      type: offset
+      method: POST
+      initialBodyTemplate: '{"latitude": {{lat}}, "longitude": {{lon}}, "radius_km": {{radius}}, "start_time_start": "2020-01-01T00:00:00", "start_time_end": "2099-12-31T23:59:59", "limit": {{limit}}, "offset": {{offset}}}'
+      bodyTemplate: '{"latitude": {{lat}}, "longitude": {{lon}}, "radius_km": {{radius}}, "start_time_start": "{{days_ago_180}}", "start_time_end": "2099-12-31T23:59:59", "limit": {{limit}}, "offset": {{offset}}}'
+      limitValue: 50
+      maxPages: 500
+  preProcessing:
+    extractFields:
+      - { from: "locations.0.geography.coordinates.1", to: latitude }
+      - { from: "locations.0.geography.coordinates.0", to: longitude }
+      - { from: "locations.0.city", to: city_name }
+      - { from: "locations.0.street", to: street }
+      - { from: "locations.0.zip_code", to: zip_code }
+      - { from: "topics", to: topics, joinPath: "name_en", separator: ", " }
+      - { from: "type.name_en", to: event_type }
+  excludeFields:
+    - locations
+    - type
+    - slug
+    - short_description
+    - organising_source_id
+    - is_llm_parsed
+
+catalog:
+  name: demonstrations.org
+  description: >-
+    Demonstration and assembly data from demonstrations.org (CC BY-SA 4.0).
+    Aggregates data from German assembly authorities across multiple cities.
+  isPublic: true
+  license: CC BY-SA 4.0
+  sourceUrl: https://demonstrations.org
+
+dataset:
+  name: "Versammlungen {{city}}"
+  language: deu
+  sourceUrl: https://demonstrations.org
+  idStrategy:
+    type: external
+    externalIdPath: id
+    duplicateStrategy: update
+  coverage:
+    countries:
+      - de
+
+fieldMappings:
+  titlePath: name
+  descriptionPath: description
+  timestampPath: start_time
+  endTimestampPath: end_time
+  locationNamePath: raw_location
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: daily
+  schemaMode: additive
+  timezone: Europe/Berlin
+
+reviewChecks:
+  skipGeocodingCheck: true
+  skipDuplicateRateCheck: true

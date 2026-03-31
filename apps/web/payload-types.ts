@@ -1751,6 +1751,18 @@ export interface ScheduledIngest {
          * Maximum total records to fetch across all pages. Default: 100,000. Increase for large datasets (e.g. 500,000 for tree inventories).
          */
         maxRecords?: number | null;
+        /**
+         * HTTP method for pagination requests
+         */
+        method?: ('GET' | 'POST') | null;
+        /**
+         * JSON body template for subsequent runs. Supports {{offset}}, {{limit}}, {{days_ago_N}}, {{today}} placeholders.
+         */
+        bodyTemplate?: string | null;
+        /**
+         * Body template used only on the first successful import. Falls back to bodyTemplate if not set. Use for full historical imports.
+         */
+        initialBodyTemplate?: string | null;
       };
     };
     /**
@@ -1865,6 +1877,18 @@ export interface ScheduledIngest {
      * Fields to merge with min/max: e.g. {"startDate": "min", "endDate": "max"}
      */
     mergeFields?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Extract nested JSON paths into flat fields before CSV conversion. Array of {from, to, joinPath?, separator?}. Example: [{"from": "locations.0.city", "to": "city"}]
+     */
+    extractFields?:
       | {
           [k: string]: unknown;
         }
@@ -4706,6 +4730,9 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
                     maxPagesPath?: T;
                     maxPages?: T;
                     maxRecords?: T;
+                    method?: T;
+                    bodyTemplate?: T;
+                    initialBodyTemplate?: T;
                   };
             };
         htmlExtractConfig?: T;
@@ -4744,6 +4771,7 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
     | {
         groupBy?: T;
         mergeFields?: T;
+        extractFields?: T;
       };
   lastRun?: T;
   nextRun?: T;

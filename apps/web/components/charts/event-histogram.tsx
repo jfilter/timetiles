@@ -13,11 +13,10 @@
 
 import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
+import { getResolution, isValidCell } from "h3-js";
 import { useMemo } from "react";
 
 import { expandGroupNames } from "@/components/charts/event-beeswarm";
-import { getResolution, isValidCell } from "h3-js";
-
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useHistogramQuery, useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";

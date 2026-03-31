@@ -15,12 +15,26 @@ import type { AuthConfig, JsonApiScheduleConfig } from "./ingest-wizard";
 // Manifest types (match YAML structure)
 // ---------------------------------------------------------------------------
 
+/** Configuration for extracting nested JSON paths into flat fields. */
+export interface DataPackageExtractField {
+  /** Dot-path to extract (e.g., "locations.0.geography.coordinates.1"). */
+  from: string;
+  /** Target flat field name (e.g., "latitude"). */
+  to: string;
+  /** For arrays of objects: extract this sub-path from each element and join. */
+  joinPath?: string;
+  /** Join separator (default: ", "). */
+  separator?: string;
+}
+
 /** Pre-processing configuration for JSON records before CSV conversion. */
 export interface DataPackagePreProcessing {
   /** Field to group records by (e.g. "uid"). */
-  groupBy: string;
+  groupBy?: string;
   /** Fields to merge with min/max strategy (e.g. { startDate: "min", endDate: "max" }). */
-  mergeFields: Record<string, "min" | "max">;
+  mergeFields?: Record<string, "min" | "max">;
+  /** Extract nested JSON paths into flat top-level fields before flattening. */
+  extractFields?: DataPackageExtractField[];
 }
 
 /** A single field to extract from each HTML record element. */

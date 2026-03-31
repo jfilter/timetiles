@@ -38,6 +38,8 @@ export interface FetchOptions {
   timeout?: number;
   maxSize?: number;
   expectedContentType?: string;
+  /** Request body (e.g. JSON string for POST requests). */
+  body?: string;
 }
 
 /**
@@ -158,9 +160,18 @@ const buildCacheOptions = (
   cacheOptions?: UrlFetchCacheOptions,
   userId?: string
 ): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number } => {
+  const method = fetchOptions.method ?? "GET";
+  const headers: Record<string, string> = { ...authHeaders, ...fetchOptions.headers };
+
+  // Auto-set Content-Type for POST with body
+  if (method === "POST" && fetchOptions.body && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   return {
-    method: fetchOptions.method ?? "GET",
-    headers: { ...authHeaders, ...fetchOptions.headers },
+    method,
+    headers,
+    body: fetchOptions.body,
     bypassCache: !useCache,
     forceRevalidate: cacheOptions?.forceRevalidate,
     userId,

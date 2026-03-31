@@ -14,9 +14,8 @@ import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
-import { buildFieldTypes } from "../utils/event-creation-helpers";
-
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
+import { buildFieldTypes } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
 

@@ -27,6 +27,16 @@ const logger = createLogger("data-packages");
 const substituteTemplate = (s: string, params: Record<string, string>): string =>
   s.replace(/\{\{(\w+)\}\}/g, (match, key: string) => params[key] ?? match);
 
+/** Recursively substitute `{{param}}` placeholders in all strings within a value. */
+const deepSubstitute = (value: unknown, params: Record<string, string>): unknown => {
+  if (typeof value === "string") return substituteTemplate(value, params);
+  if (Array.isArray(value)) return value.map((v) => deepSubstitute(v, params));
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deepSubstitute(v, params)]));
+  }
+  return value;
+};
+
 /** Resolve template parameters in a manifest, returning a new manifest with substituted values. */
 const resolveManifestParameters = (
   manifest: DataPackageManifest,
@@ -37,26 +47,7 @@ const resolveManifestParameters = (
       throw new Error(`Missing required parameter: "${p.name}" (${p.label})`);
     }
   }
-
-  const sub = (s: string) => substituteTemplate(s, params);
-
-  return {
-    ...manifest,
-    title: sub(manifest.title),
-    summary: sub(manifest.summary),
-    description: manifest.description ? sub(manifest.description) : undefined,
-    region: manifest.region ? sub(manifest.region) : undefined,
-    url: manifest.url ? sub(manifest.url) : undefined,
-    source: { ...manifest.source, url: sub(manifest.source.url) },
-    catalog: {
-      ...manifest.catalog,
-      name: sub(manifest.catalog.name),
-      description: manifest.catalog.description ? sub(manifest.catalog.description) : undefined,
-      region: manifest.catalog.region ? sub(manifest.catalog.region) : undefined,
-      sourceUrl: manifest.catalog.sourceUrl ? sub(manifest.catalog.sourceUrl) : undefined,
-    },
-    dataset: { ...manifest.dataset, name: sub(manifest.dataset.name) },
-  };
+  return deepSubstitute(manifest, params) as DataPackageManifest;
 };
 
 /** Build activation key from slug + parameters for uniqueness. */
@@ -150,9 +141,7 @@ const buildScheduledIngestData = (
     authConfig: manifest.source.auth ?? { type: "none" as const },
     advancedOptions: Object.keys(advancedOptions).length > 0 ? advancedOptions : undefined,
     excludeFields: manifest.source.excludeFields ?? undefined,
-    preProcessing: manifest.source.preProcessing
-      ? { groupBy: manifest.source.preProcessing.groupBy, mergeFields: manifest.source.preProcessing.mergeFields }
-      : undefined,
+    preProcessing: manifest.source.preProcessing ?? undefined,
     dataPackageSlug: manifest.slug,
   };
 };
