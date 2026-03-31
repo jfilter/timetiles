@@ -1,19 +1,20 @@
 /**
- * Lightweight API endpoint for catalog and dataset names.
+ * Lightweight API endpoint for catalog and dataset metadata.
  *
- * Returns only the minimal data needed for filter dropdowns and labels:
- * - Catalogs: id, name
- * - Datasets: id, name, catalogId
- *
- * This is much more efficient than fetching full objects with all relationships.
+ * Returns the data needed for filter dropdowns, labels, and descriptions:
+ * - Catalogs: id, name, description, ownership
+ * - Datasets: id, name, description, language, catalogId, temporal flag
  *
  * @module
  */
 import { apiRoute } from "@/lib/api";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import { richTextToPlainText } from "@/lib/utils/rich-text";
 
 export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
+
+const DESCRIPTION_MAX_LENGTH = 120;
 
 export const GET = apiRoute({
   auth: "optional",
@@ -23,7 +24,7 @@ export const GET = apiRoute({
         collection: "catalogs",
         limit: 500,
         pagination: false,
-        select: { id: true, name: true, createdBy: true },
+        select: { id: true, name: true, description: true, createdBy: true },
         user,
         overrideAccess: false,
       }),
@@ -32,7 +33,7 @@ export const GET = apiRoute({
         limit: 5000,
         pagination: false,
         depth: 1, // Need depth to get catalog relationship
-        select: { id: true, name: true, catalog: true, hasTemporalData: true },
+        select: { id: true, name: true, description: true, language: true, catalog: true, hasTemporalData: true },
         user,
         overrideAccess: false,
       }),
@@ -44,6 +45,7 @@ export const GET = apiRoute({
       id: c.id,
       name: c.name,
       isOwned: userId != null && extractRelationId(c.createdBy) === userId,
+      description: richTextToPlainText(c.description, DESCRIPTION_MAX_LENGTH),
     }));
 
     const datasets: DataSourceDataset[] = datasetsResult.docs.map((d) => ({
@@ -51,6 +53,8 @@ export const GET = apiRoute({
       name: d.name,
       catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
       hasTemporalData: d.hasTemporalData ?? true,
+      description: richTextToPlainText(d.description, DESCRIPTION_MAX_LENGTH),
+      language: d.language ?? undefined,
     }));
 
     return { catalogs, datasets };

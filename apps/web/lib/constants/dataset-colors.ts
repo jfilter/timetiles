@@ -10,16 +10,66 @@
 
 /** Structured color definitions for dataset badges */
 export const DATASET_BADGE_COLORS = [
-  { bg: "bg-palette-1/10", text: "text-palette-1", border: "border-palette-1/30" },
-  { bg: "bg-palette-2/10", text: "text-palette-2", border: "border-palette-2/30" },
-  { bg: "bg-palette-3/10", text: "text-palette-3", border: "border-palette-3/30" },
-  { bg: "bg-palette-4/10", text: "text-palette-4", border: "border-palette-4/30" },
-  { bg: "bg-palette-5/10", text: "text-palette-5", border: "border-palette-5/30" },
-  { bg: "bg-palette-6/10", text: "text-palette-6", border: "border-palette-6/30" },
-  { bg: "bg-palette-7/10", text: "text-palette-7", border: "border-palette-7/30" },
-  { bg: "bg-palette-8/10", text: "text-palette-8", border: "border-palette-8/30" },
-  { bg: "bg-palette-9/10", text: "text-palette-9", border: "border-palette-9/30" },
-  { bg: "bg-palette-10/10", text: "text-palette-10", border: "border-palette-10/30" },
+  {
+    bg: "bg-palette-1/10",
+    text: "text-palette-1",
+    border: "border-palette-1/30",
+    checkedBg: "data-[state=checked]:bg-palette-1",
+  },
+  {
+    bg: "bg-palette-2/10",
+    text: "text-palette-2",
+    border: "border-palette-2/30",
+    checkedBg: "data-[state=checked]:bg-palette-2",
+  },
+  {
+    bg: "bg-palette-3/10",
+    text: "text-palette-3",
+    border: "border-palette-3/30",
+    checkedBg: "data-[state=checked]:bg-palette-3",
+  },
+  {
+    bg: "bg-palette-4/10",
+    text: "text-palette-4",
+    border: "border-palette-4/30",
+    checkedBg: "data-[state=checked]:bg-palette-4",
+  },
+  {
+    bg: "bg-palette-5/10",
+    text: "text-palette-5",
+    border: "border-palette-5/30",
+    checkedBg: "data-[state=checked]:bg-palette-5",
+  },
+  {
+    bg: "bg-palette-6/10",
+    text: "text-palette-6",
+    border: "border-palette-6/30",
+    checkedBg: "data-[state=checked]:bg-palette-6",
+  },
+  {
+    bg: "bg-palette-7/10",
+    text: "text-palette-7",
+    border: "border-palette-7/30",
+    checkedBg: "data-[state=checked]:bg-palette-7",
+  },
+  {
+    bg: "bg-palette-8/10",
+    text: "text-palette-8",
+    border: "border-palette-8/30",
+    checkedBg: "data-[state=checked]:bg-palette-8",
+  },
+  {
+    bg: "bg-palette-9/10",
+    text: "text-palette-9",
+    border: "border-palette-9/30",
+    checkedBg: "data-[state=checked]:bg-palette-9",
+  },
+  {
+    bg: "bg-palette-10/10",
+    text: "text-palette-10",
+    border: "border-palette-10/30",
+    checkedBg: "data-[state=checked]:bg-palette-10",
+  },
 ] as const;
 
 export type DatasetBadgeColor = (typeof DATASET_BADGE_COLORS)[number];

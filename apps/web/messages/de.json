@@ -223,6 +223,10 @@
     "deselectAllInCatalog": "Alle Datensätze in {name} abwählen",
     "enableDataset": "Datensatz {name} aktivieren",
     "disableDataset": "Datensatz {name} deaktivieren",
+    "datasetInfo": "Info zu {name}",
+    "language": "Sprache",
+    "events": "Ereignisse",
+    "catalog": "Katalog",
     "clearFieldFilter": "{label}-Filter löschen",
     "showMoreCategories": "+{count} weitere Kategorien",
     "showLessCategories": "Weniger anzeigen"

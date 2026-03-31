@@ -81,9 +81,10 @@ describe("DataSourceSelector", () => {
     it("renders checkboxes for catalogs and datasets", () => {
       const { container } = renderWithProviders(<DataSourceSelector />);
 
-      // 3 catalog checkboxes + 4 dataset checkboxes = 7
+      // 1 multi-dataset catalog checkbox + 2 nested dataset checkboxes
+      // + 2 single-dataset flat rows = 5 checkboxes total
       const checkboxes = container.querySelectorAll('[role="checkbox"]');
-      expect(checkboxes).toHaveLength(7);
+      expect(checkboxes).toHaveLength(5);
     });
   });
 
@@ -123,12 +124,12 @@ describe("DataSourceSelector", () => {
 
   describe("Event counts", () => {
     it("shows event counts on catalog headers when provided", () => {
-      const eventCountsByCatalog = { "1": 1500, "2": 300 };
+      // Only Environmental Data (id=1) has >1 dataset, so only it renders a catalog header
+      const eventCountsByCatalog = { "1": 1500 };
 
       const { container } = renderWithProviders(<DataSourceSelector eventCountsByCatalog={eventCountsByCatalog} />);
 
       expect(container).toHaveTextContent("1.5k");
-      expect(container).toHaveTextContent("300");
     });
 
     it("shows event counts on dataset rows when provided", () => {

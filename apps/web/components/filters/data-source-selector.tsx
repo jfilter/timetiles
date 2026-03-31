@@ -3,7 +3,9 @@
  *
  * Datasets are grouped by catalog. Each catalog is a collapsible section
  * with a tri-state checkbox that toggles all its datasets. Multiple
- * catalogs can be active simultaneously.
+ * catalogs can be active simultaneously. Single-dataset catalogs render
+ * as flat rows without group nesting. An info icon on each row opens a
+ * popover with full metadata.
  *
  * @module
  * @category Components
@@ -11,8 +13,9 @@
 "use client";
 
 import { Checkbox } from "@timetiles/ui/components/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@timetiles/ui/components/popover";
 import { cn } from "@timetiles/ui/lib/utils";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -21,6 +24,7 @@ import { useView } from "@/lib/context/view-context";
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useFilters } from "@/lib/hooks/use-filters";
+import type { DataSourceDataset } from "@/lib/types/data-sources";
 
 import {
   type CatalogGroup,
@@ -35,6 +39,75 @@ interface DataSourceSelectorProps {
   eventCountsByCatalog?: Record<string, number>;
   eventCountsByDataset?: Record<string, number>;
 }
+
+/** Map ISO 639-3 language codes to display names */
+const getLanguageName = (code: string): string => {
+  // ISO 639-3 to 639-1 for Intl.DisplayNames
+  const map: Record<string, string> = { eng: "en", deu: "de", fra: "fr", spa: "es", ita: "it", nld: "nl", por: "pt" };
+  const shortCode = map[code] ?? code;
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(shortCode) ?? code;
+  } catch {
+    return code;
+  }
+};
+
+/** Info popover showing dataset metadata */
+const DatasetInfoPopover = ({
+  dataset,
+  eventCount,
+  catalogName,
+}: {
+  dataset: DataSourceDataset;
+  eventCount?: number;
+  catalogName?: string;
+}) => {
+  const t = useTranslations("Filters");
+  const hasDetails = dataset.description || dataset.language || eventCount != null || catalogName;
+  if (!hasDetails) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+          aria-label={t("datasetInfo", { name: dataset.name })}
+        >
+          <Info className="h-3.5 w-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="left" align="start" className="w-64">
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{dataset.name}</p>
+          {dataset.description && (
+            <p className="text-muted-foreground text-xs leading-relaxed">{dataset.description}</p>
+          )}
+          <dl className="text-xs">
+            {dataset.language && (
+              <div className="flex justify-between py-0.5">
+                <dt className="text-muted-foreground">{t("language")}</dt>
+                <dd>{getLanguageName(dataset.language)}</dd>
+              </div>
+            )}
+            {eventCount != null && (
+              <div className="flex justify-between py-0.5">
+                <dt className="text-muted-foreground">{t("events")}</dt>
+                <dd>{eventCount.toLocaleString()}</dd>
+              </div>
+            )}
+            {catalogName && (
+              <div className="flex justify-between py-0.5">
+                <dt className="text-muted-foreground">{t("catalog")}</dt>
+                <dd>{catalogName}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 /** Catalog group header with tri-state checkbox and expand/collapse chevron */
 const CatalogGroupHeader = ({
@@ -53,52 +126,75 @@ const CatalogGroupHeader = ({
   const t = useTranslations("Filters");
 
   return (
-    <div className="flex items-center gap-1.5 py-1">
+    <div className="flex items-center gap-2 py-1.5">
       <Checkbox
         checked={checkState === "all" ? true : checkState === "some" ? "indeterminate" : false}
         onCheckedChange={onToggleCheck}
         aria-label={t(checkState === "none" ? "selectAllInCatalog" : "deselectAllInCatalog", {
           name: group.catalog.name,
         })}
-        className="h-3.5 w-3.5"
+        className="h-4 w-4 shrink-0"
       />
 
-      <button type="button" onClick={onToggleExpand} className="flex min-w-0 flex-1 items-center gap-1">
-        <span className="text-foreground truncate text-xs font-medium">{group.catalog.name}</span>
-        <span className="text-muted-foreground shrink-0 font-mono text-[10px]">{formatCount(group.totalEvents)}</span>
+      <button type="button" onClick={onToggleExpand} className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="text-foreground truncate text-sm font-medium">{group.catalog.name}</span>
+        <span className="text-muted-foreground shrink-0 font-mono text-xs">{formatCount(group.totalEvents)}</span>
         {isExpanded ? (
-          <ChevronDown className="text-muted-foreground ml-auto h-3 w-3 shrink-0" />
+          <ChevronDown className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ChevronRight className="text-muted-foreground ml-auto h-3 w-3 shrink-0" />
+          <ChevronRight className="text-muted-foreground ml-auto h-3.5 w-3.5 shrink-0" />
         )}
       </button>
     </div>
   );
 };
 
-/** Individual dataset row with checkbox and color accent */
+/** Individual dataset row with checkbox, color accent, and info icon */
 const DatasetRow = ({
   dataset,
   isSelected,
   eventCount,
   onToggle,
+  indent = true,
+  catalogName,
 }: {
-  dataset: { id: number; name: string };
+  dataset: DataSourceDataset;
   isSelected: boolean;
   eventCount?: number;
   onToggle: () => void;
+  indent?: boolean;
+  catalogName?: string;
 }) => {
   const colors = getDatasetColors(dataset.id);
 
   return (
-    <label className="flex cursor-pointer items-center gap-1.5 py-0.5 pl-5">
-      <Checkbox checked={isSelected} onCheckedChange={onToggle} className="h-3 w-3" />
-      <span className={cn("mr-0.5 inline-block h-2 w-2 shrink-0 rounded-full", colors.bg, colors.border, "border")} />
-      <span className="text-foreground/80 min-w-0 truncate text-xs">{dataset.name}</span>
+    <div className={cn("flex items-center gap-2 py-1", indent && "pl-6")}>
+      <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2">
+        <Checkbox
+          checked={isSelected}
+          onCheckedChange={onToggle}
+          className={cn(
+            "shrink-0",
+            indent ? "h-3.5 w-3.5" : "h-4 w-4",
+            colors.border,
+            colors.checkedBg,
+            "data-[state=checked]:text-white"
+          )}
+        />
+        <span className="min-w-0 flex-1">
+          <span className={cn("block truncate text-sm", indent ? "text-foreground/80" : "text-foreground font-medium")}>
+            {dataset.name}
+          </span>
+          {catalogName && (
+            <span className="text-muted-foreground block truncate text-[11px] leading-tight">{catalogName}</span>
+          )}
+        </span>
+      </label>
       {eventCount != null && (
-        <span className="text-muted-foreground shrink-0 font-mono text-[10px]">{formatCount(eventCount)}</span>
+        <span className="text-muted-foreground shrink-0 font-mono text-xs">{formatCount(eventCount)}</span>
       )}
-    </label>
+      <DatasetInfoPopover dataset={dataset} eventCount={eventCount} catalogName={catalogName} />
+    </div>
   );
 };
 
@@ -158,6 +254,7 @@ const CatalogGroupSection = ({
               isSelected={selectedDatasets.includes(String(dataset.id))}
               eventCount={eventCountsByDataset?.[String(dataset.id)]}
               onToggle={() => onToggleDataset(String(dataset.id))}
+              catalogName={group.catalog.name}
             />
           ))}
 
@@ -165,7 +262,7 @@ const CatalogGroupSection = ({
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="text-ring hover:text-ring/80 py-0.5 pl-5 font-mono text-[10px] transition-colors"
+              className="text-ring hover:text-ring/80 py-0.5 pl-6 font-mono text-xs transition-colors"
             >
               +{hiddenCount} more
             </button>
@@ -178,7 +275,7 @@ const CatalogGroupSection = ({
 
 /** Section label for owned/public groupings */
 const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-  <div className="text-muted-foreground mt-2 mb-1 font-mono text-[10px] tracking-wider uppercase first:mt-0">
+  <div className="text-muted-foreground mt-3 mb-1.5 font-mono text-xs tracking-wider uppercase first:mt-0">
     {children}
   </div>
 );
@@ -212,23 +309,41 @@ export const DataSourceSelector = ({ eventCountsByCatalog, eventCountsByDataset 
   const { owned, public: publicGroups } = groupCatalogs(catalogGroups);
   const showGrouping = isAuthenticated && owned.length > 0;
 
-  const renderGroup = (group: CatalogGroup) => (
-    <CatalogGroupSection
-      key={group.catalog.id}
-      group={group}
-      selectedDatasets={filters.datasets}
-      eventCountsByDataset={eventCountsByDataset}
-      onToggleCatalog={toggleCatalogDatasets}
-      onToggleDataset={toggleDataset}
-    />
-  );
+  const renderGroup = (group: CatalogGroup) => {
+    // Single-dataset catalogs render as a flat row without group nesting
+    if (group.datasets.length === 1) {
+      const dataset = group.datasets[0]!;
+      return (
+        <DatasetRow
+          key={dataset.id}
+          dataset={dataset}
+          isSelected={filters.datasets.includes(String(dataset.id))}
+          eventCount={eventCountsByDataset?.[String(dataset.id)]}
+          onToggle={() => toggleDataset(String(dataset.id))}
+          indent={false}
+          catalogName={group.catalog.name}
+        />
+      );
+    }
+
+    return (
+      <CatalogGroupSection
+        key={group.catalog.id}
+        group={group}
+        selectedDatasets={filters.datasets}
+        eventCountsByDataset={eventCountsByDataset}
+        onToggleCatalog={toggleCatalogDatasets}
+        onToggleDataset={toggleDataset}
+      />
+    );
+  };
 
   if (catalogGroups.length === 0) {
     return <p className="text-muted-foreground text-sm">{t("noDatasets")}</p>;
   }
 
   return (
-    <div>
+    <div className="space-y-1">
       {showGrouping ? (
         <>
           <SectionLabel>{t("myCatalogs")}</SectionLabel>

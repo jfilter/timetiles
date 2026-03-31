@@ -77,8 +77,8 @@ export const EventFilters = () => {
         </button>
       )}
 
-      {/* Data Sources Section */}
-      <FilterSection title={t("dataSources")} defaultOpen activeCount={dataSourcesActiveCount}>
+      {/* Datasets Section */}
+      <FilterSection title={t("datasets")} defaultOpen activeCount={dataSourcesActiveCount}>
         {isStatsError && <p className="text-secondary mb-2 text-xs">{t("failedToLoadCounts")}</p>}
         <DataSourceSelector
           eventCountsByCatalog={statsData?.catalogCounts}

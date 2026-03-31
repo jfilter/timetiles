@@ -14,6 +14,7 @@ export interface DataSourceCatalog {
   id: number;
   name: string;
   isOwned: boolean;
+  description?: string;
 }
 
 export interface DataSourceDataset {
@@ -21,6 +22,8 @@ export interface DataSourceDataset {
   name: string;
   catalogId: number | null;
   hasTemporalData: boolean;
+  description?: string;
+  language?: string;
 }
 
 export interface DataSourcesResponse {
