@@ -183,7 +183,7 @@ const CatalogGroupHeader = ({
       />
 
       <button type="button" onClick={onToggleExpand} className="flex min-w-0 flex-1 items-center gap-1.5">
-        <span className="text-foreground min-w-0 truncate text-left text-sm font-medium">{group.catalog.name}</span>
+        <span className="text-foreground line-clamp-2 min-w-0 text-left text-sm font-medium">{group.catalog.name}</span>
         <span className="text-muted-foreground ml-auto shrink-0 font-mono text-xs">
           {formatCount(group.totalEvents)}
         </span>
@@ -233,7 +233,7 @@ const DatasetRow = ({
           className={cn("mt-0.5 h-4 w-4 shrink-0", colors.border, colors.checkedBg, "data-[state=checked]:text-white")}
         />
         <span className="min-w-0 flex-1">
-          <span className="text-foreground block truncate text-sm font-medium">{dataset.name}</span>
+          <span className="text-foreground line-clamp-2 block text-sm font-medium">{dataset.name}</span>
           {catalogName && (
             <span className="text-muted-foreground block truncate text-[11px] leading-tight">{catalogName}</span>
           )}
