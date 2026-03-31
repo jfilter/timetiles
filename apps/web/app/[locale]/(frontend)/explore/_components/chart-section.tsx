@@ -30,7 +30,6 @@ import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { BeeswarmSettingsButton, EventBeeswarm, useGroupByOptions } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
-import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { formatMonthYear, parseISODate } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
@@ -59,8 +58,6 @@ const useChartMeta = () => {
         return { label: t("temporalAnalysis"), heading: t("eventTimeline"), subtitle: t("eventDistribution") };
       case "dataset-bar":
         return { label: t("dataDistribution"), heading: t("eventsByDataset"), subtitle: t("datasetCounts") };
-      case "catalog-bar":
-        return { label: t("dataDistribution"), heading: t("eventsByCatalog"), subtitle: t("catalogCounts") };
       case "beeswarm":
         return { label: t("eventAnalysis"), heading: t("eventScatter"), subtitle: t("individualEvents") };
     }
@@ -70,26 +67,20 @@ const useChartMeta = () => {
 /**
  * Get appropriate height for each chart type (used when fillHeight is false).
  */
-const getChartHeight = (type: ChartType): number => {
+const getChartHeight = (type: ChartType): number | undefined => {
   switch (type) {
     case "histogram":
     case "beeswarm":
       return 200;
     case "dataset-bar":
-    case "catalog-bar":
-      return 300;
+      return undefined; // Auto-calculated based on data count
   }
 };
 
 /** Labels for chart type selector dropdown. */
 const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
-  return {
-    histogram: t("timeline"),
-    beeswarm: t("beeswarm"),
-    ["dataset-bar"]: t("byDataset"),
-    ["catalog-bar"]: t("byCatalog"),
-  };
+  return { histogram: t("timeline"), beeswarm: t("beeswarm"), ["dataset-bar"]: t("byDataset") };
 };
 
 // oxlint-disable-next-line complexity
@@ -104,7 +95,7 @@ export const ChartSection = ({
   const chartTypeLabels = useChartTypeLabels();
   const [selectedChartType, setSelectedChartType] = useQueryState(
     "chart",
-    parseAsStringEnum<ChartType>(["histogram", "beeswarm", "dataset-bar", "catalog-bar"]).withDefault("histogram")
+    parseAsStringEnum<ChartType>(["histogram", "beeswarm", "dataset-bar"]).withDefault("histogram")
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -113,17 +104,6 @@ export const ChartSection = ({
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
-  const { data: dataSources } = useDataSourcesQuery();
-
-  // Count how many distinct catalogs the selected datasets span
-  const selectedCatalogCount = useMemo(() => {
-    if (filters.datasets.length === 0) return dataSources?.catalogs.length ?? 0;
-    const datasets = dataSources?.datasets ?? [];
-    const selectedIds = new Set(filters.datasets.map(Number));
-    const catalogIds = new Set(datasets.filter((d) => selectedIds.has(d.id)).map((d) => d.catalogId));
-    return catalogIds.size;
-  }, [filters.datasets, dataSources]);
-
   // Determine which chart types should be available based on filters and data capabilities
   const availableChartTypes = useMemo<ChartType[]>(() => {
     const types: ChartType[] = [];
@@ -140,13 +120,8 @@ export const ChartSection = ({
       types.push("dataset-bar");
     }
 
-    // Show "By Catalog" only when selected datasets span multiple catalogs
-    if (selectedCatalogCount > 1) {
-      types.push("catalog-bar");
-    }
-
     return types;
-  }, [filters.datasets.length, hasTemporalData, selectedCatalogCount]);
+  }, [filters.datasets.length, hasTemporalData]);
 
   // Derive effective chart type — falls back to first available if selection becomes unavailable
   const chartType = availableChartTypes.includes(selectedChartType)
@@ -184,7 +159,7 @@ export const ChartSection = ({
   const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
   const groupByOptions = useGroupByOptions(singleDatasetId);
 
-  const renderChart = (height: number | string, variant: "compact" | "fullscreen" = "compact") => {
+  const renderChart = (height: number | string | undefined, variant: "compact" | "fullscreen" = "compact") => {
     const effectiveGroupBy = variant === "fullscreen" ? groupBy : "none";
     return (
       <div className="relative h-full">
@@ -202,7 +177,6 @@ export const ChartSection = ({
           />
         )}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
-        {chartType === "catalog-bar" && <AggregationBarChart bounds={bounds} type="catalog" height={height} />}
         {/* GroupBy picker for histogram (beeswarm has its own integrated) */}
         {variant === "fullscreen" && showChartSettings && chartType === "histogram" && (
           <div className="bg-background/95 border-border absolute top-0 right-0 z-10 rounded-md border p-3 shadow-md backdrop-blur-sm">
