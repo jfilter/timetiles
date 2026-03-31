@@ -57,7 +57,7 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
         <CardHeader>
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <CardTitle className="text-lg">{pkg.name}</CardTitle>
+              <CardTitle className="text-lg">{pkg.title}</CardTitle>
               {pkg.region && <CardDescription className="mt-1">{pkg.region}</CardDescription>}
             </div>
             {pkg.activated && (
@@ -69,7 +69,7 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
         </CardHeader>
 
         <CardContent>
-          <p className="text-muted-foreground text-sm">{pkg.description}</p>
+          <p className="text-muted-foreground text-sm">{pkg.summary}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {pkg.tags.map((tag) => (
               <span key={tag} className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs">

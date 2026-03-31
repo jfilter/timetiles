@@ -1,6 +1,6 @@
 slug: berlin-kitas
-name: Berliner Kindertagesstaetten
-description: >-
+title: Berliner Kindertagesstaetten
+summary: >-
   Standorte der oeffentlich gefoerderten Berliner Kindertagesstaetten.
   Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
 category: education
@@ -13,6 +13,14 @@ tags:
   - open-data
 license: dl-de/by-2-0
 estimatedRecords: 2800
+url: https://daten.berlin.de
+publisher:
+  name: Geoportal Berlin
+  url: https://daten.berlin.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://gdi.berlin.de/services/wfs/kita?service=WFS&version=2.0.0&request=GetFeature&typeNames=kita:kita&outputFormat=application/json&srsName=EPSG:4326"

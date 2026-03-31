@@ -1,6 +1,6 @@
 slug: koeln-veranstaltungen
-name: Kölner Veranstaltungen
-description: >-
+title: Kölner Veranstaltungen
+summary: >-
   Public events from the City of Cologne open data portal. The API returns
   upcoming events with title, dates, venue, address, district, and geographic
   coordinates. Updated daily with a 90-day lookahead.
@@ -15,6 +15,14 @@ tags:
   - germany
 license: dl-de/by-2-0
 estimatedRecords: 500
+url: https://www.offenedaten-koeln.de
+publisher:
+  name: Stadt Köln
+  url: https://www.offenedaten-koeln.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "http://www.stadt-koeln.de/externe-dienste/open-data/events-od.php?ndays=90"

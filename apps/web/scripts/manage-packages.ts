@@ -58,7 +58,7 @@ const listPackages = async (payload: PayloadInstance) => {
     if (activation) status = activation.enabled ? "active" : "disabled";
     const records = m.estimatedRecords ? ` (~${Math.round(m.estimatedRecords / 1000)}k records)` : "";
     logger.info("  %-30s [%s]%s", m.slug, status, records);
-    logger.info("    %s", m.name);
+    logger.info("    %s", m.title);
     if (m.region) logger.info("    Region: %s", m.region);
   }
 };
@@ -151,8 +151,8 @@ const setupPackage = (slug: string) => {
   }
 
   logger.info("");
-  logger.info("  %s", manifest.name);
-  if (manifest.description) logger.info("  %s", manifest.description);
+  logger.info("  %s", manifest.title);
+  if (manifest.summary) logger.info("  %s", manifest.summary);
   logger.info("");
 
   if (!manifest.setup) {

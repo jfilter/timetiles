@@ -1,6 +1,6 @@
 slug: acled-conflict
-name: "ACLED Conflict & Protest — {{country}}"
-description: >-
+title: "ACLED Conflict & Protest — {{country}}"
+summary: >-
   Political violence, protests, and strategic events in {{country}}
   from the Armed Conflict Location & Event Data Project (ACLED).
 category: conflict
@@ -12,6 +12,15 @@ tags:
   - political
   - violence
 license: ACLED Terms of Use
+url: https://acleddata.com
+publisher:
+  name: Armed Conflict Location & Event Data Project
+  acronym: ACLED
+  url: https://acleddata.com
+  country: us
+  official: false
+coverage:
+  start: "2018-01-01"
 
 parameters:
   - name: country
@@ -44,9 +53,6 @@ catalog:
   isPublic: true
   license: "ACLED Terms of Use"
   sourceUrl: "https://acleddata.com"
-  publisher:
-    name: Armed Conflict Location & Event Data Project
-    url: "https://acleddata.com"
 
 dataset:
   name: "Conflict & Protest — {{country}}"

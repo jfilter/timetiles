@@ -1,6 +1,6 @@
 slug: ucdp-ged
-name: "UCDP Conflict Events — {{country}}"
-description: >-
+title: "UCDP Conflict Events — {{country}}"
+summary: >-
   Georeferenced conflict events in {{country}} from the Uppsala
   Conflict Data Program (UCDP). Covers state-based, non-state, and
   one-sided violence with casualty estimates.
@@ -13,6 +13,15 @@ tags:
   - academic
   - casualties
 license: CC-BY-4.0
+url: https://ucdp.uu.se
+publisher:
+  name: Uppsala Conflict Data Program
+  acronym: UCDP
+  url: https://ucdp.uu.se
+  country: se
+  official: false
+coverage:
+  start: "1989-01-01"
 
 parameters:
   - name: country

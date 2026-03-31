@@ -243,6 +243,34 @@ const Catalogs: CollectionConfig = {
       fields: [
         { name: "name", type: "text", maxLength: 255, admin: { description: "Publisher name" } },
         { name: "url", type: "text", maxLength: 2048, admin: { description: "Publisher website URL" } },
+        { name: "acronym", type: "text", maxLength: 50, admin: { description: "Short name (e.g., ACLED, UCDP)" } },
+        { name: "description", type: "textarea", admin: { description: "Publisher description (markdown)" } },
+        {
+          name: "country",
+          type: "text",
+          maxLength: 2,
+          admin: { description: "ISO 3166-1 alpha-2 country code (e.g., us, de)" },
+        },
+        { name: "official", type: "checkbox", defaultValue: false, admin: { description: "Government or IGO source" } },
+      ],
+    },
+    {
+      name: "coverage",
+      type: "group",
+      admin: { description: "Geographic and temporal coverage (FtM-compatible)" },
+      fields: [
+        {
+          name: "countries",
+          type: "array",
+          admin: { description: "ISO 3166-1 alpha-2 country codes covered by this catalog" },
+          fields: [{ name: "code", type: "text", required: true, maxLength: 2 }],
+        },
+        {
+          name: "start",
+          type: "text",
+          maxLength: 10,
+          admin: { description: "Dataset start date (YYYY-MM-DD or YYYY)" },
+        },
       ],
     },
   ],

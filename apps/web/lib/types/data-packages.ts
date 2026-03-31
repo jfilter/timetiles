@@ -76,6 +76,26 @@ export interface DataPackageSource {
   htmlExtract?: DataPackageHtmlExtract;
 }
 
+/** Publisher metadata (FtM-compatible). Lives on catalog, optional override on dataset. */
+export interface DataPackagePublisher {
+  name: string;
+  url?: string;
+  acronym?: string;
+  description?: string;
+  /** ISO 3166-1 alpha-2 country code. */
+  country?: string;
+  /** True if publisher is a government or inter-governmental organization. */
+  official?: boolean;
+}
+
+/** Coverage metadata (FtM-compatible). */
+export interface DataPackageCoverage {
+  /** ISO 3166-1 alpha-2 country codes. */
+  countries?: string[];
+  /** Dataset start date (YYYY-MM-DD). */
+  start?: string;
+}
+
 /** Catalog defaults created on activation. */
 export interface DataPackageCatalog {
   name: string;
@@ -86,7 +106,7 @@ export interface DataPackageCatalog {
   category?: string;
   region?: string;
   tags?: string[];
-  publisher?: { name?: string; url?: string };
+  publisher?: DataPackagePublisher;
 }
 
 /** Dataset defaults created on activation. */
@@ -100,6 +120,8 @@ export interface DataPackageDataset {
     externalIdPath?: string;
     duplicateStrategy?: "skip" | "update" | "version";
   };
+  publisher?: DataPackagePublisher;
+  coverage?: DataPackageCoverage;
 }
 
 /** Field mapping configuration. */
@@ -186,13 +208,21 @@ export interface DataPackageSetup {
 /** Full data package manifest as defined in YAML. */
 export interface DataPackageManifest {
   slug: string;
-  name: string;
-  description: string;
+  title: string;
+  summary: string;
+  /** Detailed description (markdown). */
+  description?: string;
   category: string;
   region?: string;
   tags: string[];
   license?: string;
   estimatedRecords?: number;
+  /** Reference or homepage URL for the data package. */
+  url?: string;
+  /** Top-level publisher metadata (FtM-compatible). Maps to catalog publisher. */
+  publisher?: DataPackagePublisher;
+  /** Coverage metadata (FtM-compatible). */
+  coverage?: DataPackageCoverage;
   source: DataPackageSource;
   catalog: DataPackageCatalog;
   dataset: DataPackageDataset;

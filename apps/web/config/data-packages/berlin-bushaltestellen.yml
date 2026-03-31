@@ -1,6 +1,6 @@
 slug: berlin-bushaltestellen
-name: Berliner Bushaltestellen
-description: >-
+title: Berliner Bushaltestellen
+summary: >-
   Bushaltestellen im ungestoerten BVG-Netz.
   Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
 category: mobility
@@ -14,6 +14,14 @@ tags:
   - open-data
 license: dl-de/by-2-0
 estimatedRecords: 6000
+url: https://daten.berlin.de
+publisher:
+  name: Geoportal Berlin
+  url: https://daten.berlin.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://gdi.berlin.de/services/wfs/oepnv_ungestoert?service=WFS&version=2.0.0&request=GetFeature&typeNames=oepnv_ungestoert:a_busstopp&outputFormat=application/json&srsName=EPSG:4326"

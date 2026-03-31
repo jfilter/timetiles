@@ -1,6 +1,6 @@
 slug: berlin-demonstrations
-name: Berliner Versammlungen
-description: >-
+title: Berliner Versammlungen
+summary: >-
   Demonstrations and assemblies registered with the Berlin police authority
   (Versammlungsbehoerde). Data sourced from polizeistressi.de, covering
   events since 2021 with ~48,000 records. Includes topic, location, date,
@@ -15,6 +15,14 @@ tags:
   - germany
 license: Public Domain
 estimatedRecords: 48000
+url: https://www.berlin.de/polizei/service/versammlungsbehoerde/
+publisher:
+  name: Berliner Polizei
+  url: https://www.berlin.de/polizei/
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://adrrwafktwmspftyaqpz.supabase.co/rest/v1/versammlungen?select=*&start_time=lt.2100-01-01"
@@ -89,8 +97,6 @@ reviewChecks:
   skipDuplicateRateCheck: true
 
 geocodingBias:
-  countryCodes:
-    - de
   viewBox:
     minLon: 13.08
     minLat: 52.33

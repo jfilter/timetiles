@@ -1,6 +1,6 @@
 slug: berlin-stolpersteine
-name: Stolpersteine Berlin
-description: >-
+title: Stolpersteine Berlin
+summary: >-
   Stolpersteine (stumbling stones) in Berlin — brass plaques in the
   pavement commemorating victims of National Socialism. Includes name,
   birth year, address, district, and biography link.
@@ -17,6 +17,14 @@ tags:
   - germany
 license: CC-BY
 estimatedRecords: 10000
+url: https://www.stolpersteine-berlin.de/
+publisher:
+  name: Koordinierungsstelle Stolpersteine Berlin
+  url: https://www.stolpersteine-berlin.de/
+  country: de
+  official: false
+coverage:
+  countries: [de]
 
 source:
   url: "https://www.stolpersteine-berlin.de/de/stolpersteine-finden/download"

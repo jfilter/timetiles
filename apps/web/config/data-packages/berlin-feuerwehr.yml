@@ -1,6 +1,6 @@
 slug: berlin-feuerwehr
-name: Berliner Feuerwehr Standorte
-description: >-
+title: Berliner Feuerwehr Standorte
+summary: >-
   Standorte der Berliner Feuerwehr (Berufs- und Freiwillige Feuerwehr).
   Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
 category: public-safety
@@ -14,6 +14,14 @@ tags:
   - open-data
 license: dl-de/by-2-0
 estimatedRecords: 100
+url: https://daten.berlin.de
+publisher:
+  name: Geoportal Berlin
+  url: https://daten.berlin.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://gdi.berlin.de/services/wfs/feuerwehr?service=WFS&version=2.0.0&request=GetFeature&typeNames=feuerwehr:a_feuerwehr_standorte&outputFormat=application/json&srsName=EPSG:4326"

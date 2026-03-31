@@ -1,0 +1,58 @@
+slug: mapping-police-violence
+title: Mapping Police Violence
+summary: >-
+  Comprehensive database of people killed by police in the United States since
+  2013, maintained by Campaign Zero. Includes incident details, victim
+  demographics, officer information, agency data, and geographic coordinates.
+  Sourced from Fatal Encounters, Washington Post, media reports, and official
+  records. The data "belongs to the public" per the project's methodology statement.
+category: human-rights
+region: United States
+tags: [police-violence, united-states, human-rights, accountability, campaign-zero]
+license: public-domain
+estimatedRecords: 69000
+url: https://mappingpoliceviolence.org/
+publisher:
+  name: Campaign Zero
+  url: https://mappingpoliceviolence.org/
+  country: us
+  official: false
+coverage:
+  countries: [us]
+  start: "2013-01-01"
+
+source:
+  url: https://github.com/timetiles-io/data/releases/download/2026-03/Mapping.Police.Violence.csv
+  format: csv
+
+catalog:
+  name: Mapping Police Violence
+  description: >-
+    Database of people killed by police in the United States. Data sourced from
+    Fatal Encounters, Washington Post, media reports, and official law
+    enforcement records.
+  isPublic: true
+
+dataset:
+  name: Police Violence Incidents
+  language: eng
+  idStrategy:
+    type: external
+    externalIdPath: mpv_id
+    duplicateStrategy: update
+
+fieldMappings:
+  titlePath: name
+  timestampPath: date
+  locationNamePath: city
+  latitudePath: latitude
+  longitudePath: longitude
+
+schedule:
+  type: frequency
+  frequency: weekly
+  schemaMode: additive
+  timezone: America/New_York
+
+reviewChecks:
+  skipGeocodingCheck: true

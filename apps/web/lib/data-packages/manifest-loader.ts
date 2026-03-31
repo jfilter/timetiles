@@ -79,18 +79,40 @@ const htmlExtractSchema = z
   })
   .optional();
 
+const publisherSchema = z
+  .object({
+    name: z.string().min(1),
+    url: z.string().optional(),
+    acronym: z.string().optional(),
+    description: z.string().optional(),
+    country: z
+      .string()
+      .regex(/^[a-z]{2}$/)
+      .optional(),
+    official: z.boolean().optional(),
+  })
+  .optional();
+
+const coverageSchema = z
+  .object({ countries: z.array(z.string().regex(/^[a-z]{2}$/)).optional(), start: z.string().optional() })
+  .optional();
+
 const manifestSchema = z.object({
   slug: z
     .string()
     .min(1)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric with hyphens"),
-  name: z.string().min(1),
-  description: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  description: z.string().optional(),
   category: z.string().min(1),
   region: z.string().optional(),
   tags: z.array(z.string()).default([]),
   license: z.string().optional(),
   estimatedRecords: z.number().int().positive().optional(),
+  url: z.string().optional(),
+  publisher: publisherSchema,
+  coverage: coverageSchema,
 
   source: z.object({
     url: z.string().min(1),
@@ -113,7 +135,7 @@ const manifestSchema = z.object({
     category: z.string().optional(),
     region: z.string().optional(),
     tags: z.array(z.string()).optional(),
-    publisher: z.object({ name: z.string().optional(), url: z.string().optional() }).optional(),
+    publisher: publisherSchema,
   }),
 
   dataset: z.object({
@@ -128,6 +150,8 @@ const manifestSchema = z.object({
         duplicateStrategy: z.enum(["skip", "update", "version"]).default("skip"),
       })
       .optional(),
+    publisher: publisherSchema,
+    coverage: coverageSchema,
   }),
 
   fieldMappings: z.object({

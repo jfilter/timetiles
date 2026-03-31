@@ -1,6 +1,6 @@
 slug: berlin-gruenanlagen
-name: Berliner Gruenanlagen
-description: >-
+title: Berliner Gruenanlagen
+summary: >-
   Oeffentliche Gruenanlagen und Parks in Berlin.
   Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
 category: recreation
@@ -14,6 +14,14 @@ tags:
   - open-data
 license: dl-de/by-2-0
 estimatedRecords: 2500
+url: https://daten.berlin.de
+publisher:
+  name: Geoportal Berlin
+  url: https://daten.berlin.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://gdi.berlin.de/services/wfs/gruenanlagen?service=WFS&version=2.0.0&request=GetFeature&typeNames=gruenanlagen:gruenanlagen&outputFormat=application/json&srsName=EPSG:4326"

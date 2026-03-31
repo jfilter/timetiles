@@ -81,6 +81,28 @@ const Datasets: CollectionConfig = {
       maxLength: 2048,
       admin: { description: "Override catalog-level source URL if this dataset has a different source" },
     },
+    {
+      name: "publisher",
+      type: "group",
+      admin: { description: "Override catalog-level publisher if this dataset has a different source" },
+      fields: [
+        { name: "name", type: "text", maxLength: 255 },
+        { name: "url", type: "text", maxLength: 2048 },
+        { name: "acronym", type: "text", maxLength: 50 },
+        { name: "description", type: "textarea" },
+        { name: "country", type: "text", maxLength: 2 },
+        { name: "official", type: "checkbox", defaultValue: false },
+      ],
+    },
+    {
+      name: "coverage",
+      type: "group",
+      admin: { description: "Override catalog-level coverage" },
+      fields: [
+        { name: "countries", type: "array", fields: [{ name: "code", type: "text", required: true, maxLength: 2 }] },
+        { name: "start", type: "text", maxLength: 10 },
+      ],
+    },
     metadataField,
     // ID Strategy Configuration
     {

@@ -272,6 +272,40 @@ export interface Catalog {
      * Publisher website URL
      */
     url?: string | null;
+    /**
+     * Short name (e.g., ACLED, UCDP)
+     */
+    acronym?: string | null;
+    /**
+     * Publisher description (markdown)
+     */
+    description?: string | null;
+    /**
+     * ISO 3166-1 alpha-2 country code (e.g., us, de)
+     */
+    country?: string | null;
+    /**
+     * Government or IGO source
+     */
+    official?: boolean | null;
+  };
+  /**
+   * Geographic and temporal coverage (FtM-compatible)
+   */
+  coverage?: {
+    /**
+     * ISO 3166-1 alpha-2 country codes covered by this catalog
+     */
+    countries?:
+      | {
+          code: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * Dataset start date (YYYY-MM-DD or YYYY)
+     */
+    start?: string | null;
   };
   updatedAt: string;
   createdAt: string;
@@ -506,6 +540,29 @@ export interface Dataset {
    * Override catalog-level source URL if this dataset has a different source
    */
   sourceUrl?: string | null;
+  /**
+   * Override catalog-level publisher if this dataset has a different source
+   */
+  publisher?: {
+    name?: string | null;
+    url?: string | null;
+    acronym?: string | null;
+    description?: string | null;
+    country?: string | null;
+    official?: boolean | null;
+  };
+  /**
+   * Override catalog-level coverage
+   */
+  coverage?: {
+    countries?:
+      | {
+          code: string;
+          id?: string | null;
+        }[]
+      | null;
+    start?: string | null;
+  };
   /**
    * Additional metadata for the entity
    */
@@ -4197,6 +4254,21 @@ export interface CatalogsSelect<T extends boolean = true> {
     | {
         name?: T;
         url?: T;
+        acronym?: T;
+        description?: T;
+        country?: T;
+        official?: T;
+      };
+  coverage?:
+    | T
+    | {
+        countries?:
+          | T
+          | {
+              code?: T;
+              id?: T;
+            };
+        start?: T;
       };
   updatedAt?: T;
   createdAt?: T;
@@ -4237,6 +4309,27 @@ export interface DatasetsSelect<T extends boolean = true> {
   createdBy?: T;
   license?: T;
   sourceUrl?: T;
+  publisher?:
+    | T
+    | {
+        name?: T;
+        url?: T;
+        acronym?: T;
+        description?: T;
+        country?: T;
+        official?: T;
+      };
+  coverage?:
+    | T
+    | {
+        countries?:
+          | T
+          | {
+              code?: T;
+              id?: T;
+            };
+        start?: T;
+      };
   metadata?: T;
   idStrategy?:
     | T

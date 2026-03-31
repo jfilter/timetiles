@@ -42,9 +42,11 @@ const resolveManifestParameters = (
 
   return {
     ...manifest,
-    name: sub(manifest.name),
-    description: sub(manifest.description),
+    title: sub(manifest.title),
+    summary: sub(manifest.summary),
+    description: manifest.description ? sub(manifest.description) : undefined,
     region: manifest.region ? sub(manifest.region) : undefined,
+    url: manifest.url ? sub(manifest.url) : undefined,
     source: { ...manifest.source, url: sub(manifest.source.url) },
     catalog: {
       ...manifest.catalog,
@@ -124,12 +126,17 @@ const buildScheduledIngestData = (
     advancedOptions.reviewChecks = manifest.reviewChecks;
   }
 
-  if (manifest.geocodingBias) {
-    advancedOptions.geocodingBias = manifest.geocodingBias;
+  // Merge geocodingBias: use coverage.countries as fallback for countryCodes
+  const coverageCountries = manifest.coverage?.countries;
+  if (manifest.geocodingBias || coverageCountries?.length) {
+    advancedOptions.geocodingBias = {
+      ...manifest.geocodingBias,
+      countryCodes: manifest.geocodingBias?.countryCodes ?? coverageCountries,
+    };
   }
 
   return {
-    name: manifest.name,
+    name: manifest.title,
     sourceUrl: manifest.source.url,
     catalog: catalogId,
     dataset: datasetId,
@@ -179,13 +186,14 @@ const findOrCreateCatalog = async (
     overrideAccess: true,
   });
 
+  const publisher = resolved.catalog.publisher ?? resolved.publisher;
   const meta = {
     license: resolved.catalog.license,
-    sourceUrl: resolved.catalog.sourceUrl,
+    sourceUrl: resolved.catalog.sourceUrl ?? resolved.url,
     category: resolved.catalog.category,
     region: resolved.catalog.region,
     tags: resolved.catalog.tags?.map((tag) => ({ tag })),
-    publisher: resolved.catalog.publisher,
+    publisher: publisher ? { name: publisher.name, url: publisher.url } : undefined,
   };
 
   if (existing.docs[0]) {
@@ -213,7 +221,11 @@ const findOrCreateCatalog = async (
     collection: COLLECTION_NAMES.CATALOGS,
     data: {
       name: resolved.catalog.name,
-      description: resolved.catalog.description ? toRichText(resolved.catalog.description) : undefined,
+      description: resolved.catalog.description
+        ? toRichText(resolved.catalog.description)
+        : resolved.summary
+          ? toRichText(resolved.summary)
+          : undefined,
       isPublic: resolved.catalog.isPublic ?? true,
       createdBy: user.id,
       _status: "published",

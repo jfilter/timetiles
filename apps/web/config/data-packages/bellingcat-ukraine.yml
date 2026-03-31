@@ -1,6 +1,6 @@
 slug: bellingcat-ukraine
-name: Bellingcat Civilian Harm in Ukraine
-description: >-
+title: Bellingcat Civilian Harm in Ukraine
+summary: >-
   Verified civilian harm incidents in Ukraine documented by Bellingcat's
   investigation team, including geolocation, impact categories, and weapon
   system classifications.
@@ -15,6 +15,15 @@ tags:
   - human-rights
 license: CC-BY-4.0
 estimatedRecords: 2500
+url: https://bellingcat.com
+publisher:
+  name: Bellingcat
+  url: https://bellingcat.com
+  country: nl
+  official: false
+coverage:
+  countries: [ua, ru]
+  start: "2022-02-24"
 
 source:
   url: "https://bellingcat-embeds.ams3.cdn.digitaloceanspaces.com/production/ukr/timemap/api.json"
@@ -58,8 +67,3 @@ schedule:
 
 reviewChecks:
   skipGeocodingCheck: true
-
-geocodingBias:
-  countryCodes:
-    - ua
-    - ru

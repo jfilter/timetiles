@@ -1,6 +1,6 @@
 slug: berlin-jugendfreizeit
-name: Berliner Jugendfreizeiteinrichtungen
-description: >-
+title: Berliner Jugendfreizeiteinrichtungen
+summary: >-
   Oeffentliche und oeffentlich gefoerderte Jugendfreizeiteinrichtungen (JFE)
   im Land Berlin.
   Quelle: Berlin Open Data (daten.berlin.de), GDI WFS Service.
@@ -15,6 +15,14 @@ tags:
   - open-data
 license: dl-de/by-2-0
 estimatedRecords: 500
+url: https://daten.berlin.de
+publisher:
+  name: Geoportal Berlin
+  url: https://daten.berlin.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://gdi.berlin.de/services/wfs/jfe?service=WFS&version=2.0.0&request=GetFeature&typeNames=jfe:jfe&outputFormat=application/json&srsName=EPSG:4326"

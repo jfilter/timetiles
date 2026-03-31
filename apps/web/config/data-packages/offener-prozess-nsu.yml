@@ -1,6 +1,6 @@
 slug: offener-prozess-nsu
-name: NSU-Komplex — Interaktive Karte
-description: >-
+title: NSU-Komplex — Interaktive Karte
+summary: >-
   118 Orte und Ereignisse des NSU-Komplexes, dokumentiert vom
   Dokumentationszentrum "Offener Prozess" in Chemnitz. Enthält Tatorte
   der Morde und Anschläge, Raubüberfälle, Wohnorte des Trios,
@@ -19,6 +19,15 @@ tags:
   - dokumentation
 license: unknown
 estimatedRecords: 118
+url: https://www.nsu-watch.info
+publisher:
+  name: NSU Watch
+  url: https://www.nsu-watch.info
+  country: de
+  official: false
+coverage:
+  countries: [de]
+  start: "2013-05-06"
 
 source:
   url: "https://map.offener-prozess.de/jm-ajax/get_listings/"
@@ -114,7 +123,3 @@ schedule:
 reviewChecks:
   skipGeocodingCheck: true
   skipDuplicateRateCheck: true
-
-geocodingBias:
-  countryCodes:
-    - de

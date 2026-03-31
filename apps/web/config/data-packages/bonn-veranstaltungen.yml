@@ -1,6 +1,6 @@
 slug: bonn-veranstaltungen
-name: Bonner Veranstaltungen
-description: >-
+title: Bonner Veranstaltungen
+summary: >-
   Public events from the City of Bonn event calendar. The API returns upcoming
   events with title, start/end timestamps, venue name, street address, and
   categories. Coordinates are resolved via geocoding.
@@ -14,6 +14,14 @@ tags:
   - germany
 license: dl-de/by-2-0
 estimatedRecords: 300
+url: https://opendata.bonn.de
+publisher:
+  name: Stadt Bonn
+  url: https://opendata.bonn.de
+  country: de
+  official: true
+coverage:
+  countries: [de]
 
 source:
   url: "https://www.bonn.de/citykey/events-json.php"
