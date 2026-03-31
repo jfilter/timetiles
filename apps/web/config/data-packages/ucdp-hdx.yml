@@ -1,6 +1,6 @@
 slug: ucdp-hdx
-name: "UCDP Conflict Events — {{country}} (HDX)"
-description: >-
+title: "UCDP Conflict Events — {{country}} (HDX)"
+summary: >-
   Georeferenced conflict events in {{country}} from the Uppsala Conflict
   Data Program (UCDP) via the Humanitarian Data Exchange. Covers
   state-based, non-state, and one-sided violence with casualty
@@ -14,6 +14,15 @@ tags:
   - casualties
   - hdx
 license: CC-BY-IGO
+url: https://data.humdata.org
+publisher:
+  name: Uppsala Conflict Data Program
+  acronym: UCDP
+  url: https://ucdp.uu.se
+  country: se
+  official: false
+coverage:
+  start: "1989-01-01"
 
 parameters:
   - name: country
@@ -33,9 +42,8 @@ source:
   url: "https://data.humdata.org/dataset/{{dataset_id}}/resource/{{resource_id}}/download/"
   format: csv
   excludeFields:
+    # Internal UCDP IDs
     - relid
-    - active_year
-    - code_status
     - conflict_dset_id
     - conflict_new_id
     - dyad_dset_id
@@ -44,20 +52,37 @@ source:
     - side_a_new_id
     - side_b_dset_id
     - side_b_new_id
+    - gwnoa
+    - gwnob
+    - priogrid_gid
+    - country_id
+    # Source metadata (not useful for display)
     - number_of_sources
     - source_article
     - source_office
     - source_date
     - source_original
+    # Precision/coding fields
+    - active_year
+    - code_status
     - where_prec
     - where_coordinates
-    - geom_wkt
-    - priogrid_gid
-    - country_id
     - event_clarity
     - date_prec
-    - gwnoa
-    - gwnob
+    # Geo duplicates (lat/lon already mapped)
+    - geom_wkt
+    # Redundant with mapped fields or dataset context
+    - side_a
+    - side_b
+    - deaths_a
+    - deaths_b
+    - deaths_unknown
+    - low
+    - high
+    - year
+    - iso3
+    - country
+    - region
 
 catalog:
   name: "UCDP Conflict Events"
@@ -65,9 +90,6 @@ catalog:
   isPublic: true
   license: CC-BY-IGO
   sourceUrl: "https://data.humdata.org"
-  publisher:
-    name: Uppsala Conflict Data Program
-    url: "https://ucdp.uu.se"
 
 dataset:
   name: "{{country}}"
@@ -81,14 +103,34 @@ transforms:
   # Map violence type codes to human-readable labels
   - type: string-op
     from: type_of_violence
+    to: Violence Type
     operation: expression
     expression: >-
       (value == 1 ? "State-based" :
        value == 2 ? "Non-state" :
        value == 3 ? "One-sided" : value)
-  # Build description from violence type + conflict parties
+  # Rename fields for readable labels in event detail
+  - type: rename
+    from: conflict_name
+    to: Conflict
+  - type: rename
+    from: dyad_name
+    to: Parties
+  - type: rename
+    from: best
+    to: Fatalities
+  - type: rename
+    from: deaths_civilians
+    to: Civilian Deaths
+  - type: rename
+    from: adm_1
+    to: Province
+  - type: rename
+    from: adm_2
+    to: District
+  # Build description from renamed fields
   - type: concatenate
-    fromFields: [type_of_violence, dyad_name]
+    fromFields: [Violence Type, Parties]
     separator: " — "
     to: event_summary
 
