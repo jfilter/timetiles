@@ -23,12 +23,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsBoolean, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { BeeswarmSettingsButton, EventBeeswarm, useGroupByOptions } from "@/components/charts/event-beeswarm";
 import { EventHistogram } from "@/components/charts/event-histogram";
+import { GroupBySelect } from "@/components/charts/group-by-select";
 import { TimeRangeSlider } from "@/components/filters/time-range-slider";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { formatMonthYear, parseISODate } from "@/lib/utils/date";
@@ -101,7 +102,7 @@ export const ChartSection = ({
     parseAsStringEnum<ChartType>(["histogram", "beeswarm", "dataset-bar"]).withDefault("histogram")
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useQueryState("fullscreen", parseAsBoolean.withDefault(false));
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showChartSettings, setShowChartSettings] = useState(false);
   const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("none"));
@@ -178,28 +179,9 @@ export const ChartSection = ({
             variant={variant}
             showControls={showChartSettings}
             groupBy={effectiveGroupBy}
-            groupByOptions={groupByOptions}
-            onGroupByChange={(v) => void setGroupBy(v)}
           />
         )}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
-        {/* GroupBy picker for histogram (beeswarm has its own integrated) */}
-        {variant === "fullscreen" && showChartSettings && chartType === "histogram" && (
-          <div className="bg-background/95 border-border absolute top-0 right-0 z-10 rounded-md border p-3 shadow-md backdrop-blur-sm">
-            <div className="text-muted-foreground mb-1 text-[10px] font-medium tracking-wide uppercase">Group by</div>
-            <select
-              value={groupBy}
-              onChange={(e) => void setGroupBy(e.target.value)}
-              className="border-input bg-background text-foreground w-full rounded border px-2 py-1 text-xs"
-            >
-              {groupByOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
     );
   };
@@ -212,7 +194,7 @@ export const ChartSection = ({
         chartMeta={chartMeta}
         availableChartTypes={availableChartTypes}
         fillHeight={fillHeight}
-        onExpandClick={() => setIsFullscreen(true)}
+        onExpandClick={() => void setIsFullscreen(true)}
         isCollapsed={collapsible ? isCollapsed : false}
         onToggleCollapse={collapsible ? toggleCollapsed : undefined}
       >
@@ -228,7 +210,7 @@ export const ChartSection = ({
         </div>
       </VisualizationPanel>
 
-      <Dialog open={isFullscreen} onOpenChange={(open) => !open && setIsFullscreen(false)}>
+      <Dialog open={isFullscreen} onOpenChange={(open) => !open && void setIsFullscreen(false)}>
         <DialogContent
           className="flex h-[95vh] max-h-[95vh] w-[95vw] max-w-none flex-col overflow-hidden"
           showCloseButton={false}
@@ -257,6 +239,9 @@ export const ChartSection = ({
                 </Select>
               )}
               {(chartType === "beeswarm" || chartType === "histogram") && (
+                <GroupBySelect value={groupBy} onChange={(v) => void setGroupBy(v)} options={groupByOptions} />
+              )}
+              {chartType === "beeswarm" && (
                 <BeeswarmSettingsButton
                   showControls={showChartSettings}
                   onToggle={() => setShowChartSettings((v) => !v)}
