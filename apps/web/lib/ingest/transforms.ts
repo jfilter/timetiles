@@ -257,16 +257,20 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
   const rawValue = getByPath(data, transform.from);
   if (rawValue === undefined) return;
 
+  const target = transform.to ?? transform.from;
+
   // Expression operations work on any type (numbers, strings, booleans).
   // Other operations (uppercase, lowercase, replace) require strings.
   if (transform.operation === "expression") {
     if (!transform.expression) return;
     try {
       const exprResult = runCustomTransform(rawValue, transform.expression);
-      setByPath(data, transform.to ?? transform.from, exprResult);
+      setByPath(data, target, exprResult);
     } catch {
       // Keep original value if expression fails
     }
+    // Remove source field when writing to a different target (same as rename)
+    if (target !== transform.from) deleteByPath(data, transform.from);
     return;
   }
 
@@ -291,7 +295,9 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
       result = rawValue;
   }
 
-  setByPath(data, transform.to ?? transform.from, result);
+  setByPath(data, target, result);
+  // Remove source field when writing to a different target (same as rename)
+  if (target !== transform.from) deleteByPath(data, transform.from);
 };
 
 /**

@@ -172,6 +172,42 @@ const geocodeUniqueLocations = async (
  * Load resources, resolve geocoding candidate, and extract unique locations.
  * Returns early with `{ skipped: true }` if geocoding should be skipped entirely.
  */
+/**
+ * Resolve coordinate field paths from the geocoding candidate, falling back to
+ * the dataset's `fieldMappingOverrides` or `geoFieldDetection` when the schema
+ * detection step did not populate `detectedFieldMappings` with lat/lng paths.
+ */
+const resolveCoordinateFields = (
+  geocodingCandidate: ReturnType<typeof getGeocodingCandidate>,
+  dataset: unknown
+): { latitudeField?: string; longitudeField?: string } => {
+  let latitudeField = geocodingCandidate?.latitudeField;
+  let longitudeField = geocodingCandidate?.longitudeField;
+
+  // Fallback: read from dataset config when detectedFieldMappings lacks coordinate paths
+  if ((!latitudeField || !longitudeField) && typeof dataset === "object" && dataset != null) {
+    const ds = dataset as Record<string, unknown>;
+
+    // Try fieldMappingOverrides first
+    const overrides = ds.fieldMappingOverrides as Record<string, unknown> | null | undefined;
+    if (overrides) {
+      latitudeField ??= typeof overrides.latitudePath === "string" ? overrides.latitudePath : undefined;
+      longitudeField ??= typeof overrides.longitudePath === "string" ? overrides.longitudePath : undefined;
+    }
+
+    // Then try geoFieldDetection
+    if (!latitudeField || !longitudeField) {
+      const geo = ds.geoFieldDetection as Record<string, unknown> | null | undefined;
+      if (geo) {
+        latitudeField ??= typeof geo.latitudePath === "string" ? geo.latitudePath : undefined;
+        longitudeField ??= typeof geo.longitudePath === "string" ? geo.longitudePath : undefined;
+      }
+    }
+  }
+
+  return { latitudeField, longitudeField };
+};
+
 const prepareGeocodingLocations = async (
   payload: Payload,
   ingestJobId: string | number,
@@ -188,8 +224,7 @@ const prepareGeocodingLocations = async (
       skippedWithCoords: number;
     }
 > => {
-  const geocodingService = createGeocodingService(payload);
-  const { job, ingestFile } = await loadJobResources(payload, ingestJobId);
+  const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
   const geocodingCandidate = getGeocodingCandidate(job);
 
   // Skip if neither location field nor location name field detected
@@ -199,6 +234,9 @@ const prepareGeocodingLocations = async (
     return { skipped: true };
   }
 
+  // Resolve coordinate fields: use detectedFieldMappings, falling back to dataset config
+  const coordinateFields = resolveCoordinateFields(geocodingCandidate, dataset);
+
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
 
@@ -207,16 +245,23 @@ const prepareGeocodingLocations = async (
     sheetIndex,
     geocodingCandidate.locationField,
     geocodingCandidate.locationNameField,
-    { latitudeField: geocodingCandidate.latitudeField, longitudeField: geocodingCandidate.longitudeField },
+    coordinateFields,
     logger
   );
 
-  // Skip geocoding entirely if all rows already have coordinates
-  if (uniqueLocations.size === 0 && skippedWithCoords > 0) {
-    logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
+  // Skip geocoding entirely if all rows already have coordinates or no locations found
+  if (uniqueLocations.size === 0) {
+    if (skippedWithCoords > 0) {
+      logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
+    } else {
+      logger.info("No locations to geocode, skipping", { totalRows, skippedWithCoords });
+    }
     await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
     return { skipped: true, skippedWithCoords };
   }
+
+  // Only initialize geocoding service when we actually need to geocode
+  const geocodingService = createGeocodingService(payload);
 
   return { skipped: false, geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords };
 };

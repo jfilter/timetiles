@@ -72,7 +72,7 @@ vi.mock("@/lib/services/cache/url-fetch-cache", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Test CSV data mimicking a UCDP-like conflict events dataset
+// Test CSV data mimicking a UCDP-like conflict events dataset (minimal)
 // ---------------------------------------------------------------------------
 const MOCK_CSV = [
   "id,type_of_violence,conflict_name,dyad_name,best,deaths_civilians,adm_1,adm_2,where_description,latitude,longitude,date_start,date_end,source_headline,relid,conflict_dset_id,year,country",
@@ -80,6 +80,219 @@ const MOCK_CSV = [
   "1002,2,Tribal Conflict,Militia A - Militia B,8,0,Darfur,North Darfur,El Fasher outskirts,13.63,25.35,2024-03-16,2024-03-17,Clashes over water resources,REL-002,DST-002,2024,Sudan",
   "1003,3,Civilian Targeting,Government - Civilians,12,12,Rakhine,Sittwe,Sittwe township,20.15,92.9,2024-03-18,2024-03-18,Attacks on civilian settlement,REL-003,DST-003,2024,Myanmar",
 ].join("\n");
+
+// ---------------------------------------------------------------------------
+// Realistic UCDP CSV with ALL columns matching the real HDX dataset.
+// Includes every field that ucdp-hdx.yml lists under excludeFields.
+// ---------------------------------------------------------------------------
+const UCDP_HEADER = [
+  "id",
+  "relid",
+  "year",
+  "active_year",
+  "code_status",
+  "type_of_violence",
+  "conflict_dset_id",
+  "conflict_new_id",
+  "conflict_name",
+  "dyad_dset_id",
+  "dyad_new_id",
+  "dyad_name",
+  "side_a_dset_id",
+  "side_a_new_id",
+  "side_a",
+  "side_b_dset_id",
+  "side_b_new_id",
+  "side_b",
+  "number_of_sources",
+  "source_article",
+  "source_office",
+  "source_date",
+  "source_original",
+  "source_headline",
+  "where_prec",
+  "where_coordinates",
+  "where_description",
+  "adm_1",
+  "adm_2",
+  "latitude",
+  "longitude",
+  "geom_wkt",
+  "priogrid_gid",
+  "country",
+  "country_id",
+  "region",
+  "iso3",
+  "event_clarity",
+  "date_prec",
+  "date_start",
+  "date_end",
+  "deaths_a",
+  "deaths_b",
+  "deaths_civilians",
+  "deaths_unknown",
+  "best",
+  "high",
+  "low",
+  "gwnoa",
+  "gwnob",
+].join(",");
+
+// Use a helper to properly quote CSV values that may contain commas
+const csvRow = (values: string[]): string => values.map((v) => (v.includes(",") ? `"${v}"` : v)).join(",");
+
+const UCDP_ROW_1 = csvRow([
+  "558782", // id
+  "PAK-2024-1-1234-1", // relid
+  "2024", // year
+  "1", // active_year
+  "Clear", // code_status
+  "1", // type_of_violence
+  "DST-100", // conflict_dset_id
+  "NEW-100", // conflict_new_id
+  "Myanmar (Burma): Government", // conflict_name
+  "DYD-200", // dyad_dset_id
+  "DYN-200", // dyad_new_id
+  "Government of Myanmar (Burma) - NUG", // dyad_name
+  "SDA-300", // side_a_dset_id
+  "SNA-300", // side_a_new_id
+  "Government of Myanmar (Burma)", // side_a
+  "SDB-400", // side_b_dset_id
+  "SNB-400", // side_b_new_id
+  "NUG", // side_b
+  "3", // number_of_sources
+  "Reuters;AP;BBC", // source_article
+  "UCDP", // source_office
+  "2024-12-31", // source_date
+  "Burmese military junta forces clashed", // source_original
+  "5 civilians dead by bombs during new year celebration", // source_headline
+  "1", // where_prec
+  "21.83465;95.54802", // where_coordinates
+  "Thar Kyin village, Ngazun Township", // where_description
+  "Mandalay region", // adm_1
+  "Myingyan district", // adm_2
+  "21.83465", // latitude
+  "95.54802", // longitude
+  "POINT(95.54802 21.83465)", // geom_wkt
+  "155234", // priogrid_gid
+  "Myanmar (Burma)", // country
+  "775", // country_id
+  "Asia", // region
+  "MMR", // iso3
+  "1", // event_clarity
+  "1", // date_prec
+  "2024-12-31", // date_start
+  "2024-12-31", // date_end
+  "0", // deaths_a
+  "0", // deaths_b
+  "5", // deaths_civilians
+  "0", // deaths_unknown
+  "5", // best
+  "5", // high
+  "5", // low
+  "775", // gwnoa
+  "", // gwnob
+]);
+
+const UCDP_ROW_2 = csvRow([
+  "558790", // id
+  "PAK-2024-2-5678-2", // relid
+  "2024", // year
+  "1", // active_year
+  "Clear", // code_status
+  "2", // type_of_violence
+  "DST-101", // conflict_dset_id
+  "NEW-101", // conflict_new_id
+  "Shan State Conflict", // conflict_name
+  "DYD-201", // dyad_dset_id
+  "DYN-201", // dyad_new_id
+  "TNLA - RCSS", // dyad_name
+  "SDA-301", // side_a_dset_id
+  "SNA-301", // side_a_new_id
+  "TNLA", // side_a
+  "SDB-401", // side_b_dset_id
+  "SNB-401", // side_b_new_id
+  "RCSS", // side_b
+  "2", // number_of_sources
+  "Irrawaddy;DVB", // source_article
+  "UCDP", // source_office
+  "2024-11-15", // source_date
+  "Ethnic armed groups clashed in northern Shan", // source_original
+  "Fighting between TNLA and RCSS in Shan State", // source_headline
+  "2", // where_prec
+  "22.5;98.0", // where_coordinates
+  "Hsipaw Township", // where_description
+  "Shan State", // adm_1
+  "Hsipaw District", // adm_2
+  "22.5", // latitude
+  "98.0", // longitude
+  "POINT(98.0 22.5)", // geom_wkt
+  "155300", // priogrid_gid
+  "Myanmar (Burma)", // country
+  "775", // country_id
+  "Asia", // region
+  "MMR", // iso3
+  "2", // event_clarity
+  "1", // date_prec
+  "2024-11-15", // date_start
+  "2024-11-16", // date_end
+  "3", // deaths_a
+  "2", // deaths_b
+  "0", // deaths_civilians
+  "1", // deaths_unknown
+  "6", // best
+  "10", // high
+  "3", // low
+  "775", // gwnoa
+  "", // gwnob
+]);
+
+const UCDP_REALISTIC_CSV = [UCDP_HEADER, UCDP_ROW_1, UCDP_ROW_2].join("\n");
+
+// All excludeFields from ucdp-hdx.yml
+const UCDP_EXCLUDE_FIELDS = [
+  // Internal UCDP IDs
+  "relid",
+  "conflict_dset_id",
+  "conflict_new_id",
+  "dyad_dset_id",
+  "dyad_new_id",
+  "side_a_dset_id",
+  "side_a_new_id",
+  "side_b_dset_id",
+  "side_b_new_id",
+  "gwnoa",
+  "gwnob",
+  "priogrid_gid",
+  "country_id",
+  // Source metadata
+  "number_of_sources",
+  "source_article",
+  "source_office",
+  "source_date",
+  "source_original",
+  // Precision/coding fields
+  "active_year",
+  "code_status",
+  "where_prec",
+  "where_coordinates",
+  "event_clarity",
+  "date_prec",
+  // Geo duplicates
+  "geom_wkt",
+  // Redundant with mapped fields or dataset context
+  "side_a",
+  "side_b",
+  "deaths_a",
+  "deaths_b",
+  "deaths_unknown",
+  "low",
+  "high",
+  "year",
+  "iso3",
+  "country",
+  "region",
+];
 
 // ---------------------------------------------------------------------------
 // Test manifest (mirrors UCDP HDX data package structure)
@@ -105,6 +318,68 @@ const buildTestManifest = (sourceUrl: string): DataPackageManifest => ({
   },
   dataset: {
     name: "Test Country",
+    language: "eng",
+    idStrategy: { type: "external", externalIdPath: "id", duplicateStrategy: "update" },
+  },
+  fieldMappings: {
+    titlePath: "source_headline",
+    descriptionPath: "event_summary",
+    timestampPath: "date_start",
+    endTimestampPath: "date_end",
+    locationNamePath: "where_description",
+    latitudePath: "latitude",
+    longitudePath: "longitude",
+  },
+  transforms: [
+    {
+      type: "string-op",
+      from: "type_of_violence",
+      to: "Violence Type",
+      operation: "expression",
+      expression: '(value == 1 ? "State-based" : value == 2 ? "Non-state" : value == 3 ? "One-sided" : value)',
+    },
+    { type: "rename", from: "conflict_name", to: "Conflict" },
+    { type: "rename", from: "dyad_name", to: "Parties" },
+    { type: "rename", from: "best", to: "Fatalities" },
+    { type: "rename", from: "deaths_civilians", to: "Civilian Deaths" },
+    { type: "rename", from: "adm_1", to: "Province" },
+    { type: "rename", from: "adm_2", to: "District" },
+    { type: "concatenate", fromFields: ["Violence Type", "Parties"], separator: " — ", to: "event_summary" },
+  ],
+  schedule: { type: "frequency", frequency: "monthly", schemaMode: "additive", timezone: "UTC" },
+  reviewChecks: { skipGeocodingCheck: true },
+});
+
+/**
+ * Realistic UCDP manifest matching ucdp-hdx.yml — all excludeFields, transforms, and field mappings.
+ */
+const buildUcdpManifest = (sourceUrl: string): DataPackageManifest => ({
+  slug: "test-ucdp-myanmar",
+  title: "UCDP Conflict Events — Myanmar (HDX)",
+  summary: "Realistic UCDP test with all excludeFields from ucdp-hdx.yml",
+  category: "conflict",
+  region: "Myanmar",
+  tags: ["conflict", "violence", "ucdp", "casualties", "hdx"],
+  license: "CC-BY-IGO",
+  url: "https://data.humdata.org",
+  publisher: {
+    name: "Uppsala Conflict Data Program",
+    acronym: "UCDP",
+    url: "https://ucdp.uu.se",
+    country: "se",
+    official: false,
+  },
+  coverage: { countries: ["mm"], start: "1989-01-01" },
+  source: { url: sourceUrl, format: "csv", excludeFields: UCDP_EXCLUDE_FIELDS },
+  catalog: {
+    name: `UCDP Test Catalog ${Date.now()}`,
+    description: "Georeferenced conflict events from UCDP via HDX",
+    isPublic: true,
+    license: "CC-BY-IGO",
+    sourceUrl: "https://data.humdata.org",
+  },
+  dataset: {
+    name: "Myanmar",
     language: "eng",
     idStrategy: { type: "external", externalIdPath: "id", duplicateStrategy: "update" },
   },
@@ -166,6 +441,22 @@ describe.sequential("Data Package Activation", () => {
   beforeEach(async () => {
     await testEnv.seedManager.truncate(collectionsToReset);
     testServer.reset();
+    // Ensure a geocoding provider exists — prevents "No geocoding providers configured"
+    // when the geocode-batch step fails to skip (e.g., detectedFieldMappings state leak)
+    const existing = await payload.find({ collection: "geocoding-providers", limit: 1 });
+    if (existing.docs.length === 0) {
+      await payload.create({
+        collection: "geocoding-providers",
+        data: {
+          name: "Test Photon",
+          type: "photon",
+          enabled: true,
+          priority: 1,
+          rateLimit: 30,
+          baseUrl: "https://geocode.versatiles.org",
+        },
+      });
+    }
   });
 
   // -------------------------------------------------------------------------
@@ -409,6 +700,136 @@ describe.sequential("Data Package Activation", () => {
     // Verify third event (One-sided violence)
     const thirdData = events.docs[2].transformedData as Record<string, unknown>;
     expect(thirdData["Violence Type"]).toBe("One-sided");
+  });
+
+  it("should strip all UCDP excludeFields and apply transforms with realistic data", { timeout: 60_000 }, async () => {
+    testServer.respondWithCSV("/ucdp-myanmar.csv", UCDP_REALISTIC_CSV);
+    const manifest = buildUcdpManifest(`${testServerUrl}/ucdp-myanmar.csv`);
+
+    const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
+
+    // Wait for the ingest-file to be created
+    let ingestFileId: number | string | undefined;
+    for (let i = 0; i < 20; i++) {
+      await payload.jobs.run({ allQueues: true, limit: 100 });
+      const files = await payload.find({
+        collection: "ingest-files",
+        where: { catalog: { equals: result.catalogId } },
+        limit: 1,
+      });
+      if (files.docs.length > 0) {
+        ingestFileId = files.docs[0].id;
+        break;
+      }
+    }
+    expect(ingestFileId).toBeDefined();
+
+    // Wait for schema detection → NEEDS_REVIEW
+    const schemaResult = await runJobsUntilIngestJobStage(
+      payload,
+      ingestFileId!,
+      (job) => job.stage === "needs-review" || job.stage === "completed" || job.stage === "failed",
+      { maxIterations: 40 }
+    );
+
+    if (schemaResult.ingestJob?.stage === "needs-review") {
+      const job = await payload.findByID({ collection: "ingest-jobs", id: schemaResult.ingestJob.id });
+      await payload.update({
+        collection: "ingest-jobs",
+        id: job.id,
+        data: {
+          schemaValidation: {
+            ...job.schemaValidation,
+            approved: true,
+            approvedBy: adminUser.id,
+            approvedAt: new Date().toISOString(),
+          },
+        },
+        user: adminUser,
+      });
+    }
+
+    const settled = await runJobsUntilImportSettled(payload, ingestFileId!, { maxIterations: 60 });
+    expect(settled.settled).toBe(true);
+
+    // Verify events were created
+    const events = await payload.find({
+      collection: "events",
+      where: { dataset: { equals: result.datasetId } },
+      sort: "eventTimestamp",
+    });
+    expect(events.docs.length).toBe(2);
+
+    // Find events by unique ID (external id from CSV)
+    const stateBasedEvent = events.docs.find((e) => (e.transformedData as Record<string, unknown>)?.id === 558782)!;
+    const nonStateEvent = events.docs.find((e) => (e.transformedData as Record<string, unknown>)?.id === 558790)!;
+    expect(stateBasedEvent).toBeDefined();
+    expect(nonStateEvent).toBeDefined();
+
+    const data = stateBasedEvent.transformedData as Record<string, unknown>;
+    const dataKeys = Object.keys(data);
+
+    // --- Transforms applied correctly ---
+    expect(data["Conflict"]).toBe("Myanmar (Burma): Government");
+    expect(data["Parties"]).toBe("Government of Myanmar (Burma) - NUG");
+    expect(data["Fatalities"]).toBeDefined();
+    expect(data["Civilian Deaths"]).toBeDefined();
+    expect(data["Province"]).toBe("Mandalay region");
+    expect(data["District"]).toBe("Myingyan district");
+    expect(data["Violence Type"]).toBe("State-based");
+    expect(data["event_summary"]).toBe("State-based — Government of Myanmar (Burma) - NUG");
+
+    // Rename sources removed
+    expect(data["conflict_name"]).toBeUndefined();
+    expect(data["dyad_name"]).toBeUndefined();
+    expect(data["adm_1"]).toBeUndefined();
+    expect(data["adm_2"]).toBeUndefined();
+
+    // --- ALL excludeFields must be absent from transformedData ---
+    for (const field of UCDP_EXCLUDE_FIELDS) {
+      expect(data[field]).toBeUndefined();
+    }
+
+    // Double-check: no excluded field name appears as a key at all
+    const leakedFields = dataKeys.filter((k) => UCDP_EXCLUDE_FIELDS.includes(k));
+    expect(leakedFields).toEqual([]);
+
+    // --- Only expected fields remain ---
+    const expectedRemainingFields = new Set([
+      "id",
+      "source_headline",
+      "Conflict",
+      "Parties",
+      "Fatalities",
+      "Civilian Deaths",
+      "Province",
+      "District",
+      "Violence Type",
+      "event_summary",
+      "date_start",
+      "date_end",
+      "where_description",
+      "latitude",
+      "longitude",
+    ]);
+    const unexpectedFields = dataKeys.filter((k) => !expectedRemainingFields.has(k));
+    expect(unexpectedFields).toEqual([]);
+
+    // --- Field mappings applied ---
+    expect(stateBasedEvent.eventTimestamp).toBeTruthy();
+    expect(new Date(stateBasedEvent.eventTimestamp!).toISOString()).toContain("2024-12-31");
+    expect(stateBasedEvent.locationName).toBe("Thar Kyin village, Ngazun Township");
+    expect(stateBasedEvent.location).toBeDefined();
+
+    // --- Second event: Non-state violence ---
+    const secondData = nonStateEvent.transformedData as Record<string, unknown>;
+    expect(secondData["Violence Type"]).toBe("Non-state");
+    expect(secondData["Parties"]).toBe("TNLA - RCSS");
+    expect(secondData["event_summary"]).toBe("Non-state — TNLA - RCSS");
+
+    // Excluded fields also absent in second event
+    const secondLeaked = Object.keys(secondData).filter((k) => UCDP_EXCLUDE_FIELDS.includes(k));
+    expect(secondLeaked).toEqual([]);
   });
 
   it("should handle re-import with update duplicate strategy", { timeout: 60_000 }, async () => {

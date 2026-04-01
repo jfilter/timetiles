@@ -881,7 +881,7 @@ describe("string-op to field support", () => {
     ];
     const result = applyTransforms({ type: 1 }, transforms);
     expect(result.type_label).toBe("State-based");
-    expect(result.type).toBe(1); // original preserved
+    expect(result.type).toBeUndefined(); // source removed when to !== from
   });
 
   it("should write uppercase result to a different field via to", () => {
@@ -898,7 +898,7 @@ describe("string-op to field support", () => {
     ];
     const result = applyTransforms({ name: "hello" }, transforms);
     expect(result.name_upper).toBe("HELLO");
-    expect(result.name).toBe("hello"); // original preserved
+    expect(result.name).toBeUndefined(); // source removed when to !== from
   });
 
   it("should write replace result to a different field via to", () => {
@@ -917,7 +917,7 @@ describe("string-op to field support", () => {
     ];
     const result = applyTransforms({ slug: "hello-world" }, transforms);
     expect(result.title).toBe("hello world");
-    expect(result.slug).toBe("hello-world"); // original preserved
+    expect(result.slug).toBeUndefined(); // source removed when to !== from
   });
 
   it("should default to from field when to is not specified", () => {
