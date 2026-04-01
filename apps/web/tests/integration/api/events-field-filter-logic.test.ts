@@ -199,10 +199,10 @@ describe("/api/v1/events - field filter logic", () => {
 
     // Should still be 4 Active events from the original set — NOT 5
     expect(data.events).toHaveLength(4);
-    // None of them should be the null-field event
-    expect(data.events.every((e: { id: number }) => e.id !== undefined)).toBe(true);
-    const ids = data.events.map((e: { data: { category: string; status: string } }) => e.data.status);
-    expect(ids.every((s: string) => s === "Active")).toBe(true);
+    // Every returned event must have status=Active (none should be the null-field event)
+    for (const event of data.events) {
+      expect(event.data.status).toBe("Active");
+    }
   });
 
   it("should handle filter values with parentheses", async () => {
