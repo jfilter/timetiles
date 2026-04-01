@@ -53,8 +53,13 @@ export const EventFilters = () => {
   }, [showTemporalFilters]); // eslint-disable-line react-hooks/exhaustive-deps -- only react to visibility change
 
   // Fetch enum fields for categorical filters (only when single dataset selected)
+  // Pass current filters + bounds so dropdown values reflect the visible data subset
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
-  const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(singleDatasetId);
+  const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(
+    singleDatasetId,
+    filters,
+    mapBounds
+  );
   const hasEnumFields = enumFields != null && enumFields.length > 0;
 
   // Calculate active filter counts per section
