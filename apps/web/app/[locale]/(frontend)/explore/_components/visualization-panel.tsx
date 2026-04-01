@@ -69,11 +69,15 @@ export const VisualizationPanel = ({
   const showDropdown = availableChartTypes.length > 1;
 
   return (
-    <Collapsible open={!isCollapsed} onOpenChange={() => onToggleCollapse?.()}>
+    <Collapsible
+      open={!isCollapsed}
+      onOpenChange={() => onToggleCollapse?.()}
+      className={fillHeight ? "flex h-full flex-col" : undefined}
+    >
       <Card
         variant="default"
         padding="none"
-        className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight && !isCollapsed ? "flex h-full flex-col" : ""}`}
+        className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
         <CardHeader className="flex flex-row items-center gap-2 px-4 py-2 md:px-6 md:py-3">
           {/* Collapse toggle */}
@@ -127,8 +131,8 @@ export const VisualizationPanel = ({
           )}
         </CardHeader>
 
-        <CollapsibleContent>
-          <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
+        <CollapsibleContent className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
+          <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex min-h-0 flex-1 flex-col" : ""}`}>
             {children}
           </CardContent>
         </CollapsibleContent>
