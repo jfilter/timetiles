@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
@@ -19,7 +19,13 @@ import { useMediaQuery } from "@/lib/hooks/use-media-query";
 
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
-import { formatDateRange, getDatasetName } from "./explorer-helpers";
+import {
+  buildEventsDescription,
+  formatDateRange,
+  getDatasetName,
+  getFilterLabels,
+  type TranslateFn,
+} from "./explorer-helpers";
 import type { ExplorerChromeElements } from "./explorer-shell";
 import { ExplorerShell } from "./explorer-shell";
 import { MapPanel } from "./map-panel";
@@ -49,11 +55,13 @@ interface ListExplorerContentProps {
 
 const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentProps) => {
   const locale = useLocale();
+  const t = useTranslations("Explore");
   const { explorer, filterPanel, mobileFilters } = chrome;
   const { map, filters: filterState, selection, data } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
   const {
+    catalogs,
     datasets,
     clusters,
     clusterChildren,
@@ -62,6 +70,9 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
     effectiveBounds: chartBounds,
     boundsData,
     isLoadingInitialBounds,
+    events,
+    eventsData,
+    totalEventsData,
     hasTemporalData,
   } = data;
   const { ref: mapRef, debouncedSimpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
@@ -72,6 +83,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
   const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate, locale);
+  const filterLabels = getFilterLabels(filters, catalogs, datasets, locale);
 
   if (isDesktop === false) {
     // Mobile Layout — only the active tab is mounted
@@ -142,6 +154,15 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             />
             <div className="overflow-hidden border-l">
               <div className="flex h-full flex-col p-6">
+                <p className="text-foreground mb-4 text-base font-medium">
+                  {buildEventsDescription(
+                    eventsData?.total ?? events.length,
+                    totalEventsData?.total,
+                    filterLabels,
+                    debouncedSimpleBounds != null,
+                    (k, v) => (t as TranslateFn)(k, v)
+                  )}
+                </p>
                 <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} collapsible={false} />
               </div>
             </div>
