@@ -401,7 +401,14 @@ export const schemaDetectionJob = {
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
-      const { skipRows: duplicateRows } = extractDuplicateRows(job);
+      // Pass duplicateStrategy so that external duplicates with "update" strategy are NOT skipped.
+      // Without this, re-imports where all rows are external duplicates produce an empty schema,
+      // which then fails validation because all fields appear "removed".
+      const duplicateStrategy = (job.configSnapshot as Record<string, unknown>)?.idStrategy
+        ? ((job.configSnapshot as Record<string, { duplicateStrategy?: string }>).idStrategy?.duplicateStrategy ??
+          "skip")
+        : "skip";
+      const { skipRows: duplicateRows } = extractDuplicateRows(job, duplicateStrategy);
 
       const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
       let batchNumber = 0;
