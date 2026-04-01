@@ -94,7 +94,7 @@ export const useFilters = () => {
   const handleRemoveFilter = (filterType: keyof FilterState, value?: string) =>
     applyFilterState(removeFilter(filters, filterType, value));
 
-  const handleClearAllFilters = () => applyFilterState(clearAllFilters());
+  const handleClearAllFilters = () => applyFilterState(clearAllFilters(filters));
 
   // Toggle all datasets belonging to a catalog on/off
   const toggleCatalogDatasets = (catalogDatasetIds: string[]) => {

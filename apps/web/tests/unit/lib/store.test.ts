@@ -20,7 +20,7 @@ describe("Filter State Helper Functions", () => {
       expect(getActiveFilterCount(filters)).toBe(0);
     });
 
-    it("should count each dataset separately", () => {
+    it("should not count datasets (they are selection, not filters)", () => {
       const filters: FilterState = {
         datasets: ["dataset-1", "dataset-2", "dataset-3"],
         startDate: null,
@@ -28,7 +28,7 @@ describe("Filter State Helper Functions", () => {
         fieldFilters: {},
       };
 
-      expect(getActiveFilterCount(filters)).toBe(3);
+      expect(getActiveFilterCount(filters)).toBe(0);
     });
 
     it("should count date range as one filter when both dates present", () => {
@@ -67,7 +67,7 @@ describe("Filter State Helper Functions", () => {
       expect(getActiveFilterCount(filters)).toBe(3);
     });
 
-    it("should count all filter types together", () => {
+    it("should count date range but not datasets", () => {
       const filters: FilterState = {
         datasets: ["dataset-1", "dataset-2"],
         startDate: "2024-01-01",
@@ -75,19 +75,19 @@ describe("Filter State Helper Functions", () => {
         fieldFilters: {},
       };
 
-      // datasets (2) + date range (1) = 3
-      expect(getActiveFilterCount(filters)).toBe(3);
+      // date range (1) only — datasets excluded
+      expect(getActiveFilterCount(filters)).toBe(1);
     });
 
-    it("should handle mixed empty and non-empty values", () => {
+    it("should count field filters and date range but not datasets", () => {
       const filters: FilterState = {
         datasets: ["dataset-1"],
         startDate: "2024-01-01",
         endDate: null,
-        fieldFilters: {},
+        fieldFilters: { category: ["A"] },
       };
 
-      // datasets (1) + date range (1) = 2
+      // date range (1) + fieldFilter (1) = 2
       expect(getActiveFilterCount(filters)).toBe(2);
     });
   });
@@ -105,10 +105,10 @@ describe("Filter State Helper Functions", () => {
       expect(hasActiveFilters(filters)).toBe(false);
     });
 
-    it("should return true when datasets are set", () => {
+    it("should return false when only datasets are set (datasets are selection, not filters)", () => {
       const filters: FilterState = { datasets: ["dataset-1"], startDate: null, endDate: null, fieldFilters: {} };
 
-      expect(hasActiveFilters(filters)).toBe(true);
+      expect(hasActiveFilters(filters)).toBe(false);
     });
 
     it("should return true when startDate is set", () => {
@@ -347,23 +347,29 @@ describe("Filter State Helper Functions", () => {
   });
 
   describe("clearAllFilters", () => {
-    it("should return empty filter state", () => {
-      const result = clearAllFilters();
+    it("should clear dates and field filters but preserve datasets", () => {
+      const filters: FilterState = {
+        datasets: ["dataset-1", "dataset-2"],
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
+        fieldFilters: { category: ["A"] },
+      };
+      const result = clearAllFilters(filters);
 
-      expect(result).toEqual({ datasets: [], startDate: null, endDate: null, fieldFilters: {} });
-    });
-
-    it("should always return same structure", () => {
-      const result1 = clearAllFilters();
-      const result2 = clearAllFilters();
-
-      expect(result1).toEqual(result2);
+      expect(result).toEqual({
+        datasets: ["dataset-1", "dataset-2"],
+        startDate: null,
+        endDate: null,
+        fieldFilters: {},
+      });
     });
 
     it("should return fresh object each time", () => {
-      const result1 = clearAllFilters();
-      const result2 = clearAllFilters();
+      const filters: FilterState = { datasets: ["1"], startDate: null, endDate: null, fieldFilters: {} };
+      const result1 = clearAllFilters(filters);
+      const result2 = clearAllFilters(filters);
 
+      expect(result1).toEqual(result2);
       expect(result1).not.toBe(result2);
     });
   });

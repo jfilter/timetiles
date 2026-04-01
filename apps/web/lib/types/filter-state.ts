@@ -15,22 +15,25 @@ export interface FilterState {
   fieldFilters: Record<string, string[]>;
 }
 
+/**
+ * Count clearable filters (excludes datasets — those are selection, not filters).
+ */
 export const getActiveFilterCount = (filters: FilterState): number => {
   let count = 0;
-  if (filters.datasets.length > 0) count += filters.datasets.length;
   if ((filters.startDate != null && filters.startDate !== "") || (filters.endDate != null && filters.endDate !== ""))
     count++; // Date range counts as one filter
-  // Count total selected field filter values
   if (filters.fieldFilters) {
     count += Object.values(filters.fieldFilters).reduce((sum, vals) => sum + vals.length, 0);
   }
   return count;
 };
 
+/**
+ * Whether any clearable filters are active (excludes datasets).
+ */
 export const hasActiveFilters = (filters: FilterState): boolean => {
   const hasFieldFilters = filters.fieldFilters && Object.values(filters.fieldFilters).some((vals) => vals.length > 0);
   return !!(
-    filters.datasets.length > 0 ||
     (filters.startDate != null && filters.startDate !== "") ||
     (filters.endDate != null && filters.endDate !== "") ||
     hasFieldFilters
@@ -79,7 +82,15 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
   return newFilters;
 };
 
-export const clearAllFilters = (): FilterState => ({ datasets: [], startDate: null, endDate: null, fieldFilters: {} });
+/**
+ * Clear all filters except dataset selection (datasets are a data scope, not a filter).
+ */
+export const clearAllFilters = (filters: FilterState): FilterState => ({
+  datasets: filters.datasets,
+  startDate: null,
+  endDate: null,
+  fieldFilters: {},
+});
 
 /**
  * Derive a stable string key from the current filter state.
