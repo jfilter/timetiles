@@ -62,6 +62,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     boundsData,
     isLoadingInitialBounds,
     events,
+    eventsData,
     eventsLoading,
     totalEventsData,
     hasTemporalData,
@@ -117,6 +118,15 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
 
       <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
         <div className="p-6">
+          <p className="text-foreground mb-4 text-base font-medium">
+            {buildEventsDescription(
+              eventsData?.total ?? events.length,
+              totalEventsData?.total,
+              filterLabels,
+              simpleBounds != null,
+              (k, v) => (t as TranslateFn)(k, v)
+            )}
+          </p>
           <div className="mb-6 max-h-[calc(55vh-3rem)] min-h-0">
             <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} onEventClick={openEvent} />
           </div>
@@ -134,15 +144,6 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
                 </button>
               </div>
             )}
-            <p className="text-muted-foreground mb-4 text-sm">
-              {buildEventsDescription(
-                events.length,
-                totalEventsData?.total,
-                filterLabels,
-                simpleBounds != null,
-                (k, v) => (t as TranslateFn)(k, v)
-              )}
-            </p>
             <EventsList
               events={events}
               isInitialLoad={isInitialLoad}
