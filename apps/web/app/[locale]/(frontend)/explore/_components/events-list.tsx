@@ -35,8 +35,6 @@ interface EventsListProps {
   onRetry?: () => void;
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
-  /** Set of event IDs that just appeared and should flash */
-  newEventIds?: Set<number>;
   /** Use responsive multi-column grid instead of single-column stack */
   multiColumn?: boolean;
 }
@@ -45,10 +43,9 @@ interface EventItemProps {
   event: EventListItem;
   eventId: number;
   onEventClick?: (eventId: number) => void;
-  isNew?: boolean;
 }
 
-const EventItem = ({ event, eventId, onEventClick, isNew }: EventItemProps) => {
+const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   const locale = useLocale();
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
@@ -85,9 +82,6 @@ const EventItem = ({ event, eventId, onEventClick, isNew }: EventItemProps) => {
         onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
-      style={
-        isNew ? { backgroundColor: "#90EE90", boxShadow: "inset 4px 0 0 0 #228B22", transition: "none" } : undefined
-      }
       onClick={onEventClick ? handleClick : undefined}
       onKeyDown={onEventClick ? handleKeyDown : undefined}
       role={onEventClick ? "button" : undefined}
@@ -164,7 +158,6 @@ export const EventsList = ({
   error,
   onRetry,
   onEventClick,
-  newEventIds,
   multiColumn = false,
 }: Readonly<EventsListProps>) => {
   const t = useTranslations("Explore");
@@ -212,13 +205,7 @@ export const EventsList = ({
         )}
       >
         {events.map((event) => (
-          <EventItem
-            key={event.id}
-            event={event}
-            eventId={event.id}
-            onEventClick={onEventClick}
-            isNew={newEventIds?.has(event.id)}
-          />
+          <EventItem key={event.id} event={event} eventId={event.id} onEventClick={onEventClick} />
         ))}
       </div>
     </div>

@@ -63,7 +63,7 @@ describe("EventsList", () => {
     renderWithProviders(<EventsList events={events} />);
 
     // Should display date from eventTimestamp
-    expect(screen.getByText("9/20/2024")).toBeInTheDocument();
+    expect(screen.getByText("Sep 20, 2024")).toBeInTheDocument();
 
     // Event without timestamp should not display date
     expect(screen.getByText("Event without timestamp")).toBeInTheDocument();
@@ -123,7 +123,7 @@ describe("EventsList", () => {
     expect(screen.getAllByText("Event 10")[0]).toBeInTheDocument();
 
     // Should have proper container structure - now wrapped in relative div
-    const innerContainer = container.querySelector(".space-y-4");
+    const innerContainer = container.querySelector(".space-y-2");
     expect(innerContainer).toBeInTheDocument();
   });
 });

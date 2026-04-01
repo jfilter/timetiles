@@ -38,7 +38,7 @@ export class ExplorePage {
     this.endDateInput = page.getByRole("button", { name: /End date:/i });
     // Clear dates button format changed - now shows date range like "Feb 2024 → Jan 2026"
     this.clearDatesButton = page.getByRole("button", { name: /→/ });
-    this.eventsList = page.locator(".space-y-4").first();
+    this.eventsList = page.locator(".space-y-2").first();
     // Events count format changed to "Showing X of Y events" or "Showing all X events"
     this.eventsCount = page
       .locator("p")

@@ -12,7 +12,6 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -22,9 +21,6 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
 import { buildEventsDescription, type DateRangeLabel, type FilterLabels, type TranslateFn } from "./explorer-helpers";
-
-// Module-level: survives component unmounts (e.g. mobile tab switches)
-let prevEventIds: Set<number> = new Set();
 
 interface EventsListPaginatedProps {
   filters: FilterState;
@@ -56,32 +52,6 @@ export const EventsListPaginated = ({
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
-
-  // Track previous event IDs to flash newly appeared events.
-  // Uses module-level prevEventIds (survives unmounts) and a stable string key
-  // so the effect only fires when the actual event IDs change, not on every render.
-  const [newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
-  const eventIdKey = events.map((e) => e.id).join(",");
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("[flash]", { eventsLen: events.length, prevSize: prevEventIds.size, eventIdKeyLen: eventIdKey.length });
-    if (events.length === 0) return;
-    const currentIds = new Set(events.map((e) => e.id));
-    if (prevEventIds.size > 0) {
-      const freshIds = new Set(events.filter((e) => !prevEventIds.has(e.id)).map((e) => e.id));
-      // eslint-disable-next-line no-console
-      console.log("[flash] freshIds:", freshIds.size, "of", currentIds.size);
-      if (freshIds.size > 0) {
-        setNewEventIds(freshIds);
-        const timer = setTimeout(() => setNewEventIds(new Set()), 3000);
-        prevEventIds = currentIds;
-        return () => clearTimeout(timer);
-      }
-    }
-    prevEventIds = currentIds;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- eventIdKey is a stable string derived from events
-  }, [eventIdKey]);
 
   const handleLoadMore = () => {
     void fetchNextPage();
@@ -143,7 +113,6 @@ export const EventsListPaginated = ({
         isInitialLoad={false}
         isUpdating={isFetchingNextPage}
         onEventClick={onEventClick}
-        newEventIds={newEventIds}
         multiColumn={multiColumn}
       />
 
