@@ -467,7 +467,8 @@ export class SeedingOperations {
       await payload.create({
         collection: collectionName as keyof Config["collections"],
         data: resolvedItem,
-        context: { seed: true },
+        overrideAccess: true,
+        context: { seed: true, skipQuotaChecks: true },
       });
     }
 

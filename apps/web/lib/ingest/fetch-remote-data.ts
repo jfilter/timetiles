@@ -129,7 +129,7 @@ const convertHtmlInJson = async (
   options: FetchRemoteDataOptions,
   fetchedData: Buffer,
   authHeaders: Record<string, string>,
-  timeout: number,
+  timeout: number
 ): Promise<ConversionResult> => {
   const { sourceUrl, jsonApiConfig, htmlExtractConfig } = options;
   if (!htmlExtractConfig) throw new Error("htmlExtractConfig required for html-in-json format");
@@ -168,7 +168,7 @@ const convertFetchedJson = async (
   options: FetchRemoteDataOptions,
   fetchedData: Buffer,
   authHeaders: Record<string, string>,
-  timeout: number,
+  timeout: number
 ): Promise<ConversionResult> => {
   const { sourceUrl, jsonApiConfig } = options;
   const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
@@ -205,7 +205,7 @@ const isPostPaginatedApi = (options: FetchRemoteDataOptions): boolean => {
  */
 const fetchPostPaginated = async (
   options: FetchRemoteDataOptions,
-  authHeaders: Record<string, string>,
+  authHeaders: Record<string, string>
 ): Promise<FetchRemoteDataResult> => {
   const { sourceUrl, jsonApiConfig } = options;
   const timeout = options.timeout ?? 60_000;
@@ -363,7 +363,7 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   if (!SUPPORTED_EXTENSIONS.has(finalExtension)) {
     throw new Error(
       `Unsupported file type: ${finalMimeType} (${finalExtension}). ` +
-        "The URL must return CSV, Excel, ODS, JSON, or GeoJSON data.",
+        "The URL must return CSV, Excel, ODS, JSON, or GeoJSON data."
     );
   }
 

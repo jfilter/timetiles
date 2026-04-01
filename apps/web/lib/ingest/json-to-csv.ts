@@ -116,7 +116,7 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
  */
 export const extractRecordsFromJson = (
   json: unknown,
-  recordsPath?: string,
+  recordsPath?: string
 ): { records: Record<string, unknown>[]; detectedPath: string } => {
   if (recordsPath) {
     const value = getByPath(json, recordsPath);
