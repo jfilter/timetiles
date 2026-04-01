@@ -422,8 +422,15 @@ export const useTemporalClustersQuery = (
  * Used by the time range slider to show the complete temporal distribution
  * regardless of the currently selected date range.
  */
+/** Strip date range but preserve field filters for the time range slider histogram. */
+export const buildFullRangeFilters = (filters: FilterState): FilterState => ({
+  ...filters,
+  startDate: null,
+  endDate: null,
+});
+
 export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope) => {
-  const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null };
+  const fullRangeFilters = buildFullRangeFilters(filters);
 
   return useQuery({
     queryKey: eventsQueryKeys.histogramFull(fullRangeFilters, scope),
