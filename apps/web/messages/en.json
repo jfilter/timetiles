@@ -153,6 +153,7 @@
     "allEvents": "All Events",
     "eventsLabel": "Events",
     "expandChart": "Expand chart",
+    "collapseChart": "Collapse chart",
     "beeswarm": "Timeline",
     "eventAnalysis": "Event Analysis",
     "eventScatter": "Timeline",

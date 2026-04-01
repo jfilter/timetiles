@@ -153,6 +153,7 @@
     "allEvents": "Alle Ereignisse",
     "eventsLabel": "Ereignisse",
     "expandChart": "Diagramm vergrößern",
+    "collapseChart": "Diagramm einklappen",
     "beeswarm": "Zeitleiste",
     "eventAnalysis": "Ereignisanalyse",
     "eventScatter": "Zeitleiste",

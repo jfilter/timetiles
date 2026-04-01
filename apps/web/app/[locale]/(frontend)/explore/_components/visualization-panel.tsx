@@ -12,12 +12,11 @@
 
 import { Button } from "@timetiles/ui/components/button";
 import { Card, CardContent, CardHeader } from "@timetiles/ui/components/card";
+import { Collapsible, CollapsibleContent } from "@timetiles/ui/components/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
-import { Maximize2 } from "lucide-react";
+import { ChevronDown, Expand } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
-
-type IconComponent = React.ComponentType<{ className?: string }>;
 
 export type ChartType = "histogram" | "dataset-bar" | "beeswarm";
 
@@ -44,24 +43,12 @@ interface VisualizationPanelProps {
   fillHeight?: boolean;
   /** Callback when the expand/fullscreen button is clicked */
   onExpandClick?: () => void;
-  /** Extra action buttons rendered in the header bar (before expand button) */
-  headerActions?: React.ReactNode;
+  /** Whether the chart content is collapsed */
+  isCollapsed?: boolean;
+  /** Callback to toggle collapsed state */
+  onToggleCollapse?: () => void;
 }
 
-/**
- * Card-based container for chart visualization with cartographic styling.
- *
- * @example
- * ```tsx
- * <VisualizationPanel
- *   chartType="histogram"
- *   onChartTypeChange={setChartType}
- *   chartMeta={{ label: "Temporal Analysis", heading: "Event Timeline", subtitle: "Distribution over time" }}
- * >
- *   <EventHistogram />
- * </VisualizationPanel>
- * ```
- */
 const ALL_CHART_TYPES = ["histogram", "beeswarm", "dataset-bar"] as const satisfies readonly ChartType[];
 
 export const VisualizationPanel = ({
@@ -72,31 +59,43 @@ export const VisualizationPanel = ({
   availableChartTypes = ALL_CHART_TYPES,
   fillHeight = false,
   onExpandClick,
-  headerActions,
+  isCollapsed = false,
+  onToggleCollapse,
 }: Readonly<VisualizationPanelProps>) => {
   const t = useTranslations("Explore");
   const chartTypeLabels = useChartTypeLabels();
   const handleValueChange = (value: string) => onChartTypeChange(value as ChartType);
 
-  // Only show dropdown if there are multiple options
   const showDropdown = availableChartTypes.length > 1;
 
   return (
-    <Card
-      variant="default"
-      padding="none"
-      className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex h-full flex-col" : ""}`}
-    >
-      <CardHeader className="flex flex-row items-center justify-between gap-4 border-b px-4 py-2 md:px-6 md:py-3">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-foreground font-serif text-base font-bold">{chartMeta.heading}</h2>
-        </div>
+    <Collapsible open={!isCollapsed} onOpenChange={() => onToggleCollapse?.()}>
+      <Card
+        variant="default"
+        padding="none"
+        className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight && !isCollapsed ? "flex h-full flex-col" : ""}`}
+      >
+        <CardHeader className="flex flex-row items-center gap-2 px-4 py-2 md:px-6 md:py-3">
+          {/* Collapse toggle */}
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="text-muted-foreground hover:text-foreground -ml-1 flex shrink-0 items-center transition-colors"
+              aria-label={isCollapsed ? t("expandChart") : t("collapseChart")}
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} />
+            </button>
+          )}
 
-        <div className="flex shrink-0 items-center gap-2">
-          {/* Chart Type Selector - only show if multiple options available */}
-          {showDropdown && (
+          {/* Chart type selector or plain label */}
+          {showDropdown ? (
             <Select value={chartType} onValueChange={handleValueChange}>
-              <SelectTrigger aria-label="Chart type" className="border-primary/20 bg-background w-auto min-w-[140px]">
+              <SelectTrigger
+                aria-label="Chart type"
+                className="border-border/40 w-auto min-w-[130px] bg-transparent text-sm font-medium shadow-none"
+                size="sm"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -107,26 +106,33 @@ export const VisualizationPanel = ({
                 ))}
               </SelectContent>
             </Select>
+          ) : (
+            <span className="text-foreground text-sm font-medium">{chartMeta.heading}</span>
           )}
-          {headerActions}
-          {onExpandClick && (
+
+          <div className="flex-1" />
+
+          {/* Fullscreen button */}
+          {onExpandClick && !isCollapsed && (
             <Button
               variant="ghost"
               size="icon"
               onClick={onExpandClick}
               aria-label={t("expandChart")}
               title={t("expandChart")}
-              className="h-8 w-8"
+              className="h-7 w-7"
             >
-              {React.createElement(Maximize2 as IconComponent, { className: "h-4 w-4" })}
+              <Expand className="h-3.5 w-3.5" />
             </Button>
           )}
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
-        {children}
-      </CardContent>
-    </Card>
+        <CollapsibleContent>
+          <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex flex-1 flex-col" : ""}`}>
+            {children}
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 };

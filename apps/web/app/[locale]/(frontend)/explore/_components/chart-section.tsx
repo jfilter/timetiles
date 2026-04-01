@@ -24,7 +24,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 import { BeeswarmSettingsButton, EventBeeswarm, useGroupByOptions } from "@/components/charts/event-beeswarm";
@@ -99,6 +99,7 @@ export const ChartSection = ({
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [showChartSettings, setShowChartSettings] = useState(false);
   const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("none"));
 
@@ -155,6 +156,8 @@ export const ChartSection = ({
   const chartHeight = getChartHeight(chartType);
   const containerStyle = fillHeight ? undefined : { minHeight: chartHeight };
 
+  const toggleCollapsed = useCallback(() => setIsCollapsed((v) => !v), []);
+
   // Shared groupBy options for both histogram and beeswarm
   const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
   const groupByOptions = useGroupByOptions(singleDatasetId);
@@ -207,7 +210,8 @@ export const ChartSection = ({
         availableChartTypes={availableChartTypes}
         fillHeight={fillHeight}
         onExpandClick={() => setIsFullscreen(true)}
-        headerActions={undefined}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleCollapsed}
       >
         <div
           className={cn(
