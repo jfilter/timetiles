@@ -98,7 +98,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
           }
           chartContent={
             <div className="flex h-full flex-col p-4">
-              <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} />
+              <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} collapsible={false} />
             </div>
           }
           listContent={
@@ -142,7 +142,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             />
             <div className="overflow-hidden border-l">
               <div className="flex h-full flex-col p-6">
-                <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} />
+                <ChartSection bounds={chartBounds} fillHeight hasTemporalData={hasTemporalData} collapsible={false} />
               </div>
             </div>
           </div>

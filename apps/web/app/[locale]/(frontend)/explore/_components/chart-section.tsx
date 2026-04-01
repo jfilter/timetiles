@@ -44,6 +44,8 @@ interface ChartSectionProps {
   hasTemporalData?: boolean;
   /** Callback to open an event detail (for beeswarm point clicks) */
   onEventClick?: (eventId: number) => void;
+  /** Whether the chart section can be collapsed. Defaults to true. */
+  collapsible?: boolean;
 }
 
 /**
@@ -89,6 +91,7 @@ export const ChartSection = ({
   fillHeight = false,
   hasTemporalData = true,
   onEventClick,
+  collapsible = true,
 }: Readonly<ChartSectionProps>) => {
   const t = useTranslations("Explore");
   const getChartMeta = useChartMeta();
@@ -210,8 +213,8 @@ export const ChartSection = ({
         availableChartTypes={availableChartTypes}
         fillHeight={fillHeight}
         onExpandClick={() => setIsFullscreen(true)}
-        isCollapsed={isCollapsed}
-        onToggleCollapse={toggleCollapsed}
+        isCollapsed={collapsible ? isCollapsed : false}
+        onToggleCollapse={collapsible ? toggleCollapsed : undefined}
       >
         <div
           className={cn(
