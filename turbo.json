@@ -79,7 +79,7 @@
     "storybook": { "cache": false, "persistent": true },
     "storybook:build": { "dependsOn": ["^build"], "outputs": ["storybook-static/**"] },
     "test": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["transit"],
       "inputs": [
         "lib/**/*.ts",
         "lib/**/*.tsx",
@@ -99,7 +99,7 @@
       "outputs": [".test-results/**", "coverage/**"]
     },
     "test:ai": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["transit"],
       "inputs": [
         "lib/**/*.ts",
         "lib/**/*.tsx",
@@ -119,7 +119,7 @@
       "outputs": [".test-results/**"]
     },
     "test:coverage": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["transit"],
       "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"]
     }
