@@ -212,6 +212,108 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     }, 60000); // 60 second timeout for creating and processing 105 imports
   });
 
+  describe.sequential("Orphaned Workflow Job Cleanup", () => {
+    it("should cancel orphaned workflow jobs when resetting stuck import", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+
+      // Create stuck import
+      const stuckImport = await payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          sourceUrl: "https://example.com/orphan-test.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Orphan Workflow Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: fiveHoursAgo.toISOString(),
+        },
+      });
+
+      // Simulate orphaned workflow jobs (as if server restarted mid-processing)
+      const orphanedJob1 = await payload.create({
+        collection: "payload-jobs" as const,
+        data: {
+          input: { scheduledIngestId: String(stuckImport.id) },
+          workflowSlug: "scheduled-ingest",
+          queue: "ingest",
+          processing: false,
+        } as Record<string, unknown>,
+      });
+      const orphanedJob2 = await payload.create({
+        collection: "payload-jobs" as const,
+        data: {
+          input: { scheduledIngestId: String(stuckImport.id) },
+          workflowSlug: "scheduled-ingest",
+          queue: "ingest",
+          processing: true, // simulates stuck mid-processing
+        } as Record<string, unknown>,
+      });
+
+      // Run cleanup job
+      const result = await cleanupStuckScheduledIngestsJob.handler({
+        req: { payload },
+        job: { id: "cleanup-orphan-1", task: "cleanup-stuck-scheduled-ingests" },
+      });
+
+      expect(result.output.resetCount).toBe(1);
+
+      // Verify orphaned workflow jobs were cancelled
+      const job1After = await payload.findByID({ collection: "payload-jobs" as const, id: orphanedJob1.id });
+      expect(job1After.completedAt).toBeTruthy();
+      expect(job1After.hasError).toBe(true);
+
+      const job2After = await payload.findByID({ collection: "payload-jobs" as const, id: orphanedJob2.id });
+      expect(job2After.completedAt).toBeTruthy();
+      expect(job2After.hasError).toBe(true);
+      expect(job2After.processing).toBe(false);
+    });
+
+    it("should not cancel workflow jobs for non-stuck imports", async () => {
+      const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
+
+      // Create a recent (not stuck) import
+      const recentImport = await payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          sourceUrl: "https://example.com/recent-test.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Recent Import",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: oneHourAgo.toISOString(),
+        },
+      });
+
+      // Create an active workflow job for it
+      const activeJob = await payload.create({
+        collection: "payload-jobs" as const,
+        data: {
+          input: { scheduledIngestId: String(recentImport.id) },
+          workflowSlug: "scheduled-ingest",
+          queue: "ingest",
+          processing: true,
+        } as Record<string, unknown>,
+      });
+
+      // Run cleanup job
+      await cleanupStuckScheduledIngestsJob.handler({
+        req: { payload },
+        job: { id: "cleanup-orphan-2", task: "cleanup-stuck-scheduled-ingests" },
+      });
+
+      // Workflow job should NOT be cancelled
+      const jobAfter = await payload.findByID({ collection: "payload-jobs" as const, id: activeJob.id });
+      expect(jobAfter.completedAt).toBeNull();
+      expect(jobAfter.hasError).toBe(false);
+    });
+  });
+
   describe.sequential("Error Handling", () => {
     it("should continue processing when individual update fails", async () => {
       const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);

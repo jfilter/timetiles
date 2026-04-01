@@ -34,7 +34,7 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
     { name: "ingestJobId", type: "text", required: true },
     { name: "resumeFrom", type: "text" },
   ],
-  concurrency: () => "ingest-pipeline",
+  concurrency: ({ input }) => `ingest:process:${input.ingestJobId}`,
   handler: async ({ job, tasks, req }) => {
     const id = job.input.ingestJobId;
     const resumeFrom = job.input.resumeFrom ?? "create-schema-version";

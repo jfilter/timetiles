@@ -107,10 +107,10 @@ describe.sequential("manualIngestWorkflow", () => {
 
   // ── 5. Verify concurrency key format ──────────────────────────────────
 
-  it("should produce global concurrency key ingest-pipeline", () => {
-    const concurrency = manualIngestWorkflow.concurrency as () => string;
-    const key = concurrency();
+  it("should produce per-file concurrency key", () => {
+    const concurrency = manualIngestWorkflow.concurrency as (ctx: { input: { ingestFileId: string } }) => string;
+    const key = concurrency({ input: { ingestFileId: "file-42" } });
 
-    expect(key).toBe("ingest-pipeline");
+    expect(key).toBe("ingest:manual:file-42");
   });
 });

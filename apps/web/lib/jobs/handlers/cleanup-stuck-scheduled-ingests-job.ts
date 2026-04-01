@@ -34,6 +34,43 @@ export interface CleanupStuckScheduledIngestsJobInput {
 /**
  * Resets a stuck import to failed status.
  */
+/**
+ * Cancel orphaned workflow jobs for a scheduled ingest.
+ *
+ * When a workflow gets stuck (e.g., server restart mid-processing), the
+ * payload-job record stays pending indefinitely. This blocks concurrency
+ * slots and prevents future imports from running. Mark them as completed
+ * with an error so the concurrency key is released.
+ */
+const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: number | string): Promise<number> => {
+  try {
+    const orphanedJobs = await payload.find({
+      collection: "payload-jobs" as const,
+      where: {
+        and: [{ "input.scheduledIngestId": { equals: String(scheduledIngestId) } }, { completedAt: { exists: false } }],
+      },
+      limit: 50,
+      pagination: false,
+      overrideAccess: true,
+    });
+
+    let cancelled = 0;
+    for (const job of orphanedJobs.docs) {
+      await payload.update({
+        collection: "payload-jobs" as const,
+        id: job.id,
+        data: { completedAt: new Date().toISOString(), hasError: true, processing: false } as Record<string, unknown>,
+        overrideAccess: true,
+      });
+      cancelled++;
+    }
+    return cancelled;
+  } catch (error) {
+    logError(error, "Failed to cancel orphaned workflow jobs", { scheduledIngestId });
+    return 0;
+  }
+};
+
 const resetStuckImport = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
@@ -43,6 +80,9 @@ const resetStuckImport = async (
     // Calculate how long it was stuck
     const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
     const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
+
+    // Cancel orphaned workflow jobs to release concurrency slots
+    const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id);
 
     // Update execution history with failure
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -78,6 +118,7 @@ const resetStuckImport = async (
       scheduledIngestId: scheduledIngest.id,
       name: scheduledIngest.name,
       stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
+      cancelledWorkflowJobs: cancelledJobs,
     });
   } catch (error) {
     logError(error, "Failed to reset stuck import", {
