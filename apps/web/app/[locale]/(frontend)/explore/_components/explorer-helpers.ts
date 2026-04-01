@@ -9,9 +9,14 @@ import type { DataSourceCatalog, DataSourceDataset } from "@/lib/hooks/use-data-
 import type { FilterState } from "@/lib/types/filter-state";
 import { formatDateRangeLabel } from "@/lib/utils/date";
 
+export interface DateRangeLabel {
+  type: "range" | "since" | "until";
+  formatted: string;
+}
+
 export interface FilterLabels {
   datasets: Array<{ id: string; name: string }>;
-  dateRange?: string;
+  dateRange?: DateRangeLabel;
   fieldFilters?: Record<string, string[]>;
 }
 
@@ -118,7 +123,14 @@ export const buildEventsDescription = (
 
   // Add date filter
   if (filterLabels.dateRange) {
-    sentence += t("descSpanning", { dateRange: filterLabels.dateRange });
+    const { type, formatted } = filterLabels.dateRange;
+    const dateText =
+      type === "since"
+        ? t("descSince", { date: formatted })
+        : type === "until"
+          ? t("descUntil", { date: formatted })
+          : formatted;
+    sentence += t("descSpanning", { dateRange: dateText });
   }
 
   return sentence + ".";

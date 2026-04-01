@@ -210,7 +210,7 @@ export const formatDateRangeLabel = (
   startDate: string | null,
   endDate: string | null,
   locale?: string
-): string | undefined => {
+): { type: "range" | "since" | "until"; formatted: string } | undefined => {
   const hasStartDate = startDate != null && startDate !== "";
   const hasEndDate = endDate != null && endDate !== "";
 
@@ -223,10 +223,14 @@ export const formatDateRangeLabel = (
   const end = hasEndDate ? new Date(endDate) : null;
 
   if (start && end) {
-    return fmt.formatRange(start, end);
+    return { type: "range", formatted: fmt.formatRange(start, end) };
   }
 
-  return fmt.format(start ?? end!);
+  if (start) {
+    return { type: "since", formatted: fmt.format(start) };
+  }
+
+  return { type: "until", formatted: fmt.format(end!) };
 };
 
 /**

@@ -12,7 +12,7 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -21,15 +21,18 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { EventsList } from "./events-list";
 import { EventsListSkeleton } from "./events-list-skeleton";
-import { buildEventsDescription, type FilterLabels, type TranslateFn } from "./explorer-helpers";
+import { buildEventsDescription, type DateRangeLabel, type FilterLabels, type TranslateFn } from "./explorer-helpers";
+
+// Module-level: survives component unmounts (e.g. mobile tab switches)
+let prevEventIds: Set<number> = new Set();
 
 interface EventsListPaginatedProps {
   filters: FilterState;
   bounds: SimpleBounds | null;
   /** Selected dataset names for display */
   datasetNames?: string[];
-  /** Human-readable date range for display (e.g., "Jan 2024 - Dec 2024") */
-  dateRangeLabel?: string;
+  /** Structured date range label for display */
+  dateRangeLabel?: DateRangeLabel;
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
   /** Use responsive multi-column grid instead of single-column stack */
@@ -55,25 +58,30 @@ export const EventsListPaginated = ({
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
 
   // Track previous event IDs to flash newly appeared events.
-  // Lives here (not in EventsList) so the ref persists across loading states.
-  const prevEventIdsRef = useRef<Set<number>>(new Set());
+  // Uses module-level prevEventIds (survives unmounts) and a stable string key
+  // so the effect only fires when the actual event IDs change, not on every render.
   const [newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
+  const eventIdKey = events.map((e) => e.id).join(",");
 
   useEffect(() => {
+    // eslint-disable-next-line no-console
+    console.log("[flash]", { eventsLen: events.length, prevSize: prevEventIds.size, eventIdKeyLen: eventIdKey.length });
     if (events.length === 0) return;
-    const prevIds = prevEventIdsRef.current;
     const currentIds = new Set(events.map((e) => e.id));
-    if (prevIds.size > 0) {
-      const freshIds = new Set(events.filter((e) => !prevIds.has(e.id)).map((e) => e.id));
+    if (prevEventIds.size > 0) {
+      const freshIds = new Set(events.filter((e) => !prevEventIds.has(e.id)).map((e) => e.id));
+      // eslint-disable-next-line no-console
+      console.log("[flash] freshIds:", freshIds.size, "of", currentIds.size);
       if (freshIds.size > 0) {
         setNewEventIds(freshIds);
         const timer = setTimeout(() => setNewEventIds(new Set()), 3000);
-        prevEventIdsRef.current = currentIds;
+        prevEventIds = currentIds;
         return () => clearTimeout(timer);
       }
     }
-    prevEventIdsRef.current = currentIds;
-  }, [events]);
+    prevEventIds = currentIds;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- eventIdKey is a stable string derived from events
+  }, [eventIdKey]);
 
   const handleLoadMore = () => {
     void fetchNextPage();
