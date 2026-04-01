@@ -103,33 +103,33 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
         {label}
       </div>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
-              "bg-background hover:bg-accent",
-              hasSelection ? "border-ring/30 text-foreground" : "border-input text-muted-foreground"
-            )}
-          >
-            <span className="truncate">
-              {hasSelection ? t("selected", { count: selectedValues.length }) : t("any")}
-            </span>
-            <div className="flex items-center gap-1">
-              {hasSelection && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="hover:bg-muted rounded p-0.5"
-                  aria-label={tFilters("clearFieldFilter", { label })}
-                >
-                  <X className="h-3 w-3" aria-hidden="true" />
-                </button>
+        <div className="flex items-center gap-0.5">
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
+                "bg-background hover:bg-accent",
+                hasSelection ? "border-ring/30 text-foreground" : "border-input text-muted-foreground"
               )}
-              <ChevronDown className="h-4 w-4 opacity-50" aria-hidden="true" />
-            </div>
-          </button>
-        </DropdownMenuTrigger>
+            >
+              <span className="truncate">
+                {hasSelection ? t("selected", { count: selectedValues.length }) : t("any")}
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          {hasSelection && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted shrink-0 rounded p-1.5 transition-colors"
+              aria-label={tFilters("clearFieldFilter", { label })}
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
         <DropdownMenuContent
           align="start"
           className="max-h-[300px] w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
