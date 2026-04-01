@@ -423,7 +423,7 @@ export const useTemporalClustersQuery = (
  * regardless of the currently selected date range.
  */
 export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope) => {
-  const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null, fieldFilters: {} };
+  const fullRangeFilters: FilterState = { ...filters, startDate: null, endDate: null };
 
   return useQuery({
     queryKey: eventsQueryKeys.histogramFull(fullRangeFilters, scope),
