@@ -149,6 +149,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
               isInitialLoad={isInitialLoad}
               isUpdating={isUpdating}
               onEventClick={openEvent}
+              hideDatasetBadge={filters.datasets.length === 1}
             />
           </div>
         </div>

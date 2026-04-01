@@ -37,15 +37,18 @@ interface EventsListProps {
   onEventClick?: (eventId: number) => void;
   /** Use responsive multi-column grid instead of single-column stack */
   multiColumn?: boolean;
+  /** Hide dataset badge (e.g. when only one dataset is selected) */
+  hideDatasetBadge?: boolean;
 }
 
 interface EventItemProps {
   event: EventListItem;
   eventId: number;
   onEventClick?: (eventId: number) => void;
+  hideDatasetBadge?: boolean;
 }
 
-const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
+const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItemProps) => {
   const locale = useLocale();
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
@@ -94,15 +97,17 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
       )}
 
       <div className="p-3">
-        {/* Dataset badge */}
-        {datasetInfo && (
+        {/* Dataset badge — hidden when only one dataset is active */}
+        {datasetInfo && !hideDatasetBadge && (
           <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
             {datasetInfo.name}
           </span>
         )}
 
         {/* Title */}
-        <CardTitle className={cn("text-base font-semibold", datasetInfo && "mt-1.5")}>{title}</CardTitle>
+        <CardTitle className={cn("text-base font-semibold", datasetInfo && !hideDatasetBadge && "mt-1.5")}>
+          {title}
+        </CardTitle>
 
         {/* Description - 2 line clamp */}
         {description && (
@@ -159,6 +164,7 @@ export const EventsList = ({
   onRetry,
   onEventClick,
   multiColumn = false,
+  hideDatasetBadge = false,
 }: Readonly<EventsListProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
@@ -205,7 +211,13 @@ export const EventsList = ({
         )}
       >
         {events.map((event) => (
-          <EventItem key={event.id} event={event} eventId={event.id} onEventClick={onEventClick} />
+          <EventItem
+            key={event.id}
+            event={event}
+            eventId={event.id}
+            onEventClick={onEventClick}
+            hideDatasetBadge={hideDatasetBadge}
+          />
         ))}
       </div>
     </div>

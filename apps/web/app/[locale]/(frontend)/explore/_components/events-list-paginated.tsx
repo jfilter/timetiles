@@ -114,6 +114,7 @@ export const EventsListPaginated = ({
         isUpdating={isFetchingNextPage}
         onEventClick={onEventClick}
         multiColumn={multiColumn}
+        hideDatasetBadge={filters.datasets.length === 1}
       />
 
       {/* Load More button */}
