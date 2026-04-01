@@ -105,6 +105,7 @@
   "Explore": {
     "map": "Map",
     "list": "List",
+    "grid": "Grid",
     "chart": "Chart",
     "siteNotConfigured": "Site not configured",
     "siteNotConfiguredDescription": "This site needs a default view to display the explorer. Please configure one in the admin dashboard.",

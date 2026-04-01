@@ -147,14 +147,15 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             </div>
           </div>
 
-          {/* Main Content - Centered List */}
-          <div className="mx-auto max-w-2xl px-4 py-6">
+          {/* Main Content - Multi-column List */}
+          <div className="mx-auto max-w-6xl px-4 py-6">
             <EventsListPaginated
               filters={filters}
               bounds={debouncedSimpleBounds}
               datasetNames={getDatasetNames()}
               dateRangeLabel={dateRangeLabel}
               onEventClick={openEvent}
+              multiColumn
             />
           </div>
         </div>

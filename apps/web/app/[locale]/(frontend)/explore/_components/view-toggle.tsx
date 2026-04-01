@@ -12,7 +12,7 @@
 
 import { Button } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { LayoutList, Map } from "lucide-react";
+import { LayoutGrid, Map } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
@@ -63,8 +63,8 @@ export const ViewToggle = ({ currentView }: ViewToggleProps) => {
         onClick={handleListClick}
         className={cn("h-8 gap-2", currentView === "list" && "shadow-sm")}
       >
-        <LayoutList className="h-4 w-4" />
-        <span className="hidden sm:inline">{t("list")}</span>
+        <LayoutGrid className="h-4 w-4" />
+        <span className="hidden sm:inline">{t("grid")}</span>
       </Button>
     </div>
   );

@@ -12,6 +12,7 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -31,6 +32,8 @@ interface EventsListPaginatedProps {
   dateRangeLabel?: string;
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
+  /** Use responsive multi-column grid instead of single-column stack */
+  multiColumn?: boolean;
 }
 
 export const EventsListPaginated = ({
@@ -39,6 +42,7 @@ export const EventsListPaginated = ({
   datasetNames = [],
   dateRangeLabel,
   onEventClick,
+  multiColumn = false,
 }: Readonly<EventsListPaginatedProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
@@ -49,6 +53,27 @@ export const EventsListPaginated = ({
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
+
+  // Track previous event IDs to flash newly appeared events.
+  // Lives here (not in EventsList) so the ref persists across loading states.
+  const prevEventIdsRef = useRef<Set<number>>(new Set());
+  const [newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (events.length === 0) return;
+    const prevIds = prevEventIdsRef.current;
+    const currentIds = new Set(events.map((e) => e.id));
+    if (prevIds.size > 0) {
+      const freshIds = new Set(events.filter((e) => !prevIds.has(e.id)).map((e) => e.id));
+      if (freshIds.size > 0) {
+        setNewEventIds(freshIds);
+        const timer = setTimeout(() => setNewEventIds(new Set()), 3000);
+        prevEventIdsRef.current = currentIds;
+        return () => clearTimeout(timer);
+      }
+    }
+    prevEventIdsRef.current = currentIds;
+  }, [events]);
 
   const handleLoadMore = () => {
     void fetchNextPage();
@@ -65,11 +90,11 @@ export const EventsListPaginated = ({
   // Initial loading state
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="bg-muted h-7 w-32 animate-pulse rounded" />
         </div>
-        <EventsListSkeleton count={6} />
+        <EventsListSkeleton count={6} multiColumn={multiColumn} />
       </div>
     );
   }
@@ -96,7 +121,7 @@ export const EventsListPaginated = ({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header - explains what's being shown */}
       <p className="text-muted-foreground text-sm">
         {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
@@ -105,7 +130,14 @@ export const EventsListPaginated = ({
       </p>
 
       {/* Events list - reuses existing component */}
-      <EventsList events={events} isInitialLoad={false} isUpdating={isFetchingNextPage} onEventClick={onEventClick} />
+      <EventsList
+        events={events}
+        isInitialLoad={false}
+        isUpdating={isFetchingNextPage}
+        onEventClick={onEventClick}
+        newEventIds={newEventIds}
+        multiColumn={multiColumn}
+      />
 
       {/* Load More button */}
       {hasNextPage && (

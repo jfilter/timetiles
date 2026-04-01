@@ -105,6 +105,7 @@
   "Explore": {
     "map": "Karte",
     "list": "Liste",
+    "grid": "Raster",
     "chart": "Diagramm",
     "siteNotConfigured": "Seite nicht konfiguriert",
     "siteNotConfiguredDescription": "Diese Seite benötigt eine Standardansicht, um den Explorer anzuzeigen. Bitte konfigurieren Sie eine im Admin-Dashboard.",

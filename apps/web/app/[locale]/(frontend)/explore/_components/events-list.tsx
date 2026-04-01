@@ -35,15 +35,20 @@ interface EventsListProps {
   onRetry?: () => void;
   /** Callback when an event card is clicked */
   onEventClick?: (eventId: number) => void;
+  /** Set of event IDs that just appeared and should flash */
+  newEventIds?: Set<number>;
+  /** Use responsive multi-column grid instead of single-column stack */
+  multiColumn?: boolean;
 }
 
 interface EventItemProps {
   event: EventListItem;
   eventId: number;
   onEventClick?: (eventId: number) => void;
+  isNew?: boolean;
 }
 
-const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
+const EventItem = ({ event, eventId, onEventClick, isNew }: EventItemProps) => {
   const locale = useLocale();
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
@@ -76,10 +81,13 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
   return (
     <Card
       className={cn(
-        "border-border bg-background overflow-hidden border-2",
+        "border-border bg-background overflow-hidden border",
         onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
+      style={
+        isNew ? { backgroundColor: "#90EE90", boxShadow: "inset 4px 0 0 0 #228B22", transition: "none" } : undefined
+      }
       onClick={onEventClick ? handleClick : undefined}
       onKeyDown={onEventClick ? handleKeyDown : undefined}
       role={onEventClick ? "button" : undefined}
@@ -88,10 +96,10 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
     >
       {/* Thumbnail */}
       {imageUrl && (
-        <Image src={imageUrl} alt="" width={400} height={128} className="h-32 w-full object-cover" unoptimized />
+        <Image src={imageUrl} alt="" width={400} height={96} className="h-24 w-full object-cover" unoptimized />
       )}
 
-      <div className="p-5">
+      <div className="p-3">
         {/* Dataset badge */}
         {datasetInfo && (
           <span className={cn("inline-block rounded-sm px-2 py-0.5 text-xs font-medium", badgeClass)}>
@@ -100,14 +108,16 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
         )}
 
         {/* Title */}
-        <CardTitle className={cn("text-xl", datasetInfo && "mt-3")}>{title}</CardTitle>
+        <CardTitle className={cn("text-base font-semibold", datasetInfo && "mt-1.5")}>{title}</CardTitle>
 
         {/* Description - 2 line clamp */}
-        {description && <CardDescription className="mt-2 line-clamp-2">{description}</CardDescription>}
+        {description && (
+          <CardDescription className="mt-1 line-clamp-2 text-sm leading-normal">{description}</CardDescription>
+        )}
 
         {/* Location and Date row with icons */}
         {(locationDisplay != null || eventDate != null) && (
-          <div className="text-muted-foreground mt-4 flex items-center justify-between text-sm">
+          <div className="text-muted-foreground mt-2 flex items-center justify-between text-sm">
             {locationDisplay && (
               <div className="flex min-w-0 items-center gap-1.5">
                 <MapPin className="h-4 w-4 shrink-0" />
@@ -132,7 +142,7 @@ const EventItem = ({ event, eventId, onEventClick }: EventItemProps) => {
             return urlCount > strings.length * 0.5 ? [] : strings;
           });
           return tags.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1">
+            <div className="mt-2 flex flex-wrap gap-1">
               {tags.slice(0, 6).map((tag) => (
                 <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
                   {tag}
@@ -154,12 +164,14 @@ export const EventsList = ({
   error,
   onRetry,
   onEventClick,
+  newEventIds,
+  multiColumn = false,
 }: Readonly<EventsListProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
 
   if (isInitialLoad) {
-    return <EventsListSkeleton count={6} />;
+    return <EventsListSkeleton count={6} multiColumn={multiColumn} />;
   }
 
   if (error) {
@@ -192,9 +204,21 @@ export const EventsList = ({
           </div>
         </div>
       )}
-      <div className={`space-y-4 transition-opacity ${isUpdating ? "opacity-90" : "opacity-100"}`}>
+      <div
+        className={cn(
+          "transition-opacity",
+          isUpdating ? "opacity-90" : "opacity-100",
+          multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2"
+        )}
+      >
         {events.map((event) => (
-          <EventItem key={event.id} event={event} eventId={event.id} onEventClick={onEventClick} />
+          <EventItem
+            key={event.id}
+            event={event}
+            eventId={event.id}
+            onEventClick={onEventClick}
+            isNew={newEventIds?.has(event.id)}
+          />
         ))}
       </div>
     </div>
