@@ -21,6 +21,8 @@ export {
   CardSpec,
   CardSpecItem,
   CardTitle,
+  CardToolbar,
+  CardToolbarSpacer,
   cardVariants,
   CardVersion,
 } from "./components/card";

@@ -56,6 +56,38 @@ const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttribu
 );
 CardDescription.displayName = "CardDescription";
 
+/**
+ * CardToolbar - Horizontal bar of controls within a card.
+ *
+ * Use instead of CardHeader when the header contains interactive controls
+ * (selectors, buttons, toggles) rather than title/description text.
+ *
+ * Usage:
+ * ```tsx
+ * <Card padding="none">
+ *   <CardToolbar>
+ *     <Select>...</Select>
+ *     <CardToolbarSpacer />
+ *     <Button>Action</Button>
+ *   </CardToolbar>
+ *   <CardContent>...</CardContent>
+ * </Card>
+ * ```
+ */
+const CardToolbar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("border-border/40 flex items-center gap-2 border-b px-4 py-2 md:px-6 md:py-2.5", className)}
+      {...props}
+    />
+  )
+);
+CardToolbar.displayName = "CardToolbar";
+
+/** Flexible spacer for CardToolbar — pushes subsequent items to the right. */
+const CardToolbarSpacer = () => <div className="min-w-0 flex-1" />;
+
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => <div ref={ref} className={cn("", className)} {...props} />
 );
@@ -152,6 +184,8 @@ export {
   CardSpec,
   CardSpecItem,
   CardTitle,
+  CardToolbar,
+  CardToolbarSpacer,
   cardVariants,
   CardVersion,
 };

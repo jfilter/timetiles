@@ -154,6 +154,7 @@
     "allEvents": "All Events",
     "eventsLabel": "Events",
     "expandChart": "Expand chart",
+    "analyzeChart": "Analyze",
     "collapseChart": "Collapse chart",
     "beeswarm": "Timeline",
     "eventAnalysis": "Event Analysis",

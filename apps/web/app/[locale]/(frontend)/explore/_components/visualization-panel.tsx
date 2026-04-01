@@ -11,7 +11,7 @@
 "use client";
 
 import { Button } from "@timetiles/ui/components/button";
-import { Card, CardContent, CardHeader } from "@timetiles/ui/components/card";
+import { Card, CardContent, CardToolbar, CardToolbarSpacer } from "@timetiles/ui/components/card";
 import { Collapsible, CollapsibleContent } from "@timetiles/ui/components/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { ChevronDown, Expand } from "lucide-react";
@@ -79,7 +79,7 @@ export const VisualizationPanel = ({
         padding="none"
         className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
-        <CardHeader className="flex flex-row items-center gap-2 px-4 py-2 md:px-6 md:py-3">
+        <CardToolbar>
           {/* Collapse toggle */}
           {onToggleCollapse && (
             <button
@@ -114,22 +114,22 @@ export const VisualizationPanel = ({
             <span className="text-foreground text-sm font-medium">{chartMeta.heading}</span>
           )}
 
-          <div className="flex-1" />
+          <CardToolbarSpacer />
 
-          {/* Fullscreen button */}
+          {/* Analyze / fullscreen button */}
           {onExpandClick && !isCollapsed && (
             <Button
               variant="ghost"
-              size="icon"
+              size="sm"
               onClick={onExpandClick}
-              aria-label={t("expandChart")}
-              title={t("expandChart")}
-              className="h-7 w-7"
+              aria-label={t("analyzeChart")}
+              className="text-muted-foreground hover:text-foreground h-7 shrink-0 gap-1 px-2 text-xs"
             >
-              <Expand className="h-3.5 w-3.5" />
+              {t("analyzeChart")}
+              <Expand className="h-3 w-3" />
             </Button>
           )}
-        </CardHeader>
+        </CardToolbar>
 
         <CollapsibleContent className={fillHeight ? "flex min-h-0 flex-1 flex-col" : undefined}>
           <CardContent className={`px-4 pt-4 pb-4 md:px-6 md:pb-6 ${fillHeight ? "flex min-h-0 flex-1 flex-col" : ""}`}>
