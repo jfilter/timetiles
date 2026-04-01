@@ -109,7 +109,7 @@ const buildBoundsConditions = (bounds: CanonicalBounds): SqlFragment[] => {
   return conditions;
 };
 
-const buildFieldFilterConditions = (
+export const buildFieldFilterConditions = (
   fieldFilters?: Record<string, string[]>,
   tagFields?: Set<string>
 ): SqlFragment[] => {

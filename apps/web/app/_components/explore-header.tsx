@@ -115,7 +115,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
     }
   }, [isFilterDrawerOpen]);
 
-  const { title, dateRange } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
+  const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
   const totalEvents = totalEventsData?.total;
   const eventCount =
     mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents, locale) : null;
@@ -152,15 +152,9 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
 
       {/* Right half - over the event list */}
       <div className="flex flex-1 items-center border-l">
-        {/* Centered title and date range */}
+        {/* Centered title */}
         <div className="flex flex-1 items-center justify-center gap-3">
           <span className="text-foreground dark:text-foreground font-sans text-sm font-semibold">{title}</span>
-          {dateRange && (
-            <>
-              <span className="text-primary/30 dark:text-foreground/30">·</span>
-              <span className="text-primary dark:text-foreground font-sans text-sm">{dateRange}</span>
-            </>
-          )}
         </div>
 
         {/* Filter icon button - only visible after closing animation completes */}

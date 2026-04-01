@@ -10,7 +10,6 @@
 import type { Where } from "payload";
 
 import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-filters";
-import { isValidFieldKey } from "./field-validation";
 
 /**
  * Convert canonical filters to a Payload CMS Where object.
@@ -22,13 +21,15 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
     return { and: [{ id: { equals: -1 } }] };
   }
 
+  // Field filters are NOT included here — Payload's JSONB query sanitizer
+  // rejects values with characters outside /^[\w @.\-+:]*$/ (e.g. parentheses).
+  // Field filters are applied via raw SQL in the route handler instead.
   const and: Where[] = [
     ...buildCatalogWhere(filters),
     ...buildDatasetWhere(filters),
     ...buildDateWhere(filters),
     ...(filters.bounds ? buildBoundsWhere(filters.bounds) : []),
     ...(filters.requireLocation ? buildLocationWhere() : []),
-    ...buildFieldFilterWhere(filters.fieldFilters, filters.tagFields),
   ];
 
   return and.length > 0 ? { and } : {};
@@ -55,18 +56,6 @@ const buildLocationWhere = (): Where[] => [
   { "location.latitude": { exists: true } },
   { "location.longitude": { exists: true } },
 ];
-
-const buildFieldFilterWhere = (fieldFilters?: Record<string, string[]>, tagFields?: Set<string>): Where[] => {
-  if (!fieldFilters) return [];
-  return (
-    Object.entries(fieldFilters)
-      .filter(([fieldPath, values]) => values.length > 0 && isValidFieldKey(fieldPath))
-      // Tag fields (arrays) can't be expressed via Payload's WHERE — they use @> in raw SQL paths.
-      // Skip them here; the SQL adapter (toSqlConditions) handles them correctly.
-      .filter(([fieldPath]) => !tagFields?.has(fieldPath))
-      .map(([fieldPath, values]) => ({ [`transformedData.${fieldPath}`]: { in: values } }))
-  );
-};
 
 const buildBoundsWhere = (bounds: CanonicalBounds): Where[] => {
   const conditions: Where[] = [

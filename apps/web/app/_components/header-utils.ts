@@ -4,22 +4,17 @@
  * @module
  * @category Components
  */
-import { formatMonthYear } from "@/lib/utils/date";
 import type { Catalog, Dataset } from "@/payload-types";
 
 /**
  * Build dynamic title based on active filters.
  */
 export const buildDynamicTitle = (
-  filters: { datasets: string[]; startDate?: string | null; endDate?: string | null },
+  filters: { datasets: string[] },
   _catalogs: Catalog[],
   datasets: Dataset[],
-  t: (
-    key: "allEvents" | "eventsLabel" | "countDatasets" | "dateRangeFrom" | "dateRangeUntil",
-    values?: Record<string, string | number>
-  ) => string
-): { title: string; dateRange: string | null } => {
-  // Build title based on dataset selection
+  t: (key: "allEvents" | "eventsLabel" | "countDatasets", values?: Record<string, string | number>) => string
+): { title: string } => {
   let title = t("allEvents");
 
   if (filters.datasets.length > 0) {
@@ -37,18 +32,5 @@ export const buildDynamicTitle = (
     }
   }
 
-  // Build date range string
-  let dateRange: string | null = null;
-  const hasStart = filters.startDate != null && filters.startDate !== "";
-  const hasEnd = filters.endDate != null && filters.endDate !== "";
-
-  if (hasStart && hasEnd) {
-    dateRange = `${formatMonthYear(filters.startDate!)} – ${formatMonthYear(filters.endDate!)}`;
-  } else if (hasStart) {
-    dateRange = t("dateRangeFrom", { date: formatMonthYear(filters.startDate!) });
-  } else if (hasEnd) {
-    dateRange = t("dateRangeUntil", { date: formatMonthYear(filters.endDate!) });
-  }
-
-  return { title, dateRange };
+  return { title };
 };

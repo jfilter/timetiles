@@ -173,6 +173,88 @@ describe("/api/v1/events - field filter logic", () => {
     expect(data.events.length).toBeGreaterThan(0);
   });
 
+  it("should exclude events where the filtered field is missing/null", async () => {
+    // Event has category but NO status field — should not match status filter
+    await payload.create({
+      collection: "events",
+      data: {
+        uniqueId: "filter-null-field",
+        dataset: testDatasetId,
+        sourceData: { category: "Music" },
+        transformedData: { category: "Music" },
+        location: { latitude: 40.74, longitude: -74.03 },
+        eventTimestamp: new Date(2024, 0, 22).toISOString(),
+      },
+    });
+
+    // Filter by status=Active — the new event has no status, so it must NOT match
+    const fieldFilters = JSON.stringify({ status: ["Active"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    // Should still be 4 Active events from the original set — NOT 5
+    expect(data.events).toHaveLength(4);
+    // None of them should be the null-field event
+    expect(data.events.every((e: { id: number }) => e.id !== undefined)).toBe(true);
+    const ids = data.events.map((e: { data: { category: string; status: string } }) => e.data.status);
+    expect(ids.every((s: string) => s === "Active")).toBe(true);
+  });
+
+  it("should handle filter values with parentheses", async () => {
+    // Create events with parentheses in field values (e.g. ACLED-style data)
+    await payload.create({
+      collection: "events",
+      data: {
+        uniqueId: "filter-special-paren",
+        dataset: testDatasetId,
+        sourceData: { category: "State-based (conflict)" },
+        transformedData: { category: "State-based (conflict)" },
+        location: { latitude: 40.72, longitude: -74.01 },
+        eventTimestamp: new Date(2024, 0, 20).toISOString(),
+      },
+    });
+
+    const fieldFilters = JSON.stringify({ category: ["State-based (conflict)"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.events).toHaveLength(1);
+    expect(data.events[0].data.category).toBe("State-based (conflict)");
+  });
+
+  it("should handle filter values with special characters (em dash, comma, slash)", async () => {
+    await payload.create({
+      collection: "events",
+      data: {
+        uniqueId: "filter-special-chars",
+        dataset: testDatasetId,
+        sourceData: { summary: "Gov't — Region/Area, District" },
+        transformedData: { summary: "Gov't — Region/Area, District" },
+        location: { latitude: 40.73, longitude: -74.02 },
+        eventTimestamp: new Date(2024, 0, 21).toISOString(),
+      },
+    });
+
+    const fieldFilters = JSON.stringify({ summary: ["Gov't — Region/Area, District"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.events).toHaveLength(1);
+  });
+
   it("should never return more events than without filter", async () => {
     // Get baseline count
     const baseRequest = new NextRequest(`http://localhost:3000/api/v1/events?datasets=${testDatasetId}`);

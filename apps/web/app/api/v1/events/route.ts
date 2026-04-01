@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
+import { buildFieldFilterConditions } from "@/lib/filters/to-sql-conditions";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
@@ -77,6 +78,31 @@ export const GET = apiRoute({
     }
 
     const where = toPayloadWhere(ctx.filters);
+
+    // Field filters: apply via raw SQL because Payload's JSONB query sanitizer
+    // rejects values containing characters like parentheses, commas, etc.
+    if (ctx.filters.fieldFilters && Object.keys(ctx.filters.fieldFilters).length > 0) {
+      const ffConditions = buildFieldFilterConditions(ctx.filters.fieldFilters, ctx.filters.tagFields);
+      if (ffConditions.length > 0) {
+        const whereClause = sql.join(ffConditions, sql` AND `);
+        const idResult = (await payload.db.drizzle.execute(
+          sql`SELECT e.id FROM payload.events e WHERE ${whereClause}`
+        )) as { rows: Array<{ id: number }> };
+        const ids = idResult.rows.map((r) => Number(r.id));
+        if (ids.length === 0) {
+          return buildListResponse({
+            docs: [],
+            page: 1,
+            limit: query.limit,
+            totalDocs: 0,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPrevPage: false,
+          });
+        }
+        where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { in: ids } }];
+      }
+    }
 
     // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
     if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {

@@ -162,8 +162,6 @@
     "individualEvents": "Individual events over time",
     "showingLimited": "Showing {visible} of {total} events",
     "countDatasets": "{count} Datasets",
-    "dateRangeFrom": "From {date}",
-    "dateRangeUntil": "Until {date}",
     "clusterAlgorithm": "Algorithm",
     "clusterAlgorithm_h3": "H3",
     "clusterAlgorithm_grid-k": "Grid-K",
