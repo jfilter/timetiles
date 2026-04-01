@@ -158,6 +158,8 @@
     "expandChart": "Expand chart",
     "analyzeChart": "Analyze",
     "collapseChart": "Collapse chart",
+    "hideChart": "Hide chart",
+    "showChart": "Show chart",
     "beeswarm": "Timeline",
     "eventAnalysis": "Event Analysis",
     "eventScatter": "Timeline",
@@ -206,7 +208,14 @@
     "clusterTemporalRange": "Time range",
     "clusterDatasets": "Datasets",
     "clusterCatalogs": "Catalogs",
-    "clusterCategories": "Categories"
+    "clusterCategories": "Categories",
+    "groupBy": "Group by",
+    "groupByNone": "No grouping",
+    "groupByNoneDesc": "Show all events in a single series",
+    "groupByDataset": "Dataset",
+    "groupByDatasetDesc": "Color by source dataset",
+    "groupByCatalog": "Catalog",
+    "groupByCatalogDesc": "Color by catalog"
   },
   "Filters": {
     "dataSources": "Data Sources",

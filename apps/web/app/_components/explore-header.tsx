@@ -6,7 +6,7 @@
  */
 "use client";
 
-import { ArrowLeft, Filter } from "lucide-react";
+import { ArrowLeft, Filter, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import React, { useEffect, useState } from "react";
 
@@ -181,11 +181,12 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
         <button
           type="button"
           onClick={toggleFilterDrawer}
-          className="hover:bg-primary/10 dark:hover:bg-foreground/10 rounded-sm px-3 py-1 transition-colors"
+          className="hover:bg-primary/10 dark:hover:bg-foreground/10 flex items-center gap-2 rounded-sm px-3 py-1 transition-colors"
           title={t("hideFilters")}
           aria-label={t("hideFilters")}
         >
           <span className="text-foreground font-sans text-sm font-semibold">{t("filters")}</span>
+          <X className="text-muted-foreground h-4 w-4" />
         </button>
       </div>
     </div>

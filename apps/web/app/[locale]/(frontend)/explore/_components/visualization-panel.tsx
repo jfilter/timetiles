@@ -13,8 +13,15 @@
 import { Button } from "@timetiles/ui/components/button";
 import { Card, CardContent, CardToolbar, CardToolbarSpacer } from "@timetiles/ui/components/card";
 import { Collapsible, CollapsibleContent } from "@timetiles/ui/components/collapsible";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
-import { ChevronDown, Expand } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@timetiles/ui/components/select";
+import { Expand } from "lucide-react";
 import { useTranslations } from "next-intl";
 import * as React from "react";
 
@@ -31,6 +38,8 @@ const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
   return { histogram: t("timeline"), beeswarm: t("beeswarm"), "dataset-bar": t("byDataset") };
 };
+
+const HIDE_VALUE = "__hide__";
 
 interface VisualizationPanelProps {
   children: React.ReactNode;
@@ -64,9 +73,18 @@ export const VisualizationPanel = ({
 }: Readonly<VisualizationPanelProps>) => {
   const t = useTranslations("Explore");
   const chartTypeLabels = useChartTypeLabels();
-  const handleValueChange = (value: string) => onChartTypeChange(value as ChartType);
 
-  const showDropdown = availableChartTypes.length > 1;
+  const handleValueChange = (value: string) => {
+    if (value === HIDE_VALUE) {
+      onToggleCollapse?.();
+    } else {
+      // If collapsed, expand when selecting a chart type
+      if (isCollapsed) onToggleCollapse?.();
+      onChartTypeChange(value as ChartType);
+    }
+  };
+
+  const showDropdown = availableChartTypes.length > 1 || onToggleCollapse;
 
   return (
     <Collapsible
@@ -80,26 +98,10 @@ export const VisualizationPanel = ({
         className={`overflow-hidden transition-shadow hover:shadow-sm ${fillHeight ? "flex min-h-0 flex-1 flex-col" : ""}`}
       >
         <CardToolbar>
-          {/* Collapse toggle */}
-          {onToggleCollapse && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="text-muted-foreground hover:text-foreground -ml-1 flex shrink-0 items-center transition-colors"
-              aria-label={isCollapsed ? t("expandChart") : t("collapseChart")}
-            >
-              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isCollapsed ? "-rotate-90" : ""}`} />
-            </button>
-          )}
-
-          {/* Chart type selector or plain label */}
+          {/* Chart type selector with optional hide/show */}
           {showDropdown ? (
-            <Select value={chartType} onValueChange={handleValueChange}>
-              <SelectTrigger
-                aria-label="Chart type"
-                className="border-border/40 w-auto min-w-[130px] bg-transparent text-sm font-medium shadow-none"
-                size="sm"
-              >
+            <Select value={isCollapsed ? HIDE_VALUE : chartType} onValueChange={handleValueChange}>
+              <SelectTrigger aria-label="Chart type" className="w-auto shadow-none" size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -108,6 +110,12 @@ export const VisualizationPanel = ({
                     {chartTypeLabels[type]}
                   </SelectItem>
                 ))}
+                {onToggleCollapse && (
+                  <>
+                    <SelectSeparator />
+                    <SelectItem value={HIDE_VALUE}>{isCollapsed ? t("showChart") : t("hideChart")}</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
           ) : (
@@ -119,11 +127,11 @@ export const VisualizationPanel = ({
           {/* Analyze / fullscreen button */}
           {onExpandClick && !isCollapsed && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={onExpandClick}
               aria-label={t("analyzeChart")}
-              className="text-muted-foreground hover:text-foreground h-7 shrink-0 gap-1 px-2 text-xs"
+              className="shrink-0 text-xs"
             >
               {t("analyzeChart")}
               <Expand className="h-3 w-3" />
