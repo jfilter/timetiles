@@ -41,6 +41,14 @@ dataset:
     externalIdPath: mpv_id
     duplicateStrategy: update
 
+transforms:
+  - type: split-to-array
+    from: wapo_flee
+  - type: split-to-array
+    from: cause_of_death
+  - type: split-to-array
+    from: officer_races
+
 fieldMappings:
   titlePath: name
   descriptionPath: circumstances

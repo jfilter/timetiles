@@ -265,12 +265,12 @@ describe("import-transforms", () => {
 
   describe("constants", () => {
     it("should have labels for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_LABELS)).toHaveLength(7);
+      expect(Object.keys(TRANSFORM_TYPE_LABELS)).toHaveLength(8);
       expect(TRANSFORM_TYPE_LABELS.rename).toBe("Rename Field");
     });
 
     it("should have descriptions for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_DESCRIPTIONS)).toHaveLength(7);
+      expect(Object.keys(TRANSFORM_TYPE_DESCRIPTIONS)).toHaveLength(8);
     });
 
     it("should have date format options", () => {

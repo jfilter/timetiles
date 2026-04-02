@@ -31,6 +31,9 @@ const TRANSFORM_NODE_COLORS: Record<TransformType, { bg: string; border: string;
   "string-op": { bg: "bg-accent/5", border: "border-accent/50", text: "text-accent" },
   concatenate: { bg: "bg-primary/5", border: "border-primary/50", text: "text-primary" },
   split: { bg: "bg-purple-500/5", border: "border-purple-500/50", text: "text-purple-600" },
+  "parse-json-array": { bg: "bg-teal-500/5", border: "border-teal-500/50", text: "text-teal-600" },
+  "split-to-array": { bg: "bg-violet-500/5", border: "border-violet-500/50", text: "text-violet-600" },
+  extract: { bg: "bg-orange-500/5", border: "border-orange-500/50", text: "text-orange-600" },
 };
 
 const TRANSFORM_LABEL_KEYS = {
@@ -39,6 +42,9 @@ const TRANSFORM_LABEL_KEYS = {
   "string-op": "flowTransformStringOp",
   concatenate: "flowTransformConcatenate",
   split: "flowTransformSplit",
+  "parse-json-array": "flowTransformSplitToArray",
+  "split-to-array": "flowTransformSplitToArray",
+  extract: "flowTransformSplit",
 } as const;
 
 /**
@@ -58,6 +64,12 @@ const getTransformSummary = (data: TransformNodeData): string => {
       return `${transform.fromFields.length} fields → ${transform.to}`;
     case "split":
       return `"${transform.delimiter}" → ${transform.toFields.length} fields`;
+    case "parse-json-array":
+      return `${transform.from} → array`;
+    case "split-to-array":
+      return `${transform.from} → array`;
+    case "extract":
+      return `${transform.from} → ${transform.to}`;
     default:
       return "";
   }
@@ -74,6 +86,9 @@ const getSourceFields = (data: TransformNodeData): string[] => {
     case "date-parse":
     case "string-op":
     case "split":
+    case "parse-json-array":
+    case "split-to-array":
+    case "extract":
       return [transform.from];
     case "concatenate":
       return transform.fromFields;

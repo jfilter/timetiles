@@ -192,7 +192,16 @@ const manifestSchema = z.object({
   transforms: z
     .array(
       z.object({
-        type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split", "parse-json-array", "extract"]),
+        type: z.enum([
+          "rename",
+          "date-parse",
+          "string-op",
+          "concatenate",
+          "split",
+          "parse-json-array",
+          "split-to-array",
+          "extract",
+        ]),
         from: z.string().optional(),
         to: z.string().optional(),
         // split

@@ -243,6 +243,14 @@ const getTransformSummary = (
       return transform.from && transform.toFields.length > 0
         ? t("tfSplitFieldInto", { field: transform.from, count: transform.toFields.length })
         : t("tfConfigureSplit");
+    case "parse-json-array":
+      return transform.from ? `${transform.from} → array` : "Configure JSON array field";
+    case "split-to-array":
+      return transform.from
+        ? `${transform.from} → array (delimiter: "${transform.delimiter || ","}")`
+        : "Configure split-to-array field";
+    case "extract":
+      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Configure extract";
   }
 };
 

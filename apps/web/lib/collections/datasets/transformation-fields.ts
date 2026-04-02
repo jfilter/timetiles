@@ -20,6 +20,7 @@ const TRANSFORM_TYPES = {
   CONCATENATE: "concatenate",
   SPLIT: "split",
   PARSE_JSON_ARRAY: "parse-json-array",
+  SPLIT_TO_ARRAY: "split-to-array",
 } as const;
 
 export const transformationFields: Field[] = [
@@ -50,6 +51,7 @@ export const transformationFields: Field[] = [
           { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
           { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
           { label: "Parse JSON Array", value: TRANSFORM_TYPES.PARSE_JSON_ARRAY },
+          { label: "Split to Array", value: TRANSFORM_TYPES.SPLIT_TO_ARRAY },
           { label: "Extract (Regex)", value: "extract" },
         ],
         defaultValue: TRANSFORM_TYPES.RENAME,
@@ -67,6 +69,8 @@ export const transformationFields: Field[] = [
               TRANSFORM_TYPES.DATE_PARSE,
               TRANSFORM_TYPES.STRING_OP,
               TRANSFORM_TYPES.SPLIT,
+              TRANSFORM_TYPES.PARSE_JSON_ARRAY,
+              TRANSFORM_TYPES.SPLIT_TO_ARRAY,
             ].includes(data?.type),
         },
       },
@@ -185,7 +189,10 @@ export const transformationFields: Field[] = [
         name: "delimiter",
         type: "text",
         defaultValue: ",",
-        admin: { description: "Delimiter to split on", condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT },
+        admin: {
+          description: "Delimiter to split on",
+          condition: (data) => data?.type === TRANSFORM_TYPES.SPLIT || data?.type === TRANSFORM_TYPES.SPLIT_TO_ARRAY,
+        },
       },
       {
         name: "toFields",

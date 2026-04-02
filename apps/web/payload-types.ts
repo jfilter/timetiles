@@ -681,7 +681,15 @@ export interface Dataset {
         /**
          * Type of transformation to apply
          */
-        type: 'rename' | 'date-parse' | 'string-op' | 'concatenate' | 'split' | 'parse-json-array' | 'extract';
+        type:
+          | 'rename'
+          | 'date-parse'
+          | 'string-op'
+          | 'concatenate'
+          | 'split'
+          | 'parse-json-array'
+          | 'split-to-array'
+          | 'extract';
         /**
          * Source field path in import file (e.g., 'date' or 'user.email')
          */

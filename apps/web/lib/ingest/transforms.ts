@@ -22,6 +22,7 @@ import type {
   IngestTransform,
   ParseJsonArrayTransform,
   RenameTransform,
+  SplitToArrayTransform,
   SplitTransform,
   StringOpTransform,
 } from "@/lib/types/ingest-transforms";
@@ -80,6 +81,9 @@ export const applyTransforms = (
         break;
       case "parse-json-array":
         applyParseJsonArrayTransform(result, transform);
+        break;
+      case "split-to-array":
+        applySplitToArrayTransform(result, transform);
         break;
       case "extract":
         applyExtractTransform(result, transform);
@@ -363,6 +367,32 @@ const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: 
     }
   } catch {
     // Not valid JSON — keep original string value
+  }
+};
+
+/**
+ * Apply a split-to-array transform to split a delimited string into a native array.
+ *
+ * Handles CSV multi-value fields like "Car, Foot" → ["Car", "Foot"].
+ * Splits on the configured delimiter (default: ","), trims whitespace from each element,
+ * and filters out empty strings.
+ */
+const applySplitToArrayTransform = (data: Record<string, unknown>, transform: SplitToArrayTransform): void => {
+  const value = getByPath(data, transform.from);
+  if (typeof value !== "string") return;
+
+  const trimmed = value.trim();
+  if (trimmed === "") return;
+
+  const delimiter = transform.delimiter || ",";
+  const parts = trimmed
+    .split(delimiter)
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+
+  if (parts.length > 0) {
+    const target = transform.to ?? transform.from;
+    setByPath(data, target, parts);
   }
 };
 

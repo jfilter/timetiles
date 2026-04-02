@@ -44,6 +44,12 @@ export const getTransformChipLabel = (
       return t("tfChipJoin", { count: transform.fromFields.length });
     case "split":
       return t("tfChipSplit", { count: transform.toFields.length });
+    case "parse-json-array":
+      return transform.from || "JSON → Array";
+    case "split-to-array":
+      return transform.from ? `${transform.from} → []` : "Split → Array";
+    case "extract":
+      return transform.from || "Extract";
   }
 };
 
@@ -107,7 +113,7 @@ export interface AddTransformMenuProps {
   types?: TransformType[];
 }
 
-const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split"];
+const DEFAULT_TRANSFORM_TYPES: TransformType[] = ["rename", "date-parse", "string-op", "split", "split-to-array"];
 
 /** Dropdown that adds a new transform to a column. Subset of types via `types` prop. */
 export const AddTransformMenu = ({

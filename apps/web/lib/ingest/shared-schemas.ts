@@ -42,7 +42,16 @@ export const fieldMappingsSchema = z
 /** Zod schema for a single transform rule. */
 export const transformRuleSchema = z.object({
   id: z.string(),
-  type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split"]),
+  type: z.enum([
+    "rename",
+    "date-parse",
+    "string-op",
+    "concatenate",
+    "split",
+    "parse-json-array",
+    "split-to-array",
+    "extract",
+  ]),
   active: z.boolean(),
   autoDetected: z.boolean(),
   from: z.string().optional(),

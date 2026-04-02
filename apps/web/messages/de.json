@@ -592,6 +592,8 @@
     "flowTransformConcatenateDescription": "Mehrere Felder mit einem Trennzeichen zusammenfügen",
     "flowTransformSplit": "Feld aufteilen",
     "flowTransformSplitDescription": "Ein Feld anhand eines Trennzeichens in mehrere Felder aufteilen",
+    "flowTransformSplitToArray": "In Array aufteilen",
+    "flowTransformSplitToArrayDescription": "Einen Text mit Trennzeichen in ein Array für Mehrfachwerte aufteilen",
     "flowSourceColumn": "Quellspalte",
     "flowTypeText": "Text",
     "flowTypeNumber": "Zahl",

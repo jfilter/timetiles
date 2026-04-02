@@ -26,6 +26,7 @@ export type TransformType =
   | "concatenate"
   | "split"
   | "parse-json-array"
+  | "split-to-array"
   | "extract";
 
 /**
@@ -137,6 +138,22 @@ export interface ParseJsonArrayTransform extends BaseTransform {
 }
 
 /**
+ * Split-to-array transform - splits a delimited string into a native array.
+ *
+ * Used for CSV fields containing comma-separated multi-values (e.g. "Car, Foot")
+ * that should be stored as arrays for tag/multi-value support.
+ */
+export interface SplitToArrayTransform extends BaseTransform {
+  type: "split-to-array";
+  /** Source field containing the delimited string */
+  from: string;
+  /** Optional target field (defaults to same as `from`) */
+  to?: string;
+  /** Delimiter to split on (default: ",") */
+  delimiter?: string;
+}
+
+/**
  * Extract transform - extracts a substring from a field value using a regex pattern.
  *
  * Writes the captured group to a new field. Useful for extracting IDs from URLs
@@ -167,6 +184,7 @@ export type IngestTransform =
   | ConcatenateTransform
   | SplitTransform
   | ParseJsonArrayTransform
+  | SplitToArrayTransform
   | ExtractTransform;
 
 /**
@@ -227,6 +245,7 @@ export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
   concatenate: "Concatenate Fields",
   split: "Split Field",
   "parse-json-array": "Parse JSON Array",
+  "split-to-array": "Split to Array",
   extract: "Extract (Regex)",
 };
 
@@ -240,6 +259,7 @@ export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = {
   concatenate: "Join multiple fields together with a separator",
   split: "Split a field into multiple fields using a delimiter",
   "parse-json-array": "Parse a JSON-stringified array into a native array for tag/multi-value fields",
+  "split-to-array": "Split a delimited string into an array for tag/multi-value fields",
   extract: "Extract a substring from a field using a regex pattern into a new field",
 };
 
@@ -279,6 +299,8 @@ export const isTransformValid = (transform: IngestTransform): boolean => {
       return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
     case "parse-json-array":
       return Boolean(transform.from);
+    case "split-to-array":
+      return Boolean(transform.from);
     case "extract":
       return Boolean(transform.from && transform.to && transform.pattern);
     default:
@@ -305,6 +327,8 @@ export const createTransform = (type: TransformType): IngestTransform => {
       return { ...base, type: "split", from: "", delimiter: ",", toFields: [] };
     case "parse-json-array":
       return { ...base, type: "parse-json-array", from: "" };
+    case "split-to-array":
+      return { ...base, type: "split-to-array", from: "", delimiter: "," };
     case "extract":
       return { ...base, type: "extract", from: "", to: "", pattern: "" };
   }

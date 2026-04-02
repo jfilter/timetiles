@@ -73,6 +73,15 @@ export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly
           onChange={onChange}
         />
       );
+    case "split-to-array":
+      return (
+        <SplitToArrayEditor
+          from={transform.from}
+          delimiter={transform.delimiter}
+          sourceColumns={sourceColumns}
+          onChange={onChange}
+        />
+      );
     default:
       return <div className="text-muted-foreground text-sm">{t("tfUnknownType")}</div>;
   }
@@ -414,6 +423,40 @@ const ConcatenateEditor = ({
           <Label htmlFor="to">{t("tfTargetFieldName")}</Label>
           <Input id="to" value={to} onChange={handleToChange} placeholder={t("tfTargetFieldPlaceholder")} />
         </div>
+      </div>
+    </div>
+  );
+};
+
+interface SplitToArrayEditorProps {
+  from: string;
+  delimiter?: string;
+  sourceColumns: string[];
+  onChange: (updates: Partial<IngestTransform>) => void;
+}
+
+const SplitToArrayEditor = ({ from, delimiter, sourceColumns, onChange }: Readonly<SplitToArrayEditorProps>) => {
+  const t = useTranslations("Ingest");
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleDelimiterChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ delimiter: e.target.value });
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <ColumnSelect
+        id="from"
+        label={t("tfSourceField")}
+        value={from}
+        sourceColumns={sourceColumns}
+        onValueChange={handleFromChange}
+      />
+      <div className="space-y-2">
+        <Label htmlFor="delimiter">{t("tfDelimiter")}</Label>
+        <Input
+          id="delimiter"
+          value={delimiter ?? ","}
+          onChange={handleDelimiterChange}
+          placeholder={t("tfDelimiterPlaceholder")}
+        />
       </div>
     </div>
   );

@@ -33,6 +33,8 @@ import * as migration_20260330_003537 from './20260330_003537';
 import * as migration_20260331_000000_unique_locations from './20260331_000000_unique_locations';
 import * as migration_20260331_200012 from './20260331_200012';
 import * as migration_20260331_220208 from './20260331_220208';
+import * as migration_20260401_000000_fix_field_filter_null_handling from './20260401_000000_fix_field_filter_null_handling';
+import * as migration_20260402_011606 from './20260402_011606';
 
 export const migrations = [
   {
@@ -209,5 +211,15 @@ export const migrations = [
     up: migration_20260331_220208.up,
     down: migration_20260331_220208.down,
     name: '20260331_220208',
+  },
+  {
+    up: migration_20260401_000000_fix_field_filter_null_handling.up,
+    down: migration_20260401_000000_fix_field_filter_null_handling.down,
+    name: '20260401_000000_fix_field_filter_null_handling',
+  },
+  {
+    up: migration_20260402_011606.up,
+    down: migration_20260402_011606.down,
+    name: '20260402_011606'
   },
 ];

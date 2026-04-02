@@ -592,6 +592,8 @@
     "flowTransformConcatenateDescription": "Join multiple fields together with a separator",
     "flowTransformSplit": "Split Field",
     "flowTransformSplitDescription": "Split a field into multiple fields using a delimiter",
+    "flowTransformSplitToArray": "Split to Array",
+    "flowTransformSplitToArrayDescription": "Split a delimited string into an array for multi-value fields",
     "flowSourceColumn": "Source Column",
     "flowTypeText": "Text",
     "flowTypeNumber": "Number",

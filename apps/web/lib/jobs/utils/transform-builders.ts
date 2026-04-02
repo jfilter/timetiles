@@ -55,6 +55,11 @@ const buildSplitTransform = (t: DatasetTransformEntry, base: TransformBase): Ing
 const buildParseJsonArrayTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from ? { ...base, type: "parse-json-array", from: t.from, to: t.to ?? undefined } : null;
 
+const buildSplitToArrayTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
+  t.from
+    ? { ...base, type: "split-to-array", from: t.from, to: t.to ?? undefined, delimiter: t.delimiter ?? undefined }
+    : null;
+
 const buildExtractTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
   t.from && t.to && (t as Record<string, unknown>).pattern
     ? {
@@ -77,6 +82,7 @@ const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: Transf
   concatenate: buildConcatenateTransform,
   split: buildSplitTransform,
   "parse-json-array": buildParseJsonArrayTransform,
+  "split-to-array": buildSplitToArrayTransform,
   extract: buildExtractTransform,
 };
 
