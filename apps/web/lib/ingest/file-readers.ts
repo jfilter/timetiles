@@ -142,6 +142,7 @@ async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncG
       skipEmptyLines: true,
       dynamicTyping: true,
       transformHeader: (header: string) => header.trim(),
+      transform: (value: string) => value.trim(),
       step: (result: Papa.ParseStepResult<Record<string, unknown>>, parser: Papa.Parser) => {
         batch.push(result.data);
 
