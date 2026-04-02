@@ -217,14 +217,23 @@ const computeRowLayout = (
   if (rowCount === 0) return { yPositions: [], rowCount: 0 };
 
   const yPositions: number[] = [];
+  const maxHalfHeight = ROW_SPACING * 0.4; // leave 10% gap between rows
 
   for (let si = 0; si < allSeries.length; si++) {
     const s = allSeries[si]!;
     if (s.data.length === 0) continue;
 
     const localY = computeBeeswarmLayout([s], dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
+
+    // Scale down if the row's spread exceeds the allocated band
+    let maxAbsY = 0;
+    for (const ly of localY) {
+      if (Math.abs(ly) > maxAbsY) maxAbsY = Math.abs(ly);
+    }
+    const scale = maxAbsY > maxHalfHeight ? maxHalfHeight / maxAbsY : 1;
+
     const rowCenter = si * ROW_SPACING + ROW_SPACING * 0.5;
-    for (const ly of localY) yPositions.push(rowCenter + ly);
+    for (const ly of localY) yPositions.push(rowCenter + ly * scale);
   }
 
   return { yPositions, rowCount };

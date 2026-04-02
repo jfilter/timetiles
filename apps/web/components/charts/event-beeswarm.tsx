@@ -329,13 +329,22 @@ export const EventBeeswarm = ({
   const hasMultipleGroups = series.length > 1;
   const layout = variant === "fullscreen" && hasMultipleGroups ? "rows" : "merged";
 
+  // Ensure enough height per row so rows aren't compressed; scroll if needed
+  const MIN_ROW_HEIGHT = 80;
+  const minRowsHeight = layout === "rows" ? series.length * MIN_ROW_HEIGHT + 40 : 0;
+  const effectiveHeight = minRowsHeight > 0 ? Math.max(minRowsHeight, typeof height === "number" ? height : 0) : height;
+  const needsScroll = layout === "rows" && typeof height === "string" && minRowsHeight > 0;
+
   return (
-    <div className="relative h-full">
+    <div
+      className={`relative ${needsScroll ? "overflow-y-auto" : ""}`}
+      style={needsScroll ? { height } : { height: "100%" }}
+    >
       <BeeswarmChart
         series={series}
         onPointClick={onEventClick}
         theme={chartTheme}
-        height={height}
+        height={effectiveHeight}
         className={className}
         isInitialLoad={isInitialLoad}
         isUpdating={isUpdating}
