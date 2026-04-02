@@ -215,7 +215,8 @@
     "groupByDataset": "Dataset",
     "groupByDatasetDesc": "Color by source dataset",
     "groupByCatalog": "Catalog",
-    "groupByCatalogDesc": "Color by catalog"
+    "groupByCatalogDesc": "Color by catalog",
+    "groupedBy": "Grouped by {field}"
   },
   "Filters": {
     "dataSources": "Data Sources",

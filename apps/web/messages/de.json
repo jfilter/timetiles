@@ -215,7 +215,8 @@
     "groupByDataset": "Datensatz",
     "groupByDatasetDesc": "Nach Quelldatensatz einfärben",
     "groupByCatalog": "Katalog",
-    "groupByCatalogDesc": "Nach Katalog einfärben"
+    "groupByCatalogDesc": "Nach Katalog einfärben",
+    "groupedBy": "Gruppiert nach {field}"
   },
   "Filters": {
     "dataSources": "Datenquellen",

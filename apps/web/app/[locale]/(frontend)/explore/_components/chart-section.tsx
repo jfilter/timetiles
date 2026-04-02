@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { parseAsBoolean, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
@@ -106,6 +106,7 @@ export const ChartSection = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [showChartSettings, setShowChartSettings] = useState(false);
   const [groupBy, setGroupBy] = useQueryState("groupBy", parseAsString.withDefault("none"));
+  const [topGroups, setTopGroups] = useQueryState("topGroups", parseAsInteger.withDefault(8));
 
   // Get filter state to determine which chart types are relevant
   const { filters, setStartDate, setEndDate } = useFilters();
@@ -163,14 +164,33 @@ export const ChartSection = ({
   const toggleCollapsed = useCallback(() => setIsCollapsed((v) => !v), []);
 
   // Shared groupBy options for both histogram and beeswarm
-  const singleDatasetId = filters.datasets.length === 1 ? String(filters.datasets[0]) : null;
-  const groupByOptions = useGroupByOptions(singleDatasetId);
+  const datasetIds = useMemo(() => filters.datasets.map(String), [filters.datasets]);
+  const groupByOptions = useGroupByOptions(datasetIds);
+
+  // Reset groupBy only when a built-in option (dataset/catalog) was removed from the list.
+  // Custom field values are never auto-reset — the API handles unknown fields gracefully.
+  const BUILT_IN_GROUP_VALUES = ["none", "dataset", "catalog"];
+  const shouldResetGroupBy =
+    BUILT_IN_GROUP_VALUES.includes(groupBy) && groupBy !== "none" && !groupByOptions.some((o) => o.value === groupBy);
+  const effectiveGroupByValue = shouldResetGroupBy ? "none" : groupBy;
+  useEffect(() => {
+    if (shouldResetGroupBy) void setGroupBy("none");
+  }, [shouldResetGroupBy, setGroupBy]);
 
   const renderChart = (height: number | string | undefined, variant: "compact" | "fullscreen" = "compact") => {
-    const effectiveGroupBy = variant === "fullscreen" ? groupBy : "none";
+    const effectiveGroupBy = variant === "fullscreen" ? effectiveGroupByValue : "none";
     return (
       <div className="relative h-full">
-        {chartType === "histogram" && <EventHistogram bounds={bounds} height={height} groupBy={effectiveGroupBy} />}
+        {chartType === "histogram" && (
+          <EventHistogram
+            bounds={bounds}
+            height={height}
+            groupBy={effectiveGroupBy}
+            maxGroups={topGroups}
+            onMaxGroupsChange={(n) => void setTopGroups(n)}
+            showControls={showChartSettings}
+          />
+        )}
         {chartType === "beeswarm" && (
           <EventBeeswarm
             bounds={bounds}
@@ -179,6 +199,8 @@ export const ChartSection = ({
             variant={variant}
             showControls={showChartSettings}
             groupBy={effectiveGroupBy}
+            maxGroups={topGroups}
+            onMaxGroupsChange={(n) => void setTopGroups(n)}
           />
         )}
         {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
@@ -210,7 +232,15 @@ export const ChartSection = ({
         </div>
       </VisualizationPanel>
 
-      <Dialog open={isFullscreen} onOpenChange={(open) => !open && void setIsFullscreen(false)}>
+      <Dialog
+        open={isFullscreen}
+        onOpenChange={(open) => {
+          if (!open) {
+            void setIsFullscreen(false);
+            setShowChartSettings(false);
+          }
+        }}
+      >
         <DialogContent
           className="flex h-[95vh] max-h-[95vh] w-[95vw] max-w-none flex-col overflow-hidden"
           showCloseButton={false}
@@ -218,7 +248,14 @@ export const ChartSection = ({
           <DialogHeader className="flex flex-row items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
               <DialogTitle>{chartMeta.heading}</DialogTitle>
-              <DialogDescription>{chartMeta.subtitle}</DialogDescription>
+              <DialogDescription>
+                {effectiveGroupByValue !== "none"
+                  ? t("groupedBy", {
+                      field:
+                        groupByOptions.find((o) => o.value === effectiveGroupByValue)?.label ?? effectiveGroupByValue,
+                    })
+                  : chartMeta.subtitle}
+              </DialogDescription>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {availableChartTypes.length > 1 && (
@@ -241,7 +278,7 @@ export const ChartSection = ({
               {(chartType === "beeswarm" || chartType === "histogram") && (
                 <GroupBySelect value={groupBy} onChange={(v) => void setGroupBy(v)} options={groupByOptions} />
               )}
-              {chartType === "beeswarm" && (
+              {(chartType === "beeswarm" || chartType === "histogram") && (
                 <BeeswarmSettingsButton
                   showControls={showChartSettings}
                   onToggle={() => setShowChartSettings((v) => !v)}

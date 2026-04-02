@@ -13,6 +13,7 @@
 
 import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
+import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
 import { getResolution, isValidCell } from "h3-js";
 import { useMemo } from "react";
 
@@ -28,23 +29,23 @@ import type { BaseChartProps } from "./types";
 interface EventHistogramProps extends BaseChartProps {
   /** Group by field — when set and not "dataset", uses stacked bars */
   groupBy?: string;
-  /** Whether settings panel is visible */
+  /** Number of top groups to show before merging into "Other" */
+  maxGroups?: number;
+  /** Callback to change maxGroups */
+  onMaxGroupsChange?: (n: number) => void;
+  /** Whether the settings panel is visible */
   showControls?: boolean;
 }
 
-/**
- * Event histogram component with data fetching.
- *
- * When groupBy is "dataset" (default), uses the standard histogram API.
- * When groupBy is set to something else, uses the temporal-clusters API
- * and renders stacked bars per group.
- */
 export const EventHistogram = ({
   height = 200,
   className,
   bounds,
   showDataZoom,
   groupBy = "none",
+  maxGroups = 8,
+  onMaxGroupsChange,
+  showControls = false,
 }: Readonly<EventHistogramProps>) => {
   const chartTheme = useChartTheme();
   const { filters, setSingleDayFilter } = useFilters();
@@ -97,16 +98,24 @@ export const EventHistogram = ({
       }
     }
 
-    // Sort by total count, take top 4
-    const MAX_GROUPS = 4;
+    // Collect all bucket dates for zero-filling (required for correct ECharts stacking)
+    const allBucketDates = new Set<string>();
+    for (const item of clustersQuery.data.items) allBucketDates.add(item.bucketStart);
+    const sortedDates = [...allBucketDates].sort((a, b) => a.localeCompare(b));
+
+    // Sort by total count, take top N
     const sorted = [...groupTotals.entries()].sort((a, b) => b[1].total - a[1].total);
-    const topGroups = sorted.slice(0, MAX_GROUPS);
-    const otherGroups = sorted.slice(MAX_GROUPS);
+    const topGroups = sorted.slice(0, maxGroups);
+    const otherGroups = sorted.slice(maxGroups);
+
+    // Zero-fill: every series must have a data point for every bucket date,
+    // otherwise ECharts stacking shifts bars to different Y positions.
+    const zeroFill = (items: Map<string, number>) => sortedDates.map((date) => ({ date, count: items.get(date) ?? 0 }));
 
     const series: TimeHistogramSeries[] = topGroups.map(([, group], idx) => ({
       name: group.name,
       color: DATASET_COLORS[idx % DATASET_COLORS.length] ?? "#0089a7",
-      data: Array.from(group.items.entries()).map(([date, count]) => ({ date, count })),
+      data: zeroFill(group.items),
     }));
 
     // Merge remaining groups into "Other"
@@ -117,33 +126,45 @@ export const EventHistogram = ({
           otherBuckets.set(date, (otherBuckets.get(date) ?? 0) + count);
         }
       }
-      series.push({
-        name: `Other (${otherGroups.length})`,
-        color: "#9ca3af", // neutral gray
-        data: Array.from(otherBuckets.entries()).map(([date, count]) => ({ date, count })),
-      });
+      series.push({ name: `Other (${otherGroups.length})`, color: "#9ca3af", data: zeroFill(otherBuckets) });
     }
 
     return series.length > 0 ? series : undefined;
-  }, [isGrouped, clustersQuery.data?.items]);
+  }, [isGrouped, clustersQuery.data?.items, maxGroups]);
 
   const isInitialLoad = isGrouped ? clustersQuery.isInitialLoad : histogramQuery.isInitialLoad;
   const isUpdating = isGrouped ? clustersQuery.isUpdating : histogramQuery.isUpdating;
   const isError = isGrouped ? clustersQuery.isError : histogramQuery.isError;
 
   return (
-    <TimeHistogram
-      data={isGrouped ? undefined : histogram}
-      groupedData={groupedData}
-      onBarClick={setSingleDayFilter}
-      theme={chartTheme}
-      height={height}
-      className={className}
-      isInitialLoad={isInitialLoad}
-      isUpdating={isUpdating}
-      isError={isError}
-      bucketSizeSeconds={isGrouped ? (clustersQuery.data?.metadata.bucketSizeSeconds ?? null) : bucketSizeSeconds}
-      showDataZoom={showDataZoom}
-    />
+    <div className="relative h-full">
+      <TimeHistogram
+        data={isGrouped ? undefined : histogram}
+        groupedData={groupedData}
+        onBarClick={setSingleDayFilter}
+        theme={chartTheme}
+        height={height}
+        className={className}
+        isInitialLoad={isInitialLoad}
+        isUpdating={isUpdating}
+        isError={isError}
+        bucketSizeSeconds={isGrouped ? (clustersQuery.data?.metadata.bucketSizeSeconds ?? null) : bucketSizeSeconds}
+        showDataZoom={showDataZoom}
+      />
+      {showControls && isGrouped && onMaxGroupsChange && (
+        <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+          <LabeledSlider
+            label="Top groups"
+            value={maxGroups}
+            onChange={onMaxGroupsChange}
+            min={2}
+            max={10}
+            step={1}
+            minLabel="Fewer"
+            maxLabel="More"
+          />
+        </div>
+      )}
+    </div>
   );
 };

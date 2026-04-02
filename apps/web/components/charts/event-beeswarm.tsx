@@ -17,6 +17,7 @@ import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { TemporalClusterOptions } from "@/lib/hooks/use-events-queries";
@@ -37,6 +38,10 @@ interface EventBeeswarmProps {
   showControls?: boolean;
   /** Group by field (controlled by parent via URL param) */
   groupBy?: string;
+  /** Number of top groups to show before merging into "Other" */
+  maxGroups?: number;
+  /** Callback to change maxGroups */
+  onMaxGroupsChange?: (n: number) => void;
 }
 
 /** Default cluster options per variant */
@@ -82,49 +87,69 @@ const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string;
   return groups;
 };
 
-/** Transform API response to BeeswarmSeries[] for the presentational chart. */
+/** Build BeeswarmDataItem[] from a group's items. */
+const buildSeriesData = (
+  group: { name: string; items: TemporalClusterItem[] },
+  mode: "individual" | "clustered",
+  colorIdx: number,
+  maxClusterCount: { value: number }
+): BeeswarmDataItem[] =>
+  group.items.map((item, i) => {
+    if (item.count > maxClusterCount.value) maxClusterCount.value = item.count;
+    const start = new Date(item.bucketStart).getTime();
+    const end = new Date(item.bucketEnd).getTime();
+
+    return mode === "individual"
+      ? {
+          x: item.eventTimestamp ? new Date(item.eventTimestamp).getTime() : start,
+          y: 0,
+          id: item.eventId!,
+          label: item.eventTitle ?? undefined,
+          dataset: group.name,
+        }
+      : {
+          x: (start + end) / 2,
+          y: 0,
+          id: -(colorIdx * 10000 + i + 1),
+          count: item.count,
+          dataset: group.name,
+          label: `${item.count.toLocaleString()} events`,
+        };
+  });
+
+/** Transform API response to BeeswarmSeries[], merging small groups into "Other". */
 const transformToSeries = (
   items: TemporalClusterItem[],
-  mode: "individual" | "clustered"
+  mode: "individual" | "clustered",
+  topN: number
 ): { series: BeeswarmSeries[]; maxClusterCount: number } => {
   if (items.length === 0) return { series: [], maxClusterCount: 1 };
 
   const groups = groupByField(items);
+
+  // Sort groups by total item count, take top N
+  const sorted = [...groups.entries()].sort((a, b) => b[1].items.length - a[1].items.length);
+  const topGroups = sorted.slice(0, topN);
+  const otherGroups = sorted.slice(topN);
+
   const series: BeeswarmSeries[] = [];
-  let maxClusterCount = 1;
-  let colorIdx = 0;
+  const maxRef = { value: 1 };
 
-  for (const [, group] of groups) {
-    const color = DATASET_COLORS[colorIdx % DATASET_COLORS.length] ?? "#0089a7";
-
-    const data: BeeswarmDataItem[] = group.items.map((item, i) => {
-      if (item.count > maxClusterCount) maxClusterCount = item.count;
-      const start = new Date(item.bucketStart).getTime();
-      const end = new Date(item.bucketEnd).getTime();
-
-      return mode === "individual"
-        ? {
-            x: item.eventTimestamp ? new Date(item.eventTimestamp).getTime() : start,
-            y: 0,
-            id: item.eventId!,
-            label: item.eventTitle ?? undefined,
-            dataset: group.name,
-          }
-        : {
-            x: (start + end) / 2,
-            y: 0,
-            id: -(colorIdx * 10000 + i + 1),
-            count: item.count,
-            dataset: group.name,
-            label: `${item.count.toLocaleString()} events`,
-          };
-    });
-
-    series.push({ name: group.name, color, data });
-    colorIdx++;
+  for (let i = 0; i < topGroups.length; i++) {
+    const [, group] = topGroups[i]!;
+    const color = DATASET_COLORS[i % DATASET_COLORS.length] ?? "#0089a7";
+    series.push({ name: group.name, color, data: buildSeriesData(group, mode, i, maxRef) });
   }
 
-  return { series, maxClusterCount };
+  // Merge remaining into "Other"
+  if (otherGroups.length > 0) {
+    const otherItems = otherGroups.flatMap(([, g]) => g.items);
+    const otherGroup = { name: `Other (${otherGroups.length})`, items: otherItems };
+    const colorIdx = topGroups.length;
+    series.push({ name: otherGroup.name, color: "#9ca3af", data: buildSeriesData(otherGroup, mode, colorIdx, maxRef) });
+  }
+
+  return { series, maxClusterCount: maxRef.value };
 };
 
 export interface GroupByOption {
@@ -139,12 +164,13 @@ const BeeswarmSettings = ({
   setThreshold,
   buckets,
   setBuckets,
-  dotSize,
-  setDotSize,
   clusterMin,
   setClusterMin,
   clusterMax,
   setClusterMax,
+  maxGroups,
+  onMaxGroupsChange,
+  isGrouped,
   mode,
   itemCount,
 }: {
@@ -152,16 +178,29 @@ const BeeswarmSettings = ({
   setThreshold: (v: number) => void;
   buckets: number;
   setBuckets: (v: number) => void;
-  dotSize: number;
-  setDotSize: (v: number) => void;
   clusterMin: number;
   setClusterMin: (v: number) => void;
   clusterMax: number;
   setClusterMax: (v: number) => void;
+  maxGroups: number;
+  onMaxGroupsChange?: (v: number) => void;
+  isGrouped: boolean;
   mode: string;
   itemCount: number;
 }) => (
   <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
+    {isGrouped && onMaxGroupsChange && (
+      <LabeledSlider
+        label="Top groups"
+        value={maxGroups}
+        onChange={onMaxGroupsChange}
+        min={2}
+        max={10}
+        step={1}
+        minLabel="Fewer"
+        maxLabel="More"
+      />
+    )}
     <LabeledSlider
       label="Detail threshold"
       value={threshold}
@@ -182,7 +221,6 @@ const BeeswarmSettings = ({
       minLabel="Fewer"
       maxLabel="More"
     />
-    <LabeledSlider label="Dot size" value={dotSize} onChange={setDotSize} min={2} max={20} step={1} />
     <LabeledSlider label="Cluster min" value={clusterMin} onChange={setClusterMin} min={4} max={30} step={2} />
     <LabeledSlider label="Cluster max" value={clusterMax} onChange={setClusterMax} min={20} max={80} step={5} />
     <div className="text-muted-foreground text-center font-mono text-[10px]">
@@ -201,23 +239,40 @@ const buildFieldDescription = (field: { cardinality: number; values: Array<{ val
   return `${field.cardinality} values \u00b7 ${preview}${suffix}`;
 };
 
-/** Hook to build groupBy dropdown options from enum fields. */
-export const useGroupByOptions = (singleDatasetId: string | null): GroupByOption[] => {
+/** Hook to build groupBy dropdown options, hiding options that would produce only 1 group. */
+export const useGroupByOptions = (selectedDatasetIds: string[]): GroupByOption[] => {
   const t = useTranslations("Explore");
+  const singleDatasetId = selectedDatasetIds.length === 1 ? selectedDatasetIds[0]! : null;
   const enumFieldsQuery = useDatasetEnumFieldsQuery(singleDatasetId);
+  const dataSourcesQuery = useDataSourcesQuery();
+
   return useMemo<GroupByOption[]>(() => {
-    const opts: GroupByOption[] = [
-      { value: "none", label: t("groupByNone"), description: t("groupByNoneDesc") },
-      { value: "dataset", label: t("groupByDataset"), description: t("groupByDatasetDesc") },
-      { value: "catalog", label: t("groupByCatalog"), description: t("groupByCatalogDesc") },
-    ];
+    const opts: GroupByOption[] = [{ value: "none", label: t("groupByNone"), description: t("groupByNoneDesc") }];
+
+    // Show "Dataset" only when 2+ datasets are selected
+    if (selectedDatasetIds.length !== 1) {
+      opts.push({ value: "dataset", label: t("groupByDataset"), description: t("groupByDatasetDesc") });
+    }
+
+    // Show "Catalog" only when selected datasets span 2+ catalogs
+    if (dataSourcesQuery.data) {
+      const catalogIds = new Set(
+        selectedDatasetIds
+          .map((id) => dataSourcesQuery.data.datasets.find((d) => String(d.id) === id)?.catalogId)
+          .filter((cid): cid is number => cid != null)
+      );
+      if (catalogIds.size > 1) {
+        opts.push({ value: "catalog", label: t("groupByCatalog"), description: t("groupByCatalogDesc") });
+      }
+    }
+
     if (enumFieldsQuery.data) {
       for (const field of enumFieldsQuery.data) {
         opts.push({ value: field.path, label: field.label, description: buildFieldDescription(field) });
       }
     }
     return opts;
-  }, [enumFieldsQuery.data, t]);
+  }, [enumFieldsQuery.data, dataSourcesQuery.data, selectedDatasetIds, t]);
 };
 
 // oxlint-disable-next-line complexity
@@ -229,6 +284,8 @@ export const EventBeeswarm = ({
   variant = "compact",
   showControls = false,
   groupBy: externalGroupBy,
+  maxGroups = 10,
+  onMaxGroupsChange,
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
@@ -238,8 +295,7 @@ export const EventBeeswarm = ({
   const defaults = DEFAULTS[variant];
   const [threshold, setThreshold] = useState<number>(defaults.individualThreshold);
   const [buckets, setBuckets] = useState<number>(defaults.targetBuckets);
-  const [dotSize, setDotSize] = useState(8);
-  const [clusterMin, setClusterMin] = useState(10);
+  const [clusterMin, setClusterMin] = useState(4);
   const [clusterMax, setClusterMax] = useState(40);
   const groupBy = externalGroupBy ?? "none";
 
@@ -264,7 +320,10 @@ export const EventBeeswarm = ({
   const total = data?.metadata.total ?? 0;
   const mode = data?.metadata.mode ?? "individual";
 
-  const { series, maxClusterCount } = useMemo(() => transformToSeries(data?.items ?? [], mode), [data?.items, mode]);
+  const { series, maxClusterCount } = useMemo(
+    () => transformToSeries(data?.items ?? [], mode, maxGroups),
+    [data?.items, mode, maxGroups]
+  );
 
   // Auto rows layout in fullscreen when multiple groups exist
   const hasMultipleGroups = series.length > 1;
@@ -286,13 +345,12 @@ export const EventBeeswarm = ({
         layout={layout}
         emptyMessage={t("noEventsToDisplay")}
         maxClusterCount={maxClusterCount}
-        dotSizeOverride={dotSize}
         clusterMinSize={clusterMin}
         clusterMaxSize={clusterMax}
       />
 
       {variant === "fullscreen" && total > 0 && !isInitialLoad && (
-        <div className="text-muted-foreground absolute right-3 bottom-1 font-mono text-xs">
+        <div className="text-muted-foreground absolute right-3 bottom-7 font-mono text-xs">
           {total.toLocaleString()} {t("eventsLabel")}
         </div>
       )}
@@ -303,12 +361,13 @@ export const EventBeeswarm = ({
           setThreshold={setThreshold}
           buckets={buckets}
           setBuckets={setBuckets}
-          dotSize={dotSize}
-          setDotSize={setDotSize}
           clusterMin={clusterMin}
           setClusterMin={setClusterMin}
           clusterMax={clusterMax}
           setClusterMax={setClusterMax}
+          maxGroups={maxGroups}
+          onMaxGroupsChange={onMaxGroupsChange}
+          isGrouped={groupBy !== "none"}
           mode={mode}
           itemCount={data?.items.length ?? 0}
         />
