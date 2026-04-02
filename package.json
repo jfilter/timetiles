@@ -32,9 +32,9 @@
     "glob": "^13.0.6",
     "husky": "^9.1.7",
     "nyc": "^17.1.0",
-    "oxfmt": "^0.41.0",
-    "oxlint": "^1.56.0",
-    "oxlint-tsgolint": "^0.17.1",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.57.0",
+    "oxlint-tsgolint": "^0.17.4",
     "tsx": "catalog:",
     "turbo": "^2.8.20",
     "typescript": "catalog:"
