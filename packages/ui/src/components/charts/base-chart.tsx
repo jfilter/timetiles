@@ -90,7 +90,7 @@ export const BaseChart = ({
           showLoading={false}
           onChartReady={handleChartReady}
           onEvents={onEvents}
-          notMerge={false}
+          notMerge
           lazyUpdate={false}
         />
       </div>

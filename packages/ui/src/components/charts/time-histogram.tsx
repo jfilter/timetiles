@@ -235,7 +235,12 @@ export const TimeHistogram = ({
     },
   });
 
-  const getTooltipConfig = (chartTheme: ChartTheme, _darkMode: boolean, bucketSeconds: number | null | undefined) => ({
+  const getTooltipConfig = (
+    chartTheme: ChartTheme,
+    _darkMode: boolean,
+    bucketSeconds: number | null | undefined,
+    isStacked: boolean
+  ) => ({
     trigger: "axis",
     backgroundColor: chartTheme.tooltipBackground,
     borderColor: chartTheme.axisLineColor,
@@ -252,14 +257,19 @@ export const TimeHistogram = ({
       if (!point) return "";
       const startDate = new Date(point.data[0]);
       const endDate = new Date(point.data[2]);
-      const count = point.data[1];
 
-      return `
-          <div style="padding: 4px 8px;">
-            <div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div>
-            <div>Events: ${count.toLocaleString()}</div>
-          </div>
-        `;
+      if (!isStacked) {
+        return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${point.data[1].toLocaleString()}</div></div>`;
+      }
+
+      // Stacked: show each group's count
+      const total = params.reduce((sum, p) => sum + (p.data[1] ?? 0), 0);
+      const rows = params
+        .filter((p) => p.data[1] > 0)
+        .sort((a, b) => b.data[1] - a.data[1])
+        .map((p) => `<div>${p.marker} ${p.seriesName}: ${p.data[1].toLocaleString()}</div>`)
+        .join("");
+      return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
     },
   });
 
@@ -328,7 +338,7 @@ export const TimeHistogram = ({
       containLabel: true,
     },
     ...axisConfig,
-    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds),
+    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, !!groupedData),
     series: groupedData ? getStackedSeriesConfig(groupedData) : getSeriesConfig(effectiveTheme, data),
     ...(groupedData && groupedData.length > 1
       ? {

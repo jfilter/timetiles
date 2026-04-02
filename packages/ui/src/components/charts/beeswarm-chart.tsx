@@ -223,7 +223,7 @@ const computeRowLayout = (
     if (s.data.length === 0) continue;
 
     const localY = computeBeeswarmLayout([s], dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
-    const rowCenter = si * ROW_SPACING;
+    const rowCenter = si * ROW_SPACING + ROW_SPACING * 0.5;
     for (const ly of localY) yPositions.push(rowCenter + ly);
   }
 
@@ -293,9 +293,12 @@ const computeRowLayoutConfig = (
     clusterMaxSize
   );
 
-  // Value axis with custom labels at row centers and dashed separators between rows
+  // Value axis: labels at row centers, dashed separators between rows.
+  // Row centers are at 50, 150, 250... (offset by half-spacing to align with tick positions).
+  // With min=0 and interval=100, ticks land at 0, 100, 200... — separators between rows.
+  // With min=-50 and interval=100, ticks land at -50, 50, 150... — aligned with row centers.
   const yMin = -ROW_SPACING * 0.5;
-  const yMax = (rowCount - 1) * ROW_SPACING + ROW_SPACING * 0.5;
+  const yMax = rowCount * ROW_SPACING;
 
   return {
     yPositions,
@@ -304,13 +307,15 @@ const computeRowLayoutConfig = (
       show: true,
       min: yMin,
       max: yMax,
-      interval: ROW_SPACING, // force ticks at exactly row centers
+      interval: ROW_SPACING,
       inverse: true, // first series at top
       axisLabel: {
         color: effectiveTheme.textColor,
         fontSize: 11,
         formatter: (value: number) => {
-          const idx = Math.round(value / ROW_SPACING);
+          // Ticks at -50, 50, 150... map to row indices: -50→empty, 50→0, 150→1
+          const idx = (value - ROW_SPACING * 0.5) / ROW_SPACING;
+          if (idx < 0 || idx >= allSeries.length || idx !== Math.round(idx)) return "";
           return allSeries[idx]?.name ?? "";
         },
       },
@@ -383,7 +388,7 @@ export const BeeswarmChart = ({
       min: xMin,
       max: xMax,
       axisLabel: { color: effectiveTheme.textColor, fontSize: 11 },
-      axisLine: { lineStyle: { color: effectiveTheme.axisLineColor } },
+      axisLine: { show: !isRowLayout, lineStyle: { color: effectiveTheme.axisLineColor } },
       splitLine: { show: false },
     },
     yAxis: yAxisConfig,
