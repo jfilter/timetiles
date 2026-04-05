@@ -143,13 +143,18 @@ const buildFieldFilterConditions = (
   return conditions;
 };
 
+/** Validate H3 cell ID format (15 hex characters). */
+const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
+
 /** Filter events by pre-computed H3 cell column at the given resolution. */
 const buildH3CellCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
   if (!clusterCells || clusterCells.length === 0 || h3Resolution == null) return null;
   // Validate resolution range (columns h3_r2 through h3_r15 exist)
   const res = Math.min(15, Math.max(2, Math.round(h3Resolution)));
   const col = "e.h3_r" + String(res);
-  // Build IN clause with escaped cell IDs
-  const escaped = clusterCells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
+  // Validate and filter cell IDs to prevent SQL injection
+  const validCells = clusterCells.filter(isValidH3CellId);
+  if (validCells.length === 0) return null;
+  const escaped = validCells.map((c) => "'" + c + "'").join(", ");
   return sql.raw(col + "::text IN (" + escaped + ")");
 };
