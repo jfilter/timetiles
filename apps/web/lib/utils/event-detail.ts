@@ -8,6 +8,7 @@
  * @category Utils
  */
 
+import type { FieldPathMappings } from "@/lib/definitions/field-registry";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 
 /** Type for event data object — keys are dynamic, determined by source file + transforms */
@@ -15,17 +16,8 @@ export interface EventData {
   [key: string]: unknown;
 }
 
-/** Field mappings from a dataset's fieldMappingOverrides */
-export interface FieldMappingOverrides {
-  titlePath?: string | null;
-  descriptionPath?: string | null;
-  locationNamePath?: string | null;
-  timestampPath?: string | null;
-  endTimestampPath?: string | null;
-  latitudePath?: string | null;
-  longitudePath?: string | null;
-  locationPath?: string | null;
-}
+/** Field mappings from a dataset's fieldMappingOverrides — derived from the canonical field registry. */
+export type FieldMappingOverrides = Partial<FieldPathMappings>;
 
 // ---------------------------------------------------------------------------
 // Field extraction
