@@ -86,6 +86,12 @@ export const DATE_FORMAT_OPTIONS = [
   { value: "MMMM D, YYYY", label: "MMMM D, YYYY (December 31, 2024)" },
 ] as const;
 
+/** Output format options include ISO 8601 full datetime in addition to the date-only formats. */
+export const DATE_OUTPUT_FORMAT_OPTIONS = [
+  { value: "ISO 8601", label: "ISO 8601 (2024-12-31T00:00:00.000Z)" },
+  ...DATE_FORMAT_OPTIONS,
+] as const;
+
 // ---------------------------------------------------------------------------
 // Helpers for CMS / UI consumption
 // ---------------------------------------------------------------------------
