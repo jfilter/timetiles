@@ -13,13 +13,13 @@
  */
 
 // Re-export canonical definitions so existing consumers don't need to update imports
-export type { TransformType, StringOperation } from "@/lib/definitions/transform-registry";
 export {
-  TRANSFORM_DEFINITIONS,
   DATE_FORMAT_OPTIONS,
-  STRING_OPERATIONS,
   STRING_OPERATION_LABELS,
+  STRING_OPERATIONS,
+  TRANSFORM_DEFINITIONS,
 } from "@/lib/definitions/transform-registry";
+export type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
 
 import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
 import { TRANSFORM_DEFINITIONS } from "@/lib/definitions/transform-registry";
