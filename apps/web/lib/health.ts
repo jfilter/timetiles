@@ -351,6 +351,11 @@ const checkScraperRunner = async (): Promise<HealthCheckResult> => {
     const response = await fetch(`${scraperRunnerUrl}/health`, { signal: controller.signal });
     clearTimeout(timeoutId);
 
+    if (!response.ok) {
+      logger.warn("Scraper runner returned non-OK status", { status: response.status, url: scraperRunnerUrl });
+      return { status: "error", message: `Scraper runner returned HTTP ${response.status}` };
+    }
+
     const body = (await response.json()) as { status?: string };
 
     if (body.status === "ok") {
