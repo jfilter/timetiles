@@ -44,6 +44,10 @@ export const getTransformChipLabel = (
       return t("tfChipJoin", { count: transform.fromFields.length });
     case "split":
       return t("tfChipSplit", { count: transform.toFields.length });
+    case "parse-json-array":
+      return t("tfChipParseArray", { field: transform.from });
+    case "extract":
+      return t("tfChipExtract", { field: transform.to });
   }
 };
 

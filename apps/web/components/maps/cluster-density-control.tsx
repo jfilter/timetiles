@@ -19,11 +19,11 @@ import { Layers } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { useFeatureEnabled } from "@/lib/hooks/use-feature-flags";
-import { type ClusterAlgorithm, type ClusterDensityMode, type ClusterDisplay, useUIStore } from "@/lib/store";
+import { type ClusterAlgorithm, type ClusterDensityMode, useUIStore } from "@/lib/store";
 
 const PRESET_KEYS: Exclude<ClusterDensityMode, "expert">[] = ["fine", "normal", "coarse"];
 const ALGORITHM_KEYS: ClusterAlgorithm[] = ["h3", "grid-k", "dbscan"];
-const DISPLAY_KEYS: ClusterDisplay[] = ["circles", "hexagons"];
+const DISPLAY_KEYS: ("circles" | "hexagons")[] = ["circles", "hexagons"];
 
 export const ClusterDensityControl = () => {
   const t = useTranslations("Explore");

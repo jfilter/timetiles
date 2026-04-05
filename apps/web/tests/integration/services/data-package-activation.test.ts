@@ -761,8 +761,12 @@ describe.sequential("Data Package Activation", () => {
     expect(events.docs.length).toBe(2);
 
     // Find events by unique ID (external id from CSV)
-    const stateBasedEvent = events.docs.find((e) => (e.transformedData as Record<string, unknown>)?.id === 558782)!;
-    const nonStateEvent = events.docs.find((e) => (e.transformedData as Record<string, unknown>)?.id === 558790)!;
+    const stateBasedEvent = events.docs.find(
+      (e: { transformedData: unknown }) => (e.transformedData as Record<string, unknown>)?.id === 558782
+    )!;
+    const nonStateEvent = events.docs.find(
+      (e: { transformedData: unknown }) => (e.transformedData as Record<string, unknown>)?.id === 558790
+    )!;
     expect(stateBasedEvent).toBeDefined();
     expect(nonStateEvent).toBeDefined();
 

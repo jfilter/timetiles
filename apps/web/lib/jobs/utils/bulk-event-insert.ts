@@ -31,7 +31,7 @@ export interface BulkEventData {
   sourceData: Record<string, unknown>;
   transformedData: Record<string, unknown>;
   uniqueId: string;
-  eventTimestamp: string;
+  eventTimestamp: string | null;
   eventEndTimestamp?: string | null;
   location?: { latitude: number; longitude: number };
   locationName?: string | null;

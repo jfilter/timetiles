@@ -9,6 +9,8 @@
  */
 import { z } from "zod";
 
+import { STRING_OPERATIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
+
 /** Zod schema for sheet mappings (shared between create and update). */
 export const sheetMappingsSchema = z
   .array(
@@ -42,7 +44,7 @@ export const fieldMappingsSchema = z
 /** Zod schema for a single transform rule. */
 export const transformRuleSchema = z.object({
   id: z.string(),
-  type: z.enum(["rename", "date-parse", "string-op", "concatenate", "split"]),
+  type: z.enum(TRANSFORM_TYPES),
   active: z.boolean(),
   autoDetected: z.boolean(),
   from: z.string().optional(),
@@ -50,7 +52,7 @@ export const transformRuleSchema = z.object({
   inputFormat: z.string().optional(),
   outputFormat: z.string().optional(),
   timezone: z.string().optional(),
-  operation: z.enum(["uppercase", "lowercase", "trim", "replace", "expression"]).optional(),
+  operation: z.enum(STRING_OPERATIONS).optional(),
   pattern: z.string().optional(),
   replacement: z.string().optional(),
   expression: z.string().optional(),
