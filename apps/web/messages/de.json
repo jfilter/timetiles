@@ -205,7 +205,20 @@
     "clusterTemporalRange": "Zeitraum",
     "clusterDatasets": "Datensätze",
     "clusterCatalogs": "Kataloge",
-    "clusterCategories": "Kategorien"
+    "clusterCategories": "Kategorien",
+    "beeswarmGroupBy": "Gruppieren nach",
+    "beeswarmDetailThreshold": "Detailschwelle",
+    "beeswarmCluster": "Cluster",
+    "beeswarmIndividual": "Einzeln",
+    "beeswarmTimeBuckets": "Zeitfenster",
+    "beeswarmFewer": "Weniger",
+    "beeswarmMore": "Mehr",
+    "beeswarmDotSize": "Punktgrösse",
+    "beeswarmClusterMin": "Cluster min",
+    "beeswarmClusterMax": "Cluster max",
+    "beeswarmShowingDots": "Punkte anzeigen",
+    "beeswarmClusters": "{count} Cluster",
+    "beeswarmChartSettings": "Diagrammeinstellungen"
   },
   "Filters": {
     "dataSources": "Datenquellen",

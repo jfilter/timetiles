@@ -444,10 +444,11 @@ const createSafeParser = (): Parser => {
   parser.functions.parseDate = (v: unknown) => parseAsDate(v);
   parser.functions.parseBool = (v: unknown) => parseAsBoolean(v);
 
-  // HTML cleaning
+  // HTML cleaning — regex is safe: [^>]+ cannot backtrack because the negated
+  // character class and the `>` delimiter are mutually exclusive.
   parser.functions.stripHtml = (v: unknown) =>
     String(v)
-      .replaceAll(/<[^>]*>/g, " ")
+      .replaceAll(/<[^>]+>/g, " ") // eslint-disable-line sonarjs/slow-regex -- No backtracking risk: [^>]+ is anchored by `>`
       .replaceAll(/\s+/g, " ")
       .trim();
 

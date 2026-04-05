@@ -8,7 +8,6 @@
  * @module
  * @category Tests
  */
-/* eslint-disable promise/prefer-await-to-then, unicorn/no-thenable */
 /* oxlint-disable promise/prefer-await-to-then, unicorn/no-thenable */
 // Import centralized mocks FIRST
 import "@/tests/mocks/services/logger";

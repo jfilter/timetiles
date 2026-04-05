@@ -184,7 +184,7 @@ export const enrichRecordsFromDetailPages = async (
 
   for (let i = 0; i < records.length; i++) {
     const record = records[i]!;
-    const url = String(record[config.urlField] ?? "").trim();
+    const url = String((record[config.urlField] as string) ?? "").trim();
 
     if (!url) {
       skipped++;

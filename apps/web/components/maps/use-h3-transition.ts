@@ -48,6 +48,52 @@ const isH3Id = (id: string): boolean => {
 };
 
 /**
+ * Try to find an ancestor (parent or grandparent) of newId in the old positions map.
+ * Returns the ancestor position if found, otherwise undefined.
+ */
+const findAncestorPosition = (newId: string, newRes: number, oldPositions: Map<string, Pos>): Pos | undefined => {
+  if (newRes <= 0) return undefined;
+  try {
+    const parent = cellToParent(newId, newRes - 1);
+    const parentPos = oldPositions.get(parent);
+    if (parentPos) return parentPos;
+
+    if (newRes > 1) {
+      const grandparent = cellToParent(newId, newRes - 2);
+      const gpPos = oldPositions.get(grandparent);
+      if (gpPos) return gpPos;
+    }
+  } catch {
+    // Invalid cell, skip
+  }
+  return undefined;
+};
+
+/**
+ * Find old cells that are children of newId and compute their centroid position.
+ * Returns the centroid position if any children found, otherwise undefined.
+ */
+const findChildrenCentroid = (newId: string, newRes: number, oldPositions: Map<string, Pos>): Pos | undefined => {
+  let sumLng = 0;
+  let sumLat = 0;
+  let count = 0;
+  for (const [oldId, oldPos] of oldPositions) {
+    if (!isH3Id(oldId)) continue;
+    try {
+      const oldRes = getResolution(oldId);
+      if (oldRes > newRes && cellToParent(oldId, newRes) === newId) {
+        sumLng += oldPos.lng;
+        sumLat += oldPos.lat;
+        count++;
+      }
+    } catch {
+      // skip
+    }
+  }
+  return count > 0 ? { lng: sumLng / count, lat: sumLat / count } : undefined;
+};
+
+/**
  * Match old H3 clusters to new ones using parent-child relationships.
  *
  * Zoom in: old cell at res N → find new cells at res N+1 that are children
@@ -68,58 +114,18 @@ const matchH3Clusters = (oldPositions: Map<string, Pos>, newPositions: Map<strin
 
     const newRes = getResolution(newId);
 
-    // Zoom in: new cell's parent should match an old cell
-    // e.g. new "871f18b20ffffff" (res7) → parent "861f18b2fffffff" (res6)
-    if (newRes > 0) {
-      try {
-        const parent = cellToParent(newId, newRes - 1);
-        const parentPos = oldPositions.get(parent);
-        if (parentPos) {
-          origins.set(newId, parentPos);
-          continue;
-        }
-
-        // Try grandparent (2 zoom levels = 1 resolution step skipped)
-        if (newRes > 1) {
-          const grandparent = cellToParent(newId, newRes - 2);
-          const gpPos = oldPositions.get(grandparent);
-          if (gpPos) {
-            origins.set(newId, gpPos);
-            continue;
-          }
-        }
-      } catch {
-        // Invalid cell, skip
-      }
-    }
-
-    // Zoom out: new cell is parent of old cells
-    // Find old cells that have this new cell as parent
-    let sumLng = 0;
-    let sumLat = 0;
-    let count = 0;
-    for (const [oldId, oldPos] of oldPositions) {
-      if (!isH3Id(oldId)) continue;
-      try {
-        const oldRes = getResolution(oldId);
-        if (oldRes > newRes) {
-          const oldParent = cellToParent(oldId, newRes);
-          if (oldParent === newId) {
-            sumLng += oldPos.lng;
-            sumLat += oldPos.lat;
-            count++;
-          }
-        }
-      } catch {
-        // skip
-      }
-    }
-    if (count > 0) {
-      origins.set(newId, { lng: sumLng / count, lat: sumLat / count });
+    // Zoom in: new cell's parent/grandparent should match an old cell
+    const ancestorPos = findAncestorPosition(newId, newRes, oldPositions);
+    if (ancestorPos) {
+      origins.set(newId, ancestorPos);
       continue;
     }
 
-    // No fallback — only animate exact H3 parent-child matches
+    // Zoom out: new cell is parent of old cells — use centroid of children
+    const centroid = findChildrenCentroid(newId, newRes, oldPositions);
+    if (centroid) {
+      origins.set(newId, centroid);
+    }
   }
 
   return origins;

@@ -196,6 +196,29 @@ const hasMorePages = (
 };
 
 /**
+ * Extract records from a single page response, handling HTML-in-JSON, GeoJSON,
+ * and standard JSON formats. Returns an empty array if extraction fails.
+ */
+const extractPageRecords = (
+  json: unknown,
+  recordsPath: string | undefined,
+  options: PaginatedFetchOptions
+): Record<string, unknown>[] => {
+  try {
+    if (options.htmlExtractConfig) {
+      return extractRecordsFromHtml(json, options.htmlExtractConfig);
+    }
+    if (isGeoJson(json)) {
+      const features = (json as { features: Array<Record<string, unknown>> }).features;
+      return features.map((f) => flattenGeoJsonFeature(f as never));
+    }
+    return extractRecordsFromJson(json, recordsPath).records;
+  } catch {
+    return [];
+  }
+};
+
+/**
  * Fetches all pages from a paginated JSON API endpoint and collects the
  * records into a single array.
  *
@@ -211,6 +234,55 @@ const hasMorePages = (
  * @param options - Authentication headers, timeout, and cache settings
  * @returns All collected records with page and count metadata
  */
+interface PageFetchConfig {
+  baseUrl: string;
+  isPost: boolean;
+  activeBodyTemplate: string | undefined;
+  limitValue: number;
+  recordsPath: string | undefined;
+  paginationConfig: PaginationConfig;
+  options: PaginatedFetchOptions;
+}
+
+/** Fetch a single page and return parsed JSON plus extracted records. */
+const fetchOnePage = async (
+  state: { page: number; offset: number; cursor: string },
+  config: PageFetchConfig
+): Promise<{ json: unknown; pageRecords: Record<string, unknown>[] }> => {
+  const { baseUrl, isPost, activeBodyTemplate, limitValue, recordsPath, paginationConfig, options } = config;
+  const pageUrl = isPost ? baseUrl : buildPageUrl(baseUrl, paginationConfig, state);
+  const pageBody = isPost ? buildPageBody(activeBodyTemplate!, state, limitValue) : undefined;
+
+  logger.info("Fetching page", { page: state.page, url: sanitizeUrlForLogging(pageUrl) });
+
+  const cacheOptions = options.cacheOptions
+    ? { useCache: options.cacheOptions.useCache, bypassCache: options.cacheOptions.bypassCache }
+    : undefined;
+
+  const fetchResult = await fetchWithRetry(pageUrl, {
+    method: isPost ? "POST" : undefined,
+    body: pageBody,
+    authHeaders: options.authHeaders,
+    timeout: options.timeout,
+    cacheOptions,
+  });
+
+  const json: unknown = JSON.parse(fetchResult.data.toString("utf-8"));
+  const pageRecords = extractPageRecords(json, recordsPath, options);
+  return { json, pageRecords };
+};
+
+/** Advance the pagination state after a successful page fetch. */
+const advancePaginationState = (
+  state: { page: number; offset: number; cursor: string },
+  limitValue: number,
+  nextCursor: string | undefined
+): void => {
+  state.page += 1;
+  state.offset += limitValue;
+  if (nextCursor) state.cursor = nextCursor;
+};
+
 export const fetchPaginated = async (
   baseUrl: string,
   paginationConfig: PaginationConfig,
@@ -232,44 +304,18 @@ export const fetchPaginated = async (
   const isPost = paginationConfig.method === "POST" && !!activeBodyTemplate;
   const limitValue = paginationConfig.limitValue ?? DEFAULT_LIMIT;
 
+  const pageConfig: PageFetchConfig = {
+    baseUrl,
+    isPost,
+    activeBodyTemplate,
+    limitValue,
+    recordsPath,
+    paginationConfig,
+    options,
+  };
+
   while (pagesProcessed < maxPages) {
-    const pageUrl = isPost ? baseUrl : buildPageUrl(baseUrl, paginationConfig, state);
-    const pageBody = isPost ? buildPageBody(activeBodyTemplate, state, limitValue) : undefined;
-
-    logger.info("Fetching page", {
-      page: pagesProcessed + 1,
-      totalSoFar: allRecords.length,
-      url: sanitizeUrlForLogging(pageUrl),
-    });
-
-    const fetchResult = await fetchWithRetry(pageUrl, {
-      method: isPost ? "POST" : undefined,
-      body: pageBody,
-      authHeaders: options.authHeaders,
-      timeout: options.timeout,
-      cacheOptions: options.cacheOptions
-        ? { useCache: options.cacheOptions.useCache, bypassCache: options.cacheOptions.bypassCache }
-        : undefined,
-    });
-
-    const json: unknown = JSON.parse(fetchResult.data.toString("utf-8"));
-    let pageRecords: Record<string, unknown>[];
-    try {
-      if (options.htmlExtractConfig) {
-        // HTML-in-JSON: extract records from HTML fragment embedded in the JSON response
-        pageRecords = extractRecordsFromHtml(json, options.htmlExtractConfig);
-      } else if (isGeoJson(json)) {
-        // GeoJSON FeatureCollections need special handling: flatten properties,
-        // extract coordinates, and preserve feature.id as _feature_id.
-        const features = (json as { features: Array<Record<string, unknown>> }).features;
-        pageRecords = features.map((f) => flattenGeoJsonFeature(f as never));
-      } else {
-        pageRecords = extractRecordsFromJson(json, recordsPath).records;
-      }
-    } catch {
-      // No records found on this page — treat as empty
-      pageRecords = [];
-    }
+    const { json, pageRecords } = await fetchOnePage(state, pageConfig);
 
     allRecords.push(...pageRecords);
     pagesProcessed++;
@@ -297,12 +343,7 @@ export const fetchPaginated = async (
       break;
     }
 
-    // Advance pagination state for the next iteration
-    state.page += 1;
-    state.offset += limitValue;
-    if (nextCursor) {
-      state.cursor = nextCursor;
-    }
+    advancePaginationState(state, limitValue, nextCursor);
   }
 
   if (pagesProcessed >= maxPages) {

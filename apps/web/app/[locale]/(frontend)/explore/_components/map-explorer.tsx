@@ -68,6 +68,8 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   } = data;
   const { ref: mapRef, simpleBounds, showZoomToData, handleZoomToData, handleBoundsChange } = map;
 
+  const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
+  const setClusterFilterCells = useUIStore((s) => s.setClusterFilterCells);
   const gridRef = useRef<HTMLDivElement>(null);
 
   // Loading states — shared hook tracks "has loaded at least once"
@@ -122,12 +124,12 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
           </div>
 
           <div className="border-t pt-6">
-            {useUIStore.getState().ui.clusterFilterCells && (
+            {clusterFilterCells && (
               <div className="bg-primary/10 text-primary mb-3 flex items-center gap-2 rounded px-3 py-2 text-xs font-medium">
                 <span>{t("clusterFilterActiveDescription")}</span>
                 <button
                   type="button"
-                  onClick={() => useUIStore.getState().setClusterFilterCells(null)}
+                  onClick={() => setClusterFilterCells(null)}
                   className="hover:text-primary/70 ml-auto text-xs underline transition-colors"
                 >
                   {t("clearClusterFilter")}

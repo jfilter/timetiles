@@ -215,7 +215,7 @@ export class ProviderManager {
 
   /** Extract the first country code from the comma-separated list (for providers that only accept one). */
   private getFirstCountryCode(doc: GeocodingProvider): string | undefined {
-    return doc.countryCodes?.split(",")[0]?.trim() || undefined;
+    return doc.countryCodes?.split(",")[0]?.trim() ?? undefined;
   }
 
   /** Convert generic boundingBox to "minLon,minLat,maxLon,maxLat" (OpenCage/Nominatim viewbox format). */

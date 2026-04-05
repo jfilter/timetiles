@@ -93,7 +93,7 @@ export const preProcessRecords = (
   const groups = new Map<string, Record<string, unknown>[]>();
 
   for (const record of records) {
-    const key = String(record[groupBy] ?? "");
+    const key = String((record[groupBy] as string) ?? "");
     if (!key) continue;
     const group = groups.get(key);
     if (group) {

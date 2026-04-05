@@ -15,7 +15,7 @@ describe("preProcessRecords", () => {
   it("should return records unchanged when no config", () => {
     const records = [{ uid: 1, title: "A" }];
     expect(preProcessRecords(records, null)).toEqual(records);
-    expect(preProcessRecords(records, undefined)).toEqual(records);
+    expect(preProcessRecords(records)).toEqual(records);
   });
 
   it("should return empty array for empty input", () => {

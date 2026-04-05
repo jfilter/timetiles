@@ -413,6 +413,7 @@ const buildUcdpManifest = (sourceUrl: string): DataPackageManifest => ({
 });
 
 describe.sequential("Data Package Activation", () => {
+  type IngestFileId = number | string | undefined;
   const collectionsToReset = [...IMPORT_PIPELINE_COLLECTIONS_TO_RESET, "catalogs", "scheduled-ingests"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -513,8 +514,10 @@ describe.sequential("Data Package Activation", () => {
     // Rename transforms
     const renames = dataset.ingestTransforms.filter((t: any) => t.type === "rename");
     expect(renames).toHaveLength(6);
-    expect(renames.map((r: any) => r.to).sort()).toEqual(
-      ["Civilian Deaths", "Conflict", "District", "Fatalities", "Parties", "Province"].sort()
+    expect(renames.map((r: any) => r.to).sort((a: string, b: string) => a.localeCompare(b))).toEqual(
+      ["Civilian Deaths", "Conflict", "District", "Fatalities", "Parties", "Province"].sort((a: string, b: string) =>
+        a.localeCompare(b)
+      )
     );
 
     // Concatenate transform
@@ -601,7 +604,7 @@ describe.sequential("Data Package Activation", () => {
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
 
     // Wait for the ingest-file to be created (url-fetch produces it)
-    let ingestFileId: number | string | undefined;
+    let ingestFileId: IngestFileId;
     for (let i = 0; i < 20; i++) {
       await payload.jobs.run({ allQueues: true, limit: 100 });
       const files = await payload.find({
@@ -681,7 +684,7 @@ describe.sequential("Data Package Activation", () => {
 
     // Field mappings
     expect(firstEvent.eventTimestamp).toBeTruthy();
-    expect(new Date(firstEvent.eventTimestamp!).toISOString()).toContain("2024-03-15");
+    expect(new Date(firstEvent.eventTimestamp).toISOString()).toContain("2024-03-15");
     expect(firstEvent.eventEndTimestamp).toBeTruthy();
     expect(firstEvent.locationName).toBe("Eastern Ghouta district");
     expect(firstEvent.location).toBeDefined();
@@ -709,7 +712,7 @@ describe.sequential("Data Package Activation", () => {
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
 
     // Wait for the ingest-file to be created
-    let ingestFileId: number | string | undefined;
+    let ingestFileId: IngestFileId;
     for (let i = 0; i < 20; i++) {
       await payload.jobs.run({ allQueues: true, limit: 100 });
       const files = await payload.find({
@@ -821,7 +824,7 @@ describe.sequential("Data Package Activation", () => {
 
     // --- Field mappings applied ---
     expect(stateBasedEvent.eventTimestamp).toBeTruthy();
-    expect(new Date(stateBasedEvent.eventTimestamp!).toISOString()).toContain("2024-12-31");
+    expect(new Date(stateBasedEvent.eventTimestamp).toISOString()).toContain("2024-12-31");
     expect(stateBasedEvent.locationName).toBe("Thar Kyin village, Ngazun Township");
     expect(stateBasedEvent.location).toBeDefined();
 
@@ -846,7 +849,7 @@ describe.sequential("Data Package Activation", () => {
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: true });
 
     // Drain first import
-    let ingestFileId: number | string | undefined;
+    let ingestFileId: IngestFileId;
     for (let i = 0; i < 20; i++) {
       await payload.jobs.run({ allQueues: true, limit: 100 });
       const files = await payload.find({
@@ -918,7 +921,7 @@ describe.sequential("Data Package Activation", () => {
     await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
 
     // Find the new ingest file
-    let secondIngestFileId: number | string | undefined;
+    let secondIngestFileId: IngestFileId;
     for (let i = 0; i < 20; i++) {
       await payload.jobs.run({ allQueues: true, limit: 100 });
       const files = await payload.find({
@@ -979,7 +982,7 @@ describe.sequential("Data Package Activation", () => {
       `Expected job to complete, got stage: ${jobStage}, ` +
         `errorLog: ${JSON.stringify(errorLog)}, ` +
         `duplicates: ${JSON.stringify(duplicates?.summary)}, ` +
-        `configSnapshot.idStrategy: ${JSON.stringify((reImportJob?.configSnapshot as any)?.idStrategy)}`
+        `configSnapshot.idStrategy: ${JSON.stringify((reImportJob?.configSnapshot as Record<string, unknown>)?.idStrategy)}`
     );
 
     // Should still have 3 events (updated, not duplicated) — or 6 if update failed and created new

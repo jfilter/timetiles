@@ -35,6 +35,12 @@ export const ClusterDensityControl = () => {
   const setAlgorithm = useUIStore((s) => s.setClusterAlgorithm);
   const setMode = useUIStore((s) => s.setClusterDensityMode);
   const setDensity = useUIStore((s) => s.setClusterDensity);
+  const clusterDisplay = useUIStore((s) => s.ui.clusterDisplay);
+  const setClusterDisplay = useUIStore((s) => s.setClusterDisplay);
+  const showHexBoundaries = useUIStore((s) => s.ui.showHexBoundaries);
+  const setShowHexBoundaries = useUIStore((s) => s.setShowHexBoundaries);
+  const mergeOverlapping = useUIStore((s) => s.ui.mergeOverlapping);
+  const setMergeOverlapping = useUIStore((s) => s.setMergeOverlapping);
 
   const presets = PRESET_KEYS.map((key) => ({ key, label: t(`clusterPreset_${key}`) }));
   const algorithms = ALGORITHM_KEYS.map((key) => ({ key, label: t(`clusterAlgorithm_${key}`) }));
@@ -83,14 +89,14 @@ export const ClusterDensityControl = () => {
             <div className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">{t("clusterDisplayMode")}</div>
             <PresetButtonGroup
               options={DISPLAY_KEYS.map((key) => ({ key, label: t(`clusterDisplay_${key}`) }))}
-              value={useUIStore.getState().ui.clusterDisplay}
+              value={clusterDisplay}
               onChange={(key) => {
-                useUIStore.getState().setClusterDisplay(key);
+                setClusterDisplay(key);
                 if (key === "hexagons") setDensity({ ...density, mergeOverlapping: false });
               }}
             />
           </div>
-          {useUIStore.getState().ui.clusterDisplay === "circles" && (
+          {clusterDisplay === "circles" && (
             <div className="space-y-1">
               <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <input
@@ -104,8 +110,8 @@ export const ClusterDensityControl = () => {
               <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <input
                   type="checkbox"
-                  checked={useUIStore.getState().ui.showHexBoundaries}
-                  onChange={(e) => useUIStore.getState().setShowHexBoundaries(e.target.checked)}
+                  checked={showHexBoundaries}
+                  onChange={(e) => setShowHexBoundaries(e.target.checked)}
                   className="rounded"
                 />
                 {t("showHexBoundaries")}
@@ -113,9 +119,9 @@ export const ClusterDensityControl = () => {
               <label className="flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                 <input
                   type="checkbox"
-                  checked={useUIStore.getState().ui.mergeOverlapping}
+                  checked={mergeOverlapping}
                   onChange={(e) => {
-                    useUIStore.getState().setMergeOverlapping(e.target.checked);
+                    setMergeOverlapping(e.target.checked);
                     setDensity({ ...density, mergeOverlapping: e.target.checked });
                   }}
                   className="rounded"

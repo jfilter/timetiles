@@ -100,7 +100,6 @@ const matchClusters = (
     }
     if (count > 0) {
       origins.set(newId, { lng: sumLng / count, lat: sumLat / count, id: newId });
-      continue;
     }
     // No fallback — only animate exact prefix matches
   }

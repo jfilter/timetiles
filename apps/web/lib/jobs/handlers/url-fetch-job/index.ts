@@ -117,8 +117,8 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
 
   const data: Record<string, unknown> = {
     originalName,
-    catalog: numericCatalogId || undefined,
-    user: numericUserId || undefined,
+    catalog: numericCatalogId ?? undefined,
+    user: numericUserId ?? undefined,
     status: "pending",
     metadata: {
       urlFetch: { sourceUrl, contentHash: dataHash, isDuplicate: false, fetchedAt: new Date().toISOString() },

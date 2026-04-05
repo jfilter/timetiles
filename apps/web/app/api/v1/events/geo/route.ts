@@ -85,15 +85,17 @@ export const GET = apiRoute({
   },
 });
 
+type StringOrNumber = string | number;
+
 interface ClusterRow {
-  longitude: string | number;
-  latitude: string | number;
-  event_count: string | number;
-  cluster_id: string | number | null;
-  event_id: string | number | null;
+  longitude: StringOrNumber;
+  latitude: StringOrNumber;
+  event_count: StringOrNumber;
+  cluster_id: StringOrNumber | null;
+  event_id: StringOrNumber | null;
   event_title: string | null;
   source_cells: string[] | null;
-  location_count: string | number | null;
+  location_count: StringOrNumber | null;
   location_name: string | null;
 }
 
