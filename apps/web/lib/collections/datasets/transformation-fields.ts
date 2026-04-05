@@ -70,6 +70,7 @@ export const transformationFields: Field[] = [
               TRANSFORM_TYPES.STRING_OP,
               TRANSFORM_TYPES.SPLIT,
               TRANSFORM_TYPES.EXTRACT,
+              TRANSFORM_TYPES.PARSE_JSON_ARRAY,
             ].includes(data?.type),
         },
       },
@@ -80,7 +81,13 @@ export const transformationFields: Field[] = [
         admin: {
           description: "Target field path in dataset schema (e.g., 'start_date' or 'contact.email')",
           condition: (data) =>
-            [TRANSFORM_TYPES.RENAME, TRANSFORM_TYPES.CONCATENATE, TRANSFORM_TYPES.EXTRACT].includes(data?.type),
+            [
+              TRANSFORM_TYPES.RENAME,
+              TRANSFORM_TYPES.CONCATENATE,
+              TRANSFORM_TYPES.EXTRACT,
+              TRANSFORM_TYPES.STRING_OP,
+              TRANSFORM_TYPES.PARSE_JSON_ARRAY,
+            ].includes(data?.type),
         },
       },
       // Date parse specific fields

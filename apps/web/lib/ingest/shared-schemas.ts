@@ -70,12 +70,15 @@ export const transformsSchema = z
 /** Zod schema for auth configuration (shared between create and update). */
 export const authConfigSchema = z
   .object({
-    type: z.enum(["none", "api-key", "bearer", "basic"]),
+    type: z.enum(["none", "api-key", "bearer", "basic", "oauth"]),
     apiKey: z.string().optional(),
     apiKeyHeader: z.string().optional(),
     bearerToken: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
+    customHeaders: z.string().or(z.record(z.string(), z.string())).optional(),
+    tokenUrl: z.string().optional(),
+    clientId: z.string().optional(),
   })
   .optional();
 
@@ -91,6 +94,11 @@ export const jsonApiPaginationSchema = z
     nextCursorPath: z.string().optional(),
     totalPath: z.string().optional(),
     maxPages: z.number().min(1).max(500).optional(),
+    maxRecords: z.number().min(1).optional(),
+    method: z.enum(["GET", "POST"]).optional(),
+    bodyTemplate: z.string().optional(),
+    initialBodyTemplate: z.string().optional(),
+    maxPagesPath: z.string().optional(),
   })
   .optional();
 

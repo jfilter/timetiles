@@ -258,8 +258,8 @@ export const datasetDetectionJob = {
           errorLog: typeof args.job.error === "string" ? args.job.error : "Task failed after all retries",
         },
       });
-    } catch {
-      // Best-effort — don't throw in onFail
+    } catch (error) {
+      logError(error, "Failed to update dataset status in onFail");
     }
   },
   handler: async (context: JobHandlerContext) => {
