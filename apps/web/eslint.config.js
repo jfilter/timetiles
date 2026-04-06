@@ -167,6 +167,22 @@ export default [
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
     rules: {
+      // Prevent SQL injection via sql.raw() with dynamic strings (template literals or concatenation).
+      // Static string literals like sql.raw("FALSE") are allowed; use sql`` template tags for dynamic queries.
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral",
+          message:
+            "Do not pass template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > BinaryExpression[operator='+']",
+          message:
+            "Do not pass string concatenation to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+        },
+      ],
       "sonarjs/no-unused-vars": "off", // Covered by @typescript-eslint/no-unused-vars with ignoreRestSiblings
       "@typescript-eslint/no-unused-vars": [
         "error",

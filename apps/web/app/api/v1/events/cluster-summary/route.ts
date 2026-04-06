@@ -53,8 +53,10 @@ const buildH3CellCondition = (cells: string[], resolution: number) => {
   const col = "e.h3_r" + String(resolution);
   const validCells = cells.filter(isValidH3CellId);
   if (validCells.length === 0) return sql.raw("FALSE");
-  const escaped = validCells.map((c) => "'" + c + "'").join(", ");
-  return sql.raw(col + "::text IN (" + escaped + ")");
+  return sql`${sql.raw(col)}::text IN (${sql.join(
+    validCells.map((c) => sql`${c}`),
+    sql`, `
+  )})`;
 };
 
 const executeClusterSummary = async (
