@@ -16,7 +16,7 @@ const MAX_VALUES = 30;
 
 export const GET = apiRoute({
   auth: "optional",
-  params: z.object({ id: z.string().min(1) }),
+  params: z.object({ id: z.string().regex(/^\d+$/) }),
   handler: async ({ payload, params, user }) => {
     const datasetId = Number(params.id);
 
@@ -55,22 +55,22 @@ export const GET = apiRoute({
       if (fieldPath !== field.path || fieldPath.length === 0 || fieldPath.length > 100) continue;
 
       const isTag = field.isTagField === true;
-      const dsId = String(datasetId);
-      const limit = String(MAX_VALUES);
 
       // Tag fields: explode JSONB arrays to count individual elements.
       // Scalar fields: extract text value directly.
-      const query = isTag
-        ? `SELECT elem AS value, COUNT(*)::integer AS count ` +
-          `FROM payload.events, jsonb_array_elements_text(transformed_data -> '${fieldPath}') AS elem ` +
-          `WHERE dataset_id = ${dsId} AND jsonb_typeof(transformed_data -> '${fieldPath}') = 'array' ` +
-          `GROUP BY elem ORDER BY count DESC LIMIT ${limit}`
-        : `SELECT transformed_data ->> '${fieldPath}' AS value, COUNT(*)::integer AS count ` +
-          `FROM payload.events ` +
-          `WHERE dataset_id = ${dsId} AND transformed_data ->> '${fieldPath}' IS NOT NULL ` +
-          `GROUP BY transformed_data ->> '${fieldPath}' ORDER BY count DESC LIMIT ${limit}`;
-
-      const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(sql.raw(query));
+      const rows = isTag
+        ? await payload.db.drizzle.execute<{ value: string; count: number }>(sql`
+            SELECT elem AS value, COUNT(*)::integer AS count
+            FROM payload.events, jsonb_array_elements_text(transformed_data -> ${fieldPath}) AS elem
+            WHERE dataset_id = ${datasetId} AND jsonb_typeof(transformed_data -> ${fieldPath}) = 'array'
+            GROUP BY elem ORDER BY count DESC LIMIT ${MAX_VALUES}
+          `)
+        : await payload.db.drizzle.execute<{ value: string; count: number }>(sql`
+            SELECT transformed_data ->> ${fieldPath} AS value, COUNT(*)::integer AS count
+            FROM payload.events
+            WHERE dataset_id = ${datasetId} AND transformed_data ->> ${fieldPath} IS NOT NULL
+            GROUP BY transformed_data ->> ${fieldPath} ORDER BY count DESC LIMIT ${MAX_VALUES}
+          `);
 
       const total = rows.rows.reduce((s, r) => s + Number(r.count), 0);
       const label = field.path

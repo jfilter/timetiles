@@ -74,15 +74,20 @@ export const DATASET_BADGE_COLORS = [
 
 export type DatasetBadgeColor = (typeof DATASET_BADGE_COLORS)[number];
 
+/** Safe modulo that always returns a non-negative index (JS % can return negative values). */
+const safeIndex = (datasetId: number): number => {
+  const len = DATASET_BADGE_COLORS.length;
+  return (((datasetId - 1) % len) + len) % len;
+};
+
 /** Get structured color object for a dataset (bg, text, border classes) */
 export const getDatasetColors = (datasetId: number): DatasetBadgeColor => {
-  const index = (datasetId - 1) % DATASET_BADGE_COLORS.length;
-  return DATASET_BADGE_COLORS[index]!;
+  return DATASET_BADGE_COLORS[safeIndex(datasetId)]!;
 };
 
 /** Get combined badge class string for a dataset (bg + text) */
 export const getDatasetBadgeClass = (datasetId: number | null): string => {
-  const index = datasetId === null ? 0 : (datasetId - 1) % DATASET_BADGE_COLORS.length;
+  const index = datasetId === null ? 0 : safeIndex(datasetId);
   const colors = DATASET_BADGE_COLORS[index] ?? DATASET_BADGE_COLORS[0];
   return `${colors.bg} ${colors.text}`;
 };

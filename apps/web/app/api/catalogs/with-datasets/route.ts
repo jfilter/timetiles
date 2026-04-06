@@ -9,6 +9,8 @@
  * @module
  * @category API Routes
  */
+import { sql } from "@payloadcms/db-postgres";
+
 import { apiRoute } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
 
@@ -36,17 +38,23 @@ export const GET = apiRoute({
       }),
     ]);
 
-    // Count events per dataset
+    // Count events per dataset in a single GROUP BY query instead of N+1 individual counts
     const datasetIds = datasetsResult.docs.map((ds) => ds.id);
     const eventCounts = new Map<number, number>();
 
     if (datasetIds.length > 0) {
-      await Promise.all(
-        datasetIds.map(async (id) => {
-          const count = await payload.count({ collection: "events", where: { dataset: { equals: id } } });
-          eventCounts.set(id, count.totalDocs);
-        })
-      );
+      const result = await payload.db.drizzle.execute<{ dataset_id: number; count: number }>(sql`
+        SELECT dataset_id, COUNT(*)::integer AS count
+        FROM payload.events
+        WHERE dataset_id IN (${sql.join(
+          datasetIds.map((id) => sql`${id}`),
+          sql`, `
+        )})
+        GROUP BY dataset_id
+      `);
+      for (const row of result.rows) {
+        eventCounts.set(Number(row.dataset_id), Number(row.count));
+      }
     }
 
     // Group datasets by catalog ID

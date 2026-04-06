@@ -107,17 +107,20 @@ const buildResponse = (rows: TemporalClusterRow[], groupBy: string): TemporalClu
     };
   });
 
+  const firstRow = rows[0];
+  const lastRow = rows.at(-1);
+
   return {
     items,
     metadata: {
       total,
       mode: isIndividual ? "individual" : "clustered",
       groupBy,
-      bucketSizeSeconds: rows[0]!.bucket_size_seconds ?? null,
+      bucketSizeSeconds: firstRow!.bucket_size_seconds ?? null,
       bucketCount: bucketStarts.size,
       dateRange: {
-        min: rows[0]?.bucket_start ? new Date(rows[0].bucket_start).toISOString() : null,
-        max: rows.at(-1)?.bucket_end ? new Date(rows.at(-1)!.bucket_end).toISOString() : null,
+        min: firstRow?.bucket_start ? new Date(firstRow.bucket_start).toISOString() : null,
+        max: lastRow?.bucket_end ? new Date(lastRow.bucket_end).toISOString() : null,
       },
     },
   };
