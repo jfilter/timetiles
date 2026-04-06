@@ -144,14 +144,21 @@ const buildFieldFilterConditions = (
 };
 
 /** Validate H3 cell ID format (15 hex characters). */
-const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
+export const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
+
+/**
+ * Clamp and format an H3 resolution into a valid column name.
+ * Columns h3_r2 through h3_r15 exist in the events table.
+ */
+export const h3ColumnName = (h3Resolution: number, tableAlias = "e"): string => {
+  const res = Math.min(15, Math.max(2, Math.round(h3Resolution)));
+  return `${tableAlias}.h3_r${String(res)}`;
+};
 
 /** Filter events by pre-computed H3 cell column at the given resolution. */
 const buildH3CellCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
   if (!clusterCells || clusterCells.length === 0 || h3Resolution == null) return null;
-  // Validate resolution range (columns h3_r2 through h3_r15 exist)
-  const res = Math.min(15, Math.max(2, Math.round(h3Resolution)));
-  const col = "e.h3_r" + String(res);
+  const col = h3ColumnName(h3Resolution);
   // Validate and filter cell IDs to prevent SQL injection
   const validCells = clusterCells.filter(isValidH3CellId);
   if (validCells.length === 0) return null;
