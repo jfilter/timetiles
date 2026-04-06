@@ -93,7 +93,7 @@ export const SiteBranding = () => {
       : sanitizeCSS(customCode.customCSS);
   }, [customCode?.customCSS, siteSlug]);
 
-  const cssContent = useMemo(() => (sanitizedCSS ? { __html: sanitizedCSS } : undefined), [sanitizedCSS]);
+  const cssContent = sanitizedCSS ? { __html: sanitizedCSS } : undefined;
 
   if (!inlineStyle && !cssContent) {
     return null;

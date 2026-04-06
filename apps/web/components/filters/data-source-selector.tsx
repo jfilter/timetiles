@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@timetiles/ui/component
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
 import { useView } from "@/lib/context/view-context";
@@ -206,49 +206,57 @@ const CatalogGroupHeader = ({
 };
 
 /** Individual dataset row with checkbox, color accent, and info icon */
-const DatasetRow = ({
-  dataset,
-  isSelected,
-  eventCount,
-  onToggle,
-  indent = false,
-  catalogName,
-}: {
-  dataset: DataSourceDataset;
-  isSelected: boolean;
-  eventCount?: number;
-  onToggle: () => void;
-  /** Whether to indent (nested under a catalog group) */
-  indent?: boolean;
-  /** Catalog name shown as subtitle (for single-dataset catalogs) */
-  catalogName?: string;
-}) => {
-  const colors = getDatasetColors(dataset.id);
+const DatasetRow = memo(
+  ({
+    dataset,
+    isSelected,
+    eventCount,
+    onToggle,
+    indent = false,
+    catalogName,
+  }: {
+    dataset: DataSourceDataset;
+    isSelected: boolean;
+    eventCount?: number;
+    onToggle: () => void;
+    /** Whether to indent (nested under a catalog group) */
+    indent?: boolean;
+    /** Catalog name shown as subtitle (for single-dataset catalogs) */
+    catalogName?: string;
+  }) => {
+    const colors = getDatasetColors(dataset.id);
 
-  return (
-    <div className={cn("flex items-start gap-2 py-1", indent && "pl-6")}>
-      <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
-        <Checkbox
-          checked={isSelected}
-          onCheckedChange={onToggle}
-          className={cn("mt-0.5 h-4 w-4 shrink-0", colors.border, colors.checkedBg, "data-[state=checked]:text-white")}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="text-foreground line-clamp-2 block text-sm font-medium">{dataset.name}</span>
-          {catalogName && (
-            <span className="text-muted-foreground block truncate text-[11px] leading-tight">{catalogName}</span>
-          )}
-        </span>
-      </label>
-      {eventCount != null && (
-        <span className="text-muted-foreground mt-0.5 shrink-0 font-mono text-xs">{formatCount(eventCount)}</span>
-      )}
-      <div className="mt-0.5 shrink-0">
-        <DatasetInfoPopover dataset={dataset} eventCount={eventCount} catalogName={catalogName} />
+    return (
+      <div className={cn("flex items-start gap-2 py-1", indent && "pl-6")}>
+        <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onToggle}
+            className={cn(
+              "mt-0.5 h-4 w-4 shrink-0",
+              colors.border,
+              colors.checkedBg,
+              "data-[state=checked]:text-white"
+            )}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="text-foreground line-clamp-2 block text-sm font-medium">{dataset.name}</span>
+            {catalogName && (
+              <span className="text-muted-foreground block truncate text-[11px] leading-tight">{catalogName}</span>
+            )}
+          </span>
+        </label>
+        {eventCount != null && (
+          <span className="text-muted-foreground mt-0.5 shrink-0 font-mono text-xs">{formatCount(eventCount)}</span>
+        )}
+        <div className="mt-0.5 shrink-0">
+          <DatasetInfoPopover dataset={dataset} eventCount={eventCount} catalogName={catalogName} />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+DatasetRow.displayName = "DatasetRow";
 
 /** A single catalog group: header + expandable dataset list */
 const CatalogGroupSection = ({

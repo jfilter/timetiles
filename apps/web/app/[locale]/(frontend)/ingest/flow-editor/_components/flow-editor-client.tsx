@@ -22,7 +22,7 @@ import {
 } from "@xyflow/react";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type DragEvent, useCallback, useMemo, useRef } from "react";
+import { type DragEvent, useCallback, useRef } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
 import type { TransformType } from "@/lib/types/ingest-transforms";
@@ -110,8 +110,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
     [addTransformNode]
   );
 
-  // Memoize node types to prevent re-renders
-  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+  // nodeTypes is a module-level constant — no memoization needed
 
   if (isLoading) {
     return (
@@ -147,7 +146,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onEdgesDelete={onEdgesDelete}
-            nodeTypes={memoizedNodeTypes}
+            nodeTypes={nodeTypes}
             fitView
             fitViewOptions={fitViewOptions}
             proOptions={proOptions}
