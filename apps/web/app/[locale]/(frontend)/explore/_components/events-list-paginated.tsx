@@ -63,16 +63,18 @@ export const EventsListPaginated = ({
     if (events.length === 0) return;
     const prevIds = prevEventIdsRef.current;
     const currentIds = new Set(events.map((e) => e.id));
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (prevIds.size > 0) {
       const freshIds = new Set(events.filter((e) => !prevIds.has(e.id)).map((e) => e.id));
       if (freshIds.size > 0) {
         setNewEventIds(freshIds);
-        const timer = setTimeout(() => setNewEventIds(new Set()), 3000);
-        prevEventIdsRef.current = currentIds;
-        return () => clearTimeout(timer);
+        timer = setTimeout(() => setNewEventIds(new Set()), 3000);
       }
     }
     prevEventIdsRef.current = currentIds;
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [events]);
 
   const handleLoadMore = () => {

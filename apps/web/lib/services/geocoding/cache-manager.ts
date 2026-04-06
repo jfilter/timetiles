@@ -216,7 +216,7 @@ export class CacheManager {
   }
 
   private isCacheExpired(cached: LocationCache): boolean {
-    if (cached.createdAt == null || cached.createdAt == undefined) return true;
+    if (cached.createdAt == null) return true;
 
     const ttlDays = this.settings?.caching?.ttlDays ?? 30;
     const cacheDate = new Date(cached.createdAt);

@@ -52,7 +52,7 @@ const checkEnvironmentVariables = async (): Promise<HealthCheckResult> => {
   const requiredVars = ["PAYLOAD_SECRET", "DATABASE_URL"];
   const missingVars = requiredVars.filter((v) => {
     const envValue = getEnvValue(v);
-    return envValue == undefined || envValue == null || envValue === "";
+    return envValue == null || envValue === "";
   });
 
   if (missingVars.length > 0) {
