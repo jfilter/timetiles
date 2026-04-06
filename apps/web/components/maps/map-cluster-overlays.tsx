@@ -13,17 +13,10 @@
 import { X } from "lucide-react";
 
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
+import type { FocusedCluster } from "@/lib/store";
 import { useUIStore } from "@/lib/store";
 
 import { ClusterFocusPanel } from "./cluster-focus-panel";
-
-interface FocusedCluster {
-  clusterId: string;
-  count: number;
-  sourceCells?: string[] | null;
-  center: [number, number];
-  h3Resolution: number;
-}
 
 interface MapClusterOverlaysProps {
   focusedCluster: FocusedCluster | null;

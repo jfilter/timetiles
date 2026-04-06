@@ -13,9 +13,7 @@ import type { MapLayerMouseEvent } from "maplibre-gl";
 import { useCallback, useEffect } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
-interface FocusedCluster {
-  clusterId: string;
-}
+import type { FocusedCluster } from "@/lib/store";
 
 interface UseFocusHandlersProps {
   focusedCluster: FocusedCluster | null;

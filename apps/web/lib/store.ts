@@ -28,6 +28,15 @@ export const CLUSTER_DENSITY_PRESETS: Record<Exclude<ClusterDensityMode, "expert
   coarse: { targetClusters: 10 },
 };
 
+/** Cluster currently selected in focus mode. */
+export interface FocusedCluster {
+  clusterId: string;
+  center: [number, number];
+  count: number;
+  sourceCells: string[] | null;
+  h3Resolution: number;
+}
+
 // Define the shape of our UI state (non-URL state)
 interface UIState {
   isFilterDrawerOpen: boolean;
@@ -48,13 +57,7 @@ interface UIState {
   /** H3 cells used to filter all queries to a specific cluster's events. */
   clusterFilterCells: string[] | null;
   /** Cluster currently selected in focus mode — transient, not persisted to URL. */
-  focusedCluster: {
-    clusterId: string;
-    center: [number, number];
-    count: number;
-    sourceCells: string[] | null;
-    h3Resolution: number;
-  } | null;
+  focusedCluster: FocusedCluster | null;
 }
 
 // Define the shape of our UI-only store
