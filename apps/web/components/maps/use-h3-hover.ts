@@ -13,7 +13,12 @@ import type { MapMouseEvent } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
-import { buildHoverFetchParams, childFeaturesToHexPolygons, resolveParentCells } from "./clustered-map-hex-data";
+import {
+  buildHoverFetchParams,
+  childFeaturesToHexPolygons,
+  EMPTY_FEATURE_COLLECTION,
+  resolveParentCells,
+} from "./clustered-map-hex-data";
 
 interface UseH3HoverProps {
   algorithm: string;
@@ -23,10 +28,7 @@ interface UseH3HoverProps {
 }
 
 export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: UseH3HoverProps) => {
-  const [hoverHexData, setHoverHexData] = useState<GeoJSON.FeatureCollection>({
-    type: "FeatureCollection",
-    features: [],
-  });
+  const [hoverHexData, setHoverHexData] = useState<GeoJSON.FeatureCollection>(EMPTY_FEATURE_COLLECTION);
   const hoveredClusterIdRef = useRef<string | null>(null);
   const hoverCacheRef = useRef<Record<string, GeoJSON.Feature[]>>({});
   const hoverAbortRef = useRef<AbortController | null>(null);
@@ -42,7 +44,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
       if (feature.properties?.type !== "event-cluster") {
         if (hoveredClusterIdRef.current) {
           hoveredClusterIdRef.current = null;
-          setHoverHexData({ type: "FeatureCollection", features: [] });
+          setHoverHexData(EMPTY_FEATURE_COLLECTION);
         }
         return;
       }
@@ -63,7 +65,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
       }
 
       // Clear previous hover while loading
-      setHoverHexData({ type: "FeatureCollection", features: [] });
+      setHoverHexData(EMPTY_FEATURE_COLLECTION);
 
       // Resolve parent cells for the API call
       const parentCells = resolveParentCells(feature.properties?.sourceCells, clusterId);
@@ -94,24 +96,31 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
   const handleH3HoverLeave = useCallback(() => {
     hoveredClusterIdRef.current = null;
     hoverAbortRef.current?.abort();
-    setHoverHexData({ type: "FeatureCollection", features: [] });
+    setHoverHexData(EMPTY_FEATURE_COLLECTION);
   }, []);
+
+  // Hold latest hover handlers in refs so the mousemove listener below can
+  // read them without tearing down and re-attaching on every zoom change.
+  const handleH3HoverRef = useRef(handleH3Hover);
+  const handleH3HoverLeaveRef = useRef(handleH3HoverLeave);
+  handleH3HoverRef.current = handleH3Hover;
+  handleH3HoverLeaveRef.current = handleH3HoverLeave;
 
   // Native mousemove handler to detect cluster hover across features
   // (react-map-gl's onMouseEnter only fires once per layer entry, not per feature)
-  // Re-attaches when map becomes positioned (loaded) or algorithm changes.
   useEffect(() => {
     if (!isMapPositioned) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
 
     const onMove = (e: MapMouseEvent) => {
-      if (algorithm !== "h3") return;
       const features = map.queryRenderedFeatures(e.point, { layers: ["event-clusters"] });
       if (features.length > 0 && features[0]?.properties?.type === "event-cluster") {
-        handleH3Hover({ features: features as Array<{ id?: string | number; properties?: Record<string, unknown> }> });
+        handleH3HoverRef.current({
+          features: features as Array<{ id?: string | number; properties?: Record<string, unknown> }>,
+        });
       } else if (hoveredClusterIdRef.current) {
-        handleH3HoverLeave();
+        handleH3HoverLeaveRef.current();
       }
     };
     map.on("mousemove", onMove);
@@ -119,7 +128,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
     return () => {
       map.off("mousemove", onMove);
     };
-  }, [isMapPositioned, algorithm, handleH3Hover, handleH3HoverLeave, mapRef]);
+  }, [isMapPositioned, mapRef]);
 
   return { hoverHexData, handleH3Hover, handleH3HoverLeave };
 };
