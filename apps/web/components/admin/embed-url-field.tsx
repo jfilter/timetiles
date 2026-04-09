@@ -14,7 +14,7 @@
 
 import { useDocumentInfo, useFormFields } from "@payloadcms/ui";
 import { useTranslations } from "next-intl";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const styles = {
   container: { background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px" },
@@ -75,6 +75,14 @@ export const EmbedUrlField: React.FC = () => {
   const { id } = useDocumentInfo();
   const slug = useFormFields(([fields]) => fields.slug?.value as string | undefined);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Clean up pending timer on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   const embedUrl = typeof window !== "undefined" && slug ? `${window.location.origin}/embed/${slug}` : "";
 
@@ -88,7 +96,8 @@ export const EmbedUrlField: React.FC = () => {
       try {
         await navigator.clipboard.writeText(iframeCode);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
       } catch {
         // Clipboard API may fail in non-HTTPS contexts — select the textarea as fallback
         const textarea = document.querySelector<HTMLTextAreaElement>("textarea[readonly]");

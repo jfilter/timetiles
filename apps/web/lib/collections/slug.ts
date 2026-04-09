@@ -135,7 +135,7 @@ export const createSlugHook =
 const getSourceValue = (data: Record<string, unknown> | undefined, sourceField: string | undefined): unknown => {
   const getNested = createNestedValueGetter();
   let sourceValue = data?.name;
-  if (sourceField != null && sourceField != undefined && sourceField !== "" && data != null && data != undefined) {
+  if (sourceField != null && sourceField !== "" && data != null) {
     sourceValue = getNested(data, sourceField);
   }
   return sourceValue;
@@ -146,9 +146,8 @@ const shouldGenerateFromSource = (
   sourceValue: unknown,
   operation: string | undefined
 ): boolean =>
-  (value == null || value == undefined || value === "") &&
+  (value == null || value === "") &&
   sourceValue != null &&
-  sourceValue != undefined &&
   sourceValue !== "" &&
   (operation === "create" || operation === "update");
 
@@ -156,8 +155,7 @@ const shouldValidateExistingSlug = (
   value: string | undefined,
   operation: string | undefined,
   req: PayloadRequest | undefined
-): boolean =>
-  value != null && value != undefined && value !== "" && operation === "update" && req != null && req != undefined;
+): boolean => value != null && value !== "" && operation === "update" && req != null;
 
 const generateSlugFromSource = async (
   sourceValue: string,

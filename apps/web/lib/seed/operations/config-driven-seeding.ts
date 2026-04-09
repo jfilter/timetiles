@@ -115,7 +115,7 @@ export class ConfigDrivenSeeding {
 
     for (const collectionName of collectionsToSeed) {
       const config = getCollectionConfig(collectionName, preset);
-      if (config == null || config == undefined || config.disabled === true) {
+      if (config == null || config.disabled === true) {
         logger.debug(`Skipping disabled collection: ${collectionName}`);
         continue;
       }

@@ -181,7 +181,7 @@ export const datasetSeeds = (environment: string): DatasetSeed[] => {
 
     for (let i = 0; i < numDatasets && i < templates.length; i++) {
       const template = templates[i];
-      if (template == null || template == undefined) continue;
+      if (template == null) continue;
 
       datasets.push(createDatasetFromTemplate(template, catalog, schema, i));
     }

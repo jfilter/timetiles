@@ -125,7 +125,7 @@ export abstract class SeedManagerBase {
   }
 
   private async closePayloadConnections(): Promise<void> {
-    if (this.payload?.db != null && this.payload.db != undefined && typeof this.payload.db.destroy == "function") {
+    if (this.payload?.db != null && typeof this.payload.db.destroy === "function") {
       try {
         logger.debug("Closing Payload database connection");
 
