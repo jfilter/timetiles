@@ -145,11 +145,13 @@ describe.sequential("scheduledIngestWorkflow", () => {
 
   // ── 6. Verify concurrency key format ──────────────────────────────────
 
-  it("should produce global concurrency key ingest-pipeline", () => {
-    const concurrency = scheduledIngestWorkflow.concurrency as () => string;
-    const key = concurrency();
+  it("should produce per-resource concurrency key", () => {
+    const concurrency = scheduledIngestWorkflow.concurrency as (args: {
+      input: { scheduledIngestId: number };
+    }) => string;
+    const key = concurrency({ input: { scheduledIngestId: 42 } });
 
-    expect(key).toBe("ingest-pipeline");
+    expect(key).toBe("ingest:scheduled:42");
   });
 
   // ── 7. Fetch returns numeric ingestFileId — converted to string ───────

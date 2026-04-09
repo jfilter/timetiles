@@ -296,14 +296,15 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       // Should not call geocoding
       expect(mocks.geocode).not.toHaveBeenCalled();
 
-      // Should store empty results (no stage transition)
+      // Should set stage for UI tracking
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-jobs",
         id: 123,
-        data: { geocodingResults: {} },
+        data: { stage: "geocode-batch" },
       });
 
-      expect(result.output).toEqual({ geocoded: 0, failed: 0, skipped: 0, uniqueLocations: 0 });
+      // No unique locations found — skipped via prepareGeocodingLocations
+      expect(result.output).toEqual({ skipped: true, skippedWithCoords: 0 });
     });
 
     it("should trim whitespace from locations", async () => {
