@@ -22,34 +22,6 @@ export const formatFieldLabel = (key: string): string =>
     .trim();
 
 /**
- * Try to interpret a value as a string array — either a native array or a JSON-stringified one.
- *
- * Returns `null` if the value is not an array. Used by event detail rendering
- * to display multi-value fields (tags, categories) as chips.
- */
-export const tryParseStringArray = (value: unknown): string[] | null => {
-  // Native array (from parse-json-array transform)
-  if (Array.isArray(value)) {
-    const strings = value.filter((v): v is string | number => v != null && v !== "").map(String);
-    return strings.length > 0 ? strings : null;
-  }
-  // JSON-stringified array (from CSV serialization)
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed.startsWith("[")) return null;
-    try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (!Array.isArray(parsed)) return null;
-      const strings = parsed.filter((v): v is string | number => v != null && v !== "").map(String);
-      return strings.length > 0 ? strings : null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
-};
-
-/**
  * Convert an unknown value to a string safely.
  *
  * Handles null/undefined, primitives, Dates, and objects.

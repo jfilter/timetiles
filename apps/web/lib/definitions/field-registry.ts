@@ -111,10 +111,10 @@ export const EVENT_FIELD_DEFINITIONS = [
   },
 ] as const;
 
-export type EventFieldDefinition = (typeof EVENT_FIELD_DEFINITIONS)[number];
+type EventFieldDefinition = (typeof EVENT_FIELD_DEFINITIONS)[number];
 
 /** Union of all event field keys (e.g. "title" | "timestamp" | ...) */
-export type EventFieldKey = EventFieldDefinition["key"];
+type EventFieldKey = EventFieldDefinition["key"];
 
 // ---------------------------------------------------------------------------
 // Derived types for path-based interfaces
@@ -154,10 +154,3 @@ export const getTargetFieldDefinitions = () =>
     required: def.required,
     description: def.description,
   }));
-
-/**
- * All path names from the registry (for building SuggestedMappings, etc.).
- */
-export const EVENT_FIELD_PATH_NAMES = EVENT_FIELD_DEFINITIONS.filter(
-  (d): d is PathFieldDefinition => d.pathName !== null
-).map((d) => d.pathName);
