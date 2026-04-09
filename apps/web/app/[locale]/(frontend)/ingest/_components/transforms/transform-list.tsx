@@ -220,29 +220,20 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
   );
 };
 
-const getTransformSummary = (
-  transform: IngestTransform,
-  t: (key: string, values?: Record<string, unknown>) => string
-): string => {
+type TranslationFn = (key: string, values?: Record<string, unknown>) => string;
+
+const getTransformSummary = (transform: IngestTransform, t: TranslationFn): string => {
   switch (transform.type) {
     case "rename":
       return transform.from && transform.to ? `${transform.from} → ${transform.to}` : t("tfSelectFieldToRename");
     case "date-parse":
-      return transform.inputFormat && transform.outputFormat
-        ? `${transform.inputFormat} → ${transform.outputFormat}`
-        : t("tfConfigureDateFormat");
+      return getDateParseSummary(transform, t);
     case "string-op":
-      return transform.from
-        ? t("tfApplyOpToField", { operation: transform.operation, field: transform.from })
-        : t("tfSelectFieldAndOp");
+      return getStringOpSummary(transform, t);
     case "concatenate":
-      return transform.fromFields.length >= 2
-        ? t("tfJoinFieldsTo", { count: transform.fromFields.length, target: transform.to || "?" })
-        : t("tfSelectFieldsToConcat");
+      return getConcatenateSummary(transform, t);
     case "split":
-      return transform.from && transform.toFields.length > 0
-        ? t("tfSplitFieldInto", { field: transform.from, count: transform.toFields.length })
-        : t("tfConfigureSplit");
+      return getSplitSummary(transform, t);
     case "parse-json-array":
       return transform.from ? `${transform.from} → array` : "Configure JSON array field";
     case "split-to-array":
@@ -253,6 +244,22 @@ const getTransformSummary = (
       return transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Configure extract";
   }
 };
+
+const getDateParseSummary = (tf: { inputFormat?: string; outputFormat?: string }, t: TranslationFn) =>
+  tf.inputFormat && tf.outputFormat ? `${tf.inputFormat} → ${tf.outputFormat}` : t("tfConfigureDateFormat");
+
+const getStringOpSummary = (tf: { from?: string; operation?: string }, t: TranslationFn) =>
+  tf.from ? t("tfApplyOpToField", { operation: tf.operation, field: tf.from }) : t("tfSelectFieldAndOp");
+
+const getConcatenateSummary = (tf: { fromFields: string[]; to?: string }, t: TranslationFn) =>
+  tf.fromFields.length >= 2
+    ? t("tfJoinFieldsTo", { count: tf.fromFields.length, target: tf.to || "?" })
+    : t("tfSelectFieldsToConcat");
+
+const getSplitSummary = (tf: { from?: string; toFields: string[] }, t: TranslationFn) =>
+  tf.from && tf.toFields.length > 0
+    ? t("tfSplitFieldInto", { field: tf.from, count: tf.toFields.length })
+    : t("tfConfigureSplit");
 
 const TransformSummary = ({ transform }: { transform: IngestTransform }) => {
   const t = useTranslations("Ingest");

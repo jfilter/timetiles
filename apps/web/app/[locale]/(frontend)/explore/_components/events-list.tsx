@@ -25,6 +25,27 @@ import {
 
 import { EventsListSkeleton } from "./events-list-skeleton";
 
+/** Render tag chips from array values in event data, skipping URL-heavy arrays. */
+const TagChips = ({ eventData }: { eventData: Record<string, unknown> }) => {
+  const tags = Object.values(eventData).flatMap((v) => {
+    if (!Array.isArray(v)) return [];
+    const strings = v.filter((t): t is string => typeof t === "string" && t !== "");
+    const urlCount = strings.filter((s) => /^https?:\/\//i.test(s)).length;
+    return urlCount > strings.length * 0.5 ? [] : strings;
+  });
+  if (tags.length === 0) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1">
+      {tags.slice(0, 6).map((tag) => (
+        <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
+          {tag}
+        </span>
+      ))}
+      {tags.length > 6 && <span className="text-muted-foreground px-1 py-0.5 text-xs">+{tags.length - 6}</span>}
+    </div>
+  );
+};
+
 interface EventsListProps {
   events: EventListItem[];
   isInitialLoad?: boolean;
@@ -78,6 +99,16 @@ const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItem
       (v): v is string => typeof v === "string" && /^https?:\/\/.+\.(jpe?g|png|gif|svg|webp)/i.test(v)
     ) ?? null;
 
+  const interactiveProps = onEventClick
+    ? {
+        onClick: handleClick,
+        onKeyDown: handleKeyDown,
+        role: "button" as const,
+        tabIndex: 0,
+        "aria-label": `View details for ${title}`,
+      }
+    : {};
+
   return (
     <Card
       className={cn(
@@ -85,11 +116,7 @@ const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItem
         onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       )}
-      onClick={onEventClick ? handleClick : undefined}
-      onKeyDown={onEventClick ? handleKeyDown : undefined}
-      role={onEventClick ? "button" : undefined}
-      tabIndex={onEventClick ? 0 : undefined}
-      aria-label={onEventClick ? `View details for ${title}` : undefined}
+      {...interactiveProps}
     >
       {/* Thumbnail */}
       {imageUrl && (
@@ -133,24 +160,7 @@ const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItem
         )}
 
         {/* Tag chips — skip arrays where elements look like URLs */}
-        {(() => {
-          const tags = Object.values(eventData).flatMap((v) => {
-            if (!Array.isArray(v)) return [];
-            const strings = v.filter((t): t is string => typeof t === "string" && t !== "");
-            const urlCount = strings.filter((s) => /^https?:\/\//i.test(s)).length;
-            return urlCount > strings.length * 0.5 ? [] : strings;
-          });
-          return tags.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1">
-              {tags.slice(0, 6).map((tag) => (
-                <span key={tag} className="bg-muted dark:bg-muted/60 rounded-sm px-1.5 py-0.5 text-xs">
-                  {tag}
-                </span>
-              ))}
-              {tags.length > 6 && <span className="text-muted-foreground px-1 py-0.5 text-xs">+{tags.length - 6}</span>}
-            </div>
-          ) : null;
-        })()}
+        <TagChips eventData={eventData} />
       </div>
     </Card>
   );
