@@ -63,7 +63,7 @@ const DatasetInfoPopover = ({
   catalogName?: string;
 }) => {
   const t = useTranslations("Filters");
-  const hasDetails = dataset.description || dataset.language || eventCount != null || catalogName;
+  const hasDetails = dataset.description ?? dataset.language ?? (eventCount != null || catalogName);
   if (!hasDetails) return null;
 
   return (
@@ -174,7 +174,8 @@ const CatalogGroupHeader = ({
   return (
     <div className="flex items-start gap-2 py-1">
       <Checkbox
-        checked={checkState === "all" ? true : checkState === "some" ? "indeterminate" : false}
+        // eslint-disable-next-line i18next/no-literal-string -- Radix Checkbox prop value
+        checked={{ all: true, some: "indeterminate" as const, none: false }[checkState]}
         onCheckedChange={onToggleCheck}
         aria-label={t(checkState === "none" ? "selectAllInCatalog" : "deselectAllInCatalog", {
           name: group.catalog.name,
@@ -263,6 +264,7 @@ const CatalogGroupSection = ({
   onToggleCatalog: (datasetIds: string[]) => void;
   onToggleDataset: (datasetId: string) => void;
 }) => {
+  const t = useTranslations("Filters");
   const catalogDatasetIds = group.datasets.map((d) => String(d.id));
   const checkState = getCatalogCheckState(catalogDatasetIds, selectedDatasets);
 
@@ -315,7 +317,7 @@ const CatalogGroupSection = ({
               onClick={() => setShowAll(true)}
               className="text-ring hover:text-ring/80 py-0.5 pl-6 font-mono text-xs transition-colors"
             >
-              +{hiddenCount} more
+              {t("more", { count: hiddenCount })}
             </button>
           )}
         </div>

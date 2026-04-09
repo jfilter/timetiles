@@ -52,12 +52,12 @@ export const buildLocationLayerConfig = (
 ) => {
   const sqrtMax = Math.max(1, Math.sqrt(maxCount));
 
-  const isHighlighted =
-    highlightedCells != null
-      ? highlightedCells.length === 1
-        ? ["==", ["get", "h3Cell"], highlightedCells[0]]
-        : ["in", ["get", "h3Cell"], ["literal", highlightedCells]]
-      : null;
+  const highlightedCellsList = highlightedCells ?? [];
+  const h3CellMatchFilter =
+    highlightedCells?.length === 1
+      ? ["==", ["get", "h3Cell"], highlightedCells[0]]
+      : ["in", ["get", "h3Cell"], ["literal", highlightedCellsList]];
+  const isHighlighted = highlightedCells != null ? h3CellMatchFilter : null;
 
   const normalOpacity = [
     "interpolate",
@@ -120,12 +120,12 @@ export const buildLocationLabelLayerConfig = (
   locationFilter: ["==", ["get", string], string],
   highlightedCells: string[] | null = null
 ) => {
-  const isHighlighted =
-    highlightedCells != null
-      ? highlightedCells.length === 1
-        ? ["==", ["get", "h3Cell"], highlightedCells[0]]
-        : ["in", ["get", "h3Cell"], ["literal", highlightedCells]]
-      : null;
+  const highlightedCellsList = highlightedCells ?? [];
+  const h3CellMatchFilter =
+    highlightedCells?.length === 1
+      ? ["==", ["get", "h3Cell"], highlightedCells[0]]
+      : ["in", ["get", "h3Cell"], ["literal", highlightedCellsList]];
+  const isHighlighted = highlightedCells != null ? h3CellMatchFilter : null;
   const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
 
   return {
@@ -193,12 +193,12 @@ export const buildClusterLayerConfig = (
   const sqrtMax = Math.max(1, Math.sqrt(maxCount));
 
   // When cells are highlighted (focus or filter), dim all others and bold-border the highlighted ones
-  const isHighlighted =
-    highlightedCells != null
-      ? highlightedCells.length === 1
-        ? ["==", ["get", "clusterId"], highlightedCells[0]]
-        : ["in", ["get", "clusterId"], ["literal", highlightedCells]]
-      : null;
+  const highlightedCellsList = highlightedCells ?? [];
+  const clusterMatchFilter =
+    highlightedCells?.length === 1
+      ? ["==", ["get", "clusterId"], highlightedCells[0]]
+      : ["in", ["get", "clusterId"], ["literal", highlightedCellsList]];
+  const isHighlighted = highlightedCells != null ? clusterMatchFilter : null;
 
   const normalOpacity = ["interpolate", ["linear"], ["/", ["sqrt", ["get", "count"]], sqrtMax], 0, 0.55, 1, 0.92];
   const circleOpacity = isHighlighted ? ["case", isHighlighted, normalOpacity, 0.15] : normalOpacity;
@@ -323,12 +323,12 @@ export const buildClusterLabelLayerConfig = (
   clusterFilter: ["==", ["get", string], string],
   highlightedCells: string[] | null = null
 ) => {
-  const isHighlighted =
-    highlightedCells != null
-      ? highlightedCells.length === 1
-        ? ["==", ["get", "clusterId"], highlightedCells[0]]
-        : ["in", ["get", "clusterId"], ["literal", highlightedCells]]
-      : null;
+  const highlightedCellsList = highlightedCells ?? [];
+  const clusterMatchFilter =
+    highlightedCells?.length === 1
+      ? ["==", ["get", "clusterId"], highlightedCells[0]]
+      : ["in", ["get", "clusterId"], ["literal", highlightedCellsList]];
+  const isHighlighted = highlightedCells != null ? clusterMatchFilter : null;
   const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
 
   return {

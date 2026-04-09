@@ -161,7 +161,7 @@ describe.sequential("Full Pipeline with Geocoding", () => {
       "hamburg, germany": [53.5511, 9.9937],
     };
 
-    mockGeocode.mockImplementation(async (address: string) => {
+    mockGeocode.mockImplementation((address: string) => {
       const normalizedAddress = typeof address === "string" ? address.toLowerCase().trim() : String(address);
       const coords = addressCoords[normalizedAddress];
       if (coords) {
@@ -244,7 +244,7 @@ describe.sequential("Full Pipeline with Geocoding", () => {
   });
 
   it("should deduplicate geocoding calls for repeated locations", async () => {
-    mockGeocode.mockImplementation(async (address: string) => {
+    mockGeocode.mockImplementation((address: string) => {
       const normalizedAddress = typeof address === "string" ? address.toLowerCase().trim() : String(address);
       return mockGeocodeResult(normalizedAddress, 52.52, 13.405);
     });
@@ -299,7 +299,7 @@ describe.sequential("Full Pipeline with Geocoding", () => {
   });
 
   it("should handle mixed geocoding results with some failures", async () => {
-    mockGeocode.mockImplementation(async (address: string) => {
+    mockGeocode.mockImplementation((address: string) => {
       const normalizedAddress = typeof address === "string" ? address.toLowerCase().trim() : String(address);
 
       // "good city" succeeds, "unknown place" returns empty results

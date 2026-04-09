@@ -57,6 +57,98 @@ interface EventDetailContentProps {
 /** Map coordinate source type to a translation key */
 const COORDINATE_SOURCE_KEYS = { "source-data": "coordinateSourceData", geocoded: "coordinateSourceGeocoded" } as const;
 
+/** Read a dataset property safely, returning null for non-object datasets. */
+const getDatasetProperty = <T,>(dataset: Event["dataset"], key: string): T | null =>
+  typeof dataset === "object" && dataset != null
+    ? ((dataset as unknown as Record<string, unknown>)[key] as T | null)
+    : null;
+
+interface ClassifiedFields {
+  tagFields: Array<{ key: string; tags: string[] }>;
+  linkListFields: Array<{ key: string; urls: string[] }>;
+  additionalFields: Array<[string, unknown]>;
+  imageUrl: string | null;
+  imageCredit: string | null;
+  eventLink: string | null;
+}
+
+/** Apply a URL-type field to the classified output (modifies linkListFields/eventLink in place). */
+const applyUrlField = (
+  key: string,
+  value: unknown,
+  linkListFields: ClassifiedFields["linkListFields"],
+  result: { eventLink: string | null }
+): void => {
+  if (Array.isArray(value)) {
+    const urls = value.filter((v): v is string => typeof v === "string" && v.startsWith("http"));
+    if (urls.length > 0) linkListFields.push({ key, urls });
+  } else if (typeof value === "string") {
+    result.eventLink ??= value;
+  }
+};
+
+/** Apply a tag-type field to tagFields in place. */
+const applyTagField = (key: string, value: unknown, tagFields: ClassifiedFields["tagFields"]): void => {
+  if (!Array.isArray(value)) return;
+  const tags = value.filter((v): v is string | number => v != null && v !== "").map(String);
+  if (tags.length > 0) tagFields.push({ key, tags });
+};
+
+/** Classify event data fields into rendering groups (tags, links, images, etc.). */
+const classifyEventFields = (
+  eventData: Record<string, unknown>,
+  consumedFields: Set<string>,
+  tagFieldSet: Set<string>,
+  imageFieldSet: Set<string>,
+  urlFieldSet: Set<string>
+): ClassifiedFields => {
+  const tagFields: ClassifiedFields["tagFields"] = [];
+  const linkListFields: ClassifiedFields["linkListFields"] = [];
+  const additionalFields: ClassifiedFields["additionalFields"] = [];
+  const mutable = {
+    imageUrl: null as string | null,
+    imageCredit: null as string | null,
+    eventLink: null as string | null,
+  };
+
+  for (const [key, value] of Object.entries(eventData)) {
+    if (consumedFields.has(key) || value == null || valueToString(value) === "") continue;
+
+    if (imageFieldSet.has(key) && typeof value === "string") {
+      mutable.imageUrl ??= value;
+    } else if (urlFieldSet.has(key)) {
+      applyUrlField(key, value, linkListFields, mutable);
+    } else if (tagFieldSet.has(key)) {
+      applyTagField(key, value, tagFields);
+    } else if (key.toLowerCase().endsWith("credit") && typeof value === "string") {
+      mutable.imageCredit ??= value;
+    } else {
+      additionalFields.push([key, value]);
+    }
+  }
+
+  return { tagFields, linkListFields, additionalFields, ...mutable };
+};
+
+/** Extract hostname from a URL string, returning the original string on failure. */
+const extractHostname = (url: string): string => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+};
+
+/** Format a URL for display (hostname + truncated path). */
+const formatUrlDisplay = (url: string): string => {
+  try {
+    const u = new URL(url);
+    return u.hostname.replace(/^www\./, "") + u.pathname.slice(0, 30);
+  } catch {
+    return url.slice(0, 40);
+  }
+};
+
 export const EventDetailContent = ({
   event,
   variant = "modal",
@@ -73,8 +165,7 @@ export const EventDetailContent = ({
   if (error) return <EventDetailError error={error} onRetry={onRetry} />;
 
   const eventData = getEventData(event);
-  const fieldMappings =
-    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+  const fieldMappings = getDatasetProperty<Record<string, unknown>>(event.dataset, "fieldMappingOverrides");
   const { title, description: rawDescription } = extractEventFields(eventData, fieldMappings, event.id);
   const description = rawDescription ?? "";
   const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp, locale);
@@ -84,50 +175,22 @@ export const EventDetailContent = ({
   const badgeClass = getDatasetBadgeClass(datasetInfo?.id ?? null);
 
   // Read field type metadata from dataset (computed during schema detection)
-  const fieldTypes =
-    typeof event.dataset === "object" && event.dataset != null
-      ? ((event.dataset as unknown as Record<string, unknown>).fieldTypes as Record<string, string[]> | null)
-      : null;
+  const fieldTypes = getDatasetProperty<Record<string, string[]>>(event.dataset, "fieldTypes");
   const tagFieldSet = new Set(fieldTypes?.tags ?? []);
   const imageFieldSet = new Set(fieldTypes?.image ?? []);
   const urlFieldSet = new Set(fieldTypes?.url ?? []);
 
   // Fields consumed by dedicated UI sections (title, description, timestamps, location, coordinates, external ID)
-  const idStrategy =
-    typeof event.dataset === "object" && event.dataset != null
-      ? ((event.dataset as unknown as Record<string, unknown>).idStrategy as { externalIdPath?: string | null } | null)
-      : null;
+  const idStrategy = getDatasetProperty<{ externalIdPath?: string | null }>(event.dataset, "idStrategy");
   const consumedFields = buildConsumedFieldSet(fieldMappings, idStrategy);
 
-  // Separate fields into rendering groups based on fieldTypes
-  const tagFields: Array<{ key: string; tags: string[] }> = [];
-  const linkListFields: Array<{ key: string; urls: string[] }> = [];
-  const additionalFields: Array<[string, unknown]> = [];
-  let imageUrl: string | null = null;
-  let imageCredit: string | null = null;
-  let eventLink: string | null = null;
-
-  for (const [key, value] of Object.entries(eventData)) {
-    if (consumedFields.has(key) || value == null || valueToString(value) === "") continue;
-
-    if (imageFieldSet.has(key) && typeof value === "string") {
-      if (!imageUrl) imageUrl = value;
-    } else if (urlFieldSet.has(key)) {
-      if (Array.isArray(value)) {
-        const urls = value.filter((v): v is string => typeof v === "string" && v.startsWith("http"));
-        if (urls.length > 0) linkListFields.push({ key, urls });
-      } else if (typeof value === "string") {
-        if (!eventLink) eventLink = value;
-      }
-    } else if (tagFieldSet.has(key) && Array.isArray(value)) {
-      const tags = value.filter((v): v is string | number => v != null && v !== "").map(String);
-      if (tags.length > 0) tagFields.push({ key, tags });
-    } else if (key.toLowerCase().endsWith("credit") && typeof value === "string") {
-      if (!imageCredit) imageCredit = value;
-    } else {
-      additionalFields.push([key, value]);
-    }
-  }
+  const { tagFields, linkListFields, additionalFields, imageUrl, imageCredit, eventLink } = classifyEventFields(
+    eventData,
+    consumedFields,
+    tagFieldSet,
+    imageFieldSet,
+    urlFieldSet
+  );
 
   const coordinateSourceType = event.coordinateSource?.type;
   const hasGeocodingInfo =
@@ -216,15 +279,7 @@ export const EventDetailContent = ({
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm transition-colors"
         >
           <ExternalLink className="h-3.5 w-3.5" />
-          <span className="underline underline-offset-2">
-            {(() => {
-              try {
-                return new URL(eventLink).hostname;
-              } catch {
-                return eventLink;
-              }
-            })()}
-          </span>
+          <span className="underline underline-offset-2">{extractHostname(eventLink)}</span>
         </a>
       )}
 
@@ -233,27 +288,18 @@ export const EventDetailContent = ({
         <div key={key} className="space-y-1">
           <p className="text-muted-foreground text-xs font-medium">{formatFieldLabel(key)}</p>
           <div className="flex flex-col gap-0.5">
-            {urls.map((url) => {
-              let display: string;
-              try {
-                const u = new URL(url);
-                display = u.hostname.replace(/^www\./, "") + u.pathname.slice(0, 30);
-              } catch {
-                display = url.slice(0, 40);
-              }
-              return (
-                <a
-                  key={url}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
-                >
-                  <ExternalLink className="h-3 w-3 shrink-0" />
-                  <span className="truncate underline underline-offset-2">{display}</span>
-                </a>
-              );
-            })}
+            {urls.map((url) => (
+              <a
+                key={url}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs transition-colors"
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                <span className="truncate underline underline-offset-2">{formatUrlDisplay(url)}</span>
+              </a>
+            ))}
           </div>
         </div>
       ))}

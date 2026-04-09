@@ -217,7 +217,21 @@
     "groupByDatasetDesc": "Color by source dataset",
     "groupByCatalog": "Catalog",
     "groupByCatalogDesc": "Color by catalog",
-    "groupedBy": "Grouped by {field}"
+    "groupedBy": "Grouped by {field}",
+    "beeswarmGroupBy": "Group by",
+    "beeswarmTopGroups": "Top groups",
+    "beeswarmDetailThreshold": "Detail threshold",
+    "beeswarmCluster": "Cluster",
+    "beeswarmIndividual": "Individual",
+    "beeswarmTimeBuckets": "Time buckets",
+    "beeswarmFewer": "Fewer",
+    "beeswarmMore": "More",
+    "beeswarmDotSize": "Dot size",
+    "beeswarmClusterMin": "Cluster min",
+    "beeswarmClusterMax": "Cluster max",
+    "beeswarmShowingDots": "Showing dots",
+    "beeswarmClusters": "{count} clusters",
+    "beeswarmChartSettings": "Chart settings"
   },
   "Filters": {
     "dataSources": "Data Sources",

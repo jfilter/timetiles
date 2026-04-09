@@ -37,6 +37,8 @@ import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { type ChartMeta, type ChartType, VisualizationPanel } from "./visualization-panel";
 
+const DATASET_BAR = "dataset-bar" as const satisfies ChartType;
+
 interface ChartSectionProps {
   bounds?: SimpleBounds | null;
   /** When true, the chart will fill available height instead of using fixed heights */
@@ -59,7 +61,7 @@ const useChartMeta = () => {
     switch (type) {
       case "histogram":
         return { label: t("temporalAnalysis"), heading: t("eventTimeline"), subtitle: t("eventDistribution") };
-      case "dataset-bar":
+      case DATASET_BAR:
         return { label: t("dataDistribution"), heading: t("eventsByDataset"), subtitle: t("datasetCounts") };
       case "beeswarm":
         return { label: t("eventAnalysis"), heading: t("eventScatter"), subtitle: t("individualEvents") };
@@ -75,7 +77,7 @@ const getChartHeight = (type: ChartType): number | undefined => {
     case "histogram":
     case "beeswarm":
       return 200;
-    case "dataset-bar":
+    case DATASET_BAR:
       return undefined; // Auto-calculated based on data count
   }
 };
@@ -83,7 +85,7 @@ const getChartHeight = (type: ChartType): number | undefined => {
 /** Labels for chart type selector dropdown. */
 const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
-  return { histogram: t("timeline"), beeswarm: t("beeswarm"), ["dataset-bar"]: t("byDataset") };
+  return { histogram: t("timeline"), beeswarm: t("beeswarm"), [DATASET_BAR]: t("byDataset") };
 };
 
 // oxlint-disable-next-line complexity
@@ -99,7 +101,7 @@ export const ChartSection = ({
   const chartTypeLabels = useChartTypeLabels();
   const [selectedChartType, setSelectedChartType] = useQueryState(
     "chart",
-    parseAsStringEnum<ChartType>(["histogram", "beeswarm", "dataset-bar"]).withDefault("histogram")
+    parseAsStringEnum<ChartType>(["histogram", "beeswarm", DATASET_BAR]).withDefault("histogram")
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useQueryState("fullscreen", parseAsBoolean.withDefault(false));
@@ -123,7 +125,7 @@ export const ChartSection = ({
     // Show "By Dataset" when no datasets are selected (show all) or multiple are selected
     // Hide when exactly 1 dataset is selected (would show only 1 bar)
     if (filters.datasets.length !== 1) {
-      types.push("dataset-bar");
+      types.push(DATASET_BAR);
     }
 
     return types;
@@ -203,7 +205,7 @@ export const ChartSection = ({
             onMaxGroupsChange={(n) => void setTopGroups(n)}
           />
         )}
-        {chartType === "dataset-bar" && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
+        {chartType === DATASET_BAR && <AggregationBarChart bounds={bounds} type="dataset" height={height} />}
       </div>
     );
   };

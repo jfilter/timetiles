@@ -334,9 +334,15 @@ export default [
       "app/(frontend)/import/_components/wizard-store.ts",
       "app/(frontend)/import/_components/transforms/transform-editor.tsx",
       "lib/services/schema-builder/field-mapping-detection.ts",
+      "lib/collections/scheduled-ingests/fields/runtime-fields.ts",
+      "lib/config/app-config.ts",
     ],
     rules: {
-      "sonarjs/max-lines": "off", // Complex wizard steps and multi-language detection require extensive code
+      "sonarjs/max-lines": "off", // Complex config and field definitions require extensive code
     },
   },
+  // Map component uses forwardRef with complex interactive state management
+  { files: ["components/maps/clustered-map.tsx"], rules: { "sonarjs/max-lines-per-function": "off" } },
+  // Query hooks intentionally spread query results to compose return types
+  { files: ["lib/hooks/use-events-queries.ts"], rules: { "@tanstack/query/no-rest-destructuring": "off" } },
 ];

@@ -217,7 +217,21 @@
     "groupByDatasetDesc": "Nach Quelldatensatz einfärben",
     "groupByCatalog": "Katalog",
     "groupByCatalogDesc": "Nach Katalog einfärben",
-    "groupedBy": "Gruppiert nach {field}"
+    "groupedBy": "Gruppiert nach {field}",
+    "beeswarmGroupBy": "Gruppieren nach",
+    "beeswarmTopGroups": "Top-Gruppen",
+    "beeswarmDetailThreshold": "Detailschwelle",
+    "beeswarmCluster": "Cluster",
+    "beeswarmIndividual": "Einzeln",
+    "beeswarmTimeBuckets": "Zeitfenster",
+    "beeswarmFewer": "Weniger",
+    "beeswarmMore": "Mehr",
+    "beeswarmDotSize": "Punktgrösse",
+    "beeswarmClusterMin": "Cluster min",
+    "beeswarmClusterMax": "Cluster max",
+    "beeswarmShowingDots": "Punkte anzeigen",
+    "beeswarmClusters": "{count} Cluster",
+    "beeswarmChartSettings": "Diagrammeinstellungen"
   },
   "Filters": {
     "dataSources": "Datenquellen",

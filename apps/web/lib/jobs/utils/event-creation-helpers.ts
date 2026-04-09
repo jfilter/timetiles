@@ -160,7 +160,10 @@ export const buildFieldTypes = (fieldMetadata: unknown): FieldTypeMap | null => 
   for (const [path, stats] of Object.entries(fm)) {
     if (!stats || typeof stats !== "object") continue;
     const group = classifyField(stats);
-    if (group) (result[group] ??= []).push(path);
+    if (group) {
+      result[group] ??= [];
+      result[group].push(path);
+    }
   }
 
   return Object.keys(result).length > 0 ? result : null;

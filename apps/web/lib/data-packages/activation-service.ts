@@ -119,7 +119,7 @@ const buildScheduledIngestData = (
 
   // Merge geocodingBias: use coverage.countries as fallback for countryCodes
   const coverageCountries = manifest.coverage?.countries;
-  if (manifest.geocodingBias || coverageCountries?.length) {
+  if (manifest.geocodingBias ?? coverageCountries?.length) {
     advancedOptions.geocodingBias = {
       ...manifest.geocodingBias,
       countryCodes: manifest.geocodingBias?.countryCodes ?? coverageCountries,
@@ -188,7 +188,7 @@ const findOrCreateCatalog = async (
   if (existing.docs[0]) {
     const cat = existing.docs[0];
     const needsUpdate =
-      (!cat.license && meta.license) || (!cat.sourceUrl && meta.sourceUrl) || (!cat.category && meta.category);
+      (!cat.license && meta.license) ?? (!cat.sourceUrl && meta.sourceUrl) ?? (!cat.category && meta.category);
     if (needsUpdate) {
       const updated = await payload.update({
         collection: COLLECTION_NAMES.CATALOGS,
@@ -210,11 +210,10 @@ const findOrCreateCatalog = async (
     collection: COLLECTION_NAMES.CATALOGS,
     data: {
       name: resolved.catalog.name,
-      description: resolved.catalog.description
-        ? toRichText(resolved.catalog.description)
-        : resolved.summary
-          ? toRichText(resolved.summary)
-          : undefined,
+      description: (() => {
+        const descText = resolved.catalog.description ?? resolved.summary;
+        return descText ? toRichText(descText) : undefined;
+      })(),
       isPublic: resolved.catalog.isPublic ?? true,
       createdBy: user.id,
       _status: "published",
@@ -225,40 +224,13 @@ const findOrCreateCatalog = async (
   return { catalog: created, reused: false };
 };
 
-/** Activate a data package: create catalog, dataset, and scheduled ingest. */
-export const activateDataPackage = async (
+/** Create a dataset from a resolved data package manifest. */
+const createDatasetFromManifest = async (
   payload: Payload,
-  manifest: DataPackageManifest,
-  user: User,
-  options: ActivateOptions = {}
-): Promise<ActivateResult> => {
-  const { triggerFirstImport = true, parameters = {} } = options;
-
-  // Resolve template parameters if the manifest defines any
-  const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
-  const activationKey = buildActivationKey(manifest.slug, parameters);
-
-  // Check not already activated (with these parameters)
-  const existing = await payload.find({
-    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    where: { dataPackageSlug: { equals: activationKey } },
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  });
-
-  if (existing.docs.length > 0) {
-    throw new Error(`Data package "${activationKey}" is already activated`);
-  }
-
-  const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user);
-
-  logger.info(
-    { catalogId: catalog.id, name: resolved.catalog.name, reused },
-    reused ? "Reusing existing catalog" : "Created catalog for data package"
-  );
-
-  // Build dataset config
+  resolved: DataPackageManifest,
+  catalogId: number,
+  userId: number
+): Promise<Dataset> => {
   const idStrategy = resolved.dataset.idStrategy ?? {
     type: "content-hash" as const,
     duplicateStrategy: "skip" as const,
@@ -266,16 +238,15 @@ export const activateDataPackage = async (
   const schemaConfig = translateSchemaMode(resolved.schedule.schemaMode ?? "additive");
   const fieldMappingOverrides = buildFieldMappingOverrides(resolved.fieldMappings);
 
-  // Create dataset
-  const dataset = await payload.create({
+  return payload.create({
     collection: COLLECTION_NAMES.DATASETS,
     data: {
       _status: "published",
       name: resolved.dataset.name,
-      catalog: catalog.id,
+      catalog: catalogId,
       language: resolved.dataset.language ?? "eng",
       isPublic: resolved.catalog.isPublic ?? true,
-      createdBy: user.id,
+      createdBy: userId,
       license: resolved.dataset.license,
       sourceUrl: resolved.dataset.sourceUrl,
       idStrategy: {
@@ -316,6 +287,43 @@ export const activateDataPackage = async (
     },
     overrideAccess: true,
   });
+};
+
+/** Activate a data package: create catalog, dataset, and scheduled ingest. */
+export const activateDataPackage = async (
+  payload: Payload,
+  manifest: DataPackageManifest,
+  user: User,
+  options: ActivateOptions = {}
+): Promise<ActivateResult> => {
+  const { triggerFirstImport = true, parameters = {} } = options;
+
+  // Resolve template parameters if the manifest defines any
+  const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
+  const activationKey = buildActivationKey(manifest.slug, parameters);
+
+  // Check not already activated (with these parameters)
+  const existing = await payload.find({
+    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+    where: { dataPackageSlug: { equals: activationKey } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  });
+
+  if (existing.docs.length > 0) {
+    throw new Error(`Data package "${activationKey}" is already activated`);
+  }
+
+  const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user);
+
+  logger.info(
+    { catalogId: catalog.id, name: resolved.catalog.name, reused },
+    reused ? "Reusing existing catalog" : "Created catalog for data package"
+  );
+
+  // Create dataset
+  const dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
 
   logger.info({ datasetId: dataset.id, name: resolved.dataset.name }, "Created dataset for data package");
 

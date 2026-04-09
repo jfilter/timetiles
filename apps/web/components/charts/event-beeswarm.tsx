@@ -173,6 +173,7 @@ const BeeswarmSettings = ({
   isGrouped,
   mode,
   itemCount,
+  t,
 }: {
   threshold: number;
   setThreshold: (v: number) => void;
@@ -187,44 +188,59 @@ const BeeswarmSettings = ({
   isGrouped: boolean;
   mode: string;
   itemCount: number;
+  t: ReturnType<typeof useTranslations<"Explore">>;
 }) => (
   <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
     {isGrouped && onMaxGroupsChange && (
       <LabeledSlider
-        label="Top groups"
+        label={t("beeswarmTopGroups")}
         value={maxGroups}
         onChange={onMaxGroupsChange}
         min={2}
         max={10}
         step={1}
-        minLabel="Fewer"
-        maxLabel="More"
+        minLabel={t("beeswarmFewer")}
+        maxLabel={t("beeswarmMore")}
       />
     )}
     <LabeledSlider
-      label="Detail threshold"
+      label={t("beeswarmDetailThreshold")}
       value={threshold}
       onChange={setThreshold}
       min={100}
       max={2000}
       step={100}
-      minLabel="Cluster"
-      maxLabel="Individual"
+      minLabel={t("beeswarmCluster")}
+      maxLabel={t("beeswarmIndividual")}
     />
     <LabeledSlider
-      label="Time buckets"
+      label={t("beeswarmTimeBuckets")}
       value={buckets}
       onChange={setBuckets}
       min={10}
       max={150}
       step={10}
-      minLabel="Fewer"
-      maxLabel="More"
+      minLabel={t("beeswarmFewer")}
+      maxLabel={t("beeswarmMore")}
     />
-    <LabeledSlider label="Cluster min" value={clusterMin} onChange={setClusterMin} min={4} max={30} step={2} />
-    <LabeledSlider label="Cluster max" value={clusterMax} onChange={setClusterMax} min={20} max={80} step={5} />
+    <LabeledSlider
+      label={t("beeswarmClusterMin")}
+      value={clusterMin}
+      onChange={setClusterMin}
+      min={4}
+      max={30}
+      step={2}
+    />
+    <LabeledSlider
+      label={t("beeswarmClusterMax")}
+      value={clusterMax}
+      onChange={setClusterMax}
+      min={20}
+      max={80}
+      step={5}
+    />
     <div className="text-muted-foreground text-center font-mono text-[10px]">
-      {mode === "individual" ? "Showing dots" : `${itemCount} clusters`}
+      {mode === "individual" ? t("beeswarmShowingDots") : t("beeswarmClusters", { count: itemCount })}
     </div>
   </div>
 );
@@ -379,6 +395,7 @@ export const EventBeeswarm = ({
           isGrouped={groupBy !== "none"}
           mode={mode}
           itemCount={data?.items.length ?? 0}
+          t={t}
         />
       )}
     </div>
@@ -386,13 +403,16 @@ export const EventBeeswarm = ({
 };
 
 /** Settings button to be placed in the header bar next to fullscreen */
-export const BeeswarmSettingsButton = ({ showControls, onToggle }: { showControls: boolean; onToggle: () => void }) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    className={`text-muted-foreground hover:text-foreground rounded p-1 transition-colors ${showControls ? "bg-muted" : ""}`}
-    aria-label="Chart settings"
-  >
-    <Settings2 className="h-4 w-4" />
-  </button>
-);
+export const BeeswarmSettingsButton = ({ showControls, onToggle }: { showControls: boolean; onToggle: () => void }) => {
+  const t = useTranslations("Explore");
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`text-muted-foreground hover:text-foreground rounded p-1 transition-colors ${showControls ? "bg-muted" : ""}`}
+      aria-label={t("beeswarmChartSettings")}
+    >
+      <Settings2 className="h-4 w-4" />
+    </button>
+  );
+};

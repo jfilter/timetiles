@@ -244,6 +244,74 @@ const fetchPostPaginated = async (
   };
 };
 
+interface ConvertedData {
+  finalData: Buffer;
+  finalMimeType: string;
+  finalExtension: string;
+  wasConverted: boolean;
+  recordCount?: number;
+  pagesProcessed?: number;
+}
+
+/** Detect the response format and convert to CSV if needed (JSON, GeoJSON, HTML-in-JSON). */
+const detectAndConvertFormat = async (
+  options: FetchRemoteDataOptions,
+  fetchedData: Buffer,
+  contentType: string,
+  fileExtension: string,
+  normalizedUrl: string,
+  authHeaders: Record<string, string>,
+  timeout: number
+): Promise<ConvertedData> => {
+  const { responseFormat = "auto", jsonApiConfig } = options;
+
+  if (responseFormat === "html-in-json" && options.htmlExtractConfig) {
+    logger.info("HTML-in-JSON response, extracting records from HTML", {
+      url: sanitizeUrlForLogging(normalizedUrl),
+      hasPagination: jsonApiConfig?.pagination?.enabled === true,
+    });
+    const htmlResult = await convertHtmlInJson(options, fetchedData, authHeaders, timeout);
+    return {
+      finalData: htmlResult.finalData,
+      finalMimeType: "text/csv",
+      finalExtension: ".csv",
+      wasConverted: true,
+      recordCount: htmlResult.recordCount,
+      pagesProcessed: htmlResult.pagesProcessed,
+    };
+  }
+
+  if (isGeoJsonDetected(contentType, responseFormat, fetchedData)) {
+    const geoResult = convertFetchedGeoJson(fetchedData, normalizedUrl);
+    return {
+      finalData: geoResult.finalData,
+      finalMimeType: "text/csv",
+      finalExtension: ".csv",
+      wasConverted: true,
+      recordCount: geoResult.recordCount,
+    };
+  }
+
+  if (isJsonDetected(contentType, responseFormat)) {
+    logger.info("JSON response detected, converting to CSV", {
+      url: sanitizeUrlForLogging(normalizedUrl),
+      originalMimeType: contentType,
+      hasPagination: jsonApiConfig?.pagination?.enabled === true,
+    });
+    const jsonResult = await convertFetchedJson(options, fetchedData, authHeaders, timeout);
+    return {
+      finalData: jsonResult.finalData,
+      finalMimeType: "text/csv",
+      finalExtension: ".csv",
+      wasConverted: true,
+      recordCount: jsonResult.recordCount,
+      pagesProcessed: jsonResult.pagesProcessed,
+    };
+  }
+
+  return { finalData: fetchedData, finalMimeType: contentType, finalExtension: fileExtension, wasConverted: false };
+};
+
 /**
  * Fetch remote data from a URL, detect its type, and optionally convert
  * JSON or GeoJSON responses to CSV.
@@ -262,7 +330,6 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     maxSize,
     maxRetries = 0,
     cacheOptions,
-    jsonApiConfig,
     responseFormat = "auto",
   } = options;
 
@@ -298,58 +365,22 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       : undefined,
   });
 
-  // fetchWithRetry already detects file type internally — use its results
+  // Detect format and convert to CSV if needed
   const originalContentType = fetchResult.contentType;
-  let finalData = fetchResult.data;
-  let finalMimeType = fetchResult.contentType;
-  let finalExtension = fetchResult.fileExtension ?? ".bin";
-  let wasConverted = false;
-  let recordCount: number | undefined;
-  let pagesProcessed: number | undefined;
-
-  // HTML-in-JSON response — extract records from HTML embedded in JSON
-  if (responseFormat === "html-in-json" && options.htmlExtractConfig) {
-    logger.info("HTML-in-JSON response, extracting records from HTML", {
-      url: sanitizeUrlForLogging(normalizedUrl),
-      hasPagination: jsonApiConfig?.pagination?.enabled === true,
-    });
-
-    const htmlResult = await convertHtmlInJson(options, fetchResult.data, authHeaders, timeout);
-    finalData = htmlResult.finalData;
-    recordCount = htmlResult.recordCount;
-    pagesProcessed = htmlResult.pagesProcessed;
-    finalMimeType = "text/csv";
-    finalExtension = ".csv";
-    wasConverted = true;
-  }
-  // GeoJSON response — convert to CSV (check before JSON since GeoJSON is a subset of JSON)
-  else if (isGeoJsonDetected(finalMimeType, responseFormat, fetchResult.data)) {
-    const geoResult = convertFetchedGeoJson(fetchResult.data, normalizedUrl);
-    finalData = geoResult.finalData;
-    recordCount = geoResult.recordCount;
-    finalMimeType = "text/csv";
-    finalExtension = ".csv";
-    wasConverted = true;
-  }
-  // JSON response — convert to CSV
-  else if (isJsonDetected(finalMimeType, responseFormat)) {
-    logger.info("JSON response detected, converting to CSV", {
-      url: sanitizeUrlForLogging(normalizedUrl),
-      originalMimeType: finalMimeType,
-      hasPagination: jsonApiConfig?.pagination?.enabled === true,
-    });
-
-    const jsonResult = await convertFetchedJson(options, fetchResult.data, authHeaders, timeout);
-    finalData = jsonResult.finalData;
-    recordCount = jsonResult.recordCount;
-    pagesProcessed = jsonResult.pagesProcessed;
-    finalMimeType = "text/csv";
-    finalExtension = ".csv";
-    wasConverted = true;
-  }
+  const converted = await detectAndConvertFormat(
+    options,
+    fetchResult.data,
+    fetchResult.contentType,
+    fetchResult.fileExtension ?? ".bin",
+    normalizedUrl,
+    authHeaders,
+    timeout
+  );
+  const { finalMimeType, finalExtension, wasConverted, recordCount, pagesProcessed } = converted;
 
   // Strip excluded fields from native CSV sources (JSON/GeoJSON/HTML paths
   // already strip before CSV conversion — this handles raw CSV responses).
+  let finalData = converted.finalData;
   if (!wasConverted && options.excludeFields?.length && finalExtension === ".csv") {
     const parsed = Papa.parse<Record<string, unknown>>(finalData.toString("utf-8"), {
       header: true,

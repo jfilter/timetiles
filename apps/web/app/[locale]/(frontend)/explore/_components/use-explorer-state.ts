@@ -71,8 +71,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   useEffect(() => {
     clearFocusedCluster();
     setClusterFilterCells(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to filter changes
-  }, [filterKey]);
+  }, [filterKey, clearFocusedCluster, setClusterFilterCells]);
 
   // Auto-zoom to data when dataset selection changes
   const datasetsKey = filters.datasets.join(",");
@@ -83,8 +82,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       // Reset bounds state so the next boundsData arrival triggers a fit
       viewport.setBoundsState("initial");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to dataset changes
-  }, [datasetsKey]);
+  }, [datasetsKey, viewport]);
 
   // Fit map to data bounds on initial load or after dataset change
   useEffect(() => {
@@ -92,8 +90,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
       viewport.setBoundsState("bounds-applied");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: only fire when bounds arrive for initial/reset state
-  }, [boundsState, boundsData?.bounds, boundsLoading]);
+  }, [boundsState, boundsData?.bounds, boundsLoading, mapRef, viewport]);
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 

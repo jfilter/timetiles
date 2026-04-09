@@ -33,6 +33,46 @@ import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
 
+/** Returns true and increments skippedWithCoords if the row has valid source coordinates. */
+const rowHasValidCoords = (
+  row: Record<string, unknown>,
+  coordinateFields: { latitudeField?: string; longitudeField?: string }
+): boolean => {
+  if (!coordinateFields.latitudeField || !coordinateFields.longitudeField) return false;
+  const lat = Number(row[coordinateFields.latitudeField]);
+  const lng = Number(row[coordinateFields.longitudeField]);
+  return isValidCoordinate(lat, lng);
+};
+
+/** Add the normalized form of a string field value to the set. Returns true if added. */
+const addNormalizedLocation = (value: unknown, uniqueLocations: Set<string>): boolean => {
+  if (!value || typeof value !== "string") return false;
+  const normalized = normalizeGeocodingAddress(value);
+  if (!normalized) return false;
+  uniqueLocations.add(normalized);
+  return true;
+};
+
+/** Process a single row: skip if it has valid coords, otherwise extract its location string. */
+const processRowForLocation = (
+  row: Record<string, unknown>,
+  locationField: string | undefined,
+  locationNameField: string | undefined,
+  coordinateFields: { latitudeField?: string; longitudeField?: string },
+  uniqueLocations: Set<string>
+): { skipped: boolean } => {
+  if (rowHasValidCoords(row, coordinateFields)) {
+    return { skipped: true };
+  }
+  const location = locationField ? row[locationField] : undefined;
+  if (addNormalizedLocation(location, uniqueLocations)) {
+    return { skipped: false };
+  }
+  const locationName = locationNameField ? row[locationNameField] : undefined;
+  addNormalizedLocation(locationName, uniqueLocations);
+  return { skipped: false };
+};
+
 /**
  * Stream through file batches to extract unique location values without loading all rows into memory.
  * Normalizes addresses so variants like "123 Main St" and "123 MAIN ST" are deduplicated.
@@ -52,34 +92,14 @@ const extractUniqueLocations = async (
 
   for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
     for (const row of rows) {
-      // Skip rows that already have valid source coordinates — no geocoding needed
-      if (coordinateFields.latitudeField && coordinateFields.longitudeField) {
-        const lat = Number(row[coordinateFields.latitudeField]);
-        const lng = Number(row[coordinateFields.longitudeField]);
-        if (isValidCoordinate(lat, lng)) {
-          skippedWithCoords++;
-          continue;
-        }
-      }
-
-      // Try primary location field (address), then fallback to location name (venue)
-      const location = locationField ? row[locationField] : undefined;
-      if (location && typeof location === "string") {
-        const normalized = normalizeGeocodingAddress(location);
-        if (normalized) {
-          uniqueLocations.add(normalized);
-          continue;
-        }
-      }
-
-      // Fallback: use location name field
-      const locationName = locationNameField ? row[locationNameField] : undefined;
-      if (locationName && typeof locationName === "string") {
-        const normalized = normalizeGeocodingAddress(locationName);
-        if (normalized) {
-          uniqueLocations.add(normalized);
-        }
-      }
+      const { skipped } = processRowForLocation(
+        row,
+        locationField,
+        locationNameField,
+        coordinateFields,
+        uniqueLocations
+      );
+      if (skipped) skippedWithCoords++;
     }
     totalRows += rows.length;
   }
@@ -172,6 +192,23 @@ const geocodeUniqueLocations = async (
  * Load resources, resolve geocoding candidate, and extract unique locations.
  * Returns early with `{ skipped: true }` if geocoding should be skipped entirely.
  */
+/** Read a string property from a config object, returning undefined for non-strings. */
+const readStringProp = (obj: Record<string, unknown> | null | undefined, key: string): string | undefined => {
+  if (!obj) return undefined;
+  const val = obj[key];
+  return typeof val === "string" ? val : undefined;
+};
+
+/** Fill missing lat/lng fields from a single config object (overrides or geoFieldDetection). */
+const fillCoordsFromConfig = (
+  config: Record<string, unknown> | null | undefined,
+  latField: string | undefined,
+  lngField: string | undefined
+): { latitudeField: string | undefined; longitudeField: string | undefined } => ({
+  latitudeField: latField ?? readStringProp(config, "latitudePath"),
+  longitudeField: lngField ?? readStringProp(config, "longitudePath"),
+});
+
 /**
  * Resolve coordinate field paths from the geocoding candidate, falling back to
  * the dataset's `fieldMappingOverrides` or `geoFieldDetection` when the schema
@@ -184,25 +221,17 @@ const resolveCoordinateFields = (
   let latitudeField = geocodingCandidate?.latitudeField;
   let longitudeField = geocodingCandidate?.longitudeField;
 
-  // Fallback: read from dataset config when detectedFieldMappings lacks coordinate paths
-  if ((!latitudeField || !longitudeField) && typeof dataset === "object" && dataset != null) {
-    const ds = dataset as Record<string, unknown>;
+  if ((latitudeField != null && longitudeField != null) || dataset == null || typeof dataset !== "object") {
+    return { latitudeField, longitudeField };
+  }
 
-    // Try fieldMappingOverrides first
-    const overrides = ds.fieldMappingOverrides as Record<string, unknown> | null | undefined;
-    if (overrides) {
-      latitudeField ??= typeof overrides.latitudePath === "string" ? overrides.latitudePath : undefined;
-      longitudeField ??= typeof overrides.longitudePath === "string" ? overrides.longitudePath : undefined;
-    }
+  const ds = dataset as Record<string, unknown>;
+  const overrides = ds.fieldMappingOverrides as Record<string, unknown> | null | undefined;
+  ({ latitudeField, longitudeField } = fillCoordsFromConfig(overrides, latitudeField, longitudeField));
 
-    // Then try geoFieldDetection
-    if (!latitudeField || !longitudeField) {
-      const geo = ds.geoFieldDetection as Record<string, unknown> | null | undefined;
-      if (geo) {
-        latitudeField ??= typeof geo.latitudePath === "string" ? geo.latitudePath : undefined;
-        longitudeField ??= typeof geo.longitudePath === "string" ? geo.longitudePath : undefined;
-      }
-    }
+  if (!latitudeField || !longitudeField) {
+    const geo = ds.geoFieldDetection as Record<string, unknown> | null | undefined;
+    ({ latitudeField, longitudeField } = fillCoordsFromConfig(geo, latitudeField, longitudeField));
   }
 
   return { latitudeField, longitudeField };
@@ -251,11 +280,11 @@ const prepareGeocodingLocations = async (
 
   // Skip geocoding entirely if all rows already have coordinates or no locations found
   if (uniqueLocations.size === 0) {
-    if (skippedWithCoords > 0) {
-      logger.info("All rows have valid source coordinates, skipping geocoding", { totalRows, skippedWithCoords });
-    } else {
-      logger.info("No locations to geocode, skipping", { totalRows, skippedWithCoords });
-    }
+    const reason =
+      skippedWithCoords > 0
+        ? "All rows have valid source coordinates, skipping geocoding"
+        : "No locations to geocode, skipping";
+    logger.info(reason, { totalRows, skippedWithCoords });
     await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
     return { skipped: true, skippedWithCoords };
   }
@@ -264,6 +293,64 @@ const prepareGeocodingLocations = async (
   const geocodingService = createGeocodingService(payload);
 
   return { skipped: false, geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords };
+};
+
+/** Throw if all geocoding failed and no rows have source coordinates. */
+const throwIfAllGeocodingFailed = (
+  uniqueLocations: Set<string>,
+  successCount: number,
+  failureCount: number,
+  skippedWithCoords: number,
+  failures: GeocodingFailure[],
+  logger: ReturnType<typeof createJobLogger>
+): void => {
+  if (uniqueLocations.size > 0 && successCount === 0 && skippedWithCoords === 0) {
+    logger.error("All geocoding failed - cannot create events without coordinates", {
+      totalLocations: uniqueLocations.size,
+      failureCount,
+      failures,
+    });
+    throw new Error(
+      `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration.`
+    );
+  }
+};
+
+/** Store geocoding results in the ingest job and complete the processing stage. */
+const storeGeocodingResults = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  results: ImportGeocodingResultsMap
+): Promise<void> => {
+  await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
+    data: { geocodingResults: results },
+  });
+};
+
+/** Check if geocoding partial failures warrant a review pause. */
+const checkGeocodingReview = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  ingestFile: { processingOptions?: unknown },
+  successCount: number,
+  failureCount: number
+): Promise<{ needsReview: boolean }> => {
+  const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
+    | ReviewChecksConfig
+    | undefined;
+  const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount, reviewChecks);
+  if (geoCheck.needsReview) {
+    await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
+      geocoded: successCount,
+      failed: failureCount,
+      failRate: geoCheck.failRate,
+    });
+    return { needsReview: true };
+  }
+  return { needsReview: false };
 };
 
 export const geocodeBatchJob = {
@@ -324,31 +411,11 @@ export const geocodeBatchJob = {
         logger
       );
 
-      // Fail the job only if ALL geocoding failed AND most rows depend on geocoding.
-      // When most rows already have source coordinates (skippedWithCoords > 0),
-      // a few geocoding failures should not block the entire import.
-      if (uniqueLocations.size > 0 && successCount === 0 && skippedWithCoords === 0) {
-        logger.error("All geocoding failed - cannot create events without coordinates", {
-          totalLocations: uniqueLocations.size,
-          failureCount,
-          failures,
-        });
+      // Fail if ALL geocoding failed and no rows have source coordinates
+      throwIfAllGeocodingFailed(uniqueLocations, successCount, failureCount, skippedWithCoords, failures, logger);
 
-        // Total geocoding failure — throw so processSheets marks the sheet as FAILED
-        throw new Error(
-          `Geocoding failed for all ${failureCount} locations. Please check your geocoding provider configuration.`
-        );
-      }
-
-      // Complete GEOCODE_BATCH stage
-      await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
-
-      // Store geocoding results (workflow controls stage sequencing)
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_JOBS,
-        id: ingestJobId,
-        data: { geocodingResults: results },
-      });
+      // Complete stage and store results
+      await storeGeocodingResults(payload, ingestJobId, results);
 
       logPerformance("Unique location geocoding", Date.now() - startTime, {
         ingestJobId,
@@ -359,16 +426,8 @@ export const geocodeBatchJob = {
       });
 
       // Review check: geocoding partial failure (>50% failed)
-      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-        | ReviewChecksConfig
-        | undefined;
-      const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount, reviewChecks);
-      if (geoCheck.needsReview) {
-        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
-          geocoded: successCount,
-          failed: failureCount,
-          failRate: geoCheck.failRate,
-        });
+      const review = await checkGeocodingReview(payload, ingestJobId, ingestFile, successCount, failureCount);
+      if (review.needsReview) {
         return { output: { needsReview: true, geocoded: successCount, failed: failureCount } };
       }
 
