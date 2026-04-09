@@ -138,18 +138,11 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
     // Compare commits
     if (analyzedCommitSha === latestCommitSha) {
       console.log("✅ Latest commit has been analyzed by SonarCloud");
-
-      // Fetch issues
-      await fetchSonarCloudIssues(token, projectKey);
     } else {
       console.log("⚠️  Latest commit has NOT been analyzed by SonarCloud yet");
       console.log(`   Analyzed: ${analyzedCommitSha}`);
       console.log(`   Current:  ${latestCommitSha}`);
-      console.log("\n📝 To trigger analysis:");
-      console.log("   1. Push your changes to GitHub");
-      console.log("   2. Wait for GitHub Actions to complete");
-      console.log("   3. Run this script again");
-      console.log(`\n📊 View project at: https://sonarcloud.io/project/overview?id=${projectKey}`);
+      console.log("   Showing results from last analyzed commit.\n");
 
       // Try to get commits between
       try {
@@ -168,6 +161,9 @@ async function checkLatestCommitAnalyzed(): Promise<void> {
         console.log(`\n(Could not determine commits since last analysis: ${reason})`);
       }
     }
+
+    // Always fetch issues (from latest analyzed commit)
+    await fetchSonarCloudIssues(token, projectKey);
   } catch (error) {
     console.error("Error:", error);
     process.exit(1);
@@ -308,6 +304,29 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
       }
     }
 
+    // Fetch coverage on new code
+    console.log("\nFetching coverage on new code...");
+    const coverageFiles = await fetchNewCodeCoverage(token, projectKey);
+
+    const uncoveredFiles = coverageFiles.filter((f) => f.newUncoveredLines > 0);
+    if (uncoveredFiles.length > 0) {
+      const totalUncovered = uncoveredFiles.reduce((sum, f) => sum + f.newUncoveredLines, 0);
+      const totalToCover = uncoveredFiles.reduce((sum, f) => sum + f.newLinesToCover, 0);
+
+      console.log(`\n📊 Coverage on New Code: ${((1 - totalUncovered / totalToCover) * 100).toFixed(1)}%`);
+      console.log(
+        `  ${totalUncovered} uncovered lines / ${totalToCover} new lines across ${uncoveredFiles.length} files`
+      );
+      console.log("\n  Files with most uncovered new lines:");
+      uncoveredFiles.slice(0, 20).forEach((f) => {
+        console.log(
+          `  • ${f.path} — ${f.newUncoveredLines} uncovered / ${f.newLinesToCover} new (${f.newCoverage.toFixed(0)}%)`
+        );
+      });
+    } else {
+      console.log("\n✅ All new code is covered");
+    }
+
     // Save detailed report
     const reportPath = path.join(process.cwd(), ".claude", "archive", "sonarcloud-issues.json");
     const report = {
@@ -321,6 +340,7 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
       issues: allIssues,
       hotspots,
       qualityGate,
+      coverageFiles,
     };
 
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -384,6 +404,71 @@ async function fetchQualityGateStatus(token: string, projectKey: string): Promis
 
   const data = (await response.json()) as { projectStatus: QualityGateStatus };
   return data.projectStatus;
+}
+
+interface CoverageFile {
+  path: string;
+  newLinesToCover: number;
+  newUncoveredLines: number;
+  newCoverage: number;
+}
+
+/**
+ * Fetch per-file coverage on new code, sorted by most uncovered lines
+ */
+async function fetchNewCodeCoverage(token: string, projectKey: string): Promise<CoverageFile[]> {
+  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "Node.js SonarCloud Client" };
+
+  const files: CoverageFile[] = [];
+  let page = 1;
+  const pageSize = 100;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const url =
+      `https://sonarcloud.io/api/measures/component_tree?component=${projectKey}` +
+      `&metricKeys=new_uncovered_lines,new_lines_to_cover,new_coverage` +
+      `&qualifier=FIL&ps=${pageSize}&p=${page}` +
+      `&s=metricPeriod&metricSort=new_uncovered_lines&metricSortFilter=withMeasuresOnly&asc=false&metricPeriodSort=1`;
+
+    const response = await fetch(url, { method: "GET", headers });
+    if (!response.ok) {
+      throw new Error(`SonarCloud coverage API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as {
+      paging: { total: number; pageIndex: number; pageSize: number };
+      components: Array<{
+        path: string;
+        qualifier: string;
+        measures: Array<{ metric: string; periods?: Array<{ index: number; value: string }> }>;
+      }>;
+    };
+
+    for (const comp of data.components) {
+      if (comp.qualifier !== "FIL") continue;
+      const getValue = (metric: string): number => {
+        const m = comp.measures.find((x) => x.metric === metric);
+        return Number.parseFloat(m?.periods?.[0]?.value ?? "0");
+      };
+      const linesToCover = getValue("new_lines_to_cover");
+      if (linesToCover === 0) continue;
+
+      files.push({
+        path: comp.path,
+        newLinesToCover: linesToCover,
+        newUncoveredLines: getValue("new_uncovered_lines"),
+        newCoverage: getValue("new_coverage"),
+      });
+    }
+
+    totalPages = Math.ceil(data.paging.total / data.paging.pageSize);
+    page++;
+  }
+
+  // Sort by uncovered lines descending
+  files.sort((a, b) => b.newUncoveredLines - a.newUncoveredLines);
+  return files;
 }
 
 /**
