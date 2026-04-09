@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import { recordScheduledIngestFailure, resolveScheduledIngestStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -98,9 +99,9 @@ const resetStuckImport = async (
       executionHistory.splice(10);
     }
 
-    // Update statistics
-    const stats = scheduledIngest.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-    stats.failedRuns = (stats.failedRuns ?? 0) + 1;
+    // Update statistics (also increments totalRuns — a stuck run is still a run)
+    const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
+    const updatedStats = recordScheduledIngestFailure(stats);
 
     // Reset the import status
     await payload.update({
@@ -110,7 +111,7 @@ const resetStuckImport = async (
         lastStatus: "failed",
         lastError: "Import was stuck and automatically reset by cleanup job",
         executionHistory,
-        statistics: stats,
+        statistics: updatedStats,
       },
     });
 

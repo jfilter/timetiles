@@ -40,6 +40,7 @@ import {
   useSyncScraperRepoMutation,
 } from "@/lib/hooks/use-scraper-mutations";
 import { useScraperReposQuery, useScrapersQuery } from "@/lib/hooks/use-scrapers-query";
+import { resolveScraperStats } from "@/lib/types/run-statistics";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
@@ -88,7 +89,7 @@ interface ScraperCardProps {
 
 const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs, t }: ScraperCardProps) => {
   const isLoading = Boolean(loadingState);
-  const stats = scraper.statistics as { totalRuns?: number; successRuns?: number; failedRuns?: number } | null;
+  const stats = resolveScraperStats(scraper.statistics);
 
   return (
     <div className="border-border border-t pt-3">
@@ -110,13 +111,9 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs, t }: 
             </span>
             {scraper.schedule && <span>{t("schedule", { schedule: scraper.schedule })}</span>}
             {scraper.lastRunAt && <span>{t("lastRunAt", { date: formatDateLocale(scraper.lastRunAt) })}</span>}
-            {stats?.totalRuns != null && stats.totalRuns > 0 && (
+            {stats.totalRuns > 0 && (
               <span>
-                {t("runsStats", {
-                  total: stats.totalRuns,
-                  success: stats.successRuns ?? 0,
-                  failed: stats.failedRuns ?? 0,
-                })}
+                {t("runsStats", { total: stats.totalRuns, success: stats.successRuns, failed: stats.failedRuns })}
               </span>
             )}
           </div>

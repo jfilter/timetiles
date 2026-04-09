@@ -12,6 +12,11 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import {
+  recordScheduledIngestFailure,
+  recordScheduledIngestSuccess,
+  resolveScheduledIngestStats,
+} from "@/lib/types/run-statistics";
 import type { ScheduledIngest } from "@/payload-types";
 
 /**
@@ -54,13 +59,8 @@ export const updateScheduledIngestSuccess = async (
   duration: number
 ): Promise<void> => {
   try {
-    const stats = scheduledIngest.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
-
-    // Update statistics
-    const newTotalRuns = (stats.totalRuns ?? 0) + 1;
-    const newSuccessfulRuns = (stats.successfulRuns ?? 0) + 1;
-    const oldAverage = stats.averageDuration ?? 0;
-    const newAverage = (oldAverage * (newSuccessfulRuns - 1) + duration / 1000) / newSuccessfulRuns;
+    const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
+    const updatedStats = recordScheduledIngestSuccess(stats, duration);
 
     // Update execution history
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -85,12 +85,7 @@ export const updateScheduledIngestSuccess = async (
         lastError: null,
         currentRetries: 0,
         executionHistory,
-        statistics: {
-          ...stats,
-          totalRuns: newTotalRuns,
-          successfulRuns: newSuccessfulRuns,
-          averageDuration: newAverage,
-        },
+        statistics: updatedStats,
       },
     });
   } catch (error) {
@@ -107,7 +102,8 @@ export const updateScheduledIngestFailure = async (
   error: Error
 ): Promise<void> => {
   try {
-    const stats = scheduledIngest.statistics ?? { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 };
+    const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
+    const updatedStats = recordScheduledIngestFailure(stats);
 
     const currentRetries = (scheduledIngest.currentRetries ?? 0) + 1;
 
@@ -129,7 +125,7 @@ export const updateScheduledIngestFailure = async (
         lastError: error.message,
         currentRetries,
         executionHistory,
-        statistics: { ...stats, totalRuns: (stats.totalRuns ?? 0) + 1, failedRuns: (stats.failedRuns ?? 0) + 1 },
+        statistics: updatedStats,
       },
     });
   } catch (updateError) {

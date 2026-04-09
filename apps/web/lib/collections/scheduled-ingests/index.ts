@@ -32,7 +32,7 @@ import { coreFields } from "./fields/core-fields";
 import { importConfigFields } from "./fields/ingest-config-fields";
 import { runtimeFields } from "./fields/runtime-fields";
 import { beforeChangeHook } from "./hooks";
-import { validateCronExpression, validateUrl } from "./validation";
+import { validateCronExpression, validateScheduleConfig, validateUrl } from "./validation";
 
 // Helper to check if quota checks should be skipped
 const shouldSkipQuotaChecks = (
@@ -127,20 +127,6 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
     throw new Error(message);
-  }
-};
-
-// Helper to validate schedule configuration
-const validateScheduleConfig = (data: unknown): void => {
-  const typedData = data as Record<string, unknown> | undefined;
-  if (!typedData?.enabled) return;
-
-  if (typedData.scheduleType === "frequency" && !typedData.frequency) {
-    throw new Error("Frequency is required when schedule type is 'frequency'");
-  }
-
-  if (typedData.scheduleType === "cron" && !typedData.cronExpression) {
-    throw new Error("Cron expression is required when schedule type is 'cron'");
   }
 };
 
@@ -299,7 +285,15 @@ const ScheduledIngests: CollectionConfig = {
         }
 
         // Validate schedule configuration
-        validateScheduleConfig(data);
+        const scheduleResult = validateScheduleConfig(null, {
+          siblingData: {
+            enabled: data.enabled as boolean | undefined,
+            scheduleType: data.scheduleType as string | undefined,
+            frequency: data.frequency as string | null | undefined,
+            cronExpression: data.cronExpression as string | null | undefined,
+          },
+        });
+        if (scheduleResult !== true) throw new Error(scheduleResult);
 
         return data;
       },

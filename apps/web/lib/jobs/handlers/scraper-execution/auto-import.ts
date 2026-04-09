@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getEnv } from "@/lib/config/env";
 import { createIngestFile } from "@/lib/ingest/create-ingest-file";
 import { createLogger, logError } from "@/lib/logger";
+import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo, User } from "@/payload-types";
 
@@ -19,34 +20,6 @@ import type { JobHandlerContext } from "../../utils/job-context";
 import type { RunnerResponse } from "./runner-api";
 
 const log = createLogger("scraper-execution-job");
-
-/**
- * Update scraper statistics after a run.
- */
-export const updateScraperStatistics = (
-  existing: Record<string, unknown> | null | undefined,
-  status: RunnerResponse["status"]
-): Record<string, unknown> => {
-  const stats =
-    existing && typeof existing === "object" && !Array.isArray(existing)
-      ? { ...existing }
-      : { totalRuns: 0, successRuns: 0, failedRuns: 0 };
-
-  stats.totalRuns = ((stats.totalRuns as number) ?? 0) + 1;
-  if (status === "success") {
-    stats.successRuns = ((stats.successRuns as number) ?? 0) + 1;
-  } else {
-    stats.failedRuns = ((stats.failedRuns as number) ?? 0) + 1;
-  }
-
-  return stats;
-};
-
-/** Helper to extract existing statistics as a Record or null. */
-export const extractExistingStats = (scraper: Scraper): Record<string, unknown> | null =>
-  scraper.statistics && typeof scraper.statistics === "object" && !Array.isArray(scraper.statistics)
-    ? (scraper.statistics as Record<string, unknown>)
-    : null;
 
 /**
  * Create an import-files record from scraper CSV output, following
@@ -158,7 +131,7 @@ export const handleRunSuccess = async (
     },
   });
 
-  const updatedStats = updateScraperStatistics(extractExistingStats(scraper), result.status);
+  const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), result.status);
   await payload.update({
     collection: "scrapers",
     id: scraper.id,
@@ -243,7 +216,7 @@ export const handleRunFailure = async (
   }
 
   try {
-    const updatedStats = updateScraperStatistics(extractExistingStats(scraper), "failed");
+    const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
     await payload.update({
       collection: "scrapers",
       id: scraper.id,

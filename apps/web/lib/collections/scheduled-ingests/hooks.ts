@@ -9,30 +9,13 @@
  * @category Collections/ScheduledIngests
  */
 
-import { randomBytes } from "node:crypto";
-
 import type { CollectionBeforeChangeHook } from "payload";
 
 import { calculateNextCronRun } from "@/lib/ingest/cron-parser";
 import { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
 import { logger } from "@/lib/logger";
+import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
-
-/**
- * Handle webhook token generation and management.
- */
-const handleWebhookToken = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>): void => {
-  if (data.webhookEnabled && !data.webhookToken) {
-    // Generate new token when enabling webhooks
-    data.webhookToken = randomBytes(32).toString("hex");
-  } else if (data.webhookEnabled && !originalDoc?.webhookEnabled) {
-    // Regenerate token when re-enabling (for security rotation)
-    data.webhookToken = randomBytes(32).toString("hex");
-  } else if (data.webhookEnabled === false && originalDoc?.webhookEnabled) {
-    // Clear token when disabling webhooks
-    data.webhookToken = null;
-  }
-};
 
 /**
  * Handle schedule initialization and statistics.
@@ -87,7 +70,7 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
   }
 
   // Handle webhook token generation
-  handleWebhookToken(data, originalDoc);
+  handleWebhookTokenLifecycle(data, originalDoc);
 
   // Clear fields based on schedule type BEFORE calculating nextRun,
   // so the correct schedule type is used for the calculation

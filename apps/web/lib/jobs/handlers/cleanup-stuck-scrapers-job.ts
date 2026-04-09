@@ -19,6 +19,7 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
 
@@ -40,19 +41,14 @@ const resetStuckScraper = async (payload: Payload, scraper: Scraper, currentTime
   const lastRunTime = scraper.lastRunAt ? parseDateInput(scraper.lastRunAt) : null;
   const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
-  // Update statistics
-  const stats = (scraper.statistics as Record<string, number> | null) ?? {
-    totalRuns: 0,
-    successRuns: 0,
-    failedRuns: 0,
-  };
-  stats.failedRuns = (stats.failedRuns ?? 0) + 1;
+  // Update statistics (also increments totalRuns — a stuck run is still a run)
+  const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
 
   await payload.update({
     collection: "scrapers",
     id: scraper.id,
     overrideAccess: true,
-    data: { lastRunStatus: "failed", statistics: stats },
+    data: { lastRunStatus: "failed", statistics: updatedStats },
   });
 
   logger.info("Reset stuck scraper", {
