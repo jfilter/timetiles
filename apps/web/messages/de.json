@@ -716,6 +716,7 @@
     "tfSelectOperation": "Operation auswählen",
     "tfOpUppercase": "Grossbuchstaben",
     "tfOpLowercase": "Kleinbuchstaben",
+    "tfOpTrim": "Kürzen",
     "tfOpReplace": "Ersetzen",
     "tfFindPattern": "Suchmuster",
     "tfFindPatternPlaceholder": "Zu suchender Text",

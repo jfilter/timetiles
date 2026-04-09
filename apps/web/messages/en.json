@@ -716,6 +716,7 @@
     "tfSelectOperation": "Select operation",
     "tfOpUppercase": "Uppercase",
     "tfOpLowercase": "Lowercase",
+    "tfOpTrim": "Trim",
     "tfOpReplace": "Replace",
     "tfFindPattern": "Find Pattern",
     "tfFindPatternPlaceholder": "Text to find",

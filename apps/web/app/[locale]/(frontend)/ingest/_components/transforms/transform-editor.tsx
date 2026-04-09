@@ -17,6 +17,7 @@ import type React from "react";
 import { useState } from "react";
 
 import type { StringOperation } from "@/lib/definitions/transform-registry";
+import { DATE_OUTPUT_FORMAT_OPTIONS } from "@/lib/definitions/transform-registry";
 import { DATE_FORMAT_OPTIONS, type IngestTransform } from "@/lib/types/ingest-transforms";
 
 interface TransformEditorProps {
@@ -229,7 +230,7 @@ const DateParseEditor = ({
             <SelectValue placeholder={t("tfSelectFormat")} />
           </SelectTrigger>
           <SelectContent>
-            {DATE_FORMAT_OPTIONS.map((opt) => (
+            {DATE_OUTPUT_FORMAT_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}
               </SelectItem>
@@ -305,6 +306,7 @@ const StringOpEditor = ({
             <SelectContent>
               <SelectItem value="uppercase">{t("tfOpUppercase")}</SelectItem>
               <SelectItem value="lowercase">{t("tfOpLowercase")}</SelectItem>
+              <SelectItem value="trim">{t("tfOpTrim")}</SelectItem>
               <SelectItem value="replace">{t("tfOpReplace")}</SelectItem>
               <SelectItem value="expression">{t("tfOpExpression")}</SelectItem>
             </SelectContent>

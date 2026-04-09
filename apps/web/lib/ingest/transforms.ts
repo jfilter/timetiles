@@ -161,7 +161,50 @@ const parseFormatParts = (
   return { year, month, day };
 };
 
+const MONTH_NAMES: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+};
+
+const parseTextMonthDate = (value: string, inputFormat: string): Date | null => {
+  // "D MMMM YYYY" → "31 December 2024"
+  // "MMMM D, YYYY" → "December 31, 2024"
+  const cleaned = value.replace(/,/g, "").trim();
+  const parts = cleaned.split(/\s+/);
+  if (parts.length !== 3) return null;
+
+  let day: number, month: number, year: number;
+  if (inputFormat === "D MMMM YYYY") {
+    day = Number.parseInt(parts[0]!, 10);
+    month = MONTH_NAMES[parts[1]!.toLowerCase()] ?? 0;
+    year = Number.parseInt(parts[2]!, 10);
+  } else {
+    month = MONTH_NAMES[parts[0]!.toLowerCase()] ?? 0;
+    day = Number.parseInt(parts[1]!, 10);
+    year = Number.parseInt(parts[2]!, 10);
+  }
+
+  if (!month || isNaN(day) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31 || year < 1) return null;
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return date;
+};
+
 const parseDateWithFormat = (value: string, inputFormat: string): Date | null => {
+  if (inputFormat === "D MMMM YYYY" || inputFormat === "MMMM D, YYYY") {
+    return parseTextMonthDate(value, inputFormat);
+  }
+
   const FORMAT_PATTERNS: Record<string, { order: ("D" | "M" | "Y")[]; separator: RegExp }> = {
     "DD/MM/YYYY": { order: ["D", "M", "Y"], separator: /\// },
     "MM/DD/YYYY": { order: ["M", "D", "Y"], separator: /\// },

@@ -10,7 +10,7 @@
 "use client";
 
 import { cn } from "@timetiles/ui/lib/utils";
-import { ArrowLeftRight, Calendar, CaseSensitive, ListTree, Scissors, Type } from "lucide-react";
+import { ArrowLeftRight, Braces, Calendar, CaseSensitive, ListTree, Regex, Scissors, Type } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { type DragEvent, memo, useCallback } from "react";
 
@@ -62,6 +62,20 @@ const PALETTE_ITEMS = [
     color: "text-violet-600",
     labelKey: "flowTransformSplitToArray",
     descriptionKey: "flowTransformSplitToArrayDescription",
+  },
+  {
+    type: "parse-json-array" as TransformType,
+    icon: Braces,
+    color: "text-orange-600",
+    labelKey: "flowTransformParseJsonArray",
+    descriptionKey: "flowTransformParseJsonArrayDescription",
+  },
+  {
+    type: "extract" as TransformType,
+    icon: Regex,
+    color: "text-pink-600",
+    labelKey: "flowTransformExtract",
+    descriptionKey: "flowTransformExtractDescription",
   },
 ] as const;
 
