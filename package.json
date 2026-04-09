@@ -19,6 +19,7 @@
     "check:full": "turbo run lint typecheck",
     "setup:git": "./scripts/setup-git.sh",
     "sonarcloud:fetch": "tsx scripts/fetch-sonarcloud-issues.ts",
+    "sonarcloud:review": "tsx scripts/review-sonarcloud-hotspots.ts",
     "prepare": "husky"
   },
   "devDependencies": {
