@@ -1,0 +1,7 @@
+scrapers:
+  - name: "NSU-Komplex — Offener Prozess"
+    slug: nsu-offener-prozess
+    runtime: python
+    entrypoint: scraper.py
+    output: data.csv
+    schedule: "0 3 1 * *" # Monthly, 1st at 03:00 (historical data, rarely updated)
