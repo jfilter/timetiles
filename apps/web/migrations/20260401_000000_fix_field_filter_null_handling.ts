@@ -21,34 +21,78 @@ import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres";
 
 const FUNCTIONS = ["cluster_events", "calculate_event_histogram", "calculate_temporal_clusters"];
 
-const OLD_PATTERN =
-  "WHERE NOT (e.transformed_data #>> string_to_array(ff.field_key, '.'') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values))))";
-const NEW_PATTERN =
-  "WHERE (e.transformed_data #>> string_to_array(ff.field_key, '.'') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))) IS NOT TRUE";
+// Regex pattern matches with flexible whitespace (pg_get_functiondef may reformat)
+const OLD_REGEX =
+  "WHERE\\s+NOT\\s*\\(\\s*e\\.transformed_data\\s+#>>\\s+string_to_array\\(ff\\.field_key,\\s*'\\.'\\)\\s*=\\s*ANY\\(ARRAY\\(SELECT\\s+jsonb_array_elements_text\\(ff\\.field_values\\)\\)\\)\\s*\\)";
+const NEW_TEXT =
+  "WHERE (e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values)))) IS NOT TRUE";
+// Reverse: match the fixed pattern to restore original
+const NEW_REGEX =
+  "WHERE\\s*\\(\\s*e\\.transformed_data\\s+#>>\\s+string_to_array\\(ff\\.field_key,\\s*'\\.'\\)\\s*=\\s*ANY\\(ARRAY\\(SELECT\\s+jsonb_array_elements_text\\(ff\\.field_values\\)\\)\\)\\s*\\)\\s*IS\\s+NOT\\s+TRUE";
+const OLD_TEXT =
+  "WHERE NOT (e.transformed_data #>> string_to_array(ff.field_key, '.') = ANY(ARRAY(SELECT jsonb_array_elements_text(ff.field_values))))";
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   for (const fnName of FUNCTIONS) {
+    // Process ALL overloads in any schema (public + payload may both exist)
     await db.execute(sql.raw(`
       DO $$
       DECLARE
-        _oid oid;
+        _rec record;
         _src text;
       BEGIN
-        SELECT p.oid INTO _oid
-        FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'payload' AND p.proname = '${fnName}';
+        FOR _rec IN
+          SELECT p.oid, n.nspname
+          FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+          WHERE p.proname = '${fnName}'
+            AND n.nspname IN ('payload', 'public')
+        LOOP
+          _src := pg_get_functiondef(_rec.oid);
+          _src := regexp_replace(_src,
+            $old$${OLD_REGEX}$old$,
+            $new$${NEW_TEXT}$new$,
+            'g'
+          );
+          EXECUTE _src;
+        END LOOP;
+      END $$;
+    `));
 
-        IF _oid IS NULL THEN
-          RAISE NOTICE 'Function payload.${fnName} not found, skipping';
-          RETURN;
+    // Drop obsolete duplicates: payload-schema copies and superseded
+    // public-schema overloads (e.g. old 6-param cluster_events replaced by 13-param)
+    await db.execute(sql.raw(`
+      DO $$
+      DECLARE
+        _rec record;
+        _max_args int;
+      BEGIN
+        -- Drop payload-schema copies when a public version exists
+        IF EXISTS (
+          SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+          WHERE p.proname = '${fnName}' AND n.nspname = 'public'
+        ) THEN
+          FOR _rec IN
+            SELECT p.oid, pg_get_function_identity_arguments(p.oid) AS args
+            FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+            WHERE p.proname = '${fnName}' AND n.nspname = 'payload'
+          LOOP
+            EXECUTE format('DROP FUNCTION payload.%I(%s)', '${fnName}', _rec.args);
+          END LOOP;
         END IF;
 
-        _src := pg_get_functiondef(_oid);
-        _src := replace(_src,
-          '${OLD_PATTERN}',
-          '${NEW_PATTERN}'
-        );
-        EXECUTE _src;
+        -- Drop superseded public-schema overloads (keep only the one with most params)
+        SELECT max(pronargs) INTO _max_args
+        FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE p.proname = '${fnName}' AND n.nspname = 'public';
+
+        FOR _rec IN
+          SELECT p.oid, pg_get_function_identity_arguments(p.oid) AS args
+          FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+          WHERE p.proname = '${fnName}' AND n.nspname = 'public'
+            AND p.pronargs < _max_args
+        LOOP
+          EXECUTE format('DROP FUNCTION public.%I(%s)', '${fnName}', _rec.args);
+        END LOOP;
       END $$;
     `));
   }
@@ -59,24 +103,23 @@ export async function down({ db }: MigrateDownArgs): Promise<void> {
     await db.execute(sql.raw(`
       DO $$
       DECLARE
-        _oid oid;
+        _rec record;
         _src text;
       BEGIN
-        SELECT p.oid INTO _oid
-        FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'payload' AND p.proname = '${fnName}';
-
-        IF _oid IS NULL THEN
-          RAISE NOTICE 'Function payload.${fnName} not found, skipping';
-          RETURN;
-        END IF;
-
-        _src := pg_get_functiondef(_oid);
-        _src := replace(_src,
-          '${NEW_PATTERN}',
-          '${OLD_PATTERN}'
-        );
-        EXECUTE _src;
+        FOR _rec IN
+          SELECT p.oid, n.nspname
+          FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+          WHERE p.proname = '${fnName}'
+            AND n.nspname IN ('payload', 'public')
+        LOOP
+          _src := pg_get_functiondef(_rec.oid);
+          _src := regexp_replace(_src,
+            $new$${NEW_REGEX}$new$,
+            $old$${OLD_TEXT}$old$,
+            'g'
+          );
+          EXECUTE _src;
+        END LOOP;
       END $$;
     `));
   }
