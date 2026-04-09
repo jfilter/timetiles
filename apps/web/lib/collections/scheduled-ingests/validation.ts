@@ -133,8 +133,12 @@ export const validateCronExpression = (value: string | null | undefined): string
   return true;
 };
 
+/** Valid frequency values accepted by the schedule system. */
+const VALID_FREQUENCIES = new Set(["hourly", "daily", "weekly", "monthly"]);
+
 /**
- * Validates that either frequency or cron expression is provided when enabled.
+ * Validates that either frequency or cron expression is provided when enabled,
+ * and that the frequency value is one of the accepted options.
  */
 export const validateScheduleConfig = (
   _value: unknown,
@@ -155,6 +159,14 @@ export const validateScheduleConfig = (
 
   if (siblingData.scheduleType === "frequency" && !siblingData.frequency) {
     return "Frequency is required when schedule type is 'frequency'";
+  }
+
+  if (
+    siblingData.scheduleType === "frequency" &&
+    siblingData.frequency &&
+    !VALID_FREQUENCIES.has(siblingData.frequency)
+  ) {
+    return `Invalid frequency: ${siblingData.frequency}. Must be one of: ${[...VALID_FREQUENCIES].join(", ")}`;
   }
 
   if (siblingData.scheduleType === "cron" && !siblingData.cronExpression) {
