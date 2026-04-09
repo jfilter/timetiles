@@ -45,10 +45,15 @@ const emptyResponse = (): ClusterSummaryResponse => ({
   preview: [],
 });
 
+/** Validate H3 cell ID format (15 hex characters). */
+const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
+
 /** Build the H3 cell filter condition for a given resolution. */
 const buildH3CellCondition = (cells: string[], resolution: number) => {
   const col = "e.h3_r" + String(resolution);
-  const escaped = cells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
+  const validCells = cells.filter(isValidH3CellId);
+  if (validCells.length === 0) return sql.raw("FALSE");
+  const escaped = validCells.map((c) => "'" + c + "'").join(", ");
   return sql.raw(col + "::text IN (" + escaped + ")");
 };
 

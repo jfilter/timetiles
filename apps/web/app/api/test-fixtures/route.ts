@@ -14,6 +14,9 @@ Summer Jazz Night,Open-air jazz concert in the park,2025-06-15,52.5280,13.4430,m
 Street Food Festival,International street food from 30 vendors,2025-07-01,52.5030,13.4290,food`;
 
 export const GET = () => {
+  if (process.env.NODE_ENV === "production") {
+    return new Response("Not found", { status: 404 });
+  }
   return new Response(CSV_DATA, {
     headers: { "Content-Type": "text/csv", "Content-Disposition": "inline; filename=scheduled-events.csv" },
   });

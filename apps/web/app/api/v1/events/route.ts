@@ -108,7 +108,20 @@ export const GET = apiRoute({
     if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
       const res = Math.min(15, Math.max(2, Math.round(ctx.filters.h3Resolution)));
       const col = "h3_r" + String(res);
-      const escaped = ctx.filters.clusterCells.map((c) => "'" + c.replace(/'/g, "''") + "'").join(", ");
+      const h3CellPattern = /^[0-9a-fA-F]{15}$/;
+      const validCells = ctx.filters.clusterCells.filter((c) => h3CellPattern.test(c));
+      if (validCells.length === 0) {
+        return buildListResponse({
+          docs: [],
+          page: 1,
+          limit: query.limit,
+          totalDocs: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+        });
+      }
+      const escaped = validCells.map((c) => "'" + c + "'").join(", ");
       const idResult = (await payload.db.drizzle.execute(
         sql.raw("SELECT e.id FROM payload.events e WHERE e." + col + "::text IN (" + escaped + ")")
       )) as { rows: Array<{ id: number }> };

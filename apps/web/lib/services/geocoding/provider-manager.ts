@@ -126,6 +126,14 @@ export class ProviderManager {
       if (response.status === 503) {
         throw new GeocodingError("Service unavailable", GEOCODING_ERROR_CODES.SERVICE_UNAVAILABLE, true, 503);
       }
+      if (!response.ok) {
+        throw new GeocodingError(
+          `Provider returned HTTP ${response.status}`,
+          GEOCODING_ERROR_CODES.SERVICE_UNAVAILABLE,
+          response.status >= 500,
+          response.status
+        );
+      }
 
       return response;
     };

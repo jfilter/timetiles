@@ -118,7 +118,7 @@ export const GET = apiRoute({
   auth: "required",
   site: "default",
   rateLimit: { configName: "PROGRESS_CHECK" },
-  params: z.object({ ingestId: z.string() }),
+  params: z.object({ ingestId: z.string().regex(/^\d+$/) }),
   handler: async ({ user, payload, params }) => {
     const { ingestId } = params;
 
