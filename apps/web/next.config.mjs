@@ -35,7 +35,6 @@ const nextConfig = {
     // Enable native View Transitions API for smooth page transitions
     viewTransition: true,
   },
-  turbopack: { rules: { "*.svg": { loaders: ["@svgr/webpack"], as: "*.js" } } },
   typescript: {
     // Use production tsconfig that excludes test files during build
     tsconfigPath: isProduction ? "./tsconfig.build.json" : "./tsconfig.json",

@@ -19,7 +19,7 @@ jobs:
           ALLOW_IP_RANGE: "0.0.0.0/0"
           FORCE_SSL: "false"
         options: >-
-          --health-cmd "pg_isready -U timetiles_user"
+          --health-cmd "pg_isready -h 127.0.0.1 -U timetiles_user"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
