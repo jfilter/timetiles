@@ -492,8 +492,9 @@ describe("/api/v1/events/geo", () => {
   });
 
   it("should filter cluster_events by H3 cell via clusterCells in JSONB", async () => {
-    // First, get cluster IDs at zoom 10 for SF area
+    // First, get cluster IDs at zoom 10 for SF area (scoped to test dataset)
     const sfBounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
+    const datasetFilter = JSON.stringify({ datasets: [testDatasetId] });
     const clusterResult = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT * FROM cluster_events(
@@ -502,7 +503,7 @@ describe("/api/v1/events/geo", () => {
           ${sfBounds.east}::double precision,
           ${sfBounds.north}::double precision,
           10::integer,
-          '{}'::jsonb
+          ${datasetFilter}::jsonb
         )
       `
     )) as { rows: Array<{ cluster_id: string; event_count: number }> };
@@ -518,6 +519,7 @@ describe("/api/v1/events/geo", () => {
         SELECT COUNT(*)::integer as cnt FROM payload.events e
         JOIN payload.datasets d ON e.dataset_id = d.id
         WHERE e.location_longitude IS NOT NULL
+          AND e.dataset_id = ${Number(testDatasetId)}
           AND ${sql.raw(`e.h3_r${h3Resolution}::text = '${sfClusterId}'`)}
       `
     )) as { rows: Array<{ cnt: number }> };

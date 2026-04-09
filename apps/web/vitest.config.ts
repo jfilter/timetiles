@@ -74,6 +74,7 @@ export default defineConfig({
             "tests/unit/jobs/geocode-batch-job.test.ts",
             "tests/unit/api/**/*.test.ts",
             "tests/unit/security/safe-fetch.test.ts",
+            "tests/unit/collections/scheduled-ingests-timezone.test.ts",
           ],
           setupFiles: ["tests/setup/unit/global-setup-minimal.ts"],
           testTimeout: 10000,
@@ -97,6 +98,7 @@ export default defineConfig({
             "tests/unit/jobs/geocode-batch-job.test.ts",
             "tests/unit/api/**/*.test.ts",
             "tests/unit/security/safe-fetch.test.ts",
+            "tests/unit/collections/scheduled-ingests-timezone.test.ts",
           ],
           setupFiles: ["tests/setup/unit/global-setup-minimal.ts"],
           testTimeout: 10000,
@@ -119,10 +121,31 @@ export default defineConfig({
       {
         extends: "./vitest.config.base.ts",
         test: {
+          name: "integration-isolated",
+          globals: true,
+          environment: "node",
+          include: ["tests/integration/services/data-package-activation.test.ts"],
+          isolate: true,
+          // Global setup runs ONCE before all workers (creates template database)
+          globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
+          // Setup files run per-worker (clones template to worker database)
+          setupFiles: ["tests/setup/integration/global-setup.ts"],
+          retry: 2,
+          testTimeout: 30000,
+          hookTimeout: 45000,
+          server: { deps: { inline: [/tests\/utils/, /tests\/helpers/, /@payload-config/], fallbackCJS: true } },
+          deps: { optimizer: { web: { enabled: true, include: ["@tanstack/react-query", "papaparse"] } } },
+        },
+        resolve: { alias: { "@payload-config": path.resolve(__dirname, "payload.config.ts") } },
+      },
+      {
+        extends: "./vitest.config.base.ts",
+        test: {
           name: "integration",
           globals: true,
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
+          exclude: ["tests/integration/services/data-package-activation.test.ts"],
           isolate: false,
           // Global setup runs ONCE before all workers (creates template database)
           globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
