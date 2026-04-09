@@ -333,6 +333,7 @@ export default [
       "app/(frontend)/import/_components/steps/step-field-mapping.tsx",
       "app/(frontend)/import/_components/wizard-store.ts",
       "app/(frontend)/import/_components/transforms/transform-editor.tsx",
+      "**/ingest/_components/transforms/transform-editor.tsx",
       "lib/services/schema-builder/field-mapping-detection.ts",
       "lib/collections/scheduled-ingests/fields/runtime-fields.ts",
       "lib/config/app-config.ts",

@@ -83,6 +83,26 @@ export const TransformEditor = ({ transform, onChange, sourceColumns }: Readonly
           onChange={onChange}
         />
       );
+    case "parse-json-array":
+      return (
+        <ParseJsonArrayEditor
+          from={transform.from}
+          to={transform.to}
+          sourceColumns={sourceColumns}
+          onChange={onChange}
+        />
+      );
+    case "extract":
+      return (
+        <ExtractEditor
+          from={transform.from}
+          to={transform.to}
+          pattern={transform.pattern}
+          group={transform.group}
+          sourceColumns={sourceColumns}
+          onChange={onChange}
+        />
+      );
     default:
       return <div className="text-muted-foreground text-sm">{t("tfUnknownType")}</div>;
   }
@@ -516,6 +536,100 @@ const SplitEditor = ({ from, delimiter, toFields, sourceColumns, onChange }: Rea
           placeholder={t("tfTargetFieldNamesPlaceholder")}
         />
         <p className="text-muted-foreground text-xs">{t("tfTargetFieldNamesHint")}</p>
+      </div>
+    </div>
+  );
+};
+
+const ParseJsonArrayEditor = ({
+  from,
+  to,
+  sourceColumns,
+  onChange,
+}: Readonly<{
+  from: string;
+  to?: string;
+  sourceColumns: string[];
+  onChange: (u: Partial<IngestTransform>) => void;
+}>) => {
+  const t = useTranslations("Ingest");
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value || undefined });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">{t("tfParseJsonArrayDesc")}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ColumnSelect
+          id="from"
+          label={t("tfSourceField")}
+          value={from}
+          sourceColumns={sourceColumns}
+          onValueChange={handleFromChange}
+        />
+        <div className="space-y-2">
+          <Label htmlFor="to">{t("tfTargetField")}</Label>
+          <Input id="to" value={to ?? ""} onChange={handleToChange} placeholder={from || t("tfSourceField")} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ExtractEditor = ({
+  from,
+  to,
+  pattern,
+  group,
+  sourceColumns,
+  onChange,
+}: Readonly<{
+  from: string;
+  to: string;
+  pattern: string;
+  group?: number;
+  sourceColumns: string[];
+  onChange: (u: Partial<IngestTransform>) => void;
+}>) => {
+  const t = useTranslations("Ingest");
+  const handleFromChange = (value: string) => onChange({ from: value });
+  const handleToChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ to: e.target.value });
+  const handlePatternChange = (e: React.ChangeEvent<HTMLInputElement>) => onChange({ pattern: e.target.value });
+  const handleGroupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number.parseInt(e.target.value, 10);
+    onChange({ group: Number.isNaN(val) ? undefined : val });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ColumnSelect
+          id="from"
+          label={t("tfSourceField")}
+          value={from}
+          sourceColumns={sourceColumns}
+          onValueChange={handleFromChange}
+        />
+        <div className="space-y-2">
+          <Label htmlFor="to">{t("tfTargetField")}</Label>
+          <Input id="to" value={to} onChange={handleToChange} placeholder={t("tfTargetFieldExtractPlaceholder")} />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="pattern">{t("tfRegexPattern")}</Label>
+          <Input
+            id="pattern"
+            value={pattern}
+            onChange={handlePatternChange}
+            placeholder={t("tfRegexPatternPlaceholder")}
+            className="font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="group">{t("tfCaptureGroup")}</Label>
+          <Input id="group" type="number" min={0} value={group ?? 1} onChange={handleGroupChange} placeholder="1" />
+        </div>
       </div>
     </div>
   );

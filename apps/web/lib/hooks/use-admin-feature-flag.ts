@@ -33,17 +33,22 @@ export const useAdminFeatureFlag = (flag: keyof FeatureFlags) => {
   const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchFlag = async () => {
       try {
         const flags = await fetchFeatureFlags();
-        setIsEnabled(flags[flag] ?? false);
+        if (!cancelled) setIsEnabled(flags[flag] ?? false);
       } catch {
         // Fail closed: disable feature if fetch fails
-        setIsEnabled(false);
+        if (!cancelled) setIsEnabled(false);
       }
     };
 
     void fetchFlag();
+    return () => {
+      cancelled = true;
+    };
   }, [flag]);
 
   return { isEnabled };
