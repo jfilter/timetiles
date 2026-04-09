@@ -54,6 +54,10 @@ WORKDIR /app/apps/web
 # This compiles the code without static generation
 RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
 
+# Remove dev dependencies (eslint, vitest, storybook, etc.) to reduce image size
+# and eliminate dev-only CVEs like handlebars
+RUN pnpm prune --prod
+
 # Stage 5: Production runner
 # Uses full build (not standalone) so both `next start` and `payload jobs:run` work
 # from the same image. Standalone output can't run the Payload CLI because it bundles

@@ -57,6 +57,7 @@ jobs:
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
           skip-dirs: "node_modules,dist,build,.next,.turbo"
           timeout: "10m"
+          trivyignore: ".trivyignore"
 
       - name: Convert JSON to SARIF
         if: always()
@@ -147,6 +148,7 @@ jobs:
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
           timeout: "10m"
           scanners: "vuln,secret,misconfig"
+          trivyignore: ".trivyignore"
 
       - name: Convert JSON to SARIF (prod)
         if: always()
@@ -224,6 +226,7 @@ jobs:
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
           timeout: "10m"
           scanners: "vuln,secret,misconfig"
+          trivyignore: ".trivyignore"
 
       - name: Convert JSON to SARIF (allinone)
         if: always()
@@ -302,6 +305,7 @@ jobs:
           format: "json"
           output: "trivy-config-report.json"
           severity: "CRITICAL,HIGH,MEDIUM,LOW"
+          trivyignore: ".trivyignore"
           timeout: "10m"
 
       # Fail the job if HIGH or CRITICAL misconfigurations are found
@@ -397,6 +401,7 @@ jobs:
           output: "trivy-secrets-report.json"
           timeout: "10m"
           skip-dirs: "node_modules,dist,build,.next,.turbo,.git"
+          trivyignore: ".trivyignore"
 
       - name: Convert JSON to SARIF
         if: always()

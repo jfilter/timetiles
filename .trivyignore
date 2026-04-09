@@ -1,0 +1,7 @@
+# Supabase anon key in berlin-demonstrations data package config
+# This is a public API key (not a secret) — used for anonymous read access
+jwt-token
+
+# Go stdlib TLS validation bug in node:24-alpine base image
+# Upstream fix required — cannot patch from our Dockerfile
+CVE-2025-68121

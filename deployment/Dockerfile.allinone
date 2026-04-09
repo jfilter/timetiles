@@ -100,6 +100,10 @@ RUN pnpm build
 WORKDIR /build/apps/web
 RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
 
+# Remove dev dependencies to reduce image size and eliminate dev-only CVEs
+WORKDIR /build
+RUN pnpm prune --prod
+
 # Production stage: final image
 FROM base AS production
 
