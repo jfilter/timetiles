@@ -1,0 +1,21 @@
+name: "Setup TimeTiles"
+description: "Setup Node.js + pnpm and install dependencies (checkout must happen before this)"
+
+inputs:
+  install:
+    description: "Run pnpm install after setup"
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: pnpm/action-setup@v4
+
+    - uses: actions/setup-node@v6
+      with:
+        node-version: "24"
+        cache: "pnpm"
+
+    - if: inputs.install == 'true'
+      shell: bash
+      run: pnpm install --frozen-lockfile

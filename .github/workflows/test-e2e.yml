@@ -39,15 +39,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           lfs: true
-
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       - name: Build UI package
         timeout-minutes: 2

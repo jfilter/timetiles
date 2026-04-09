@@ -39,11 +39,13 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           lfs: true
           fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
 
       # Single scan producing JSON (used for both SARIF conversion and summary)
       - name: Run Trivy vulnerability scanner
@@ -124,11 +126,13 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           lfs: true
           fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -290,11 +294,13 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'config' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           lfs: true
           fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
 
       # Single scan producing JSON
       - name: Run Trivy config scanner
@@ -384,11 +390,13 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'filesystem' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           lfs: true
           fetch-depth: 0
+      - uses: ./.github/actions/setup
+        with:
+          install: "false"
 
       # Single scan producing JSON
       - name: Run Trivy secret scanner
