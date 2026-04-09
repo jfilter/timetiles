@@ -25,7 +25,7 @@ const MAX_VALUES = 30;
 
 export const GET = apiRoute({
   auth: "optional",
-  params: z.object({ id: z.string().min(1) }),
+  params: z.object({ id: z.string().regex(/^\d+$/) }),
   query: EventFiltersSchema,
   handler: async ({ payload, params, query, user }) => {
     const datasetId = Number(params.id);
