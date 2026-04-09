@@ -173,6 +173,7 @@
     "clusterDisplayMode": "Display",
     "clusterDisplay_circles": "Circles",
     "clusterDisplay_hexagons": "Hexagons",
+    "clusterDisplay_points": "Points",
     "useHexCenter": "Snap to hex center",
     "showHexBoundaries": "Show hex boundaries",
     "mergeOverlapping": "Merge overlapping clusters",
