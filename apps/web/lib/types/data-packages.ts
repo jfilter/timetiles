@@ -162,7 +162,7 @@ export interface DataPackageSchedule {
 /** Transform rule for data package imports. */
 export interface DataPackageTransform {
   type: "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "parse-json-array";
-  from: string;
+  from?: string;
   to?: string;
   delimiter?: string;
   toFields?: string[];
