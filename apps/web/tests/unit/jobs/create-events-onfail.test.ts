@@ -50,14 +50,14 @@ describe.sequential("create-events-batch onFail isolation", () => {
    */
   const createDrizzleMock = (options: { selectResult?: unknown[]; selectError?: Error } = {}) => {
     const buildChain = (resolveValue: unknown = [], rejectWith?: Error) => {
+      const promise = rejectWith ? Promise.reject(rejectWith) : Promise.resolve(resolveValue);
       const chain: Record<string, any> = {};
       for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
         chain[m] = vi.fn().mockReturnValue(chain);
       }
-      chain.then = (resolve: any, reject?: any) =>
-        rejectWith
-          ? Promise.reject(rejectWith).then(resolve, reject)
-          : Promise.resolve(resolveValue).then(resolve, reject);
+      // Drizzle query builders are thenable — the mock must replicate this
+      chain.then = (resolve: any, reject?: any) => promise.then(resolve, reject); // NOSONAR — intentional thenable mock for drizzle query builder
+      chain.catch = (reject: any) => promise.catch(reject);
       return chain;
     };
 

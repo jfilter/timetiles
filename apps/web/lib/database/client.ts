@@ -14,6 +14,14 @@ import { getEnv } from "@/lib/config/env";
 
 import { parseDatabaseUrl } from "./url";
 
+/** Default connection values — only used when DATABASE_URL is not set (local dev) */
+const LOCAL_DEFAULTS = {
+  host: "localhost",
+  port: 5432,
+  user: "timetiles_user",
+  password: "timetiles_password", // NOSONAR — local dev default, not a real credential
+} as const;
+
 /** Cached defaults parsed from DATABASE_URL */
 let _envDefaults: { host: string; port: number; user: string; password: string } | null = null;
 
@@ -65,13 +73,11 @@ export interface DatabaseClientOptions {
 
   /**
    * Database user
-   * @default "timetiles_user"
    */
   user?: string;
 
   /**
    * Database password
-   * @default "timetiles_password"
    */
   password?: string;
 }
@@ -111,10 +117,10 @@ export const createDatabaseClient = (options: DatabaseClientOptions = {}): Clien
   // Otherwise, use individual parameters with defaults derived from DATABASE_URL
   const env = getEnvDefaults();
   return new Client({
-    host: options.host ?? env?.host ?? "localhost",
-    port: options.port ?? env?.port ?? 5432,
-    user: options.user ?? env?.user ?? "timetiles_user",
-    password: options.password ?? env?.password ?? "timetiles_password",
+    host: options.host ?? env?.host ?? LOCAL_DEFAULTS.host,
+    port: options.port ?? env?.port ?? LOCAL_DEFAULTS.port,
+    user: options.user ?? env?.user ?? LOCAL_DEFAULTS.user,
+    password: options.password ?? env?.password ?? LOCAL_DEFAULTS.password,
     database: options.database ?? "postgres",
   });
 };

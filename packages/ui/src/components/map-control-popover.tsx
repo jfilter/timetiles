@@ -60,7 +60,13 @@ export const MapControlPopover = ({
 
   return (
     <div ref={containerRef} className="relative">
-      <div onClick={() => setOpen(!isOpen)}>{trigger}</div>
+      <button
+        type="button"
+        onClick={() => setOpen(!isOpen)}
+        className="cursor-pointer appearance-none border-0 bg-transparent p-0"
+      >
+        {trigger}
+      </button>
 
       {isOpen && (
         <div
