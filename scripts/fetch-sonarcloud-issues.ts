@@ -43,6 +43,34 @@ interface SonarCloudIssue {
   codeVariants?: string[];
 }
 
+interface SonarCloudHotspot {
+  key: string;
+  component: string;
+  project: string;
+  securityCategory: string;
+  vulnerabilityProbability: string;
+  status: string;
+  line?: number;
+  message: string;
+  author?: string;
+  creationDate: string;
+  updateDate: string;
+  textRange?: { startLine: number; endLine: number; startOffset: number; endOffset: number };
+}
+
+interface QualityGateCondition {
+  status: string;
+  metricKey: string;
+  comparator: string;
+  errorThreshold: string;
+  actualValue: string;
+}
+
+interface QualityGateStatus {
+  status: string;
+  conditions: QualityGateCondition[];
+}
+
 /**
  * Load environment variables from .env.local file
  */
@@ -231,6 +259,55 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
       });
     }
 
+    // Fetch Security Hotspots
+    console.log("\nFetching Security Hotspots...");
+    const hotspots = await fetchSecurityHotspots(token, projectKey);
+
+    if (hotspots.length > 0) {
+      console.log(`\n🔥 Security Hotspots (TO_REVIEW): ${hotspots.length}`);
+
+      const hotspotsByProbability: Record<string, SonarCloudHotspot[]> = {};
+      for (const h of hotspots) {
+        const prob = h.vulnerabilityProbability;
+        if (!hotspotsByProbability[prob]) hotspotsByProbability[prob] = [];
+        hotspotsByProbability[prob].push(h);
+      }
+
+      for (const prob of ["HIGH", "MEDIUM", "LOW"]) {
+        const count = hotspotsByProbability[prob]?.length ?? 0;
+        if (count > 0) {
+          console.log(`  ${prob}: ${count}`);
+        }
+      }
+
+      console.log("\n  Top hotspots:");
+      hotspots.slice(0, 10).forEach((h) => {
+        const file = h.component.replace(`${projectKey}:`, "");
+        const line = h.line ? `:${h.line}` : "";
+        console.log(`  • ${file}${line}`);
+        console.log(`    ${h.message} [${h.vulnerabilityProbability}] (${h.securityCategory})`);
+      });
+    } else {
+      console.log("\n✅ No Security Hotspots to review");
+    }
+
+    // Fetch Quality Gate status
+    console.log("\nFetching Quality Gate status...");
+    const qualityGate = await fetchQualityGateStatus(token, projectKey);
+
+    if (qualityGate.status === "OK") {
+      console.log("\n✅ Quality Gate: PASSED");
+    } else {
+      console.log(`\n❌ Quality Gate: ${qualityGate.status}`);
+      const failedConditions = qualityGate.conditions.filter((c) => c.status !== "OK");
+      if (failedConditions.length > 0) {
+        console.log("  Failed conditions:");
+        failedConditions.forEach((c) => {
+          console.log(`  • ${c.metricKey}: ${c.actualValue} (required ${c.comparator} ${c.errorThreshold})`);
+        });
+      }
+    }
+
     // Save detailed report
     const reportPath = path.join(process.cwd(), ".claude", "archive", "sonarcloud-issues.json");
     const report = {
@@ -242,6 +319,8 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
         byType: Object.fromEntries(types.map((t) => [t, issuesByType[t].length])),
       },
       issues: allIssues,
+      hotspots,
+      qualityGate,
     };
 
     fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
@@ -257,6 +336,54 @@ async function fetchSonarCloudIssues(token: string, projectKey: string): Promise
     console.error("Error fetching issues:", error);
     process.exit(1);
   }
+}
+
+/**
+ * Fetch Security Hotspots for the project
+ */
+async function fetchSecurityHotspots(token: string, projectKey: string): Promise<SonarCloudHotspot[]> {
+  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "Node.js SonarCloud Client" };
+
+  let allHotspots: SonarCloudHotspot[] = [];
+  let page = 1;
+  const pageSize = 100;
+  let totalPages = 1;
+
+  while (page <= totalPages) {
+    const url = `https://sonarcloud.io/api/hotspots/search?projectKey=${projectKey}&status=TO_REVIEW&ps=${pageSize}&p=${page}`;
+    const response = await fetch(url, { method: "GET", headers });
+
+    if (!response.ok) {
+      throw new Error(`SonarCloud hotspots API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as {
+      paging: { total: number; pageIndex: number; pageSize: number };
+      hotspots: SonarCloudHotspot[];
+    };
+
+    allHotspots = allHotspots.concat(data.hotspots);
+    totalPages = Math.ceil(data.paging.total / data.paging.pageSize);
+    page++;
+  }
+
+  return allHotspots;
+}
+
+/**
+ * Fetch Quality Gate status for the project
+ */
+async function fetchQualityGateStatus(token: string, projectKey: string): Promise<QualityGateStatus> {
+  const headers = { Authorization: `Bearer ${token}`, "User-Agent": "Node.js SonarCloud Client" };
+  const url = `https://sonarcloud.io/api/qualitygates/project_status?projectKey=${projectKey}`;
+  const response = await fetch(url, { method: "GET", headers });
+
+  if (!response.ok) {
+    throw new Error(`SonarCloud quality gate API error: ${response.status} ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as { projectStatus: QualityGateStatus };
+  return data.projectStatus;
 }
 
 /**
