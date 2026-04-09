@@ -14,8 +14,10 @@ jobs:
         env:
           POSTGRES_USER: timetiles_user
           POSTGRES_PASS: timetiles_password
+          POSTGRES_PASSWORD: timetiles_password
           POSTGRES_DBNAME: timetiles
           ALLOW_IP_RANGE: "0.0.0.0/0"
+          FORCE_SSL: "false"
         options: >-
           --health-cmd "pg_isready -U timetiles_user"
           --health-interval 10s
@@ -26,7 +28,7 @@ jobs:
           - 5432:5432
 
     env:
-      DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+      DATABASE_URL: postgresql://timetiles_user:timetiles_password@127.0.0.1:5432/timetiles
       PAYLOAD_SECRET: test-secret-key
       PGPASSWORD: timetiles_password
       NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
@@ -42,8 +44,8 @@ jobs:
       - name: Setup test databases
         run: |
           setup_db() {
-            psql -h localhost -U timetiles_user -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$1'" | grep -q 1 || psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE \"$1\";"
-            psql -h localhost -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE EXTENSION IF NOT EXISTS h3; CREATE SCHEMA IF NOT EXISTS payload;"
+            psql -h 127.0.0.1 -U timetiles_user -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$1'" | grep -q 1 || psql -h 127.0.0.1 -U timetiles_user -d postgres -c "CREATE DATABASE \"$1\";"
+            psql -h 127.0.0.1 -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE EXTENSION IF NOT EXISTS h3; CREATE SCHEMA IF NOT EXISTS payload;"
           }
 
           setup_db timetiles

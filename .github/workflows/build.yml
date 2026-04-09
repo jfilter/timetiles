@@ -67,7 +67,7 @@ jobs:
         run: pnpm build:compile
         working-directory: apps/web
         env:
-          DATABASE_URL: postgresql://timetiles_user:timetiles_password@localhost:5432/timetiles
+          DATABASE_URL: postgresql://timetiles_user:timetiles_password@127.0.0.1:5432/timetiles
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
           NODE_OPTIONS: --max-old-space-size=8192
