@@ -14,7 +14,7 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
-import { buildFieldFilterConditions } from "@/lib/filters/to-sql-conditions";
+import { buildFieldFilterConditions, h3ColumnName, isValidH3CellId } from "@/lib/filters/to-sql-conditions";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
@@ -106,10 +106,8 @@ export const GET = apiRoute({
 
     // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
     if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
-      const res = Math.min(15, Math.max(2, Math.round(ctx.filters.h3Resolution)));
-      const col = `e.h3_r${String(res)}`;
-      const h3CellPattern = /^[0-9a-fA-F]{15}$/;
-      const validCells = ctx.filters.clusterCells.filter((c) => h3CellPattern.test(c));
+      const col = h3ColumnName(ctx.filters.h3Resolution);
+      const validCells = ctx.filters.clusterCells.filter(isValidH3CellId);
       if (validCells.length === 0) {
         return buildListResponse({
           docs: [],

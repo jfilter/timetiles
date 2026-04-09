@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 import { apiRoute, ValidationError } from "@/lib/api";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
+import { h3ColumnName, isValidH3CellId, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
 
 export const GET = apiRoute({
@@ -45,12 +45,9 @@ const emptyResponse = (): ClusterSummaryResponse => ({
   preview: [],
 });
 
-/** Validate H3 cell ID format (15 hex characters). */
-const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
-
 /** Build the H3 cell filter condition for a given resolution. */
 const buildH3CellCondition = (cells: string[], resolution: number) => {
-  const col = "e.h3_r" + String(resolution);
+  const col = h3ColumnName(resolution);
   const validCells = cells.filter(isValidH3CellId);
   if (validCells.length === 0) return sql.raw("FALSE");
   return sql`${sql.raw(col)}::text IN (${sql.join(
