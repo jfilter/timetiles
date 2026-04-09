@@ -288,6 +288,9 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
     case "lowercase":
       result = rawValue.toLowerCase();
       break;
+    case "trim":
+      result = rawValue.trim();
+      break;
     case "replace":
       if (transform.pattern === undefined) {
         result = rawValue;

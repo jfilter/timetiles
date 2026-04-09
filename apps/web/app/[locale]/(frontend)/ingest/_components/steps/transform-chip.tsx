@@ -45,11 +45,11 @@ export const getTransformChipLabel = (
     case "split":
       return t("tfChipSplit", { count: transform.toFields.length });
     case "parse-json-array":
-      return transform.from || "JSON → Array";
+      return t("tfChipParseArray", { field: transform.from });
     case "split-to-array":
       return transform.from ? `${transform.from} → []` : "Split → Array";
     case "extract":
-      return transform.from || "Extract";
+      return t("tfChipExtract", { field: transform.to });
   }
 };
 

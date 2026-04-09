@@ -42,10 +42,10 @@ const TRANSFORM_LABEL_KEYS = {
   "string-op": "flowTransformStringOp",
   concatenate: "flowTransformConcatenate",
   split: "flowTransformSplit",
-  "parse-json-array": "flowTransformSplitToArray",
+  "parse-json-array": "flowTransformParseJsonArray",
   "split-to-array": "flowTransformSplitToArray",
-  extract: "flowTransformSplit",
-} as const;
+  extract: "flowTransformExtract",
+} as const satisfies Record<TransformType, string>;
 
 /**
  * Get a summary of the transform configuration for display
@@ -70,8 +70,6 @@ const getTransformSummary = (data: TransformNodeData): string => {
       return `${transform.from} → array`;
     case "extract":
       return `${transform.from} → ${transform.to}`;
-    default:
-      return "";
   }
 };
 
@@ -92,8 +90,6 @@ const getSourceFields = (data: TransformNodeData): string[] => {
       return [transform.from];
     case "concatenate":
       return transform.fromFields;
-    default:
-      return [];
   }
 };
 

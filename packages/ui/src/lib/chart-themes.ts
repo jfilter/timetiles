@@ -81,10 +81,12 @@ export const defaultMapColors: MapColors = {
 // Export color palette for use in other charts
 export { defaultColors };
 
+type AxisLike = Record<string, Record<string, unknown> | undefined>;
+
 // Helper function to safely spread axis options
-const safeSpreadAxis = (axis: unknown): Record<string, unknown> => {
+const safeSpreadAxis = (axis: unknown): AxisLike => {
   if (typeof axis === "object" && axis !== null && !Array.isArray(axis)) {
-    return axis as Record<string, unknown>;
+    return axis as AxisLike;
   }
   return {};
 };

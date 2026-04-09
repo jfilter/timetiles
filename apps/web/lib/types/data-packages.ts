@@ -9,6 +9,9 @@
  * @category Types
  */
 
+import type { FieldPathMappings } from "@/lib/definitions/field-registry";
+import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
+
 import type { AuthConfig, JsonApiScheduleConfig } from "./ingest-wizard";
 
 // ---------------------------------------------------------------------------
@@ -138,17 +141,13 @@ export interface DataPackageDataset {
   coverage?: DataPackageCoverage;
 }
 
-/** Field mapping configuration. */
-export interface DataPackageFieldMappings {
-  titlePath?: string;
-  descriptionPath?: string;
-  timestampPath?: string;
-  endTimestampPath?: string;
-  locationNamePath?: string;
-  locationPath?: string;
-  latitudePath?: string;
-  longitudePath?: string;
-}
+/**
+ * Field mapping configuration.
+ *
+ * Derived from the canonical field registry. All paths are optional
+ * since data packages may not map every field.
+ */
+export type DataPackageFieldMappings = Partial<FieldPathMappings>;
 
 /** Schedule configuration. */
 export interface DataPackageSchedule {
@@ -161,7 +160,7 @@ export interface DataPackageSchedule {
 
 /** Transform rule for data package imports. */
 export interface DataPackageTransform {
-  type: "rename" | "date-parse" | "string-op" | "concatenate" | "split" | "parse-json-array";
+  type: TransformType;
   from?: string;
   to?: string;
   delimiter?: string;
@@ -169,12 +168,14 @@ export interface DataPackageTransform {
   inputFormat?: string;
   outputFormat?: string;
   timezone?: string;
-  operation?: "uppercase" | "lowercase" | "replace" | "expression";
+  operation?: StringOperation;
   pattern?: string;
   replacement?: string;
   expression?: string;
   fromFields?: string[];
   separator?: string;
+  /** Regex capture group index for extract transforms (default: 1). */
+  group?: number;
 }
 
 /** Data quality review check overrides. */

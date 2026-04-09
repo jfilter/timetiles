@@ -14,6 +14,7 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
+import { STRING_OPERATIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
 import { createLogger } from "@/lib/logger";
 import type { DataPackageManifest } from "@/lib/types/data-packages";
 
@@ -192,16 +193,7 @@ const manifestSchema = z.object({
   transforms: z
     .array(
       z.object({
-        type: z.enum([
-          "rename",
-          "date-parse",
-          "string-op",
-          "concatenate",
-          "split",
-          "parse-json-array",
-          "split-to-array",
-          "extract",
-        ]),
+        type: z.enum(TRANSFORM_TYPES),
         from: z.string().optional(),
         to: z.string().optional(),
         // split
@@ -212,7 +204,7 @@ const manifestSchema = z.object({
         outputFormat: z.string().optional(),
         timezone: z.string().optional(),
         // string-op
-        operation: z.enum(["uppercase", "lowercase", "replace", "expression"]).optional(),
+        operation: z.enum(STRING_OPERATIONS).optional(),
         pattern: z.string().optional(),
         replacement: z.string().optional(),
         // extract

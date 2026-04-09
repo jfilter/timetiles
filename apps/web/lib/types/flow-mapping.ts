@@ -11,6 +11,8 @@
 
 import type { Node } from "@xyflow/react";
 
+import { getTargetFieldDefinitions } from "@/lib/definitions/field-registry";
+
 import type { IngestTransform } from "./ingest-transforms";
 import type { FieldMapping } from "./ingest-wizard";
 
@@ -83,7 +85,9 @@ export type TargetFieldNode = Node<TargetFieldNodeData, "target-field">;
 export type TransformNode = Node<TransformNodeData, "transform">;
 
 /**
- * Target field definitions with metadata
+ * Target field definitions with metadata.
+ *
+ * Derived from the canonical field registry in `@/lib/definitions/field-registry`.
  */
 export const TARGET_FIELD_DEFINITIONS: Array<{
   fieldKey: TargetFieldNodeData["fieldKey"];
@@ -91,58 +95,13 @@ export const TARGET_FIELD_DEFINITIONS: Array<{
   icon: string;
   required: boolean;
   description: string;
-}> = [
-  {
-    fieldKey: "titleField",
-    label: "Title",
-    icon: "Text",
-    required: true,
-    description: "The main title or name of the event",
-  },
-  { fieldKey: "dateField", label: "Date", icon: "Calendar", required: true, description: "When the event occurs" },
-  {
-    fieldKey: "locationField",
-    label: "Location",
-    icon: "MapPin",
-    required: false,
-    description: "Address or location description for geocoding",
-  },
-  {
-    fieldKey: "latitudeField",
-    label: "Latitude",
-    icon: "MapPin",
-    required: false,
-    description: "Geographic latitude coordinate",
-  },
-  {
-    fieldKey: "longitudeField",
-    label: "Longitude",
-    icon: "MapPin",
-    required: false,
-    description: "Geographic longitude coordinate",
-  },
-  {
-    fieldKey: "descriptionField",
-    label: "Description",
-    icon: "FileText",
-    required: false,
-    description: "Detailed description of the event",
-  },
-  {
-    fieldKey: "locationNameField",
-    label: "Location Name",
-    icon: "Building",
-    required: false,
-    description: "Name of the venue or place",
-  },
-  {
-    fieldKey: "idField",
-    label: "ID Field",
-    icon: "Hash",
-    required: false,
-    description: "External identifier for deduplication",
-  },
-];
+}> = getTargetFieldDefinitions() as Array<{
+  fieldKey: TargetFieldNodeData["fieldKey"];
+  label: string;
+  icon: string;
+  required: boolean;
+  description: string;
+}>;
 
 /**
  * Helper to create initial nodes from sheet data

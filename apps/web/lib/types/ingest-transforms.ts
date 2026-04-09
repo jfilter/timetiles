@@ -5,29 +5,24 @@
  * incoming field names to their canonical schema field names, supporting
  * scenarios like column renames, case variations, and JSON path changes.
  *
+ * Transform type metadata (labels, descriptions, date formats, string operations)
+ * is defined in `@/lib/definitions/transform-registry` — the single source of truth.
+ *
  * @module
  * @category Types
  */
 
-/**
- * Types of transformations that can be applied to import data.
- *
- * Supported types:
- * - rename: Map source field path to target field path
- * - date-parse: Parse date strings into standardized format
- * - string-op: Apply string operations (uppercase, lowercase, replace, expression)
- * - concatenate: Combine multiple fields into one
- * - split: Split one field into multiple fields
- */
-export type TransformType =
-  | "rename"
-  | "date-parse"
-  | "string-op"
-  | "concatenate"
-  | "split"
-  | "parse-json-array"
-  | "split-to-array"
-  | "extract";
+// Re-export canonical definitions so existing consumers don't need to update imports
+export type { TransformType, StringOperation } from "@/lib/definitions/transform-registry";
+export {
+  TRANSFORM_DEFINITIONS,
+  DATE_FORMAT_OPTIONS,
+  STRING_OPERATIONS,
+  STRING_OPERATION_LABELS,
+} from "@/lib/definitions/transform-registry";
+
+import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
+import { TRANSFORM_DEFINITIONS } from "@/lib/definitions/transform-registry";
 
 /**
  * Base properties shared by all transform rules.
@@ -88,7 +83,7 @@ export interface StringOpTransform extends BaseTransform {
   /** Target field to write result to (defaults to `from`). */
   to?: string;
   /** Operation to apply */
-  operation: "uppercase" | "lowercase" | "replace" | "expression";
+  operation: StringOperation;
   /** Pattern for replace operation */
   pattern?: string;
   /** Replacement string for replace operation */
@@ -236,47 +231,22 @@ export interface TransformSuggestion {
 }
 
 /**
- * Display labels for transform types
+ * Display labels for transform types.
+ *
+ * Derived from the canonical {@link TRANSFORM_DEFINITIONS} registry.
  */
-export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = {
-  rename: "Rename Field",
-  "date-parse": "Parse Date",
-  "string-op": "String Operation",
-  concatenate: "Concatenate Fields",
-  split: "Split Field",
-  "parse-json-array": "Parse JSON Array",
-  "split-to-array": "Split to Array",
-  extract: "Extract (Regex)",
-};
+export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = Object.fromEntries(
+  Object.entries(TRANSFORM_DEFINITIONS).map(([key, def]) => [key, def.label])
+) as Record<TransformType, string>;
 
 /**
- * Descriptions for transform types
+ * Descriptions for transform types.
+ *
+ * Derived from the canonical {@link TRANSFORM_DEFINITIONS} registry.
  */
-export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = {
-  rename: "Change the name of a field",
-  "date-parse": "Parse date strings into a standardized format",
-  "string-op": "Apply string operations like uppercase, lowercase, replace, or expression",
-  concatenate: "Join multiple fields together with a separator",
-  split: "Split a field into multiple fields using a delimiter",
-  "parse-json-array": "Parse a JSON-stringified array into a native array for tag/multi-value fields",
-  "split-to-array": "Split a delimited string into an array for tag/multi-value fields",
-  extract: "Extract a substring from a field using a regex pattern into a new field",
-};
-
-/**
- * Common date format options for date-parse transforms
- */
-export const DATE_FORMAT_OPTIONS = [
-  { value: "DD/MM/YYYY", label: "DD/MM/YYYY (31/12/2024)" },
-  { value: "MM/DD/YYYY", label: "MM/DD/YYYY (12/31/2024)" },
-  { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2024-12-31)" },
-  { value: "DD-MM-YYYY", label: "DD-MM-YYYY (31-12-2024)" },
-  { value: "MM-DD-YYYY", label: "MM-DD-YYYY (12-31-2024)" },
-  { value: "DD.MM.YYYY", label: "DD.MM.YYYY (31.12.2024)" },
-  { value: "YYYY/MM/DD", label: "YYYY/MM/DD (2024/12/31)" },
-  { value: "D MMMM YYYY", label: "D MMMM YYYY (31 December 2024)" },
-  { value: "MMMM D, YYYY", label: "MMMM D, YYYY (December 31, 2024)" },
-] as const;
+export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = Object.fromEntries(
+  Object.entries(TRANSFORM_DEFINITIONS).map(([key, def]) => [key, def.description])
+) as Record<TransformType, string>;
 
 /**
  * Check if a transform has all required fields configured

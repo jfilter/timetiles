@@ -4,9 +4,14 @@
  * Provides a convenience layer that converts the structured
  * FieldMappingsResult (with confidence scores) to flat string paths.
  *
+ * The `FieldMappings` type is derived from the canonical field registry
+ * in `@/lib/definitions/field-registry`.
+ *
  * @module
  * @category Utilities
  */
+
+import type { FieldPathMappings } from "@/lib/definitions/field-registry";
 
 import type { FieldMappingsResult, FieldStatistics } from "../types";
 import { detectFieldMappings, getFieldPatterns } from "./patterns";
@@ -14,18 +19,11 @@ import { validateFieldType } from "./validators";
 
 /**
  * Flat field mappings detected or configured for a schema.
- * Uses simple string paths instead of the structured FieldMappingsResult.
+ *
+ * Derived from the canonical field registry. Uses simple string paths
+ * instead of the structured FieldMappingsResult.
  */
-export interface FieldMappings {
-  titlePath: string | null;
-  descriptionPath: string | null;
-  locationNamePath: string | null;
-  timestampPath: string | null;
-  endTimestampPath: string | null;
-  latitudePath: string | null;
-  longitudePath: string | null;
-  locationPath: string | null;
-}
+export type FieldMappings = FieldPathMappings;
 
 /**
  * Convert a structured FieldMappingsResult to flat FieldMappings.

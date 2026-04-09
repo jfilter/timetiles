@@ -235,13 +235,13 @@ const getTransformSummary = (transform: IngestTransform, t: TranslationFn): stri
     case "split":
       return getSplitSummary(transform, t);
     case "parse-json-array":
-      return transform.from ? `${transform.from} → array` : "Configure JSON array field";
+      return transform.from ? `${transform.from} → array` : t("tfSelectField");
     case "split-to-array":
       return transform.from
         ? `${transform.from} → array (delimiter: "${transform.delimiter || ","}")`
         : "Configure split-to-array field";
     case "extract":
-      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : "Configure extract";
+      return transform.from && transform.to ? `${transform.from} → ${transform.to}` : t("tfConfigureExtract");
   }
 };
 

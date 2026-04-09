@@ -6,13 +6,22 @@
  * - String operations: uppercase, lowercase, trim, replace, expression
  * - Date parsing: format conversion
  *
+ * Transform type metadata is derived from the canonical registry in
+ * `@/lib/definitions/transform-registry`.
+ *
  * @module
  */
 import type { Field } from "payload";
 
+import {
+  getDateFormatInputOptions,
+  getStringOperationOptions,
+  getTransformTypeOptions,
+} from "@/lib/definitions/transform-registry";
+
 import { editorOrAdminCondition } from "../shared-fields";
 
-/** Transform type constants to avoid string duplication */
+/** Transform type constants for admin.condition callbacks. */
 const TRANSFORM_TYPES = {
   RENAME: "rename",
   DATE_PARSE: "date-parse",
@@ -21,6 +30,7 @@ const TRANSFORM_TYPES = {
   SPLIT: "split",
   PARSE_JSON_ARRAY: "parse-json-array",
   SPLIT_TO_ARRAY: "split-to-array",
+  EXTRACT: "extract",
 } as const;
 
 export const transformationFields: Field[] = [
@@ -44,16 +54,7 @@ export const transformationFields: Field[] = [
         name: "type",
         type: "select",
         required: true,
-        options: [
-          { label: "Rename Field", value: TRANSFORM_TYPES.RENAME },
-          { label: "Parse Date", value: TRANSFORM_TYPES.DATE_PARSE },
-          { label: "String Operation", value: TRANSFORM_TYPES.STRING_OP },
-          { label: "Concatenate Fields", value: TRANSFORM_TYPES.CONCATENATE },
-          { label: "Split Field", value: TRANSFORM_TYPES.SPLIT },
-          { label: "Parse JSON Array", value: TRANSFORM_TYPES.PARSE_JSON_ARRAY },
-          { label: "Split to Array", value: TRANSFORM_TYPES.SPLIT_TO_ARRAY },
-          { label: "Extract (Regex)", value: "extract" },
-        ],
+        options: getTransformTypeOptions(),
         defaultValue: TRANSFORM_TYPES.RENAME,
         admin: { description: "Type of transformation to apply" },
       },
@@ -71,6 +72,7 @@ export const transformationFields: Field[] = [
               TRANSFORM_TYPES.SPLIT,
               TRANSFORM_TYPES.PARSE_JSON_ARRAY,
               TRANSFORM_TYPES.SPLIT_TO_ARRAY,
+              TRANSFORM_TYPES.EXTRACT,
             ].includes(data?.type),
         },
       },
@@ -80,21 +82,15 @@ export const transformationFields: Field[] = [
         type: "text",
         admin: {
           description: "Target field path in dataset schema (e.g., 'start_date' or 'contact.email')",
-          condition: (data) => [TRANSFORM_TYPES.RENAME, TRANSFORM_TYPES.CONCATENATE].includes(data?.type),
+          condition: (data) =>
+            [TRANSFORM_TYPES.RENAME, TRANSFORM_TYPES.CONCATENATE, TRANSFORM_TYPES.EXTRACT].includes(data?.type),
         },
       },
       // Date parse specific fields
       {
         name: "inputFormat",
         type: "select",
-        options: [
-          { label: "DD/MM/YYYY (31/12/2024)", value: "DD/MM/YYYY" },
-          { label: "MM/DD/YYYY (12/31/2024)", value: "MM/DD/YYYY" },
-          { label: "YYYY-MM-DD (2024-12-31)", value: "YYYY-MM-DD" },
-          { label: "DD-MM-YYYY (31-12-2024)", value: "DD-MM-YYYY" },
-          { label: "MM-DD-YYYY (12-31-2024)", value: "MM-DD-YYYY" },
-          { label: "DD.MM.YYYY (31.12.2024)", value: "DD.MM.YYYY" },
-        ],
+        options: getDateFormatInputOptions(),
         admin: {
           description: "Expected input date format",
           condition: (data) => data?.type === TRANSFORM_TYPES.DATE_PARSE,
@@ -123,13 +119,7 @@ export const transformationFields: Field[] = [
       {
         name: "operation",
         type: "select",
-        options: [
-          { label: "Uppercase", value: "uppercase" },
-          { label: "Lowercase", value: "lowercase" },
-          { label: "Trim Whitespace", value: "trim" },
-          { label: "Find & Replace", value: "replace" },
-          { label: "Custom Expression", value: "expression" },
-        ],
+        options: getStringOperationOptions(),
         admin: {
           description: "String operation to apply",
           condition: (data) => data?.type === TRANSFORM_TYPES.STRING_OP,

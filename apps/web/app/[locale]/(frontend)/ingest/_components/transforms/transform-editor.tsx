@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import type React from "react";
 import { useState } from "react";
 
+import type { StringOperation } from "@/lib/definitions/transform-registry";
 import { DATE_FORMAT_OPTIONS, type IngestTransform } from "@/lib/types/ingest-transforms";
 
 interface TransformEditorProps {
@@ -231,7 +232,7 @@ const DateParseEditor = ({
 
 interface StringOpEditorProps {
   from: string;
-  operation: "uppercase" | "lowercase" | "replace" | "expression";
+  operation: StringOperation;
   pattern?: string;
   replacement?: string;
   expression?: string;
