@@ -89,6 +89,10 @@ const safeSpreadAxis = (axis: unknown): Record<string, unknown> => {
   return {};
 };
 
+// Helper to safely spread a nested axis sub-object (e.g. axisLine, axisLabel)
+const safeSpread = (value: unknown): Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+
 export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EChartsOption => {
   const result: EChartsOption = {
     ...option,
@@ -100,18 +104,18 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
   const xAxis = safeSpreadAxis(option.xAxis);
   result.xAxis = {
     ...xAxis,
-    axisLine: { ...xAxis.axisLine, lineStyle: { color: theme.axisLineColor } },
-    axisLabel: { ...xAxis.axisLabel, color: theme.textColor },
-    splitLine: { ...xAxis.splitLine, lineStyle: { color: theme.splitLineColor } },
+    axisLine: { ...safeSpread(xAxis.axisLine), lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { ...safeSpread(xAxis.axisLabel), color: theme.textColor },
+    splitLine: { ...safeSpread(xAxis.splitLine), lineStyle: { color: theme.splitLineColor } },
   };
 
   // Handle yAxis safely — deep-merge to preserve custom formatters, intervals, etc.
   const yAxis = safeSpreadAxis(option.yAxis);
   result.yAxis = {
     ...yAxis,
-    axisLine: { ...yAxis.axisLine, lineStyle: { color: theme.axisLineColor } },
-    axisLabel: { ...yAxis.axisLabel, color: theme.textColor },
-    splitLine: { ...yAxis.splitLine, lineStyle: { color: theme.splitLineColor } },
+    axisLine: { ...safeSpread(yAxis.axisLine), lineStyle: { color: theme.axisLineColor } },
+    axisLabel: { ...safeSpread(yAxis.axisLabel), color: theme.textColor },
+    splitLine: { ...safeSpread(yAxis.splitLine), lineStyle: { color: theme.splitLineColor } },
   };
 
   // Handle series safely
