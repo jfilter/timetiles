@@ -18,6 +18,7 @@ import type { MapRef } from "react-map-gl/maplibre";
 import MapGL, { Layer, NavigationControl, Popup, Source } from "react-map-gl/maplibre";
 
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
+import type { FocusedCluster } from "@/lib/store";
 
 import { INITIAL_VIEW_STATE, INTERACTIVE_LAYER_IDS, MAP_COMPONENT_STYLE } from "./clustered-map-helpers";
 import { MapClusterOverlays } from "./map-cluster-overlays";
@@ -62,14 +63,6 @@ interface PopupInfo {
   longitude: number;
   latitude: number;
   title: string;
-}
-
-interface FocusedCluster {
-  clusterId: string;
-  count: number;
-  sourceCells?: string[] | null;
-  center: [number, number];
-  h3Resolution: number;
 }
 
 export interface ClusteredMapRendererProps {
