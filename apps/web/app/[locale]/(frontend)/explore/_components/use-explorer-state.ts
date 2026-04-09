@@ -46,15 +46,18 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
   const setFilterDrawerOpen = useUIStore((state) => state.setFilterDrawerOpen);
 
+  // Destructure stable setter from viewport to avoid passing the entire
+  // (unstable) viewport object as an effect dependency.
+  const { setBoundsState } = viewport;
+
   // Push visible event count to Zustand so the header (outside explore tree) can display it.
   // Use eventsData.total (from API pagination) instead of events.length, because the events
   // array is capped at 1000 items while total reflects the true count matching the viewport+filters.
-  const setMapStats = useUIStore((state) => state.setMapStats);
   useEffect(() => {
     if (eventsData != null) {
-      setMapStats({ visibleEvents: eventsData.total });
+      useUIStore.getState().setMapStats({ visibleEvents: eventsData.total });
     }
-  }, [eventsData, setMapStats]);
+  }, [eventsData]);
 
   // Clear stale mapStats when the explorer unmounts (e.g. route transition away from /explore).
   // Without this, the header would briefly show the previous count until new data loads.
@@ -64,14 +67,13 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     };
   }, []);
 
-  // Auto-exit focus mode and clear cluster filter when filters change
-  const clearFocusedCluster = useUIStore((state) => state.clearFocusedCluster);
-  const setClusterFilterCells = useUIStore((state) => state.setClusterFilterCells);
+  // Auto-exit focus mode and clear cluster filter when filters change.
+  // Uses getState() for fire-and-forget actions to keep the dependency array stable.
   const filterKey = JSON.stringify(filters);
   useEffect(() => {
-    clearFocusedCluster();
-    setClusterFilterCells(null);
-  }, [filterKey, clearFocusedCluster, setClusterFilterCells]);
+    useUIStore.getState().clearFocusedCluster();
+    useUIStore.getState().setClusterFilterCells(null);
+  }, [filterKey]);
 
   // Auto-zoom to data when dataset selection changes
   const datasetsKey = filters.datasets.join(",");
@@ -80,26 +82,26 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
     if (prevDatasetsKeyRef.current !== datasetsKey) {
       prevDatasetsKeyRef.current = datasetsKey;
       // Reset bounds state so the next boundsData arrival triggers a fit
-      viewport.setBoundsState("initial");
+      setBoundsState("initial");
     }
-  }, [datasetsKey, viewport]);
+  }, [datasetsKey, setBoundsState]);
 
   // Fit map to data bounds on initial load or after dataset change
   useEffect(() => {
     if (boundsState === "initial" && boundsData?.bounds && mapRef.current && !boundsLoading) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
-      viewport.setBoundsState("bounds-applied");
+      setBoundsState("bounds-applied");
     }
-  }, [boundsState, boundsData?.bounds, boundsLoading, mapRef, viewport]);
+  }, [boundsState, boundsData?.bounds, boundsLoading, mapRef, setBoundsState]);
 
   const isLoadingInitialBounds = boundsLoading && boundsState === "initial";
 
   const handleZoomToData = useCallback(() => {
     if (boundsData?.bounds && mapRef.current) {
       mapRef.current.fitBounds(boundsData.bounds, { padding: 50, animate: true });
-      viewport.setBoundsState("bounds-applied");
+      setBoundsState("bounds-applied");
     }
-  }, [boundsData?.bounds, mapRef, viewport]);
+  }, [boundsData?.bounds, mapRef, setBoundsState]);
 
   // Shared zoom-to-data logic
   const dataBoundsOutsideViewport = isDataBoundsOutsideViewport(boundsData?.bounds, mapBounds);
