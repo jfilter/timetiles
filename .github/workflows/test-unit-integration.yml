@@ -50,7 +50,7 @@ jobs:
       - name: Setup test databases
         run: |
           setup_db() {
-            psql -h localhost -U timetiles_user -d postgres -c "SELECT 'CREATE DATABASE \"$1\"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$1')\gexec"
+            psql -h localhost -U timetiles_user -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '$1'" | grep -q 1 || psql -h localhost -U timetiles_user -d postgres -c "CREATE DATABASE \"$1\";"
             psql -h localhost -U timetiles_user -d "$1" -c "CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS postgis_topology; CREATE EXTENSION IF NOT EXISTS h3; CREATE SCHEMA IF NOT EXISTS payload;"
           }
 
