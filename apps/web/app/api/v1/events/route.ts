@@ -107,7 +107,7 @@ export const GET = apiRoute({
     // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
     if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
       const res = Math.min(15, Math.max(2, Math.round(ctx.filters.h3Resolution)));
-      const col = "h3_r" + String(res);
+      const col = `e.h3_r${String(res)}`;
       const h3CellPattern = /^[0-9a-fA-F]{15}$/;
       const validCells = ctx.filters.clusterCells.filter((c) => h3CellPattern.test(c));
       if (validCells.length === 0) {
@@ -121,10 +121,13 @@ export const GET = apiRoute({
           hasPrevPage: false,
         });
       }
-      const escaped = validCells.map((c) => "'" + c + "'").join(", ");
-      const idResult = (await payload.db.drizzle.execute(
-        sql.raw("SELECT e.id FROM payload.events e WHERE e." + col + "::text IN (" + escaped + ")")
-      )) as { rows: Array<{ id: number }> };
+      const idResult = (await payload.db.drizzle.execute(sql`
+        SELECT e.id FROM payload.events e
+        WHERE ${sql.raw(col)}::text IN (${sql.join(
+          validCells.map((c) => sql`${c}`),
+          sql`, `
+        )})
+      `)) as { rows: Array<{ id: number }> };
       const ids = idResult.rows.map((r) => Number(r.id));
       if (ids.length === 0) {
         return buildListResponse({

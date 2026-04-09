@@ -514,13 +514,14 @@ describe("/api/v1/events/geo", () => {
 
     // Now query with clusterCells filter — should return fewer or equal results
     const h3Resolution = Math.min(15, Math.max(2, Math.round(10 * 0.6)));
+    const h3Column = "e.h3_r" + String(h3Resolution);
     const filteredResult = (await testEnv.payload.db.drizzle.execute(
       sql`
         SELECT COUNT(*)::integer as cnt FROM payload.events e
         JOIN payload.datasets d ON e.dataset_id = d.id
         WHERE e.location_longitude IS NOT NULL
           AND e.dataset_id = ${Number(testDatasetId)}
-          AND ${sql.raw(`e.h3_r${h3Resolution}::text = '${sfClusterId}'`)}
+          AND ${sql.raw(h3Column)}::text = ${sfClusterId}
       `
     )) as { rows: Array<{ cnt: number }> };
 

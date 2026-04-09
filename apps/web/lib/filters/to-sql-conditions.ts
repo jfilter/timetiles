@@ -155,6 +155,8 @@ const buildH3CellCondition = (clusterCells?: string[], h3Resolution?: number): S
   // Validate and filter cell IDs to prevent SQL injection
   const validCells = clusterCells.filter(isValidH3CellId);
   if (validCells.length === 0) return null;
-  const escaped = validCells.map((c) => "'" + c + "'").join(", ");
-  return sql.raw(col + "::text IN (" + escaped + ")");
+  return sql`${sql.raw(col)}::text IN (${sql.join(
+    validCells.map((c) => sql`${c}`),
+    sql`, `
+  )})`;
 };
