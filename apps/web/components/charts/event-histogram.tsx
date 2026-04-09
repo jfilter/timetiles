@@ -58,7 +58,7 @@ const buildGroupedSeries = (
 
   const series: TimeHistogramSeries[] = topGroups.map(([, group], idx) => ({
     name: group.name,
-    color: DATASET_COLORS[idx % DATASET_COLORS.length] ?? "#0089a7",
+    color: DATASET_COLORS[idx % DATASET_COLORS.length] ?? DATASET_COLORS[0],
     data: zeroFill(group.items),
   }));
 

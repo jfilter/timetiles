@@ -127,7 +127,7 @@ const generateClusters = (
 /** Create a named series with a color from the palette. */
 const makeSeries = (name: string, data: BeeswarmDataItem[], colorIndex = 0): BeeswarmSeries => ({
   name,
-  color: DATASET_COLORS[colorIndex % DATASET_COLORS.length] ?? "#0089a7",
+  color: DATASET_COLORS[colorIndex % DATASET_COLORS.length] ?? DATASET_COLORS[0],
   data,
 });
 

@@ -82,7 +82,8 @@ export const GET = apiRoute({
 
       // Join datasets table — toSqlConditions references d.catalog_id for access control.
       // fieldPath is used as a JSONB key (not a value), so use sql.raw — it's already sanitized above.
-      const key = sql.raw(`'${fieldPath}'`);
+      const quotedPath = "'" + fieldPath + "'";
+      const key = sql.raw(quotedPath);
       const sqlQuery = isTag
         ? sql`SELECT elem AS value, COUNT(*)::integer AS count
               FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(e.transformed_data -> ${key}) AS elem

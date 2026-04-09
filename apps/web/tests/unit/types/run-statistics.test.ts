@@ -1,3 +1,7 @@
+/**
+ * @module
+ * @category Tests
+ */
 import { describe, expect, it } from "vitest";
 
 import {

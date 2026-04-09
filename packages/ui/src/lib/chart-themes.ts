@@ -81,6 +81,18 @@ export const defaultMapColors: MapColors = {
 // Export color palette for use in other charts
 export { defaultColors };
 
+/** Dataset/series color palette for stacked charts and grouped visualizations. */
+export const DATASET_COLORS = [
+  defaultColors.blue, // primary
+  defaultColors.terracotta,
+  defaultColors.forest,
+  defaultColors.navy,
+  "#b87333", // copper
+  "#8b6914", // golden
+  "#6b5b73", // mauve
+  "#2d6a4f", // dark green
+] as const;
+
 type AxisLike = Record<string, Record<string, unknown> | undefined>;
 
 // Helper function to safely spread axis options

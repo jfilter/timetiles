@@ -22,7 +22,8 @@ interface EnumStatsField {
 }
 
 const fetchEnumStats = async (datasetId: number, queryParams = "") => {
-  const url = `http://localhost:3000/api/v1/datasets/${datasetId}/enum-stats?datasets=${datasetId}${queryParams ? `&${queryParams}` : ""}`;
+  const suffix = queryParams ? `&${queryParams}` : "";
+  const url = `http://localhost:3000/api/v1/datasets/${datasetId}/enum-stats?datasets=${datasetId}${suffix}`;
   const request = new NextRequest(url);
   const response = await GET(request, { params: Promise.resolve({ id: String(datasetId) }) });
   expect(response.status).toBe(200);

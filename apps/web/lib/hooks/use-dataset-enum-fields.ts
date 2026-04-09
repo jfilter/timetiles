@@ -73,7 +73,8 @@ export const useDatasetEnumFieldsQuery = (
         params.set("bounds", JSON.stringify(bounds));
       }
       const qs = params.toString();
-      const url = `/api/v1/datasets/${datasetId}/enum-stats${qs ? `?${qs}` : ""}`;
+      const suffix = qs ? `?${qs}` : "";
+      const url = `/api/v1/datasets/${datasetId}/enum-stats${suffix}`;
       return fetchJson<EnumStatsResponse>(url);
     },
     enabled: datasetId != null,

@@ -137,7 +137,7 @@ const transformToSeries = (
 
   for (let i = 0; i < topGroups.length; i++) {
     const [, group] = topGroups[i]!;
-    const color = DATASET_COLORS[i % DATASET_COLORS.length] ?? "#0089a7";
+    const color = DATASET_COLORS[i % DATASET_COLORS.length] ?? DATASET_COLORS[0];
     series.push({ name: group.name, color, data: buildSeriesData(group, mode, i, maxRef) });
   }
 
@@ -348,7 +348,8 @@ export const EventBeeswarm = ({
   // Ensure enough height per row so rows aren't compressed; scroll if needed
   const MIN_ROW_HEIGHT = 80;
   const minRowsHeight = layout === "rows" ? series.length * MIN_ROW_HEIGHT + 40 : 0;
-  const effectiveHeight = minRowsHeight > 0 ? Math.max(minRowsHeight, typeof height === "number" ? height : 0) : height;
+  const numericHeight = typeof height === "number" ? height : 0;
+  const effectiveHeight = minRowsHeight > 0 ? Math.max(minRowsHeight, numericHeight) : height;
   const needsScroll = layout === "rows" && typeof height === "string" && minRowsHeight > 0;
 
   return (

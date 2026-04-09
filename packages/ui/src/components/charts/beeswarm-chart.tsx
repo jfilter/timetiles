@@ -75,19 +75,7 @@ export interface BeeswarmChartProps {
   clusterMaxSize?: number;
 }
 
-/** Dataset color palette matching the cartographic design system */
-const DATASET_COLORS = [
-  "#0089a7", // blue (primary)
-  "#cd853f", // terracotta
-  "#5f9e6e", // forest
-  "#4a5568", // navy
-  "#b87333", // copper
-  "#8b6914", // golden
-  "#6b5b73", // mauve
-  "#2d6a4f", // dark green
-];
-
-export { DATASET_COLORS };
+export { DATASET_COLORS } from "../../lib/chart-themes";
 
 // ---------------------------------------------------------------------------
 // Sizing

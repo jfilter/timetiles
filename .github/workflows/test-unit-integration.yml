@@ -10,15 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgis/postgis:17-3.5
+        image: kartoza/postgis:17-3.5
         env:
           POSTGRES_USER: timetiles_user
-          POSTGRES_PASSWORD: timetiles_password
+          POSTGRES_PASS: timetiles_password
+          POSTGRES_DBNAME: timetiles
+          ALLOW_IP_RANGE: "0.0.0.0/0"
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U timetiles_user"
           --health-interval 10s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
           --shm-size=256mb
         ports:
           - 5432:5432

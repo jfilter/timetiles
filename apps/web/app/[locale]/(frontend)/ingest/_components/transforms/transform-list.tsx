@@ -238,7 +238,7 @@ const getTransformSummary = (transform: IngestTransform, t: TranslationFn): stri
       return transform.from ? `${transform.from} → array` : t("tfSelectField");
     case "split-to-array":
       return transform.from
-        ? `${transform.from} → array (delimiter: "${transform.delimiter || ","}")`
+        ? `${transform.from} → array (delimiter: "${transform.delimiter ?? ","}")`
         : "Configure split-to-array field";
     case "extract":
       return transform.from && transform.to ? `${transform.from} → ${transform.to}` : t("tfConfigureExtract");
@@ -253,7 +253,7 @@ const getStringOpSummary = (tf: { from?: string; operation?: string }, t: Transl
 
 const getConcatenateSummary = (tf: { fromFields: string[]; to?: string }, t: TranslationFn) =>
   tf.fromFields.length >= 2
-    ? t("tfJoinFieldsTo", { count: tf.fromFields.length, target: tf.to || "?" })
+    ? t("tfJoinFieldsTo", { count: tf.fromFields.length, target: tf.to ?? "?" })
     : t("tfSelectFieldsToConcat");
 
 const getSplitSummary = (tf: { from?: string; toFields: string[] }, t: TranslationFn) =>

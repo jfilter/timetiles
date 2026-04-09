@@ -124,12 +124,8 @@ export const buildEventsDescription = (
   // Add date filter
   if (filterLabels.dateRange) {
     const { type, formatted } = filterLabels.dateRange;
-    const dateText =
-      type === "since"
-        ? t("descSince", { date: formatted })
-        : type === "until"
-          ? t("descUntil", { date: formatted })
-          : formatted;
+    const untilOrFormatted = type === "until" ? t("descUntil", { date: formatted }) : formatted;
+    const dateText = type === "since" ? t("descSince", { date: formatted }) : untilOrFormatted;
     sentence += t("descSpanning", { dateRange: dateText });
   }
 

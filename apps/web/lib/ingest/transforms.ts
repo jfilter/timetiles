@@ -430,7 +430,7 @@ const applySplitToArrayTransform = (data: Record<string, unknown>, transform: Sp
   const trimmed = value.trim();
   if (trimmed === "") return;
 
-  const delimiter = transform.delimiter || ",";
+  const delimiter = transform.delimiter ?? ",";
   const parts = trimmed
     .split(delimiter)
     .map((s) => s.trim())
