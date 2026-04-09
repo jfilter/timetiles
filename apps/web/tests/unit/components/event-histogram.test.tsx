@@ -45,14 +45,27 @@ vi.mock("../../../lib/store", () => ({
     const state = {
       ui: {
         mapBounds: null, // No map bounds
+        clusterFilterCells: null,
       },
     };
     return selector ? selector(state) : state;
   },
 }));
 
-// Mock the React Query hook — loading phase is now computed inside the hook
-vi.mock("../../../lib/hooks/use-events-queries", () => ({ useHistogramQuery: vi.fn() }));
+// Mock the view scope hook
+vi.mock("../../../lib/hooks/use-view-scope", () => ({ useViewScope: () => ({ mode: "all" }) }));
+
+// Mock the React Query hooks — loading phase is now computed inside the hook
+vi.mock("../../../lib/hooks/use-events-queries", () => ({
+  useHistogramQuery: vi.fn(),
+  useTemporalClustersQuery: () => ({
+    data: undefined,
+    isLoading: false,
+    isInitialLoad: false,
+    isUpdating: false,
+    isError: false,
+  }),
+}));
 
 // Mock ECharts component
 vi.mock("echarts-for-react", () => ({
