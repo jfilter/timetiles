@@ -76,9 +76,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
   const handleSave = useCallback(() => {
     const { fieldMapping, transforms } = serializeFlowState();
     useWizardStore.getState().setFieldMapping(sheetIndex, fieldMapping);
-    if (transforms.length > 0) {
-      useWizardStore.getState().setTransforms(sheetIndex, transforms);
-    }
+    useWizardStore.getState().setTransforms(sheetIndex, transforms);
     router.push("/ingest");
   }, [serializeFlowState, router, sheetIndex]);
 
