@@ -12,6 +12,7 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, useState } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -56,7 +57,7 @@ export const EventsListPaginated = ({
   // Track previous event IDs to flash newly appeared events.
   // Lives here (not in EventsList) so the ref persists across loading states.
   const prevEventIdsRef = useRef<Set<number>>(new Set());
-  const [newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
+  const [_newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (events.length === 0) return;

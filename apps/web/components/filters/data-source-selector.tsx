@@ -63,7 +63,8 @@ const DatasetInfoPopover = ({
   catalogName?: string;
 }) => {
   const t = useTranslations("Filters");
-  const hasDetails = dataset.description ?? dataset.language ?? (eventCount != null || catalogName);
+  const hasDetails =
+    Boolean(dataset.description) || Boolean(dataset.language) || Boolean(catalogName) || eventCount != null;
   if (!hasDetails) return null;
 
   return (

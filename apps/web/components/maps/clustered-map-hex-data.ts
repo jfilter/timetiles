@@ -12,6 +12,9 @@ import { cellToBoundary, isValidCell } from "h3-js";
 
 import type { ClusterFeature } from "./clustered-map";
 
+/** Stable empty feature collection — reuse for memoization-friendly empty returns. */
+export const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
 /**
  * Resolve parent cells from a cluster feature's sourceCells property.
  * Handles both JSON-encoded strings and arrays, with fallback to the cluster ID.
@@ -109,7 +112,7 @@ const isLongValidCell = (id: string): boolean => {
 
 /** Build hex polygon GeoJSON from animated cluster features (H3 algorithm). */
 export const buildH3HexData = (algorithm: string, animatedClusters: ClusterFeature[]): GeoJSON.FeatureCollection => {
-  if (algorithm !== "h3") return { type: "FeatureCollection", features: [] };
+  if (algorithm !== "h3") return EMPTY_FEATURE_COLLECTION;
   const hexFeatures = animatedClusters
     .filter((f) => isLongValidCell(String(f.id ?? "")))
     .map((f) => {
@@ -128,7 +131,7 @@ export const buildMergeGroupData = (
   algorithm: string,
   animatedClusters: ClusterFeature[]
 ): GeoJSON.FeatureCollection => {
-  if (algorithm !== "h3") return { type: "FeatureCollection", features: [] as GeoJSON.Feature[] };
+  if (algorithm !== "h3") return EMPTY_FEATURE_COLLECTION;
   const groups = new Map<string, Array<[number, number]>>();
   for (const f of animatedClusters) {
     const sc = f.properties.sourceCells;
@@ -156,7 +159,7 @@ export const buildFocusHexData = (
   clusterChildren: ClusterFeature[] | null | undefined
 ): GeoJSON.FeatureCollection => {
   if (!focusedCluster || algorithm !== "h3" || !clusterChildren || clusterChildren.length === 0) {
-    return { type: "FeatureCollection", features: [] };
+    return EMPTY_FEATURE_COLLECTION;
   }
   const features: GeoJSON.Feature[] = [];
   for (const child of clusterChildren) {
@@ -178,7 +181,7 @@ export const buildFocusSubcellHexData = (
   clusterChildren: ClusterFeature[] | null | undefined
 ): GeoJSON.FeatureCollection => {
   if (!focusedCluster || !clusterChildren || clusterChildren.length === 0) {
-    return { type: "FeatureCollection", features: [] };
+    return EMPTY_FEATURE_COLLECTION;
   }
   const hexFeatures = clusterChildren
     .filter((f) => isLongValidCell(String(f.id ?? "")))
