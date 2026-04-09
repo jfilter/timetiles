@@ -58,8 +58,8 @@ export const createEventsBatchJob = {
       if (job?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
 
       await setJobStage(args.req.payload, ingestJobId, PROCESSING_STAGE.COMPLETED);
-    } catch {
-      // Best-effort — don't throw in onSuccess
+    } catch (error) {
+      logError(error, "Failed to update job stage in onSuccess", { ingestJobId });
     }
   },
   handler: async (context: JobHandlerContext) => {

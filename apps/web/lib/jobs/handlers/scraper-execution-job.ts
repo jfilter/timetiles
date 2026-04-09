@@ -141,8 +141,8 @@ export const scraperExecutionJob = {
           const { createQuotaService } = await import("@/lib/services/quota-service");
           const quotaService = createQuotaService(payload);
           await quotaService.decrementUsage(repoOwnerId, "SCRAPER_RUNS_PER_DAY", 1);
-        } catch {
-          /* quota rollback is best-effort */
+        } catch (error) {
+          logError(error, "Failed to rollback quota after scraper failure", { repoOwnerId });
         }
       }
 
