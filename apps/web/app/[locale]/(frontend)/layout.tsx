@@ -10,6 +10,12 @@
  */
 import "@/app/styles/app.css";
 
+import bmftrDe from "@timetiles/assets/logos/funding/bmftr-de.svg";
+import bmftrEn from "@timetiles/assets/logos/funding/bmftr-en.svg";
+import ptfBannerDeDark from "@timetiles/assets/logos/funding/ptf-banner-de-dark.svg";
+import ptfBannerDeLight from "@timetiles/assets/logos/funding/ptf-banner-de-light.svg";
+import ptfBannerEnDark from "@timetiles/assets/logos/funding/ptf-banner-en-dark.svg";
+import ptfBannerEnLight from "@timetiles/assets/logos/funding/ptf-banner-en-light.svg";
 import LogoCompactDark from "@timetiles/assets/logos/latest/dark/transparent/png/wordmark_compact_512.png";
 import LogoCompactLight from "@timetiles/assets/logos/latest/light/transparent/png/wordmark_compact_512.png";
 import {
@@ -187,24 +193,20 @@ const SiteFooter = ({
             <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={locale === "de" ? "/logos/ptf-banner-de-light.svg" : "/logos/ptf-banner-en-light.svg"}
+                src={locale === "de" ? ptfBannerDeLight : ptfBannerEnLight}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="h-16 w-auto dark:hidden"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={locale === "de" ? "/logos/ptf-banner-de-dark.svg" : "/logos/ptf-banner-en-dark.svg"}
+                src={locale === "de" ? ptfBannerDeDark : ptfBannerEnDark}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="hidden h-16 w-auto dark:block"
               />
             </a>
             <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={locale === "de" ? "/logos/bmftr-de.svg" : "/logos/bmftr-en.svg"}
-                alt={footerMessages.bmftrAlt}
-                className="h-16 w-auto"
-              />
+              <img src={locale === "de" ? bmftrDe : bmftrEn} alt={footerMessages.bmftrAlt} className="h-16 w-auto" />
             </a>
             <span className="text-muted-foreground text-xs">{footerMessages.fundingText}</span>
           </div>

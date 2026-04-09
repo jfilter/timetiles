@@ -124,9 +124,9 @@ Contributions welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Acknowledgments
 
 <!-- prettier-ignore -->
-<a href="https://prototypefund.de"><picture><source media="(prefers-color-scheme: dark)" srcset="apps/docs/public/logos/ptf-banner-dark.svg"><source media="(prefers-color-scheme: light)" srcset="apps/docs/public/logos/ptf-banner-light.svg"><img alt="Unterstützt durch Prototype Fund" src="apps/docs/public/logos/ptf-banner-light.svg" height="80"></picture></a>&nbsp;&nbsp;&nbsp;<a href="https://www.bmftr.bund.de"><img src="apps/docs/public/logos/bmftr-en.svg" alt="Funded by the German Federal Ministry for Research, Technology and Space" height="80"></a>
+<a href="https://prototypefund.de"><picture><source media="(prefers-color-scheme: dark)" srcset="packages/assets/logos/funding/ptf-banner-en-dark.svg"><source media="(prefers-color-scheme: light)" srcset="packages/assets/logos/funding/ptf-banner-en-light.svg"><img alt="Unterstützt durch Prototype Fund" src="packages/assets/logos/funding/ptf-banner-en-light.svg" height="140"></picture></a>&nbsp;&nbsp;&nbsp;<a href="https://www.bmftr.bund.de"><img src="packages/assets/logos/funding/bmftr-en.svg" alt="Funded by the German Federal Ministry for Research, Technology and Space" height="140"></a>
 
-Funded in 2025 and 2026 by the [Prototype Fund](https://prototypefund.de) from the German Federal Ministry for Research, Technology and Space (BMFTR). FKZ 16IS25S03.
+Funded in 2025 and 2026 by the [Prototype Fund](https://prototypefund.de) from the [German Federal Ministry for Research, Technology and Space](https://www.bmftr.bund.de) (BMFTR). FKZ 16IS25S03.
 
 ## Contact
 

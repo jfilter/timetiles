@@ -5,6 +5,9 @@
 import "nextra-theme-docs/style.css";
 import "./globals.css";
 
+import bmftrEn from "@timetiles/assets/logos/funding/bmftr-en.svg";
+import ptfBannerEnDark from "@timetiles/assets/logos/funding/ptf-banner-en-dark.svg";
+import ptfBannerEnLight from "@timetiles/assets/logos/funding/ptf-banner-en-light.svg";
 // Transparent logos for light and dark themes
 import logoDark from "@timetiles/assets/logos/latest/dark/transparent/wordmark_horizontal.svg";
 import logoLight from "@timetiles/assets/logos/latest/light/transparent/wordmark_horizontal.svg";
@@ -97,18 +100,8 @@ const footer = (
 
       <div className="tt-footer-funding">
         <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer" className="tt-funding-logo">
-          <img
-            src="/logos/ptf-banner-light.svg"
-            alt="Supported by Prototype Fund"
-            className="tt-logo-light"
-            height={60}
-          />
-          <img
-            src="/logos/ptf-banner-dark.svg"
-            alt="Supported by Prototype Fund"
-            className="tt-logo-dark"
-            height={60}
-          />
+          <img src={ptfBannerEnLight} alt="Supported by Prototype Fund" className="tt-logo-light" height={60} />
+          <img src={ptfBannerEnDark} alt="Supported by Prototype Fund" className="tt-logo-dark" height={60} />
         </a>
         <a
           href="https://www.bmftr.bund.de"
@@ -117,7 +110,7 @@ const footer = (
           className="tt-funding-logo tt-funding-logo-bmftr"
         >
           <img
-            src="/logos/bmftr-en.svg"
+            src={bmftrEn}
             alt="Funded by the German Federal Ministry for Research, Technology and Space"
             height={60}
           />
