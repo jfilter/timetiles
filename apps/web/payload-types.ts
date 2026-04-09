@@ -701,7 +701,19 @@ export interface Dataset {
         /**
          * Expected input date format
          */
-        inputFormat?: ('DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' | 'DD-MM-YYYY' | 'MM-DD-YYYY' | 'DD.MM.YYYY') | null;
+        inputFormat?:
+          | (
+              | 'DD/MM/YYYY'
+              | 'MM/DD/YYYY'
+              | 'YYYY-MM-DD'
+              | 'DD-MM-YYYY'
+              | 'MM-DD-YYYY'
+              | 'DD.MM.YYYY'
+              | 'YYYY/MM/DD'
+              | 'D MMMM YYYY'
+              | 'MMMM D, YYYY'
+            )
+          | null;
         /**
          * Output date format
          */
@@ -1381,7 +1393,15 @@ export interface IngestJob {
    * Last stage completed successfully before failure
    */
   lastSuccessfulStage?:
-    | ('analyze-duplicates' | 'detect-schema' | 'validate-schema' | 'needs-review' | 'geocode-batch' | 'create-events')
+    | (
+        | 'analyze-duplicates'
+        | 'detect-schema'
+        | 'validate-schema'
+        | 'needs-review'
+        | 'create-schema-version'
+        | 'geocode-batch'
+        | 'create-events'
+      )
     | null;
   displayTitle?: string | null;
   updatedAt: string;

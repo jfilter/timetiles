@@ -12,10 +12,10 @@ import {
   index,
   uniqueIndex,
   foreignKey,
-  serial,
-  varchar,
-  jsonb,
   integer,
+  varchar,
+  serial,
+  jsonb,
   boolean,
   timestamp,
   numeric,
@@ -50,6 +50,7 @@ export const enum_datasets_ingest_transforms_type = db_schema.enum(
     "concatenate",
     "split",
     "parse-json-array",
+    "split-to-array",
     "extract",
   ],
 );
@@ -62,6 +63,9 @@ export const enum_datasets_ingest_transforms_input_format = db_schema.enum(
     "DD-MM-YYYY",
     "MM-DD-YYYY",
     "DD.MM.YYYY",
+    "YYYY/MM/DD",
+    "D MMMM YYYY",
+    "MMMM D, YYYY",
   ],
 );
 export const enum_datasets_ingest_transforms_output_format = db_schema.enum(
@@ -97,6 +101,7 @@ export const enum__datasets_v_version_ingest_transforms_type = db_schema.enum(
     "concatenate",
     "split",
     "parse-json-array",
+    "split-to-array",
     "extract",
   ],
 );
@@ -108,6 +113,9 @@ export const enum__datasets_v_version_ingest_transforms_input_format =
     "DD-MM-YYYY",
     "MM-DD-YYYY",
     "DD.MM.YYYY",
+    "YYYY/MM/DD",
+    "D MMMM YYYY",
+    "MMMM D, YYYY",
   ]);
 export const enum__datasets_v_version_ingest_transforms_output_format =
   db_schema.enum("enum__datasets_v_version_ingest_transforms_output_format", [
@@ -182,6 +190,7 @@ export const enum_ingest_jobs_last_successful_stage = db_schema.enum(
     "detect-schema",
     "validate-schema",
     "needs-review",
+    "create-schema-version",
     "geocode-batch",
     "create-events",
   ],
@@ -207,6 +216,7 @@ export const enum__ingest_jobs_v_version_last_successful_stage = db_schema.enum(
     "detect-schema",
     "validate-schema",
     "needs-review",
+    "create-schema-version",
     "geocode-batch",
     "create-events",
   ],
@@ -241,11 +251,16 @@ export const si_response_format = db_schema.enum("si_response_format", [
   "auto",
   "csv",
   "json",
+  "html-in-json",
 ]);
 export const si_json_paging_type = db_schema.enum("si_json_paging_type", [
   "offset",
   "cursor",
   "page",
+]);
+export const si_json_paging_method = db_schema.enum("si_json_paging_method", [
+  "GET",
+  "POST",
 ]);
 export const enum_scheduled_ingests_last_status = db_schema.enum(
   "enum_scheduled_ingests_last_status",
@@ -1032,6 +1047,44 @@ export const enum_settings_geocoding_provider_selection_strategy =
     "tag-based",
   ]);
 
+export const catalogs_tags = db_schema.table(
+  "catalogs_tags",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    tag: varchar("tag"),
+  },
+  (columns) => [
+    index("catalogs_tags_order_idx").on(columns._order),
+    index("catalogs_tags_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [catalogs.id],
+      name: "catalogs_tags_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const catalogs_coverage_countries = db_schema.table(
+  "catalogs_coverage_countries",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    code: varchar("code"),
+  },
+  (columns) => [
+    index("catalogs_coverage_countries_order_idx").on(columns._order),
+    index("catalogs_coverage_countries_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [catalogs.id],
+      name: "catalogs_coverage_countries_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const catalogs = db_schema.table(
   "catalogs",
   {
@@ -1043,6 +1096,17 @@ export const catalogs = db_schema.table(
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").default(false),
+    license: varchar("license"),
+    sourceUrl: varchar("source_url"),
+    category: varchar("category"),
+    region: varchar("region"),
+    publisher_name: varchar("publisher_name"),
+    publisher_url: varchar("publisher_url"),
+    publisher_acronym: varchar("publisher_acronym"),
+    publisher_description: varchar("publisher_description"),
+    publisher_country: varchar("publisher_country"),
+    publisher_official: boolean("publisher_official").default(false),
+    coverage_start: varchar("coverage_start"),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,
@@ -1074,6 +1138,50 @@ export const catalogs = db_schema.table(
   ],
 );
 
+export const _catalogs_v_version_tags = db_schema.table(
+  "_catalogs_v_version_tags",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    tag: varchar("tag"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => [
+    index("_catalogs_v_version_tags_order_idx").on(columns._order),
+    index("_catalogs_v_version_tags_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_catalogs_v.id],
+      name: "_catalogs_v_version_tags_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
+export const _catalogs_v_version_coverage_countries = db_schema.table(
+  "_catalogs_v_version_coverage_countries",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    code: varchar("code"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => [
+    index("_catalogs_v_version_coverage_countries_order_idx").on(
+      columns._order,
+    ),
+    index("_catalogs_v_version_coverage_countries_parent_id_idx").on(
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_catalogs_v.id],
+      name: "_catalogs_v_version_coverage_countries_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const _catalogs_v = db_schema.table(
   "_catalogs_v",
   {
@@ -1090,6 +1198,19 @@ export const _catalogs_v = db_schema.table(
       },
     ),
     version_isPublic: boolean("version_is_public").default(false),
+    version_license: varchar("version_license"),
+    version_sourceUrl: varchar("version_source_url"),
+    version_category: varchar("version_category"),
+    version_region: varchar("version_region"),
+    version_publisher_name: varchar("version_publisher_name"),
+    version_publisher_url: varchar("version_publisher_url"),
+    version_publisher_acronym: varchar("version_publisher_acronym"),
+    version_publisher_description: varchar("version_publisher_description"),
+    version_publisher_country: varchar("version_publisher_country"),
+    version_publisher_official: boolean("version_publisher_official").default(
+      false,
+    ),
+    version_coverage_start: varchar("version_coverage_start"),
     version_updatedAt: timestamp("version_updated_at", {
       mode: "string",
       withTimezone: true,
@@ -1206,6 +1327,25 @@ export const data_exports = db_schema.table(
   ],
 );
 
+export const datasets_coverage_countries = db_schema.table(
+  "datasets_coverage_countries",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: varchar("id").primaryKey(),
+    code: varchar("code"),
+  },
+  (columns) => [
+    index("datasets_coverage_countries_order_idx").on(columns._order),
+    index("datasets_coverage_countries_parent_id_idx").on(columns._parentID),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [datasets.id],
+      name: "datasets_coverage_countries_parent_id_fk",
+    }).onDelete("cascade"),
+  ],
+);
+
 export const datasets_id_strategy_computed_id_fields = db_schema.table(
   "datasets_id_strategy_computed_id_fields",
   {
@@ -1315,6 +1455,15 @@ export const datasets = db_schema.table(
     createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
+    license: varchar("license"),
+    sourceUrl: varchar("source_url"),
+    publisher_name: varchar("publisher_name"),
+    publisher_url: varchar("publisher_url"),
+    publisher_acronym: varchar("publisher_acronym"),
+    publisher_description: varchar("publisher_description"),
+    publisher_country: varchar("publisher_country"),
+    publisher_official: boolean("publisher_official").default(false),
+    coverage_start: varchar("coverage_start"),
     metadata: jsonb("metadata"),
     idStrategy_type:
       enum_datasets_id_strategy_type("id_strategy_type").default(
@@ -1414,6 +1563,30 @@ export const datasets = db_schema.table(
     index("datasets_created_at_idx").on(columns.createdAt),
     index("datasets_deleted_at_idx").on(columns.deletedAt),
     index("datasets__status_idx").on(columns._status),
+  ],
+);
+
+export const _datasets_v_version_coverage_countries = db_schema.table(
+  "_datasets_v_version_coverage_countries",
+  {
+    _order: integer("_order").notNull(),
+    _parentID: integer("_parent_id").notNull(),
+    id: serial("id").primaryKey(),
+    code: varchar("code"),
+    _uuid: varchar("_uuid"),
+  },
+  (columns) => [
+    index("_datasets_v_version_coverage_countries_order_idx").on(
+      columns._order,
+    ),
+    index("_datasets_v_version_coverage_countries_parent_id_idx").on(
+      columns._parentID,
+    ),
+    foreignKey({
+      columns: [columns["_parentID"]],
+      foreignColumns: [_datasets_v.id],
+      name: "_datasets_v_version_coverage_countries_parent_id_fk",
+    }).onDelete("cascade"),
   ],
 );
 
@@ -1551,6 +1724,17 @@ export const _datasets_v = db_schema.table(
         onDelete: "set null",
       },
     ),
+    version_license: varchar("version_license"),
+    version_sourceUrl: varchar("version_source_url"),
+    version_publisher_name: varchar("version_publisher_name"),
+    version_publisher_url: varchar("version_publisher_url"),
+    version_publisher_acronym: varchar("version_publisher_acronym"),
+    version_publisher_description: varchar("version_publisher_description"),
+    version_publisher_country: varchar("version_publisher_country"),
+    version_publisher_official: boolean("version_publisher_official").default(
+      false,
+    ),
+    version_coverage_start: varchar("version_coverage_start"),
     version_metadata: jsonb("version_metadata"),
     version_idStrategy_type: enum__datasets_v_version_id_strategy_type(
       "version_id_strategy_type",
@@ -3022,6 +3206,9 @@ export const scheduled_ingests = db_schema.table(
     advancedOptions_jsonApiConfig_pagination_totalPath: varchar(
       "advanced_options_json_api_config_pagination_total_path",
     ),
+    advancedOptions_jsonApiConfig_pagination_maxPagesPath: varchar(
+      "advanced_options_json_api_config_pagination_max_pages_path",
+    ),
     advancedOptions_jsonApiConfig_pagination_maxPages: numeric(
       "advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
@@ -3029,6 +3216,18 @@ export const scheduled_ingests = db_schema.table(
     advancedOptions_jsonApiConfig_pagination_maxRecords: numeric(
       "advanced_options_json_api_config_pagination_max_records",
       { mode: "number" },
+    ),
+    advancedOptions_jsonApiConfig_pagination_method: si_json_paging_method(
+      "advanced_options_json_api_config_pagination_method",
+    ).default("GET"),
+    advancedOptions_jsonApiConfig_pagination_bodyTemplate: varchar(
+      "advanced_options_json_api_config_pagination_body_template",
+    ),
+    advancedOptions_jsonApiConfig_pagination_initialBodyTemplate: varchar(
+      "advanced_options_json_api_config_pagination_initial_body_template",
+    ),
+    advancedOptions_htmlExtractConfig: jsonb(
+      "advanced_options_html_extract_config",
     ),
     advancedOptions_reviewChecks_skipTimestampCheck: boolean(
       "advanced_options_review_checks_skip_timestamp_check",
@@ -3089,6 +3288,7 @@ export const scheduled_ingests = db_schema.table(
     excludeFields: jsonb("exclude_fields"),
     preProcessing_groupBy: varchar("pre_processing_group_by"),
     preProcessing_mergeFields: jsonb("pre_processing_merge_fields"),
+    preProcessing_extractFields: jsonb("pre_processing_extract_fields"),
     lastRun: timestamp("last_run", {
       mode: "string",
       withTimezone: true,
@@ -3350,6 +3550,9 @@ export const _scheduled_ingests_v = db_schema.table(
     version_advancedOptions_jsonApiConfig_pagination_totalPath: varchar(
       "version_advanced_options_json_api_config_pagination_total_path",
     ),
+    version_advancedOptions_jsonApiConfig_pagination_maxPagesPath: varchar(
+      "version_advanced_options_json_api_config_pagination_max_pages_path",
+    ),
     version_advancedOptions_jsonApiConfig_pagination_maxPages: numeric(
       "version_advanced_options_json_api_config_pagination_max_pages",
       { mode: "number" },
@@ -3357,6 +3560,20 @@ export const _scheduled_ingests_v = db_schema.table(
     version_advancedOptions_jsonApiConfig_pagination_maxRecords: numeric(
       "version_advanced_options_json_api_config_pagination_max_records",
       { mode: "number" },
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_method:
+      si_json_paging_method(
+        "version_advanced_options_json_api_config_pagination_method",
+      ).default("GET"),
+    version_advancedOptions_jsonApiConfig_pagination_bodyTemplate: varchar(
+      "version_advanced_options_json_api_config_pagination_body_template",
+    ),
+    version_advancedOptions_jsonApiConfig_pagination_initialBodyTemplate:
+      varchar(
+        "version_advanced_options_json_api_config_pagination_initial_body_template",
+      ),
+    version_advancedOptions_htmlExtractConfig: jsonb(
+      "version_advanced_options_html_extract_config",
     ),
     version_advancedOptions_reviewChecks_skipTimestampCheck: boolean(
       "version_advanced_options_review_checks_skip_timestamp_check",
@@ -3418,6 +3635,9 @@ export const _scheduled_ingests_v = db_schema.table(
     version_preProcessing_groupBy: varchar("version_pre_processing_group_by"),
     version_preProcessing_mergeFields: jsonb(
       "version_pre_processing_merge_fields",
+    ),
+    version_preProcessing_extractFields: jsonb(
+      "version_pre_processing_extract_fields",
     ),
     version_lastRun: timestamp("version_last_run", {
       mode: "string",
@@ -8822,6 +9042,9 @@ export const settings = db_schema.table("settings", {
   featureFlags_enableScrapers: boolean("feature_flags_enable_scrapers").default(
     false,
   ),
+  featureFlags_enableExpertMode: boolean(
+    "feature_flags_enable_expert_mode",
+  ).default(false),
   updatedAt: timestamp("updated_at", {
     mode: "string",
     withTimezone: true,
@@ -8870,25 +9093,77 @@ export const payload_jobs_stats = db_schema.table("payload_jobs_stats", {
   }),
 });
 
-export const relations_catalogs = relations(catalogs, ({ one }) => ({
+export const relations_catalogs_tags = relations(catalogs_tags, ({ one }) => ({
+  _parentID: one(catalogs, {
+    fields: [catalogs_tags._parentID],
+    references: [catalogs.id],
+    relationName: "tags",
+  }),
+}));
+export const relations_catalogs_coverage_countries = relations(
+  catalogs_coverage_countries,
+  ({ one }) => ({
+    _parentID: one(catalogs, {
+      fields: [catalogs_coverage_countries._parentID],
+      references: [catalogs.id],
+      relationName: "coverage_countries",
+    }),
+  }),
+);
+export const relations_catalogs = relations(catalogs, ({ one, many }) => ({
   createdBy: one(users, {
     fields: [catalogs.createdBy],
     references: [users.id],
     relationName: "createdBy",
   }),
-}));
-export const relations__catalogs_v = relations(_catalogs_v, ({ one }) => ({
-  parent: one(catalogs, {
-    fields: [_catalogs_v.parent],
-    references: [catalogs.id],
-    relationName: "parent",
+  tags: many(catalogs_tags, {
+    relationName: "tags",
   }),
-  version_createdBy: one(users, {
-    fields: [_catalogs_v.version_createdBy],
-    references: [users.id],
-    relationName: "version_createdBy",
+  coverage_countries: many(catalogs_coverage_countries, {
+    relationName: "coverage_countries",
   }),
 }));
+export const relations__catalogs_v_version_tags = relations(
+  _catalogs_v_version_tags,
+  ({ one }) => ({
+    _parentID: one(_catalogs_v, {
+      fields: [_catalogs_v_version_tags._parentID],
+      references: [_catalogs_v.id],
+      relationName: "version_tags",
+    }),
+  }),
+);
+export const relations__catalogs_v_version_coverage_countries = relations(
+  _catalogs_v_version_coverage_countries,
+  ({ one }) => ({
+    _parentID: one(_catalogs_v, {
+      fields: [_catalogs_v_version_coverage_countries._parentID],
+      references: [_catalogs_v.id],
+      relationName: "version_coverage_countries",
+    }),
+  }),
+);
+export const relations__catalogs_v = relations(
+  _catalogs_v,
+  ({ one, many }) => ({
+    parent: one(catalogs, {
+      fields: [_catalogs_v.parent],
+      references: [catalogs.id],
+      relationName: "parent",
+    }),
+    version_createdBy: one(users, {
+      fields: [_catalogs_v.version_createdBy],
+      references: [users.id],
+      relationName: "version_createdBy",
+    }),
+    version_tags: many(_catalogs_v_version_tags, {
+      relationName: "version_tags",
+    }),
+    version_coverage_countries: many(_catalogs_v_version_coverage_countries, {
+      relationName: "version_coverage_countries",
+    }),
+  }),
+);
 export const relations_data_exports = relations(data_exports, ({ one }) => ({
   user: one(users, {
     fields: [data_exports.user],
@@ -8896,6 +9171,16 @@ export const relations_data_exports = relations(data_exports, ({ one }) => ({
     relationName: "user",
   }),
 }));
+export const relations_datasets_coverage_countries = relations(
+  datasets_coverage_countries,
+  ({ one }) => ({
+    _parentID: one(datasets, {
+      fields: [datasets_coverage_countries._parentID],
+      references: [datasets.id],
+      relationName: "coverage_countries",
+    }),
+  }),
+);
 export const relations_datasets_id_strategy_computed_id_fields = relations(
   datasets_id_strategy_computed_id_fields,
   ({ one }) => ({
@@ -8942,6 +9227,9 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
     references: [users.id],
     relationName: "createdBy",
   }),
+  coverage_countries: many(datasets_coverage_countries, {
+    relationName: "coverage_countries",
+  }),
   idStrategy_computedIdFields: many(datasets_id_strategy_computed_id_fields, {
     relationName: "idStrategy_computedIdFields",
   }),
@@ -8957,6 +9245,16 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
     relationName: "schemaDetector",
   }),
 }));
+export const relations__datasets_v_version_coverage_countries = relations(
+  _datasets_v_version_coverage_countries,
+  ({ one }) => ({
+    _parentID: one(_datasets_v, {
+      fields: [_datasets_v_version_coverage_countries._parentID],
+      references: [_datasets_v.id],
+      relationName: "version_coverage_countries",
+    }),
+  }),
+);
 export const relations__datasets_v_version_id_strategy_computed_id_fields =
   relations(_datasets_v_version_id_strategy_computed_id_fields, ({ one }) => ({
     _parentID: one(_datasets_v, {
@@ -9005,6 +9303,9 @@ export const relations__datasets_v = relations(
       fields: [_datasets_v.version_createdBy],
       references: [users.id],
       relationName: "version_createdBy",
+    }),
+    version_coverage_countries: many(_datasets_v_version_coverage_countries, {
+      relationName: "version_coverage_countries",
     }),
     version_idStrategy_computedIdFields: many(
       _datasets_v_version_id_strategy_computed_id_fields,
@@ -11333,6 +11634,7 @@ type DatabaseSchema = {
   enum_scheduled_ingests_auth_config_type: typeof enum_scheduled_ingests_auth_config_type;
   si_response_format: typeof si_response_format;
   si_json_paging_type: typeof si_json_paging_type;
+  si_json_paging_method: typeof si_json_paging_method;
   enum_scheduled_ingests_last_status: typeof enum_scheduled_ingests_last_status;
   enum_scheduled_ingests_status: typeof enum_scheduled_ingests_status;
   enum__scheduled_ingests_v_version_execution_history_status: typeof enum__scheduled_ingests_v_version_execution_history_status;
@@ -11465,13 +11767,19 @@ type DatabaseSchema = {
   enum__footer_v_published_locale: typeof enum__footer_v_published_locale;
   enum_settings_geocoding_provider_selection_required_tags: typeof enum_settings_geocoding_provider_selection_required_tags;
   enum_settings_geocoding_provider_selection_strategy: typeof enum_settings_geocoding_provider_selection_strategy;
+  catalogs_tags: typeof catalogs_tags;
+  catalogs_coverage_countries: typeof catalogs_coverage_countries;
   catalogs: typeof catalogs;
+  _catalogs_v_version_tags: typeof _catalogs_v_version_tags;
+  _catalogs_v_version_coverage_countries: typeof _catalogs_v_version_coverage_countries;
   _catalogs_v: typeof _catalogs_v;
   data_exports: typeof data_exports;
+  datasets_coverage_countries: typeof datasets_coverage_countries;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
   datasets_id_strategy_exclude_fields: typeof datasets_id_strategy_exclude_fields;
   datasets_ingest_transforms: typeof datasets_ingest_transforms;
   datasets: typeof datasets;
+  _datasets_v_version_coverage_countries: typeof _datasets_v_version_coverage_countries;
   _datasets_v_version_id_strategy_computed_id_fields: typeof _datasets_v_version_id_strategy_computed_id_fields;
   _datasets_v_version_id_strategy_exclude_fields: typeof _datasets_v_version_id_strategy_exclude_fields;
   _datasets_v_version_ingest_transforms: typeof _datasets_v_version_ingest_transforms;
@@ -11636,13 +11944,19 @@ type DatabaseSchema = {
   settings: typeof settings;
   settings_locales: typeof settings_locales;
   payload_jobs_stats: typeof payload_jobs_stats;
+  relations_catalogs_tags: typeof relations_catalogs_tags;
+  relations_catalogs_coverage_countries: typeof relations_catalogs_coverage_countries;
   relations_catalogs: typeof relations_catalogs;
+  relations__catalogs_v_version_tags: typeof relations__catalogs_v_version_tags;
+  relations__catalogs_v_version_coverage_countries: typeof relations__catalogs_v_version_coverage_countries;
   relations__catalogs_v: typeof relations__catalogs_v;
   relations_data_exports: typeof relations_data_exports;
+  relations_datasets_coverage_countries: typeof relations_datasets_coverage_countries;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
   relations_datasets_id_strategy_exclude_fields: typeof relations_datasets_id_strategy_exclude_fields;
   relations_datasets_ingest_transforms: typeof relations_datasets_ingest_transforms;
   relations_datasets: typeof relations_datasets;
+  relations__datasets_v_version_coverage_countries: typeof relations__datasets_v_version_coverage_countries;
   relations__datasets_v_version_id_strategy_computed_id_fields: typeof relations__datasets_v_version_id_strategy_computed_id_fields;
   relations__datasets_v_version_id_strategy_exclude_fields: typeof relations__datasets_v_version_id_strategy_exclude_fields;
   relations__datasets_v_version_ingest_transforms: typeof relations__datasets_v_version_ingest_transforms;
