@@ -17,7 +17,7 @@
   "dependencies": {
     "@timetiles/assets": "workspace:*",
     "@timetiles/ui": "workspace:*",
-    "next": "^16.2.1",
+    "next": "^16.2.2",
     "nextra": "^4.6.1",
     "nextra-theme-docs": "^4.6.1",
     "react": "catalog:",
@@ -27,7 +27,7 @@
     "@svgr/webpack": "catalog:",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.5.2",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
