@@ -41,10 +41,10 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
     });
     await waitForMapReady(page);
 
-    // Click "List" view toggle
+    // Click "Grid" view toggle (renamed from "List")
     await page
       .locator("button")
-      .filter({ hasText: /^List$/ })
+      .filter({ hasText: /^Grid$/ })
       .click();
     await page.waitForURL("**/explore/list**", { timeout: 15000 });
 

@@ -235,13 +235,13 @@ test.describe("Access Control - User Perspective", () => {
       const datasetsSection = page.locator("text=Datasets").first();
       await expect(datasetsSection).toBeVisible();
 
-      // Count should only include accessible datasets
-      const datasetElements = await page.locator("[data-testid='dataset-item'], .dataset-item").count();
+      // Count accessible datasets (each dataset has a checkbox)
+      const datasetCheckboxes = await page.locator('[role="checkbox"]').count();
 
-      console.log(`Visible datasets in UI: ${datasetElements}`);
+      console.log(`Visible dataset checkboxes in UI: ${datasetCheckboxes}`);
 
       // Should be 0 or more depending on seeded data
-      expect(datasetElements).toBeGreaterThanOrEqual(0);
+      expect(datasetCheckboxes).toBeGreaterThanOrEqual(0);
     });
 
     test("should handle empty state when no public data exists", async ({ page }) => {

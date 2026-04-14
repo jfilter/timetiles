@@ -18,16 +18,14 @@ test.describe("Explore Page - Basic Functionality", () => {
     await explorePage.goto();
   });
 
-  test("should load the explore page with all components", async ({ page }) => {
+  test("should load the explore page with all components", async () => {
     // Check main components are visible
     await expect(explorePage.map).toBeVisible();
-    // UI redesigned: catalogs are now shown as buttons under Data Sources section
+    // Datasets collapsible section trigger should be visible
     await expect(explorePage.dataSourcesSection).toBeVisible();
 
-    // Check initial state - Catalogs section should be visible (renamed from Datasets)
-    // Note: With seeded data, there might be catalogs available
-    const catalogsSection = page.locator("text=Catalogs").first();
-    await expect(catalogsSection).toBeVisible();
+    // Dataset/catalog checkboxes should be present (data loaded from API)
+    await expect(explorePage.datasetCheckboxes.first()).toBeVisible();
 
     // Should show events count (now a paragraph with "Showing X events...")
     await expect(explorePage.eventsCount).toBeVisible();
@@ -97,12 +95,12 @@ test.describe("Explore Page - Basic Functionality", () => {
     const initialUrl = new URL(page.url());
     expect(initialUrl.pathname).toBe("/explore");
 
-    // Select a catalog (new button-based UI)
-    await explorePage.selectCatalog("Environmental Data");
+    // Select all datasets in a catalog (tri-state checkbox)
+    await explorePage.selectAllInCatalog("Environmental Data");
 
-    // URL should have catalog parameter after selecting a specific catalog
+    // URL should have datasets parameter after selecting datasets
     const url = new URL(page.url());
-    expect(url.searchParams.has("catalog")).toBe(true);
+    expect(url.searchParams.has("datasets")).toBe(true);
   });
 
   test("should handle keyboard navigation", async ({ page }) => {

@@ -21,7 +21,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should filter events by map bounds when panning", async ({ page }) => {
     // Select catalog (auto-selects all datasets)
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
@@ -42,7 +42,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should update markers when events change", async ({ page }) => {
     // Select catalog and let all data load (filter → 300ms debounce → API → render)
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
@@ -72,7 +72,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should handle zoom interactions", async ({ page }) => {
     // Load some events first
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
@@ -94,7 +94,7 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should display map popups when clicking markers", async ({ page }) => {
     // Load events
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
@@ -126,7 +126,7 @@ test.describe("Explore Page - Map Interactions", () => {
     });
 
     // Load events
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
@@ -146,10 +146,14 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should handle many events gracefully", async () => {
     // Load a catalog that might have many events
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
 
     // Wait for data to load
     await explorePage.waitForApiResponse();
+    await explorePage.waitForEventsToLoad();
+
+    // Fit the map to the data so events are in view and the events list renders
+    await explorePage.zoomToData();
     await explorePage.waitForEventsToLoad();
 
     // Get the event count for logging
@@ -180,14 +184,17 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test("should handle empty results gracefully", async () => {
     // Set up filters that might return no results
-    await explorePage.selectCatalog("Environmental Data");
+    await explorePage.selectAllInCatalog("Environmental Data");
 
     // Wait for API response and events to load first (timeline appears after data loads)
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
+    // Fit map to the events so the temporal histogram has data to render
+    // the date-range button (required by setStartDate).
+    await explorePage.zoomToData();
+
     // Set date range in far future (likely no events)
-    // The setStartDate method will wait for the timeline to be ready
     await explorePage.setStartDate("2030-01-01");
     await explorePage.setEndDate("2030-12-31");
 

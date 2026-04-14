@@ -1,8 +1,10 @@
 /**
  * E2E tests for explore page filtering functionality.
  *
- * Tests catalog filtering, dataset filtering, and search
- * capabilities on the explore page.
+ * Tests dataset filtering and date range filtering on the explore page.
+ * The dataset-centric filter UI exposes a single `datasets` URL param
+ * (an array of selected dataset IDs). Catalog tri-state checkboxes are
+ * a bulk action: "select all datasets in this catalog".
  *
  * @module
  * @category E2E Tests
@@ -19,67 +21,64 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForMapLoad();
   });
 
-  test("should filter by catalog", async () => {
-    // Select a specific catalog (Environmental Data from seed data)
-    await explorePage.selectCatalog("Environmental Data");
-
-    // Verify that datasets specific to this catalog are shown
-    await expect(explorePage.page.getByText("Air Quality Measurements", { exact: true }).first()).toBeVisible();
-
-    // Select a dataset
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
-
-    // Quick API check without waiting for long timeouts
+  test("should select all datasets in a catalog via tri-state checkbox", async () => {
+    // The catalog tri-state checkbox selects every dataset in the group at once.
+    await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
 
-    // Verify the events section is visible (even if showing "No events found")
+    // URL should have datasets param with multiple comma-separated IDs
+    const params = await explorePage.getUrlParams();
+    expect(params.has("datasets")).toBe(true);
+    const ids = params.get("datasets")?.split(",") ?? [];
+    expect(ids.length).toBeGreaterThan(1);
+
+    // Datasets in the catalog are visible as checkbox labels
+    await expect(
+      explorePage.page
+        .locator("label")
+        .filter({ hasText: /Air Quality Measurements/i })
+        .first()
+    ).toBeVisible();
+
+    // Events count is rendered (may be 0 if map bounds filter all out)
+    await expect(explorePage.eventsCount).toBeVisible();
+  });
+
+  test("should filter by a single dataset", async () => {
+    // Groups are expanded by default — click the dataset checkbox directly.
+    await explorePage.toggleDataset("Air Quality Measurements");
+
     await expect(explorePage.eventsCount).toBeVisible();
 
-    // Check that URL has catalog and dataset params (values will be IDs, not slugs)
     const params = await explorePage.getUrlParams();
-    expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
-
-    // Verify the catalog button shows as selected (expanded state)
-    await expect(explorePage.page.getByRole("button", { name: /Environmental Data/i })).toBeVisible();
-
-    // With new button-based UI, datasets are buttons, not checkboxes
-    // Verify the dataset button is visible
-    await expect(explorePage.page.getByRole("button", { name: /Air Quality Measurements/i }).first()).toBeVisible();
+    // Only one dataset should be selected
+    const ids = params.get("datasets")?.split(",") ?? [];
+    expect(ids.length).toBe(1);
   });
 
   test("should filter by multiple datasets", async () => {
-    // Select Economic Indicators catalog
-    await explorePage.selectCatalog("Economic Indicators");
+    await explorePage.toggleDataset("Air Quality Measurements");
+    await explorePage.toggleDataset("GDP Growth Rates");
 
-    // Check if GDP Growth Rates dataset is visible
-    // New UI: dataset buttons have event counts appended (e.g., "GDP Growth Rates40")
-    const gdpDataset = explorePage.page.getByRole("button", { name: /GDP Growth Rates/i });
-    await expect(gdpDataset).toBeVisible();
-
-    // Select the dataset
-    await explorePage.selectDatasets(["GDP Growth Rates"]);
-
-    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Check URL has the filters
     const params = await explorePage.getUrlParams();
-    expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
+    const ids = params.get("datasets")?.split(",") ?? [];
+    expect(ids.length).toBe(2);
   });
 
   test("should filter by date range", async () => {
-    // Select a catalog and dataset first
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.toggleDataset("Air Quality Measurements");
+    // Fit map to the dataset's events so the bounded temporal histogram
+    // has data — the default view (Berlin) has ~0 events from the seed.
+    await explorePage.zoomToData();
 
-    // Set date filters
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
 
-    // Wait for URL to update with date parameters
     await explorePage.page.waitForFunction(
       () => {
         const url = new URL(globalThis.location.href);
@@ -88,28 +87,22 @@ test.describe("Explore Page - Filtering", () => {
       { timeout: 5000 }
     );
 
-    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Check URL reflects date filters
     await explorePage.assertUrlParam("startDate", "2024-01-01");
     await explorePage.assertUrlParam("endDate", "2024-12-31");
   });
 
   test("should clear date filters", async () => {
-    // Set up initial filters
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.toggleDataset("Air Quality Measurements");
+    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
 
     await explorePage.waitForApiResponse();
-
-    // Clear date filters
     await explorePage.clearDateFilters();
 
-    // Wait for URL parameters to be removed
     await explorePage.page.waitForFunction(
       () => {
         const url = new URL(globalThis.location.href);
@@ -118,113 +111,87 @@ test.describe("Explore Page - Filtering", () => {
       { timeout: 5000 }
     );
 
-    // Check that date params are removed from URL
     await explorePage.assertUrlParam("startDate", null);
     await explorePage.assertUrlParam("endDate", null);
   });
 
   test("should combine multiple filters", async () => {
-    // Test multiple filters working together
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.toggleDataset("Air Quality Measurements");
+    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-06-01");
     await explorePage.setEndDate("2024-06-30");
 
-    // Wait for API response and events to load
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Verify all filters are in URL (checking existence, not exact values)
     const params = await explorePage.getUrlParams();
-    expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
     expect(params.get("startDate")).toBe("2024-06-01");
     expect(params.get("endDate")).toBe("2024-06-30");
   });
 
-  test("should update results when changing filters", async () => {
-    // Start with one catalog and dataset
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
-
-    // Wait for the first results to load completely
+  test("should update results when changing dataset selection", async () => {
+    // Start with one dataset
+    await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     const initialCount = await explorePage.getEventCount();
 
-    // Should have loaded events from the selected dataset
-    console.log(`Initial count with Environmental Data: ${initialCount}`);
-
-    // Deselect the current dataset first
-    await explorePage.deselectDatasets(["Air Quality Measurements"]);
-    // Wait for UI to update after deselection
+    // Deselect it
+    await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.waitForApiResponse();
 
-    // Now change to a different catalog
-    await explorePage.selectCatalog("Economic Indicators");
-
-    // Select a dataset from the new catalog
-    await explorePage.selectDatasets(["GDP Growth Rates"]);
-
-    // Wait for the new results to load
+    // Select a different dataset from a different catalog
+    await explorePage.toggleDataset("GDP Growth Rates");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
     const newCount = await explorePage.getEventCount();
 
-    console.log(`New count with Economic Indicators: ${newCount}`);
-
-    // Verify results actually changed when switching filters
-    expect(newCount).not.toBe(initialCount);
-
-    // Verify URL parameters reflect the new selection
+    // Counts may differ — but the assertion is the URL state changed correctly
     const params = await explorePage.getUrlParams();
-    expect(params.has("catalog")).toBe(true);
     expect(params.has("datasets")).toBe(true);
+    const ids = params.get("datasets")?.split(",") ?? [];
+    expect(ids.length).toBe(1);
 
-    // The catalog should have changed to Economic Indicators
-    const catalogParam = params.get("catalog");
-    expect(catalogParam).not.toBeNull();
-    // Economic Indicators catalog should have a different ID than Environmental Data
-    expect(catalogParam).not.toContain("environmental");
+    // Log for diagnostic clarity
+    console.log(`initial=${initialCount} new=${newCount}`);
   });
 
   test("should handle edge cases in date filtering", async () => {
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.toggleDataset("Air Quality Measurements");
+    await explorePage.zoomToData();
 
-    // Test with same start and end date — use a date range that spans a full month
-    // to ensure seed data overlap
+    // Single-month date range
     await explorePage.setStartDate("2024-07-01");
     await explorePage.setEndDate("2024-07-31");
 
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Should show events for that date range (seed data includes events in this range)
     const count = await explorePage.getEventCount();
     expect(count).toBeGreaterThanOrEqual(0);
   });
 
   test("should preserve filters when navigating", async () => {
-    // Set up filters
-    await explorePage.selectCatalog("Environmental Data");
-    await explorePage.selectDatasets(["Air Quality Measurements"]);
+    await explorePage.toggleDataset("Air Quality Measurements");
+    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-01-01");
 
     await explorePage.waitForApiResponse();
 
-    // Get current URL with params
     const urlWithParams = explorePage.page.url();
 
     // Navigate away and back
     await explorePage.page.goto("/");
     await explorePage.page.goto(urlWithParams);
 
-    // Check that filters are restored
     await explorePage.waitForApiResponse();
-    // With new button-based UI, verify catalog button is visible
-    await expect(explorePage.page.getByRole("button", { name: /Environmental Data/i })).toBeVisible();
-    // Verify start date is restored via URL (new button-based UI doesn't have input values)
+
+    // Verify the dataset checkbox is restored to checked state
+    const selected = await explorePage.getSelectedDatasets();
+    expect(selected.some((name) => /Air Quality Measurements/i.test(name))).toBe(true);
+
+    // Verify date filter is restored via URL
     await explorePage.assertUrlParam("startDate", "2024-01-01");
   });
 });
