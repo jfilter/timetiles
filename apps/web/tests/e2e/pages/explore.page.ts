@@ -27,12 +27,11 @@ export class ExplorePage {
   constructor(page: Page) {
     this.page = page;
     this.map = page.getByRole("region", { name: "Map" }).first();
-    // Catalog UI: buttons under "Data Sources" / "Catalogs" section
-    this.dataSourcesSection = page.getByRole("button", { name: /Data Sources/i });
-    // Catalog buttons contain "X datasets" and "Y events" text in divs
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    this.catalogButtons = page.locator("button").filter({ hasText: /\d+ datasets?/ });
-    this.datasetCheckboxes = page.locator('input[type="checkbox"]');
+    // "Datasets" collapsible section trigger (renamed from "Data Sources")
+    this.dataSourcesSection = page.getByRole("button", { name: /^Datasets/i });
+    // Catalog group checkboxes — each has aria-label "Select all datasets in X"
+    this.catalogButtons = page.locator('[role="checkbox"][aria-label*="all datasets in"]');
+    this.datasetCheckboxes = page.locator('[role="checkbox"]');
     // New date picker UI uses buttons instead of input fields
     this.startDateInput = page.getByRole("button", { name: /Start date:/i });
     this.endDateInput = page.getByRole("button", { name: /End date:/i });
@@ -54,17 +53,28 @@ export class ExplorePage {
   }
 
   async goto() {
-    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
-    // to fully resolve all resources (the middleware intercepts all frontend routes)
     await this.page.goto("/explore", { timeout: 30000, waitUntil: "domcontentloaded" });
-    // Wait for key elements to be visible instead of networkidle
-    // (networkidle is unreliable with SPAs that have polling/websockets)
     await this.map.waitFor({ state: "visible", timeout: 15000 });
     await this.dataSourcesSection.waitFor({ state: "visible", timeout: 10000 });
 
-    // Wait for catalog data to actually load (buttons with "X datasets" text)
-    // This ensures the API has returned before tests proceed
-    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 15000 });
+    // Wait for catalog/dataset checkboxes to appear (API data loaded)
+    await this.page.waitForSelector('[role="checkbox"]', { timeout: 15000 });
+  }
+
+  /**
+   * Click the "Zoom to data" button to fit the map to all visible events.
+   * Useful for tests that need the map-bounded temporal histogram to
+   * include events — the hardcoded default view is Berlin, which most
+   * seeded test events are not in.
+   */
+  async zoomToData() {
+    const button = this.page.getByRole("button", { name: /Zoom to fit all events/i });
+    const visible = await button.isVisible({ timeout: 5000 }).catch(() => false);
+    if (visible) {
+      await button.click();
+      // Wait for map animation / bounds update and subsequent API refetch
+      await this.waitForApiResponse();
+    }
   }
 
   async waitForMapLoad() {
@@ -90,22 +100,33 @@ export class ExplorePage {
    * - The actual slider UI with date range button when data is available
    */
   async waitForTimelineReady() {
-    // First, wait for "Loading timeline..." to disappear (if present)
+    // Wait for the histogram API to settle (temporal endpoint loads the slider data)
+    await this.page
+      .waitForResponse((response) => response.url().includes("/api/v1/events/temporal") && response.status() === 200, {
+        timeout: 10000,
+      })
+      .catch(() => {
+        // Histogram may already be cached — proceed
+      });
+
+    // Wait for "Loading timeline..." to disappear if present
     const loadingText = this.page.getByText("Loading timeline...");
     await loadingText.waitFor({ state: "hidden", timeout: 10000 }).catch(() => {
-      // If not visible, that's fine - timeline might already be loaded or not yet started
+      // Already hidden — continue
     });
 
-    // Wait for either the date range button (normal state) or "No events to display" message
-    const dateRangeButton = this.page.getByRole("button", { name: /→/ }).last();
+    // Wait for either the date range button (data state) or "No events to display"
+    const dateRangeButton = this.page
+      .locator("button")
+      .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
+      .first();
     const noEventsText = this.page.getByText("No events to display");
 
-    // Wait for one of these states
     await Promise.race([
-      dateRangeButton.waitFor({ state: "visible", timeout: 5000 }),
-      noEventsText.waitFor({ state: "visible", timeout: 5000 }),
+      dateRangeButton.waitFor({ state: "visible", timeout: 10000 }),
+      noEventsText.waitFor({ state: "visible", timeout: 10000 }),
     ]).catch(() => {
-      // If neither appears, continue anyway - might be a timing issue
+      // Neither appeared — let downstream wait fail with a clearer message
     });
   }
 
@@ -151,12 +172,9 @@ export class ExplorePage {
    * Note: Filter drawer is open by default on page load.
    */
   async openFilterDrawer() {
-    // Check if filter drawer is already open by looking for a catalog button
-    // (Catalog buttons show "X datasets" in their text content)
-    const buttonLocator = this.page.locator("button");
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const catalogButton = buttonLocator.filter({ hasText: /\d+ datasets?/ }).first();
-    const isAlreadyOpen = await catalogButton.isVisible({ timeout: 2000 }).catch(() => false);
+    // Check if filter drawer is already open by looking for any checkbox
+    const anyCheckbox = this.page.locator('[role="checkbox"]').first();
+    const isAlreadyOpen = await anyCheckbox.isVisible({ timeout: 2000 }).catch(() => false);
 
     if (isAlreadyOpen) {
       // Already open, nothing to do
@@ -164,90 +182,132 @@ export class ExplorePage {
     }
 
     // Try to find "Show filters" button (visible when drawer is closed)
-    const showFiltersButton = this.page.getByRole("button", { name: /Show filters/i });
+    const showFiltersButton = this.page.getByRole("button", { name: /Show filters|Filters/i });
     const showButtonVisible = await showFiltersButton.isVisible({ timeout: 1000 }).catch(() => false);
 
     if (showButtonVisible) {
       await showFiltersButton.click();
-      // Wait for the drawer to open (catalog buttons should become visible)
-      await catalogButton.waitFor({ state: "visible", timeout: 5000 });
+      // Wait for the drawer to open (checkboxes should become visible)
+      await anyCheckbox.waitFor({ state: "visible", timeout: 5000 });
     }
   }
 
-  async selectCatalog(catalogName: string) {
-    // First, ensure the filter drawer is open
+  /**
+   * Select (or deselect) all datasets in a catalog group via its tri-state checkbox.
+   * Aria-label format: "Select all datasets in {name}" or "Deselect all datasets in {name}".
+   * On select: URL gains `datasets=` with all that catalog's IDs.
+   */
+  async selectAllInCatalog(catalogName: string) {
     await this.openFilterDrawer();
+    await this.page.waitForSelector('[role="checkbox"]', { timeout: 15000 });
 
-    // Wait for catalogs to load from API (buttons with "X datasets" text)
-    const buttonLoc = this.page.locator("button");
-    // eslint-disable-next-line sonarjs/slow-regex -- Simple pattern with no backtracking risk in controlled test
-    const anyCatalogButton = buttonLoc.filter({ hasText: /\d+ datasets?/ }).first();
-    await anyCatalogButton.waitFor({ state: "visible", timeout: 15000 });
+    const catalogCheckbox = this.page.locator(`[role="checkbox"][aria-label*="${catalogName}"]`).first();
+    await catalogCheckbox.waitFor({ state: "visible", timeout: 10000 });
+    await catalogCheckbox.click({ force: true, timeout: 10000 });
 
-    // New UI: catalogs are displayed as buttons under "Data Sources" section
-    // Each button shows: "CatalogName X datasets Y events"
-    const catalogButton = this.page.getByRole("button", { name: new RegExp(catalogName, "i") }).first();
-    await catalogButton.waitFor({ state: "visible", timeout: 10000 });
-    // Use force: true to click through any potential overlays or animations
-    await catalogButton.click({ force: true, timeout: 10000 });
-
-    // Wait for DATASETS section to appear (it only renders when a catalog is selected)
-    // The section has a header "Datasets" with optional "(X/Y active)" count
-    const datasetsHeader = this.page.locator("text=Datasets").first();
-    await datasetsHeader.waitFor({ state: "visible", timeout: 10000 });
-
-    // Also wait for URL to update with catalog parameter
     await this.page
-      .waitForFunction(() => new URL(globalThis.location.href).searchParams.has("catalog"), { timeout: 5000 })
+      .waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), { timeout: 5000 })
       .catch(() => {
         // URL might not update immediately, continue anyway
       });
   }
 
   /**
-   * Get all available catalog names from the Data Sources section.
-   * Returns array of catalog names (without dataset/event counts).
+   * Expand every collapsed catalog group so every dataset row is rendered.
+   * Catalog groups auto-collapse once any dataset is selected (only the
+   * group with selected children stays open), so individual datasets in
+   * other catalogs become unreachable. Call this before locating a dataset.
+   */
+  async expandAllCatalogs() {
+    // Collapsed catalog buttons contain a chevron-right icon
+    const collapsedButtons = this.page.locator("button:has(.lucide-chevron-right)");
+    const count = await collapsedButtons.count();
+    for (let i = 0; i < count; i++) {
+      // Re-query each iteration since the DOM mutates after each click
+      const button = this.page.locator("button:has(.lucide-chevron-right)").first();
+      const visible = await button.isVisible({ timeout: 500 }).catch(() => false);
+      if (!visible) break;
+      await button.click({ force: true });
+    }
+  }
+
+  /**
+   * Toggle a single dataset's checkbox by clicking its label row.
+   * Used for individual dataset selection / deselection.
+   */
+  async toggleDataset(datasetName: string) {
+    await this.openFilterDrawer();
+    await this.page.waitForSelector('[role="checkbox"]', { timeout: 15000 });
+
+    // Catalog groups collapse after the first dataset is selected — expand
+    // any collapsed groups so the dataset label is reachable.
+    await this.expandAllCatalogs();
+
+    const datasetLabel = this.page
+      .locator("label")
+      .filter({ hasText: new RegExp(datasetName, "i") })
+      .first();
+    await datasetLabel.waitFor({ state: "visible", timeout: 10000 });
+    await datasetLabel.click({ force: true, timeout: 10000 });
+    await this.waitForApiResponse();
+  }
+
+  /**
+   * Get all visible catalog names from the Datasets section.
+   * Extracts names from catalog tri-state checkbox aria-labels.
    */
   async getAvailableCatalogs(): Promise<string[]> {
-    // First ensure the filter drawer is open
     await this.openFilterDrawer();
+    await this.page.waitForSelector('[role="checkbox"]', { timeout: 10000 });
 
-    // Wait for catalogs to load - catalog buttons contain "X datasets" text
-    // Use longer timeout as API can be slow during server startup
-    await this.page.waitForSelector('button:has-text("datasets")', { timeout: 10000 });
+    const ariaLabels = await this.catalogButtons.evaluateAll((els) =>
+      els.map((el) => el.getAttribute("aria-label") ?? "")
+    );
 
-    // Get all catalog buttons
-    const buttons = await this.catalogButtons.allTextContents();
-
-    // Extract catalog names - buttons have format:
-    // "Catalog Name\nX datasets\nY events" (newline-separated)
-    return buttons.map((text) => {
-      // Split by newlines and take first line (catalog name)
-      const lines = text.split("\n");
-      return lines[0]?.trim() ?? text.trim();
-    });
+    return ariaLabels
+      .map((label) => {
+        const match = /all datasets in (.+)$/.exec(label);
+        return match?.[1]?.trim() ?? "";
+      })
+      .filter(Boolean);
   }
 
-  async selectDatasets(datasetNames: string[]) {
-    for (const datasetName of datasetNames) {
-      // New UI: datasets are shown as buttons with event counts (e.g., "Air Quality Measurements5")
-      // Use partial name match since buttons have numbers appended
-      const datasetButton = this.page.getByRole("button", { name: new RegExp(datasetName, "i") }).first();
-      await datasetButton.waitFor({ state: "visible", timeout: 10000 });
-      // Use force: true to handle any overlay/animation issues
-      await datasetButton.click({ force: true, timeout: 10000 });
-      // Wait for API response after selection
-      await this.waitForApiResponse();
-    }
+  /**
+   * Get all visible dataset labels (text content of the dataset rows).
+   * Useful for asserting which datasets are visible after filtering.
+   */
+  async getAvailableDatasets(): Promise<string[]> {
+    await this.openFilterDrawer();
+    await this.page.waitForSelector('[role="checkbox"]', { timeout: 10000 });
+
+    // Dataset labels wrap each individual dataset checkbox.
+    // The label's first text node is the dataset name.
+    return this.page.locator("label").evaluateAll((labels) =>
+      labels
+        .map((label) => {
+          const nameSpan = label.querySelector("span > span");
+          return nameSpan?.textContent?.trim() ?? "";
+        })
+        .filter(Boolean)
+    );
   }
 
-  async deselectDatasets(datasetNames: string[]) {
-    for (const name of datasetNames) {
-      // New UI: click the dataset button again to deselect
-      const datasetButton = this.page.getByRole("button", { name: new RegExp(name, "i") }).first();
-      await datasetButton.click();
-      await this.waitForApiResponse();
-    }
+  /**
+   * Get currently-selected dataset names (checkboxes in checked state).
+   */
+  async getSelectedDatasets(): Promise<string[]> {
+    return this.page.locator("label").evaluateAll((labels) =>
+      labels
+        .filter((label) => {
+          const cb = label.querySelector('[role="checkbox"]');
+          return cb?.getAttribute("data-state") === "checked";
+        })
+        .map((label) => {
+          const nameSpan = label.querySelector("span > span");
+          return nameSpan?.textContent?.trim() ?? "";
+        })
+        .filter(Boolean)
+    );
   }
 
   async setStartDate(date: string) {

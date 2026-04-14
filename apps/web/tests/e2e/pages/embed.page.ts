@@ -19,7 +19,7 @@ export class EmbedPage {
     this.page = page;
     this.map = page.getByRole("region", { name: "Map" }).first();
     this.attribution = page.locator("a", { hasText: /Powered by TimeTiles/i });
-    this.dataSourcesSection = page.getByRole("button", { name: /Data Sources/i });
+    this.dataSourcesSection = page.getByRole("button", { name: /^Datasets/i });
   }
 
   /** Navigate to the default embed page. */
