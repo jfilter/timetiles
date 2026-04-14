@@ -37,9 +37,9 @@ export const ZoomToDataButton = ({ onClick, visible }: ZoomToDataButtonProps) =>
         aria-hidden={!visible}
         className={cn(
           "flex items-center gap-2 rounded bg-white px-3 py-1.5",
-          "text-sm font-medium text-gray-700 shadow-md",
+          "text-sm font-medium text-gray-900 shadow-md",
           "transition-colors hover:bg-gray-100",
-          "dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+          "dark:bg-gray-800 dark:text-gray-50 dark:hover:bg-gray-700"
         )}
       >
         <Maximize2 className="h-4 w-4" />

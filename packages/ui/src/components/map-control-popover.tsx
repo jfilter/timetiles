@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
 
@@ -58,15 +58,15 @@ export const MapControlPopover = ({
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, setOpen]);
 
+  // Clone the trigger to inject onClick instead of wrapping it in another
+  // button — nested interactive controls violate WCAG (nested-interactive).
+  const triggerWithHandler = isValidElement(trigger)
+    ? cloneElement(trigger as React.ReactElement<{ onClick?: () => void }>, { onClick: () => setOpen(!isOpen) })
+    : trigger;
+
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen(!isOpen)}
-        className="cursor-pointer appearance-none border-0 bg-transparent p-0"
-      >
-        {trigger}
-      </button>
+      {triggerWithHandler}
 
       {isOpen && (
         <div
