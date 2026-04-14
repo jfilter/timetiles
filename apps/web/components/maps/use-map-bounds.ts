@@ -42,10 +42,23 @@ export const useMapBounds = ({
   const [isMapPositioned, setIsMapPositioned] = useState(!!initialViewState);
   const hasAppliedBoundsRef = useRef(false);
 
-  // Fit map to bounds when they arrive after the initial map load (race condition fix:
-  // onLoad fires once before the bounds query resolves, so we need this effect)
+  // Fit map to bounds or apply view state when they arrive after initial load.
+  // Race conditions:
+  //   1. onLoad fires once before the bounds query resolves.
+  //   2. URL-derived initialViewState may hydrate after onLoad (nuqs reads
+  //      searchParams on the client, which is async during initial render).
+  // Without this effect, the map stays at the hardcoded INITIAL_VIEW_STATE.
   useEffect(() => {
-    if (!initialViewState && initialBounds && mapRef.current && !hasAppliedBoundsRef.current) {
+    if (!mapRef.current || hasAppliedBoundsRef.current) return;
+    if (initialViewState) {
+      mapRef.current.flyTo({
+        center: [initialViewState.longitude, initialViewState.latitude],
+        zoom: initialViewState.zoom,
+        animate: false,
+      });
+      hasAppliedBoundsRef.current = true;
+      setIsMapPositioned(true);
+    } else if (initialBounds) {
       fitMapToBounds(mapRef.current, initialBounds, { animate: false });
       hasAppliedBoundsRef.current = true;
       setIsMapPositioned(true);
