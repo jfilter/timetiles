@@ -4,45 +4,6 @@
  * Creates a scheduled ingest via the wizard (URL source), triggers it twice,
  * then edits via the wizard and triggers once more.
  *
- * ## TODO — Known issues preventing full E2E pass (2026-03-22)
- *
- * This test is structurally correct — all 9 steps have individually passed across
- * different runs (7/9 in best single run). Three pre-existing infrastructure issues
- * prevent a reliable full pass:
- *
- * ### 1. Import pipeline stalls in multi-process E2E setup
- * The import pipeline (dataset-detection → analyze-duplicates → schema-detection → ...)
- * works correctly in single-process integration tests (see analyze-duplicates-pipeline.test.ts)
- * but stalls in the E2E setup where the Next.js server and job worker are separate processes.
- * The analyze-duplicates job sometimes fails with `hasError: true` in the worker process,
- * likely due to:
- * - File path resolution differences between server and worker processes
- * - Transaction isolation: the worker's `payload.jobs.run()` may not see data committed
- *   by the server's request transaction
- * - The `StageTransitionService.processStageTransition()` at `lib/import/stage-transition.ts:109`
- *   calls `payload.jobs.queue()` without passing `req`, which may affect transaction visibility
- *
- * ### 2. Auth setup flake (intermittent 401)
- * The auth.setup.ts sometimes gets 401 "incorrect email/password" even though seed data is
- * correct. Root cause: `next build` (called before seed in the original code) connects to the
- * DB and can wipe seeded data. PARTIALLY FIXED: seed now runs after build. But timing issues
- * between seed commit and server readiness can still cause 401 on cold starts.
- *
- * ### 3. Slow job pipeline (~30s per pipeline step)
- * Each chained job in the import pipeline takes ~30s to be picked up by the worker.
- * With 7 pipeline steps, total time is ~3.5 minutes for a 3-row CSV. The 300s timeout
- * is borderline. This is caused by Payload's job transaction handling where chained jobs
- * queued inside `afterChange` hooks aren't immediately visible to the next `jobs.run()` call.
- *
- * ### Recommended fixes (in priority order):
- * 1. Investigate why `analyze-duplicates` fails in the worker process but not in integration
- *    tests. Compare file access patterns and transaction isolation between single-process
- *    and multi-process setups.
- * 2. Add a mock geocoding provider to the E2E seed so imports with location columns work.
- * 3. Consider passing `req` through the stage transition service to keep chained jobs in
- *    the same transaction context.
- * 4. Add retry logic to the worker for failed jobs (Payload's `retries` config on job tasks).
- *
  * @module
  * @category E2E Tests
  */

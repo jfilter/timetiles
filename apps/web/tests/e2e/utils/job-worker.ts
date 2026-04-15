@@ -77,9 +77,10 @@ const main = async () => {
           processing: j.processing,
           hasError: !!j.hasError,
           waitUntil: j.waitUntil,
-          error: j.hasError ? String(j.error ?? "").substring(0, 200) : undefined,
+          error: j.hasError ? String(j.error ?? "") : undefined,
+          input: j.input,
         }));
-        console.log(`[job-worker] Pending jobs detail: ${JSON.stringify(jobSummary)}`);
+        console.log(`[job-worker] Pending jobs detail: ${JSON.stringify(jobSummary, null, 2)}`);
       }
 
       // Queue any due scheduled jobs before running.
