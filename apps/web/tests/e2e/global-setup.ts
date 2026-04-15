@@ -166,9 +166,6 @@ export default async function globalSetup(): Promise<void> {
     NEXT_TELEMETRY_DISABLED: "1",
     // Allow localhost URLs so E2E tests can use self-hosted test fixtures
     ALLOW_PRIVATE_URLS: "true",
-    // Next.js `next start` forces NODE_ENV=production, so a separate opt-in
-    // is needed to expose /api/test-fixtures in E2E.
-    E2E_TEST_FIXTURES: "true",
     // Canonical E2E signal for runtime guards — see lib/utils/is-e2e.ts.
     E2E_MODE: "true",
   };
