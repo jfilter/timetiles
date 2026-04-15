@@ -169,6 +169,8 @@ export default async function globalSetup(): Promise<void> {
     // Next.js `next start` forces NODE_ENV=production, so a separate opt-in
     // is needed to expose /api/test-fixtures in E2E.
     E2E_TEST_FIXTURES: "true",
+    // Canonical E2E signal for runtime guards — see lib/utils/is-e2e.ts.
+    E2E_MODE: "true",
   };
 
   // Always rebuild to ensure test binary matches current source code.
