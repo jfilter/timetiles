@@ -77,6 +77,10 @@ export const isPrivateIP = (ip: string): boolean => {
 // Uses bracket notation so webpack DefinePlugin doesn't inline the value.
 // Note: NODE_ENV check was removed because `next build` always inlines NODE_ENV as "production"
 // regardless of the actual environment, making runtime checks against it impossible.
+// The same trap affects any runtime NODE_ENV comparison in server code — see
+// `lib/utils/is-e2e.ts` for the canonical E2E runtime flag, and the
+// `no-restricted-syntax` rule in `eslint.config.js` that forbids the pattern in
+// `app/api/**` and `lib/services/**`.
 const isPrivateUrlBypassEnabled = (): boolean => process.env["ALLOW_PRIVATE_URLS"] === "true";
 
 export const isPrivateUrl = (url: string): boolean => {
