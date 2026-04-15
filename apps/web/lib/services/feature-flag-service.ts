@@ -9,6 +9,7 @@
  */
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { isE2E } from "@/lib/utils/is-e2e";
 
@@ -35,7 +36,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableScheduledJobExecution: true,
   enableUrlFetchCaching: true,
   enableScrapers: false,
-  enableExpertMode: process.env.NODE_ENV !== "production" || isE2E(),
+  enableExpertMode: getEnv().NODE_ENV !== "production" || isE2E(),
 };
 
 /** Fail-closed defaults returned when the database is unavailable. */
