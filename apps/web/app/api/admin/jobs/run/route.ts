@@ -16,6 +16,7 @@ import { z } from "zod";
 import { apiRoute, ForbiddenError } from "@/lib/api";
 import { getEnv } from "@/lib/config/env";
 import { createLogger } from "@/lib/logger";
+import { isE2E } from "@/lib/utils/is-e2e";
 
 const logger = createLogger("api-admin-jobs-run");
 
@@ -47,7 +48,7 @@ export const POST = apiRoute({
   auth: "admin",
   body: z.object({ limit: z.number().int().positive().optional(), iterations: z.number().int().positive().optional() }),
   handler: async ({ payload, body }) => {
-    if (getEnv().NODE_ENV === "production") {
+    if (getEnv().NODE_ENV === "production" && !isE2E()) {
       throw new ForbiddenError("Not available in production");
     }
 
