@@ -26,6 +26,7 @@ import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 import { createSeedManager } from "@/lib/seed/index";
 
+import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
 
 // Store processes globally for teardown
@@ -71,7 +72,18 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
     await seedManager.truncate();
     await seedManager.seedWithConfig({
       preset: "e2e",
-      collections: ["users", "catalogs", "datasets", "events", "sites", "pages", "main-menu", "footer", "settings"],
+      collections: [
+        "users",
+        "catalogs",
+        "datasets",
+        "events",
+        "sites",
+        "pages",
+        "main-menu",
+        "footer",
+        "settings",
+        "geocoding-providers",
+      ],
     });
     console.log("✅ Seeded E2E test data");
   } finally {
@@ -110,6 +122,15 @@ export default async function globalSetup(): Promise<void> {
 
   const components = parseDatabaseUrl(baseUrl);
   const databaseUrl = constructDatabaseUrl({ ...components, database: databaseName });
+
+  // Start the geocoding stub server before seeding, so the seed can write
+  // a geocoding-providers row with baseUrl pointing at the stub. The server
+  // runs in-process on an ephemeral port; it's released when the test
+  // runner process exits.
+  const stub = await startGeocodingStubServer();
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E-only env var
+  process.env.E2E_GEOCODING_STUB_URL = stub.url;
+  console.log(`🗺️ Geocoding stub server listening at ${stub.url}`);
 
   console.log(`📦 Creating test database: ${databaseName}`);
 

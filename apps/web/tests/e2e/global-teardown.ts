@@ -29,6 +29,10 @@ export default async function globalTeardown(): Promise<void> {
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const databaseName = process.env.E2E_DATABASE_NAME ?? getWorktreeDatabasePrefix();
 
+  // Note: the geocoding stub server (in-process http.Server started by
+  // global-setup) is released automatically when this teardown module's
+  // host process exits. It binds an ephemeral port so leaks don't conflict.
+
   // Kill worker process first (it has DB connections)
   if (workerPid) {
     console.log(`🧹 Stopping job worker (PID: ${workerPid})...`);

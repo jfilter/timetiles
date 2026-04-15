@@ -363,6 +363,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         MAIN_MENU_SLUG,
         FOOTER_SLUG,
         SETTINGS_SLUG,
+        COLLECTION_GEOCODING_PROVIDERS,
       ],
       volume: "medium",
       realism: "realistic",
