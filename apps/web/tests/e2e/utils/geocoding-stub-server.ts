@@ -121,7 +121,6 @@ export const startGeocodingStubServer = async (): Promise<StubServerHandle> => {
     }
 
     // Unknown path: log and return empty features so tests can see the miss
-    // eslint-disable-next-line no-console
     console.warn(`[geocoding-stub] unexpected request: ${req.method} ${req.url}`);
     res.statusCode = 404;
     res.end(JSON.stringify({ error: "not_found", path: parsed.pathname }));
