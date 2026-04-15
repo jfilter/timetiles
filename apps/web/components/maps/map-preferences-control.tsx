@@ -50,11 +50,11 @@ export const MapPreferencesControl = () => {
 
   return (
     <MapControlPopover
-      trigger={
-        <MapControlButton title={t("preferences")}>
+      trigger={({ onClick }) => (
+        <MapControlButton title={t("preferences")} onClick={onClick}>
           <Settings className="h-4 w-4 text-gray-600 dark:text-gray-300" />
         </MapControlButton>
-      }
+      )}
     >
       {/* Language */}
       <div className="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">{t("prefLanguage")}</div>

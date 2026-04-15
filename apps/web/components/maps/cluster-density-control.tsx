@@ -58,11 +58,11 @@ export const ClusterDensityControl = () => {
 
   return (
     <MapControlPopover
-      trigger={
-        <MapControlButton title={t("clusterDensity")}>
+      trigger={({ onClick }) => (
+        <MapControlButton title={t("clusterDensity")} onClick={onClick}>
           <Layers className="h-4 w-4 text-gray-600 dark:text-gray-300" />
         </MapControlButton>
-      }
+      )}
     >
       {/* Algorithm toggle */}
       <div className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">{t("clusterAlgorithm")}</div>

@@ -4,16 +4,27 @@
  * Opens a positioned panel next to a trigger element (typically a
  * MapControlButton). Handles open/close state internally or via props.
  *
+ * The `trigger` prop is a render function that receives the `onClick`
+ * toggle handler (and current `isOpen` state) so the caller can decide
+ * which element gets the handler. This avoids wrapping the trigger in
+ * another button (WCAG nested-interactive) and avoids cloneElement
+ * (implicit prop injection).
+ *
  * @module
  * @category Components
  */
-import { cloneElement, isValidElement, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { cn } from "../lib/utils";
 
+export interface MapControlPopoverTriggerProps {
+  onClick: () => void;
+  isOpen: boolean;
+}
+
 export interface MapControlPopoverProps {
-  /** Trigger element (rendered always). */
-  trigger: React.ReactNode;
+  /** Render function for the trigger element. Receives `onClick` and `isOpen`. */
+  trigger: (props: MapControlPopoverTriggerProps) => React.ReactNode;
   /** Panel content (rendered when open). */
   children: React.ReactNode;
   /** Controlled open state. */
@@ -58,15 +69,11 @@ export const MapControlPopover = ({
     return () => document.removeEventListener("mousedown", handler);
   }, [isOpen, setOpen]);
 
-  // Clone the trigger to inject onClick instead of wrapping it in another
-  // button — nested interactive controls violate WCAG (nested-interactive).
-  const triggerWithHandler = isValidElement(trigger)
-    ? cloneElement(trigger as React.ReactElement<{ onClick?: () => void }>, { onClick: () => setOpen(!isOpen) })
-    : trigger;
+  const handleToggle = useCallback(() => setOpen(!isOpen), [setOpen, isOpen]);
 
   return (
     <div ref={containerRef} className="relative">
-      {triggerWithHandler}
+      {trigger({ onClick: handleToggle, isOpen })}
 
       {isOpen && (
         <div
