@@ -424,7 +424,10 @@ const generateMapStyle = async (): Promise<void> => {
   }
 
   const sourceStyle = (await response.json()) as Record<string, unknown>;
-  const layerCount = (sourceStyle.layers as unknown[])?.length ?? 0;
+  // Sanitize to an integer primitive — the raw `layers` array is fetched
+  // from an external URL, so logging its length as-is would propagate
+  // "user-controlled data" into output (SonarCloud S5145).
+  const layerCount = Number((sourceStyle.layers as unknown[])?.length ?? 0) | 0;
   console.log(`   Fetched style with ${layerCount} layers`);
 
   // Ensure output directory exists
