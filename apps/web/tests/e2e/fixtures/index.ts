@@ -29,10 +29,17 @@ export const test = base.extend<{ baseURL: string }>({
     await use(baseURL);
   },
 
-  // Override context to use the shared baseURL
-  context: async ({ browser, baseURL }, use) => {
+  // Override context to use the shared baseURL. Forward storageState so
+  // auth state from the setup project (a file path in the project config)
+  // reaches the browser — without this, custom-fixture contexts replace
+  // Playwright's default context creation and silently lose auth.
+  // Only forward string paths; tests that opt out with
+  // `test.use({ storageState: { cookies: [], origins: [] } })` (inline
+  // object) go through Playwright's own merge logic and don't need this.
+  context: async ({ browser, baseURL, storageState }, use) => {
     const context = await browser.newContext({
       baseURL,
+      storageState: typeof storageState === "string" ? storageState : undefined,
     });
     await use(context);
     await context.close();
@@ -45,10 +52,12 @@ export const test = base.extend<{ baseURL: string }>({
     await page.close();
   },
 
-  // Override request to use the shared baseURL
-  request: async ({ playwright, baseURL }, use) => {
+  // Override request to use the shared baseURL. Same storageState
+  // forwarding as the context fixture.
+  request: async ({ playwright, baseURL, storageState }, use) => {
     const request = await playwright.request.newContext({
       baseURL,
+      storageState: typeof storageState === "string" ? storageState : undefined,
     });
     await use(request);
     await request.dispose();
