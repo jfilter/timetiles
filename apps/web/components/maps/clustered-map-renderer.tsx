@@ -104,6 +104,12 @@ export interface ClusteredMapRendererProps {
   errorTitle: string;
   errorSubtitle: string;
   filterLabel: string;
+  /**
+   * URL-derived initial view state (lat/lng/zoom from ?lat=&lng=&zoom=).
+   * When provided, MapGL initializes at this position — otherwise it
+   * falls back to the hardcoded global default.
+   */
+  initialViewState?: { latitude: number; longitude: number; zoom: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -148,13 +154,14 @@ export const ClusteredMapRenderer = ({
   errorTitle,
   errorSubtitle,
   filterLabel,
+  initialViewState,
 }: ClusteredMapRendererProps) => (
   <div className="relative h-full w-full">
     {showLoading && <MapLoadingOverlay message={loadingMessage} />}
     {isError && !showLoading && <MapErrorOverlay title={errorTitle} subtitle={errorSubtitle} />}
     <MapGL
       ref={mapRef}
-      initialViewState={INITIAL_VIEW_STATE}
+      initialViewState={initialViewState ?? INITIAL_VIEW_STATE}
       style={MAP_COMPONENT_STYLE}
       mapStyle={mapStyleUrl}
       onMoveEnd={onMoveEnd}

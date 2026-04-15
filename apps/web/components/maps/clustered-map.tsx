@@ -215,6 +215,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         errorTitle={t("unableToLoadMapData")}
         errorSubtitle={t("mapLoadError")}
         filterLabel={t("clusterFilterActive")}
+        initialViewState={initialViewState}
       />
     );
   }
