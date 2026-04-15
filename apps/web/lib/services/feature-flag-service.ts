@@ -10,6 +10,7 @@
 import type { Payload } from "payload";
 
 import { logger } from "@/lib/logger";
+import { isE2E } from "@/lib/utils/is-e2e";
 
 export interface FeatureFlags {
   allowPrivateImports: boolean;
@@ -34,7 +35,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   enableScheduledJobExecution: true,
   enableUrlFetchCaching: true,
   enableScrapers: false,
-  enableExpertMode: process.env.NODE_ENV !== "production",
+  enableExpertMode: process.env.NODE_ENV !== "production" || isE2E(),
 };
 
 /** Fail-closed defaults returned when the database is unavailable. */
