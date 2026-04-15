@@ -17,7 +17,10 @@ test.describe("Explore Page - Filtering", () => {
 
   test.beforeEach(async ({ page }) => {
     explorePage = new ExplorePage(page);
-    await explorePage.goto();
+    // Initialize at global view so date-range tests can render the
+    // temporal histogram (bounded to the map viewport) over seeded
+    // events which are scattered globally.
+    await explorePage.goto({ globalView: true });
     await explorePage.waitForMapLoad();
   });
 
@@ -72,9 +75,6 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should filter by date range", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    // Fit map to the dataset's events so the bounded temporal histogram
-    // has data — the default view (Berlin) has ~0 events from the seed.
-    await explorePage.zoomToData();
 
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
@@ -96,7 +96,6 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should clear date filters", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
 
@@ -117,7 +116,6 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should combine multiple filters", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-06-01");
     await explorePage.setEndDate("2024-06-30");
 
@@ -159,7 +157,6 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should handle edge cases in date filtering", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.zoomToData();
 
     // Single-month date range
     await explorePage.setStartDate("2024-07-01");
@@ -174,7 +171,6 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should preserve filters when navigating", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.zoomToData();
     await explorePage.setStartDate("2024-01-01");
 
     await explorePage.waitForApiResponse();

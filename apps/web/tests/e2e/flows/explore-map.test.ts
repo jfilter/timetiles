@@ -15,7 +15,9 @@ test.describe("Explore Page - Map Interactions", () => {
 
   test.beforeEach(async ({ page }) => {
     explorePage = new ExplorePage(page);
-    await explorePage.goto();
+    // Global view so all seeded events are in the map viewport for
+    // bounds/events tests — the hardcoded default is Berlin.
+    await explorePage.goto({ globalView: true });
     await explorePage.waitForMapLoad();
   });
 
@@ -152,10 +154,6 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Fit the map to the data so events are in view and the events list renders
-    await explorePage.zoomToData();
-    await explorePage.waitForEventsToLoad();
-
     // Get the event count for logging
     const eventCount = await explorePage.getEventCount();
     console.log(`Loaded ${eventCount} events`);
@@ -189,10 +187,6 @@ test.describe("Explore Page - Map Interactions", () => {
     // Wait for API response and events to load first (timeline appears after data loads)
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
-
-    // Fit map to the events so the temporal histogram has data to render
-    // the date-range button (required by setStartDate).
-    await explorePage.zoomToData();
 
     // Set date range in far future (likely no events)
     await explorePage.setStartDate("2030-01-01");

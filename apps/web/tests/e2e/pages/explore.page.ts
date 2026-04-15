@@ -52,29 +52,23 @@ export class ExplorePage {
     this.noDatasetsMessage = page.getByText(/No data(sets)? available/).first();
   }
 
-  async goto() {
-    await this.page.goto("/explore", { timeout: 30000, waitUntil: "domcontentloaded" });
+  /**
+   * Navigate to the explore page.
+   *
+   * @param options.globalView when true, navigates with lat/lng/zoom URL
+   *   params that initialize the map at a global view (lat=0, lng=0, zoom=2).
+   *   Use this for tests that rely on the map-bounded temporal histogram
+   *   having data — the seed events are scattered globally, not in the
+   *   hardcoded default view (Berlin at zoom 12).
+   */
+  async goto(options?: { globalView?: boolean }) {
+    const path = options?.globalView ? "/explore?lat=0&lng=0&zoom=1" : "/explore";
+    await this.page.goto(path, { timeout: 30000, waitUntil: "domcontentloaded" });
     await this.map.waitFor({ state: "visible", timeout: 15000 });
     await this.dataSourcesSection.waitFor({ state: "visible", timeout: 10000 });
 
     // Wait for catalog/dataset checkboxes to appear (API data loaded)
     await this.page.waitForSelector('[role="checkbox"]', { timeout: 15000 });
-  }
-
-  /**
-   * Click the "Zoom to data" button to fit the map to all visible events.
-   * Useful for tests that need the map-bounded temporal histogram to
-   * include events — the hardcoded default view is Berlin, which most
-   * seeded test events are not in.
-   */
-  async zoomToData() {
-    const button = this.page.getByRole("button", { name: /Zoom to fit all events/i });
-    const visible = await button.isVisible({ timeout: 5000 }).catch(() => false);
-    if (visible) {
-      await button.click();
-      // Wait for map animation / bounds update and subsequent API refetch
-      await this.waitForApiResponse();
-    }
   }
 
   async waitForMapLoad() {
