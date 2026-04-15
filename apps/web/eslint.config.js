@@ -343,6 +343,39 @@ export default [
       ],
     },
   },
+  // Server-runtime files carry two extra restricted-syntax rules:
+  // - sql.raw with dynamic input (inherited from the global block, repeated
+  //   here because flat-config replaces rather than merges this rule)
+  // - process.env.NODE_ENV comparisons — `next build` inlines NODE_ENV and
+  //   `next start` forces "production", so these are compile-time constants.
+  //   E2E runs a production build, so NODE_ENV guards affect it identically to
+  //   real prod. Use a custom env var via bracket notation — see
+  //   lib/utils/is-e2e.ts and lib/security/url-validation.ts:78-80.
+  {
+    files: ["app/api/**/*.ts", "lib/services/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral",
+          message:
+            "Do not pass template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+        },
+        {
+          selector:
+            "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > BinaryExpression[operator='+']",
+          message:
+            "Do not pass string concatenation to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+        },
+        {
+          selector:
+            "BinaryExpression[operator=/^[!=]==$/] MemberExpression[property.name='NODE_ENV'][object.property.name='env']",
+          message:
+            'Do not compare process.env.NODE_ENV at runtime in server code — next build inlines it and next start forces "production", so the comparison is a compile-time constant. Use a custom env var via bracket notation (see lib/utils/is-e2e.ts and lib/security/url-validation.ts:78-80).',
+        },
+      ],
+    },
+  },
   // Complex wizard/service files - allow higher limits
   {
     files: [
