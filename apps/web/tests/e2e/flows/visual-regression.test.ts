@@ -5,12 +5,34 @@
  * baseline images. Run `npx playwright test --update-snapshots` to regenerate
  * baselines after intentional design changes.
  *
+ * ## Opt-in on CI
+ *
+ * These tests are skipped by default because:
+ * - Baselines are per-platform (`chromium-darwin.png` vs `chromium-linux.png`);
+ *   running on both macOS and Linux CI requires dual baselines maintained
+ *   in lockstep.
+ * - The explore-page tests capture data that mutates between runs (other
+ *   tests create catalogs/datasets during the suite that bleed into the
+ *   filter sidebar here).
+ * - The "login page" test actually captures the homepage because the
+ *   authenticated fixture redirects `/login` away.
+ *
+ * To run locally or on a specific CI job, set `E2E_VISUAL_REGRESSION=true`
+ * before running Playwright. Baselines are generated on first run; review
+ * and commit deliberately.
+ *
  * @module
  * @category E2E Tests
  */
 import { expect, test } from "../fixtures";
 
+// eslint-disable-next-line turbo/no-undeclared-env-vars -- test-only opt-in flag
+const RUN_VISUAL_REGRESSION = process.env.E2E_VISUAL_REGRESSION === "true";
+
 test.describe("Visual Regression", () => {
+  // Skip the whole suite unless explicitly opted in. See module docstring.
+  test.skip(!RUN_VISUAL_REGRESSION, "Opt-in only — set E2E_VISUAL_REGRESSION=true");
+
   // Use a fixed viewport for consistent screenshots
   test.use({ viewport: { width: 1280, height: 800 } });
 
