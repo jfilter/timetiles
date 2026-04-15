@@ -419,10 +419,13 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/ingest")[0];
 
-    // Wait for import to complete — 2 job workers process jobs in parallel,
-    // but multi-sheet imports queue 18+ jobs that compete with other parallel tests
+    // Wait for import to complete. Multi-sheet imports queue 18+ jobs
+    // (6 pipeline stages × 3 sheets) that share the single CI job worker
+    // with whatever test is running in the second browser-worker slot.
+    // Empirical CI timings run 200-260s; align with test.setTimeout(300000)
+    // above leaving ~30s headroom for post-complete assertions.
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 210000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 270000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events
@@ -616,10 +619,13 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Get base URL for API calls
     const baseUrl = page.url().split("/ingest")[0];
 
-    // Wait for import to complete — 2 job workers process jobs in parallel,
-    // but multi-sheet imports queue 18+ jobs that compete with other parallel tests
+    // Wait for import to complete. Multi-sheet imports queue 18+ jobs
+    // (6 pipeline stages × 3 sheets) that share the single CI job worker
+    // with whatever test is running in the second browser-worker slot.
+    // Empirical CI timings run 200-260s; align with test.setTimeout(300000)
+    // above leaving ~30s headroom for post-complete assertions.
     const completionIndicator = page.getByText(/import complete/i);
-    await expect(completionIndicator).toBeVisible({ timeout: 210000 });
+    await expect(completionIndicator).toBeVisible({ timeout: 270000 });
 
     // Verify success message shows events were imported
     // Total: 3 (Tech) + 4 (Art) + 2 (Sports) = 9 events

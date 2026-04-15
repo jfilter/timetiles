@@ -118,6 +118,12 @@ export const applyPreviewTransforms = (
  * removed from the source path.
  */
 const applyRenameTransform = (data: Record<string, unknown>, transform: RenameTransform): void => {
+  // Skip incomplete / no-op configurations. Transforms are applied live
+  // during preview rendering, including while the user is still editing
+  // them in the wizard — an empty `to` would pass an empty path to
+  // setByPath, which throws and crashes the React tree.
+  if (!transform.to || transform.to === transform.from) return;
+
   const value = getByPath(data, transform.from);
 
   // Only apply if source field exists
@@ -354,6 +360,9 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
  * Apply a concatenate transform to join multiple fields.
  */
 const applyConcatenateTransform = (data: Record<string, unknown>, transform: ConcatenateTransform): void => {
+  // Skip incomplete configuration: an empty `to` would crash setByPath.
+  if (!transform.to) return;
+
   const values: string[] = [];
 
   for (const field of transform.fromFields) {
@@ -448,6 +457,10 @@ const applySplitToArrayTransform = (data: Record<string, unknown>, transform: Sp
  * Writes the captured group (default: group 1) to a new field. The source field is unchanged.
  */
 const applyExtractTransform = (data: Record<string, unknown>, transform: ExtractTransform): void => {
+  // Skip incomplete configuration: empty `to` would crash setByPath; empty
+  // `pattern` would match every position and produce garbage output.
+  if (!transform.to || !transform.pattern) return;
+
   const value = getByPath(data, transform.from);
   if (typeof value !== "string") return;
 
