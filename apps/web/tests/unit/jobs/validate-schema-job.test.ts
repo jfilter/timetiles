@@ -7,8 +7,9 @@
  * @module
  * @category Tests
  */
-// Import centralized mocks FIRST (before anything that uses them)
-import "@/tests/mocks/services/logger";
+// Import centralized mocks FIRST (before anything that uses @/lib/logger)
+// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { JobCancelledError } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -839,8 +840,9 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       expect(mockPayload.update).not.toHaveBeenCalled();
     });
 
-    it("should not throw when update fails", async () => {
-      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+    it("should log and swallow the error when update fails", async () => {
+      const dbError = new Error("DB error");
+      mockPayload.update.mockRejectedValueOnce(dbError);
 
       await expect(
         validateSchemaJob.onFail({
@@ -849,6 +851,13 @@ describe.sequential("ValidateSchemaJob Handler", () => {
           job: { error: "error" },
         } as any)
       ).resolves.not.toThrow();
+
+      expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ collection: "ingest-jobs", id: 123 }));
+      expect(mockLogger.logError).toHaveBeenCalledWith(
+        dbError,
+        "Failed to mark ingest job as failed in onFail",
+        expect.objectContaining({ context: "validate-schema", ingestJobId: 123 })
+      );
     });
   });
 });

@@ -130,10 +130,11 @@ test.describe("Explore Page - Basic Functionality", () => {
     expect(interactiveElements).toContain(laterElement);
   });
 
-  test.skip("should show loading state while fetching events", async ({ page }) => {
-    // Set up slow API response BEFORE navigation to capture loading state
+  test("should show loading state while fetching events", async ({ page }) => {
+    // Delay the events-list response so the skeleton is observable.
+    // Matches useEventsListQuery, which calls /api/v1/events with query params.
     await page.route("**/api/v1/events?**", async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2000)); // Delay response to see loading state
+      await new Promise((resolve) => setTimeout(resolve, 2000));
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -141,18 +142,13 @@ test.describe("Explore Page - Basic Functionality", () => {
       });
     });
 
-    // Navigate without waiting for full load (use simpler navigation)
     await page.goto("/explore", { waitUntil: "domcontentloaded" });
 
-    // Wait for page content to be present
-    await page.waitForSelector("body", { timeout: 10000 });
+    const skeleton = page.getByTestId("events-list-skeleton");
 
-    // The loading state is shown as "Loading..." in the events list
-    const loadingText = page.getByText("Loading...");
-
-    // With a 2s API delay, loading text must appear
-    await expect(loadingText).toBeVisible({ timeout: 3000 });
-    // Should hide loading indicator after response
-    await expect(loadingText).not.toBeVisible({ timeout: 10000 });
+    // Skeleton must appear while the API is intentionally slow
+    await expect(skeleton).toBeVisible({ timeout: 3000 });
+    // And disappear once the response resolves
+    await expect(skeleton).toBeHidden({ timeout: 10000 });
   });
 });

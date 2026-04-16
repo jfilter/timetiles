@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import "@/tests/mocks/services/logger";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 const mocks = vi.hoisted(() => ({
   cleanupSidecarFiles: vi.fn(),
@@ -98,13 +98,20 @@ describe.sequential("ingestJobAfterDeleteHook", () => {
     expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/data.xlsx", 0);
   });
 
-  it("should not throw when cleanup fails", () => {
+  it("should log and swallow the error when cleanup fails", () => {
+    const diskError = new Error("disk error");
     mocks.cleanupSidecarFiles.mockImplementation(() => {
-      throw new Error("disk error");
+      throw diskError;
     });
-    const doc = { ingestFile: { id: "file-1", filename: "data.xlsx" }, sheetIndex: 0 };
+    const doc = { id: 99, ingestFile: { id: "file-1", filename: "data.xlsx" }, sheetIndex: 0 };
 
     expect(() => ingestJobAfterDeleteHook({ doc, req: {} } as any)).not.toThrow();
+
+    expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/data.xlsx", 0);
+    expect(mockLogger.logger.debug).toHaveBeenCalledWith(
+      expect.objectContaining({ error: diskError, ingestJobId: 99 }),
+      "Failed to clean up sidecar files after ingest job deletion"
+    );
   });
 });
 

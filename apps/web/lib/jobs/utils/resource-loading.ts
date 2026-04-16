@@ -13,6 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { logError } from "@/lib/logger";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
 import type { TaskCallbackArgs } from "./job-context";
@@ -158,8 +159,9 @@ export const createStandardOnFail = (
     if (options?.beforeFail) {
       try {
         await options.beforeFail(args.req.payload, ingestJobId);
-      } catch {
-        // Best-effort pre-fail cleanup — don't mask the status update
+      } catch (error) {
+        // Best-effort pre-fail cleanup — don't mask the status update, but log for visibility
+        logError(error, "beforeFail cleanup failed in onFail", { context, ingestJobId });
       }
     }
 
@@ -169,8 +171,9 @@ export const createStandardOnFail = (
         id: ingestJobId,
         data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: extractErrorMessage(args.job.error), context } },
       });
-    } catch {
-      // Best-effort — don't throw in onFail
+    } catch (error) {
+      // Best-effort — don't throw in onFail, but log so silent failures are observable
+      logError(error, "Failed to mark ingest job as failed in onFail", { context, ingestJobId });
     }
   };
 };

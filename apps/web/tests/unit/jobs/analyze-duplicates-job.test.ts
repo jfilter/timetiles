@@ -1,8 +1,9 @@
 /**
  * @module
  */
-// Import centralized mocks FIRST (before anything that uses them)
-import "@/tests/mocks/services/logger";
+// Import centralized mocks FIRST (before anything that uses @/lib/logger)
+// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before handler
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -644,13 +645,22 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(mockPayload.update).not.toHaveBeenCalled();
     });
 
-    it("should not throw when update fails in onFail", async () => {
+    it("should log and swallow the error when update fails in onFail", async () => {
       const mockArgs = { input: { ingestJobId: "import-999" }, req: { payload: mockPayload }, job: { error: "error" } };
+      const dbError = new Error("DB error");
 
-      mockPayload.update.mockRejectedValueOnce(new Error("DB error"));
+      mockPayload.update.mockRejectedValueOnce(dbError);
 
-      // Should not throw
       await expect(analyzeDuplicatesJob.onFail(mockArgs as any)).resolves.not.toThrow();
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "ingest-jobs", id: "import-999" })
+      );
+      expect(mockLogger.logError).toHaveBeenCalledWith(
+        dbError,
+        "Failed to mark ingest job as failed in onFail",
+        expect.objectContaining({ context: "analyze-duplicates", ingestJobId: "import-999" })
+      );
     });
   });
 

@@ -17,7 +17,10 @@ interface EventsListSkeletonProps {
 
 export const EventsListSkeleton = ({ count = 6, multiColumn = false }: EventsListSkeletonProps) => {
   return (
-    <div className={multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2"}>
+    <div
+      data-testid="events-list-skeleton"
+      className={multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2"}
+    >
       {Array.from({ length: count }).map((_, index) => (
         // eslint-disable-next-line @eslint-react/no-array-index-key -- static skeleton placeholders have no unique ID
         <Card key={`skeleton-${index}`} className="border-border bg-background border p-3">
