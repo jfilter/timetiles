@@ -14,6 +14,7 @@ import { apiRoute, AppError } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
+import { hashOpaqueValue } from "@/lib/security/hash";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import {
   claimScheduledIngestRunning,
@@ -21,7 +22,6 @@ import {
   resolveWebhookToken,
   type WebhookTarget,
 } from "@/lib/services/webhook-registry";
-import { hashOpaqueValue } from "@/lib/security/hash";
 
 interface RateLimitResponse {
   success: false;
