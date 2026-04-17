@@ -19,6 +19,7 @@ import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
 import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
@@ -34,6 +35,10 @@ export const EventFilters = () => {
   const { filters, setStartDate, setEndDate, clearDateRange, clearAllFilters, hasActiveFilters, activeFilterCount } =
     useFilters();
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
+  // Debounce bounds before using them as a query key — /enum-stats is a SQL
+  // aggregation endpoint, so refetching on every pan tick is wasteful.
+  // 300ms matches `use-explorer-viewport.ts`.
+  const debouncedMapBounds = useDebounce(mapBounds, 300);
 
   // Fetch event counts for catalogs and datasets
   const { data: statsData, isError: isStatsError } = useDataSourceStatsQuery();
@@ -58,7 +63,7 @@ export const EventFilters = () => {
   const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(
     singleDatasetId,
     filters,
-    mapBounds
+    debouncedMapBounds
   );
   const hasEnumFields = enumFields != null && enumFields.length > 0;
 

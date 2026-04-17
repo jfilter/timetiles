@@ -173,7 +173,6 @@
     "clusterDisplayMode": "Darstellung",
     "clusterDisplay_circles": "Kreise",
     "clusterDisplay_hexagons": "Hexagone",
-    "clusterDisplay_points": "Punkte",
     "useHexCenter": "An Hex-Mitte ausrichten",
     "showHexBoundaries": "Hex-Grenzen anzeigen",
     "mergeOverlapping": "Überlappende Cluster mergen",

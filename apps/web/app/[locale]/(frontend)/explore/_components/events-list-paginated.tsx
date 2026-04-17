@@ -12,7 +12,6 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
 
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
@@ -53,29 +52,6 @@ export const EventsListPaginated = ({
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);
-
-  // Track previous event IDs to flash newly appeared events.
-  // Lives here (not in EventsList) so the ref persists across loading states.
-  const prevEventIdsRef = useRef<Set<number>>(new Set());
-  const [_newEventIds, setNewEventIds] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (events.length === 0) return;
-    const prevIds = prevEventIdsRef.current;
-    const currentIds = new Set(events.map((e) => e.id));
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (prevIds.size > 0) {
-      const freshIds = new Set(events.filter((e) => !prevIds.has(e.id)).map((e) => e.id));
-      if (freshIds.size > 0) {
-        setNewEventIds(freshIds);
-        timer = setTimeout(() => setNewEventIds(new Set()), 3000);
-      }
-    }
-    prevEventIdsRef.current = currentIds;
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [events]);
 
   const handleLoadMore = () => {
     void fetchNextPage();
