@@ -22,13 +22,15 @@ import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 export const POST = apiRoute({
   auth: "none",
   rateLimit: { configName: "REGISTRATION" },
   body: z.object({ email: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(8) }),
-  handler: async ({ payload, body }) => {
+  handler: async ({ payload, body, req }) => {
     // Check if registration is enabled
     await requireFeatureEnabled(payload, "enableRegistration", "Registration is currently disabled.");
 
@@ -70,7 +72,7 @@ export const POST = apiRoute({
       } else {
         // Create new user - Payload will automatically send verification email
         try {
-          await payload.create({
+          const createdUser = await payload.create({
             collection: "users",
             data: {
               email: normalizedEmail,
@@ -86,6 +88,15 @@ export const POST = apiRoute({
           });
 
           logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
+
+          const clientIp = getClientIdentifier(req);
+          await auditLog(payload, {
+            action: AUDIT_ACTIONS.REGISTERED,
+            userId: createdUser.id,
+            userEmail: normalizedEmail,
+            ipAddress: clientIp === "unknown" ? undefined : clientIp,
+            details: { registrationSource: "self" },
+          });
         } catch (createError) {
           // Handle potential race condition where user was created between our check and create
           // This could happen under high concurrency

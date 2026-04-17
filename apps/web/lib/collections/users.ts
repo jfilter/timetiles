@@ -12,7 +12,8 @@
  *
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, PayloadRequest } from "payload";
+import { AuthenticationError } from "payload";
 
 import {
   DEFAULT_QUOTAS,
@@ -25,7 +26,15 @@ import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
+import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { getBaseUrl } from "@/lib/utils/base-url";
+
+/** Read the client IP from a PayloadRequest, falling back to "unknown". */
+const getReqIp = (req: Pick<PayloadRequest, "headers">): string | undefined => {
+  if (!req.headers) return undefined;
+  const ip = getClientIdentifier(req as unknown as Request);
+  return ip === "unknown" ? undefined : ip;
+};
 
 import { createCommonConfig } from "./shared-fields";
 
@@ -431,6 +440,42 @@ const Users: CollectionConfig = {
         }
 
         return doc;
+      },
+    ],
+    afterLogin: [
+      async ({ req, user }) => {
+        await auditLog(req.payload, {
+          action: AUDIT_ACTIONS.LOGIN_SUCCESS,
+          userId: user.id,
+          userEmail: user.email,
+          ipAddress: getReqIp(req),
+        });
+      },
+    ],
+    afterError: [
+      async ({ error, req }) => {
+        // Only log authentication errors. Payload throws AuthenticationError
+        // for both "no matching email" and "wrong password", which is
+        // compliance-adequate — distinguishing them at this layer would
+        // enable email enumeration.
+        if (!(error instanceof AuthenticationError)) return;
+
+        // `req.data` carries the login payload during the login op.
+        // Email may be missing when the client sent malformed JSON.
+        const data = (req as unknown as { data?: { email?: unknown } }).data;
+        const attemptedEmail = typeof data?.email === "string" ? data.email : undefined;
+
+        await auditLog(req.payload, {
+          action: AUDIT_ACTIONS.LOGIN_FAILED,
+          // userId=0 is the canonical "no associated user" marker for this
+          // audit type. We record the attempt regardless of whether the
+          // email matched a real user (avoids enumeration via audit-log
+          // absence/presence).
+          userId: 0,
+          userEmail: attemptedEmail ?? "",
+          ipAddress: getReqIp(req),
+          details: attemptedEmail ? { attemptedEmailProvided: true } : { attemptedEmailProvided: false },
+        });
       },
     ],
   },

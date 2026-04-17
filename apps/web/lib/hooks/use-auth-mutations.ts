@@ -19,9 +19,11 @@ import { fetchJson, HttpError, postJson } from "../api/http-error";
 // Types
 // ---------------------------------------------------------------------------
 
-/** Payload CMS `/api/users/login` response shape. */
+/** `/api/auth/login` response shape (mirrors Payload's login response). */
 interface LoginResponse {
   user?: User;
+  token?: string;
+  exp?: number;
   message?: string;
   errors?: Array<{ message: string }>;
 }
@@ -59,10 +61,18 @@ export interface ResetPasswordInput {
 // Mutations
 // ---------------------------------------------------------------------------
 
-/** Login via Payload CMS `/api/users/login`. */
+/**
+ * Login via `/api/auth/login`.
+ *
+ * Wraps `payload.login` so the server can emit a LOGIN_FAILED audit event on
+ * authentication failure — Payload's `afterError` hook only fires on the
+ * native Local API bypass path, so a wrapper route is the cleanest way to
+ * cover REST traffic. On success, the `afterLogin` hook handles the
+ * LOGIN_SUCCESS audit.
+ */
 export const loginRequest = async (input: LoginInput): Promise<LoginResponse> => {
   try {
-    return await postJson<LoginResponse>("/api/users/login", input);
+    return await postJson<LoginResponse>("/api/auth/login", input);
   } catch (error) {
     if (error instanceof HttpError) {
       const body = error.body as LoginResponse | undefined;
