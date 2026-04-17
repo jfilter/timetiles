@@ -30,7 +30,10 @@ describe("relationship-config", () => {
 
   describe("validateRelationshipConfig", () => {
     it("should not throw for valid config", () => {
-      expect(() => validateRelationshipConfig()).not.toThrow();
+      validateRelationshipConfig();
+
+      expect(Object.keys(RELATIONSHIP_CONFIG)).toContain("datasets");
+      expect(Object.keys(RELATIONSHIP_CONFIG)).toContain("events");
     });
 
     it("should throw for config missing required fields", () => {

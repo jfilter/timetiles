@@ -108,27 +108,63 @@ describe.sequential("getEnv", () => {
 
   describe("relaxed schema", () => {
     it("uses relaxed schema when VITEST=true (DATABASE_URL can be empty)", () => {
-      // VITEST is already set to "true" by the test runner, so we just need
-      // to ensure DATABASE_URL being absent does not throw
+      const saved = { ...process.env };
       vi.stubEnv("VITEST", "true");
+      delete process.env.DATABASE_URL;
+      delete process.env.PAYLOAD_SECRET;
       resetEnv();
 
-      expect(() => getEnv()).not.toThrow();
+      try {
+        const env = getEnv();
+
+        expect(env.DATABASE_URL).toBe("");
+        expect(env.PAYLOAD_SECRET).toBe("dummy-build-secret");
+      } finally {
+        for (const key of Object.keys(process.env)) {
+          if (!(key in saved)) delete process.env[key];
+        }
+        Object.assign(process.env, saved);
+      }
     });
 
     it("uses relaxed schema when NEXT_PHASE=phase-production-build", () => {
+      const saved = { ...process.env };
       vi.stubEnv("NEXT_PHASE", "phase-production-build");
+      delete process.env.DATABASE_URL;
+      delete process.env.PAYLOAD_SECRET;
       resetEnv();
 
-      // Should not throw even without DATABASE_URL
-      expect(() => getEnv()).not.toThrow();
+      try {
+        const env = getEnv();
+
+        expect(env.DATABASE_URL).toBe("");
+        expect(env.PAYLOAD_SECRET).toBe("dummy-build-secret");
+      } finally {
+        for (const key of Object.keys(process.env)) {
+          if (!(key in saved)) delete process.env[key];
+        }
+        Object.assign(process.env, saved);
+      }
     });
 
     it("uses relaxed schema when SKIP_DB_CHECK=true", () => {
+      const saved = { ...process.env };
       vi.stubEnv("SKIP_DB_CHECK", "true");
+      delete process.env.DATABASE_URL;
+      delete process.env.PAYLOAD_SECRET;
       resetEnv();
 
-      expect(() => getEnv()).not.toThrow();
+      try {
+        const env = getEnv();
+
+        expect(env.DATABASE_URL).toBe("");
+        expect(env.PAYLOAD_SECRET).toBe("dummy-build-secret");
+      } finally {
+        for (const key of Object.keys(process.env)) {
+          if (!(key in saved)) delete process.env[key];
+        }
+        Object.assign(process.env, saved);
+      }
     });
   });
 

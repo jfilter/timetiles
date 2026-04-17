@@ -20,7 +20,7 @@ import { GET as getTemporal } from "@/app/api/v1/events/temporal/route";
 
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe("Event API Access Control Consistency", () => {
+describe.sequential("Event API Access Control Consistency", () => {
   let payload: Payload;
   let testEnv: TestEnvironment;
   let privateCatalogId: number;

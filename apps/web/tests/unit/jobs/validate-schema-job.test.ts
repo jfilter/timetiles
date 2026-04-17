@@ -844,13 +844,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
       const dbError = new Error("DB error");
       mockPayload.update.mockRejectedValueOnce(dbError);
 
-      await expect(
-        validateSchemaJob.onFail({
-          input: { ingestJobId: 123 },
-          req: { payload: mockPayload },
-          job: { error: "error" },
-        } as any)
-      ).resolves.not.toThrow();
+      await validateSchemaJob.onFail({
+        input: { ingestJobId: 123 },
+        req: { payload: mockPayload },
+        job: { error: "error" },
+      } as any);
 
       expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ collection: "ingest-jobs", id: 123 }));
       expect(mockLogger.logError).toHaveBeenCalledWith(

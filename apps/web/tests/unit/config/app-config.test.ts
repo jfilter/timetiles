@@ -308,8 +308,6 @@ unknownKey: true
       resetAppConfig();
 
       // Empty YAML parses to null, which is handled as empty config
-      expect(() => getAppConfig()).not.toThrow();
-
       const config = getAppConfig();
       expect(config.batchSizes.eventCreation).toBe(1000);
     });
@@ -319,7 +317,10 @@ unknownKey: true
       readFileSyncSpy.mockReturnValue("# This is just a comment\n");
       resetAppConfig();
 
-      expect(() => getAppConfig()).not.toThrow();
+      const config = getAppConfig();
+
+      expect(config.cache.urlFetch.defaultTtlSeconds).toBe(3600);
+      expect(config.account.deletionGracePeriodDays).toBe(30);
     });
   });
 

@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FieldStatistics } from "../../../lib/types/schema-detection";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe("Dataset enum fields", () => {
+describe.sequential("Dataset enum fields", () => {
   let payload: Payload;
   let testDatasetId: number;
   let testEnv: TestEnvironment;

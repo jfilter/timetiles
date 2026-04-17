@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GET } from "../../../app/api/v1/events/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
-describe("/api/v1/events - location filtering", () => {
+describe.sequential("/api/v1/events - location filtering", () => {
   let payload: Payload;
   let testDatasetId: number;
   let testEnv: TestEnvironment;

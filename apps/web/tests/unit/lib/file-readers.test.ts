@@ -323,9 +323,12 @@ describe.sequential("File Readers", () => {
     });
 
     it("should not throw when sidecar does not exist", () => {
-      expect(() => {
-        cleanupSidecarFiles(path.join(tempDir, "nonexistent.xlsx"), 0);
-      }).not.toThrow();
+      const missingPath = path.join(tempDir, "nonexistent.xlsx");
+      const sidecarPath = getSidecarPath(missingPath, 0);
+
+      cleanupSidecarFiles(missingPath, 0);
+
+      expect(fs.existsSync(sidecarPath)).toBe(false);
     });
   });
 

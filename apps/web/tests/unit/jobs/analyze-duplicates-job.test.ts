@@ -651,7 +651,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       mockPayload.update.mockRejectedValueOnce(dbError);
 
-      await expect(analyzeDuplicatesJob.onFail(mockArgs as any)).resolves.not.toThrow();
+      await analyzeDuplicatesJob.onFail(mockArgs as any);
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({ collection: "ingest-jobs", id: "import-999" })

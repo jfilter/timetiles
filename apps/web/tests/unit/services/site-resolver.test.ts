@@ -27,14 +27,27 @@ describe.sequential("site-resolver", () => {
   });
 
   describe("clearSiteCache", () => {
-    it("should execute without error", () => {
-      expect(() => clearSiteCache()).not.toThrow();
+    it("clears cached domain lookups so the next request re-queries Payload", async () => {
+      const payload = createPayloadMock();
+      payload.find.mockResolvedValue({ docs: [] });
+
+      await findSiteByDomain(payload as any, "clear-cache.example.com");
+      clearSiteCache();
+      await findSiteByDomain(payload as any, "clear-cache.example.com");
+
+      expect(payload.find).toHaveBeenCalledTimes(2);
     });
 
-    it("should allow subsequent calls without error", () => {
+    it("remains idempotent across repeated clears", async () => {
+      const payload = createPayloadMock();
+      payload.find.mockResolvedValue({ docs: [] });
+
+      await findSiteByDomain(payload as any, "repeat-clear.example.com");
       clearSiteCache();
       clearSiteCache();
-      expect(() => clearSiteCache()).not.toThrow();
+      await findSiteByDomain(payload as any, "repeat-clear.example.com");
+
+      expect(payload.find).toHaveBeenCalledTimes(2);
     });
   });
 

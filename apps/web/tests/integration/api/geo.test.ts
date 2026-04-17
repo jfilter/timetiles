@@ -19,7 +19,7 @@ interface MapClusterFeature {
   properties: { id: string; type: "event-cluster" | "event-location"; count?: number; title?: string };
 }
 
-describe("/api/v1/events/geo", () => {
+describe.sequential("/api/v1/events/geo", () => {
   let payload: Payload;
   let testCatalogId: string;
   let testDatasetId: string;

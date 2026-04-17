@@ -34,7 +34,7 @@ const fetchEnumStats = async (datasetId: number, queryParams = "") => {
 const getField = (fields: EnumStatsField[], path: string) => fields.find((f) => f.path === path);
 const getValues = (fields: EnumStatsField[], path: string) => getField(fields, path)?.values.map((v) => v.value) ?? [];
 
-describe("/api/v1/datasets/[id]/enum-stats - filtering", () => {
+describe.sequential("/api/v1/datasets/[id]/enum-stats - filtering", () => {
   let payload: Payload;
   let testDatasetId: number;
   let testEnv: TestEnvironment;

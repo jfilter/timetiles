@@ -790,7 +790,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mockPayload.update.mockRejectedValueOnce(dbError);
 
-      await expect(datasetDetectionJob.onFail(mockArgs as any)).resolves.not.toThrow();
+      await datasetDetectionJob.onFail(mockArgs as any);
 
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({ collection: "ingest-files", id: "file-123" })

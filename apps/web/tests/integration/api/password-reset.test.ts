@@ -97,11 +97,14 @@ describe.sequential("Password Reset Flow", () => {
   it("forgot-password does not throw for non-existent email", async () => {
     const { payload } = testEnv;
 
-    // Payload's forgotPassword should not throw for unknown emails
-    // to prevent user enumeration
-    await expect(
-      payload.forgotPassword({ collection: "users", data: { email: "nonexistent@test.com" }, disableEmail: true })
-    ).resolves.not.toThrow();
+    // Payload returns null for unknown emails to prevent user enumeration.
+    const token = await payload.forgotPassword({
+      collection: "users",
+      data: { email: "nonexistent@test.com" },
+      disableEmail: true,
+    });
+
+    expect(token).toBeNull();
   });
 
   it("reset-password rejects invalid token", async () => {

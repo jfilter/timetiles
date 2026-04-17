@@ -105,8 +105,9 @@ describe.sequential("ingestJobAfterDeleteHook", () => {
     });
     const doc = { id: 99, ingestFile: { id: "file-1", filename: "data.xlsx" }, sheetIndex: 0 };
 
-    expect(() => ingestJobAfterDeleteHook({ doc, req: {} } as any)).not.toThrow();
+    const result = ingestJobAfterDeleteHook({ doc, req: {} } as any);
 
+    expect(result).toBeUndefined();
     expect(mocks.cleanupSidecarFiles).toHaveBeenCalledWith("/mock/ingest-files/data.xlsx", 0);
     expect(mockLogger.logger.debug).toHaveBeenCalledWith(
       expect.objectContaining({ error: diskError, ingestJobId: 99 }),
@@ -131,9 +132,26 @@ describe.sequential("beforeChangeHooks", () => {
       const originalDoc = { id: 1, stage: "completed" };
       const req = { user: { id: 1, role: "admin", email: "admin@example.com" } };
 
-      await expect(
-        hook({ data, operation: "update", req, originalDoc, collection: {} as never, context: {} as never } as any)
-      ).resolves.not.toThrow();
+      const result = await hook({
+        data,
+        operation: "update",
+        req,
+        originalDoc,
+        collection: {} as never,
+        context: {} as never,
+      } as any);
+
+      expect(result).toBeUndefined();
+      expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+        "Admin manually changed COMPLETED import job stage",
+        expect.objectContaining({
+          ingestJobId: 1,
+          fromStage: "completed",
+          toStage: "detect-schema",
+          userId: 1,
+          userEmail: "admin@example.com",
+        })
+      );
     });
 
     it("should throw when non-admin changes a COMPLETED job", async () => {

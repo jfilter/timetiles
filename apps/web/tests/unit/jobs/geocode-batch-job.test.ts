@@ -549,7 +549,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       mockPayload.update.mockRejectedValueOnce(dbError);
 
-      await expect(geocodeBatchJob.onFail(mockArgs as any)).resolves.not.toThrow();
+      await geocodeBatchJob.onFail(mockArgs as any);
 
       expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ collection: "ingest-jobs", id: 123 }));
       expect(mockLogger.logError).toHaveBeenCalledWith(

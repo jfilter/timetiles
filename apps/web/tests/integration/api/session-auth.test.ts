@@ -12,7 +12,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment.js";
 
-describe("Session Authentication", () => {
+describe.sequential("Session Authentication", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
   beforeAll(async () => {

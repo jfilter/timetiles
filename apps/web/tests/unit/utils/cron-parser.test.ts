@@ -61,15 +61,15 @@ describe("Cron Parser Utilities", () => {
   describe("validateCronParts", () => {
     it("should validate wildcard for all fields", () => {
       const parts = { minute: "*", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "*" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should validate minute range (0-59)", () => {
       const parts = { minute: "0", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "*" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
 
       parts.minute = "59";
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should throw error for minute < 0", () => {
@@ -89,10 +89,10 @@ describe("Cron Parser Utilities", () => {
 
     it("should validate hour range (0-23)", () => {
       const parts = { minute: "*", hour: "0", dayOfMonth: "*", month: "*", dayOfWeek: "*" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
 
       parts.hour = "23";
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should throw error for hour < 0", () => {
@@ -107,10 +107,10 @@ describe("Cron Parser Utilities", () => {
 
     it("should validate day of month range (1-31)", () => {
       const parts = { minute: "*", hour: "*", dayOfMonth: "1", month: "*", dayOfWeek: "*" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
 
       parts.dayOfMonth = "31";
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should throw error for day of month < 1", () => {
@@ -125,10 +125,10 @@ describe("Cron Parser Utilities", () => {
 
     it("should validate month range (1-12)", () => {
       const parts = { minute: "*", hour: "*", dayOfMonth: "*", month: "1", dayOfWeek: "*" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
 
       parts.month = "12";
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should throw error for month < 1", () => {
@@ -143,10 +143,10 @@ describe("Cron Parser Utilities", () => {
 
     it("should validate day of week range (0-7)", () => {
       const parts = { minute: "*", hour: "*", dayOfMonth: "*", month: "*", dayOfWeek: "0" };
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
 
       parts.dayOfWeek = "7";
-      expect(() => validateCronParts(parts)).not.toThrow();
+      expect(validateCronParts(parts)).toBeUndefined();
     });
 
     it("should throw error for day of week < 0", () => {

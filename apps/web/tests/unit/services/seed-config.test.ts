@@ -109,9 +109,16 @@ describe("Configuration System", () => {
   });
 
   it("should handle circular dependency detection", () => {
-    expect(() => getEnabledCollections("development")).not.toThrow();
-    expect(() => getEnabledCollections("testing")).not.toThrow();
-    expect(() => getEnabledCollections("e2e")).not.toThrow();
+    const developmentCollections = getEnabledCollections("development");
+    const testingCollections = getEnabledCollections("testing");
+    const e2eCollections = getEnabledCollections("e2e");
+
+    expect(developmentCollections.length).toBeGreaterThan(0);
+    expect(testingCollections.length).toBeGreaterThan(0);
+    expect(e2eCollections.length).toBeGreaterThan(0);
+    expect(developmentCollections).toContain("main-menu");
+    expect(testingCollections).toContain("main-menu");
+    expect(e2eCollections).toContain("main-menu");
   });
 
   it("should provide preset-specific settings", () => {

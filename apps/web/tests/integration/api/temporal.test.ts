@@ -19,7 +19,7 @@ interface HistogramBucket {
   count: number;
 }
 
-describe("/api/v1/events/temporal", () => {
+describe.sequential("/api/v1/events/temporal", () => {
   let payload: Payload;
   let testDatasetId: string;
   const testEventIds: string[] = [];
