@@ -111,33 +111,46 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
 /**
  * Insert a batch of events into both `events` and `_events_v` tables.
  * Returns the number of successfully inserted rows.
+ *
+ * Runs both inserts inside a single Drizzle transaction so that a failure on
+ * `_events_v` rolls back the matching `events` rows. Without this, a failed
+ * version insert would leave orphaned event rows (no version row, `latest`
+ * unset) that Payload's standard query path cannot surface or update.
  */
 const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string): Promise<number> => {
   if (batch.length === 0) return 0;
 
-  const db = payload.db.drizzle;
+  return payload.db.drizzle.transaction(async (tx: typeof payload.db.drizzle) => {
+    // Insert into events, returning generated IDs.
+    // ON CONFLICT DO NOTHING on the unique uniqueId index prevents duplicate events
+    // when two concurrent imports target the same dataset with overlapping data.
+    // Return uniqueId alongside id so we can match back to the batch for version rows.
+    const inserted = await tx
+      .insert(events)
+      .values(batch.map((e) => toEventsRow(e, now)))
+      .onConflictDoNothing({ target: events.uniqueId })
+      .returning({ id: events.id, uniqueId: events.uniqueId });
 
-  // Insert into events, returning generated IDs.
-  // ON CONFLICT DO NOTHING on the unique uniqueId index prevents duplicate events
-  // when two concurrent imports target the same dataset with overlapping data.
-  // Return uniqueId alongside id so we can match back to the batch for version rows.
-  const inserted = await db
-    .insert(events)
-    .values(batch.map((e) => toEventsRow(e, now)))
-    .onConflictDoNothing({ target: events.uniqueId })
-    .returning({ id: events.id, uniqueId: events.uniqueId });
+    // Populate _events_v so Payload's draft/publish system stays consistent.
+    // With ON CONFLICT DO NOTHING, inserted may be shorter than batch,
+    // so look up each inserted row's source data by uniqueId.
+    if (inserted.length > 0) {
+      const batchByUniqueId = new Map(batch.map((e) => [e.uniqueId, e]));
+      const versionRows = inserted.map((row) => {
+        const source = row.uniqueId != null ? batchByUniqueId.get(row.uniqueId) : undefined;
+        if (!source) {
+          // Unreachable by construction — `returning()` only yields rows we
+          // just inserted from `batch`. Throwing aborts the transaction so
+          // the events row rolls back rather than becoming an orphan.
+          throw new Error(`bulk-event-insert: inserted event row ${row.id} missing source data for uniqueId`);
+        }
+        return toVersionRow(row.id, source, now);
+      });
+      await tx.insert(_events_v).values(versionRows);
+    }
 
-  // Populate _events_v so Payload's draft/publish system stays consistent.
-  // With ON CONFLICT DO NOTHING, inserted may be shorter than batch,
-  // so look up each inserted row's source data by uniqueId.
-  if (inserted.length > 0) {
-    const batchByUniqueId = new Map(batch.map((e) => [e.uniqueId, e]));
-    await db
-      .insert(_events_v)
-      .values(inserted.map((row) => toVersionRow(row.id, batchByUniqueId.get(row.uniqueId!)!, now)));
-  }
-
-  return inserted.length;
+    return inserted.length;
+  });
 };
 
 /**
