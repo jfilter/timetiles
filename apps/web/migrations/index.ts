@@ -40,6 +40,7 @@ import * as migration_20260417_100000_datasets_catalog_name_unique from './20260
 import * as migration_20260417_110000_drop_ingest_jobs_dead_fields from './20260417_110000_drop_ingest_jobs_dead_fields';
 import * as migration_20260417_160000_event_access_without_catalog_materialization from './20260417_160000_event_access_without_catalog_materialization';
 import * as migration_20260417_180000_fix_include_public_access_default from './20260417_180000_fix_include_public_access_default';
+import * as migration_20260417_190000_cluster_events_gist_index_use from './20260417_190000_cluster_events_gist_index_use';
 
 export const migrations = [
   {
@@ -251,5 +252,10 @@ export const migrations = [
     up: migration_20260417_180000_fix_include_public_access_default.up,
     down: migration_20260417_180000_fix_include_public_access_default.down,
     name: '20260417_180000_fix_include_public_access_default',
+  },
+  {
+    up: migration_20260417_190000_cluster_events_gist_index_use.up,
+    down: migration_20260417_190000_cluster_events_gist_index_use.down,
+    name: '20260417_190000_cluster_events_gist_index_use',
   },
 ];
