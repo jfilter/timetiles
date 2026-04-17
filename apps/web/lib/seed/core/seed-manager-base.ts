@@ -73,14 +73,14 @@ export abstract class SeedManagerBase {
   }
 
   private async performCleanup(): Promise<void> {
-    // Close PostgreSQL connections if available
-    await this.closePostgresConnections();
+    const destroyedViaPayload = await this.closePayloadConnections();
 
-    // Close Drizzle connections if available
-    this.closeDrizzleConnections();
-
-    // Close Payload DB connections
-    await this.closePayloadConnections();
+    if (!destroyedViaPayload) {
+      // Fall back to closing the raw adapters when Payload does not expose
+      // a destroy hook or the destroy hook fails.
+      await this.closePostgresConnections();
+      this.closeDrizzleConnections();
+    }
 
     // Clean up Payload instance
     this.cleanupPayloadInstance();
@@ -124,7 +124,7 @@ export abstract class SeedManagerBase {
     }
   }
 
-  private async closePayloadConnections(): Promise<void> {
+  private async closePayloadConnections(): Promise<boolean> {
     if (this.payload?.db != null && typeof this.payload.db.destroy === "function") {
       try {
         logger.debug("Closing Payload database connection");
@@ -137,10 +137,14 @@ export abstract class SeedManagerBase {
           ),
         ]);
         logger.debug("Payload database connection closed");
+        return true;
       } catch (error: unknown) {
         logger.warn("Error closing Payload database connection", { error });
+        return false;
       }
     }
+
+    return false;
   }
 
   private cleanupPayloadInstance(): void {

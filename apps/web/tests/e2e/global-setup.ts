@@ -21,12 +21,13 @@ const __dirname = path.dirname(__filename);
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { resetEnv } from "@/lib/config/env";
-import { databaseExists, dropDatabase } from "@/lib/database/operations";
+import { dropDatabase, listDatabasesByPrefix } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 import { createSeedManager } from "@/lib/seed/index";
 
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
+import { assertPortAvailable } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
 
 // Store processes globally for teardown
@@ -97,6 +98,20 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
   }
 };
 
+const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseName: string): Promise<void> => {
+  const staleDatabases = (await listDatabasesByPrefix(databasePrefix)).filter((name) => name !== activeDatabaseName);
+
+  if (staleDatabases.length === 0) {
+    return;
+  }
+
+  console.log(`🧹 Dropping ${staleDatabases.length} stale E2E database(s)...`);
+  for (const databaseName of staleDatabases) {
+    console.log(`   Dropping ${databaseName}...`);
+    await dropDatabase(databaseName, { ifExists: true });
+  }
+};
+
 /**
  * Playwright global setup function.
  *
@@ -110,7 +125,7 @@ export default async function globalSetup(): Promise<void> {
   await checkPostgreSQLConnection();
 
   const dbPrefix = getWorktreeDatabasePrefix();
-  const databaseName = dbPrefix; // Use prefix directly as database name
+  const databaseName = `${dbPrefix}_${process.pid}`;
   const serverPort = getWorktreeBasePort();
   const baseURL = `http://localhost:${serverPort}`;
 
@@ -133,12 +148,8 @@ export default async function globalSetup(): Promise<void> {
   console.log(`🗺️ Geocoding stub server listening at ${stub.url}`);
 
   console.log(`📦 Creating test database: ${databaseName}`);
-
-  // Drop existing database to ensure fresh state
-  if (await databaseExists(databaseName)) {
-    console.log(`   Dropping existing database...`);
-    await dropDatabase(databaseName);
-  }
+  await cleanupStaleE2EDatabases(dbPrefix, databaseName);
+  await assertPortAvailable(serverPort, "E2E server");
 
   // Create database with migrations
   await setupDatabase({

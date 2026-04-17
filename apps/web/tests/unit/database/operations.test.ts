@@ -85,6 +85,7 @@ import {
   databaseExists,
   dropDatabase,
   executeDatabaseQuery,
+  listDatabasesByPrefix,
   terminateConnections,
   truncateTables,
 } from "@/lib/database/operations";
@@ -444,6 +445,38 @@ describe.sequential("database operations", () => {
       });
 
       await expect(databaseExists("my_db")).rejects.toThrow("connection error");
+      expect(allClients[0]!.end).toHaveBeenCalledOnce();
+    });
+  });
+
+  // ─── listDatabasesByPrefix ────────────────────────────────────────
+
+  describe("listDatabasesByPrefix", () => {
+    it("returns matching databases ordered by name", async () => {
+      setClientFactory(() => {
+        const c = pgState.newMockClient();
+        c.query.mockResolvedValue({
+          rows: [{ datname: "timetiles_test_e2e_100" }, { datname: "timetiles_test_e2e_200" }],
+        });
+        return c;
+      });
+
+      const result = await listDatabasesByPrefix("timetiles_test_e2e_");
+
+      expect(result).toEqual(["timetiles_test_e2e_100", "timetiles_test_e2e_200"]);
+      expect(allClients[0]!.query).toHaveBeenCalledWith(expect.stringContaining("datname LIKE $1"), [
+        "timetiles_test_e2e_%",
+      ]);
+    });
+
+    it("always disconnects even when listing fails", async () => {
+      setClientFactory(() => {
+        const c = pgState.newMockClient();
+        c.query.mockRejectedValue(new Error("list failed"));
+        return c;
+      });
+
+      await expect(listDatabasesByPrefix("timetiles_test_e2e_")).rejects.toThrow("list failed");
       expect(allClients[0]!.end).toHaveBeenCalledOnce();
     });
   });

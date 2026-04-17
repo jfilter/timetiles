@@ -269,6 +269,33 @@ export const databaseExists = async (databaseName: string): Promise<boolean> => 
 };
 
 /**
+ * List non-template databases matching a prefix.
+ *
+ * @param prefix - Database name prefix to match
+ * @returns Matching database names ordered alphabetically
+ */
+export const listDatabasesByPrefix = async (prefix: string): Promise<string[]> => {
+  const client = createDatabaseClient({ database: "postgres" });
+  try {
+    await client.connect();
+    const result = await client.query<{ datname: string }>(
+      `
+        SELECT datname
+        FROM pg_database
+        WHERE datistemplate = false
+          AND datname LIKE $1
+        ORDER BY datname
+      `,
+      [`${prefix}%`]
+    );
+
+    return result.rows.map((row) => row.datname);
+  } finally {
+    await client.end();
+  }
+};
+
+/**
  * Clone a database from a template.
  *
  * Creates a new database as a copy of an existing template database.
