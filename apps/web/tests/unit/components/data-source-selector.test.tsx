@@ -9,19 +9,35 @@
 import { DataSourceSelector } from "@/components/filters/data-source-selector";
 import type { DataSourcesResponse } from "@/lib/hooks/use-data-sources-query";
 
-import { renderWithProviders, within } from "../../setup/unit/react-render";
+import { fireEvent, renderWithProviders, within } from "../../setup/unit/react-render";
 
 // ---------------------------------------------------------------------------
 // Shared mock state
 // ---------------------------------------------------------------------------
-let mockDataSources: DataSourcesResponse = { catalogs: [], datasets: [] };
-let mockAuthState = {
+const createDefaultDataSources = (): DataSourcesResponse => ({
+  catalogs: [
+    { id: 1, name: "Environmental Data", isOwned: false },
+    { id: 2, name: "Economic Data", isOwned: false },
+    { id: 3, name: "Social Data", isOwned: false },
+  ],
+  datasets: [
+    { id: 10, name: "Air Quality", catalogId: 1, hasTemporalData: true },
+    { id: 11, name: "Water Quality", catalogId: 1, hasTemporalData: true },
+    { id: 20, name: "GDP Growth", catalogId: 2, hasTemporalData: true },
+    { id: 30, name: "Census Data", catalogId: 3, hasTemporalData: true },
+  ],
+});
+
+const createAnonymousAuthState = () => ({
   isAuthenticated: false,
   isEmailVerified: false,
   userId: null as number | null,
   isLoading: false,
   user: null,
-};
+});
+
+let mockDataSources: DataSourcesResponse = { catalogs: [], datasets: [] };
+let mockAuthState = createAnonymousAuthState();
 
 // Mock the useDataSourcesQuery hook
 vi.mock("@/lib/hooks/use-data-sources-query", () => ({
@@ -44,20 +60,8 @@ vi.mock("@/lib/context/view-context", () => ({ useView: () => mockViewContext })
 describe("DataSourceSelector", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDataSources = {
-      catalogs: [
-        { id: 1, name: "Environmental Data", isOwned: false },
-        { id: 2, name: "Economic Data", isOwned: false },
-        { id: 3, name: "Social Data", isOwned: false },
-      ],
-      datasets: [
-        { id: 10, name: "Air Quality", catalogId: 1, hasTemporalData: true },
-        { id: 11, name: "Water Quality", catalogId: 1, hasTemporalData: true },
-        { id: 20, name: "GDP Growth", catalogId: 2, hasTemporalData: true },
-        { id: 30, name: "Census Data", catalogId: 3, hasTemporalData: true },
-      ],
-    };
-    mockAuthState = { isAuthenticated: false, isEmailVerified: false, userId: null, isLoading: false, user: null };
+    mockDataSources = createDefaultDataSources();
+    mockAuthState = createAnonymousAuthState();
   });
 
   describe("Checkbox tree rendering", () => {
@@ -103,6 +107,24 @@ describe("DataSourceSelector", () => {
 
       const checkbox = within(container).getByRole("checkbox", { name: "Deselect all datasets in Environmental Data" });
       expect(checkbox).toBeInTheDocument();
+    });
+
+    it("exposes disclosure state on the catalog toggle button", () => {
+      const { container } = renderWithProviders(<DataSourceSelector />);
+
+      const toggleButton = container.querySelector<HTMLButtonElement>('button[aria-controls="catalog-group-1"]');
+      expect(toggleButton).not.toBeNull();
+
+      if (!toggleButton) {
+        throw new Error("Expected environmental catalog toggle button");
+      }
+
+      expect(toggleButton).toHaveAttribute("aria-expanded", "true");
+
+      fireEvent.click(toggleButton);
+
+      expect(toggleButton).toHaveAttribute("aria-expanded", "false");
+      expect(toggleButton).toHaveAttribute("aria-controls", "catalog-group-1");
     });
   });
 
@@ -162,14 +184,16 @@ describe("DataSourceSelector", () => {
 
   describe("Ownership grouping", () => {
     it("shows flat list for anonymous users (no group headings)", () => {
-      mockAuthState = { isAuthenticated: false, isEmailVerified: false, userId: null, isLoading: false, user: null };
+      mockDataSources = createDefaultDataSources();
+      mockAuthState = createAnonymousAuthState();
 
       const { container } = renderWithProviders(<DataSourceSelector />);
 
       expect(container).not.toHaveTextContent("My Catalogs");
       expect(container).not.toHaveTextContent("Public Catalogs");
-      expect(container).toHaveTextContent("Environmental Data");
-      expect(container).toHaveTextContent("Economic Data");
+      expect(container).toHaveTextContent("Air Quality");
+      expect(container).toHaveTextContent("GDP Growth");
+      expect(container).toHaveTextContent("Census Data");
     });
 
     it("shows grouped catalogs for authenticated user with owned catalogs", () => {

@@ -161,12 +161,14 @@ const CatalogGroupHeader = ({
   group,
   checkState,
   isExpanded,
+  panelId,
   onToggleCheck,
   onToggleExpand,
 }: {
   group: CatalogGroup;
   checkState: "all" | "some" | "none";
   isExpanded: boolean;
+  panelId: string;
   onToggleCheck: () => void;
   onToggleExpand: () => void;
 }) => {
@@ -184,7 +186,13 @@ const CatalogGroupHeader = ({
         className="mt-0.5 h-4 w-4 shrink-0"
       />
 
-      <button type="button" onClick={onToggleExpand} className="flex min-w-0 flex-1 items-center gap-1.5">
+      <button
+        type="button"
+        onClick={onToggleExpand}
+        className="flex min-w-0 flex-1 items-center gap-1.5"
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+      >
         <span className="text-foreground line-clamp-2 min-w-0 text-left text-sm font-medium">{group.catalog.name}</span>
         <span className="text-muted-foreground ml-auto shrink-0 font-mono text-xs">
           {formatCount(group.totalEvents)}
@@ -296,6 +304,7 @@ const CatalogGroupSection = ({
   const visibleDatasets =
     useCollapse && !showAll ? group.datasets.slice(0, DATASET_COLLAPSE_THRESHOLD) : group.datasets;
   const hiddenCount = group.datasets.length - DATASET_COLLAPSE_THRESHOLD;
+  const panelId = `catalog-group-${group.catalog.id}`;
 
   return (
     <div>
@@ -303,12 +312,13 @@ const CatalogGroupSection = ({
         group={group}
         checkState={checkState}
         isExpanded={isExpanded}
+        panelId={panelId}
         onToggleCheck={handleToggleCheck}
         onToggleExpand={handleToggleExpand}
       />
 
       {isExpanded && (
-        <div>
+        <div id={panelId}>
           {visibleDatasets.map((dataset) => (
             <DatasetRow
               key={dataset.id}

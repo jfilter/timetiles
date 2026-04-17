@@ -336,4 +336,54 @@ describe("useTimeRangeSlider", () => {
       expect(result.current.isEditingDates).toBe(false);
     });
   });
+
+  describe("keyboard interaction", () => {
+    it("moves the start handle backward with ArrowLeft", () => {
+      const histogram = makeHistogram([
+        { date: "2024-01-01", dateEnd: "2024-04-01", count: 10 },
+        { date: "2024-04-01", dateEnd: "2024-07-01", count: 20 },
+      ]);
+
+      mockHistogramQuery.mockReturnValue({ data: histogram, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const props = defaultProps();
+      props.filters.startDate = "2024-03-01";
+
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+      const preventDefault = vi.fn();
+
+      act(() => {
+        result.current.handleHandleKeyDown("start")({ key: "ArrowLeft", preventDefault } as any);
+      });
+
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(props.onStartDateChange).toHaveBeenCalledOnce();
+    });
+
+    it("moves the end handle to the maximum with End", () => {
+      const histogram = makeHistogram([
+        { date: "2024-01-01", dateEnd: "2024-04-01", count: 10 },
+        { date: "2024-04-01", dateEnd: "2024-07-01", count: 20 },
+      ]);
+
+      mockHistogramQuery.mockReturnValue({ data: histogram, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const props = defaultProps();
+      props.filters.endDate = "2024-05-01";
+
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+      const preventDefault = vi.fn();
+
+      act(() => {
+        result.current.handleHandleKeyDown("end")({ key: "End", preventDefault } as any);
+      });
+
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(props.onEndDateChange).toHaveBeenCalledWith("2024-07-01");
+    });
+  });
 });

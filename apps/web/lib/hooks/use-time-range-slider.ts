@@ -41,7 +41,7 @@ interface UseTimeRangeSliderReturn {
   /** Ref for the slider track element */
   trackRef: React.RefObject<HTMLDivElement | null>;
   /** Ref for the histogram element */
-  histogramRef: React.RefObject<HTMLDivElement | null>;
+  histogramRef: React.RefObject<HTMLButtonElement | null>;
   /** Whether histogram data is loading */
   isLoading: boolean;
   /** Current start date filter value (pass-through from filters) */
@@ -76,6 +76,8 @@ interface UseTimeRangeSliderReturn {
   handlePointerMove: (e: React.PointerEvent) => void;
   /** Pointer up handler to end dragging */
   handlePointerUp: () => void;
+  /** Keyboard handler factory for start/end slider handles */
+  handleHandleKeyDown: (handle: "start" | "end") => (e: React.KeyboardEvent) => void;
   /** Change handler for start date input */
   handleStartDateInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   /** Change handler for end date input */
@@ -84,10 +86,8 @@ interface UseTimeRangeSliderReturn {
   handleOpenEditMode: () => void;
   /** Close date editing mode */
   handleCloseEditMode: () => void;
-  /** Keyboard handler for histogram accessibility (arrow keys move handles) */
-  handleHistogramKeyDown: (e: React.KeyboardEvent) => void;
   /** Click handler for histogram area */
-  handleHistogramClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  handleHistogramClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 export const useTimeRangeSlider = ({
@@ -98,7 +98,7 @@ export const useTimeRangeSlider = ({
 }: UseTimeRangeSliderProps): UseTimeRangeSliderReturn => {
   const { startDate, endDate } = filters;
   const trackRef = useRef<HTMLDivElement>(null);
-  const histogramRef = useRef<HTMLDivElement>(null);
+  const histogramRef = useRef<HTMLButtonElement>(null);
   const [isDragging, setIsDragging] = useState<"start" | "end" | null>(null);
   const [isEditingDates, setIsEditingDates] = useState(false);
 
@@ -155,6 +155,27 @@ export const useTimeRangeSlider = ({
   const startHandleStyle = { left: `${startPosition * 100}%` };
   const endHandleStyle = { left: `${endPosition * 100}%` };
 
+  const clampTimestamp = (timestamp: number): number => {
+    return Math.max(minTimestamp, Math.min(maxTimestamp, timestamp));
+  };
+
+  const commitHandleTimestamp = (handle: "start" | "end", timestamp: number) => {
+    const clampedTimestamp = clampTimestamp(timestamp);
+
+    if (handle === "start") {
+      const endTs = endDate != null ? parseISODate(endDate) : maxTimestamp;
+      if (clampedTimestamp <= endTs) {
+        onStartDateChange(formatISODate(clampedTimestamp));
+      }
+      return;
+    }
+
+    const startTs = startDate != null ? parseISODate(startDate) : minTimestamp;
+    if (clampedTimestamp >= startTs) {
+      onEndDateChange(formatISODate(clampedTimestamp));
+    }
+  };
+
   // Convert position (0-1) to timestamp
   const positionToTimestamp = (position: number): number => {
     return minTimestamp + position * (maxTimestamp - minTimestamp);
@@ -172,26 +193,52 @@ export const useTimeRangeSlider = ({
 
     const rect = trackRef.current.getBoundingClientRect();
     const position = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const timestamp = positionToTimestamp(position);
-    const dateStr = formatISODate(timestamp);
-
-    if (isDragging === "start") {
-      // Don't let start go past end
-      const endTs = endDate != null ? parseISODate(endDate) : maxTimestamp;
-      if (timestamp <= endTs) {
-        onStartDateChange(dateStr);
-      }
-    } else {
-      // Don't let end go before start
-      const startTs = startDate != null ? parseISODate(startDate) : minTimestamp;
-      if (timestamp >= startTs) {
-        onEndDateChange(dateStr);
-      }
-    }
+    commitHandleTimestamp(isDragging, positionToTimestamp(position));
   };
 
   const handlePointerUp = () => {
     setIsDragging(null);
+  };
+
+  const handleHandleKeyDown = (handle: "start" | "end") => (e: React.KeyboardEvent) => {
+    if (minTimestamp === maxTimestamp) return;
+
+    let currentValue: number;
+    if (handle === "start") {
+      currentValue = startDate != null ? parseISODate(startDate) : minTimestamp;
+    } else {
+      currentValue = endDate != null ? parseISODate(endDate) : maxTimestamp;
+    }
+    const step = Math.max((maxTimestamp - minTimestamp) * 0.01, 1);
+
+    let nextValue: number | null = null;
+    switch (e.key) {
+      case "ArrowLeft":
+      case "ArrowDown":
+        nextValue = currentValue - step;
+        break;
+      case "ArrowRight":
+      case "ArrowUp":
+        nextValue = currentValue + step;
+        break;
+      case "PageDown":
+        nextValue = currentValue - step * 10;
+        break;
+      case "PageUp":
+        nextValue = currentValue + step * 10;
+        break;
+      case "Home":
+        nextValue = minTimestamp;
+        break;
+      case "End":
+        nextValue = maxTimestamp;
+        break;
+      default:
+        return;
+    }
+
+    e.preventDefault();
+    commitHandleTimestamp(handle, nextValue);
   };
 
   // Check if a bar is within the selected range
@@ -218,26 +265,7 @@ export const useTimeRangeSlider = ({
     setIsEditingDates(false);
   };
 
-  // Keyboard handler: ArrowLeft narrows start inward, ArrowRight extends end outward
-  const handleHistogramKeyDown = (e: React.KeyboardEvent) => {
-    if (minTimestamp === maxTimestamp) return;
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-
-    e.preventDefault();
-    const step = (maxTimestamp - minTimestamp) * 0.01; // 1% of range per keystroke
-
-    if (e.key === "ArrowLeft") {
-      const currentStart = startDate != null ? parseISODate(startDate) : minTimestamp;
-      const newTs = Math.max(minTimestamp, currentStart - step);
-      onStartDateChange(formatISODate(newTs));
-    } else {
-      const currentEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
-      const newTs = Math.min(maxTimestamp, currentEnd + step);
-      onEndDateChange(formatISODate(newTs));
-    }
-  };
-
-  const handleHistogramClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleHistogramClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (histogramRef.current == null) return;
 
     const rect = histogramRef.current.getBoundingClientRect();
@@ -284,11 +312,11 @@ export const useTimeRangeSlider = ({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleHandleKeyDown,
     handleStartDateInputChange,
     handleEndDateInputChange,
     handleOpenEditMode,
     handleCloseEditMode,
-    handleHistogramKeyDown,
     handleHistogramClick,
   };
 };

@@ -81,11 +81,11 @@ export const TimeRangeSlider = ({
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleHandleKeyDown,
     handleStartDateInputChange,
     handleEndDateInputChange,
     handleOpenEditMode,
     handleCloseEditMode,
-    handleHistogramKeyDown,
     handleHistogramClick,
   } = useTimeRangeSlider({ filters, onStartDateChange, onEndDateChange, bounds });
 
@@ -132,11 +132,14 @@ export const TimeRangeSlider = ({
           className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={startHandleStyle}
           onPointerDown={handlePointerDown("start")}
+          onKeyDown={handleHandleKeyDown("start")}
           role="slider"
           aria-label={t("startDateSlider", { date: startDate ?? formatISODate(minTimestamp) })}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(startPosition * 100)}
+          aria-valuetext={formatMonthYear(startDate ?? formatISODate(minTimestamp))}
+          aria-orientation="horizontal"
         />
 
         {/* End handle */}
@@ -145,26 +148,24 @@ export const TimeRangeSlider = ({
           className="bg-background dark:bg-foreground border-secondary focus-visible:ring-ring absolute top-1/2 z-10 h-4 w-4 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border-2 shadow-sm transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:outline-none active:scale-110 active:cursor-grabbing"
           style={endHandleStyle}
           onPointerDown={handlePointerDown("end")}
+          onKeyDown={handleHandleKeyDown("end")}
           role="slider"
           aria-label={t("endDateSlider", { date: endDate ?? formatISODate(maxTimestamp) })}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(endPosition * 100)}
+          aria-valuetext={formatMonthYear(endDate ?? formatISODate(maxTimestamp))}
+          aria-orientation="horizontal"
         />
       </div>
 
       {/* Mini histogram - clickable area */}
-      <div
+      <button
+        type="button"
         ref={histogramRef}
         className="relative h-8 cursor-pointer"
         onClick={handleHistogramClick}
-        onKeyDown={handleHistogramKeyDown}
-        role="slider"
-        tabIndex={0}
         aria-label={t("timelineHistogram")}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(((startPosition + endPosition) / 2) * 100)}
       >
         {/* Invisible click target covering full area */}
         <div className="absolute inset-0" />
@@ -181,7 +182,7 @@ export const TimeRangeSlider = ({
             />
           ))}
         </div>
-      </div>
+      </button>
 
       {/* Total date range labels */}
       <div className="-mx-2 flex items-center justify-between">
