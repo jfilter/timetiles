@@ -115,10 +115,10 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
         isLoadingBounds={isLoadingInitialBounds}
         showZoomToData={showZoomToData}
         onZoomToData={handleZoomToData}
-        className="relative h-full min-w-0 flex-1 transition-all duration-500 ease-in-out"
+        className="relative h-full min-w-0 flex-1 transition-[flex,width] duration-500 ease-in-out"
       />
 
-      <div className="min-w-0 flex-1 overflow-y-auto border-l transition-all duration-500 ease-in-out [scrollbar-gutter:stable]">
+      <div className="min-w-0 flex-1 overflow-y-auto border-l transition-[flex,width] duration-500 ease-in-out [scrollbar-gutter:stable]">
         <div className="p-6">
           <p className="text-foreground mb-4 text-base font-medium">
             {buildEventsDescription(

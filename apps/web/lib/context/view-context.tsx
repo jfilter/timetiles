@@ -66,7 +66,7 @@ interface ViewProviderProps {
  * Should wrap explorer pages where views are active.
  */
 export const ViewProvider = ({ view, children }: ViewProviderProps): React.ReactElement => {
-  // oxlint-disable-next-line complexity
+  // oxlint-disable-next-line complexity -- builds the full view context value; extracting per-field helpers would increase indirection more than it would reduce branching
   const value = useMemo((): ViewContextValue => {
     // Extract catalog/dataset IDs from relationships
     const catalogIds = view?.dataScope?.catalogs?.map((c) => (typeof c === "number" ? c : c.id));

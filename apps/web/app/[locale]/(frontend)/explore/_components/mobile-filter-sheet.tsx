@@ -103,7 +103,7 @@ export const MobileFilterSheet = ({
         type="button"
         onClick={onOpen}
         className={cn(
-          "fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300 md:hidden",
+          "fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-[transform,opacity,background-color] duration-300 md:hidden",
           "bg-primary hover:bg-primary/90 text-white",
           "dark:bg-card dark:text-foreground dark:hover:bg-card/90",
           isOpen && "pointer-events-none scale-0 opacity-0"

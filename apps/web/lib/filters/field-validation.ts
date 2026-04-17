@@ -15,8 +15,7 @@ export const MAX_FIELD_PATH_DEPTH = 5;
 export const MAX_FIELD_KEY_LENGTH = 64;
 
 /** Pattern for valid field key segments (alphanumeric, underscores, hyphens) */
-// Input bounded to MAX_FIELD_KEY_LENGTH chars, so this pattern is safe from ReDoS
-// eslint-disable-next-line security/detect-unsafe-regex
+// eslint-disable-next-line security/detect-unsafe-regex -- input bounded to MAX_FIELD_KEY_LENGTH before match, so nested quantifier can't ReDoS
 export const VALID_FIELD_KEY_PATTERN = /^[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)*$/;
 
 /**

@@ -174,7 +174,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
       {/* Filter area - matches sidebar width, shows clickable "Filters" label when open.
           duration-500 must match FILTER_DRAWER_ANIMATION_MS above. */}
       <div
-        className={`flex items-center justify-center border-l transition-all duration-500 ease-in-out ${
+        className={`flex items-center justify-center border-l transition-[width] duration-500 ease-in-out ${
           isFilterDrawerOpen ? "w-80 pr-8" : "w-0 overflow-hidden"
         }`}
       >

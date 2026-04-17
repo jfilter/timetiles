@@ -19,7 +19,7 @@ interface FilterPanelProps {
 export const FilterPanel = ({ isOpen, children, className }: FilterPanelProps) => (
   <div
     className={cn(
-      "shrink-0 border-l transition-all duration-500 ease-in-out",
+      "shrink-0 border-l transition-[width] duration-500 ease-in-out",
       isOpen ? "w-80" : "w-0 overflow-hidden",
       className
     )}

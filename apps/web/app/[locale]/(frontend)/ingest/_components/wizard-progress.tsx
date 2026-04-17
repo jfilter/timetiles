@@ -81,7 +81,7 @@ export const WizardHeader = () => {
       {/* Thin progress bar */}
       <div className="bg-muted h-0.5 w-full">
         <div
-          className="bg-primary h-full transition-all duration-500 ease-out"
+          className="bg-primary h-full transition-[width] duration-500 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
       </div>

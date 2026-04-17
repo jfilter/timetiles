@@ -177,7 +177,7 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
     <div className="mt-1.5 space-y-1.5">
       {/* Mini progress bar */}
       <div className="bg-primary/10 h-1.5 overflow-hidden rounded-full">
-        <div className="bg-ring h-full transition-all duration-300" style={{ width: `${stage.progress}%` }} />
+        <div className="bg-ring h-full transition-[width] duration-300" style={{ width: `${stage.progress}%` }} />
       </div>
       {/* Detail text */}
       {detailParts.length > 0 && (
@@ -395,7 +395,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
                 <span className="text-foreground font-mono text-sm">{progressPercent}%</span>
               </div>
               <div className="bg-primary/10 h-2 overflow-hidden rounded-full">
-                <div className="bg-ring h-full transition-all duration-300" style={progressBarStyle} />
+                <div className="bg-ring h-full transition-[width] duration-300" style={progressBarStyle} />
               </div>
             </div>
           )}
