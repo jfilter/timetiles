@@ -10,7 +10,7 @@ import { getTranslations } from "next-intl/server";
 
 import { DataPackagesList } from "./_components/data-packages-list";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function DataPackagesPage() {
   const t = await getTranslations("DataPackages");

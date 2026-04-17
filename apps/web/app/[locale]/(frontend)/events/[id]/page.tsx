@@ -20,8 +20,6 @@ import { getPayload } from "payload";
 import { EventDetailContent } from "@/components/events";
 import { extractEventFields } from "@/lib/utils/event-detail";
 
-export const dynamic = "force-dynamic";
-
 interface PageProps {
   params: Promise<{ id: string }>;
 }

@@ -13,9 +13,6 @@
 import { ExploreContent } from "./_components/explore-content";
 import { ExploreViewResolver } from "./_components/explore-view-resolver";
 
-// Force dynamic rendering to prevent build-time database queries
-export const dynamic = "force-dynamic";
-
 interface ExplorePageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }

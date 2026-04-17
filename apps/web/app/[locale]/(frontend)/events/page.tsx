@@ -14,7 +14,7 @@ import { getPayload } from "payload";
 import { Link } from "@/i18n/navigation";
 import { formatDateShort } from "@/lib/utils/date";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 120;
 
 export default async function EventsListPage() {
   const payload = await getPayload({ config: configPromise });
