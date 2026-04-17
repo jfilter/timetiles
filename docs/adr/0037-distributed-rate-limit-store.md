@@ -2,7 +2,11 @@
 
 ## Status
 
-Proposed
+Accepted as the direction; **stage 1 (pluggable storage interface) intentionally deferred** until a concrete second backend is needed.
+
+The current `RateLimitService` is in-memory and single-process. Horizontal scaling must not be enabled without first landing a shared-store backend per this ADR. A class-level comment in `apps/web/lib/services/rate-limit-service.ts` flags the constraint so the assumption can't silently rot.
+
+Rationale for the deferral: introducing the interface without a second backend is YAGNI — it adds an abstraction that has no behavioral difference today, and the team's stated infrastructure preference is to avoid Redis/BullMQ when PostgreSQL + Payload can suffice. When the second backend is actually needed, build it together with the interface split so the trade-off between Redis (bursty TTL counters) and PG (single-store simplicity) is made against a real workload, not in advance of one.
 
 ## Context
 

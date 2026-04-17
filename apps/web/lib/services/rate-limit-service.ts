@@ -49,6 +49,19 @@ export interface MultiWindowRateLimitResult {
   details?: { limit: number; windowMs: number; remaining: number; resetTime: number };
 }
 
+/**
+ * SINGLE-PROCESS ONLY.
+ *
+ * Counters live in a per-instance Map. Horizontally scaled deployments
+ * (multiple Node.js workers / containers serving the same traffic)
+ * each maintain independent counters, which lets an attacker multiply
+ * the effective limit by round-robining requests across workers.
+ *
+ * Before enabling horizontal scaling, swap this in-memory storage for
+ * a shared backend (Redis, per ADR 0037) so limits remain correct
+ * across processes. The service API and RateLimitEntry shape are
+ * intentionally narrow so the swap can stay behind this interface.
+ */
 export class RateLimitService {
   private readonly cache: Map<string, RateLimitEntry> = new Map();
   private readonly payload: Payload;
