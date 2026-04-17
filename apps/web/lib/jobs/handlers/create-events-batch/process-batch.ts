@@ -7,12 +7,14 @@
  * @module
  * @category Jobs
  */
+import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { applyTransforms } from "@/lib/ingest/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { BulkEventData } from "../../utils/bulk-event-insert";
@@ -89,6 +91,32 @@ const buildBulkEventFromRow = (
   return { ...eventData, datasetIsPublic: accessFields.datasetIsPublic, catalogOwnerId: accessFields.catalogOwnerId };
 };
 
+/**
+ * SELECT-and-filter candidate update IDs to those that belong to the target
+ * dataset. One query per batch regardless of batch size.
+ *
+ * Defence in depth: `analyze-duplicates` already scopes the lookup to the
+ * same dataset, but the import pipeline persists `existingEventId` in the
+ * job record and feeds it back here. If that record is ever tampered with
+ * or the duplicate lookup is widened later, this guard stops cross-dataset
+ * writes from slipping through.
+ */
+const validateUpdateIdsInDataset = async (
+  payload: Payload,
+  datasetId: number,
+  candidateIds: Array<string | number>
+): Promise<Set<number>> => {
+  const numericIds = candidateIds.map((id) => Number(id)).filter((id) => Number.isInteger(id));
+  if (numericIds.length === 0) return new Set();
+
+  const inDataset = (await payload.db.drizzle
+    .select({ id: eventsTable.id })
+    .from(eventsTable)
+    .where(and(eq(eventsTable.dataset, datasetId), inArray(eventsTable.id, numericIds)))) as Array<{ id: number }>;
+
+  return new Set(inDataset.map((r) => r.id));
+};
+
 export const processEventBatch = async (
   ctx: ProcessBatchContext,
   rows: Record<string, unknown>[],
@@ -101,6 +129,12 @@ export const processEventBatch = async (
   const { skipRows, updateRows } = extractDuplicateRows(job, duplicateStrategy);
   const geocodingResults = getImportGeocodingResults(job);
   const transforms = buildTransformsFromDataset(dataset);
+
+  // Dataset-scope guard: `analyze-duplicates` already filters candidates by
+  // dataset, but we re-verify at the write site. If ever anyone widens the
+  // duplicate-lookup query, a malformed `updateRows` entry cannot bleed across
+  // datasets — the update is refused with a recorded error instead.
+  const updateIdsInDataset = await validateUpdateIdsInDataset(payload, dataset.id, Array.from(updateRows.values()));
 
   let eventsSkipped = 0;
   let eventsUpdated = 0;
@@ -121,6 +155,14 @@ export const processEventBatch = async (
       // External duplicates with "update" strategy: update existing event via Payload API
       const existingEventId = updateRows.get(rowNumber);
       if (existingEventId != null) {
+        if (!updateIdsInDataset.has(Number(existingEventId))) {
+          log.warn("Refusing cross-dataset event update", { rowNumber, existingEventId, datasetId: dataset.id });
+          errors.push({
+            row: rowNumber,
+            error: `update blocked: event ${existingEventId} is not in dataset ${dataset.id}`,
+          });
+          continue;
+        }
         await payload.update({
           collection: "events",
           id: existingEventId,

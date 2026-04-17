@@ -193,6 +193,11 @@ describe.sequential("processEventBatch", () => {
 
     mocks.getImportGeocodingResults.mockReturnValue({});
 
+    // Stub `db.drizzle.select(...).from(...).where(...)` used by
+    // validateUpdateIdsInDataset. By default returns any id Number()-coerced
+    // from `updateRows` so existing expectations (all updates allowed) hold.
+    const datasetIdAllowlist = new Set<number>();
+    const drizzleWhere = vi.fn().mockImplementation(async () => Array.from(datasetIdAllowlist).map((id) => ({ id })));
     mockPayload = {
       findByID: vi.fn(),
       find: vi.fn(),
@@ -200,9 +205,21 @@ describe.sequential("processEventBatch", () => {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn(),
       jobs: { queue: vi.fn().mockResolvedValue({}) },
+      db: { drizzle: { select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: drizzleWhere }) }) } },
+    };
+    // Tests call `allowDatasetIds([...])` inside their setup to seed which
+    // event ids this mock says belong to the dataset.
+    (mockPayload as unknown as { __allowDatasetIds: (ids: Array<number | string>) => void }).__allowDatasetIds = (
+      ids
+    ) => {
+      datasetIdAllowlist.clear();
+      for (const id of ids) {
+        const n = Number(id);
+        if (Number.isInteger(n)) datasetIdAllowlist.add(n);
+      }
     };
 
-    const mockDataset: any = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+    const mockDataset: any = { id: 456, idStrategy: { type: "external", externalIdPath: "id" } };
 
     baseCtx = {
       payload: mockPayload,
@@ -216,9 +233,7 @@ describe.sequential("processEventBatch", () => {
 
   describe('strategy "skip" (default)', () => {
     it("skips external duplicates and inserts non-duplicates", async () => {
-      const job = buildIngestJob({
-        duplicates: { internal: [], external: [{ rowNumber: 1, existingEventId: "evt-existing" }] },
-      });
+      const job = buildIngestJob({ duplicates: { internal: [], external: [{ rowNumber: 1, existingEventId: 9001 }] } });
 
       const ctx: ProcessBatchContext = { ...baseCtx, job };
 
@@ -245,9 +260,10 @@ describe.sequential("processEventBatch", () => {
 
   describe('strategy "update"', () => {
     it("updates external duplicates via payload.update() instead of skipping", async () => {
+      mockPayload.__allowDatasetIds([42]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
-        duplicates: { internal: [], external: [{ rowNumber: 0, existingEventId: "evt-42" }] },
+        duplicates: { internal: [], external: [{ rowNumber: 0, existingEventId: 42 }] },
       });
 
       const ctx: ProcessBatchContext = { ...baseCtx, job };
@@ -264,7 +280,7 @@ describe.sequential("processEventBatch", () => {
       expect(mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "events",
-          id: "evt-42",
+          id: 42,
           overrideAccess: true,
           data: expect.objectContaining({
             transformedData: expect.objectContaining({ id: "a", title: "Updated Event" }),
@@ -278,6 +294,7 @@ describe.sequential("processEventBatch", () => {
     });
 
     it("passes correct data fields to payload.update()", async () => {
+      mockPayload.__allowDatasetIds([99]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
         duplicates: { internal: [], external: [{ rowNumber: 0, existingEventId: 99 }] },
@@ -304,13 +321,14 @@ describe.sequential("processEventBatch", () => {
     });
 
     it("returns eventsUpdated count for updated rows", async () => {
+      mockPayload.__allowDatasetIds([101, 102]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
         duplicates: {
           internal: [],
           external: [
-            { rowNumber: 0, existingEventId: "evt-1" },
-            { rowNumber: 2, existingEventId: "evt-2" },
+            { rowNumber: 0, existingEventId: 101 },
+            { rowNumber: 2, existingEventId: 102 },
           ],
         },
       });
@@ -331,10 +349,34 @@ describe.sequential("processEventBatch", () => {
       expect(result.eventsSkipped).toBe(0);
     });
 
-    it("still skips internal duplicates", async () => {
+    it("refuses to update an event that doesn't belong to the dataset", async () => {
+      // Simulate tampered `duplicates.external` pointing at an event id that
+      // is NOT in the current dataset (the allowlist is empty).
+      mockPayload.__allowDatasetIds([]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
-        duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2, existingEventId: "evt-ext" }] },
+        duplicates: { internal: [], external: [{ rowNumber: 0, existingEventId: 9999 }] },
+      });
+
+      const ctx: ProcessBatchContext = { ...baseCtx, job };
+
+      const rows = [{ id: "a", title: "Cross-dataset attempt" }];
+
+      const result = await processEventBatch(ctx, rows, 0);
+
+      // No update, no bulk insert — row was recorded as an error.
+      expect(mockPayload.update).not.toHaveBeenCalled();
+      expect(mocks.bulkInsertEvents).not.toHaveBeenCalled();
+      expect(result.eventsUpdated).toBe(0);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.error).toMatch(/update blocked/);
+    });
+
+    it("still skips internal duplicates", async () => {
+      mockPayload.__allowDatasetIds([777]);
+      const job = buildIngestJob({
+        duplicateStrategy: "update",
+        duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2, existingEventId: 777 }] },
       });
 
       const ctx: ProcessBatchContext = { ...baseCtx, job };
@@ -360,13 +402,14 @@ describe.sequential("processEventBatch", () => {
 
   describe("mixed batch: new rows + updates", () => {
     it("bulk-inserts new rows and updates existing ones in the same batch", async () => {
+      mockPayload.__allowDatasetIds([501, 502]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
         duplicates: {
           internal: [],
           external: [
-            { rowNumber: 1, existingEventId: "evt-up-1" },
-            { rowNumber: 3, existingEventId: "evt-up-2" },
+            { rowNumber: 1, existingEventId: 501 },
+            { rowNumber: 3, existingEventId: 502 },
           ],
         },
       });
@@ -399,9 +442,10 @@ describe.sequential("processEventBatch", () => {
 
   describe("globalRowOffset", () => {
     it("applies offset when matching duplicate row numbers", async () => {
+      mockPayload.__allowDatasetIds([301]);
       const job = buildIngestJob({
         duplicateStrategy: "update",
-        duplicates: { internal: [], external: [{ rowNumber: 50, existingEventId: "evt-offset" }] },
+        duplicates: { internal: [], external: [{ rowNumber: 50, existingEventId: 301 }] },
       });
 
       const ctx: ProcessBatchContext = { ...baseCtx, job };
@@ -417,9 +461,7 @@ describe.sequential("processEventBatch", () => {
 
       // Row 50 should be updated
       expect(result.eventsUpdated).toBe(1);
-      expect(mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({ collection: "events", id: "evt-offset" })
-      );
+      expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ collection: "events", id: 301 }));
 
       // Rows 48 and 49 should be bulk-inserted
       const insertedEvents = getBulkInsertedEvents();
