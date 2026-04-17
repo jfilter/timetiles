@@ -18,7 +18,6 @@ import { apiRoute, NotFoundError } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
 const MAX_VALUES = 30;
@@ -53,9 +52,6 @@ export const GET = apiRoute({
     // Sort by cardinality — fields closer to 5-15 unique values are most useful for filtering
     candidates.sort((a, b) => Math.abs((a.enumValues?.length ?? 0) - 10) - Math.abs((b.enumValues?.length ?? 0) - 10));
 
-    // Resolve access control once (shared across all field queries)
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user);
-
     // Force dataset filter to this dataset (regardless of URL params)
     const baseQuery = { ...query, datasets: [datasetId] };
 
@@ -72,7 +68,11 @@ export const GET = apiRoute({
       const { [field.path]: _excluded, ...otherFieldFilters } = baseQuery.ff;
       const crossFilterQuery = { ...baseQuery, ff: otherFieldFilters };
 
-      const filters = buildCanonicalFilters({ parameters: crossFilterQuery, accessibleCatalogIds });
+      const filters = buildCanonicalFilters({
+        parameters: crossFilterQuery,
+        includePublic: true,
+        ownerId: user?.id ?? null,
+      });
 
       if (filters.denyResults) continue;
 

@@ -98,7 +98,7 @@ The `beforeChange` hook on datasets validates that non-privileged users can only
 
 ### Import Jobs Access Control
 
-Import jobs use indirect ownership: an import job belongs to an import file, which belongs to a user. The read access function queries the user's import files first, then returns a WHERE clause filtering by `importFile IN (user's file IDs)`. Update access performs a per-document ownership check by following the import file relationship.
+Import jobs use indirect ownership: an import job belongs to an import file, which belongs to a user. The read access function returns a relational WHERE clause on the relationship path (`"ingestFile.user" = currentUser.id`) so Payload can push the ownership filter into the query without materializing every owned import file ID in application code. Update access still performs a per-document ownership check by following the import file relationship.
 
 ### Feature Flag Gating
 
@@ -181,14 +181,14 @@ Public data endpoints (events list, geo queries, temporal data, bounds, stats) u
 
 1. **Delegate to Payload** -- Pass `user` and set `overrideAccess: false` when calling Payload's find/findByID. Payload applies the collection's access functions automatically. Used by the data-sources endpoint and event list endpoint.
 
-2. **Pre-filter with AccessControlService** -- For SQL-based queries that bypass Payload's ORM (geo clustering, histograms, bounds), the route calls `getAllAccessibleCatalogIds(payload, user)` to get the list of catalog IDs the user can access, then passes those IDs into the SQL query's WHERE clause. This replicates the same public-or-owned logic but at the catalog level rather than the event level.
+2. **Canonical filters + denormalized event access fields** -- For SQL-based queries that bypass Payload's ORM (geo clustering, histograms, bounds, aggregations), the route builds a canonical filter object and the SQL adapter always applies event-level access conditions using denormalized fields on `events`: `dataset_is_public` for anonymous/public reads and `catalog_owner_id = user.id` for owner-visible reads. If the caller explicitly requests a catalog, the route first validates that catalog through Payload access control (`canAccessCatalog`) before adding the catalog constraint.
 
-The canonical filter pipeline (`resolveEventQueryContext`) combines both: it resolves accessible catalog IDs, builds a canonical filter object, and the SQL adapter applies catalog-level filtering to every geospatial query.
+The canonical filter pipeline (`resolveEventQueryContext`) combines both: it validates any explicit catalog filter through Payload, builds a canonical filter object with access flags (`includePublic`, optional `ownerId`), and the SQL / JSONB adapters apply the same public-or-owned logic to every raw-query endpoint.
 
 ## Consequences
 
 - **Zero-query access control** -- Denormalized fields eliminate joins in the hot path. Every access check resolves to a simple indexed WHERE clause.
 - **Cascade cost on catalog changes** -- Updating a catalog's owner or visibility triggers bulk updates across datasets, events, and dataset-schemas. This is acceptable because catalog metadata changes are infrequent compared to reads.
-- **Consistency between Payload and SQL** -- Two parallel access control paths exist: Payload's access functions (for ORM queries) and the AccessControlService (for raw SQL). Both derive from the same ownership/visibility model but must be kept in sync manually.
+- **Consistency between Payload and SQL** -- Payload-backed routes still delegate to collection access functions, while raw SQL routes now consume the same denormalized owner/public fields directly instead of materializing accessible catalog ID lists. Explicit catalog filters are validated through Payload before raw SQL runs.
 - **Feature flags are global** -- There is no per-user or per-role feature flag override. A disabled feature is disabled for everyone.
 - **Hook-level validation supplements access functions** -- Some business rules (e.g., "users can only create datasets in their own catalogs") cannot be expressed as WHERE-clause returns and live in `beforeChange` hooks instead. This means the access function allows the operation and the hook may reject it, which is a two-step check rather than a single gate.

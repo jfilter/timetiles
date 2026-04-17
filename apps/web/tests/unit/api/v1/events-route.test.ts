@@ -7,11 +7,7 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
-const mocks = vi.hoisted(() => ({
-  mockGetPayload: vi.fn(),
-  mockPayloadFind: vi.fn(),
-  mockGetAllAccessibleCatalogIds: vi.fn(),
-}));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockPayloadFind: vi.fn(), mockCanAccessCatalog: vi.fn() }));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 
@@ -19,7 +15,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
@@ -42,7 +38,7 @@ describe.sequential("GET /api/v1/events", () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
       find: mocks.mockPayloadFind,
     });
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
+    mocks.mockCanAccessCatalog.mockResolvedValue(true);
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [],
       page: 1,

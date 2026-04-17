@@ -13,9 +13,13 @@
  * Resolved event filters with access control applied and values normalized.
  */
 export interface CanonicalEventFilters {
+  /** Whether publicly visible events should be included in reads */
+  includePublic?: boolean;
+  /** Catalog owner ID for owner-visible reads */
+  ownerId?: number;
   /** Single catalog ID when user requested a specific catalog and has access */
   catalogId?: number;
-  /** All accessible catalog IDs (when no specific catalog requested) */
+  /** Catalog IDs constrained by view scope or other explicit narrowing */
   catalogIds?: number[];
   /** Dataset IDs to filter by */
   datasets?: number[];

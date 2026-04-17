@@ -25,6 +25,7 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
   // rejects values with characters outside /^[\w @.\-+:]*$/ (e.g. parentheses).
   // Field filters are applied via raw SQL in the route handler instead.
   const and: Where[] = [
+    buildAccessWhere(filters),
     ...buildCatalogWhere(filters),
     ...buildDatasetWhere(filters),
     ...buildDateWhere(filters),
@@ -33,6 +34,14 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
   ];
 
   return and.length > 0 ? { and } : {};
+};
+
+const buildAccessWhere = (filters: CanonicalEventFilters): Where => {
+  if (filters.ownerId != null) {
+    return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: filters.ownerId } }] };
+  }
+
+  return { datasetIsPublic: { equals: true } };
 };
 
 const buildCatalogWhere = (filters: CanonicalEventFilters): Where[] => {

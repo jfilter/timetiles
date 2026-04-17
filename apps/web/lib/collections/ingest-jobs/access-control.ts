@@ -11,29 +11,16 @@ import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const ingestJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
-  read: (async ({ req }) => {
-    const { user, payload } = req;
+  // eslint-disable-next-line sonarjs/function-return-type -- Payload access functions intentionally return boolean or where filters
+  read: (({ req }) => {
+    const { user } = req;
     if (isPrivileged(user)) return true;
 
     if (!user) return false;
 
-    // Get all import files owned by this user
-    const userIngestFiles = await payload.find({
-      collection: "ingest-files",
-      where: { user: { equals: user.id } },
-      limit: 0,
-      pagination: false,
-      overrideAccess: true,
-    });
-
-    const importFileIds = userIngestFiles.docs.map((file) => file.id);
-
-    if (importFileIds.length === 0) {
-      return false;
-    }
-
-    // Return ingest jobs linked to user's ingest files
-    return { ingestFile: { in: importFileIds } };
+    // Let Payload resolve ownership through the ingestFile relationship
+    // instead of materializing every owned file ID into memory.
+    return { "ingestFile.user": { equals: user.id } };
   }) as Access,
 
   // Only authenticated users can create import jobs (if feature enabled)

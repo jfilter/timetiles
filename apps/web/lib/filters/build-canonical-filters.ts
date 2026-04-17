@@ -19,8 +19,12 @@ import { sanitizeFieldFilters } from "./field-validation";
 export interface BuildCanonicalFiltersOptions {
   /** Zod-validated query parameters */
   parameters: EventQueryParams;
-  /** Catalog IDs the user has access to */
-  accessibleCatalogIds: number[];
+  /** Whether public events should be included */
+  includePublic?: boolean;
+  /** Catalog owner ID for owner-visible reads */
+  ownerId?: number | null;
+  /** Whether the requested catalog is accessible to the caller */
+  hasRequestedCatalogAccess?: boolean;
   /** Require events to have geocoded locations (default: false) */
   requireLocation?: boolean;
 }
@@ -33,24 +37,29 @@ export interface BuildCanonicalFiltersOptions {
  */
 export const buildCanonicalFilters = ({
   parameters,
-  accessibleCatalogIds,
+  includePublic = true,
+  ownerId,
+  hasRequestedCatalogAccess,
   requireLocation = false,
 }: BuildCanonicalFiltersOptions): CanonicalEventFilters => {
-  const filters: CanonicalEventFilters = {};
+  const filters: CanonicalEventFilters = { includePublic };
+
+  if (ownerId != null) {
+    filters.ownerId = ownerId;
+  }
 
   if (requireLocation) {
     filters.requireLocation = true;
   }
 
-  // Catalog access control
+  // Explicit catalog filter: resolve access up-front so downstream adapters
+  // only have to apply the scoped catalog constraint.
   if (parameters.catalog != null) {
-    if (accessibleCatalogIds.includes(parameters.catalog)) {
+    if (hasRequestedCatalogAccess !== false) {
       filters.catalogId = parameters.catalog;
     } else {
       filters.denyResults = true;
     }
-  } else {
-    filters.catalogIds = accessibleCatalogIds;
   }
 
   // Datasets
@@ -125,14 +134,7 @@ const applyCatalogScope = (filters: CanonicalEventFilters, scopeCatalogs: number
     return;
   }
 
-  if (filters.catalogIds != null) {
-    const intersection = filters.catalogIds.filter((id) => scopeCatalogs.includes(id));
-    if (intersection.length === 0) {
-      filters.denyResults = true;
-    } else {
-      filters.catalogIds = intersection;
-    }
-  }
+  filters.catalogIds = scopeCatalogs;
 };
 
 /** Intersect user dataset selection with view scope. */

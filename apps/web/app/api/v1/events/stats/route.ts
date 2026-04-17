@@ -35,6 +35,6 @@ export const GET = apiRoute({
       return { items: [], total: 0, groupedBy: groupBy };
     }
 
-    return executeAggregationQuery(payload, groupBy, ctx.filters, ctx.accessibleCatalogIds);
+    return executeAggregationQuery(payload, groupBy, ctx.filters, user);
   },
 });

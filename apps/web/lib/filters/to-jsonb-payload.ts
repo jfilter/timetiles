@@ -18,6 +18,8 @@ import type { CanonicalEventFilters } from "./canonical-event-filters";
  */
 export const toClusteringJsonb = (filters: CanonicalEventFilters): string =>
   JSON.stringify({
+    includePublic: filters.includePublic !== false,
+    ownerId: filters.ownerId ?? undefined,
     catalogId: filters.catalogId ?? undefined,
     catalogIds: filters.catalogIds != null && filters.catalogIds.length > 0 ? filters.catalogIds : undefined,
     datasetId: filters.datasets?.length === 1 ? filters.datasets[0] : undefined,
@@ -39,6 +41,8 @@ export const toClusteringJsonb = (filters: CanonicalEventFilters): string =>
  */
 export const toHistogramJsonb = (filters: CanonicalEventFilters): string =>
   JSON.stringify({
+    includePublic: filters.includePublic !== false,
+    ownerId: filters.ownerId ?? undefined,
     catalogId: filters.catalogId ?? undefined,
     catalogIds: filters.catalogIds != null && filters.catalogIds.length > 0 ? filters.catalogIds : undefined,
     datasets: filters.datasets,

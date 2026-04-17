@@ -11,8 +11,9 @@
 import { sql } from "@payloadcms/db-postgres";
 
 import { apiRoute } from "@/lib/api";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
-import { getAllAccessibleCatalogIds } from "@/lib/services/access-control";
 
 export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
@@ -26,21 +27,8 @@ export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 export const GET = apiRoute({
   auth: "optional",
   handler: async ({ user, payload }) => {
-    // Get accessible catalog IDs for access control
-    const accessibleCatalogIds = await getAllAccessibleCatalogIds(payload, user ?? null);
-
-    // If no accessible catalogs, return empty result
-    if (accessibleCatalogIds.length === 0) {
-      logger.info({ user: user?.email ?? "anonymous" }, "No accessible catalogs for user");
-      return { catalogCounts: {}, datasetCounts: {}, totalEvents: 0 };
-    }
-
-    // Build access control condition
-    const catalogIdList = sql.join(
-      accessibleCatalogIds.map((id) => sql`${id}`),
-      sql`, `
-    );
-    const accessCondition = accessibleCatalogIds.length > 0 ? sql`d.catalog_id IN (${catalogIdList})` : sql`1=0`;
+    const filters: CanonicalEventFilters = { includePublic: true, ...(user ? { ownerId: user.id } : {}) };
+    const accessCondition = toSqlWhereClause(filters);
 
     // Query event counts by catalog
     const catalogResult = (await payload.db.drizzle.execute(sql`

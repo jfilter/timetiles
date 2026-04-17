@@ -9,7 +9,7 @@ import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockGetAllAccessibleCatalogIds: vi.fn(),
+  mockCanAccessCatalog: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
@@ -64,11 +64,13 @@ describe.sequential("GET /api/v1/events/bounds", () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
+    mocks.mockCanAccessCatalog.mockResolvedValue(true);
   });
 
-  it("returns an empty result when catalog is blank and no catalogs are accessible", async () => {
-    const response = await GET(createRequest("?catalog="), { params: Promise.resolve({}) });
+  it("returns an empty result when the requested catalog is inaccessible", async () => {
+    mocks.mockCanAccessCatalog.mockResolvedValue(false);
+
+    const response = await GET(createRequest("?catalog=99"), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ bounds: null, count: 0 });
@@ -76,8 +78,6 @@ describe.sequential("GET /api/v1/events/bounds", () => {
   });
 
   it("returns a validation error when the catalog id is non-numeric", async () => {
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1]);
-
     // "1abc" cannot be coerced to an integer by Zod
     const response = await GET(createRequest("?catalog=1abc"), { params: Promise.resolve({}) });
 
@@ -87,7 +87,6 @@ describe.sequential("GET /api/v1/events/bounds", () => {
   });
 
   it("applies field filters to the bounds query", async () => {
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([42]);
     const ff = encodeURIComponent(JSON.stringify({ "venue.address.city": ["Berlin"] }));
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ west: "13.1", south: "52.4", east: "13.6", north: "52.7", count: 3 }],
@@ -106,7 +105,6 @@ describe.sequential("GET /api/v1/events/bounds", () => {
   });
 
   it("normalizes a plain end date to the end of the day", async () => {
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([42]);
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ west: "13.1", south: "52.4", east: "13.6", north: "52.7", count: 3 }],
     });

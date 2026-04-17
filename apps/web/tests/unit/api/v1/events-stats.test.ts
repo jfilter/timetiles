@@ -11,9 +11,10 @@ import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockGetAllAccessibleCatalogIds: vi.fn(),
+  mockCanAccessCatalog: vi.fn(),
   mockBuildAggregationWhereClause: vi.fn(),
   mockDrizzleExecute: vi.fn(),
+  mockPayloadFind: vi.fn(),
 }));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
@@ -22,7 +23,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@/lib/filters/to-sql-conditions", () => ({ toSqlWhereClause: mocks.mockBuildAggregationWhereClause }));
 
@@ -56,11 +57,13 @@ const setupDefaults = () => {
   mocks.mockGetPayload.mockResolvedValue({
     auth: vi.fn().mockResolvedValue({ user: null }),
     db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+    find: mocks.mockPayloadFind,
   });
 
-  mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
+  mocks.mockCanAccessCatalog.mockResolvedValue(true);
   mocks.mockBuildAggregationWhereClause.mockReturnValue("1=1");
   mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
+  mocks.mockPayloadFind.mockResolvedValue({ docs: [] });
 };
 
 describe.sequential("GET /api/v1/events/stats", () => {
@@ -93,14 +96,11 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
 
     it("should silently ignore invalid bounds parameter", async () => {
-      // With Zod preprocess, invalid bounds silently become undefined
-      mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
-
       const req = createRequest("?groupBy=catalog&bounds=invalid");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      // Returns empty result because no accessible catalogs (bounds just ignored)
+      // Invalid bounds are ignored by the schema, so the route still succeeds.
       expect(response.status).toBe(200);
       const data = await response.json();
       expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
@@ -108,10 +108,10 @@ describe.sequential("GET /api/v1/events/stats", () => {
   });
 
   describe.sequential("Access Control", () => {
-    it("should return empty result when no accessible catalogs", async () => {
-      mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([]);
+    it("should return empty result when the requested catalog is inaccessible", async () => {
+      mocks.mockCanAccessCatalog.mockResolvedValue(false);
 
-      const req = createRequest("?groupBy=catalog");
+      const req = createRequest("?groupBy=catalog&catalog=999");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
@@ -169,16 +169,13 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
 
     it("should add 0-count entries for filtered datasets not in results", async () => {
-      // First execute: main aggregation query returns only dataset 10
-      mocks.mockDrizzleExecute
-        .mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] })
-        // Second execute: fetch missing dataset names for 20 and 30
-        .mockResolvedValueOnce({
-          rows: [
-            { id: 20, name: "Dataset Y" },
-            { id: 30, name: "Dataset Z" },
-          ],
-        });
+      mocks.mockDrizzleExecute.mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] });
+      mocks.mockPayloadFind.mockResolvedValueOnce({
+        docs: [
+          { id: 20, name: "Dataset Y" },
+          { id: 30, name: "Dataset Z" },
+        ],
+      });
 
       const req = createRequest("?groupBy=dataset&datasets=10,20,30");
 
@@ -194,8 +191,8 @@ describe.sequential("GET /api/v1/events/stats", () => {
       expect(data.items[1]).toEqual(expect.objectContaining({ count: 0 }));
       expect(data.items[2]).toEqual(expect.objectContaining({ count: 0 }));
 
-      // Verify second query was made for missing datasets
-      expect(mocks.mockDrizzleExecute).toHaveBeenCalledTimes(2);
+      expect(mocks.mockDrizzleExecute).toHaveBeenCalledTimes(1);
+      expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     });
   });
 

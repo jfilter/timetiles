@@ -39,6 +39,7 @@ const collectQueryStrings = (value: unknown): string[] => {
 describe("toSqlConditions", () => {
   it("builds an OR longitude clause for antimeridian-crossing bounds", () => {
     const filters: CanonicalEventFilters = {
+      includePublic: true,
       catalogIds: [1],
       bounds: { north: 10, south: -10, west: 170, east: -170 },
     };
@@ -60,8 +61,8 @@ describe("toSqlConditions", () => {
     expect(queryText).toContain("FALSE");
   });
 
-  it("returns FALSE for empty catalogIds", () => {
-    const filters: CanonicalEventFilters = { catalogIds: [] };
+  it("returns FALSE when no read path is allowed", () => {
+    const filters: CanonicalEventFilters = { includePublic: false };
 
     const conditions = toSqlConditions(filters);
     const queryText = collectQueryStrings(conditions).join(" ");
@@ -73,6 +74,7 @@ describe("toSqlConditions", () => {
 describe("toSqlWhereClause", () => {
   it("joins multiple conditions with AND", () => {
     const filters: CanonicalEventFilters = {
+      includePublic: true,
       catalogId: 1,
       startDate: "2024-01-01",
       endDate: "2024-12-31T23:59:59.999Z",
@@ -82,6 +84,7 @@ describe("toSqlWhereClause", () => {
     const queryText = collectQueryStrings(clause).join(" ");
 
     expect(queryText).toContain("d.catalog_id = ");
+    expect(queryText).toContain("dataset_is_public");
     expect(queryText).toContain("e.event_timestamp >= ");
     expect(queryText).toContain("e.event_timestamp <= ");
     expect(queryText).toContain("::timestamptz");

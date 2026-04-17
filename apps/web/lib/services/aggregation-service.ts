@@ -14,6 +14,7 @@ import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filter
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import type { AggregateResponse, AggregationItem } from "@/lib/schemas/events";
+import type { User } from "@/payload-types";
 
 /**
  * Supported groupBy field types.
@@ -33,7 +34,7 @@ export const executeAggregationQuery = async (
   payload: Payload,
   groupBy: GroupByField,
   filters: CanonicalEventFilters,
-  accessibleCatalogIds: number[]
+  user?: User | null
 ): Promise<AggregateResponse> => {
   // Build WHERE clause from canonical filters
   const whereClause = toSqlWhereClause(filters);
@@ -95,21 +96,18 @@ export const executeAggregationQuery = async (
     // Fetch dataset names for any missing datasets
     const missingDatasetIds = selectedDatasetIds.filter((id) => !resultMap.has(id));
 
-    if (missingDatasetIds.length > 0 && accessibleCatalogIds.length > 0) {
-      const missingDatasetsResult = (await payload.db.drizzle.execute(sql`
-        SELECT d.id, d.name FROM payload.datasets d
-        WHERE d.id IN (${sql.join(
-          missingDatasetIds.map((id) => sql`${id}`),
-          sql`, `
-        )})
-        AND d.catalog_id IN (${sql.join(
-          accessibleCatalogIds.map((id) => sql`${id}`),
-          sql`, `
-        )})
-      `)) as { rows: Array<{ id: number; name: string | null }> };
+    if (missingDatasetIds.length > 0) {
+      const missingDatasetsResult = await payload.find({
+        collection: "datasets",
+        where: { id: { in: missingDatasetIds } },
+        limit: missingDatasetIds.length,
+        select: { name: true },
+        user,
+        overrideAccess: false,
+      });
 
       // Add missing datasets with 0 count
-      for (const row of missingDatasetsResult.rows) {
+      for (const row of missingDatasetsResult.docs) {
         resultMap.set(row.id, { id: row.id, name: row.name ?? `Dataset ${row.id}`, count: 0 });
       }
     }

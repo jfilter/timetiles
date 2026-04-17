@@ -27,8 +27,11 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
 
   const conditions: SqlFragment[] = [];
 
-  // Catalog access control
-  conditions.push(buildCatalogCondition(filters.catalogId, filters.catalogIds));
+  // Access control always applies, with optional catalog narrowing layered on top.
+  conditions.push(buildEventAccessCondition(filters));
+
+  const catalogCondition = buildCatalogCondition(filters.catalogId, filters.catalogIds);
+  if (catalogCondition) conditions.push(catalogCondition);
 
   // Datasets
   const datasetCondition = buildDatasetCondition(filters.datasets);
@@ -65,7 +68,7 @@ export const toSqlWhereClause = (filters: CanonicalEventFilters): SqlFragment =>
 
 // --- Internal builders ---
 
-const buildCatalogCondition = (catalogId?: number, catalogIds?: number[]): SqlFragment => {
+const buildCatalogCondition = (catalogId?: number, catalogIds?: number[]): SqlFragment | null => {
   if (catalogId != null) {
     return sql`d.catalog_id = ${catalogId}`;
   }
@@ -75,7 +78,31 @@ const buildCatalogCondition = (catalogId?: number, catalogIds?: number[]): SqlFr
       sql`, `
     )})`;
   }
-  return sql`FALSE`;
+  return null;
+};
+
+const buildEventAccessCondition = (filters: CanonicalEventFilters, tableAlias = "e"): SqlFragment => {
+  const accessConditions: SqlFragment[] = [];
+  const eventTable = sql.raw(tableAlias);
+
+  if (filters.includePublic !== false) {
+    accessConditions.push(sql`${eventTable}.dataset_is_public = true`);
+  }
+
+  if (filters.ownerId != null) {
+    accessConditions.push(sql`${eventTable}.catalog_owner_id = ${filters.ownerId}`);
+  }
+
+  if (accessConditions.length === 0) {
+    return sql`FALSE`;
+  }
+
+  if (accessConditions.length === 1) {
+    return accessConditions[0]!;
+  }
+
+  const joinedAccessConditions = sql.join(accessConditions, sql` OR `);
+  return sql.join([sql`(`, joinedAccessConditions, sql`)`], sql``);
 };
 
 const buildDatasetCondition = (datasets?: number[]): SqlFragment | null => {

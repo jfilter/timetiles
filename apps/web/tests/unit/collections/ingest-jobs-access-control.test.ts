@@ -149,21 +149,11 @@ describe.sequential("ingestJobsAccess", () => {
     });
 
     it("should return WHERE constraint for user with ingest files", async () => {
-      const mockFind = vi.fn().mockResolvedValue({ docs: [{ id: 10 }, { id: 20 }] });
-      const req = { user: { id: 42, role: "user" }, payload: { find: mockFind } };
+      const req = { user: { id: 42, role: "user" }, payload: {} };
 
       const result = await ingestJobsAccess.read({ req } as any);
 
-      expect(result).toEqual({ ingestFile: { in: [10, 20] } });
-    });
-
-    it("should deny when user has no ingest files", async () => {
-      const mockFind = vi.fn().mockResolvedValue({ docs: [] });
-      const req = { user: { id: 42, role: "user" }, payload: { find: mockFind } };
-
-      const result = await ingestJobsAccess.read({ req } as any);
-
-      expect(result).toBe(false);
+      expect(result).toEqual({ "ingestFile.user": { equals: 42 } });
     });
   });
 

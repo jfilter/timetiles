@@ -9,7 +9,7 @@ import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockGetAllAccessibleCatalogIds: vi.fn(),
+  mockCanAccessCatalog: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
@@ -52,7 +52,7 @@ describe.sequential("GET /api/v1/events/geo/stats", () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
+    mocks.mockCanAccessCatalog.mockResolvedValue(true);
     mocks.mockDrizzleExecute.mockResolvedValue({
       rows: [{ p20: 2, p40: 5, p60: 10, p80: 20, p100: 50, total_clusters: 1 }],
     });

@@ -9,7 +9,7 @@ import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
-  mockGetAllAccessibleCatalogIds: vi.fn(),
+  mockCanAccessCatalog: vi.fn(),
   mockDrizzleExecute: vi.fn(),
 }));
 
@@ -19,7 +19,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 
-vi.mock("@/lib/services/access-control", () => ({ getAllAccessibleCatalogIds: mocks.mockGetAllAccessibleCatalogIds }));
+vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
   sql: Object.assign(
@@ -64,7 +64,7 @@ describe.sequential("GET /api/v1/events/geo", () => {
       auth: vi.fn().mockResolvedValue({ user: null }),
       db: { drizzle: { execute: mocks.mockDrizzleExecute } },
     });
-    mocks.mockGetAllAccessibleCatalogIds.mockResolvedValue([1, 2]);
+    mocks.mockCanAccessCatalog.mockResolvedValue(true);
     mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
   });
 
@@ -79,10 +79,10 @@ describe.sequential("GET /api/v1/events/geo", () => {
 
     const executedQuery = mocks.mockDrizzleExecute.mock.calls[0]?.[0];
     const jsonPayload = collectQueryScalars(executedQuery).find(
-      (value): value is string => typeof value === "string" && value.startsWith("{") && value.includes("catalogIds")
+      (value): value is string => typeof value === "string" && value.startsWith("{") && value.includes("datasets")
     );
 
     expect(jsonPayload).toBeDefined();
-    expect(JSON.parse(jsonPayload!)).toMatchObject({ datasets: [10, 20] });
+    expect(JSON.parse(jsonPayload!)).toMatchObject({ datasets: [10, 20], includePublic: true });
   });
 });
