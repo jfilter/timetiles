@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-04-17) — implemented in `apps/web/lib/security/css-sanitizer.ts` using `postcss` + `postcss-safe-parser`. The current cut ships the conservative-denylist posture (drop `@import`/`@font-face`/`@namespace`/`@charset`, drop declarations containing `url()`/`attr()`/`expression()`, drop `position: fixed|sticky`, drop `behavior`/`-moz-binding`/`-webkit-binding`). Upgrading to the full curated property allowlist is a follow-up when the structured branding system can't yet cover it.
 
 ## Context
 
