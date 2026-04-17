@@ -23,12 +23,12 @@ export const GET = apiRoute({
   auth: "required",
   site: "default",
   query: z.object({ previewId: z.uuid() }),
-  handler: ({ query, user }) => {
+  handler: async ({ query, user }) => {
     const meta = loadPreviewMetadata(query.previewId);
     validateRequest(meta, user);
 
     const fileExtension = path.extname(meta.filePath).toLowerCase();
-    const sheets = parseFileSheets(meta.filePath, fileExtension);
+    const sheets = await parseFileSheets(meta.filePath, fileExtension);
 
     return { sheets };
   },

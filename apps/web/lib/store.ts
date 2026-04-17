@@ -28,6 +28,22 @@ export const CLUSTER_DENSITY_PRESETS: Record<Exclude<ClusterDensityMode, "expert
   coarse: { targetClusters: 10 },
 };
 
+/** Default clustering algorithm (H3). */
+const DEFAULT_CLUSTER_ALGORITHM: ClusterAlgorithm = "h3";
+
+/**
+ * Initial cluster density settings used on store construction and whenever
+ * the density mode is reset. Single source of truth — `clusterAlgorithm` and
+ * `mergeOverlapping` only live inside `clusterDensity` (they are part of the
+ * `ClusterDensitySettings` contract sent to the clusters API).
+ */
+const INITIAL_CLUSTER_DENSITY: ClusterDensitySettings = {
+  ...CLUSTER_DENSITY_PRESETS.normal,
+  clusterAlgorithm: DEFAULT_CLUSTER_ALGORITHM,
+  mergeOverlapping: false,
+  useHexCenter: true,
+};
+
 /** Cluster currently selected in focus mode. */
 export interface FocusedCluster {
   clusterId: string;
@@ -48,11 +64,13 @@ interface UIState {
    * `totalEvents` directly from React Query via `useEventsTotalQuery`.
    */
   mapStats: { visibleEvents: number } | null;
-  clusterAlgorithm: ClusterAlgorithm;
   clusterDensityMode: ClusterDensityMode;
+  /**
+   * Cluster density settings sent to the clusters API. Owns `clusterAlgorithm`
+   * and `mergeOverlapping` — do not mirror them as top-level fields.
+   */
   clusterDensity: ClusterDensitySettings;
   showHexBoundaries: boolean;
-  mergeOverlapping: boolean;
   clusterDisplay: ClusterDisplay;
   /** H3 cells used to filter all queries to a specific cluster's events. */
   clusterFilterCells: string[] | null;
@@ -70,7 +88,6 @@ interface UIStore {
   setMapBounds: (bounds: UIState["mapBounds"]) => void;
   setMapStats: (stats: UIState["mapStats"]) => void;
   setShowHexBoundaries: (show: boolean) => void;
-  setMergeOverlapping: (merge: boolean) => void;
   setClusterDisplay: (display: ClusterDisplay) => void;
   setClusterAlgorithm: (algorithm: ClusterAlgorithm) => void;
   setClusterDensityMode: (mode: ClusterDensityMode) => void;
@@ -94,13 +111,11 @@ export const useUIStore = create<UIStore>()(
       mapBounds: null,
       mapStats: null,
       showHexBoundaries: false,
-      mergeOverlapping: false,
       clusterDisplay: "circles" as ClusterDisplay,
       clusterFilterCells: null,
       focusedCluster: null,
-      clusterAlgorithm: "h3" as ClusterAlgorithm,
       clusterDensityMode: "normal",
-      clusterDensity: { ...CLUSTER_DENSITY_PRESETS.normal, mergeOverlapping: false, useHexCenter: true },
+      clusterDensity: INITIAL_CLUSTER_DENSITY,
     },
 
     // UI actions
@@ -113,27 +128,22 @@ export const useUIStore = create<UIStore>()(
     setMapStats: createUIStateSetter(set, "mapStats"),
 
     setShowHexBoundaries: createUIStateSetter(set, "showHexBoundaries"),
-    setMergeOverlapping: createUIStateSetter(set, "mergeOverlapping"),
     setClusterDisplay: (display: ClusterDisplay) =>
       set((state) => ({
         ...state,
         ui: {
           ...state.ui,
           clusterDisplay: display,
-          // Hexagon view requires no merge — sync both UI flag and API density settings
+          // Hexagon view requires no merge — clear flag inside cluster density settings
           ...(display === "hexagons"
-            ? { mergeOverlapping: false, clusterDensity: { ...state.ui.clusterDensity, mergeOverlapping: false } }
+            ? { clusterDensity: { ...state.ui.clusterDensity, mergeOverlapping: false } }
             : {}),
         },
       })),
     setClusterAlgorithm: (algorithm: ClusterAlgorithm) =>
       set((state) => ({
         ...state,
-        ui: {
-          ...state.ui,
-          clusterAlgorithm: algorithm,
-          clusterDensity: { ...state.ui.clusterDensity, clusterAlgorithm: algorithm },
-        },
+        ui: { ...state.ui, clusterDensity: { ...state.ui.clusterDensity, clusterAlgorithm: algorithm } },
       })),
     setClusterDensityMode: (mode: ClusterDensityMode) =>
       set((state) => ({
@@ -142,7 +152,12 @@ export const useUIStore = create<UIStore>()(
           ...state.ui,
           clusterDensityMode: mode,
           ...(mode !== "expert"
-            ? { clusterDensity: { ...CLUSTER_DENSITY_PRESETS[mode], clusterAlgorithm: state.ui.clusterAlgorithm } }
+            ? {
+                clusterDensity: {
+                  ...CLUSTER_DENSITY_PRESETS[mode],
+                  clusterAlgorithm: state.ui.clusterDensity.clusterAlgorithm ?? DEFAULT_CLUSTER_ALGORITHM,
+                },
+              }
             : {}),
         },
       })),

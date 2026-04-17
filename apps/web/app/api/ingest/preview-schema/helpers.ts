@@ -12,9 +12,9 @@
 import fs from "node:fs";
 
 import Papa from "papaparse";
-import { read, utils } from "xlsx";
 
 import { ValidationError } from "@/lib/api";
+import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import {
   detectLanguage,
   LATITUDE_PATTERNS,
@@ -152,7 +152,8 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   return [{ index: 0, name: "Sheet1", rowCount: fullResult.data.length, headers, sampleData, suggestedMappings }];
 };
 
-export const parseExcelPreview = (filePath: string): SheetInfo[] => {
+export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> => {
+  const { read, utils } = await loadXlsx();
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
 
@@ -216,7 +217,7 @@ export { validateExternalHttpUrl as validateUrl } from "@/lib/security/url-valid
 /**
  * Parse file sheets based on file extension.
  */
-export const parseFileSheets = (filePath: string, fileExtension: string): SheetInfo[] => {
+export const parseFileSheets = async (filePath: string, fileExtension: string): Promise<SheetInfo[]> => {
   if (fileExtension === ".csv") {
     return parseCSVPreview(filePath);
   }
@@ -335,7 +336,7 @@ export const buildPreviewResult = async ({
 }: BuildPreviewResultParams): Promise<{ sheets: SheetInfo[]; configSuggestions: ConfigSuggestion[] }> => {
   let sheets: SheetInfo[];
   try {
-    sheets = parseFileSheets(previewFilePath, fileExtension);
+    sheets = await parseFileSheets(previewFilePath, fileExtension);
   } catch (parseError) {
     fs.unlinkSync(previewFilePath);
     logError(parseError, `preview-schema-${logContext}-parse`);

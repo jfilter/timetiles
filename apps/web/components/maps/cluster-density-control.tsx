@@ -29,9 +29,10 @@ export const ClusterDensityControl = () => {
   const t = useTranslations("Explore");
   const { isEnabled: expertEnabled } = useFeatureEnabled("enableExpertMode");
 
-  const algorithm = useUIStore((s) => s.ui.clusterAlgorithm);
   const mode = useUIStore((s) => s.ui.clusterDensityMode);
   const density = useUIStore((s) => s.ui.clusterDensity);
+  const algorithm: ClusterAlgorithm = density.clusterAlgorithm ?? "h3";
+  const mergeOverlapping = density.mergeOverlapping ?? false;
   const setAlgorithm = useUIStore((s) => s.setClusterAlgorithm);
   const setMode = useUIStore((s) => s.setClusterDensityMode);
   const setDensity = useUIStore((s) => s.setClusterDensity);
@@ -39,8 +40,6 @@ export const ClusterDensityControl = () => {
   const setClusterDisplay = useUIStore((s) => s.setClusterDisplay);
   const showHexBoundaries = useUIStore((s) => s.ui.showHexBoundaries);
   const setShowHexBoundaries = useUIStore((s) => s.setShowHexBoundaries);
-  const mergeOverlapping = useUIStore((s) => s.ui.mergeOverlapping);
-  const setMergeOverlapping = useUIStore((s) => s.setMergeOverlapping);
 
   const presets = PRESET_KEYS.map((key) => ({ key, label: t(`clusterPreset_${key}`) }));
   const algorithms = ALGORITHM_KEYS.map((key) => ({ key, label: t(`clusterAlgorithm_${key}`) }));
@@ -120,10 +119,7 @@ export const ClusterDensityControl = () => {
                 <input
                   type="checkbox"
                   checked={mergeOverlapping}
-                  onChange={(e) => {
-                    setMergeOverlapping(e.target.checked);
-                    setDensity({ ...density, mergeOverlapping: e.target.checked });
-                  }}
+                  onChange={(e) => setDensity({ ...density, mergeOverlapping: e.target.checked })}
                   className="rounded"
                 />
                 {t("mergeOverlapping")}

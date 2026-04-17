@@ -20,7 +20,7 @@ import { useClusterTransition } from "./use-cluster-transition";
 import { useH3Transition } from "./use-h3-transition";
 
 export const useClusterState = (clusters: ClusterFeature[]) => {
-  const algorithm = useUIStore((s) => s.ui.clusterAlgorithm);
+  const algorithm = useUIStore((s) => s.ui.clusterDensity.clusterAlgorithm ?? "h3");
   const showHex = useUIStore((s) => s.ui.showHexBoundaries);
   const clusterDisplay = useUIStore((s) => s.ui.clusterDisplay);
   const hexagonMode = algorithm === "h3" && clusterDisplay === "hexagons";

@@ -327,7 +327,7 @@ export const datasetDetectionJob = {
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = fileExtension === ".csv" ? await processCSVFile(filePath) : processExcelFile(filePath);
+        sheets = fileExtension === ".csv" ? await processCSVFile(filePath) : await processExcelFile(filePath);
       }
 
       if (sheets.length === 0) {

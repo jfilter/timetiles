@@ -12,8 +12,8 @@ import fs from "node:fs";
 import readline from "node:readline";
 
 import Papa from "papaparse";
-import { read, utils } from "xlsx";
 
+import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
 interface StreamBatchOptions {
@@ -51,7 +51,7 @@ export async function* streamBatchesFromFile(
     } else if (isExcelExtension(fileExtension)) {
       const csvPath = getSidecarPath(filePath, sheetIndex);
       if (!fs.existsSync(csvPath)) {
-        convertSheetToCSV(filePath, sheetIndex, csvPath);
+        await convertSheetToCSV(filePath, sheetIndex, csvPath);
       }
       yield* streamBatchesFromCSV(csvPath, batchSize);
     } else {
@@ -216,7 +216,8 @@ async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncG
 /**
  * Convert an Excel/ODS sheet to a CSV sidecar file.
  */
-const convertSheetToCSV = (filePath: string, sheetIndex: number, csvPath: string): void => {
+const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: string): Promise<void> => {
+  const { read, utils } = await loadXlsx();
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
   const sheetName = workbook.SheetNames[sheetIndex];
@@ -249,6 +250,7 @@ export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise
     return countCsvRows(filePath);
   } else if (isExcelExtension(fileExtension)) {
     // xlsx library handles .xls, .xlsx, and .ods files
+    const { read, utils } = await loadXlsx();
     const fileBuffer = fs.readFileSync(filePath);
     const workbook = read(fileBuffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[sheetIndex];

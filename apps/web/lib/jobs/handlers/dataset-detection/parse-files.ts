@@ -11,8 +11,8 @@ import fs from "node:fs";
 import readline from "node:readline";
 
 import Papa from "papaparse";
-import { read, utils } from "xlsx";
 
+import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
 export interface SheetInfo {
@@ -83,8 +83,9 @@ export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => 
   return [{ name: "CSV Data", index: 0, rowCount, columnCount: headers.length, headers }];
 };
 
-export const processExcelFile = (filePath: string): SheetInfo[] => {
+export const processExcelFile = async (filePath: string): Promise<SheetInfo[]> => {
   logger.info("Processing Excel file", { filePath });
+  const { read, utils } = await loadXlsx();
   const fileBuffer = fs.readFileSync(filePath);
   const workbook = read(fileBuffer, { type: "buffer" });
   const sheets: SheetInfo[] = [];
