@@ -53,8 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Components
 
 - Form components: Button, Input, Textarea, Label, Select
-- Layout components: Card, Hero, Features, Stats, CallToAction, Footer
-- Header components: Header, HeaderBrand, HeaderNav, HeaderActions, HeaderDecorative
+- Layout components: Card, Hero, Features, DetailsGrid, CallToAction, Footer
+- Header components: Header, HeaderBrand, HeaderNav, HeaderActions, MobileNavDrawer
 - Data visualization: BaseChart, BarChart, TimeHistogram
 
 ## Version Guidelines

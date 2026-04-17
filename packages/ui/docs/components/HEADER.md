@@ -11,7 +11,8 @@ These components provide **navigation and branding** for cartographic-themed app
 - **HeaderBrand** - Logo/brand section (composable)
 - **HeaderNav** - Navigation menu container (composable)
 - **HeaderActions** - Action buttons container (composable)
-- **HeaderDecorative** - Optional cartographic decorations (grid overlay, coordinates, compass)
+- **Header decorative mode** - Built into `Header` via the `decorative` prop
+- **MobileNavDrawer** - Mobile navigation companion for smaller screens
 
 **Why intentionally cartographic?** These components form the navigation identity of cartographic/mapping applications. They work together as a cohesive system with the Footer to create a complete page frame.
 
@@ -45,7 +46,7 @@ import { Header, HeaderBrand, HeaderNav, HeaderActions } from "@timetiles/ui/com
 
 - **Sticky positioning**: `sticky top-0` (no top margin/padding waste)
 - **Full-width**: Edge-to-edge design (`w-full`)
-- **Height**: `h-16` (64px) for consistent vertical rhythm
+- **Height**: `h-12` (48px) for compact navigation chrome
 - **Z-index**: `z-50` to stay above content
 - **Backdrop blur**: Subtle depth with `backdrop-blur-sm`
 
@@ -53,12 +54,12 @@ import { Header, HeaderBrand, HeaderNav, HeaderActions } from "@timetiles/ui/com
 
 ```css
 /* Marketing variant */
-bg-cartographic-cream/95 dark:bg-cartographic-charcoal/95
-border-b border-cartographic-navy/20
+bg-card/95 dark:bg-background/95
+border-b border-primary/20
 
 /* App variant */
-bg-cartographic-parchment/95 dark:bg-cartographic-charcoal/95
-border-b border-cartographic-navy/30
+bg-background/95 dark:bg-card/95
+border-b border-primary/30
 ```
 
 **Typography**:
@@ -81,9 +82,7 @@ gap-4            /* Action buttons */
 
 **Cartographic Decorative Elements** (optional):
 
-When `decorative={true}`:
-
-1. **Grid Overlay Pattern** - Subtle survey map grid:
+When `decorative={true}`, `Header` adds a built-in survey-style grid overlay:
 
 ```css
 background-image:
@@ -92,23 +91,11 @@ background-image:
 background-size: 40px 40px;
 ```
 
-2. **Coordinate Display** - Optional lat/long style numbers:
-
-- Format: `40.7128°N, 74.0060°W`
-- Typography: `font-mono text-xs opacity-40`
-- Updates on scroll (playful interaction)
-
-3. **Compass Rose** - Micro-interaction icon:
-
-- SVG 8-point compass rose
-- Subtle rotation based on scroll: `transform: rotate(${scrollY * 0.1}deg)`
-- Size: 16px, opacity 30%
-
 **Mobile Responsiveness**:
 
 ```css
-/* Mobile (<md): Hamburger menu */
-<md: Hide nav items, show hamburger icon, compact actions
+/* Mobile (<md): Pair Header with MobileNavDrawer */
+<md: Hide nav items, move primary navigation into MobileNavDrawer
 
 /* Tablet (md-lg): Limited nav */
 md:  Show key nav items, compact spacing
@@ -117,11 +104,10 @@ md:  Show key nav items, compact spacing
 lg:  Full navigation, generous spacing (gap-8)
 ```
 
-**Hamburger Menu** (mobile):
+**MobileNavDrawer** (mobile companion):
 
-- Slide from right: `translate-x-full` → `translate-x-0`
-- Backdrop: `bg-black/20 backdrop-blur-sm`
-- Menu panel: `bg-cartographic-cream` with full nav list
+- Slide-in navigation surface for smaller breakpoints
+- Pairs with `Header` rather than being built into it
 - Animation: 300ms ease-out transition
 
 **Accessibility**:
@@ -198,23 +184,17 @@ lg:  Full navigation, generous spacing (gap-8)
 - Icon sizing: `h-5 w-5`
 - Compact button variants
 
-## HeaderDecorative Component
+## Decorative Header Mode
 
-**Purpose**: Optional cartographic visual enhancements
+**Purpose**: Optional cartographic visual enhancement built into `Header`
 
 ```tsx
-<HeaderDecorative variant="grid" />
-<HeaderDecorative variant="coordinates" position="top-right" />
-<HeaderDecorative variant="compass" />
+<Header decorative>
+  <HeaderBrand>TimeTiles</HeaderBrand>
+</Header>
 ```
 
-**Variants**:
+**Behavior**:
 
-- `grid` - Subtle survey map grid overlay (background pattern)
-- `coordinates` - Lat/long style numbers (corner decoration)
-- `compass` - Compass rose with scroll interaction
-
-**When to use**:
-
-- Marketing pages: `decorative={true}` for brand experience
-- App pages: `decorative={false}` for clean, functional interface
+- `decorative={true}` enables the survey-grid overlay
+- `decorative={false}` keeps the header minimal for dense app chrome

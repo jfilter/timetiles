@@ -22,7 +22,7 @@ All use semantic tokens for full theme compatibility:
 - ✅ **Card** - Content containers using `bg-card`, `text-card-foreground`
 - ✅ **Hero** - Landing page heroes with semantic backgrounds (`bg-background`)
 - ✅ **Features** - Feature grids with semantic accent colors (`text-primary`, `text-secondary`, `text-accent`)
-- ✅ **Stats** - Statistics display using semantic tokens (`bg-primary`, `text-primary-foreground`)
+- ✅ **DetailsGrid** - Editorial detail cards with semantic surfaces and accent markers
 - ✅ **CallToAction** - CTA sections with semantic variants (`bg-background`, `bg-card`, `bg-primary`)
 - ✅ **Footer** - Page footers using semantic tokens (`border-border`, `text-muted-foreground`)
 
@@ -34,7 +34,8 @@ Intentionally use cartographic tokens for brand identity:
 - ✅ **HeaderBrand** - Logo/brand section (composable)
 - ✅ **HeaderNav** - Navigation menu container (composable)
 - ✅ **HeaderActions** - Action buttons container (composable)
-- ✅ **HeaderDecorative** - Optional cartographic decorations (grid overlay, coordinates, compass)
+- ✅ **Header decorative mode** - Built into `Header` via the `decorative` prop (grid overlay)
+- ✅ **MobileNavDrawer** - Mobile navigation companion for the header system
 
 See [components/HEADER.md](components/HEADER.md) for detailed Header documentation.
 

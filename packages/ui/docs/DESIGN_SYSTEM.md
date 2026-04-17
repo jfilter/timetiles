@@ -519,8 +519,8 @@ packages/ui/src/
 │   ├── select.tsx
 │   ├── hero.tsx        # Generic hero component
 │   ├── features.tsx    # Generic features component
-│   ├── stats.tsx       # Generic stats component
-│   ├── cta.tsx         # Generic call-to-action component
+│   ├── details-grid.tsx # Generic details grid component
+│   ├── call-to-action.tsx # Generic call-to-action component
 │   └── footer.tsx      # Generic footer component
 ├── styles/
 │   └── globals.css     # Design tokens, base styles
@@ -537,8 +537,24 @@ packages/ui/src/
 ### Creating a Landing Page
 
 ```tsx
-import { Hero, Features, Stats, CallToAction, Footer } from "@timetiles/ui/components";
-import { Button } from "@timetiles/ui/components/button";
+import {
+  Button,
+  CallToAction,
+  CallToActionHeadline,
+  DetailsGrid,
+  DetailsItem,
+  DetailsLabel,
+  DetailsValue,
+  Feature,
+  FeatureDescription,
+  Features,
+  FeatureTitle,
+  Footer,
+  Hero,
+  HeroDescription,
+  HeroHeadline,
+  HeroSubheadline,
+} from "@timetiles/ui";
 
 export default function LandingPage() {
   return (
@@ -557,10 +573,16 @@ export default function LandingPage() {
         {/* More features... */}
       </Features>
 
-      <Stats variant="bar">
-        <Stat value="1M+" label="Events Processed" />
-        <Stat value="10K+" label="Datasets Analyzed" />
-      </Stats>
+      <DetailsGrid variant="compact">
+        <DetailsItem>
+          <DetailsLabel>1M+</DetailsLabel>
+          <DetailsValue>Events processed across civic, cultural, and public-interest datasets.</DetailsValue>
+        </DetailsItem>
+        <DetailsItem>
+          <DetailsLabel>10K+</DetailsLabel>
+          <DetailsValue>Datasets analyzed with repeatable import and review workflows.</DetailsValue>
+        </DetailsItem>
+      </DetailsGrid>
 
       <CallToAction variant="centered">
         <CallToActionHeadline>Ready to explore?</CallToActionHeadline>
@@ -679,7 +701,7 @@ These components are **specifically designed for cartographic-themed landing pag
 
 - **Hero** - Uses cartographic grid backgrounds, parchment/cream colors
 - **Features** - Uses cartographic accent colors (blue, terracotta, forest)
-- **Stats** - Uses cartographic navy backgrounds and parchment text
+- **DetailsGrid** - Uses editorial cards, accent markers, and cartographic motion cues
 - **CallToAction** - Uses cartographic parchment, navy, and cream colors
 - **Footer** - Uses cartographic navy borders and parchment backgrounds
 
@@ -709,7 +731,7 @@ All components use **semantic design tokens** and are fully themable. They work 
 - ✅ **Card** - Content containers using `bg-card`, `text-card-foreground`
 - ✅ **Hero** - Landing page heroes with semantic backgrounds (`bg-background`)
 - ✅ **Features** - Feature grids with semantic accent colors (`text-primary`, `text-secondary`, `text-accent`)
-- ✅ **Stats** - Statistics display using semantic tokens (`bg-primary`, `text-primary-foreground`)
+- ✅ **DetailsGrid** - Editorial detail cards using `bg-card`, `text-foreground`, and `text-accent`
 - ✅ **CallToAction** - CTA sections with semantic variants (`bg-background`, `bg-card`, `bg-primary`)
 - ✅ **Footer** - Page footers using semantic tokens (`border-border`, `text-muted-foreground`)
 
@@ -760,7 +782,7 @@ These components provide **navigation and branding** for cartographic-themed app
 - **HeaderBrand** - Logo/brand section (composable)
 - **HeaderNav** - Navigation menu container (composable)
 - **HeaderActions** - Action buttons container (composable)
-- **HeaderDecorative** - Optional cartographic decorations (grid overlay, coordinates, compass)
+- **Header decorative mode** - Built into `Header` via the `decorative` prop
 
 **Why intentionally cartographic?** These components form the navigation identity of cartographic/mapping applications. They work together as a cohesive system with the Footer to create a complete page frame.
 
@@ -947,26 +969,20 @@ lg:  Full navigation, generous spacing (gap-8)
 - Icon sizing: `h-5 w-5`
 - Compact button variants
 
-#### HeaderDecorative Component
+#### Decorative Header Mode
 
-**Purpose**: Optional cartographic visual enhancements
+**Purpose**: Enable the Header's built-in cartographic grid treatment.
 
 ```tsx
-<HeaderDecorative variant="grid" />
-<HeaderDecorative variant="coordinates" position="top-right" />
-<HeaderDecorative variant="compass" />
+<Header variant="marketing" decorative>
+  <HeaderBrand>TimeTiles</HeaderBrand>
+</Header>
 ```
 
-**Variants**:
+**Behavior**:
 
-- `grid` - Subtle survey map grid overlay (background pattern)
-- `coordinates` - Lat/long style numbers (corner decoration)
-- `compass` - Compass rose with scroll interaction
-
-**When to use**:
-
-- Marketing pages: `decorative={true}` for brand experience
-- App pages: `decorative={false}` for clean, functional interface
+- `decorative={true}` adds the built-in grid overlay to the `Header`
+- `decorative={false}` keeps the header clean for denser application chrome
 
 ## Future Considerations
 
