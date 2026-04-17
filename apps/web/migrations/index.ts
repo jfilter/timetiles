@@ -43,6 +43,7 @@ import * as migration_20260417_180000_fix_include_public_access_default from './
 import * as migration_20260417_190000_cluster_events_gist_index_use from './20260417_190000_cluster_events_gist_index_use';
 import * as migration_20260417_200000_webhook_token_unique from './20260417_200000_webhook_token_unique';
 import * as migration_20260417_210000_verification_token_expires_at from './20260417_210000_verification_token_expires_at';
+import * as migration_20260417_220000_rate_limit_counters from './20260417_220000_rate_limit_counters';
 
 export const migrations = [
   {
@@ -269,5 +270,10 @@ export const migrations = [
     up: migration_20260417_210000_verification_token_expires_at.up,
     down: migration_20260417_210000_verification_token_expires_at.down,
     name: '20260417_210000_verification_token_expires_at',
+  },
+  {
+    up: migration_20260417_220000_rate_limit_counters.up,
+    down: migration_20260417_220000_rate_limit_counters.down,
+    name: '20260417_220000_rate_limit_counters',
   },
 ];

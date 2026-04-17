@@ -6,13 +6,20 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
 import { RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
+import { logger } from "@/lib/logger";
+import { createRateLimitStore } from "@/lib/services/rate-limit/factory";
+import { MemoryRateLimitStore } from "@/lib/services/rate-limit/memory-store";
+import { PgRateLimitStore } from "@/lib/services/rate-limit/pg-store";
 import { RateLimitService } from "@/lib/services/rate-limit-service";
 
 describe("RateLimitService", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    resetEnv();
   });
 
   it("falls back to regular limits for malformed trust-level strings", () => {
@@ -57,5 +64,32 @@ describe("RateLimitService", () => {
         `Trust level ${level} should have higher hourly limit than static config`
       ).toBeGreaterThanOrEqual(staticHourly.limit);
     }
+  });
+});
+
+describe("createRateLimitStore", () => {
+  it("selects the PostgreSQL store when RATE_LIMIT_BACKEND=pg", () => {
+    vi.stubEnv("RATE_LIMIT_BACKEND", "pg");
+    resetEnv();
+
+    const selection = createRateLimitStore({} as never);
+
+    expect(selection.backend).toBe("pg");
+    expect(selection.store).toBeInstanceOf(PgRateLimitStore);
+  });
+
+  it("falls back to memory and warns on invalid RATE_LIMIT_BACKEND", () => {
+    vi.stubEnv("RATE_LIMIT_BACKEND", "redis");
+    resetEnv();
+
+    const warnSpy = vi.spyOn(logger, "warn");
+    const selection = createRateLimitStore({} as never);
+
+    expect(selection.backend).toBe("memory");
+    expect(selection.store).toBeInstanceOf(MemoryRateLimitStore);
+    expect(warnSpy).toHaveBeenCalledWith(
+      { configuredBackend: "redis" },
+      "Unknown RATE_LIMIT_BACKEND configured; falling back to the in-memory rate-limit store"
+    );
   });
 });

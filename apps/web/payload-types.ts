@@ -164,6 +164,7 @@ export interface Config {
       'cleanup-stuck-scheduled-ingests': TaskCleanupStuckScheduledIngests;
       'cleanup-stuck-scrapers': TaskCleanupStuckScrapers;
       'quota-reset': TaskQuotaReset;
+      'rate-limit-cleanup': TaskRateLimitCleanup;
       'cache-cleanup': TaskCacheCleanup;
       'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
@@ -4028,6 +4029,7 @@ export interface PayloadJob {
           | 'cleanup-stuck-scheduled-ingests'
           | 'cleanup-stuck-scrapers'
           | 'quota-reset'
+          | 'rate-limit-cleanup'
           | 'cache-cleanup'
           | 'schema-maintenance'
           | 'data-export'
@@ -4085,6 +4087,7 @@ export interface PayloadJob {
         | 'cleanup-stuck-scheduled-ingests'
         | 'cleanup-stuck-scrapers'
         | 'quota-reset'
+        | 'rate-limit-cleanup'
         | 'cache-cleanup'
         | 'schema-maintenance'
         | 'data-export'
@@ -6294,6 +6297,14 @@ export interface TaskCleanupStuckScrapers {
  * via the `definition` "TaskQuota-reset".
  */
 export interface TaskQuotaReset {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskRate-limit-cleanup".
+ */
+export interface TaskRateLimitCleanup {
   input?: unknown;
   output?: unknown;
 }

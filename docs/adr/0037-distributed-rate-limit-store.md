@@ -2,11 +2,9 @@
 
 ## Status
 
-Accepted as the direction; **stage 1 (pluggable storage interface) intentionally deferred** until a concrete second backend is needed.
+Accepted and implemented.
 
-The current `RateLimitService` is in-memory and single-process. Horizontal scaling must not be enabled without first landing a shared-store backend per this ADR. A class-level comment in `apps/web/lib/services/rate-limit-service.ts` flags the constraint so the assumption can't silently rot.
-
-Rationale for the deferral: introducing the interface without a second backend is YAGNI — it adds an abstraction that has no behavioral difference today, and the team's stated infrastructure preference is to avoid Redis/BullMQ when PostgreSQL + Payload can suffice. When the second backend is actually needed, build it together with the interface split so the trade-off between Redis (bursty TTL counters) and PG (single-store simplicity) is made against a real workload, not in advance of one.
+`RateLimitService` now supports a pluggable storage backend. The default backend remains in-memory for local development, tests, and explicitly single-process deployments. A PostgreSQL-backed shared store is available for horizontally scaled web deployments.
 
 ## Context
 
@@ -20,14 +18,14 @@ The review flagged three possible directions:
 2. Move counters into PostgreSQL
 3. Move counters into Redis (or another shared in-memory store)
 
-The decision needs to preserve local-development simplicity while providing a correct path for horizontally scaled production deployments.
+The decision needs to preserve local-development simplicity while providing a correct path for horizontally scaled production deployments, while also matching the team's preference for minimal additional infrastructure.
 
 ## Decision
 
-TimeTiles will standardize on a **pluggable rate-limit storage layer** with two concrete backends:
+TimeTiles standardizes on a **pluggable rate-limit storage layer** with two concrete states today:
 
 - **Memory backend** for local development, tests, and explicitly single-process deployments
-- **Redis backend** for any production deployment that can serve requests from more than one process or container
+- **PostgreSQL backend** for any deployment that can serve overlapping traffic from more than one web process or container
 
 ### Storage contract
 
@@ -36,50 +34,57 @@ TimeTiles will standardize on a **pluggable rate-limit storage layer** with two 
 - `checkAndIncrement(key, limit, windowMs)` for atomic increment + expiry
 - `peek(key)` for header generation without incrementing
 - `reset(key)` for tests and admin tooling
+- `block(key, durationMs)` for explicit manual blocks
 - `cleanup()` only where the backend requires it
 
 The service API exposed to routes should stay the same. Only the persistence mechanism changes.
 
-### Why Redis
+### Why PostgreSQL first
 
-Redis is the shared-store choice for short-window rate limiting because it matches the access pattern:
+PostgreSQL is already present in every deployment and keeps the first shared-store step operationally simple:
 
-- atomic increment primitives
-- native TTL expiry
-- low-latency hot-key reads/writes
-- no per-request SQL row updates
-- no background cleanup job required for normal expiry
+- no new infrastructure dependency
+- no new operational failure mode beyond the existing database dependency
+- straightforward integration with the existing Payload/Drizzle database access
+- good enough performance for current low-to-moderate shared traffic
 
-The Redis backend should use one key per window, for example:
+The PostgreSQL backend uses one opaque key per rate-limit window in `payload.rate_limit_counters`. Each check performs a single atomic UPSERT that:
 
-`rl:{scope}:{identifier}:{window-name}`
+- inserts a new counter for first use
+- resets the counter when the previous window has expired
+- increments the counter while the window is active
+- preserves blocked state without incrementing further
 
-Each key stores the count for its current window and uses the window TTL for expiration. Increment + first-write expiry should happen atomically via Lua or an equivalent Redis atomic pattern.
+The table is intentionally `UNLOGGED` because rate-limit counters are ephemeral. Correctness depends on sharing counters across workers, not on WAL durability after a crash.
 
-### Why not PostgreSQL
+### Why keep memory as the default
 
-PostgreSQL remains the right store for quotas and durable accounting, but it is the wrong default for burst-rate counters:
+For local development and single-process deployments, the in-memory backend remains the simplest and fastest option:
 
-- every request becomes a write
-- hot keys cause unnecessary row churn and contention
-- cleanup for expired windows becomes another maintenance concern
-- short-window abuse prevention should not compete with primary OLTP traffic
+- zero database writes
+- no cleanup job outside the process-local interval
+- no behavioral change for local workflows or most tests
 
-Quota enforcement already covers the durable, lower-frequency fairness problem. Rate limiting is the short-lived abuse-prevention layer and should use a store optimized for ephemeral counters.
+This avoids pushing production-oriented shared storage onto environments that do not need it.
+
+### Redis follow-up
+
+Redis is explicitly deferred, not rejected. If shared traffic grows to the point where PostgreSQL write amplification becomes a material operational cost, a future `RedisRateLimitStore` can be added behind the same storage interface without changing route-level APIs.
 
 ### Deployment rule
 
-Production deployments that run more than one app process must use the Redis backend before horizontal scaling is enabled. Keeping the in-memory backend in a multi-worker production environment is not an acceptable steady state.
+Production deployments that run more than one web process or container must set `RATE_LIMIT_BACKEND=pg` before horizontal scaling is enabled. Keeping the in-memory backend in a multi-worker production environment is not an acceptable steady state.
 
 ### Migration path
 
-Implementation should proceed in stages:
+Implementation proceeds as:
 
-1. Introduce the storage interface with the current in-memory logic as `MemoryRateLimitStore`
-2. Add `RedisRateLimitStore`
-3. Select the backend from config
-4. Update tests so storage-specific behavior is covered independently of route tests
-5. Document the operational requirement in deployment docs and ADR 0001/0002 follow-ups
+1. Extract the current `Map` logic into `MemoryRateLimitStore`
+2. Add `PgRateLimitStore`
+3. Select the backend from `RATE_LIMIT_BACKEND`
+4. Cover shared behavior with backend-agnostic contract tests plus PostgreSQL-specific concurrency tests
+5. Run PostgreSQL cleanup on the maintenance queue to purge expired rows
+6. Document the operational requirement in deployment docs
 
 ## Consequences
 
@@ -88,12 +93,13 @@ Implementation should proceed in stages:
 - Rate limits remain correct across workers and containers
 - The route-level API does not need to change
 - Local development and most tests stay simple with the memory backend
-- Redis aligns with the scaling path already documented in ADR 0001
+- The first shared-store rollout does not require introducing Redis or another new service
 
 ### Negative
 
-- Horizontal scaling now carries a Redis dependency for correct abuse prevention
+- Horizontal scaling now makes PostgreSQL part of the short-window abuse-prevention hot path
 - The rate-limit subsystem becomes slightly more complex because it must support multiple backends
+- Expired shared counters require a cleanup job for table hygiene
 - Local and production behavior diverge at the storage layer, so backend-specific tests become important
 
 ### Neutral
@@ -109,7 +115,11 @@ Rejected. It is acceptable only under the strict single-process assumption from 
 
 ### Use PostgreSQL as the shared counter store
 
-Rejected. PostgreSQL is durable and already present, but it is a poor fit for bursty, TTL-based counters compared with Redis.
+Accepted for the first shared-store implementation. It is not the ideal long-term store for every traffic profile, but it is the best trade-off for current deployment simplicity and the team's minimal-infrastructure preference.
+
+### Use Redis as the shared counter store now
+
+Deferred. Redis remains a credible future backend, but introducing it now would add infrastructure and operational complexity before PostgreSQL has proved insufficient for the actual workload.
 
 ### Push all rate limiting to CDN or edge infrastructure
 

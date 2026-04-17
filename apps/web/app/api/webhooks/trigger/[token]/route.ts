@@ -68,7 +68,7 @@ export const POST = apiRoute({
     // Rate limit keyed on resource ID (survives token rotation, no memory leak for invalid tokens)
     const rateLimitService = getRateLimitService(payload);
     const rateLimitKey = `webhook:${target.type}:${target.id}`;
-    const rateLimitCheck = rateLimitService.checkConfiguredRateLimit(rateLimitKey, RATE_LIMITS.WEBHOOK_TRIGGER);
+    const rateLimitCheck = await rateLimitService.checkConfiguredRateLimit(rateLimitKey, RATE_LIMITS.WEBHOOK_TRIGGER);
 
     if (!rateLimitCheck.allowed) {
       return createRateLimitResponse(rateLimitCheck);

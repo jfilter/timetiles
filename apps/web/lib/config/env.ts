@@ -54,6 +54,11 @@ const baseSchema = {
   SCRAPER_RUNNER_URL: z.string().optional(),
   SCRAPER_API_KEY: z.string().optional(),
 
+  // === Rate limiting ===
+  // Kept as a string so unknown values can fall back to memory at runtime
+  // with a prominent warning instead of failing startup validation.
+  RATE_LIMIT_BACKEND: z.string().default("memory"),
+
   // === Security ===
   SSRF_DNS_CHECK: z
     .string()

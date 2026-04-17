@@ -36,11 +36,11 @@ import { createCommonConfig, createOwnershipAccess, isEditorOrAdmin, isPrivilege
 const logger = createRequestLogger("ingest-files");
 
 /** Check upload rate limits unless seed/test context. Returns clientId if rate-limited. */
-const enforceUploadRateLimit = (
+const enforceUploadRateLimit = async (
   data: Record<string, unknown>,
   req: { payload: Payload; user?: User | null; headers?: Headers },
   hookLogger: ReturnType<typeof createRequestLogger>
-): string | undefined => {
+): Promise<string | undefined> => {
   const isSeedData =
     data.metadata &&
     typeof data.metadata === "object" &&
@@ -55,7 +55,7 @@ const enforceUploadRateLimit = (
 
   const rateLimitService = getRateLimitService(req.payload);
   const clientId = getClientIdentifier(req as unknown as Request);
-  const result = rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
+  const result = await rateLimitService.checkTrustLevelRateLimit(clientId, req.user, "FILE_UPLOAD");
 
   if (!result.allowed) {
     hookLogger.warn("Rate limit exceeded", {
@@ -392,7 +392,7 @@ const IngestFiles: CollectionConfig = {
         if (req.context?.seed) return data;
 
         const changeLogger = createRequestLogger("import-files-beforechange");
-        const clientId = enforceUploadRateLimit(data, req, changeLogger);
+        const clientId = await enforceUploadRateLimit(data, req, changeLogger);
 
         // Extract custom metadata from the request
         const userAgent = req.headers?.get?.("user-agent") ?? null;

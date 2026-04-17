@@ -9,6 +9,7 @@ import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET, POST } from "@/app/api/webhooks/trigger/[token]/route";
+import { resetEnv } from "@/lib/config/env";
 import * as RateLimitModule from "@/lib/services/rate-limit-service";
 import { RateLimitService } from "@/lib/services/rate-limit-service";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
@@ -42,6 +43,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
   };
 
   beforeAll(async () => {
+    vi.stubEnv("RATE_LIMIT_BACKEND", "memory");
+    resetEnv();
+
     testEnv = await createIntegrationTestEnvironment();
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
@@ -59,6 +63,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   afterAll(async () => {
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    resetEnv();
     if (rateLimitService) {
       rateLimitService.destroy();
     }
@@ -79,8 +85,8 @@ describe.sequential("Webhook Trigger API Integration", () => {
     testScheduledIngest = scheduledIngest;
 
     // Clear rate limits for clean test state
-    rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
-    rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:hourly`);
+    await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
+    await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:hourly`);
   });
 
   describe("Successful Webhook Trigger", () => {
@@ -272,7 +278,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // Simulate 5 requests with proper spacing
       for (let i = 0; i < 5; i++) {
         // Clear burst window for each request
-        rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
+        await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
 
         const response = await callWebhook(testScheduledIngest.webhookToken!);
         expect(response.status).toBe(200);
@@ -286,7 +292,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       }
 
       // Clear burst window for 6th request
-      rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
+      await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
 
       // 6th request hits hourly limit
       const response6 = await callWebhook(testScheduledIngest.webhookToken!);

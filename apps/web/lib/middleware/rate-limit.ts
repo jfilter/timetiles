@@ -77,8 +77,8 @@ export const checkRateLimit = async (
 
   // Check rate limit based on configuration
   const rateLimitCheck = rateLimitConfig
-    ? rateLimitService.checkConfiguredRateLimit(key, rateLimitConfig)
-    : rateLimitService.checkTrustLevelRateLimit(clientId, user, options.type ?? "API_GENERAL");
+    ? await rateLimitService.checkConfiguredRateLimit(key, rateLimitConfig)
+    : await rateLimitService.checkTrustLevelRateLimit(clientId, user, options.type ?? "API_GENERAL");
 
   if (!rateLimitCheck.allowed) {
     const retryAfter = rateLimitCheck.resetTime ? Math.ceil((rateLimitCheck.resetTime - Date.now()) / 1000) : 60;

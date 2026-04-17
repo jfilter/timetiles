@@ -24,6 +24,7 @@ export { urlFetchJob } from "./handlers/url-fetch-job";
 
 // Quota management job handlers
 export { quotaResetJobConfig } from "./handlers/quota-reset-job";
+export { rateLimitCleanupJob } from "./handlers/rate-limit-cleanup-job";
 
 // Cache management job handlers
 export { cacheCleanupJob } from "./handlers/cache-cleanup-job";

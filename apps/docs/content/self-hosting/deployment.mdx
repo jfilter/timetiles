@@ -72,6 +72,16 @@ Seven containers in production:
 </Tabs.Tab>
 </Tabs>
 
+### Horizontal Web Scaling
+
+If you run more than one `web` container or otherwise serve overlapping traffic from multiple Node.js processes, set:
+
+```bash
+RATE_LIMIT_BACKEND=pg
+```
+
+The default `memory` backend is only correct for single-web-instance deployments. In a multi-worker setup, leaving rate limits in memory would multiply the effective limit across workers.
+
 ## All-in-One Container
 
 Everything in a single container — PostgreSQL, Nginx, and the app — managed by supervisord. Good for quick demos or personal use.
@@ -111,6 +121,12 @@ cp deployment/.env.production.example deployment/.env.production
 | `DB_PASSWORD`       | Database password (20+ characters)        |
 | `PAYLOAD_SECRET`    | Random secret (`openssl rand -base64 32`) |
 | `LETSENCRYPT_EMAIL` | Email for SSL certificate notifications   |
+
+**Shared-rate-limit setting for multi-web deployments:**
+
+| Variable             | Description                                                                     |
+| -------------------- | ------------------------------------------------------------------------------- |
+| `RATE_LIMIT_BACKEND` | Set to `pg` when more than one web process/container serves overlapping traffic |
 
 See [Configuration](./configuration) for the full environment variable reference.
 

@@ -26,7 +26,10 @@ NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com
 NODE_ENV=production              # development, production, test
 NEXT_PUBLIC_SITE_URL=https://...  # If different from NEXT_PUBLIC_PAYLOAD_URL
 DEFAULT_LOCALE=en                # en or de
+RATE_LIMIT_BACKEND=memory        # memory or pg
 ```
+
+Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as `memory` for local development, tests, and explicitly single-process deployments.
 
 ### File Paths
 

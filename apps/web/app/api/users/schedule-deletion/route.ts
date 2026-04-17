@@ -28,7 +28,7 @@ export const POST = apiRoute({
     const rateLimitService = getRateLimitService(payload);
 
     // Check deletion rate limit
-    const deletionCheck = rateLimitService.checkConfiguredRateLimit(
+    const deletionCheck = await rateLimitService.checkConfiguredRateLimit(
       `account-delete:${user.id}`,
       RATE_LIMITS.ACCOUNT_DELETION
     );
@@ -40,7 +40,7 @@ export const POST = apiRoute({
     const { password } = body;
 
     // Check password attempt rate limit
-    const passwordCheck = rateLimitService.checkConfiguredRateLimit(
+    const passwordCheck = await rateLimitService.checkConfiguredRateLimit(
       `delete-password:${user.id}`,
       RATE_LIMITS.DELETION_PASSWORD_ATTEMPTS
     );

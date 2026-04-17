@@ -1,9 +1,9 @@
 /**
- * Flexible, in-memory rate limiter for HTTP endpoints.
+ * Flexible rate limiter for HTTP endpoints.
  *
- * Tracks requests per identifier (IP, session) across multi-window configs
- * (burst / hourly / daily), supports trust-level-aware limits, emits standard
- * rate-limit headers, and prunes expired entries automatically.
+ * Tracks requests per identifier (IP, session) across multi-window configs,
+ * supports trust-level-aware limits, emits standard rate-limit headers, and
+ * delegates persistence to a pluggable storage backend.
  *
  * For the rate-limit-vs-quota comparison and the canonical usage pattern
  * (rate-limit check -> quota check -> action), see
@@ -24,14 +24,10 @@ import { RATE_LIMITS, type RateLimitConfig, type RateLimitWindow } from "@/lib/c
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
+import { createRateLimitStore, type RateLimitBackend } from "./rate-limit/factory";
+import type { RateLimitStats, RateLimitStatus, RateLimitStore } from "./rate-limit/store";
 
 const logger = createLogger("rate-limit-service");
-
-interface RateLimitEntry {
-  count: number;
-  resetTime: number;
-  blocked: boolean;
-}
 
 /**
  * Result from checking multiple rate limit windows.
@@ -50,35 +46,28 @@ export interface MultiWindowRateLimitResult {
 }
 
 /**
- * SINGLE-PROCESS ONLY.
+ * `RATE_LIMIT_BACKEND=memory` remains single-process only.
  *
- * Counters live in a per-instance Map. Horizontally scaled deployments
- * (multiple Node.js workers / containers serving the same traffic)
- * each maintain independent counters, which lets an attacker multiply
- * the effective limit by round-robining requests across workers.
- *
- * Before enabling horizontal scaling, swap this in-memory storage for
- * a shared backend (Redis, per ADR 0037) so limits remain correct
- * across processes. The service API and RateLimitEntry shape are
- * intentionally narrow so the swap can stay behind this interface.
+ * Multi-worker deployments must switch to the PostgreSQL backend so counters
+ * remain correct across overlapping traffic.
  */
 export class RateLimitService {
-  private readonly cache: Map<string, RateLimitEntry> = new Map();
-  private readonly payload: Payload;
+  private readonly backend: RateLimitBackend;
+  private readonly store: RateLimitStore;
   private cleanupInterval: NodeJS.Timeout | null = null;
-  private readonly instanceId: string;
 
   constructor(payload: Payload) {
-    this.payload = payload;
-    // eslint-disable-next-line sonarjs/pseudo-random -- Safe for debug instance IDs
-    this.instanceId = Math.random().toString(36).substring(7);
+    const selection = createRateLimitStore(payload);
+    this.backend = selection.backend;
+    this.store = selection.store;
 
-    // Clean up expired entries every 5 minutes (skip in test environment)
-    if (getEnv().NODE_ENV !== "test") {
+    // The in-memory backend needs process-local cleanup to avoid unbounded Map
+    // growth. PostgreSQL cleanup runs as a maintenance job instead.
+    if (this.backend === "memory" && getEnv().NODE_ENV !== "test" && this.store.cleanup) {
       logger.info("Starting rate limit cleanup interval");
       this.cleanupInterval = setInterval(
         () => {
-          this.cleanup();
+          void this.cleanup();
         },
         5 * 60 * 1000
       );
@@ -86,7 +75,7 @@ export class RateLimitService {
   }
 
   /**
-   * Cleanup method to clear interval and cache.
+   * Cleanup method to clear interval and store resources.
    */
   destroy(): void {
     if (this.cleanupInterval) {
@@ -94,7 +83,8 @@ export class RateLimitService {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    this.cache.clear();
+
+    this.store.destroy?.();
   }
 
   /**
@@ -105,65 +95,12 @@ export class RateLimitService {
    * @param windowMs - Time window in milliseconds
    * @returns Object containing rate limit status
    */
-  checkRateLimit(
+  async checkRateLimit(
     identifier: string,
     limit: number = 10,
     windowMs: number = 60 * 60 * 1000 // 1 hour default
-  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    const now = Date.now();
-    const entry = this.cache.get(identifier);
-
-    // If no entry exists or window has expired, create new entry
-    if (!entry || now >= entry.resetTime) {
-      return this.createNewRateLimitEntry(identifier, limit, now, windowMs);
-    }
-
-    // If already blocked, deny request
-    if (entry.blocked) {
-      return this.handleBlockedRequest(identifier, entry);
-    }
-
-    // Increment count and check limit
-    return this.processRateLimitCheck(identifier, entry, limit);
-  }
-
-  private createNewRateLimitEntry(
-    identifier: string,
-    limit: number,
-    now: number,
-    windowMs: number
-  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    const newEntry: RateLimitEntry = { count: 1, resetTime: now + windowMs, blocked: false };
-    this.cache.set(identifier, newEntry);
-
-    return { allowed: true, remaining: limit - 1, resetTime: newEntry.resetTime, blocked: false };
-  }
-
-  private handleBlockedRequest(
-    identifier: string,
-    entry: RateLimitEntry
-  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    logger.debug({ identifier, resetTime: new Date(entry.resetTime) }, "Request denied - identifier blocked");
-    return { allowed: false, remaining: 0, resetTime: entry.resetTime, blocked: true };
-  }
-
-  private processRateLimitCheck(
-    identifier: string,
-    entry: RateLimitEntry,
-    limit: number
-  ): { allowed: boolean; remaining: number; resetTime: number; blocked: boolean } {
-    // Increment count
-    entry.count++;
-
-    // Check if limit exceeded
-    if (entry.count > limit) {
-      entry.blocked = true;
-      this.logRateLimitViolation(identifier, entry.count, limit);
-
-      return { allowed: false, remaining: 0, resetTime: entry.resetTime, blocked: true };
-    }
-
-    return { allowed: true, remaining: limit - entry.count, resetTime: entry.resetTime, blocked: false };
+  ): Promise<{ allowed: boolean; remaining: number; resetTime: number; blocked: boolean }> {
+    return this.store.checkAndIncrement(identifier, limit, windowMs);
   }
 
   /**
@@ -179,24 +116,21 @@ export class RateLimitService {
    * @param windows - Array of rate limit windows to check.
    * @returns Result indicating if request is allowed and which window failed (if any).
    */
-  checkMultiWindowRateLimit(
+  async checkMultiWindowRateLimit(
     baseIdentifier: string,
     windows: readonly RateLimitWindow[] | RateLimitWindow[]
-  ): MultiWindowRateLimitResult {
-    // Find the most restrictive remaining count for allowed requests
+  ): Promise<MultiWindowRateLimitResult> {
     let minRemaining = Number.MAX_SAFE_INTEGER;
 
     for (const window of windows) {
       const windowName = window.name ?? `${window.windowMs}ms`;
       const identifier = `${baseIdentifier}:${windowName}`;
-      const check = this.checkRateLimit(identifier, window.limit, window.windowMs);
+      const check = await this.checkRateLimit(identifier, window.limit, window.windowMs);
 
-      // Track minimum remaining across all windows
       if (check.allowed && check.remaining < minRemaining) {
         minRemaining = check.remaining;
       }
 
-      // Return immediately on first failure
       if (!check.allowed) {
         return {
           allowed: false,
@@ -213,7 +147,6 @@ export class RateLimitService {
       }
     }
 
-    // All windows passed
     return { allowed: true, remaining: minRemaining };
   }
 
@@ -224,44 +157,37 @@ export class RateLimitService {
    * @param config - Rate limit configuration with windows.
    * @returns Result indicating if request is allowed.
    */
-  checkConfiguredRateLimit(baseIdentifier: string, config: RateLimitConfig): MultiWindowRateLimitResult {
-    // Convert readonly array to mutable array for the method call
-    const windows = [...config.windows];
-    return this.checkMultiWindowRateLimit(baseIdentifier, windows);
+  async checkConfiguredRateLimit(baseIdentifier: string, config: RateLimitConfig): Promise<MultiWindowRateLimitResult> {
+    return this.checkMultiWindowRateLimit(baseIdentifier, [...config.windows]);
   }
 
   /**
    * Get current rate limit status without incrementing.
    */
-  getRateLimitStatus(identifier: string): { count: number; resetTime: number; blocked: boolean } | null {
-    const entry = this.cache.get(identifier);
-    if (!entry || Date.now() >= entry.resetTime) {
-      return null;
-    }
-    return { ...entry };
+  async getRateLimitStatus(identifier: string): Promise<RateLimitStatus | null> {
+    return this.store.peek(identifier);
   }
 
   /**
    * Reset rate limit for an identifier.
    */
-  resetRateLimit(identifier: string): void {
-    this.cache.delete(identifier);
+  async resetRateLimit(identifier: string): Promise<void> {
+    await this.store.reset(identifier);
   }
 
   /**
    * Block an identifier immediately.
    */
-  blockIdentifier(identifier: string, durationMs: number = 24 * 60 * 60 * 1000): void {
-    const entry: RateLimitEntry = { count: 999999, resetTime: Date.now() + durationMs, blocked: true };
-    this.cache.set(identifier, entry);
+  async blockIdentifier(identifier: string, durationMs: number = 24 * 60 * 60 * 1000): Promise<void> {
+    await this.store.block(identifier, durationMs);
     logger.warn({ identifier, durationMs }, "Identifier blocked");
   }
 
   /**
    * Get rate limit headers for HTTP responses.
    */
-  getRateLimitHeaders(identifier: string, limit: number): Record<string, string> {
-    const status = this.getRateLimitStatus(identifier);
+  async getRateLimitHeaders(identifier: string, limit: number): Promise<Record<string, string>> {
+    const status = await this.getRateLimitStatus(identifier);
 
     if (!status) {
       return {
@@ -282,49 +208,19 @@ export class RateLimitService {
   /**
    * Clean up expired entries.
    */
-  private cleanup(): void {
-    const now = Date.now();
-    let cleanedCount = 0;
-    for (const [identifier, entry] of this.cache.entries()) {
-      if (now >= entry.resetTime) {
-        this.cache.delete(identifier);
-        cleanedCount++;
-      }
-    }
+  private async cleanup(): Promise<void> {
+    const cleanedCount = (await this.store.cleanup?.()) ?? 0;
+
     if (cleanedCount > 0) {
       logger.debug({ cleanedCount }, "Cleaned up expired rate limit entries");
     }
   }
 
   /**
-   * Log rate limit violations for monitoring.
-   */
-  private logRateLimitViolation(identifier: string, attemptedCount: number, limit: number): void {
-    try {
-      logger.warn({ identifier, attemptedCount, limit }, "Rate limit exceeded");
-    } catch (error) {
-      logger.error({ error, identifier }, "Failed to log rate limit violation");
-    }
-  }
-
-  /**
    * Get statistics about current rate limits.
    */
-  getStatistics(): { totalEntries: number; blockedEntries: number; activeEntries: number } {
-    const now = Date.now();
-    let blocked = 0;
-    let active = 0;
-
-    for (const entry of this.cache.values()) {
-      if (now < entry.resetTime) {
-        active++;
-        if (entry.blocked) {
-          blocked++;
-        }
-      }
-    }
-
-    return { totalEntries: this.cache.size, blockedEntries: blocked, activeEntries: active };
+  async getStatistics(): Promise<RateLimitStats> {
+    return (await this.store.getStats?.()) ?? { totalEntries: 0, blockedEntries: 0, activeEntries: 0 };
   }
 
   /**
@@ -338,19 +234,14 @@ export class RateLimitService {
     user: User | null | undefined,
     endpointType: "FILE_UPLOAD" | "API_GENERAL"
   ): RateLimitConfig {
-    // Default to most restrictive for unauthenticated users
     if (!user) {
       return RATE_LIMITS_BY_TRUST_LEVEL[TRUST_LEVELS.UNTRUSTED][endpointType];
     }
 
-    // Get user's trust level or default to REGULAR
     const trustLevel = normalizeTrustLevel(user.trustLevel);
-
-    // Get rate limits for this trust level
     const trustLevelLimits = RATE_LIMITS_BY_TRUST_LEVEL[trustLevel];
 
     if (!trustLevelLimits?.[endpointType]) {
-      // Fallback to default rate limits if trust level config not found
       logger.warn("Rate limit config not found for trust level", { trustLevel, endpointType });
       return RATE_LIMITS[endpointType] || RATE_LIMITS.API_GENERAL;
     }
@@ -366,25 +257,20 @@ export class RateLimitService {
    * @param endpointType - The type of endpoint
    * @returns Multi-window rate limit result
    */
-  checkTrustLevelRateLimit(
+  async checkTrustLevelRateLimit(
     identifier: string,
     user: User | null | undefined,
     endpointType: "FILE_UPLOAD" | "API_GENERAL"
-  ): MultiWindowRateLimitResult {
+  ): Promise<MultiWindowRateLimitResult> {
     const rateLimitConfig = this.getRateLimitsByTrustLevel(user, endpointType);
-
-    // Add user info to identifier for user-specific rate limiting
     const userIdentifier = user ? `${identifier}:user:${user.id}` : identifier;
 
     return this.checkConfiguredRateLimit(userIdentifier, rateLimitConfig);
   }
 }
 
-// Singleton: must be shared across requests because the in-memory rate limit
-// cache and cleanup interval are process-level state. Creating a fresh instance
-// per request would reset all counters and break rate limiting.
-// NOTE: This assumes a single-process deployment. Multi-process scaling would
-// require a Redis-backed rate limiter instead of the in-memory Map.
+// Singleton: shared across requests so the selected backend and any
+// process-local state remain stable for the lifetime of the process.
 let rateLimitService: RateLimitService | null = null;
 
 export const getRateLimitService = (payload: Payload): RateLimitService => {

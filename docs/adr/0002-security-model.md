@@ -83,15 +83,16 @@ References: `lib/globals/settings.ts`, `lib/collections/geocoding-providers.ts`,
 
 ## Two-Tier Rate Limiting
 
-Two services run together on every resource-consuming request. Rate limits fire first (fast, in-memory rejection), then quotas (accurate, database-backed tracking).
+Two services run together on every resource-consuming request. Rate limits fire first (fast short-window rejection), then quotas (accurate, database-backed tracking).
 
 ### Tier 1: RateLimitService (abuse prevention)
 
-- **Storage**: In-memory `Map<string, RateLimitEntry>` (singleton per process)
+- **Storage**: Pluggable backend; `memory` by default, `pg` for shared counters across multiple web processes
 - **Scope**: Per IP address (or IP + user ID for authenticated users)
 - **Windows**: Sliding; burst (seconds), hourly, daily
-- **Reset**: Automatic via 5-minute cleanup interval
+- **Reset**: Automatic via process cleanup for `memory`, or row expiry plus maintenance cleanup for `pg`
 - **Trust-aware**: Limits scale with user trust level
+- **Deployment rule**: Multi-worker web deployments must set `RATE_LIMIT_BACKEND=pg`
 
 File upload rate limits by trust level:
 
@@ -106,7 +107,7 @@ File upload rate limits by trust level:
 
 Endpoint-specific configs (not trust-based) also exist for webhooks, password changes, data exports, and other operations. See `RATE_LIMITS` in `lib/services/rate-limit-service.ts`.
 
-Reference: `lib/services/rate-limit-service.ts`, `lib/middleware/rate-limit.ts`.
+Reference: `lib/services/rate-limit-service.ts`, `lib/middleware/rate-limit.ts`, `docs/adr/0037-distributed-rate-limit-store.md`.
 
 ### Tier 2: QuotaService (resource fairness)
 

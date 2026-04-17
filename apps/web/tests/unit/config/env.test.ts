@@ -75,6 +75,16 @@ describe.sequential("getEnv", () => {
 
       expect(env.DATA_EXPORT_DIR).toBe(".exports");
     });
+
+    it("applies default for RATE_LIMIT_BACKEND", () => {
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
+      resetEnv();
+
+      const env = getEnv();
+
+      expect(env.RATE_LIMIT_BACKEND).toBe("memory");
+    });
   });
 
   describe("caching", () => {
