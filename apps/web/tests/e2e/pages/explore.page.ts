@@ -94,22 +94,21 @@ export class ExplorePage {
    * - The actual slider UI with date range button when data is available
    */
   async waitForTimelineReady() {
-    // Wait for the histogram API to settle (temporal endpoint loads the slider data)
-    await this.page
-      .waitForResponse((response) => response.url().includes("/api/v1/events/temporal") && response.status() === 200, {
-        timeout: 10000,
-      })
-      .catch(() => {
-        // Histogram may already be cached — proceed
-      });
-
-    // Wait for "Loading timeline..." to disappear if present
+    // Wait for either the "Loading timeline..." label to disappear (if present)
+    // or the final timeline UI to render. Skipping the `/api/v1/events/temporal`
+    // waitForResponse — the timeline UI is the user-visible contract; the
+    // response-level wait just races with cache hits and hides real timing
+    // bugs. The downstream waits cover both cached and uncached cases.
     const loadingText = this.page.getByText("Loading timeline...");
-    await loadingText.waitFor({ state: "hidden", timeout: 10000 }).catch(() => {
-      // Already hidden — continue
+    // Don't fail if loadingText isn't present (cached render) — only if it's
+    // still visible after timeout, which is a real regression.
+    await loadingText.waitFor({ state: "hidden", timeout: 10000 }).catch(async (err) => {
+      if (await loadingText.isVisible().catch(() => false)) throw err;
     });
 
-    // Wait for either the date range button (data state) or "No events to display"
+    // Wait for either the date range button (data state) or "No events to display".
+    // If neither appears within 10s the page has failed to render the timeline —
+    // let the error propagate so the test fails with a meaningful stack.
     const dateRangeButton = this.page
       .locator("button")
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
@@ -119,9 +118,7 @@ export class ExplorePage {
     await Promise.race([
       dateRangeButton.waitFor({ state: "visible", timeout: 10000 }),
       noEventsText.waitFor({ state: "visible", timeout: 10000 }),
-    ]).catch(() => {
-      // Neither appeared — let downstream wait fail with a clearer message
-    });
+    ]);
   }
 
   /**
@@ -199,11 +196,12 @@ export class ExplorePage {
     await catalogCheckbox.waitFor({ state: "visible", timeout: 10000 });
     await catalogCheckbox.click({ force: true, timeout: 10000 });
 
-    await this.page
-      .waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), { timeout: 5000 })
-      .catch(() => {
-        // URL might not update immediately, continue anyway
-      });
+    // Catalog click must push `datasets` into the URL — nuqs is `history: "replace"`
+    // but still synchronous from the browser's perspective. If this times out
+    // the test has found a real regression in the selection wiring.
+    await this.page.waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), {
+      timeout: 5000,
+    });
   }
 
   /**
@@ -319,14 +317,14 @@ export class ExplorePage {
     // Clear and fill the date input
     await startDateInput.fill(date);
 
-    // Wait for URL to update with the date
-    await this.page
-      .waitForFunction((expectedDate) => globalThis.location.href.includes(`startDate=${expectedDate}`), date, {
-        timeout: 5000,
-      })
-      .catch(() => {
-        // URL might not update immediately, continue anyway
-      });
+    // URL is the canonical source of truth for filter state — if it doesn't
+    // update after filling the start-date input, the filter wiring is broken
+    // and the test should fail here, not later with a mysterious mismatch.
+    await this.page.waitForFunction(
+      (expectedDate) => globalThis.location.href.includes(`startDate=${expectedDate}`),
+      date,
+      { timeout: 5000 }
+    );
   }
 
   async setEndDate(date: string) {
@@ -344,14 +342,11 @@ export class ExplorePage {
     // Clear and fill the date input
     await endDateInput.fill(date);
 
-    // Wait for URL to update with the date
-    await this.page
-      .waitForFunction((expectedDate) => globalThis.location.href.includes(`endDate=${expectedDate}`), date, {
-        timeout: 5000,
-      })
-      .catch(() => {
-        // URL might not update immediately, continue anyway
-      });
+    await this.page.waitForFunction(
+      (expectedDate) => globalThis.location.href.includes(`endDate=${expectedDate}`),
+      date,
+      { timeout: 5000 }
+    );
   }
 
   async clearDateFilters() {
@@ -361,18 +356,13 @@ export class ExplorePage {
 
     if (isClearButtonVisible) {
       await clearButton.click();
-      // Wait for URL to update
-      await this.page
-        .waitForFunction(
-          () => {
-            const url = new URL(globalThis.location.href);
-            return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
-          },
-          { timeout: 5000 }
-        )
-        .catch(() => {
-          // Continue anyway
-        });
+      await this.page.waitForFunction(
+        () => {
+          const url = new URL(globalThis.location.href);
+          return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
+        },
+        { timeout: 5000 }
+      );
     } else {
       // Fallback: clear dates by navigating to /explore without date params
       const currentUrl = new URL(this.page.url());
