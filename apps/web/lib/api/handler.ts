@@ -77,6 +77,76 @@ const isAuthRejection = (error: unknown): boolean => {
   return false;
 };
 
+const authenticateRequest = async (
+  payload: Payload,
+  req: NextRequest,
+  authMode: AuthMode
+): Promise<AuthenticatedRequest> => {
+  const authReq = req as AuthenticatedRequest;
+
+  if (authMode === "none") {
+    return authReq;
+  }
+
+  try {
+    const { user } = await payload.auth({ headers: req.headers });
+    authReq.user = user as User;
+  } catch (error) {
+    // Only swallow genuine auth rejections on optional routes. For "required"/"admin"
+    // routes, always rethrow so infrastructure failures (DB timeouts, network errors)
+    // surface as 500s instead of masquerading as "unauthenticated". An auth rejection
+    // from Payload is an APIError subclass with status 401 or 403 (missing/invalid
+    // session, locked account, etc.).
+    if (authMode === "optional" && isAuthRejection(error)) {
+      logger.debug("Optional auth: proceeding as anonymous", { error });
+    } else {
+      logger.error("Auth check failed with unexpected error", { error, authMode });
+      throw error;
+    }
+  }
+
+  if ((authMode === "required" || authMode === "admin") && !authReq.user) {
+    throw new UnauthorizedError("Authentication required");
+  }
+
+  if (authMode === "admin" && authReq.user?.role !== "admin") {
+    throw new ForbiddenError("Admin access required");
+  }
+
+  return authReq;
+};
+
+const parseRequestBody = async <TBody>(req: NextRequest, bodySchema?: z.ZodType<TBody>): Promise<TBody> => {
+  if (!bodySchema) {
+    return undefined as TBody;
+  }
+
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    throw new ValidationError("Invalid JSON in request body");
+  }
+
+  return bodySchema.parse(rawBody);
+};
+
+const parseRequestQuery = <TQuery>(req: NextRequest, querySchema?: z.ZodType<TQuery>): TQuery => {
+  if (!querySchema) {
+    return undefined as TQuery;
+  }
+
+  return querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
+};
+
+const parseRouteParams = async <TParams>(
+  context: { params: Promise<Record<string, string>> },
+  paramsSchema?: z.ZodType<TParams>
+): Promise<TParams> => {
+  const resolvedParams = await context.params;
+  return paramsSchema ? paramsSchema.parse(resolvedParams) : (resolvedParams as TParams);
+};
+
 /**
  * Create a Next.js API route handler with built-in auth, validation, and error handling.
  *
@@ -109,35 +179,7 @@ export const apiRoute = <
   ): Promise<Response> => {
     try {
       const payload = await getPayload({ config });
-
-      // --- Auth ---
-      const authReq = req as AuthenticatedRequest;
-      if (authMode !== "none") {
-        try {
-          const { user } = await payload.auth({ headers: req.headers });
-          authReq.user = user as User;
-        } catch (error) {
-          // Only swallow genuine auth rejections on optional routes. For "required"/"admin"
-          // routes, always rethrow so infrastructure failures (DB timeouts, network errors)
-          // surface as 500s instead of masquerading as "unauthenticated". An auth rejection
-          // from Payload is an APIError subclass with status 401 or 403 (missing/invalid
-          // session, locked account, etc.).
-          if (authMode === "optional" && isAuthRejection(error)) {
-            logger.debug("Optional auth: proceeding as anonymous", { error });
-          } else {
-            logger.error("Auth check failed with unexpected error", { error, authMode });
-            throw error;
-          }
-        }
-
-        if ((authMode === "required" || authMode === "admin") && !authReq.user) {
-          throw new UnauthorizedError("Authentication required");
-        }
-
-        if (authMode === "admin" && authReq.user?.role !== "admin") {
-          throw new ForbiddenError("Admin access required");
-        }
-      }
+      const authReq = await authenticateRequest(payload, req, authMode);
 
       // --- Rate limiting (after auth so user-based keys work) ---
       if (routeConfig.rateLimit) {
@@ -150,26 +192,9 @@ export const apiRoute = <
         await requireDefaultSite(payload, req);
       }
 
-      // --- Validate body ---
-      let body: TBody = undefined as TBody;
-      if (routeConfig.body) {
-        let rawBody: unknown;
-        try {
-          rawBody = await req.json();
-        } catch {
-          throw new ValidationError("Invalid JSON in request body");
-        }
-        body = routeConfig.body.parse(rawBody);
-      }
-
-      // --- Validate query ---
-      const query = routeConfig.query
-        ? routeConfig.query.parse(Object.fromEntries(new URL(req.url).searchParams))
-        : (undefined as TQuery);
-
-      // --- Validate params ---
-      const resolvedParams = await context.params;
-      const params = routeConfig.params ? routeConfig.params.parse(resolvedParams) : (resolvedParams as TParams);
+      const body = await parseRequestBody(req, routeConfig.body);
+      const query = parseRequestQuery(req, routeConfig.query);
+      const params = await parseRouteParams(context, routeConfig.params);
 
       // --- Call handler ---
       const result = await routeConfig.handler({
