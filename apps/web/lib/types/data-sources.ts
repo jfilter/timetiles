@@ -30,3 +30,18 @@ export interface DataSourcesResponse {
   catalogs: DataSourceCatalog[];
   datasets: DataSourceDataset[];
 }
+
+export interface DataSourcesPagination {
+  page: number;
+  limit: number;
+  totalDocs: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  nextPage?: number | null;
+  prevPage?: number | null;
+}
+
+export interface PaginatedDataSourcesResponse extends DataSourcesResponse {
+  pagination: DataSourcesPagination;
+}

@@ -7,18 +7,46 @@
  *
  * @module
  */
+import { z } from "zod";
+
 import { apiRoute } from "@/lib/api";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { richTextToPlainText } from "@/lib/utils/rich-text";
 
-export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
+export type {
+  DataSourceCatalog,
+  DataSourceDataset,
+  DataSourcesResponse,
+  PaginatedDataSourcesResponse,
+} from "@/lib/types/data-sources";
 
 const DESCRIPTION_MAX_LENGTH = 120;
+const DEFAULT_DATASET_PAGE = 1;
+const DEFAULT_DATASET_LIMIT = 250;
+const MAX_DATASET_LIMIT = 500;
+
+const DataSourcesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(DEFAULT_DATASET_PAGE),
+  limit: z.coerce.number().int().min(1).max(MAX_DATASET_LIMIT).default(DEFAULT_DATASET_LIMIT),
+});
+
+const resolveCatalogId = (catalog: number | { id: number } | null | undefined): number | null => {
+  if (typeof catalog === "number") {
+    return catalog;
+  }
+
+  if (catalog && typeof catalog === "object") {
+    return catalog.id;
+  }
+
+  return null;
+};
 
 export const GET = apiRoute({
   auth: "optional",
-  handler: async ({ user, payload }) => {
+  query: DataSourcesQuerySchema,
+  handler: async ({ query, user, payload }) => {
     const [catalogsResult, datasetsResult] = await Promise.all([
       payload.find({
         collection: "catalogs",
@@ -30,9 +58,9 @@ export const GET = apiRoute({
       }),
       payload.find({
         collection: "datasets",
-        limit: 5000,
-        pagination: false,
-        depth: 1, // Need depth to get catalog relationship
+        page: query.page,
+        limit: query.limit,
+        depth: 0,
         select: { id: true, name: true, description: true, language: true, catalog: true, hasTemporalData: true },
         user,
         overrideAccess: false,
@@ -51,12 +79,25 @@ export const GET = apiRoute({
     const datasets: DataSourceDataset[] = datasetsResult.docs.map((d) => ({
       id: d.id,
       name: d.name,
-      catalogId: typeof d.catalog === "object" && d.catalog != null ? d.catalog.id : null,
+      catalogId: resolveCatalogId(d.catalog),
       hasTemporalData: d.hasTemporalData ?? true,
       description: richTextToPlainText(d.description, DESCRIPTION_MAX_LENGTH),
       language: d.language ?? undefined,
     }));
 
-    return { catalogs, datasets };
+    return {
+      catalogs,
+      datasets,
+      pagination: {
+        page: datasetsResult.page ?? query.page,
+        limit: datasetsResult.limit,
+        totalDocs: datasetsResult.totalDocs,
+        totalPages: datasetsResult.totalPages,
+        hasNextPage: datasetsResult.hasNextPage,
+        hasPrevPage: datasetsResult.hasPrevPage,
+        nextPage: datasetsResult.nextPage,
+        prevPage: datasetsResult.prevPage,
+      },
+    };
   },
 });

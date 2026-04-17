@@ -11,15 +11,33 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "@/lib/api/http-error";
-import type { DataSourcesResponse } from "@/lib/types/data-sources";
+import type { DataSourcesResponse, PaginatedDataSourcesResponse } from "@/lib/types/data-sources";
 
 import { QUERY_PRESETS } from "./query-presets";
 
 // Re-export types for consumers
 export type { DataSourceCatalog, DataSourceDataset, DataSourcesResponse } from "@/lib/types/data-sources";
 
+const DATA_SOURCES_PAGE_LIMIT = 250;
+
+const fetchDataSourcesPage = async (page: number): Promise<PaginatedDataSourcesResponse> =>
+  fetchJson<PaginatedDataSourcesResponse>(`/api/v1/data-sources?page=${page}&limit=${DATA_SOURCES_PAGE_LIMIT}`);
+
 const fetchDataSources = async (): Promise<DataSourcesResponse> => {
-  return fetchJson<DataSourcesResponse>("/api/v1/data-sources");
+  const firstPage = await fetchDataSourcesPage(1);
+  if (!firstPage.pagination.hasNextPage) {
+    return { catalogs: firstPage.catalogs, datasets: firstPage.datasets };
+  }
+
+  const remainingPages = Array.from({ length: Math.max(firstPage.pagination.totalPages - 1, 0) }, (_, index) =>
+    fetchDataSourcesPage(index + 2)
+  );
+  const remainingResults = await Promise.all(remainingPages);
+
+  return {
+    catalogs: firstPage.catalogs,
+    datasets: [firstPage.datasets, ...remainingResults.map((page) => page.datasets)].flat(),
+  };
 };
 
 export const dataSourcesKeys = { all: ["data-sources"] as const };
