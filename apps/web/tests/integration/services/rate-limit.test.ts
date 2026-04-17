@@ -3,12 +3,8 @@
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  getClientIdentifier,
-  getRateLimitService,
-  RATE_LIMITS,
-  RateLimitService,
-} from "../../../lib/services/rate-limit-service";
+import { RATE_LIMITS } from "../../../lib/constants/rate-limits";
+import { getClientIdentifier, getRateLimitService, RateLimitService } from "../../../lib/services/rate-limit-service";
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("RateLimitService", () => {

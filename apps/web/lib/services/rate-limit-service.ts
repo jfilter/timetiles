@@ -78,19 +78,10 @@ import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
 import { normalizeTrustLevel, RATE_LIMITS_BY_TRUST_LEVEL, TRUST_LEVELS } from "@/lib/constants/quota-constants";
-import {
-  RATE_LIMITS,
-  type RateLimitConfig,
-  type RateLimitName,
-  type RateLimitWindow,
-} from "@/lib/constants/rate-limits";
+import { RATE_LIMITS, type RateLimitConfig, type RateLimitWindow } from "@/lib/constants/rate-limits";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
-
-// Re-export from constants for backward compatibility
-export { RATE_LIMITS };
-export type { RateLimitConfig, RateLimitName, RateLimitWindow };
 
 const logger = createLogger("rate-limit-service");
 
