@@ -23,6 +23,7 @@ const SECURITY_HEADERS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
+  poweredByHeader: false,
   headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
