@@ -26,6 +26,16 @@ export const buildConfigSnapshot = (dataset: Dataset) => ({
 });
 
 /**
+ * Canonical shape of `ingest-jobs.configSnapshot`, derived from the producer
+ * so the type stays in sync with Payload's Dataset schema without a parallel
+ * Zod definition that could drift.
+ *
+ * Payload persists `configSnapshot` as JSON, so readers see it as `unknown`
+ * in generated types — use {@link readConfigSnapshot} at the read site.
+ */
+export type ConfigSnapshot = ReturnType<typeof buildConfigSnapshot>;
+
+/**
  * Validates that a user has access to the dataset's catalog.
  * Throws if the user does not own the catalog and it is not public.
  */

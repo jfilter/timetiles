@@ -16,6 +16,7 @@ import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { logError } from "@/lib/logger";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
+import type { ConfigSnapshot } from "../handlers/dataset-detection/catalog-dataset-helpers";
 import type { TaskCallbackArgs } from "./job-context";
 import { getIngestFilePath } from "./upload-path";
 
@@ -218,6 +219,23 @@ const isDuplicateEntry = (d: unknown): d is { rowNumber: number; existingEventId
 
 const parseDuplicateArray = (arr: unknown): Array<{ rowNumber: number; existingEventId?: string | number }> =>
   Array.isArray(arr) ? arr.filter(isDuplicateEntry) : [];
+
+/** Valid `duplicateStrategy` values for external duplicate handling. */
+export type DuplicateStrategy = "skip" | "update";
+
+/**
+ * Read the configured duplicate strategy from a job's `configSnapshot`.
+ *
+ * Payload persists `configSnapshot` as JSON, so the generated type surfaces
+ * as `unknown`. This helper narrows to the {@link ConfigSnapshot} shape and
+ * defaults to `"skip"` — matching the pipeline's conservative behaviour
+ * when the field is missing, null, or of an unexpected type.
+ */
+export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
+  const snapshot = job.configSnapshot as ConfigSnapshot | null | undefined;
+  const value = snapshot?.idStrategy?.duplicateStrategy;
+  return value === "update" ? "update" : "skip";
+};
 
 export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string): DuplicateRowInfo => {
   const skipRows = new Set<number>();

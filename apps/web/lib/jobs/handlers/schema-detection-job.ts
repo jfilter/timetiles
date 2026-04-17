@@ -36,6 +36,7 @@ import {
   createStandardOnFail,
   extractDuplicateRows,
   loadJobAndFilePath,
+  readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
@@ -404,10 +405,7 @@ export const schemaDetectionJob = {
       // Pass duplicateStrategy so that external duplicates with "update" strategy are NOT skipped.
       // Without this, re-imports where all rows are external duplicates produce an empty schema,
       // which then fails validation because all fields appear "removed".
-      const duplicateStrategy = (job.configSnapshot as Record<string, unknown>)?.idStrategy
-        ? ((job.configSnapshot as Record<string, { duplicateStrategy?: string }>).idStrategy?.duplicateStrategy ??
-          "skip")
-        : "skip";
+      const duplicateStrategy = readDuplicateStrategy(job);
       const { skipRows: duplicateRows } = extractDuplicateRows(job, duplicateStrategy);
 
       const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
