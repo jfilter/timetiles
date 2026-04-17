@@ -69,9 +69,12 @@ const Users: CollectionConfig = {
     useAPIKey: true,
     // Enable email verification using Payload's built-in feature
     // This auto-adds _verified and _verificationToken fields
-    // Payload v3 does not expire verification tokens natively (no beforeOperation
-    // hook for verifyEmail). Tokens remain valid until used. To add expiry, a custom
-    // API route wrapping /api/users/verify/:token would be needed.
+    //
+    // TTL: Payload v3 does not expire verification tokens natively (no
+    // beforeOperation hook for verifyEmail). We store `_verificationTokenExpiresAt`
+    // alongside the token (set in the beforeChange hook below) and enforce a
+    // 24-hour TTL in the custom `/api/users/verify/[token]` route, which gates
+    // access to the built-in `payload.verifyEmail()` call.
     verify: {
       generateEmailHTML: async (args) => {
         const token = args?.token ?? "";
@@ -339,6 +342,17 @@ const Users: CollectionConfig = {
         description: "When the account will be permanently deleted",
       },
     },
+    // SECURITY: TTL marker for email verification tokens (24h).
+    // Locked down so external API callers cannot read or mutate it — only the
+    // beforeChange hook (running with full access) sets it. The custom
+    // `/api/users/verify/[token]` route checks this before delegating to
+    // Payload's built-in verifyEmail.
+    {
+      name: "_verificationTokenExpiresAt",
+      type: "date",
+      admin: { hidden: true },
+      access: { read: () => false, update: () => false, create: () => false },
+    },
   ],
   hooks: {
     beforeChange: [
@@ -390,6 +404,15 @@ const Users: CollectionConfig = {
         // Initialize quotas on user creation
         if (operation === "create") {
           initializeQuotasFromTrustLevel(data, data?.trustLevel);
+        }
+
+        // SECURITY: Stamp a 24h expiry whenever a verification token is set.
+        // Covers new-user creation (Payload auto-generates `_verificationToken`)
+        // and re-send-verification flows that explicitly rotate the token.
+        // The companion check lives in /api/users/verify/[token].
+        const dataWithToken = data as Record<string, unknown>;
+        if (typeof dataWithToken._verificationToken === "string" && dataWithToken._verificationToken.length > 0) {
+          dataWithToken._verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         }
 
         return data;

@@ -5,19 +5,21 @@ import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 
 describe("sanitizeHTML", () => {
   describe("allowed patterns (analytics, tracking, embeds)", () => {
-    it("preserves external script tags with src attribute", () => {
-      const input = '<script src="https://www.googletagmanager.com/gtag/js?id=G-123" async></script>';
-      const result = sanitizeHTML(input);
-      expect(result).toContain("script");
-      expect(result).toContain("https://www.googletagmanager.com/gtag/js?id=G-123");
-      expect(result).toContain("async");
-    });
-
     it("preserves script tags with integrity and crossorigin", () => {
       const input =
         '<script src="https://cdn.example.com/lib.js" integrity="sha384-abc" crossorigin="anonymous"></script>';
       const result = sanitizeHTML(input);
       expect(result).toContain('integrity="sha384-abc"');
+      expect(result).toContain('crossorigin="anonymous"');
+    });
+
+    it("preserves script tags with integrity + crossorigin + async", () => {
+      const input =
+        '<script src="https://www.googletagmanager.com/gtag/js?id=G-123" integrity="sha384-xyz" crossorigin="anonymous" async></script>';
+      const result = sanitizeHTML(input);
+      expect(result).toContain("https://www.googletagmanager.com/gtag/js?id=G-123");
+      expect(result).toContain("async");
+      expect(result).toContain('integrity="sha384-xyz"');
       expect(result).toContain('crossorigin="anonymous"');
     });
 
@@ -73,6 +75,29 @@ describe("sanitizeHTML", () => {
       const result = sanitizeHTML(input);
       expect(result).not.toContain("script");
       expect(result).not.toContain("alert");
+    });
+
+    it("strips external <script src> without integrity or crossorigin (SRI required)", () => {
+      const input = '<script src="https://cdn.example.com/malicious.js" async></script>';
+      const result = sanitizeHTML(input);
+      expect(result).not.toContain("script");
+      expect(result).not.toContain("cdn.example.com/malicious.js");
+    });
+
+    it("strips external <script src> with integrity but no crossorigin", () => {
+      // Without crossorigin, the browser ignores SRI on cross-origin requests —
+      // so accepting this would be security theater.
+      const input = '<script src="https://cdn.example.com/lib.js" integrity="sha384-abc"></script>';
+      const result = sanitizeHTML(input);
+      expect(result).not.toContain("script");
+      expect(result).not.toContain("cdn.example.com/lib.js");
+    });
+
+    it("strips external <script src> with crossorigin but no integrity", () => {
+      const input = '<script src="https://cdn.example.com/lib.js" crossorigin="anonymous"></script>';
+      const result = sanitizeHTML(input);
+      expect(result).not.toContain("script");
+      expect(result).not.toContain("cdn.example.com/lib.js");
     });
 
     it("strips inline script with complex payload", () => {
@@ -131,11 +156,23 @@ describe("sanitizeHTML", () => {
 
     it("handles mixed safe and unsafe content", () => {
       const input =
-        '<script src="https://analytics.com/ga.js" async></script><script>evil()</script><meta name="og:title" content="Safe">';
+        '<script src="https://analytics.com/ga.js" integrity="sha384-abc" crossorigin="anonymous" async></script>' +
+        "<script>evil()</script>" +
+        '<meta name="og:title" content="Safe">';
       const result = sanitizeHTML(input);
       expect(result).toContain("analytics.com/ga.js");
       expect(result).toContain("meta");
       expect(result).not.toContain("evil()");
+    });
+
+    it("drops external scripts lacking SRI even when combined with safe content", () => {
+      // Supply-chain sanity check: a legitimate-looking CDN URL without SRI
+      // is exactly the vector we are closing off.
+      const input =
+        '<script src="https://analytics.com/ga.js" async></script>' + '<meta name="og:title" content="Safe">';
+      const result = sanitizeHTML(input);
+      expect(result).not.toContain("analytics.com/ga.js");
+      expect(result).toContain("meta");
     });
   });
 });

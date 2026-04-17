@@ -182,8 +182,12 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   const selectedCollections = (collections ?? []).map((name) => COLLECTIONS[name]).filter(Boolean);
 
   // Build configuration
+  // SECURITY: `secret` originates from `getEnv().PAYLOAD_SECRET`, which Zod-validates
+  // at runtime and errors if missing. We intentionally do NOT fall back to a
+  // guessable string here — a missing secret must hard-fail, never silently
+  // downgrade to a known-public default.
   const config: Config = {
-    secret: secret ?? "default-secret-key",
+    secret: secret ?? getEnv().PAYLOAD_SECRET,
     i18n: { supportedLanguages: { en, de } },
     localization: {
       locales: [

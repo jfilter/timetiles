@@ -404,6 +404,7 @@ export interface User {
    * When the account will be permanently deleted
    */
   deletionScheduledAt?: string | null;
+  _verificationTokenExpiresAt?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -4980,6 +4981,7 @@ export interface UsersSelect<T extends boolean = true> {
   deletionStatus?: T;
   deletionRequestedAt?: T;
   deletionScheduledAt?: T;
+  _verificationTokenExpiresAt?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;

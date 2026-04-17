@@ -41,6 +41,8 @@ import * as migration_20260417_110000_drop_ingest_jobs_dead_fields from './20260
 import * as migration_20260417_160000_event_access_without_catalog_materialization from './20260417_160000_event_access_without_catalog_materialization';
 import * as migration_20260417_180000_fix_include_public_access_default from './20260417_180000_fix_include_public_access_default';
 import * as migration_20260417_190000_cluster_events_gist_index_use from './20260417_190000_cluster_events_gist_index_use';
+import * as migration_20260417_200000_webhook_token_unique from './20260417_200000_webhook_token_unique';
+import * as migration_20260417_210000_verification_token_expires_at from './20260417_210000_verification_token_expires_at';
 
 export const migrations = [
   {
@@ -257,5 +259,15 @@ export const migrations = [
     up: migration_20260417_190000_cluster_events_gist_index_use.up,
     down: migration_20260417_190000_cluster_events_gist_index_use.down,
     name: '20260417_190000_cluster_events_gist_index_use',
+  },
+  {
+    up: migration_20260417_200000_webhook_token_unique.up,
+    down: migration_20260417_200000_webhook_token_unique.down,
+    name: '20260417_200000_webhook_token_unique',
+  },
+  {
+    up: migration_20260417_210000_verification_token_expires_at.up,
+    down: migration_20260417_210000_verification_token_expires_at.down,
+    name: '20260417_210000_verification_token_expires_at',
   },
 ];

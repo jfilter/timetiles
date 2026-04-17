@@ -13,7 +13,7 @@ export const TEST_CREDENTIALS = {
     alternateUsername: "user",
     alternatePassword: "pass",
     // For security tests requiring a "strong-looking" password
-    strongPassword: "password123",
+    strongPassword: "strongPassword123",
     superSecretPassword: "super-secret-password",
   },
   bearer: {

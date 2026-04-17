@@ -18,6 +18,15 @@ if (!process.env.NODE_ENV) {
   (process.env as any).NODE_ENV = "test";
 }
 
+// Disable HIBP password check in unit tests by default: the policy makes a
+// live fetch to api.pwnedpasswords.com, and any string the attacker corpus
+// has ever seen (including ones used in fixtures) would flip a legitimate
+// "valid password" test into a rejection. Tests that specifically exercise
+// the HIBP path can stub this back on.
+if (process.env.PASSWORD_HIBP_CHECK === undefined) {
+  process.env.PASSWORD_HIBP_CHECK = "false";
+}
+
 // Reset cached config before each test so vi.stubEnv() changes take effect
 beforeEach(() => {
   resetEnv();

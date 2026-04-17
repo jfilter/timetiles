@@ -52,8 +52,23 @@ const CUSTOM_HTML_OPTIONS: sanitize.IOptions = {
     style: [],
   },
 
-  // Strip inline script content — only allow <script src="..."></script>
-  exclusiveFilter: (frame) => frame.tag === "script" && !frame.attribs["src"],
+  // Script policy:
+  // 1. Inline <script> (no `src`) is always dropped — the sanitizer cannot
+  //    reason about arbitrary JS, so we refuse to ship it.
+  // 2. External <script src="..."> must carry BOTH `integrity` (SRI hash) and
+  //    `crossorigin` (required for SRI to take effect on cross-origin loads).
+  //    Without SRI, a compromised/malicious CDN operator could swap in arbitrary
+  //    code under our origin — even a legitimate analytics vendor like GTM would
+  //    become a supply-chain footgun. Admin-configured custom HTML must pin a
+  //    specific script version via integrity hash.
+  exclusiveFilter: (frame) => {
+    if (frame.tag !== "script") return false;
+    const src = frame.attribs["src"];
+    if (!src) return true; // drop inline scripts
+    const hasIntegrity = typeof frame.attribs["integrity"] === "string" && frame.attribs["integrity"].length > 0;
+    const hasCrossorigin = typeof frame.attribs["crossorigin"] === "string";
+    return !(hasIntegrity && hasCrossorigin);
+  },
 
   allowedSchemes: ["https", "http"],
   allowedSchemesAppliedToAttributes: ["src", "href"],
