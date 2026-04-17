@@ -16,7 +16,7 @@ import type { ClusterDensitySettings } from "@/lib/hooks/use-events-queries";
 export type ClusterAlgorithm = "h3" | "grid-k" | "dbscan";
 
 /** How clusters are rendered on the map. */
-export type ClusterDisplay = "circles" | "hexagons" | "points";
+export type ClusterDisplay = "circles" | "hexagons";
 
 /** Cluster density preset or expert mode. */
 export type ClusterDensityMode = "fine" | "normal" | "coarse" | "expert";

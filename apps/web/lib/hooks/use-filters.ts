@@ -12,6 +12,7 @@
  * @module
  */
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
+import { useMemo } from "react";
 
 import type { FilterState } from "../types/filter-state";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
@@ -60,9 +61,16 @@ export const useFilters = () => {
   const endDate = filterParams.endDate;
   const fieldFiltersParam = filterParams.ff;
 
-  const fieldFilters = parseFieldFilters(fieldFiltersParam);
+  // Memoize on primitive URL params so downstream consumers that use `filters`
+  // or `fieldFilters` as query keys / memo deps don't rekey on every render.
+  // `datasets` is a stable array reference from nuqs; its identity changes
+  // only when the URL actually changes.
+  const fieldFilters = useMemo(() => parseFieldFilters(fieldFiltersParam), [fieldFiltersParam]);
 
-  const filters: FilterState = { datasets, startDate: startDate || null, endDate: endDate || null, fieldFilters };
+  const filters: FilterState = useMemo(
+    () => ({ datasets, startDate: startDate || null, endDate: endDate || null, fieldFilters }),
+    [datasets, startDate, endDate, fieldFilters]
+  );
 
   // Enhanced setDatasets — clears field filters (dataset-specific)
   const handleSetDatasets = (newDatasets: string[]) => {
