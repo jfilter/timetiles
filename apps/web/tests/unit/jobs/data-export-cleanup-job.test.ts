@@ -140,4 +140,74 @@ describe.sequential("dataExportCleanupJob", () => {
 
     await expect(dataExportCleanupJob.handler(createContext() as any)).rejects.toThrow("Database unavailable");
   });
+
+  it("should unlink multiple expired export files in parallel", async () => {
+    const expiredDocs = [
+      { id: 1, filePath: "/tmp/export-1.zip", status: "ready" },
+      { id: 2, filePath: "/tmp/export-2.zip", status: "ready" },
+      { id: 3, filePath: "/tmp/export-3.zip", status: "ready" },
+    ];
+
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: expiredDocs, totalDocs: expiredDocs.length })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
+
+    const result = await dataExportCleanupJob.handler(createContext() as any);
+
+    // Every file was unlinked
+    expect(mockUnlink).toHaveBeenCalledTimes(3);
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-1.zip");
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-2.zip");
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-3.zip");
+
+    expect(result.output).toEqual({ success: true, filesDeleted: 3, recordsUpdated: 3, recordsDeleted: 0, errors: 0 });
+  });
+
+  it("should continue unlinking other files when one unlink fails", async () => {
+    const expiredDocs = [
+      { id: 1, filePath: "/tmp/export-1.zip", status: "ready" },
+      { id: 2, filePath: "/tmp/missing.zip", status: "ready" },
+      { id: 3, filePath: "/tmp/export-3.zip", status: "ready" },
+    ];
+
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: expiredDocs, totalDocs: expiredDocs.length })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
+
+    // Middle file fails — others must still succeed
+    mockUnlink.mockImplementation((path: string) => {
+      if (path === "/tmp/missing.zip") {
+        return Promise.reject(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
+      }
+      return Promise.resolve();
+    });
+
+    const result = await dataExportCleanupJob.handler(createContext() as any);
+
+    expect(mockUnlink).toHaveBeenCalledTimes(3);
+    // All three records were updated, two files successfully deleted
+    expect(result.output.recordsUpdated).toBe(3);
+    expect(result.output.filesDeleted).toBe(2);
+    expect(result.output.errors).toBe(0);
+  });
+
+  it("should skip unlink when filePath is null", async () => {
+    mockPayload.find
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 1, filePath: null, status: "ready" },
+          { id: 2, filePath: "/tmp/export-2.zip", status: "ready" },
+        ],
+        totalDocs: 2,
+      })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
+
+    const result = await dataExportCleanupJob.handler(createContext() as any);
+
+    // Only one unlink (the record with a real path)
+    expect(mockUnlink).toHaveBeenCalledTimes(1);
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-2.zip");
+    expect(result.output.recordsUpdated).toBe(2);
+    expect(result.output.filesDeleted).toBe(1);
+  });
 });

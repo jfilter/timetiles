@@ -16,6 +16,17 @@ import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-cont
 import { h3ColumnName, isValidH3CellId, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
 
+/**
+ * Cache-Control for cluster summary responses.
+ *
+ * Responses vary by the caller's access scope (owner-visible events are
+ * mixed into the results via `ownerId` in the canonical filters), so we
+ * cannot share them publicly. `private` limits caching to the caller's
+ * own browser/HTTP cache. A short `max-age` avoids repeated recomputation
+ * during rapid pan/zoom while keeping the data fresh.
+ */
+const CLUSTER_SUMMARY_CACHE_CONTROL = "private, max-age=30, stale-while-revalidate=60";
+
 export const GET = apiRoute({
   auth: "optional",
   query: ClusterSummaryQuerySchema,
@@ -27,11 +38,14 @@ export const GET = apiRoute({
     const h3Resolution = query.h3Resolution;
 
     const ctx = await resolveEventQueryContext({ payload, user, query });
-    if (ctx.denied) {
-      return emptyResponse();
-    }
+    const body: ClusterSummaryResponse = ctx.denied
+      ? emptyResponse()
+      : await executeClusterSummary(payload, cells, h3Resolution, ctx.filters);
 
-    return executeClusterSummary(payload, cells, h3Resolution, ctx.filters);
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": CLUSTER_SUMMARY_CACHE_CONTROL },
+    });
   },
 });
 
