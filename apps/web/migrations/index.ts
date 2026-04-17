@@ -36,6 +36,8 @@ import * as migration_20260331_220208 from './20260331_220208';
 import * as migration_20260401_000000_fix_field_filter_null_handling from './20260401_000000_fix_field_filter_null_handling';
 import * as migration_20260402_011606 from './20260402_011606';
 import * as migration_20260416_092834_unique_dataset_schema_version from './20260416_092834_unique_dataset_schema_version';
+import * as migration_20260417_100000_datasets_catalog_name_unique from './20260417_100000_datasets_catalog_name_unique';
+import * as migration_20260417_110000_drop_ingest_jobs_dead_fields from './20260417_110000_drop_ingest_jobs_dead_fields';
 
 export const migrations = [
   {
@@ -227,5 +229,15 @@ export const migrations = [
     up: migration_20260416_092834_unique_dataset_schema_version.up,
     down: migration_20260416_092834_unique_dataset_schema_version.down,
     name: '20260416_092834_unique_dataset_schema_version',
+  },
+  {
+    up: migration_20260417_100000_datasets_catalog_name_unique.up,
+    down: migration_20260417_100000_datasets_catalog_name_unique.down,
+    name: '20260417_100000_datasets_catalog_name_unique',
+  },
+  {
+    up: migration_20260417_110000_drop_ingest_jobs_dead_fields.up,
+    down: migration_20260417_110000_drop_ingest_jobs_dead_fields.down,
+    name: '20260417_110000_drop_ingest_jobs_dead_fields',
   },
 ];

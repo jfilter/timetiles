@@ -15,6 +15,7 @@ import sharp from "sharp";
 
 import { getEnv } from "@/lib/config/env";
 import { logError, logger } from "@/lib/logger";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 /**
  * Gets the ID from a media field value (handles both populated and reference).
@@ -90,10 +91,11 @@ const fetchMediaBuffer = async (
       }
     }
 
-    // Fall back to HTTP fetch for production/dev environments
+    // Fall back to HTTP fetch for production/dev environments.
+    // Use `safeFetch` to block SSRF — the media URL is derived from user-uploaded data.
     const url = media.url.startsWith("http") ? media.url : `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}${media.url}`;
 
-    const response = await fetch(url);
+    const response = await safeFetch(url);
     if (!response.ok) {
       logger.warn({ url, status: response.status }, "Failed to fetch media file");
       return null;

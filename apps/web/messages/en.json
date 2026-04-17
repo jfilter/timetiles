@@ -412,6 +412,7 @@
     "verifyEmailHint": "Haven't received the email? Check your spam folder or request a new verification link.",
     "signedIn": "You're signed in",
     "continuingToUpload": "Continuing to upload...",
+    "readyToUpload": "You're ready to start importing your data.",
     "signInTitle": "Sign in to continue",
     "signInDescription": "Create an account or sign in to import your data.",
     "uploadTitle": "Upload your data",

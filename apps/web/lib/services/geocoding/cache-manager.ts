@@ -192,20 +192,22 @@ export class CacheManager {
     const ttlDays = this.settings.caching.ttlDays ?? 30;
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - ttlDays);
+    const cutoffIso = cutoffDate.toISOString();
 
     try {
-      const oldEntries = await this.payload.find({
-        collection: LOCATION_CACHE_COLLECTION,
-        overrideAccess: true,
-        where: { createdAt: { less_than: cutoffDate.toISOString() } },
-        limit: 1000,
-      });
+      // Single bulk DELETE; no row-level hooks needed for cache cleanup.
+      // Replaces the previous find+per-row-delete loop (up to 1000 queries → 1).
+      const db = this.payload.db.drizzle;
+      const result = await db.execute(sql`
+        DELETE FROM payload.location_cache
+        WHERE created_at < ${cutoffIso}
+        RETURNING id
+      `);
 
-      for (const entry of oldEntries.docs) {
-        await this.payload.delete({ collection: LOCATION_CACHE_COLLECTION, overrideAccess: true, id: entry.id });
-      }
+      const rows = (result as unknown as { rows?: unknown[]; length?: number }).rows ?? result;
+      const deletedCount = Array.isArray(rows) ? rows.length : 0;
 
-      logger.info(`Cleaned up ${oldEntries.docs.length} expired cache entries`);
+      logger.info(`Cleaned up ${deletedCount} expired cache entries`);
     } catch (error) {
       logger.error("Failed to cleanup cache", { error });
     }

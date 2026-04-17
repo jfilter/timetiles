@@ -1,4 +1,4 @@
-# ADR 0015: UI Customization System
+# ADR 0035: UI Customization System
 
 ## Status
 

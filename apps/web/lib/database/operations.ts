@@ -10,6 +10,8 @@
 
 import { execFileSync, execSync } from "node:child_process";
 
+import { getEnv } from "@/lib/config/env";
+
 import { createDatabaseClient } from "./client";
 import { parseDatabaseUrl } from "./url";
 
@@ -63,7 +65,8 @@ export const executeDatabaseQuery = async (
   sql: string,
   options: QueryOptions = {}
 ): Promise<string> => {
-  const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+  const env = getEnv();
+  const isCI = env.CI === "true" || env.GITHUB_ACTIONS === "true";
 
   // Prefer direct client connection (faster, more reliable)
   if (!options.useShell && !isCI) {
@@ -108,7 +111,7 @@ export const executeDatabaseQuery = async (
  */
 const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, description?: string): string => {
   // Get connection parameters from environment
-  const DATABASE_URL = process.env.DATABASE_URL;
+  const DATABASE_URL = getEnv().DATABASE_URL;
   if (!DATABASE_URL) {
     throw new Error("DATABASE_URL environment variable is required");
   }

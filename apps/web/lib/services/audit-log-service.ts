@@ -49,6 +49,7 @@ export const AUDIT_ACTIONS = {
   // Import admin operations
   IMPORT_JOB_STAGE_OVERRIDE: "import.job_stage_override",
   SCHEDULED_INGEST_ADMIN_MODIFIED: "import.scheduled_ingest_admin_modified",
+  SCHEDULED_INGEST_RETRIES_EXHAUSTED: "import.scheduled_ingest_retries_exhausted",
 
   // Authentication events
   LOGIN_SUCCESS: "account.login_success",
@@ -136,6 +137,10 @@ const deepEqual = (a: unknown, b: unknown): boolean => {
 /**
  * Detect field-level changes between previousDoc and doc, and fire audit log
  * entries for each changed field. Designed for Payload afterChange hooks.
+ *
+ * @param options - Optional configuration
+ * @param options.req - PayloadRequest to participate in an existing transaction
+ *   so audit writes roll back together with the parent operation if it fails.
  */
 export const auditFieldChanges = async (
   payload: Payload,
@@ -147,7 +152,8 @@ export const auditFieldChanges = async (
     performedBy?: number;
     ipAddress?: string;
   },
-  fields: FieldAuditConfig[]
+  fields: FieldAuditConfig[],
+  options?: { req?: { transactionID?: number | string | Promise<number | string>; context?: Record<string, unknown> } }
 ): Promise<void> => {
   if (!args.previousDoc) return;
 
@@ -161,14 +167,18 @@ export const auditFieldChanges = async (
       const details = field.detailsFn ? field.detailsFn(oldValue, newValue) : { previousValue: oldValue, newValue };
 
       promises.push(
-        auditLog(payload, {
-          action: field.action,
-          userId: args.userId,
-          userEmail: args.userEmail,
-          performedBy: args.performedBy,
-          ipAddress: args.ipAddress,
-          details,
-        })
+        auditLog(
+          payload,
+          {
+            action: field.action,
+            userId: args.userId,
+            userEmail: args.userEmail,
+            performedBy: args.performedBy,
+            ipAddress: args.ipAddress,
+            details,
+          },
+          options
+        )
       );
     }
   }

@@ -1,4 +1,4 @@
-# ADR 0028: Container Image Strategy
+# ADR 0036: Container Image Strategy
 
 ## Status
 

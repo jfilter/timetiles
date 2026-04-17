@@ -57,6 +57,27 @@ interface RouteConfig<TBody = undefined, TQuery = undefined, TParams = undefined
 }
 
 /**
+ * Narrow check: is this error a genuine Payload auth rejection (as opposed to an
+ * infrastructure error like a DB timeout)? Payload's auth errors extend APIError
+ * with status 401 (AuthenticationError, UnauthorizedError, LockedAuth) or 403
+ * (Forbidden). We also accept the string name match as a belt-and-suspenders fallback.
+ */
+const isAuthRejection = (error: unknown): boolean => {
+  if (error == null || typeof error !== "object") return false;
+  const e = error as { status?: unknown; name?: unknown };
+  if (typeof e.status === "number" && (e.status === 401 || e.status === 403)) return true;
+  if (typeof e.name === "string") {
+    return (
+      e.name === "AuthenticationError" ||
+      e.name === "UnauthorizedError" ||
+      e.name === "Forbidden" ||
+      e.name === "LockedAuth"
+    );
+  }
+  return false;
+};
+
+/**
  * Create a Next.js API route handler with built-in auth, validation, and error handling.
  *
  * @example
@@ -96,7 +117,17 @@ export const apiRoute = <
           const { user } = await payload.auth({ headers: req.headers });
           authReq.user = user as User;
         } catch (error) {
-          logger.debug("Auth check failed", { error });
+          // Only swallow genuine auth rejections on optional routes. For "required"/"admin"
+          // routes, always rethrow so infrastructure failures (DB timeouts, network errors)
+          // surface as 500s instead of masquerading as "unauthenticated". An auth rejection
+          // from Payload is an APIError subclass with status 401 or 403 (missing/invalid
+          // session, locked account, etc.).
+          if (authMode === "optional" && isAuthRejection(error)) {
+            logger.debug("Optional auth: proceeding as anonymous", { error });
+          } else {
+            logger.error("Auth check failed with unexpected error", { error, authMode });
+            throw error;
+          }
         }
 
         if ((authMode === "required" || authMode === "admin") && !authReq.user) {

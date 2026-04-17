@@ -433,25 +433,36 @@ const IngestFiles: CollectionConfig = {
           return doc;
         }
 
-        // Queue the manual-ingest workflow to process the file through the full pipeline
+        // Queue the manual-ingest workflow to process the file through the full pipeline.
+        //
+        // Ordering (status-first, queue-second, reconcile-third):
+        // 1. Flip status to "parsing" before queueing. If this update fails we
+        //    bail out without ever queueing a job, so we cannot leak a running
+        //    workflow whose owning file is still "pending".
+        // 2. Queue the job. If this throws, mark the file "failed" and exit.
+        //    Nothing to reconcile — the job never left our process.
+        // 3. Reconcile the real jobId onto the file. This update is best-effort:
+        //    if it fails, the workflow still runs (operators can find the file
+        //    via workflow.input.ingestFileId), but the sidebar jobId column is
+        //    left blank. We accept that trade-off to avoid cancelling running
+        //    work on a transient DB hiccup.
+        try {
+          await payload.update({
+            collection: COLLECTION_NAMES.INGEST_FILES,
+            id: String(doc.id),
+            req, // Pass req to stay in same transaction
+            data: { status: "parsing", uploadedAt: new Date().toISOString() },
+            context: { ...req.context, skipIngestFileHooks: true },
+          });
+        } catch (error) {
+          logger.error("Failed to mark import-file as parsing; skipping queue", error);
+          return doc;
+        }
+
+        let queuedJobId: string | undefined;
         try {
           const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) } });
-
-          // Update with job ID
-          try {
-            await payload.update({
-              collection: COLLECTION_NAMES.INGEST_FILES,
-              id: String(doc.id),
-              req, // Pass req to stay in same transaction
-              data: { status: "parsing", jobId: String(job.id), uploadedAt: new Date().toISOString() },
-              context: {
-                ...req.context,
-                skipIngestFileHooks: true, // Prevent infinite loops
-              },
-            });
-          } catch (error) {
-            logger.error("Failed to update import-files record with job ID", error);
-          }
+          queuedJobId = String(job.id);
         } catch (error) {
           logger.error("Failed to queue manual-ingest workflow", error);
           try {
@@ -468,6 +479,24 @@ const IngestFiles: CollectionConfig = {
           } catch (updateError) {
             logger.error("Failed to update import-file status after queue failure", updateError);
           }
+          return doc;
+        }
+
+        // Reconcile jobId — workflow is already running at this point.
+        try {
+          await payload.update({
+            collection: COLLECTION_NAMES.INGEST_FILES,
+            id: String(doc.id),
+            req,
+            data: { jobId: queuedJobId },
+            context: { ...req.context, skipIngestFileHooks: true },
+          });
+        } catch (error) {
+          logger.error("Failed to reconcile jobId on import-files record; workflow still running", {
+            ingestFileId: String(doc.id),
+            jobId: queuedJobId,
+            error,
+          });
         }
 
         return doc;

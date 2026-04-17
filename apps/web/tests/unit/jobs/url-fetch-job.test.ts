@@ -469,16 +469,19 @@ describe.sequential("urlFetchJob", () => {
         })
       ).rejects.toThrow("HTTP 500");
 
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "scheduled-ingests",
-        id: "scheduled-123",
-        data: expect.objectContaining({
-          lastStatus: "failed",
-          lastError: "HTTP 500",
-          currentRetries: 1,
-          statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, averageDuration: expect.any(Number) }),
-        }),
-      });
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "scheduled-ingests",
+          id: "scheduled-123",
+          data: expect.objectContaining({
+            lastStatus: "failed",
+            lastError: "HTTP 500",
+            currentRetries: 1,
+            statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, averageDuration: expect.any(Number) }),
+          }),
+          req: expect.any(Object),
+        })
+      );
     });
   });
 

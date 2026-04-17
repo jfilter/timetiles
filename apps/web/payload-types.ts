@@ -1366,7 +1366,7 @@ export interface IngestJob {
       }[]
     | null;
   /**
-   * Detailed error information and recovery attempts
+   * Detailed error information for failed jobs
    */
   errorLog?:
     | {
@@ -1376,32 +1376,6 @@ export interface IngestJob {
     | string
     | number
     | boolean
-    | null;
-  /**
-   * Number of retry attempts made
-   */
-  retryAttempts?: number | null;
-  /**
-   * Timestamp of last retry attempt
-   */
-  lastRetryAt?: string | null;
-  /**
-   * Scheduled time for next retry attempt
-   */
-  nextRetryAt?: string | null;
-  /**
-   * Last stage completed successfully before failure
-   */
-  lastSuccessfulStage?:
-    | (
-        | 'analyze-duplicates'
-        | 'detect-schema'
-        | 'validate-schema'
-        | 'needs-review'
-        | 'create-schema-version'
-        | 'geocode-batch'
-        | 'create-events'
-      )
     | null;
   displayTitle?: string | null;
   updatedAt: string;
@@ -4667,10 +4641,6 @@ export interface IngestJobsSelect<T extends boolean = true> {
         id?: T;
       };
   errorLog?: T;
-  retryAttempts?: T;
-  lastRetryAt?: T;
-  nextRetryAt?: T;
-  lastSuccessfulStage?: T;
   displayTitle?: T;
   updatedAt?: T;
   createdAt?: T;

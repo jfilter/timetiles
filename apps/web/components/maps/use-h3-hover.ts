@@ -10,8 +10,10 @@
 "use client";
 
 import type { MapMouseEvent } from "maplibre-gl";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
+
+import { useH3HoverChildrenQuery } from "@/lib/hooks/use-events-queries";
 
 import {
   buildHoverFetchParams,
@@ -27,11 +29,49 @@ interface UseH3HoverProps {
   isMapPositioned: boolean;
 }
 
+interface HoverTarget {
+  clusterId: string;
+  parentCells: string[];
+  boundsKey: string;
+}
+
+const boundsToKey = (
+  bounds: { getNorth: () => number; getSouth: () => number; getEast: () => number; getWest: () => number } | null
+): string => {
+  if (!bounds) return "none";
+  // Round to 4 decimals to avoid thrashing the cache on tiny pan deltas.
+  const round = (n: number) => Math.round(n * 10000) / 10000;
+  return `${round(bounds.getNorth())},${round(bounds.getSouth())},${round(bounds.getEast())},${round(bounds.getWest())}`;
+};
+
 export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: UseH3HoverProps) => {
-  const [hoverHexData, setHoverHexData] = useState<GeoJSON.FeatureCollection>(EMPTY_FEATURE_COLLECTION);
-  const hoveredClusterIdRef = useRef<string | null>(null);
-  const hoverCacheRef = useRef<Record<string, GeoJSON.Feature[]>>({});
-  const hoverAbortRef = useRef<AbortController | null>(null);
+  const [hoverTarget, setHoverTarget] = useState<HoverTarget | null>(null);
+  const roundedZoom = Math.round(currentZoom);
+
+  // Build URL params lazily when the query runs — captures the latest bounds/zoom
+  // at fetch time, matching the prior behavior.
+  const buildParams = useCallback(() => {
+    const mapInstance = mapRef.current?.getMap();
+    const bounds = mapInstance ? mapInstance.getBounds() : null;
+    const cells = hoverTarget?.parentCells ?? [];
+    return buildHoverFetchParams(cells, currentZoom, bounds);
+  }, [mapRef, currentZoom, hoverTarget]);
+
+  const { data: childFeatures } = useH3HoverChildrenQuery(
+    hoverTarget?.clusterId ?? null,
+    hoverTarget?.parentCells ?? [],
+    roundedZoom,
+    hoverTarget?.boundsKey ?? "",
+    buildParams,
+    algorithm === "h3"
+  );
+
+  // Derive hex polygon GeoJSON from the query result. Falls back to empty
+  // collection when no cluster is hovered or data hasn't loaded yet.
+  const hoverHexData = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (!hoverTarget || !childFeatures) return EMPTY_FEATURE_COLLECTION;
+    return { type: "FeatureCollection", features: childFeaturesToHexPolygons(childFeatures) };
+  }, [hoverTarget, childFeatures]);
 
   const handleH3Hover = useCallback(
     (e: { features?: Array<{ id?: string | number; properties?: Record<string, unknown> }> }) => {
@@ -42,61 +82,28 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
 
       // Only show children for clusters, not individual event points
       if (feature.properties?.type !== "event-cluster") {
-        if (hoveredClusterIdRef.current) {
-          hoveredClusterIdRef.current = null;
-          setHoverHexData(EMPTY_FEATURE_COLLECTION);
-        }
+        setHoverTarget((prev) => (prev === null ? prev : null));
         return;
       }
 
-      // Skip if same cluster as last hover
       const clusterId = String((feature.properties?.clusterId ?? feature.id ?? "") as string | number);
-      if (clusterId === hoveredClusterIdRef.current) return;
-      hoveredClusterIdRef.current = clusterId;
-
-      // Cancel any in-flight hover fetch
-      hoverAbortRef.current?.abort();
-
-      // Check cache first
-      const cached = hoverCacheRef.current[clusterId];
-      if (cached) {
-        setHoverHexData({ type: "FeatureCollection", features: cached });
-        return;
-      }
-
-      // Clear previous hover while loading
-      setHoverHexData(EMPTY_FEATURE_COLLECTION);
+      // Skip if same cluster as last hover
+      if (clusterId === hoverTarget?.clusterId) return;
 
       // Resolve parent cells for the API call
       const parentCells = resolveParentCells(feature.properties?.sourceCells, clusterId);
       if (parentCells.length === 0) return;
 
-      // Fetch child cells with real events from the server
-      const abort = new AbortController();
-      hoverAbortRef.current = abort;
       const mapInstance = mapRef.current?.getMap();
-      const params = buildHoverFetchParams(parentCells, currentZoom, mapInstance ? mapInstance.getBounds() : null);
+      const boundsKey = boundsToKey(mapInstance ? mapInstance.getBounds() : null);
 
-      void fetch(`/api/v1/events/geo?${params}`, { signal: abort.signal })
-        .then((r) => r.json())
-        .then((data: { features?: Array<{ id?: string | number; properties?: Record<string, unknown> }> }) => {
-          if (hoveredClusterIdRef.current !== clusterId) return undefined;
-          const hexFeatures = childFeaturesToHexPolygons(data.features ?? []);
-          hoverCacheRef.current[clusterId] = hexFeatures;
-          setHoverHexData({ type: "FeatureCollection", features: hexFeatures });
-          return undefined;
-        })
-        .catch(() => {
-          /* aborted or error, ignore */
-        });
+      setHoverTarget({ clusterId, parentCells, boundsKey });
     },
-    [algorithm, currentZoom, mapRef]
+    [algorithm, mapRef, hoverTarget]
   );
 
   const handleH3HoverLeave = useCallback(() => {
-    hoveredClusterIdRef.current = null;
-    hoverAbortRef.current?.abort();
-    setHoverHexData(EMPTY_FEATURE_COLLECTION);
+    setHoverTarget((prev) => (prev === null ? prev : null));
   }, []);
 
   // Hold latest hover handlers in refs so the mousemove listener below can
@@ -119,7 +126,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
         handleH3HoverRef.current({
           features: features as Array<{ id?: string | number; properties?: Record<string, unknown> }>,
         });
-      } else if (hoveredClusterIdRef.current) {
+      } else {
         handleH3HoverLeaveRef.current();
       }
     };

@@ -169,19 +169,23 @@ const auditAdminModification = async (
   ownerId: number
 ): Promise<void> => {
   try {
-    const owner = await req.payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0 });
-    await auditLog(req.payload, {
-      action: AUDIT_ACTIONS.SCHEDULED_INGEST_ADMIN_MODIFIED,
-      userId: ownerId,
-      userEmail: owner.email,
-      performedBy: req.user!.id,
-      details: {
-        scheduledIngestId: doc.id,
-        scheduledIngestName: doc.name,
-        enabledChanged: previousDoc?.enabled !== doc.enabled,
-        newEnabled: doc.enabled,
+    const owner = await req.payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0, req });
+    await auditLog(
+      req.payload,
+      {
+        action: AUDIT_ACTIONS.SCHEDULED_INGEST_ADMIN_MODIFIED,
+        userId: ownerId,
+        userEmail: owner.email,
+        performedBy: req.user!.id,
+        details: {
+          scheduledIngestId: doc.id,
+          scheduledIngestName: doc.name,
+          enabledChanged: previousDoc?.enabled !== doc.enabled,
+          newEnabled: doc.enabled,
+        },
       },
-    });
+      { req }
+    );
   } catch {
     /* audit is best-effort */
   }

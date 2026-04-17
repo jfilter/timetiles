@@ -3,7 +3,7 @@
  *
  * Displays login/register forms for unauthenticated users.
  * Shows verification reminder for unverified users.
- * Auto-advances when authenticated and verified.
+ * Requires explicit user action (Continue button) to proceed once authenticated.
  *
  * @module
  * @category Components
@@ -11,11 +11,10 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
-import { CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2Icon, Loader2Icon, MailIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect } from "react";
 
 import { AuthTabs } from "@/components/auth";
 import { useAuthState } from "@/lib/hooks/use-auth-queries";
@@ -31,13 +30,6 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
   const nextStep = useWizardStore((s) => s.nextStep);
   const { isAuthenticated, isEmailVerified, isLoading: isCheckingAuth } = useAuthState();
   const queryClient = useQueryClient();
-
-  // Auto-advance when authenticated and verified
-  useEffect(() => {
-    if (!isCheckingAuth && isAuthenticated && isEmailVerified) {
-      nextStep();
-    }
-  }, [isCheckingAuth, isAuthenticated, isEmailVerified, nextStep]);
 
   // Handle successful auth - invalidate the auth query to trigger re-fetch
   const handleAuthSuccess = () => {
@@ -76,14 +68,18 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
     );
   }
 
-  // Authenticated and verified (brief display before auto-advance)
+  // Authenticated and verified - require explicit Continue action
   if (isAuthenticated && isEmailVerified) {
     return (
       <div className={cn("flex flex-col items-center justify-center py-12", className)}>
         <div className="text-center">
           <CheckCircle2Icon className="text-primary mx-auto mb-4 h-16 w-16" />
           <h2 className="text-xl font-semibold">{t("signedIn")}</h2>
-          <p className="text-muted-foreground mt-2">{t("continuingToUpload")}</p>
+          <p className="text-muted-foreground mt-2">{t("readyToUpload")}</p>
+          <Button size="lg" onClick={nextStep} className="mt-6 gap-2">
+            {t("continue")}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     );

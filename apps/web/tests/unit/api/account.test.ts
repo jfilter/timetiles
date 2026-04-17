@@ -401,7 +401,9 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
   it("should return 401 when not authenticated", async () => {
     mockPayload.auth.mockResolvedValueOnce({ user: null });
 
-    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
+      password: TEST_CREDENTIALS.basic.password,
+    });
 
     const response = await cancelDeletionPOST(req, defaultParams as any);
 
@@ -410,14 +412,46 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
     expect(data.error).toBe("Authentication required");
   });
 
-  it("should return 400 when no pending deletion", async () => {
+  it("should return 422 when missing password", async () => {
     const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
+
+    const response = await cancelDeletionPOST(req, defaultParams as any);
+
+    expect(response.status).toBe(422);
+    const data = await response.json();
+    expect(data.error).toBe("Validation failed");
+  });
+
+  it("should return 400 when no pending deletion", async () => {
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
+      password: TEST_CREDENTIALS.basic.password,
+    });
 
     const response = await cancelDeletionPOST(req, defaultParams as any);
 
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error).toBe("No pending deletion to cancel");
+  });
+
+  it("should return 401 when password is wrong", async () => {
+    const pendingUser = {
+      ...mockUser,
+      deletionStatus: "pending_deletion",
+      deletionScheduledAt: new Date().toISOString(),
+    };
+    mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
+    mockPayload.login.mockRejectedValueOnce(new Error("Invalid credentials"));
+
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
+      password: TEST_CREDENTIALS.basic.password,
+    });
+
+    const response = await cancelDeletionPOST(req, defaultParams as any);
+
+    expect(response.status).toBe(401);
+    const data = await response.json();
+    expect(data.error).toBe("Password is incorrect");
   });
 
   it("should successfully cancel deletion", async () => {
@@ -428,7 +462,9 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
     };
     mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
 
-    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
+    const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
+      password: TEST_CREDENTIALS.basic.password,
+    });
 
     const response = await cancelDeletionPOST(req, defaultParams as any);
 

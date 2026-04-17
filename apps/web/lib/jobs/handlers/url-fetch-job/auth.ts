@@ -9,12 +9,16 @@
  */
 
 import { createLogger } from "@/lib/logger";
+import { safeFetch } from "@/lib/security/safe-fetch";
 import type { ScheduledIngest } from "@/payload-types";
 
 const logger = createLogger("url-fetch-auth");
 
 /**
  * Exchange OAuth credentials for an access token via Resource Owner Password Grant.
+ *
+ * Uses `safeFetch` to prevent SSRF — `tokenUrl` is user-controlled via
+ * `scheduledIngest.authConfig.oauthTokenUrl`.
  */
 const fetchOAuthToken = async (
   tokenUrl: string,
@@ -22,13 +26,15 @@ const fetchOAuthToken = async (
   username: string,
   password: string
 ): Promise<string> => {
-  const response = await fetch(tokenUrl, {
+  const response = await safeFetch(tokenUrl, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "password", client_id: clientId, username, password }),
   });
 
   if (!response.ok) {
+    // Only read the body on 4xx/5xx — safeFetch already validated the URL and
+    // all redirects, so any response we see here came from an approved host.
     const body = await response.text().catch(() => "");
     throw new Error(`OAuth token request failed (${response.status}): ${body.slice(0, 200)}`);
   }

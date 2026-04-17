@@ -11,11 +11,22 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
+import { NotFoundError } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
+
+// Allowlist of collection slugs that support preview. Using a literal enum prevents
+// open-redirect attacks (e.g. `collection=//evil.com` producing protocol-relative URLs).
+const PREVIEWABLE_COLLECTIONS = ["events", "pages"] as const;
 
 export const GET = apiRoute({
   auth: "required",
-  query: z.object({ slug: z.string(), collection: z.string() }),
+  query: z.object({
+    slug: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9_-]*$/i)
+      .max(200),
+    collection: z.enum(PREVIEWABLE_COLLECTIONS),
+  }),
   handler: async ({ user, query }) => {
     const { slug, collection } = query;
 
@@ -24,16 +35,13 @@ export const GET = apiRoute({
     draft.enable();
 
     // Redirect to the appropriate page
-    const redirectPath = (() => {
-      switch (collection) {
-        case "events":
-          return `/events/${slug}`;
-        case "pages":
-          return `/${slug}`;
-        default:
-          return `/${collection}/${slug}`;
-      }
-    })();
+    const redirectPath = collection === "events" ? `/events/${slug}` : `/${slug}`;
+
+    // Belt-and-suspenders guard: even though Zod restricts inputs above, reject any
+    // path that is not a plain local path. Blocks `//host`, `/\host`, and schemes.
+    if (!redirectPath.startsWith("/") || redirectPath.startsWith("//") || redirectPath.startsWith("/\\")) {
+      throw new NotFoundError("Invalid preview target");
+    }
 
     logger.info({ collection, slug, userId: user.id }, "Preview mode enabled");
 

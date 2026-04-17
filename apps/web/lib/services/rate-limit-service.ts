@@ -72,6 +72,8 @@
  * @category Services
  * @module
  */
+import { BlockList, isIP } from "node:net";
+
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
@@ -455,6 +457,153 @@ export const resetRateLimitService = (): void => {
   }
 };
 
+// ───────────────────────────────────────────────────────────────────────────
+// Client identification with trusted-proxy support
+// ───────────────────────────────────────────────────────────────────────────
+//
+// SECURITY: `X-Forwarded-For` / `X-Real-IP` / `CF-Connecting-IP` are attacker-
+// controlled when the app is reached directly (no proxy in front). If we trust
+// them unconditionally, a client can spoof their IP and defeat per-IP rate
+// limits.
+//
+// Trust contract: the env var `TRUSTED_PROXY_CIDRS` is a comma-separated CIDR
+// allowlist of *upstream hops* the operator controls (reverse proxies, load
+// balancers, CDN egress). When set, we walk `X-Forwarded-For` right-to-left
+// skipping IPs inside those ranges and return the first untrusted one — that
+// is the client as observed by the outermost trusted proxy.
+//
+// Next.js App Router does not expose the raw socket peer on `NextRequest`, so
+// we cannot cross-check that the immediate TCP peer is trusted. The CIDR
+// allowlist is therefore an allowlist of *forwarded-chain segments* rather
+// than of socket peers. This is the simpler of the two modes described in
+// the fix proposal and is safe as long as the operator terminates all traffic
+// through one of the listed CIDRs.
+//
+// When the env var is empty (default), no chain walking happens: we fall back
+// to the first entry of `X-Forwarded-For` (or X-Real-IP / CF-Connecting-IP)
+// and emit a single warning per process. Operators in front of a proxy must
+// set `TRUSTED_PROXY_CIDRS`; operators with no proxy should also set it to
+// something harmless (e.g. `127.0.0.1/32`) to suppress the warning and the
+// chain walk.
+
+interface ParsedCidr {
+  address: string;
+  prefix: number;
+  family: "ipv4" | "ipv6";
+}
+
+const parseCidr = (entry: string): ParsedCidr | null => {
+  const trimmed = entry.trim();
+  if (trimmed === "") return null;
+  const [rawAddr, rawPrefix] = trimmed.split("/");
+  if (rawAddr == null || rawAddr === "") return null;
+  const family = isIP(rawAddr);
+  if (family === 0) return null;
+  const maxPrefix = family === 4 ? 32 : 128;
+  const prefix = rawPrefix == null || rawPrefix === "" ? maxPrefix : Number(rawPrefix);
+  if (!Number.isInteger(prefix) || prefix < 0 || prefix > maxPrefix) return null;
+  return { address: rawAddr, prefix, family: family === 4 ? "ipv4" : "ipv6" };
+};
+
+let trustedBlockList: BlockList | null = null;
+let trustedCidrSource: string | null = null;
+let emittedNoTrustWarning = false;
+
+/**
+ * Build (and cache) a `net.BlockList` from `TRUSTED_PROXY_CIDRS`. Returns
+ * `null` when the env var is empty or every entry is invalid.
+ */
+const getTrustedProxyBlockList = (): BlockList | null => {
+  const raw = getEnv().TRUSTED_PROXY_CIDRS;
+  if (raw === trustedCidrSource) return trustedBlockList;
+  trustedCidrSource = raw;
+
+  if (raw.trim() === "") {
+    trustedBlockList = null;
+    return null;
+  }
+
+  const list = new BlockList();
+  let added = 0;
+  for (const entry of raw.split(",")) {
+    const parsed = parseCidr(entry);
+    if (parsed == null) {
+      logger.warn({ entry }, "Ignoring invalid TRUSTED_PROXY_CIDRS entry");
+      continue;
+    }
+    try {
+      list.addSubnet(parsed.address, parsed.prefix, parsed.family);
+      added++;
+    } catch (error) {
+      logger.warn({ entry, error }, "Failed to add TRUSTED_PROXY_CIDRS entry");
+    }
+  }
+
+  trustedBlockList = added > 0 ? list : null;
+  return trustedBlockList;
+};
+
+/**
+ * Whether `remoteAddr` falls inside the configured trusted-proxy CIDR list.
+ * Exported for reuse by any caller that needs the same trust decision.
+ */
+export const isTrustedProxy = (remoteAddr: string): boolean => {
+  const blockList = getTrustedProxyBlockList();
+  if (blockList == null) return false;
+  const family = isIP(remoteAddr);
+  if (family === 0) return false;
+  return blockList.check(remoteAddr, family === 4 ? "ipv4" : "ipv6");
+};
+
+/**
+ * Reset cached proxy-trust state so tests that swap `TRUSTED_PROXY_CIDRS` see
+ * the new value on the next call. Not exported from the module index.
+ */
+export const resetTrustedProxyState = (): void => {
+  trustedBlockList = null;
+  trustedCidrSource = null;
+  emittedNoTrustWarning = false;
+};
+
+/**
+ * Pick the client IP from an `X-Forwarded-For` chain, honoring the configured
+ * trusted-proxy allowlist.
+ */
+const pickClientFromForwardedChain = (forwarded: string): string | null => {
+  const hops = forwarded
+    .split(",")
+    .map((h) => h.trim())
+    .filter((h) => h !== "");
+  if (hops.length === 0) return null;
+
+  const blockList = getTrustedProxyBlockList();
+  if (blockList == null) {
+    // No trust configured — fall back to legacy behavior and warn once.
+    if (!emittedNoTrustWarning) {
+      emittedNoTrustWarning = true;
+      logger.warn(
+        { header: "x-forwarded-for" },
+        "TRUSTED_PROXY_CIDRS is not configured; falling back to first X-Forwarded-For entry. This header is client-controlled when no proxy is in front — set TRUSTED_PROXY_CIDRS to lock down rate-limit identification."
+      );
+    }
+    return hops[0] ?? null;
+  }
+
+  // Walk right-to-left, skipping trusted proxy hops. The first non-trusted
+  // address we see is the client (from the outermost trusted proxy's POV).
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = hops[i] ?? "";
+    if (isIP(hop) === 0) continue;
+    if (!isTrustedProxy(hop)) {
+      return hop;
+    }
+  }
+
+  // Entire chain is inside our trust boundary — the leftmost hop is the best
+  // we have.
+  return hops[0] ?? null;
+};
+
 // Helper function to get client identifier
 export const getClientIdentifier = (request: Request): string => {
   // Try to get IP from various headers
@@ -463,9 +612,15 @@ export const getClientIdentifier = (request: Request): string => {
   const cfConnectingIp = request.headers.get("cf-connecting-ip");
 
   if (forwarded != null && forwarded !== "") {
-    return forwarded.split(",")[0]?.trim() ?? "unknown";
+    const picked = pickClientFromForwardedChain(forwarded);
+    if (picked != null && picked !== "") return picked;
   }
 
+  // X-Real-IP / CF-Connecting-IP are single-valued, so there's no chain to
+  // walk — they're only meaningful when a trusted proxy sets them. We still
+  // honour them when no XFF chain is present because the legacy behaviour did
+  // and removing it silently would regress existing deployments; operators
+  // who don't trust these headers should strip them at their edge.
   if (realIp != null && realIp !== "") {
     return realIp;
   }

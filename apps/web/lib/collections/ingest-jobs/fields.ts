@@ -326,48 +326,12 @@ export const ingestJobFields: Field[] = [
     ],
   },
 
-  // Error Recovery Fields
+  // Error log — populated when stage transitions to FAILED (see resource-loading.failIngestJob)
   {
     name: "errorLog",
     type: "json",
     admin: {
-      description: "Detailed error information and recovery attempts",
-      condition: (data) => data.stage === PROCESSING_STAGE.FAILED || data.retryAttempts > 0,
-    },
-  },
-  { name: "retryAttempts", type: "number", defaultValue: 0, admin: { description: "Number of retry attempts made" } },
-  {
-    name: "lastRetryAt",
-    type: "date",
-    admin: {
-      date: { pickerAppearance: "dayAndTime" },
-      description: "Timestamp of last retry attempt",
-      condition: (data) => data.retryAttempts > 0,
-    },
-  },
-  {
-    name: "nextRetryAt",
-    type: "date",
-    admin: {
-      date: { pickerAppearance: "dayAndTime" },
-      description: "Scheduled time for next retry attempt",
-      condition: (data) => data.stage === PROCESSING_STAGE.FAILED && data.retryAttempts > 0,
-    },
-  },
-  {
-    name: "lastSuccessfulStage",
-    type: "select",
-    options: [
-      { label: "Analyze Duplicates", value: PROCESSING_STAGE.ANALYZE_DUPLICATES },
-      { label: "Detect Schema", value: PROCESSING_STAGE.DETECT_SCHEMA },
-      { label: "Validate Schema", value: PROCESSING_STAGE.VALIDATE_SCHEMA },
-      { label: "Needs Review", value: PROCESSING_STAGE.NEEDS_REVIEW },
-      { label: "Create Schema Version", value: PROCESSING_STAGE.CREATE_SCHEMA_VERSION },
-      { label: "Geocode Batch", value: PROCESSING_STAGE.GEOCODE_BATCH },
-      { label: "Create Events", value: PROCESSING_STAGE.CREATE_EVENTS },
-    ],
-    admin: {
-      description: "Last stage completed successfully before failure",
+      description: "Detailed error information for failed jobs",
       condition: (data) => data.stage === PROCESSING_STAGE.FAILED,
     },
   },

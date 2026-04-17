@@ -13,6 +13,7 @@
 
 import { forceCollide, forceSimulation, forceX, forceY } from "d3-force";
 import type { EChartsOption } from "echarts";
+import { useCallback, useMemo } from "react";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { BaseChart } from "./base-chart";
@@ -351,102 +352,131 @@ export const BeeswarmChart = ({
   const isDark = theme?.axisLineColor === defaultDarkTheme.axisLineColor;
   const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
 
-  const totalPoints = series.reduce((sum, s) => sum + s.data.length, 0);
+  const totalPoints = useMemo(() => series.reduce((sum, s) => sum + s.data.length, 0), [series]);
   const dotSize = dotSizeOverride ?? computeDotSize(totalPoints);
   const isRowLayout = layout === "rows" && series.length > 1;
 
-  // Compute beeswarm layout — merged or per-row
-  const { yPositions, yAxisConfig } = isRowLayout
-    ? computeRowLayoutConfig(series, dotSize, maxClusterCount, effectiveTheme, clusterMinSize, clusterMaxSize)
-    : computeMergedLayoutConfig(series, dotSize, maxClusterCount, clusterMinSize, clusterMaxSize);
+  // Compute beeswarm layout — merged or per-row.
+  // `series` is an object dep, but it drives both d3-force input nodes and
+  // the row/axis config (names, counts), so it must be in the dep array.
+  // `effectiveTheme` is only read by `computeRowLayoutConfig`; guarded below.
+  const { yPositions, yAxisConfig } = useMemo(
+    () =>
+      isRowLayout
+        ? computeRowLayoutConfig(series, dotSize, maxClusterCount, effectiveTheme, clusterMinSize, clusterMaxSize)
+        : computeMergedLayoutConfig(series, dotSize, maxClusterCount, clusterMinSize, clusterMaxSize),
+    [isRowLayout, series, dotSize, maxClusterCount, effectiveTheme, clusterMinSize, clusterMaxSize]
+  );
 
-  const { xMin, xMax } = computeXBounds(series);
+  const { xMin, xMax } = useMemo(() => computeXBounds(series), [series]);
   const showLegend = !isRowLayout && series.length > 1;
 
-  // Rebuild series data with layout Y positions
-  let flatIdx = 0;
-  const layoutSeries = series.map((s) => {
-    const data: Array<unknown[]> = [];
-    for (const item of s.data) {
-      data.push([item.x, yPositions[flatIdx] ?? 0, item.id, item]);
-      flatIdx++;
-    }
-    return { ...s, layoutData: data };
-  });
+  // Rebuild series data with layout Y positions.
+  // Depends on `series` (object) because we iterate all items + `yPositions`
+  // which already changes whenever series changes.
+  const layoutSeries = useMemo(() => {
+    let flatIdx = 0;
+    return series.map((s) => {
+      const data: Array<unknown[]> = [];
+      for (const item of s.data) {
+        data.push([item.x, yPositions[flatIdx] ?? 0, item.id, item]);
+        flatIdx++;
+      }
+      return { ...s, layoutData: data };
+    });
+  }, [series, yPositions]);
 
-  const chartOption: EChartsOption = {
-    backgroundColor: "transparent",
-    textStyle: { color: effectiveTheme.textColor },
-    grid: isRowLayout
-      ? { left: "15%", right: 10, bottom: 25, top: 10, containLabel: false }
-      : { left: 10, right: 10, bottom: 25, top: showLegend ? 30 : 10, containLabel: false },
-    xAxis: {
-      type: "time",
-      min: xMin,
-      max: xMax,
-      axisLabel: { color: effectiveTheme.textColor, fontSize: 11 },
-      axisLine: { show: !isRowLayout, lineStyle: { color: effectiveTheme.axisLineColor } },
-      splitLine: { show: false },
-    },
-    yAxis: yAxisConfig,
-    tooltip: {
-      trigger: "item",
-      backgroundColor: effectiveTheme.tooltipBackground,
-      borderColor: effectiveTheme.axisLineColor,
-      textStyle: { color: effectiveTheme.tooltipForeground },
-      formatter: (params: unknown) => {
-        const p = params as { data?: unknown; seriesName?: string };
-        if (!p.data || !Array.isArray(p.data) || p.data.length < 4) return "";
-        const [, , , item] = p.data as [number, number, number, BeeswarmDataItem];
-        const date = new Date(item.x);
-        const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-        if (item.count) {
-          const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${p.seriesName}</div>` : "";
-          return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div>${datasetLine}</div>`;
-        }
-        return `
+  const chartOption = useMemo<EChartsOption>(
+    () => ({
+      backgroundColor: "transparent",
+      textStyle: { color: effectiveTheme.textColor },
+      grid: isRowLayout
+        ? { left: "15%", right: 10, bottom: 25, top: 10, containLabel: false }
+        : { left: 10, right: 10, bottom: 25, top: showLegend ? 30 : 10, containLabel: false },
+      xAxis: {
+        type: "time",
+        min: xMin,
+        max: xMax,
+        axisLabel: { color: effectiveTheme.textColor, fontSize: 11 },
+        axisLine: { show: !isRowLayout, lineStyle: { color: effectiveTheme.axisLineColor } },
+        splitLine: { show: false },
+      },
+      yAxis: yAxisConfig,
+      tooltip: {
+        trigger: "item",
+        backgroundColor: effectiveTheme.tooltipBackground,
+        borderColor: effectiveTheme.axisLineColor,
+        textStyle: { color: effectiveTheme.tooltipForeground },
+        formatter: (params: unknown) => {
+          const p = params as { data?: unknown; seriesName?: string };
+          if (!p.data || !Array.isArray(p.data) || p.data.length < 4) return "";
+          const [, , , item] = p.data as [number, number, number, BeeswarmDataItem];
+          const date = new Date(item.x);
+          const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+          if (item.count) {
+            const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${p.seriesName}</div>` : "";
+            return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div>${datasetLine}</div>`;
+          }
+          return `
           <div style="padding: 4px 8px; max-width: 250px;">
             <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.label ?? dateStr}</div>
             <div>${dateStr}</div>
             ${(item.dataset ?? p.seriesName) ? `<div style="opacity: 0.7;">${item.dataset ?? p.seriesName}</div>` : ""}
           </div>
         `;
-      },
-    },
-    legend: showLegend
-      ? { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } }
-      : { show: false },
-    series: layoutSeries.map((s) => {
-      const hasClusterData = s.data.some((item) => item.count != null && item.count > 0);
-      return {
-        type: "scatter" as const,
-        name: s.name,
-        symbolSize: hasClusterData
-          ? (value: number[]) => {
-              const item = value[3] as unknown as BeeswarmDataItem;
-              if (!item?.count) return dotSize;
-              return computeClusterSize(item.count, maxClusterCount, clusterMinSize, clusterMaxSize);
-            }
-          : dotSize,
-        itemStyle: { color: s.color, opacity: hasClusterData ? 0.5 : 0.8 },
-        emphasis: {
-          itemStyle: { color: effectiveTheme.emphasisColor, opacity: 1, borderWidth: 2, borderColor: "#fff" },
         },
-        data: s.layoutData as unknown as number[][],
-      };
+      },
+      legend: showLegend
+        ? { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } }
+        : { show: false },
+      series: layoutSeries.map((s) => {
+        const hasClusterData = s.data.some((item) => item.count != null && item.count > 0);
+        return {
+          type: "scatter" as const,
+          name: s.name,
+          symbolSize: hasClusterData
+            ? (value: number[]) => {
+                const item = value[3] as unknown as BeeswarmDataItem;
+                if (!item?.count) return dotSize;
+                return computeClusterSize(item.count, maxClusterCount, clusterMinSize, clusterMaxSize);
+              }
+            : dotSize,
+          itemStyle: { color: s.color, opacity: hasClusterData ? 0.5 : 0.8 },
+          emphasis: {
+            itemStyle: { color: effectiveTheme.emphasisColor, opacity: 1, borderWidth: 2, borderColor: "#fff" },
+          },
+          data: s.layoutData as unknown as number[][],
+        };
+      }),
+      animation: true,
+      animationDuration: 300,
     }),
-    animation: true,
-    animationDuration: 300,
-  };
+    [
+      effectiveTheme,
+      isRowLayout,
+      showLegend,
+      xMin,
+      xMax,
+      yAxisConfig,
+      layoutSeries,
+      dotSize,
+      maxClusterCount,
+      clusterMinSize,
+      clusterMaxSize,
+    ]
+  );
 
-  const handleClick = (params: EChartsEventParams) => {
-    if (!onPointClick || !params.data || !Array.isArray(params.data) || params.data.length < 3) return;
-    const eventId = params.data[2] as number;
-    // Only fire for individual events (positive IDs), not clusters
-    if (typeof eventId === "number" && eventId > 0) onPointClick(eventId);
-  };
+  const handleClick = useCallback(
+    (params: EChartsEventParams) => {
+      if (!onPointClick || !params.data || !Array.isArray(params.data) || params.data.length < 3) return;
+      const eventId = params.data[2] as number;
+      // Only fire for individual events (positive IDs), not clusters
+      if (typeof eventId === "number" && eventId > 0) onPointClick(eventId);
+    },
+    [onPointClick]
+  );
 
-  const chartEvents = { click: handleClick };
+  const chartEvents = useMemo(() => ({ click: handleClick }), [handleClick]);
 
   if (isError && !isInitialLoad) {
     return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;

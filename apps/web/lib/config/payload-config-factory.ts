@@ -235,8 +235,8 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // Configure email adapter
   if (environment === "test") {
     config.email = nodemailerAdapter({
-      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.io",
-      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
       // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
       transport: nodemailer.createTransport({ jsonTransport: true }),
       skipVerify: true,
@@ -244,8 +244,8 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   } else if (env.EMAIL_SMTP_HOST) {
     // Production: Use SMTP transport
     config.email = nodemailerAdapter({
-      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.io",
-      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
       transportOptions: {
         host: env.EMAIL_SMTP_HOST,
         port: env.EMAIL_SMTP_PORT,
@@ -256,8 +256,8 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     // Development: Use ethereal.email with cached credentials
     const ethereal = await getEtherealCredentials();
     config.email = nodemailerAdapter({
-      defaultFromAddress: process.env.EMAIL_FROM_ADDRESS ?? "noreply@timetiles.io",
-      defaultFromName: process.env.EMAIL_FROM_NAME ?? "TimeTiles",
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
       transportOptions: { host: "smtp.ethereal.email", port: 587, auth: { user: ethereal.user, pass: ethereal.pass } },
     });
   }

@@ -214,7 +214,12 @@ const prepareCacheOptions = (
   respectCacheControl: scheduledIngest?.advancedOptions?.respectCacheControl !== false,
 });
 
-// Helper to compute fetch timeout respecting test environment
+// Helper to compute fetch timeout respecting test environment.
+//
+// URL_FETCH_TEST_TIMEOUT_MS is read directly from process.env (NOT via getEnv)
+// because tests mutate it per-assertion and getEnv() is memoized. See the
+// comment in lib/config/env.ts for why this one variable is an exception to
+// the "all env goes through getEnv()" rule.
 const computeTimeout = (scheduledIngest: ScheduledIngest | null): number => {
   const timeoutMinutes = scheduledIngest?.advancedOptions?.timeoutMinutes ?? 30;
   const isTestEnv = getEnv().NODE_ENV === "test";
@@ -384,7 +389,16 @@ export const urlFetchJob = {
       });
 
       if (scheduledIngest) {
-        await updateScheduledIngestFailure(payload, scheduledIngest, errorObj);
+        // JobHandlerContext.req is narrowly typed as { payload, user }, but it
+        // is in fact a PayloadRequest — carrying transactionID and context that
+        // the audit/update paths need. Cast through unknown to let Payload pick
+        // up the transaction if one is active.
+        await updateScheduledIngestFailure(
+          payload,
+          scheduledIngest,
+          errorObj,
+          context.req as unknown as { transactionID?: number | string; context?: Record<string, unknown> }
+        );
       }
 
       // Throw — Payload marks workflow as failed

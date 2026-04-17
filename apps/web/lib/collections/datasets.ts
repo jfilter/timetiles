@@ -15,7 +15,12 @@
 import type { CollectionConfig } from "payload";
 
 import { create, deleteAccess, read, readVersions, update } from "./datasets/access";
-import { syncIsPublicToEvents, validateDatasetNameUniqueness, validatePublicCatalogDataset } from "./datasets/hooks";
+import {
+  handleDatasetUniqueConstraintError,
+  syncIsPublicToEvents,
+  validateDatasetNameUniqueness,
+  validatePublicCatalogDataset,
+} from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
 import {
   basicMetadataFields,
@@ -35,6 +40,10 @@ const Datasets: CollectionConfig = {
   hooks: {
     beforeChange: [validateDatasetNameUniqueness, validatePublicCatalogDataset],
     afterChange: [syncIsPublicToEvents],
+    // Translates the DB-level unique violation (from the catalog+name index)
+    // into the same user-friendly message thrown by validateDatasetNameUniqueness
+    // when a TOCTOU race slips past the optimistic find-first check.
+    afterError: [handleDatasetUniqueConstraintError],
   },
   fields: [
     ...basicMetadataFields,

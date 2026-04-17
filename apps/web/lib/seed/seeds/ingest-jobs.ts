@@ -103,7 +103,6 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
         { row: 78, error: "Duplicate external ID: 'EVT-2026-0042' already exists in dataset" },
         { row: 103, error: "Invalid coordinate: latitude 95.234 is out of range [-90, 90]" },
       ],
-      retryAttempts: 2,
     },
     {
       ingestFile: "transit-routes-update.csv",

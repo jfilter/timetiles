@@ -4,7 +4,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0030](0030-import-workflow-migration.md) (orchestration replaced with Payload Workflows; stage model, schema-validation semantics, duplicate detection, and error classification from this ADR remain).
 
 ## Context
 

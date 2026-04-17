@@ -10,7 +10,13 @@
  * @module
  * @category Collections
  */
-import type { CollectionAfterChangeHook, CollectionBeforeChangeHook, PayloadRequest, Where } from "payload";
+import type {
+  CollectionAfterChangeHook,
+  CollectionAfterErrorHook,
+  CollectionBeforeChangeHook,
+  PayloadRequest,
+  Where,
+} from "payload";
 
 import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
@@ -133,9 +139,21 @@ export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
   return data;
 };
 
+const DATASET_NAME_CONFLICT_MESSAGE = "A dataset with this name already exists in this catalog.";
+/** Name of the unique index enforcing (catalog_id, name) uniqueness on datasets.
+ *  Kept in sync with migrations/20260417_100000_datasets_catalog_name_unique.ts. */
+const DATASET_CATALOG_NAME_UNIQUE_INDEX = "datasets_catalog_name_unique";
+
 /**
  * Validates that dataset names are unique within a catalog.
- * Prevents two datasets in the same catalog from having the same name.
+ *
+ * This hook does an optimistic find-first check for clean UX (most conflicts
+ * are caught here before the INSERT is attempted). The authoritative guarantee
+ * is the DB-level unique index on `(catalog_id, name)` — see
+ * `migrations/20260417_100000_datasets_catalog_name_unique.ts`. That index
+ * closes the TOCTOU race where two concurrent writers both pass the find
+ * check; the `handleDatasetUniqueConstraintError` afterError hook translates
+ * the resulting PG 23505 error into the same user-friendly message.
  */
 export const validateDatasetNameUniqueness: CollectionBeforeChangeHook = async ({
   data,
@@ -168,10 +186,35 @@ export const validateDatasetNameUniqueness: CollectionBeforeChangeHook = async (
   });
 
   if (existing.docs.length > 0) {
-    throw new Error("A dataset with this name already exists in this catalog.");
+    throw new Error(DATASET_NAME_CONFLICT_MESSAGE);
   }
 
   return data;
+};
+
+/**
+ * Translates the PG 23505 error from the `datasets_catalog_name_unique`
+ * partial index into the same user-friendly message thrown by
+ * `validateDatasetNameUniqueness`. The DB index fires when concurrent writers
+ * both pass the optimistic find-first check — without this hook, the admin UI
+ * would show a raw PostgreSQL error for the race case.
+ *
+ * This covers REST and GraphQL flows; local API callers still receive the
+ * underlying PG error and can inspect `error.code === "23505"` if they care.
+ */
+// eslint-disable-next-line @typescript-eslint/require-await -- signature is async per Payload's AfterErrorHook contract
+export const handleDatasetUniqueConstraintError: CollectionAfterErrorHook = async ({ error }) => {
+  const err = error as (Error & { code?: string; constraint?: string; message?: string }) | undefined;
+  if (!err) return;
+  const message = err.message ?? "";
+  const isUniqueViolation =
+    err.code === "23505" ||
+    err.constraint === DATASET_CATALOG_NAME_UNIQUE_INDEX ||
+    message.includes(DATASET_CATALOG_NAME_UNIQUE_INDEX);
+
+  if (isUniqueViolation) {
+    throw new Error(DATASET_NAME_CONFLICT_MESSAGE);
+  }
 };
 
 /**
@@ -196,19 +239,24 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
         id: datasetOwnerId,
         overrideAccess: true,
         depth: 0,
+        req,
       });
-      await auditLog(req.payload, {
-        action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
-        userId: datasetOwnerId,
-        userEmail: owner.email,
-        performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
-        details: {
-          datasetId: doc.id,
-          datasetName: doc.name,
-          previousIsPublic: previousDoc?.isPublic ?? false,
-          newIsPublic: doc.isPublic ?? false,
+      await auditLog(
+        req.payload,
+        {
+          action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
+          userId: datasetOwnerId,
+          userEmail: owner.email,
+          performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
+          details: {
+            datasetId: doc.id,
+            datasetName: doc.name,
+            previousIsPublic: previousDoc?.isPublic ?? false,
+            newIsPublic: doc.isPublic ?? false,
+          },
         },
-      });
+        { req }
+      );
     } catch {
       /* audit is best-effort */
     }

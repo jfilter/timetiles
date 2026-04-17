@@ -14,6 +14,7 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { logError, logger } from "@/lib/logger";
+import { safeFetch } from "@/lib/security/safe-fetch";
 
 interface Settings {
   newsletter?: { serviceUrl?: string; authHeader?: string };
@@ -39,17 +40,25 @@ export const POST = apiRoute({
       throw new AppError(500, "Newsletter service not configured", "NEWSLETTER_NOT_CONFIGURED");
     }
 
-    // Forward the subscription request to the configured service
+    // Forward the subscription request to the configured service.
     // The service should handle authentication, list management, etc.
-    const serviceResponse = await fetch(serviceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Forward authorization if provided
-        ...(settings.newsletter?.authHeader ? { Authorization: settings.newsletter.authHeader } : {}),
-      },
-      body: JSON.stringify(body),
-    });
+    // Use `safeFetch` to block SSRF — `serviceUrl` comes from the admin-configured
+    // Settings global and must not be allowed to target internal networks.
+    let serviceResponse: Response;
+    try {
+      serviceResponse = await safeFetch(serviceUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Forward authorization if provided
+          ...(settings.newsletter?.authHeader ? { Authorization: settings.newsletter.authHeader } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      logError(err, `Failed to reach newsletter service for email: ${email}`);
+      throw new AppError(500, "Failed to subscribe. Please try again later.", "NEWSLETTER_SERVICE_ERROR");
+    }
 
     // Parse response body safely — some services return non-JSON (204, HTML errors)
     let responseData: { message?: string; error?: string } = {};

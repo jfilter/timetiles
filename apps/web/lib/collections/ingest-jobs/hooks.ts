@@ -171,17 +171,21 @@ const auditAdminStageOverride = async (req: PayloadRequest, doc: IngestJob, prev
   const toStage = doc.stage;
   if (!isTerminalStageOverride(fromStage, toStage)) return;
 
-  await auditLog(req.payload, {
-    action: AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE,
-    userId: req.user.id,
-    userEmail: req.user.email,
-    details: {
-      ingestJobId: doc.id,
-      fromStage,
-      toStage,
-      overrideType: fromStage === PROCESSING_STAGE.COMPLETED ? "completed_state_reset" : "failed_recovery",
+  await auditLog(
+    req.payload,
+    {
+      action: AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE,
+      userId: req.user.id,
+      userEmail: req.user.email,
+      details: {
+        ingestJobId: doc.id,
+        fromStage,
+        toStage,
+        overrideType: fromStage === PROCESSING_STAGE.COMPLETED ? "completed_state_reset" : "failed_recovery",
+      },
     },
-  });
+    { req }
+  );
 };
 
 /** Maps review reasons to the skip flag that prevents them from re-triggering on resume. */
@@ -221,7 +225,7 @@ const setApprovalSkipFlag = async (req: PayloadRequest, doc: IngestJob): Promise
 
 const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
   const ingestFileId = requireRelationId(doc.ingestFile, "ingestJob.ingestFile");
-  const ingestFile = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId });
+  const ingestFile = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId, req });
 
   if (!ingestFile?.user) return;
 

@@ -410,19 +410,24 @@ const Users: CollectionConfig = {
               detailsFn: (oldVal, newVal) => ({ previousRole: oldVal, newRole: newVal }),
             },
             { action: AUDIT_ACTIONS.CUSTOM_QUOTAS_CHANGED, fieldPath: "customQuotas" },
-          ]
+          ],
+          { req }
         );
 
         // Audit isActive as separate activate/deactivate actions
         if (previousDoc.isActive !== doc.isActive) {
           const action = doc.isActive ? AUDIT_ACTIONS.USER_ACTIVATED : AUDIT_ACTIONS.USER_DEACTIVATED;
-          await auditLog(req.payload, {
-            action,
-            userId: targetUserId,
-            userEmail: doc.email,
-            performedBy,
-            details: { previousValue: previousDoc.isActive, newValue: doc.isActive },
-          });
+          await auditLog(
+            req.payload,
+            {
+              action,
+              userId: targetUserId,
+              userEmail: doc.email,
+              performedBy,
+              details: { previousValue: previousDoc.isActive, newValue: doc.isActive },
+            },
+            { req }
+          );
         }
 
         // Audit manual quota overrides (quotas changed WITHOUT trust level change)
@@ -430,13 +435,17 @@ const Users: CollectionConfig = {
           previousDoc.trustLevel === doc.trustLevel &&
           JSON.stringify(previousDoc.quotas) !== JSON.stringify(doc.quotas)
         ) {
-          await auditLog(req.payload, {
-            action: AUDIT_ACTIONS.QUOTA_OVERRIDDEN,
-            userId: targetUserId,
-            userEmail: doc.email,
-            performedBy,
-            details: { previousQuotas: previousDoc.quotas, newQuotas: doc.quotas },
-          });
+          await auditLog(
+            req.payload,
+            {
+              action: AUDIT_ACTIONS.QUOTA_OVERRIDDEN,
+              userId: targetUserId,
+              userEmail: doc.email,
+              performedBy,
+              details: { previousQuotas: previousDoc.quotas, newQuotas: doc.quotas },
+            },
+            { req }
+          );
         }
 
         return doc;

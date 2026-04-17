@@ -262,6 +262,9 @@ export const eventsQueryKeys = {
     scope?: ViewScope,
     density?: ClusterDensitySettings
   ) => [...eventsQueryKeys.clusterChildren(), { filters, bounds, zoom, parentCells, scope, density }] as const,
+  h3HoverChildren: () => [...eventsQueryKeys.all, "h3-hover-children"] as const,
+  h3HoverChild: (clusterId: string, parentCells: string[], zoom: number, boundsKey: string) =>
+    [...eventsQueryKeys.h3HoverChildren(), { clusterId, parentCells, zoom, boundsKey }] as const,
   clusterSummaries: () => [...eventsQueryKeys.all, "cluster-summary"] as const,
   clusterSummary: (filters: FilterState, cells: string[], h3Resolution: number, scope?: ViewScope) =>
     [...eventsQueryKeys.clusterSummaries(), { filters, cells, h3Resolution, scope }] as const,
@@ -344,6 +347,55 @@ export const useClusterChildrenQuery = (
     queryFn: ({ signal }) => fetchClusterChildren(filters, bounds, zoom, parentCells!, signal, scope, density),
     enabled: enabled && parentCells != null && parentCells.length > 0 && bounds != null,
     ...QUERY_PRESETS.standard,
+  });
+
+/**
+ * Shape of child feature returned by the H3 hover endpoint — narrow subset
+ * used by the hover overlay to build hex polygons.
+ */
+export interface H3HoverChildFeature {
+  id?: string | number;
+  properties?: Record<string, unknown>;
+}
+
+interface H3HoverResponse {
+  features?: H3HoverChildFeature[];
+}
+
+/**
+ * Fetch H3 child cells for a hovered cluster.
+ *
+ * Uses pre-built URL search params (typically composed with filters from the
+ * current page URL) so hover can share the same filter context as the map
+ * without threading full FilterState through the hover hook.
+ */
+const fetchH3HoverChildren = async (params: URLSearchParams, signal?: AbortSignal): Promise<H3HoverChildFeature[]> => {
+  const data = await fetchJson<H3HoverResponse>(`/api/v1/events/geo?${params.toString()}`, { signal });
+  return data.features ?? [];
+};
+
+/**
+ * Hover-triggered query for H3 child cells. Uses `expensive` preset since
+ * hover cache benefits from longer retention across re-entries, and children
+ * rarely change while the user hovers around the map.
+ *
+ * Enabled when a clusterId is provided; the params builder must be called
+ * by the caller so the hook can treat each (clusterId, zoom, bounds) combo
+ * as a distinct cache entry.
+ */
+export const useH3HoverChildrenQuery = (
+  clusterId: string | null,
+  parentCells: string[],
+  zoom: number,
+  boundsKey: string,
+  buildParams: () => URLSearchParams,
+  enabled: boolean = true
+) =>
+  useQuery({
+    queryKey: eventsQueryKeys.h3HoverChild(clusterId ?? "", parentCells, zoom, boundsKey),
+    queryFn: ({ signal }) => fetchH3HoverChildren(buildParams(), signal),
+    enabled: enabled && Boolean(clusterId) && parentCells.length > 0,
+    ...QUERY_PRESETS.expensive,
   });
 
 /** Fetch summary data for events within specific H3 cells (cluster focus panel). */

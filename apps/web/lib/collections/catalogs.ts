@@ -308,37 +308,46 @@ const Catalogs: CollectionConfig = {
               id: ownerId,
               overrideAccess: true,
               depth: 0,
+              req,
             });
 
             if (changes.isPublicChanged) {
-              await auditLog(req.payload, {
-                action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
-                userId: ownerId,
-                userEmail: owner.email,
-                performedBy: req.user?.id === ownerId ? undefined : req.user?.id,
-                details: {
-                  catalogId: doc.id,
-                  catalogName: doc.name,
-                  previousIsPublic: !changes.newIsPublic,
-                  newIsPublic: changes.newIsPublic,
+              await auditLog(
+                req.payload,
+                {
+                  action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
+                  userId: ownerId,
+                  userEmail: owner.email,
+                  performedBy: req.user?.id === ownerId ? undefined : req.user?.id,
+                  details: {
+                    catalogId: doc.id,
+                    catalogName: doc.name,
+                    previousIsPublic: !changes.newIsPublic,
+                    newIsPublic: changes.newIsPublic,
+                  },
                 },
-              });
+                { req }
+              );
             }
 
             if (changes.createdByChanged) {
               const prevOwnerId = extractRelationId<number>(previousDoc?.createdBy);
-              await auditLog(req.payload, {
-                action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
-                userId: prevOwnerId ?? ownerId,
-                userEmail: owner.email,
-                performedBy: req.user?.id,
-                details: {
-                  catalogId: doc.id,
-                  catalogName: doc.name,
-                  previousOwnerId: prevOwnerId,
-                  newOwnerId: ownerId,
+              await auditLog(
+                req.payload,
+                {
+                  action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
+                  userId: prevOwnerId ?? ownerId,
+                  userEmail: owner.email,
+                  performedBy: req.user?.id,
+                  details: {
+                    catalogId: doc.id,
+                    catalogName: doc.name,
+                    previousOwnerId: prevOwnerId,
+                    newOwnerId: ownerId,
+                  },
                 },
-              });
+                { req }
+              );
             }
           } catch (error) {
             logger.warn("Audit log failed for catalog change", { catalogId: doc.id, error });

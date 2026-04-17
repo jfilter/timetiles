@@ -23,6 +23,7 @@
 
 import type { Payload } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import type { Config } from "@/payload-types";
 
@@ -314,7 +315,8 @@ export class RelationshipResolver {
     config: RelationshipConfig,
     collection: string
   ): boolean | null {
-    const isTestEnvironment = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+    const env = getEnv();
+    const isTestEnvironment = env.NODE_ENV === "test" || env.VITEST === "true";
 
     if (isTestEnvironment) {
       logger.warn(

@@ -5,6 +5,16 @@
  * validation at startup. Follows the lazy singleton pattern from
  * {@link apps/timescrape/src/config.ts}.
  *
+ * All `process.env` reads in `apps/web/lib/` must go through `getEnv()` to
+ * ensure validation and central documentation. The single known exception is
+ * `ALLOW_PRIVATE_URLS` in `lib/security/url-validation.ts`, which is read via
+ * bracket notation (`process.env["ALLOW_PRIVATE_URLS"]`) to prevent webpack
+ * from inlining the value at build time — see that file for details.
+ *
+ * Flag-style variables that the runtime compares to the string `"true"` (e.g.
+ * `CI`, `GITHUB_ACTIONS`, `VITEST`) are intentionally kept as `z.string()` to
+ * preserve the `=== "true"` comparison semantics callers already rely on.
+ *
  * @module
  * @category Config
  */
@@ -50,10 +60,30 @@ const baseSchema = {
     .default("false")
     .transform((v) => v === "true"),
 
+  // Comma-separated CIDR allowlist for trusted reverse proxies. When set, the
+  // rate limiter will strip IPs inside these ranges from the right end of
+  // `X-Forwarded-For` before picking the client address. Empty by default (no
+  // trust); in that mode the rate limiter falls back to the full forwarded
+  // chain's first entry and logs a one-time deprecation warning.
+  // Example: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  TRUSTED_PROXY_CIDRS: z.string().default(""),
+
   // === Build/CI flags ===
+  // These are string-typed (rather than coerced booleans) because callers
+  // compare explicitly against the string "true". This matches the raw
+  // semantics of the environment variables as set by CI providers.
   NEXT_PHASE: z.string().optional(),
   SKIP_DB_CHECK: z.string().optional(),
   CI: z.string().optional(),
+  GITHUB_ACTIONS: z.string().optional(),
+  VITEST: z.string().optional(),
+
+  // NOTE: URL_FETCH_TEST_TIMEOUT_MS is intentionally NOT in the schema.
+  // It is read directly via process.env in lib/jobs/handlers/url-fetch-job/index.ts
+  // because tests mutate it between assertions and getEnv() is memoized —
+  // routing it through getEnv() would require every test to call resetEnv(),
+  // which is fragile under vitest's `isolate: false` forks. Documented here so
+  // future refactors don't "centralize" it and break the timeout tests.
 };
 
 /**

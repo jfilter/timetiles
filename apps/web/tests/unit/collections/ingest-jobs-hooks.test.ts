@@ -471,17 +471,21 @@ describe.sequential("afterChangeHooks", () => {
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
-      expect(mocks.auditLog).toHaveBeenCalledWith(req.payload, {
-        action: "import.job_stage_override",
-        userId: 1,
-        userEmail: "admin@example.com",
-        details: {
-          ingestJobId: 1,
-          fromStage: "completed",
-          toStage: "detect-schema",
-          overrideType: "completed_state_reset",
+      expect(mocks.auditLog).toHaveBeenCalledWith(
+        req.payload,
+        {
+          action: "import.job_stage_override",
+          userId: 1,
+          userEmail: "admin@example.com",
+          details: {
+            ingestJobId: 1,
+            fromStage: "completed",
+            toStage: "detect-schema",
+            overrideType: "completed_state_reset",
+          },
         },
-      });
+        expect.objectContaining({ req: expect.any(Object) })
+      );
     });
 
     it("should audit when admin overrides terminal FAILED state", async () => {
@@ -491,12 +495,16 @@ describe.sequential("afterChangeHooks", () => {
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
-      expect(mocks.auditLog).toHaveBeenCalledWith(req.payload, {
-        action: "import.job_stage_override",
-        userId: 1,
-        userEmail: "admin@example.com",
-        details: expect.objectContaining({ overrideType: "failed_recovery" }),
-      });
+      expect(mocks.auditLog).toHaveBeenCalledWith(
+        req.payload,
+        expect.objectContaining({
+          action: "import.job_stage_override",
+          userId: 1,
+          userEmail: "admin@example.com",
+          details: expect.objectContaining({ overrideType: "failed_recovery" }),
+        }),
+        expect.objectContaining({ req: expect.any(Object) })
+      );
     });
 
     it("should not audit for non-terminal stage changes", async () => {

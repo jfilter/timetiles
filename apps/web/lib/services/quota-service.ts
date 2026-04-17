@@ -531,31 +531,20 @@ export class QuotaService {
   /**
    * Reset daily counters for all users (called by background job).
    *
-   * Uses Payload's bulk update API with an empty where clause to update all
-   * user-usage records in a single operation.
+   * Uses a single Drizzle UPDATE to reset every user-usage row in one SQL
+   * statement. For 10k users this is 1 query vs. 10k queries via Payload's
+   * per-row ORM update path.
    */
   async resetAllDailyCounters(): Promise<void> {
     try {
-      const now = new Date().toISOString();
+      // Single bulk UPDATE; no row-level hooks needed for counter resets
+      const drizzle = await this.getDrizzle();
+      const result = await drizzle
+        .update(user_usage)
+        .set({ ...DAILY_RESET_DATA, lastResetDate: sql`NOW()`, updatedAt: sql`NOW()` })
+        .returning({ id: user_usage.id });
 
-      // Update all user-usage records
-      const result = await this.payload.update({
-        collection: USER_USAGE_COLLECTION,
-        where: {}, // Empty where = update all
-        data: { ...DAILY_RESET_DATA, lastResetDate: now },
-        overrideAccess: true,
-      });
-
-      const affectedRecords = result.docs.length;
-      logger.info(`Daily counter reset completed for ${affectedRecords} user-usage records`);
-
-      // Log any errors that occurred during the update
-      if (result.errors.length > 0) {
-        logger.error("Some user-usage records failed to update during daily counter reset", {
-          errorCount: result.errors.length,
-          errors: result.errors,
-        });
-      }
+      logger.info(`Daily counter reset completed for ${result.length} user-usage records`);
     } catch (error) {
       logger.error("Failed to reset all daily counters", { error });
       throw error; // Re-throw so tests can catch failures

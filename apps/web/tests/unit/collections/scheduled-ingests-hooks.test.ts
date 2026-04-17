@@ -121,7 +121,8 @@ describe.sequential("scheduled-ingests quota hooks", () => {
         userEmail: "owner@example.com",
         performedBy: 99,
         details: expect.objectContaining({ scheduledIngestId: 10, scheduledIngestName: "Test Schedule" }),
-      })
+      }),
+      expect.objectContaining({ req: expect.any(Object) })
     );
   });
 });

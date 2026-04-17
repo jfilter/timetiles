@@ -46,9 +46,18 @@ interface TriggerOptions {
 /**
  * Shared logic for triggering a scheduled ingest run.
  *
- * Sets status to "running", queues a URL fetch job, bumps `totalRuns`,
- * and resets `currentRetries` to 0. The caller controls whether `nextRun`
- * is updated via {@link TriggerOptions.nextRun}.
+ * Sets status to "running" and queues a URL fetch job. The caller controls
+ * whether `nextRun` is updated via {@link TriggerOptions.nextRun}.
+ *
+ * ### currentRetries semantics
+ *
+ * - User-initiated triggers (`webhook`, `manual`) reset `currentRetries` to 0
+ *   — the user is explicitly starting a fresh attempt cycle.
+ * - Scheduler-triggered runs (`schedule`) DO NOT reset `currentRetries`. The
+ *   counter must accumulate across scheduler ticks so the cap check in
+ *   `updateScheduledIngestFailure` can detect exhaustion and disable the
+ *   ingest. Resetting here would make `currentRetries` oscillate between 0
+ *   and 1 forever, preventing the cap from ever triggering.
  *
  * Execution history is NOT recorded here because the import has only been
  * queued, not completed. The actual success/failure entry is added by the
@@ -65,6 +74,8 @@ export const triggerScheduledIngest = async (
   options: TriggerOptions
 ): Promise<{ jobId: number }> => {
   const importName = generateIngestName(scheduledIngest, currentTime);
+  // Only user-initiated triggers reset the retry counter; see doc block above.
+  const shouldResetRetries = options.triggeredBy !== "schedule";
 
   // Atomically claim "running" status to prevent overlapping triggers.
   // Uses raw SQL UPDATE with a WHERE guard — PostgreSQL row-level locking
@@ -80,7 +91,7 @@ export const triggerScheduledIngest = async (
       data: {
         lastStatus: "running",
         lastRun: currentTime.toISOString(),
-        currentRetries: 0,
+        ...(shouldResetRetries ? { currentRetries: 0 } : {}),
         ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
       },
     });
@@ -89,13 +100,17 @@ export const triggerScheduledIngest = async (
     // Under read committed, the row-level lock from UPDATE prevents a second
     // concurrent transaction from seeing the old status — it blocks until the
     // first commits, then re-evaluates the WHERE and gets 0 rows.
+    //
+    // Scheduler triggers preserve `current_retries` so the cap logic in
+    // updateScheduledIngestFailure can observe the accumulated counter.
+    // User-initiated triggers reset it to 0 (handled in the alreadyClaimed
+    // branch above — webhooks/manual always go through that path).
     const claimResult = (await payload.db.drizzle.execute(
       options.nextRun != null
         ? sql`
             UPDATE payload.scheduled_ingests
             SET last_status = 'running',
                 last_run = ${currentTime.toISOString()},
-                current_retries = 0,
                 next_run = ${options.nextRun}
             WHERE id = ${scheduledIngest.id}
               AND (last_status IS NULL OR last_status != 'running')
@@ -104,8 +119,7 @@ export const triggerScheduledIngest = async (
         : sql`
             UPDATE payload.scheduled_ingests
             SET last_status = 'running',
-                last_run = ${currentTime.toISOString()},
-                current_retries = 0
+                last_run = ${currentTime.toISOString()}
             WHERE id = ${scheduledIngest.id}
               AND (last_status IS NULL OR last_status != 'running')
             RETURNING id

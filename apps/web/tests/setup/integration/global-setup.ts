@@ -23,6 +23,8 @@ const repoRoot = path.resolve(process.cwd(), "../..");
 dotenv.config({ path: path.resolve(repoRoot, ".env") });
 dotenv.config({ path: path.resolve(repoRoot, ".env.local"), override: true });
 
+import { resetAppConfig } from "@/lib/config/app-config";
+import { resetEnv } from "@/lib/config/env";
 import { createDatabaseClient } from "@/lib/database/client";
 import { cloneDatabase, databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection } from "@/lib/database/setup";
@@ -221,6 +223,13 @@ beforeAll(async () => {
     }
     await setupDatabaseWithMigrations(testDbName, dbUrl, workerId);
   }
+});
+
+// Reset cached env/app-config before each test so in-test process.env overrides
+// take effect when the source reads via getEnv() / getAppConfig().
+beforeEach(() => {
+  resetEnv();
+  resetAppConfig();
 });
 
 // Safety net: restore all spied mocks between tests to prevent leak across files

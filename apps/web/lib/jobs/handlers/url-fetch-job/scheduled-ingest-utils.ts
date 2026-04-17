@@ -12,12 +12,23 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import {
   recordScheduledIngestFailure,
   recordScheduledIngestSuccess,
   resolveScheduledIngestStats,
 } from "@/lib/types/run-statistics";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
+
+/**
+ * Narrow request shape used for transaction/audit propagation. Mirrors the
+ * type used by `auditLog` so the same structural value can flow through both.
+ * Only transactionID/context are consulted by Payload's update paths when
+ * participating in an ongoing transaction — callers can pass a slim literal
+ * or a full PayloadRequest.
+ */
+type PartialReq = { transactionID?: number | string | Promise<number | string>; context?: Record<string, unknown> };
 
 /**
  * Loads scheduled ingest configuration.
@@ -94,18 +105,73 @@ export const updateScheduledIngestSuccess = async (
 };
 
 /**
+ * Emits an audit log entry when a scheduled ingest is disabled after
+ * exhausting its configured retry budget. Resolves the ingest's owner
+ * (createdBy) to populate userId/userEmail, and participates in the
+ * caller's transaction via `req` when provided.
+ */
+const auditRetriesExhausted = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  newRetries: number,
+  maxRetries: number,
+  lastError: string,
+  req?: PartialReq
+): Promise<void> => {
+  const ownerId = extractRelationId<number>(scheduledIngest.createdBy);
+  if (!ownerId) return;
+
+  try {
+    const owner = await payload.findByID({
+      collection: "users",
+      id: ownerId,
+      overrideAccess: true,
+      depth: 0,
+      ...(req ? { req } : {}),
+    });
+
+    await auditLog(
+      payload,
+      {
+        action: AUDIT_ACTIONS.SCHEDULED_INGEST_RETRIES_EXHAUSTED,
+        userId: ownerId,
+        userEmail: owner.email,
+        details: {
+          scheduledIngestId: scheduledIngest.id,
+          scheduledIngestName: scheduledIngest.name,
+          currentRetries: newRetries,
+          maxRetries,
+          lastError,
+        },
+      },
+      { req }
+    );
+  } catch {
+    /* audit is best-effort */
+  }
+};
+
+/**
  * Updates scheduled ingest status on failed execution.
+ *
+ * Increments `currentRetries` and checks it against `retryConfig.maxRetries`.
+ * When the retry budget is exhausted, disables the ingest (`enabled: false`)
+ * so the scheduler stops re-queueing it, logs at `error`, and emits an audit
+ * log entry. Operators can re-enable after investigating the root cause.
  */
 export const updateScheduledIngestFailure = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
-  error: Error
+  error: Error,
+  req?: PartialReq
 ): Promise<void> => {
   try {
     const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
     const updatedStats = recordScheduledIngestFailure(stats);
 
     const currentRetries = (scheduledIngest.currentRetries ?? 0) + 1;
+    const maxRetries = scheduledIngest.retryConfig?.maxRetries ?? 3;
+    const retriesExhausted = currentRetries > maxRetries;
 
     // Update execution history
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -126,8 +192,28 @@ export const updateScheduledIngestFailure = async (
         currentRetries,
         executionHistory,
         statistics: updatedStats,
+        // Permanently disable once the retry budget is exhausted. Without this,
+        // the scheduler keeps re-queueing every tick until the daily cleanup job
+        // (or an operator) intervenes. The ingest can be re-enabled manually
+        // after the root cause is addressed.
+        ...(retriesExhausted ? { enabled: false } : {}),
       },
+      ...(req ? { req } : {}),
     });
+
+    if (retriesExhausted) {
+      logger.error(
+        {
+          scheduledIngestId: scheduledIngest.id,
+          name: scheduledIngest.name,
+          currentRetries,
+          maxRetries,
+          lastError: error.message,
+        },
+        "Scheduled ingest disabled after exhausting retry budget"
+      );
+      await auditRetriesExhausted(payload, scheduledIngest, currentRetries, maxRetries, error.message, req);
+    }
   } catch (updateError) {
     logError(updateError, "Failed to update scheduled ingest failure status", {
       scheduledIngestId: scheduledIngest.id,

@@ -2,7 +2,7 @@
  * Import wizard step content component.
  *
  * Renders the appropriate step component based on current wizard state.
- * Handles auto-advance for steps 1-3 when their requirements are met.
+ * Each step requires an explicit user action (Continue button) to proceed.
  * Supports edit mode for updating existing scheduled ingests.
  *
  * @module

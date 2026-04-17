@@ -37,12 +37,16 @@ export const Settings: GlobalConfig = {
         }
 
         if (Object.keys(changedFlags).length > 0) {
-          await auditLog(req.payload, {
-            action: AUDIT_ACTIONS.FEATURE_FLAG_CHANGED,
-            userId: req.user.id,
-            userEmail: req.user.email,
-            details: { changedFlags },
-          });
+          await auditLog(
+            req.payload,
+            {
+              action: AUDIT_ACTIONS.FEATURE_FLAG_CHANGED,
+              userId: req.user.id,
+              userEmail: req.user.email,
+              details: { changedFlags },
+            },
+            { req }
+          );
         }
 
         // Detect geocoding, newsletter, or legal config changes

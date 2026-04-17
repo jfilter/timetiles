@@ -412,6 +412,7 @@
     "verifyEmailHint": "Keine E-Mail erhalten? Prüfen Sie Ihren Spam-Ordner oder fordern Sie einen neuen Bestätigungslink an.",
     "signedIn": "Sie sind angemeldet",
     "continuingToUpload": "Weiter zum Upload...",
+    "readyToUpload": "Sie können jetzt mit dem Import Ihrer Daten beginnen.",
     "signInTitle": "Anmelden um fortzufahren",
     "signInDescription": "Erstellen Sie ein Konto oder melden Sie sich an, um Ihre Daten zu importieren.",
     "uploadTitle": "Daten hochladen",

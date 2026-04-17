@@ -50,7 +50,14 @@ vi.mock("pg", () => {
   return { Client: MockPgClient };
 });
 
-vi.mock("@/lib/config/env", () => ({ getEnv: vi.fn(() => ({})), resetEnv: vi.fn() }));
+vi.mock("@/lib/config/env", () => ({
+  getEnv: vi.fn(() => ({
+    CI: process.env.CI,
+    GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
+    DATABASE_URL: process.env.DATABASE_URL,
+  })),
+  resetEnv: vi.fn(),
+}));
 
 vi.mock("node:child_process", () => ({ execFileSync: mockExecFileSync, execSync: mockExecSync }));
 
