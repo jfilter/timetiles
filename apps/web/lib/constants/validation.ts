@@ -5,7 +5,7 @@
  * @category Constants
  */
 
-export const MIN_PASSWORD_LENGTH = 8;
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy";
 
 /**
  * Validate a password and its confirmation value.
@@ -15,8 +15,8 @@ export const MIN_PASSWORD_LENGTH = 8;
  * thrown error surfaces through the form's error state.
  */
 export const validatePasswords = (password: string, confirmPassword: string): void => {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    throw new Error(`Password must be at least ${PASSWORD_MIN_LENGTH} characters`);
   }
 
   // eslint-disable-next-line security/detect-possible-timing-attacks -- Client-side form validation, not cryptographic comparison

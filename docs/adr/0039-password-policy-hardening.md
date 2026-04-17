@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted (2026-04-17) — implemented in `apps/web/lib/security/password-policy.ts`; enforced via custom routes (`register`, `change-password`) and the users collection `beforeChange` hook for Payload-managed paths (reset-password, admin-create).
 
 ## Context
 

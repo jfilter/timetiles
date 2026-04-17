@@ -14,9 +14,10 @@ import { Key, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { FormError, FormSuccess } from "@/components/auth/form-feedback";
-import { MIN_PASSWORD_LENGTH, validatePasswords } from "@/lib/constants/validation";
+import { validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy";
 
 export const ChangePasswordForm = () => {
   const t = useTranslations("Account");
@@ -80,7 +81,7 @@ export const ChangePasswordForm = () => {
               placeholder={t("newPasswordPlaceholder")}
               disabled={isPending}
             />
-            <p className="text-muted-foreground text-xs">{t("passwordMinLength", { length: MIN_PASSWORD_LENGTH })}</p>
+            <p className="text-muted-foreground text-xs">{t("passwordMinLength", { length: PASSWORD_MIN_LENGTH })}</p>
           </div>
 
           <div className="space-y-2">

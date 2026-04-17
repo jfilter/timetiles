@@ -25,8 +25,10 @@ import {
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
+import { validatePassword } from "@/lib/security/password-policy";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { AppError } from "@/lib/types/errors";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 /** Read the client IP from a PayloadRequest, falling back to "unknown". */
@@ -340,6 +342,21 @@ const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
+      async ({ data, req }) => {
+        // Centralized password policy (ADR 0039): only enforce when the
+        // caller actually supplies a plaintext password via the public REST
+        // API. Local API calls (seeds, tests, system operations) are
+        // intentionally exempt so fixture passwords don't need to meet the
+        // real-world 12-char + HIBP bar.
+        if (req.payloadAPI !== "REST") return data;
+        const pw = typeof data.password === "string" ? data.password : undefined;
+        if (!pw) return data;
+        const result = await validatePassword(pw);
+        if (!result.ok) {
+          throw new AppError(400, result.message, `password-${result.code}`);
+        }
+        return data;
+      },
       ({ data, operation, req, originalDoc }) => {
         // SECURITY: Handle self-registration (unauthenticated user creation)
         // Force safe defaults to prevent privilege escalation

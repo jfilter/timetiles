@@ -43,7 +43,9 @@
     "DEFAULT_LOCALE",
     "SSRF_DNS_CHECK",
     "URL_FETCH_CACHE_DIR",
-    "URL_FETCH_CACHE_TTL"
+    "URL_FETCH_CACHE_TTL",
+    "TRUSTED_PROXY_CIDRS",
+    "PASSWORD_HIBP_CHECK"
   ],
   "tasks": {
     "transit": { "dependsOn": ["^transit"] },

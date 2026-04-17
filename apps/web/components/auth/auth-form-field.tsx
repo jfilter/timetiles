@@ -20,6 +20,7 @@ interface AuthFormFieldProps {
   required?: boolean;
   autoComplete?: string;
   minLength?: number;
+  maxLength?: number;
 }
 
 export const AuthFormField = ({ id, label, ...props }: AuthFormFieldProps) => (

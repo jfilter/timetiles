@@ -60,6 +60,13 @@ const baseSchema = {
     .default("false")
     .transform((v) => v === "true"),
 
+  // HIBP compromised-password check for new passwords. Enabled by default;
+  // set to "false" for offline dev or to disable the outbound HIBP call.
+  PASSWORD_HIBP_CHECK: z
+    .string()
+    .default("true")
+    .transform((v) => v !== "false"),
+
   // Comma-separated CIDR allowlist for trusted reverse proxies. When set, the
   // rate limiter will strip IPs inside these ranges from the right end of
   // `X-Forwarded-For` before picking the client address. Empty by default (no

@@ -21,20 +21,34 @@ import { safeSendEmail } from "@/lib/email/send";
 import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { AppError } from "@/lib/types/errors";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 export const POST = apiRoute({
   auth: "none",
   rateLimit: { configName: "REGISTRATION" },
-  body: z.object({ email: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(8) }),
+  body: z.object({
+    email: z.email().transform((s) => s.trim().toLowerCase()),
+    password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
+  }),
   handler: async ({ payload, body, req }) => {
     // Check if registration is enabled
     await requireFeatureEnabled(payload, "enableRegistration", "Registration is currently disabled.");
 
     const { email: normalizedEmail, password } = body;
+
+    // Policy checks beyond Zod length bounds (HIBP k-anonymity lookup, etc).
+    // Runs before timing pad so genuinely bad passwords fail fast without
+    // leaking email-existence info (rate limit + timing pad still bound the
+    // attacker's probing throughput).
+    const policy = await validatePassword(password);
+    if (!policy.ok) {
+      throw new AppError(400, policy.message, `password-${policy.code}`);
+    }
 
     // Prevent timing side-channel from distinguishing "email exists" vs "new registration"
     return withTimingPad(TIMING_PAD_MS.REGISTRATION, async () => {
