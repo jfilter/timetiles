@@ -73,6 +73,14 @@ export class ExplorePage {
 
   async waitForMapLoad() {
     await this.map.waitFor({ state: "visible", timeout: 15000 });
+    await expect(this.page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
+    await expect(this.dataSourcesSection).toBeVisible({ timeout: 10000 });
+
+    const loadingText = this.page.getByText(/loading map data/i);
+    await loadingText.waitFor({ state: "hidden", timeout: 15000 }).catch(async (err) => {
+      if (await loadingText.isVisible().catch(() => false)) throw err;
+    });
+
     // Wait for map to be fully loaded and interactive
     await this.page.waitForFunction(
       () => {

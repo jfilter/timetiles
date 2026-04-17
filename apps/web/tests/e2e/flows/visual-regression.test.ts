@@ -24,10 +24,19 @@
  * @module
  * @category E2E Tests
  */
+import type { Page } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
+import { ExplorePage } from "../pages/explore.page";
 
 // eslint-disable-next-line turbo/no-undeclared-env-vars -- test-only opt-in flag
 const RUN_VISUAL_REGRESSION = process.env.E2E_VISUAL_REGRESSION === "true";
+
+const waitForExploreScreenshotReady = async (page: Page) => {
+  const explorePage = new ExplorePage(page);
+  await explorePage.waitForMapLoad();
+  await expect(explorePage.eventsCount.or(explorePage.noEventsMessage).first()).toBeVisible({ timeout: 15000 });
+};
 
 test.describe("Visual Regression", () => {
   // Skip the whole suite unless explicitly opted in. See module docstring.
@@ -38,10 +47,7 @@ test.describe("Visual Regression", () => {
 
   test("explore page", async ({ page }) => {
     await page.goto("/explore");
-    // Wait for map tiles and data to load
-    await page.waitForLoadState("networkidle");
-    // Extra wait for map rendering
-    await page.waitForTimeout(2000);
+    await waitForExploreScreenshotReady(page);
     await expect(page).toHaveScreenshot("explore-page.png", {
       maxDiffPixelRatio: 0.03,
       // Mask dynamic content: map canvas and chart (data-dependent histogram bars)
@@ -55,8 +61,7 @@ test.describe("Visual Regression", () => {
       localStorage.setItem("timetiles-theme", "dark");
     });
     await page.goto("/explore");
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(2000);
+    await waitForExploreScreenshotReady(page);
     await expect(page).toHaveScreenshot("explore-page-dark.png", {
       maxDiffPixelRatio: 0.03,
       mask: [page.locator(".maplibregl-canvas"), page.locator("[class*='echarts']")],

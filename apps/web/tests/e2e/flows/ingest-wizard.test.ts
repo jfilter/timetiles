@@ -14,6 +14,8 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { Page } from "@playwright/test";
+
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 import { IngestPage } from "../pages/ingest.page";
@@ -21,6 +23,55 @@ import { IngestPage } from "../pages/ingest.page";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
+
+interface SheetMappingConfig {
+  index: number;
+  title: string;
+  date: string;
+  location: string;
+}
+
+const setRequiredFieldTarget = async (
+  page: Page,
+  columnName: string,
+  targetValue: "titleField" | "dateField" | "locationField",
+  allowedExistingTargets: ReadonlyArray<"titleField" | "dateField" | "locationField" | "locationNameField"> = [
+    targetValue,
+  ]
+) => {
+  const row = page.locator("tr").filter({ hasText: columnName }).first();
+  await expect(row).toBeVisible({ timeout: 5_000 });
+  const targetSelect = row.locator("select");
+
+  await expect
+    .poll(
+      async () => {
+        const currentValue = await targetSelect.inputValue();
+        return (
+          currentValue === "__none__" ||
+          allowedExistingTargets.includes(currentValue as (typeof allowedExistingTargets)[number])
+        );
+      },
+      { timeout: 5_000 }
+    )
+    .toBe(true);
+
+  if ((await targetSelect.inputValue()) === "__none__") {
+    await targetSelect.selectOption(targetValue);
+  }
+};
+
+const configureSheetFieldMappings = async (page: Page, importPage: IngestPage, sheetConfigs: SheetMappingConfig[]) => {
+  for (const config of sheetConfigs) {
+    const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
+    await sheetTab.click();
+    await importPage.waitForFieldMappingReady();
+
+    await setRequiredFieldTarget(page, config.title, "titleField");
+    await setRequiredFieldTarget(page, config.date, "dateField");
+    await setRequiredFieldTarget(page, config.location, "locationField", ["locationField", "locationNameField"]);
+  }
+};
 
 test.describe("Import Wizard - Authentication", () => {
   // These tests need unauthenticated state to test login flows
@@ -326,37 +377,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       { index: 2, title: "event_name", date: "date", location: "address" }, // Sports Events
     ];
 
-    for (const config of sheetConfigs) {
-      // Click the sheet tab to switch to this sheet
-      const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
-      await sheetTab.click();
-      // Wait for field mapping form to be interactive after tab switch
-      await importPage.waitForFieldMappingReady();
-      // Allow auto-detection to settle before checking field values
-      await page.waitForTimeout(500);
-
-      // Column-centric table: find row by column name and set target if not auto-detected
-      const titleRow = page.locator("tr").filter({ hasText: config.title }).first();
-      await expect(titleRow).toBeVisible({ timeout: 5000 });
-      const titleTargetSelect = titleRow.locator("select");
-      if ((await titleTargetSelect.inputValue()) === "__none__") {
-        await titleTargetSelect.selectOption("titleField");
-      }
-
-      const dateRow = page.locator("tr").filter({ hasText: config.date }).first();
-      await expect(dateRow).toBeVisible({ timeout: 5000 });
-      const dateTargetSelect = dateRow.locator("select");
-      if ((await dateTargetSelect.inputValue()) === "__none__") {
-        await dateTargetSelect.selectOption("dateField");
-      }
-
-      const locationRow = page.locator("tr").filter({ hasText: config.location }).first();
-      await expect(locationRow).toBeVisible({ timeout: 5000 });
-      const locationTargetSelect = locationRow.locator("select");
-      if ((await locationTargetSelect.inputValue()) === "__none__") {
-        await locationTargetSelect.selectOption("locationField");
-      }
-    }
+    await configureSheetFieldMappings(page, importPage, sheetConfigs);
 
     // Click Next to go to Review (Step 5)
     await importPage.clickNext();
@@ -526,37 +547,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
       { index: 2, title: "event_name", date: "start_date", location: "address" }, // Sports Events
     ];
 
-    for (const config of sheetConfigs) {
-      // Click the sheet tab to switch to this sheet
-      const sheetTab = page.locator(`[data-testid="sheet-tab-${config.index}"]`);
-      await sheetTab.click();
-      // Wait for field mapping form to be interactive after tab switch
-      await importPage.waitForFieldMappingReady();
-      // Allow auto-detection to settle before checking field values
-      await page.waitForTimeout(500);
-
-      // Column-centric table: find row by column name and set target if not auto-detected
-      const titleRow = page.locator("tr").filter({ hasText: config.title }).first();
-      await expect(titleRow).toBeVisible({ timeout: 5000 });
-      const titleTargetSelect = titleRow.locator("select");
-      if ((await titleTargetSelect.inputValue()) === "__none__") {
-        await titleTargetSelect.selectOption("titleField");
-      }
-
-      const dateRow = page.locator("tr").filter({ hasText: config.date }).first();
-      await expect(dateRow).toBeVisible({ timeout: 5000 });
-      const dateTargetSelect = dateRow.locator("select");
-      if ((await dateTargetSelect.inputValue()) === "__none__") {
-        await dateTargetSelect.selectOption("dateField");
-      }
-
-      const locationRow = page.locator("tr").filter({ hasText: config.location }).first();
-      await expect(locationRow).toBeVisible({ timeout: 5000 });
-      const locationTargetSelect = locationRow.locator("select");
-      if ((await locationTargetSelect.inputValue()) === "__none__") {
-        await locationTargetSelect.selectOption("locationField");
-      }
-    }
+    await configureSheetFieldMappings(page, importPage, sheetConfigs);
 
     // Click Next to go to Review (Step 5)
     await importPage.clickNext();

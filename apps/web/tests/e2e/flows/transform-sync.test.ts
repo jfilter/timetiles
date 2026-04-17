@@ -78,9 +78,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
     await expect(page.getByText("Visual Field Mapping")).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Source Column").first()).toBeVisible({ timeout: 10000 });
 
-    // Wait for React Flow to render all nodes (transform nodes load after source/target nodes)
-    await page.waitForTimeout(1000);
-
     // Verify the transform node appears with correct content
     await expect(page.locator(".react-flow__node-transform")).toBeVisible({ timeout: 15000 });
     await expect(page.locator(".react-flow__node-transform").getByText("uppercase")).toBeVisible({ timeout: 5000 });

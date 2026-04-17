@@ -27,7 +27,17 @@ interface PageConfig {
 }
 
 const pages: PageConfig[] = [
-  { name: "Homepage", path: "/", requiresAuth: false },
+  {
+    name: "Homepage",
+    path: "/",
+    requiresAuth: false,
+    waitFor: async (page) => {
+      await page
+        .locator("header, [role='banner'], main, [role='main']")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 });
+    },
+  },
   {
     name: "Login",
     path: "/login",
@@ -148,7 +158,7 @@ const analyzeAccessibility = async (testPage: Page, pageConfig: PageConfig, them
   if (pageConfig.waitFor) {
     await pageConfig.waitFor(testPage);
   } else {
-    await testPage.waitForTimeout(1000);
+    await testPage.waitForLoadState("networkidle");
   }
 
   // Build axe analysis

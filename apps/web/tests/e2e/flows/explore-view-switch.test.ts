@@ -2,31 +2,19 @@
  * E2E tests for state persistence when switching between map and list views.
  *
  * Verifies that map position (zoom) is preserved when navigating between
- * /explore and /explore/list, testing the actual map zoom level via MapLibre.
+ * /explore and /explore/list.
  *
  * @module
  * @category E2E Tests
  */
-import type { Page } from "@playwright/test";
-
 import { expect, test } from "../fixtures";
-
-/** Wait for the map to be loaded and stable */
-const waitForMapReady = async (page: Page) => {
-  await expect(page.getByRole("region", { name: "Map" }).first()).toBeVisible({ timeout: 15000 });
-  // Wait for MapLibre canvas to render
-  await expect(page.locator(".maplibregl-canvas")).toBeVisible({ timeout: 10000 });
-  // Wait for map tiles and data to finish loading
-  await page.waitForLoadState("networkidle");
-  // Give MapLibre extra time to initialize zoom from URL params
-  await page.waitForTimeout(1000);
-};
+import { ExplorePage } from "../pages/explore.page";
 
 test.describe("Explore View Switch - Map Position Persistence", () => {
   test("list view preserves URL zoom parameter", async ({ page }) => {
     // Navigate directly to list view with a specific zoom level
     await page.goto("/explore/list?lat=48.1351&lng=11.5820&zoom=10", { timeout: 30000, waitUntil: "domcontentloaded" });
-    await waitForMapReady(page);
+    await new ExplorePage(page).waitForMapLoad();
 
     // The zoom parameter should be preserved in the URL
     const url = new URL(page.url());
@@ -39,7 +27,7 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
       timeout: 30000,
       waitUntil: "domcontentloaded",
     });
-    await waitForMapReady(page);
+    await new ExplorePage(page).waitForMapLoad();
 
     // Click "Grid" view toggle (renamed from "List")
     await page
@@ -60,7 +48,7 @@ test.describe("Explore View Switch - Map Position Persistence", () => {
       timeout: 30000,
       waitUntil: "domcontentloaded",
     });
-    await waitForMapReady(page);
+    await new ExplorePage(page).waitForMapLoad();
 
     // Click "Map" view toggle
     await page.locator("button").filter({ hasText: /^Map$/ }).click();
