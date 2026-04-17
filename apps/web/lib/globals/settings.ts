@@ -58,16 +58,20 @@ export const Settings: GlobalConfig = {
         const newLegal = JSON.stringify(doc.legal ?? {});
 
         if (prevGeo !== newGeo || prevNewsletter !== newNewsletter || prevLegal !== newLegal) {
-          await auditLog(req.payload, {
-            action: AUDIT_ACTIONS.SETTINGS_CHANGED,
-            userId: req.user.id,
-            userEmail: req.user.email,
-            details: {
-              geocodingChanged: prevGeo !== newGeo,
-              newsletterChanged: prevNewsletter !== newNewsletter,
-              legalChanged: prevLegal !== newLegal,
+          await auditLog(
+            req.payload,
+            {
+              action: AUDIT_ACTIONS.SETTINGS_CHANGED,
+              userId: req.user.id,
+              userEmail: req.user.email,
+              details: {
+                geocodingChanged: prevGeo !== newGeo,
+                newsletterChanged: prevNewsletter !== newNewsletter,
+                legalChanged: prevLegal !== newLegal,
+              },
             },
-          });
+            { req }
+          );
         }
 
         return doc;

@@ -23,14 +23,15 @@ import type { Dataset } from "@/payload-types";
 export const validateCatalogOwnership = async (
   payload: Payload,
   catalogRef: unknown,
-  user: { id: number; role?: string | null }
+  user: { id: number; role?: string | null },
+  req?: PayloadRequest
 ): Promise<void> => {
   if (isPrivileged(user)) return;
 
   const catalogId = extractRelationId<number>(catalogRef as number | { id: number } | null | undefined);
   if (!catalogId) return;
 
-  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
+  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true, req });
   const catalogOwnerId = extractRelationId(catalog?.createdBy);
   const isPublicCatalog = catalog?.isPublic ?? false;
 

@@ -402,7 +402,7 @@ const IngestFiles: CollectionConfig = {
         const originalName =
           data.originalName ?? (req as typeof req & { originalFileName?: string }).originalFileName ?? null;
 
-        if (data.catalog && req.user) await validateCatalogOwnership(req.payload, data.catalog, req.user);
+        if (data.catalog && req.user) await validateCatalogOwnership(req.payload, data.catalog, req.user, req);
 
         // Add rate limiting and metadata info
         return {

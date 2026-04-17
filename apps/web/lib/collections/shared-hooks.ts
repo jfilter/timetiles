@@ -4,7 +4,7 @@
  * @module
  * @category Collections
  */
-import type { CollectionBeforeChangeHook, Payload, TypeWithID, Where } from "payload";
+import type { CollectionBeforeChangeHook, Payload, PayloadRequest, TypeWithID, Where } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Config } from "@/payload-types";
@@ -22,6 +22,8 @@ interface RelationOwnershipOptions {
   userId: number;
   /** Error message thrown when ownership does not match. */
   errorMessage: string;
+  /** Optional request to reuse the active Payload transaction. */
+  req?: PayloadRequest;
 }
 
 /**
@@ -31,7 +33,7 @@ interface RelationOwnershipOptions {
  * matches the given user ID. Throws if the ownership check fails.
  */
 export const validateRelationOwnership = async (payload: Payload, opts: RelationOwnershipOptions): Promise<void> => {
-  const doc = await payload.findByID({ collection: opts.collection, id: opts.id, overrideAccess: true });
+  const doc = await payload.findByID({ collection: opts.collection, id: opts.id, overrideAccess: true, req: opts.req });
   const ownerId = extractRelationId((doc as unknown as Record<string, unknown>)?.[opts.userField]);
   if (ownerId !== opts.userId) {
     throw new Error(opts.errorMessage);

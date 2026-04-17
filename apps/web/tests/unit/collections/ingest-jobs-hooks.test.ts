@@ -211,8 +211,10 @@ describe.sequential("beforeChangeHooks", () => {
         userField: "user",
         userId: 1,
         errorMessage: "You can only create ingest jobs for your own ingest files",
+        req,
       });
-      expect(mocks.validateCatalogOwnership).toHaveBeenCalledWith(mockPayload, 5, { id: 1 });
+      expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "datasets", id: 20, overrideAccess: true, req });
+      expect(mocks.validateCatalogOwnership).toHaveBeenCalledWith(mockPayload, 5, { id: 1 }, req);
     });
 
     it("should skip ownership validation when no user is present on create", async () => {

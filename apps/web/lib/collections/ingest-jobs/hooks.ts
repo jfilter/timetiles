@@ -106,6 +106,7 @@ const validateIngestFileOwnership = async (
     userField: "user",
     userId,
     errorMessage: "You can only create ingest jobs for your own ingest files",
+    req,
   });
 };
 
@@ -119,11 +120,11 @@ const validateDatasetCatalogAccess = async (
   const datasetId = extractRelationId(dataset);
   if (!datasetId) return;
 
-  const ds = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
+  const ds = await req.payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true, req });
   const catalogRef = extractRelationId(ds?.catalog);
   if (!catalogRef) return;
 
-  await validateCatalogOwnership(req.payload, catalogRef, { id: userId });
+  await validateCatalogOwnership(req.payload, catalogRef, { id: userId }, req);
 };
 
 /**

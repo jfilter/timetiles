@@ -453,12 +453,11 @@ const Users: CollectionConfig = {
     ],
     afterLogin: [
       async ({ req, user }) => {
-        await auditLog(req.payload, {
-          action: AUDIT_ACTIONS.LOGIN_SUCCESS,
-          userId: user.id,
-          userEmail: user.email,
-          ipAddress: getReqIp(req),
-        });
+        await auditLog(
+          req.payload,
+          { action: AUDIT_ACTIONS.LOGIN_SUCCESS, userId: user.id, userEmail: user.email, ipAddress: getReqIp(req) },
+          { req }
+        );
       },
     ],
     afterError: [
@@ -474,17 +473,21 @@ const Users: CollectionConfig = {
         const data = (req as unknown as { data?: { email?: unknown } }).data;
         const attemptedEmail = typeof data?.email === "string" ? data.email : undefined;
 
-        await auditLog(req.payload, {
-          action: AUDIT_ACTIONS.LOGIN_FAILED,
-          // userId=0 is the canonical "no associated user" marker for this
-          // audit type. We record the attempt regardless of whether the
-          // email matched a real user (avoids enumeration via audit-log
-          // absence/presence).
-          userId: 0,
-          userEmail: attemptedEmail ?? "",
-          ipAddress: getReqIp(req),
-          details: attemptedEmail ? { attemptedEmailProvided: true } : { attemptedEmailProvided: false },
-        });
+        await auditLog(
+          req.payload,
+          {
+            action: AUDIT_ACTIONS.LOGIN_FAILED,
+            // userId=0 is the canonical "no associated user" marker for this
+            // audit type. We record the attempt regardless of whether the
+            // email matched a real user (avoids enumeration via audit-log
+            // absence/presence).
+            userId: 0,
+            userEmail: attemptedEmail ?? "",
+            ipAddress: getReqIp(req),
+            details: attemptedEmail ? { attemptedEmailProvided: true } : { attemptedEmailProvided: false },
+          },
+          { req }
+        );
       },
     ],
   },
