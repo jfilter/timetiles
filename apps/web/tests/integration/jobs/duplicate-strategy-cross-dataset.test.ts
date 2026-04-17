@@ -20,7 +20,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { createLogger } from "@/lib/logger";
-import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
+import type { Dataset, IngestFile } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
@@ -91,7 +91,7 @@ describe.sequential("processEventBatch — cross-dataset update guard", () => {
   it("blocks an update that targets an event in a different dataset", async () => {
     // Construct a tampered IngestJob pointing dataset B's duplicates.external
     // at dataset A's event id.
-    const ingestJob = (await payload.create({
+    const ingestJob = await payload.create({
       collection: "ingest-jobs",
       data: {
         ingestFile: ingestFileB.id,
@@ -105,7 +105,7 @@ describe.sequential("processEventBatch — cross-dataset update guard", () => {
         },
       },
       overrideAccess: true,
-    })) as IngestJob;
+    });
 
     const ctx: ProcessBatchContext = {
       payload,
@@ -148,7 +148,7 @@ describe.sequential("processEventBatch — cross-dataset update guard", () => {
       overrideAccess: true,
     });
 
-    const ingestJob = (await payload.create({
+    const ingestJob = await payload.create({
       collection: "ingest-jobs",
       data: {
         ingestFile: ingestFileB.id,
@@ -162,7 +162,7 @@ describe.sequential("processEventBatch — cross-dataset update guard", () => {
         },
       },
       overrideAccess: true,
-    })) as IngestJob;
+    });
 
     const ctx: ProcessBatchContext = {
       payload,

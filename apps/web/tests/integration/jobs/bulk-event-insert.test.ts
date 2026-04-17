@@ -18,7 +18,7 @@ import { sql } from "@payloadcms/db-postgres";
 import { inArray } from "@payloadcms/db-postgres/drizzle";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { bulkInsertEvents, type BulkEventData } from "@/lib/jobs/utils/bulk-event-insert";
+import { type BulkEventData, bulkInsertEvents } from "@/lib/jobs/utils/bulk-event-insert";
 import { _events_v } from "@/payload-generated-schema";
 
 import {
@@ -106,9 +106,10 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
     const originalTransaction = payload.db.drizzle.transaction.bind(payload.db.drizzle);
     vi.spyOn(payload.db.drizzle, "transaction").mockImplementationOnce(
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-      async (callback: any) =>
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+      (callback: any) =>
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-        originalTransaction(async (tx: any) => {
+        originalTransaction((tx: any) => {
           const originalInsert = tx.insert.bind(tx);
           // oxlint-disable-next-line @typescript-eslint/no-explicit-any
           tx.insert = (table: any) => {

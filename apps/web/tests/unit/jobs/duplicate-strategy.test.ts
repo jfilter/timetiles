@@ -197,7 +197,7 @@ describe.sequential("processEventBatch", () => {
     // validateUpdateIdsInDataset. By default returns any id Number()-coerced
     // from `updateRows` so existing expectations (all updates allowed) hold.
     const datasetIdAllowlist = new Set<number>();
-    const drizzleWhere = vi.fn().mockImplementation(async () => Array.from(datasetIdAllowlist).map((id) => ({ id })));
+    const drizzleWhere = vi.fn().mockImplementation(() => Array.from(datasetIdAllowlist).map((id) => ({ id })));
     mockPayload = {
       findByID: vi.fn(),
       find: vi.fn(),

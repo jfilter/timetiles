@@ -23,13 +23,7 @@ import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 export const POST = apiRoute({
   auth: "none",
   rateLimit: { configName: "LOGIN" },
-  body: z.object({
-    email: z
-      .string()
-      .email()
-      .transform((s) => s.trim().toLowerCase()),
-    password: z.string().min(1),
-  }),
+  body: z.object({ email: z.email().transform((s) => s.trim().toLowerCase()), password: z.string().min(1) }),
   handler: async ({ payload, body, req }) => {
     const { email, password } = body;
     const clientIp = getClientIdentifier(req);

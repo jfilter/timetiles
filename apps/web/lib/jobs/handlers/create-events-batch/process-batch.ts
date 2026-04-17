@@ -117,6 +117,53 @@ const validateUpdateIdsInDataset = async (
   return new Set(inDataset.map((r) => r.id));
 };
 
+/** Try to update an existing event; returns `true` if handled (updated or blocked). */
+const tryUpdateExistingEvent = async (
+  payload: Payload,
+  eventData: BulkEventData,
+  existingEventId: string | number,
+  updateIdsInDataset: Set<number>,
+  datasetId: number,
+  log: ReturnType<typeof createJobLogger>
+): Promise<{ updated: boolean; blocked: boolean }> => {
+  if (!updateIdsInDataset.has(Number(existingEventId))) {
+    log.warn("Refusing cross-dataset event update", { existingEventId, datasetId });
+    return { updated: false, blocked: true };
+  }
+  await payload.update({
+    collection: "events",
+    id: existingEventId,
+    data: {
+      transformedData: eventData.transformedData,
+      sourceData: eventData.sourceData,
+      location: eventData.location,
+      eventTimestamp: eventData.eventTimestamp,
+      eventEndTimestamp: eventData.eventEndTimestamp,
+      ingestJob: eventData.ingestJob,
+    },
+    overrideAccess: true,
+  });
+  return { updated: true, blocked: false };
+};
+
+const bulkInsertNewEvents = async (
+  payload: Payload,
+  eventsToInsert: BulkEventData[],
+  globalRowOffset: number,
+  log: ReturnType<typeof createJobLogger>
+): Promise<{ created: number; errors: Array<{ row: number; error: string }> }> => {
+  if (eventsToInsert.length === 0) return { created: 0, errors: [] };
+  try {
+    const created = await bulkInsertEvents(payload, eventsToInsert);
+    return { created, errors: [] };
+  } catch (error) {
+    log.error("Bulk insert failed for batch", { globalRowOffset, count: eventsToInsert.length, error });
+    const msg = error instanceof Error ? error.message : "Bulk insert failed";
+    const errors = eventsToInsert.map((_, i) => ({ row: globalRowOffset + i, error: msg }));
+    return { created: 0, errors };
+  }
+};
+
 export const processEventBatch = async (
   ctx: ProcessBatchContext,
   rows: Record<string, unknown>[],
@@ -153,28 +200,21 @@ export const processEventBatch = async (
       // External duplicates with "update" strategy: update existing event via Payload API
       const existingEventId = updateRows.get(rowNumber);
       if (existingEventId != null) {
-        if (!updateIdsInDataset.has(Number(existingEventId))) {
-          log.warn("Refusing cross-dataset event update", { rowNumber, existingEventId, datasetId: dataset.id });
+        const result = await tryUpdateExistingEvent(
+          payload,
+          eventData,
+          existingEventId,
+          updateIdsInDataset,
+          dataset.id,
+          log
+        );
+        if (result.blocked) {
           errors.push({
             row: rowNumber,
             error: `update blocked: event ${existingEventId} is not in dataset ${dataset.id}`,
           });
-          continue;
         }
-        await payload.update({
-          collection: "events",
-          id: existingEventId,
-          data: {
-            transformedData: eventData.transformedData,
-            sourceData: eventData.sourceData,
-            location: eventData.location,
-            eventTimestamp: eventData.eventTimestamp,
-            eventEndTimestamp: eventData.eventEndTimestamp,
-            ingestJob: eventData.ingestJob,
-          },
-          overrideAccess: true,
-        });
-        eventsUpdated++;
+        if (result.updated) eventsUpdated++;
         continue;
       }
 
@@ -185,19 +225,13 @@ export const processEventBatch = async (
     }
   }
 
-  // Bulk insert new events
-  let eventsCreated = 0;
-  if (eventsToInsert.length > 0) {
-    try {
-      eventsCreated = await bulkInsertEvents(payload, eventsToInsert);
-    } catch (error) {
-      log.error("Bulk insert failed for batch", { globalRowOffset, count: eventsToInsert.length, error });
-      const msg = error instanceof Error ? error.message : "Bulk insert failed";
-      for (let i = 0; i < eventsToInsert.length; i++) {
-        errors.push({ row: globalRowOffset + i, error: msg });
-      }
-    }
-  }
+  const { created: eventsCreated, errors: bulkErrors } = await bulkInsertNewEvents(
+    payload,
+    eventsToInsert,
+    globalRowOffset,
+    log
+  );
+  errors.push(...bulkErrors);
 
   return { eventsCreated: eventsCreated + eventsUpdated, eventsSkipped, eventsUpdated, errors };
 };

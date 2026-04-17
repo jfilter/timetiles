@@ -28,8 +28,8 @@
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 
-import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { logger } from "@/lib/logger";
 import { optionalStrictInteger, requireStrictInteger } from "@/lib/utils/event-params";
 import { requireRelationId } from "@/lib/utils/relation-id";
@@ -62,7 +62,7 @@ const isUniqueViolation = (error: unknown): boolean => {
     return true;
   }
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message = error instanceof Error ? error.message : JSON.stringify(error);
   return (
     message.includes("23505") ||
     message.includes("dataset_schemas_dataset_version_unique") ||
@@ -230,7 +230,7 @@ export class SchemaVersioningService {
       }
     }
 
-    throw lastError ?? new Error("Failed to create schema version after retries");
+    throw lastError instanceof Error ? lastError : new Error("Failed to create schema version after retries");
   }
 
   /**
