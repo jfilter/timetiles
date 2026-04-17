@@ -1,73 +1,15 @@
 /**
- * Provides a service for rate-limiting requests.
+ * Flexible, in-memory rate limiter for HTTP endpoints.
  *
- * This service implements a flexible, in-memory rate-limiting mechanism to protect
- * endpoints from abuse. It tracks requests from different identifiers (like IP addresses
- * or session IDs) and enforces limits based on a specified number of requests within a
- * given time window.
+ * Tracks requests per identifier (IP, session) across multi-window configs
+ * (burst / hourly / daily), supports trust-level-aware limits, emits standard
+ * rate-limit headers, and prunes expired entries automatically.
  *
- * ## Rate Limiting vs Quotas
- *
- * This service works alongside {@link QuotaService} but serves a different purpose:
- *
- * **RateLimitService (this service)**:
- * - Purpose: Short-term abuse prevention (DDoS, spam, burst attacks)
- * - Storage: In-memory (fast, ephemeral)
- * - Scope: Per IP address or identifier
- * - Time windows: Seconds to hours
- * - Reset: Sliding windows
- *
- * **QuotaService**:
- * - Purpose: Long-term resource management (fair usage, capacity planning)
- * - Storage: Database (persistent, accurate)
- * - Scope: Per user ID
- * - Time windows: Hours to lifetime
- * - Reset: Fixed times (midnight UTC)
- *
- * Both checks typically run together - rate limits first (fast fail), then quotas (accurate tracking).
- *
- * @example
- * ```typescript
- * // Typical usage pattern: check both rate limits and quotas
- * import { getRateLimitService } from '@/lib/services/rate-limit-service';
- * import { createQuotaService } from '@/lib/services/quota-service';
- *
- * // 1. Rate limit check (fast, prevents abuse)
- * const rateLimitService = getRateLimitService(payload);
- * const rateCheck = rateLimitService.checkTrustLevelRateLimit(
- *   clientIp,
- *   user,
- *   "FILE_UPLOAD"
- * );
- * if (!rateCheck.allowed) {
- *   return res.status(429).json({ error: "Too many requests" });
- * }
- *
- * // 2. Quota check (accurate, tracks long-term usage)
- * const quotaService = createQuotaService(payload);
- * const quotaCheck = await quotaService.checkQuota(
- *   user,
- *   "FILE_UPLOADS_PER_DAY"
- * );
- * if (!quotaCheck.allowed) {
- *   throw new QuotaExceededError(...);
- * }
- *
- * // 3. Process the request
- * await processFileUpload();
- * ```
- *
- * Key features include:
- * - Multi-window rate limiting (burst, hourly, daily)
- * - Trust-level-aware rate limits
- * - Checking if a request is allowed
- * - Blocking identifiers that exceed the limit
- * - Providing standard rate-limit headers for HTTP responses
- * - Automatic cleanup of expired entries
+ * For the rate-limit-vs-quota comparison and the canonical usage pattern
+ * (rate-limit check -> quota check -> action), see
+ * `docs/adr/0026-quota-system.md#quotas-vs-rate-limiting`.
  *
  * @see {@link QuotaService} for long-term resource management
- * @see [Rate Limiting Documentation](https://docs.timetiles.io/developer-guide/rate-limiting)
- * @see [Quotas Documentation](https://docs.timetiles.io/developer-guide/quotas)
  *
  * @category Services
  * @module

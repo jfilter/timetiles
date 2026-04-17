@@ -1,76 +1,13 @@
 /**
  * Service for managing user quotas and resource limits.
  *
- * This service provides centralized control over user resource limits, usage tracking,
- * and quota enforcement. It integrates with Payload CMS to enforce quotas and track
- * usage across various operations like file uploads, scheduled ingests, and event creation.
+ * Centralized control over long-term user resource limits, usage tracking, and
+ * quota enforcement. Usage is stored in a separate `user-usage` collection to
+ * keep versioning-sensitive auth data isolated from high-churn counters.
  *
- * ## Usage Tracking Architecture
- *
- * Usage tracking is stored in a separate `user-usage` collection rather than embedded
- * in the users collection. This separation:
- * - Prevents session-clearing issues that occurred when versioning was enabled on users
- * - Isolates authentication data from usage tracking
- * - Allows independent scaling and optimization of usage tracking
- *
- * ## Quotas vs Rate Limiting
- *
- * This service works alongside {@link RateLimitService} but serves a different purpose:
- *
- * **QuotaService (this service)**:
- * - Purpose: Long-term resource management (fair usage, capacity planning)
- * - Storage: Database (persistent, accurate) in `user-usage` collection
- * - Scope: Per user ID
- * - Time windows: Hours to lifetime (e.g., daily, total)
- * - Reset: Fixed times (midnight UTC for daily quotas)
- * - Examples: 10 uploads per day, 50,000 total events
- *
- * **RateLimitService**:
- * - Purpose: Short-term abuse prevention (DDoS, spam, burst attacks)
- * - Storage: In-memory (fast, ephemeral)
- * - Scope: Per IP address or identifier
- * - Time windows: Seconds to hours
- * - Reset: Sliding windows
- * - Examples: 1 upload per 5 seconds, 5 per hour
- *
- * Both checks typically run together - rate limits first (fast fail), then quotas (accurate tracking).
- *
- * @example
- * ```typescript
- * // Typical usage pattern: check both rate limits and quotas
- * import { getRateLimitService } from '@/lib/services/rate-limit-service';
- * import { createQuotaService } from '@/lib/services/quota-service';
- *
- * // 1. Rate limit check (fast, prevents abuse)
- * const rateLimitService = getRateLimitService(payload);
- * const rateCheck = rateLimitService.checkTrustLevelRateLimit(
- *   clientIp,
- *   user,
- *   "FILE_UPLOAD"
- * );
- * if (!rateCheck.allowed) {
- *   return res.status(429).json({ error: "Too many requests" });
- * }
- *
- * // 2. Quota check (accurate, tracks long-term usage)
- * const quotaService = createQuotaService(payload);
- * const quotaCheck = await quotaService.checkQuota(
- *   user,
- *   "FILE_UPLOADS_PER_DAY"
- * );
- * if (!quotaCheck.allowed) {
- *   throw new QuotaExceededError(
- *     quotaCheck.quotaKey,
- *     quotaCheck.current,
- *     quotaCheck.limit,
- *     quotaCheck.resetTime
- *   );
- * }
- *
- * // 3. Process the request and track usage
- * await processFileUpload();
- * await quotaService.incrementUsage(user.id, "FILE_UPLOADS_PER_DAY", 1);
- * ```
+ * For the quotas-vs-rate-limiting comparison and the canonical usage pattern
+ * (rate-limit check -> quota check -> action), see
+ * `docs/adr/0026-quota-system.md#quotas-vs-rate-limiting`.
  *
  * @see {@link RateLimitService} for short-term abuse prevention
  *
