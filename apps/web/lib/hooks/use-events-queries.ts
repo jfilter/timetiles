@@ -390,13 +390,16 @@ export const useH3HoverChildrenQuery = (
   boundsKey: string,
   buildParams: () => URLSearchParams,
   enabled: boolean = true
-) =>
-  useQuery({
-    queryKey: eventsQueryKeys.h3HoverChild(clusterId ?? "", parentCells, zoom, boundsKey),
-    queryFn: ({ signal }) => fetchH3HoverChildren(buildParams(), signal),
+) => {
+  const paramsKey = buildParams().toString();
+
+  return useQuery({
+    queryKey: [...eventsQueryKeys.h3HoverChild(clusterId ?? "", parentCells, zoom, boundsKey), paramsKey],
+    queryFn: ({ signal }) => fetchH3HoverChildren(new URLSearchParams(paramsKey), signal),
     enabled: enabled && Boolean(clusterId) && parentCells.length > 0,
     ...QUERY_PRESETS.expensive,
   });
+};
 
 /** Fetch summary data for events within specific H3 cells (cluster focus panel). */
 const fetchClusterSummary = async (
