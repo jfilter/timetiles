@@ -13,6 +13,80 @@ import { migrations } from "@/migrations";
 
 const expectedMigrationNames = migrations.map((migration) => migration.name);
 
+interface FunctionDefinitionExpectation {
+  name: string;
+  requiredSnippets: string[];
+  forbiddenSnippets?: string[];
+}
+
+interface FunctionDefinitionRecord {
+  name: string;
+  definition: string;
+}
+
+const CRITICAL_FUNCTION_EXPECTATIONS: FunctionDefinitionExpectation[] = [
+  {
+    name: "cluster_events",
+    requiredSnippets: [
+      "COALESCE((p_filters->>'includePublic')::boolean, true)",
+      "e.dataset_is_public = true",
+      "e.catalog_owner_id = (p_filters->>'ownerId')::int",
+      "ST_Intersects(e.geom, CASE WHEN p_min_lng <= p_max_lng",
+    ],
+    forbiddenSnippets: ["COALESCE((p_filters->>'includePublic')::boolean, false)"],
+  },
+  {
+    name: "calculate_event_histogram",
+    requiredSnippets: [
+      "COALESCE((p_filters->>'includePublic')::boolean, true)",
+      "e.dataset_is_public = true",
+      "e.catalog_owner_id = (p_filters->>'ownerId')::int",
+      "CASE WHEN (p_filters->'bounds'->>'minLng')::double precision",
+    ],
+    forbiddenSnippets: ["COALESCE((p_filters->>'includePublic')::boolean, false)"],
+  },
+  {
+    name: "cluster_events_temporal",
+    requiredSnippets: [
+      "COALESCE((p_filters->>'includePublic')::boolean, true)",
+      "e.dataset_is_public = true",
+      "e.catalog_owner_id = (p_filters->>'ownerId')::int",
+      "CASE WHEN (p_filters->'bounds'->>'minLng')::double precision",
+    ],
+    forbiddenSnippets: ["COALESCE((p_filters->>'includePublic')::boolean, false)"],
+  },
+];
+
+export const findFunctionDefinitionIssues = (
+  functionDefinitions: FunctionDefinitionRecord[],
+  expectations: FunctionDefinitionExpectation[] = CRITICAL_FUNCTION_EXPECTATIONS
+): string[] => {
+  const definitionsByName = new Map(functionDefinitions.map((record) => [record.name, record.definition]));
+  const issues: string[] = [];
+
+  for (const expectation of expectations) {
+    const definition = definitionsByName.get(expectation.name);
+    if (!definition) {
+      issues.push(`Missing required SQL function: ${expectation.name}`);
+      continue;
+    }
+
+    for (const requiredSnippet of expectation.requiredSnippets) {
+      if (!definition.includes(requiredSnippet)) {
+        issues.push(`Function ${expectation.name} is missing expected SQL: ${requiredSnippet}`);
+      }
+    }
+
+    for (const forbiddenSnippet of expectation.forbiddenSnippets ?? []) {
+      if (definition.includes(forbiddenSnippet)) {
+        issues.push(`Function ${expectation.name} still contains forbidden SQL: ${forbiddenSnippet}`);
+      }
+    }
+  }
+
+  return issues;
+};
+
 /**
  * Verifies that the database schema has been properly set up with all required tables.
  */
@@ -93,6 +167,26 @@ export const verifyDatabaseSchema = async (connectionString: string): Promise<vo
 
     if (missingMigrations.length > 0) {
       throw new Error(`Database is missing migrations: ${missingMigrations.join(", ")}`);
+    }
+
+    const functionDefinitionsResult = await client.query<{ name: string; definition: string }>(
+      `
+      SELECT
+        p.proname AS name,
+        pg_get_functiondef(p.oid) AS definition
+      FROM pg_proc p
+      JOIN pg_namespace n ON p.pronamespace = n.oid
+      WHERE n.nspname = 'public'
+        AND p.proname = ANY($1::text[])
+    `,
+      [CRITICAL_FUNCTION_EXPECTATIONS.map((expectation) => expectation.name)]
+    );
+
+    const functionDefinitionIssues = findFunctionDefinitionIssues(functionDefinitionsResult.rows);
+    if (functionDefinitionIssues.length > 0) {
+      throw new Error(
+        `Critical SQL function definitions drifted from expected invariants:\n${functionDefinitionIssues.join("\n")}`
+      );
     }
   } finally {
     await client.end();
