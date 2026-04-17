@@ -35,6 +35,7 @@ import * as migration_20260331_200012 from './20260331_200012';
 import * as migration_20260331_220208 from './20260331_220208';
 import * as migration_20260401_000000_fix_field_filter_null_handling from './20260401_000000_fix_field_filter_null_handling';
 import * as migration_20260402_011606 from './20260402_011606';
+import * as migration_20260416_092834_unique_dataset_schema_version from './20260416_092834_unique_dataset_schema_version';
 
 export const migrations = [
   {
@@ -221,5 +222,10 @@ export const migrations = [
     up: migration_20260402_011606.up,
     down: migration_20260402_011606.down,
     name: '20260402_011606'
+  },
+  {
+    up: migration_20260416_092834_unique_dataset_schema_version.up,
+    down: migration_20260416_092834_unique_dataset_schema_version.down,
+    name: '20260416_092834_unique_dataset_schema_version',
   },
 ];

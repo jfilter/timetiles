@@ -11,19 +11,64 @@
  * - Creating a new, versioned schema document in the database.
  * - Linking an import job to the specific schema version it was validated against.
  *
+ * ⚠️ Concurrency model
+ * When two workflow tasks process sheets that share a dataset, both can read the same
+ * MAX(versionNumber) and attempt to insert `N+1`. Three defenses:
+ * 1. `pg_advisory_xact_lock` keyed per-dataset, held across the read→write
+ *    (inside the caller's Payload transaction via `req.transactionID`).
+ * 2. Unique index on `(dataset_id, version_number)` (migration `20260416_092834_*`).
+ * 3. Bounded retry on unique-violation — covers the lock-bypass case.
+ *
  * ⚠️ Payload CMS Deadlock Prevention
  * This service uses nested Payload operations and must receive the `req` parameter.
  * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
  *
  * @module
  */
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import { optionalStrictInteger, requireStrictInteger } from "@/lib/utils/event-params";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, DatasetSchema } from "@/payload-types";
+
+const MAX_CREATE_ATTEMPTS = 5;
+
+/**
+ * Detects unique-constraint violations across three wrapping layers:
+ * 1. Raw pg error — `code === '23505'`.
+ * 2. Payload ValidationError — wraps the pg error; the `errors` entries carry
+ *    `message: 'Value must be unique'` and `path` = the constraint's columns.
+ * 3. Fallback string matching — covers any intermediate wrapping that
+ *    preserves the constraint name or pg error code in the message.
+ */
+const isUniqueViolation = (error: unknown): boolean => {
+  if (!error) return false;
+  const code = (error as { code?: string } | null)?.code;
+  if (code === "23505") return true;
+
+  const errors = (error as { data?: { errors?: Array<{ message?: string; path?: string }> } } | null)?.data?.errors;
+  if (
+    errors?.some(
+      (e) =>
+        /must be unique/i.test(e.message ?? "") &&
+        (e.path ?? "").includes("dataset") &&
+        (e.path ?? "").includes("version")
+    )
+  ) {
+    return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("23505") ||
+    message.includes("dataset_schemas_dataset_version_unique") ||
+    (message.includes("duplicate key") && message.includes("dataset_schemas"))
+  );
+};
 
 /**
  * Consolidated schema versioning service to prevent duplicate creation
@@ -42,7 +87,31 @@ export class SchemaVersioningService {
   }
 
   /**
+   * Acquire a per-dataset transaction-scoped advisory lock. Released when the
+   * caller's Payload transaction commits or rolls back. No-op if `req` doesn't
+   * carry a transaction — callers without a transaction rely on the unique
+   * index + retry for correctness.
+   *
+   * The first lock key is a stable hash of a namespace string, the second is
+   * the dataset id — standard Postgres pattern for scoped advisory locks.
+   */
+  private static async acquireDatasetLock(payload: Payload, datasetId: number, req?: PayloadRequest): Promise<void> {
+    if (!req?.transactionID) return;
+    const drizzle = await getTransactionAwareDrizzle(payload, req);
+    await drizzle.execute(sql`
+      SELECT pg_advisory_xact_lock(
+        hashtext('timetiles.dataset_schema_version')::int,
+        ${datasetId}::int
+      )
+    `);
+  }
+
+  /**
    * Get the next schema version number for a dataset.
+   *
+   * Must run under an advisory lock (see `acquireDatasetLock`) when used to
+   * derive a value for an INSERT; the read-then-write pattern otherwise races
+   * under concurrent callers.
    */
   static async getNextSchemaVersion(
     payload: Payload,
@@ -95,18 +164,12 @@ export class SchemaVersioningService {
     const datasetId = requireRelationId(dataset, "schema.dataset");
     const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
 
-    logger.info("Getting next schema version", { datasetId });
-    const nextVersion = await this.getNextSchemaVersion(payload, normalizedDatasetId, req);
+    await this.acquireDatasetLock(payload, normalizedDatasetId, req);
 
-    try {
-      logger.info("Preparing to create dataset-schema record", {
-        datasetId,
-        nextVersion,
-        hasSchema: !!schema,
-        hasFieldMetadata: !!fieldMetadata,
-        hasFieldMappings: !!fieldMappings,
-        importSourcesCount: ingestSources.length,
-      });
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= MAX_CREATE_ATTEMPTS; attempt++) {
+      logger.info("Getting next schema version", { datasetId, attempt });
+      const nextVersion = await this.getNextSchemaVersion(payload, normalizedDatasetId, req);
 
       const createData = {
         dataset: normalizedDatasetId,
@@ -127,32 +190,47 @@ export class SchemaVersioningService {
       logger.info("Calling payload.create for dataset-schemas", {
         datasetId: createData.dataset,
         versionNumber: createData.versionNumber,
+        attempt,
       });
 
-      const schemaVersion = await payload.create({
-        collection: COLLECTION_NAMES.DATASET_SCHEMAS,
-        data: createData,
-        req,
-        overrideAccess: true,
-      });
+      try {
+        const schemaVersion = await payload.create({
+          collection: COLLECTION_NAMES.DATASET_SCHEMAS,
+          data: createData,
+          req,
+          overrideAccess: true,
+        });
 
-      logger.info("Schema version created successfully", {
-        schemaVersionId: schemaVersion.id,
-        datasetId,
-        versionNumber: nextVersion,
-      });
+        logger.info("Schema version created successfully", {
+          schemaVersionId: schemaVersion.id,
+          datasetId,
+          versionNumber: nextVersion,
+        });
 
-      return schemaVersion;
-    } catch (error) {
-      logger.error("Failed to create schema version", {
-        error,
-        datasetId,
-        nextVersion,
-        hasSchema: !!schema,
-        schemaType: typeof schema,
-      });
-      throw error;
+        return schemaVersion;
+      } catch (error) {
+        lastError = error;
+        if (isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
+          logger.warn("Schema version unique-violation, retrying", {
+            datasetId,
+            attemptedVersion: nextVersion,
+            attempt,
+          });
+          continue;
+        }
+        logger.error("Failed to create schema version", {
+          error,
+          datasetId,
+          nextVersion,
+          hasSchema: !!schema,
+          schemaType: typeof schema,
+          attempt,
+        });
+        throw error;
+      }
     }
+
+    throw lastError ?? new Error("Failed to create schema version after retries");
   }
 
   /**
