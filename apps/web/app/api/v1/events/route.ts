@@ -12,9 +12,11 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
-import { buildFieldFilterConditions, h3ColumnName, isValidH3CellId } from "@/lib/filters/to-sql-conditions";
+import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
@@ -66,85 +68,23 @@ export const GET = apiRoute({
   handler: async ({ query, user, payload }) => {
     const ctx = await resolveEventQueryContext({ payload, user, query, requireLocation: true });
     if (ctx.denied) {
-      return buildListResponse({
-        docs: [],
-        page: 1,
-        limit: query.limit,
-        totalDocs: 0,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false,
-      });
+      return buildListResponse(buildEmptyQueryResult(query.limit));
+    }
+
+    if (requiresSqlFilteredPagination(ctx.filters)) {
+      const result = await executeSqlFilteredEventsQuery(payload, ctx.filters, query, user);
+      return buildListResponse(result);
     }
 
     const where = toPayloadWhere(ctx.filters);
-
-    // Field filters: apply via raw SQL because Payload's JSONB query sanitizer
-    // rejects values containing characters like parentheses, commas, etc.
-    if (ctx.filters.fieldFilters && Object.keys(ctx.filters.fieldFilters).length > 0) {
-      const ffConditions = buildFieldFilterConditions(ctx.filters.fieldFilters, ctx.filters.tagFields);
-      if (ffConditions.length > 0) {
-        const whereClause = sql.join(ffConditions, sql` AND `);
-        const idResult = (await payload.db.drizzle.execute(
-          sql`SELECT e.id FROM payload.events e WHERE ${whereClause}`
-        )) as { rows: Array<{ id: number }> };
-        const ids = idResult.rows.map((r) => Number(r.id));
-        if (ids.length === 0) {
-          return buildListResponse({
-            docs: [],
-            page: 1,
-            limit: query.limit,
-            totalDocs: 0,
-            totalPages: 0,
-            hasNextPage: false,
-            hasPrevPage: false,
-          });
-        }
-        where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { in: ids } }];
-      }
-    }
-
-    // H3 cell filter: pre-fetch matching IDs via raw SQL (Payload doesn't know about h3_rN columns)
-    if (ctx.filters.clusterCells?.length && ctx.filters.h3Resolution != null) {
-      const col = h3ColumnName(ctx.filters.h3Resolution);
-      const validCells = ctx.filters.clusterCells.filter(isValidH3CellId);
-      if (validCells.length === 0) {
-        return buildListResponse({
-          docs: [],
-          page: 1,
-          limit: query.limit,
-          totalDocs: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        });
-      }
-      const idResult = (await payload.db.drizzle.execute(sql`
-        SELECT e.id FROM payload.events e
-        WHERE ${sql.raw(col)}::text IN (${sql.join(
-          validCells.map((c) => sql`${c}`),
-          sql`, `
-        )})
-      `)) as { rows: Array<{ id: number }> };
-      const ids = idResult.rows.map((r) => Number(r.id));
-      if (ids.length === 0) {
-        return buildListResponse({
-          docs: [],
-          page: 1,
-          limit: query.limit,
-          totalDocs: 0,
-          totalPages: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-        });
-      }
-      where.and = [...(Array.isArray(where.and) ? where.and : []), { id: { in: ids } }];
-    }
-
     const result = await executeEventsQuery(payload, where, query, user);
     return buildListResponse(result);
   },
 });
+
+const requiresSqlFilteredPagination = (filters: CanonicalEventFilters): boolean =>
+  (filters.fieldFilters != null && Object.keys(filters.fieldFilters).length > 0) ||
+  (filters.clusterCells?.length ?? 0) > 0;
 
 const executeEventsQuery = async (
   payload: Payload,
@@ -162,6 +102,115 @@ const executeEventsQuery = async (
     user,
     overrideAccess: false,
   });
+
+const SORTABLE_SQL_COLUMNS = {
+  createdAt: sql.raw("e.created_at"),
+  eventEndTimestamp: sql.raw("e.event_end_timestamp"),
+  eventTimestamp: sql.raw("e.event_timestamp"),
+  id: sql.raw("e.id"),
+  locationName: sql.raw("e.location_name"),
+  uniqueId: sql.raw("e.unique_id"),
+  updatedAt: sql.raw("e.updated_at"),
+  validationStatus: sql.raw("e.validation_status"),
+} as const;
+
+const buildSortExpression = (sortField: string) => {
+  const sqlColumn = SORTABLE_SQL_COLUMNS[sortField as keyof typeof SORTABLE_SQL_COLUMNS];
+  if (sqlColumn) {
+    return sqlColumn;
+  }
+
+  if (isValidFieldKey(sortField)) {
+    return sql`e.transformed_data #>> string_to_array(${sortField}, '.')`;
+  }
+
+  return SORTABLE_SQL_COLUMNS.eventTimestamp;
+};
+
+const buildOrderByClause = (sort: string) => {
+  const isDescending = sort.startsWith("-");
+  const sortField = sort.replace(/^-/, "");
+  const sortExpression = buildSortExpression(sortField);
+
+  if (sortField === "id") {
+    return isDescending ? sql`${sortExpression} DESC` : sql`${sortExpression} ASC`;
+  }
+
+  return isDescending ? sql`${sortExpression} DESC, e.id DESC` : sql`${sortExpression} ASC, e.id ASC`;
+};
+
+const executeSqlFilteredEventsQuery = async (
+  payload: Payload,
+  filters: CanonicalEventFilters,
+  query: EventListQuery,
+  user?: User | null
+) => {
+  const whereClause = toSqlWhereClause(filters);
+  const orderByClause = buildOrderByClause(query.sort);
+  const offset = Math.max(0, (query.page - 1) * query.limit);
+
+  const countPromise = payload.db.drizzle.execute(sql`
+      SELECT COUNT(*)::integer as total
+      FROM payload.events e
+      JOIN payload.datasets d ON e.dataset_id = d.id
+      WHERE ${whereClause}
+    `) as Promise<{ rows: Array<{ total: number }> }>;
+  const pagePromise = payload.db.drizzle.execute(sql`
+      SELECT e.id
+      FROM payload.events e
+      JOIN payload.datasets d ON e.dataset_id = d.id
+      WHERE ${whereClause}
+      ORDER BY ${orderByClause}
+      LIMIT ${query.limit}
+      OFFSET ${offset}
+    `) as Promise<{ rows: Array<{ id: number }> }>;
+
+  const [countResult, pageResult] = await Promise.all([countPromise, pagePromise]);
+
+  const totalDocs = Number(countResult.rows[0]?.total ?? 0);
+  if (totalDocs === 0) {
+    return buildPaginatedQueryResult([], query.page, query.limit, totalDocs);
+  }
+
+  const pageIds = pageResult.rows.map((row) => Number(row.id));
+  if (pageIds.length === 0) {
+    return buildPaginatedQueryResult([], query.page, query.limit, totalDocs);
+  }
+
+  const hydratedResult = await payload.find({
+    collection: "events",
+    where: { id: { in: pageIds } },
+    limit: pageIds.length,
+    depth: 1,
+    user,
+    overrideAccess: false,
+  });
+
+  const docsById = new Map(hydratedResult.docs.map((doc) => [doc.id, doc]));
+  const docs = pageIds.map((id) => docsById.get(id)).filter((doc): doc is Event => doc != null);
+
+  return buildPaginatedQueryResult(docs, query.page, query.limit, totalDocs);
+};
+
+const buildPaginatedQueryResult = (docs: Event[], page: number, limit: number, totalDocs: number) => {
+  const totalPages = totalDocs === 0 ? 0 : Math.ceil(totalDocs / limit);
+  const hasPrevPage = totalDocs > 0 && page > 1;
+  const hasNextPage = totalDocs > 0 && page < totalPages;
+
+  return {
+    docs,
+    page,
+    limit,
+    totalDocs,
+    totalPages,
+    hasNextPage,
+    hasPrevPage,
+    nextPage: hasNextPage ? page + 1 : null,
+    prevPage: hasPrevPage ? page - 1 : null,
+  };
+};
+
+const buildEmptyQueryResult = (limit: number) => buildPaginatedQueryResult([], 1, limit, 0);
 
 const buildListResponse = (result: {
   docs: Event[];

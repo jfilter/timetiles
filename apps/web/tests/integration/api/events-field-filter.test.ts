@@ -153,4 +153,28 @@ describe("/api/v1/events - field filtering", () => {
       expect(event.data.venue.address.city).toBe("Berlin");
     }
   });
+
+  it("should paginate filtered results while preserving total counts", async () => {
+    const fieldFilters = JSON.stringify({ category: ["Music", "Art"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}&limit=1&page=2&sort=eventTimestamp`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    expect(data.events).toHaveLength(1);
+    expect(data.pagination).toMatchObject({
+      page: 2,
+      limit: 1,
+      totalDocs: 4,
+      totalPages: 4,
+      hasNextPage: true,
+      hasPrevPage: true,
+      nextPage: 3,
+      prevPage: 1,
+    });
+    expect(["Music", "Art"]).toContain(data.events[0].data.category);
+  });
 });

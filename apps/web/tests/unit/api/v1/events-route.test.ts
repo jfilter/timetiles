@@ -7,7 +7,12 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
-const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockPayloadFind: vi.fn(), mockCanAccessCatalog: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  mockCanAccessCatalog: vi.fn(),
+  mockDrizzleExecute: vi.fn(),
+  mockGetPayload: vi.fn(),
+  mockPayloadFind: vi.fn(),
+}));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 
@@ -36,9 +41,11 @@ describe.sequential("GET /api/v1/events", () => {
 
     mocks.mockGetPayload.mockResolvedValue({
       auth: vi.fn().mockResolvedValue({ user: null }),
+      db: { drizzle: { execute: mocks.mockDrizzleExecute } },
       find: mocks.mockPayloadFind,
     });
     mocks.mockCanAccessCatalog.mockResolvedValue(true);
+    mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [],
       page: 1,
@@ -104,5 +111,56 @@ describe.sequential("GET /api/v1/events", () => {
     expect(response.status).toBe(422);
     const data = await response.json();
     expect(data.error).toBe("Validation failed");
+  });
+
+  it("paginates SQL-only field filters via page-sized hydration", async () => {
+    mocks.mockDrizzleExecute
+      .mockResolvedValueOnce({ rows: [{ total: 2 }] })
+      .mockResolvedValueOnce({ rows: [{ id: 202 }] });
+    mocks.mockPayloadFind.mockResolvedValue({
+      docs: [
+        {
+          id: 202,
+          dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", fieldMappingOverrides: null },
+          transformedData: { title: "Filtered Event", category: "Music" },
+          location: { latitude: 52.52, longitude: 13.405 },
+          locationName: "Berlin",
+          geocodingInfo: { normalizedAddress: "Berlin, Germany" },
+          eventTimestamp: "2024-01-02T00:00:00.000Z",
+          eventEndTimestamp: null,
+          validationStatus: "valid",
+        },
+      ],
+      page: 1,
+      limit: 1,
+      totalDocs: 1,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+      nextPage: null,
+      prevPage: null,
+    });
+
+    const fieldFilters = encodeURIComponent(JSON.stringify({ category: ["Music"] }));
+    const response = await GET(createRequest(`?ff=${fieldFilters}&limit=1&page=2`), { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    expect(mocks.mockDrizzleExecute).toHaveBeenCalledTimes(2);
+    expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: [202] } }, limit: 1 })
+    );
+
+    const data = await response.json();
+    expect(data.events).toHaveLength(1);
+    expect(data.pagination).toMatchObject({
+      page: 2,
+      limit: 1,
+      totalDocs: 2,
+      totalPages: 2,
+      hasNextPage: false,
+      hasPrevPage: true,
+      nextPage: null,
+      prevPage: 1,
+    });
   });
 });
