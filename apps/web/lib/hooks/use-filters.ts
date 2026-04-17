@@ -14,6 +14,8 @@
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { useMemo } from "react";
 
+import { formatLocalISODate } from "@/lib/utils/date";
+
 import type { FilterState } from "../types/filter-state";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
 
@@ -23,14 +25,6 @@ export type { FilterState };
 // Custom parsers for nuqs
 const parseAsStringOrNull = parseAsString.withDefault("");
 const parseAsArrayOfStrings = parseAsArrayOf(parseAsString).withDefault([]);
-
-/** Format a Date as YYYY-MM-DD. */
-const formatDateValue = (d: Date) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-};
 
 /** Serialize field filters to a JSON string (empty string if none). */
 const serializeFieldFilters = (ff: Record<string, string[]>) => (Object.keys(ff).length > 0 ? JSON.stringify(ff) : "");
@@ -127,7 +121,7 @@ export const useFilters = () => {
   };
 
   const setSingleDayFilter = (date: Date) => {
-    const formatted = formatDateValue(date);
+    const formatted = formatLocalISODate(date);
     void setFilterParams({ startDate: formatted, endDate: formatted });
   };
 

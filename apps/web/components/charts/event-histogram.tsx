@@ -15,6 +15,7 @@ import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
 import { getResolution, isValidCell } from "h3-js";
+import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { expandGroupNames } from "@/components/charts/event-beeswarm";
@@ -108,6 +109,7 @@ export const EventHistogram = ({
   showControls = false,
 }: Readonly<EventHistogramProps>) => {
   const chartTheme = useChartTheme();
+  const t = useTranslations("Explore");
   const { filters, setSingleDayFilter } = useFilters();
   const scope = useViewScope();
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
@@ -159,14 +161,14 @@ export const EventHistogram = ({
       {showControls && isGrouped && onMaxGroupsChange && (
         <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">
           <LabeledSlider
-            label="Top groups"
+            label={t("beeswarmTopGroups")}
             value={maxGroups}
             onChange={onMaxGroupsChange}
             min={2}
             max={10}
             step={1}
-            minLabel="Fewer"
-            maxLabel="More"
+            minLabel={t("beeswarmFewer")}
+            maxLabel={t("beeswarmMore")}
           />
         </div>
       )}

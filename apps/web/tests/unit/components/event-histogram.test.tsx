@@ -5,7 +5,7 @@ import { cleanup, screen, waitFor } from "@testing-library/react";
 
 import { EventHistogram } from "@/components/charts/event-histogram";
 
-import { useHistogramQuery } from "../../../lib/hooks/use-events-queries";
+import { useHistogramQuery, useTemporalClustersQuery } from "../../../lib/hooks/use-events-queries";
 import { renderWithProviders } from "../../setup/unit/react-render";
 
 // Mock next-themes to avoid matchMedia issues in tests
@@ -58,13 +58,7 @@ vi.mock("../../../lib/hooks/use-view-scope", () => ({ useViewScope: () => ({ mod
 // Mock the React Query hooks — loading phase is now computed inside the hook
 vi.mock("../../../lib/hooks/use-events-queries", () => ({
   useHistogramQuery: vi.fn(),
-  useTemporalClustersQuery: () => ({
-    data: undefined,
-    isLoading: false,
-    isInitialLoad: false,
-    isUpdating: false,
-    isError: false,
-  }),
+  useTemporalClustersQuery: vi.fn(),
 }));
 
 // Mock ECharts component
@@ -75,11 +69,19 @@ vi.mock("echarts-for-react", () => ({
 }));
 
 const mockUseHistogramQuery = useHistogramQuery as any;
+const mockUseTemporalClustersQuery = useTemporalClustersQuery as any;
 
 describe.sequential("EventHistogram", () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
+    mockUseTemporalClustersQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isInitialLoad: false,
+      isUpdating: false,
+      isError: false,
+    });
     // Note: vi.resetModules() removed - it clears the matchMedia mock needed by next-themes
   });
 
@@ -161,6 +163,24 @@ describe.sequential("EventHistogram", () => {
       expect(chartElement.textContent).toContain(timestamp2);
       expect(chartElement.textContent).toContain("5");
       expect(chartElement.textContent).toContain("10");
+    });
+  });
+
+  it("renders translated grouped controls", async () => {
+    mockUseHistogramQuery.mockReturnValue({
+      data: { histogram: [] },
+      isLoading: false,
+      error: null,
+      isInitialLoad: false,
+      isUpdating: false,
+    });
+
+    renderWithProviders(<EventHistogram groupBy="dataset" showControls onMaxGroupsChange={vi.fn()} maxGroups={6} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Top groups")).toBeInTheDocument();
+      expect(screen.getByText("Fewer")).toBeInTheDocument();
+      expect(screen.getByText("More")).toBeInTheDocument();
     });
   });
 });

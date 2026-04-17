@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatDateShort } from "../../../lib/utils/date";
+import { formatDate, formatDateShort, formatLocalISODate } from "../../../lib/utils/date";
 
 describe("Date Formatting Utilities", () => {
   describe("formatDate", () => {
@@ -199,6 +199,17 @@ describe("Date Formatting Utilities", () => {
       months.forEach(({ date, expected }) => {
         expect(formatDateShort(date)).toBe(expected);
       });
+    });
+  });
+
+  describe("formatLocalISODate", () => {
+    it("should preserve the local calendar date", () => {
+      const date = new Date(2024, 0, 15, 23, 45, 0);
+      expect(formatLocalISODate(date)).toBe("2024-01-15");
+    });
+
+    it("should return an empty string for invalid dates", () => {
+      expect(formatLocalISODate(new Date("invalid"))).toBe("");
     });
   });
 });
