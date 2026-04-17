@@ -12,7 +12,7 @@ const datasetRows = [
     updated: "Apr 15, 2026",
     status: "Healthy",
     events: "12,480",
-    statusClassName: "bg-emerald-100 text-emerald-800",
+    statusClassName: "bg-accent/15 text-accent",
   },
   {
     name: "Neighborhood Workshops",
@@ -20,7 +20,7 @@ const datasetRows = [
     updated: "Apr 14, 2026",
     status: "Needs review",
     events: "1,284",
-    statusClassName: "bg-amber-100 text-amber-900",
+    statusClassName: "bg-secondary/15 text-secondary",
   },
   {
     name: "Museum Late Openings",
@@ -28,7 +28,7 @@ const datasetRows = [
     updated: "Apr 13, 2026",
     status: "Draft",
     events: "428",
-    statusClassName: "bg-slate-200 text-slate-800",
+    statusClassName: "bg-muted text-foreground",
   },
   {
     name: "Transit Accessibility Alerts",
@@ -36,7 +36,7 @@ const datasetRows = [
     updated: "Apr 11, 2026",
     status: "Healthy",
     events: "6,912",
-    statusClassName: "bg-emerald-100 text-emerald-800",
+    statusClassName: "bg-accent/15 text-accent",
   },
 ];
 

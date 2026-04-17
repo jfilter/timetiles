@@ -34,10 +34,10 @@ export const PresetButtonGroup = <T extends string>({
         type="button"
         onClick={() => onChange(option.key)}
         className={cn(
-          "flex-1 rounded px-2 py-1 text-xs font-medium transition-colors",
+          "border-border ring-ring/40 flex-1 rounded-sm border px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2",
           value === option.key
-            ? "bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900"
-            : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
         )}
       >
         {option.label}

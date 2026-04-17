@@ -41,8 +41,8 @@ export const LabeledSlider = ({
 }: LabeledSliderProps) => (
   <div>
     <div className="flex items-center justify-between">
-      <label className="text-xs text-gray-500 dark:text-gray-400">{label}</label>
-      <span className="text-xs text-gray-700 tabular-nums dark:text-gray-300">{formatValue(value)}</span>
+      <label className="text-muted-foreground text-xs font-medium">{label}</label>
+      <span className="text-foreground text-xs tabular-nums">{formatValue(value)}</span>
     </div>
     <input
       type="range"
@@ -51,10 +51,10 @@ export const LabeledSlider = ({
       step={step}
       value={value}
       onChange={(e) => onChange(Number(e.target.value))}
-      className="h-1 w-full cursor-pointer accent-gray-900 dark:accent-gray-300"
+      className="accent-primary h-1 w-full cursor-pointer"
     />
     {(minLabel ?? maxLabel) && (
-      <div className="flex justify-between text-[10px] text-gray-400">
+      <div className="text-muted-foreground/80 flex justify-between text-[10px]">
         <span>{minLabel}</span>
         <span>{maxLabel}</span>
       </div>

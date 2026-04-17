@@ -176,9 +176,9 @@ const datasetRows: DatasetRow[] = [
 ];
 
 const statusClassNames: Record<DatasetRow["status"], string> = {
-  Healthy: "bg-emerald-100 text-emerald-800",
-  "Needs review": "bg-amber-100 text-amber-900",
-  Draft: "bg-slate-200 text-slate-800",
+  Healthy: "bg-accent/15 text-accent",
+  "Needs review": "bg-secondary/15 text-secondary",
+  Draft: "bg-muted text-foreground",
 };
 
 const datasetColumns: ColumnDef<DatasetRow, unknown>[] = [

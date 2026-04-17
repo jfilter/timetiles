@@ -1,16 +1,17 @@
 /**
- * Shared newsletter UI primitives used by both NewsletterForm and NewsletterCTA.
+ * Internal shared newsletter UI primitives used by both NewsletterForm and NewsletterCTA.
  *
- * Extracts the duplicated status indicator icons, button content logic, and
- * status message rendering into reusable components.
+ * Public newsletter prop types live in `newsletter-types.ts`; this module
+ * only contains implementation helpers that the public components compose.
  *
  * @module
  * @category Components
  */
-import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
 import type { NewsletterStatus } from "../hooks/use-newsletter-subscription";
+import { cn } from "../lib/utils";
+import type { NewsletterButtonLabels } from "./newsletter-types";
 
 /** Map pin SVG for success state */
 const MapPinIcon = ({ className }: { className?: string }) => (
@@ -63,12 +64,6 @@ export const NewsletterStatusIndicator = ({
     </div>
   );
 };
-
-/** Labels for the submit button in different states. */
-export interface NewsletterButtonLabels {
-  submitting?: string;
-  submitted?: string;
-}
 
 /** Button text content based on submission status. */
 export const NewsletterButtonContent = ({

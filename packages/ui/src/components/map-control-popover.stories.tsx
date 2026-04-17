@@ -34,7 +34,7 @@ const MapControlPanelStory = ({ open = true }: { open?: boolean }) => {
   const radiusByDensity: Record<DensityPreset, number> = { fine: 8, balanced: 14, coarse: 22 };
 
   return (
-    <div className="h-[240px] w-[320px] rounded-sm border bg-slate-100 p-4 dark:bg-slate-950">
+    <div className="border-border bg-muted/30 h-[240px] w-[320px] rounded-sm border p-4">
       <MapControlPopover
         open={open}
         onOpenChange={() => {}}
@@ -67,7 +67,7 @@ const MapControlPanelStory = ({ open = true }: { open?: boolean }) => {
             minLabel="Detailed"
             maxLabel="Overview"
           />
-          <p className="text-xs text-gray-600 dark:text-gray-300">
+          <p className="text-muted-foreground text-xs">
             Use a tighter radius for dense downtown event maps, or widen it for regional overviews.
           </p>
         </div>

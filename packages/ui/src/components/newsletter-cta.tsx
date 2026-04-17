@@ -26,12 +26,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
 import { type NewsletterMessages, useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import {
-  type NewsletterButtonLabels,
-  NewsletterEmailInput,
-  NewsletterStatusMessage,
-  NewsletterSubmitButton,
-} from "./newsletter-shared";
+import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
+import type { NewsletterButtonLabels } from "./newsletter-types";
 
 const newsletterCtaVariants = cva("relative overflow-hidden", {
   variants: {

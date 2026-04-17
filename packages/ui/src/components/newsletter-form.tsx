@@ -23,12 +23,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import * as React from "react";
 
 import { type NewsletterMessages, useNewsletterSubscription } from "../hooks/use-newsletter-subscription";
-import {
-  type NewsletterButtonLabels,
-  NewsletterEmailInput,
-  NewsletterStatusMessage,
-  NewsletterSubmitButton,
-} from "./newsletter-shared";
+import { NewsletterEmailInput, NewsletterStatusMessage, NewsletterSubmitButton } from "./newsletter-shared";
+import type { NewsletterButtonLabels } from "./newsletter-types";
 
 export interface NewsletterFormProps {
   /** Optional headline text */

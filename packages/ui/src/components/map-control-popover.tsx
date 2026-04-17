@@ -78,7 +78,7 @@ export const MapControlPopover = ({
       {isOpen && (
         <div
           className={cn(
-            "absolute bottom-0 left-10 z-20 rounded border bg-white p-3 shadow-lg dark:border-gray-700 dark:bg-gray-800",
+            "border-border bg-background text-foreground absolute bottom-0 left-10 z-20 rounded-sm border p-3 shadow-lg",
             widthClass,
             panelClassName
           )}

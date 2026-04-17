@@ -137,7 +137,7 @@ export type { NewsletterCTAProps } from "./components/newsletter-cta";
 export { NewsletterCTA, newsletterCtaVariants } from "./components/newsletter-cta";
 export type { NewsletterFormProps } from "./components/newsletter-form";
 export { NewsletterForm } from "./components/newsletter-form";
-export type { NewsletterButtonLabels } from "./components/newsletter-shared";
+export type { NewsletterButtonLabels } from "./components/newsletter-types";
 export {
   TestimonialAuthor,
   TestimonialAvatar,
