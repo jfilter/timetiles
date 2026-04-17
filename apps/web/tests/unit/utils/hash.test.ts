@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { hashEmail, hashIpAddress } from "@/lib/security/hash";
+import { hashEmail, hashIpAddress, hashOpaqueValue } from "@/lib/security/hash";
 
 describe.sequential("hashEmail", () => {
   it("produces a consistent SHA-256 hex digest", () => {
@@ -76,5 +76,17 @@ describe.sequential("hashIpAddress", () => {
     const hash = hashIpAddress("::1");
 
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe.sequential("hashOpaqueValue", () => {
+  it("produces a consistent SHA-256 hex digest", () => {
+    const hash = hashOpaqueValue("secret-token");
+
+    expect(hash).toBe("930bbdc51b6aed5c2a5678fd6e28dee7a05e8a4b643cfc0b4427c3efb86c0d94");
+  });
+
+  it("does not normalize case-sensitive secrets", () => {
+    expect(hashOpaqueValue("Secret-Token")).not.toBe(hashOpaqueValue("secret-token"));
   });
 });

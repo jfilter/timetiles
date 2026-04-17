@@ -5,11 +5,22 @@
  * @module
  * @category Tests
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { isPrivateIP, isPrivateUrl } from "@/lib/security/url-validation";
 
 describe("isPrivateUrl", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+    vi.stubEnv("E2E_MODE", "");
+    vi.stubEnv("NODE_ENV", "test");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   describe("blocks loopback addresses", () => {
     it("blocks 127.0.0.1", () => {
       expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(true);
@@ -129,10 +140,6 @@ describe("isPrivateUrl", () => {
   });
 
   describe("ALLOW_PRIVATE_URLS bypass", () => {
-    afterEach(() => {
-      vi.unstubAllEnvs();
-    });
-
     it("allows private URLs when ALLOW_PRIVATE_URLS is set", () => {
       vi.stubEnv("ALLOW_PRIVATE_URLS", "true");
       expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(false);
@@ -144,18 +151,40 @@ describe("isPrivateUrl", () => {
       vi.stubEnv("ALLOW_PRIVATE_URLS", "");
       expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(true);
     });
+
+    it("blocks private URLs in production even when ALLOW_PRIVATE_URLS is set", () => {
+      vi.stubEnv("ALLOW_PRIVATE_URLS", "true");
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("E2E_MODE", "");
+
+      expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(true);
+    });
+
+    it("allows private URLs for explicit E2E runtime even under production NODE_ENV", () => {
+      vi.stubEnv("ALLOW_PRIVATE_URLS", "true");
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("E2E_MODE", "true");
+
+      expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(false);
+    });
   });
 
   describe("blocks carrier-grade NAT (RFC 6598)", () => {
     it("blocks 100.64.0.1", () => {
+      vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+      vi.stubEnv("E2E_MODE", "");
       expect(isPrivateUrl("http://100.64.0.1/data.csv")).toBe(true);
     });
 
     it("blocks 100.127.255.255", () => {
+      vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+      vi.stubEnv("E2E_MODE", "");
       expect(isPrivateUrl("http://100.127.255.255/data.csv")).toBe(true);
     });
 
     it("allows 100.128.0.1 (outside CGN range)", () => {
+      vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+      vi.stubEnv("E2E_MODE", "");
       expect(isPrivateUrl("http://100.128.0.1/data.csv")).toBe(false);
     });
   });

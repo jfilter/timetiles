@@ -34,6 +34,8 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/webhooks/trigger/[token]/route";
+import { hashOpaqueValue } from "@/lib/security/hash";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 const { mockPayload, mockRateLimitService, mockDrizzleExecute } = mocks;
 
@@ -148,5 +150,18 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     expect(data.status).toBe("triggered");
     expect(data.jobId).toBe("job-456");
     expect(mockPayload.jobs.queue).toHaveBeenCalled();
+  });
+
+  it("logs a hashed fingerprint instead of a token prefix for invalid webhooks", async () => {
+    const invalidToken = "invalid-token-xyz";
+    mockPayload.find.mockResolvedValue({ docs: [] });
+
+    const response = await POST(createRequest() as never, createContext(invalidToken));
+
+    expect(response.status).toBe(401);
+    expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+      { tokenHash: hashOpaqueValue(invalidToken) },
+      "Webhook trigger failed - invalid or disabled token"
+    );
   });
 });

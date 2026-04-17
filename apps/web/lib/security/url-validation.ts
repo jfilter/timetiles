@@ -7,6 +7,7 @@
  * @module
  * @category Utils
  */
+import { isE2E } from "@/lib/utils/is-e2e";
 
 /** IPv4 private range patterns (hostname-level, no DNS resolution). */
 const PRIVATE_IPV4_PATTERNS = [
@@ -75,13 +76,21 @@ export const isPrivateIP = (ip: string): boolean => {
  */
 // Extracted to prevent Next.js build-time dead-code elimination.
 // Uses bracket notation so webpack DefinePlugin doesn't inline the value.
-// Note: NODE_ENV check was removed because `next build` always inlines NODE_ENV as "production"
-// regardless of the actual environment, making runtime checks against it impossible.
-// The same trap affects any runtime NODE_ENV comparison in server code — see
-// `lib/utils/is-e2e.ts` for the canonical E2E runtime flag, and the
-// `no-restricted-syntax` rule in `eslint.config.js` that forbids the pattern in
-// `app/api/**` and `lib/services/**`.
-const isPrivateUrlBypassEnabled = (): boolean => process.env["ALLOW_PRIVATE_URLS"] === "true";
+// The bypass is intentionally limited to explicit non-production runtimes. E2E
+// runs a production build under `next start`, so it needs a dedicated runtime
+// flag instead of relying on NODE_ENV alone.
+const isPrivateUrlBypassEnabled = (): boolean => {
+  if (process.env["ALLOW_PRIVATE_URLS"] !== "true") {
+    return false;
+  }
+
+  if (isE2E()) {
+    return true;
+  }
+
+  const runtimeNodeEnv = process.env["NODE_ENV"];
+  return runtimeNodeEnv === "development" || runtimeNodeEnv === "test";
+};
 
 export const isPrivateUrl = (url: string): boolean => {
   // Allow private URLs when explicitly opted in (e.g., E2E tests with local test servers)

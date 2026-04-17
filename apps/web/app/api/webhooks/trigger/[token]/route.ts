@@ -21,6 +21,7 @@ import {
   resolveWebhookToken,
   type WebhookTarget,
 } from "@/lib/services/webhook-registry";
+import { hashOpaqueValue } from "@/lib/security/hash";
 
 interface RateLimitResponse {
   success: false;
@@ -60,7 +61,7 @@ export const POST = apiRoute({
     const target = await resolveWebhookToken(payload, token);
 
     if (!target) {
-      logger.warn({ token: token.substring(0, 8) + "..." }, "Webhook trigger failed - invalid or disabled token");
+      logger.warn({ tokenHash: hashOpaqueValue(token) }, "Webhook trigger failed - invalid or disabled token");
       throw new AppError(401, "Invalid or disabled webhook", "INVALID_WEBHOOK");
     }
 
