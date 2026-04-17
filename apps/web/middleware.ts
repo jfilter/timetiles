@@ -13,17 +13,18 @@
  */
 
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import createMiddleware from "next-intl/middleware";
 
 import { routing } from "./i18n/routing";
 
 /** Matches `/embed`, `/{locale}/embed`, and any sub-paths. */
 const EMBED_ROUTE_PATTERN = /^\/(?:[a-z]{2}\/)?embed(?:\/|$)/;
+const API_ROUTE_PATTERN = /^\/api(?:\/|$)/;
 
 const intlMiddleware = createMiddleware(routing);
 
-export default function middleware(request: NextRequest) {
-  const response = intlMiddleware(request);
+const applyFrameHeaders = (request: NextRequest, response: Response) => {
   const { pathname } = request.nextUrl;
 
   if (EMBED_ROUTE_PATTERN.test(pathname)) {
@@ -31,17 +32,25 @@ export default function middleware(request: NextRequest) {
     response.headers.delete("X-Frame-Options");
     response.headers.set("Content-Security-Policy", "frame-ancestors *");
   } else {
-    // Prevent framing of non-embed pages
+    // Prevent framing of non-embed pages, including API routes
     response.headers.set("X-Frame-Options", "DENY");
     response.headers.set("Content-Security-Policy", "frame-ancestors 'self'");
   }
 
   return response;
+};
+
+export default function middleware(request: NextRequest) {
+  if (API_ROUTE_PATTERN.test(request.nextUrl.pathname)) {
+    return applyFrameHeaders(request, NextResponse.next());
+  }
+
+  return applyFrameHeaders(request, intlMiddleware(request));
 }
 
 export const config = {
-  // Match all pathnames except:
-  // - /api, /dashboard (Payload admin), /_next, /_vercel
+  // Match API routes explicitly plus all front-end pathnames except:
+  // - /dashboard (Payload admin), /_next, /_vercel
   // - Files with extensions (e.g., favicon.ico, image.png)
-  matcher: "/((?!api|dashboard|_next|_vercel|.*\\..*).*)",
+  matcher: ["/api/:path*", "/((?!dashboard|_next|_vercel|.*\\..*).*)"],
 };

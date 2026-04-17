@@ -14,8 +14,18 @@ import { describe, expect, it, vi } from "vitest";
 
 // Capture the function passed to createMiddleware so we can test the wrapper
 const mockIntlResponse = { headers: new Map<string, string>() };
+const createHeaderStore = () => {
+  const headers = new Map<string, string>();
+  const originalDelete = headers.delete.bind(headers);
+  const originalSet = headers.set.bind(headers);
+  const originalGet = headers.get.bind(headers);
+  const originalHas = headers.has.bind(headers);
+
+  return Object.assign(headers, { delete: originalDelete, set: originalSet, get: originalGet, has: originalHas });
+};
 
 vi.mock("next-intl/middleware", () => ({ default: vi.fn(() => () => mockIntlResponse) }));
+vi.mock("next/server", () => ({ NextResponse: { next: vi.fn(() => ({ headers: createHeaderStore() })) } }));
 
 // Mock NextRequest with nextUrl.pathname
 const createMockRequest = (pathname: string) => {
@@ -31,14 +41,7 @@ const { default: middleware } = await import("../../../middleware");
 describe("middleware embed headers", () => {
   // Reset the mock response headers before each test
   const resetHeaders = () => {
-    mockIntlResponse.headers = new Map<string, string>();
-    // Provide Map-like interface expected by the middleware
-    const store = mockIntlResponse.headers;
-    const originalDelete = store.delete.bind(store);
-    const originalSet = store.set.bind(store);
-    const originalGet = store.get.bind(store);
-
-    Object.assign(mockIntlResponse.headers, { delete: originalDelete, set: originalSet, get: originalGet });
+    mockIntlResponse.headers = createHeaderStore();
   };
 
   describe("embed routes", () => {
@@ -54,13 +57,15 @@ describe("middleware embed headers", () => {
   });
 
   describe("non-embed routes", () => {
-    it.each(["/", "/explore", "/de/explore", "/login", "/dashboard", "/embedded-page"])(
+    it.each(["/", "/explore", "/de/explore", "/login", "/dashboard", "/embedded-page", "/api/v1/events"])(
       "sets X-Frame-Options DENY for %s",
       (pathname) => {
         resetHeaders();
-        middleware(createMockRequest(pathname) as never);
-        expect(mockIntlResponse.headers.get("X-Frame-Options")).toBe("DENY");
-        expect(mockIntlResponse.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'self'");
+        const response = middleware(createMockRequest(pathname) as never);
+        const headers = pathname.startsWith("/api/") ? response.headers : mockIntlResponse.headers;
+
+        expect(headers.get("X-Frame-Options")).toBe("DENY");
+        expect(headers.get("Content-Security-Policy")).toBe("frame-ancestors 'self'");
       }
     );
   });

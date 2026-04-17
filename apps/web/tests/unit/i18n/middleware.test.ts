@@ -20,24 +20,24 @@ describe("i18n middleware config", () => {
   it("exports a matcher config", () => {
     expect(config).toBeDefined();
     expect(config.matcher).toBeDefined();
-    expect(typeof config.matcher).toBe("string");
+    expect(Array.isArray(config.matcher)).toBe(true);
   });
 
-  it("excludes API routes from matching", () => {
-    expect(config.matcher).toContain("api");
+  it("matches API routes explicitly", () => {
+    expect(config.matcher).toContain("/api/:path*");
   });
 
   it("excludes Payload dashboard from matching", () => {
-    expect(config.matcher).toContain("dashboard");
+    expect(config.matcher.join(" ")).toContain("dashboard");
   });
 
   it("excludes Next.js internals from matching", () => {
-    expect(config.matcher).toContain("_next");
-    expect(config.matcher).toContain("_vercel");
+    expect(config.matcher.join(" ")).toContain("_next");
+    expect(config.matcher.join(" ")).toContain("_vercel");
   });
 
   it("excludes files with extensions from matching", () => {
     // The pattern .*\\..* matches files like favicon.ico, image.png
-    expect(config.matcher).toContain("..");
+    expect(config.matcher.join(" ")).toContain("..");
   });
 });

@@ -13,10 +13,17 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
 /* eslint-disable no-undef */
 const isProduction = process.env.NODE_ENV === "production";
+const SECURITY_HEADERS = [
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=()" },
+];
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
+  headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
     { source: "/dashboard/login", destination: "/login?redirect=/dashboard", permanent: false },
