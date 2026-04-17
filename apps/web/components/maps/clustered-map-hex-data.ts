@@ -12,6 +12,8 @@ import { cellToBoundary, isValidCell } from "h3-js";
 
 import type { ClusterFeature } from "./clustered-map";
 
+type HoverFilterSearchParams = Pick<URLSearchParams, "get">;
+
 /** Stable empty feature collection — reuse for memoization-friendly empty returns. */
 export const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
@@ -42,14 +44,14 @@ export const resolveParentCells = (rawSourceCells: unknown, clusterId: string): 
 
 /**
  * Build URL search params for the hover child-cells API request,
- * inheriting relevant filters from the current page URL.
+ * inheriting relevant filters from the current page search params.
  */
 export const buildHoverFetchParams = (
+  pageParams: HoverFilterSearchParams,
   parentCells: string[],
   currentZoom: number,
   mapBounds: { getNorth: () => number; getSouth: () => number; getEast: () => number; getWest: () => number } | null
 ): URLSearchParams => {
-  const pageParams = new URLSearchParams(window.location.search);
   const params = new URLSearchParams();
   for (const key of ["catalog", "datasets", "startDate", "endDate", "ff"]) {
     const val = pageParams.get(key);

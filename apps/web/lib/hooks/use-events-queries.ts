@@ -391,12 +391,13 @@ export const useH3HoverChildrenQuery = (
   buildParams: () => URLSearchParams,
   enabled: boolean = true
 ) => {
-  const paramsKey = buildParams().toString();
+  const hasHoverTarget = enabled && Boolean(clusterId) && parentCells.length > 0;
+  const paramsKey = hasHoverTarget ? buildParams().toString() : "";
 
   return useQuery({
     queryKey: [...eventsQueryKeys.h3HoverChild(clusterId ?? "", parentCells, zoom, boundsKey), paramsKey],
     queryFn: ({ signal }) => fetchH3HoverChildren(new URLSearchParams(paramsKey), signal),
-    enabled: enabled && Boolean(clusterId) && parentCells.length > 0,
+    enabled: hasHoverTarget,
     ...QUERY_PRESETS.expensive,
   });
 };

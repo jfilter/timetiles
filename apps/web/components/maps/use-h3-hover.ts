@@ -10,6 +10,7 @@
 "use client";
 
 import type { MapMouseEvent } from "maplibre-gl";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
@@ -47,6 +48,7 @@ const boundsToKey = (
 export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: UseH3HoverProps) => {
   const [hoverTarget, setHoverTarget] = useState<HoverTarget | null>(null);
   const roundedZoom = Math.round(currentZoom);
+  const searchParams = useSearchParams();
 
   // Build URL params lazily when the query runs — captures the latest bounds/zoom
   // at fetch time, matching the prior behavior.
@@ -54,8 +56,8 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
     const mapInstance = mapRef.current?.getMap();
     const bounds = mapInstance ? mapInstance.getBounds() : null;
     const cells = hoverTarget?.parentCells ?? [];
-    return buildHoverFetchParams(cells, currentZoom, bounds);
-  }, [mapRef, currentZoom, hoverTarget]);
+    return buildHoverFetchParams(searchParams, cells, currentZoom, bounds);
+  }, [mapRef, currentZoom, hoverTarget, searchParams]);
 
   const { data: childFeatures } = useH3HoverChildrenQuery(
     hoverTarget?.clusterId ?? null,
