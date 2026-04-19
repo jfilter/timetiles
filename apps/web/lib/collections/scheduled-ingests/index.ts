@@ -40,7 +40,7 @@ const shouldSkipQuotaChecks = (
   context?: Record<string, unknown>
 ): boolean =>
   getEnv().NODE_ENV === "test" ||
-  process.env.VITEST === "true" ||
+  getEnv().VITEST === "true" ||
   !req.user ||
   Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);
 

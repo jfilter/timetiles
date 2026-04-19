@@ -55,11 +55,6 @@ export const AUDIT_ACTIONS = {
   LOGIN_SUCCESS: "account.login_success",
   LOGIN_FAILED: "account.login_failed",
   REGISTERED: "account.registered",
-
-  // Scraper operations
-  SCRAPER_REPO_CREATED: "scraper.repo_created",
-  SCRAPER_REPO_DELETED: "scraper.repo_deleted",
-  SCRAPER_EXECUTED: "scraper.executed",
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

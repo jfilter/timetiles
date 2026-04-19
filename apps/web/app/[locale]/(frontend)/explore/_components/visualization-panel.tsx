@@ -33,8 +33,8 @@ export interface ChartMeta {
   subtitle: string;
 }
 
-/** Get labels for each chart type in the dropdown using translations */
-const useChartTypeLabels = (): Record<ChartType, string> => {
+/** Get labels for each chart type in the dropdown using translations. */
+export const useChartTypeLabels = (): Record<ChartType, string> => {
   const t = useTranslations("Explore");
   return { histogram: t("timeline"), beeswarm: t("beeswarm"), "dataset-bar": t("byDataset") };
 };
