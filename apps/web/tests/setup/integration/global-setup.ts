@@ -81,6 +81,10 @@ process.env.PAYLOAD_SECRET = "test-secret-key";
 process.env.NEXT_PUBLIC_PAYLOAD_URL = "http://localhost:3000";
 // Allow private/localhost URLs in integration tests (SSRF validation bypass for test servers)
 process.env.ALLOW_PRIVATE_URLS = "true";
+// Disable live HIBP lookups by default in integration tests so auth suites stay
+// deterministic and don't depend on the evolving compromised-password corpus.
+// Tests that need the HIBP path can opt back in explicitly.
+process.env.PASSWORD_HIBP_CHECK = "false";
 
 // Payload logging is now properly controlled via logger and loggingLevels configuration
 

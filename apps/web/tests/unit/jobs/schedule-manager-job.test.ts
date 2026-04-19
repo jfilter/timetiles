@@ -42,13 +42,22 @@ describe.sequential("scheduleManagerJob", () => {
   });
 
   describe("handler", () => {
+    const createUpdateBuilder = (result: unknown[]) => {
+      const builder = {
+        set: vi.fn(() => builder),
+        where: vi.fn(() => builder),
+        returning: vi.fn(() => Promise.resolve(result)),
+      };
+
+      return builder;
+    };
+
     const createMockContext = () => {
       const mockPayload = {
         find: vi.fn(),
         findByID: vi.fn(),
         update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
-        // triggerScheduledIngest uses atomic SQL claim via drizzle
-        db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
+        db: { drizzle: { update: vi.fn().mockImplementation(() => createUpdateBuilder([{ id: 1 }])) } },
         jobs: { queue: vi.fn().mockResolvedValue({ id: "workflow-job-123" }) },
       };
 
@@ -288,8 +297,8 @@ describe.sequential("scheduleManagerJob", () => {
 
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-      // triggerScheduledIngest uses atomic SQL via drizzle to claim "running" status.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // triggerScheduledIngest uses a guarded Drizzle update to claim "running" status.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
 
       // totalRuns is NOT incremented at queue time — only on job completion.
       // The atomic SQL claim sets lastStatus, lastRun, currentRetries, nextRun
@@ -386,8 +395,7 @@ describe.sequential("scheduleManagerJob", () => {
 
         await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-        // triggerScheduledIngest uses atomic SQL claim via drizzle
-        expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+        expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
         expect(mockPayload.jobs.queue).toHaveBeenCalled();
       }
     });
@@ -440,8 +448,8 @@ describe.sequential("scheduleManagerJob", () => {
 
       mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
 
-      // Simulate atomic claim rejection
-      mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [] });
+      // Simulate atomic claim rejection.
+      mockPayload.db.drizzle.update.mockImplementation(() => createUpdateBuilder([]));
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 

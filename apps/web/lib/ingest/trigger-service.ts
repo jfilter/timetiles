@@ -8,12 +8,13 @@
  * @module
  * @category Services
  */
-import { sql } from "@payloadcms/db-postgres";
+import { and, eq, isNull, ne, or } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import { scheduled_ingests } from "@/payload-generated-schema";
 import type { ScheduledIngest } from "@/payload-types";
 
 /**
@@ -78,13 +79,13 @@ export const triggerScheduledIngest = async (
   const shouldResetRetries = options.triggeredBy !== "schedule";
 
   // Atomically claim "running" status to prevent overlapping triggers.
-  // Uses raw SQL UPDATE with a WHERE guard — PostgreSQL row-level locking
+  // Uses a single UPDATE with a WHERE guard — PostgreSQL row-level locking
   // ensures only one concurrent caller succeeds even under `read committed`.
-  // For webhooks, the route already claimed "running" via raw SQL,
+  // For webhooks, the route already claimed "running" before calling this helper,
   // so we skip the claim and only update metadata.
   if (options.alreadyClaimed) {
-    // Caller already claimed "running" via raw SQL. Re-assert it here so
-    // the Payload ORM write doesn't overwrite the SQL-set value.
+    // Caller already claimed "running". Re-assert it here so the Payload ORM
+    // write doesn't overwrite the claimed value.
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
@@ -96,37 +97,22 @@ export const triggerScheduledIngest = async (
       },
     });
   } else {
-    // Atomic SQL claim: a single UPDATE that only succeeds if not already running.
-    // Under read committed, the row-level lock from UPDATE prevents a second
-    // concurrent transaction from seeing the old status — it blocks until the
-    // first commits, then re-evaluates the WHERE and gets 0 rows.
-    //
-    // Scheduler triggers preserve `current_retries` so the cap logic in
-    // updateScheduledIngestFailure can observe the accumulated counter.
-    // User-initiated triggers reset it to 0 (handled in the alreadyClaimed
-    // branch above — webhooks/manual always go through that path).
-    const claimResult = (await payload.db.drizzle.execute(
-      options.nextRun != null
-        ? sql`
-            UPDATE payload.scheduled_ingests
-            SET last_status = 'running',
-                last_run = ${currentTime.toISOString()},
-                next_run = ${options.nextRun}
-            WHERE id = ${scheduledIngest.id}
-              AND (last_status IS NULL OR last_status != 'running')
-            RETURNING id
-          `
-        : sql`
-            UPDATE payload.scheduled_ingests
-            SET last_status = 'running',
-                last_run = ${currentTime.toISOString()}
-            WHERE id = ${scheduledIngest.id}
-              AND (last_status IS NULL OR last_status != 'running')
-            RETURNING id
-          `
-    )) as { rows: Array<{ id: number }> };
+    const claimResult = await payload.db.drizzle
+      .update(scheduled_ingests)
+      .set(
+        options.nextRun != null
+          ? { lastStatus: "running", lastRun: currentTime.toISOString(), nextRun: options.nextRun }
+          : { lastStatus: "running", lastRun: currentTime.toISOString() }
+      )
+      .where(
+        and(
+          eq(scheduled_ingests.id, scheduledIngest.id),
+          or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
+        )
+      )
+      .returning({ id: scheduled_ingests.id });
 
-    if (claimResult.rows.length === 0) {
+    if (claimResult.length === 0) {
       throw new Error("scheduled ingest is already running (concurrent trigger rejected)");
     }
   }

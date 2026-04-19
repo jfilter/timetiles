@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 import { apiRoute, ValidationError } from "@/lib/api";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { h3ColumnName, isValidH3CellId, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
+import { buildH3CellSqlCondition, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
 
 /**
@@ -59,17 +59,6 @@ const emptyResponse = (): ClusterSummaryResponse => ({
   preview: [],
 });
 
-/** Build the H3 cell filter condition for a given resolution. */
-const buildH3CellCondition = (cells: string[], resolution: number) => {
-  const col = h3ColumnName(resolution);
-  const validCells = cells.filter(isValidH3CellId);
-  if (validCells.length === 0) return sql.raw("FALSE");
-  return sql`${sql.raw(col)}::text IN (${sql.join(
-    validCells.map((c) => sql`${c}`),
-    sql`, `
-  )})`;
-};
-
 const executeClusterSummary = async (
   payload: Payload,
   cells: string[],
@@ -77,7 +66,7 @@ const executeClusterSummary = async (
   filters: CanonicalEventFilters
 ): Promise<ClusterSummaryResponse> => {
   const whereClause = toSqlWhereClause(filters);
-  const cellCondition = buildH3CellCondition(cells, h3Resolution);
+  const cellCondition = buildH3CellSqlCondition(cells, h3Resolution) ?? sql`FALSE`;
 
   // Run all queries in parallel
   const [summaryResult, datasetsResult, catalogsResult, previewResult] = await Promise.all([
@@ -172,7 +161,7 @@ const fetchCategoryFacets = async (
   payload: Payload,
   datasetIds: number[],
   whereClause: ReturnType<typeof sql>,
-  cellCondition: ReturnType<typeof sql.raw>
+  cellCondition: ReturnType<typeof sql>
 ): Promise<ClusterSummaryResponse["categories"]> => {
   // Find enum fields from dataset metadata
   const datasets = await payload.find({

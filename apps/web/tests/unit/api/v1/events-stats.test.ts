@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockCanAccessCatalog: vi.fn(),
   mockBuildAggregationWhereClause: vi.fn(),
-  mockDrizzleExecute: vi.fn(),
+  mockDrizzleSelect: vi.fn(),
   mockPayloadFind: vi.fn(),
 }));
 
@@ -26,13 +26,6 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCanAccessCatalog }));
 
 vi.mock("@/lib/filters/to-sql-conditions", () => ({ toSqlWhereClause: mocks.mockBuildAggregationWhereClause }));
-
-vi.mock("@payloadcms/db-postgres", () => ({
-  sql: Object.assign((strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }), {
-    join: vi.fn(),
-    raw: vi.fn(),
-  }),
-}));
 
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
@@ -50,19 +43,31 @@ const createRequest = (queryString: string, user: unknown = null) => {
   return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
+const createSelectBuilder = (result: unknown) => {
+  const builder = {
+    from: vi.fn(() => builder),
+    innerJoin: vi.fn(() => builder),
+    where: vi.fn(() => builder),
+    groupBy: vi.fn(() => builder),
+    orderBy: vi.fn(() => Promise.resolve(result)),
+  };
+
+  return builder;
+};
+
 /**
  * Sets up default mock implementations for a standard successful request.
  */
 const setupDefaults = () => {
   mocks.mockGetPayload.mockResolvedValue({
     auth: vi.fn().mockResolvedValue({ user: null }),
-    db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+    db: { drizzle: { select: mocks.mockDrizzleSelect } },
     find: mocks.mockPayloadFind,
   });
 
   mocks.mockCanAccessCatalog.mockResolvedValue(true);
   mocks.mockBuildAggregationWhereClause.mockReturnValue("1=1");
-  mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
+  mocks.mockDrizzleSelect.mockImplementation(() => createSelectBuilder([]));
   mocks.mockPayloadFind.mockResolvedValue({ docs: [] });
 };
 
@@ -119,18 +124,18 @@ describe.sequential("GET /api/v1/events/stats", () => {
       const data = await response.json();
       expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
       // Should not execute any SQL query
-      expect(mocks.mockDrizzleExecute).not.toHaveBeenCalled();
+      expect(mocks.mockDrizzleSelect).not.toHaveBeenCalled();
     });
   });
 
   describe.sequential("Catalog Aggregation", () => {
     it("should return aggregated items grouped by catalog", async () => {
-      mocks.mockDrizzleExecute.mockResolvedValue({
-        rows: [
+      mocks.mockDrizzleSelect.mockImplementation(() =>
+        createSelectBuilder([
           { id: 1, name: "Catalog A", count: 15 },
           { id: 2, name: "Catalog B", count: 5 },
-        ],
-      });
+        ])
+      );
 
       const req = createRequest("?groupBy=catalog");
 
@@ -148,12 +153,12 @@ describe.sequential("GET /api/v1/events/stats", () => {
 
   describe.sequential("Dataset Aggregation", () => {
     it("should return aggregated items grouped by dataset", async () => {
-      mocks.mockDrizzleExecute.mockResolvedValue({
-        rows: [
+      mocks.mockDrizzleSelect.mockImplementation(() =>
+        createSelectBuilder([
           { id: 10, name: "Dataset X", count: 30 },
           { id: 20, name: "Dataset Y", count: 12 },
-        ],
-      });
+        ])
+      );
 
       const req = createRequest("?groupBy=dataset");
 
@@ -169,7 +174,9 @@ describe.sequential("GET /api/v1/events/stats", () => {
     });
 
     it("should add 0-count entries for filtered datasets not in results", async () => {
-      mocks.mockDrizzleExecute.mockResolvedValueOnce({ rows: [{ id: 10, name: "Dataset X", count: 5 }] });
+      mocks.mockDrizzleSelect.mockImplementationOnce(() =>
+        createSelectBuilder([{ id: 10, name: "Dataset X", count: 5 }])
+      );
       mocks.mockPayloadFind.mockResolvedValueOnce({
         docs: [
           { id: 20, name: "Dataset Y" },
@@ -191,7 +198,7 @@ describe.sequential("GET /api/v1/events/stats", () => {
       expect(data.items[1]).toEqual(expect.objectContaining({ count: 0 }));
       expect(data.items[2]).toEqual(expect.objectContaining({ count: 0 }));
 
-      expect(mocks.mockDrizzleExecute).toHaveBeenCalledTimes(1);
+      expect(mocks.mockDrizzleSelect).toHaveBeenCalledTimes(1);
       expect(mocks.mockPayloadFind).toHaveBeenCalledOnce();
     });
   });

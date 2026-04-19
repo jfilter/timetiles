@@ -7,11 +7,11 @@
  * @module
  * @category Services
  */
-import { sql } from "@payloadcms/db-postgres";
+import { count, desc, eq } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
+import { createFilteredEventCatalogScope, createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import type { AggregateResponse, AggregationItem } from "@/lib/schemas/events";
 import type { User } from "@/payload-types";
@@ -36,55 +36,19 @@ export const executeAggregationQuery = async (
   filters: CanonicalEventFilters,
   user?: User | null
 ): Promise<AggregateResponse> => {
-  // Build WHERE clause from canonical filters
-  const whereClause = toSqlWhereClause(filters);
-
-  // Build SELECT and GROUP BY clauses based on groupBy field
-  let selectClause;
-  let joinClause;
-  let groupByClause;
-
-  if (groupBy === "catalog") {
-    selectClause = sql`
-      d.catalog_id as id,
-      c.name as name,
-      COUNT(*)::integer as count
-    `;
-    joinClause = sql`
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      JOIN payload.catalogs c ON d.catalog_id = c.id
-    `;
-    groupByClause = sql`d.catalog_id, c.name`;
-  } else {
-    // groupBy === "dataset"
-    selectClause = sql`
-      e.dataset_id as id,
-      d.name as name,
-      COUNT(*)::integer as count
-    `;
-    joinClause = sql`
-      JOIN payload.datasets d ON e.dataset_id = d.id
-    `;
-    groupByClause = sql`e.dataset_id, d.name`;
-  }
-
-  // Execute query
-  const queryResult = (await payload.db.drizzle.execute(sql`
-    SELECT ${selectClause}
-    FROM payload.events e
-    ${joinClause}
-    WHERE ${whereClause}
-    GROUP BY ${groupByClause}
-    ORDER BY count DESC
-  `)) as { rows: Array<{ id: number; name: string | null; count: number }> };
+  const queryResult =
+    groupBy === "catalog"
+      ? await executeCatalogAggregation(payload, filters)
+      : await executeDatasetAggregation(payload, filters);
 
   // Transform results into a map for easy lookup
   const resultMap = new Map<number, AggregationItem>();
-  for (const row of queryResult.rows) {
+  for (const row of queryResult) {
+    if (row.id == null) continue;
     resultMap.set(row.id, {
       id: row.id,
       name: row.name ?? `${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)} ${row.id}`,
-      count: row.count,
+      count: Number(row.count),
     });
   }
 
@@ -122,4 +86,29 @@ export const executeAggregationQuery = async (
   logger.info({ groupBy, itemCount: items.length, totalEvents: total }, "Aggregation query executed");
 
   return { items, total, groupedBy: groupBy };
+};
+
+const executeCatalogAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const { eventTable, datasetTable, catalogTable, whereClause } = createFilteredEventCatalogScope(filters);
+
+  return payload.db.drizzle
+    .select({ id: datasetTable.catalog, name: catalogTable.name, count: count() })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .innerJoin(catalogTable, eq(datasetTable.catalog, catalogTable.id))
+    .where(whereClause)
+    .groupBy(datasetTable.catalog, catalogTable.name)
+    .orderBy(desc(count()));
+};
+
+const executeDatasetAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
+
+  return payload.db.drizzle
+    .select({ id: eventTable.dataset, name: datasetTable.name, count: count() })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .where(whereClause)
+    .groupBy(eventTable.dataset, datasetTable.name)
+    .orderBy(desc(count()));
 };

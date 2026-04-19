@@ -13,10 +13,11 @@
  *
  * @module
  */
-import { sql } from "@payloadcms/db-postgres";
+import { inArray, lt, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { location_cache } from "@/payload-generated-schema";
 import type { LocationCache } from "@/payload-types";
 
 import type { GeocodingResult, GeocodingSettings } from "./types";
@@ -198,14 +199,11 @@ export class CacheManager {
       // Single bulk DELETE; no row-level hooks needed for cache cleanup.
       // Replaces the previous find+per-row-delete loop (up to 1000 queries → 1).
       const db = this.payload.db.drizzle;
-      const result = await db.execute(sql`
-        DELETE FROM payload.location_cache
-        WHERE created_at < ${cutoffIso}
-        RETURNING id
-      `);
-
-      const rows = (result as unknown as { rows?: unknown[]; length?: number }).rows ?? result;
-      const deletedCount = Array.isArray(rows) ? rows.length : 0;
+      const result = await db
+        .delete(location_cache)
+        .where(lt(location_cache.createdAt, cutoffIso))
+        .returning({ id: location_cache.id });
+      const deletedCount = result.length;
 
       logger.info(`Cleaned up ${deletedCount} expired cache entries`);
     } catch (error) {
@@ -260,15 +258,10 @@ export class CacheManager {
   private async batchUpdateHitCounts(ids: number[]): Promise<void> {
     try {
       const db = this.payload.db.drizzle;
-      await db.execute(sql`
-        UPDATE payload.location_cache
-        SET hit_count = COALESCE(hit_count, 0) + 1,
-            last_used = NOW()
-        WHERE id IN (${sql.join(
-          ids.map((id) => sql`${id}`),
-          sql`, `
-        )})
-      `);
+      await db
+        .update(location_cache)
+        .set({ hitCount: sql`COALESCE(${location_cache.hitCount}, 0) + 1`, lastUsed: sql`NOW()` })
+        .where(inArray(location_cache.id, ids));
     } catch (error) {
       logger.warn("Failed to batch update hit counts", { error, count: ids.length });
     }
@@ -280,13 +273,7 @@ export class CacheManager {
   private async batchDeleteExpired(ids: number[]): Promise<void> {
     try {
       const db = this.payload.db.drizzle;
-      await db.execute(sql`
-        DELETE FROM payload.location_cache
-        WHERE id IN (${sql.join(
-          ids.map((id) => sql`${id}`),
-          sql`, `
-        )})
-      `);
+      await db.delete(location_cache).where(inArray(location_cache.id, ids));
     } catch (error) {
       logger.warn("Failed to batch delete expired cache entries", { error, count: ids.length });
     }

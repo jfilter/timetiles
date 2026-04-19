@@ -34,12 +34,21 @@ describe.sequential("scheduleManagerJob timezone support", () => {
   });
 
   const createMockContext = () => {
+    const createUpdateBuilder = (result: unknown[]) => {
+      const builder = {
+        set: vi.fn(() => builder),
+        where: vi.fn(() => builder),
+        returning: vi.fn(() => Promise.resolve(result)),
+      };
+
+      return builder;
+    };
+
     const mockPayload = {
       find: vi.fn(),
       findByID: vi.fn(),
       update: vi.fn().mockResolvedValue({ docs: [{ id: "claimed" }] }),
-      // triggerScheduledIngest uses atomic SQL claim via drizzle
-      db: { drizzle: { execute: vi.fn().mockResolvedValue({ rows: [{ id: 1 }] }) } },
+      db: { drizzle: { update: vi.fn().mockImplementation(() => createUpdateBuilder([{ id: 1 }])) } },
       jobs: { queue: vi.fn().mockResolvedValue({ id: "url-fetch-job-tz" }) },
     };
     const mockJob = { id: "schedule-job-tz" };
@@ -135,8 +144,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
       // The nextRun (08:00 Berlin = 07:00 UTC on 2024-01-16) is embedded
-      // in the atomic SQL claim via drizzle.execute.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // in the guarded Drizzle update claim.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
     });
   });
 
@@ -172,8 +181,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
 
       // The nextRun (midnight Berlin Jan 17 = 2024-01-16 23:00 UTC) is embedded
-      // in the atomic SQL claim via drizzle.execute.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // in the guarded Drizzle update claim.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
     });
 
     it("should calculate hourly next run at top-of-hour in user timezone", async () => {
@@ -207,8 +216,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
 
       // The nextRun (07:00 EST = 12:00 UTC) is embedded
-      // in the atomic SQL claim via drizzle.execute.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // in the guarded Drizzle update claim.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
     });
   });
 
@@ -239,9 +248,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       // Should trigger (UTC behavior unchanged)
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
 
-      // The nextRun (11:00 UTC) is embedded in the atomic SQL claim
-      // via drizzle.execute.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // The nextRun (11:00 UTC) is embedded in the guarded Drizzle update claim.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
     });
 
     it("should handle timezone: null as UTC", async () => {
@@ -308,8 +316,8 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       expect(result.output.triggered).toBe(1);
 
       // The nextRun (2024-04-01 06:00 UTC = 08:00 CEST) is embedded
-      // in the atomic SQL claim via drizzle.execute.
-      expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
+      // in the guarded Drizzle update claim.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
     });
   });
 });

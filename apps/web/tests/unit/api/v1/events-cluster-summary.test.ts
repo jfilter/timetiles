@@ -16,8 +16,7 @@ const mocks = vi.hoisted(() => ({
   mockDrizzleExecute: vi.fn(),
   mockPayloadFind: vi.fn(),
   mockToSqlWhereClause: vi.fn(),
-  mockH3ColumnName: vi.fn(),
-  mockIsValidH3CellId: vi.fn(),
+  mockBuildH3CellSqlCondition: vi.fn(),
 }));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
@@ -30,8 +29,7 @@ vi.mock("@/lib/services/access-control", () => ({ canAccessCatalog: mocks.mockCa
 
 vi.mock("@/lib/filters/to-sql-conditions", () => ({
   toSqlWhereClause: mocks.mockToSqlWhereClause,
-  h3ColumnName: mocks.mockH3ColumnName,
-  isValidH3CellId: mocks.mockIsValidH3CellId,
+  buildH3CellSqlCondition: mocks.mockBuildH3CellSqlCondition,
 }));
 
 vi.mock("@payloadcms/db-postgres", () => ({
@@ -66,8 +64,7 @@ const setupDefaults = () => {
 
   mocks.mockCanAccessCatalog.mockResolvedValue(true);
   mocks.mockToSqlWhereClause.mockReturnValue({ type: "sql", strings: ["1=1"], values: [] });
-  mocks.mockH3ColumnName.mockReturnValue("h3_r8");
-  mocks.mockIsValidH3CellId.mockReturnValue(true);
+  mocks.mockBuildH3CellSqlCondition.mockReturnValue({ type: "sql", strings: ["cell_condition"], values: [] });
   mocks.mockPayloadFind.mockResolvedValue({ docs: [] });
 
   // Four parallel queries: summary, datasets, catalogs, preview. Return empty rows for each.

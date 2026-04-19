@@ -49,7 +49,7 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
   conditions.push(...buildFieldFilterConditions(filters.fieldFilters, filters.tagFields));
 
   // H3 cell filter (precise spatial filter by pre-computed H3 columns)
-  const h3Condition = buildH3CellCondition(filters.clusterCells, filters.h3Resolution);
+  const h3Condition = buildH3CellSqlCondition(filters.clusterCells, filters.h3Resolution);
   if (h3Condition) conditions.push(h3Condition);
 
   return conditions;
@@ -81,16 +81,15 @@ const buildCatalogCondition = (catalogId?: number, catalogIds?: number[]): SqlFr
   return null;
 };
 
-const buildEventAccessCondition = (filters: CanonicalEventFilters, tableAlias = "e"): SqlFragment => {
+const buildEventAccessCondition = (filters: CanonicalEventFilters): SqlFragment => {
   const accessConditions: SqlFragment[] = [];
-  const eventTable = sql.raw(tableAlias);
 
   if (filters.includePublic !== false) {
-    accessConditions.push(sql`${eventTable}.dataset_is_public = true`);
+    accessConditions.push(sql`e.dataset_is_public = true`);
   }
 
   if (filters.ownerId != null) {
-    accessConditions.push(sql`${eventTable}.catalog_owner_id = ${filters.ownerId}`);
+    accessConditions.push(sql`e.catalog_owner_id = ${filters.ownerId}`);
   }
 
   if (accessConditions.length === 0) {
@@ -182,14 +181,35 @@ export const h3ColumnName = (h3Resolution: number, tableAlias = "e"): string => 
   return `${tableAlias}.h3_r${String(res)}`;
 };
 
+const EVENT_H3_COLUMNS: Record<number, SqlFragment> = {
+  2: sql`e.h3_r2`,
+  3: sql`e.h3_r3`,
+  4: sql`e.h3_r4`,
+  5: sql`e.h3_r5`,
+  6: sql`e.h3_r6`,
+  7: sql`e.h3_r7`,
+  8: sql`e.h3_r8`,
+  9: sql`e.h3_r9`,
+  10: sql`e.h3_r10`,
+  11: sql`e.h3_r11`,
+  12: sql`e.h3_r12`,
+  13: sql`e.h3_r13`,
+  14: sql`e.h3_r14`,
+  15: sql`e.h3_r15`,
+};
+
+const buildH3ColumnSql = (h3Resolution: number): SqlFragment => {
+  const res = Math.min(15, Math.max(2, Math.round(h3Resolution)));
+  return EVENT_H3_COLUMNS[res]!;
+};
+
 /** Filter events by pre-computed H3 cell column at the given resolution. */
-const buildH3CellCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
+export const buildH3CellSqlCondition = (clusterCells?: string[], h3Resolution?: number): SqlFragment | null => {
   if (!clusterCells || clusterCells.length === 0 || h3Resolution == null) return null;
-  const col = h3ColumnName(h3Resolution);
   // Validate and filter cell IDs to prevent SQL injection
   const validCells = clusterCells.filter(isValidH3CellId);
   if (validCells.length === 0) return null;
-  return sql`${sql.raw(col)}::text IN (${sql.join(
+  return sql`${buildH3ColumnSql(h3Resolution)}::text IN (${sql.join(
     validCells.map((c) => sql`${c}`),
     sql`, `
   )})`;
