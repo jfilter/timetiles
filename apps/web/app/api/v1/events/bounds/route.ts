@@ -13,11 +13,11 @@
  * @module
  * @category API
  */
-import { sql } from "@payloadcms/db-postgres";
+import { and, count, eq, isNotNull, max, min } from "@payloadcms/db-postgres/drizzle";
 
 import { apiRoute } from "@/lib/api";
+import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
@@ -49,33 +49,31 @@ export const GET = apiRoute({
     }
 
     const { filters } = ctx;
-
-    // Build SQL WHERE clause from canonical filters
-    const filterWhereClause = toSqlWhereClause(filters);
-    const whereClause = sql`e.location_longitude IS NOT NULL AND e.location_latitude IS NOT NULL AND ${filterWhereClause}`;
+    const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
 
     // Execute bounds query using MIN/MAX for efficient computation
     type BoundsRow = {
-      west: string | null;
-      south: string | null;
-      east: string | null;
-      north: string | null;
+      west: number | string | null;
+      south: number | string | null;
+      east: number | string | null;
+      north: number | string | null;
       count: number;
     };
 
-    const result = (await payload.db.drizzle.execute(sql`
-      SELECT
-        MIN(e.location_longitude) as west,
-        MIN(e.location_latitude) as south,
-        MAX(e.location_longitude) as east,
-        MAX(e.location_latitude) as north,
-        COUNT(*)::integer as count
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-    `)) as { rows: BoundsRow[] };
-
-    const row = result.rows[0];
+    const row = (
+      await payload.db.drizzle
+        .select({
+          west: min(eventTable.location_longitude),
+          south: min(eventTable.location_latitude),
+          east: max(eventTable.location_longitude),
+          north: max(eventTable.location_latitude),
+          count: count(),
+        })
+        .from(eventTable)
+        .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+        .where(and(isNotNull(eventTable.location_longitude), isNotNull(eventTable.location_latitude), whereClause))
+        .limit(1)
+    )[0] as BoundsRow | undefined;
 
     // Check if we have any results with valid bounds
     if (!row || row.count === 0 || row.west == null || row.south == null || row.east == null || row.north == null) {
@@ -88,12 +86,7 @@ export const GET = apiRoute({
     );
 
     return {
-      bounds: {
-        north: Number.parseFloat(row.north),
-        south: Number.parseFloat(row.south),
-        east: Number.parseFloat(row.east),
-        west: Number.parseFloat(row.west),
-      },
+      bounds: { north: Number(row.north), south: Number(row.south), east: Number(row.east), west: Number(row.west) },
       count: row.count,
     } satisfies BoundsResponse;
   },

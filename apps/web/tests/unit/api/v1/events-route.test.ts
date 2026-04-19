@@ -9,7 +9,7 @@ import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => ({
   mockCanAccessCatalog: vi.fn(),
-  mockDrizzleExecute: vi.fn(),
+  mockDrizzleSelect: vi.fn(),
   mockGetPayload: vi.fn(),
   mockPayloadFind: vi.fn(),
 }));
@@ -30,6 +30,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/v1/events/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
+const createSelectBuilder = (result: unknown, resolveOn: "where" | "offset") => {
+  const builder = {
+    from: vi.fn(() => builder),
+    innerJoin: vi.fn(() => builder),
+    where: vi.fn(() => (resolveOn === "where" ? Promise.resolve(result) : builder)),
+    orderBy: vi.fn(() => builder),
+    limit: vi.fn(() => builder),
+    offset: vi.fn(() => Promise.resolve(result)),
+  };
+
+  return builder;
+};
+
+const queueSelectResults = (...results: Array<{ result: unknown; resolveOn: "where" | "offset" }>) => {
+  const builders: ReturnType<typeof createSelectBuilder>[] = [];
+
+  mocks.mockDrizzleSelect.mockImplementation(() => {
+    const next = results.shift() ?? { result: [], resolveOn: "where" as const };
+    const builder = createSelectBuilder(next.result, next.resolveOn);
+    builders.push(builder);
+    return builder;
+  });
+
+  return builders;
+};
+
 const createRequest = (queryString: string, user: unknown = null) => {
   const url = `http://localhost:3000/api/v1/events${queryString}`;
   return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
@@ -41,11 +67,11 @@ describe.sequential("GET /api/v1/events", () => {
 
     mocks.mockGetPayload.mockResolvedValue({
       auth: vi.fn().mockResolvedValue({ user: null }),
-      db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+      db: { drizzle: { select: mocks.mockDrizzleSelect } },
       find: mocks.mockPayloadFind,
     });
     mocks.mockCanAccessCatalog.mockResolvedValue(true);
-    mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
+    queueSelectResults({ result: [], resolveOn: "where" }, { result: [], resolveOn: "offset" });
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [],
       page: 1,
@@ -114,9 +140,7 @@ describe.sequential("GET /api/v1/events", () => {
   });
 
   it("paginates SQL-only field filters via page-sized hydration", async () => {
-    mocks.mockDrizzleExecute
-      .mockResolvedValueOnce({ rows: [{ total: 2 }] })
-      .mockResolvedValueOnce({ rows: [{ id: 202 }] });
+    queueSelectResults({ result: [{ total: 2 }], resolveOn: "where" }, { result: [{ id: 202 }], resolveOn: "offset" });
     mocks.mockPayloadFind.mockResolvedValue({
       docs: [
         {
@@ -145,7 +169,7 @@ describe.sequential("GET /api/v1/events", () => {
     const response = await GET(createRequest(`?ff=${fieldFilters}&limit=1&page=2`), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
-    expect(mocks.mockDrizzleExecute).toHaveBeenCalledTimes(2);
+    expect(mocks.mockDrizzleSelect).toHaveBeenCalledTimes(2);
     expect(mocks.mockPayloadFind).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: { in: [202] } }, limit: 1 })
     );

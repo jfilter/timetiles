@@ -8,15 +8,15 @@
  *
  * @module
  */
-import { sql } from "@payloadcms/db-postgres";
+import { asc, count, desc, eq, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
+import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
@@ -103,40 +103,44 @@ const executeEventsQuery = async (
     overrideAccess: false,
   });
 
-const SORTABLE_SQL_COLUMNS = {
-  createdAt: sql.raw("e.created_at"),
-  eventEndTimestamp: sql.raw("e.event_end_timestamp"),
-  eventTimestamp: sql.raw("e.event_timestamp"),
-  id: sql.raw("e.id"),
-  locationName: sql.raw("e.location_name"),
-  uniqueId: sql.raw("e.unique_id"),
-  updatedAt: sql.raw("e.updated_at"),
-  validationStatus: sql.raw("e.validation_status"),
-} as const;
+type FilteredEventTable = ReturnType<typeof createFilteredEventDatasetScope>["eventTable"];
 
-const buildSortExpression = (sortField: string) => {
-  const sqlColumn = SORTABLE_SQL_COLUMNS[sortField as keyof typeof SORTABLE_SQL_COLUMNS];
-  if (sqlColumn) {
-    return sqlColumn;
+const buildSortExpression = (eventTable: FilteredEventTable, sortField: string) => {
+  const sortableColumns = {
+    createdAt: eventTable.createdAt,
+    eventEndTimestamp: eventTable.eventEndTimestamp,
+    eventTimestamp: eventTable.eventTimestamp,
+    id: eventTable.id,
+    locationName: eventTable.locationName,
+    uniqueId: eventTable.uniqueId,
+    updatedAt: eventTable.updatedAt,
+    validationStatus: eventTable.validationStatus,
+  } as const;
+
+  const column = sortableColumns[sortField as keyof typeof sortableColumns];
+  if (column) {
+    return column;
   }
-
   if (isValidFieldKey(sortField)) {
-    return sql`e.transformed_data #>> string_to_array(${sortField}, '.')`;
+    return sql`${eventTable.transformedData} #>> string_to_array(${sortField}, '.')`;
   }
 
-  return SORTABLE_SQL_COLUMNS.eventTimestamp;
+  return eventTable.eventTimestamp;
 };
 
-const buildOrderByClause = (sort: string) => {
+const buildOrderByClause = (eventTable: FilteredEventTable, sort: string) => {
   const isDescending = sort.startsWith("-");
   const sortField = sort.replace(/^-/, "");
-  const sortExpression = buildSortExpression(sortField);
+  const sortExpression = buildSortExpression(eventTable, sortField);
 
   if (sortField === "id") {
-    return isDescending ? sql`${sortExpression} DESC` : sql`${sortExpression} ASC`;
+    return [isDescending ? desc(eventTable.id) : asc(eventTable.id)];
   }
 
-  return isDescending ? sql`${sortExpression} DESC, e.id DESC` : sql`${sortExpression} ASC, e.id ASC`;
+  return [
+    isDescending ? desc(sortExpression) : asc(sortExpression),
+    isDescending ? desc(eventTable.id) : asc(eventTable.id),
+  ];
 };
 
 const executeSqlFilteredEventsQuery = async (
@@ -145,34 +149,32 @@ const executeSqlFilteredEventsQuery = async (
   query: EventListQuery,
   user?: User | null
 ) => {
-  const whereClause = toSqlWhereClause(filters);
-  const orderByClause = buildOrderByClause(query.sort);
+  const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
+  const orderByClause = buildOrderByClause(eventTable, query.sort);
   const offset = Math.max(0, (query.page - 1) * query.limit);
 
-  const countPromise = payload.db.drizzle.execute(sql`
-      SELECT COUNT(*)::integer as total
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-    `) as Promise<{ rows: Array<{ total: number }> }>;
-  const pagePromise = payload.db.drizzle.execute(sql`
-      SELECT e.id
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-      ORDER BY ${orderByClause}
-      LIMIT ${query.limit}
-      OFFSET ${offset}
-    `) as Promise<{ rows: Array<{ id: number }> }>;
+  const countPromise = payload.db.drizzle
+    .select({ total: count() })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .where(whereClause);
+  const pagePromise = payload.db.drizzle
+    .select({ id: eventTable.id })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .where(whereClause)
+    .orderBy(...orderByClause)
+    .limit(query.limit)
+    .offset(offset);
 
   const [countResult, pageResult] = await Promise.all([countPromise, pagePromise]);
 
-  const totalDocs = Number(countResult.rows[0]?.total ?? 0);
+  const totalDocs = Number(countResult[0]?.total ?? 0);
   if (totalDocs === 0) {
     return buildPaginatedQueryResult([], query.page, query.limit, totalDocs);
   }
 
-  const pageIds = pageResult.rows.map((row) => Number(row.id));
+  const pageIds = pageResult.map((row) => Number(row.id));
   if (pageIds.length === 0) {
     return buildPaginatedQueryResult([], query.page, query.limit, totalDocs);
   }

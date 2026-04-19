@@ -11,16 +11,16 @@ import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
 const mocks = vi.hoisted(() => {
-  const mockDrizzleExecute = vi.fn();
+  const mockDrizzleUpdate = vi.fn();
   const mockPayload = {
     find: vi.fn(),
     update: vi.fn(),
     jobs: { queue: vi.fn() },
-    db: { drizzle: { execute: mockDrizzleExecute } },
+    db: { drizzle: { update: mockDrizzleUpdate } },
   };
   const mockGetPayload = vi.fn().mockResolvedValue(mockPayload);
   const mockRateLimitService = { checkConfiguredRateLimit: vi.fn().mockReturnValue({ allowed: true }) };
-  return { mockPayload, mockGetPayload, mockRateLimitService, mockDrizzleExecute };
+  return { mockPayload, mockGetPayload, mockRateLimitService, mockDrizzleUpdate };
 });
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
@@ -37,7 +37,17 @@ import { POST } from "@/app/api/webhooks/trigger/[token]/route";
 import { hashOpaqueValue } from "@/lib/security/hash";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
-const { mockPayload, mockRateLimitService, mockDrizzleExecute } = mocks;
+const { mockPayload, mockRateLimitService, mockDrizzleUpdate } = mocks;
+
+const createUpdateBuilder = (result: unknown[]) => {
+  const builder = {
+    set: vi.fn(() => builder),
+    where: vi.fn(() => builder),
+    returning: vi.fn(() => Promise.resolve(result)),
+  };
+
+  return builder;
+};
 
 const mockScheduledIngest = {
   id: 1,
@@ -66,8 +76,8 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     vi.clearAllMocks();
     mockRateLimitService.checkConfiguredRateLimit.mockReturnValue({ allowed: true });
     mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest }] });
-    // Atomic claim via raw SQL returns { rows: [{ id }] } on success
-    mockDrizzleExecute.mockResolvedValue({ rows: [{ id: 1 }] });
+    // Atomic claim via Drizzle builder returns rows on success.
+    mockDrizzleUpdate.mockImplementation(() => createUpdateBuilder([{ id: 1 }]));
     mockPayload.update.mockResolvedValue({ id: 1 });
     mockPayload.jobs.queue.mockResolvedValue({ id: "job-456" });
   });
@@ -80,8 +90,8 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
 
     expect(response.status).toBe(500);
 
-    // Atomic claim happens via raw SQL (drizzle.execute), not payload.update
-    expect(mockDrizzleExecute).toHaveBeenCalledOnce();
+    // Atomic claim happens via the Drizzle update builder, not payload.update.
+    expect(mockDrizzleUpdate).toHaveBeenCalledOnce();
 
     // payload.update calls: [0] = metadata update (alreadyClaimed), [1] = revert
     const updateCalls = mockPayload.update.mock.calls;
@@ -130,8 +140,8 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
 
   it("should skip when import is already running", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: "running" }] });
-    // Atomic SQL claim returns empty rows because lastStatus IS "running"
-    mockDrizzleExecute.mockResolvedValue({ rows: [] });
+    // Atomic claim returns no rows because lastStatus is already "running".
+    mockDrizzleUpdate.mockImplementation(() => createUpdateBuilder([]));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 

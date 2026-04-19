@@ -14,7 +14,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { claimScheduledIngestRunning, claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
 
-const createMockPayload = () => ({ find: vi.fn(), db: { drizzle: { execute: vi.fn() } } });
+const createUpdateBuilder = (result: unknown[]) => {
+  const builder = {
+    set: vi.fn(() => builder),
+    where: vi.fn(() => builder),
+    returning: vi.fn(() => Promise.resolve(result)),
+  };
+
+  return builder;
+};
+
+const createMockPayload = () => ({ find: vi.fn(), db: { drizzle: { update: vi.fn() } } });
 
 let mockPayload: ReturnType<typeof createMockPayload>;
 
@@ -148,40 +158,40 @@ describe.sequential("resolveWebhookToken", () => {
 
 describe.sequential("claimScraperRunning", () => {
   it("returns true when claim succeeds (rows returned)", async () => {
-    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [{ id: 5 }] });
+    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([{ id: 5 }]));
 
     const result = await claimScraperRunning(mockPayload as any, 5);
 
     expect(result).toBe(true);
-    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
   });
 
   it("returns false when already running (no rows)", async () => {
-    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [] });
+    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([]));
 
     const result = await claimScraperRunning(mockPayload as any, 5);
 
     expect(result).toBe(false);
-    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
   });
 });
 
 describe.sequential("claimScheduledIngestRunning", () => {
   it("returns true when claim succeeds (rows returned)", async () => {
-    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [{ id: 10 }] });
+    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([{ id: 10 }]));
 
     const result = await claimScheduledIngestRunning(mockPayload as any, 10);
 
     expect(result).toBe(true);
-    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
   });
 
   it("returns false when already running (no rows)", async () => {
-    mockPayload.db.drizzle.execute.mockResolvedValue({ rows: [] });
+    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([]));
 
     const result = await claimScheduledIngestRunning(mockPayload as any, 10);
 
     expect(result).toBe(false);
-    expect(mockPayload.db.drizzle.execute).toHaveBeenCalledTimes(1);
+    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
   });
 });

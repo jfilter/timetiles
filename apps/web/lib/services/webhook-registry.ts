@@ -10,11 +10,12 @@
  */
 import { randomBytes } from "node:crypto";
 
-import { sql } from "@payloadcms/db-postgres";
+import { and, eq, isNull, ne, or } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { getBaseUrl } from "@/lib/utils/base-url";
+import { scheduled_ingests, scrapers } from "@/payload-generated-schema";
 import type { ScheduledIngest, Scraper } from "@/payload-types";
 
 const logger = createLogger("webhook-registry");
@@ -131,15 +132,13 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
  * locking prevents two concurrent callers from both succeeding.
  */
 export const claimScraperRunning = async (payload: Payload, scraperId: number): Promise<boolean> => {
-  const result = (await payload.db.drizzle.execute(sql`
-    UPDATE payload.scrapers
-    SET last_run_status = 'running'
-    WHERE id = ${scraperId}
-      AND (last_run_status IS NULL OR last_run_status != 'running')
-    RETURNING id
-  `)) as { rows: Array<{ id: number }> };
+  const result = await payload.db.drizzle
+    .update(scrapers)
+    .set({ lastRunStatus: "running" })
+    .where(and(eq(scrapers.id, scraperId), or(isNull(scrapers.lastRunStatus), ne(scrapers.lastRunStatus, "running"))))
+    .returning({ id: scrapers.id });
 
-  return result.rows.length > 0;
+  return result.length > 0;
 };
 
 /**
@@ -154,13 +153,16 @@ export const claimScraperRunning = async (payload: Payload, scraperId: number): 
  * dedicated SQL in {@link triggerScheduledIngest} instead.
  */
 export const claimScheduledIngestRunning = async (payload: Payload, scheduledIngestId: number): Promise<boolean> => {
-  const result = (await payload.db.drizzle.execute(sql`
-    UPDATE payload.scheduled_ingests
-    SET last_status = 'running'
-    WHERE id = ${scheduledIngestId}
-      AND (last_status IS NULL OR last_status != 'running')
-    RETURNING id
-  `)) as { rows: Array<{ id: number }> };
+  const result = await payload.db.drizzle
+    .update(scheduled_ingests)
+    .set({ lastStatus: "running" })
+    .where(
+      and(
+        eq(scheduled_ingests.id, scheduledIngestId),
+        or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
+      )
+    )
+    .returning({ id: scheduled_ingests.id });
 
-  return result.rows.length > 0;
+  return result.length > 0;
 };

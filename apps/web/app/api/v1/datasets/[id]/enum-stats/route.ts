@@ -65,7 +65,7 @@ export const GET = apiRoute({
 
       // Cross-filter: remove this field from field filters so its own
       // selection doesn't hide other values in the dropdown
-      const { [field.path]: _excluded, ...otherFieldFilters } = baseQuery.ff;
+      const { [field.path]: _excluded, ...otherFieldFilters } = baseQuery.ff ?? {};
       const crossFilterQuery = { ...baseQuery, ff: otherFieldFilters };
 
       const filters = buildCanonicalFilters({
@@ -78,21 +78,22 @@ export const GET = apiRoute({
 
       const whereClause = toSqlWhereClause(filters);
       const isTag = field.isTagField === true;
-      const limit = String(MAX_VALUES);
-
+      const arrayValue = sql`e.transformed_data #> string_to_array(${fieldPath}, '.')`;
+      const normalizedArrayValue = sql`CASE
+        WHEN jsonb_typeof(${arrayValue}) = 'array' THEN ${arrayValue}
+        ELSE '[]'::jsonb
+      END`;
+      const scalarValue = sql`e.transformed_data #>> string_to_array(${fieldPath}, '.')`;
       // Join datasets table — toSqlConditions references d.catalog_id for access control.
-      // fieldPath is used as a JSONB key (not a value), so use sql.raw — it's already sanitized above.
-      const quotedPath = "'" + fieldPath + "'";
-      const key = sql.raw(quotedPath);
       const sqlQuery = isTag
         ? sql`SELECT elem AS value, COUNT(*)::integer AS count
-              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(e.transformed_data -> ${key}) AS elem
-              WHERE ${whereClause} AND jsonb_typeof(e.transformed_data -> ${key}) = 'array'
-              GROUP BY elem ORDER BY count DESC LIMIT ${sql.raw(limit)}`
-        : sql`SELECT e.transformed_data ->> ${key} AS value, COUNT(*)::integer AS count
+              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(${normalizedArrayValue}) AS elem
+              WHERE ${whereClause}
+              GROUP BY elem ORDER BY count DESC LIMIT ${MAX_VALUES}`
+        : sql`SELECT ${scalarValue} AS value, COUNT(*)::integer AS count
               FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
-              WHERE ${whereClause} AND e.transformed_data ->> ${key} IS NOT NULL
-              GROUP BY e.transformed_data ->> ${key} ORDER BY count DESC LIMIT ${sql.raw(limit)}`;
+              WHERE ${whereClause} AND ${scalarValue} IS NOT NULL
+              GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
 
       const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(sqlQuery);
 
