@@ -13,6 +13,7 @@ import "@/tests/mocks/services/site-resolver";
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockCanAccessCatalog: vi.fn(),
+  mockDrizzleSelect: vi.fn(),
   mockDrizzleExecute: vi.fn(),
   mockPayloadFind: vi.fn(),
   mockToSqlWhereClause: vi.fn(),
@@ -55,10 +56,23 @@ const createRequest = (queryString: string, user: unknown = null) => {
   return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
 
+const createSelectBuilder = (result: unknown) => {
+  const builder = {
+    from: vi.fn(() => builder),
+    innerJoin: vi.fn(() => builder),
+    where: vi.fn(() => builder),
+    groupBy: vi.fn(() => builder),
+    orderBy: vi.fn(() => builder),
+    limit: vi.fn(() => Promise.resolve(result)),
+  };
+
+  return builder;
+};
+
 const setupDefaults = () => {
   mocks.mockGetPayload.mockResolvedValue({
     auth: vi.fn().mockResolvedValue({ user: null }),
-    db: { drizzle: { execute: mocks.mockDrizzleExecute } },
+    db: { drizzle: { select: mocks.mockDrizzleSelect, execute: mocks.mockDrizzleExecute } },
     find: mocks.mockPayloadFind,
   });
 
@@ -68,6 +82,7 @@ const setupDefaults = () => {
   mocks.mockPayloadFind.mockResolvedValue({ docs: [] });
 
   // Four parallel queries: summary, datasets, catalogs, preview. Return empty rows for each.
+  mocks.mockDrizzleSelect.mockImplementation(() => createSelectBuilder([]));
   mocks.mockDrizzleExecute.mockResolvedValue({ rows: [] });
 };
 

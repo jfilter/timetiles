@@ -8,11 +8,16 @@
  * @module
  * @category API
  */
-import { sql } from "@payloadcms/db-postgres";
+import { count, eq } from "@payloadcms/db-postgres/drizzle";
+import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
+import {
+  createFilteredEventCatalogScope,
+  createFilteredEventDatasetScope,
+  toCountRecord,
+} from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 
 export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
@@ -28,40 +33,9 @@ export const GET = apiRoute({
   auth: "optional",
   handler: async ({ user, payload }) => {
     const filters: CanonicalEventFilters = { includePublic: true, ...(user ? { ownerId: user.id } : {}) };
-    const accessCondition = toSqlWhereClause(filters);
-
-    // Query event counts by catalog
-    const catalogResult = (await payload.db.drizzle.execute(sql`
-      SELECT
-        d.catalog_id as id,
-        COUNT(*)::integer as count
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${accessCondition}
-      GROUP BY d.catalog_id
-    `)) as { rows: Array<{ id: number; count: number }> };
-
-    // Query event counts by dataset
-    const datasetResult = (await payload.db.drizzle.execute(sql`
-      SELECT
-        e.dataset_id as id,
-        COUNT(*)::integer as count
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${accessCondition}
-      GROUP BY e.dataset_id
-    `)) as { rows: Array<{ id: number; count: number }> };
-
-    // Transform results to Record<string, number>
-    const catalogCounts: Record<string, number> = {};
-    for (const row of catalogResult.rows) {
-      catalogCounts[String(row.id)] = row.count;
-    }
-
-    const datasetCounts: Record<string, number> = {};
-    for (const row of datasetResult.rows) {
-      datasetCounts[String(row.id)] = row.count;
-    }
+    const catalogCountsPromise = fetchCatalogCounts(payload, filters);
+    const datasetCountsPromise = fetchDatasetCounts(payload, filters);
+    const [catalogCounts, datasetCounts] = await Promise.all([catalogCountsPromise, datasetCountsPromise]);
 
     // Calculate total events
     const totalEvents = Object.values(catalogCounts).reduce((sum, count) => sum + count, 0);
@@ -74,3 +48,30 @@ export const GET = apiRoute({
     return { catalogCounts, datasetCounts, totalEvents };
   },
 });
+
+const fetchCatalogCounts = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const { eventTable, datasetTable, catalogTable, whereClause } = createFilteredEventCatalogScope(filters);
+
+  const rows = await payload.db.drizzle
+    .select({ id: datasetTable.catalog, count: count() })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .innerJoin(catalogTable, eq(datasetTable.catalog, catalogTable.id))
+    .where(whereClause)
+    .groupBy(datasetTable.catalog);
+
+  return toCountRecord(rows);
+};
+
+const fetchDatasetCounts = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
+
+  const rows = await payload.db.drizzle
+    .select({ id: eventTable.dataset, count: count() })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .where(whereClause)
+    .groupBy(eventTable.dataset);
+
+  return toCountRecord(rows);
+};

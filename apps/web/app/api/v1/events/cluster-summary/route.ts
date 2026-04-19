@@ -7,13 +7,19 @@
  * @module
  * @category API
  */
-import { sql } from "@payloadcms/db-postgres";
+import { count, desc, eq, max, min, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { apiRoute, ValidationError } from "@/lib/api";
+import {
+  buildClusterFilterClause,
+  buildClusterPreviewTitle,
+  createFilteredLocatedEventCatalogScope,
+  createFilteredLocatedEventDatasetScope,
+} from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
-import { buildH3CellSqlCondition, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
+import { buildH3CellSqlCondition } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
 
 /**
@@ -65,77 +71,72 @@ const executeClusterSummary = async (
   h3Resolution: number,
   filters: CanonicalEventFilters
 ): Promise<ClusterSummaryResponse> => {
-  const whereClause = toSqlWhereClause(filters);
   const cellCondition = buildH3CellSqlCondition(cells, h3Resolution) ?? sql`FALSE`;
+  const datasetScope = createFilteredLocatedEventDatasetScope(filters);
+  const catalogScope = createFilteredLocatedEventCatalogScope(filters);
+  const whereClause = datasetScope.whereClause;
+  const clusterWhereClause = buildClusterFilterClause(whereClause, cellCondition, datasetScope.eventTable);
+  const catalogClusterWhereClause = buildClusterFilterClause(
+    catalogScope.whereClause,
+    cellCondition,
+    catalogScope.eventTable
+  );
 
   // Run all queries in parallel
   const [summaryResult, datasetsResult, catalogsResult, previewResult] = await Promise.all([
     // 1. Total count + temporal range + unique locations
-    payload.db.drizzle.execute(sql`
-      SELECT
-        COUNT(*)::integer as total_count,
-        COUNT(DISTINCT e.h3_r15)::integer as location_count,
-        MIN(e.event_timestamp) as earliest,
-        MAX(e.event_timestamp) as latest
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-        AND e.location_longitude IS NOT NULL
-        AND ${cellCondition}
-    `) as Promise<{
-      rows: Array<{ total_count: number; location_count: number; earliest: string | null; latest: string | null }>;
-    }>,
+    payload.db.drizzle
+      .select({
+        total_count: count(),
+        location_count: sql<number>`COUNT(DISTINCT e.h3_r15)::integer`,
+        earliest: min(datasetScope.eventTable.eventTimestamp),
+        latest: max(datasetScope.eventTable.eventTimestamp),
+      })
+      .from(datasetScope.eventTable)
+      .innerJoin(datasetScope.datasetTable, eq(datasetScope.eventTable.dataset, datasetScope.datasetTable.id))
+      .where(clusterWhereClause)
+      .limit(1),
 
     // 2. Dataset breakdown
-    payload.db.drizzle.execute(sql`
-      SELECT d.id, d.name, COUNT(*)::integer as count
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-        AND e.location_longitude IS NOT NULL
-        AND ${cellCondition}
-      GROUP BY d.id, d.name
-      ORDER BY count DESC
-      LIMIT 10
-    `) as Promise<{ rows: Array<{ id: number; name: string; count: number }> }>,
+    payload.db.drizzle
+      .select({ id: datasetScope.datasetTable.id, name: datasetScope.datasetTable.name, count: count() })
+      .from(datasetScope.eventTable)
+      .innerJoin(datasetScope.datasetTable, eq(datasetScope.eventTable.dataset, datasetScope.datasetTable.id))
+      .where(clusterWhereClause)
+      .groupBy(datasetScope.datasetTable.id, datasetScope.datasetTable.name)
+      .orderBy(desc(count()))
+      .limit(10),
 
     // 3. Catalog breakdown
-    payload.db.drizzle.execute(sql`
-      SELECT c.id, c.name, COUNT(*)::integer as count
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      JOIN payload.catalogs c ON d.catalog_id = c.id
-      WHERE ${whereClause}
-        AND e.location_longitude IS NOT NULL
-        AND ${cellCondition}
-      GROUP BY c.id, c.name
-      ORDER BY count DESC
-      LIMIT 10
-    `) as Promise<{ rows: Array<{ id: number; name: string; count: number }> }>,
+    payload.db.drizzle
+      .select({ id: catalogScope.catalogTable.id, name: catalogScope.catalogTable.name, count: count() })
+      .from(catalogScope.eventTable)
+      .innerJoin(catalogScope.datasetTable, eq(catalogScope.eventTable.dataset, catalogScope.datasetTable.id))
+      .innerJoin(catalogScope.catalogTable, eq(catalogScope.datasetTable.catalog, catalogScope.catalogTable.id))
+      .where(catalogClusterWhereClause)
+      .groupBy(catalogScope.catalogTable.id, catalogScope.catalogTable.name)
+      .orderBy(desc(count()))
+      .limit(10),
 
     // 4. Preview events
-    payload.db.drizzle.execute(sql`
-      SELECT
-        e.id,
-        (e.transformed_data->>'title')::text as title,
-        e.event_timestamp as timestamp,
-        d.name as dataset_name
-      FROM payload.events e
-      JOIN payload.datasets d ON e.dataset_id = d.id
-      WHERE ${whereClause}
-        AND e.location_longitude IS NOT NULL
-        AND ${cellCondition}
-      ORDER BY e.event_timestamp DESC NULLS LAST
-      LIMIT 8
-    `) as Promise<{
-      rows: Array<{ id: number; title: string | null; timestamp: string | null; dataset_name: string }>;
-    }>,
+    payload.db.drizzle
+      .select({
+        id: datasetScope.eventTable.id,
+        title: buildClusterPreviewTitle(datasetScope.eventTable),
+        timestamp: datasetScope.eventTable.eventTimestamp,
+        dataset_name: datasetScope.datasetTable.name,
+      })
+      .from(datasetScope.eventTable)
+      .innerJoin(datasetScope.datasetTable, eq(datasetScope.eventTable.dataset, datasetScope.datasetTable.id))
+      .where(clusterWhereClause)
+      .orderBy(sql`${datasetScope.eventTable.eventTimestamp} DESC NULLS LAST`)
+      .limit(8),
   ]);
 
-  const summary = summaryResult.rows[0];
+  const summary = summaryResult[0];
 
   // 5. Category facets — get enum fields from the datasets in this cluster
-  const datasetIds = datasetsResult.rows.map((d) => d.id);
+  const datasetIds = datasetsResult.map((d) => d.id);
   const categories =
     datasetIds.length > 0 ? await fetchCategoryFacets(payload, datasetIds, whereClause, cellCondition) : [];
 
@@ -144,14 +145,14 @@ const executeClusterSummary = async (
     locationCount: summary?.location_count ?? 0,
     temporalRange:
       summary?.earliest != null ? { earliest: summary.earliest, latest: summary.latest ?? summary.earliest } : null,
-    datasets: datasetsResult.rows.map((r) => ({ id: r.id, name: r.name, count: r.count })),
-    catalogs: catalogsResult.rows.map((r) => ({ id: r.id, name: r.name, count: r.count })),
+    datasets: datasetsResult.map((r) => ({ id: r.id, name: r.name ?? `Dataset ${r.id}`, count: Number(r.count) })),
+    catalogs: catalogsResult.map((r) => ({ id: r.id, name: r.name ?? `Catalog ${r.id}`, count: Number(r.count) })),
     categories,
-    preview: previewResult.rows.map((r) => ({
+    preview: previewResult.map((r) => ({
       id: r.id,
       title: r.title ?? undefined,
       timestamp: r.timestamp ?? undefined,
-      datasetName: r.dataset_name,
+      datasetName: r.dataset_name ?? "Unknown dataset",
     })),
   };
 };
