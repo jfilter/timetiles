@@ -18,14 +18,14 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
 import { buildColumnView, FIELD_MAPPING_STRING_KEYS, findTargetForColumn } from "@/lib/ingest/column-view";
-import type { ConcatenateTransform, TransformType } from "@/lib/types/ingest-transforms";
-import { createTransform } from "@/lib/types/ingest-transforms";
+import type { ConcatenateTransform, TransformType } from "@/lib/ingest/types/transforms";
+import { createTransform } from "@/lib/ingest/types/transforms";
 import type {
   FieldMapping,
   FieldMappingStringField,
   IngestTransform,
   SuggestedMappings,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
 
 import { TargetSelect } from "./column-mapping-shared";
 import { ColumnRow } from "./column-row";

@@ -12,9 +12,9 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createJobLogger, logError, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { getImportGeocodingResults } from "@/lib/types/geocoding";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob } from "@/payload-types";
@@ -50,7 +50,7 @@ export const markJobCompleted = async (
       results: {
         totalEvents: totalEventsCreated,
         duplicatesSkipped,
-        geocoded: Object.keys(getImportGeocodingResults(currentJob)).length,
+        geocoded: Object.keys(getIngestGeocodingResults(currentJob)).length,
         errors: currentJob.errors?.length ?? 0,
       },
     },

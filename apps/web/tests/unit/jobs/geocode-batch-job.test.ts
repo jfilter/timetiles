@@ -91,7 +91,7 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
 }));
 
-// Don't mock @/lib/types/geocoding - use real implementation
+// Don't mock @/lib/ingest/types/geocoding - use real implementation
 
 /** Helper to mock streamBatchesFromFile as an async generator yielding one batch. */
 const mockStreamBatches = (rows: Record<string, unknown>[]) => {

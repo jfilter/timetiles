@@ -214,4 +214,13 @@ const main = async () => {
   console.log("\nDone.");
 };
 
-main().catch(console.error);
+const run = async (): Promise<void> => {
+  try {
+    await main();
+  } catch (error) {
+    console.error(error);
+    process.exitCode = 1;
+  }
+};
+
+void run();

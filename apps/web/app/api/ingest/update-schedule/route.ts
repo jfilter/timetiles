@@ -24,8 +24,8 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const logger = createLogger("api-update-schedule");

@@ -11,7 +11,7 @@
 import fs from "node:fs";
 
 import { UnauthorizedError, ValidationError } from "@/lib/api/errors";
-import type { PreviewMetadata } from "@/lib/types/ingest-wizard";
+import type { PreviewMetadata } from "@/lib/ingest/types/wizard";
 import type { User } from "@/payload-types";
 
 /**

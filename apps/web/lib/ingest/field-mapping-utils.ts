@@ -7,7 +7,7 @@
  * @module
  * @category Import
  */
-import type { FieldMapping, FieldMappingStringField, SuggestedMappings } from "@/lib/types/ingest-wizard";
+import type { FieldMapping, FieldMappingStringField, SuggestedMappings } from "@/lib/ingest/types/wizard";
 
 /** Create a FieldMapping with all fields set to null/defaults. */
 export const createEmptyFieldMapping = (sheetIndex: number): FieldMapping => ({

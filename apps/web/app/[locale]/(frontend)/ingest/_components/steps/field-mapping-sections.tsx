@@ -21,7 +21,7 @@ import type {
   FieldMapping,
   SheetInfo,
   SuggestedMappings,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
 
 import { FieldSelect } from "./field-select";
 

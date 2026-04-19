@@ -25,7 +25,7 @@ import {
   type ProcessingStage,
 } from "@/lib/constants/ingest-constants";
 import { STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
-import type { StageProgress } from "@/lib/types/progress-tracking";
+import type { StageProgress } from "@/lib/ingest/types/progress-tracking";
 import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
 import { normalizeJobId } from "@/lib/utils/event-params";
 import type { IngestJob } from "@/payload-types";

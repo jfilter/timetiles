@@ -15,9 +15,7 @@ import path from "node:path";
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
-import { createLogger } from "@/lib/logger";
-import { createQuotaService } from "@/lib/services/quota-service";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type {
   ConfigureIngestRequest,
   CreateScheduleConfig,
@@ -25,7 +23,9 @@ import type {
   FieldMapping,
   PreviewMetadata,
   SheetMapping,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
+import { createLogger } from "@/lib/logger";
+import { createQuotaService } from "@/lib/services/quota-service";
 import type { Dataset, IngestFile, User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");

@@ -13,8 +13,8 @@ import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
-import { TRANSFORM_TYPE_LABELS } from "@/lib/types/ingest-transforms";
-import type { IngestTransform } from "@/lib/types/ingest-wizard";
+import { TRANSFORM_TYPE_LABELS } from "@/lib/ingest/types/transforms";
+import type { IngestTransform } from "@/lib/ingest/types/wizard";
 
 import { TransformEditor } from "../transforms/transform-editor";
 import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "./column-mapping-shared";

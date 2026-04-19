@@ -5,7 +5,7 @@
  * @module
  * @category Components
  */
-import type { UrlAuthConfig } from "@/lib/types/ingest-wizard";
+import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
 

@@ -74,9 +74,9 @@ vi.mock("@/app/[locale]/(frontend)/ingest/_components/steps/field-select", () =>
 import { getTransformChipLabel } from "@/app/[locale]/(frontend)/ingest/_components/steps/column-row";
 import { buildColumnView, findTargetForColumn, getSampleValue } from "@/lib/ingest/column-view";
 import { applyPreviewTransforms } from "@/lib/ingest/transforms";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
-import type { FieldMapping, SuggestedMappings } from "@/lib/types/ingest-wizard";
-import { isFieldMappingComplete } from "@/lib/types/ingest-wizard";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import type { FieldMapping, SuggestedMappings } from "@/lib/ingest/types/wizard";
+import { isFieldMappingComplete } from "@/lib/ingest/types/wizard";
 
 // ---------------------------------------------------------------------------
 // Helpers

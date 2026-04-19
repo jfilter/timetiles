@@ -13,7 +13,7 @@ import type {
   FieldMappingStringField,
   IngestTransform,
   SuggestedMappings,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
 
 // ---------------------------------------------------------------------------
 // Types

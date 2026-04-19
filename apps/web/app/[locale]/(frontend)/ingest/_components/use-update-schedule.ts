@@ -13,8 +13,8 @@ import { useCallback } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { fetchJson } from "@/lib/api/http-error";
 import { scheduledIngestKeys } from "@/lib/hooks/use-scheduled-ingest-mutations";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
-import type { FieldMapping, SheetMapping, UrlAuthConfig } from "@/lib/types/ingest-wizard";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import type { FieldMapping, SheetMapping, UrlAuthConfig } from "@/lib/ingest/types/wizard";
 
 import type { CatalogSelection, JsonApiConfig, ScheduleConfig } from "./wizard-store";
 import { useWizardStore } from "./wizard-store";

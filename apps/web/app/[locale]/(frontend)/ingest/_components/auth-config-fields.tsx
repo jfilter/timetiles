@@ -16,7 +16,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 import { useCallback, useId } from "react";
 
-import type { UrlAuthConfig } from "@/lib/types/ingest-wizard";
+import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 
 export interface AuthConfigFieldsProps {
   authConfig: UrlAuthConfig;

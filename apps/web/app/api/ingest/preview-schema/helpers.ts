@@ -14,6 +14,7 @@ import fs from "node:fs";
 import Papa from "papaparse";
 
 import { ValidationError } from "@/lib/api";
+import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import {
   detectLanguage,
@@ -21,9 +22,8 @@ import {
   LONGITUDE_PATTERNS,
   matchFieldNamePatterns,
 } from "@/lib/services/schema-detection";
-import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/types/ingest-wizard";
 
-export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/types/ingest-wizard";
+export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 
 import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 
@@ -233,8 +233,8 @@ import type { Payload } from "payload";
 
 import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
 import type { SavePreviewMetadataOpts } from "@/lib/ingest/preview-store";
+import type { ConfigSuggestion } from "@/lib/ingest/types/wizard";
 import { logError, logger } from "@/lib/logger";
-import type { ConfigSuggestion } from "@/lib/types/ingest-wizard";
 
 /**
  * Query the user's datasets and find config suggestions matching the given headers.

@@ -8,8 +8,8 @@
  * @category Services
  */
 
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
-import type { ConfigSuggestion } from "@/lib/types/ingest-wizard";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import type { ConfigSuggestion } from "@/lib/ingest/types/wizard";
 import type { Dataset } from "@/payload-types";
 
 const MIN_SCORE = 40;

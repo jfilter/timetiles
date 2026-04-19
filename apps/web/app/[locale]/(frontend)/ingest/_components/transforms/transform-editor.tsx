@@ -18,7 +18,7 @@ import { useState } from "react";
 
 import type { StringOperation } from "@/lib/definitions/transform-registry";
 import { DATE_OUTPUT_FORMAT_OPTIONS } from "@/lib/definitions/transform-registry";
-import { DATE_FORMAT_OPTIONS, type IngestTransform } from "@/lib/types/ingest-transforms";
+import { DATE_FORMAT_OPTIONS, type IngestTransform } from "@/lib/ingest/types/transforms";
 
 interface TransformEditorProps {
   transform: IngestTransform;

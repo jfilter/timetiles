@@ -8,7 +8,7 @@
  * @category Services/SchemaBuilder
  */
 
-import type { TransformSuggestion } from "@/lib/types/ingest-transforms";
+import type { TransformSuggestion } from "@/lib/ingest/types/transforms";
 import type { SchemaChange, SchemaComparison } from "@/lib/types/schema-detection";
 
 /** A JSON Schema property definition. Open-ended because quicktype may add arbitrary fields. */

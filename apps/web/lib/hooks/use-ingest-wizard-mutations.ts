@@ -19,7 +19,7 @@ import type {
   PreviewSchemaUploadResponse,
   PreviewSchemaUrlRequest,
   PreviewSchemaUrlResponse,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
 
 import { fetchJson } from "../api/http-error";
 

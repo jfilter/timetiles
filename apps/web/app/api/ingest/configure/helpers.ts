@@ -30,7 +30,7 @@ export type {
   FieldMapping,
   PreviewMetadata,
   SheetMapping,
-} from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/wizard";
 
 /** Zod schema for validating the configure-import request body. */
 export const ConfigureImportBodySchema = z.object({

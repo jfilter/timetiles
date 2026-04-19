@@ -1,9 +1,9 @@
 /**
- * Canonical domain types for the import wizard.
+ * Canonical domain types for the ingest wizard and configure API.
  *
- * All import wizard types are defined here as the single source of truth.
- * Other modules (API routes, UI components, services) import from this file
- * instead of defining their own copies.
+ * These types are shared by the ingest UI, ingest API routes, and ingest
+ * services. They live with the ingest subsystem so ownership stays clear even
+ * though some fields use user-facing "import" terminology.
  *
  * @module
  * @category Types
@@ -11,9 +11,9 @@
 
 import type { LanguageResult } from "@/lib/services/schema-detection/types";
 
-import type { IngestTransform } from "./ingest-transforms";
+import type { IngestTransform } from "./transforms";
 
-export type { IngestTransform } from "./ingest-transforms";
+export type { IngestTransform } from "./transforms";
 export type { LanguageResult } from "@/lib/services/schema-detection/types";
 
 /** Confidence level for a field mapping suggestion */

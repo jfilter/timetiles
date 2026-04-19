@@ -67,11 +67,14 @@ export class ProviderRateLimiter {
     }
 
     // Chain: this caller waits for the previous slot + interval.
-    // Using .then() is intentional here — it chains promises synchronously to
-    // serialize concurrent callers without a TOCTOU race condition.
+    // The async IIFE preserves synchronous chain assignment while avoiding a
+    // TOCTOU race between concurrent callers.
     const minInterval = 1000 / state.requestsPerSecond;
     const previousSlot = state.lastSlotPromise;
-    const mySlot = previousSlot.then(() => this.delay(minInterval));
+    const mySlot = (async () => {
+      await previousSlot;
+      await this.delay(minInterval);
+    })();
     state.lastSlotPromise = mySlot;
     await mySlot;
   }

@@ -15,8 +15,8 @@ import {
   getOrCreateCatalog,
   processSheetMappings,
 } from "@/lib/ingest/configure-service";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
 
 import {
   cleanupPreview,

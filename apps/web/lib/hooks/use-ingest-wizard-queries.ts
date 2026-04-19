@@ -10,7 +10,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { SheetInfo } from "@/lib/types/ingest-wizard";
+import type { SheetInfo } from "@/lib/ingest/types/wizard";
 
 import { fetchJson } from "../api/http-error";
 import { QUERY_PRESETS } from "./query-presets";

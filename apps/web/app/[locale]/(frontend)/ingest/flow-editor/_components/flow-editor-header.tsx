@@ -13,7 +13,7 @@ import { ArrowLeft, Redo2, Save, Undo2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
-import type { SheetInfo } from "@/lib/types/ingest-wizard";
+import type { SheetInfo } from "@/lib/ingest/types/wizard";
 
 interface FlowEditorHeaderProps {
   sheetInfo: SheetInfo | null;

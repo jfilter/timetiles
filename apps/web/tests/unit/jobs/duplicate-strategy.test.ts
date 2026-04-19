@@ -13,13 +13,13 @@ import "@/tests/mocks/services/logger";
 
 // vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
-  getImportGeocodingResults: vi.fn(),
+  getIngestGeocodingResults: vi.fn(),
   bulkInsertEvents: vi.fn(),
   extractDenormalizedAccessFields: vi.fn(),
 }));
 
 // Mock external dependencies used by process-batch
-vi.mock("@/lib/types/geocoding", () => ({ getImportGeocodingResults: mocks.getImportGeocodingResults }));
+vi.mock("@/lib/ingest/types/geocoding", () => ({ getIngestGeocodingResults: mocks.getIngestGeocodingResults }));
 
 vi.mock("@/lib/jobs/utils/bulk-event-insert", () => ({ bulkInsertEvents: mocks.bulkInsertEvents }));
 
@@ -191,7 +191,7 @@ describe.sequential("processEventBatch", () => {
     // eslint-disable-next-line @typescript-eslint/require-await
     mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => events.length);
 
-    mocks.getImportGeocodingResults.mockReturnValue({});
+    mocks.getIngestGeocodingResults.mockReturnValue({});
 
     // Stub `db.drizzle.select(...).from(...).where(...)` used by
     // validateUpdateIdsInDataset. By default returns any id Number()-coerced

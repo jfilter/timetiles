@@ -15,7 +15,7 @@ import { Building, Calendar, FileText, Hash, type LucideIcon, MapPin, Text } fro
 import { useTranslations } from "next-intl";
 import { memo } from "react";
 
-import type { TargetFieldNodeData } from "@/lib/types/flow-mapping";
+import type { TargetFieldNodeData } from "@/lib/ingest/types/flow-mapping";
 
 interface TargetFieldNodeProps {
   data: TargetFieldNodeData;

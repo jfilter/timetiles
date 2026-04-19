@@ -20,7 +20,10 @@ import type { TaskCallbackArgs } from "@/lib/jobs/utils/job-context";
 // Mock all heavy dependencies to isolate onFail behavior
 vi.mock("@/lib/ingest/file-readers", () => ({ streamBatchesFromFile: vi.fn(), cleanupSidecarFiles: vi.fn() }));
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: vi.fn() }));
-vi.mock("@/lib/types/geocoding", () => ({ getImportGeocodingResults: vi.fn(), getGeocodingResultForRow: vi.fn() }));
+vi.mock("@/lib/ingest/types/geocoding", () => ({
+  getIngestGeocodingResults: vi.fn(),
+  getGeocodingResultForRow: vi.fn(),
+}));
 vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     startStage: vi.fn(),

@@ -9,11 +9,11 @@
  */
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
+import type { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
-import type { getImportGeocodingResults } from "@/lib/types/geocoding";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { Dataset } from "@/payload-types";
@@ -32,7 +32,7 @@ export const extractCoordinates = (
     locationPath?: string | null;
     locationNamePath?: string | null;
   },
-  geocodingResults: ReturnType<typeof getImportGeocodingResults>
+  geocodingResults: ReturnType<typeof getIngestGeocodingResults>
 ): {
   location?: { latitude: number; longitude: number };
   coordinateSource: { type: "source-data" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
@@ -213,7 +213,7 @@ export const createEventData = (
       endTimestampPath?: string | null;
     };
   },
-  geocodingResults: ReturnType<typeof getImportGeocodingResults>,
+  geocodingResults: ReturnType<typeof getIngestGeocodingResults>,
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
   const uniqueId = generateUniqueId(row, dataset);

@@ -20,7 +20,7 @@ import { useState } from "react";
 
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { type ApproveIngestJobRequest, useApproveIngestJobMutation } from "@/lib/hooks/use-ingest-approval";
-import type { FormattedJobProgress } from "@/lib/types/progress-tracking";
+import type { FormattedJobProgress } from "@/lib/ingest/types/progress-tracking";
 
 export interface ReviewPanelProps {
   job: FormattedJobProgress;

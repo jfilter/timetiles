@@ -22,8 +22,8 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { TransformType } from "@/lib/types/ingest-transforms";
-import type { FieldMappingStringField } from "@/lib/types/ingest-wizard";
+import type { TransformType } from "@/lib/ingest/types/transforms";
+import type { FieldMappingStringField } from "@/lib/ingest/types/wizard";
 
 // ---------------------------------------------------------------------------
 // Transform icons and colors

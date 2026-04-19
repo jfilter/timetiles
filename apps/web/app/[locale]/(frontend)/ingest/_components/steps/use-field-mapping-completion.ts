@@ -8,7 +8,7 @@
  */
 import { useMemo } from "react";
 
-import type { FieldMapping } from "@/lib/types/ingest-wizard";
+import type { FieldMapping } from "@/lib/ingest/types/wizard";
 
 export interface FieldMappingCompletion {
   mapped: number;

@@ -8,7 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
 
 describe("Path utilities", () => {

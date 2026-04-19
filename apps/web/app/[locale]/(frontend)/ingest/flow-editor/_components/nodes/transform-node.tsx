@@ -15,8 +15,8 @@ import { Handle, Position } from "@xyflow/react";
 import { useTranslations } from "next-intl";
 import { memo } from "react";
 
-import type { TransformNodeData } from "@/lib/types/flow-mapping";
-import type { TransformType } from "@/lib/types/ingest-transforms";
+import type { TransformNodeData } from "@/lib/ingest/types/flow-mapping";
+import type { TransformType } from "@/lib/ingest/types/transforms";
 
 import { TRANSFORM_ICONS } from "../../../_components/steps/column-mapping-shared";
 

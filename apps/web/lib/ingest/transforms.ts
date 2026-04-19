@@ -25,7 +25,7 @@ import type {
   SplitToArrayTransform,
   SplitTransform,
   StringOpTransform,
-} from "@/lib/types/ingest-transforms";
+} from "@/lib/ingest/types/transforms";
 import { isValidDate } from "@/lib/utils/date";
 import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
 

@@ -8,7 +8,7 @@
  * @module
  * @category Types
  */
-import type { TransformSuggestion } from "./ingest-transforms";
+import type { TransformSuggestion } from "./transforms";
 
 /**
  * Status of a processing stage.

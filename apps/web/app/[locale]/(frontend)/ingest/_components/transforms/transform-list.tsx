@@ -28,7 +28,7 @@ import {
   isTransformValid,
   TRANSFORM_TYPE_LABELS,
   type TransformType,
-} from "@/lib/types/ingest-transforms";
+} from "@/lib/ingest/types/transforms";
 
 import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "../steps/column-mapping-shared";
 import { TransformEditor } from "./transform-editor";

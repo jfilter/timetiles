@@ -6,14 +6,14 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import {
   createTransform,
   DATE_FORMAT_OPTIONS,
   isTransformValid,
   TRANSFORM_TYPE_DESCRIPTIONS,
   TRANSFORM_TYPE_LABELS,
-} from "@/lib/types/ingest-transforms";
+} from "@/lib/ingest/types/transforms";
 
 // Mock crypto.randomUUID for deterministic tests
 vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });

@@ -11,9 +11,9 @@ import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { applyTransforms } from "@/lib/ingest/transforms";
+import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
-import { getImportGeocodingResults } from "@/lib/types/geocoding";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
@@ -59,7 +59,7 @@ const buildBulkEventFromRow = (
   row: Record<string, unknown>,
   transforms: IngestTransform[],
   ctx: ProcessBatchContext,
-  geocodingResults: ReturnType<typeof getImportGeocodingResults>
+  geocodingResults: ReturnType<typeof getIngestGeocodingResults>
 ): BulkEventData => {
   const { dataset, ingestJobId, accessFields, logger: log } = ctx;
 
@@ -172,7 +172,7 @@ export const processEventBatch = async (
   const { payload, job, dataset, logger: log } = ctx;
   const duplicateStrategy = readDuplicateStrategy(job);
   const { skipRows, updateRows } = extractDuplicateRows(job, duplicateStrategy);
-  const geocodingResults = getImportGeocodingResults(job);
+  const geocodingResults = getIngestGeocodingResults(job);
   const transforms = buildTransformsFromDataset(dataset);
 
   // Dataset-scope guard: `analyze-duplicates` already filters candidates by

@@ -7,7 +7,7 @@
  * @module
  * @category Components
  */
-import { isFieldMappingComplete } from "@/lib/types/ingest-wizard";
+import { isFieldMappingComplete } from "@/lib/ingest/types/wizard";
 
 import { type WizardState, type WizardStep } from "./wizard-store";
 

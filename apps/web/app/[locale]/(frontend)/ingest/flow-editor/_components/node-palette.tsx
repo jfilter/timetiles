@@ -14,7 +14,7 @@ import { ArrowLeftRight, Braces, Calendar, CaseSensitive, ListTree, Regex, Sciss
 import { useTranslations } from "next-intl";
 import { type DragEvent, memo, useCallback } from "react";
 
-import type { TransformType } from "@/lib/types/ingest-transforms";
+import type { TransformType } from "@/lib/ingest/types/transforms";
 
 interface NodePaletteProps {
   className?: string;

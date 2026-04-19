@@ -19,7 +19,7 @@ import {
   buildIdStrategy,
   translateSchemaMode,
 } from "@/lib/ingest/configure-service";
-import type { FieldMapping, SheetMapping } from "@/lib/types/ingest-wizard";
+import type { FieldMapping, SheetMapping } from "@/lib/ingest/types/wizard";
 
 const fullFieldMapping: FieldMapping = {
   sheetIndex: 0,

@@ -13,8 +13,8 @@ import type { Node } from "@xyflow/react";
 
 import { getTargetFieldDefinitions } from "@/lib/definitions/field-registry";
 
-import type { IngestTransform } from "./ingest-transforms";
-import type { FieldMapping } from "./ingest-wizard";
+import type { IngestTransform } from "./transforms";
+import type { FieldMapping } from "./wizard";
 
 /**
  * Data for a source column node (left side of flow)

@@ -12,7 +12,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import type { PreviewMetadata } from "@/lib/types/ingest-wizard";
+import type { PreviewMetadata } from "@/lib/ingest/types/wizard";
 
 /** Directory name inside os.tmpdir() where preview files are stored. */
 const PREVIEW_DIR_NAME = "timetiles-wizard-preview";

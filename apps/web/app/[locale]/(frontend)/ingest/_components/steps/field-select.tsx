@@ -12,7 +12,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { ConfidenceLevel, FieldMapping } from "@/lib/types/ingest-wizard";
+import type { ConfidenceLevel, FieldMapping } from "@/lib/ingest/types/wizard";
 
 /**
  * Confidence badge component showing auto-detection confidence level.

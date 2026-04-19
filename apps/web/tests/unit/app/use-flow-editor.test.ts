@@ -26,7 +26,7 @@ vi.mock("@xyflow/react", () => ({
 
 vi.mock("@/lib/hooks/use-ingest-wizard-queries", () => ({ usePreviewSheetsQuery: mockUsePreviewSheetsQuery }));
 
-vi.mock("@/lib/types/flow-mapping", () => ({
+vi.mock("@/lib/ingest/types/flow-mapping", () => ({
   createSourceNodes: () => [{ id: "src-1", type: "source-column", data: {}, position: { x: 0, y: 0 } }],
   createTargetNodes: () => [{ id: "tgt-1", type: "target-field", data: {}, position: { x: 0, y: 0 } }],
 }));
@@ -36,7 +36,7 @@ vi.mock("@/lib/ingest/field-mapping-utils", () => ({
   setMappingField: vi.fn(),
 }));
 
-vi.mock("@/lib/types/ingest-transforms", () => ({ createTransform: vi.fn(), isTransformValid: () => false }));
+vi.mock("@/lib/ingest/types/transforms", () => ({ createTransform: vi.fn(), isTransformValid: () => false }));
 
 import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
 

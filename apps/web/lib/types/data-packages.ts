@@ -11,8 +11,7 @@
 
 import type { FieldPathMappings } from "@/lib/definitions/field-registry";
 import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
-
-import type { AuthConfig, JsonApiScheduleConfig } from "./ingest-wizard";
+import type { AuthConfig, JsonApiScheduleConfig } from "@/lib/ingest/types/wizard";
 
 // ---------------------------------------------------------------------------
 // Manifest types (match YAML structure)

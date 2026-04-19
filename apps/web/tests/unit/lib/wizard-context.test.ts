@@ -9,7 +9,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type * as ZustandMiddleware from "zustand/middleware";
 
-import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
+import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
 // Mock zustand/middleware so persist and devtools are no-op wrappers.
 // This avoids localStorage/devtools dependencies in the test environment.

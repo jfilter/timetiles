@@ -7,7 +7,7 @@
  * @module
  * @category Jobs
  */
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { Dataset } from "@/payload-types";
 
 type DatasetTransformEntry = NonNullable<Dataset["ingestTransforms"]>[number];

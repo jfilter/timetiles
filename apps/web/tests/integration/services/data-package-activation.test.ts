@@ -656,7 +656,7 @@ describe.sequential("Data Package Activation", () => {
       sort: "eventTimestamp",
     });
 
-    expect(events.docs.length).toBe(3);
+    expect(events.docs).toHaveLength(3);
 
     // Verify transforms applied on first event
     const firstEvent = events.docs[0];
@@ -761,7 +761,7 @@ describe.sequential("Data Package Activation", () => {
       where: { dataset: { equals: result.datasetId } },
       sort: "eventTimestamp",
     });
-    expect(events.docs.length).toBe(2);
+    expect(events.docs).toHaveLength(2);
 
     // Find events by unique ID (external id from CSV)
     const stateBasedEvent = events.docs.find(
@@ -892,7 +892,7 @@ describe.sequential("Data Package Activation", () => {
     expect(firstSettled.settled).toBe(true);
 
     const firstEvents = await payload.find({ collection: "events", where: { dataset: { equals: result.datasetId } } });
-    expect(firstEvents.docs.length).toBe(3);
+    expect(firstEvents.docs).toHaveLength(3);
 
     // Check first import job stage - must be COMPLETED, not NEEDS_REVIEW
     const firstImportJobs = await payload.find({
@@ -991,7 +991,7 @@ describe.sequential("Data Package Activation", () => {
     // The key assertion: events should be updated with new data
     // If this is 6, events were duplicated instead of updated
     // If 3 but no updated text, the update didn't write transformedData
-    expect(finalEvents.docs.length).toBe(3);
+    expect(finalEvents.docs).toHaveLength(3);
 
     // Check if ANY event has the updated text (in transformedData or sourceData)
     const updatedEvent = finalEvents.docs.find((e: any) => {

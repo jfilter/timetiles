@@ -25,7 +25,7 @@ import { useTranslations } from "next-intl";
 import { type DragEvent, useCallback, useRef } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
-import type { TransformType } from "@/lib/types/ingest-transforms";
+import type { TransformType } from "@/lib/ingest/types/transforms";
 
 import { useWizardStore } from "../../_components/wizard-store";
 import { FlowEditorHeader } from "./flow-editor-header";

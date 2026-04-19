@@ -136,7 +136,7 @@ Event E,2024-06-05,Frankfurt,"[""Jugend"",""Musik""]"
 
     // Check events have native arrays in transformedData
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } } });
-    expect(events.docs.length).toBe(5);
+    expect(events.docs).toHaveLength(5);
 
     const firstEvent = events.docs[0];
     expect(Array.isArray(firstEvent.transformedData.category)).toBe(true);

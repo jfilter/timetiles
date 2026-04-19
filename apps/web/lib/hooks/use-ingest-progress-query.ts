@@ -11,10 +11,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchJson } from "../api/http-error";
-import type { ProgressApiResponse } from "../types/progress-tracking";
+import type { ProgressApiResponse } from "../ingest/types/progress-tracking";
 import { createItemPollingInterval } from "./query-presets";
 
-export type { ProgressApiResponse } from "../types/progress-tracking";
+export type { ProgressApiResponse } from "../ingest/types/progress-tracking";
 
 const POLL_INTERVAL_MS = 2000;
 

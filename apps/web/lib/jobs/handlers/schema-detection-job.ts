@@ -20,12 +20,12 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { applyTransformsBatch } from "@/lib/ingest/transforms";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import type { SchemaDetectionService } from "@/lib/services/schema-detection/service";
 import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
-import type { IngestTransform } from "@/lib/types/ingest-transforms";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 import type { Dataset, IngestJob } from "@/payload-types";
 

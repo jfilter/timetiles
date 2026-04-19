@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/types/flow-mapping";
+import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "@/lib/ingest/types/flow-mapping";
 
 describe("flow-mapping", () => {
   describe("TARGET_FIELD_DEFINITIONS", () => {

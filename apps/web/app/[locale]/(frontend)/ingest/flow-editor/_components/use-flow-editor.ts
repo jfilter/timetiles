@@ -14,15 +14,15 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-ingest-wizard-queries";
 import { createEmptyFieldMapping, setMappingField } from "@/lib/ingest/field-mapping-utils";
-import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/types/flow-mapping";
-import { createSourceNodes, createTargetNodes } from "@/lib/types/flow-mapping";
+import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/ingest/types/flow-mapping";
+import { createSourceNodes, createTargetNodes } from "@/lib/ingest/types/flow-mapping";
 import {
   createTransform,
   type IngestTransform,
   isTransformValid,
   type TransformType,
-} from "@/lib/types/ingest-transforms";
-import type { FieldMapping, SheetInfo } from "@/lib/types/ingest-wizard";
+} from "@/lib/ingest/types/transforms";
+import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
 import { useWizardStore } from "../../_components/wizard-store";
 

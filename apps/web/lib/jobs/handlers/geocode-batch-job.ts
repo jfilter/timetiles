@@ -18,12 +18,12 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
+import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import type { GeocodingBias } from "@/lib/services/geocoding/types";
-import type { ImportGeocodingResultsMap } from "@/lib/types/geocoding";
-import { getGeocodingCandidate } from "@/lib/types/geocoding";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
@@ -133,12 +133,12 @@ const geocodeUniqueLocations = async (
   bias: GeocodingBias | undefined,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{
-  results: ImportGeocodingResultsMap;
+  results: IngestGeocodingResultsMap;
   successCount: number;
   failureCount: number;
   failures: GeocodingFailure[];
 }> => {
-  const results: ImportGeocodingResultsMap = {};
+  const results: IngestGeocodingResultsMap = {};
   const failures: GeocodingFailure[] = [];
   let successCount = 0;
   let failureCount = 0;
@@ -153,7 +153,7 @@ const geocodeUniqueLocations = async (
     // batchGeocode processes BATCH_CONCURRENCY addresses in parallel via Promise.allSettled
     const batchResult = await geocodingService.batchGeocode(chunk, BATCH_CONCURRENCY, bias);
 
-    // Convert BatchGeocodingResult to ImportGeocodingResultsMap format
+    // Convert BatchGeocodingResult to IngestGeocodingResultsMap format
     for (const [address, resultOrError] of batchResult.results) {
       if (resultOrError instanceof Error) {
         const errorMessage = resultOrError.message;
@@ -215,7 +215,7 @@ const fillCoordsFromConfig = (
  * detection step did not populate `detectedFieldMappings` with lat/lng paths.
  */
 const resolveCoordinateFields = (
-  geocodingCandidate: ReturnType<typeof getGeocodingCandidate>,
+  geocodingCandidate: ReturnType<typeof getIngestGeocodingCandidate>,
   dataset: unknown
 ): { latitudeField?: string; longitudeField?: string } => {
   let latitudeField = geocodingCandidate?.latitudeField;
@@ -254,7 +254,7 @@ const prepareGeocodingLocations = async (
     }
 > => {
   const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
-  const geocodingCandidate = getGeocodingCandidate(job);
+  const geocodingCandidate = getIngestGeocodingCandidate(job);
 
   // Skip if neither location field nor location name field detected
   if (!geocodingCandidate?.locationField && !geocodingCandidate?.locationNameField) {
@@ -320,7 +320,7 @@ const throwIfAllGeocodingFailed = (
 const storeGeocodingResults = async (
   payload: Payload,
   ingestJobId: string | number,
-  results: ImportGeocodingResultsMap
+  results: IngestGeocodingResultsMap
 ): Promise<void> => {
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
   await payload.update({

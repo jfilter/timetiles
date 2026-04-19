@@ -19,8 +19,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/types/ingest-transforms";
-import type { IngestTransform } from "@/lib/types/ingest-wizard";
+import { TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/ingest/types/transforms";
+import type { IngestTransform } from "@/lib/ingest/types/wizard";
 
 import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "./column-mapping-shared";
 

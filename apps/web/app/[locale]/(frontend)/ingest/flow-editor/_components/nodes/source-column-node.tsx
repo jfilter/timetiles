@@ -14,7 +14,7 @@ import { Handle, Position } from "@xyflow/react";
 import { useTranslations } from "next-intl";
 import { memo } from "react";
 
-import type { SourceColumnNodeData } from "@/lib/types/flow-mapping";
+import type { SourceColumnNodeData } from "@/lib/ingest/types/flow-mapping";
 
 interface SourceColumnNodeProps {
   data: SourceColumnNodeData;
