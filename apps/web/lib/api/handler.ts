@@ -136,7 +136,19 @@ const parseRequestQuery = <TQuery>(req: NextRequest, querySchema?: z.ZodType<TQu
     return undefined as TQuery;
   }
 
-  return querySchema.parse(Object.fromEntries(new URL(req.url).searchParams));
+  const rawQuery: Record<string, string | string[]> = {};
+
+  for (const [key, value] of new URL(req.url).searchParams.entries()) {
+    const existing = rawQuery[key];
+    if (existing == null) {
+      rawQuery[key] = value;
+      continue;
+    }
+
+    rawQuery[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+  }
+
+  return querySchema.parse(rawQuery);
 };
 
 const parseRouteParams = async <TParams>(
