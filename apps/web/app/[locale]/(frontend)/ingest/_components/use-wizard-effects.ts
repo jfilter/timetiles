@@ -16,7 +16,7 @@ import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import { usePreviewValidationQuery } from "@/lib/hooks/use-preview-validation-query";
 
 import { canProceedFromStep, getPreviewInvalidatedStep } from "./wizard-selectors";
-import { useWizardStore } from "./wizard-store";
+import { useWizardPreviewValidationState, useWizardProceedState, useWizardStore } from "./wizard-store";
 
 interface InitialAuth {
   isAuthenticated: boolean;
@@ -37,11 +37,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
 
   // 2. Validate preview file still exists (auto-resets on expiry)
   // In edit mode, skip validation when previewId is null (before URL re-fetch)
-  const previewId = useWizardStore((s) => s.previewId);
-  const currentStep = useWizardStore((s) => s.currentStep);
-  const startedAuthenticated = useWizardStore((s) => s.startedAuthenticated);
-  const ingestFileId = useWizardStore((s) => s.ingestFileId);
-  const editMode = useWizardStore((s) => s.editMode);
+  const { previewId, currentStep, startedAuthenticated, ingestFileId, editMode } = useWizardPreviewValidationState();
   const validationEnabled = currentStep !== 7 && ingestFileId === null && !(editMode && !previewId);
   const { data: validationData } = usePreviewValidationQuery(previewId, validationEnabled);
 
@@ -63,12 +59,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
  * Combines wizard store state with live auth state from React Query.
  */
 export const useWizardCanProceed = (): boolean => {
-  const currentStep = useWizardStore((s) => s.currentStep);
-  const file = useWizardStore((s) => s.file);
-  const sheets = useWizardStore((s) => s.sheets);
-  const selectedCatalogId = useWizardStore((s) => s.selectedCatalogId);
-  const sheetMappings = useWizardStore((s) => s.sheetMappings);
-  const fieldMappings = useWizardStore((s) => s.fieldMappings);
+  const { currentStep, file, sheets, selectedCatalogId, sheetMappings, fieldMappings } = useWizardProceedState();
   const { isAuthenticated, isEmailVerified } = useAuthState();
 
   return canProceedFromStep(

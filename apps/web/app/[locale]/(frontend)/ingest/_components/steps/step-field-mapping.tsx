@@ -19,10 +19,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { applyPreviewTransforms } from "@/lib/ingest/transforms";
-import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/types/ingest-wizard";
+import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/ingest/types/wizard";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
-import { useWizardStore } from "../wizard-store";
+import { useWizardFieldMappingStepState } from "../wizard-store";
 import { ColumnMappingTable } from "./column-mapping-table";
 import {
   CompletionStatusBar,
@@ -110,20 +110,22 @@ const isIdStrategyLocked = (
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Ingest");
   const router = useRouter();
-  const sheets = useWizardStore((s) => s.sheets);
-  const fieldMappings = useWizardStore((s) => s.fieldMappings);
-  const sheetMappings = useWizardStore((s) => s.sheetMappings);
-  const deduplicationStrategy = useWizardStore((s) => s.deduplicationStrategy);
-  const geocodingEnabled = useWizardStore((s) => s.geocodingEnabled);
-  const previewId = useWizardStore((s) => s.previewId);
-  const transforms = useWizardStore((s) => s.transforms);
-  const configSuggestions = useWizardStore((s) => s.configSuggestions);
-  const nextStep = useWizardStore((s) => s.nextStep);
-  const setFieldMapping = useWizardStore((s) => s.setFieldMapping);
-  const setImportOptions = useWizardStore((s) => s.setImportOptions);
-  const setTransforms = useWizardStore((s) => s.setTransforms);
-  const applyDatasetConfig = useWizardStore((s) => s.applyDatasetConfig);
-  const resetToAutoDetected = useWizardStore((s) => s.resetToAutoDetected);
+  const {
+    sheets,
+    fieldMappings,
+    sheetMappings,
+    deduplicationStrategy,
+    geocodingEnabled,
+    previewId,
+    transforms,
+    configSuggestions,
+    nextStep,
+    setFieldMapping,
+    setImportOptions,
+    setTransforms,
+    applyDatasetConfig,
+    resetToAutoDetected,
+  } = useWizardFieldMappingStepState();
   const canProceed = useWizardCanProceed();
 
   const [activeSheetIndex, setActiveSheetIndex] = useState(sheets[0]?.index ?? 0);

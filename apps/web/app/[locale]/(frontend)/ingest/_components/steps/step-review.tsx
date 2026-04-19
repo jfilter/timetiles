@@ -30,11 +30,12 @@ import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 import { useIngestConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
-import { TRANSFORM_TYPE_LABELS } from "@/lib/types/ingest-transforms";
+import { TRANSFORM_TYPE_LABELS } from "@/lib/ingest/types/transforms";
 import { formatFileSize } from "@/lib/utils/format";
 
 import { useUpdateSchedule } from "../use-update-schedule";
-import { useWizardStore } from "../wizard-store";
+import { useWizardReviewStepState } from "../wizard-store";
+import { DEDUP_STRATEGY_CONFIG, ID_STRATEGY_CONFIG } from "./id-strategy-card";
 
 export interface StepReviewProps {
   className?: string;
@@ -42,40 +43,37 @@ export interface StepReviewProps {
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Ingest");
-  const file = useWizardStore((s) => s.file);
-  const sheets = useWizardStore((s) => s.sheets);
-  const selectedCatalogId = useWizardStore((s) => s.selectedCatalogId);
-  const newCatalogName = useWizardStore((s) => s.newCatalogName);
-  const sheetMappings = useWizardStore((s) => s.sheetMappings);
-  const fieldMappings = useWizardStore((s) => s.fieldMappings);
-  const deduplicationStrategy = useWizardStore((s) => s.deduplicationStrategy);
-  const geocodingEnabled = useWizardStore((s) => s.geocodingEnabled);
-  const sourceUrl = useWizardStore((s) => s.sourceUrl);
-  const authConfig = useWizardStore((s) => s.authConfig);
-  const scheduleConfig = useWizardStore((s) => s.scheduleConfig);
-  const jsonApiConfig = useWizardStore((s) => s.jsonApiConfig);
-  const wizardPreviewId = useWizardStore((s) => s.previewId);
-  const wizardTransforms = useWizardStore((s) => s.transforms);
-  const wizardError = useWizardStore((s) => s.error);
-  const editMode = useWizardStore((s) => s.editMode);
-  const editScheduleId = useWizardStore((s) => s.editScheduleId);
-  const prevStep = useWizardStore((s) => s.prevStep);
-  const startProcessing = useWizardStore((s) => s.startProcessing);
-  const nextStep = useWizardStore((s) => s.nextStep);
-  const setError = useWizardStore((s) => s.setError);
+  const {
+    file,
+    sheets,
+    selectedCatalogId,
+    newCatalogName,
+    sheetMappings,
+    fieldMappings,
+    deduplicationStrategy,
+    geocodingEnabled,
+    sourceUrl,
+    authConfig,
+    scheduleConfig,
+    jsonApiConfig,
+    previewId: wizardPreviewId,
+    transforms: wizardTransforms,
+    error: wizardError,
+    editMode,
+    editScheduleId,
+    prevStep,
+    startProcessing,
+    nextStep,
+    setError,
+  } = useWizardReviewStepState();
 
   const { updateSchedule, isUpdating } = useUpdateSchedule();
-  const ID_STRATEGY_LABELS: Record<string, string> = {
-    "content-hash": t("idStrategyContentHash"),
-    external: t("idStrategyExternal"),
-    "auto-generate": t("idStrategyAutoGenerate"),
-  };
-
-  const DUPLICATE_LABELS: Record<string, string> = {
-    skip: t("dedupSkip"),
-    update: t("dedupUpdate"),
-    version: t("dedupVersion"),
-  };
+  const idStrategyLabels = Object.fromEntries(
+    ID_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
+  ) as Record<string, string>;
+  const duplicateLabels = Object.fromEntries(
+    DEDUP_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
+  ) as Record<string, string>;
 
   const configureMutation = useIngestConfigureMutation();
 
@@ -344,7 +342,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-foreground font-mono text-sm">
-                        {ID_STRATEGY_LABELS[mapping?.idStrategy ?? "content-hash"]}
+                        {idStrategyLabels[mapping?.idStrategy ?? "content-hash"]}
                       </span>
                       {mapping?.idStrategy === "external" && mapping?.idField && (
                         <span className="text-muted-foreground font-mono text-xs">({mapping.idField})</span>
@@ -362,7 +360,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                     <DatabaseIcon className="text-primary/40 h-4 w-4" />
                     <span className="text-muted-foreground text-sm">{t("onDuplicate")}</span>
                   </div>
-                  <span className="text-foreground font-mono text-sm">{DUPLICATE_LABELS[deduplicationStrategy]}</span>
+                  <span className="text-foreground font-mono text-sm">{duplicateLabels[deduplicationStrategy]}</span>
                 </div>
               </div>
             </div>

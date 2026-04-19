@@ -12,7 +12,6 @@ import { createOwnershipAccess, isEditorOrAdmin, isPrivileged } from "../shared-
 export const ingestFilesAccess = {
   // Import files can be read by their owner or admins
 
-  // eslint-disable-next-line sonarjs/function-return-type -- Payload access functions intentionally return boolean or where filters
   read: (async ({ req, id }): Promise<boolean | Where> => {
     const { user, payload } = req;
 

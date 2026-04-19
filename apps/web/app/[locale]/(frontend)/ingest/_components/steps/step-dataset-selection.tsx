@@ -20,7 +20,7 @@ import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
-import { useWizardStore } from "../wizard-store";
+import { useWizardDatasetSelectionStepState } from "../wizard-store";
 
 export interface StepDatasetSelectionProps {
   className?: string;
@@ -96,15 +96,17 @@ const DatasetNameInput = ({ sheetIndex, value, disabled, onNameChange }: Readonl
 // oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const t = useTranslations("Ingest");
-  const sheets = useWizardStore((s) => s.sheets);
-  const selectedCatalogId = useWizardStore((s) => s.selectedCatalogId);
-  const newCatalogName = useWizardStore((s) => s.newCatalogName);
-  const sheetMappings = useWizardStore((s) => s.sheetMappings);
-  const configSuggestions = useWizardStore((s) => s.configSuggestions);
-  const fileName = useWizardStore((s) => s.file?.name);
-  const nextStep = useWizardStore((s) => s.nextStep);
-  const setCatalog = useWizardStore((s) => s.setCatalog);
-  const setSheetMapping = useWizardStore((s) => s.setSheetMapping);
+  const {
+    sheets,
+    selectedCatalogId,
+    newCatalogName,
+    sheetMappings,
+    configSuggestions,
+    fileName,
+    nextStep,
+    setCatalog,
+    setSheetMapping,
+  } = useWizardDatasetSelectionStepState();
   const canProceed = useWizardCanProceed();
 
   const { data: catalogsData, isLoading, error: queryError } = useCatalogsQuery();

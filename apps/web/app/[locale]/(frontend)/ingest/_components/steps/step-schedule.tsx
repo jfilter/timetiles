@@ -17,10 +17,10 @@ import { useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
-import type { UrlAuthConfig } from "@/lib/types/ingest-wizard";
+import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 
 import { AuthConfigFields } from "../auth-config-fields";
-import { type ScheduleConfig, useWizardStore } from "../wizard-store";
+import { type ScheduleConfig, useWizardScheduleStepState } from "../wizard-store";
 
 export interface StepScheduleProps {
   className?: string;
@@ -48,15 +48,17 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const t = useTranslations("Ingest");
-  const sourceUrl = useWizardStore((s) => s.sourceUrl);
-  const scheduleConfig = useWizardStore((s) => s.scheduleConfig);
-  const setScheduleConfig = useWizardStore((s) => s.setScheduleConfig);
-  const authConfig = useWizardStore((s) => s.authConfig);
-  const setAuthConfig = useWizardStore((s) => s.setAuthConfig);
-  const file = useWizardStore((s) => s.file);
-  const editMode = useWizardStore((s) => s.editMode);
-  const nextStep = useWizardStore((s) => s.nextStep);
-  const prevStep = useWizardStore((s) => s.prevStep);
+  const {
+    sourceUrl,
+    scheduleConfig,
+    authConfig,
+    file,
+    editMode,
+    nextStep,
+    prevStep,
+    setScheduleConfig,
+    setAuthConfig,
+  } = useWizardScheduleStepState();
 
   // In edit mode, schedule is always enabled
   const isScheduleEnabled = editMode || scheduleConfig?.enabled === true;

@@ -38,12 +38,12 @@ import { useTranslations } from "next-intl";
 import { useReducer } from "react";
 
 import { usePreviewSchemaUploadMutation, usePreviewSchemaUrlMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
-import type { UrlAuthConfig } from "@/lib/types/ingest-wizard";
+import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 import { formatFileSize } from "@/lib/utils/format";
 
 import { AuthConfigFields } from "../auth-config-fields";
 import { useWizardCanProceed } from "../use-wizard-effects";
-import { useWizardStore } from "../wizard-store";
+import { useWizardUploadStepState } from "../wizard-store";
 import { JsonApiConfigPanel } from "./json-api-config-panel";
 
 export interface StepUploadProps {
@@ -115,17 +115,19 @@ const uploadReducer = (state: UploadState, action: UploadAction): UploadState =>
 
 export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
   const t = useTranslations("Ingest");
-  const file = useWizardStore((s) => s.file);
-  const sheets = useWizardStore((s) => s.sheets);
-  const sourceUrl = useWizardStore((s) => s.sourceUrl);
-  const editMode = useWizardStore((s) => s.editMode);
-  const storeAuthConfig = useWizardStore((s) => s.authConfig);
-  const nextStep = useWizardStore((s) => s.nextStep);
-  const setFile = useWizardStore((s) => s.setFile);
-  const setSourceUrl = useWizardStore((s) => s.setSourceUrl);
-  const jsonApiConfig = useWizardStore((s) => s.jsonApiConfig);
-  const setJsonApiConfig = useWizardStore((s) => s.setJsonApiConfig);
-  const clearFile = useWizardStore((s) => s.clearFile);
+  const {
+    file,
+    sheets,
+    sourceUrl,
+    editMode,
+    authConfig: storeAuthConfig,
+    nextStep,
+    setFile,
+    setSourceUrl,
+    jsonApiConfig,
+    setJsonApiConfig,
+    clearFile,
+  } = useWizardUploadStepState();
   const canProceed = useWizardCanProceed();
 
   const [state, dispatch] = useReducer(uploadReducer, {
