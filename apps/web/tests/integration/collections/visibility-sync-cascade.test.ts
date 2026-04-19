@@ -269,6 +269,39 @@ describe.sequential("Visibility and ownership sync cascade", () => {
       const updatedEv = await readEvent(event.id);
       expect(updatedEv.datasetIsPublic).toBe(true);
     });
+
+    it("reparenting a dataset resyncs child visibility and ownership", async () => {
+      const sourceCatalog = await createCatalog(`Source ${Date.now()}`, true, ownerUser.id);
+      const targetCatalog = await createCatalog(`Target ${Date.now()}`, false, adminUser.id);
+      const dataset = await createDataset(sourceCatalog.id, `DS ${Date.now()}`, true);
+      const event = await createEvent(dataset.id, "reparent");
+      const schema = await createSchema(dataset.id);
+
+      const beforeEvent = await readEvent(event.id);
+      const beforeSchema = await readSchema(schema.id);
+      expect(beforeEvent.datasetIsPublic).toBe(true);
+      expect(beforeEvent.catalogOwnerId).toBe(ownerUser.id);
+      expect(beforeSchema.datasetIsPublic).toBe(true);
+      expect(beforeSchema.catalogOwnerId).toBe(ownerUser.id);
+
+      await payload.update({
+        collection: "datasets",
+        id: dataset.id,
+        data: { catalog: targetCatalog.id },
+        overrideAccess: true,
+      });
+
+      const updatedDataset = await readDataset(dataset.id);
+      const updatedEvent = await readEvent(event.id);
+      const updatedSchema = await readSchema(schema.id);
+
+      expect(updatedDataset.catalogCreatorId).toBe(adminUser.id);
+      expect(updatedDataset.catalogIsPublic).toBe(false);
+      expect(updatedEvent.datasetIsPublic).toBe(false);
+      expect(updatedEvent.catalogOwnerId).toBe(adminUser.id);
+      expect(updatedSchema.datasetIsPublic).toBe(false);
+      expect(updatedSchema.catalogOwnerId).toBe(adminUser.id);
+    });
   });
 
   describe("Access control verification (end-to-end)", () => {

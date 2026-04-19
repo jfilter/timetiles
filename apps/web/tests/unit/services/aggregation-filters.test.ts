@@ -69,6 +69,19 @@ describe("toSqlConditions", () => {
 
     expect(queryText).toContain("FALSE");
   });
+
+  it("requires both coordinates when requireLocation is true", () => {
+    const filters: CanonicalEventFilters = {
+      includePublic: true,
+      requireLocation: true,
+    };
+
+    const conditions = toSqlConditions(filters);
+    const queryText = collectQueryStrings(conditions).join(" ");
+
+    expect(queryText).toContain("e.location_latitude IS NOT NULL");
+    expect(queryText).toContain("e.location_longitude IS NOT NULL");
+  });
 });
 
 describe("toSqlWhereClause", () => {

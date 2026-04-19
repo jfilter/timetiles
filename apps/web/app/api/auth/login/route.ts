@@ -11,7 +11,7 @@
  * @module
  * @category API
  */
-import { APIError, AuthenticationError } from "payload";
+import { APIError, AuthenticationError, generatePayloadCookie } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
@@ -31,8 +31,28 @@ export const POST = apiRoute({
 
     try {
       const result = await payload.login({ collection: "users", data: { email, password }, req });
+      if (result.token == null || result.exp == null) {
+        throw new APIError("Login completed without a session token", 500);
+      }
+
+      const authConfig = payload.collections.users.config.auth;
+      const cookie = generatePayloadCookie({
+        collectionAuthConfig: authConfig,
+        cookiePrefix: payload.config.cookiePrefix,
+        token: result.token,
+      });
+      const responseBody: { exp: number; token?: string; user: typeof result.user } = {
+        user: result.user,
+        token: result.token,
+        exp: result.exp,
+      };
+
+      if (authConfig.removeTokenFromResponses) {
+        delete responseBody.token;
+      }
+
       // `afterLogin` hook handles the LOGIN_SUCCESS audit — no duplicate here.
-      return { user: result.user, token: result.token, exp: result.exp };
+      return Response.json(responseBody, { headers: new Headers({ "Set-Cookie": cookie }) });
     } catch (error) {
       // Audit the failed attempt. userId=0 is the canonical "no associated
       // user" marker so we don't accidentally reveal which emails exist.

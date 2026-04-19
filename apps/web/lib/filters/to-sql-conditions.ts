@@ -45,6 +45,9 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
     conditions.push(...buildBoundsConditions(filters.bounds));
   }
 
+  const locationCondition = buildRequireLocationCondition(filters.requireLocation);
+  if (locationCondition) conditions.push(locationCondition);
+
   // Field filters (keys already validated by canonical builder, re-validate for defense-in-depth)
   conditions.push(...buildFieldFilterConditions(filters.fieldFilters, filters.tagFields));
 
@@ -117,6 +120,11 @@ const buildDateConditions = (startDate?: string | null, endDate?: string | null)
   if (startDate != null) conditions.push(sql`e.event_timestamp >= ${startDate}::timestamptz`);
   if (endDate != null) conditions.push(sql`e.event_timestamp <= ${endDate}::timestamptz`);
   return conditions;
+};
+
+const buildRequireLocationCondition = (requireLocation?: boolean): SqlFragment | null => {
+  if (!requireLocation) return null;
+  return sql`e.location_latitude IS NOT NULL AND e.location_longitude IS NOT NULL`;
 };
 
 const buildBoundsConditions = (bounds: CanonicalBounds): SqlFragment[] => {

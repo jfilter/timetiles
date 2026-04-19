@@ -91,6 +91,40 @@ describe.sequential("Audit log — authentication events", () => {
     expect(match?.userEmailHash).toBe(hashEmail(testEmail));
   });
 
+  it("sets the session cookie on successful wrapper logins", async () => {
+    const testEmail = `login-cookie-${Date.now()}@test.com`;
+    const password = TEST_CREDENTIALS.auth.secure;
+
+    const user = await payload.create({
+      collection: "users",
+      data: { email: testEmail, password, trustLevel: `${TRUST_LEVELS.BASIC}` },
+      disableVerificationEmail: true,
+    });
+
+    const userWithToken = await payload.findByID({ collection: "users", id: user.id, showHiddenFields: true });
+    if (userWithToken._verificationToken) {
+      await payload.verifyEmail({ collection: "users", token: userWithToken._verificationToken });
+    }
+
+    const response = await loginPOST(buildLoginRequest(testEmail, password), {
+      params: Promise.resolve({}),
+    });
+
+    expect(response.status).toBe(200);
+
+    const loginBody = (await response.json()) as { exp?: number; token?: string; user?: { id: number } };
+    const setCookie = response.headers.get("set-cookie");
+    const sessionCookie = setCookie?.split(";")[0];
+    const authResult = await payload.auth({
+      headers: new Headers({ Cookie: sessionCookie ?? "" }),
+    });
+
+    expect(loginBody.user?.id).toBe(user.id);
+    expect(loginBody.exp).toBeDefined();
+    expect(setCookie).toContain("payload-token=");
+    expect(authResult.user?.id).toBe(user.id);
+  });
+
   it("records LOGIN_FAILED on wrong password", async () => {
     const testEmail = `login-failed-pwd-${Date.now()}@test.com`;
 

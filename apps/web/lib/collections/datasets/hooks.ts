@@ -217,9 +217,91 @@ export const handleDatasetUniqueConstraintError: CollectionAfterErrorHook = asyn
   }
 };
 
+type DatasetAccessSyncState = {
+  combinedIsPublic: boolean;
+  didCatalogOwnerChange: boolean;
+  didCatalogVisibilityChange: boolean;
+  didDatasetVisibilityChange: boolean;
+  nextCatalogOwnerId: number | null;
+};
+
+const getDatasetAccessSyncState = (doc: Dataset, previousDoc?: Partial<Dataset>): DatasetAccessSyncState => {
+  const nextCatalogOwnerId = doc.catalogCreatorId ?? null;
+  const previousCatalogOwnerId = previousDoc?.catalogCreatorId ?? null;
+
+  return {
+    combinedIsPublic: (doc.isPublic ?? false) && (doc.catalogIsPublic ?? false),
+    didDatasetVisibilityChange: (previousDoc?.isPublic ?? false) !== (doc.isPublic ?? false),
+    didCatalogVisibilityChange: (previousDoc?.catalogIsPublic ?? false) !== (doc.catalogIsPublic ?? false),
+    didCatalogOwnerChange: previousCatalogOwnerId !== nextCatalogOwnerId,
+    nextCatalogOwnerId,
+  };
+};
+
+const auditDatasetVisibilityChange = async (
+  req: PayloadRequest,
+  doc: Dataset,
+  previousDoc?: Partial<Dataset>
+): Promise<void> => {
+  const datasetOwnerId = extractRelationId<number>(doc.createdBy);
+  if (!datasetOwnerId) return;
+
+  try {
+    const owner = await req.payload.findByID({
+      collection: "users",
+      id: datasetOwnerId,
+      overrideAccess: true,
+      depth: 0,
+      req,
+    });
+    await auditLog(
+      req.payload,
+      {
+        action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
+        userId: datasetOwnerId,
+        userEmail: owner.email,
+        performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
+        details: {
+          datasetId: doc.id,
+          datasetName: doc.name,
+          previousIsPublic: previousDoc?.isPublic ?? false,
+          newIsPublic: doc.isPublic ?? false,
+        },
+      },
+      { req }
+    );
+  } catch {
+    /* audit is best-effort */
+  }
+};
+
+const syncDatasetChildAccessFields = async (
+  req: PayloadRequest,
+  datasetId: number,
+  accessFields: { catalogOwnerId: number | null; datasetIsPublic: boolean }
+): Promise<void> => {
+  await req.payload.update({
+    collection: "events",
+    where: { dataset: { equals: datasetId } },
+    data: accessFields,
+    overrideAccess: true,
+    req,
+  });
+
+  await req.payload.update({
+    collection: "dataset-schemas",
+    where: { dataset: { equals: datasetId } },
+    data: accessFields,
+    overrideAccess: true,
+    req,
+  });
+};
+
 /**
- * Sync isPublic changes to all events in this dataset.
- * Updates the denormalized datasetIsPublic field for access control.
+ * Sync dataset access-control changes to all child records in this dataset.
+ *
+ * Updates the denormalized `datasetIsPublic` and `catalogOwnerId` fields used
+ * by events and dataset schemas for access control.
  */
 export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
   doc,
@@ -228,61 +310,36 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
   req,
 }) => {
   if (operation !== "update") return doc;
-  if (previousDoc?.isPublic === doc.isPublic) return doc;
 
-  // Audit visibility change (best-effort)
-  const datasetOwnerId = extractRelationId<number>(doc.createdBy);
-  if (datasetOwnerId) {
-    try {
-      const owner = await req.payload.findByID({
-        collection: "users",
-        id: datasetOwnerId,
-        overrideAccess: true,
-        depth: 0,
-        req,
-      });
-      await auditLog(
-        req.payload,
-        {
-          action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
-          userId: datasetOwnerId,
-          userEmail: owner.email,
-          performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
-          details: {
-            datasetId: doc.id,
-            datasetName: doc.name,
-            previousIsPublic: previousDoc?.isPublic ?? false,
-            newIsPublic: doc.isPublic ?? false,
-          },
-        },
-        { req }
-      );
-    } catch {
-      /* audit is best-effort */
-    }
+  const syncState = getDatasetAccessSyncState(doc, previousDoc);
+
+  if (
+    !syncState.didDatasetVisibilityChange &&
+    !syncState.didCatalogVisibilityChange &&
+    !syncState.didCatalogOwnerChange
+  ) {
+    return doc;
   }
 
-  const newIsPublic = doc.isPublic ?? false;
-  const catalogIsPublic = doc.catalogIsPublic ?? false;
-  const combinedIsPublic = newIsPublic && catalogIsPublic;
+  if (syncState.didDatasetVisibilityChange) {
+    await auditDatasetVisibilityChange(req, doc, previousDoc);
+  }
 
-  logger.info(`Syncing datasetIsPublic=${combinedIsPublic} to events and dataset-schemas in dataset ${doc.id}`);
+  const accessFields = {
+    datasetIsPublic: syncState.combinedIsPublic,
+    catalogOwnerId: syncState.nextCatalogOwnerId,
+  };
 
-  await req.payload.update({
-    collection: "events",
-    where: { dataset: { equals: doc.id } },
-    data: { datasetIsPublic: combinedIsPublic },
-    overrideAccess: true,
-    req,
-  });
+  logger.info(
+    {
+      datasetId: doc.id,
+      datasetIsPublic: syncState.combinedIsPublic,
+      catalogOwnerId: syncState.nextCatalogOwnerId,
+    },
+    "Syncing dataset access fields to events and dataset schemas"
+  );
 
-  await req.payload.update({
-    collection: "dataset-schemas",
-    where: { dataset: { equals: doc.id } },
-    data: { datasetIsPublic: combinedIsPublic },
-    overrideAccess: true,
-    req,
-  });
+  await syncDatasetChildAccessFields(req, doc.id, accessFields);
 
   return doc;
 };
