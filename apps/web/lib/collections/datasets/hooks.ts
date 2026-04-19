@@ -72,7 +72,7 @@ const processCatalogValidation = async (
   originalDoc?: Partial<Dataset>
 ): Promise<CatalogFields> => {
   const catalogId = requireRelationId(catalogRef, "dataset.catalog");
-  const catalog = await safeFetchRecord<Catalog>(req, "catalogs", catalogId);
+  const catalog = await safeFetchRecord(req, "catalogs", catalogId);
 
   if (!catalog) {
     return { catalogIsPublic: false };

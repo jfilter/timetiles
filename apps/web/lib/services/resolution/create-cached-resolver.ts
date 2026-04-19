@@ -15,35 +15,42 @@ import type { Config } from "@/payload-types";
 import { logger } from "../../logger";
 
 type CollectionSlug = keyof Config["collections"];
+type CollectionDoc<TSlug extends CollectionSlug> = Config["collections"][TSlug];
+type CollectionField<TSlug extends CollectionSlug> = Extract<keyof CollectionDoc<TSlug>, string>;
+type DefaultableCollectionSlug = {
+  [TSlug in CollectionSlug]: CollectionDoc<TSlug> extends { isDefault?: boolean | null } ? TSlug : never;
+}[CollectionSlug];
 
-interface CachedResolverOptions {
+interface CachedResolverOptions<TSlug extends DefaultableCollectionSlug> {
   /** Payload collection slug (e.g., "sites", "views") */
-  collection: CollectionSlug;
+  collection: TSlug;
   /** The field to match when looking up by key (e.g., "domain", "slug") */
-  keyField: string;
+  keyField: CollectionField<TSlug>;
   /** Optional scope field for multi-tenant lookups (e.g., "site" for views) */
-  scopeField?: string;
+  scopeField?: CollectionField<TSlug>;
   /** Cache TTL in milliseconds (default: 5 minutes) */
   cacheTTL?: number;
   /** Query depth for Payload find (default: 1) */
   depth?: number;
 }
 
-interface CachedResolver<T> {
+interface CachedResolver<TSlug extends DefaultableCollectionSlug> {
   /** Find a document by its key field, optionally scoped */
-  findByKey: (payload: Payload, key: string, scopeId?: number) => Promise<T | null>;
+  findByKey: (payload: Payload, key: string, scopeId?: number) => Promise<CollectionDoc<TSlug> | null>;
   /** Find the default document (isDefault: true), optionally scoped */
-  findDefault: (payload: Payload, scopeId?: number) => Promise<T | null>;
+  findDefault: (payload: Payload, scopeId?: number) => Promise<CollectionDoc<TSlug> | null>;
   /** Clear all caches */
   clearCache: () => void;
 }
 
-export const createCachedResolver = <T>(options: CachedResolverOptions): CachedResolver<T> => {
+export const createCachedResolver = <TSlug extends DefaultableCollectionSlug>(
+  options: CachedResolverOptions<TSlug>
+): CachedResolver<TSlug> => {
   const { collection, keyField, scopeField, cacheTTL = 5 * 60 * 1000, depth = 1 } = options;
 
   // Caches
-  const keyCache = new Map<string, T | null>();
-  const defaultCache = new Map<string, T | null>();
+  const keyCache = new Map<string, CollectionDoc<TSlug> | null>();
+  const defaultCache = new Map<string, CollectionDoc<TSlug> | null>();
   let lastCacheClear = Date.now();
 
   const maybeClearCache = (): void => {
@@ -62,7 +69,7 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
 
   const defaultCacheKey = (scopeId?: number): string => (scopeField ? String(scopeId ?? 0) : "_default");
 
-  const findByKey = async (payload: Payload, key: string, scopeId?: number): Promise<T | null> => {
+  const findByKey = async (payload: Payload, key: string, scopeId?: number): Promise<CollectionDoc<TSlug> | null> => {
     maybeClearCache();
 
     const ck = cacheKeyFor(key, scopeId);
@@ -85,7 +92,7 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
         depth,
         overrideAccess: false,
       });
-      const doc = (result.docs[0] as T | undefined) ?? null;
+      const doc = (result.docs[0] as CollectionDoc<TSlug> | undefined) ?? null;
       keyCache.set(ck, doc);
       return doc;
     } catch (error) {
@@ -94,7 +101,7 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
     }
   };
 
-  const findDefault = async (payload: Payload, scopeId?: number): Promise<T | null> => {
+  const findDefault = async (payload: Payload, scopeId?: number): Promise<CollectionDoc<TSlug> | null> => {
     maybeClearCache();
 
     const dk = defaultCacheKey(scopeId);
@@ -110,7 +117,7 @@ export const createCachedResolver = <T>(options: CachedResolverOptions): CachedR
       };
 
       const result = await payload.find({ collection, where, limit: 1, depth, overrideAccess: false });
-      const doc = (result.docs[0] as T | undefined) ?? null;
+      const doc = (result.docs[0] as CollectionDoc<TSlug> | undefined) ?? null;
       defaultCache.set(dk, doc);
       return doc;
     } catch (error) {

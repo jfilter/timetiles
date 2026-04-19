@@ -8,30 +8,18 @@
  * @module
  * @category Types
  */
+import type { ScheduledIngest, Scraper } from "@/payload-types";
+
+type RequiredDefined<T> = { [K in keyof T]-?: Exclude<T[K], null | undefined> };
 
 // ---------------------------------------------------------------------------
 // Scheduled Ingest Statistics
 // ---------------------------------------------------------------------------
 
-/** Statistics shape for scheduled ingests (matches Payload group schema). */
-export interface ScheduledIngestStatistics {
-  totalRuns: number;
-  successfulRuns: number;
-  failedRuns: number;
-  /** Rolling average execution duration in seconds. */
-  averageDuration: number;
-}
+/** Statistics shape for scheduled ingests with all numeric fields required. */
+export type ScheduledIngestStatistics = RequiredDefined<NonNullable<ScheduledIngest["statistics"]>>;
 
-/** Input shape matching Payload's generated `statistics` group (fields are `number | null`). */
-type ScheduledIngestStatsInput =
-  | {
-      totalRuns?: number | null;
-      successfulRuns?: number | null;
-      failedRuns?: number | null;
-      averageDuration?: number | null;
-    }
-  | null
-  | undefined;
+type ScheduledIngestStatsInput = ScheduledIngest["statistics"] | null | undefined;
 
 /** Safely resolve a ScheduledIngest.statistics value to a typed object. */
 export const resolveScheduledIngestStats = (raw: ScheduledIngestStatsInput): ScheduledIngestStatistics => ({
@@ -47,8 +35,7 @@ export const recordScheduledIngestSuccess = (
   durationMs: number
 ): ScheduledIngestStatistics => {
   const newSuccessful = current.successfulRuns + 1;
-  const durationSec = durationMs / 1000;
-  const newAverage = (current.averageDuration * (newSuccessful - 1) + durationSec) / newSuccessful;
+  const newAverage = (current.averageDuration * (newSuccessful - 1) + durationMs) / newSuccessful;
   return {
     totalRuns: current.totalRuns + 1,
     successfulRuns: newSuccessful,
@@ -69,12 +56,11 @@ export const recordScheduledIngestFailure = (current: ScheduledIngestStatistics)
 // ---------------------------------------------------------------------------
 
 /** Statistics shape for scrapers (stored as JSON in the database). Index signature required for Payload JSON field compatibility. */
-export interface ScraperStatistics {
-  [k: string]: unknown;
+export type ScraperStatistics = Extract<Scraper["statistics"], Record<string, unknown>> & {
   totalRuns: number;
   successRuns: number;
   failedRuns: number;
-}
+};
 
 /**
  * Safely parse a Scraper.statistics JSON value into a typed object.
@@ -83,7 +69,7 @@ export interface ScraperStatistics {
  * `{ [k: string]: unknown } | unknown[] | string | number | boolean | null`.
  * This function normalizes that to a safe ScraperStatistics.
  */
-export const resolveScraperStats = (raw: unknown): ScraperStatistics => {
+export const resolveScraperStats = (raw: Scraper["statistics"]): ScraperStatistics => {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const obj = raw as Record<string, unknown>;
     return {

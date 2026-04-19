@@ -20,6 +20,7 @@ import type { ScraperExecutionJobInput } from "./scraper-execution/runner-api";
 import { buildRunnerRequest, callRunner } from "./scraper-execution/runner-api";
 
 const log = createLogger("scraper-execution-job");
+type ScraperWithRepo = Omit<Scraper, "repo"> & { repo: ScraperRepo };
 
 /**
  * Load a scraper by ID with depth:1 and validate that the repo relation is populated.
@@ -27,19 +28,19 @@ const log = createLogger("scraper-execution-job");
 const loadScraperWithRepo = async (
   payload: JobHandlerContext["req"]["payload"],
   scraperId: number
-): Promise<{ scraper: Scraper; repo: ScraperRepo }> => {
+): Promise<{ scraper: ScraperWithRepo; repo: ScraperRepo }> => {
   const scraper = await payload.findByID({ collection: "scrapers", id: scraperId, depth: 1, overrideAccess: true });
 
   if (!scraper) {
     throw new Error(`Scraper not found: ${scraperId}`);
   }
 
-  const repo = scraper.repo as ScraperRepo;
-  if (!repo || typeof repo !== "object") {
+  const repo = scraper.repo != null && typeof scraper.repo === "object" ? scraper.repo : null;
+  if (repo == null) {
     throw new Error(`Scraper repo not populated for scraper ${scraperId}`);
   }
 
-  return { scraper, repo };
+  return { scraper: { ...scraper, repo }, repo };
 };
 
 /**

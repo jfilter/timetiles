@@ -817,7 +817,7 @@ describe.sequential("scheduled ingests Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "hourly",
-          statistics: { totalRuns: 2, successfulRuns: 2, failedRuns: 0, averageDuration: 3.5 },
+          statistics: { totalRuns: 2, successfulRuns: 2, failedRuns: 0, averageDuration: 3500 },
         },
         user: testUser,
       });
@@ -829,7 +829,7 @@ describe.sequential("scheduled ingests Integration", () => {
       const startTime = Date.now();
       vi.spyOn(Date, "now")
         .mockReturnValueOnce(startTime) // Start time
-        .mockReturnValue(startTime + 2000); // End time (2 seconds later)
+        .mockReturnValue(startTime + 2000); // End time (2000 ms later)
 
       await urlFetchJob.handler({
         input: {
@@ -845,8 +845,13 @@ describe.sequential("scheduled ingests Integration", () => {
 
       const updated = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
 
-      // Should update with new average: (3.5 * 2 + 2) / 3 = 3
-      expect(updated.statistics).toMatchObject({ totalRuns: 3, successfulRuns: 3, failedRuns: 0, averageDuration: 3 });
+      // Should update with new average: (3500 * 2 + 2000) / 3 = 3000
+      expect(updated.statistics).toMatchObject({
+        totalRuns: 3,
+        successfulRuns: 3,
+        failedRuns: 0,
+        averageDuration: 3000,
+      });
 
       vi.restoreAllMocks();
     });

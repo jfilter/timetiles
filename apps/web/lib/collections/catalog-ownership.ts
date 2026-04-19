@@ -14,6 +14,9 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Config } from "@/payload-types";
 import type { Dataset } from "@/payload-types";
 
+type CollectionSlug = keyof Config["collections"];
+type CollectionDoc<TSlug extends CollectionSlug> = Config["collections"][TSlug];
+
 /**
  * Validates that a user has access to a catalog (owns it or it's public).
  * Admin/editor users bypass this check.
@@ -44,14 +47,14 @@ export const validateCatalogOwnership = async (
  * Safe fetch by ID in a Payload hook context (uses `req` for transaction sharing).
  * Returns null instead of throwing on not-found or permission errors.
  */
-export const safeFetchRecord = async <T>(
+export const safeFetchRecord = async <TSlug extends CollectionSlug>(
   req: PayloadRequest,
-  collection: keyof Config["collections"],
+  collection: TSlug,
   id: number | string,
   depth = 0
-): Promise<T | null> => {
+): Promise<CollectionDoc<TSlug> | null> => {
   try {
-    return (await req.payload.findByID({ collection, id, depth, overrideAccess: true, req })) as T;
+    return (await req.payload.findByID({ collection, id, depth, overrideAccess: true, req })) as CollectionDoc<TSlug>;
   } catch {
     return null;
   }

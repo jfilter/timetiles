@@ -36,25 +36,25 @@ describe("resolveScheduledIngestStats", () => {
       totalRuns: null,
       successfulRuns: 5,
       failedRuns: null,
-      averageDuration: 1.5,
+      averageDuration: 1500,
     });
-    expect(result).toEqual({ totalRuns: 0, successfulRuns: 5, failedRuns: 0, averageDuration: 1.5 });
+    expect(result).toEqual({ totalRuns: 0, successfulRuns: 5, failedRuns: 0, averageDuration: 1500 });
   });
 
   it("passes through valid values", () => {
-    const input = { totalRuns: 10, successfulRuns: 8, failedRuns: 2, averageDuration: 3.5 };
+    const input = { totalRuns: 10, successfulRuns: 8, failedRuns: 2, averageDuration: 3500 };
     expect(resolveScheduledIngestStats(input)).toEqual(input);
   });
 });
 
 describe("recordScheduledIngestSuccess", () => {
-  it("increments totalRuns and successfulRuns, computes rolling average", () => {
-    const current = { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 2.0 };
-    const result = recordScheduledIngestSuccess(current, 4000); // 4s
+  it("increments totalRuns and successfulRuns, computes rolling average in milliseconds", () => {
+    const current = { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 2000 };
+    const result = recordScheduledIngestSuccess(current, 4000);
     expect(result.totalRuns).toBe(6);
     expect(result.successfulRuns).toBe(5);
     expect(result.failedRuns).toBe(1);
-    expect(result.averageDuration).toBeCloseTo(2.4); // (2*4 + 4) / 5 = 2.4
+    expect(result.averageDuration).toBe(2400);
   });
 
   it("handles first run", () => {
@@ -62,11 +62,11 @@ describe("recordScheduledIngestSuccess", () => {
     const result = recordScheduledIngestSuccess(current, 3000);
     expect(result.totalRuns).toBe(1);
     expect(result.successfulRuns).toBe(1);
-    expect(result.averageDuration).toBe(3);
+    expect(result.averageDuration).toBe(3000);
   });
 
   it("does not mutate the input", () => {
-    const current = { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1 };
+    const current = { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1000 };
     recordScheduledIngestSuccess(current, 2000);
     expect(current.totalRuns).toBe(1);
   });
@@ -74,12 +74,12 @@ describe("recordScheduledIngestSuccess", () => {
 
 describe("recordScheduledIngestFailure", () => {
   it("increments both totalRuns and failedRuns", () => {
-    const current = { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 2.0 };
+    const current = { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 2000 };
     const result = recordScheduledIngestFailure(current);
     expect(result.totalRuns).toBe(6);
     expect(result.failedRuns).toBe(2);
     expect(result.successfulRuns).toBe(4);
-    expect(result.averageDuration).toBe(2.0);
+    expect(result.averageDuration).toBe(2000);
   });
 });
 

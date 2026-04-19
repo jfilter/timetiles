@@ -8,8 +8,7 @@
  * @module
  * @category Database
  */
-import { aliasedTable, and, count, inArray, isNotNull, sql } from "@payloadcms/db-postgres/drizzle";
-import type { SQL } from "@payloadcms/db-postgres/drizzle";
+import { aliasedTable, and, count, inArray, isNotNull, type SQL, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";

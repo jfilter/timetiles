@@ -15,7 +15,6 @@ import { z } from "zod";
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
-import type { IngestJob } from "@/payload-types";
 
 /**
  * Valid stages an admin can reset a failed job to.
@@ -57,7 +56,7 @@ export const POST = apiRoute({
     const { targetStage, clearRetries = true } = body;
 
     // Get the import job (admins have access to all jobs)
-    const ingestJob = await safeFindByID<IngestJob>(payload, { collection: "ingest-jobs", id, user });
+    const ingestJob = await safeFindByID(payload, { collection: "ingest-jobs", id, user });
 
     // Only allow resetting failed jobs
     if (ingestJob.stage !== PROCESSING_STAGE.FAILED) {

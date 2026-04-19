@@ -8,6 +8,9 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { ExportSummary } from "@/lib/export/types";
+import type { DataExport as PayloadDataExport } from "@/payload-types";
+
 import { fetchJson } from "../api/http-error";
 import type { DataExport, ExportListResponse, RequestExportResponse } from "../types/data-export-api";
 import { createItemPollingInterval, QUERY_PRESETS } from "./query-presets";
@@ -30,7 +33,7 @@ export const dataExportQueryKeys = {
 
 /** Shape returned by the Payload REST API for the data-exports collection. */
 interface PayloadDataExportsResponse {
-  docs: DataExport[];
+  docs: PayloadDataExport[];
   totalDocs: number;
 }
 
@@ -42,17 +45,19 @@ const fetchDataExports = async (): Promise<ExportListResponse> => {
 
   // Transform Payload REST response to match expected format
   return {
-    exports: data.docs.map((exp) => ({
-      id: exp.id,
-      status: exp.status,
-      requestedAt: exp.requestedAt,
-      completedAt: exp.completedAt,
-      expiresAt: exp.expiresAt,
-      fileSize: exp.fileSize,
-      downloadCount: exp.downloadCount,
-      summary: exp.summary,
-      errorLog: exp.status === "failed" ? exp.errorLog : undefined,
-    })),
+    exports: data.docs.map(
+      (exp): DataExport => ({
+        id: exp.id,
+        status: exp.status,
+        requestedAt: exp.requestedAt,
+        completedAt: exp.completedAt,
+        expiresAt: exp.expiresAt,
+        fileSize: exp.fileSize,
+        downloadCount: exp.downloadCount,
+        summary: (exp.summary as ExportSummary | null | undefined) ?? undefined,
+        errorLog: exp.status === "failed" ? (exp.errorLog ?? undefined) : undefined,
+      })
+    ),
     total: data.totalDocs,
   };
 };

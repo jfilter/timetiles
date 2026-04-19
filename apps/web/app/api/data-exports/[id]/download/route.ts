@@ -18,6 +18,7 @@ import { z } from "zod";
 import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import type { DataExport as DataExportRecord } from "@/payload-types";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
@@ -30,7 +31,7 @@ const streamExportFile = async (
   payload: Payload,
   exportId: string,
   normalizedExportId: number,
-  exportRecord: { filePath?: string | null; expiresAt?: string | null },
+  exportRecord: Pick<DataExportRecord, "filePath" | "expiresAt">,
   userId: number
 ): Promise<Response> => {
   // Check expiry

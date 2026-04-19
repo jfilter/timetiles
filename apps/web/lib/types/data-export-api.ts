@@ -10,22 +10,16 @@
  * @module
  * @category Types
  */
-import type { ExportSummary } from "@/lib/export/types";
+import type { DataExportStatus, ExportSummary } from "@/lib/export/types";
+import type { DataExport as DataExportRecord } from "@/payload-types";
 
 /**
  * A single data export record as returned by the API.
  */
-export interface DataExport {
-  id: number;
-  status: "pending" | "processing" | "ready" | "failed" | "expired";
-  requestedAt: string;
-  completedAt?: string | null;
-  expiresAt?: string | null;
-  fileSize?: number | null;
-  downloadCount?: number | null;
-  summary?: ExportSummary | null;
-  errorLog?: string;
-}
+export type DataExport = Pick<
+  DataExportRecord,
+  "id" | "status" | "requestedAt" | "completedAt" | "expiresAt" | "fileSize" | "downloadCount"
+> & { summary?: ExportSummary | null; errorLog?: Exclude<DataExportRecord["errorLog"], null> };
 
 /**
  * Response format for the data exports list endpoint.
@@ -50,8 +44,8 @@ export interface RequestExportResponse {
 export interface RequestExportError {
   error: string;
   exportId?: number;
-  status?: string;
-  requestedAt?: string;
-  resetTime?: string;
+  status?: DataExportStatus;
+  requestedAt?: DataExportRecord["requestedAt"];
+  resetTime?: DataExportRecord["requestedAt"];
   failedWindow?: string;
 }

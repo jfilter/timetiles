@@ -239,7 +239,7 @@ export class DataExportService {
         eventTimestamp: e.eventTimestamp,
         transformedData: e.transformedData,
         location: e.location ? { latitude: e.location.latitude, longitude: e.location.longitude } : null,
-        geocodingStatus: (e.geocodingInfo as { status?: string } | null)?.status,
+        geocodingStatus: e.geocodingInfo?.geocodingStatus,
         validationStatus: e.validationStatus,
         createdAt: e.createdAt,
         updatedAt: e.updatedAt,

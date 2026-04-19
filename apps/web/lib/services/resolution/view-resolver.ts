@@ -16,7 +16,7 @@ import type { View } from "@/payload-types";
 import { logger } from "../../logger";
 import { createCachedResolver } from "./create-cached-resolver";
 
-const resolver = createCachedResolver<View>({ collection: "views", keyField: "slug", scopeField: "site" });
+const resolver = createCachedResolver({ collection: "views", keyField: "slug", scopeField: "site" });
 
 /**
  * Finds a view by slug within a site.

@@ -13,7 +13,7 @@ import type { CollectionBeforeChangeHook, PayloadRequest } from "payload";
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { requireRelationId } from "@/lib/utils/relation-id";
-import type { Dataset, Event } from "@/payload-types";
+import type { Event } from "@/payload-types";
 
 /** Check and increment event creation quota for user */
 const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
@@ -32,7 +32,7 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   // Set denormalized access control fields
   if (data?.dataset) {
     const datasetId = requireRelationId(data.dataset, "event.dataset");
-    const dataset = await safeFetchRecord<Dataset>(req, "datasets", datasetId, 1);
+    const dataset = await safeFetchRecord(req, "datasets", datasetId, 1);
 
     if (dataset) {
       const accessFields = extractDenormalizedAccessFields(dataset);

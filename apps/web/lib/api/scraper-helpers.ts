@@ -14,6 +14,11 @@ import { ForbiddenError, safeFindByID } from "@/lib/api/errors";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
+type ScraperWithRepo = Omit<Scraper, "repo"> & { repo: ScraperRepo };
+
+const hasPopulatedRepo = (scraper: Scraper): scraper is ScraperWithRepo =>
+  scraper.repo != null && typeof scraper.repo === "object";
+
 /**
  * Load a scraper repo after verifying the scrapers feature is enabled and
  * the user has permission to manage it.
@@ -28,11 +33,7 @@ export const loadManageableScraperRepo = async (
 ): Promise<ScraperRepo> => {
   await requireScrapersEnabled(payload);
 
-  const repo = await safeFindByID<ScraperRepo>(payload, {
-    collection: "scraper-repos",
-    id: repoId,
-    overrideAccess: true,
-  });
+  const repo = await safeFindByID(payload, { collection: "scraper-repos", id: repoId, overrideAccess: true });
 
   const repoOwnerId = extractRelationId(repo.createdBy);
   if (!canManageResource(user, repoOwnerId)) {
@@ -53,21 +54,24 @@ export const loadManageableScraper = async (
   payload: Payload,
   user: { id: number; role?: string | null },
   scraperId: number
-): Promise<Scraper & { repo: ScraperRepo }> => {
+): Promise<ScraperWithRepo> => {
   await requireScrapersEnabled(payload);
 
-  const scraper = await safeFindByID<Scraper>(payload, {
+  const scraper = await safeFindByID(payload, {
     collection: "scrapers",
     id: scraperId,
     depth: 1,
     overrideAccess: true,
   });
 
-  const repo = scraper.repo as ScraperRepo;
-  const repoOwnerId = repo ? extractRelationId(repo.createdBy) : null;
+  if (!hasPopulatedRepo(scraper)) {
+    throw new ForbiddenError("Scraper repo is not populated");
+  }
+
+  const repoOwnerId = extractRelationId(scraper.repo.createdBy);
   if (!canManageResource(user, repoOwnerId)) {
     throw new ForbiddenError("Not authorized");
   }
 
-  return scraper as Scraper & { repo: ScraperRepo };
+  return scraper;
 };

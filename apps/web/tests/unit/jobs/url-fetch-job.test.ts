@@ -774,7 +774,7 @@ describe.sequential("urlFetchJob", () => {
             totalRuns: 2,
             successfulRuns: 2,
             failedRuns: 0,
-            averageDuration: 3.5, // Previous average
+            averageDuration: 3500, // Previous average in milliseconds
           },
           createdBy: "user-123",
           catalog: "catalog-123",
@@ -790,7 +790,7 @@ describe.sequential("urlFetchJob", () => {
       const startTime = Date.now();
       vi.spyOn(Date, "now")
         .mockReturnValueOnce(startTime) // Start time
-        .mockReturnValue(startTime + 2000); // End time (2 seconds later)
+        .mockReturnValue(startTime + 2000); // End time (2000 ms later)
 
       await urlFetchJob.handler({
         input: {
@@ -803,12 +803,12 @@ describe.sequential("urlFetchJob", () => {
         req: mockReq,
       });
 
-      // Should update with new average: (3.5 * 2 + 2) / 3 = 3
+      // Should update with new average: (3500 * 2 + 2000) / 3 = 3000
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "scheduled-ingests",
         id: "scheduled-123",
         data: expect.objectContaining({
-          statistics: expect.objectContaining({ totalRuns: 3, successfulRuns: 3, averageDuration: 3 }),
+          statistics: expect.objectContaining({ totalRuns: 3, successfulRuns: 3, averageDuration: 3000 }),
         }),
       });
 
@@ -853,7 +853,7 @@ describe.sequential("urlFetchJob", () => {
           totalRuns: 1,
           successfulRuns: 1,
           failedRuns: 0,
-          averageDuration: 10, // 10 seconds average
+          averageDuration: 10000, // 10000 ms average
         },
         catalog: "catalog-123",
         createdBy: "user-123",
@@ -899,10 +899,10 @@ describe.sequential("urlFetchJob", () => {
       expect(executionEntry.duration).toBeGreaterThan(0);
 
       // The averageDuration should incorporate real time, not be diluted by 0
-      // Previous: 10s avg over 1 run. With 2s real duration: (10*1 + 2)/2 = 6
-      // Bug would give: (10*1 + 0)/2 = 5
+      // Previous: 10000 ms avg over 1 run. With 2000 ms real duration: (10000 + 2000) / 2 = 6000
+      // Bug would give: (10000 + 0) / 2 = 5000
       const stats = updateCall[0].data.statistics;
-      expect(stats.averageDuration).toBeGreaterThan(5);
+      expect(stats.averageDuration).toBeGreaterThan(5000);
     });
 
     it("should pass through dataset mapping configuration", async () => {

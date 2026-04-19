@@ -15,7 +15,6 @@ import { z } from "zod";
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
-import type { IngestJob } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
@@ -26,7 +25,7 @@ export const POST = apiRoute({
     const { id } = params;
 
     // Get the import job with access control
-    const ingestJob = await safeFindByID<IngestJob>(payload, { collection: "ingest-jobs", id, depth: 1, user });
+    const ingestJob = await safeFindByID(payload, { collection: "ingest-jobs", id, depth: 1, user });
 
     // Verify job is in failed state
     if (ingestJob.stage !== PROCESSING_STAGE.FAILED) {

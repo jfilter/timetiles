@@ -13,7 +13,7 @@ import { z } from "zod";
 
 import { logError } from "@/lib/logger";
 import { AppError } from "@/lib/types/errors";
-import type { User } from "@/payload-types";
+import type { Config, User } from "@/payload-types";
 
 export { AppError };
 
@@ -59,14 +59,18 @@ export class ConflictError extends AppError {
   }
 }
 
+type CollectionSlug = keyof Config["collections"];
+type CollectionDoc<TSlug extends CollectionSlug> = Config["collections"][TSlug];
+
 /**
  * Fetch a record by ID with Payload access control.
- * Returns the record or throws NotFoundError (caught by apiRoute's handleError).
+ * Returns the collection-derived record type or throws NotFoundError
+ * (caught by apiRoute's handleError).
  */
-export const safeFindByID = async <T>(
+export const safeFindByID = async <TSlug extends CollectionSlug>(
   payload: Payload,
-  options: { collection: string; id: string | number; user?: User; depth?: number; overrideAccess?: boolean }
-): Promise<T> => {
+  options: { collection: TSlug; id: string | number; user?: User; depth?: number; overrideAccess?: boolean }
+): Promise<CollectionDoc<TSlug>> => {
   const { collection, id, user, depth = 0, overrideAccess = false } = options;
   const record = await payload
     .findByID({ collection, id, depth, user, overrideAccess } as Parameters<Payload["findByID"]>[0])
@@ -76,7 +80,7 @@ export const safeFindByID = async <T>(
     throw new NotFoundError(`${collection.replaceAll("-", " ")} not found or access denied`);
   }
 
-  return record as T;
+  return record as CollectionDoc<TSlug>;
 };
 
 /**

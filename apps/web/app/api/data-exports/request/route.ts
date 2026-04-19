@@ -15,6 +15,7 @@ import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
 import type { RequestExportResponse } from "@/lib/types/data-export-api";
+import type { DataExport as DataExportRecord } from "@/payload-types";
 
 export type { RequestExportError, RequestExportResponse } from "@/lib/types/data-export-api";
 
@@ -53,7 +54,7 @@ export const POST = apiRoute({
           user: user.id,
           status: "pending",
           requestedAt: new Date().toISOString(),
-          summary: summary as unknown as Record<string, unknown>,
+          summary: summary as unknown as NonNullable<DataExportRecord["summary"]>,
         },
         overrideAccess: true,
       });

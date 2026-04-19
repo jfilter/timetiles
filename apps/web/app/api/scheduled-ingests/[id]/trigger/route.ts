@@ -13,19 +13,13 @@ import { z } from "zod";
 
 import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
-import type { ScheduledIngest } from "@/payload-types";
 
 export const POST = apiRoute({
   auth: "required",
   site: "default",
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ payload, user, params }) => {
-    const schedule = await safeFindByID<ScheduledIngest>(payload, {
-      collection: "scheduled-ingests",
-      id: params.id,
-      depth: 1,
-      user,
-    });
+    const schedule = await safeFindByID(payload, { collection: "scheduled-ingests", id: params.id, depth: 1, user });
 
     try {
       await triggerScheduledIngest(payload, schedule, new Date(), { triggeredBy: "manual" });

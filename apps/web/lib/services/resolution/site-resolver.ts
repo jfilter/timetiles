@@ -16,7 +16,7 @@ import type { Site } from "@/payload-types";
 import { logger } from "../../logger";
 import { createCachedResolver } from "./create-cached-resolver";
 
-const resolver = createCachedResolver<Site>({ collection: "sites", keyField: "domain" });
+const resolver = createCachedResolver({ collection: "sites", keyField: "domain" });
 
 /**
  * Finds a site by custom domain.

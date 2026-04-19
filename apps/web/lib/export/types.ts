@@ -7,6 +7,22 @@
  * @module
  * @category Services
  */
+import type {
+  AuditLog,
+  Catalog,
+  DataExport as DataExportRecord,
+  Dataset,
+  DatasetSchema,
+  Event,
+  IngestFile,
+  IngestJob,
+  Media,
+  ScheduledIngest,
+  Scraper,
+  ScraperRepo,
+  ScraperRun,
+  User,
+} from "@/payload-types";
 
 /**
  * Summary of data counts that will be exported.
@@ -29,7 +45,7 @@ export interface ExportSummary {
 /**
  * Status of a data export request.
  */
-export type DataExportStatus = "pending" | "processing" | "ready" | "failed" | "expired";
+export type DataExportStatus = DataExportRecord["status"];
 
 /**
  * Result of initiating an export request.
@@ -54,192 +70,132 @@ export interface ExecuteExportResult {
 /**
  * User profile data for export (sanitized).
  */
-export interface UserExportData {
-  id: number;
-  email: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  role?: string | null;
-  trustLevel?: string | null;
-  createdAt: string;
-  lastLoginAt?: string | null;
-}
+export type UserExportData = Pick<
+  User,
+  "id" | "email" | "firstName" | "lastName" | "role" | "trustLevel" | "createdAt" | "lastLoginAt"
+>;
 
 /**
  * Catalog data for export.
  */
-export interface CatalogExportData {
-  id: number;
-  name: string;
-  description?: unknown;
-  slug?: string | null;
+export type CatalogExportData = Pick<Catalog, "id" | "name" | "description" | "slug" | "createdAt" | "updatedAt"> & {
   isPublic: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+};
 
 /**
  * Dataset data for export.
  */
-export interface DatasetExportData {
-  id: number;
-  name: string;
-  description?: unknown;
-  slug?: string | null;
-  isPublic: boolean;
-  language?: string | null;
-  catalogId: number;
-  schemaConfig?: unknown;
-  createdAt: string;
-  updatedAt: string;
-}
+export type DatasetExportData = Pick<
+  Dataset,
+  "id" | "name" | "description" | "slug" | "language" | "schemaConfig" | "createdAt" | "updatedAt"
+> & { isPublic: boolean; catalogId: number };
 
 /**
  * Event data for export.
  */
-export interface EventExportData {
-  id: number;
+export type EventExportData = Pick<Event, "id" | "eventTimestamp" | "transformedData" | "createdAt" | "updatedAt"> & {
   datasetId: number;
-  eventTimestamp?: string | null;
-  transformedData: unknown;
-  location?: { latitude?: number | null; longitude?: number | null } | null;
-  geocodingStatus?: string | null;
-  validationStatus?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+  location?: Event["location"] | null;
+  geocodingStatus?: NonNullable<Event["geocodingInfo"]>["geocodingStatus"];
+  validationStatus?: Event["validationStatus"];
+};
 
 /**
  * Ingest file metadata for export.
  */
-export interface IngestFileExportData {
-  id: number;
-  originalName?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  status?: string | null;
-  createdAt: string;
-}
+export type IngestFileExportData = Pick<
+  IngestFile,
+  "id" | "originalName" | "mimeType" | "filesize" | "status" | "createdAt"
+>;
 
 /**
  * Ingest job data for export.
  */
-export interface IngestJobExportData {
-  id: number;
+export type IngestJobExportData = Pick<IngestJob, "id" | "stage" | "progress" | "createdAt" | "updatedAt"> & {
   ingestFileId: number;
   datasetId: number;
-  stage?: string | null;
-  progress?: unknown;
-  createdAt: string;
-  updatedAt: string;
-}
+};
 
 /**
  * scheduled ingest configuration for export.
  */
-export interface ScheduledIngestExportData {
-  id: number;
-  name: string;
-  sourceUrl: string;
-  enabled: boolean;
-  scheduleType?: string | null;
-  frequency?: string | null;
-  cronExpression?: string | null;
-  lastRun?: string | null;
-  nextRun?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ScheduledIngestExportData = Pick<
+  ScheduledIngest,
+  | "id"
+  | "name"
+  | "sourceUrl"
+  | "scheduleType"
+  | "frequency"
+  | "cronExpression"
+  | "lastRun"
+  | "nextRun"
+  | "createdAt"
+  | "updatedAt"
+> & { enabled: boolean };
 
 /**
  * Media file metadata for export.
  */
-export interface MediaExportData {
-  id: number;
+export type MediaExportData = Pick<Media, "id" | "mimeType" | "filesize" | "width" | "height" | "alt" | "createdAt"> & {
   filename: string;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  alt?: string | null;
-  createdAt: string;
-}
+};
 
 /**
  * Dataset schema data for export.
  */
-export interface DatasetSchemaExportData {
-  id: number;
-  datasetId: number;
-  versionNumber: number;
-  schema: unknown;
-  fieldMetadata: unknown;
-  eventCountAtCreation?: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type DatasetSchemaExportData = Pick<
+  DatasetSchema,
+  "id" | "versionNumber" | "schema" | "fieldMetadata" | "eventCountAtCreation" | "createdAt" | "updatedAt"
+> & { datasetId: number };
 
 /**
  * Audit log entry for export (sanitized — no IP addresses).
  */
-export interface AuditLogExportData {
-  id: number;
-  action: string;
-  timestamp: string;
-  details?: unknown;
-  createdAt: string;
-}
+export type AuditLogExportData = Pick<AuditLog, "id" | "action" | "timestamp" | "details" | "createdAt">;
 
 /**
  * Scraper repo data for export.
  */
-export interface ScraperRepoExportData {
-  id: number;
-  name: string;
-  sourceType: string;
-  gitUrl?: string | null;
-  gitBranch?: string | null;
-  lastSyncAt?: string | null;
-  lastSyncStatus?: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ScraperRepoExportData = Pick<
+  ScraperRepo,
+  "id" | "name" | "sourceType" | "gitUrl" | "gitBranch" | "lastSyncAt" | "lastSyncStatus" | "createdAt" | "updatedAt"
+>;
 
 /**
  * Scraper data for export.
  */
-export interface ScraperExportData {
-  id: number;
-  name: string;
-  slug: string;
-  repoId: number;
-  runtime: string;
-  entrypoint: string;
-  outputFile?: string | null;
-  schedule?: string | null;
-  enabled?: boolean | null;
-  timeoutSecs?: number | null;
-  memoryMb?: number | null;
-  createdAt: string;
-  updatedAt: string;
-}
+export type ScraperExportData = Pick<
+  Scraper,
+  | "id"
+  | "name"
+  | "slug"
+  | "runtime"
+  | "entrypoint"
+  | "outputFile"
+  | "schedule"
+  | "enabled"
+  | "timeoutSecs"
+  | "memoryMb"
+  | "createdAt"
+  | "updatedAt"
+> & { repoId: number };
 
 /**
  * Scraper run data for export.
  */
-export interface ScraperRunExportData {
-  id: number;
-  scraperId: number;
-  status: string;
-  triggeredBy?: string | null;
-  startedAt?: string | null;
-  finishedAt?: string | null;
-  durationMs?: number | null;
-  exitCode?: number | null;
-  outputRows?: number | null;
-  outputBytes?: number | null;
-  createdAt: string;
-}
+export type ScraperRunExportData = Pick<
+  ScraperRun,
+  | "id"
+  | "status"
+  | "triggeredBy"
+  | "startedAt"
+  | "finishedAt"
+  | "durationMs"
+  | "exitCode"
+  | "outputRows"
+  | "outputBytes"
+  | "createdAt"
+> & { scraperId: number };
 
 /**
  * Complete export data structure.
