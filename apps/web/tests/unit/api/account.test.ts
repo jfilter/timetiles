@@ -11,6 +11,7 @@ import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 const mocks = vi.hoisted(() => {
   const mockCheckRateLimit = vi.fn();
@@ -78,6 +79,7 @@ import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/rout
 import { POST as changeEmailPOST } from "@/app/api/users/change-email/route";
 import { POST as changePasswordPOST } from "@/app/api/users/change-password/route";
 import { POST as scheduleDeletionPOST } from "@/app/api/users/schedule-deletion/route";
+import { maskEmail } from "@/lib/security/masking";
 
 const {
   mockPayload,
@@ -142,6 +144,7 @@ beforeEach(() => {
   mockGetDeletionSummary
     .mockReset()
     .mockResolvedValue({ catalogs: { total: 0, public: 0, private: 0 }, datasets: { total: 0 }, events: { total: 0 } });
+  mockLogger.logger.info.mockReset();
 });
 
 describe.sequential("POST /api/users/change-email", () => {
@@ -252,6 +255,25 @@ describe.sequential("POST /api/users/change-email", () => {
     );
     expect(mockPayload.sendEmail).toHaveBeenCalledWith(
       expect.objectContaining({ to: "new@example.com", subject: expect.stringContaining("Verify") })
+    );
+  });
+
+  it("masks email addresses in the email-change log entry", async () => {
+    const req = createJsonRequest("http://localhost/api/users/change-email", {
+      newEmail: "new@example.com",
+      password: TEST_CREDENTIALS.basic.password,
+    });
+
+    await changeEmailPOST(req, defaultParams as any);
+
+    expect(mockLogger.logger.info).toHaveBeenCalledWith(
+      {
+        userId: mockUser.id,
+        oldEmail: maskEmail(TEST_EMAILS.user),
+        newEmail: maskEmail("new@example.com"),
+        clientId: "test-client",
+      },
+      "Email changed, verification required"
     );
   });
 

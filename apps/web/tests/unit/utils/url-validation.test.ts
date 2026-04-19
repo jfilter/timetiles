@@ -5,9 +5,15 @@
  * @module
  * @category Tests
  */
+import dns from "node:dns";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { isPrivateIP, isPrivateUrl } from "@/lib/security/url-validation";
+import { isPrivateIP, isPrivateUrl, validateResolvedPublicHostname } from "@/lib/security/url-validation";
+
+vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
+
+const mockDnsLookup = dns.promises.lookup as unknown as ReturnType<typeof vi.fn>;
 
 describe("isPrivateUrl", () => {
   beforeEach(() => {
@@ -15,6 +21,7 @@ describe("isPrivateUrl", () => {
     vi.stubEnv("ALLOW_PRIVATE_URLS", "");
     vi.stubEnv("E2E_MODE", "");
     vi.stubEnv("NODE_ENV", "test");
+    mockDnsLookup.mockReset();
   });
 
   afterEach(() => {
@@ -249,6 +256,10 @@ describe("isPrivateIP", () => {
     expect(isPrivateIP("fd12::1")).toBe(true);
   });
 
+  it("blocks IPv6-mapped private IPv4 addresses", () => {
+    expect(isPrivateIP("::ffff:127.0.0.1")).toBe(true);
+  });
+
   it("allows public IP 8.8.8.8", () => {
     expect(isPrivateIP("8.8.8.8")).toBe(false);
   });
@@ -259,5 +270,40 @@ describe("isPrivateIP", () => {
 
   it("blocks carrier-grade NAT 100.64.0.1", () => {
     expect(isPrivateIP("100.64.0.1")).toBe(true);
+  });
+});
+
+describe("validateResolvedPublicHostname", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs();
+    vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+    vi.stubEnv("E2E_MODE", "");
+    vi.stubEnv("NODE_ENV", "test");
+    mockDnsLookup.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("blocks when any resolved address is private", async () => {
+    mockDnsLookup.mockResolvedValueOnce([
+      { address: "93.184.216.34", family: 4 },
+      { address: "127.0.0.1", family: 4 },
+    ]);
+
+    await expect(validateResolvedPublicHostname("evil.example")).rejects.toThrow(
+      'SSRF blocked: hostname "evil.example" resolves to private IP 127.0.0.1'
+    );
+    expect(mockDnsLookup).toHaveBeenCalledWith("evil.example", { all: true, verbatim: true });
+  });
+
+  it("allows when all resolved addresses are public", async () => {
+    mockDnsLookup.mockResolvedValueOnce([
+      { address: "93.184.216.34", family: 4 },
+      { address: "2001:4860:4860::8888", family: 6 },
+    ]);
+
+    await expect(validateResolvedPublicHostname("example.com")).resolves.toBeUndefined();
   });
 });

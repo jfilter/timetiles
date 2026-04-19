@@ -1,16 +1,15 @@
 /**
- * SSRF-safe fetch wrapper that validates redirect targets and optionally
- * performs DNS resolution checks to prevent DNS rebinding attacks.
+ * SSRF-safe fetch wrapper that validates redirect targets and performs
+ * resolved-IP checks to prevent DNS rebinding attacks.
  *
  * @module
  * @category Security
  */
-import dns from "node:dns";
-
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
+import { isE2E } from "@/lib/utils/is-e2e";
 
-import { isPrivateIP, isPrivateUrl } from "./url-validation";
+import { isPrivateUrl, validateResolvedPublicHostname } from "./url-validation";
 
 /** Maximum number of redirects to follow. */
 const DEFAULT_MAX_REDIRECTS = 5;
@@ -19,7 +18,17 @@ const DEFAULT_MAX_REDIRECTS = 5;
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 /** Whether DNS resolution checks are enabled (prevents DNS rebinding). */
-const isDnsCheckEnabled = (): boolean => getEnv().SSRF_DNS_CHECK;
+const isDnsCheckEnabled = (override?: boolean): boolean => {
+  const env = getEnv();
+
+  // Production always enforces resolved-IP validation. E2E runs under
+  // `next start`, so it keeps the explicit runtime bypass for local fixtures.
+  if (env.NODE_ENV === "production" && !isE2E()) {
+    return true;
+  }
+
+  return override ?? env.SSRF_DNS_CHECK;
+};
 
 export interface SafeFetchOptions extends Omit<RequestInit, "redirect"> {
   /** Maximum number of redirects to follow (default: 5). */
@@ -29,38 +38,18 @@ export interface SafeFetchOptions extends Omit<RequestInit, "redirect"> {
 }
 
 /**
- * Resolve a hostname and check that the resolved IP is not private.
- *
- * @throws {Error} If the hostname resolves to a private/internal IP.
- */
-const validateDnsResolution = async (hostname: string): Promise<void> => {
-  try {
-    const { address } = await dns.promises.lookup(hostname);
-    if (isPrivateIP(address)) {
-      throw new Error(`SSRF blocked: hostname "${hostname}" resolves to private IP ${address}`);
-    }
-  } catch (error) {
-    // Re-throw our own SSRF errors
-    if (error instanceof Error && error.message.startsWith("SSRF blocked")) {
-      throw error;
-    }
-    // DNS lookup failures are not SSRF — let fetch handle them
-    logger.debug("DNS lookup failed during SSRF check (non-blocking)", { hostname, error });
-  }
-};
-
-/**
  * SSRF-safe fetch that prevents redirect-based and DNS-rebinding attacks.
  *
  * - Validates the initial URL with `isPrivateUrl()` before fetching
  * - Sets `redirect: 'manual'` and validates each redirect target
- * - Optionally resolves DNS and checks the resolved IP (enable with `SSRF_DNS_CHECK=true`)
+ * - Resolves DNS and checks every returned IP in production
+ * - Allows explicit DNS checking in development/test with `SSRF_DNS_CHECK=true`
  *
  * Returns the final `Response` object, compatible with native `fetch()`.
  */
 export const safeFetch = async (url: string, options?: SafeFetchOptions): Promise<Response> => {
   const maxRedirects = options?.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
-  const dnsCheck = options?.dnsCheck ?? isDnsCheckEnabled();
+  const dnsCheck = isDnsCheckEnabled(options?.dnsCheck);
   const { maxRedirects: _maxRedirects, dnsCheck: _dnsCheck, ...fetchOptions } = options ?? {};
 
   let currentUrl = url;
@@ -78,10 +67,9 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
       throw new Error(`SSRF blocked: URL targets a private/internal address: ${currentUrl}`);
     }
 
-    // Optional DNS resolution check to prevent DNS rebinding
+    // Resolved-IP validation blocks DNS rebinding and private redirect targets
     if (dnsCheck) {
-      const hostname = new URL(currentUrl).hostname;
-      await validateDnsResolution(hostname);
+      await validateResolvedPublicHostname(parsed.hostname);
     }
 
     // Detect redirect loops

@@ -311,12 +311,11 @@ export const resetRateLimitService = (): void => {
 // the fix proposal and is safe as long as the operator terminates all traffic
 // through one of the listed CIDRs.
 //
-// When the env var is empty (default), no chain walking happens: we fall back
-// to the first entry of `X-Forwarded-For` (or X-Real-IP / CF-Connecting-IP)
-// and emit a single warning per process. Operators in front of a proxy must
-// set `TRUSTED_PROXY_CIDRS`; operators with no proxy should also set it to
-// something harmless (e.g. `127.0.0.1/32`) to suppress the warning and the
-// chain walk.
+// When the env var is empty (default), production fails closed: forwarded IP
+// headers are ignored because they are client-controlled unless a trusted
+// proxy is explicitly configured. Development/test keep the legacy fallback
+// with a warning to avoid breaking local workflows that still rely on those
+// headers without a full proxy chain.
 
 interface ParsedCidr {
   address: string;
@@ -340,6 +339,29 @@ const parseCidr = (entry: string): ParsedCidr | null => {
 let trustedBlockList: BlockList | null = null;
 let trustedCidrSource: string | null = null;
 let emittedNoTrustWarning = false;
+
+const canUseUnconfiguredForwardedHeaders = (): boolean => getEnv().NODE_ENV !== "production";
+
+const warnMissingTrustedProxyConfig = (header: string): void => {
+  if (emittedNoTrustWarning) {
+    return;
+  }
+
+  emittedNoTrustWarning = true;
+
+  if (canUseUnconfiguredForwardedHeaders()) {
+    logger.warn(
+      { header },
+      "TRUSTED_PROXY_CIDRS is not configured; falling back to client-supplied forwarded IP headers for local/test compatibility. Set TRUSTED_PROXY_CIDRS to lock down rate-limit identification."
+    );
+    return;
+  }
+
+  logger.warn(
+    { header },
+    "TRUSTED_PROXY_CIDRS is not configured; ignoring forwarded IP headers in production because they are client-controlled until a trusted proxy CIDR allowlist is set."
+  );
+};
 
 /**
  * Build (and cache) a `net.BlockList` from `TRUSTED_PROXY_CIDRS`. Returns
@@ -410,15 +432,13 @@ const pickClientFromForwardedChain = (forwarded: string): string | null => {
 
   const blockList = getTrustedProxyBlockList();
   if (blockList == null) {
-    // No trust configured — fall back to legacy behavior and warn once.
-    if (!emittedNoTrustWarning) {
-      emittedNoTrustWarning = true;
-      logger.warn(
-        { header: "x-forwarded-for" },
-        "TRUSTED_PROXY_CIDRS is not configured; falling back to first X-Forwarded-For entry. This header is client-controlled when no proxy is in front — set TRUSTED_PROXY_CIDRS to lock down rate-limit identification."
-      );
+    warnMissingTrustedProxyConfig("x-forwarded-for");
+
+    if (canUseUnconfiguredForwardedHeaders()) {
+      return hops[0] ?? null;
     }
-    return hops[0] ?? null;
+
+    return null;
   }
 
   // Walk right-to-left, skipping trusted proxy hops. The first non-trusted
@@ -448,16 +468,30 @@ export const getClientIdentifier = (request: Request): string => {
     if (picked != null && picked !== "") return picked;
   }
 
+  const blockList = getTrustedProxyBlockList();
+
   // X-Real-IP / CF-Connecting-IP are single-valued, so there's no chain to
-  // walk — they're only meaningful when a trusted proxy sets them. We still
-  // honour them when no XFF chain is present because the legacy behaviour did
-  // and removing it silently would regress existing deployments; operators
-  // who don't trust these headers should strip them at their edge.
+  // walk — they're only meaningful when a trusted proxy sets them. Production
+  // ignores them unless the operator has configured a trusted proxy boundary.
   if (realIp != null && realIp !== "") {
+    if (blockList == null) {
+      warnMissingTrustedProxyConfig("x-real-ip");
+      if (!canUseUnconfiguredForwardedHeaders()) {
+        return "unknown";
+      }
+    }
+
     return realIp;
   }
 
   if (cfConnectingIp != null && cfConnectingIp !== "") {
+    if (blockList == null) {
+      warnMissingTrustedProxyConfig("cf-connecting-ip");
+      if (!canUseUnconfiguredForwardedHeaders()) {
+        return "unknown";
+      }
+    }
+
     return cfConnectingIp;
   }
 

@@ -1,12 +1,15 @@
 /**
  * URL validation utilities to prevent SSRF attacks.
  *
- * Provides hostname-level checks against private/internal IP ranges
- * without performing DNS resolution.
+ * Provides hostname-level checks against private/internal IP ranges and
+ * resolved-host checks for runtime outbound requests.
  *
  * @module
  * @category Utils
  */
+import dns from "node:dns";
+
+import { logger } from "@/lib/logger";
 import { isE2E } from "@/lib/utils/is-e2e";
 
 /** IPv4 private range patterns (hostname-level, no DNS resolution). */
@@ -51,6 +54,11 @@ const PRIVATE_IPV6_PATTERNS = [
  */
 export const isPrivateIP = (ip: string): boolean => {
   const normalized = ip.toLowerCase();
+  const ipv6MappedIpv4 = normalized.startsWith("::ffff:") ? normalized.slice("::ffff:".length) : null;
+
+  if (ipv6MappedIpv4) {
+    return isPrivateIP(ipv6MappedIpv4);
+  }
 
   if (normalized === "0.0.0.0") return true;
 
@@ -91,6 +99,9 @@ const isPrivateUrlBypassEnabled = (): boolean => {
   const runtimeNodeEnv = process.env["NODE_ENV"];
   return runtimeNodeEnv === "development" || runtimeNodeEnv === "test";
 };
+
+/** True when a URL carries embedded username/password credentials. */
+export const hasUrlEmbeddedCredentials = (url: URL): boolean => url.username !== "" || url.password !== "";
 
 export const isPrivateUrl = (url: string): boolean => {
   // Allow private URLs when explicitly opted in (e.g., E2E tests with local test servers)
@@ -158,5 +169,36 @@ export const validateExternalHttpUrl = (urlString: string): { url: URL } | { err
     return { url };
   } catch {
     return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
+  }
+};
+
+/**
+ * Validates that a hostname resolves only to public IP addresses.
+ *
+ * DNS lookup failures remain non-blocking so transport-level errors still
+ * surface through the caller's normal fetch/clone path.
+ */
+export const validateResolvedPublicHostname = async (hostname: string): Promise<void> => {
+  if (isPrivateUrlBypassEnabled()) {
+    return;
+  }
+
+  try {
+    const resolved = (await dns.promises.lookup(hostname, { all: true, verbatim: true })) as
+      | Array<{ address: string }>
+      | { address: string };
+    const addresses = Array.isArray(resolved) ? resolved : [resolved];
+
+    for (const entry of addresses) {
+      if (isPrivateIP(entry.address)) {
+        throw new Error(`SSRF blocked: hostname "${hostname}" resolves to private IP ${entry.address}`);
+      }
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("SSRF blocked")) {
+      throw error;
+    }
+
+    logger.debug("DNS lookup failed during SSRF check (non-blocking)", { hostname, error });
   }
 };

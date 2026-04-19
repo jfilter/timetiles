@@ -11,12 +11,36 @@
 import type { CollectionConfig, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
-import { isPrivateUrl } from "@/lib/security/url-validation";
+import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
+
+const validateGitRepoUrl = (value: string): string | true => {
+  let url: URL;
+
+  try {
+    url = new URL(value);
+  } catch {
+    return "Please provide a valid HTTPS Git URL";
+  }
+
+  if (url.protocol !== "https:") {
+    return "Only HTTPS URLs are allowed";
+  }
+
+  if (hasUrlEmbeddedCredentials(url)) {
+    return "Git URLs must not include embedded credentials";
+  }
+
+  if (isPrivateUrl(value)) {
+    return "URLs pointing to private or internal networks are not allowed";
+  }
+
+  return true;
+};
 
 import {
   basicMetadataFields,
@@ -78,9 +102,9 @@ const ScraperRepos: CollectionConfig = {
       // eslint-disable-next-line sonarjs/function-return-type -- Payload validate returns string | true by design
       validate: (value: unknown, { data }: { data: Record<string, unknown> }) => {
         if (data?.sourceType === "git" && !value) return "Git URL is required for git source type";
-        if (value && typeof value === "string" && !value.startsWith("https://")) return "Only HTTPS URLs are allowed";
-        if (value && typeof value === "string" && isPrivateUrl(value))
-          return "URLs pointing to private or internal networks are not allowed";
+        if (value && typeof value === "string") {
+          return validateGitRepoUrl(value);
+        }
         return true;
       },
     },

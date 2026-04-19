@@ -9,6 +9,7 @@ import dns from "node:dns";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resetEnv } from "@/lib/config/env";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
 // Mock dns.promises.lookup
@@ -30,11 +31,16 @@ describe.sequential("safeFetch", () => {
     mockFetch = vi.fn();
     global.fetch = mockFetch as unknown as typeof fetch;
     (dns.promises.lookup as ReturnType<typeof vi.fn>).mockReset();
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("E2E_MODE", "");
+    vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+    resetEnv();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     vi.unstubAllEnvs();
+    resetEnv();
   });
 
   describe("blocks private URLs", () => {
@@ -189,6 +195,30 @@ describe.sequential("safeFetch", () => {
       mockFetch.mockResolvedValueOnce(createResponse(301, { location: "https://rebind.example.com/data" }));
 
       await expect(safeFetch("https://public.com/data", { dnsCheck: true })).rejects.toThrow("SSRF blocked");
+    });
+  });
+
+  describe("production DNS enforcement", () => {
+    const dnsLookup = dns.promises.lookup as ReturnType<typeof vi.fn>;
+
+    it("enforces DNS resolution checks in production even when SSRF_DNS_CHECK is false", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("SSRF_DNS_CHECK", "false");
+      resetEnv();
+      dnsLookup.mockResolvedValueOnce({ address: "127.0.0.1", family: 4 });
+
+      await expect(safeFetch("https://evil.com/data.csv")).rejects.toThrow(
+        'SSRF blocked: hostname "evil.com" resolves to private IP 127.0.0.1'
+      );
+    });
+
+    it("does not allow dnsCheck=false to disable production DNS enforcement", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("SSRF_DNS_CHECK", "false");
+      resetEnv();
+      dnsLookup.mockResolvedValueOnce({ address: "169.254.169.254", family: 4 });
+
+      await expect(safeFetch("https://metadata.example/data.csv", { dnsCheck: false })).rejects.toThrow("SSRF blocked");
     });
   });
 

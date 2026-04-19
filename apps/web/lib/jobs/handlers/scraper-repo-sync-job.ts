@@ -20,7 +20,9 @@ import type { Payload } from "payload";
 import type { ParsedScraper } from "@/lib/ingest/manifest-parser";
 import { parseManifest } from "@/lib/ingest/manifest-parser";
 import { createLogger, logError } from "@/lib/logger";
+import { hasUrlEmbeddedCredentials, isPrivateUrl, validateResolvedPublicHostname } from "@/lib/security/url-validation";
 import { extractRelationId } from "@/lib/utils/relation-id";
+import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
@@ -37,19 +39,62 @@ const execFileAsync = promisify(execFile);
  * Shallow-clone a git repo into a temporary directory.
  * Returns the path to the cloned directory.
  */
+const validateGitCloneUrl = async (gitUrl: string): Promise<URL> => {
+  let parsed: URL;
+
+  try {
+    parsed = new URL(gitUrl);
+  } catch {
+    throw new Error("Please provide a valid HTTPS Git URL");
+  }
+
+  if (parsed.protocol !== "https:") {
+    throw new Error("Only HTTPS git URLs are allowed");
+  }
+
+  if (hasUrlEmbeddedCredentials(parsed)) {
+    throw new Error("Git URLs must not include embedded credentials");
+  }
+
+  if (isPrivateUrl(parsed.toString())) {
+    throw new Error("Git URLs pointing to private or internal networks are not allowed");
+  }
+
+  await validateResolvedPublicHostname(parsed.hostname);
+  return parsed;
+};
+
 const cloneRepo = async (gitUrl: string, branch: string): Promise<string> => {
+  const parsedGitUrl = await validateGitCloneUrl(gitUrl);
   const tempDir = await mkdtemp(path.join(tmpdir(), "scraper-repo-"));
 
-  logger.info("Cloning scraper repo", { gitUrl, branch, tempDir });
+  logger.info("Cloning scraper repo", { gitUrl: sanitizeUrlForLogging(parsedGitUrl.toString()), branch, tempDir });
 
-  await execFileAsync("git", ["clone", "--depth", "1", "--branch", branch, "--single-branch", gitUrl, tempDir], {
-    timeout: 60_000, // 60 seconds
-    env: {
-      ...process.env,
-      // Disable interactive prompts (password, SSH key, etc.)
-      GIT_TERMINAL_PROMPT: "0",
-    },
-  });
+  // Disable Git HTTP redirects so the clone target cannot bounce to an
+  // internal host after we validate the original URL.
+  await execFileAsync(
+    "git",
+    [
+      "-c",
+      "http.followRedirects=false",
+      "clone",
+      "--depth",
+      "1",
+      "--branch",
+      branch,
+      "--single-branch",
+      parsedGitUrl.toString(),
+      tempDir,
+    ],
+    {
+      timeout: 60_000, // 60 seconds
+      env: {
+        ...process.env,
+        // Disable interactive prompts (password, SSH key, etc.)
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    }
+  );
 
   return tempDir;
 };

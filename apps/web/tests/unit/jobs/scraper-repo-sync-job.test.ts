@@ -12,17 +12,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ParsedScraper } from "@/lib/ingest/manifest-parser";
 import { scraperRepoSyncJob } from "@/lib/jobs/handlers/scraper-repo-sync-job";
+import type * as UrlValidationModule from "@/lib/security/url-validation";
+
+const mocks = vi.hoisted(() => ({
+  execFileAsync: vi.fn().mockResolvedValue({ stdout: "", stderr: "" }),
+  logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  validateResolvedPublicHostname: vi.fn().mockResolvedValue(undefined),
+}));
 
 // Mock dependencies
-vi.mock("@/lib/logger", () => ({
-  logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
-  createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }),
-  logError: vi.fn(),
-}));
+vi.mock("@/lib/logger", () => ({ logger: mocks.logger, createLogger: () => mocks.logger, logError: vi.fn() }));
 
 vi.mock("node:child_process", () => ({ execFile: vi.fn() }));
 
-vi.mock("node:util", () => ({ promisify: () => vi.fn().mockResolvedValue({ stdout: "", stderr: "" }) }));
+vi.mock("node:util", () => ({ promisify: () => mocks.execFileAsync }));
 
 vi.mock("node:fs/promises", () => ({
   mkdtemp: vi.fn().mockResolvedValue("/private/var/folders/scraper-repo-abc123"),
@@ -33,6 +36,12 @@ vi.mock("node:fs/promises", () => ({
 vi.mock("node:os", () => ({ tmpdir: () => "/tmp" }));
 
 vi.mock("@/lib/ingest/manifest-parser", () => ({ parseManifest: vi.fn() }));
+
+vi.mock("@/lib/security/url-validation", async () => {
+  const actual = await vi.importActual<typeof UrlValidationModule>("@/lib/security/url-validation");
+
+  return { ...actual, validateResolvedPublicHostname: mocks.validateResolvedPublicHostname };
+});
 
 describe.sequential("scraperRepoSyncJob", () => {
   let mockPayload: any;
@@ -69,10 +78,12 @@ describe.sequential("scraperRepoSyncJob", () => {
     const fsp = await import("node:fs/promises");
     (fsp.mkdtemp as any).mockResolvedValue("/private/var/folders/scraper-repo-abc123");
     (fsp.rm as any).mockResolvedValue(undefined);
+    mocks.execFileAsync.mockResolvedValue({ stdout: "", stderr: "" });
+    mocks.validateResolvedPublicHostname.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   it("should load repo by ID", async () => {
@@ -363,6 +374,23 @@ describe.sequential("scraperRepoSyncJob", () => {
     await scraperRepoSyncJob.handler(context as any);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
+    expect(mocks.validateResolvedPublicHostname).toHaveBeenCalledWith("github.com");
+    expect(mocks.execFileAsync).toHaveBeenCalledWith(
+      "git",
+      [
+        "-c",
+        "http.followRedirects=false",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        "develop",
+        "--single-branch",
+        "https://github.com/test/repo.git",
+        "/private/var/folders/scraper-repo-abc123",
+      ],
+      expect.objectContaining({ timeout: 60_000, env: expect.objectContaining({ GIT_TERMINAL_PROMPT: "0" }) })
+    );
   });
 
   it("should default to main branch for git repos without gitBranch", async () => {
@@ -394,6 +422,24 @@ describe.sequential("scraperRepoSyncJob", () => {
         data: expect.objectContaining({ lastSyncStatus: "success" }),
       })
     );
+  });
+
+  it("should reject git URLs with embedded credentials before cloning", async () => {
+    const repo = {
+      id: 5,
+      sourceType: "git",
+      gitUrl: "https://token@github.com/test/repo.git",
+      gitBranch: "main",
+      createdBy: 100,
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const context = createMockContext({ scraperRepoId: 5 });
+
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow(
+      "Git URLs must not include embedded credentials"
+    );
+    expect(mocks.execFileAsync).not.toHaveBeenCalled();
   });
 
   it("should handle createdBy as a populated relation object", async () => {

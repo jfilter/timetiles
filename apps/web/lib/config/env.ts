@@ -60,6 +60,8 @@ const baseSchema = {
   RATE_LIMIT_BACKEND: z.string().default("memory"),
 
   // === Security ===
+  // Enables resolved-IP SSRF checks outside production. Production always
+  // enforces DNS resolution validation even when this flag is false.
   SSRF_DNS_CHECK: z
     .string()
     .default("false")
@@ -75,8 +77,8 @@ const baseSchema = {
   // Comma-separated CIDR allowlist for trusted reverse proxies. When set, the
   // rate limiter will strip IPs inside these ranges from the right end of
   // `X-Forwarded-For` before picking the client address. Empty by default (no
-  // trust); in that mode the rate limiter falls back to the full forwarded
-  // chain's first entry and logs a one-time deprecation warning.
+  // trust); in production the rate limiter ignores forwarded IP headers until
+  // this allowlist is configured.
   // Example: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
   TRUSTED_PROXY_CIDRS: z.string().default(""),
 

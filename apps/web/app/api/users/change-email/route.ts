@@ -20,6 +20,7 @@ import { safeSendEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
+import { maskEmail } from "@/lib/security/masking";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier } from "@/lib/services/rate-limit-service";
@@ -78,7 +79,10 @@ const updateEmailAndNotify = async (
     details: { oldEmailHash: hashEmail(user.email), newEmailHash: hashEmail(newEmail) },
   });
 
-  logger.info({ userId: user.id, oldEmail: user.email, newEmail, clientId }, "Email changed, verification required");
+  logger.info(
+    { userId: user.id, oldEmail: maskEmail(user.email), newEmail: maskEmail(newEmail), clientId },
+    "Email changed, verification required"
+  );
 };
 
 // ---------------------------------------------------------------------------

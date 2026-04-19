@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/no-hardcoded-ip -- trusted proxy CIDRs are intentional test fixtures */
 /**
  * Unit tests for rate limit trust-level parsing.
  *
@@ -13,13 +14,14 @@ import { logger } from "@/lib/logger";
 import { createRateLimitStore } from "@/lib/services/rate-limit/factory";
 import { MemoryRateLimitStore } from "@/lib/services/rate-limit/memory-store";
 import { PgRateLimitStore } from "@/lib/services/rate-limit/pg-store";
-import { RateLimitService } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier, RateLimitService, resetTrustedProxyState } from "@/lib/services/rate-limit-service";
 
 describe("RateLimitService", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
     resetEnv();
+    resetTrustedProxyState();
   });
 
   it("falls back to regular limits for malformed trust-level strings", () => {
@@ -91,5 +93,49 @@ describe("createRateLimitStore", () => {
       { configuredBackend: "redis" },
       "Unknown RATE_LIMIT_BACKEND configured; falling back to the in-memory rate-limit store"
     );
+  });
+});
+
+describe("getClientIdentifier", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetEnv();
+    resetTrustedProxyState();
+  });
+
+  it("ignores forwarded IP headers in production when trusted proxies are not configured", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRUSTED_PROXY_CIDRS", "");
+    resetEnv();
+
+    const request = new Request("http://localhost", {
+      headers: {
+        "x-forwarded-for": "203.0.113.1, 10.0.0.1",
+        "x-real-ip": "203.0.113.2",
+        "cf-connecting-ip": "203.0.113.3",
+      },
+    });
+
+    expect(getClientIdentifier(request)).toBe("unknown");
+  });
+
+  it("uses trusted proxy CIDRs to recover the client IP in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("TRUSTED_PROXY_CIDRS", "10.0.0.0/8");
+    resetEnv();
+
+    const request = new Request("http://localhost", { headers: { "x-forwarded-for": "203.0.113.1, 10.0.0.1" } });
+
+    expect(getClientIdentifier(request)).toBe("203.0.113.1");
+  });
+
+  it("keeps the legacy forwarded-header fallback outside production", () => {
+    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("TRUSTED_PROXY_CIDRS", "");
+    resetEnv();
+
+    const request = new Request("http://localhost", { headers: { "x-forwarded-for": "203.0.113.1, 10.0.0.1" } });
+
+    expect(getClientIdentifier(request)).toBe("203.0.113.1");
   });
 });
