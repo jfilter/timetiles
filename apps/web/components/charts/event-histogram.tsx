@@ -14,12 +14,12 @@
 import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
-import { getResolution, isValidCell } from "h3-js";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { expandGroupNames } from "@/components/charts/event-beeswarm";
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
+import { parseH3ClusterFilter } from "@/lib/geospatial";
 import { useHistogramQuery, useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
@@ -76,17 +76,6 @@ const buildGroupedSeries = (
   return series.length > 0 ? series : undefined;
 };
 
-/** Build cluster filter from H3 cells, returns undefined if cells are invalid. */
-const parseClusterFilter = (cells: string[] | null | undefined) => {
-  if (!cells || cells.length === 0) return undefined;
-  try {
-    if (!isValidCell(cells[0]!)) return undefined;
-    return { cells, h3Resolution: getResolution(cells[0]!) };
-  } catch {
-    return undefined;
-  }
-};
-
 interface EventHistogramProps extends BaseChartProps {
   /** Group by field — when set and not "dataset", uses stacked bars */
   groupBy?: string;
@@ -114,7 +103,7 @@ export const EventHistogram = ({
   const scope = useViewScope();
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
 
-  const clusterFilter = useMemo(() => parseClusterFilter(clusterFilterCells), [clusterFilterCells]);
+  const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
   const isGrouped = groupBy !== "none";
   const boundsOrNull = bounds ?? null;

@@ -9,10 +9,10 @@
  */
 "use client";
 
-import { getResolution, isValidCell } from "h3-js";
 import { useMemo } from "react";
 
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
+import { parseH3ClusterFilter } from "@/lib/geospatial";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import {
   useBoundsQuery,
@@ -38,15 +38,8 @@ export const useExplorerQueries = (
   const focusedCluster = useUIStore((s) => s.ui.focusedCluster);
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
 
-  // When cluster filter is active, compute H3 resolution and pass cells to queries
-  const clusterFilterResolution = useMemo(() => {
-    if (!clusterFilterCells || clusterFilterCells.length === 0) return undefined;
-    try {
-      return isValidCell(clusterFilterCells[0]!) ? getResolution(clusterFilterCells[0]!) : undefined;
-    } catch {
-      return undefined;
-    }
-  }, [clusterFilterCells]);
+  // Build cluster filter for precise H3 cell filtering
+  const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
   // Effective bounds: use map viewport (cluster filtering is done by H3 cells, not bbox)
   const effectiveBounds = debouncedSimpleBounds;
@@ -87,12 +80,6 @@ export const useExplorerQueries = (
     focusedCluster != null,
     scope
   );
-
-  // Build cluster filter for precise H3 cell filtering
-  const clusterFilter = useMemo(() => {
-    if (!clusterFilterCells || clusterFilterCells.length === 0 || !clusterFilterResolution) return undefined;
-    return { cells: clusterFilterCells, h3Resolution: clusterFilterResolution };
-  }, [clusterFilterCells, clusterFilterResolution]);
 
   const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
     filters,

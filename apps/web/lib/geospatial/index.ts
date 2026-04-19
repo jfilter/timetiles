@@ -37,3 +37,7 @@ export {
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
 } from "./patterns";
+
+// H3 helpers
+export type { H3ClusterFilter } from "./h3";
+export { parseH3ClusterFilter } from "./h3";
