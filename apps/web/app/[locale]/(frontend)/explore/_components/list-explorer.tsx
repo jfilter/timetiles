@@ -57,7 +57,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   const locale = useLocale();
   const t = useTranslations("Explore");
   const { explorer, filterPanel, mobileFilters } = chrome;
-  const { map, filters: filterState, selection, data } = explorer;
+  const { map, filters: filterState, selection, data, scope } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
   const {
@@ -106,6 +106,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
               isLoadingBounds={isLoadingInitialBounds}
               showZoomToData={showZoomToData}
               onZoomToData={handleZoomToData}
+              scope={scope}
             />
           }
           chartContent={
@@ -151,6 +152,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
               showZoomToData={showZoomToData}
               onZoomToData={handleZoomToData}
               className="relative overflow-hidden"
+              scope={scope}
             />
             <div className="overflow-hidden border-l">
               <div className="flex h-full flex-col p-6">

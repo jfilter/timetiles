@@ -23,7 +23,7 @@ import { MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
 import { useTheme } from "@/lib/hooks/use-theme";
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
-import type { SimpleBounds } from "@/lib/utils/event-params";
+import type { SimpleBounds, ViewScope } from "@/lib/utils/event-params";
 
 import { DEFAULT_CLUSTERS, fitMapToBounds, INITIAL_VIEW_STATE } from "./clustered-map-helpers";
 import { ClusteredMapRenderer } from "./clustered-map-renderer";
@@ -73,6 +73,7 @@ interface ClusteredMapProps {
   initialViewState?: MapViewState | null;
   isLoadingBounds?: boolean;
   isError?: boolean;
+  scope?: ViewScope;
 }
 
 export interface ClusteredMapHandle {
@@ -98,6 +99,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       initialViewState,
       isLoadingBounds,
       isError,
+      scope,
     },
     ref
   ) => {
@@ -139,6 +141,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       currentZoom,
       mapRef,
       isMapPositioned,
+      scope,
     });
 
     useImperativeHandle(ref, () => ({

@@ -47,7 +47,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   const locale = useLocale();
   const t = useTranslations("Explore");
   const { explorer, filterPanel } = chrome;
-  const { map, filters: filterState, selection, data } = explorer;
+  const { map, filters: filterState, selection, data, scope } = explorer;
   const { filters } = filterState;
   const { openEvent } = selection;
   const {
@@ -116,6 +116,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
         showZoomToData={showZoomToData}
         onZoomToData={handleZoomToData}
         className="relative h-full min-w-0 flex-1 transition-[flex,width] duration-500 ease-in-out"
+        scope={scope}
       />
 
       <div className="min-w-0 flex-1 overflow-y-auto border-l transition-[flex,width] duration-500 ease-in-out [scrollbar-gutter:stable]">

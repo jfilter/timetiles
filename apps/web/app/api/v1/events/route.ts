@@ -55,7 +55,7 @@ export const transformEvent = (event: Event): EventListItem => {
         ? { longitude: event.location.longitude, latitude: event.location.latitude }
         : null,
     locationName: event.locationName ?? null,
-    geocodedAddress: event.geocodingInfo?.normalizedAddress ?? null,
+    geocodedAddress: event.coordinateSource?.normalizedAddress ?? event.geocodingInfo?.normalizedAddress ?? null,
     eventTimestamp: event.eventTimestamp ?? "",
     eventEndTimestamp: event.eventEndTimestamp ?? null,
     isValid: event.validationStatus === "valid",

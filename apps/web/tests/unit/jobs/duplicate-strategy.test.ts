@@ -300,9 +300,28 @@ describe.sequential("processEventBatch", () => {
         duplicates: { internal: [], external: [{ rowNumber: 0, existingEventId: 99 }] },
       });
 
-      const ctx: ProcessBatchContext = { ...baseCtx, job };
+      const ctx: ProcessBatchContext = {
+        ...baseCtx,
+        job: {
+          ...job,
+          datasetSchemaVersion: 7,
+          detectedFieldMappings: { locationPath: "location", locationNamePath: "venue" },
+        },
+        dataset: {
+          ...baseCtx.dataset,
+          ingestTransforms: [{ id: "rename-title", type: "rename", active: true, autoDetected: false, from: "title", to: "eventTitle" }],
+        },
+      };
 
-      const rows = [{ id: "x", title: "My Event", location: "Berlin" }];
+      mocks.getIngestGeocodingResults.mockReturnValue({
+        berlin: {
+          coordinates: { lat: 52.52, lng: 13.405 },
+          confidence: 0.9,
+          formattedAddress: "Berlin, Germany",
+        },
+      });
+
+      const rows = [{ id: "x", title: "My Event", location: "Berlin", venue: "Tempelhof" }];
 
       await processEventBatch(ctx, rows, 0);
 
@@ -315,9 +334,26 @@ describe.sequential("processEventBatch", () => {
       const { data } = updateCall;
       expect(data).toHaveProperty("transformedData");
       expect(data).toHaveProperty("sourceData");
+      expect(data).toHaveProperty("dataset", 456);
+      expect(data).toHaveProperty("datasetIsPublic", false);
+      expect(data).toHaveProperty("catalogOwnerId", undefined);
+      expect(data).toHaveProperty("uniqueId", "mock-unique-id");
       expect(data).toHaveProperty("ingestJob");
+      expect(data).toHaveProperty("locationName", "Tempelhof");
+      expect(data).toHaveProperty("coordinateSource");
+      expect(data).toHaveProperty("validationStatus", "transformed");
+      expect(data).toHaveProperty("transformations");
+      expect(data).toHaveProperty("schemaVersionNumber", 7);
       // eventTimestamp and eventEndTimestamp are included (may be null/undefined)
       expect(data).toHaveProperty("eventTimestamp");
+      expect(data).toMatchObject({
+        location: { latitude: 52.52, longitude: 13.405 },
+        coordinateSource: {
+          type: "geocoded",
+          confidence: 0.9,
+          normalizedAddress: "Berlin, Germany",
+        },
+      });
     });
 
     it("returns eventsUpdated count for updated rows", async () => {

@@ -15,7 +15,7 @@ import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { events as eventsTable } from "@/payload-generated-schema";
-import type { Dataset, IngestJob } from "@/payload-types";
+import type { Dataset, Event, IngestJob } from "@/payload-types";
 
 import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
@@ -134,11 +134,25 @@ const tryUpdateExistingEvent = async (
     collection: "events",
     id: existingEventId,
     data: {
+      dataset: eventData.dataset,
+      datasetIsPublic: eventData.datasetIsPublic,
+      catalogOwnerId: eventData.catalogOwnerId,
+      uniqueId: eventData.uniqueId,
       transformedData: eventData.transformedData,
       sourceData: eventData.sourceData,
       location: eventData.location,
+      locationName: eventData.locationName,
+      coordinateSource: {
+        type: eventData.coordinateSource.type as NonNullable<Event["coordinateSource"]>["type"],
+        confidence: eventData.coordinateSource.confidence ?? null,
+        normalizedAddress: eventData.coordinateSource.normalizedAddress ?? null,
+      },
       eventTimestamp: eventData.eventTimestamp,
       eventEndTimestamp: eventData.eventEndTimestamp,
+      validationStatus: eventData.validationStatus as Event["validationStatus"],
+      transformations: eventData.transformations as Event["transformations"],
+      schemaVersionNumber: eventData.schemaVersionNumber,
+      contentHash: eventData.contentHash,
       ingestJob: eventData.ingestJob,
     },
     overrideAccess: true,

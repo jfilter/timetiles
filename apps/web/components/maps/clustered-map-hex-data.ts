@@ -10,6 +10,8 @@
 
 import { cellToBoundary, isValidCell } from "h3-js";
 
+import type { ViewScope } from "@/lib/utils/event-params";
+
 import type { ClusterFeature } from "./clustered-map";
 
 type HoverFilterSearchParams = Pick<URLSearchParams, "get">;
@@ -50,12 +52,19 @@ export const buildHoverFetchParams = (
   pageParams: HoverFilterSearchParams,
   parentCells: string[],
   currentZoom: number,
-  mapBounds: { getNorth: () => number; getSouth: () => number; getEast: () => number; getWest: () => number } | null
+  mapBounds: { getNorth: () => number; getSouth: () => number; getEast: () => number; getWest: () => number } | null,
+  scope?: ViewScope
 ): URLSearchParams => {
   const params = new URLSearchParams();
   for (const key of ["catalog", "datasets", "startDate", "endDate", "ff"]) {
     const val = pageParams.get(key);
     if (val) params.set(key, val);
+  }
+  if (scope?.catalogIds?.length) {
+    params.set("scopeCatalogs", scope.catalogIds.join(","));
+  }
+  if (scope?.datasetIds?.length) {
+    params.set("scopeDatasets", scope.datasetIds.join(","));
   }
   params.set("parentCells", parentCells.join(","));
   params.set("zoom", String(Math.round(currentZoom)));

@@ -14,7 +14,7 @@ import type { ClusterFeature } from "@/components/maps/clustered-map";
 import { ClusteredMap, type ClusteredMapHandle, type MapViewState } from "@/components/maps/clustered-map";
 import { ZoomToDataButton } from "@/components/maps/zoom-to-data-button";
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
-import type { SimpleBounds } from "@/lib/utils/event-params";
+import type { SimpleBounds, ViewScope } from "@/lib/utils/event-params";
 
 interface MapPanelProps {
   mapRef?: RefObject<ClusteredMapHandle | null>;
@@ -30,6 +30,7 @@ interface MapPanelProps {
   showZoomToData: boolean;
   onZoomToData: () => void;
   className?: string;
+  scope?: ViewScope;
 }
 
 export const MapPanel = ({
@@ -46,6 +47,7 @@ export const MapPanel = ({
   showZoomToData,
   onZoomToData,
   className,
+  scope,
 }: MapPanelProps) => (
   <div className={className ?? "relative h-full"}>
     <ClusteredMap
@@ -59,6 +61,7 @@ export const MapPanel = ({
       initialBounds={initialBounds}
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}
+      scope={scope}
     />
     <div className="absolute bottom-20 left-2 z-10 flex flex-col gap-1.5">
       <ClusterDensityControl />

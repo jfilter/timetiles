@@ -27,7 +27,7 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { GET } from "@/app/api/v1/events/route";
+import { GET, transformEvent } from "@/app/api/v1/events/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createSelectBuilder = (result: unknown, resolveOn: "where" | "offset") => {
@@ -60,6 +60,25 @@ const createRequest = (queryString: string, user: unknown = null) => {
   const url = `http://localhost:3000/api/v1/events${queryString}`;
   return { user, url, headers: new Headers(), nextUrl: new URL(url) } as unknown as AuthenticatedRequest;
 };
+
+describe("transformEvent", () => {
+  it("prefers coordinateSource.normalizedAddress for geocodedAddress", () => {
+    const result = transformEvent({
+      id: 202,
+      dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", fieldMappingOverrides: null },
+      transformedData: { title: "Filtered Event" },
+      location: { latitude: 52.52, longitude: 13.405 },
+      locationName: "Berlin",
+      coordinateSource: { type: "geocoded", normalizedAddress: "Berlin, Germany" },
+      geocodingInfo: { normalizedAddress: "Legacy Address" },
+      eventTimestamp: "2024-01-02T00:00:00.000Z",
+      eventEndTimestamp: null,
+      validationStatus: "valid",
+    } as never);
+
+    expect(result.geocodedAddress).toBe("Berlin, Germany");
+  });
+});
 
 describe.sequential("GET /api/v1/events", () => {
   beforeEach(() => {

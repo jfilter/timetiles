@@ -18,14 +18,17 @@ describe("buildHoverFetchParams", () => {
     );
     const parentCells = ["8928308280fffff", "8928308280bffff"];
     const bounds = { getNorth: () => 52.5, getSouth: () => 52.1, getEast: () => 13.7, getWest: () => 13.2 };
+    const scope = { catalogIds: [3, 4], datasetIds: [21, 22] };
 
-    const params = buildHoverFetchParams(pageParams, parentCells, 9.4, bounds);
+    const params = buildHoverFetchParams(pageParams, parentCells, 9.4, bounds, scope);
 
     expect(params.get("catalog")).toBe("7");
     expect(params.get("datasets")).toBe("10,11");
     expect(params.get("startDate")).toBe("2024-01-01");
     expect(params.get("endDate")).toBe("2024-12-31");
     expect(params.get("ff")).toBe("preview");
+    expect(params.get("scopeCatalogs")).toBe("3,4");
+    expect(params.get("scopeDatasets")).toBe("21,22");
     expect(params.has("ignored")).toBe(false);
     expect(params.get("parentCells")).toBe(parentCells.join(","));
     expect(params.get("zoom")).toBe("9");
@@ -38,6 +41,8 @@ describe("buildHoverFetchParams", () => {
 
     expect(params.has("catalog")).toBe(false);
     expect(params.has("datasets")).toBe(false);
+    expect(params.has("scopeCatalogs")).toBe(false);
+    expect(params.has("scopeDatasets")).toBe(false);
     expect(params.has("bounds")).toBe(false);
     expect(params.get("zoom")).toBe("4");
     expect(params.get("targetClusters")).toBe("100");

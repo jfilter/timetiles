@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
 import { useH3HoverChildrenQuery } from "@/lib/hooks/use-events-queries";
+import type { ViewScope } from "@/lib/utils/event-params";
 
 import {
   buildHoverFetchParams,
@@ -28,6 +29,7 @@ interface UseH3HoverProps {
   currentZoom: number;
   mapRef: React.RefObject<MapRef | null>;
   isMapPositioned: boolean;
+  scope?: ViewScope;
 }
 
 interface HoverTarget {
@@ -45,7 +47,7 @@ const boundsToKey = (
   return `${round(bounds.getNorth())},${round(bounds.getSouth())},${round(bounds.getEast())},${round(bounds.getWest())}`;
 };
 
-export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: UseH3HoverProps) => {
+export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, scope }: UseH3HoverProps) => {
   const [hoverTarget, setHoverTarget] = useState<HoverTarget | null>(null);
   const roundedZoom = Math.round(currentZoom);
   const searchParams = useSearchParams();
@@ -56,8 +58,8 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned }: 
     const mapInstance = mapRef.current?.getMap();
     const bounds = mapInstance ? mapInstance.getBounds() : null;
     const cells = hoverTarget?.parentCells ?? [];
-    return buildHoverFetchParams(searchParams, cells, currentZoom, bounds);
-  }, [mapRef, currentZoom, hoverTarget, searchParams]);
+    return buildHoverFetchParams(searchParams, cells, currentZoom, bounds, scope);
+  }, [mapRef, currentZoom, hoverTarget, searchParams, scope]);
 
   const { data: childFeatures } = useH3HoverChildrenQuery(
     hoverTarget?.clusterId ?? null,
