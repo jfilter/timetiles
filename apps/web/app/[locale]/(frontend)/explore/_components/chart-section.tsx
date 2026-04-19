@@ -35,7 +35,7 @@ import { useFilters } from "@/lib/hooks/use-filters";
 import { formatMonthYear, parseISODate } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
-import { type ChartMeta, type ChartType, VisualizationPanel } from "./visualization-panel";
+import { type ChartMeta, type ChartType, useChartTypeLabels, VisualizationPanel } from "./visualization-panel";
 
 const DATASET_BAR = "dataset-bar" as const satisfies ChartType;
 
@@ -80,12 +80,6 @@ const getChartHeight = (type: ChartType): number | undefined => {
     case DATASET_BAR:
       return undefined; // Auto-calculated based on data count
   }
-};
-
-/** Labels for chart type selector dropdown. */
-const useChartTypeLabels = (): Record<ChartType, string> => {
-  const t = useTranslations("Explore");
-  return { histogram: t("timeline"), beeswarm: t("beeswarm"), [DATASET_BAR]: t("byDataset") };
 };
 
 // oxlint-disable-next-line complexity

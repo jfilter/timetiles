@@ -157,9 +157,12 @@ export class ExplorePage {
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
       .first();
 
-    // Wait for button to be visible and click it
+    // Wait for button to be visible and stable before clicking.
+    // Previously used `force: true` to bypass actionability checks,
+    // which masked overlay/animation issues in the time-range section.
     await dateRangeButton.waitFor({ state: "visible", timeout: 10000 });
-    await dateRangeButton.click({ force: true, timeout: 10000 });
+    await dateRangeButton.scrollIntoViewIfNeeded();
+    await dateRangeButton.click({ timeout: 10000 });
 
     // Wait for edit mode to open (date inputs to appear)
     await dateInputs.first().waitFor({ state: "visible", timeout: 5000 });
@@ -202,7 +205,8 @@ export class ExplorePage {
 
     const catalogCheckbox = this.page.locator(`[role="checkbox"][aria-label*="${catalogName}"]`).first();
     await catalogCheckbox.waitFor({ state: "visible", timeout: 10000 });
-    await catalogCheckbox.click({ force: true, timeout: 10000 });
+    await catalogCheckbox.scrollIntoViewIfNeeded();
+    await catalogCheckbox.click({ timeout: 10000 });
 
     // Catalog click must push `datasets` into the URL — nuqs is `history: "replace"`
     // but still synchronous from the browser's perspective. If this times out
@@ -227,7 +231,8 @@ export class ExplorePage {
       const button = this.page.locator("button:has(.lucide-chevron-right)").first();
       const visible = await button.isVisible({ timeout: 500 }).catch(() => false);
       if (!visible) break;
-      await button.click({ force: true });
+      await button.scrollIntoViewIfNeeded();
+      await button.click();
     }
   }
 
@@ -248,7 +253,8 @@ export class ExplorePage {
       .filter({ hasText: new RegExp(datasetName, "i") })
       .first();
     await datasetLabel.waitFor({ state: "visible", timeout: 10000 });
-    await datasetLabel.click({ force: true, timeout: 10000 });
+    await datasetLabel.scrollIntoViewIfNeeded();
+    await datasetLabel.click({ timeout: 10000 });
     await this.waitForApiResponse();
   }
 
