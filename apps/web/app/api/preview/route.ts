@@ -13,6 +13,7 @@ import { z } from "zod";
 import { apiRoute } from "@/lib/api";
 import { NotFoundError } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
+import { isSafeLocalRedirectPath } from "@/lib/utils/local-redirect";
 
 // Allowlist of collection slugs that support preview. Using a literal enum prevents
 // open-redirect attacks (e.g. `collection=//evil.com` producing protocol-relative URLs).
@@ -39,7 +40,7 @@ export const GET = apiRoute({
 
     // Belt-and-suspenders guard: even though Zod restricts inputs above, reject any
     // path that is not a plain local path. Blocks `//host`, `/\host`, and schemes.
-    if (!redirectPath.startsWith("/") || redirectPath.startsWith("//") || redirectPath.startsWith("/\\")) {
+    if (!isSafeLocalRedirectPath(redirectPath)) {
       throw new NotFoundError("Invalid preview target");
     }
 

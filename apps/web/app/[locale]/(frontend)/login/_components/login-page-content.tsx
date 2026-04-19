@@ -15,12 +15,13 @@ import { useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { AuthTabs } from "@/components/auth";
+import { getSafeLocalRedirectPath } from "@/lib/utils/local-redirect";
 
 const LoginContent = () => {
   const searchParams = useSearchParams();
   const t = useTranslations("Auth");
 
-  const redirectTo = searchParams.get("redirect") ?? "/";
+  const redirectTo = getSafeLocalRedirectPath(searchParams.get("redirect"));
 
   const handleSuccess = () => {
     // Use full page navigation to ensure server components re-render with new auth state
