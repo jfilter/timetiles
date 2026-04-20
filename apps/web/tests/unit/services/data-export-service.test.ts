@@ -21,7 +21,7 @@ describe.sequential("DataExportService", () => {
     vi.clearAllMocks();
 
     mocks.countUserDocs.mockResolvedValue(0);
-    mocks.findUserDocs.mockImplementation(async (_payload, collection: string, userId: number, options = {}) => {
+    mocks.findUserDocs.mockImplementation((_payload, collection: string, userId: number, options = {}) => {
       const count = "limit" in options && options.limit === 10000 ? 10000 : 10001;
 
       switch (collection) {
@@ -76,7 +76,7 @@ describe.sequential("DataExportService", () => {
     const payload = {
       count: vi
         .fn()
-        .mockImplementation(async ({ collection, where }: { collection: string; where: Record<string, unknown> }) => {
+        .mockImplementation(({ collection, where }: { collection: string; where: Record<string, unknown> }) => {
           switch (collection) {
             case "events":
               return { totalDocs: ((where.dataset as { in?: unknown[] }).in ?? []).length };
@@ -124,7 +124,7 @@ describe.sequential("DataExportService", () => {
       find: vi
         .fn()
         .mockImplementation(
-          async ({ collection, pagination, limit }: { collection: string; pagination?: boolean; limit?: number }) => {
+          ({ collection, pagination, limit }: { collection: string; pagination?: boolean; limit?: number }) => {
             const count = pagination === false && limit === undefined ? 10001 : 10000;
 
             switch (collection) {

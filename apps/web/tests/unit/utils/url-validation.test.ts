@@ -5,8 +5,8 @@
  * @module
  * @category Tests
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as UrlValidationModule from "@/lib/security/url-validation";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockDnsLookup = vi.hoisted(() => vi.fn());
 

@@ -37,7 +37,45 @@ export interface PreProcessingConfig {
   extractFields?: ExtractFieldConfig[];
 }
 
-const NUMERIC_STRING_PATTERN = /^-?\d+(\.\d+)?$/;
+const isStrictNumericString = (value: string): boolean => {
+  if (value === "") {
+    return false;
+  }
+
+  let index = 0;
+  let hasDigit = false;
+  let hasDecimalPoint = false;
+
+  if (value[0] === "-") {
+    if (value.length === 1) {
+      return false;
+    }
+    index = 1;
+  }
+
+  for (; index < value.length; index++) {
+    const char = value[index];
+    if (!char) {
+      return false;
+    }
+
+    if (char === ".") {
+      if (hasDecimalPoint || !hasDigit || index === value.length - 1) {
+        return false;
+      }
+      hasDecimalPoint = true;
+      continue;
+    }
+
+    if (char < "0" || char > "9") {
+      return false;
+    }
+
+    hasDigit = true;
+  }
+
+  return hasDigit;
+};
 
 type ParsedMergeValue =
   | { kind: "number"; comparable: number; original: string | number }
@@ -57,7 +95,7 @@ const parseMergeValue = (value: unknown): ParsedMergeValue | null => {
     return null;
   }
 
-  if (NUMERIC_STRING_PATTERN.test(trimmed)) {
+  if (isStrictNumericString(trimmed)) {
     return { kind: "number", comparable: Number(trimmed), original: value };
   }
 
@@ -179,10 +217,15 @@ const mergeGroup = (
       continue;
     }
 
-    const winningEntry = validEntries.reduce((best, current) => {
+    const [firstEntry, ...remainingEntries] = validEntries;
+    if (!firstEntry) {
+      continue;
+    }
+
+    const winningEntry = remainingEntries.reduce((best, current) => {
       const isBetter = strategy === "min" ? current.comparable < best.comparable : current.comparable > best.comparable;
       return isBetter ? current : best;
-    });
+    }, firstEntry);
 
     const firstValue = rawEntries[0];
     if (winningEntry.kind === "number") {
