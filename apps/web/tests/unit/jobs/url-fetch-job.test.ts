@@ -1125,10 +1125,10 @@ describe.sequential("urlFetchJob", () => {
         catalog: { id: 9 },
       };
 
-      mockPayload.findByID.mockImplementation(async ({ collection, id }: { collection: string; id: unknown }) => {
-        if (collection === "scheduled-ingests" && id === "scheduled-123") return scheduledIngest;
-        if (collection === "users") return { id: 7, role: "user" };
-        return null;
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: unknown }) => {
+        if (collection === "scheduled-ingests" && id === "scheduled-123") return Promise.resolve(scheduledIngest);
+        if (collection === "users") return Promise.resolve({ id: 7, role: "user" });
+        return Promise.resolve(null);
       });
       mockPayload.create.mockResolvedValue({ id: "import-123" });
 

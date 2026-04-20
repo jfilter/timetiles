@@ -336,12 +336,9 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
       // Every geocode succeeds — shape doesn't matter for this assertion.
-      mocks.geocode.mockImplementation(async (addr: string) => ({
-        latitude: 0,
-        longitude: 0,
-        confidence: 0.9,
-        normalizedAddress: addr,
-      }));
+      mocks.geocode.mockImplementation((addr: string) =>
+        Promise.resolve({ latitude: 0, longitude: 0, confidence: 0.9, normalizedAddress: addr })
+      );
 
       await geocodeBatchJob.handler(mockContext);
 
