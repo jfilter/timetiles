@@ -14,9 +14,9 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Event } from "@/payload-types";
+
 import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
 import { resetProviderRateLimiter } from "../../../lib/services/geocoding/provider-rate-limiter";
-
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
