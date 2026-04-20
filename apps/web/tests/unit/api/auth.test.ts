@@ -32,7 +32,7 @@ vi.mock("@/lib/utils/base-url", () => ({ getBaseUrl: vi.fn(() => "https://exampl
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getClientIdentifier: vi.fn().mockReturnValue("test-client"),
   getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
-  RATE_LIMITS: { REGISTRATION: { windows: [] } },
+  RATE_LIMITS: { REGISTRATION: { windows: [] }, FORGOT_PASSWORD: { windows: [] } },
 }));
 
 vi.mock("@/lib/services/feature-flag-service", () => ({
@@ -127,6 +127,53 @@ describe.sequential("POST /api/auth/register", () => {
       })
     );
   });
+
+  it("handles unique-violation race on create by queueing the account-exists email", async () => {
+    // Regression: the try/catch at route.ts:125-150 recovers from a race
+    // where the email passes the pre-flight `find` but `create` fails with
+    // a unique-constraint violation. Without re-queueing the account-exists
+    // email, the request-volume difference between racing/non-racing emails
+    // would become an enumeration side-channel.
+    //
+    // First find: no user (passes the pre-flight check).
+    // payload.create: rejects with a unique-violation error message.
+    // Second find (race re-query): returns the now-existing user row.
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [] })
+      .mockResolvedValueOnce({ docs: [{ id: 42, email: "race@example.com", locale: "en" }] });
+    mockPayload.create.mockRejectedValueOnce(
+      new Error('duplicate key value violates unique constraint "users_email_idx"')
+    );
+
+    const req = createJsonRequest(
+      "http://localhost/api/auth/register",
+      { email: "race@example.com", password: "test-password-123" },
+      { "x-forwarded-for": "127.0.0.1" }
+    );
+
+    const response = await registerPOST(req, defaultParams as never);
+    const data = await response.json();
+
+    // Generic success response preserves enumeration defense.
+    expect(response.status).toBe(200);
+    expect(data.message).toContain("Please check your email");
+
+    // create was attempted once (pre-check let the request through).
+    expect(mockPayload.create).toHaveBeenCalledTimes(1);
+
+    // Account-exists email queued for the racing address, matching the
+    // synchronous "email already exists" path to keep email-volume uniform.
+    expect(mockPayload.jobs.queue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({ to: "race@example.com", context: EMAIL_CONTEXTS.ACCOUNT_EXISTS }),
+      })
+    );
+    // Verification email is NOT queued — the user already exists, so we
+    // must never send ACCOUNT_VERIFICATION in the race path.
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalledWith(
+      expect.objectContaining({ input: expect.objectContaining({ context: EMAIL_CONTEXTS.ACCOUNT_VERIFICATION }) })
+    );
+  });
 });
 
 describe.sequential("POST /api/auth/forgot-password", () => {
@@ -165,5 +212,52 @@ describe.sequential("POST /api/auth/forgot-password", () => {
     expect(response.status).toBe(200);
     expect(data.message).toContain("If an account exists");
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+  });
+
+  it("wires the FORGOT_PASSWORD rate limit: 3 requests pass, the 4th returns 429", async () => {
+    // Regression: commit 0496522e added a dedicated FORGOT_PASSWORD rate
+    // limit config (burst=3/60s, hourly=10, daily=20) and wired the route
+    // via `rateLimit: { configName: "FORGOT_PASSWORD" }`. This test confirms
+    // the middleware is wired and enforces the burst ceiling.
+    //
+    // Unit-level strategy: the middleware delegates to the mocked
+    // rate-limit service, so we simulate the burst window by returning
+    // { allowed: true } three times and { allowed: false } on the 4th.
+    mockCheckRateLimit
+      .mockReset()
+      .mockReturnValueOnce({ allowed: true })
+      .mockReturnValueOnce({ allowed: true })
+      .mockReturnValueOnce({ allowed: true })
+      .mockReturnValueOnce({ allowed: false, resetTime: Date.now() + 60_000 });
+
+    mockPayload.forgotPassword.mockResolvedValue(null);
+
+    const buildRequest = () =>
+      createJsonRequest("http://localhost/api/auth/forgot-password", { email: "rl@example.com" });
+
+    const expectedSuccess = "If an account exists for that email, we've sent password reset instructions.";
+
+    // First three calls succeed with the uniform non-enumerating success body.
+    for (let i = 0; i < 3; i++) {
+      const response = await forgotPasswordPOST(buildRequest(), defaultParams as never);
+      const data = await response.json();
+      expect(response.status).toBe(200);
+      expect(data.message).toBe(expectedSuccess);
+    }
+
+    // Fourth call within the burst window is rate-limited.
+    const limitedResponse = await forgotPasswordPOST(buildRequest(), defaultParams as never);
+    const limitedData = await limitedResponse.json();
+
+    expect(limitedResponse.status).toBe(429);
+    // Note: the rate-limit middleware returns `{ error: "Too many
+    // requests", retryAfter }` rather than the enumeration-neutral
+    // success message. Body-text uniformity across 200/429 is a separate
+    // concern — this assertion simply pins the current middleware
+    // behavior so future changes don't silently regress it.
+    expect(limitedData.error).toContain("Too many requests");
+
+    // Configured rate limit was consulted exactly 4 times with the burst config.
+    expect(mockCheckRateLimit).toHaveBeenCalledTimes(4);
   });
 });

@@ -284,6 +284,77 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(drizzleMock.select).toHaveBeenCalledTimes(1);
     });
 
+    it("should apply the full transform chain for content-hash ids so normalized rows hash identically", async () => {
+      // Regression: prior to commit 0496522e, content-hash dedup hashed the RAW
+      // row and missed duplicates that only collapse after lowercase/trim
+      // transforms. The handler now uses buildTransformsFromDataset() for
+      // content-hash strategies, feeding the fully transformed row to
+      // generateUniqueId — mirroring what create-events-batch-job does.
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      // Content-hash strategy + a lowercase transform on a field that
+      // differs by case between the two rows.
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "content-hash" },
+        ingestTransforms: [
+          {
+            id: "transform-1",
+            type: "string-op",
+            from: "title",
+            operation: "lowercase",
+            active: true,
+            autoDetected: false,
+          },
+        ],
+      };
+
+      const mockIngestFile = createMockIngestFile();
+      // Two rows differ only by case on `title` — after the lowercase
+      // transform, both rows become structurally identical.
+      const mockFileData = [{ title: "Concert Tonight" }, { title: "CONCERT TONIGHT" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob);
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      // Because the handler now applies the full transform chain before
+      // calling generateUniqueId, both rows will be lower-cased to the same
+      // value. Returning the SAME uniqueId for both calls simulates a real
+      // content-hash collision on the normalized data — i.e. the fix lets
+      // the second row be flagged as an internal duplicate.
+      mocks.generateUniqueId
+        .mockReturnValueOnce("dataset-456:hash:abc123")
+        .mockReturnValueOnce("dataset-456:hash:abc123");
+      drizzleMock._enqueue([]);
+      mockPayload.update.mockResolvedValueOnce({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      // Both rows processed, second flagged as internal duplicate.
+      expect(result).toEqual({ output: { totalRows: 2, uniqueRows: 1, internalDuplicates: 1, externalDuplicates: 0 } });
+      expect(mocks.generateUniqueId).toHaveBeenCalledTimes(2);
+
+      // Critical assertion: each invocation received the TRANSFORMED row
+      // (title already lower-cased), not the raw row. If the handler fell
+      // back to `[]` transforms (pre-fix behavior), it would have passed
+      // the raw differing values and the rows would have hashed differently.
+      const firstCallRow = mocks.generateUniqueId.mock.calls[0]?.[0] as Record<string, unknown>;
+      const secondCallRow = mocks.generateUniqueId.mock.calls[1]?.[0] as Record<string, unknown>;
+      expect(firstCallRow).toEqual({ title: "concert tonight" });
+      expect(secondCallRow).toEqual({ title: "concert tonight" });
+    });
+
     it("should replay the full transform chain needed to produce an external id", async () => {
       const mockIngestJob = {
         id: "import-123",

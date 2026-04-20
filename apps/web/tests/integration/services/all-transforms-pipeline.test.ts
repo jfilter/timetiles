@@ -65,7 +65,6 @@ describe.sequential("All Transform Types Pipeline", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
-    applyProviderManagerSpy();
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
 
@@ -88,24 +87,13 @@ describe.sequential("All Transform Types Pipeline", () => {
 
   beforeEach(async () => {
     resetProviderRateLimiter();
+    // The global afterEach in tests/setup/integration/global-setup.ts calls
+    // vi.restoreAllMocks() after every test, so re-apply the ProviderManager
+    // spy here — once per test — rather than in beforeAll.
     applyProviderManagerSpy();
-    await testEnv.seedManager.truncate([
-      ...IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
-      "location-cache",
-      "geocoding-providers",
-    ]);
-    await payload.create({
-      collection: "geocoding-providers",
-      data: {
-        name: "Mock Geocoder",
-        type: "google",
-        enabled: true,
-        priority: 1,
-        rateLimit: 100,
-        apiKey: "test-api-key-for-mock-geocoding",
-        tags: ["testing"],
-      },
-    });
+    // Truncate geocoding side-effects so test ordering doesn't affect provider
+    // cache lookups (location-cache accumulates geocoded results between tests).
+    await testEnv.seedManager.truncate([...IMPORT_PIPELINE_COLLECTIONS_TO_RESET, "location-cache"]);
     mockGeocode.mockReset();
     mockGeocode.mockImplementation((address: string) => {
       const normalizedAddress = typeof address === "string" ? address.toLowerCase().trim() : String(address);
