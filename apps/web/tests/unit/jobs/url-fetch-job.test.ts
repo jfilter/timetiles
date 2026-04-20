@@ -576,43 +576,47 @@ describe.sequential("urlFetchJob", () => {
       expect(createCall.file).toBeDefined();
     });
 
-    it("should handle expected content type override", async () => {
+    it("rejects unsupported file types with a clear error (regression)", async () => {
+      // Regression: previously, bodies with unknown Content-Type but
+      // comma/newline content were silently labeled CSV by a heuristic.
+      // That routed JSON and other formats through the CSV parser, producing
+      // cryptic downstream errors. Now the pipeline surfaces a clear
+      // "Unsupported file type" error from fetch-remote-data instead.
+      //
+      // Note: `advancedOptions.expectedContentType` is declared on FetchOptions
+      // but has no wiring today — it is not consumed by `detectFileTypeFromResponse`
+      // or `fetchRemoteData`. If we later want an explicit-override path for
+      // URLs that serve CSV with `application/octet-stream` Content-Type, that
+      // feature needs a separate implementation.
       mockPayload.create.mockResolvedValue({ id: "import-123" });
       mockPayload.findByID
         .mockResolvedValueOnce({
           id: "scheduled-123",
           enabled: true,
-          advancedOptions: { expectedContentType: "csv" },
-          retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+          retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
           createdBy: "user-123",
           catalog: "catalog-123",
         })
-        .mockResolvedValue({ id: "user-123", role: "user" }); // Use mockResolvedValue for all subsequent calls
-      mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
+        .mockResolvedValue({ id: "user-123", role: "user" });
+      mockPayload.find.mockResolvedValue({ docs: [] });
 
-      // Server returns generic content type
+      // Content-Type=octet-stream, URL has no extension, body is CSV-like text
+      // but not JSON/Excel → should resolve to .bin and be rejected downstream.
       const mockResponse = createMockResponse("id,name\n1,test", { contentType: "application/octet-stream" });
-
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
 
-      await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: "scheduled-123",
-          sourceUrl: "https://example.com/data",
-          catalogId: "catalog-123",
-          originalName: "Content Type Override",
-        },
-        job: mockJob,
-        req: mockReq,
-      });
-
-      // Should use expected content type
-      // Just verify it was called correctly
-      expect(mockPayload.create).toHaveBeenCalled();
-      const createCall = mockPayload.create.mock.calls[0][0];
-      expect(createCall.collection).toBe("ingest-files");
-      expect(createCall.data.originalName).toBe("Content Type Override");
-      expect(createCall.file.mimetype).toBe("text/csv");
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/data",
+            catalogId: "catalog-123",
+            originalName: "No extension, unknown MIME",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow(/Unsupported file type/);
     });
 
     it("should enforce max file size limit", async () => {
@@ -1102,6 +1106,55 @@ describe.sequential("urlFetchJob", () => {
       const createArg = createCall![0] as Record<string, unknown>;
       const context = createArg.context as Record<string, unknown>;
       expect(context.skipIngestFileHooks).toBe(true);
+    });
+
+    it("persists targetDataset as the numeric relation id when scheduledIngest.dataset is populated (regression)", async () => {
+      // Regression: `data.targetDataset = scheduledIngest.dataset` used to
+      // assign whatever Payload returned at whatever depth — either a bare
+      // id or a populated relation object. The ingest-files collection
+      // expects a bare id on create, so the populated-object path was
+      // fragile. Now we route through `extractRelationId` consistently.
+      const scheduledIngest = {
+        id: "scheduled-123",
+        enabled: true,
+        retryConfig: { maxRetries: 3 },
+        statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
+        // Populated relation object (as returned at depth > 0)
+        dataset: { id: 42, name: "My Dataset", slug: "my-dataset" },
+        createdBy: { id: 7 },
+        catalog: { id: 9 },
+      };
+
+      mockPayload.findByID.mockImplementation(async ({ collection, id }: { collection: string; id: unknown }) => {
+        if (collection === "scheduled-ingests" && id === "scheduled-123") return scheduledIngest;
+        if (collection === "users") return { id: 7, role: "user" };
+        return null;
+      });
+      mockPayload.create.mockResolvedValue({ id: "import-123" });
+
+      const mockResponse = createMockResponse("id,name\n1,a", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "scheduled-123",
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-123",
+          originalName: "Scheduled Import",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      const ingestFileCreate = mockPayload.create.mock.calls.find(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "ingest-files"
+      );
+      expect(ingestFileCreate).toBeDefined();
+      const createData = (ingestFileCreate![0] as Record<string, unknown>).data as Record<string, unknown>;
+
+      // targetDataset must be the bare id, NOT the populated object
+      expect(createData.targetDataset).toBe(42);
+      expect(createData.targetDataset).not.toEqual(scheduledIngest.dataset);
     });
   });
 });

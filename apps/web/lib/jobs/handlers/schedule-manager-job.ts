@@ -12,14 +12,69 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { sendScheduledIngestConfigInvalidEmail } from "@/lib/ingest/scheduled-ingest-emails";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
 import { calculateNextRun, shouldRunNow } from "./schedule-manager/schedule-evaluation";
 import { processScheduledScrapers } from "./schedule-manager/scraper-scheduling";
+
+/**
+ * Disable a scheduled ingest after detecting an invalid schedule configuration.
+ *
+ * Previously `calculateNextRun` swallowed parse errors and silently rescheduled
+ * for 24 hours from now, making broken cron expressions look like "runs once
+ * per day." Now the scheduler disables the ingest, stamps a readable
+ * `lastError`, and emits an audit entry so operators notice and re-enable
+ * after fixing the config.
+ */
+const disableScheduledIngestForInvalidConfig = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  errorMessage: string
+): Promise<void> => {
+  try {
+    await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      id: scheduledIngest.id,
+      data: { enabled: false, lastStatus: "failed", lastError: `Invalid schedule configuration: ${errorMessage}` },
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to disable scheduled ingest after invalid config");
+  }
+
+  const ownerId = extractRelationId<number>(scheduledIngest.createdBy);
+  if (!ownerId) return;
+
+  try {
+    const owner = await payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0 });
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.SCHEDULED_INGEST_CONFIG_INVALID,
+      userId: ownerId,
+      userEmail: owner.email,
+      details: {
+        scheduledIngestId: scheduledIngest.id,
+        scheduledIngestName: scheduledIngest.name,
+        scheduleType: scheduledIngest.scheduleType,
+        frequency: scheduledIngest.frequency,
+        cronExpression: scheduledIngest.cronExpression,
+        error: errorMessage,
+      },
+    });
+
+    // Notify the owner so a silently-disabled schedule doesn't stay unnoticed
+    // until someone checks the admin UI. `safeSendEmail` swallows delivery
+    // errors internally, so a broken mail transport can't mask the disable.
+    await sendScheduledIngestConfigInvalidEmail(payload, owner, scheduledIngest, errorMessage);
+  } catch {
+    // Audit + notification are best-effort — never mask the disable operation.
+  }
+};
 
 // Helper to process a single scheduled ingest
 const processScheduledIngest = async (
@@ -41,7 +96,18 @@ const processScheduledIngest = async (
     return false;
   }
 
-  const nextRun = calculateNextRun(scheduledIngest, currentTime);
+  let nextRun: Date;
+  try {
+    nextRun = calculateNextRun(scheduledIngest, currentTime);
+  } catch (scheduleError) {
+    const message = scheduleError instanceof Error ? scheduleError.message : "Unknown schedule error";
+    logError(scheduleError, "Invalid schedule configuration — disabling scheduled ingest", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+    });
+    await disableScheduledIngestForInvalidConfig(payload, scheduledIngest, message);
+    return false;
+  }
 
   try {
     await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
@@ -77,12 +143,31 @@ const handleImportError = async (
     url: sanitizeUrlForLogging(scheduledIngest.sourceUrl),
   });
 
+  // Advance nextRun so the scheduler doesn't retry every minute for a
+  // broken import. Without this, a queue failure would leave the old
+  // nextRun in the past and re-trigger on every scheduler tick.
+  let nextRun: Date | null = null;
   try {
-    // Advance nextRun so the scheduler doesn't retry every minute for a
-    // broken import. Without this, a queue failure would leave the old
-    // nextRun in the past and re-trigger on every scheduler tick.
-    const nextRun = calculateNextRun(scheduledIngest, currentTime);
+    nextRun = calculateNextRun(scheduledIngest, currentTime);
+  } catch (scheduleError) {
+    // Both the trigger and the schedule parse failed — disable the ingest
+    // so we stop re-trying a broken config and surface it in the audit log.
+    const scheduleMessage = scheduleError instanceof Error ? scheduleError.message : "Unknown schedule error";
+    const outerMessage = error instanceof Error ? error.message : "Unknown error";
+    logError(scheduleError, "Invalid schedule configuration in error path — disabling scheduled ingest", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+      outerError: outerMessage,
+    });
+    await disableScheduledIngestForInvalidConfig(
+      payload,
+      scheduledIngest,
+      `${outerMessage}; schedule also invalid: ${scheduleMessage}`
+    );
+    return;
+  }
 
+  try {
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,

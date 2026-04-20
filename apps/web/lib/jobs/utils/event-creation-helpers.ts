@@ -86,16 +86,18 @@ export const extractCoordinates = (
  * Extract timestamp from row data using field mapping.
  */
 export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date | null => {
-  // Try mapped field first
-  const mappedValue = timestampPath ? getByPathOrKey(row, timestampPath) : undefined;
-  if (timestampPath && mappedValue) {
-    const date = parseDateInput(mappedValue as string | number);
-    if (date) {
-      return date;
+  // When a timestamp field is explicitly mapped, trust it. Falling back to
+  // guessed columns here silently picks up unrelated data (e.g. an audit
+  // `created_at` column) when the mapped value is empty or unparseable.
+  if (timestampPath) {
+    const mappedValue = getByPathOrKey(row, timestampPath);
+    if (mappedValue == null || mappedValue === "") {
+      return null;
     }
+    return parseDateInput(mappedValue as string | number) ?? null;
   }
 
-  // Fallback to common timestamp fields
+  // No mapping configured — try common timestamp field names
   const timestampFields = ["timestamp", "date", "datetime", "created_at", "event_date", "event_time"];
 
   for (const field of timestampFields) {

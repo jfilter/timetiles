@@ -127,6 +127,27 @@ const en = {
   exportFailedRetry: "Visit your account settings and try again",
   exportFailedContact: "If the problem persists, please contact support",
   exportFailedApology: "We apologize for the inconvenience.",
+
+  // Scheduled ingest disabled — shared
+  editScheduleBtn: "Open schedule settings",
+  scheduledIngestLabel: "Schedule:",
+  scheduledIngestTypeLabel: "Type:",
+  scheduledIngestErrorLabel: "Error:",
+
+  // Scheduled ingest — invalid config
+  scheduledIngestConfigInvalidSubject: 'Your scheduled import "{name}" was disabled (invalid configuration)',
+  scheduledIngestConfigInvalidTitle: "Scheduled import disabled",
+  scheduledIngestConfigInvalidBody:
+    'We couldn\'t parse the schedule configuration for your import "{name}", so it has been disabled to prevent further failed runs.',
+  scheduledIngestConfigInvalidAction: "Please fix the schedule configuration and re-enable the import.",
+
+  // Scheduled ingest — retries exhausted
+  scheduledIngestRetriesExhaustedSubject: 'Your scheduled import "{name}" was disabled (too many failures)',
+  scheduledIngestRetriesExhaustedTitle: "Scheduled import disabled",
+  scheduledIngestRetriesExhaustedBody:
+    'Your scheduled import "{name}" failed {currentRetries} time(s) in a row (max: {maxRetries}) and has been disabled.',
+  scheduledIngestRetriesExhaustedAction:
+    "Review the error below and re-enable the import once the underlying problem is resolved.",
 } as const;
 
 export default en;

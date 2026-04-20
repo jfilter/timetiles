@@ -141,8 +141,9 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
   if (scheduledIngestId) {
     data.scheduledIngest = scheduledIngestId;
   }
-  if (scheduledIngest?.dataset) {
-    data.targetDataset = scheduledIngest.dataset;
+  const targetDatasetId = extractRelationId(scheduledIngest?.dataset);
+  if (targetDatasetId != null) {
+    data.targetDataset = targetDatasetId;
   }
 
   return data;

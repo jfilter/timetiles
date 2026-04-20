@@ -91,6 +91,20 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Spy on progress tracking so tests can assert updateStageProgress arguments
+const progressSpies = vi.hoisted(() => ({
+  updateStageProgress: vi.fn().mockResolvedValue(undefined),
+  startStage: vi.fn().mockResolvedValue(undefined),
+  completeStage: vi.fn().mockResolvedValue(undefined),
+  initializeStageProgress: vi.fn().mockResolvedValue(undefined),
+  updatePostDeduplicationTotals: vi.fn().mockResolvedValue(undefined),
+  completeBatch: vi.fn().mockResolvedValue(undefined),
+  skipStage: vi.fn().mockResolvedValue(undefined),
+  updateAndCompleteBatch: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/ingest/progress-tracking", () => ({ ProgressTrackingService: progressSpies }));
+
 // Don't mock @/lib/ingest/types/geocoding - use real implementation
 
 /** Helper to mock streamBatchesFromFile as an async generator yielding one batch. */
@@ -306,6 +320,46 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // No unique locations found — skipped via prepareGeocodingLocations
       expect(result.output).toEqual({ skipped: true, skippedWithCoords: 0 });
+    });
+
+    it("reports chunk.length (not PROGRESS_CHUNK_SIZE) for partial final chunk", async () => {
+      // Regression: the previous math `Math.min(CHUNK, size - processed + CHUNK)`
+      // always returned CHUNK regardless of remaining work, misreporting the
+      // final partial chunk's size on the progress stage.
+      // PROGRESS_CHUNK_SIZE is 50 in the handler — 51 unique locations means
+      // one full chunk of 50 followed by a final chunk of 1.
+      const addresses = Array.from({ length: 51 }, (_, i) => `${i + 1} Main St`);
+      const rows = addresses.map((address, idx) => ({ id: String(idx + 1), address }));
+
+      const mockIngestJob = { ...createMockIngestJob(), id: 123, detectedFieldMappings: { locationPath: "address" } };
+      mockStreamBatches(rows);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+
+      // Every geocode succeeds — shape doesn't matter for this assertion.
+      mocks.geocode.mockImplementation(async (addr: string) => ({
+        latitude: 0,
+        longitude: 0,
+        confidence: 0.9,
+        normalizedAddress: addr,
+      }));
+
+      await geocodeBatchJob.handler(mockContext);
+
+      // Filter to GEOCODE_BATCH progress calls (startStage etc. may pass other stages)
+      const geocodeProgressCalls = progressSpies.updateStageProgress.mock.calls.filter(
+        (call) => call[2] === "geocode-batch"
+      );
+
+      // Two chunks → two progress updates.
+      expect(geocodeProgressCalls).toHaveLength(2);
+
+      // First chunk: processed=50, currentBatchRows=50 (full chunk)
+      expect(geocodeProgressCalls[0]?.[3]).toBe(50);
+      expect(geocodeProgressCalls[0]?.[4]).toBe(50);
+
+      // Final chunk: processed=51, currentBatchRows=1 (NOT 50 — that was the bug)
+      expect(geocodeProgressCalls[1]?.[3]).toBe(51);
+      expect(geocodeProgressCalls[1]?.[4]).toBe(1);
     });
 
     it("should trim whitespace from locations", async () => {

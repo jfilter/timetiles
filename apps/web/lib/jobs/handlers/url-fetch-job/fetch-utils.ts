@@ -37,7 +37,6 @@ export interface FetchOptions {
   headers?: Record<string, string>;
   timeout?: number;
   maxSize?: number;
-  expectedContentType?: string;
   /** Request body (e.g. JSON string for POST requests). */
   body?: string;
 }
@@ -112,14 +111,32 @@ export const detectFileTypeFromResponse = (
     return { mimeType: "application/vnd.ms-excel", fileExtension: ".xls" };
   }
 
-  // Default to CSV if text-like content
-  const textSample = data.subarray(0, Math.min(1000, data.length)).toString("utf8");
-  if (textSample.includes(",") || textSample.includes("\t") || textSample.includes("\n")) {
-    return { mimeType: "text/csv", fileExtension: ".csv" };
+  // Detect JSON by first non-whitespace byte — `{` (0x7B) for objects or
+  // `[` (0x5B) for arrays (GeoJSON/record-list). Previously this path fell
+  // through to the comma/newline CSV heuristic, which misidentified every
+  // JSON file as CSV because any JSON text contains both.
+  const firstNonWhitespace = findFirstNonWhitespaceByte(data);
+  if (firstNonWhitespace === 0x7b || firstNonWhitespace === 0x5b) {
+    return { mimeType: "application/json", fileExtension: ".json" };
   }
 
-  // Ultimate fallback
+  // No reliable signal — fall back to octet-stream rather than silently
+  // routing unknown content through the CSV parser. Dataset-detection will
+  // surface a readable "unsupported file type" error downstream.
   return { mimeType: "application/octet-stream", fileExtension: ".bin" };
+};
+
+/** Return the first non-whitespace byte in the buffer (up to 1024 bytes), or undefined. */
+const findFirstNonWhitespaceByte = (data: Buffer): number | undefined => {
+  const limit = Math.min(1024, data.length);
+  for (let i = 0; i < limit; i++) {
+    const byte = data[i];
+    // ASCII whitespace: space, tab, LF, CR, vertical tab, form feed
+    if (byte !== 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d && byte !== 0x0b && byte !== 0x0c) {
+      return byte;
+    }
+  }
+  return undefined;
 };
 
 /**

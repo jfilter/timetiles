@@ -50,6 +50,7 @@ export const AUDIT_ACTIONS = {
   IMPORT_JOB_STAGE_OVERRIDE: "import.job_stage_override",
   SCHEDULED_INGEST_ADMIN_MODIFIED: "import.scheduled_ingest_admin_modified",
   SCHEDULED_INGEST_RETRIES_EXHAUSTED: "import.scheduled_ingest_retries_exhausted",
+  SCHEDULED_INGEST_CONFIG_INVALID: "import.scheduled_ingest_config_invalid",
 
   // Authentication events
   LOGIN_SUCCESS: "account.login_success",

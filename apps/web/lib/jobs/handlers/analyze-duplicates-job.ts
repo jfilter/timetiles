@@ -187,8 +187,10 @@ const performDuplicateAnalysis = async (
   );
 
   const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
-  // Subtract external duplicates from unique count since they'll be skipped during event creation
-  const uniqueRows = uniqueIdMap.size - externalDuplicates.length;
+  // External duplicates are only skipped under "skip" strategy; under "update" they are
+  // written as updates (see process-batch.ts) and must count toward the quota/progress total.
+  const duplicateStrategy = dataset.idStrategy?.duplicateStrategy;
+  const uniqueRows = duplicateStrategy === "update" ? uniqueIdMap.size : uniqueIdMap.size - externalDuplicates.length;
 
   await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES);
   await ProgressTrackingService.updatePostDeduplicationTotals(payload, ingestJobId, uniqueRows);

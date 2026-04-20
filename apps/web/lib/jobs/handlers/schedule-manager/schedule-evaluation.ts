@@ -94,18 +94,12 @@ export const shouldRunNow = (scheduledIngest: ScheduledIngest, currentTime: Date
   }
 };
 
-/** Calculate next run with fallback to 24 hours. */
-export const calculateNextRun = (scheduledIngest: ScheduledIngest, currentTime: Date): Date => {
-  try {
-    return getNextExecutionTime(scheduledIngest, currentTime);
-  } catch (error) {
-    logger.error("Failed to calculate next run time", {
-      scheduledIngestId: scheduledIngest.id,
-      scheduleType: scheduledIngest.scheduleType,
-      frequency: scheduledIngest.frequency,
-      cronExpression: scheduledIngest.cronExpression,
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
-    return new Date(currentTime.getTime() + 24 * 60 * 60 * 1000); // Default to 24 hours
-  }
-};
+/**
+ * Calculate next run time. Throws on invalid schedule configuration — callers
+ * must catch and decide how to surface the error (typically by disabling the
+ * scheduled ingest and emitting an audit log entry). The previous 24-hour
+ * silent fallback masked invalid configs as "runs once per day," making
+ * broken schedules look functional to operators.
+ */
+export const calculateNextRun = (scheduledIngest: ScheduledIngest, currentTime: Date): Date =>
+  getNextExecutionTime(scheduledIngest, currentTime);

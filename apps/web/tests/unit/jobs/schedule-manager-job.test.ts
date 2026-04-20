@@ -346,6 +346,83 @@ describe.sequential("scheduleManagerJob", () => {
       });
     });
 
+    it("disables scheduled ingest + audit-logs when schedule config is invalid (regression)", async () => {
+      // Regression: a scheduled ingest with an unparseable cron expression
+      // previously fell through to a silent 24-hour reschedule, making a
+      // broken config look like "runs once per day." The scheduler now
+      // disables the ingest, stamps lastError, and emits an audit entry.
+      const { mockPayload, mockJob, mockReq } = createMockContext();
+
+      const currentTime = new Date("2024-01-15 10:00:00");
+      vi.setSystemTime(currentTime);
+
+      const mockScheduledIngest: any = {
+        id: "broken-import",
+        name: "Broken Cron",
+        enabled: true,
+        sourceUrl: "https://example.com/data",
+        scheduleType: "cron",
+        cronExpression: "this-is-not-a-cron",
+        nextRun: new Date("2024-01-15T09:00:00Z").toISOString(), // already due
+        catalog: "catalog-1",
+        createdBy: 7,
+      };
+
+      mockPayload.find.mockResolvedValue({ docs: [mockScheduledIngest], totalDocs: 1 });
+      // extractRelationId(7) → 7 → findByID users for the audit log
+      mockPayload.findByID.mockResolvedValue({ id: 7, email: "owner@example.com", firstName: "Owner", locale: "en" });
+      // audit log create is a side effect we assert on
+      (mockPayload as any).create = vi.fn().mockResolvedValue({ id: "audit-1" });
+      // Email infrastructure — the notification path reads Branding + sendEmail
+      (mockPayload as any).findGlobal = vi.fn().mockResolvedValue({ siteName: "Atlas", logoLight: null });
+      (mockPayload as any).sendEmail = vi.fn().mockResolvedValue(undefined);
+      (mockPayload as any).config = { serverURL: "https://app.example.com" };
+
+      const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
+
+      // Not counted as a triggered run, and not counted as a generic error
+      // (this path returns false early rather than throwing to handleImportError)
+      expect(result.output).toMatchObject({ totalScheduled: 1, triggered: 0 });
+
+      // 1) Schedule is disabled with a readable lastError
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "scheduled-ingests",
+        id: "broken-import",
+        data: expect.objectContaining({
+          enabled: false,
+          lastStatus: "failed",
+          lastError: expect.stringContaining("Invalid schedule configuration"),
+        }),
+      });
+
+      // 2) Audit log entry emitted with the new action type
+      expect((mockPayload as any).create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "audit-log",
+          data: expect.objectContaining({
+            action: "import.scheduled_ingest_config_invalid",
+            userId: 7,
+            details: expect.objectContaining({
+              scheduledIngestId: "broken-import",
+              scheduledIngestName: "Broken Cron",
+            }),
+          }),
+        })
+      );
+
+      // 3) Owner notification email is sent
+      expect((mockPayload as any).sendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: "owner@example.com",
+          subject: expect.stringContaining("Broken Cron"),
+          html: expect.stringContaining("this-is-not-a-cron"),
+        })
+      );
+
+      // 4) Should NOT have queued the workflow
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+    });
+
     it("should calculate correct next run times for different frequencies", async () => {
       const testCases = [
         {
@@ -743,16 +820,17 @@ describe("schedule-evaluation — direct function tests", () => {
       expect(result).toEqual(new Date("2024-01-01T10:00:00Z"));
     });
 
-    it("falls back to 24 hours on error", () => {
+    it("throws on invalid schedule configuration (regression)", () => {
+      // Regression: `calculateNextRun` used to swallow parse errors and return
+      // `currentTime + 24h`, masking broken cron expressions as "runs once per
+      // day." It now throws so callers can disable the ingest and audit-log.
       const sched: any = {
         id: "test-123",
         scheduleType: "cron",
         cronExpression: undefined, // invalid
       };
       const currentTime = new Date("2024-01-01T09:30:00Z");
-      const result = calculateNextRun(sched, currentTime);
-      // Should fall back to 24 hours
-      expect(result).toEqual(new Date("2024-01-02T09:30:00Z"));
+      expect(() => calculateNextRun(sched, currentTime)).toThrow();
     });
   });
 });

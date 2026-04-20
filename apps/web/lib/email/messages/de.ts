@@ -133,6 +133,28 @@ const de: Record<keyof typeof en, string> = {
   exportFailedRetry: "Besuchen Sie Ihre Kontoeinstellungen und versuchen Sie es erneut",
   exportFailedContact: "Wenn das Problem weiterhin besteht, kontaktieren Sie bitte den Support",
   exportFailedApology: "Wir entschuldigen uns für die Unannehmlichkeiten.",
+
+  // Geplanter Import deaktiviert — gemeinsam
+  editScheduleBtn: "Zeitplan-Einstellungen öffnen",
+  scheduledIngestLabel: "Zeitplan:",
+  scheduledIngestTypeLabel: "Typ:",
+  scheduledIngestErrorLabel: "Fehler:",
+
+  // Geplanter Import — ungültige Konfiguration
+  scheduledIngestConfigInvalidSubject: 'Ihr geplanter Import "{name}" wurde deaktiviert (ungültige Konfiguration)',
+  scheduledIngestConfigInvalidTitle: "Geplanter Import deaktiviert",
+  scheduledIngestConfigInvalidBody:
+    'Die Zeitplan-Konfiguration Ihres Imports "{name}" konnte nicht verarbeitet werden. Der Import wurde deaktiviert, um weitere Fehlläufe zu vermeiden.',
+  scheduledIngestConfigInvalidAction:
+    "Bitte korrigieren Sie die Zeitplan-Konfiguration und aktivieren Sie den Import erneut.",
+
+  // Geplanter Import — Wiederholungslimit erreicht
+  scheduledIngestRetriesExhaustedSubject: 'Ihr geplanter Import "{name}" wurde deaktiviert (zu viele Fehler)',
+  scheduledIngestRetriesExhaustedTitle: "Geplanter Import deaktiviert",
+  scheduledIngestRetriesExhaustedBody:
+    'Ihr geplanter Import "{name}" ist {currentRetries} Mal in Folge fehlgeschlagen (Maximum: {maxRetries}) und wurde deaktiviert.',
+  scheduledIngestRetriesExhaustedAction:
+    "Prüfen Sie den unten angezeigten Fehler und aktivieren Sie den Import erneut, sobald die Ursache behoben ist.",
 } as const;
 
 export default de;

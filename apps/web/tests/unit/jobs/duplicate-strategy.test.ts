@@ -498,4 +498,84 @@ describe.sequential("processEventBatch", () => {
       expect(insertedEvents).toHaveLength(2);
     });
   });
+
+  describe("transformation change entries (regression)", () => {
+    // Regression: when an active transform does not fire on a given row
+    // (e.g. a rename whose `from` field is absent), the resulting change diff
+    // used to emit a spurious { oldValue: null, newValue: null } entry on the
+    // event's `transformations` audit trail. Those must now be filtered out.
+    it("does not record no-op transformation entries for rows missing the source field", async () => {
+      const mockDataset: any = {
+        id: 456,
+        idStrategy: { type: "external", externalIdPath: "id" },
+        ingestTransforms: [{ id: "t1", type: "rename", from: "alt_name", to: "alternate", active: true }],
+      };
+
+      const ctx: ProcessBatchContext = { ...baseCtx, dataset: mockDataset };
+
+      // Row has no `alt_name` field — the rename is a no-op for this row.
+      const rows = [{ id: "a", title: "Event without alt name" }];
+
+      await processEventBatch(ctx, rows, 0);
+
+      const insertedEvents = getBulkInsertedEvents() as Array<{ transformations: unknown[] }>;
+      expect(insertedEvents).toHaveLength(1);
+      expect(insertedEvents[0]?.transformations).toEqual([]);
+    });
+  });
+
+  describe("bulk-insert error row numbers (regression)", () => {
+    // Regression: on bulk-insert failure the error array previously reported
+    // positions in the filtered `eventsToInsert` array rather than the source
+    // row numbers, which misled users reading import error reports whenever a
+    // batch contained skipped or updated duplicates.
+    it("reports actual source row numbers when a batch containing skips fails to insert", async () => {
+      mocks.bulkInsertEvents.mockImplementationOnce(() => {
+        throw new Error("simulated bulk insert failure");
+      });
+
+      const job = buildIngestJob({
+        // Rows 0 and 1 are internal duplicates that are skipped; rows 2-4 go
+        // into the bulk insert. When the insert fails, errors must report
+        // rows 2, 3, 4 — NOT 0, 1, 2.
+        duplicates: { internal: [{ rowNumber: 0 }, { rowNumber: 1 }], external: [] },
+      });
+
+      const ctx: ProcessBatchContext = { ...baseCtx, job };
+
+      const rows = [
+        { id: "skip-1", title: "Internal Dup 1" },
+        { id: "skip-2", title: "Internal Dup 2" },
+        { id: "new-1", title: "New 1" },
+        { id: "new-2", title: "New 2" },
+        { id: "new-3", title: "New 3" },
+      ];
+
+      const result = await processEventBatch(ctx, rows, 0);
+
+      expect(result.eventsSkipped).toBe(2);
+      expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([2, 3, 4]);
+      expect(result.errors.every((e) => e.error === "simulated bulk insert failure")).toBe(true);
+    });
+
+    it("applies globalRowOffset to bulk-insert error row numbers", async () => {
+      mocks.bulkInsertEvents.mockImplementationOnce(() => {
+        throw new Error("boom");
+      });
+
+      const job = buildIngestJob({ duplicates: { internal: [{ rowNumber: 100 }], external: [] } });
+
+      const ctx: ProcessBatchContext = { ...baseCtx, job };
+
+      const rows = [
+        { id: "a", title: "Row 100 (skipped)" },
+        { id: "b", title: "Row 101" },
+        { id: "c", title: "Row 102" },
+      ];
+
+      const result = await processEventBatch(ctx, rows, 100);
+
+      expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([101, 102]);
+    });
+  });
 });

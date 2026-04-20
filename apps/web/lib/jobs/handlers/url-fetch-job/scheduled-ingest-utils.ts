@@ -11,6 +11,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { sendScheduledIngestRetriesExhaustedEmail } from "@/lib/ingest/scheduled-ingest-emails";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import {
@@ -173,8 +174,12 @@ const auditRetriesExhausted = async (
       },
       { req }
     );
+
+    // Notify the owner so a silently-disabled schedule doesn't stay unnoticed.
+    // `safeSendEmail` swallows delivery errors internally.
+    await sendScheduledIngestRetriesExhaustedEmail(payload, owner, scheduledIngest, newRetries, maxRetries, lastError);
   } catch {
-    /* audit is best-effort */
+    /* audit + notification are best-effort */
   }
 };
 

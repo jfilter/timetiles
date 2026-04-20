@@ -65,7 +65,11 @@ const buildBulkEventFromRow = (
 
   const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
 
-  const transformationChanges =
+  // Emit only transforms that actually fired on this row. A rename whose `from`
+  // field is absent (or any transform whose inputs are missing) leaves both
+  // `oldValue` and `newValue` as null — persisting those is noise on the event's
+  // `transformations` audit trail and misrepresents `validationStatus`.
+  const rawTransformationChanges =
     transforms.length > 0
       ? transforms.map((t) => ({
           path: getTransformPath(t),
@@ -73,6 +77,8 @@ const buildBulkEventFromRow = (
           newValue: (transformedRow[getNewValuePath(t)] ?? null) as unknown,
         }))
       : null;
+  const transformationChanges =
+    rawTransformationChanges?.filter((c) => !(c.oldValue === null && c.newValue === null)) ?? null;
 
   if (transformationChanges) {
     log.debug("Applied transforms", { transformCount: transforms.length });
@@ -163,7 +169,7 @@ const tryUpdateExistingEvent = async (
 const bulkInsertNewEvents = async (
   payload: Payload,
   eventsToInsert: BulkEventData[],
-  globalRowOffset: number,
+  insertRowNumbers: number[],
   log: ReturnType<typeof createJobLogger>
 ): Promise<{ created: number; errors: Array<{ row: number; error: string }> }> => {
   if (eventsToInsert.length === 0) return { created: 0, errors: [] };
@@ -171,9 +177,13 @@ const bulkInsertNewEvents = async (
     const created = await bulkInsertEvents(payload, eventsToInsert);
     return { created, errors: [] };
   } catch (error) {
-    log.error("Bulk insert failed for batch", { globalRowOffset, count: eventsToInsert.length, error });
+    log.error("Bulk insert failed for batch", { count: eventsToInsert.length, error });
     const msg = error instanceof Error ? error.message : "Bulk insert failed";
-    const errors = eventsToInsert.map((_, i) => ({ row: globalRowOffset + i, error: msg }));
+    // Report the actual source row numbers rather than positions in the
+    // filtered `eventsToInsert` array — callers scanning error CSVs would
+    // otherwise be pointed at the wrong rows whenever the batch contained
+    // skipped or updated duplicates.
+    const errors = insertRowNumbers.map((row) => ({ row, error: msg }));
     return { created: 0, errors };
   }
 };
@@ -198,6 +208,7 @@ export const processEventBatch = async (
   let eventsSkipped = 0;
   let eventsUpdated = 0;
   const eventsToInsert: BulkEventData[] = [];
+  const insertRowNumbers: number[] = [];
   const errors: Array<{ row: number; error: string }> = [];
 
   for (const [index, row] of rows.entries()) {
@@ -233,6 +244,7 @@ export const processEventBatch = async (
       }
 
       eventsToInsert.push(eventData);
+      insertRowNumbers.push(rowNumber);
     } catch (error) {
       log.warn("Failed to process event", { rowNumber, error });
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
@@ -242,7 +254,7 @@ export const processEventBatch = async (
   const { created: eventsCreated, errors: bulkErrors } = await bulkInsertNewEvents(
     payload,
     eventsToInsert,
-    globalRowOffset,
+    insertRowNumbers,
     log
   );
   errors.push(...bulkErrors);

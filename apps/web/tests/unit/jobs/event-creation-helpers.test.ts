@@ -300,6 +300,32 @@ describe("extractTimestamp", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("strict mapping (regression)", () => {
+    // Regression: when timestampPath is explicitly mapped, extractTimestamp
+    // must not silently fall back to a guessed column (e.g. an audit
+    // `created_at`) — that would produce wrong event timestamps.
+    it("returns null instead of a fallback column when mapped field is empty string", () => {
+      const row = { event_date: "", timestamp: "2024-01-01T00:00:00Z" };
+      const result = extractTimestamp(row, "event_date");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null instead of a fallback column when mapped field is null", () => {
+      const row = { event_date: null, created_at: "2024-01-01T00:00:00Z" };
+      const result = extractTimestamp(row, "event_date");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns null instead of a fallback column when mapped value is unparseable", () => {
+      const row = { event_date: "garbage", date: "2024-01-01T00:00:00Z" };
+      const result = extractTimestamp(row, "event_date");
+
+      expect(result).toBeNull();
+    });
+  });
 });
 
 describe("extractEndTimestamp", () => {

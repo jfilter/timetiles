@@ -179,7 +179,7 @@ const geocodeUniqueLocations = async (
       job,
       PROCESSING_STAGE.GEOCODE_BATCH,
       processed,
-      Math.min(PROGRESS_CHUNK_SIZE, locations.size - processed + PROGRESS_CHUNK_SIZE)
+      chunk.length
     );
   }
 

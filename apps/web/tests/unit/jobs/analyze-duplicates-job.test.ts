@@ -463,6 +463,59 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         },
       });
     });
+
+    it('counts external duplicates in uniqueRows when duplicateStrategy is "update"', async () => {
+      // Regression: under "update" strategy, external duplicates are re-written
+      // (as updates), so they must count toward uniqueRows and the quota pre-check
+      // rather than being subtracted. Mirrors the test above but with the
+      // "update" strategy configured on the dataset.
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id", duplicateStrategy: "update" },
+      };
+
+      const mockIngestFile = createMockIngestFile();
+
+      const mockFileData = [
+        { id: "1", title: "Event 1" },
+        { id: "2", title: "Event 2" },
+      ];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob);
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1").mockReturnValueOnce("dataset-456:ext:2");
+
+      // One external duplicate found
+      drizzleMock._enqueue([{ id: 123, uniqueId: "dataset-456:ext:1" }]);
+      mockPayload.update.mockResolvedValueOnce({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      expect(result).toEqual({
+        output: {
+          totalRows: 2,
+          // 2 unique IDs; external dupes are NOT subtracted under "update" strategy
+          uniqueRows: 2,
+          internalDuplicates: 0,
+          externalDuplicates: 1,
+        },
+      });
+    });
   });
 
   describe("Error Handling", () => {
