@@ -21,6 +21,18 @@ let cache: { data: EmailBranding; expiry: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000;
 
 /**
+ * Strip CR/LF (and other control characters that break email headers), collapse
+ * consecutive whitespace, and trim. Defense-in-depth against header injection
+ * when Branding strings land in email subjects or other header contexts.
+ */
+const sanitizeHeaderString = (value: string): string =>
+  value
+    // eslint-disable-next-line sonarjs/no-control-regex -- intentional: strip control characters including CR/LF
+    .replace(/[\u0000-\u001F\u007F]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
  * Load email branding from the Branding global (cached).
  *
  * Falls back to "TimeTiles" if siteName is not configured.
@@ -32,10 +44,10 @@ export const getEmailBranding = async (payload: Payload): Promise<EmailBranding>
   const baseUrl = getEnv().NEXT_PUBLIC_PAYLOAD_URL;
   const logo = typeof branding.logoLight === "object" ? branding.logoLight : null;
 
-  const data: EmailBranding = {
-    siteName: branding.siteName ?? "TimeTiles",
-    logoUrl: logo?.url ? `${baseUrl}${logo.url}` : null,
-  };
+  const rawSiteName = branding.siteName ?? "TimeTiles";
+  const sanitizedSiteName = sanitizeHeaderString(rawSiteName) || "TimeTiles";
+
+  const data: EmailBranding = { siteName: sanitizedSiteName, logoUrl: logo?.url ? `${baseUrl}${logo.url}` : null };
 
   // eslint-disable-next-line require-atomic-updates -- intentional: worst case is a harmless double-load
   cache = { data, expiry: Date.now() + CACHE_TTL };

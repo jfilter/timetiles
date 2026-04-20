@@ -14,6 +14,19 @@ import { isPrivileged } from "@/lib/collections/shared-fields";
 
 import { generateFaviconsHook } from "./branding-hooks";
 
+// Reject control characters (CR/LF/NULL/tabs, etc.) so values safely flow into
+// email headers/subjects. Complements runtime sanitization in lib/email/branding.ts.
+// eslint-disable-next-line sonarjs/no-control-regex -- intentional: reject control characters including CR/LF
+const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F]/;
+
+const validateNoControlChars = (value: string | null | undefined): true | string => {
+  if (typeof value !== "string" || value.length === 0) return true;
+  if (CONTROL_CHAR_REGEX.test(value)) {
+    return "Must not contain control characters (e.g. line breaks or tabs).";
+  }
+  return true;
+};
+
 export const Branding: GlobalConfig = {
   slug: "branding",
   admin: { group: "Content" },
@@ -26,6 +39,7 @@ export const Branding: GlobalConfig = {
       label: "Site Name",
       localized: true,
       defaultValue: "TimeTiles",
+      validate: validateNoControlChars,
       admin: { description: "The name displayed in the header and browser tab title" },
     },
     {
