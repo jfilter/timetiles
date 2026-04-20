@@ -118,6 +118,11 @@ const buildMappingPairs = (mappings: NonNullable<SheetInfo["suggestedMappings"]>
     confidence: mappings.locationNamePath?.confidence ?? 0,
   },
   { source: mappings.timestampPath.path, target: "dateField", confidence: mappings.timestampPath.confidence },
+  {
+    source: mappings.endTimestampPath?.path ?? null,
+    target: "endDateField",
+    confidence: mappings.endTimestampPath?.confidence ?? 0,
+  },
   { source: mappings.locationPath.path, target: "locationField", confidence: mappings.locationPath.confidence },
   { source: mappings.latitudePath.path, target: "latitudeField", confidence: mappings.latitudePath.confidence },
   { source: mappings.longitudePath.path, target: "longitudeField", confidence: mappings.longitudePath.confidence },

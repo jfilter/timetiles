@@ -232,6 +232,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
         request.timestampPath = selectedColumn;
       } else if (reason === REVIEW_REASONS.NO_LOCATION_DETECTED) {
         request.locationPath = selectedColumn;
+        request.locationNamePath = selectedColumn;
       }
     }
 

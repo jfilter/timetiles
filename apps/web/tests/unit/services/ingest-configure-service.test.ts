@@ -55,12 +55,13 @@ describe("import-configure-service", () => {
       expect(buildFieldMappingOverrides(undefined)).toEqual({});
     });
 
-    it("maps all fields including locationNamePath", () => {
+    it("maps all fields including endTimestampPath and locationNamePath", () => {
       expect(buildFieldMappingOverrides(fullFieldMapping)).toEqual({
         titlePath: "Title",
         descriptionPath: "Description",
         locationNamePath: "Venue",
         timestampPath: "Date",
+        endTimestampPath: null,
         latitudePath: "Lat",
         longitudePath: "Lng",
         locationPath: "Address",
@@ -74,6 +75,7 @@ describe("import-configure-service", () => {
         descriptionPath: null,
         locationNamePath: null,
         timestampPath: null,
+        endTimestampPath: null,
         latitudePath: null,
         longitudePath: null,
         locationPath: null,

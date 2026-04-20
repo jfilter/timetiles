@@ -2,7 +2,7 @@
  * Field pattern matching utilities.
  *
  * Provides language-aware pattern matching for detecting standard
- * event fields (title, description, timestamp, location) based on
+ * event fields (title, description, start/end timestamps, location) based on
  * column names and data characteristics.
  *
  * @module
@@ -149,6 +149,32 @@ export const FIELD_PATTERNS = {
       /^wanneer$/i,
     ],
     por: [/^data$/i, /^timestamp$/i, /^criado.*em$/i, /^evento.*data$/i, /^evento.*hora$/i, /^hora$/i, /^quando$/i],
+  },
+  endTimestamp: {
+    eng: [
+      /^end[_\s.-]?date$/i,
+      /^end[_\s.-]?time$/i,
+      /^end[_\s.-]?datetime$/i,
+      /^date[_\s.-]?end$/i,
+      /^time[_\s.-]?end$/i,
+      /^ends?[_\s.-]?at$/i,
+      /^finish(?:es|ed)?[_\s.-]?(?:at|date|time)?$/i,
+      /^until$/i,
+    ],
+    deu: [
+      /^enddatum$/i,
+      /^endzeit$/i,
+      /^ende$/i,
+      /^datum[_\s.-]?ende$/i,
+      /^zeit[_\s.-]?ende$/i,
+      /^veranstaltung.*ende$/i,
+      /^bis$/i,
+    ],
+    fra: [/^date[_\s.-]?fin$/i, /^heure[_\s.-]?fin$/i, /^fin$/i, /^événement.*fin$/i, /^jusqu.?à$/i],
+    spa: [/^fecha[_\s.-]?fin$/i, /^hora[_\s.-]?fin$/i, /^fin$/i, /^evento.*fin$/i, /^hasta$/i],
+    ita: [/^data[_\s.-]?fine$/i, /^ora[_\s.-]?fine$/i, /^fine$/i, /^evento.*fine$/i, /^fino.*a$/i],
+    nld: [/^eind[_\s.-]?datum$/i, /^eind[_\s.-]?tijd$/i, /^einde$/i, /^evenement.*einde$/i, /^tot$/i],
+    por: [/^data[_\s.-]?fim$/i, /^hora[_\s.-]?fim$/i, /^fim$/i, /^evento.*fim$/i, /^até$/i],
   },
   location: {
     eng: [
@@ -334,7 +360,7 @@ export const COORDINATE_BOUNDS = { latitude: { min: -90, max: 90 }, longitude: {
  */
 export const ADDRESS_PATTERNS = [/^(address|addr|location|place|street|city|state|zip|postal|country)/i];
 
-type FieldType = "title" | "description" | "locationName" | "timestamp" | "location";
+type FieldType = "title" | "description" | "locationName" | "timestamp" | "endTimestamp" | "location";
 
 /** Result of matching a name against field patterns. */
 export interface FieldPatternMatch {
@@ -510,12 +536,13 @@ export const detectFieldMappings = (
 ): FieldMappingsResult => {
   // Skip all field mapping if requested
   if (options?.skip?.fieldMapping) {
-    return { title: null, description: null, timestamp: null, locationName: null, geo: null };
+    return { title: null, description: null, timestamp: null, endTimestamp: null, locationName: null, geo: null };
   }
 
   const title = findFieldWithFallback(fieldStats, "title", language, options);
   const description = findFieldWithFallback(fieldStats, "description", language, options);
   const timestamp = findFieldWithFallback(fieldStats, "timestamp", language, options);
+  const endTimestamp = findFieldWithFallback(fieldStats, "endTimestamp", language, options);
   const locationName = findFieldWithFallback(fieldStats, "locationName", language, options);
   const geo = options?.skip?.coordinates ? null : detectGeoFields(fieldStats, options);
 
@@ -524,6 +551,7 @@ export const detectFieldMappings = (
     title,
     description,
     timestamp,
+    endTimestamp,
     locationName,
     geo,
   };

@@ -120,6 +120,8 @@ export interface FieldMappingsResult {
   description: FieldMapping | null;
   /** Timestamp/date field */
   timestamp: FieldMapping | null;
+  /** End timestamp/date field */
+  endTimestamp: FieldMapping | null;
   /** Location name/venue field */
   locationName: FieldMapping | null;
   /** Geo coordinates - all coordinate info in one place */
@@ -209,7 +211,7 @@ export interface DetectionOptions {
   replaceIdPatterns?: boolean;
   /** Skip individual pipeline stages. */
   skip?: { language?: boolean; fieldMapping?: boolean; coordinates?: boolean; enums?: boolean; ids?: boolean };
-  /** Register additional field types beyond the standard five. */
+  /** Register additional field types beyond the standard six. */
   additionalFieldTypes?: Record<
     string,
     { patterns: Partial<Record<string, RegExp[]>>; validator: (stats: FieldStatistics) => number }

@@ -348,6 +348,7 @@ export const useWizardStore = create<WizardStore>()(
                 descriptionField: overrides.descriptionPath ?? currentFm.descriptionField,
                 locationNameField: overrides.locationNamePath ?? currentFm.locationNameField,
                 dateField: overrides.timestampPath ?? currentFm.dateField,
+                endDateField: overrides.endTimestampPath ?? currentFm.endDateField,
                 locationField: overrides.locationPath ?? currentFm.locationField,
                 latitudeField: overrides.latitudePath ?? currentFm.latitudeField,
                 longitudeField: overrides.longitudePath ?? currentFm.longitudeField,

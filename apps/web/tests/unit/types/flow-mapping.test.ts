@@ -11,7 +11,7 @@ import { createSourceNodes, createTargetNodes, TARGET_FIELD_DEFINITIONS } from "
 describe("flow-mapping", () => {
   describe("TARGET_FIELD_DEFINITIONS", () => {
     it("should define required and optional fields", () => {
-      expect(TARGET_FIELD_DEFINITIONS).toHaveLength(8);
+      expect(TARGET_FIELD_DEFINITIONS).toHaveLength(9);
 
       const required = TARGET_FIELD_DEFINITIONS.filter((d) => d.required);
       expect(required).toHaveLength(2);

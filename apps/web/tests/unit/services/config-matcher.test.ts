@@ -60,6 +60,23 @@ describe("findConfigSuggestions", () => {
     expect(results[0]!.config.fieldMappingOverrides.titlePath).toBe("title");
   });
 
+  it("includes endTimestampPath in known columns and returned config", () => {
+    const headers = ["title", "start_date", "end_date"];
+    const datasets = [
+      makeDataset({
+        id: 1,
+        name: "Events",
+        fieldMappingOverrides: { titlePath: "title", timestampPath: "start_date", endTimestampPath: "end_date" },
+      }),
+    ];
+
+    const results = findConfigSuggestions(headers, datasets);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.matchedColumns).toEqual(expect.arrayContaining(["title", "start_date", "end_date"]));
+    expect(results[0]!.config.fieldMappingOverrides.endTimestampPath).toBe("end_date");
+  });
+
   it("returns empty array when no headers overlap", () => {
     const headers = ["alpha", "beta", "gamma"];
     const datasets = [

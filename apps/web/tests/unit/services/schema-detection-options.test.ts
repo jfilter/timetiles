@@ -651,6 +651,7 @@ describe("DetectionOptions: pipeline skip flags", () => {
     expect(result.fieldMappings.title).toBeNull();
     expect(result.fieldMappings.description).toBeNull();
     expect(result.fieldMappings.timestamp).toBeNull();
+    expect(result.fieldMappings.endTimestamp).toBeNull();
     expect(result.fieldMappings.locationName).toBeNull();
     expect(result.fieldMappings.geo).toBeNull();
   });

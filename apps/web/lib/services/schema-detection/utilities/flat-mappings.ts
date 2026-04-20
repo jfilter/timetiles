@@ -33,7 +33,7 @@ export const toFlatMappings = (result: FieldMappingsResult): FieldMappings => ({
   descriptionPath: result.description?.path ?? null,
   locationNamePath: result.locationName?.path ?? null,
   timestampPath: result.timestamp?.path ?? null,
-  endTimestampPath: null,
+  endTimestampPath: result.endTimestamp?.path ?? null,
   latitudePath: result.geo?.latitude?.path ?? null,
   longitudePath: result.geo?.longitude?.path ?? null,
   locationPath: result.geo?.locationField?.path ?? null,

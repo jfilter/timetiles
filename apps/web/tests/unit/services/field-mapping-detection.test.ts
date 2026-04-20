@@ -17,7 +17,7 @@ const createFieldStats = (
   fields: Record<
     string,
     Partial<FieldStatistics> & {
-      fieldType?: "title" | "description" | "timestamp" | "latitude" | "longitude" | "location";
+      fieldType?: "title" | "description" | "timestamp" | "endTimestamp" | "latitude" | "longitude" | "location";
     }
   >
 ): Record<string, FieldStatistics> => {
@@ -37,7 +37,7 @@ const createFieldStats = (
         "This is a longer description of the event with more details about what will happen",
         "Another description with sufficient length to be recognized as a description field",
       ];
-    } else if (fieldType === "timestamp") {
+    } else if (fieldType === "timestamp" || fieldType === "endTimestamp") {
       defaultSamples = ["2024-01-15T10:30:00Z", "2024-02-20T14:00:00Z", "2024-03-10T09:15:00Z"];
       defaultFormats = { dateTime: 100 };
     } else if (fieldType === "latitude") {
@@ -119,6 +119,20 @@ describe("Field Mapping Detection", () => {
         const fieldStats = createFieldStats({ [field]: { fieldType: "timestamp" } });
         const mappings = detectFieldMappings(fieldStats, "eng");
         expect(mappings.timestampPath).toBe(expected);
+      }
+    });
+
+    it("should detect end timestamp variations", () => {
+      const cases = [
+        { field: "end_date", expected: "end_date" },
+        { field: "end_time", expected: "end_time" },
+        { field: "ends_at", expected: "ends_at" },
+      ];
+
+      for (const { field, expected } of cases) {
+        const fieldStats = createFieldStats({ [field]: { fieldType: "endTimestamp" } });
+        const mappings = detectFieldMappings(fieldStats, "eng");
+        expect(mappings.endTimestampPath).toBe(expected);
       }
     });
   });

@@ -16,17 +16,11 @@
 /* oxlint-disable complexity -- Schema detection handles multiple column types and validation cases */
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { applyTransformsBatch } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
-import type { SchemaDetectionService } from "@/lib/services/schema-detection/service";
-import type { DetectionContext } from "@/lib/services/schema-detection/types";
-import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
-import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
+import type { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { SchemaDetectionJobInput } from "../types/job-inputs";
@@ -49,6 +43,11 @@ import {
   shouldReviewNoLocation,
   shouldReviewNoTimestamp,
 } from "../workflows/review-checks";
+import {
+  finalizeSchemaDetection,
+  runSchemaDetectionBatches,
+  syncDatasetTemporalFlag,
+} from "./schema-detection-job-support";
 
 // Helper to load dataset and extract active transforms
 const loadDatasetAndTransforms = async (
@@ -81,230 +80,6 @@ const loadDatasetAndTransforms = async (
   });
 
   return { dataset, transforms };
-};
-
-// Helper to merge detected mappings with overrides
-const mergeFieldMappings = (
-  detectedMappings: {
-    titlePath: string | null;
-    descriptionPath: string | null;
-    locationNamePath: string | null;
-    timestampPath: string | null;
-    endTimestampPath: string | null;
-    latitudePath: string | null;
-    longitudePath: string | null;
-    locationPath: string | null;
-  },
-  dataset: Dataset | null
-) => ({
-  titlePath: dataset?.fieldMappingOverrides?.titlePath ?? detectedMappings.titlePath,
-  descriptionPath: dataset?.fieldMappingOverrides?.descriptionPath ?? detectedMappings.descriptionPath,
-  locationNamePath: dataset?.fieldMappingOverrides?.locationNamePath ?? detectedMappings.locationNamePath,
-  timestampPath: dataset?.fieldMappingOverrides?.timestampPath ?? detectedMappings.timestampPath,
-  endTimestampPath: dataset?.fieldMappingOverrides?.endTimestampPath ?? detectedMappings.endTimestampPath,
-  latitudePath: dataset?.fieldMappingOverrides?.latitudePath ?? detectedMappings.latitudePath,
-  longitudePath: dataset?.fieldMappingOverrides?.longitudePath ?? detectedMappings.longitudePath,
-  locationPath: dataset?.fieldMappingOverrides?.locationPath ?? detectedMappings.locationPath,
-});
-
-/**
- * Fill null field mappings using the dataset's explicit language.
- * Handles mixed-language files (e.g., English content with German column names).
- */
-const applyDatasetLanguageFallback = (
-  detectedMappings: ReturnType<typeof toFlatMappings>,
-  fieldStats: Record<string, unknown>,
-  detectedLang: string,
-  datasetLang: string | null | undefined
-): void => {
-  if (!datasetLang || datasetLang === detectedLang) return;
-  const fallbackMappings = detectFlatFieldMappings(
-    fieldStats as Parameters<typeof detectFlatFieldMappings>[0],
-    datasetLang
-  );
-  for (const key of Object.keys(detectedMappings) as Array<keyof typeof detectedMappings>) {
-    detectedMappings[key] ??= fallbackMappings[key];
-  }
-};
-
-// Helper to finalize schema detection using the pluggable SchemaDetectionService
-const finalizeSchemaDetection = async (
-  payload: Payload,
-  ingestJobId: number | string,
-  schemaBuilder: ProgressiveSchemaBuilder | null,
-  dataset: Dataset | null,
-  logger: ReturnType<typeof createJobLogger>
-): Promise<Record<string, string | null | undefined> | null> => {
-  if (!schemaBuilder) {
-    return null;
-  }
-
-  const finalState = schemaBuilder.getState();
-
-  // Try the pluggable detection service (registered by schemaDetectionPlugin)
-  // SchemaDetectionService is registered by the plugin at payload.config.custom.schemaDetection
-  // In unit tests, payload.config may not exist, so access defensively
-  const schemaDetection = payload.config?.custom?.schemaDetection as { service: SchemaDetectionService } | undefined;
-  const service = schemaDetection?.service;
-
-  let detectedMappings;
-  let detectedLanguage: string | null = null;
-
-  if (service) {
-    const context: DetectionContext = {
-      fieldStats: finalState.fieldStats,
-      sampleData: finalState.dataSamples as Record<string, unknown>[],
-      headers: Object.keys(finalState.fieldStats),
-      config: { enabled: true, priority: 1 },
-    };
-
-    const result = await service.detect(null, context);
-
-    // Enrich field stats with enum info from detection results
-    for (const fieldPath of result.patterns.enumFields) {
-      const stats = finalState.fieldStats[fieldPath];
-      if (!stats?.uniqueSamples) continue;
-      stats.isEnumCandidate = true;
-      const valueCounts = new Map<unknown, number>();
-      for (const sample of stats.uniqueSamples) {
-        valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
-      }
-      stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
-        value,
-        count,
-        percent: (count / stats.occurrences) * 100,
-      }));
-    }
-
-    // Also detect tag fields (arrays) — the plugin only detects scalar enums
-    schemaBuilder.detectEnumFields();
-
-    detectedMappings = toFlatMappings(result.fieldMappings);
-
-    // Fill unmapped fields using the dataset's explicit language (for mixed-language files)
-    applyDatasetLanguageFallback(detectedMappings, finalState.fieldStats, result.language.code, dataset?.language);
-
-    if (result.language.isReliable) {
-      detectedLanguage = result.language.code;
-    }
-
-    logger.info("Detection service completed", {
-      detector: "default",
-      language: result.language.code,
-      languageConfidence: result.language.confidence,
-      idFields: result.patterns.idFields.length,
-      enumFields: result.patterns.enumFields.length,
-    });
-  } else {
-    // Fallback: manual detection (for test environments without plugin)
-    schemaBuilder.detectEnumFields();
-    detectedMappings = detectFlatFieldMappings(finalState.fieldStats, dataset?.language ?? "eng");
-  }
-
-  // Save final state with enum info to database
-  const updatedSchema = await schemaBuilder.getSchema();
-  await payload.update({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: ingestJobId,
-    data: { schema: updatedSchema, schemaBuilderState: finalState as unknown as Record<string, unknown> },
-  });
-
-  // Auto-detect language on dataset if not already set
-  if (detectedLanguage && dataset && !dataset.language) {
-    await payload.update({
-      collection: COLLECTION_NAMES.DATASETS,
-      id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
-      data: { language: detectedLanguage },
-      overrideAccess: true,
-    });
-  }
-
-  // Merge detected mappings with dataset overrides
-  const fieldMappings = mergeFieldMappings(detectedMappings, dataset);
-
-  logger.info("Field mappings detected", {
-    fieldMappings,
-    language: detectedLanguage ?? dataset?.language ?? "eng",
-    overridesUsed: {
-      title: Boolean(dataset?.fieldMappingOverrides?.titlePath),
-      description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
-      locationName: Boolean(dataset?.fieldMappingOverrides?.locationNamePath),
-      timestamp: Boolean(dataset?.fieldMappingOverrides?.timestampPath),
-      endTimestamp: Boolean(dataset?.fieldMappingOverrides?.endTimestampPath),
-      latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
-      longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),
-      location: Boolean(dataset?.fieldMappingOverrides?.locationPath),
-    },
-  });
-
-  // Store field mappings (workflow controls stage transition)
-  await payload.update({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: ingestJobId,
-    data: { detectedFieldMappings: fieldMappings },
-  });
-
-  return fieldMappings;
-};
-
-// Helper to process batch and update schema
-const processBatchSchema = async (
-  rows: Record<string, unknown>[],
-  previousState: SchemaBuilderState | null,
-  globalRowOffset: number,
-  duplicateRows: Set<number>,
-  transforms: IngestTransform[],
-  builderConfig?: Partial<{ enumThreshold: number; enumMode: "count" | "percentage" }>
-) => {
-  // Filter out duplicate rows
-  const nonDuplicateRows = rows.filter((_row, index) => {
-    const rowNumber = globalRowOffset + index;
-    return !duplicateRows.has(rowNumber);
-  });
-
-  // Apply import transforms before schema building
-  const transformedRows = transforms.length > 0 ? applyTransformsBatch(nonDuplicateRows, transforms) : nonDuplicateRows;
-
-  // Build schema progressively
-  const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined, builderConfig);
-
-  if (transformedRows.length > 0) {
-    schemaBuilder.processBatch(transformedRows);
-  }
-
-  const updatedSchema = await schemaBuilder.getSchema();
-
-  return { nonDuplicateRows: transformedRows, schemaBuilder, updatedSchema };
-};
-
-// Helper to update progress after batch processing
-const updateBatchProgress = async (
-  payload: Payload,
-  job: IngestJob,
-  rowsProcessedSoFar: number,
-  batchNumber: number
-): Promise<void> => {
-  await ProgressTrackingService.updateAndCompleteBatch(
-    payload,
-    job,
-    PROCESSING_STAGE.DETECT_SCHEMA,
-    rowsProcessedSoFar,
-    batchNumber + 1
-  );
-};
-
-// Helper to update schema state in database
-const updateSchemaState = async (
-  payload: Payload,
-  ingestJobId: number | string,
-  updatedSchema: Record<string, unknown>,
-  currentState: { fieldStats?: Record<string, FieldStatistics> } | null
-): Promise<void> => {
-  await payload.update({
-    collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: ingestJobId,
-    data: { schema: updatedSchema, schemaBuilderState: currentState as unknown as Record<string, unknown> },
-  });
 };
 
 /** Run post-detection review checks (empty rows, missing timestamp/location). */
@@ -405,76 +180,32 @@ export const schemaDetectionJob = {
       // which then fails validation because all fields appear "removed".
       const duplicateStrategy = readDuplicateStrategy(job);
       const { skipRows: duplicateRows } = extractDuplicateRows(job, duplicateStrategy);
-
-      const BATCH_SIZE = BATCH_SIZES.SCHEMA_DETECTION;
-      let batchNumber = 0;
-      let totalRowsProcessed = 0;
-      let lastSchemaBuilder: ProgressiveSchemaBuilder | null = null;
-      // Single-job pattern always processes all rows from scratch.
-      // Persisted schemaBuilderState is saved for observability but never used to seed.
-      let previousState: SchemaBuilderState | null = null;
-      let emptyRowCount = 0;
-
-      for await (const rows of streamBatchesFromFile(filePath, {
-        sheetIndex: job.sheetIndex ?? undefined,
-        batchSize: BATCH_SIZE,
-      })) {
-        // Count empty rows (all values null/blank) before processing
-        for (const row of rows) {
-          if (Object.values(row).every((v) => v == null || (typeof v === "string" && v.trim() === ""))) {
-            emptyRowCount++;
-          }
-        }
-
-        // Process batch and build schema
-        const { nonDuplicateRows, schemaBuilder, updatedSchema } = await processBatchSchema(
-          rows,
-          previousState,
-          totalRowsProcessed,
-          duplicateRows,
-          transforms,
-          {
-            enumThreshold: dataset?.schemaConfig?.enumThreshold ?? undefined,
-            enumMode: (dataset?.schemaConfig?.enumMode as "count" | "percentage") ?? undefined,
-          }
-        );
-
-        totalRowsProcessed += rows.length;
-        lastSchemaBuilder = schemaBuilder;
-
-        logger.debug("Schema detection batch processed", {
-          batchNumber,
-          rowsProcessed: nonDuplicateRows.length,
-          totalRows: rows.length,
-        });
-
-        // Update progress
-        await updateBatchProgress(payload, job, totalRowsProcessed, batchNumber);
-
-        // Save intermediate state for observability
-        const currentState = schemaBuilder.getState();
-        await updateSchemaState(payload, ingestJobId, updatedSchema, currentState);
-        previousState = currentState;
-
-        batchNumber++;
-      }
+      const { batchNumber, totalRowsProcessed, lastSchemaBuilder, emptyRowCount } = await runSchemaDetectionBatches({
+        payload,
+        ingestJobId,
+        job,
+        filePath,
+        dataset,
+        duplicateRows,
+        transforms,
+        logger,
+      });
 
       // Complete stage and finalize
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
-      const fieldMappings = await finalizeSchemaDetection(payload, ingestJobId, lastSchemaBuilder, dataset, logger);
+      const fieldMappings = await finalizeSchemaDetection({
+        payload,
+        ingestJobId,
+        schemaBuilder: lastSchemaBuilder,
+        dataset,
+        filePath,
+        sheetIndex: job.sheetIndex,
+        duplicateRows,
+        transforms,
+        logger,
+      });
 
-      // Update dataset hasTemporalData flag based on whether a timestamp field was detected
-      if (dataset) {
-        const hasTimestamp = Boolean(fieldMappings?.timestampPath);
-        if (dataset.hasTemporalData !== hasTimestamp) {
-          await payload.update({
-            collection: COLLECTION_NAMES.DATASETS,
-            id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
-            data: { hasTemporalData: hasTimestamp },
-            overrideAccess: true,
-          });
-        }
-      }
+      await syncDatasetTemporalFlag(payload, dataset, fieldMappings);
 
       logPerformance("Schema detection", Date.now() - startTime, {
         ingestJobId,

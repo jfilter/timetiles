@@ -22,6 +22,8 @@ export interface ApproveIngestJobRequest {
   timestampPath?: string;
   /** For no-location: column name to use as location/address field. */
   locationPath?: string;
+  /** For no-location: column name to use as venue/place field. */
+  locationNamePath?: string;
   /** For no-location: column name for latitude. */
   latitudePath?: string;
   /** For no-location: column name for longitude. */

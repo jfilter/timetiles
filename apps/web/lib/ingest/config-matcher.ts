@@ -32,6 +32,7 @@ const getDatasetKnownColumns = (dataset: Dataset & { schemaColumns?: string[] })
       overrides.descriptionPath,
       overrides.locationNamePath,
       overrides.timestampPath,
+      overrides.endTimestampPath,
       overrides.latitudePath,
       overrides.longitudePath,
       overrides.locationPath,

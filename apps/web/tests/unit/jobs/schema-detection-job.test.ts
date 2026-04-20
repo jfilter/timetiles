@@ -18,6 +18,7 @@ import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import {
   createMockContext,
+  createMockDataset,
   createMockIngestFile,
   createMockIngestJob,
   createMockPayload,
@@ -446,6 +447,89 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();
       expect(mocks.updateAndCompleteBatch).toHaveBeenCalled();
+    });
+
+    it("should infer paired start/end dates from whole-file row ordering", async () => {
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
+      const mockDataset = createMockDataset(TEST_IDS.DATASET);
+
+      const mockFileData = [
+        { phase_one: "2026-05-01", phase_two: "2026-05-02", title: "Event A" },
+        { phase_one: "2026-06-03", phase_two: "2026-06-04", title: "Event B" },
+        { phase_one: "2026-07-05", phase_two: "2026-07-06", title: "Event C" },
+      ];
+
+      const mockSchema = {
+        type: "object",
+        properties: {
+          phase_one: { type: "string", format: "date" },
+          phase_two: { type: "string", format: "date" },
+          title: { type: "string" },
+        },
+      };
+
+      const mockState = {
+        fieldStats: {
+          phase_one: {
+            path: "phase_one",
+            occurrences: 3,
+            uniqueValues: 3,
+            typeDistribution: { string: 3 },
+            uniqueSamples: ["2026-05-01", "2026-06-03", "2026-07-05"],
+          },
+          phase_two: {
+            path: "phase_two",
+            occurrences: 3,
+            uniqueValues: 3,
+            typeDistribution: { string: 3 },
+            uniqueSamples: ["2026-05-02", "2026-06-04", "2026-07-06"],
+          },
+          title: {
+            path: "title",
+            occurrences: 3,
+            uniqueValues: 3,
+            typeDistribution: { string: 3 },
+            uniqueSamples: ["Event A", "Event B", "Event C"],
+          },
+        },
+        recordCount: 3,
+      };
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        return Promise.resolve(null);
+      });
+
+      mocks.streamBatchesFromFile
+        .mockReturnValueOnce(mockAsyncGenerator([mockFileData]))
+        .mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+
+      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValue(mockSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
+
+      mocks.startStage.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
+
+      const result = await schemaDetectionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
+      expect(mocks.streamBatchesFromFile).toHaveBeenCalledTimes(2);
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "ingest-jobs",
+          id: TEST_IDS.IMPORT_JOB,
+          data: expect.objectContaining({
+            detectedFieldMappings: expect.objectContaining({
+              timestampPath: "phase_one",
+              endTimestampPath: "phase_two",
+            }),
+          }),
+        })
+      );
     });
   });
 

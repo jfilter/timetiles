@@ -40,6 +40,7 @@ export interface ColumnViewRow {
 export const FIELD_MAPPING_STRING_KEYS: FieldMappingStringField[] = [
   "titleField",
   "dateField",
+  "endDateField",
   "descriptionField",
   "locationNameField",
   "locationField",
@@ -52,6 +53,7 @@ export const FIELD_MAPPING_STRING_KEYS: FieldMappingStringField[] = [
 const FIELD_TO_SUGGESTION_KEY: Partial<Record<FieldMappingStringField, keyof SuggestedMappings["mappings"]>> = {
   titleField: "titlePath",
   dateField: "timestampPath",
+  endDateField: "endTimestampPath",
   descriptionField: "descriptionPath",
   locationNameField: "locationNamePath",
   locationField: "locationPath",

@@ -113,9 +113,6 @@ export const EVENT_FIELD_DEFINITIONS = [
 
 type EventFieldDefinition = (typeof EVENT_FIELD_DEFINITIONS)[number];
 
-/** Union of all event field keys (e.g. "title" | "timestamp" | ...) */
-type EventFieldKey = EventFieldDefinition["key"];
-
 // ---------------------------------------------------------------------------
 // Derived types for path-based interfaces
 // ---------------------------------------------------------------------------
@@ -137,17 +134,13 @@ export type FieldPathMappings = {
 // Derived arrays for UI consumption
 // ---------------------------------------------------------------------------
 
-/** Entries that appear in the visual flow editor (excludes endTimestamp which has no flow node). */
-const FLOW_EDITOR_EXCLUDED_KEYS = new Set<EventFieldKey>(["endTimestamp"]);
-
 /**
  * Field definitions for the visual flow editor's target nodes.
  *
- * Filters out fields that don't appear in the flow editor (e.g. endTimestamp)
- * and maps `fieldName` to `fieldKey` for xyflow node compatibility.
+ * Maps event field definitions to xyflow-compatible target node metadata.
  */
 export const getTargetFieldDefinitions = () =>
-  EVENT_FIELD_DEFINITIONS.filter((def) => !FLOW_EDITOR_EXCLUDED_KEYS.has(def.key)).map((def) => ({
+  EVENT_FIELD_DEFINITIONS.map((def) => ({
     fieldKey: def.fieldName,
     label: def.label,
     icon: def.icon,

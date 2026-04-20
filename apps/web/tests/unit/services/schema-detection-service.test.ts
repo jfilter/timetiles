@@ -22,6 +22,7 @@ const createMockDefaultDetector = (): SchemaDetector => ({
         title: { path: "title", confidence: 0.8 },
         description: null,
         timestamp: null,
+        endTimestamp: null,
         locationName: null,
         geo: null,
       },
@@ -41,6 +42,7 @@ const createMockCustomDetector = (): SchemaDetector => ({
         title: { path: "titel", confidence: 0.9 },
         description: { path: "beschreibung", confidence: 0.85 },
         timestamp: null,
+        endTimestamp: null,
         locationName: null,
         geo: null,
       },
@@ -120,7 +122,14 @@ describe("SchemaDetectionService", () => {
           .fn()
           .mockResolvedValue({
             language: { code: "fra", name: "French", confidence: 0.8, isReliable: true },
-            fieldMappings: { title: null, description: null, timestamp: null, locationName: null, geo: null },
+            fieldMappings: {
+              title: null,
+              description: null,
+              timestamp: null,
+              endTimestamp: null,
+              locationName: null,
+              geo: null,
+            },
             patterns: { idFields: [], enumFields: [] },
           }),
       };

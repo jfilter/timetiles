@@ -3,8 +3,8 @@
  *
  * Provides validation functions that score how well a field's
  * statistics match a given field type (title, description, timestamp,
- * location). Used by the pattern matching logic to combine name-based
- * matching with data-driven confidence.
+ * end timestamp, location). Used by the pattern matching logic to combine
+ * name-based matching with data-driven confidence.
  *
  * @module
  * @category Utilities
@@ -254,6 +254,7 @@ export const validateFieldType = (
     case "locationName":
       return validateLocationNameField(stats, stringPct, effectiveStringPct);
     case "timestamp":
+    case "endTimestamp":
       return validateTimestampField(stats, stringPct);
     case "location":
       return validateLocationField(stats, stringPct, effectiveStringPct);

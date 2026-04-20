@@ -99,6 +99,7 @@ describe("defaultDetector", () => {
           titel: createFieldStats({ typeDistribution: { string: 100 } }),
           beschreibung: createFieldStats({ typeDistribution: { string: 100 } }),
           datum: createFieldStats({ typeDistribution: { string: 100 }, formats: { date: 100 } }),
+          enddatum: createFieldStats({ typeDistribution: { string: 100 }, formats: { date: 100 } }),
           ort: createFieldStats({ typeDistribution: { string: 100 } }),
         },
         sampleData: [
@@ -106,16 +107,18 @@ describe("defaultDetector", () => {
             titel: "Konzert im Stadtpark",
             beschreibung: "Ein wunderbares Konzert mit klassischer Musik",
             datum: "2024-06-15",
+            enddatum: "2024-06-16",
             ort: "Stadtpark Berlin",
           },
           {
             titel: "Theaterpremiere",
             beschreibung: "Die neue Produktion des Stadttheaters",
             datum: "2024-06-20",
+            enddatum: "2024-06-21",
             ort: "Stadttheater München",
           },
         ],
-        headers: ["titel", "beschreibung", "datum", "ort"],
+        headers: ["titel", "beschreibung", "datum", "enddatum", "ort"],
         config: { enabled: true, priority: 1 },
       };
 
@@ -124,6 +127,7 @@ describe("defaultDetector", () => {
       expect(result.fieldMappings.title?.path).toBe("titel");
       expect(result.fieldMappings.description?.path).toBe("beschreibung");
       expect(result.fieldMappings.timestamp?.path).toBe("datum");
+      expect(result.fieldMappings.endTimestamp?.path).toBe("enddatum");
       expect(result.fieldMappings.locationName?.path).toBe("ort");
     });
 
@@ -219,6 +223,7 @@ describe("defaultDetector", () => {
       expect(result.fieldMappings).toHaveProperty("title");
       expect(result.fieldMappings).toHaveProperty("description");
       expect(result.fieldMappings).toHaveProperty("timestamp");
+      expect(result.fieldMappings).toHaveProperty("endTimestamp");
       expect(result.fieldMappings).toHaveProperty("locationName");
       expect(result.fieldMappings).toHaveProperty("geo");
       expect(result.patterns).toHaveProperty("idFields");

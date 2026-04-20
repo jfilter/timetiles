@@ -10,6 +10,7 @@
 
 export type { DetectionOptions, ValidatorConfig } from "../types";
 export { detectGeoFields } from "./coordinates";
+export { createPairedDateInference } from "./date-pairs";
 export type { FieldMappings } from "./flat-mappings";
 export { detectFlatFieldMappings, toFlatMappings } from "./flat-mappings";
 export {

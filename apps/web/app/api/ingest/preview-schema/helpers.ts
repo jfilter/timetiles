@@ -14,18 +14,21 @@ import fs from "node:fs";
 import Papa from "papaparse";
 
 import { ValidationError } from "@/lib/api";
+import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
+import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import {
   detectLanguage,
   LATITUDE_PATTERNS,
   LONGITUDE_PATTERNS,
   matchFieldNamePatterns,
 } from "@/lib/services/schema-detection";
+import type { FieldStatistics } from "@/lib/services/schema-detection/types";
+import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
+import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
-
-import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 
 // Re-export preview storage functions for use by upload/url routes
 export { getPreviewDir, savePreviewMetadata };
@@ -66,15 +69,25 @@ const getConfidenceLevel = (confidence: number): ConfidenceLevel => {
  * few sample rows available immediately at upload time, while the background
  * job detector layers statistical validation on top of the same pattern match.
  */
-const detectFieldFromHeaders = (headers: string[], fieldType: string, language: string): FieldMappingSuggestion => {
+type DetectableFieldType =
+  | "title"
+  | "description"
+  | "locationName"
+  | "timestamp"
+  | "endTimestamp"
+  | "location"
+  | "latitude"
+  | "longitude";
+
+const detectFieldFromHeaders = (
+  headers: string[],
+  fieldType: DetectableFieldType,
+  language: string
+): FieldMappingSuggestion => {
   if (fieldType === "latitude") return detectCoordinateField(headers, LATITUDE_PATTERNS);
   if (fieldType === "longitude") return detectCoordinateField(headers, LONGITUDE_PATTERNS);
 
-  const match = matchFieldNamePatterns(
-    headers,
-    fieldType as "title" | "description" | "locationName" | "timestamp" | "location",
-    language
-  );
+  const match = matchFieldNamePatterns(headers, fieldType, language);
   if (!match) return { path: null, confidence: 0, confidenceLevel: "none" };
 
   // Position-based confidence: earlier patterns = higher confidence
@@ -103,30 +116,89 @@ const detectCoordinateField = (headers: string[], patterns: RegExp[]): FieldMapp
   return { path: null, confidence: 0, confidenceLevel: "none" };
 };
 
+const buildFieldStatsFromRows = (rows: Record<string, unknown>[]): Record<string, FieldStatistics> => {
+  if (rows.length === 0) return {};
+
+  const builder = new ProgressiveSchemaBuilder(undefined, { maxSamples: Math.min(rows.length, 100) });
+  builder.processBatch(rows);
+  return builder.getFieldStatistics();
+};
+
+const applyPairedDateSuggestions = (
+  headers: string[],
+  rows: Record<string, unknown>[],
+  suggestions: SuggestedMappings["mappings"]
+): void => {
+  const fieldStats = buildFieldStatsFromRows(rows);
+  if (Object.keys(fieldStats).length === 0) return;
+
+  const dateInference = createPairedDateInference({
+    headers,
+    fieldStats,
+    existingMappings: {
+      timestampPath: suggestions.timestampPath.path,
+      endTimestampPath: suggestions.endTimestampPath.path,
+    },
+    reservedPaths: [
+      suggestions.titlePath.path,
+      suggestions.descriptionPath.path,
+      suggestions.locationNamePath.path,
+      suggestions.latitudePath.path,
+      suggestions.longitudePath.path,
+      suggestions.locationPath.path,
+    ],
+    idFields: detectIdFields(fieldStats),
+  });
+
+  if (!dateInference.hasCandidates) return;
+
+  dateInference.processRows(rows);
+  const inferredPair = dateInference.getResult();
+  if (!inferredPair) return;
+
+  if (!suggestions.timestampPath.path && inferredPair.timestampPath) {
+    suggestions.timestampPath = {
+      path: inferredPair.timestampPath,
+      confidence: inferredPair.confidence,
+      confidenceLevel: inferredPair.confidenceLevel,
+    };
+  }
+
+  if (!suggestions.endTimestampPath.path && inferredPair.endTimestampPath) {
+    suggestions.endTimestampPath = {
+      path: inferredPair.endTimestampPath,
+      confidence: inferredPair.confidence,
+      confidenceLevel: inferredPair.confidenceLevel,
+    };
+  }
+};
+
 /**
  * Detect suggested field mappings for a sheet
  */
 export const detectSuggestedMappings = (
   headers: string[],
-  sampleData: Record<string, unknown>[]
+  sampleData: Record<string, unknown>[],
+  allRows: Record<string, unknown>[] = sampleData
 ): SuggestedMappings => {
   // Detect language from headers and sample data
   const language = detectLanguage(sampleData, headers);
   const langCode = language.code;
 
-  return {
-    language,
-    mappings: {
-      titlePath: detectFieldFromHeaders(headers, "title", langCode),
-      descriptionPath: detectFieldFromHeaders(headers, "description", langCode),
-      locationNamePath: detectFieldFromHeaders(headers, "locationName", langCode),
-      timestampPath: detectFieldFromHeaders(headers, "timestamp", langCode),
-      endTimestampPath: { path: null, confidence: 0, confidenceLevel: "none" },
-      latitudePath: detectFieldFromHeaders(headers, "latitude", langCode),
-      longitudePath: detectFieldFromHeaders(headers, "longitude", langCode),
-      locationPath: detectFieldFromHeaders(headers, "location", langCode),
-    },
+  const mappings: SuggestedMappings["mappings"] = {
+    titlePath: detectFieldFromHeaders(headers, "title", langCode),
+    descriptionPath: detectFieldFromHeaders(headers, "description", langCode),
+    locationNamePath: detectFieldFromHeaders(headers, "locationName", langCode),
+    timestampPath: detectFieldFromHeaders(headers, "timestamp", langCode),
+    endTimestampPath: detectFieldFromHeaders(headers, "endTimestamp", langCode),
+    latitudePath: detectFieldFromHeaders(headers, "latitude", langCode),
+    longitudePath: detectFieldFromHeaders(headers, "longitude", langCode),
+    locationPath: detectFieldFromHeaders(headers, "location", langCode),
   };
+
+  applyPairedDateSuggestions(headers, allRows, mappings);
+
+  return { language, mappings };
 };
 
 export const parseCSVPreview = (filePath: string): SheetInfo[] => {
@@ -141,13 +213,19 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   });
 
   // Get full row count (need to parse separately)
-  const fullResult = Papa.parse(fileContent, { header: true, skipEmptyLines: true });
+  const fullResult = Papa.parse(fileContent, {
+    header: true,
+    skipEmptyLines: true,
+    dynamicTyping: true,
+    transformHeader: (header) => header.trim(),
+  });
 
   const headers = result.meta.fields ?? [];
+  const allRows = fullResult.data as Record<string, unknown>[];
   const sampleData = (result.data as Record<string, unknown>[]).slice(0, SAMPLE_ROW_COUNT);
 
   // Detect suggested field mappings
-  const suggestedMappings = detectSuggestedMappings(headers, sampleData);
+  const suggestedMappings = detectSuggestedMappings(headers, sampleData, allRows);
 
   return [{ index: 0, name: "Sheet1", rowCount: fullResult.data.length, headers, sampleData, suggestedMappings }];
 };
@@ -187,9 +265,10 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
     const headers = headerEntries.map((e) => e.header);
 
     const rowCount = Math.max(0, jsonData.length - 1);
+    const allRows: Record<string, unknown>[] = [];
     const sampleData: Record<string, unknown>[] = [];
 
-    for (let i = 1; i <= Math.min(SAMPLE_ROW_COUNT, rowCount); i++) {
+    for (let i = 1; i <= rowCount; i++) {
       const row = jsonData[i];
       if (!row || !Array.isArray(row)) continue;
 
@@ -199,11 +278,14 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
           obj[header] = row[originalIndex] ?? null;
         }
       });
-      sampleData.push(obj);
+      allRows.push(obj);
+      if (sampleData.length < SAMPLE_ROW_COUNT) {
+        sampleData.push(obj);
+      }
     }
 
     // Detect suggested field mappings
-    const suggestedMappings = detectSuggestedMappings(headers, sampleData);
+    const suggestedMappings = detectSuggestedMappings(headers, sampleData, allRows);
 
     sheets.push({ index, name: sheetName, rowCount, headers, sampleData, suggestedMappings });
   });

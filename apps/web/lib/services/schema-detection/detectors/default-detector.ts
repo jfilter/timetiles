@@ -44,7 +44,7 @@ export const createDefaultDetector = (options?: DetectionOptions): SchemaDetecto
   name: "default",
   label: "Default Schema Detector",
   description:
-    "Multi-language detection with standard field patterns for title, description, timestamp, and location fields",
+    "Multi-language detection with standard field patterns for title, description, start/end timestamps, and location fields",
 
   /**
    * Default detector always handles input.

@@ -39,6 +39,7 @@ export const buildFieldMappingOverrides = (
     | "descriptionPath"
     | "locationNamePath"
     | "timestampPath"
+    | "endTimestampPath"
     | "latitudePath"
     | "longitudePath"
     | "locationPath",
@@ -51,6 +52,7 @@ export const buildFieldMappingOverrides = (
     descriptionPath: fieldMapping.descriptionField,
     locationNamePath: fieldMapping.locationNameField,
     timestampPath: fieldMapping.dateField,
+    endTimestampPath: fieldMapping.endDateField,
     latitudePath: fieldMapping.latitudeField,
     longitudePath: fieldMapping.longitudeField,
     locationPath: fieldMapping.locationField,

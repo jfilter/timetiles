@@ -60,6 +60,7 @@ type TargetLabelKey =
   | "importedAsIs"
   | "fieldTitle"
   | "fieldDate"
+  | "fieldEndDate"
   | "addressLocation"
   | "latitude"
   | "longitude"
@@ -77,6 +78,7 @@ export const TARGET_OPTIONS: TargetOption[] = [
   { value: "__none__", labelKey: "importedAsIs", required: false },
   { value: "titleField", labelKey: "fieldTitle", required: true },
   { value: "dateField", labelKey: "fieldDate", required: true },
+  { value: "endDateField", labelKey: "fieldEndDate", required: false },
   { value: "locationField", labelKey: "addressLocation", required: false },
   { value: "latitudeField", labelKey: "latitude", required: false },
   { value: "longitudeField", labelKey: "longitude", required: false },

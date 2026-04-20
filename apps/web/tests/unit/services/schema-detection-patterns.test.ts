@@ -96,6 +96,17 @@ describe("detectFieldMappings", () => {
     expect(result.timestamp?.path).toBe("date");
   });
 
+  it("detects end timestamp field", () => {
+    const fieldStats: Record<string, FieldStatistics> = {
+      end_date: createFieldStats({ typeDistribution: { string: 100 }, formats: { date: 100 } }),
+    };
+
+    const result = detectFieldMappings(fieldStats, "eng");
+
+    expect(result.endTimestamp).not.toBeNull();
+    expect(result.endTimestamp?.path).toBe("end_date");
+  });
+
   it("detects location name field", () => {
     const fieldStats: Record<string, FieldStatistics> = {
       venue: createFieldStats({ typeDistribution: { string: 100 } }),
@@ -225,6 +236,7 @@ describe("FIELD_PATTERNS", () => {
     expect(FIELD_PATTERNS).toHaveProperty("description");
     expect(FIELD_PATTERNS).toHaveProperty("locationName");
     expect(FIELD_PATTERNS).toHaveProperty("timestamp");
+    expect(FIELD_PATTERNS).toHaveProperty("endTimestamp");
     expect(FIELD_PATTERNS).toHaveProperty("location");
   });
 
@@ -249,6 +261,7 @@ describe("FIELD_PATTERNS", () => {
     // French patterns
     expect(FIELD_PATTERNS.title.fra.some((p) => p.test("titre"))).toBe(true);
     expect(FIELD_PATTERNS.description.fra.some((p) => p.test("description"))).toBe(true);
+    expect(FIELD_PATTERNS.endTimestamp.eng.some((p) => p.test("end_date"))).toBe(true);
   });
 });
 
@@ -468,6 +481,7 @@ describe("detectFieldMappings — advanced", () => {
     expect(result.title).toBeNull();
     expect(result.description).toBeNull();
     expect(result.timestamp).toBeNull();
+    expect(result.endTimestamp).toBeNull();
     expect(result.locationName).toBeNull();
     expect(result.geo).toBeNull();
   });

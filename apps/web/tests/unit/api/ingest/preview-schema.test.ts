@@ -79,6 +79,7 @@ vi.mock("@/lib/services/schema-detection", () => {
     title: { eng: [/^title$/i] },
     description: { eng: [/^description$/i] },
     timestamp: { eng: [/^date$/i] },
+    endTimestamp: { eng: [/^end_date$/i] },
     location: { eng: [/^location$/i] },
   };
 
