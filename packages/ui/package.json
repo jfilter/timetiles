@@ -356,10 +356,10 @@
     "@timetiles/typescript-config": "workspace:*",
     "@turbo/gen": "^2.8.20",
     "@types/d3-force": "^3.0.10",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.4",
     "eslint": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -367,7 +367,7 @@
     "tailwindcss": "^4.2.2",
     "tsup": "^8.5.1",
     "typescript": "catalog:",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.4"
   },
   "peerDependencies": {
     "react": "^19.0.0",

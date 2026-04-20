@@ -12,15 +12,15 @@ catalog:
   # Type definitions
   "@types/react": ^19.2.14
   "@types/react-dom": ^19.2.3
-  "@types/node": ^25.1.0
+  "@types/node": ^25.6.0
   # Build tooling
   typescript: ^5.9.3
   eslint: ^9.39.2
   tsx: ^4.21.0
   "@svgr/webpack": ^8.1.0
   # Testing
-  vitest: ^4.0.18
-  "@vitest/coverage-v8": ^4.0.18
+  vitest: ^4.1.4
+  "@vitest/coverage-v8": ^4.1.4
   # Charting
   echarts: ^6.0.0
   echarts-for-react: ^3.0.6
