@@ -252,6 +252,9 @@ export const shouldReviewNoLocation = (
   if (reviewChecks?.skipLocationCheck) return { needsReview: false };
 
   const hasCoordinates = Boolean(fieldMappings.latitudePath && fieldMappings.longitudePath);
+  // Payload fields are `string | null | undefined`; `??` correctly treats empty strings as
+  // "present" (falsy-but-set should not trigger the fallback) while `||` would incorrectly
+  // fall through on `""`.
   const hasLocation = Boolean(fieldMappings.locationPath ?? fieldMappings.locationNamePath);
   return { needsReview: !hasCoordinates && !hasLocation };
 };

@@ -47,6 +47,8 @@ export const applyConfigSnapshotToDataset = (
     return dataset;
   }
 
+  // Payload JSON round-trip: `null` = "explicitly cleared", `undefined` = "field not set".
+  // We coerce here because the Dataset type uses `undefined` for optional-unset fields.
   return {
     ...dataset,
     fieldMappingOverrides: snapshot.fieldMappingOverrides ?? undefined,
