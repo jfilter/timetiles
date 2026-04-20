@@ -1,13 +1,17 @@
 /**
  * Integration tests for the password reset flow.
  *
- * Tests Payload's built-in forgot-password and reset-password endpoints
- * work correctly in our configuration.
+ * Tests Payload's forgot-password token mechanics and the app-managed
+ * queued password reset email route work correctly in our configuration.
  *
  * @module
  * @category Integration Tests
  */
+import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+
+import { POST as forgotPasswordPOST } from "@/app/api/auth/forgot-password/route";
+import { EMAIL_CONTEXTS } from "@/lib/email/send";
 
 import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials.js";
@@ -27,7 +31,62 @@ describe.sequential("Password Reset Flow", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(["users"]);
+    await testEnv.seedManager.truncate(["users", "payload-jobs"]);
+  });
+
+  it("queues a password reset email through the shared send-email job", async () => {
+    const { payload } = testEnv;
+    const timestamp = Date.now();
+    const testEmail = `reset-route-${timestamp}@test.com`;
+
+    await payload.create({
+      collection: "users",
+      data: { email: testEmail, password: TEST_CREDENTIALS.auth.secure, trustLevel: `${TRUST_LEVELS.BASIC}` },
+      disableVerificationEmail: true,
+    });
+
+    const request = new NextRequest("http://localhost:3000/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: testEmail }),
+    });
+
+    const response = await forgotPasswordPOST(request, { params: Promise.resolve({}) });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.message).toContain("If an account exists");
+
+    const jobs = await payload.find({
+      collection: "payload-jobs",
+      where: { taskSlug: { equals: "send-email" }, completedAt: { exists: false } },
+      overrideAccess: true,
+    });
+
+    expect(
+      jobs.docs.some((job: any) => job.input?.to === testEmail && job.input?.context === EMAIL_CONTEXTS.PASSWORD_RESET)
+    ).toBe(true);
+  });
+
+  it("returns the same forgot-password response for unknown emails without queueing a job", async () => {
+    const { payload } = testEnv;
+    const request = new NextRequest("http://localhost:3000/api/auth/forgot-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: `missing-${Date.now()}@test.com` }),
+    });
+
+    const response = await forgotPasswordPOST(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+
+    const jobs = await payload.find({
+      collection: "payload-jobs",
+      where: { taskSlug: { equals: "send-email" }, completedAt: { exists: false } },
+      overrideAccess: true,
+    });
+
+    expect(jobs.docs).toHaveLength(0);
   });
 
   it("forgot-password returns a token for existing user", async () => {

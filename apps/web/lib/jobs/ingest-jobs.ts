@@ -35,6 +35,7 @@ export { schemaMaintenanceJob } from "./handlers/schema-maintenance-job";
 // Data export job handlers
 export { dataExportCleanupJob } from "./handlers/data-export-cleanup-job";
 export { dataExportJob } from "./handlers/data-export-job";
+export { sendEmailJob } from "./handlers/send-email-job";
 
 // Audit log job handlers
 export { auditLogIpCleanupJob } from "./handlers/audit-log-ip-cleanup-job";

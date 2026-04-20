@@ -16,7 +16,7 @@ import { z } from "zod";
 import { apiRoute, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailContext } from "@/lib/email/context";
-import { safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
@@ -58,7 +58,7 @@ const updateEmailAndNotify = async (
       subject: t("emailVerifySubject"),
       html: buildVerificationEmailHtml(verifyUrl, firstName, user.locale, branding),
     },
-    "Failed to send verification email after email change"
+    EMAIL_CONTEXTS.EMAIL_CHANGE_VERIFICATION
   );
 
   await safeSendEmail(
@@ -68,7 +68,7 @@ const updateEmailAndNotify = async (
       subject: t("emailChangedSubject"),
       html: buildOldEmailNotificationHtml(firstName, user.locale, branding),
     },
-    "Failed to send notification to old email after email change"
+    EMAIL_CONTEXTS.EMAIL_CHANGE_OLD_ADDRESS
   );
 
   await auditLog(payload, {

@@ -13,6 +13,8 @@
 export const TIMING_PAD_MS = {
   /** Registration: checks for existing user + sends verification email */
   REGISTRATION: 1500,
+  /** Forgot password — generate reset token + queue email if account exists */
+  FORGOT_PASSWORD: 1000,
   /** Email change — includes duplicate check + send verification */
   EMAIL_CHANGE: 1000,
   /** Password change — verify + update */

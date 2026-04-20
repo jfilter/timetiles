@@ -26,12 +26,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 interface MockPayload {
   findGlobal: ReturnType<typeof vi.fn>;
-  sendEmail: ReturnType<typeof vi.fn>;
+  jobs: { queue: ReturnType<typeof vi.fn> };
 }
 
 const createPayloadMock = (): MockPayload => ({
   findGlobal: vi.fn().mockResolvedValue({ siteName: "Atlas", logoLight: { url: "/media/logo.png" } }),
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+  jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
 });
 
 describe.sequential("email helpers", () => {
@@ -45,37 +45,51 @@ describe.sequential("email helpers", () => {
   describe("safeSendEmail", () => {
     it("sends the email and logs success", async () => {
       const payload = createPayloadMock();
-      const { safeSendEmail } = await import("@/lib/email/send");
+      const { EMAIL_CONTEXTS, safeSendEmail } = await import("@/lib/email/send");
 
       await safeSendEmail(
         payload as never,
         { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
-        "welcome-email"
+        EMAIL_CONTEXTS.ACCOUNT_EXISTS
       );
 
-      expect(payload.sendEmail).toHaveBeenCalledWith({
-        to: "user@example.com",
-        subject: "Welcome",
-        html: "<p>Hello</p>",
-      });
+      expect(payload.jobs.queue).toHaveBeenCalledWith(
+        expect.objectContaining({
+          task: "send-email",
+          queue: "default",
+          input: expect.objectContaining({
+            to: "user@example.com",
+            subject: "Welcome",
+            html: "<p>Hello</p>",
+            context: EMAIL_CONTEXTS.ACCOUNT_EXISTS,
+          }),
+        })
+      );
       expect(mocks.createLogger).toHaveBeenCalledWith("email");
-      expect(mocks.emailLogger.info).toHaveBeenCalledWith({ context: "welcome-email" }, "Email sent");
+      expect(mocks.emailLogger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ context: EMAIL_CONTEXTS.ACCOUNT_EXISTS, jobId: "email-job-1" }),
+        "Email queued"
+      );
       expect(mocks.logError).not.toHaveBeenCalled();
     });
 
     it("logs and swallows send failures", async () => {
       const payload = createPayloadMock();
       const error = new Error("smtp offline");
-      payload.sendEmail.mockRejectedValueOnce(error);
-      const { safeSendEmail } = await import("@/lib/email/send");
+      payload.jobs.queue.mockRejectedValueOnce(error);
+      const { EMAIL_CONTEXTS, safeSendEmail } = await import("@/lib/email/send");
 
       await safeSendEmail(
         payload as never,
         { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
-        "welcome-email"
+        EMAIL_CONTEXTS.ACCOUNT_EXISTS
       );
 
-      expect(mocks.logError).toHaveBeenCalledWith(error, "welcome-email");
+      expect(mocks.logError).toHaveBeenCalledWith(
+        error,
+        EMAIL_CONTEXTS.ACCOUNT_EXISTS,
+        expect.objectContaining({ context: EMAIL_CONTEXTS.ACCOUNT_EXISTS })
+      );
     });
   });
 

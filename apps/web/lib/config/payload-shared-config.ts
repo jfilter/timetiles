@@ -32,6 +32,7 @@ import { Themes } from "@/lib/collections/themes";
 import UserUsage from "@/lib/collections/user-usage";
 import Users from "@/lib/collections/users";
 import Views from "@/lib/collections/views";
+import { getEnv } from "@/lib/config/env";
 // Import globals
 import { Branding } from "@/lib/globals/branding";
 import { Footer } from "@/lib/globals/footer";
@@ -59,13 +60,12 @@ import {
   schemaMaintenanceJob,
   scraperExecutionJob,
   scraperRepoSyncJob,
+  sendEmailJob,
   urlFetchJob,
   validateSchemaJob,
 } from "@/lib/jobs/ingest-jobs";
 // Import workflows
 export { ALL_WORKFLOWS } from "@/lib/jobs/workflows";
-// Import config
-import { getEnv } from "@/lib/config/env";
 // Import migrations
 import { migrations } from "@/migrations";
 
@@ -119,6 +119,7 @@ export const ALL_JOBS = [
   schemaMaintenanceJob,
   dataExportJob,
   dataExportCleanupJob,
+  sendEmailJob,
   auditLogIpCleanupJob,
   executeAccountDeletionJob,
   scraperExecutionJob,

@@ -6,7 +6,7 @@
  * practice to prevent attackers from discovering valid email addresses.
  *
  * Behavior:
- * - New email: Creates user, sends verification email, returns success
+ * - New email: Creates user, queues verification email, returns success
  * - Existing email: Sends notification email, returns success (same response)
  *
  * @module
@@ -17,8 +17,8 @@ import { z } from "zod";
 import { apiRoute, requireFeatureEnabled } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { getEmailContext } from "@/lib/email/context";
-import { safeSendEmail } from "@/lib/email/send";
-import { generateAccountExistsEmailHTML } from "@/lib/email/templates";
+import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { buildAccountVerificationEmailHtml, generateAccountExistsEmailHTML } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
@@ -79,12 +79,12 @@ export const POST = apiRoute({
             subject: t("accountExistsSubject"),
             html: generateAccountExistsEmailHTML(resetUrl, existingUserDoc?.locale, branding),
           },
-          `Failed to send account exists email to: ${maskEmail(normalizedEmail)}`
+          EMAIL_CONTEXTS.ACCOUNT_EXISTS
         );
 
         logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
       } else {
-        // Create new user - Payload will automatically send verification email
+        // Create new user and queue a verification email through the shared job pipeline
         try {
           const createdUser = await payload.create({
             collection: "users",
@@ -97,9 +97,35 @@ export const POST = apiRoute({
               registrationSource: "self",
               isActive: true,
             },
-            // Note: Verification email is sent automatically by Payload
-            // based on the auth.verify configuration in users collection
+            disableVerificationEmail: true,
+            showHiddenFields: true,
           });
+
+          if (createdUser._verificationToken) {
+            const baseUrl = getBaseUrl();
+            const verifyUrl = `${baseUrl}/verify-email?token=${createdUser._verificationToken}`;
+            const { branding, t } = await getEmailContext(payload, createdUser.locale);
+
+            await safeSendEmail(
+              payload,
+              {
+                to: normalizedEmail,
+                subject: t("verifyAccountSubject"),
+                html: buildAccountVerificationEmailHtml(
+                  verifyUrl,
+                  createdUser.firstName ?? "",
+                  createdUser.locale,
+                  branding
+                ),
+              },
+              EMAIL_CONTEXTS.ACCOUNT_VERIFICATION
+            );
+          } else {
+            logger.error(
+              { email: maskEmail(normalizedEmail), userId: createdUser.id },
+              "New user created without verification token"
+            );
+          }
 
           logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
 

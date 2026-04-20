@@ -14,6 +14,59 @@ import { getEmailTranslations } from "@/lib/email/i18n";
 import { emailButton, emailLayout, greeting } from "./layout";
 
 /**
+ * Verification email sent after account registration.
+ */
+export const buildAccountVerificationEmailHtml = (
+  verifyUrl: string,
+  firstName: string,
+  locale?: string | null,
+  branding?: EmailBranding
+): string => {
+  const t = getEmailTranslations(locale, branding ? { siteName: branding.siteName } : undefined);
+
+  return emailLayout(
+    `
+    <h1>${t("verifyAccountTitle")}</h1>
+    ${greeting(t, firstName)}
+    <p>${t("verifyAccountBody")}</p>
+    ${emailButton(verifyUrl, t("verifyEmailBtn"))}
+    <p>${t("orCopyLink")}</p>
+    <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+    <p>${t("verifyAccountIgnore")}</p>
+  `,
+    t,
+    branding?.logoUrl
+  );
+};
+
+/**
+ * Password reset email sent after a forgot-password request.
+ */
+export const buildResetPasswordEmailHtml = (
+  resetUrl: string,
+  firstName: string,
+  locale?: string | null,
+  branding?: EmailBranding
+): string => {
+  const t = getEmailTranslations(locale, branding ? { siteName: branding.siteName } : undefined);
+
+  return emailLayout(
+    `
+    <h1>${t("resetPasswordTitle")}</h1>
+    ${greeting(t, firstName)}
+    <p>${t("resetPasswordBody")}</p>
+    ${emailButton(resetUrl, t("resetPasswordBtn"))}
+    <p>${t("orCopyLink")}</p>
+    <p><a href="${resetUrl}">${resetUrl}</a></p>
+    <p>${t("resetPasswordExpiry")}</p>
+    <p>${t("resetPasswordIgnore")}</p>
+  `,
+    t,
+    branding?.logoUrl
+  );
+};
+
+/**
  * Notification sent to the **old** email address after an email change.
  */
 export const buildOldEmailNotificationHtml = (

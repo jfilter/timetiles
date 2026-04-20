@@ -169,6 +169,7 @@ export interface Config {
       'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
       'data-export-cleanup': TaskDataExportCleanup;
+      'send-email': TaskSendEmail;
       'audit-log-ip-cleanup': TaskAuditLogIpCleanup;
       'execute-account-deletion': TaskExecuteAccountDeletion;
       'scraper-execution': TaskScraperExecution;
@@ -4034,6 +4035,7 @@ export interface PayloadJob {
           | 'schema-maintenance'
           | 'data-export'
           | 'data-export-cleanup'
+          | 'send-email'
           | 'audit-log-ip-cleanup'
           | 'execute-account-deletion'
           | 'scraper-execution'
@@ -4092,6 +4094,7 @@ export interface PayloadJob {
         | 'schema-maintenance'
         | 'data-export'
         | 'data-export-cleanup'
+        | 'send-email'
         | 'audit-log-ip-cleanup'
         | 'execute-account-deletion'
         | 'scraper-execution'
@@ -6337,6 +6340,14 @@ export interface TaskDataExport {
  * via the `definition` "TaskData-export-cleanup".
  */
 export interface TaskDataExportCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSend-email".
+ */
+export interface TaskSendEmail {
   input?: unknown;
   output?: unknown;
 }

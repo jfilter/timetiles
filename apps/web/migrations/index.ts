@@ -44,6 +44,7 @@ import * as migration_20260417_190000_cluster_events_gist_index_use from './2026
 import * as migration_20260417_200000_webhook_token_unique from './20260417_200000_webhook_token_unique';
 import * as migration_20260417_210000_verification_token_expires_at from './20260417_210000_verification_token_expires_at';
 import * as migration_20260417_220000_rate_limit_counters from './20260417_220000_rate_limit_counters';
+import * as migration_20260420_150654_add_send_email_task from './20260420_150654_add_send_email_task';
 
 export const migrations = [
   {
@@ -229,7 +230,7 @@ export const migrations = [
   {
     up: migration_20260402_011606.up,
     down: migration_20260402_011606.down,
-    name: '20260402_011606'
+    name: '20260402_011606',
   },
   {
     up: migration_20260416_092834_unique_dataset_schema_version.up,
@@ -275,5 +276,10 @@ export const migrations = [
     up: migration_20260417_220000_rate_limit_counters.up,
     down: migration_20260417_220000_rate_limit_counters.down,
     name: '20260417_220000_rate_limit_counters',
+  },
+  {
+    up: migration_20260420_150654_add_send_email_task.up,
+    down: migration_20260420_150654_add_send_email_task.down,
+    name: '20260420_150654_add_send_email_task',
   },
 ];

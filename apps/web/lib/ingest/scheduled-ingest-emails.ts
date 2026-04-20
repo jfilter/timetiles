@@ -16,7 +16,7 @@ import type { Payload } from "payload";
 
 import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
-import { safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
 import type { ScheduledIngest } from "@/payload-types";
 
 /** Recipient shape — matches the fields we read off the user record. */
@@ -84,7 +84,7 @@ export const sendScheduledIngestConfigInvalidEmail = async (
   await safeSendEmail(
     payload,
     { to: owner.email, subject: t("scheduledIngestConfigInvalidSubject", { name }), html },
-    "scheduled-ingest-config-invalid"
+    EMAIL_CONTEXTS.SCHEDULED_INGEST_CONFIG_INVALID
   );
 };
 
@@ -128,6 +128,6 @@ export const sendScheduledIngestRetriesExhaustedEmail = async (
   await safeSendEmail(
     payload,
     { to: owner.email, subject: t("scheduledIngestRetriesExhaustedSubject", { name }), html },
-    "scheduled-ingest-retries-exhausted"
+    EMAIL_CONTEXTS.SCHEDULED_INGEST_RETRIES_EXHAUSTED
   );
 };

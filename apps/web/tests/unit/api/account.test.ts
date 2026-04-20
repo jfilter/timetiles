@@ -29,6 +29,7 @@ const mocks = vi.hoisted(() => {
     update: vi.fn(),
     create: vi.fn(),
     sendEmail: vi.fn().mockResolvedValue(undefined),
+    jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
   };
 
   return {
@@ -131,6 +132,7 @@ beforeEach(() => {
   mockPayload.findByID.mockReset().mockResolvedValue(null);
   mockPayload.update.mockReset().mockResolvedValue({});
   mockPayload.create.mockReset().mockResolvedValue({});
+  mockPayload.jobs.queue.mockReset().mockResolvedValue({ id: "email-job-1" });
 
   mockCheckRateLimit.mockReset().mockReturnValue({ allowed: true });
   mockCanDeleteUser.mockReset().mockResolvedValue({ allowed: true });
@@ -253,8 +255,13 @@ describe.sequential("POST /api/users/change-email", () => {
         data: expect.objectContaining({ email: "new@example.com", _verified: false }),
       })
     );
-    expect(mockPayload.sendEmail).toHaveBeenCalledWith(
-      expect.objectContaining({ to: "new@example.com", subject: expect.stringContaining("Verify") })
+    expect(mockPayload.jobs.queue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task: "send-email",
+        queue: "default",
+        input: expect.objectContaining({ to: "new@example.com", subject: expect.stringContaining("Verify") }),
+        meta: expect.objectContaining({ channel: "email", context: "email-change-verification-email" }),
+      })
     );
   });
 

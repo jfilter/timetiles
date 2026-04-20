@@ -211,6 +211,14 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       tasks: ALL_JOBS,
       workflows: ALL_WORKFLOWS,
       enableConcurrencyControl: true,
+      jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
+        ...defaultJobsCollection,
+        admin: {
+          ...defaultJobsCollection.admin,
+          hidden: false,
+          defaultColumns: ["taskSlug", "queue", "processing", "hasError", "totalTried", "updatedAt", "meta"],
+        },
+      }),
       // In development, auto-run jobs within the Next.js process (no separate worker needed)
       ...(environment === "development"
         ? {

@@ -16,7 +16,7 @@ import type { CollectionConfig } from "payload";
 
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
-import { emailButton, emailLayout, greeting } from "@/lib/email/layout";
+import { buildAccountVerificationEmailHtml, buildResetPasswordEmailHtml } from "@/lib/email/templates";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 import { createCommonConfig } from "../shared-fields";
@@ -29,7 +29,7 @@ const Users: CollectionConfig = {
   ...createCommonConfig({ versions: false, drafts: false }),
   auth: {
     useAPIKey: true,
-    // Enable email verification using Payload's built-in feature
+    // Enable email verification token generation and direct-email fallback
     // This auto-adds _verified and _verificationToken fields
     //
     // TTL: Payload v3 does not expire verification tokens natively (no
@@ -44,29 +44,17 @@ const Users: CollectionConfig = {
         const firstName = user?.firstName ?? "";
         const payload = args?.req?.payload;
         const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
-        const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
         const baseUrl = getBaseUrl();
         const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
-        return emailLayout(
-          `
-          <h1>${t("verifyAccountTitle")}</h1>
-          ${greeting(t, firstName)}
-          <p>${t("verifyAccountBody")}</p>
-          ${emailButton(verifyUrl, t("verifyEmailBtn"))}
-          <p>${t("orCopyLink")}</p>
-          <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-          <p>${t("verifyAccountIgnore")}</p>
-        `,
-          t,
-          branding.logoUrl
-        );
+
+        return buildAccountVerificationEmailHtml(verifyUrl, firstName, user?.locale, branding);
       },
       generateEmailSubject: (args) => {
         const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });
         return t("verifyAccountSubject");
       },
     },
-    // Configure forgot password emails
+    // Configure direct-email fallback for forgot password
     forgotPassword: {
       generateEmailHTML: async (args) => {
         const token = args?.token ?? "";
@@ -74,23 +62,10 @@ const Users: CollectionConfig = {
         const firstName = user?.firstName ?? "";
         const payload = args?.req?.payload;
         const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles", logoUrl: null };
-        const t = getEmailTranslations(user?.locale, { siteName: branding.siteName });
         const baseUrl = getBaseUrl();
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
-        return emailLayout(
-          `
-          <h1>${t("resetPasswordTitle")}</h1>
-          ${greeting(t, firstName)}
-          <p>${t("resetPasswordBody")}</p>
-          ${emailButton(resetUrl, t("resetPasswordBtn"))}
-          <p>${t("orCopyLink")}</p>
-          <p><a href="${resetUrl}">${resetUrl}</a></p>
-          <p>${t("resetPasswordExpiry")}</p>
-          <p>${t("resetPasswordIgnore")}</p>
-        `,
-          t,
-          branding.logoUrl
-        );
+
+        return buildResetPasswordEmailHtml(resetUrl, firstName, user?.locale, branding);
       },
       generateEmailSubject: (args) => {
         const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });

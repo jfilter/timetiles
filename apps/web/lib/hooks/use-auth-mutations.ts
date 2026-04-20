@@ -100,13 +100,13 @@ export const registerRequest = async (input: RegisterInput): Promise<RegisterRes
 };
 
 /**
- * Request a password-reset email via Payload CMS `/api/users/forgot-password`.
+ * Request a password-reset email via `/api/auth/forgot-password`.
  *
  * Always succeeds from the caller's perspective to prevent email enumeration.
  */
 export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise<void> => {
   try {
-    await fetchJson<void>("/api/users/forgot-password", {
+    await fetchJson<void>("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
