@@ -373,9 +373,9 @@ describe.sequential("scheduleManagerJob", () => {
       mockPayload.findByID.mockResolvedValue({ id: 7, email: "owner@example.com", firstName: "Owner", locale: "en" });
       // audit log create is a side effect we assert on
       (mockPayload as any).create = vi.fn().mockResolvedValue({ id: "audit-1" });
-      // Email infrastructure — the notification path reads Branding + sendEmail
+      // Email infrastructure — the notification path reads Branding and queues
+      // the email through Payload jobs rather than calling sendEmail directly.
       (mockPayload as any).findGlobal = vi.fn().mockResolvedValue({ siteName: "Atlas", logoLight: null });
-      (mockPayload as any).sendEmail = vi.fn().mockResolvedValue(undefined);
       (mockPayload as any).config = { serverURL: "https://app.example.com" };
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
@@ -410,17 +410,21 @@ describe.sequential("scheduleManagerJob", () => {
         })
       );
 
-      // 3) Owner notification email is sent
-      expect((mockPayload as any).sendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({
+      // 3) Owner notification email is queued via the shared send-email task.
+      // 4) No other (workflow) job is queued on this path.
+      const queueCalls = mockPayload.jobs.queue.mock.calls.map((call) => call[0] as { task?: string });
+      const emailEnqueue = queueCalls.find((arg) => arg?.task === "send-email");
+      expect(emailEnqueue).toMatchObject({
+        task: "send-email",
+        input: expect.objectContaining({
           to: "owner@example.com",
           subject: expect.stringContaining("Broken Cron"),
           html: expect.stringContaining("this-is-not-a-cron"),
-        })
-      );
-
-      // 4) Should NOT have queued the workflow
-      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+          context: "scheduled-ingest-config-invalid",
+        }),
+      });
+      const workflowEnqueue = queueCalls.find((arg) => arg?.task !== "send-email");
+      expect(workflowEnqueue).toBeUndefined();
     });
 
     it("should calculate correct next run times for different frequencies", async () => {

@@ -12,6 +12,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { extractExternalIdValue, formatEventId, ID_PREFIXES, sanitizeId } from "@/lib/utils/event-id";
+import { deleteByPathOrKey } from "@/lib/utils/object-path";
 import type { Dataset } from "@/payload-types";
 
 /**
@@ -93,11 +94,14 @@ const generateContentHashId = (
 ): { uniqueId: string; strategy: string } => {
   let hashData = data;
   if (strategy.excludeFields && strategy.excludeFields.length > 0 && data && typeof data === "object") {
-    const excludePaths = new Set(strategy.excludeFields.map((f) => f.fieldPath));
-    const filtered: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-      if (!excludePaths.has(key)) {
-        filtered[key] = value;
+    const filtered =
+      typeof structuredClone === "function"
+        ? structuredClone(data as Record<string, unknown>)
+        : (JSON.parse(JSON.stringify(data)) as Record<string, unknown>);
+
+    for (const field of strategy.excludeFields) {
+      if (field.fieldPath) {
+        deleteByPathOrKey(filtered, field.fieldPath);
       }
     }
     hashData = filtered;

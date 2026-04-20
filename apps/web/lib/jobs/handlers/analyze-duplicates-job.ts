@@ -26,7 +26,7 @@ import type { Dataset, IngestJob } from "@/payload-types";
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources } from "../utils/resource-loading";
-import { buildTransformsForTargetPath } from "../utils/transform-builders";
+import { buildTransformsForTargetPath, buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
@@ -88,12 +88,18 @@ const analyzeInternalDuplicates = async (
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
-  // If external ID is produced through a transform chain, replay only the
-  // transforms required to materialize that final path before ID generation.
-  const idTransforms =
-    dataset.idStrategy?.type === "external"
-      ? buildTransformsForTargetPath(dataset, dataset.idStrategy.externalIdPath)
-      : [];
+  // Keep duplicate analysis aligned with create-events:
+  // - external IDs only need the transforms that materialize the ID path
+  // - content-hash IDs must see the fully transformed row
+  const idTransforms = ((): ReturnType<typeof buildTransformsFromDataset> => {
+    if (dataset.idStrategy?.type === "external") {
+      return buildTransformsForTargetPath(dataset, dataset.idStrategy.externalIdPath);
+    }
+    if (dataset.idStrategy?.type === "content-hash") {
+      return buildTransformsFromDataset(dataset);
+    }
+    return [];
+  })();
 
   for await (const rows of streamBatchesFromFile(filePath, {
     sheetIndex: job.sheetIndex ?? undefined,

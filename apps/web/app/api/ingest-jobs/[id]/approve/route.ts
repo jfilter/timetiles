@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute, ForbiddenError, safeFindByID, ValidationError } from "@/lib/api";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { readConfigSnapshot } from "@/lib/jobs/utils/resource-loading";
 import { REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -27,6 +28,8 @@ const bodySchema = z
     timestampPath: z.string().optional(),
     /** For no-location: column name to use as location/address field. */
     locationPath: z.string().optional(),
+    /** For no-location: column name to use as venue/place field. */
+    locationNamePath: z.string().optional(),
     /** For no-location: column name for latitude. */
     latitudePath: z.string().optional(),
     /** For no-location: column name for longitude. */
@@ -35,6 +38,17 @@ const bodySchema = z
   .optional();
 
 type ApproveBody = z.infer<typeof bodySchema>;
+
+/** Collect requested overrides from the body. */
+const buildOverrideUpdate = (body: ApproveBody): Record<string, string> => {
+  const overrideUpdate: Record<string, string> = {};
+  if (body?.timestampPath) overrideUpdate.timestampPath = body.timestampPath;
+  if (body?.locationPath) overrideUpdate.locationPath = body.locationPath;
+  if (body?.locationNamePath) overrideUpdate.locationNamePath = body.locationNamePath;
+  if (body?.latitudePath) overrideUpdate.latitudePath = body.latitudePath;
+  if (body?.longitudePath) overrideUpdate.longitudePath = body.longitudePath;
+  return overrideUpdate;
+};
 
 /**
  * Apply field mapping overrides from the column picker to the dataset.
@@ -46,8 +60,8 @@ const applyFieldMappingOverrides = async (
   body: ApproveBody,
   ingestJobId: string
 ): Promise<boolean> => {
-  const hasOverrides = [body?.timestampPath, body?.locationPath, body?.latitudePath, body?.longitudePath].some(Boolean);
-  if (!hasOverrides) return false;
+  const overrideUpdate = buildOverrideUpdate(body);
+  if (Object.keys(overrideUpdate).length === 0) return false;
 
   const datasetId = extractRelationId(ingestJob.dataset);
   if (!datasetId) return false;
@@ -55,16 +69,26 @@ const applyFieldMappingOverrides = async (
   const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
   const existingOverrides = dataset?.fieldMappingOverrides ?? {};
 
-  const overrideUpdate: Record<string, string> = {};
-  if (body?.timestampPath) overrideUpdate.timestampPath = body.timestampPath;
-  if (body?.locationPath) overrideUpdate.locationPath = body.locationPath;
-  if (body?.latitudePath) overrideUpdate.latitudePath = body.latitudePath;
-  if (body?.longitudePath) overrideUpdate.longitudePath = body.longitudePath;
-
   await payload.update({
     collection: COLLECTION_NAMES.DATASETS,
     id: datasetId,
     data: { fieldMappingOverrides: { ...existingOverrides, ...overrideUpdate } },
+  });
+
+  const snapshot = readConfigSnapshot(ingestJob);
+  const configSnapshotUpdate = snapshot
+    ? {
+        configSnapshot: {
+          ...snapshot,
+          fieldMappingOverrides: { ...snapshot.fieldMappingOverrides, ...overrideUpdate },
+        },
+      }
+    : undefined;
+
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    id: ingestJobId,
+    data: { detectedFieldMappings: { ...ingestJob.detectedFieldMappings, ...overrideUpdate }, ...configSnapshotUpdate },
   });
 
   logger.info("Set field mapping overrides on dataset before approval", {

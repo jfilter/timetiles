@@ -19,7 +19,7 @@ import { maskEmail } from "@/lib/security/masking";
 
 const createPayloadMock = () => ({ jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) } });
 
-describe.sequential("safeSendEmail", () => {
+describe.sequential("queueEmail", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
@@ -28,9 +28,9 @@ describe.sequential("safeSendEmail", () => {
 
   it("queues the email with job metadata and logs success", async () => {
     const payload = createPayloadMock();
-    const { EMAIL_CONTEXTS, EMAIL_JOB_QUEUE, EMAIL_TASK_SLUG, safeSendEmail } = await import("@/lib/email/send");
+    const { EMAIL_CONTEXTS, EMAIL_JOB_QUEUE, EMAIL_TASK_SLUG, queueEmail } = await import("@/lib/email/send");
 
-    await safeSendEmail(
+    await queueEmail(
       payload as never,
       { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
       EMAIL_CONTEXTS.ACCOUNT_EXISTS
@@ -63,9 +63,9 @@ describe.sequential("safeSendEmail", () => {
     const payload = createPayloadMock();
     const error = new Error("queue unavailable");
     payload.jobs.queue.mockRejectedValueOnce(error);
-    const { EMAIL_CONTEXTS, safeSendEmail } = await import("@/lib/email/send");
+    const { EMAIL_CONTEXTS, queueEmail } = await import("@/lib/email/send");
 
-    await safeSendEmail(
+    await queueEmail(
       payload as never,
       { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
       EMAIL_CONTEXTS.ACCOUNT_EXISTS

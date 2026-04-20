@@ -134,7 +134,7 @@ The user's preferred locale is stored as a `locale` field on the Users collectio
 
 ```typescript
 const t = getEmailTranslations(user.locale, { siteName: branding.siteName });
-await safeSendEmail(payload, {
+await queueEmail(payload, {
   to: user.email,
   subject: t("emailChangedSubject"),
   html: buildOldEmailNotificationHtml(user.firstName, user.locale, branding),

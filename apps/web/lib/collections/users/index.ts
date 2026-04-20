@@ -49,8 +49,10 @@ const Users: CollectionConfig = {
 
         return buildAccountVerificationEmailHtml(verifyUrl, firstName, user?.locale, branding);
       },
-      generateEmailSubject: (args) => {
-        const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });
+      generateEmailSubject: async (args) => {
+        const payload = args?.req?.payload;
+        const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles" };
+        const t = getEmailTranslations(args?.user?.locale, { siteName: branding.siteName });
         return t("verifyAccountSubject");
       },
     },
@@ -67,8 +69,10 @@ const Users: CollectionConfig = {
 
         return buildResetPasswordEmailHtml(resetUrl, firstName, user?.locale, branding);
       },
-      generateEmailSubject: (args) => {
-        const t = getEmailTranslations(args?.user?.locale, { siteName: "TimeTiles" });
+      generateEmailSubject: async (args) => {
+        const payload = args?.req?.payload;
+        const branding = payload ? await getEmailBranding(payload) : { siteName: "TimeTiles" };
+        const t = getEmailTranslations(args?.user?.locale, { siteName: branding.siteName });
         return t("resetPasswordSubject");
       },
     },

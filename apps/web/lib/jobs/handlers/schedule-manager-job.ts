@@ -68,8 +68,8 @@ const disableScheduledIngestForInvalidConfig = async (
     });
 
     // Notify the owner so a silently-disabled schedule doesn't stay unnoticed
-    // until someone checks the admin UI. `safeSendEmail` swallows delivery
-    // errors internally, so a broken mail transport can't mask the disable.
+    // until someone checks the admin UI. `queueEmail` swallows queue errors
+    // internally, so a broken mail transport can't mask the disable.
     await sendScheduledIngestConfigInvalidEmail(payload, owner, scheduledIngest, errorMessage);
   } catch {
     // Audit + notification are best-effort — never mask the disable operation.

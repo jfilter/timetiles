@@ -118,7 +118,7 @@ export const buildVerificationEmailHtml = (
  * Notification sent when someone attempts to register with an email
  * that already has an account (anti-enumeration measure).
  */
-export const generateAccountExistsEmailHTML = (
+export const buildAccountExistsEmailHtml = (
   resetUrl: string,
   locale?: string | null,
   branding?: EmailBranding

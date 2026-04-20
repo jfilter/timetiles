@@ -18,6 +18,7 @@ vi.mock("@/lib/logger", () => ({ createLogger: mocks.createLogger, logError: moc
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { EMAIL_CONTEXTS } from "@/lib/email/send";
 import {
   buildScheduledIngestAdminUrl,
   sendScheduledIngestConfigInvalidEmail,
@@ -28,13 +29,13 @@ import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 
 interface MockPayload {
   findGlobal: ReturnType<typeof vi.fn>;
-  sendEmail: ReturnType<typeof vi.fn>;
+  jobs: { queue: ReturnType<typeof vi.fn> };
   config: { serverURL: string };
 }
 
 const createPayloadMock = (): MockPayload => ({
   findGlobal: vi.fn().mockResolvedValue({ siteName: "Atlas", logoLight: null }),
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+  jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
   config: { serverURL: "https://app.example.com" },
 });
 
@@ -71,30 +72,37 @@ describe.sequential("sendScheduledIngestConfigInvalidEmail", () => {
     vi.clearAllMocks();
   });
 
-  it("sends an email to the owner with the schedule name, error, and admin link", async () => {
+  it("queues an email to the owner with the schedule name, error, and admin link", async () => {
     const payload = createPayloadMock();
     const ingest = buildCronIngest();
 
     await sendScheduledIngestConfigInvalidEmail(payload as never, owner, ingest, "Unable to calculate next run");
 
-    expect(payload.sendEmail).toHaveBeenCalledTimes(1);
-    const call = payload.sendEmail.mock.calls[0]?.[0] as { to: string; subject: string; html: string };
+    expect(payload.jobs.queue).toHaveBeenCalledTimes(1);
+    const job = payload.jobs.queue.mock.calls[0]?.[0] as {
+      task: string;
+      input: { to: string; subject: string; html: string; context: string };
+      meta: { context: string };
+    };
 
-    expect(call.to).toBe(TEST_EMAILS.user);
-    expect(call.subject).toContain("Daily Events Import");
-    expect(call.subject.toLowerCase()).toContain("invalid configuration");
+    expect(job.task).toBe("send-email");
+    expect(job.input.context).toBe(EMAIL_CONTEXTS.SCHEDULED_INGEST_CONFIG_INVALID);
+    expect(job.meta.context).toBe(EMAIL_CONTEXTS.SCHEDULED_INGEST_CONFIG_INVALID);
+    expect(job.input.to).toBe(TEST_EMAILS.user);
+    expect(job.input.subject).toContain("Daily Events Import");
+    expect(job.input.subject.toLowerCase()).toContain("invalid configuration");
     // Body surfaces the error + schedule type + admin link
-    expect(call.html).toContain("Unable to calculate next run");
-    expect(call.html).toContain("cron");
-    expect(call.html).toContain("not-a-cron");
-    expect(call.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
+    expect(job.input.html).toContain("Unable to calculate next run");
+    expect(job.input.html).toContain("cron");
+    expect(job.input.html).toContain("not-a-cron");
+    expect(job.input.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
     // Greeting uses firstName
-    expect(call.html).toContain("Ada");
+    expect(job.input.html).toContain("Ada");
   });
 
-  it("does not throw when sendEmail rejects — safeSendEmail swallows delivery errors", async () => {
+  it("does not throw when the queue rejects — queueEmail swallows enqueue errors", async () => {
     const payload = createPayloadMock();
-    payload.sendEmail.mockRejectedValueOnce(new Error("smtp down"));
+    payload.jobs.queue.mockRejectedValueOnce(new Error("queue unavailable"));
 
     await expect(
       sendScheduledIngestConfigInvalidEmail(payload as never, owner, buildCronIngest(), "boom")
@@ -107,7 +115,7 @@ describe.sequential("sendScheduledIngestRetriesExhaustedEmail", () => {
     vi.clearAllMocks();
   });
 
-  it("sends an email with retry counts and last error", async () => {
+  it("queues an email with retry counts and last error", async () => {
     const payload = createPayloadMock();
     const ingest = buildCronIngest({
       name: "Hourly Fetch",
@@ -118,17 +126,24 @@ describe.sequential("sendScheduledIngestRetriesExhaustedEmail", () => {
 
     await sendScheduledIngestRetriesExhaustedEmail(payload as never, owner, ingest, 4, 3, "HTTP 500 from upstream");
 
-    expect(payload.sendEmail).toHaveBeenCalledTimes(1);
-    const call = payload.sendEmail.mock.calls[0]?.[0] as { to: string; subject: string; html: string };
+    expect(payload.jobs.queue).toHaveBeenCalledTimes(1);
+    const job = payload.jobs.queue.mock.calls[0]?.[0] as {
+      task: string;
+      input: { to: string; subject: string; html: string; context: string };
+      meta: { context: string };
+    };
 
-    expect(call.to).toBe(TEST_EMAILS.user);
-    expect(call.subject).toContain("Hourly Fetch");
-    expect(call.subject.toLowerCase()).toContain("too many failures");
-    expect(call.html).toContain("HTTP 500 from upstream");
-    expect(call.html).toContain("frequency");
-    expect(call.html).toContain("hourly");
-    expect(call.html).toContain("4");
-    expect(call.html).toContain("3");
-    expect(call.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
+    expect(job.task).toBe("send-email");
+    expect(job.input.context).toBe(EMAIL_CONTEXTS.SCHEDULED_INGEST_RETRIES_EXHAUSTED);
+    expect(job.meta.context).toBe(EMAIL_CONTEXTS.SCHEDULED_INGEST_RETRIES_EXHAUSTED);
+    expect(job.input.to).toBe(TEST_EMAILS.user);
+    expect(job.input.subject).toContain("Hourly Fetch");
+    expect(job.input.subject.toLowerCase()).toContain("too many failures");
+    expect(job.input.html).toContain("HTTP 500 from upstream");
+    expect(job.input.html).toContain("frequency");
+    expect(job.input.html).toContain("hourly");
+    expect(job.input.html).toContain("4");
+    expect(job.input.html).toContain("3");
+    expect(job.input.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
   });
 });

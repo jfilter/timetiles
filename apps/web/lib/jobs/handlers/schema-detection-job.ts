@@ -35,6 +35,7 @@ import {
   cleanupSidecarsForJob,
   createStandardOnFail,
   extractDuplicateRows,
+  loadEffectiveDatasetForJob,
   loadJobAndFilePath,
   readDuplicateStrategy,
   setJobStage,
@@ -59,10 +60,7 @@ const loadDatasetAndTransforms = async (
   let dataset: Dataset | null = null;
 
   try {
-    dataset =
-      typeof job.dataset === "object"
-        ? job.dataset
-        : await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: job.dataset });
+    dataset = await loadEffectiveDatasetForJob(payload, job);
 
     if (dataset) {
       transforms = buildTransformsFromDataset(dataset);

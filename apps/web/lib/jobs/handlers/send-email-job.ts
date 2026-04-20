@@ -56,26 +56,27 @@ const classifyEmailError = (error: unknown): "terminal" | "retriable" => {
     }
   }
 
-  if (!details.code) {
-    return "retriable";
+  if (details.code) {
+    if (TERMINAL_ERROR_CODES.has(details.code)) {
+      return "terminal";
+    }
+
+    if (RETRIABLE_ERROR_CODES.has(details.code) || details.code.startsWith("EAI_")) {
+      return "retriable";
+    }
   }
 
-  if (TERMINAL_ERROR_CODES.has(details.code)) {
-    return "terminal";
-  }
-
-  if (RETRIABLE_ERROR_CODES.has(details.code) || details.code.startsWith("EAI_")) {
-    return "retriable";
-  }
-
-  return "retriable";
+  // Neither responseCode nor a recognised transport code is present. This is
+  // almost always a programming bug (e.g. template rendering) rather than a
+  // transient delivery problem, so cancel instead of burning 3 retry attempts.
+  return "terminal";
 };
 
 const getJobInput = (context: JobHandlerContext<SendEmailJobInput>): SendEmailJobInput => {
   const input = (context.input ?? context.job?.input) as SendEmailJobInput | undefined;
 
   if (!input?.to || !input.subject || !input.html || !input.context) {
-    throw new Error("Email job input must include to, subject, html, and context");
+    throw new JobCancelledError("Email job input must include to, subject, html, and context");
   }
 
   return input;

@@ -176,7 +176,7 @@ const auditRetriesExhausted = async (
     );
 
     // Notify the owner so a silently-disabled schedule doesn't stay unnoticed.
-    // `safeSendEmail` swallows delivery errors internally.
+    // `queueEmail` swallows queue errors internally.
     await sendScheduledIngestRetriesExhaustedEmail(payload, owner, scheduledIngest, newRetries, maxRetries, lastError);
   } catch {
     /* audit + notification are best-effort */

@@ -193,6 +193,13 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 100, windowMs: 60 * 60 * 1000, name: "hourly" },
     ],
   },
+  FORGOT_PASSWORD: {
+    windows: [
+      { limit: 3, windowMs: 60 * 1000, name: "burst" },
+      { limit: 10, windowMs: 60 * 60 * 1000, name: "hourly" },
+      { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
+    ],
+  },
 } satisfies Record<string, RateLimitConfig>;
 
 const DEFAULT_QUOTAS = {
@@ -430,7 +437,8 @@ export type RateLimitName =
   | "DELETION_PASSWORD_ATTEMPTS"
   | "DATA_EXPORT"
   | "REGISTRATION"
-  | "LOGIN";
+  | "LOGIN"
+  | "FORGOT_PASSWORD";
 
 export interface AppConfig {
   rateLimits: Record<RateLimitName, RateLimitConfig>;

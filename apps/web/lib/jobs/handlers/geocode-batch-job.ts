@@ -18,17 +18,21 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import { applyTransformsBatch } from "@/lib/ingest/transforms";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import type { GeocodingBias } from "@/lib/services/geocoding/types";
+import { getByPathOrKey } from "@/lib/utils/object-path";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
+import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
@@ -39,8 +43,8 @@ const rowHasValidCoords = (
   coordinateFields: { latitudeField?: string; longitudeField?: string }
 ): boolean => {
   if (!coordinateFields.latitudeField || !coordinateFields.longitudeField) return false;
-  const lat = Number(row[coordinateFields.latitudeField]);
-  const lng = Number(row[coordinateFields.longitudeField]);
+  const lat = Number(getByPathOrKey(row, coordinateFields.latitudeField));
+  const lng = Number(getByPathOrKey(row, coordinateFields.longitudeField));
   return isValidCoordinate(lat, lng);
 };
 
@@ -64,11 +68,11 @@ const processRowForLocation = (
   if (rowHasValidCoords(row, coordinateFields)) {
     return { skipped: true };
   }
-  const location = locationField ? row[locationField] : undefined;
+  const location = locationField ? getByPathOrKey(row, locationField) : undefined;
   if (addNormalizedLocation(location, uniqueLocations)) {
     return { skipped: false };
   }
-  const locationName = locationNameField ? row[locationNameField] : undefined;
+  const locationName = locationNameField ? getByPathOrKey(row, locationNameField) : undefined;
   addNormalizedLocation(locationName, uniqueLocations);
   return { skipped: false };
 };
@@ -84,6 +88,7 @@ const extractUniqueLocations = async (
   locationField: string | undefined,
   locationNameField: string | undefined,
   coordinateFields: { latitudeField?: string; longitudeField?: string },
+  transforms: IngestTransform[],
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
   const uniqueLocations = new Set<string>();
@@ -91,7 +96,8 @@ const extractUniqueLocations = async (
   let skippedWithCoords = 0;
 
   for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
-    for (const row of rows) {
+    const transformedRows = transforms.length > 0 ? applyTransformsBatch(rows, transforms) : rows;
+    for (const row of transformedRows) {
       const { skipped } = processRowForLocation(
         row,
         locationField,
@@ -265,6 +271,7 @@ const prepareGeocodingLocations = async (
 
   // Resolve coordinate fields: use detectedFieldMappings, falling back to dataset config
   const coordinateFields = resolveCoordinateFields(geocodingCandidate, dataset);
+  const transforms = buildTransformsFromDataset(dataset);
 
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
@@ -275,6 +282,7 @@ const prepareGeocodingLocations = async (
     geocodingCandidate.locationField,
     geocodingCandidate.locationNameField,
     coordinateFields,
+    transforms,
     logger
   );
 

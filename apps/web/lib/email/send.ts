@@ -65,11 +65,7 @@ export const buildSendEmailJobMeta = (to: string, context: EmailContext): SendEm
  * Use this for non-critical notifications where a delivery failure should
  * not abort the calling operation (e.g. "email changed" notifications).
  */
-export const safeSendEmail = async (
-  payload: Payload,
-  options: SendEmailOptions,
-  context: EmailContext
-): Promise<void> => {
+export const queueEmail = async (payload: Payload, options: SendEmailOptions, context: EmailContext): Promise<void> => {
   const meta = buildSendEmailJobMeta(options.to, context);
   const jobToQueue = {
     task: EMAIL_TASK_SLUG,

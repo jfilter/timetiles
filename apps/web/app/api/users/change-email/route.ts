@@ -16,7 +16,7 @@ import { z } from "zod";
 import { apiRoute, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailContext } from "@/lib/email/context";
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
@@ -51,7 +51,7 @@ const updateEmailAndNotify = async (
   const firstName = user.firstName ?? "";
   const { branding, t } = await getEmailContext(payload, user.locale);
 
-  await safeSendEmail(
+  await queueEmail(
     payload,
     {
       to: newEmail,
@@ -61,7 +61,7 @@ const updateEmailAndNotify = async (
     EMAIL_CONTEXTS.EMAIL_CHANGE_VERIFICATION
   );
 
-  await safeSendEmail(
+  await queueEmail(
     payload,
     {
       to: user.email,

@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 
 import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { formatLongDate } from "@/lib/utils/date";
 
 /**
@@ -58,7 +58,7 @@ export const sendDeletionScheduledEmail = async (
     branding.logoUrl
   );
 
-  await safeSendEmail(
+  await queueEmail(
     payload,
     { to: email, subject: t("deletionScheduledSubject"), html },
     EMAIL_CONTEXTS.DELETION_SCHEDULED
@@ -95,7 +95,7 @@ export const sendDeletionCancelledEmail = async (
     branding.logoUrl
   );
 
-  await safeSendEmail(
+  await queueEmail(
     payload,
     { to: email, subject: t("deletionCancelledSubject"), html },
     EMAIL_CONTEXTS.DELETION_CANCELLED
@@ -155,7 +155,7 @@ export const sendDeletionCompletedEmail = async (
     branding.logoUrl
   );
 
-  await safeSendEmail(
+  await queueEmail(
     payload,
     { to: email, subject: t("deletionCompletedSubject"), html },
     EMAIL_CONTEXTS.DELETION_COMPLETED

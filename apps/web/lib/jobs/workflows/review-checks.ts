@@ -241,13 +241,18 @@ export const shouldReviewNoTimestamp = (
  * Returns true if review is needed.
  */
 export const shouldReviewNoLocation = (
-  fieldMappings: { latitudePath?: string | null; longitudePath?: string | null; locationPath?: string | null },
+  fieldMappings: {
+    latitudePath?: string | null;
+    longitudePath?: string | null;
+    locationPath?: string | null;
+    locationNamePath?: string | null;
+  },
   reviewChecks?: ReviewChecksConfig
 ): { needsReview: boolean } => {
   if (reviewChecks?.skipLocationCheck) return { needsReview: false };
 
   const hasCoordinates = Boolean(fieldMappings.latitudePath && fieldMappings.longitudePath);
-  const hasLocation = Boolean(fieldMappings.locationPath);
+  const hasLocation = Boolean(fieldMappings.locationPath ?? fieldMappings.locationNamePath);
   return { needsReview: !hasCoordinates && !hasLocation };
 };
 

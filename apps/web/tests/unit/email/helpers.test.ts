@@ -42,12 +42,12 @@ describe.sequential("email helpers", () => {
     mocks.getEnv.mockReturnValue({ NEXT_PUBLIC_PAYLOAD_URL: "https://app.example.com" });
   });
 
-  describe("safeSendEmail", () => {
+  describe("queueEmail", () => {
     it("sends the email and logs success", async () => {
       const payload = createPayloadMock();
-      const { EMAIL_CONTEXTS, safeSendEmail } = await import("@/lib/email/send");
+      const { EMAIL_CONTEXTS, queueEmail } = await import("@/lib/email/send");
 
-      await safeSendEmail(
+      await queueEmail(
         payload as never,
         { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
         EMAIL_CONTEXTS.ACCOUNT_EXISTS
@@ -77,9 +77,9 @@ describe.sequential("email helpers", () => {
       const payload = createPayloadMock();
       const error = new Error("smtp offline");
       payload.jobs.queue.mockRejectedValueOnce(error);
-      const { EMAIL_CONTEXTS, safeSendEmail } = await import("@/lib/email/send");
+      const { EMAIL_CONTEXTS, queueEmail } = await import("@/lib/email/send");
 
-      await safeSendEmail(
+      await queueEmail(
         payload as never,
         { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
         EMAIL_CONTEXTS.ACCOUNT_EXISTS
@@ -149,7 +149,7 @@ describe.sequential("email helpers", () => {
     });
 
     it("renders verification, notification, and anti-enumeration emails", async () => {
-      const { buildOldEmailNotificationHtml, buildVerificationEmailHtml, generateAccountExistsEmailHTML } =
+      const { buildAccountExistsEmailHtml, buildOldEmailNotificationHtml, buildVerificationEmailHtml } =
         await import("@/lib/email/templates");
       const branding = { siteName: "Atlas", logoUrl: "https://app.example.com/logo.png" };
 
@@ -160,7 +160,7 @@ describe.sequential("email helpers", () => {
         branding
       );
       const oldEmailHtml = buildOldEmailNotificationHtml("Ada", "en", branding);
-      const accountExistsHtml = generateAccountExistsEmailHTML("https://app.example.com/reset", "de", branding);
+      const accountExistsHtml = buildAccountExistsEmailHtml("https://app.example.com/reset", "de", branding);
 
       expect(verificationHtml).toContain("Verify your new email address");
       expect(verificationHtml).toContain("https://app.example.com/verify?token=123");

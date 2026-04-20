@@ -48,9 +48,9 @@ Email templates are split into shared layout primitives and domain-specific buil
 
 Every builder follows the same pattern: accept data parameters and an optional `locale`, call `getEmailTranslations` to get a translator, compose HTML using layout primitives, and return a complete HTML string.
 
-### Queue-and-Retry: safeSendEmail
+### Queue-and-Retry: queueEmail
 
-`safeSendEmail` in `lib/email/send.ts` queues app-managed transactional emails onto a dedicated `send-email` Payload task. Queueing errors are logged via `logError` and swallowed, so callers do not need their own error handling.
+`queueEmail` in `lib/email/send.ts` queues app-managed transactional emails onto a dedicated `send-email` Payload task. Queueing errors are logged via `logError` and swallowed, so callers do not need their own error handling.
 
 This pattern is deliberate: email delivery failures should never abort the operation that triggered them. A successful password change must not roll back because the notification email failed. App-managed email callers enqueue a job and return immediately; the background task performs the actual send, retries transient failures, and marks terminal failures visibly in `payload-jobs`.
 
@@ -107,18 +107,18 @@ Branding flows into emails in two ways:
 
 ### Complete Email Catalog
 
-| Email                       | Trigger                          | Sent By                                                                |
-| --------------------------- | -------------------------------- | ---------------------------------------------------------------------- |
-| Verify account              | User registration                | `register` API route via queued `safeSendEmail` + Payload token        |
-| Forgot password             | Password reset request           | `forgot-password` API route via queued `safeSendEmail` + Payload token |
-| Email changed (old address) | Email change                     | `change-email` API route via queued `safeSendEmail`                    |
-| Verify new email            | Email change                     | `change-email` API route via queued `safeSendEmail`                    |
-| Account exists              | Registration with existing email | `register` API route via queued `safeSendEmail`                        |
-| Deletion scheduled          | User requests account deletion   | `deletion-emails.ts` via queued `safeSendEmail`                        |
-| Deletion cancelled          | User cancels scheduled deletion  | `deletion-emails.ts` via queued `safeSendEmail`                        |
-| Deletion completed          | Background job executes deletion | `deletion-emails.ts` via queued `safeSendEmail`                        |
-| Export ready                | Background job completes export  | `export/emails.ts` via queued `safeSendEmail`                          |
-| Export failed               | Background job fails export      | `export/emails.ts` via queued `safeSendEmail`                          |
+| Email                       | Trigger                          | Sent By                                                             |
+| --------------------------- | -------------------------------- | ------------------------------------------------------------------- |
+| Verify account              | User registration                | `register` API route via queued `queueEmail` + Payload token        |
+| Forgot password             | Password reset request           | `forgot-password` API route via queued `queueEmail` + Payload token |
+| Email changed (old address) | Email change                     | `change-email` API route via queued `queueEmail`                    |
+| Verify new email            | Email change                     | `change-email` API route via queued `queueEmail`                    |
+| Account exists              | Registration with existing email | `register` API route via queued `queueEmail`                        |
+| Deletion scheduled          | User requests account deletion   | `deletion-emails.ts` via queued `queueEmail`                        |
+| Deletion cancelled          | User cancels scheduled deletion  | `deletion-emails.ts` via queued `queueEmail`                        |
+| Deletion completed          | Background job executes deletion | `deletion-emails.ts` via queued `queueEmail`                        |
+| Export ready                | Background job completes export  | `export/emails.ts` via queued `queueEmail`                          |
+| Export failed               | Background job fails export      | `export/emails.ts` via queued `queueEmail`                          |
 
 All emails are HTML-only (no plain text alternative). The layout uses inline CSS for maximum email client compatibility.
 
@@ -126,7 +126,8 @@ All emails are HTML-only (no plain text alternative). The layout uses inline CSS
 
 - Nodemailer adapter means SMTP is the only supported transport. Adding Resend, SendGrid, or SES would require either swapping the adapter or adding a custom transport to nodemailer.
 - Queue-and-retry keeps callers simple while making app-managed delivery attempts visible in `payload-jobs`. Transient failures are retried automatically, and terminal failures remain visible for operator inspection in the admin UI.
+- The shared `email-send` concurrency key serializes all app-managed email sends onto a single worker. This is a deliberate throughput cap: it protects against burst-triggered SMTP rate limits and reputation issues but means a sudden spike (for example, many deletion-completed emails firing at once) will queue up and drain sequentially rather than deliver in parallel. Raise the concurrency key if that trade-off ever stops matching the operational profile.
 - The standalone i18n system duplicates some strings that also exist in `messages/en.json` and `messages/de.json` (the next-intl files). This is intentional: email translations change independently and must work without React.
 - The 5-minute branding cache means admin changes to site name or logo take up to 5 minutes to appear in emails. A server restart clears the cache immediately.
 - Because queued jobs store rendered HTML, branding or site-name changes that happen after queueing will not affect emails already in the queue.
-- Adding a new app-managed email requires: adding translation keys to both `en.ts` and `de.ts`, writing a builder function using layout primitives, and calling it via `safeSendEmail` from the appropriate route or job handler.
+- Adding a new app-managed email requires: adding translation keys to both `en.ts` and `de.ts`, writing a builder function using layout primitives, and calling it via `queueEmail` from the appropriate route or job handler.

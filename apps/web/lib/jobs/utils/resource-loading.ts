@@ -20,6 +20,53 @@ import type { ConfigSnapshot } from "../handlers/dataset-detection/catalog-datas
 import type { TaskCallbackArgs } from "./job-context";
 import { getIngestFilePath } from "./upload-path";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && value !== undefined && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Read a job config snapshot from JSON storage.
+ *
+ * Payload persists `configSnapshot` as JSON, so the generated type surfaces
+ * as `unknown`. This helper narrows to the snapshot shape when possible.
+ */
+export const readConfigSnapshot = (job: Pick<IngestJob, "configSnapshot">): ConfigSnapshot | null =>
+  isRecord(job.configSnapshot) ? (job.configSnapshot as ConfigSnapshot) : null;
+
+/**
+ * Overlay a job's frozen config snapshot onto the live dataset record.
+ *
+ * The dataset relation is still loaded live so non-config fields like name,
+ * catalog, and ownership remain current, but pipeline config fields come from
+ * the job snapshot to keep the run deterministic.
+ */
+export const applyConfigSnapshotToDataset = (
+  dataset: Dataset,
+  snapshot: ConfigSnapshot | null | undefined
+): Dataset => {
+  if (!snapshot) {
+    return dataset;
+  }
+
+  return {
+    ...dataset,
+    fieldMappingOverrides: snapshot.fieldMappingOverrides ?? undefined,
+    idStrategy: snapshot.idStrategy ?? undefined,
+    deduplicationConfig: snapshot.deduplicationConfig ?? undefined,
+    geoFieldDetection: snapshot.geoFieldDetection ?? undefined,
+    schemaConfig: snapshot.schemaConfig ?? undefined,
+    ingestTransforms: snapshot.ingestTransforms,
+  };
+};
+
+/** Load a dataset and apply the job's frozen config snapshot. */
+export const loadEffectiveDatasetForJob = async (
+  payload: Payload,
+  job: Pick<IngestJob, "dataset" | "configSnapshot">
+): Promise<Dataset> => {
+  const dataset = await loadDataset(payload, job.dataset);
+  return applyConfigSnapshotToDataset(dataset, readConfigSnapshot(job));
+};
+
 /**
  * Load import job by ID
  */
@@ -76,7 +123,7 @@ export const loadJobResources = async (
   ingestJobId: string | number
 ): Promise<{ job: IngestJob; dataset: Dataset; ingestFile: IngestFile }> => {
   const job = await loadIngestJob(payload, ingestJobId);
-  const dataset = await loadDataset(payload, job.dataset);
+  const dataset = await loadEffectiveDatasetForJob(payload, job);
   const ingestFile = await loadIngestFile(payload, job.ingestFile);
 
   return { job, dataset, ingestFile };
@@ -232,7 +279,7 @@ export type DuplicateStrategy = "skip" | "update";
  * when the field is missing, null, or of an unexpected type.
  */
 export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
-  const snapshot = job.configSnapshot as ConfigSnapshot | null | undefined;
+  const snapshot = readConfigSnapshot(job);
   const value = snapshot?.idStrategy?.duplicateStrategy;
   return value === "update" ? "update" : "skip";
 };

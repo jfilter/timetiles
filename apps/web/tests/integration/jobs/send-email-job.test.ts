@@ -7,7 +7,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { EMAIL_RETRY_DELAY_MS } from "@/lib/jobs/handlers/send-email-job";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
@@ -32,7 +32,7 @@ describe.sequential("Send Email Job", () => {
   it("queues an app-managed email with readable job metadata and sends it when jobs run", async () => {
     const sendEmailSpy = vi.spyOn(payload, "sendEmail").mockResolvedValue(undefined);
 
-    await safeSendEmail(
+    await queueEmail(
       payload,
       { to: "queued@example.com", subject: "Queued", html: "<p>Queued</p>" },
       EMAIL_CONTEXTS.ACCOUNT_EXISTS
@@ -70,7 +70,7 @@ describe.sequential("Send Email Job", () => {
       .mockRejectedValueOnce(Object.assign(new Error("Temporary SMTP failure"), { responseCode: 421 }))
       .mockResolvedValueOnce(undefined);
 
-    await safeSendEmail(
+    await queueEmail(
       payload,
       { to: "retry@example.com", subject: "Retry", html: "<p>Retry</p>" },
       EMAIL_CONTEXTS.EXPORT_READY
@@ -112,7 +112,7 @@ describe.sequential("Send Email Job", () => {
       .spyOn(payload, "sendEmail")
       .mockRejectedValueOnce(Object.assign(new Error("Mailbox unavailable"), { responseCode: 550 }));
 
-    await safeSendEmail(
+    await queueEmail(
       payload,
       { to: "terminal@example.com", subject: "Terminal", html: "<p>Terminal</p>" },
       EMAIL_CONTEXTS.EXPORT_FAILED

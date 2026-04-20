@@ -12,7 +12,7 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { getEmailContext } from "@/lib/email/context";
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildResetPasswordEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
@@ -21,6 +21,7 @@ import { getBaseUrl } from "@/lib/utils/base-url";
 
 export const POST = apiRoute({
   auth: "none",
+  rateLimit: { configName: "FORGOT_PASSWORD" },
   body: z.object({ email: z.email().transform((value) => value.trim().toLowerCase()) }),
   handler: async ({ payload, body }) => {
     return withTimingPad(TIMING_PAD_MS.FORGOT_PASSWORD, async () => {
@@ -47,7 +48,7 @@ export const POST = apiRoute({
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
         const { branding, t } = await getEmailContext(payload, existingUser.locale);
 
-        await safeSendEmail(
+        await queueEmail(
           payload,
           {
             to: body.email,

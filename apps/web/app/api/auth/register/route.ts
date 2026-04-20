@@ -12,13 +12,14 @@
  * @module
  * @category API
  */
+import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute, requireFeatureEnabled } from "@/lib/api";
 import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { getEmailContext } from "@/lib/email/context";
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
-import { buildAccountVerificationEmailHtml, generateAccountExistsEmailHTML } from "@/lib/email/templates";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
+import { buildAccountExistsEmailHtml, buildAccountVerificationEmailHtml } from "@/lib/email/templates";
 import { logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
@@ -28,6 +29,127 @@ import { getClientIdentifier } from "@/lib/services/rate-limit-service";
 import { AppError } from "@/lib/types/errors";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
+const queueAccountExistsEmail = async (
+  payload: Payload,
+  normalizedEmail: string,
+  locale?: string | null
+): Promise<void> => {
+  const baseUrl = getBaseUrl();
+  const resetUrl = `${baseUrl}/forgot-password`;
+  const { branding, t } = await getEmailContext(payload, locale);
+
+  await queueEmail(
+    payload,
+    {
+      to: normalizedEmail,
+      subject: t("accountExistsSubject"),
+      html: buildAccountExistsEmailHtml(resetUrl, locale, branding),
+    },
+    EMAIL_CONTEXTS.ACCOUNT_EXISTS
+  );
+
+  logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
+};
+
+const createUserAndQueueVerification = async (
+  payload: Payload,
+  req: Request,
+  normalizedEmail: string,
+  password: string
+): Promise<void> => {
+  const createdUser = await payload.create({
+    collection: "users",
+    data: {
+      email: normalizedEmail,
+      password,
+      // Self-registration defaults (matches beforeChange hook logic for REST API)
+      role: "user",
+      trustLevel: String(TRUST_LEVELS.BASIC) as "1",
+      registrationSource: "self",
+      isActive: true,
+    },
+    disableVerificationEmail: true,
+    showHiddenFields: true,
+  });
+
+  if (createdUser._verificationToken) {
+    const baseUrl = getBaseUrl();
+    const verifyUrl = `${baseUrl}/verify-email?token=${createdUser._verificationToken}`;
+    const { branding, t } = await getEmailContext(payload, createdUser.locale);
+
+    await queueEmail(
+      payload,
+      {
+        to: normalizedEmail,
+        subject: t("verifyAccountSubject"),
+        html: buildAccountVerificationEmailHtml(verifyUrl, createdUser.firstName ?? "", createdUser.locale, branding),
+      },
+      EMAIL_CONTEXTS.ACCOUNT_VERIFICATION
+    );
+  } else {
+    logger.error(
+      { email: maskEmail(normalizedEmail), userId: createdUser.id },
+      "New user created without verification token"
+    );
+  }
+
+  logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
+
+  const clientIp = getClientIdentifier(req);
+  await auditLog(payload, {
+    action: AUDIT_ACTIONS.REGISTERED,
+    userId: createdUser.id,
+    userEmail: normalizedEmail,
+    ipAddress: clientIp === "unknown" ? undefined : clientIp,
+    details: { registrationSource: "self" },
+  });
+};
+
+const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail: string, password: string) => {
+  // Check if user already exists
+  const existingUser = await payload.find({
+    collection: "users",
+    where: { email: { equals: normalizedEmail } },
+    limit: 1,
+    overrideAccess: true,
+  });
+
+  if (existingUser.docs.length > 0) {
+    // User exists - send notification email (don't reveal this to the client)
+    const existingUserDoc = existingUser.docs[0];
+    logger.info({ email: maskEmail(normalizedEmail) }, "Registration attempt for existing email");
+    await queueAccountExistsEmail(payload, normalizedEmail, existingUserDoc?.locale);
+    return;
+  }
+
+  try {
+    await createUserAndQueueVerification(payload, req, normalizedEmail, password);
+  } catch (createError) {
+    const errorMessage = createError instanceof Error ? createError.message : String(createError);
+
+    if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
+      // Race condition: user was created between our check and create. Re-query
+      // the row so we can send the same account-exists email as the sync path —
+      // otherwise we'd silently skip the email and create a message-volume
+      // enumeration side-channel.
+      logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
+
+      const raceUser = await payload.find({
+        collection: "users",
+        where: { email: { equals: normalizedEmail } },
+        limit: 1,
+        overrideAccess: true,
+      });
+
+      await queueAccountExistsEmail(payload, normalizedEmail, raceUser.docs[0]?.locale);
+      return;
+    }
+
+    // Re-throw non-race errors immediately
+    throw createError;
+  }
+};
+
 export const POST = apiRoute({
   auth: "none",
   rateLimit: { configName: "REGISTRATION" },
@@ -36,7 +158,6 @@ export const POST = apiRoute({
     password: z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH),
   }),
   handler: async ({ payload, body, req }) => {
-    // Check if registration is enabled
     await requireFeatureEnabled(payload, "enableRegistration", "Registration is currently disabled.");
 
     const { email: normalizedEmail, password } = body;
@@ -52,108 +173,8 @@ export const POST = apiRoute({
 
     // Prevent timing side-channel from distinguishing "email exists" vs "new registration"
     return withTimingPad(TIMING_PAD_MS.REGISTRATION, async () => {
-      const successResponse = { message: "Please check your email to verify your account." };
-
-      // Check if user already exists
-      const existingUser = await payload.find({
-        collection: "users",
-        where: { email: { equals: normalizedEmail } },
-        limit: 1,
-        overrideAccess: true,
-      });
-
-      if (existingUser.docs.length > 0) {
-        // User exists - send notification email (don't reveal this to the client)
-        const existingUserDoc = existingUser.docs[0];
-        logger.info({ email: maskEmail(normalizedEmail) }, "Registration attempt for existing email");
-
-        // Generate password reset URL so user can recover their account
-        const baseUrl = getBaseUrl();
-        const resetUrl = `${baseUrl}/forgot-password`;
-        const { branding, t } = await getEmailContext(payload, existingUserDoc?.locale);
-
-        await safeSendEmail(
-          payload,
-          {
-            to: normalizedEmail,
-            subject: t("accountExistsSubject"),
-            html: generateAccountExistsEmailHTML(resetUrl, existingUserDoc?.locale, branding),
-          },
-          EMAIL_CONTEXTS.ACCOUNT_EXISTS
-        );
-
-        logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
-      } else {
-        // Create new user and queue a verification email through the shared job pipeline
-        try {
-          const createdUser = await payload.create({
-            collection: "users",
-            data: {
-              email: normalizedEmail,
-              password,
-              // Self-registration defaults (matches beforeChange hook logic for REST API)
-              role: "user",
-              trustLevel: String(TRUST_LEVELS.BASIC) as "1",
-              registrationSource: "self",
-              isActive: true,
-            },
-            disableVerificationEmail: true,
-            showHiddenFields: true,
-          });
-
-          if (createdUser._verificationToken) {
-            const baseUrl = getBaseUrl();
-            const verifyUrl = `${baseUrl}/verify-email?token=${createdUser._verificationToken}`;
-            const { branding, t } = await getEmailContext(payload, createdUser.locale);
-
-            await safeSendEmail(
-              payload,
-              {
-                to: normalizedEmail,
-                subject: t("verifyAccountSubject"),
-                html: buildAccountVerificationEmailHtml(
-                  verifyUrl,
-                  createdUser.firstName ?? "",
-                  createdUser.locale,
-                  branding
-                ),
-              },
-              EMAIL_CONTEXTS.ACCOUNT_VERIFICATION
-            );
-          } else {
-            logger.error(
-              { email: maskEmail(normalizedEmail), userId: createdUser.id },
-              "New user created without verification token"
-            );
-          }
-
-          logger.info({ email: maskEmail(normalizedEmail) }, "New user registered");
-
-          const clientIp = getClientIdentifier(req);
-          await auditLog(payload, {
-            action: AUDIT_ACTIONS.REGISTERED,
-            userId: createdUser.id,
-            userEmail: normalizedEmail,
-            ipAddress: clientIp === "unknown" ? undefined : clientIp,
-            details: { registrationSource: "self" },
-          });
-        } catch (createError) {
-          // Handle potential race condition where user was created between our check and create
-          // This could happen under high concurrency
-          const errorMessage = createError instanceof Error ? createError.message : String(createError);
-
-          if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
-            // Race condition - user was created between check and create
-            // Fall through to timing pad + return
-            logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
-          } else {
-            // Re-throw non-race errors immediately
-            throw createError;
-          }
-        }
-      }
-
-      return successResponse;
+      await registerOrNotify(payload, req, normalizedEmail, password);
+      return { message: "Please check your email to verify your account." };
     });
   },
 });

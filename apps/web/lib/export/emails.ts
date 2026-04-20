@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 import { getEnv } from "@/lib/config/env";
 import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
-import { EMAIL_CONTEXTS, safeSendEmail } from "@/lib/email/send";
+import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { formatLongDate } from "@/lib/utils/date";
 
 /**
@@ -83,7 +83,7 @@ export const sendExportReadyEmail = async (
     branding.logoUrl
   );
 
-  await safeSendEmail(payload, { to: email, subject: t("exportReadySubject"), html }, EMAIL_CONTEXTS.EXPORT_READY);
+  await queueEmail(payload, { to: email, subject: t("exportReadySubject"), html }, EMAIL_CONTEXTS.EXPORT_READY);
 };
 
 /**
@@ -132,5 +132,5 @@ export const sendExportFailedEmail = async (
     branding.logoUrl
   );
 
-  await safeSendEmail(payload, { to: email, subject: t("exportFailedSubject"), html }, EMAIL_CONTEXTS.EXPORT_FAILED);
+  await queueEmail(payload, { to: email, subject: t("exportFailedSubject"), html }, EMAIL_CONTEXTS.EXPORT_FAILED);
 };
