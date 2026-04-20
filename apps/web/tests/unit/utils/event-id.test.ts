@@ -66,6 +66,12 @@ describe("event-id utilities", () => {
       expect(extractExternalIdValue({ meta: { uuid: "x-1" } }, "meta.uuid")).toBe("x-1");
     });
 
+    it("prefers literal dotted keys over nested traversal", () => {
+      expect(extractExternalIdValue({ "meta.uuid": "flat-id", meta: { uuid: "nested-id" } }, "meta.uuid")).toBe(
+        "flat-id"
+      );
+    });
+
     it("stringifies numeric values", () => {
       expect(extractExternalIdValue({ id: 42 }, "id")).toBe("42");
     });
@@ -93,6 +99,11 @@ describe("event-id utilities", () => {
       it("returns sanitized field value", () => {
         const row = { myId: "event-123" };
         expect(generateIdPreview(row, "external", "myId")).toBe("event-123");
+      });
+
+      it("supports literal dotted id fields from flattened rows", () => {
+        const row = { "meta.uuid": "event-123", meta: { uuid: "nested-id" } };
+        expect(generateIdPreview(row, "external", "meta.uuid")).toBe("event-123");
       });
 
       it("returns empty string when idField is null", () => {

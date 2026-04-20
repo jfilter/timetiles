@@ -12,7 +12,12 @@ const mocks = vi.hoisted(() => ({ generateUniqueId: vi.fn(() => "generated-id") 
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
-import { createEventData, extractCoordinates, extractTimestamp } from "@/lib/jobs/utils/event-creation-helpers";
+import {
+  createEventData,
+  extractCoordinates,
+  extractEndTimestamp,
+  extractTimestamp,
+} from "@/lib/jobs/utils/event-creation-helpers";
 
 // Reset mock before each test to guard against thread-pool contamination
 beforeEach(() => {
@@ -40,6 +45,16 @@ describe("extractCoordinates", () => {
 
       expect(result.location).toBeUndefined();
       expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should extract coordinates from nested mapped paths", () => {
+      const row = { geo: { lat: "52.52", lon: "13.405" } };
+      const fieldMappings = { latitudePath: "geo.lat", longitudePath: "geo.lon" };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+      expect(result.coordinateSource.type).toBe("source-data");
     });
   });
 
@@ -97,6 +112,23 @@ describe("extractCoordinates", () => {
 
       expect(result.location).toBeUndefined();
       expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should resolve nested location paths for geocoding lookups", () => {
+      const row = { event: { location: "Berlin Germany" } };
+      const fieldMappings = { locationPath: "event.location" };
+      const geocodingResults = {
+        "berlin germany": {
+          coordinates: { lat: 52.52, lng: 13.405 },
+          confidence: 0.9,
+          formattedAddress: "Berlin, Germany",
+        },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+      expect(result.coordinateSource.type).toBe("geocoded");
     });
   });
 
@@ -196,6 +228,14 @@ describe("extractTimestamp", () => {
       expect(result).toBeInstanceOf(Date);
       expect(result!.getTime()).toBe(1718451000000);
     });
+
+    it("should return a valid Date when mapped field uses a nested path", () => {
+      const row = { event: { date: "2024-06-15T10:30:00Z" } };
+      const result = extractTimestamp(row, "event.date");
+
+      expect(result).toBeInstanceOf(Date);
+      expect(result!.toISOString()).toBe("2024-06-15T10:30:00.000Z");
+    });
   });
 
   describe("fallback fields", () => {
@@ -259,6 +299,16 @@ describe("extractTimestamp", () => {
 
       expect(result).toBeNull();
     });
+  });
+});
+
+describe("extractEndTimestamp", () => {
+  it("should return a valid Date when mapped field uses a nested path", () => {
+    const row = { event: { endDate: "2024-06-15T12:30:00Z" } };
+    const result = extractEndTimestamp(row, "event.endDate");
+
+    expect(result).toBeInstanceOf(Date);
+    expect(result!.toISOString()).toBe("2024-06-15T12:30:00.000Z");
   });
 });
 

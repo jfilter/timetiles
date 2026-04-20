@@ -31,6 +31,23 @@ export const getByPath = (obj: unknown, path: string): unknown =>
     return undefined;
   }, obj);
 
+const hasOwnPathKey = (obj: unknown, path: string): obj is Record<string, unknown> =>
+  obj !== null && obj !== undefined && typeof obj === "object" && Object.hasOwn(obj, path);
+
+/**
+ * Get a value from a row-like object where dotted field names may be literal keys.
+ *
+ * Exact top-level keys win over nested traversal so flattened headers like
+ * `"user.name"` remain readable after JSON/GeoJSON conversion.
+ */
+export const getByPathOrKey = (obj: unknown, path: string): unknown => {
+  if (hasOwnPathKey(obj, path)) {
+    return obj[path];
+  }
+
+  return getByPath(obj, path);
+};
+
 /**
  * Set value at path using dot notation.
  *
@@ -60,6 +77,21 @@ export const setByPath = (obj: Record<string, unknown>, path: string, value: unk
   }, obj);
 
   target[lastKey] = value;
+};
+
+/**
+ * Set a value on a row-like object where dotted field names may be literal keys.
+ *
+ * Simple field names always write directly. For dotted names, existing literal
+ * keys win; otherwise a nested object path is created.
+ */
+export const setByPathOrKey = (obj: Record<string, unknown>, path: string, value: unknown): void => {
+  if (!path.includes(".") || Object.hasOwn(obj, path)) {
+    obj[path] = value;
+    return;
+  }
+
+  setByPath(obj, path, value);
 };
 
 /**
@@ -93,4 +125,19 @@ export const deleteByPath = (obj: Record<string, unknown>, path: string): void =
   if (parent && typeof parent === "object") {
     delete (parent as Record<string, unknown>)[lastKey];
   }
+};
+
+/**
+ * Delete a value from a row-like object where dotted field names may be literal keys.
+ *
+ * Exact top-level keys win over nested traversal so flattened-source headers are
+ * removed without touching unrelated nested objects.
+ */
+export const deleteByPathOrKey = (obj: Record<string, unknown>, path: string): void => {
+  if (Object.hasOwn(obj, path)) {
+    delete obj[path];
+    return;
+  }
+
+  deleteByPath(obj, path);
 };

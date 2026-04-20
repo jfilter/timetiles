@@ -87,7 +87,7 @@ export class DataExportService {
     ]);
 
     // Get dataset IDs to count events and dataset-schemas
-    const userDatasets = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
+    const userDatasets = await findUserDocs(this.payload, "datasets", userId);
     const datasetIds = userDatasets.map((d) => d.id);
 
     let eventsCount = 0;
@@ -106,10 +106,7 @@ export class DataExportService {
     }
 
     // Count import jobs via import files
-    const userIngestFiles = await findUserDocs(this.payload, "ingest-files", userId, {
-      userField: "user",
-      limit: 10000,
-    });
+    const userIngestFiles = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user" });
     const importFileIds = userIngestFiles.map((f) => f.id);
 
     let importJobsCount = 0;
@@ -175,7 +172,7 @@ export class DataExportService {
    * Fetch catalogs for export.
    */
   private async fetchCatalogs(userId: number): Promise<CatalogExportData[]> {
-    const docs = await findUserDocs(this.payload, "catalogs", userId, { limit: 10000 });
+    const docs = await findUserDocs(this.payload, "catalogs", userId);
 
     return docs.map(
       (c: Catalog): CatalogExportData => ({
@@ -194,7 +191,7 @@ export class DataExportService {
    * Fetch datasets for export.
    */
   private async fetchDatasets(userId: number): Promise<DatasetExportData[]> {
-    const docs = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
+    const docs = await findUserDocs(this.payload, "datasets", userId);
 
     return docs.map(
       (d: Dataset): DatasetExportData => ({
@@ -257,7 +254,7 @@ export class DataExportService {
    * Fetch import files for export.
    */
   private async fetchIngestFiles(userId: number): Promise<IngestFileExportData[]> {
-    const docs = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user", limit: 10000 });
+    const docs = await findUserDocs(this.payload, "ingest-files", userId, { userField: "user" });
 
     return docs.map((f: IngestFile) => ({
       id: f.id,
@@ -278,7 +275,7 @@ export class DataExportService {
     const result = await this.payload.find({
       collection: "ingest-jobs",
       where: { ingestFile: { in: importFileIds } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -297,7 +294,7 @@ export class DataExportService {
    * Fetch scheduled ingests for export.
    */
   private async fetchScheduledIngests(userId: number): Promise<ScheduledIngestExportData[]> {
-    const docs = await findUserDocs(this.payload, "scheduled-ingests", userId, { limit: 10000 });
+    const docs = await findUserDocs(this.payload, "scheduled-ingests", userId);
 
     return docs.map((s: ScheduledIngest) => ({
       id: s.id,
@@ -318,7 +315,7 @@ export class DataExportService {
    * Fetch media metadata for export.
    */
   private async fetchMedia(userId: number): Promise<MediaExportData[]> {
-    const docs = await findUserDocs(this.payload, "media", userId, { limit: 10000 });
+    const docs = await findUserDocs(this.payload, "media", userId);
 
     return docs.map((m: Media) => ({
       id: m.id,
@@ -341,7 +338,7 @@ export class DataExportService {
     const result = await this.payload.find({
       collection: "dataset-schemas",
       where: { dataset: { in: datasetIds } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -366,7 +363,7 @@ export class DataExportService {
     const result = await this.payload.find({
       collection: "audit-log",
       where: { userId: { equals: userId } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -385,7 +382,7 @@ export class DataExportService {
    * Fetch scraper repos for export.
    */
   private async fetchScraperRepos(userId: number): Promise<ScraperRepoExportData[]> {
-    const docs = await findUserDocs(this.payload, "scraper-repos", userId, { limit: 10000 });
+    const docs = await findUserDocs(this.payload, "scraper-repos", userId);
 
     return docs.map(
       (r: ScraperRepo): ScraperRepoExportData => ({
@@ -409,7 +406,7 @@ export class DataExportService {
     const result = await this.payload.find({
       collection: "scrapers",
       where: { repoCreatedBy: { equals: userId } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 
@@ -439,7 +436,7 @@ export class DataExportService {
     const result = await this.payload.find({
       collection: "scraper-runs",
       where: { scraperOwner: { equals: userId } },
-      limit: 10000,
+      pagination: false,
       overrideAccess: true,
     });
 

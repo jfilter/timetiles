@@ -3,15 +3,21 @@
  *
  * @module
  */
-import "@/tests/mocks/services/logger";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { describe, expect, it } from "vitest";
+const mockLogger = vi.hoisted(() => ({ logger: { info: vi.fn(), warn: vi.fn() } }));
+
+vi.mock("@/lib/logger", () => ({ logger: mockLogger.logger }));
 
 import { type PreProcessingConfig, preProcessRecords } from "@/lib/ingest/pre-process-records";
 
 const config: PreProcessingConfig = { groupBy: "uid", mergeFields: { startDate: "min", endDate: "max" } };
 
 describe("preProcessRecords", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("should return records unchanged when no config", () => {
     const records = [{ uid: 1, title: "A" }];
     expect(preProcessRecords(records, null)).toEqual(records);
@@ -110,5 +116,50 @@ describe("preProcessRecords", () => {
     // ISO format preserved
     expect(result[0]!.startDate).toContain("2024-06-01");
     expect(result[0]!.endDate).toContain("2024-06-03");
+  });
+
+  it("should merge numeric strings numerically instead of parsing them as dates", () => {
+    const records = [
+      { uid: 1, seats: "2", price: "10.50" },
+      { uid: 1, seats: "10", price: "2.25" },
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { seats: "max", price: "min" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.seats).toBe("10");
+    expect(result[0]!.price).toBe("2.25");
+  });
+
+  it("should skip merging fields with mixed numeric and date values", () => {
+    const records = [
+      { uid: 1, marker: "2" },
+      { uid: 1, marker: "2024-06-01T10:00:00Z" },
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { marker: "max" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.marker).toBe("2");
+    expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+      "Skipping merge field with mixed value types",
+      expect.objectContaining({ field: "marker" })
+    );
+  });
+
+  it("should skip merging fields with invalid values", () => {
+    const records = [
+      { uid: 1, marker: "2024-06-01T10:00:00Z" },
+      { uid: 1, marker: "not-a-date" },
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { marker: "max" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.marker).toBe("2024-06-01T10:00:00Z");
+    expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+      "Skipping merge field with invalid values",
+      expect.objectContaining({ field: "marker", invalidCount: 1 })
+    );
   });
 });

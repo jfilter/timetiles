@@ -9,7 +9,7 @@
  * @module
  * @category Utils
  */
-import { getByPath } from "@/lib/utils/object-path";
+import { getByPathOrKey } from "@/lib/utils/object-path";
 
 /** The three supported ID generation strategies. */
 export type IdStrategyType = "external" | "content-hash" | "auto-generate";
@@ -50,7 +50,7 @@ export const sanitizeId = (id: unknown): string => {
  */
 export const extractExternalIdValue = (data: unknown, path: string): string | null => {
   if (!path) return null;
-  const value = getByPath(data, path);
+  const value = getByPathOrKey(data, path);
   if (value == null) return null;
   if (typeof value === "object") return JSON.stringify(value);
   if (typeof value === "string") return value;

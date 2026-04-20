@@ -16,6 +16,7 @@ import { generateUniqueId } from "@/lib/services/id-generation";
 import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
+import { getByPathOrKey } from "@/lib/utils/object-path";
 import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
@@ -42,8 +43,8 @@ export const extractCoordinates = (
 
   if (latitudePath && longitudePath) {
     // Parse string coordinates (e.g. from split transforms)
-    const parsedLat = parseCoordinate(row[latitudePath]);
-    const parsedLng = parseCoordinate(row[longitudePath]);
+    const parsedLat = parseCoordinate(getByPathOrKey(row, latitudePath));
+    const parsedLng = parseCoordinate(getByPathOrKey(row, longitudePath));
 
     // Validate coordinates — rejects null, NaN, out-of-range, and (0,0)
     if (parsedLat !== null && parsedLng !== null && isValidCoordinate(parsedLat, parsedLng)) {
@@ -59,7 +60,7 @@ export const extractCoordinates = (
   const locationFields = [locationPath, locationNamePath].filter(Boolean) as string[];
   for (const field of locationFields) {
     if (geocodingResults) {
-      const locationValue = row[field];
+      const locationValue = getByPathOrKey(row, field);
       if (typeof locationValue === "string") {
         const trimmed = locationValue.trim();
         const geocoded = geocodingResults[normalizeGeocodingAddress(trimmed)];
@@ -86,8 +87,9 @@ export const extractCoordinates = (
  */
 export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date | null => {
   // Try mapped field first
-  if (timestampPath && row[timestampPath]) {
-    const date = parseDateInput(row[timestampPath] as string | number);
+  const mappedValue = timestampPath ? getByPathOrKey(row, timestampPath) : undefined;
+  if (timestampPath && mappedValue) {
+    const date = parseDateInput(mappedValue as string | number);
     if (date) {
       return date;
     }
@@ -97,8 +99,9 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
   const timestampFields = ["timestamp", "date", "datetime", "created_at", "event_date", "event_time"];
 
   for (const field of timestampFields) {
-    if (row[field]) {
-      const date = parseDateInput(row[field] as string | number);
+    const value = getByPathOrKey(row, field);
+    if (value) {
+      const date = parseDateInput(value as string | number);
       if (date) {
         return date;
       }
@@ -115,11 +118,12 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
  * Returns null if no end date is found (most events don't have one).
  */
 export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPath?: string | null): Date | null => {
-  if (!endTimestampPath || !row[endTimestampPath]) {
+  const value = endTimestampPath ? getByPathOrKey(row, endTimestampPath) : undefined;
+  if (!endTimestampPath || !value) {
     return null;
   }
 
-  return parseDateInput(row[endTimestampPath] as string | number);
+  return parseDateInput(value as string | number);
 };
 
 /**
@@ -128,7 +132,7 @@ export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPa
 const extractLocationName = (row: Record<string, unknown>, locationNamePath?: string | null): string | null => {
   if (!locationNamePath) return null;
 
-  const value = row[locationNamePath];
+  const value = getByPathOrKey(row, locationNamePath);
   if (typeof value === "string" && value.trim() !== "") {
     return value.trim();
   }

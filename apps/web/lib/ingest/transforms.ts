@@ -27,7 +27,7 @@ import type {
   StringOpTransform,
 } from "@/lib/ingest/types/transforms";
 import { isValidDate } from "@/lib/utils/date";
-import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
+import { deleteByPathOrKey, getByPathOrKey, setByPathOrKey } from "@/lib/utils/object-path";
 
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -124,12 +124,12 @@ const applyRenameTransform = (data: Record<string, unknown>, transform: RenameTr
   // setByPath, which throws and crashes the React tree.
   if (!transform.to || transform.to === transform.from) return;
 
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
 
   // Only apply if source field exists
   if (value !== undefined) {
-    setByPath(data, transform.to, value);
-    deleteByPath(data, transform.from);
+    setByPathOrKey(data, transform.to, value);
+    deleteByPathOrKey(data, transform.from);
   }
 };
 
@@ -273,7 +273,7 @@ const adjustForTimezone = (date: Date, timezone: string): Date => {
 };
 
 const applyDateParseTransform = (data: Record<string, unknown>, transform: DateParseTransform): void => {
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
 
   if (value === undefined || typeof value !== "string") return;
 
@@ -296,7 +296,7 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
       if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && output !== trimmedValue && !transform.timezone) {
         return;
       }
-      setByPath(data, transform.from, output);
+      setByPathOrKey(data, transform.from, output);
     }
   } catch {
     // Keep original value if parsing fails
@@ -307,7 +307,7 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
  * Apply a string operation transform.
  */
 const applyStringOpTransform = (data: Record<string, unknown>, transform: StringOpTransform): void => {
-  const rawValue = getByPath(data, transform.from);
+  const rawValue = getByPathOrKey(data, transform.from);
   if (rawValue === undefined) return;
 
   const target = transform.to ?? transform.from;
@@ -318,12 +318,12 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
     if (!transform.expression) return;
     try {
       const exprResult = runCustomTransform(rawValue, transform.expression);
-      setByPath(data, target, exprResult);
+      setByPathOrKey(data, target, exprResult);
     } catch {
       // Keep original value if expression fails
     }
     // Remove source field when writing to a different target (same as rename)
-    if (target !== transform.from) deleteByPath(data, transform.from);
+    if (target !== transform.from) deleteByPathOrKey(data, transform.from);
     return;
   }
 
@@ -351,9 +351,9 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
       result = rawValue;
   }
 
-  setByPath(data, target, result);
+  setByPathOrKey(data, target, result);
   // Remove source field when writing to a different target (same as rename)
-  if (target !== transform.from) deleteByPath(data, transform.from);
+  if (target !== transform.from) deleteByPathOrKey(data, transform.from);
 };
 
 /**
@@ -366,7 +366,7 @@ const applyConcatenateTransform = (data: Record<string, unknown>, transform: Con
   const values: string[] = [];
 
   for (const field of transform.fromFields) {
-    const value = getByPath(data, field);
+    const value = getByPathOrKey(data, field);
     // Only stringify primitive types to avoid [object Object]
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
       values.push(String(value));
@@ -374,7 +374,7 @@ const applyConcatenateTransform = (data: Record<string, unknown>, transform: Con
   }
 
   if (values.length > 0) {
-    setByPath(data, transform.to, values.join(transform.separator));
+    setByPathOrKey(data, transform.to, values.join(transform.separator));
   }
 };
 
@@ -382,7 +382,7 @@ const applyConcatenateTransform = (data: Record<string, unknown>, transform: Con
  * Apply a split transform to separate a field into multiple fields.
  */
 const applySplitTransform = (data: Record<string, unknown>, transform: SplitTransform): void => {
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
 
   if (value === undefined || typeof value !== "string") return;
 
@@ -392,7 +392,7 @@ const applySplitTransform = (data: Record<string, unknown>, transform: SplitTran
     const targetField = transform.toFields[i];
     const part = parts[i];
     if (targetField && part !== undefined) {
-      setByPath(data, targetField, part.trim());
+      setByPathOrKey(data, targetField, part.trim());
     }
   }
 };
@@ -404,7 +404,7 @@ const applySplitTransform = (data: Record<string, unknown>, transform: SplitTran
  * Non-string values and invalid JSON are silently skipped.
  */
 const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: ParseJsonArrayTransform): void => {
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
   if (typeof value !== "string") return;
 
   const trimmed = value.trim();
@@ -414,7 +414,7 @@ const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: 
     const parsed: unknown = JSON.parse(trimmed);
     if (Array.isArray(parsed)) {
       const target = transform.to ?? transform.from;
-      setByPath(
+      setByPathOrKey(
         data,
         target,
         parsed.map((v) => (v == null ? "" : String(v)))
@@ -433,7 +433,7 @@ const applyParseJsonArrayTransform = (data: Record<string, unknown>, transform: 
  * and filters out empty strings.
  */
 const applySplitToArrayTransform = (data: Record<string, unknown>, transform: SplitToArrayTransform): void => {
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
   if (typeof value !== "string") return;
 
   const trimmed = value.trim();
@@ -447,7 +447,7 @@ const applySplitToArrayTransform = (data: Record<string, unknown>, transform: Sp
 
   if (parts.length > 0) {
     const target = transform.to ?? transform.from;
-    setByPath(data, target, parts);
+    setByPathOrKey(data, target, parts);
   }
 };
 
@@ -461,14 +461,14 @@ const applyExtractTransform = (data: Record<string, unknown>, transform: Extract
   // `pattern` would match every position and produce garbage output.
   if (!transform.to || !transform.pattern) return;
 
-  const value = getByPath(data, transform.from);
+  const value = getByPathOrKey(data, transform.from);
   if (typeof value !== "string") return;
 
   const match = new RegExp(transform.pattern).exec(value);
   if (match) {
     const groupIndex = transform.group ?? 1;
     const extracted = match[groupIndex] ?? match[0];
-    setByPath(data, transform.to, extracted);
+    setByPathOrKey(data, transform.to, extracted);
   }
 };
 

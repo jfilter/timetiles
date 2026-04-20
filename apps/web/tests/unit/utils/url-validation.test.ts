@@ -6,29 +6,32 @@
  * @category Tests
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as UrlValidationModule from "@/lib/security/url-validation";
 
 const mockDnsLookup = vi.hoisted(() => vi.fn());
 
-vi.mock("node:dns", () => ({
-  default: { promises: { lookup: mockDnsLookup } },
-  promises: { lookup: mockDnsLookup },
-}));
+vi.mock("node:dns", () => ({ default: { promises: { lookup: mockDnsLookup } }, promises: { lookup: mockDnsLookup } }));
 
-import { isPrivateIP, isPrivateUrl, validateResolvedPublicHostname } from "@/lib/security/url-validation";
+let isPrivateIP: typeof UrlValidationModule.isPrivateIP;
+let isPrivateUrl: typeof UrlValidationModule.isPrivateUrl;
+let validateResolvedPublicHostname: typeof UrlValidationModule.validateResolvedPublicHostname;
+
+beforeEach(async () => {
+  vi.resetModules();
+  vi.unstubAllEnvs();
+  vi.stubEnv("ALLOW_PRIVATE_URLS", "");
+  vi.stubEnv("E2E_MODE", "");
+  vi.stubEnv("NODE_ENV", "test");
+  mockDnsLookup.mockReset();
+
+  ({ isPrivateIP, isPrivateUrl, validateResolvedPublicHostname } = await import("@/lib/security/url-validation"));
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("isPrivateUrl", () => {
-  beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv("ALLOW_PRIVATE_URLS", "");
-    vi.stubEnv("E2E_MODE", "");
-    vi.stubEnv("NODE_ENV", "test");
-    mockDnsLookup.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   describe("blocks loopback addresses", () => {
     it("blocks 127.0.0.1", () => {
       expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(true);
@@ -275,18 +278,6 @@ describe("isPrivateIP", () => {
 });
 
 describe("validateResolvedPublicHostname", () => {
-  beforeEach(() => {
-    vi.unstubAllEnvs();
-    vi.stubEnv("ALLOW_PRIVATE_URLS", "");
-    vi.stubEnv("E2E_MODE", "");
-    vi.stubEnv("NODE_ENV", "test");
-    mockDnsLookup.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllEnvs();
-  });
-
   it("blocks when any resolved address is private", async () => {
     mockDnsLookup.mockResolvedValueOnce([
       { address: "93.184.216.34", family: 4 },

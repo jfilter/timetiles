@@ -7,9 +7,16 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
+import { applyPreviewTransforms, applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-import { deleteByPath, getByPath, setByPath } from "@/lib/utils/object-path";
+import {
+  deleteByPath,
+  deleteByPathOrKey,
+  getByPath,
+  getByPathOrKey,
+  setByPath,
+  setByPathOrKey,
+} from "@/lib/utils/object-path";
 
 describe("Path utilities", () => {
   describe("getByPath", () => {
@@ -46,6 +53,14 @@ describe("Path utilities", () => {
     });
   });
 
+  describe("getByPathOrKey", () => {
+    it("should prefer literal dotted keys over nested traversal", () => {
+      const obj = { "user.email": "flattened@example.com", user: { email: "nested@example.com" } };
+
+      expect(getByPathOrKey(obj, "user.email")).toBe("flattened@example.com");
+    });
+  });
+
   describe("setByPath", () => {
     it("should set value at simple path", () => {
       const obj: Record<string, unknown> = {};
@@ -78,6 +93,16 @@ describe("Path utilities", () => {
     });
   });
 
+  describe("setByPathOrKey", () => {
+    it("should update an existing literal dotted key directly", () => {
+      const obj: Record<string, unknown> = { "user.email": "old@example.com" };
+
+      setByPathOrKey(obj, "user.email", "new@example.com");
+
+      expect(obj).toEqual({ "user.email": "new@example.com" });
+    });
+  });
+
   describe("deleteByPath", () => {
     it("should delete value at simple path", () => {
       const obj: Record<string, unknown> = { name: "John", age: 30 };
@@ -104,6 +129,19 @@ describe("Path utilities", () => {
       expect(obj.user).toEqual({ name: "John" });
     });
   });
+
+  describe("deleteByPathOrKey", () => {
+    it("should delete an existing literal dotted key directly", () => {
+      const obj: Record<string, unknown> = {
+        "user.email": "flattened@example.com",
+        user: { email: "nested@example.com" },
+      };
+
+      deleteByPathOrKey(obj, "user.email");
+
+      expect(obj).toEqual({ user: { email: "nested@example.com" } });
+    });
+  });
 });
 
 describe("applyTransforms", () => {
@@ -126,6 +164,17 @@ describe("applyTransforms", () => {
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ user: { name: "John" }, contact: { email: "john@example.com" } });
+  });
+
+  it("should rename flattened dotted keys without treating them as nested paths", () => {
+    const data = { "user.name": "Flattened User", user: { name: "Nested User" } };
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "rename", from: "user.name", to: "title", active: true, autoDetected: false },
+    ];
+
+    const result = applyTransforms(data, transforms);
+
+    expect(result).toEqual({ user: { name: "Nested User" }, title: "Flattened User" });
   });
 
   it("should apply multiple transforms", () => {
@@ -175,6 +224,17 @@ describe("applyTransforms", () => {
     const data = { date: "2024-01-15", name: "Event" };
     const result = applyTransforms(data, []);
     expect(result).toEqual(data);
+  });
+
+  it("should keep literal dotted keys when writing back to the same field", () => {
+    const data = { "user.name": "john" };
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "user.name", operation: "uppercase", active: true, autoDetected: false },
+    ];
+
+    const result = applyTransforms(data, transforms);
+
+    expect(result).toEqual({ "user.name": "JOHN" });
   });
 
   it("should handle complex nested transformations", () => {
@@ -468,6 +528,28 @@ describe("applyTransforms", () => {
 });
 
 describe("applyTransformsBatch", () => {
+  it("should transform flattened dotted headers across batches", () => {
+    const rows = [{ "user.name": "alpha" }, { "user.name": "beta" }];
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "user.name", operation: "uppercase", active: true, autoDetected: false },
+    ];
+
+    expect(applyTransformsBatch(rows, transforms)).toEqual([{ "user.name": "ALPHA" }, { "user.name": "BETA" }]);
+  });
+});
+
+describe("applyPreviewTransforms", () => {
+  it("should transform flattened dotted headers in preview mode", () => {
+    const rows = [{ "user.name": "preview user" }];
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "string-op", from: "user.name", operation: "uppercase", active: true, autoDetected: false },
+    ];
+
+    expect(applyPreviewTransforms(rows, transforms)).toEqual([{ "user.name": "PREVIEW USER" }]);
+  });
+});
+
+describe("applyTransformsBatch (existing cases)", () => {
   it("should apply transforms to array of objects", () => {
     const data = [
       { date: "2024-01-15", name: "Event 1" },

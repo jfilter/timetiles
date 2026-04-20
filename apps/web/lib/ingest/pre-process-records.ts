@@ -37,6 +37,38 @@ export interface PreProcessingConfig {
   extractFields?: ExtractFieldConfig[];
 }
 
+const NUMERIC_STRING_PATTERN = /^-?\d+(\.\d+)?$/;
+
+type ParsedMergeValue =
+  | { kind: "number"; comparable: number; original: string | number }
+  | { kind: "date"; comparable: number; original: string };
+
+const parseMergeValue = (value: unknown): ParsedMergeValue | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? { kind: "number", comparable: value, original: value } : null;
+  }
+
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed === "") {
+    return null;
+  }
+
+  if (NUMERIC_STRING_PATTERN.test(trimmed)) {
+    return { kind: "number", comparable: Number(trimmed), original: value };
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return { kind: "date", comparable: parsedDate.getTime(), original: value };
+};
+
 /**
  * Apply extractFields to a single record: resolve nested dot-paths and
  * create flat top-level fields.
@@ -124,31 +156,39 @@ const mergeGroup = (
   const merged = { ...group[0]! };
 
   for (const [field, strategy] of Object.entries(mergeFields)) {
-    const values = group
-      .map((r) => r[field])
-      .filter((v): v is string | number => v != null && v !== "")
-      .map((v) => (typeof v === "number" ? v : new Date(String(v)).getTime()))
-      .filter((t) => !Number.isNaN(t));
+    const rawEntries = group
+      .map((record) => record[field])
+      .filter((value): value is string | number => value != null && value !== "");
 
-    if (values.length === 0) continue;
+    if (rawEntries.length === 0) {
+      continue;
+    }
 
-    const result = strategy === "min" ? Math.min(...values) : Math.max(...values);
+    const parsedEntries = rawEntries.map((value) => ({ raw: value, parsed: parseMergeValue(value) }));
+    const invalidCount = parsedEntries.filter((entry) => entry.parsed === null).length;
 
-    // Preserve original format: if the source was a date string, output ISO string
-    const originalValue = group[0]![field];
-    if (typeof originalValue === "string") {
-      const date = new Date(result);
-      // Match the original format: "YYYY-MM-DD HH:MM:SS" or ISO
-      if (originalValue.includes("T")) {
-        merged[field] = date.toISOString();
-      } else {
-        const pad = (n: number) => String(n).padStart(2, "0");
-        merged[field] =
-          `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-          `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-      }
+    if (invalidCount > 0) {
+      logger.warn("Skipping merge field with invalid values", { field, invalidCount, totalValues: rawEntries.length });
+      continue;
+    }
+
+    const validEntries = parsedEntries.map((entry) => entry.parsed!);
+    const kinds = new Set(validEntries.map((entry) => entry.kind));
+    if (kinds.size > 1) {
+      logger.warn("Skipping merge field with mixed value types", { field, valueKinds: Array.from(kinds) });
+      continue;
+    }
+
+    const winningEntry = validEntries.reduce((best, current) => {
+      const isBetter = strategy === "min" ? current.comparable < best.comparable : current.comparable > best.comparable;
+      return isBetter ? current : best;
+    });
+
+    const firstValue = rawEntries[0];
+    if (winningEntry.kind === "number") {
+      merged[field] = typeof firstValue === "number" ? winningEntry.comparable : String(winningEntry.original);
     } else {
-      merged[field] = result;
+      merged[field] = winningEntry.original;
     }
   }
 

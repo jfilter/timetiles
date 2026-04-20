@@ -284,6 +284,66 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       expect(drizzleMock.select).toHaveBeenCalledTimes(1);
     });
 
+    it("should replay the full transform chain needed to produce an external id", async () => {
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+        ingestTransforms: [
+          {
+            id: "transform-1",
+            type: "rename",
+            from: "user.name",
+            to: "metadata.raw",
+            active: true,
+            autoDetected: false,
+          },
+          {
+            id: "transform-2",
+            type: "string-op",
+            from: "metadata.raw",
+            to: "id",
+            operation: "lowercase",
+            active: true,
+            autoDetected: false,
+          },
+          { id: "transform-3", type: "rename", from: "title", to: "unused", active: true, autoDetected: false },
+        ],
+      };
+
+      const mockIngestFile = createMockIngestFile();
+      const mockFileData = [{ "user.name": "ALPHA-123", title: "Event 1" }];
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValueOnce(mockIngestJob);
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:alpha-123");
+      drizzleMock._enqueue([]);
+      mockPayload.update.mockResolvedValueOnce({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { totalRows: 1, uniqueRows: 1, internalDuplicates: 0, externalDuplicates: 0 } });
+      expect(mocks.generateUniqueId).toHaveBeenCalledTimes(1);
+
+      const transformedRow = mocks.generateUniqueId.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(transformedRow).toMatchObject({ id: "alpha-123", title: "Event 1" });
+      expect(transformedRow).not.toHaveProperty("user.name");
+      expect(transformedRow).not.toHaveProperty("unused");
+    });
+
     it("should identify internal duplicates", async () => {
       // Mock import job
       const mockIngestJob = {

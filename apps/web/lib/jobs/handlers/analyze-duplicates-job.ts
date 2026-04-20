@@ -26,7 +26,7 @@ import type { Dataset, IngestJob } from "@/payload-types";
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources } from "../utils/resource-loading";
-import { buildTransformsFromDataset } from "../utils/transform-builders";
+import { buildTransformsForTargetPath } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
 import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
@@ -71,19 +71,6 @@ const skipDeduplication = async (
   return false;
 };
 
-/**
- * Get only the transforms needed to produce the external ID field.
- * Returns an empty array if no transforms are needed (ID comes directly from source data).
- */
-const getIdTransforms = (dataset: Dataset) => {
-  const externalIdPath = dataset.idStrategy?.externalIdPath;
-  if (!externalIdPath || dataset.idStrategy?.type !== "external") return [];
-
-  const allTransforms = buildTransformsFromDataset(dataset);
-  // Find transforms that write to the external ID field
-  return allTransforms.filter((t) => "to" in t && t.to === externalIdPath);
-};
-
 const analyzeInternalDuplicates = async (
   payload: Payload,
   filePath: string,
@@ -101,8 +88,12 @@ const analyzeInternalDuplicates = async (
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
-  // If external ID is produced by a transform, apply only that transform before ID generation
-  const idTransforms = getIdTransforms(dataset);
+  // If external ID is produced through a transform chain, replay only the
+  // transforms required to materialize that final path before ID generation.
+  const idTransforms =
+    dataset.idStrategy?.type === "external"
+      ? buildTransformsForTargetPath(dataset, dataset.idStrategy.externalIdPath)
+      : [];
 
   for await (const rows of streamBatchesFromFile(filePath, {
     sheetIndex: job.sheetIndex ?? undefined,
