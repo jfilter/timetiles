@@ -621,7 +621,7 @@ describe.sequential("scheduled ingests Integration", () => {
       expect(successOutput2Result.isDuplicate).toBe(false);
     });
 
-    it("should handle expected content type override", async () => {
+    it("should reject generic content types when the URL has no recognizable file signal", async () => {
       const scheduledIngest = await payload.create({
         collection: "scheduled-ingests",
         data: {
@@ -632,7 +632,7 @@ describe.sequential("scheduled ingests Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          advancedOptions: { expectedContentType: "csv" },
+          advancedOptions: { responseFormat: "csv" },
         },
         user: testUser,
       });
@@ -644,21 +644,19 @@ describe.sequential("scheduled ingests Integration", () => {
         headers: { "Content-Type": "application/octet-stream" },
       });
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalog.id,
-          originalName: "Content Type Test",
-        },
-        job: { id: "job-1" },
-        req: { payload },
-      });
-
-      const successOutput = result.output as UrlFetchSuccessOutput;
-      expect(successOutput.contentType).toBe("text/csv");
-      expect(successOutput.filename).toMatch(/\.csv$/);
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: scheduledIngest.id,
+            sourceUrl: scheduledIngest.sourceUrl,
+            authConfig: scheduledIngest.authConfig,
+            catalogId: testCatalog.id,
+            originalName: "Content Type Test",
+          },
+          job: { id: "job-1" },
+          req: { payload },
+        })
+      ).rejects.toThrow(/Unsupported file type/);
     });
 
     it("should enforce max file size limit", async () => {

@@ -11,9 +11,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Event } from "@/payload-types";
+import { ProviderManager } from "../../../lib/services/geocoding/provider-manager";
+import { resetProviderRateLimiter } from "../../../lib/services/geocoding/provider-rate-limiter";
 
 import {
   createIntegrationTestEnvironment,
@@ -26,6 +28,36 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
+const mockGeocode = vi.fn();
+
+const createMockProviders = () => [
+  { name: "Mock Geocoder", geocoder: { geocode: mockGeocode } as any, priority: 1, enabled: true, rateLimit: 100 },
+];
+
+const applyProviderManagerSpy = () => {
+  vi.spyOn(ProviderManager.prototype, "loadProviders").mockImplementation(function (this: any) {
+    this.providers = createMockProviders();
+    this.configureRateLimiter();
+    return Promise.resolve(this.providers);
+  });
+};
+
+const mockGeocodeResult = (address: string, lat: number, lng: number) => [
+  {
+    latitude: lat,
+    longitude: lng,
+    formattedAddress: address,
+    country: "Germany",
+    countryCode: "DE",
+    city: address,
+    state: undefined,
+    streetName: undefined,
+    streetNumber: undefined,
+    zipcode: undefined,
+    extra: { confidence: 0.85 },
+  },
+];
+
 describe.sequential("All Transform Types Pipeline", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
@@ -33,6 +65,7 @@ describe.sequential("All Transform Types Pipeline", () => {
   let testCatalogId: string;
 
   beforeAll(async () => {
+    applyProviderManagerSpy();
     testEnv = await createIntegrationTestEnvironment({ resetDatabase: false });
     payload = testEnv.payload;
 
@@ -54,7 +87,30 @@ describe.sequential("All Transform Types Pipeline", () => {
   });
 
   beforeEach(async () => {
-    await testEnv.seedManager.truncate(IMPORT_PIPELINE_COLLECTIONS_TO_RESET);
+    resetProviderRateLimiter();
+    applyProviderManagerSpy();
+    await testEnv.seedManager.truncate([
+      ...IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
+      "location-cache",
+      "geocoding-providers",
+    ]);
+    await payload.create({
+      collection: "geocoding-providers",
+      data: {
+        name: "Mock Geocoder",
+        type: "google",
+        enabled: true,
+        priority: 1,
+        rateLimit: 100,
+        apiKey: "test-api-key-for-mock-geocoding",
+        tags: ["testing"],
+      },
+    });
+    mockGeocode.mockReset();
+    mockGeocode.mockImplementation((address: string) => {
+      const normalizedAddress = typeof address === "string" ? address.toLowerCase().trim() : String(address);
+      return mockGeocodeResult(normalizedAddress, 50.0, 10.0);
+    });
   });
 
   // --- Helpers ---

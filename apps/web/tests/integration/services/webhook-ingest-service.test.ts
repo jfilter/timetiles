@@ -872,35 +872,27 @@ describe.sequential("Webhook Import Service Integration", () => {
       }
     });
 
-    it("should handle invalid content types", async () => {
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-html-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledIngestId: testScheduledIngest.id,
-            sourceUrl: `http://localhost:${testServerPort}/wrong-type.html`,
-            catalogId: testCatalog.id,
-            originalName: "HTML Test",
-            userId: testUser.id,
-            triggeredBy: "webhook",
+    it("should reject invalid content types", async () => {
+      await expect(
+        urlFetchJob.handler({
+          req: { payload },
+          job: {
+            id: `job-html-${Date.now()}`,
+            task: JOB_TYPES.URL_FETCH,
+            input: {
+              scheduledIngestId: testScheduledIngest.id,
+              sourceUrl: `http://localhost:${testServerPort}/wrong-type.html`,
+              catalogId: testCatalog.id,
+              originalName: "HTML Test",
+              userId: testUser.id,
+              triggeredBy: "webhook",
+            },
           },
-        },
-      });
+        })
+      ).rejects.toThrow(/Unsupported file type/);
 
-      // Should still save the file but detect it as CSV based on content
-      expect(result.output.ingestFileId).toBeDefined();
-
-      // Check if successful and has ingestFileId
-      if (!("ingestFileId" in result.output)) {
-        throw new Error("Expected successful result with ingestFileId");
-      }
-
-      const ingestFile = await payload.findByID({ collection: "ingest-files", id: result.output.ingestFileId });
-
-      // The file content is actually CSV, so it should be detected as CSV
-      expect(ingestFile.mimeType).toBe("text/csv");
+      const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
+      expect(updatedImport.lastStatus).toBe("failed");
     });
 
     it("should handle HTTP error responses", async () => {
