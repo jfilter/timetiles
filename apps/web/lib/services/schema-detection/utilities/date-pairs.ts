@@ -52,12 +52,14 @@ interface CandidatePairMetrics {
   endIndex: number;
   startValidity: number;
   endValidity: number;
-  rowsWithAnyValue: number;
+  rowsWithParseableValue: number;
   comparableRows: number;
   orderedRows: number;
 }
 
-const isPresent = (value: unknown): boolean => value != null && (typeof value !== "string" || value.trim() !== "");
+type ParseableDateInput = string | number | Date | null | undefined;
+
+const isDateParseable = (value: unknown): boolean => parseDateInput(value as ParseableDateInput) !== null;
 
 const uniquePathsInOrder = (
   headers: string[],
@@ -114,7 +116,7 @@ const buildCandidatePairs = (
       endIndex,
       startValidity: validateFieldType(startStats, "timestamp"),
       endValidity: validateFieldType(endStats, "timestamp"),
-      rowsWithAnyValue: 0,
+      rowsWithParseableValue: 0,
       comparableRows: 0,
       orderedRows: 0,
     };
@@ -190,12 +192,12 @@ export const createPairedDateInference = (options: PairedDateInferenceOptions) =
           const startValue = getByPathOrKey(row, pair.startPath);
           const endValue = getByPathOrKey(row, pair.endPath);
 
-          if (isPresent(startValue) || isPresent(endValue)) {
-            pair.rowsWithAnyValue++;
+          if (isDateParseable(startValue) || isDateParseable(endValue)) {
+            pair.rowsWithParseableValue++;
           }
 
-          const startDate = parseDateInput(startValue as string | number | Date | null | undefined);
-          const endDate = parseDateInput(endValue as string | number | Date | null | undefined);
+          const startDate = parseDateInput(startValue as ParseableDateInput);
+          const endDate = parseDateInput(endValue as ParseableDateInput);
 
           if (!startDate || !endDate) continue;
 
@@ -215,9 +217,15 @@ export const createPairedDateInference = (options: PairedDateInferenceOptions) =
             return null;
           }
 
-          const completeness = pair.rowsWithAnyValue > 0 ? pair.comparableRows / pair.rowsWithAnyValue : 0;
+          const completeness = pair.rowsWithParseableValue > 0 ? pair.comparableRows / pair.rowsWithParseableValue : 0;
           const coverage = totalRows > 0 ? pair.comparableRows / totalRows : 0;
           const validity = (pair.startValidity + pair.endValidity) / 2;
+          // Agreement (order-consistency) dominates because it is the single strongest signal
+          // that two columns are a paired start/end. Completeness (how many rows with parseable
+          // values are actually comparable), coverage (how much of the dataset the pair appears
+          // in), and validity (how strongly both columns type-check as timestamps) are secondary
+          // checks. These weights are rough and not empirically tuned; revisit if false
+          // positives/negatives appear in the wild.
           const score = Math.min(1, agreement * 0.55 + completeness * 0.15 + coverage * 0.15 + validity * 0.15);
 
           return { ...pair, agreement, score, headerOrderStable: pair.startIndex < pair.endIndex ? 1 : 0 };
