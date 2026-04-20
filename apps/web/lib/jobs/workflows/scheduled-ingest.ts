@@ -72,7 +72,9 @@ const buildScheduledIngestFailure = async (
     overrideAccess: true,
   });
 
-  const reviewJob = ingestJobs.docs.find((doc: { stage?: string | null }) => doc.stage === PROCESSING_STAGE.NEEDS_REVIEW);
+  const reviewJob = ingestJobs.docs.find(
+    (doc: { stage?: string | null }) => doc.stage === PROCESSING_STAGE.NEEDS_REVIEW
+  );
   if (reviewJob) {
     return new Error(`Scheduled ingest paused for review: ${getReviewReason(reviewJob)}`);
   }
@@ -143,10 +145,7 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
         return;
       }
 
-      logger.info("scheduled-ingest: URL fetched, detecting sheets", {
-        scheduledIngestId,
-        ingestFileId,
-      });
+      logger.info("scheduled-ingest: URL fetched, detecting sheets", { scheduledIngestId, ingestFileId });
 
       const detection = (await tasks["dataset-detection"]("detect-sheets", {
         input: { ingestFileId: String(ingestFileId) },

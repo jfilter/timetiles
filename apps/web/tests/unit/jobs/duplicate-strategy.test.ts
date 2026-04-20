@@ -309,16 +309,14 @@ describe.sequential("processEventBatch", () => {
         },
         dataset: {
           ...baseCtx.dataset,
-          ingestTransforms: [{ id: "rename-title", type: "rename", active: true, autoDetected: false, from: "title", to: "eventTitle" }],
+          ingestTransforms: [
+            { id: "rename-title", type: "rename", active: true, autoDetected: false, from: "title", to: "eventTitle" },
+          ],
         },
       };
 
       mocks.getIngestGeocodingResults.mockReturnValue({
-        berlin: {
-          coordinates: { lat: 52.52, lng: 13.405 },
-          confidence: 0.9,
-          formattedAddress: "Berlin, Germany",
-        },
+        berlin: { coordinates: { lat: 52.52, lng: 13.405 }, confidence: 0.9, formattedAddress: "Berlin, Germany" },
       });
 
       const rows = [{ id: "x", title: "My Event", location: "Berlin", venue: "Tempelhof" }];
@@ -348,11 +346,7 @@ describe.sequential("processEventBatch", () => {
       expect(data).toHaveProperty("eventTimestamp");
       expect(data).toMatchObject({
         location: { latitude: 52.52, longitude: 13.405 },
-        coordinateSource: {
-          type: "geocoded",
-          confidence: 0.9,
-          normalizedAddress: "Berlin, Germany",
-        },
+        coordinateSource: { type: "geocoded", confidence: 0.9, normalizedAddress: "Berlin, Germany" },
       });
     });
 

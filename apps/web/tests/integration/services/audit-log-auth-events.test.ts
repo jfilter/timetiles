@@ -106,18 +106,14 @@ describe.sequential("Audit log — authentication events", () => {
       await payload.verifyEmail({ collection: "users", token: userWithToken._verificationToken });
     }
 
-    const response = await loginPOST(buildLoginRequest(testEmail, password), {
-      params: Promise.resolve({}),
-    });
+    const response = await loginPOST(buildLoginRequest(testEmail, password), { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
 
     const loginBody = (await response.json()) as { exp?: number; token?: string; user?: { id: number } };
     const setCookie = response.headers.get("set-cookie");
     const sessionCookie = setCookie?.split(";")[0];
-    const authResult = await payload.auth({
-      headers: new Headers({ Cookie: sessionCookie ?? "" }),
-    });
+    const authResult = await payload.auth({ headers: new Headers({ Cookie: sessionCookie ?? "" }) });
 
     expect(loginBody.user?.id).toBe(user.id);
     expect(loginBody.exp).toBeDefined();

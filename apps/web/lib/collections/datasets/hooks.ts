@@ -325,17 +325,10 @@ export const syncIsPublicToEvents: CollectionAfterChangeHook<Dataset> = async ({
     await auditDatasetVisibilityChange(req, doc, previousDoc);
   }
 
-  const accessFields = {
-    datasetIsPublic: syncState.combinedIsPublic,
-    catalogOwnerId: syncState.nextCatalogOwnerId,
-  };
+  const accessFields = { datasetIsPublic: syncState.combinedIsPublic, catalogOwnerId: syncState.nextCatalogOwnerId };
 
   logger.info(
-    {
-      datasetId: doc.id,
-      datasetIsPublic: syncState.combinedIsPublic,
-      catalogOwnerId: syncState.nextCatalogOwnerId,
-    },
+    { datasetId: doc.id, datasetIsPublic: syncState.combinedIsPublic, catalogOwnerId: syncState.nextCatalogOwnerId },
     "Syncing dataset access fields to events and dataset schemas"
   );
 

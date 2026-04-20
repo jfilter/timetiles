@@ -71,10 +71,7 @@ describe("toSqlConditions", () => {
   });
 
   it("requires both coordinates when requireLocation is true", () => {
-    const filters: CanonicalEventFilters = {
-      includePublic: true,
-      requireLocation: true,
-    };
+    const filters: CanonicalEventFilters = { includePublic: true, requireLocation: true };
 
     const conditions = toSqlConditions(filters);
     const queryText = collectQueryStrings(conditions).join(" ");

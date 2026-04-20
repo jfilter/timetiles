@@ -62,10 +62,7 @@ const updateIngestFileStatusById = async (payload: Payload, ingestFileId: string
     await payload.update({
       collection: COLLECTION_NAMES.INGEST_FILES,
       id: ingestFileId,
-      data: {
-        status: "processing",
-        datasetsProcessed: terminalJobs.length,
-      },
+      data: { status: "processing", datasetsProcessed: terminalJobs.length },
       context: { skipIngestFileHooks: true },
     });
     return;
@@ -78,11 +75,7 @@ const updateIngestFileStatusById = async (payload: Payload, ingestFileId: string
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
     id: ingestFileId,
-    data: {
-      status: newStatus,
-      datasetsProcessed: terminalJobs.length,
-      completedAt,
-    },
+    data: { status: newStatus, datasetsProcessed: terminalJobs.length, completedAt },
     context: { skipIngestFileHooks: true },
   });
 

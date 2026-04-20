@@ -940,7 +940,9 @@ describe.sequential("urlFetchJob", () => {
       });
 
       expect(result.output.ingestFileId).toBe("import-123");
-      expect(mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")).toBeUndefined();
+      expect(
+        mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")
+      ).toBeUndefined();
     });
 
     it("should defer duplicate scheduled-ingest updates when the parent workflow owns lifecycle state", async () => {
@@ -978,13 +980,10 @@ describe.sequential("urlFetchJob", () => {
       });
 
       expect(mockPayload.create).not.toHaveBeenCalled();
-      expect(result.output).toEqual(
-        expect.objectContaining({
-          ingestFileId: "existing-file-999",
-          isDuplicate: true,
-        })
-      );
-      expect(mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")).toBeUndefined();
+      expect(result.output).toEqual(expect.objectContaining({ ingestFileId: "existing-file-999", isDuplicate: true }));
+      expect(
+        mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")
+      ).toBeUndefined();
     });
 
     it("should pass through dataset mapping configuration", async () => {

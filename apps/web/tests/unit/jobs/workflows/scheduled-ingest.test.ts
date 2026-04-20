@@ -140,9 +140,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   it("should stop when url-fetch throws", async () => {
     tasks["url-fetch"].mockRejectedValueOnce(new Error("404 not found"));
 
-    await expect(
-      handler(createWorkflowArgs(mockJob, tasks, mockReq))
-    ).rejects.toThrow("404 not found");
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow("404 not found");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
@@ -155,9 +153,9 @@ describe.sequential("scheduledIngestWorkflow", () => {
   it("should fail when url-fetch returns no ingestFileId", async () => {
     tasks["url-fetch"].mockResolvedValueOnce({});
 
-    await expect(
-      handler(createWorkflowArgs(mockJob, tasks, mockReq))
-    ).rejects.toThrow("Scheduled ingest did not create an ingest file.");
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow(
+      "Scheduled ingest did not create an ingest file."
+    );
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
@@ -170,9 +168,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   it("should stop when detection throws", async () => {
     tasks["dataset-detection"].mockRejectedValueOnce(new Error("unsupported format"));
 
-    await expect(
-      handler(createWorkflowArgs(mockJob, tasks, mockReq))
-    ).rejects.toThrow("unsupported format");
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow("unsupported format");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
@@ -185,9 +181,9 @@ describe.sequential("scheduledIngestWorkflow", () => {
   it("should fail when detection returns empty sheets array", async () => {
     tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0, sheets: [] });
 
-    await expect(
-      handler(createWorkflowArgs(mockJob, tasks, mockReq))
-    ).rejects.toThrow("Scheduled ingest detected no sheets to process.");
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow(
+      "Scheduled ingest detected no sheets to process."
+    );
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
@@ -231,13 +227,11 @@ describe.sequential("scheduledIngestWorkflow", () => {
 
   it("should treat review-paused downstream jobs as a scheduled-ingest failure", async () => {
     mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
-    mockReq.payload.find.mockResolvedValueOnce({
-      docs: [{ stage: "needs-review", reviewReason: "schema-drift" }],
-    });
+    mockReq.payload.find.mockResolvedValueOnce({ docs: [{ stage: "needs-review", reviewReason: "schema-drift" }] });
 
-    await expect(
-      handler(createWorkflowArgs(mockJob, tasks, mockReq))
-    ).rejects.toThrow("Scheduled ingest paused for review: schema-drift");
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow(
+      "Scheduled ingest paused for review: schema-drift"
+    );
 
     expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
     expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();

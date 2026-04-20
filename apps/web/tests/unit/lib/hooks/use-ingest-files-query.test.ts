@@ -66,37 +66,13 @@ describe("useIngestFilesQuery queryFn", () => {
     expect(capturedOptions.refetchInterval).toBeDefined();
 
     const activePoll = capturedOptions.refetchInterval!({
-      state: {
-        data: [
-          {
-            status: "processing",
-            datasetsCount: 2,
-            datasetsProcessed: 1,
-          },
-        ],
-      },
+      state: { data: [{ status: "processing", datasetsCount: 2, datasetsProcessed: 1 }] },
     });
     const settledReviewPoll = capturedOptions.refetchInterval!({
-      state: {
-        data: [
-          {
-            status: "processing",
-            datasetsCount: 2,
-            datasetsProcessed: 2,
-          },
-        ],
-      },
+      state: { data: [{ status: "processing", datasetsCount: 2, datasetsProcessed: 2 }] },
     });
     const completedPoll = capturedOptions.refetchInterval!({
-      state: {
-        data: [
-          {
-            status: "completed",
-            datasetsCount: 2,
-            datasetsProcessed: 2,
-          },
-        ],
-      },
+      state: { data: [{ status: "completed", datasetsCount: 2, datasetsProcessed: 2 }] },
     });
 
     expect(activePoll).toBe(5000);
@@ -111,16 +87,8 @@ describe("useIngestFilesQuery queryFn", () => {
     const mixedPoll = capturedOptions.refetchInterval!({
       state: {
         data: [
-          {
-            status: "processing",
-            datasetsCount: 2,
-            datasetsProcessed: 2,
-          },
-          {
-            status: "processing",
-            datasetsCount: 3,
-            datasetsProcessed: 1,
-          },
+          { status: "processing", datasetsCount: 2, datasetsProcessed: 2 },
+          { status: "processing", datasetsCount: 3, datasetsProcessed: 1 },
         ],
       },
     });

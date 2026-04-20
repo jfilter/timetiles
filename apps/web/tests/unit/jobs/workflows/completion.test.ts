@@ -14,9 +14,7 @@ describe.sequential("workflow completion helpers", () => {
         .fn()
         .mockResolvedValueOnce({ id: "job-1", ingestFile: "file-1" })
         .mockResolvedValueOnce({ id: "job-1", ingestFile: "file-1" }),
-      find: vi.fn().mockResolvedValue({
-        docs: [{ stage: "completed" }, { stage: "failed" }],
-      }),
+      find: vi.fn().mockResolvedValue({ docs: [{ stage: "completed" }, { stage: "failed" }] }),
       update: vi.fn().mockResolvedValue({}),
     };
 
@@ -29,11 +27,7 @@ describe.sequential("workflow completion helpers", () => {
         expect.objectContaining({
           collection: "ingest-files",
           id: "file-1",
-          data: expect.objectContaining({
-            status: "failed",
-            datasetsProcessed: 2,
-            completedAt: expect.any(String),
-          }),
+          data: expect.objectContaining({ status: "failed", datasetsProcessed: 2, completedAt: expect.any(String) }),
         })
       );
     }
@@ -42,9 +36,7 @@ describe.sequential("workflow completion helpers", () => {
   it("keeps ingest files in processing while recording fully-settled review state", async () => {
     const payload = {
       findByID: vi.fn().mockResolvedValue({ id: "job-1", ingestFile: "file-1" }),
-      find: vi.fn().mockResolvedValue({
-        docs: [{ stage: "completed" }, { stage: "needs-review" }],
-      }),
+      find: vi.fn().mockResolvedValue({ docs: [{ stage: "completed" }, { stage: "needs-review" }] }),
       update: vi.fn().mockResolvedValue({}),
     };
 
@@ -53,10 +45,7 @@ describe.sequential("workflow completion helpers", () => {
     expect(payload.update).toHaveBeenCalledWith({
       collection: "ingest-files",
       id: "file-1",
-      data: {
-        status: "processing",
-        datasetsProcessed: 2,
-      },
+      data: { status: "processing", datasetsProcessed: 2 },
       context: { skipIngestFileHooks: true },
     });
   });
@@ -64,9 +53,7 @@ describe.sequential("workflow completion helpers", () => {
   it("does not mark the parent ingest file terminal while background work is still running", async () => {
     const payload = {
       findByID: vi.fn().mockResolvedValue({ id: "job-1", ingestFile: "file-1" }),
-      find: vi.fn().mockResolvedValue({
-        docs: [{ stage: "completed" }, { stage: "create-events" }],
-      }),
+      find: vi.fn().mockResolvedValue({ docs: [{ stage: "completed" }, { stage: "create-events" }] }),
       update: vi.fn().mockResolvedValue({}),
     };
 
