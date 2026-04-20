@@ -8,13 +8,25 @@ import { scheduledIngestWorkflow } from "@/lib/jobs/workflows/scheduled-ingest";
 
 // Extract handler with correct type (WorkflowConfig.handler is a union with string)
 const handler = scheduledIngestWorkflow.handler as WorkflowHandler<"scheduled-ingest">;
+type ScheduledIngestWorkflowContext = Parameters<typeof handler>[0];
 
 // Mock processSheets so we can verify it's called without running the real pipeline
 vi.mock("@/lib/jobs/workflows/process-sheets", () => ({ processSheets: vi.fn().mockResolvedValue(undefined) }));
 
 // Mock completion helpers (tested separately)
 vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.fn().mockResolvedValue(undefined) }));
+vi.mock("@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils", () => ({
+  loadScheduledIngestForLifecycle: vi.fn().mockResolvedValue({ id: 42, statistics: {}, executionHistory: [] }),
+  updateScheduledIngestFailure: vi.fn().mockResolvedValue(undefined),
+  updateScheduledIngestSuccess: vi.fn().mockResolvedValue(undefined),
+}));
 
+import {
+  loadScheduledIngestForLifecycle,
+  updateScheduledIngestFailure,
+  updateScheduledIngestSuccess,
+} from "@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils";
+import { updateIngestFileStatus } from "@/lib/jobs/workflows/completion";
 import { processSheets } from "@/lib/jobs/workflows/process-sheets";
 
 /** Creates a mock tasks object with all task handlers as vi.fn(). */
@@ -36,13 +48,31 @@ const createMockTasks = () => ({
   "scraper-execution": vi.fn(),
 });
 
+const createWorkflowArgs = (
+  job: ScheduledIngestWorkflowContext["job"],
+  tasks: ReturnType<typeof createMockTasks>,
+  req: ScheduledIngestWorkflowContext["req"]
+): ScheduledIngestWorkflowContext => ({
+  job,
+  tasks: tasks as unknown as ScheduledIngestWorkflowContext["tasks"],
+  inlineTask: vi.fn() as ScheduledIngestWorkflowContext["inlineTask"],
+  req,
+});
+
 describe.sequential("scheduledIngestWorkflow", () => {
   let tasks: ReturnType<typeof createMockTasks>;
   let mockJob: any;
+  let mockReq: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
     tasks = createMockTasks();
+    mockReq = {
+      payload: {
+        findByID: vi.fn().mockResolvedValue({ id: "fetched-file-1", status: "completed" }),
+        find: vi.fn().mockResolvedValue({ docs: [{ stage: "completed" }] }),
+      },
+    };
     mockJob = {
       id: "wf-sched-1",
       input: {
@@ -60,7 +90,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
   // ── 1. Happy path — fetch, detection, sheets processed ────────────────
 
   it("should run fetch, detection, then process sheets on happy path", async () => {
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await handler(createWorkflowArgs(mockJob, tasks, mockReq));
 
     // url-fetch called with all input fields
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
@@ -73,6 +103,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
         originalName: "data.csv",
         userId: "user-1",
         triggeredBy: "schedule",
+        deferLifecycleUpdates: true,
       },
     });
 
@@ -89,6 +120,19 @@ describe.sequential("scheduledIngestWorkflow", () => {
       [{ index: 0, ingestJobId: "ij-1", name: "Sheet1", rowCount: 200 }],
       expect.anything()
     );
+    expect(updateIngestFileStatus).toHaveBeenCalledOnce();
+    expect(loadScheduledIngestForLifecycle).toHaveBeenCalledWith(mockReq.payload, 42);
+    expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+
+    const processSheetsCallOrder = vi.mocked(processSheets).mock.invocationCallOrder[0];
+    const updateIngestFileStatusCallOrder = vi.mocked(updateIngestFileStatus).mock.invocationCallOrder[0];
+    const updateScheduledIngestSuccessCallOrder = vi.mocked(updateScheduledIngestSuccess).mock.invocationCallOrder[0];
+
+    expect(processSheetsCallOrder).toBeDefined();
+    expect(updateIngestFileStatusCallOrder).toBeDefined();
+    expect(updateScheduledIngestSuccessCallOrder).toBeDefined();
+    expect(processSheetsCallOrder!).toBeLessThan(updateIngestFileStatusCallOrder!);
+    expect(updateIngestFileStatusCallOrder!).toBeLessThan(updateScheduledIngestSuccessCallOrder!);
   });
 
   // ── 2. Fetch fails — no detection, no sheets ─────────────────────────
@@ -97,24 +141,28 @@ describe.sequential("scheduledIngestWorkflow", () => {
     tasks["url-fetch"].mockRejectedValueOnce(new Error("404 not found"));
 
     await expect(
-      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+      handler(createWorkflowArgs(mockJob, tasks, mockReq))
     ).rejects.toThrow("404 not found");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
     expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
   });
 
   // ── 3. Fetch returns no ingestFileId — no detection ───────────────────
 
-  it("should stop when url-fetch returns no ingestFileId", async () => {
+  it("should fail when url-fetch returns no ingestFileId", async () => {
     tasks["url-fetch"].mockResolvedValueOnce({});
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler(createWorkflowArgs(mockJob, tasks, mockReq))
+    ).rejects.toThrow("Scheduled ingest did not create an ingest file.");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
     expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
   });
 
   // ── 4. Detection fails — no sheets processed ─────────────────────────
@@ -123,24 +171,28 @@ describe.sequential("scheduledIngestWorkflow", () => {
     tasks["dataset-detection"].mockRejectedValueOnce(new Error("unsupported format"));
 
     await expect(
-      handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any })
+      handler(createWorkflowArgs(mockJob, tasks, mockReq))
     ).rejects.toThrow("unsupported format");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
     expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
   });
 
   // ── 5. Detection returns empty sheets — no sheets processed ───────────
 
-  it("should stop when detection returns empty sheets array", async () => {
+  it("should fail when detection returns empty sheets array", async () => {
     tasks["dataset-detection"].mockResolvedValueOnce({ sheetsDetected: 0, sheets: [] });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    await expect(
+      handler(createWorkflowArgs(mockJob, tasks, mockReq))
+    ).rejects.toThrow("Scheduled ingest detected no sheets to process.");
 
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
     expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
   });
 
   // ── 6. Verify concurrency key format ──────────────────────────────────
@@ -159,9 +211,35 @@ describe.sequential("scheduledIngestWorkflow", () => {
   it("should convert numeric ingestFileId to string for detection", async () => {
     tasks["url-fetch"].mockResolvedValueOnce({ ingestFileId: 12345 });
 
-    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+    mockReq.payload.findByID.mockResolvedValueOnce({ id: 12345, status: "completed" });
+    await handler(createWorkflowArgs(mockJob, tasks, mockReq));
 
     // ingestFileId should be stringified via String()
     expect(tasks["dataset-detection"]).toHaveBeenCalledWith("detect-sheets", { input: { ingestFileId: "12345" } });
+  });
+
+  it("should stop after duplicate detection and mark the scheduled ingest successful", async () => {
+    tasks["url-fetch"].mockResolvedValueOnce({ ingestFileId: "existing-file-1", isDuplicate: true });
+
+    await handler(createWorkflowArgs(mockJob, tasks, mockReq));
+
+    expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
+    expect(processSheets).not.toHaveBeenCalled();
+    expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
+  });
+
+  it("should treat review-paused downstream jobs as a scheduled-ingest failure", async () => {
+    mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
+    mockReq.payload.find.mockResolvedValueOnce({
+      docs: [{ stage: "needs-review", reviewReason: "schema-drift" }],
+    });
+
+    await expect(
+      handler(createWorkflowArgs(mockJob, tasks, mockReq))
+    ).rejects.toThrow("Scheduled ingest paused for review: schema-drift");
+
+    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();
   });
 });

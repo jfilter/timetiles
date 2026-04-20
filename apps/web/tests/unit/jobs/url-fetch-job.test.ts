@@ -905,6 +905,88 @@ describe.sequential("urlFetchJob", () => {
       expect(stats.averageDuration).toBeGreaterThan(5000);
     });
 
+    it("should defer scheduled-ingest success updates when the parent workflow owns lifecycle state", async () => {
+      mockPayload.create.mockResolvedValue({ id: "import-123" });
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: string }) => {
+        if (collection === "scheduled-ingests") {
+          return {
+            id,
+            name: "Deferred Lifecycle Schedule",
+            enabled: true,
+            advancedOptions: { skipDuplicateChecking: true },
+            retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+            statistics: { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1000 },
+            createdBy: "user-123",
+            catalog: "catalog-123",
+          };
+        }
+
+        return { id: "user-123", role: "user" };
+      });
+
+      const mockResponse = createMockResponse("id,name\n1,test", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "scheduled-123",
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-123",
+          originalName: "Deferred Lifecycle Import",
+          deferLifecycleUpdates: true,
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(result.output.ingestFileId).toBe("import-123");
+      expect(mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")).toBeUndefined();
+    });
+
+    it("should defer duplicate scheduled-ingest updates when the parent workflow owns lifecycle state", async () => {
+      mockPayload.findByID.mockResolvedValue({
+        id: "scheduled-123",
+        name: "Deferred Duplicate Schedule",
+        enabled: true,
+        advancedOptions: { skipDuplicateChecking: false },
+        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        statistics: { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1000 },
+        catalog: "catalog-123",
+        createdBy: "user-123",
+      });
+
+      const expectedHash = "3a6eb0790f39ac87c94f3856b2dd2c5d110e6811602261a9a923d3bb23adc8b7";
+      mockPayload.find.mockResolvedValue({
+        docs: [
+          { id: "existing-file-999", filename: "existing.csv", metadata: { urlFetch: { contentHash: expectedHash } } },
+        ],
+      });
+
+      const mockResponse = createMockResponse("data", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      const result = await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "scheduled-123",
+          sourceUrl: "https://example.com/data.csv",
+          catalogId: "catalog-123",
+          originalName: "Deferred Duplicate Import",
+          deferLifecycleUpdates: true,
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(result.output).toEqual(
+        expect.objectContaining({
+          ingestFileId: "existing-file-999",
+          isDuplicate: true,
+        })
+      );
+      expect(mockPayload.update.mock.calls.find((call: any) => call[0]?.collection === "scheduled-ingests")).toBeUndefined();
+    });
+
     it("should pass through dataset mapping configuration", async () => {
       mockPayload.create.mockResolvedValue({ id: "import-123" });
 

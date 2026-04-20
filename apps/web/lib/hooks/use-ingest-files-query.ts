@@ -20,6 +20,12 @@ export const ingestFileKeys = { all: ["ingest-files"] as const };
 const TERMINAL_STATUSES = new Set(["completed", "failed"]);
 const POLL_INTERVAL = 5000;
 
+const hasSettledWithoutBackgroundWork = (file: IngestFile): boolean => {
+  const total = file.datasetsCount ?? 0;
+  const processed = file.datasetsProcessed ?? 0;
+  return file.status === "processing" && total > 0 && processed >= total;
+};
+
 export const useIngestFilesQuery = (initialData?: IngestFile[]) =>
   useQuery({
     queryKey: ingestFileKeys.all,
@@ -27,7 +33,7 @@ export const useIngestFilesQuery = (initialData?: IngestFile[]) =>
     initialData,
     ...QUERY_PRESETS.standard,
     refetchInterval: createActivePollingInterval<IngestFile>(
-      (d) => !TERMINAL_STATUSES.has(d.status ?? ""),
+      (d) => !TERMINAL_STATUSES.has(d.status ?? "") && !hasSettledWithoutBackgroundWork(d),
       POLL_INTERVAL
     ),
   });

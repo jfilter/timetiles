@@ -32,10 +32,11 @@ export const POST = apiRoute({
       throw new ValidationError(`Ingest job is not in failed state. Current stage: ${ingestJob.stage}`);
     }
 
-    // Queue the ingest-process workflow to re-process from the beginning
+    // Queue the ingest-process workflow to re-process from the real beginning,
+    // including duplicate analysis and its review/quota gates.
     await payload.jobs.queue({
       workflow: "ingest-process",
-      input: { ingestJobId: String(ingestJob.id), resumeFrom: "detect-schema" },
+      input: { ingestJobId: String(ingestJob.id), resumeFrom: "analyze-duplicates" },
     });
 
     logger.info({ ingestJobId: ingestJob.id, userId: user.id }, "Manual retry initiated via workflow");

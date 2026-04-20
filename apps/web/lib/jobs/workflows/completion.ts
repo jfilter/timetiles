@@ -47,26 +47,49 @@ const updateIngestFileStatusById = async (payload: Payload, ingestFileId: string
   });
   if (allJobs.docs.length === 0) return;
 
-  const allDone = allJobs.docs.every(
+  const terminalJobs = allJobs.docs.filter(
     (j) =>
       j.stage === PROCESSING_STAGE.COMPLETED ||
       j.stage === PROCESSING_STAGE.FAILED ||
       j.stage === PROCESSING_STAGE.NEEDS_REVIEW
   );
+
+  const allDone = terminalJobs.length === allJobs.docs.length;
   if (!allDone) return;
 
   const hasReview = allJobs.docs.some((j) => j.stage === PROCESSING_STAGE.NEEDS_REVIEW);
-  if (hasReview) return;
+  if (hasReview) {
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      id: ingestFileId,
+      data: {
+        status: "processing",
+        datasetsProcessed: terminalJobs.length,
+      },
+      context: { skipIngestFileHooks: true },
+    });
+    return;
+  }
 
   const hasFailures = allJobs.docs.some((j) => j.stage === PROCESSING_STAGE.FAILED);
   const newStatus = hasFailures ? "failed" : "completed";
+  const completedAt = new Date().toISOString();
 
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
     id: ingestFileId,
-    data: { status: newStatus },
+    data: {
+      status: newStatus,
+      datasetsProcessed: terminalJobs.length,
+      completedAt,
+    },
     context: { skipIngestFileHooks: true },
   });
 
-  logger.info("Updated ingest file status", { ingestFileId, status: newStatus, totalJobs: allJobs.docs.length });
+  logger.info("Updated ingest file status", {
+    ingestFileId,
+    status: newStatus,
+    datasetsProcessed: terminalJobs.length,
+    totalJobs: allJobs.docs.length,
+  });
 };

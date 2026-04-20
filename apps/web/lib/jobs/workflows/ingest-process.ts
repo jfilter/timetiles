@@ -3,6 +3,7 @@
  *
  * Queued after a user resolves a NEEDS_REVIEW state on an IngestJob.
  * Supports resuming from different points depending on the review reason:
+ * - `analyze-duplicates`: re-runs analyze → detect-schema → validate → create-version → geocode → create-events
  * - `detect-schema`: re-runs detect-schema → validate → create-version → geocode → create-events
  * - `create-schema-version` (default): create-version → geocode → create-events
  * - `create-events`: only create-events (e.g. after geocoding partial approval)
@@ -19,6 +20,7 @@ import type { WorkflowConfig } from "payload";
 import { logger } from "@/lib/logger";
 
 import type {
+  AnalyzeDuplicatesOutput,
   CreateEventsOutput,
   DetectSchemaOutput,
   GeocodeBatchOutput,
@@ -42,7 +44,17 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
 
     try {
       // Tasks throw on error → propagates to Payload → onFail marks IngestJob FAILED
-      if (resumeFrom === "detect-schema") {
+      if (resumeFrom === "analyze-duplicates") {
+        const analyze = (await tasks["analyze-duplicates"]("analyze", {
+          input: { ingestJobId: id },
+        })) as AnalyzeDuplicatesOutput;
+        if (analyze.needsReview) {
+          logger.info("ingest-process: analyze-duplicates requires review", { ingestJobId: id });
+          return;
+        }
+      }
+
+      if (resumeFrom === "analyze-duplicates" || resumeFrom === "detect-schema") {
         const detect = (await tasks["detect-schema"]("detect", { input: { ingestJobId: id } })) as DetectSchemaOutput;
         if (detect.needsReview) {
           logger.info("ingest-process: detect-schema requires review", { ingestJobId: id });

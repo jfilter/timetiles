@@ -99,7 +99,6 @@ const ScraperRepos: CollectionConfig = {
         description: "Git repository URL (e.g., https://github.com/user/repo.git)",
         condition: (data) => data?.sourceType === "git",
       },
-      // eslint-disable-next-line sonarjs/function-return-type -- Payload validate returns string | true by design
       validate: (value: unknown, { data }: { data: Record<string, unknown> }) => {
         if (data?.sourceType === "git" && !value) return "Git URL is required for git source type";
         if (value && typeof value === "string") {

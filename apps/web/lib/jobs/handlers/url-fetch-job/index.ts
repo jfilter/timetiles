@@ -44,6 +44,8 @@ export interface UrlFetchJobInput {
   originalName: string;
   userId?: number | string;
   triggeredBy?: "schedule" | "webhook" | "manual";
+  /** When true, the parent workflow owns scheduled-ingest success/failure updates. */
+  deferLifecycleUpdates?: boolean;
 }
 
 interface ImportContext {
@@ -314,6 +316,7 @@ export const urlFetchJob = {
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
+    const deferLifecycleUpdates = input.deferLifecycleUpdates === true;
 
     const startTime = Date.now();
     logger.info("Starting URL fetch job", {
@@ -358,7 +361,7 @@ export const urlFetchJob = {
       const importContext = createImportContext(input, scheduledIngest);
       const duplicateResult = await handleDuplicateCheck(payload, importContext, result.contentHash);
       if (duplicateResult) {
-        if (scheduledIngest) {
+        if (scheduledIngest && !deferLifecycleUpdates) {
           const duration = Date.now() - startTime;
           await updateScheduledIngestSuccess(payload, scheduledIngest, duplicateResult.ingestFileId, duration);
         }
@@ -375,7 +378,7 @@ export const urlFetchJob = {
       const { ingestFileId, filename } = await createImportFromFetchResult(payload, input, importContext, result);
 
       // Update scheduled ingest status if applicable
-      if (scheduledIngest) {
+      if (scheduledIngest && !deferLifecycleUpdates) {
         const duration = Date.now() - startTime;
         await updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, duration);
       }
@@ -388,7 +391,7 @@ export const urlFetchJob = {
         scheduledIngestId: input.scheduledIngestId,
       });
 
-      if (scheduledIngest) {
+      if (scheduledIngest && !deferLifecycleUpdates) {
         // JobHandlerContext.req is narrowly typed as { payload, user }, but it
         // is in fact a PayloadRequest — carrying transactionID and context that
         // the audit/update paths need. Cast through unknown to let Payload pick

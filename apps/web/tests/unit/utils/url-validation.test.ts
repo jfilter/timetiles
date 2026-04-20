@@ -5,15 +5,16 @@
  * @module
  * @category Tests
  */
-import dns from "node:dns";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const mockDnsLookup = vi.hoisted(() => vi.fn());
+
+vi.mock("node:dns", () => ({
+  default: { promises: { lookup: mockDnsLookup } },
+  promises: { lookup: mockDnsLookup },
+}));
+
 import { isPrivateIP, isPrivateUrl, validateResolvedPublicHostname } from "@/lib/security/url-validation";
-
-vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
-
-const mockDnsLookup = dns.promises.lookup as unknown as ReturnType<typeof vi.fn>;
 
 describe("isPrivateUrl", () => {
   beforeEach(() => {

@@ -128,7 +128,44 @@ describe.sequential("ingestProcessWorkflow", () => {
     expect(tasks["create-events"]).toHaveBeenCalledOnce();
   });
 
-  // ── 7. resumeFrom: "create-events" skips to last task only ──────────
+  // ── 7. resumeFrom: "analyze-duplicates" reruns the full pipeline ─────
+
+  it('resumeFrom: "analyze-duplicates" reruns duplicate analysis before downstream tasks', async () => {
+    tasks["analyze-duplicates"].mockResolvedValueOnce({});
+    tasks["detect-schema"].mockResolvedValueOnce({});
+    tasks["validate-schema"].mockResolvedValueOnce({});
+
+    mockJob.input = { ingestJobId: "123", resumeFrom: "analyze-duplicates" };
+
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledOnce();
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledWith("analyze", { input: { ingestJobId: "123" } });
+    expect(tasks["detect-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["validate-schema"]).toHaveBeenCalledOnce();
+    expect(tasks["create-schema-version"]).toHaveBeenCalledOnce();
+    expect(tasks["geocode-batch"]).toHaveBeenCalledOnce();
+    expect(tasks["create-events"]).toHaveBeenCalledOnce();
+  });
+
+  // ── 8. analyze-duplicates review exit — downstream work is skipped ───
+
+  it('resumeFrom: "analyze-duplicates" stops when duplicate analysis requires review', async () => {
+    tasks["analyze-duplicates"].mockResolvedValueOnce({ needsReview: true });
+
+    mockJob.input = { ingestJobId: "123", resumeFrom: "analyze-duplicates" };
+
+    await handler({ job: mockJob, tasks: tasks as any, inlineTask: vi.fn() as any, req: {} as any });
+
+    expect(tasks["analyze-duplicates"]).toHaveBeenCalledOnce();
+    expect(tasks["detect-schema"]).not.toHaveBeenCalled();
+    expect(tasks["validate-schema"]).not.toHaveBeenCalled();
+    expect(tasks["create-schema-version"]).not.toHaveBeenCalled();
+    expect(tasks["geocode-batch"]).not.toHaveBeenCalled();
+    expect(tasks["create-events"]).not.toHaveBeenCalled();
+  });
+
+  // ── 9. resumeFrom: "create-events" skips to last task only ──────────
 
   it('resumeFrom: "create-events" skips to last task only', async () => {
     mockJob.input = { ingestJobId: "123", resumeFrom: "create-events" };

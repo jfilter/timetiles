@@ -324,7 +324,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-files",
         id: "ingest-file-123",
-        data: expect.objectContaining({ datasetsCount: 1 }),
+        data: expect.objectContaining({ datasetsCount: 1, status: "processing" }),
       });
     });
 

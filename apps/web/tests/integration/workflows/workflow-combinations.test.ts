@@ -269,9 +269,10 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(reviewResult.ingestJob!.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
     expect(reviewResult.ingestJob!.schemaValidation?.requiresApproval).toBe(true);
 
-    // IngestFile should still be pending (not completed yet)
+    // IngestFile should remain in processing while waiting for review resolution.
     const fileBeforeApproval = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
-    expect(fileBeforeApproval.status).toBe("pending");
+    expect(fileBeforeApproval.status).toBe("processing");
+    expect(fileBeforeApproval.datasetsProcessed).toBe(1);
 
     // Approve the schema — afterChange hook queues ingest-process workflow
     const ingestJobId = reviewResult.ingestJob!.id;
@@ -374,9 +375,10 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
     expect(events.docs).toHaveLength(0);
 
-    // IngestFile should still be pending
+    // IngestFile should remain in processing while the review pause is unresolved.
     const file = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
-    expect(file.status).toBe("pending");
+    expect(file.status).toBe("processing");
+    expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
   // ── 5. onSuccess callback marks IngestJob as COMPLETED ──
@@ -430,7 +432,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
 
   // ── 7. File status: NEEDS_REVIEW prevents IngestFile from completing ──
 
-  it("should keep IngestFile as pending when an IngestJob is in needs-review", async () => {
+  it("should keep IngestFile in processing when an IngestJob is in needs-review", async () => {
     // Create a locked dataset to trigger schema drift review
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
@@ -484,10 +486,12 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(reviewResult.matched).toBe(true);
     expect(reviewResult.ingestJob!.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
 
-    // The completion.ts logic should NOT mark the IngestFile as completed
-    // because hasReview is true — it returns early without updating status
+    // The completion.ts logic should not mark the IngestFile terminal while
+    // review is still required; it should persist a processing parent state
+    // together with the settled dataset count.
     const file = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
-    expect(file.status).toBe("pending");
+    expect(file.status).toBe("processing");
+    expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
   // ── 8. Headers-only CSV (no data rows) produces no events ──

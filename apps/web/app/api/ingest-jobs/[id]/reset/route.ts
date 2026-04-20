@@ -31,10 +31,13 @@ const VALID_RESET_STAGES = [
 /**
  * Maps a recovery stage to the appropriate resumeFrom value for the
  * ingest-process workflow. Stages before detect-schema (like analyze-duplicates)
- * start from detect-schema since the ingest-process workflow begins there.
+ * now resume from analyze-duplicates so the pipeline can rebuild duplicate and
+ * quota review state before downstream stages run.
  */
 const stageToResumeFrom = (stage: string): string => {
   switch (stage) {
+    case PROCESSING_STAGE.ANALYZE_DUPLICATES:
+      return "analyze-duplicates";
     case PROCESSING_STAGE.CREATE_EVENTS:
       return "create-events";
     case PROCESSING_STAGE.GEOCODE_BATCH:

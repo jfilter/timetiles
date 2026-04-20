@@ -39,8 +39,15 @@ const getStatusVariant = (status: string | null | undefined): StatusVariant => {
   return STATUS_VARIANT_MAP[status] ?? "muted";
 };
 
+const isAwaitingReview = (ingestFile: IngestFile): boolean => {
+  const total = ingestFile.datasetsCount ?? 0;
+  const processed = ingestFile.datasetsProcessed ?? 0;
+  return ingestFile.status === "processing" && total > 0 && processed >= total;
+};
+
 export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => {
   const t = useTranslations("ImportActivity");
+  const tIngest = useTranslations("Ingest");
   const { data: ingestFiles = [], isLoading } = useIngestFilesQuery(initialData);
 
   const columns = useMemo<ColumnDef<IngestFile, unknown>[]>(
@@ -59,7 +66,13 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
         header: t("status"),
         cell: ({ row }) => {
           const status = row.original.status;
-          return <StatusBadge variant={getStatusVariant(status)} label={status ?? t("statusPending")} />;
+          const awaitingReview = isAwaitingReview(row.original);
+          return (
+            <StatusBadge
+              variant={awaitingReview ? "warning" : getStatusVariant(status)}
+              label={awaitingReview ? tIngest("reviewRequired") : (status ?? t("statusPending"))}
+            />
+          );
         },
       },
       {
@@ -99,7 +112,7 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
         ),
       },
     ],
-    [t]
+    [t, tIngest]
   );
 
   return (

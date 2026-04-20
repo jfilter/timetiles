@@ -90,6 +90,8 @@ export interface CreateEventsOutput {
 /** Output from `url-fetch` task. */
 export interface UrlFetchOutput {
   ingestFileId?: number | string;
+  isDuplicate?: boolean;
+  skippedReason?: string;
   reason?: string;
 }
 

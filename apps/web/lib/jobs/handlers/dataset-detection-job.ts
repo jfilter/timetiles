@@ -344,7 +344,7 @@ export const datasetDetectionJob = {
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_FILES,
         id: ingestFileId,
-        data: { ...(!wizardSheets && { datasetsCount: sheets.length }), sheetMetadata: sheets },
+        data: { ...(!wizardSheets && { datasetsCount: sheets.length }), sheetMetadata: sheets, status: "processing" },
       });
 
       const datasetMapping = resolveDatasetMapping(ingestFile);
