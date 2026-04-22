@@ -16,6 +16,7 @@
 import type { Field, FieldHook } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { validateCustomHeaders } from "@/lib/ingest/validate-custom-headers";
 import { decryptField, encryptField, isEncrypted } from "@/lib/security/encryption";
 
 // ---------------------------------------------------------------------------
@@ -152,7 +153,18 @@ const authFields: Field[] = [
         },
         hooks: credentialHooks,
       },
-      { name: "customHeaders", type: "json", admin: { description: "Additional custom headers as JSON object" } },
+      {
+        name: "customHeaders",
+        type: "json",
+        admin: {
+          description:
+            "Additional custom headers as a JSON object. Header names and values are validated at save time (see customHeaders rules).",
+        },
+        validate: (value: unknown) => {
+          const result = validateCustomHeaders(value);
+          return result.ok ? true : (result.error ?? "Invalid customHeaders");
+        },
+      },
     ],
   },
 ];

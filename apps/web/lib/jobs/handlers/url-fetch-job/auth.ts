@@ -8,6 +8,7 @@
  * @category Jobs/UrlFetch
  */
 
+import { validateCustomHeaders } from "@/lib/ingest/validate-custom-headers";
 import { createLogger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import type { ScheduledIngest } from "@/payload-types";
@@ -48,17 +49,21 @@ const fetchOAuthToken = async (
   return data.access_token;
 };
 
-/** Merge custom headers from authConfig JSON into the headers object. */
+/**
+ * Merge user-supplied custom headers from authConfig into the outgoing
+ * header bag. Runtime defense: if the saved config is invalid (saved before
+ * validation was introduced, or smuggled via the REST API bypassing
+ * collection hooks), we log a warning and skip the bad headers rather than
+ * failing the whole URL-fetch job.
+ */
 const applyCustomHeaders = (headers: Record<string, string>, customHeaders: unknown): void => {
   if (!customHeaders) return;
-  try {
-    const parsed = typeof customHeaders === "string" ? JSON.parse(customHeaders) : customHeaders;
-    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-      Object.assign(headers, parsed);
-    }
-  } catch {
-    // Ignore invalid custom headers
+  const result = validateCustomHeaders(customHeaders);
+  if (!result.ok) {
+    logger.warn("Ignoring invalid customHeaders on scheduled ingest", { reason: result.error });
+    return;
   }
+  Object.assign(headers, result.headers ?? {});
 };
 
 /**
