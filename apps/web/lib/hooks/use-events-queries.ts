@@ -17,13 +17,13 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-import type { ClusterFeature } from "@/components/maps/clustered-map";
 import type {
   AggregateResponse,
   ClusterStatsResponse,
   ClusterSummaryResponse,
   EventListItem,
   HistogramResponse,
+  MapClustersResponse,
   TemporalClustersResponse,
 } from "@/lib/schemas/events";
 import type { Event } from "@/payload-types";
@@ -55,13 +55,6 @@ export interface EventsListResponse {
   limit: number;
   hasNextPage: boolean;
   hasPrevPage: boolean;
-}
-
-/**
- * Client-side map clusters response (subset of API GeoJSON FeatureCollection).
- */
-export interface MapClustersResponse {
-  features: ClusterFeature[];
 }
 
 // Typed API response matching the actual /api/v1/events shape

@@ -8,6 +8,8 @@
  * @module
  * @category Types
  */
+import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
+
 import type { TransformSuggestion } from "./transforms";
 
 /**
@@ -110,7 +112,7 @@ export interface FormattedJobProgress {
 export interface ProgressApiResponse {
   type: string;
   id: number;
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
+  status: IngestFileStatus;
   originalName: string;
   catalogId: number | null;
   datasetsCount: number;

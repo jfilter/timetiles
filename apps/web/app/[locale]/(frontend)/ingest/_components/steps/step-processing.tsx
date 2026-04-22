@@ -27,7 +27,9 @@ import { useEffect, useRef } from "react";
 
 import { ReviewPanel } from "@/components/ingest/review-panel";
 import { Link, useRouter } from "@/i18n/navigation";
+import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
 import { type ProgressApiResponse, useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
+import type { StageStatus } from "@/lib/ingest/types/progress-tracking";
 
 import { useWizardStore } from "../wizard-store";
 
@@ -37,8 +39,6 @@ type DynamicTranslate = (key: string) => string;
 export interface StepProcessingProps {
   className?: string;
 }
-
-type StageStatus = "pending" | "in_progress" | "completed" | "skipped";
 
 interface FormattedStage {
   name: string;
@@ -54,7 +54,7 @@ interface FormattedStage {
 
 // Internal progress state
 interface ImportProgress {
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
+  status: IngestFileStatus;
   progress: number;
   currentStage: string;
   eventsCreated: number;

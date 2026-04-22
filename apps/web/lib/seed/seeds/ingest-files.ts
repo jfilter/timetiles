@@ -6,11 +6,12 @@
  *
  * @module
  */
+import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
 
 export interface IngestFileSeed {
   originalName: string;
   filename: string;
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
+  status: IngestFileStatus;
   user: string;
   datasetsCount: number;
   datasetsProcessed: number;

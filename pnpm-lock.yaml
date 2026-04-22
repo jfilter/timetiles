@@ -357,7 +357,7 @@ importers:
         specifier: 'catalog:'
         version: 4.21.0
       undici:
-        specifier: ^7.24.5
+        specifier: ^7.24.0
         version: 7.24.5
       uuid:
         specifier: ^13.0.0
