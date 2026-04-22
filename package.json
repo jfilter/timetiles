@@ -32,7 +32,7 @@
     "eslint-plugin-oxlint": "^1.56.0",
     "glob": "^13.0.6",
     "husky": "^9.1.7",
-    "nyc": "^17.1.0",
+    "nyc": "^18.0.0",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.1",
