@@ -5,7 +5,7 @@
  */
 import type { Field } from "payload";
 
-import { computeWebhookUrl } from "@/lib/services/webhook-registry";
+import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
 
 import { validateEntrypoint, validateEnvVars } from "./validation";
 
@@ -228,12 +228,25 @@ export const scraperFields: Field[] = [
     admin: { hidden: true },
   },
   {
+    // Virtual (non-persisted) plaintext token. Populated by the webhook
+    // lifecycle hook on create/rotate via `req.context`, consumed by
+    // `webhookUrl` to render the full trigger URL in the admin save
+    // response. After navigation the stashed context is gone — the stored
+    // token is a SHA-256 hash only.
+    name: "webhookTokenPlaintext",
+    type: "text",
+    virtual: true,
+    access: { read: () => false },
+    admin: { hidden: true },
+    hooks: { afterRead: [({ req }) => readWebhookTokenPlaintext(req)] },
+  },
+  {
     name: "webhookUrl",
     type: "text",
     admin: {
       readOnly: true,
-      description: "POST to this URL to trigger the scraper",
-      condition: (data) => Boolean(data?.webhookEnabled && data?.webhookToken),
+      description: "POST to this URL to trigger the scraper. Visible only immediately after creation or rotation.",
+      condition: (data) => Boolean(data?.webhookEnabled && data?.webhookTokenPlaintext),
     },
     hooks: { afterRead: [({ data }) => computeWebhookUrl(data)] },
   },

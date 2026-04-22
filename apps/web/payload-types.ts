@@ -166,6 +166,7 @@ export interface Config {
       'quota-reset': TaskQuotaReset;
       'rate-limit-cleanup': TaskRateLimitCleanup;
       'cache-cleanup': TaskCacheCleanup;
+      'preview-cleanup': TaskPreviewCleanup;
       'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
       'data-export-cleanup': TaskDataExportCleanup;
@@ -1635,7 +1636,7 @@ export interface ScheduledIngest {
      */
     password?: string | null;
     /**
-     * Additional custom headers as JSON object
+     * Additional custom headers as a JSON object. Header names and values are validated at save time (see customHeaders rules).
      */
     customHeaders?:
       | {
@@ -1973,8 +1974,9 @@ export interface ScheduledIngest {
    */
   webhookEnabled?: boolean | null;
   webhookToken?: string | null;
+  webhookTokenPlaintext?: string | null;
   /**
-   * POST to this URL to trigger the import
+   * POST to this URL to trigger the import. Visible only immediately after creation or rotation.
    */
   webhookUrl?: string | null;
   updatedAt: string;
@@ -2218,8 +2220,9 @@ export interface Scraper {
    */
   webhookEnabled?: boolean | null;
   webhookToken?: string | null;
+  webhookTokenPlaintext?: string | null;
   /**
-   * POST to this URL to trigger the scraper
+   * POST to this URL to trigger the scraper. Visible only immediately after creation or rotation.
    */
   webhookUrl?: string | null;
   updatedAt: string;
@@ -4032,6 +4035,7 @@ export interface PayloadJob {
           | 'quota-reset'
           | 'rate-limit-cleanup'
           | 'cache-cleanup'
+          | 'preview-cleanup'
           | 'schema-maintenance'
           | 'data-export'
           | 'data-export-cleanup'
@@ -4091,6 +4095,7 @@ export interface PayloadJob {
         | 'quota-reset'
         | 'rate-limit-cleanup'
         | 'cache-cleanup'
+        | 'preview-cleanup'
         | 'schema-maintenance'
         | 'data-export'
         | 'data-export-cleanup'
@@ -4805,6 +4810,7 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
       };
   webhookEnabled?: T;
   webhookToken?: T;
+  webhookTokenPlaintext?: T;
   webhookUrl?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -4871,6 +4877,7 @@ export interface ScrapersSelect<T extends boolean = true> {
   nextRunAt?: T;
   webhookEnabled?: T;
   webhookToken?: T;
+  webhookTokenPlaintext?: T;
   webhookUrl?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -6316,6 +6323,14 @@ export interface TaskRateLimitCleanup {
  * via the `definition` "TaskCache-cleanup".
  */
 export interface TaskCacheCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskPreview-cleanup".
+ */
+export interface TaskPreviewCleanup {
   input?: unknown;
   output?: unknown;
 }

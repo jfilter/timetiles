@@ -91,7 +91,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
   describe("Successful Webhook Trigger", () => {
     it("should trigger import and create job in database", async () => {
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -108,7 +108,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     });
 
     it("should update scheduled ingest status to running", async () => {
-      await callWebhook(testScheduledIngest.webhookToken!);
+      await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
 
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
@@ -120,7 +120,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     });
 
     it("should not add premature execution history at trigger time", async () => {
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200);
 
       // Wait a moment for the update to complete
@@ -141,7 +141,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 1000 } },
       });
 
-      await callWebhook(testScheduledIngest.webhookToken!);
+      await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
 
       // Wait a moment for the update to complete
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -159,7 +159,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { ingestNameTemplate: "Webhook {{date}} - {{url}}" },
       });
 
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200); // First check if request succeeded
       const data = await response.json();
 
@@ -170,7 +170,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
     it("should handle populated relationships", async () => {
       // Verify webhook works with populated relationships
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200); // First check if request succeeded
       const data = await response.json();
 
@@ -203,7 +203,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(updatedImport.webhookToken).toBeNull();
 
       // Using the old token should return 401 (no distinction from invalid token for security)
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
 
       expect(response.status).toBe(401);
       const data = await response.json();
@@ -211,7 +211,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     });
 
     it("should return 405 for GET requests", async () => {
-      const response = await callWebhook(testScheduledIngest.webhookToken!, "GET");
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!, "GET");
 
       expect(response.status).toBe(405);
       const data = await response.json();
@@ -226,10 +226,11 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { lastStatus: "running", lastRun: new Date().toISOString() },
       });
 
-      // Re-fetch to ensure we have the updated token
-      const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
-
-      const response = await callWebhook(updatedImport.webhookToken ?? "");
+      // Use the plaintext captured at creation — webhook tokens are stored
+      // as SHA-256 hashes post-M1, so re-fetching the doc would only give
+      // us the hash. The plaintext is surfaced by the create response once,
+      // which is what a real client would have saved.
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext ?? "");
 
       expect(response.status).toBe(200);
       const data = await response.json();
@@ -240,7 +241,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
     });
 
     it("should handle deleted import gracefully", async () => {
-      const webhookToken = testScheduledIngest.webhookToken;
+      const webhookToken = testScheduledIngest.webhookTokenPlaintext;
 
       // Delete the import
       await payload.delete({ collection: "scheduled-ingests", id: testScheduledIngest.id });
@@ -256,22 +257,24 @@ describe.sequential("Webhook Trigger API Integration", () => {
   describe("Rate Limiting", () => {
     it("should enforce burst window (10 seconds)", async () => {
       // First request succeeds
-      const response1 = await callWebhook(testScheduledIngest.webhookToken!);
+      const response1 = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response1.status).toBe(200);
 
       // Immediate second request is rate limited
-      const response2 = await callWebhook(testScheduledIngest.webhookToken!);
+      const response2 = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response2.status).toBe(429);
 
       const data2 = await response2.json();
       expect(data2).toMatchObject({ success: false, error: "Rate limit exceeded", limitType: "burst" });
       expect(data2.message).toContain("10 seconds");
 
-      // Verify Retry-After header
+      // Verify Retry-After header. Post-M7 the reset time is rounded up to
+      // the next 10-second bucket (so exact window boundaries don't leak),
+      // which adds up to ~10s on top of the raw window — cap at 20s.
       const retryAfter = response2.headers.get("Retry-After");
       expect(retryAfter).toBeDefined();
       expect(Number(retryAfter)).toBeGreaterThan(0);
-      expect(Number(retryAfter)).toBeLessThanOrEqual(10);
+      expect(Number(retryAfter)).toBeLessThanOrEqual(20);
     });
 
     it("should enforce hourly limit (5 per hour)", async () => {
@@ -280,7 +283,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         // Clear burst window for each request
         await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
 
-        const response = await callWebhook(testScheduledIngest.webhookToken!);
+        const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
         expect(response.status).toBe(200);
 
         // Update status to allow next trigger
@@ -295,7 +298,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
 
       // 6th request hits hourly limit
-      const response6 = await callWebhook(testScheduledIngest.webhookToken!);
+      const response6 = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response6.status).toBe(429);
 
       const data6 = await response6.json();
@@ -320,12 +323,13 @@ describe.sequential("Webhook Trigger API Integration", () => {
       });
 
       // First import hits rate limit
-      await callWebhook(testScheduledIngest.webhookToken!);
-      const response1b = await callWebhook(testScheduledIngest.webhookToken!);
+      await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
+      const response1b = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response1b.status).toBe(429);
 
-      // Second import should still work
-      const response2 = await callWebhook(import2.webhookToken!);
+      // Second import should still work. Use the plaintext returned by the
+      // create above — the DB column holds only the hash.
+      const response2 = await callWebhook(import2.webhookTokenPlaintext!);
       expect(response2.status).toBe(200);
     });
   });
@@ -338,7 +342,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.token } },
       });
 
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200); // First check if request succeeded
       const data = await response.json();
 
@@ -360,7 +364,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         },
       });
 
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200); // First check if request succeeded
       const data = await response.json();
 
@@ -386,7 +390,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { executionHistory: initialHistory },
       });
 
-      const response = await callWebhook(testScheduledIngest.webhookToken!);
+      const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200);
 
       // Wait a moment for the update to complete
@@ -418,8 +422,9 @@ describe.sequential("Webhook Trigger API Integration", () => {
         user: testUser,
       });
 
-      // Call webhook with invalid configuration
-      const response = await callWebhook(invalidImport.webhookToken!);
+      // Call webhook with invalid configuration. The plaintext is only
+      // returned from the create response, so use that — the DB holds the hash.
+      const response = await callWebhook(invalidImport.webhookTokenPlaintext!);
 
       // The webhook endpoint should still return success (it queued the job)
       expect(response.status).toBe(200);

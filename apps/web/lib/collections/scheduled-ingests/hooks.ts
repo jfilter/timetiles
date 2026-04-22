@@ -61,7 +61,7 @@ const clearScheduleTypeFields = (data: Record<string, unknown>): void => {
  * Hook that handles schedule calculation, webhook token management, and field normalization.
  * Also preserves createdBy on updates to prevent modification.
  */
-export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, originalDoc }) => {
+export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, originalDoc, req }) => {
   if (!data) return data;
 
   // Prevent changing createdBy on update - preserve the original value
@@ -70,7 +70,7 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
   }
 
   // Handle webhook token generation
-  handleWebhookTokenLifecycle(data, originalDoc);
+  handleWebhookTokenLifecycle(data, originalDoc, req);
 
   // Clear fields based on schedule type BEFORE calculating nextRun,
   // so the correct schedule type is used for the calculation

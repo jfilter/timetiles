@@ -74,8 +74,8 @@ export const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({
 /**
  * beforeChange hook that manages webhook token lifecycle.
  */
-export const webhookTokenLifecycleHook: CollectionBeforeChangeHook = ({ data, originalDoc }) => {
-  if (data) handleWebhookTokenLifecycle(data, originalDoc);
+export const webhookTokenLifecycleHook: CollectionBeforeChangeHook = ({ data, originalDoc, req }) => {
+  if (data) handleWebhookTokenLifecycle(data, originalDoc, req);
   return data;
 };
 

@@ -11,6 +11,7 @@
 
 import type { Field } from "payload";
 
+import { readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
 // ---------------------------------------------------------------------------
@@ -579,23 +580,36 @@ const webhookFields: Field[] = [
     type: "text",
     maxLength: 64,
     admin: {
-      hidden: true, // Not shown in UI, only stored in DB
+      hidden: true, // Not shown in UI, only stored in DB (SHA-256 hash of the plaintext)
     },
+  },
+  {
+    // Virtual (non-persisted) plaintext token. Populated by the webhook
+    // lifecycle hook on create/rotate via `req.context`, consumed by
+    // `webhookUrl` to render the full trigger URL in the admin save
+    // response. After navigation the stashed context is gone — the stored
+    // token is a SHA-256 hash only.
+    name: "webhookTokenPlaintext",
+    type: "text",
+    virtual: true,
+    admin: { hidden: true },
+    hooks: { afterRead: [({ req }) => readWebhookTokenPlaintext(req)] },
   },
   {
     name: "webhookUrl",
     type: "text",
     admin: {
       readOnly: true,
-      description: "POST to this URL to trigger the import",
-      condition: (data) => Boolean(data?.webhookEnabled && data?.webhookToken),
+      description: "POST to this URL to trigger the import. Visible only immediately after creation or rotation.",
+      condition: (data) => Boolean(data?.webhookEnabled && data?.webhookTokenPlaintext),
     },
     hooks: {
       afterRead: [
         ({ data }) => {
-          if (data?.webhookEnabled && data?.webhookToken) {
+          const plaintext = data?.webhookTokenPlaintext;
+          if (data?.webhookEnabled && typeof plaintext === "string" && plaintext !== "") {
             const baseUrl = getBaseUrl();
-            return `${baseUrl}/api/webhooks/trigger/${data.webhookToken}`;
+            return `${baseUrl}/api/webhooks/trigger/${plaintext}`;
           }
           return null;
         },

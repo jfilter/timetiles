@@ -51,6 +51,9 @@ export const AUDIT_ACTIONS = {
   SCHEDULED_INGEST_ADMIN_MODIFIED: "import.scheduled_ingest_admin_modified",
   SCHEDULED_INGEST_RETRIES_EXHAUSTED: "import.scheduled_ingest_retries_exhausted",
   SCHEDULED_INGEST_CONFIG_INVALID: "import.scheduled_ingest_config_invalid",
+  SCHEDULE_MANAGER_TRIGGERED: "admin.schedule_manager_triggered",
+  JOBS_RUN_TRIGGERED: "admin.jobs_run_triggered",
+  WEBHOOK_TRIGGERED: "import.webhook_triggered",
 
   // Authentication events
   LOGIN_SUCCESS: "account.login_success",

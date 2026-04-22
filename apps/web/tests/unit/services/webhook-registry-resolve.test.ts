@@ -12,7 +12,12 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { claimScheduledIngestRunning, claimScraperRunning, resolveWebhookToken } from "@/lib/services/webhook-registry";
+import {
+  claimScheduledIngestRunning,
+  claimScraperRunning,
+  hashWebhookToken,
+  resolveWebhookToken,
+} from "@/lib/services/webhook-registry";
 
 const createUpdateBuilder = (result: unknown[]) => {
   const builder = {
@@ -51,7 +56,7 @@ describe.sequential("resolveWebhookToken", () => {
     expect(mockPayload.find).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scheduled-ingests",
-        where: { webhookToken: { equals: "tok-abc" } },
+        where: { webhookToken: { equals: hashWebhookToken("tok-abc") } },
         limit: 1,
         overrideAccess: true,
       })
@@ -79,7 +84,10 @@ describe.sequential("resolveWebhookToken", () => {
     expect(mockPayload.find).toHaveBeenCalledTimes(2);
     expect(mockPayload.find).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ collection: "scrapers", where: { webhookToken: { equals: "tok-xyz" } } })
+      expect.objectContaining({
+        collection: "scrapers",
+        where: { webhookToken: { equals: hashWebhookToken("tok-xyz") } },
+      })
     );
   });
 
