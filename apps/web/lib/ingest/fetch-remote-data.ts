@@ -14,6 +14,7 @@ import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
 import { logger } from "@/lib/logger";
+import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -387,7 +388,10 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       skipEmptyLines: true,
     });
     stripFields(parsed.data, options.excludeFields);
-    finalData = Buffer.from(Papa.unparse(parsed.data), "utf-8");
+    // Escape formula-like cells in case the raw upstream CSV contains
+    // injection payloads (CWE-1236). The ingest pipeline re-reads this as
+    // input and it can flow into user-facing exports later.
+    finalData = Buffer.from(Papa.unparse(escapeRowsFormulas(parsed.data)), "utf-8");
   }
 
   // Validate file extension

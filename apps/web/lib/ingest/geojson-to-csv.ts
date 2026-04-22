@@ -10,6 +10,7 @@
 import Papa from "papaparse";
 
 import { logger } from "@/lib/logger";
+import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
 
 import { flattenObject } from "./json-to-csv";
 
@@ -230,7 +231,9 @@ export const convertGeoJsonToCsv = (buffer: Buffer): GeoJsonToCsvResult => {
     rows.push(flattenGeoJsonFeature(feature));
   }
 
-  const csvString = Papa.unparse(rows);
+  // Escape formula-like cells so downstream user-facing exports of this
+  // CSV cannot execute spreadsheet formulas (CWE-1236, defense in depth).
+  const csvString = Papa.unparse(escapeRowsFormulas(rows));
   const csv = Buffer.from(csvString, "utf-8");
 
   logger.info(
