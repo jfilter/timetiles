@@ -181,7 +181,7 @@ export const processDataset = async (
     geoFieldDetection,
     schemaConfig,
     // Same IngestTransform vs Dataset["ingestTransforms"] mismatch — see comment above.
-    ...(transforms ? { ingestTransforms: transforms as unknown as NonNullable<Dataset["ingestTransforms"]> } : {}),
+    ...(transforms ? { ingestTransforms: transforms } : {}),
   };
 
   // Only update idStrategy if dataset has no events yet

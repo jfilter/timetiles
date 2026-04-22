@@ -22,6 +22,7 @@ import {
   childFeaturesToHexPolygons,
   EMPTY_FEATURE_COLLECTION,
   resolveParentCells,
+  toFeatureIdString,
 } from "./clustered-map-hex-data";
 
 interface UseH3HoverProps {
@@ -90,7 +91,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, sc
         return;
       }
 
-      const clusterId = String((feature.properties?.clusterId ?? feature.id ?? "") as string | number);
+      const clusterId = toFeatureIdString(feature.properties?.clusterId) ?? toFeatureIdString(feature.id) ?? "";
       // Skip if same cluster as last hover
       if (clusterId === hoverTarget?.clusterId) return;
 
@@ -127,9 +128,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, sc
     const onMove = (e: MapMouseEvent) => {
       const features = map.queryRenderedFeatures(e.point, { layers: ["event-clusters"] });
       if (features.length > 0 && features[0]?.properties?.type === "event-cluster") {
-        handleH3HoverRef.current({
-          features: features as Array<{ id?: string | number; properties?: Record<string, unknown> }>,
-        });
+        handleH3HoverRef.current({ features: features });
       } else {
         handleH3HoverLeaveRef.current();
       }

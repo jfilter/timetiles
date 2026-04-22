@@ -22,7 +22,7 @@ export const catalogsAccess = {
 
     // Users (including not logged in) can read public catalogs OR their own private catalogs
     if (user) {
-      return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] } as Where;
+      return { or: [{ isPublic: { equals: true } }, { createdBy: { equals: user.id } }] };
     }
 
     // Not logged in - only public catalogs

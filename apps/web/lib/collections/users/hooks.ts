@@ -101,7 +101,7 @@ export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
     // Covers new-user creation (Payload auto-generates `_verificationToken`)
     // and re-send-verification flows that explicitly rotate the token.
     // The companion check lives in /api/users/verify/[token].
-    const dataWithToken = data as Record<string, unknown>;
+    const dataWithToken = data;
     if (typeof dataWithToken._verificationToken === "string" && dataWithToken._verificationToken.length > 0) {
       dataWithToken._verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     }
@@ -122,7 +122,7 @@ export const usersAfterChangeHook: CollectionAfterChangeHook[] = [
       req.payload,
       {
         previousDoc: previousDoc as Record<string, unknown>,
-        doc: doc as unknown as Record<string, unknown>,
+        doc: doc,
         userId: targetUserId,
         userEmail: doc.email,
         performedBy,

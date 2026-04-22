@@ -70,10 +70,10 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const { updateSchedule, isUpdating } = useUpdateSchedule();
   const idStrategyLabels = Object.fromEntries(
     ID_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
-  ) as Record<string, string>;
+  );
   const duplicateLabels = Object.fromEntries(
     DEDUP_STRATEGY_CONFIG.map((strategy) => [strategy.value, t(strategy.summaryLabelKey)])
-  ) as Record<string, string>;
+  );
 
   const configureMutation = useIngestConfigureMutation();
 

@@ -233,7 +233,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
         onDelete: () => handleDelete(s.id),
       },
     ])
-  ) as Record<number, { onToggle: () => void; onEdit: () => void; onRun: () => void; onDelete: () => void }>;
+  );
 
   if (schedules.length === 0) {
     return (

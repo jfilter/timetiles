@@ -152,7 +152,7 @@ describe.sequential("Send Email Job", () => {
       task: "send-email",
       input: { to: "malformed@example.com", subject: "Subject", html: "<p>Hello</p>" } as never,
       meta: { channel: "email", context: EMAIL_CONTEXTS.ACCOUNT_EXISTS, maskedTo: "ma***@ex***.com" },
-    } as never);
+    });
 
     const queuedJobId = (queued as { id: string | number }).id;
 

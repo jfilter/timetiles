@@ -82,7 +82,7 @@ describe.sequential("POST /api/auth/register", () => {
       { "x-forwarded-for": "127.0.0.1" }
     );
 
-    const response = await registerPOST(req, defaultParams as never);
+    const response = await registerPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     expect(mockPayload.create).toHaveBeenCalledWith(
@@ -117,7 +117,7 @@ describe.sequential("POST /api/auth/register", () => {
       { "x-forwarded-for": "127.0.0.1" }
     );
 
-    const response = await registerPOST(req, defaultParams as never);
+    const response = await registerPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     expect(mockPayload.create).not.toHaveBeenCalled();
@@ -151,7 +151,7 @@ describe.sequential("POST /api/auth/register", () => {
       { "x-forwarded-for": "127.0.0.1" }
     );
 
-    const response = await registerPOST(req, defaultParams as never);
+    const response = await registerPOST(req, defaultParams);
     const data = await response.json();
 
     // Generic success response preserves enumeration defense.
@@ -184,7 +184,7 @@ describe.sequential("POST /api/auth/forgot-password", () => {
 
     const req = createJsonRequest("http://localhost/api/auth/forgot-password", { email: "reset@example.com" });
 
-    const response = await forgotPasswordPOST(req, defaultParams as never);
+    const response = await forgotPasswordPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     expect(mockPayload.forgotPassword).toHaveBeenCalledWith({
@@ -206,7 +206,7 @@ describe.sequential("POST /api/auth/forgot-password", () => {
 
     const req = createJsonRequest("http://localhost/api/auth/forgot-password", { email: "missing@example.com" });
 
-    const response = await forgotPasswordPOST(req, defaultParams as never);
+    const response = await forgotPasswordPOST(req, defaultParams);
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -239,14 +239,14 @@ describe.sequential("POST /api/auth/forgot-password", () => {
 
     // First three calls succeed with the uniform non-enumerating success body.
     for (let i = 0; i < 3; i++) {
-      const response = await forgotPasswordPOST(buildRequest(), defaultParams as never);
+      const response = await forgotPasswordPOST(buildRequest(), defaultParams);
       const data = await response.json();
       expect(response.status).toBe(200);
       expect(data.message).toBe(expectedSuccess);
     }
 
     // Fourth call within the burst window is rate-limited.
-    const limitedResponse = await forgotPasswordPOST(buildRequest(), defaultParams as never);
+    const limitedResponse = await forgotPasswordPOST(buildRequest(), defaultParams);
     const limitedData = await limitedResponse.json();
 
     expect(limitedResponse.status).toBe(429);

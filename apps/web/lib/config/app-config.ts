@@ -588,7 +588,7 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
 
   // Cache: deep-merge YAML onto defaults
   const cache = yamlConfig.cache
-    ? (deepMerge(DEFAULT_CACHE, yamlConfig.cache as Record<string, unknown>) as CacheConfig)
+    ? deepMerge(DEFAULT_CACHE, yamlConfig.cache as Record<string, unknown>)
     : { ...DEFAULT_CACHE };
 
   // Account: merge YAML onto defaults
@@ -599,15 +599,7 @@ const buildConfig = (yamlConfig: Record<string, unknown>): AppConfig => {
   // Review thresholds: YAML > default
   const reviewThresholds = buildReviewThresholds(yamlConfig);
 
-  return {
-    rateLimits: rateLimits as Record<RateLimitName, RateLimitConfig>,
-    quotas,
-    trustLevelRateLimits,
-    batchSizes,
-    cache,
-    account,
-    reviewThresholds,
-  };
+  return { rateLimits: rateLimits, quotas, trustLevelRateLimits, batchSizes, cache, account, reviewThresholds };
 };
 
 let _config: AppConfig | null = null;

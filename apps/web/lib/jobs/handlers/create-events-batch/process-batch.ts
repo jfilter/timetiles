@@ -74,8 +74,8 @@ const buildBulkEventFromRow = (
     transforms.length > 0
       ? transforms.map((t) => ({
           path: getTransformPath(t),
-          oldValue: "from" in t ? (row[t.from] ?? null) : (null as unknown),
-          newValue: (transformedRow[getNewValuePath(t)] ?? null) as unknown,
+          oldValue: "from" in t ? (row[t.from] ?? null) : null,
+          newValue: transformedRow[getNewValuePath(t)] ?? null,
         }))
       : null;
   const transformationChanges =

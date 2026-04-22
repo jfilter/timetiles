@@ -109,10 +109,7 @@ export const setNeedsReview = async (
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { stage: PROCESSING_STAGE.NEEDS_REVIEW, reviewReason: reason, reviewDetails: details } as Record<
-      string,
-      unknown
-    >,
+    data: { stage: PROCESSING_STAGE.NEEDS_REVIEW, reviewReason: reason, reviewDetails: details },
   });
 };
 

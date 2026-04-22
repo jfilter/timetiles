@@ -207,7 +207,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 422 when previewId is not a valid UUID", async () => {
       const req = createRequest({ ...baseBody, previewId: "" });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(422);
@@ -217,7 +217,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 422 when catalogId has invalid type", async () => {
       const req = createRequest({ ...baseBody, catalogId: "invalid" });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(422);
@@ -227,7 +227,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 422 when sheetMappings is empty", async () => {
       const req = createRequest({ ...baseBody, sheetMappings: [] });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(422);
@@ -237,7 +237,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 422 when fieldMappings is empty", async () => {
       const req = createRequest({ ...baseBody, fieldMappings: [] });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(422);
@@ -249,7 +249,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 422 for invalid UUID previewId", async () => {
       const req = createRequest({ ...baseBody, previewId: "not-a-uuid" });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(422);
@@ -260,7 +260,7 @@ describe.sequential("POST /api/ingest/configure", () => {
       setupPreviewMetadata(null);
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -271,7 +271,7 @@ describe.sequential("POST /api/ingest/configure", () => {
       setupPreviewMetadata({ ...basePreviewMeta, userId: 999 });
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(401);
@@ -292,7 +292,7 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -307,7 +307,7 @@ describe.sequential("POST /api/ingest/configure", () => {
       setupPreviewMetadata(expiredMeta);
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -319,7 +319,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should create a new catalog when catalogId is 'new' with a name", async () => {
       const req = createRequest({ ...baseBody, catalogId: "new", newCatalogName: "My Catalog" });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
 
       expect(response.status).toBe(200);
 
@@ -335,7 +335,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should return 400 when catalogId is 'new' without newCatalogName", async () => {
       const req = createRequest({ ...baseBody, catalogId: "new" });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(400);
@@ -348,7 +348,7 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       const req = createRequest({ ...baseBody, catalogId: 999 });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(403);
@@ -364,7 +364,7 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       const req = createRequest({ ...baseBody, catalogId: 999 }, mockAdminUser);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
 
       expect(response.status).toBe(200);
 
@@ -380,7 +380,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should create a new dataset when datasetId is 'new'", async () => {
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
 
       expect(response.status).toBe(200);
 
@@ -406,7 +406,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should pass req to dataset create calls (Bug 14)", async () => {
       const req = createRequest(baseBody);
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       // Verify that req was passed to the dataset create call
       const datasetCreateCalls = mocks.mockPayload.create.mock.calls.filter(
@@ -419,7 +419,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should pass req to dataset update calls (Bug 14)", async () => {
       const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       // Verify that req was passed to the dataset update call
       const datasetUpdateCalls = mocks.mockPayload.update.mock.calls.filter(
@@ -432,7 +432,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should update an existing dataset when datasetId is numeric", async () => {
       const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
 
       expect(response.status).toBe(200);
 
@@ -452,7 +452,7 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
 
       expect(response.status).toBe(200);
 
@@ -471,7 +471,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should create import file and return success response", async () => {
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -509,7 +509,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should clean up both meta file and data files during cleanup", async () => {
       const req = createRequest(baseBody);
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       // cleanupPreview should attempt to delete meta + all data extensions
       // With existsSync returning true by default, it will try to unlink all matches
@@ -544,7 +544,7 @@ describe.sequential("POST /api/ingest/configure", () => {
         },
       });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -591,7 +591,7 @@ describe.sequential("POST /api/ingest/configure", () => {
         },
       });
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       // Verify quota was checked
       expect(mocks.mockValidateQuota).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), "ACTIVE_SCHEDULES", 1);
@@ -614,7 +614,7 @@ describe.sequential("POST /api/ingest/configure", () => {
         },
       });
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(429);
@@ -624,7 +624,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should not create scheduled ingest when createSchedule is not provided", async () => {
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -655,7 +655,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should translate 'strict' mode correctly", async () => {
       const req = createScheduleRequest("strict");
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -670,7 +670,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should translate 'additive' mode correctly", async () => {
       const req = createScheduleRequest("additive");
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -685,7 +685,7 @@ describe.sequential("POST /api/ingest/configure", () => {
     it("should translate 'flexible' mode correctly", async () => {
       const req = createScheduleRequest("flexible");
 
-      await POST(req, routeContext as never);
+      await POST(req, routeContext);
 
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -704,7 +704,7 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       const req = createRequest(baseBody);
 
-      const response = await POST(req, routeContext as never);
+      const response = await POST(req, routeContext);
       const body = await response.json();
 
       expect(response.status).toBe(500);

@@ -117,7 +117,7 @@ const fetchWithDispatcher = async (
 ): Promise<Response> => {
   const fetchInit = { ...fetchOptions, redirect: "manual" as const };
   const withDispatcher = dispatcher ? ({ ...fetchInit, dispatcher } as RequestInit & { dispatcher: Agent }) : fetchInit;
-  return fetch(url, withDispatcher as RequestInit);
+  return fetch(url, withDispatcher);
 };
 
 /** Determine the next redirect target URL, or null when no further redirect. */

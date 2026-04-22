@@ -103,7 +103,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
   });
@@ -126,7 +126,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     // parseManifest should be called with the yaml content from inline code
     expect(parseManifest).toHaveBeenCalledWith(yamlContent);
@@ -147,7 +147,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    const result = await scraperRepoSyncJob.handler(context as any);
+    const result = await scraperRepoSyncJob.handler(context);
 
     // Should create two scrapers
     expect(mockPayload.create).toHaveBeenCalledTimes(2);
@@ -196,7 +196,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    const result = await scraperRepoSyncJob.handler(context as any);
+    const result = await scraperRepoSyncJob.handler(context);
 
     // Should update the existing scraper, not create a new one
     expect(mockPayload.create).not.toHaveBeenCalled();
@@ -237,7 +237,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    const result = await scraperRepoSyncJob.handler(context as any);
+    const result = await scraperRepoSyncJob.handler(context);
 
     // Should delete the scraper-runs for the removed scraper first
     expect(mockPayload.delete).toHaveBeenCalledWith({
@@ -270,7 +270,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     (parseManifest as any).mockReturnValue({ success: true, scrapers: [createParsedScraper()] });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     // Find the repo status update call
     const repoUpdateCalls = mockPayload.update.mock.calls.filter(
@@ -371,7 +371,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
     expect(mocks.validateResolvedPublicHostname).toHaveBeenCalledWith("github.com");
@@ -413,7 +413,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     // Just verify it completes without error
     expect(mockPayload.update).toHaveBeenCalledWith(
@@ -459,7 +459,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     // The create call should include repoCreatedBy from the populated relation
     expect(mockPayload.create).toHaveBeenCalledWith(
@@ -479,7 +479,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     // Should still create successfully with undefined repoCreatedBy
     expect(mockPayload.create).toHaveBeenCalledWith(
@@ -514,7 +514,7 @@ describe.sequential("scraperRepoSyncJob", () => {
       input: undefined,
     };
 
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith({ collection: "scraper-repos", id: 5, overrideAccess: true });
   });
@@ -528,7 +528,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     (parseManifest as any).mockReturnValue({ success: true, scrapers: [createParsedScraper({ schedule: undefined })] });
 
     const context = createMockContext({ scraperRepoId: 5 });
-    await scraperRepoSyncJob.handler(context as any);
+    await scraperRepoSyncJob.handler(context);
 
     expect(mockPayload.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ schedule: null }) })

@@ -63,7 +63,7 @@ describe("password-policy", () => {
 
     it("rejects a password below the minimum length before any HIBP call", async () => {
       const fetchSpy = vi.fn();
-      globalThis.fetch = fetchSpy as unknown as typeof fetch;
+      globalThis.fetch = fetchSpy;
       const result = await validatePassword("short");
       expect(result.ok).toBe(false);
       expect(fetchSpy).not.toHaveBeenCalled();
@@ -84,7 +84,7 @@ describe("password-policy", () => {
       const suffix = sha1.slice(5);
       globalThis.fetch = vi.fn(() =>
         Promise.resolve(new Response(`${suffix}:1234\r\nFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:5`, { status: 200 }))
-      ) as unknown as typeof fetch;
+      );
 
       const result = await validatePassword("password12345");
       expect(result.ok).toBe(false);
@@ -94,7 +94,7 @@ describe("password-policy", () => {
     it("accepts a password the HIBP API does not report", async () => {
       globalThis.fetch = vi.fn(() =>
         Promise.resolve(new Response("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:5", { status: 200 }))
-      ) as unknown as typeof fetch;
+      );
 
       const result = await validatePassword("uniqueStrongPassword12");
       expect(result.ok).toBe(true);
@@ -105,23 +105,21 @@ describe("password-policy", () => {
         m.createHash("sha1").update("paddingTest12345").digest("hex").toUpperCase()
       );
       const suffix = sha1.slice(5);
-      globalThis.fetch = vi.fn(() =>
-        Promise.resolve(new Response(`${suffix}:0`, { status: 200 }))
-      ) as unknown as typeof fetch;
+      globalThis.fetch = vi.fn(() => Promise.resolve(new Response(`${suffix}:0`, { status: 200 })));
 
       const result = await validatePassword("paddingTest12345");
       expect(result.ok).toBe(true);
     });
 
     it("fails open when HIBP returns a non-OK response", async () => {
-      globalThis.fetch = vi.fn(() => Promise.resolve(new Response("", { status: 503 }))) as unknown as typeof fetch;
+      globalThis.fetch = vi.fn(() => Promise.resolve(new Response("", { status: 503 })));
 
       const result = await validatePassword("networkFailedPassword12");
       expect(result.ok).toBe(true);
     });
 
     it("fails open when the HIBP fetch throws", async () => {
-      globalThis.fetch = vi.fn(() => Promise.reject(new Error("ECONNREFUSED"))) as unknown as typeof fetch;
+      globalThis.fetch = vi.fn(() => Promise.reject(new Error("ECONNREFUSED")));
 
       const result = await validatePassword("networkFailedPassword12");
       expect(result.ok).toBe(true);

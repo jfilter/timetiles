@@ -266,8 +266,7 @@ const buildFetchOptions = (
       };
     })(),
     responseFormat: (advancedOptions?.responseFormat as FetchRemoteDataOptions["responseFormat"]) ?? "auto",
-    htmlExtractConfig: (advancedOptions as Record<string, unknown> | undefined)
-      ?.htmlExtractConfig as FetchRemoteDataOptions["htmlExtractConfig"],
+    htmlExtractConfig: advancedOptions?.htmlExtractConfig as FetchRemoteDataOptions["htmlExtractConfig"],
     isFirstRun: (scheduledIngest?.statistics?.successfulRuns ?? 0) === 0,
   };
 };

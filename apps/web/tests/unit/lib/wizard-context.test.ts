@@ -95,7 +95,7 @@ describe("Wizard Store", () => {
   describe("Authentication", () => {
     it("startedAuthenticated is preserved in state", () => {
       resetStore({ startedAuthenticated: true });
-      useWizardStore.getState().goToStep(2 as WizardStep);
+      useWizardStore.getState().goToStep(2);
       expect(useWizardStore.getState().startedAuthenticated).toBe(true);
     });
   });
@@ -352,6 +352,24 @@ describe("Wizard Store", () => {
       expect(state.currentStep).toBe(1);
       expect(state.selectedCatalogId).toBeNull();
       expect(state.error).toBeNull();
+    });
+
+    it("reset tolerates a missing persist API", () => {
+      resetStore({ currentStep: 3 as WizardStep, selectedCatalogId: 42, error: "Some error" });
+
+      const originalPersist = Reflect.get(useWizardStore, "persist");
+      Reflect.set(useWizardStore, "persist", undefined);
+
+      try {
+        expect(() => useWizardStore.getState().reset()).not.toThrow();
+
+        const state = useWizardStore.getState();
+        expect(state.currentStep).toBe(1);
+        expect(state.selectedCatalogId).toBeNull();
+        expect(state.error).toBeNull();
+      } finally {
+        Reflect.set(useWizardStore, "persist", originalPersist);
+      }
     });
 
     it("reset clears ALL state for a clean second import", () => {

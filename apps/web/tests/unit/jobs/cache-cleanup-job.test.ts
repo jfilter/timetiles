@@ -42,7 +42,7 @@ describe.sequential("cacheCleanupJob", () => {
     mockCleanup.mockResolvedValue(5);
     mockGetStats.mockResolvedValue({ size: 10 });
 
-    const result = await cacheCleanupJob.handler(createContext({ force: false }) as any);
+    const result = await cacheCleanupJob.handler(createContext({ force: false }));
 
     expect(result.output.success).toBe(true);
     expect(result.output.totalCleaned).toBe(5);
@@ -54,7 +54,7 @@ describe.sequential("cacheCleanupJob", () => {
   it("should return success:false with error message when cleanup throws", async () => {
     mockCleanup.mockRejectedValue(new Error("Cache storage unavailable"));
 
-    const result = await cacheCleanupJob.handler(createContext({ force: true }) as any);
+    const result = await cacheCleanupJob.handler(createContext({ force: true }));
 
     expect(result.output.success).toBe(false);
     expect(result.output.error).toBe("Cache storage unavailable");
@@ -63,7 +63,7 @@ describe.sequential("cacheCleanupJob", () => {
   it("should return 'Unknown error' when cleanup throws a non-Error", async () => {
     mockCleanup.mockRejectedValue("something went wrong");
 
-    const result = await cacheCleanupJob.handler(createContext() as any);
+    const result = await cacheCleanupJob.handler(createContext());
 
     expect(result.output.success).toBe(false);
     expect(result.output.error).toBe("Unknown error");

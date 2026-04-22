@@ -46,7 +46,7 @@ describe.sequential("jobCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [] }) // failed jobs query
       .mockResolvedValueOnce({ docs: [] }); // completed jobs query
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(result).toEqual({ output: { success: true, failedDeleted: 0, completedDeleted: 0, errors: 0 } });
   });
@@ -56,7 +56,7 @@ describe.sequential("jobCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [{ id: "failed-1" }, { id: "failed-2" }, { id: "failed-3" }] })
       .mockResolvedValueOnce({ docs: [] });
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(3);
     expect(mockPayload.delete).toHaveBeenCalledWith({
@@ -82,7 +82,7 @@ describe.sequential("jobCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [] })
       .mockResolvedValueOnce({ docs: [{ id: "completed-1" }, { id: "completed-2" }] });
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(2);
     expect(mockPayload.delete).toHaveBeenCalledWith({
@@ -103,7 +103,7 @@ describe.sequential("jobCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [{ id: "failed-1" }] })
       .mockResolvedValueOnce({ docs: [{ id: "completed-1" }] });
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(2);
     expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 1, errors: 0 });
@@ -115,7 +115,7 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.find.mockResolvedValue({ docs: [] });
 
-    await jobCleanupJob.handler(createContext() as any);
+    await jobCleanupJob.handler(createContext());
 
     const expectedCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -135,7 +135,7 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.find.mockResolvedValue({ docs: [] });
 
-    await jobCleanupJob.handler(createContext() as any);
+    await jobCleanupJob.handler(createContext());
 
     const expectedCutoff = new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -156,7 +156,7 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Delete failed")).mockResolvedValueOnce({});
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 0, errors: 1 });
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete failed job", { payloadJobId: "fail-1" });
@@ -169,7 +169,7 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("DB error")).mockResolvedValueOnce({});
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 1, errors: 1 });
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete completed job", {
@@ -184,7 +184,7 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Error 1")).mockRejectedValueOnce(new Error("Error 2"));
 
-    const result = await jobCleanupJob.handler(createContext() as any);
+    const result = await jobCleanupJob.handler(createContext());
 
     expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 0, errors: 2 });
     expect(logError).toHaveBeenCalledTimes(2);

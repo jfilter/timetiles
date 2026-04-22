@@ -58,7 +58,7 @@ export const createOwnershipAccess = (
   return ({ req: { user } }): boolean | Where => {
     if (isPrivileged(user)) return true;
     if (!user) return false;
-    return { [ownerField]: { equals: user.id } } as Where;
+    return { [ownerField]: { equals: user.id } };
   };
 };
 
@@ -79,7 +79,7 @@ export const createPublicOwnershipAccess = (
   const update: Access = ({ req: { user } }): boolean | Where => {
     if (!user) return false;
     if (isPrivileged(user)) return true;
-    return { [ownerField]: { equals: user.id } } as Where;
+    return { [ownerField]: { equals: user.id } };
   };
 
   return {
@@ -87,9 +87,9 @@ export const createPublicOwnershipAccess = (
     read: ({ req: { user } }): boolean | Where => {
       if (isPrivileged(user)) return true;
       if (user) {
-        return { or: [{ isPublic: { equals: true } }, { [ownerField]: { equals: user.id } }] } as Where;
+        return { or: [{ isPublic: { equals: true } }, { [ownerField]: { equals: user.id } }] };
       }
-      return { isPublic: { equals: true } } as Where;
+      return { isPublic: { equals: true } };
     },
     create: isAuthenticated,
     update,

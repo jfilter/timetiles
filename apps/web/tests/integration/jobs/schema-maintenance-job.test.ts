@@ -71,10 +71,7 @@ describe.sequential("Schema Maintenance Job", () => {
     }
 
     // Run the job
-    const result = await schemaMaintenanceJob.handler({
-      req: { payload },
-      input: { datasetIds: [testDatasetId] },
-    } as Parameters<typeof schemaMaintenanceJob.handler>[0]);
+    const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.datasetsChecked).toBe(1);
@@ -120,10 +117,7 @@ describe.sequential("Schema Maintenance Job", () => {
     });
 
     // Run the job
-    const result = await schemaMaintenanceJob.handler({
-      req: { payload },
-      input: { datasetIds: [testDatasetId] },
-    } as Parameters<typeof schemaMaintenanceJob.handler>[0]);
+    const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.schemasGenerated).toBe(0);
@@ -161,10 +155,7 @@ describe.sequential("Schema Maintenance Job", () => {
     });
 
     // Run the job
-    const result = await schemaMaintenanceJob.handler({
-      req: { payload },
-      input: { datasetIds: [testDatasetId] },
-    } as Parameters<typeof schemaMaintenanceJob.handler>[0]);
+    const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.schemasGenerated).toBe(1);
@@ -182,10 +173,7 @@ describe.sequential("Schema Maintenance Job", () => {
 
   it("skips dataset with no events", async () => {
     // Dataset exists but has no events - considered "up-to-date" (no schema needed)
-    const result = await schemaMaintenanceJob.handler({
-      req: { payload },
-      input: { datasetIds: [testDatasetId] },
-    } as Parameters<typeof schemaMaintenanceJob.handler>[0]);
+    const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { datasetIds: [testDatasetId] } });
 
     expect(result.output.success).toBe(true);
     expect(result.output.schemasGenerated).toBe(0);

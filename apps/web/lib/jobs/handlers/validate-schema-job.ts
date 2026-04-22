@@ -73,9 +73,7 @@ const getCurrentSchema = async (payload: Payload, datasetId: number | string): P
   });
 
   const currentSchemaRaw = currentSchemaDoc.docs[0]?.schema ?? {};
-  return typeof currentSchemaRaw === "object" && !Array.isArray(currentSchemaRaw)
-    ? (currentSchemaRaw as Record<string, unknown>)
-    : {};
+  return typeof currentSchemaRaw === "object" && !Array.isArray(currentSchemaRaw) ? currentSchemaRaw : {};
 };
 
 export const validateSchemaJob = {

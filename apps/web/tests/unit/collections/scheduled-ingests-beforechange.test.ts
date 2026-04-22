@@ -45,7 +45,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -70,7 +70,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -97,7 +97,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -112,7 +112,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -131,7 +131,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "update",
         originalDoc: { enabled: false } as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -153,7 +153,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -168,7 +168,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -183,7 +183,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -200,7 +200,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -218,7 +218,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "update",
         originalDoc: { webhookEnabled: false } as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -236,7 +236,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "update",
         originalDoc: { webhookEnabled: true } as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -253,7 +253,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "update",
         originalDoc: { createdBy: 42 } as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 
@@ -276,7 +276,7 @@ describe("scheduled-ingests beforeChange hook", () => {
           operation: "create",
           originalDoc: undefined as never,
           req: {} as never,
-          context: {} as never,
+          context: {},
           collection: {} as never,
         })
       ).toThrow("Invalid frequency: invalid-freq");
@@ -294,7 +294,7 @@ describe("scheduled-ingests beforeChange hook", () => {
         operation: "create",
         originalDoc: undefined as never,
         req: {} as never,
-        context: {} as never,
+        context: {},
         collection: {} as never,
       });
 

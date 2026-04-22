@@ -197,7 +197,7 @@ export class DataProcessing {
       }
 
       return newItem;
-    }) as SeedData;
+    });
   }
 
   private distributeEventsUniformly(data: SeedData): SeedData {
@@ -222,7 +222,7 @@ export class DataProcessing {
       }
 
       return newItem;
-    }) as SeedData;
+    });
   }
 
   private applyDatasetsOptions(data: SeedData, options: Record<string, unknown>): SeedData {

@@ -29,7 +29,7 @@ vi.mock("next/server", () => ({ NextResponse: { next: vi.fn(() => ({ headers: cr
 
 // Mock NextRequest with nextUrl.pathname
 const createMockRequest = (pathname: string) => {
-  return { nextUrl: { pathname } } as { nextUrl: { pathname: string } };
+  return { nextUrl: { pathname } };
 };
 
 // --- Import after mocks ---------------------------------------------------

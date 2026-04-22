@@ -394,7 +394,7 @@ export const useWizardStore = create<WizardStore>()(
         },
 
         reset: () => {
-          useWizardStore.persist.clearStorage();
+          useWizardStore.persist?.clearStorage();
           set({ ...initialState, _initialized: true });
         },
       }),
@@ -414,8 +414,8 @@ export const useWizardStore = create<WizardStore>()(
             ...rest
           } = state;
           // Don't save during processing or in edit mode
-          if (rest.currentStep === 7 || editMode) return {} as Partial<WizardState>;
-          return { ...rest, _savedAt: Date.now() } as Partial<WizardState> & { _savedAt: number };
+          if (rest.currentStep === 7 || editMode) return {};
+          return { ...rest, _savedAt: Date.now() };
         },
         merge: (persisted, current) => {
           if (!persisted || typeof persisted !== "object") return current;

@@ -88,7 +88,7 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
   const Icon = item.icon;
 
   const handleDragStart = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
+    (event: DragEvent<HTMLButtonElement>) => {
       event.dataTransfer.setData("application/reactflow", "transform");
       event.dataTransfer.setData("application/transform-type", item.type);
       event.dataTransfer.effectAllowed = "move";
@@ -97,23 +97,24 @@ const PaletteItem = memo(({ item }: Readonly<PaletteItemProps>) => {
   );
 
   return (
-    <div
-      draggable
-      role="listitem"
-      tabIndex={0}
-      data-testid={`palette-item-${item.type}`}
-      onDragStart={handleDragStart}
-      className={cn(
-        "bg-muted/50 hover:bg-muted flex cursor-grab items-start gap-3 rounded-md border p-3 transition-colors",
-        "active:cursor-grabbing active:opacity-80"
-      )}
-    >
-      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", item.color)} />
-      <div className="min-w-0">
-        <div className="text-foreground text-sm font-medium">{t(item.labelKey)}</div>
-        <div className="text-muted-foreground mt-0.5 text-xs">{t(item.descriptionKey)}</div>
-      </div>
-    </div>
+    <li>
+      <button
+        type="button"
+        draggable
+        data-testid={`palette-item-${item.type}`}
+        onDragStart={handleDragStart}
+        className={cn(
+          "bg-muted/50 hover:bg-muted flex w-full cursor-grab items-start gap-3 rounded-md border p-3 text-left transition-colors",
+          "active:cursor-grabbing active:opacity-80"
+        )}
+      >
+        <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", item.color)} />
+        <span className="min-w-0">
+          <span className="text-foreground block text-sm font-medium">{t(item.labelKey)}</span>
+          <span className="text-muted-foreground mt-0.5 block text-xs">{t(item.descriptionKey)}</span>
+        </span>
+      </button>
+    </li>
   );
 });
 PaletteItem.displayName = "PaletteItem";
@@ -128,11 +129,11 @@ export const NodePalette = ({ className }: Readonly<NodePaletteProps>) => {
       </h3>
       <p className="text-muted-foreground mb-3 text-xs">{t("flowTransformsDragHint")}</p>
 
-      <div role="list" aria-label={t("flowAvailableTransforms")}>
+      <ul aria-label={t("flowAvailableTransforms")} className="flex flex-col gap-2">
         {PALETTE_ITEMS.map((item) => (
           <PaletteItem key={item.type} item={item} />
         ))}
-      </div>
+      </ul>
     </div>
   );
 };

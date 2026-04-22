@@ -38,11 +38,11 @@ export const read: Access = ({ req: { user } }): boolean | Where => {
         // Catalog owner can see everything in their catalog
         { catalogCreatorId: { equals: user.id } },
       ],
-    } as Where;
+    };
   }
 
   // Anonymous users only see public datasets in public catalogs
-  return { and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] } as Where;
+  return { and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] };
 };
 
 /**
@@ -68,7 +68,7 @@ export const update: Access = ({ req: { user } }): boolean | Where => {
   if (isPrivileged(user)) return true;
 
   // Catalog owner can update datasets in their catalog
-  return { catalogCreatorId: { equals: user.id } } as Where;
+  return { catalogCreatorId: { equals: user.id } };
 };
 
 /**

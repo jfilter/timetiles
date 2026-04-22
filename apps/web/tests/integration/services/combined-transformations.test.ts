@@ -112,7 +112,7 @@ describe.sequential("Combined Transformations Integration", () => {
     return typeof event.transformedData === "object" &&
       event.transformedData !== null &&
       !Array.isArray(event.transformedData)
-      ? (event.transformedData as Record<string, unknown>)
+      ? event.transformedData
       : {};
   };
 

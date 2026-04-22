@@ -112,7 +112,7 @@ describe("getEventTitle", () => {
   });
 
   it("should handle non-string title gracefully", () => {
-    expect(getEventTitle({ title: 123 as unknown as string })).toBe("123");
+    expect(getEventTitle({ title: 123 })).toBe("123");
   });
 
   it("should use titlePath from field mappings when provided", () => {
@@ -258,7 +258,7 @@ describe("getLocationDisplay", () => {
   });
 
   it("should return null when no location info available", () => {
-    expect(getLocationDisplay({} as Event)).toBeNull();
+    expect(getLocationDisplay({})).toBeNull();
   });
 
   it("should prefer location name over geocoded address", () => {
@@ -274,7 +274,7 @@ describe("hasValidCoordinates", () => {
   });
 
   it("should return false for null location", () => {
-    expect(hasValidCoordinates(null as unknown as Event["location"])).toBe(false);
+    expect(hasValidCoordinates(null)).toBe(false);
   });
 
   it("should return false for undefined location", () => {

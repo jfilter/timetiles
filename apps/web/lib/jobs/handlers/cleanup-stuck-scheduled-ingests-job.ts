@@ -60,7 +60,7 @@ const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: n
       await asSystem(payload).update({
         collection: "payload-jobs" as const,
         id: job.id,
-        data: { completedAt: new Date().toISOString(), hasError: true, processing: false } as Record<string, unknown>,
+        data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
       });
       cancelled++;
     }

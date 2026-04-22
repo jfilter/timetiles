@@ -43,7 +43,7 @@ describe("scheduled-ingests beforeChange hook timezone support", () => {
       operation: "create",
       originalDoc: undefined as never,
       req: {} as never,
-      context: {} as never,
+      context: {},
       collection: {} as never,
     });
 
@@ -70,7 +70,7 @@ describe("scheduled-ingests beforeChange hook timezone support", () => {
       operation: "create",
       originalDoc: undefined as never,
       req: {} as never,
-      context: {} as never,
+      context: {},
       collection: {} as never,
     });
 
@@ -91,7 +91,7 @@ describe("scheduled-ingests beforeChange hook timezone support", () => {
       operation: "create",
       originalDoc: undefined as never,
       req: {} as never,
-      context: {} as never,
+      context: {},
       collection: {} as never,
     });
 
@@ -117,7 +117,7 @@ describe("scheduled-ingests beforeChange hook timezone support", () => {
       operation: "update",
       originalDoc: { enabled: false } as never,
       req: {} as never,
-      context: {} as never,
+      context: {},
       collection: {} as never,
     });
 

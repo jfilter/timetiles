@@ -54,7 +54,11 @@ export const extractExternalIdValue = (data: unknown, path: string): string | nu
   if (value == null) return null;
   if (typeof value === "object") return JSON.stringify(value);
   if (typeof value === "string") return value;
-  return String(value as number | boolean | bigint);
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return value.toString();
+  }
+  if (typeof value === "symbol" || typeof value === "function") return value.toString();
+  return null;
 };
 
 /** Options for {@link generateIdPreview}. */

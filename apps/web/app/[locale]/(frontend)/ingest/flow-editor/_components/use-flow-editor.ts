@@ -185,7 +185,7 @@ const createTransformNodesFromWizard = (
       id: nodeId,
       type: NODE_TYPE_TRANSFORM,
       position: { x: transformX, y },
-      data: { transform, isEditing: false } as TransformNodeData,
+      data: { transform, isEditing: false },
     });
 
     // Wire edges: source → transform → target
@@ -285,7 +285,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
       const applyConnectionState = (node: FlowNode): FlowNode => {
         if (node.type === NODE_TYPE_SOURCE) {
           const isConnected = allInitEdges.some((e) => e.source === node.id);
-          return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } } as FlowNode;
+          return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected } };
         }
         if (node.type === NODE_TYPE_TARGET) {
           const edge = allInitEdges.find((e) => e.target === node.id);
@@ -297,7 +297,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
               isConnected: !!edge,
               connectedColumn: srcNode?.data.columnName ?? null,
             },
-          } as FlowNode;
+          };
         }
         return node;
       };
@@ -330,7 +330,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.source) {
-              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } } as FlowNode;
+              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } };
             }
             if (node.id === params.target) {
               return {
@@ -340,7 +340,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
                   isConnected: true,
                   connectedColumn: sourceData.columnName,
                 },
-              } as FlowNode;
+              };
             }
             return node;
           })
@@ -349,7 +349,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.source) {
-              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } } as FlowNode;
+              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } };
             }
             return node;
           })
@@ -364,10 +364,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.target) {
-              return {
-                ...node,
-                data: { ...(node.data as TargetFieldNodeData), isConnected: true, connectedColumn },
-              } as FlowNode;
+              return { ...node, data: { ...(node.data as TargetFieldNodeData), isConnected: true, connectedColumn } };
             }
             return node;
           })
@@ -393,7 +390,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
             return {
               ...node,
               data: { ...(node.data as SourceColumnNodeData), isConnected: connectedSources.has(node.id) },
-            } as FlowNode;
+            };
           }
           if (node.type === NODE_TYPE_TARGET && affectedTargets.has(node.id)) {
             const stillConnected = connectedTargets.has(node.id);
@@ -404,7 +401,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
                 isConnected: stillConnected,
                 connectedColumn: stillConnected ? (node.data as TargetFieldNodeData).connectedColumn : null,
               },
-            } as FlowNode;
+            };
           }
           return node;
         })
@@ -421,7 +418,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         id: `transform-${transform.id}`,
         type: NODE_TYPE_TRANSFORM,
         position,
-        data: { transform, isEditing: false } as TransformNodeData,
+        data: { transform, isEditing: false },
       };
       setNodes((nds) => [...nds, newNode]);
     },

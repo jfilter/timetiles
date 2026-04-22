@@ -61,7 +61,7 @@ export class RelationshipResolver {
 
     if (configs.length === 0) {
       logger.debug(`No relationship configuration found for collection: ${collection}`);
-      return items as ResolvedItem[];
+      return items;
     }
 
     logger.debug(`Resolving relationships for ${items.length} items in ${collection}`);
@@ -130,7 +130,7 @@ export class RelationshipResolver {
   ): Promise<ResolvedItem | null> {
     const relationshipConfigs = configs ?? getRelationshipConfig(collection);
     if (relationshipConfigs.length === 0) {
-      return item as ResolvedItem;
+      return item;
     }
 
     const resolved = { ...item };

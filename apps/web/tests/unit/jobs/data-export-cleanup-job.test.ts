@@ -49,7 +49,7 @@ describe.sequential("dataExportCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(result.output).toEqual({ success: true, filesDeleted: 0, recordsUpdated: 0, recordsDeleted: 0, errors: 0 });
   });
@@ -59,7 +59,7 @@ describe.sequential("dataExportCleanupJob", () => {
       .mockResolvedValueOnce({ docs: [{ id: 1, filePath: "/tmp/export-1.zip", status: "ready" }], totalDocs: 1 })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "data-exports",
@@ -80,7 +80,7 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockUnlink.mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(result.output.recordsUpdated).toBe(1);
     expect(result.output.filesDeleted).toBe(0);
@@ -94,7 +94,7 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(result.output.errors).toBe(1);
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to clean up export", { exportId: 3 });
@@ -109,7 +109,7 @@ describe.sequential("dataExportCleanupJob", () => {
       totalDocs: 2,
     });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(2);
     expect(mockPayload.delete).toHaveBeenCalledWith({ collection: "data-exports", id: 10, overrideAccess: true });
@@ -128,7 +128,7 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Delete failed")).mockResolvedValueOnce({});
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(result.output.recordsDeleted).toBe(1);
     expect(result.output.errors).toBe(1);
@@ -152,7 +152,7 @@ describe.sequential("dataExportCleanupJob", () => {
       .mockResolvedValueOnce({ docs: expiredDocs, totalDocs: expiredDocs.length })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     // Every file was unlinked
     expect(mockUnlink).toHaveBeenCalledTimes(3);
@@ -182,7 +182,7 @@ describe.sequential("dataExportCleanupJob", () => {
       return Promise.resolve();
     });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     expect(mockUnlink).toHaveBeenCalledTimes(3);
     // All three records were updated, two files successfully deleted
@@ -202,7 +202,7 @@ describe.sequential("dataExportCleanupJob", () => {
       })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
-    const result = await dataExportCleanupJob.handler(createContext() as any);
+    const result = await dataExportCleanupJob.handler(createContext());
 
     // Only one unlink (the record with a real path)
     expect(mockUnlink).toHaveBeenCalledTimes(1);

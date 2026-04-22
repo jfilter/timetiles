@@ -241,7 +241,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     graphQL: { disable: disableGraphQL },
     // Sharp's default export type doesn't match Payload's expected sharp type.
     // This is a known Payload CMS issue — both expect the same runtime value.
-    sharp: sharp as unknown as Config["sharp"],
+    sharp: sharp,
   };
 
   // Configure email adapter

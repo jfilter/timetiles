@@ -70,7 +70,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     mockContext = {
       req: { payload: mockPayload },
       job: { id: "test-job-1", taskStatus: "running" } as any,
-      input: { ingestJobId: "import-123" } as any,
+      input: { ingestJobId: "import-123" },
     };
   });
 

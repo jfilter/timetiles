@@ -81,7 +81,7 @@ const useTransformEditing = (
       } else {
         setExpandedTransformId(transformId);
         const tf = transforms.find((t) => t.id === transformId);
-        if (tf) setDraftTransform({ ...tf } as IngestTransform);
+        if (tf) setDraftTransform({ ...tf });
       }
     },
     [expandedTransformId, transforms]

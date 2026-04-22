@@ -26,7 +26,7 @@ const ScraperRuns: CollectionConfig = {
     read: ({ req: { user } }): boolean | Where => {
       if (isPrivileged(user)) return true;
       if (!user) return false;
-      return { scraperOwner: { equals: user.id } } as Where;
+      return { scraperOwner: { equals: user.id } };
     },
     // Runs are created by the system (jobs), not directly by users
     create: isEditorOrAdmin,

@@ -190,16 +190,16 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
 // Helper functions for chart configuration — hoisted out of the component
 // to keep `TimeHistogram`'s cyclomatic complexity under control.
-const getAxisConfig = (chartTheme: ChartTheme) => ({
+const getAxisConfig = (chartTheme: ChartTheme): Pick<EChartsOption, "xAxis" | "yAxis"> => ({
   xAxis: {
-    type: "time",
-    boundaryGap: false,
+    type: "time" as const,
+    boundaryGap: [0, 0],
     axisLabel: { color: chartTheme.textColor, fontSize: 11 },
     axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
     splitLine: { show: false },
   },
   yAxis: {
-    type: "value",
+    type: "value" as const,
     axisLabel: { color: chartTheme.textColor, fontSize: 11 },
     axisLine: { show: false },
     axisTick: { show: false },
@@ -207,39 +207,65 @@ const getAxisConfig = (chartTheme: ChartTheme) => ({
   },
 });
 
+interface HistogramTooltipEntry {
+  marker: string;
+  seriesName: string;
+  data: [number, number, number];
+}
+
+const isHistogramTooltipEntry = (entry: unknown): entry is HistogramTooltipEntry =>
+  typeof entry === "object" &&
+  entry !== null &&
+  "data" in entry &&
+  "marker" in entry &&
+  "seriesName" in entry &&
+  Array.isArray(entry.data) &&
+  typeof entry.data[0] === "number" &&
+  typeof entry.data[1] === "number" &&
+  typeof entry.data[2] === "number" &&
+  typeof entry.marker === "string" &&
+  typeof entry.seriesName === "string";
+
 const getTooltipConfig = (
   chartTheme: ChartTheme,
   _darkMode: boolean,
   bucketSeconds: number | null | undefined,
   isStacked: boolean
-) => ({
-  trigger: "axis",
+): NonNullable<EChartsOption["tooltip"]> => ({
+  trigger: "axis" as const,
   backgroundColor: chartTheme.tooltipBackground,
   borderColor: chartTheme.axisLineColor,
   textStyle: { color: chartTheme.tooltipForeground },
-  formatter: (
-    params: Array<{
-      value: [number, number, number];
-      data: [number, number, number];
-      marker: string;
-      seriesName: string;
-    }>
-  ) => {
-    const point = params[0];
-    if (!point) return "";
+  formatter: (params) => {
+    const rawEntries = Array.isArray(params) ? params : [params];
+    const histogramEntries: HistogramTooltipEntry[] = [];
+
+    for (const entry of rawEntries) {
+      if (isHistogramTooltipEntry(entry)) {
+        histogramEntries.push(entry);
+      }
+    }
+
+    const point = histogramEntries[0];
+
+    if (!point) {
+      return "";
+    }
+
     const startDate = new Date(point.data[0]);
     const endDate = new Date(point.data[2]);
+    const pointCount = typeof point.data[1] === "number" ? point.data[1] : 0;
 
     if (!isStacked) {
-      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${point.data[1].toLocaleString()}</div></div>`;
+      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${pointCount.toLocaleString()}</div></div>`;
     }
 
     // Stacked: show each group's count
-    const total = params.reduce((sum, p) => sum + (p.data[1] ?? 0), 0);
-    const rows = params
-      .filter((p) => p.data[1] > 0)
+    const total = histogramEntries.reduce((sum, entry) => sum + entry.data[1], 0);
+    const rows = histogramEntries
+      .filter((entry) => entry.data[1] > 0)
       .sort((a, b) => b.data[1] - a.data[1])
-      .map((p) => `<div>${p.marker} ${p.seriesName}: ${p.data[1].toLocaleString()}</div>`)
+      .map((entry) => `<div>${entry.marker} ${entry.seriesName}: ${entry.data[1].toLocaleString()}</div>`)
       .join("");
     return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
   },
@@ -247,7 +273,7 @@ const getTooltipConfig = (
 
 const getSeriesConfig = (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
   {
-    type: "bar",
+    type: "bar" as const,
     // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
     data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
     itemStyle: {
@@ -299,6 +325,87 @@ const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number)
 const detectDarkTheme = (theme: ChartTheme | undefined): boolean =>
   theme ? theme.axisLineColor === defaultDarkTheme.axisLineColor : false;
 
+const resolveHistogramTheme = (theme: ChartTheme | undefined): { effectiveTheme: ChartTheme; isDark: boolean } => {
+  const isDark = detectDarkTheme(theme);
+  return { isDark, effectiveTheme: theme ?? (isDark ? defaultDarkTheme : defaultLightTheme) };
+};
+
+const buildHistogramChartOption = ({
+  data,
+  groupedData,
+  effectiveTheme,
+  isDark,
+  bucketSizeSeconds,
+  showDataZoom,
+  dataZoomStart,
+  dataZoomEnd,
+}: {
+  data: TimeHistogramDataItem[];
+  groupedData: TimeHistogramSeries[] | undefined;
+  effectiveTheme: ChartTheme;
+  isDark: boolean;
+  bucketSizeSeconds: number | null | undefined;
+  showDataZoom: boolean;
+  dataZoomStart: number | undefined;
+  dataZoomEnd: number | undefined;
+}): EChartsOption => {
+  const axisConfig = getAxisConfig(effectiveTheme);
+  const hasGroupedLegend = Boolean(groupedData && groupedData.length > 1);
+
+  return {
+    backgroundColor: "transparent",
+    textStyle: { color: effectiveTheme.textColor },
+    grid: {
+      left: "3%",
+      right: "4%",
+      bottom: showDataZoom ? 45 : "3%",
+      top: hasGroupedLegend ? 30 : "10%",
+      containLabel: true,
+    },
+    ...axisConfig,
+    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, Boolean(groupedData)),
+    series: groupedData ? getStackedSeriesConfig(groupedData, effectiveTheme) : getSeriesConfig(effectiveTheme, data),
+    ...(hasGroupedLegend
+      ? {
+          color: groupedData?.map((series) => series.color),
+          legend: { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } },
+        }
+      : {}),
+    ...(showDataZoom ? { dataZoom: getDataZoomConfig(effectiveTheme, dataZoomStart, dataZoomEnd) } : {}),
+    animation: true,
+    animationDuration: 300,
+  };
+};
+
+const getClickedBarDate = (params: EChartsEventParams): Date | null => {
+  if (
+    params.data == null ||
+    !Array.isArray(params.data) ||
+    params.data.length < 2 ||
+    typeof params.data[0] !== "number"
+  ) {
+    return null;
+  }
+
+  return new Date(params.data[0]);
+};
+
+const getDataZoomRange = (params: EChartsEventParams): { start: number; end: number } => {
+  const dataZoomParams = params as unknown as {
+    start?: number;
+    end?: number;
+    batch?: Array<{ start: number; end: number }>;
+  };
+
+  return {
+    start: dataZoomParams.batch?.[0]?.start ?? dataZoomParams.start ?? 0,
+    end: dataZoomParams.batch?.[0]?.end ?? dataZoomParams.end ?? 100,
+  };
+};
+
+const hasHistogramData = (data: TimeHistogramDataItem[], groupedData: TimeHistogramSeries[] | undefined): boolean =>
+  groupedData ? groupedData.some((series) => series.data.length > 0) : data.length > 0;
+
 export const TimeHistogram = ({
   data = defaultData,
   groupedData,
@@ -317,54 +424,31 @@ export const TimeHistogram = ({
   dataZoomEnd,
   onDataZoomChange,
 }: TimeHistogramProps) => {
-  const isDark = detectDarkTheme(theme);
-  const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
-
-  // Create ECharts option for the histogram
-  const axisConfig = getAxisConfig(effectiveTheme);
-
-  const chartOption = {
-    backgroundColor: "transparent",
-    textStyle: { color: effectiveTheme.textColor },
-    grid: {
-      left: "3%",
-      right: "4%",
-      bottom: showDataZoom ? 45 : "3%",
-      top: groupedData && groupedData.length > 1 ? 30 : "10%",
-      containLabel: true,
-    },
-    ...axisConfig,
-    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, !!groupedData),
-    series: groupedData ? getStackedSeriesConfig(groupedData, effectiveTheme) : getSeriesConfig(effectiveTheme, data),
-    ...(groupedData && groupedData.length > 1
-      ? {
-          color: groupedData.map((s) => s.color),
-          legend: { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } },
-        }
-      : {}),
-    ...(showDataZoom ? { dataZoom: getDataZoomConfig(effectiveTheme, dataZoomStart, dataZoomEnd) } : {}),
-    animation: true,
-    animationDuration: 300,
-  };
+  const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
+  const chartOption = buildHistogramChartOption({
+    data,
+    groupedData,
+    effectiveTheme,
+    isDark,
+    bucketSizeSeconds,
+    showDataZoom,
+    dataZoomStart,
+    dataZoomEnd,
+  });
 
   const handleChartClick = (params: EChartsEventParams) => {
-    if (
-      onBarClick &&
-      params.data != null &&
-      Array.isArray(params.data) &&
-      params.data.length >= 2 &&
-      typeof params.data[0] === "number"
-    ) {
-      const date = new Date(params.data[0]);
-      onBarClick(date);
+    const clickedDate = getClickedBarDate(params);
+    if (clickedDate && onBarClick) {
+      onBarClick(clickedDate);
     }
   };
 
   const handleDataZoom = (params: EChartsEventParams) => {
-    if (!onDataZoomChange) return;
-    const p = params as unknown as { start?: number; end?: number; batch?: Array<{ start: number; end: number }> };
-    const start = p.batch?.[0]?.start ?? p.start ?? 0;
-    const end = p.batch?.[0]?.end ?? p.end ?? 100;
+    if (!onDataZoomChange) {
+      return;
+    }
+
+    const { start, end } = getDataZoomRange(params);
     onDataZoomChange(start, end);
   };
 
@@ -376,7 +460,7 @@ export const TimeHistogram = ({
   }
 
   // Handle empty state — check both single-series and grouped data
-  const hasData = groupedData ? groupedData.some((s) => s.data.length > 0) : data.length > 0;
+  const hasData = hasHistogramData(data, groupedData);
   if (!hasData && !isInitialLoad && !isUpdating) {
     return <ChartEmptyState variant="no-match" height={height} className={className} message={emptyMessage} />;
   }
@@ -388,7 +472,7 @@ export const TimeHistogram = ({
       isInitialLoad={isInitialLoad}
       isUpdating={isUpdating}
       theme={theme}
-      config={chartOption as unknown as Partial<EChartsOption>}
+      config={chartOption}
       onEvents={chartEvents}
       skeletonVariant="histogram"
     />

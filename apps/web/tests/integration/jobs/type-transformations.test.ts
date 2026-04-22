@@ -27,7 +27,7 @@ const getEventData = (event: Event): Record<string, unknown> => {
   return typeof event.transformedData === "object" &&
     event.transformedData !== null &&
     !Array.isArray(event.transformedData)
-    ? (event.transformedData as Record<string, unknown>)
+    ? event.transformedData
     : {};
 };
 

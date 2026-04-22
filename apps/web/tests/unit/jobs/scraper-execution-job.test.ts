@@ -157,7 +157,7 @@ describe.sequential("scraperExecutionJob", () => {
 
   it("should load scraper with depth:1 to populate repo", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    await scraperExecutionJob.handler(context as any);
+    await scraperExecutionJob.handler(context);
 
     expect(mockPayload.findByID).toHaveBeenCalledWith({
       collection: "scrapers",
@@ -169,7 +169,7 @@ describe.sequential("scraperExecutionJob", () => {
 
   it("should create scraper-run record with 'running' status", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "schedule" });
-    await scraperExecutionJob.handler(context as any);
+    await scraperExecutionJob.handler(context);
 
     expect(mockPayload.create).toHaveBeenCalledWith({
       collection: "scraper-runs",
@@ -194,7 +194,7 @@ describe.sequential("scraperExecutionJob", () => {
 
   it("should build correct runner API request from scraper + repo config", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    await scraperExecutionJob.handler(context as any);
+    await scraperExecutionJob.handler(context);
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "https://runner.example.com/run",
@@ -222,7 +222,7 @@ describe.sequential("scraperExecutionJob", () => {
 
   it("should update run record with success result (status, duration, output rows)", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    await scraperExecutionJob.handler(context as any);
+    await scraperExecutionJob.handler(context);
 
     // Find the update call for scraper-runs that sets the result
     const runUpdateCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
@@ -252,7 +252,7 @@ describe.sequential("scraperExecutionJob", () => {
 
   it("should update scraper statistics on successful run", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-    await scraperExecutionJob.handler(context as any);
+    await scraperExecutionJob.handler(context);
 
     // Find the scraper update that sets statistics (not the "running" status update)
     const statsUpdateCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
@@ -386,7 +386,7 @@ describe.sequential("scraperExecutionJob", () => {
       setupAutoImportFetch();
 
       const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-      const result = await scraperExecutionJob.handler(context as any);
+      const result = await scraperExecutionJob.handler(context);
 
       // The output should include the ingestFileId
       expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success", ingestFileId: 42 }));
@@ -418,7 +418,7 @@ describe.sequential("scraperExecutionJob", () => {
 
       const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
       // Job should NOT throw even though auto-import fails
-      const result = await scraperExecutionJob.handler(context as any);
+      const result = await scraperExecutionJob.handler(context);
 
       expect(result.output).toEqual(expect.objectContaining({ runId: 1, status: "success" }));
       // ingestFileId should not be in output since auto-import failed
@@ -437,7 +437,7 @@ describe.sequential("scraperExecutionJob", () => {
       setupAutoImportFetch();
 
       const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
-      await scraperExecutionJob.handler(context as any);
+      await scraperExecutionJob.handler(context);
 
       // Third fetch call should be the DELETE cleanup
       const fetchMock = globalThis.fetch as ReturnType<typeof vi.fn>;

@@ -186,10 +186,7 @@ export class DatabaseOperations {
       }
 
       // SQL failed, fallback to individual deletes
-      const fallbackResult = await this.fallbackIndividualDeletes(
-        items as unknown as Array<{ id: string }>,
-        collection
-      );
+      const fallbackResult = await this.fallbackIndividualDeletes(items, collection);
       return { deletedCount: fallbackResult.successful, errors: fallbackResult.errors };
     }
 

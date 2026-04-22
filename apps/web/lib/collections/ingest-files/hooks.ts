@@ -10,7 +10,7 @@ import type {
   CollectionBeforeOperationHook,
   CollectionBeforeValidateHook,
 } from "payload";
-import type { Payload, PayloadRequest } from "payload";
+import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
@@ -180,7 +180,7 @@ const compensateUploadQuotaOnError = async (
 
   try {
     const quotaService = createQuotaService(req.payload);
-    await quotaService.decrementUsage(marked.user.id, "FILE_UPLOADS_PER_DAY", 1, req as unknown as PayloadRequest);
+    await quotaService.decrementUsage(marked.user.id, "FILE_UPLOADS_PER_DAY", 1, req);
   } catch (error) {
     logger.error("Failed to compensate FILE_UPLOADS_PER_DAY after create failure", error);
   }

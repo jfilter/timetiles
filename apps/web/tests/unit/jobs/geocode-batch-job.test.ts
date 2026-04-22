@@ -130,7 +130,7 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     mocks.getIngestFilePath.mockReset();
     mocks.getIngestFilePath.mockReturnValue("/app/uploads/test-import.csv");
     mockPayload = createMockPayload();
-    mockContext = { req: { payload: mockPayload }, input: { ingestJobId: 123 } } as unknown as JobHandlerContext;
+    mockContext = { req: { payload: mockPayload }, input: { ingestJobId: 123 } };
   });
 
   afterEach(() => {

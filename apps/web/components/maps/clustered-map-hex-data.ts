@@ -121,6 +121,12 @@ const isLongValidCell = (id: string): boolean => {
   }
 };
 
+export const toFeatureIdString = (value: unknown): string | null => {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return null;
+};
+
 /** Build hex polygon GeoJSON from animated cluster features (H3 algorithm). */
 export const buildH3HexData = (algorithm: string, animatedClusters: ClusterFeature[]): GeoJSON.FeatureCollection => {
   if (algorithm !== "h3") return EMPTY_FEATURE_COLLECTION;
@@ -213,7 +219,7 @@ export const childFeaturesToHexPolygons = (
 ): GeoJSON.Feature[] => {
   const features: GeoJSON.Feature[] = [];
   for (const child of children) {
-    const cellId = String((child.properties?.clusterId ?? child.id ?? "") as string | number);
+    const cellId = toFeatureIdString(child.properties?.clusterId) ?? toFeatureIdString(child.id) ?? "";
     if (!isLongValidCell(cellId)) continue;
     const coords = cellToGeoJsonRing(cellId);
     features.push({

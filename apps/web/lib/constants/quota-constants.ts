@@ -55,7 +55,7 @@ export interface UserUsage {
  * Default quotas for each trust level, loaded from app config.
  * -1 indicates unlimited.
  */
-export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = getAppConfig().quotas as Record<TrustLevel, UserQuotas>;
+export const DEFAULT_QUOTAS: Record<TrustLevel, UserQuotas> = getAppConfig().quotas;
 
 /**
  * Trust level labels for UI display.
@@ -196,5 +196,5 @@ export type QuotaKey = keyof typeof QUOTAS;
  * Rate limit configurations by trust level, loaded from app config.
  * Each level has progressively more generous limits.
  */
-export const RATE_LIMITS_BY_TRUST_LEVEL: Record<TrustLevel, TrustLevelRateLimitsConfig> = getAppConfig()
-  .trustLevelRateLimits as Record<TrustLevel, TrustLevelRateLimitsConfig>;
+export const RATE_LIMITS_BY_TRUST_LEVEL: Record<TrustLevel, TrustLevelRateLimitsConfig> =
+  getAppConfig().trustLevelRateLimits;

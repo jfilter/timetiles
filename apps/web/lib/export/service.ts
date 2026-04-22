@@ -538,7 +538,7 @@ export class DataExportService {
             const stats = await stat(outputPath);
             resolve({ filePath: outputPath, fileSize: stats.size });
           } catch (err) {
-            reject(err as Error);
+            reject(err instanceof Error ? err : new Error(String(err)));
           }
         })();
       });
@@ -577,7 +577,7 @@ export class DataExportService {
           await this.addEventsAndMediaToArchive(archive, baseData);
           await archive.finalize();
         } catch (err) {
-          reject(err as Error);
+          reject(err instanceof Error ? err : new Error(String(err)));
         }
       })();
     });

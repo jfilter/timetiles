@@ -8,6 +8,7 @@
  * @module
  */
 import eslintReact from "@eslint-react/eslint-plugin";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import react from "eslint-plugin-react";
 import reactCompiler from "eslint-plugin-react-compiler";
 import reactHooks from "eslint-plugin-react-hooks";
@@ -21,7 +22,13 @@ export default [
   ...baseConfig,
   {
     files: ["**/*.ts", "**/*.tsx"],
-    plugins: { react: react, "react-hooks": reactHooks, "@eslint-react": eslintReact, "react-compiler": reactCompiler },
+    plugins: {
+      react: react,
+      "react-hooks": reactHooks,
+      "@eslint-react": eslintReact,
+      "react-compiler": reactCompiler,
+      "jsx-a11y": jsxA11y,
+    },
     settings: { react: { version: "detect" } },
     rules: {
       // React Compiler rules
@@ -57,6 +64,12 @@ export default [
       "react/require-render-return": "error",
       "react/no-unescaped-entities": "error",
       "react/no-children-prop": "error",
+
+      // JSX accessibility rules that oxlint's native plugin no longer supports.
+      "jsx-a11y/interactive-supports-focus": "error",
+      "jsx-a11y/no-interactive-element-to-noninteractive-role": "error",
+      "jsx-a11y/no-noninteractive-element-interactions": "error",
+      "jsx-a11y/no-noninteractive-element-to-interactive-role": "error",
 
       // @eslint-react rules for modern React patterns (v2)
       "@eslint-react/no-useless-forward-ref": "error",

@@ -62,7 +62,7 @@ const ScraperRepos: CollectionConfig = {
     read: ({ req: { user } }): boolean | Where => {
       if (isPrivileged(user)) return true;
       if (!user) return false;
-      return { createdBy: { equals: user.id } } as Where;
+      return { createdBy: { equals: user.id } };
     },
     create: async ({ req: { user, payload } }) => {
       if (!user) return false;

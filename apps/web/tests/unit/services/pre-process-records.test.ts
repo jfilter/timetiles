@@ -9,13 +9,20 @@ const mockLogger = vi.hoisted(() => ({ logger: { info: vi.fn(), warn: vi.fn() } 
 
 vi.mock("@/lib/logger", () => ({ logger: mockLogger.logger }));
 
-import { type PreProcessingConfig, preProcessRecords } from "@/lib/ingest/pre-process-records";
+import type {
+  PreProcessingConfig,
+  preProcessRecords as PreProcessRecordsFunction,
+} from "@/lib/ingest/pre-process-records";
+
+let preProcessRecords: typeof PreProcessRecordsFunction;
 
 const config: PreProcessingConfig = { groupBy: "uid", mergeFields: { startDate: "min", endDate: "max" } };
 
 describe("preProcessRecords", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
     vi.clearAllMocks();
+    ({ preProcessRecords } = await import("@/lib/ingest/pre-process-records"));
   });
 
   it("should return records unchanged when no config", () => {

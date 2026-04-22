@@ -39,7 +39,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
   it("should return zero counts when no entries found", async () => {
     mockPayload.find.mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
-    const result = await auditLogIpCleanupJob.handler(createContext() as any);
+    const result = await auditLogIpCleanupJob.handler(createContext());
 
     expect(result.output).toEqual({ success: true, cleared: 0, totalEligible: 0 });
 
@@ -61,7 +61,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
       totalDocs: 3,
     });
 
-    const result = await auditLogIpCleanupJob.handler(createContext() as any);
+    const result = await auditLogIpCleanupJob.handler(createContext());
 
     expect(mockPayload.update).toHaveBeenCalledTimes(3);
 
@@ -98,7 +98,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
 
     mockPayload.update.mockRejectedValueOnce(new Error("Update failed for entry 10")).mockResolvedValueOnce({});
 
-    const result = await auditLogIpCleanupJob.handler(createContext() as any);
+    const result = await auditLogIpCleanupJob.handler(createContext());
 
     // First entry failed, second succeeded
     expect(result.output.cleared).toBe(1);

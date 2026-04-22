@@ -95,13 +95,7 @@ export const TARGET_FIELD_DEFINITIONS: Array<{
   icon: string;
   required: boolean;
   description: string;
-}> = getTargetFieldDefinitions() as Array<{
-  fieldKey: TargetFieldNodeData["fieldKey"];
-  label: string;
-  icon: string;
-  required: boolean;
-  description: string;
-}>;
+}> = getTargetFieldDefinitions();
 
 /**
  * Helper to create initial nodes from sheet data

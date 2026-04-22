@@ -436,7 +436,7 @@ export const getFieldPatterns = (
   // For standard field types, use the built-in FIELD_PATTERNS
   const builtinType = FIELD_PATTERNS[fieldType as FieldType];
   const defaultPatterns: readonly RegExp[] = builtinType
-    ? ((builtinType[language as keyof typeof builtinType] ?? builtinType.eng) as readonly RegExp[])
+    ? (builtinType[language as keyof typeof builtinType] ?? builtinType.eng)
     : [];
 
   // Check for custom patterns from options

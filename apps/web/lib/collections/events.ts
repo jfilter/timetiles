@@ -19,7 +19,7 @@
  *
  * @module
  */
-import type { Access, CollectionConfig, Where } from "payload";
+import type { CollectionConfig, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 
@@ -45,17 +45,17 @@ const Events: CollectionConfig = {
     // Events: public data visible to all, private data visible to catalog owner
     // Uses denormalized fields for zero-query access control
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-    read: (({ req: { user } }): boolean | Where => {
+    read: ({ req: { user } }): boolean | Where => {
       if (isPrivileged(user)) return true;
 
       // Logged-in users can see: public data OR data they own (via catalog)
       if (user) {
-        return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }] } as Where;
+        return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }] };
       }
 
       // Anonymous users only see public data
       return { datasetIsPublic: { equals: true } };
-    }) as Access,
+    },
 
     // Only admins/editors can create events (import jobs handle bulk creation)
     create: async ({ req: { user, payload } }) => {
@@ -70,13 +70,13 @@ const Events: CollectionConfig = {
 
     // Admins/editors can update all events, catalog owners can update their own
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-    update: (({ req: { user } }): boolean | Where => {
+    update: ({ req: { user } }): boolean | Where => {
       if (!user) return false;
       if (isPrivileged(user)) return true;
 
       // Catalog owner can update events in their catalog
-      return { catalogOwnerId: { equals: user.id } } as Where;
-    }) as Access,
+      return { catalogOwnerId: { equals: user.id } };
+    },
 
     // Only admins/editors can delete events
     delete: isEditorOrAdmin,

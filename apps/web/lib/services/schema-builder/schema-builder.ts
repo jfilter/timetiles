@@ -325,9 +325,9 @@ export class ProgressiveSchemaBuilder {
       return null;
     }
 
-    const items = (field as { items: unknown }).items;
+    const items = field.items;
     if (typeof items === "object" && items !== null && "properties" in items) {
-      return (items as { properties: unknown }).properties;
+      return items.properties;
     }
     return items;
   }

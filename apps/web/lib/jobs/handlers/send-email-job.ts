@@ -37,10 +37,10 @@ type EmailDeliveryError = Error & { code?: string; responseCode?: number };
 
 const getEmailErrorDetails = (error: unknown): EmailDeliveryError => {
   if (error instanceof Error) {
-    return error as EmailDeliveryError;
+    return error;
   }
 
-  return new Error(String(error)) as EmailDeliveryError;
+  return new Error(String(error));
 };
 
 const classifyEmailError = (error: unknown): "terminal" | "retriable" => {

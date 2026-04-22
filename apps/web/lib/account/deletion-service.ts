@@ -305,7 +305,7 @@ export class AccountDeletionService {
 
     try {
       // Begin a Payload-managed transaction
-      const ownsTransaction = await initTransaction(req as unknown as PayloadRequest);
+      const ownsTransaction = await initTransaction(req);
 
       try {
         // Transfer public data to system user
@@ -322,12 +322,12 @@ export class AccountDeletionService {
 
         // Commit the transaction (only if we own it)
         if (ownsTransaction) {
-          await commitTransaction(req as unknown as PayloadRequest);
+          await commitTransaction(req);
         }
       } catch (error) {
         // Roll back on any failure
         if (ownsTransaction) {
-          await killTransaction(req as unknown as PayloadRequest);
+          await killTransaction(req);
         }
         throw error;
       }

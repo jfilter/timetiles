@@ -54,7 +54,7 @@ export const safeFetchRecord = async <TSlug extends CollectionSlug>(
   depth = 0
 ): Promise<CollectionDoc<TSlug> | null> => {
   try {
-    return (await req.payload.findByID({ collection, id, depth, overrideAccess: true, req })) as CollectionDoc<TSlug>;
+    return await req.payload.findByID({ collection, id, depth, overrideAccess: true, req });
   } catch {
     return null;
   }

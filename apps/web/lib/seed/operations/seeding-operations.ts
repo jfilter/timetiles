@@ -101,9 +101,7 @@ export class SeedingOperations {
       throw new Error("RelationshipResolver not initialized");
     }
     const resolvedSeedData = await relationshipResolver.resolveCollectionRelationships(
-      Array.isArray(transformedData)
-        ? (transformedData as Record<string, unknown>[])
-        : [transformedData as Record<string, unknown>],
+      Array.isArray(transformedData) ? (transformedData as Record<string, unknown>[]) : [transformedData],
       collectionName
     );
 
@@ -129,25 +127,23 @@ export class SeedingOperations {
         throw new Error(PAYLOAD_NOT_INITIALIZED_ERROR);
       }
 
-      type GlobalSlug = "main-menu" | "footer" | "settings";
-      const slug = collectionName as GlobalSlug;
-      type GlobalData = Config["globals"]["main-menu"] & Config["globals"]["footer"] & Config["globals"]["settings"];
+      const slug = collectionName;
 
       // Initial update creates the array structure (localized fields inside arrays are dropped)
-      await payload.updateGlobal({ slug, data: enData as unknown as GlobalData, locale: "en" });
+      await payload.updateGlobal({ slug, data: enData, locale: "en" });
 
       // Fetch to get Payload-generated array item IDs
       const created = (await payload.findGlobal({ slug, depth: 0 })) as unknown as Record<string, unknown>;
 
       // Re-apply English data with array IDs so localized fields are stored
       const enWithIds = mergeGlobalArrayIds(created, enData);
-      await payload.updateGlobal({ slug, data: enWithIds as unknown as GlobalData, locale: "en" });
+      await payload.updateGlobal({ slug, data: enWithIds, locale: "en" });
 
       // Seed German locale with same array IDs
       const deData = this.getGermanGlobalSeedData(collectionName);
       if (deData) {
         const deWithIds = mergeGlobalArrayIds(created, deData);
-        await payload.updateGlobal({ slug, data: deWithIds as unknown as GlobalData, locale: "de" });
+        await payload.updateGlobal({ slug, data: deWithIds, locale: "de" });
       }
 
       logger.info(`Seeded ${collectionName} global (en${deData ? " + de" : ""}) successfully!`);
@@ -160,11 +156,11 @@ export class SeedingOperations {
   private getGermanGlobalSeedData(collectionName: string): Record<string, unknown> | null {
     switch (collectionName) {
       case MAIN_MENU_SLUG:
-        return mainMenuSeedDe as unknown as Record<string, unknown>;
+        return mainMenuSeedDe;
       case FOOTER_SLUG:
-        return footerSeedDe as unknown as Record<string, unknown>;
+        return footerSeedDe;
       case SETTINGS_SLUG:
-        return settingsSeedDe as unknown as Record<string, unknown>;
+        return settingsSeedDe;
       default:
         return null;
     }
@@ -423,21 +419,12 @@ export class SeedingOperations {
       });
 
       // Fetch created page to get Payload-generated block/array IDs
-      const created = await payload.findByID({
-        collection: collectionName as keyof Config["collections"],
-        id: doc.id,
-        depth: 0,
-      });
+      const created = await payload.findByID({ collection: collectionName, id: doc.id, depth: 0 });
       const createdBlocks = (created as unknown as Record<string, unknown>).pageBuilder as Record<string, unknown>[];
 
       // Re-apply English data with block IDs to store localized fields
       const enBlocks = mergeBlockIds(createdBlocks, resolvedItem.pageBuilder as Record<string, unknown>[]);
-      await payload.update({
-        collection: collectionName as keyof Config["collections"],
-        id: doc.id,
-        data: { pageBuilder: enBlocks },
-        locale: "en",
-      });
+      await payload.update({ collection: collectionName, id: doc.id, data: { pageBuilder: enBlocks }, locale: "en" });
 
       // Seed German locale with same block IDs
       const slug = resolvedItem.slug as string | undefined;
@@ -447,7 +434,7 @@ export class SeedingOperations {
           ? mergeBlockIds(createdBlocks, deData.pageBuilder as Record<string, unknown>[])
           : undefined;
         await payload.update({
-          collection: collectionName as keyof Config["collections"],
+          collection: collectionName,
           id: doc.id,
           data: { ...deData, ...(deBlocks ? { pageBuilder: deBlocks } : {}) },
           locale: "de",

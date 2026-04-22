@@ -71,7 +71,7 @@ export type ScraperStatistics = Extract<Scraper["statistics"], Record<string, un
  */
 export const resolveScraperStats = (raw: Scraper["statistics"]): ScraperStatistics => {
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-    const obj = raw as Record<string, unknown>;
+    const obj = raw;
     return {
       totalRuns: typeof obj.totalRuns === "number" ? obj.totalRuns : 0,
       successRuns: typeof obj.successRuns === "number" ? obj.successRuns : 0,

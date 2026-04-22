@@ -32,7 +32,7 @@ const makeDataset = (
     catalogName,
     catalogId: catalogId ?? 1,
     schemaColumns,
-  } as Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] };
+  };
 };
 
 describe("findConfigSuggestions", () => {

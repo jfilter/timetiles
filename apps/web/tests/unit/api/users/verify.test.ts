@@ -42,7 +42,7 @@ describe.sequential("POST /api/users/verify/[token]", () => {
     const futureExpiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     mockPayload.find.mockResolvedValue({ docs: [{ id: 1, _verificationTokenExpiresAt: futureExpiry }] });
 
-    const response = await POST(createRequest(), createContext("valid-token") as never);
+    const response = await POST(createRequest(), createContext("valid-token"));
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -54,7 +54,7 @@ describe.sequential("POST /api/users/verify/[token]", () => {
     const pastExpiry = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     mockPayload.find.mockResolvedValue({ docs: [{ id: 1, _verificationTokenExpiresAt: pastExpiry }] });
 
-    const response = await POST(createRequest(), createContext("expired-token") as never);
+    const response = await POST(createRequest(), createContext("expired-token"));
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -65,7 +65,7 @@ describe.sequential("POST /api/users/verify/[token]", () => {
   it("rejects with 400 when no user matches the token", async () => {
     mockPayload.find.mockResolvedValue({ docs: [] });
 
-    const response = await POST(createRequest(), createContext("unknown-token") as never);
+    const response = await POST(createRequest(), createContext("unknown-token"));
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -76,14 +76,14 @@ describe.sequential("POST /api/users/verify/[token]", () => {
   it("rejects with 400 when user has no expiry timestamp (pre-TTL legacy)", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ id: 1, _verificationTokenExpiresAt: null }] });
 
-    const response = await POST(createRequest(), createContext("legacy-token") as never);
+    const response = await POST(createRequest(), createContext("legacy-token"));
 
     expect(response.status).toBe(400);
     expect(mockPayload.verifyEmail).not.toHaveBeenCalled();
   });
 
   it("rejects with 422 when the token is empty", async () => {
-    const response = await POST(createRequest(), createContext("") as never);
+    const response = await POST(createRequest(), createContext(""));
 
     // Zod param validation fails → 422
     expect(response.status).toBe(422);

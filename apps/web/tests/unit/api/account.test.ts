@@ -158,7 +158,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -168,7 +168,7 @@ describe.sequential("POST /api/users/change-email", () => {
   it("should return 422 when missing email or password", async () => {
     const req = createJsonRequest("http://localhost/api/users/change-email", { newEmail: "", password: "" });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -181,7 +181,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -194,7 +194,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -209,7 +209,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -224,7 +224,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     // Anti-enumeration: returns 200 success even when email is taken
     expect(response.status).toBe(200);
@@ -240,7 +240,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -271,7 +271,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    await changeEmailPOST(req, defaultParams as any);
+    await changeEmailPOST(req, defaultParams);
 
     expect(mockLogger.logger.info).toHaveBeenCalledWith(
       {
@@ -292,7 +292,7 @@ describe.sequential("POST /api/users/change-email", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await changeEmailPOST(req, defaultParams as any);
+    const response = await changeEmailPOST(req, defaultParams);
 
     expect(response.status).toBe(429);
     const data = await response.json();
@@ -307,7 +307,7 @@ describe.sequential("POST /api/users/change-password", () => {
       newPassword: "",
     });
 
-    const response = await changePasswordPOST(req, defaultParams as any);
+    const response = await changePasswordPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -320,7 +320,7 @@ describe.sequential("POST /api/users/change-password", () => {
       newPassword: "short",
     });
 
-    const response = await changePasswordPOST(req, defaultParams as any);
+    const response = await changePasswordPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -335,7 +335,7 @@ describe.sequential("POST /api/users/change-password", () => {
       newPassword: TEST_CREDENTIALS.basic.strongPassword,
     });
 
-    const response = await changePasswordPOST(req, defaultParams as any);
+    const response = await changePasswordPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -348,7 +348,7 @@ describe.sequential("POST /api/users/change-password", () => {
       newPassword: TEST_CREDENTIALS.basic.strongPassword,
     });
 
-    const response = await changePasswordPOST(req, defaultParams as any);
+    const response = await changePasswordPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -365,7 +365,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
   it("should return 422 when missing password", async () => {
     const req = createJsonRequest("http://localhost/api/users/schedule-deletion", { password: "" });
 
-    const response = await scheduleDeletionPOST(req, defaultParams as any);
+    const response = await scheduleDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -379,7 +379,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await scheduleDeletionPOST(req, defaultParams as any);
+    const response = await scheduleDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -398,7 +398,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await scheduleDeletionPOST(req, defaultParams as any);
+    const response = await scheduleDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -416,7 +416,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await scheduleDeletionPOST(req, defaultParams as any);
+    const response = await scheduleDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -434,7 +434,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await cancelDeletionPOST(req, defaultParams as any);
+    const response = await cancelDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -444,7 +444,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
   it("should return 422 when missing password", async () => {
     const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {});
 
-    const response = await cancelDeletionPOST(req, defaultParams as any);
+    const response = await cancelDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(422);
     const data = await response.json();
@@ -456,7 +456,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await cancelDeletionPOST(req, defaultParams as any);
+    const response = await cancelDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(400);
     const data = await response.json();
@@ -476,7 +476,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await cancelDeletionPOST(req, defaultParams as any);
+    const response = await cancelDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(401);
     const data = await response.json();
@@ -495,7 +495,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
       password: TEST_CREDENTIALS.basic.password,
     });
 
-    const response = await cancelDeletionPOST(req, defaultParams as any);
+    const response = await cancelDeletionPOST(req, defaultParams);
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -516,7 +516,7 @@ describe.sequential("GET /api/account/deletion-summary", () => {
 
     const request = createGetRequest("http://localhost/api/account/deletion-summary");
 
-    const response = await getDeletionSummary(request, { params: Promise.resolve({}) } as any);
+    const response = await getDeletionSummary(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -533,7 +533,7 @@ describe.sequential("GET /api/data-exports/:id/download", () => {
   it("should return 422 for non-decimal export ids", async () => {
     const req = createGetRequest("http://localhost/api/data-exports/1e2/download");
 
-    const response = await downloadExportGET(req, { params: Promise.resolve({ id: "1e2" }) } as any);
+    const response = await downloadExportGET(req, { params: Promise.resolve({ id: "1e2" }) });
 
     expect(response.status).toBe(422);
     const data = await response.json();

@@ -162,7 +162,7 @@ export class QuotaService {
           lastResetDate: new Date(),
           updatedAt: new Date(),
           createdAt: new Date(),
-        } as never)
+        })
         .onConflictDoNothing({ target: user_usage.user })
         .returning();
 

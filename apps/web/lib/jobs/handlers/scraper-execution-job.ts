@@ -58,7 +58,7 @@ const createRunRecord = async (
     collection: "scraper-runs",
     data: {
       scraper: scraperId,
-      scraperOwner: scraperOwner as number,
+      scraperOwner: scraperOwner,
       status: "running",
       triggeredBy,
       startedAt: new Date().toISOString(),

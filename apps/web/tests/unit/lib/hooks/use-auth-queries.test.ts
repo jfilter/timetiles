@@ -18,7 +18,7 @@ const mockFetchJson = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/http-error", async () => {
   const actual = await vi.importActual("@/lib/api/http-error");
-  return { ...(actual as Record<string, unknown>), fetchJson: mockFetchJson };
+  return { ...actual, fetchJson: mockFetchJson };
 });
 
 describe("fetchCurrentUser", () => {

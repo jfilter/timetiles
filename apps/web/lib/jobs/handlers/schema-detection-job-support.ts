@@ -379,7 +379,7 @@ const updateSchemaState = async (
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { schema: updatedSchema, schemaBuilderState: currentState as unknown as Record<string, unknown> },
+    data: { schema: updatedSchema, schemaBuilderState: currentState },
   });
 };
 

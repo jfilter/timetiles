@@ -944,7 +944,7 @@ describe("field-statistics — direct function tests", () => {
     it("skips undefined values in unique samples without adding them", () => {
       const stats = createFieldStats("value");
       // Functions and symbols should not be added to unique samples
-      updateFieldStats(stats, Symbol("test") as any, 100);
+      updateFieldStats(stats, Symbol("test"), 100);
       // The sampleValue will be undefined so it's not added
       expect(stats.uniqueSamples).toHaveLength(0);
     });
@@ -1138,7 +1138,7 @@ describe("schema-comparison — direct function tests", () => {
     it("handles getFieldType with oneOf/anyOf", () => {
       const oldSchema: SchemaProperty = {
         type: "object",
-        properties: { value: { oneOf: [{ type: "string" }, { type: "number" }] } as SchemaProperty },
+        properties: { value: { oneOf: [{ type: "string" }, { type: "number" }] } },
         required: [],
       };
       const newSchema: SchemaProperty = { type: "object", properties: { value: { type: "string" } }, required: [] };

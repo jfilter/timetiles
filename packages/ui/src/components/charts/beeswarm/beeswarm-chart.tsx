@@ -12,7 +12,7 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../../lib/chart-themes";
 import { BaseChart } from "../base-chart";
@@ -28,6 +28,37 @@ const resolveClickedEventId = (params: EChartsEventParams): number | null => {
   const eventId = params.data[2];
   return typeof eventId === "number" && eventId > 0 ? eventId : null;
 };
+
+const resolveBeeswarmTheme = (theme: BeeswarmChartProps["theme"]) => {
+  const isDark = theme?.axisLineColor === defaultDarkTheme.axisLineColor;
+  return theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
+};
+
+const buildLayoutSeries = (series: BeeswarmChartProps["series"], yPositions: number[]) => {
+  let flatIndex = 0;
+
+  return series.map((seriesItem) => {
+    const layoutData: Array<unknown[]> = [];
+    for (const item of seriesItem.data) {
+      layoutData.push([item.x, yPositions[flatIndex] ?? 0, item.id, item]);
+      flatIndex++;
+    }
+
+    return { ...seriesItem, layoutData };
+  });
+};
+
+const createBeeswarmClickHandler =
+  (onPointClick: BeeswarmChartProps["onPointClick"]) => (params: EChartsEventParams) => {
+    if (!onPointClick) {
+      return;
+    }
+
+    const eventId = resolveClickedEventId(params);
+    if (eventId !== null) {
+      onPointClick(eventId);
+    }
+  };
 
 export const BeeswarmChart = ({
   series,
@@ -46,8 +77,7 @@ export const BeeswarmChart = ({
   clusterMinSize = 10,
   clusterMaxSize = 40,
 }: BeeswarmChartProps) => {
-  const isDark = theme?.axisLineColor === defaultDarkTheme.axisLineColor;
-  const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
+  const effectiveTheme = resolveBeeswarmTheme(theme);
 
   const totalPoints = useMemo(() => series.reduce((sum, s) => sum + s.data.length, 0), [series]);
   const dotSize = dotSizeOverride ?? computeDotSize(totalPoints);
@@ -77,17 +107,7 @@ export const BeeswarmChart = ({
   // Rebuild series data with layout Y positions.
   // Depends on `series` (object) because we iterate all items + `yPositions`
   // which already changes whenever series changes.
-  const layoutSeries = useMemo(() => {
-    let flatIdx = 0;
-    return series.map((s) => {
-      const data: Array<unknown[]> = [];
-      for (const item of s.data) {
-        data.push([item.x, yPositions[flatIdx] ?? 0, item.id, item]);
-        flatIdx++;
-      }
-      return { ...s, layoutData: data };
-    });
-  }, [series, yPositions]);
+  const layoutSeries = useMemo(() => buildLayoutSeries(series, yPositions), [series, yPositions]);
 
   const chartOption = useMemo<EChartsOption>(
     () =>
@@ -119,16 +139,7 @@ export const BeeswarmChart = ({
     ]
   );
 
-  const handleClick = useCallback(
-    (params: EChartsEventParams) => {
-      if (!onPointClick) return;
-      const eventId = resolveClickedEventId(params);
-      if (eventId !== null) onPointClick(eventId);
-    },
-    [onPointClick]
-  );
-
-  const chartEvents = useMemo(() => ({ click: handleClick }), [handleClick]);
+  const chartEvents = useMemo(() => ({ click: createBeeswarmClickHandler(onPointClick) }), [onPointClick]);
 
   if (isError && !isInitialLoad) {
     return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;

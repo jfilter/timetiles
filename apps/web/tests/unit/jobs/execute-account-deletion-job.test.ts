@@ -25,7 +25,7 @@ describe("executeAccountDeletionJob", () => {
       { id: 2, email: "user2@test.com" },
     ]);
     const execDel = vi.fn().mockResolvedValue(undefined);
-    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
+    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel });
 
     const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
@@ -40,7 +40,7 @@ describe("executeAccountDeletionJob", () => {
   it("should handle no due deletions", async () => {
     const findDue = vi.fn().mockResolvedValue([]);
     const execDel = vi.fn();
-    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
+    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel });
 
     const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
@@ -55,7 +55,7 @@ describe("executeAccountDeletionJob", () => {
       { id: 2, email: "user2@test.com" },
     ]);
     const execDel = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("Deletion failed"));
-    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel } as never);
+    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: execDel });
 
     const result = await executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } });
 
@@ -65,7 +65,7 @@ describe("executeAccountDeletionJob", () => {
 
   it("should rethrow if findDueDeletions fails", async () => {
     const findDue = vi.fn().mockRejectedValue(new Error("DB error"));
-    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: vi.fn() } as never);
+    mockGetService.mockReturnValue({ findDueDeletions: findDue, executeDeletion: vi.fn() });
 
     await expect(
       executeAccountDeletionJob.handler({ job: { id: "job-1" }, req: { payload: {} as never } })

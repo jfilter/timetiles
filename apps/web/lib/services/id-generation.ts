@@ -128,7 +128,7 @@ const generateContentHash = (data: unknown): string => {
   const sortReplacer = (_key: string, value: unknown): unknown => {
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
-      for (const k of Object.keys(value as Record<string, unknown>).sort((a, b) => a.localeCompare(b))) {
+      for (const k of Object.keys(value).sort((a, b) => a.localeCompare(b))) {
         sorted[k] = (value as Record<string, unknown>)[k];
       }
       return sorted;

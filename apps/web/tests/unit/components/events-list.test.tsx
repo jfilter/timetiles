@@ -71,12 +71,12 @@ describe("EventsList", () => {
 
   test("displays location from locationName and geocodedAddress", () => {
     const events = [
-      createMockEvent({ id: 1, data: { title: "Event with venue" }, locationName: "Bella Center" } as any),
+      createMockEvent({ id: 1, data: { title: "Event with venue" }, locationName: "Bella Center" }),
       createMockEvent({
         id: 2,
         data: { title: "Event with geocoded address" },
         geocodedAddress: "Copenhagen, Denmark",
-      } as any),
+      }),
       createMockEvent({ id: 3, data: { title: "Event with no location" } }),
     ];
 

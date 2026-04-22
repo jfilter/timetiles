@@ -22,9 +22,9 @@ import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type PasswordPolicyResult } f
 export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
-  validatePasswordLengthOnly,
   type PasswordPolicyFailure,
   type PasswordPolicyResult,
+  validatePasswordLengthOnly,
 } from "./password-policy-constants";
 
 const logger = createLogger("password-policy");

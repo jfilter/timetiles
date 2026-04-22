@@ -19,7 +19,6 @@ import { apiRoute, ValidationError } from "@/lib/api";
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
-import type { ScheduledIngest } from "@/payload-types";
 
 import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, validateUrl } from "../helpers";
 
@@ -87,7 +86,7 @@ export const POST = apiRoute({
     try {
       const result = await fetchRemoteData({
         sourceUrl,
-        authConfig: authConfig as ScheduledIngest["authConfig"],
+        authConfig: authConfig,
         timeout: 60_000,
         maxSize: MAX_FILE_SIZE,
         maxRetries: 0,

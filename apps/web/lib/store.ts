@@ -111,7 +111,7 @@ export const useUIStore = create<UIStore>()(
       mapBounds: null,
       mapStats: null,
       showHexBoundaries: false,
-      clusterDisplay: "circles" as ClusterDisplay,
+      clusterDisplay: "circles",
       clusterFilterCells: null,
       focusedCluster: null,
       clusterDensityMode: "normal",

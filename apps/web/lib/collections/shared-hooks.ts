@@ -70,7 +70,7 @@ export const createEnforceSingleDefault = <T extends TypeWithID = TypeWithID>(
     const isNowDefault = (data as Record<string, unknown>).isDefault ?? false;
 
     if (isNowDefault && !wasDefault) {
-      const scopeId = scope?.getId(data as Record<string, unknown>);
+      const scopeId = scope?.getId(data);
       if (scope && scopeId == null) {
         return data;
       }

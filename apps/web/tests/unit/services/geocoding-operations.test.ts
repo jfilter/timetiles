@@ -246,7 +246,7 @@ describe.sequential("GeocodingOperations", () => {
           ]),
       };
 
-      const provider = createProvider("retry-provider", 100, geocoder as any);
+      const provider = createProvider("retry-provider", 100, geocoder);
       const providerManager = createMockProviderManager([provider]);
       const cacheManager = createMockCacheManager();
 
@@ -265,7 +265,7 @@ describe.sequential("GeocodingOperations", () => {
         geocode: vi.fn().mockRejectedValue(new GeocodingError("Auth failed", "AUTH_FAILURE", false, 401)),
       };
 
-      const provider = createProvider("auth-fail-provider", 100, geocoder as any);
+      const provider = createProvider("auth-fail-provider", 100, geocoder);
       const providerManager = createMockProviderManager([provider]);
       const cacheManager = createMockCacheManager();
 
@@ -283,7 +283,7 @@ describe.sequential("GeocodingOperations", () => {
         geocode: vi.fn().mockRejectedValue(new GeocodingError("Rate limited", "RATE_LIMITED", true, 429)),
       };
 
-      const provider = createProvider("always-throttled", 100, geocoder as any);
+      const provider = createProvider("always-throttled", 100, geocoder);
       const providerManager = createMockProviderManager([provider]);
       const cacheManager = createMockCacheManager();
 

@@ -12,6 +12,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useDebounce } from "../../../../lib/hooks/use-debounce";
 
+interface NullableStringDebounceProps {
+  value: string | null;
+  delay: number;
+}
+
+interface OptionalStringDebounceProps {
+  value: string | undefined;
+  delay: number;
+}
+
 describe("useDebounce", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -162,9 +172,10 @@ describe("useDebounce", () => {
   });
 
   it("should handle null values", () => {
-    const { result, rerender } = renderHook(({ value, delay }) => useDebounce(value, delay), {
-      initialProps: { value: "initial" as string | null, delay: 300 },
-    });
+    const { result, rerender } = renderHook<string | null, NullableStringDebounceProps>(
+      ({ value, delay }: NullableStringDebounceProps) => useDebounce(value, delay),
+      { initialProps: { value: "initial", delay: 300 } satisfies NullableStringDebounceProps }
+    );
 
     rerender({ value: null, delay: 300 });
     expect(result.current).toBe("initial");
@@ -177,9 +188,10 @@ describe("useDebounce", () => {
   });
 
   it("should handle undefined values", () => {
-    const { result, rerender } = renderHook(({ value, delay }) => useDebounce(value, delay), {
-      initialProps: { value: "initial" as string | undefined, delay: 300 },
-    });
+    const { result, rerender } = renderHook<string | undefined, OptionalStringDebounceProps>(
+      ({ value, delay }: OptionalStringDebounceProps) => useDebounce(value, delay),
+      { initialProps: { value: "initial", delay: 300 } satisfies OptionalStringDebounceProps }
+    );
 
     rerender({ value: undefined, delay: 300 });
     expect(result.current).toBe("initial");

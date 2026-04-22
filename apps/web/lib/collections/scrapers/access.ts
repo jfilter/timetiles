@@ -14,7 +14,7 @@ export const scrapersAccess = {
   read: (({ req: { user } }): boolean | Where => {
     if (isPrivileged(user)) return true;
     if (!user) return false;
-    return { repoCreatedBy: { equals: user.id } } as Where;
+    return { repoCreatedBy: { equals: user.id } };
   }) as Access,
   create: (async ({ req: { user, payload } }) => {
     if (!user) return false;
