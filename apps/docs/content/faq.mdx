@@ -36,7 +36,7 @@ Tested with 100,000+ events. Server-side clustering via PostGIS keeps the map re
 
 ### What fields do I need?
 
-Three required fields: **title** (what happened), **date** (when), and **location** (where — address or coordinates). Any additional fields become filterable in the interface.
+Three required fields: **title** (what happened), **date** (when), and **location** (where — address or coordinates). An optional end date lets TimeTiles represent date ranges. Any additional fields become filterable in the interface.
 
 ## Technical
 
@@ -83,6 +83,10 @@ Check that your location data contains valid coordinates (decimal degrees) or ge
 ### Import is slow
 
 Geocoding is the slowest stage — it makes external API calls for each unique address. The default configuration distributes requests across multiple Photon providers at ~40 req/s combined. If your data already has coordinates, geocoding is skipped and imports are much faster.
+
+### My scheduled import stopped running
+
+Check whether the schedule was automatically disabled after an invalid cron/frequency setting or repeated failures. TimeTiles records the last error and emails the schedule owner when this happens. Fix the configuration, then re-enable the schedule.
 
 ### I'm getting permission errors
 

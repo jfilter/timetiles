@@ -34,7 +34,7 @@ Drag and drop your CSV, Excel, or ODS file.
 
 ### Review the detected schema
 
-TimeTiles identifies field types, dates, locations, and categories. Verify the mappings and adjust if needed.
+TimeTiles identifies field types, dates, locations, and categories. Verify the mappings and adjust if needed, especially if your file includes start/end date pairs or a single combined coordinate column.
 
 ### Start processing
 
@@ -59,6 +59,7 @@ title,date,location,category,description
 - **Use consistent dates** — ISO 8601 (`YYYY-MM-DD`) works best
 - **Add categories** — fields with few distinct values become interactive filters
 - **Include coordinates** — if you have lat/lng, geocoding is skipped (faster and more accurate)
+- **Check combined coordinate columns** — if one field stores both numbers, confirm whether it uses `lat,lng` or `lng,lat`
 - **Preview first** — review schema detection before starting the full import
 
 ## Next Steps

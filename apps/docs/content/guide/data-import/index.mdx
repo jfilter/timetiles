@@ -51,11 +51,11 @@ Source (file, URL, or scraper output)
 TimeTiles analyzes your data and identifies:
 
 - **Field types** — strings, numbers, dates, booleans
-- **Date fields** — which column holds the event timestamp
+- **Date fields** — timestamps, start dates, and end dates when present
 - **Location fields** — addresses, coordinate pairs, or separate lat/lng columns
 - **Enum fields** — columns with few unique values (become interactive filters)
 
-You review and adjust the mappings before processing begins.
+You review and adjust the mappings before processing begins. If your file uses a single combined coordinate column, confirm whether the values are `lat,lng` or `lng,lat` before starting.
 
 ## Geocoding
 
@@ -86,10 +86,10 @@ As your data changes over time, TimeTiles tracks schema versions:
 
 ## Troubleshooting
 
-| Issue                  | Solution                                          |
-| ---------------------- | ------------------------------------------------- |
-| Import stuck           | Check that background workers are running         |
-| Schema approval needed | Review and approve in the admin dashboard         |
-| Geocoding failures     | Verify API keys and address formatting            |
-| Duplicate events       | Configure a deduplication strategy on the dataset |
-| Large file timeout     | Split into smaller files or increase batch size   |
+| Issue                  | Solution                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Import stuck           | Check that background workers are running                                        |
+| Schema approval needed | Review detected mappings, including combined coordinate order, before continuing |
+| Geocoding failures     | Verify API keys and address formatting                                           |
+| Duplicate events       | Configure a deduplication strategy on the dataset                                |
+| Large file timeout     | Split into smaller files or increase batch size                                  |

@@ -17,6 +17,8 @@ A background job checks for due schedules every minute. When a schedule fires, i
 
 If the source schema has changed between runs, you may be asked to approve the new mapping before processing continues.
 
+If a schedule has invalid timing settings or keeps failing until it exhausts its retry budget, TimeTiles disables it, records the error, and emails the owner. Fix the schedule and re-enable it to resume automatic runs.
+
 ## Authentication
 
 Scheduled imports support several methods for protected URLs:
@@ -47,7 +49,9 @@ Each scheduled import can optionally expose a webhook URL. POST to it to trigger
 curl -X POST https://your-instance.com/api/webhooks/trigger/{token}
 ```
 
-No authentication header needed — the token in the URL is the credential. Tokens are rotated when the webhook is disabled and re-enabled.
+No authentication header needed — the token in the URL is the credential.
+
+The full webhook URL is shown only once when the webhook is first enabled or rotated. Copy it immediately. If you lose it, disable and re-enable the webhook to rotate the token and generate a new URL.
 
 ## Caching
 
