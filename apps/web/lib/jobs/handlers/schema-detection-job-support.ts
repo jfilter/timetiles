@@ -19,6 +19,7 @@ import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
+import { asSystem } from "@/lib/services/system-payload";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 import type { Dataset, IngestJob } from "@/payload-types";
 
@@ -164,11 +165,10 @@ const persistDetectedLanguage = async (
 ): Promise<void> => {
   if (!detectedLanguage || !dataset || dataset.language) return;
 
-  await payload.update({
+  await asSystem(payload).update({
     collection: COLLECTION_NAMES.DATASETS,
     id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
     data: { language: detectedLanguage },
-    overrideAccess: true,
   });
 };
 
@@ -464,10 +464,9 @@ export const syncDatasetTemporalFlag = async (
   const hasTimestamp = Boolean(fieldMappings?.timestampPath);
   if (dataset.hasTemporalData === hasTimestamp) return;
 
-  await payload.update({
+  await asSystem(payload).update({
     collection: COLLECTION_NAMES.DATASETS,
     id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
     data: { hasTemporalData: hasTimestamp },
-    overrideAccess: true,
   });
 };

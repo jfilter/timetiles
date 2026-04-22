@@ -11,6 +11,7 @@ import type { Payload, WorkflowConfig } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 
 import {
   loadScheduledIngestForLifecycle,
@@ -51,11 +52,11 @@ const buildScheduledIngestFailure = async (
   payload: Pick<Payload, "findByID" | "find">,
   ingestFileId: string | number
 ): Promise<Error | null> => {
-  const ingestFile = await payload.findByID({
-    collection: COLLECTION_NAMES.INGEST_FILES,
-    id: String(ingestFileId),
-    overrideAccess: true,
-  });
+  // `payload` is narrowed to Pick<...> for test ergonomics, but asSystem()
+  // treats the full shape as Payload — the cast is safe because only find /
+  // findByID are touched below.
+  const sys = asSystem(payload as Payload);
+  const ingestFile = await sys.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: String(ingestFileId) });
 
   if (!ingestFile) {
     return new Error(`Ingest file ${String(ingestFileId)} not found after scheduled ingest run.`);
@@ -65,11 +66,10 @@ const buildScheduledIngestFailure = async (
     return null;
   }
 
-  const ingestJobs = await payload.find({
+  const ingestJobs = await sys.find({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     where: { ingestFile: { equals: ingestFileId } },
     pagination: false,
-    overrideAccess: true,
   });
 
   const reviewJob = ingestJobs.docs.find(

@@ -11,6 +11,7 @@ import type { Payload } from "payload";
 
 import { calculateNextCronRun } from "@/lib/ingest/cron-parser";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import type { Scraper } from "@/payload-types";
 
@@ -57,12 +58,11 @@ export const processScheduledScrapers = async (
   }
 
   // Find all enabled scrapers that have a schedule
-  const scrapers = await payload.find({
+  const scrapers = await asSystem(payload).find({
     collection: "scrapers",
     where: { and: [{ enabled: { equals: true } }, { schedule: { exists: true } }] },
     limit: 1000,
     pagination: false,
-    overrideAccess: true,
   });
 
   if (scrapers.docs.length === 0) {
@@ -94,10 +94,9 @@ export const processScheduledScrapers = async (
 
         // Calculate and update nextRunAt
         const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
-        await payload.update({
+        await asSystem(payload).update({
           collection: "scrapers",
           id: scraper.id,
-          overrideAccess: true,
           data: nextRun ? { nextRunAt: nextRun.toISOString() } : {},
         });
 
@@ -114,12 +113,7 @@ export const processScheduledScrapers = async (
           scraperId: scraper.id,
           name: scraper.name,
         });
-        await payload.update({
-          collection: "scrapers",
-          id: scraper.id,
-          overrideAccess: true,
-          data: { lastRunStatus: "failed" },
-        });
+        await asSystem(payload).update({ collection: "scrapers", id: scraper.id, data: { lastRunStatus: "failed" } });
         errors++;
       }
     } catch (error) {

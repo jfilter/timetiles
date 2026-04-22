@@ -19,6 +19,7 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
@@ -44,10 +45,9 @@ const resetStuckScraper = async (payload: Payload, scraper: Scraper, currentTime
   // Update statistics (also increments totalRuns — a stuck run is still a run)
   const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
 
-  await payload.update({
+  await asSystem(payload).update({
     collection: "scrapers",
     id: scraper.id,
-    overrideAccess: true,
     data: { lastRunStatus: "failed", statistics: updatedStats },
   });
 
@@ -82,12 +82,11 @@ export const cleanupStuckScrapersJob = {
       logger.info("Starting cleanup stuck scrapers job", { jobId: context.job?.id, stuckThresholdHours, dryRun });
 
       // Find all scrapers with "running" status
-      const runningScrapers = await payload.find({
+      const runningScrapers = await asSystem(payload).find({
         collection: "scrapers",
         where: { lastRunStatus: { equals: "running" } },
         limit: 1000,
         pagination: false,
-        overrideAccess: true,
       });
 
       logger.info("Found running scrapers", { count: runningScrapers.docs.length });

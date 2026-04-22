@@ -12,6 +12,7 @@ import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/i
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
@@ -128,11 +129,10 @@ export const createSchemaVersionJob = {
       // Sync fieldMetadata to dataset so categorical filter UI can read it.
       // Without this, dataset.fieldMetadata stays null and enum filters never appear.
       if (fieldStats && Object.keys(fieldStats).length > 0) {
-        await payload.update({
+        await asSystem(payload).update({
           collection: COLLECTION_NAMES.DATASETS,
           id: dataset.id,
           data: { fieldMetadata: fieldStats, fieldTypes: buildFieldTypes(fieldStats) },
-          overrideAccess: true,
         });
       }
 

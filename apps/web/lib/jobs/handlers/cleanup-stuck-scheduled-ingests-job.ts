@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { recordScheduledIngestFailure, resolveScheduledIngestStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
@@ -45,23 +46,21 @@ export interface CleanupStuckScheduledIngestsJobInput {
  */
 const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: number | string): Promise<number> => {
   try {
-    const orphanedJobs = await payload.find({
+    const orphanedJobs = await asSystem(payload).find({
       collection: "payload-jobs" as const,
       where: {
         and: [{ "input.scheduledIngestId": { equals: String(scheduledIngestId) } }, { completedAt: { exists: false } }],
       },
       limit: 50,
       pagination: false,
-      overrideAccess: true,
     });
 
     let cancelled = 0;
     for (const job of orphanedJobs.docs) {
-      await payload.update({
+      await asSystem(payload).update({
         collection: "payload-jobs" as const,
         id: job.id,
         data: { completedAt: new Date().toISOString(), hasError: true, processing: false } as Record<string, unknown>,
-        overrideAccess: true,
       });
       cancelled++;
     }

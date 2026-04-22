@@ -21,6 +21,7 @@ import type { ParsedScraper } from "@/lib/ingest/manifest-parser";
 import { parseManifest } from "@/lib/ingest/manifest-parser";
 import { createLogger, logError } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl, validateResolvedPublicHostname } from "@/lib/security/url-validation";
+import { asSystem } from "@/lib/services/system-payload";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { Scraper } from "@/payload-types";
@@ -150,11 +151,10 @@ const syncScrapers = async (
   const result: UpsertResult = { created: 0, updated: 0, deleted: 0 };
 
   // Fetch existing scrapers for this repo
-  const existing = await payload.find({
+  const existing = await asSystem(payload).find({
     collection: "scrapers",
     where: { repo: { equals: repoId } },
     limit: 500,
-    overrideAccess: true,
   });
 
   const existingBySlug = new Map<string, Scraper>();
@@ -182,11 +182,11 @@ const syncScrapers = async (
     };
 
     if (existingDoc) {
-      await payload.update({ collection: "scrapers", id: existingDoc.id, data, overrideAccess: true });
+      await asSystem(payload).update({ collection: "scrapers", id: existingDoc.id, data });
       result.updated++;
       logger.info("Updated scraper", { slug: scraper.slug, id: existingDoc.id });
     } else {
-      await payload.create({ collection: "scrapers", data: { ...data, enabled: true }, overrideAccess: true });
+      await asSystem(payload).create({ collection: "scrapers", data: { ...data, enabled: true } });
       result.created++;
       logger.info("Created scraper", { slug: scraper.slug });
     }
@@ -195,12 +195,8 @@ const syncScrapers = async (
   // Delete scrapers no longer in manifest (and their associated runs)
   for (const [slug, doc] of existingBySlug) {
     if (!manifestSlugs.has(slug)) {
-      await payload.delete({
-        collection: "scraper-runs",
-        where: { scraper: { equals: doc.id } },
-        overrideAccess: true,
-      });
-      await payload.delete({ collection: "scrapers", id: doc.id, overrideAccess: true });
+      await asSystem(payload).delete({ collection: "scraper-runs", where: { scraper: { equals: doc.id } } });
+      await asSystem(payload).delete({ collection: "scrapers", id: doc.id });
       result.deleted++;
       logger.info("Deleted scraper no longer in manifest", { slug, id: doc.id });
     }
@@ -227,7 +223,7 @@ export const scraperRepoSyncJob = {
 
     try {
       // 1. Load the scraper-repo record
-      const repo = await payload.findByID({ collection: "scraper-repos", id: scraperRepoId, overrideAccess: true });
+      const repo = await asSystem(payload).findByID({ collection: "scraper-repos", id: scraperRepoId });
 
       if (!repo) {
         throw new Error(`Scraper repo not found: ${scraperRepoId}`);
@@ -271,11 +267,10 @@ export const scraperRepoSyncJob = {
       const syncResult = await syncScrapers(payload, scraperRepoId, repoCreatedBy, parseResult.scrapers);
 
       // 5. Update repo sync status
-      await payload.update({
+      await asSystem(payload).update({
         collection: "scraper-repos",
         id: scraperRepoId,
         data: { lastSyncAt: new Date().toISOString(), lastSyncStatus: "success", lastSyncError: "" },
-        overrideAccess: true,
       });
 
       logger.info("Scraper repo sync completed", { scraperRepoId, ...syncResult });
@@ -287,11 +282,10 @@ export const scraperRepoSyncJob = {
 
       // Update repo sync status to failed
       try {
-        await payload.update({
+        await asSystem(payload).update({
           collection: "scraper-repos",
           id: scraperRepoId,
           data: { lastSyncAt: new Date().toISOString(), lastSyncStatus: "failed", lastSyncError: message },
-          overrideAccess: true,
         });
       } catch (updateError) {
         logError(updateError, "Failed to update repo sync status", { scraperRepoId });

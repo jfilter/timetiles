@@ -14,6 +14,7 @@ import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails
 import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { getBaseUrl } from "@/lib/utils/base-url";
 import { requireRelationId } from "@/lib/utils/relation-id";
 
@@ -28,26 +29,21 @@ const DATA_EXPORTS_COLLECTION = "data-exports";
  */
 const handleExportFailure = async (payload: Payload, exportId: number, error: unknown): Promise<void> => {
   try {
-    const exportRecord = await payload.findByID({
-      collection: DATA_EXPORTS_COLLECTION,
-      id: exportId,
-      overrideAccess: true,
-    });
+    const exportRecord = await asSystem(payload).findByID({ collection: DATA_EXPORTS_COLLECTION, id: exportId });
 
     if (!exportRecord) return;
 
     const userId = requireRelationId(exportRecord.user, "exportRecord.user");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-    await payload.update({
+    await asSystem(payload).update({
       collection: DATA_EXPORTS_COLLECTION,
       id: exportId,
       data: { status: "failed", completedAt: new Date().toISOString(), errorLog: errorMessage },
-      overrideAccess: true,
     });
 
     // Send failure notification
-    const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
+    const user = await asSystem(payload).findByID({ collection: "users", id: userId });
 
     if (user) {
       await sendExportFailedEmail(payload, user.email, user.firstName, errorMessage, user.locale);
@@ -80,19 +76,14 @@ export const dataExportJob = {
       logger.info({ jobId: job?.id, exportId }, "Starting data export job");
 
       // Update status to processing
-      await payload.update({
+      await asSystem(payload).update({
         collection: DATA_EXPORTS_COLLECTION,
         id: exportId,
         data: { status: "processing" },
-        overrideAccess: true,
       });
 
       // Fetch export record to get user
-      const exportRecord = await payload.findByID({
-        collection: DATA_EXPORTS_COLLECTION,
-        id: exportId,
-        overrideAccess: true,
-      });
+      const exportRecord = await asSystem(payload).findByID({ collection: DATA_EXPORTS_COLLECTION, id: exportId });
 
       if (!exportRecord) {
         throw new Error(`Export record not found: ${exportId}`);
@@ -101,7 +92,7 @@ export const dataExportJob = {
       const userId = requireRelationId(exportRecord.user, "exportRecord.user");
 
       // Fetch user for email
-      const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
+      const user = await asSystem(payload).findByID({ collection: "users", id: userId });
 
       if (!user) {
         throw new Error(`User not found: ${userId}`);
@@ -115,7 +106,7 @@ export const dataExportJob = {
       const expiresAt = new Date(Date.now() + EXPORT_EXPIRY_MS);
 
       // Update record with results
-      await payload.update({
+      await asSystem(payload).update({
         collection: DATA_EXPORTS_COLLECTION,
         id: exportId,
         data: {
@@ -126,7 +117,6 @@ export const dataExportJob = {
           fileSize: result.fileSize,
           summary: result.recordCounts as unknown as Record<string, unknown>,
         },
-        overrideAccess: true,
       });
 
       // Generate download URL

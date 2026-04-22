@@ -17,6 +17,7 @@ import { getSchemaFreshness } from "@/lib/ingest/schema-freshness";
 import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 
 export interface SchemaMaintenanceJobInput {
   /** Optional: specific dataset IDs to check (if omitted, checks all) */
@@ -61,12 +62,11 @@ const getDatasetsToCheck = async (
   specificIds: number[] | undefined,
   maxDatasets: number
 ): Promise<DatasetInfo[]> => {
-  const datasets = await payload.find({
+  const datasets = await asSystem(payload).find({
     collection: COLLECTION_NAMES.DATASETS,
     where: specificIds?.length ? { id: { in: specificIds } } : {},
     limit: maxDatasets,
     pagination: false,
-    overrideAccess: true,
   });
 
   return datasets.docs.map((d) => ({ id: d.id, name: d.name }));

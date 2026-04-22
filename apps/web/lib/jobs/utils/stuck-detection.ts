@@ -6,6 +6,7 @@
  */
 import type { Payload } from "payload";
 
+import { asSystem } from "@/lib/services/system-payload";
 import { parseDateInput } from "@/lib/utils/date";
 
 /**
@@ -65,7 +66,7 @@ export const hasActivePayloadJob = async (
   resourceId: string | number
 ): Promise<boolean> => {
   try {
-    const activeJobs = await payload.find({
+    const activeJobs = await asSystem(payload).find({
       collection: "payload-jobs" as const,
       where: {
         and: [
@@ -77,7 +78,6 @@ export const hasActivePayloadJob = async (
       },
       limit: 1,
       pagination: false,
-      overrideAccess: true,
     });
     return activeJobs.docs.length > 0;
   } catch {

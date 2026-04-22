@@ -18,6 +18,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 
@@ -312,11 +313,10 @@ export const datasetDetectionJob = {
           filePath = conversion.filePath;
           fileExtension = conversion.fileExtension;
 
-          await payload.update({
+          await asSystem(payload).update({
             collection: COLLECTION_NAMES.INGEST_FILES,
             id: ingestFileId,
             data: { filename: path.basename(conversion.filePath), mimeType: "text/csv" },
-            overrideAccess: true,
           });
 
           logger.info("[dataset-detection] converted file to CSV", {

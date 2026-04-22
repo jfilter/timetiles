@@ -11,6 +11,7 @@
 import { v4 as uuidv4 } from "uuid";
 
 import { createLogger, logError } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
@@ -29,7 +30,7 @@ const loadScraperWithRepo = async (
   payload: JobHandlerContext["req"]["payload"],
   scraperId: number
 ): Promise<{ scraper: ScraperWithRepo; repo: ScraperRepo }> => {
-  const scraper = await payload.findByID({ collection: "scrapers", id: scraperId, depth: 1, overrideAccess: true });
+  const scraper = await asSystem(payload).findByID({ collection: "scrapers", id: scraperId, depth: 1 });
 
   if (!scraper) {
     throw new Error(`Scraper not found: ${scraperId}`);
@@ -53,9 +54,8 @@ const createRunRecord = async (
   triggeredBy: ScraperExecutionJobInput["triggeredBy"]
 ): Promise<{ id: number }> => {
   const scraperOwner = extractRelationId(repo.createdBy) ?? null;
-  const run = await payload.create({
+  const run = await asSystem(payload).create({
     collection: "scraper-runs",
-    overrideAccess: true,
     data: {
       scraper: scraperId,
       scraperOwner: scraperOwner as number,
@@ -65,12 +65,7 @@ const createRunRecord = async (
     },
   });
 
-  await payload.update({
-    collection: "scrapers",
-    id: scraperId,
-    overrideAccess: true,
-    data: { lastRunStatus: "running" },
-  });
+  await asSystem(payload).update({ collection: "scrapers", id: scraperId, data: { lastRunStatus: "running" } });
 
   return run;
 };
@@ -103,7 +98,7 @@ export const scraperExecutionJob = {
     if (repoOwnerId) {
       const { createQuotaService } = await import("@/lib/services/quota-service");
       const quotaService = createQuotaService(payload);
-      const owner = await payload.findByID({ collection: "users", id: repoOwnerId, overrideAccess: true });
+      const owner = await asSystem(payload).findByID({ collection: "users", id: repoOwnerId });
       if (owner) {
         await quotaService.checkAndIncrementUsage(owner, "SCRAPER_RUNS_PER_DAY", 1);
       }

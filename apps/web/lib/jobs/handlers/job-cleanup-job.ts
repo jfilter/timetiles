@@ -10,6 +10,7 @@
  */
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 
 /** Delete failed jobs older than this many days. */
 const FAILED_RETENTION_DAYS = 7;
@@ -25,7 +26,7 @@ export const jobCleanupJob = {
   schedule: [{ cron: "0 5 * * *", queue: "maintenance" as const }],
   concurrency: () => "job-cleanup",
   handler: async ({ job, req }: JobHandlerContext) => {
-    const { payload } = req;
+    const sys = asSystem(req.payload);
 
     try {
       logger.info({ jobId: job?.id }, "Starting job cleanup");
@@ -38,16 +39,15 @@ export const jobCleanupJob = {
       let errors = 0;
 
       // 1. Delete old failed jobs
-      const failedJobs = await payload.find({
+      const failedJobs = await sys.find({
         collection: "payload-jobs",
         where: { and: [{ hasError: { equals: true } }, { updatedAt: { less_than: failedCutoff.toISOString() } }] },
         limit: 500,
-        overrideAccess: true,
       });
 
       for (const failedJob of failedJobs.docs) {
         try {
-          await payload.delete({ collection: "payload-jobs", id: failedJob.id, overrideAccess: true });
+          await sys.delete({ collection: "payload-jobs", id: failedJob.id });
           failedDeleted++;
         } catch (error) {
           errors++;
@@ -56,18 +56,17 @@ export const jobCleanupJob = {
       }
 
       // 2. Delete old completed jobs that weren't auto-deleted
-      const completedJobs = await payload.find({
+      const completedJobs = await sys.find({
         collection: "payload-jobs",
         where: {
           and: [{ completedAt: { exists: true } }, { completedAt: { less_than: completedCutoff.toISOString() } }],
         },
         limit: 500,
-        overrideAccess: true,
       });
 
       for (const completedJob of completedJobs.docs) {
         try {
-          await payload.delete({ collection: "payload-jobs", id: completedJob.id, overrideAccess: true });
+          await sys.delete({ collection: "payload-jobs", id: completedJob.id });
           completedDeleted++;
         } catch (error) {
           errors++;

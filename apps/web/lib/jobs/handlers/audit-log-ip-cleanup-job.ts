@@ -9,6 +9,7 @@
  */
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 
 /** Number of days to retain raw IP addresses before clearing. */
 const IP_RETENTION_DAYS = 30;
@@ -23,7 +24,7 @@ export const auditLogIpCleanupJob = {
   ],
   retries: 2,
   handler: async ({ job, req }: JobHandlerContext) => {
-    const { payload } = req;
+    const sys = asSystem(req.payload);
 
     try {
       logger.info({ jobId: job?.id }, "Starting audit log IP cleanup job");
@@ -32,21 +33,15 @@ export const auditLogIpCleanupJob = {
       let cleared = 0;
 
       // Find entries older than retention period that still have raw IPs
-      const entries = await payload.find({
+      const entries = await sys.find({
         collection: "audit-log",
         where: { and: [{ timestamp: { less_than: cutoffDate.toISOString() } }, { ipAddress: { exists: true } }] },
         limit: 500,
-        overrideAccess: true,
       });
 
       for (const entry of entries.docs) {
         try {
-          await payload.update({
-            collection: "audit-log",
-            id: entry.id,
-            data: { ipAddress: null },
-            overrideAccess: true,
-          });
+          await sys.update({ collection: "audit-log", id: entry.id, data: { ipAddress: null } });
           cleared++;
         } catch (error) {
           logError(error, "Failed to clear IP from audit entry", { entryId: entry.id });

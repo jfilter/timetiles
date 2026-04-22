@@ -11,6 +11,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset } from "@/payload-types";
@@ -49,7 +50,7 @@ export const validateDatasetAccessForUser = async (
   const catalogId = extractRelationId(dataset.catalog);
   if (!catalogId) return;
 
-  const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: true });
+  const catalog = await asSystem(payload).findByID({ collection: "catalogs", id: catalogId });
 
   const catalogOwnerId = extractRelationId(catalog?.createdBy);
   const isPublicCatalog = catalog?.isPublic ?? false;

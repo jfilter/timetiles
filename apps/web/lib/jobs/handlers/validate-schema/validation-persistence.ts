@@ -14,6 +14,7 @@ import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-const
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { createJobLogger } from "@/lib/logger";
 import type { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
+import { asSystem } from "@/lib/services/system-payload";
 import type { SchemaComparison } from "@/lib/types/schema-detection";
 
 import type { SchemaModeResult } from "./schema-evaluation";
@@ -123,7 +124,7 @@ export const hasConflictingReviewJob = async (
   datasetId: number | string,
   currentJobId: number
 ): Promise<{ conflicting: boolean; conflictingJobId?: number }> => {
-  const reviewJobs = await payload.find({
+  const reviewJobs = await asSystem(payload).find({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     where: {
       and: [
@@ -133,7 +134,6 @@ export const hasConflictingReviewJob = async (
       ],
     },
     limit: 1,
-    overrideAccess: true,
   });
 
   if (reviewJobs.docs.length > 0) {

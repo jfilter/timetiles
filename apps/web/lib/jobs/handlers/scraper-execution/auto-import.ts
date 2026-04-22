@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { getEnv } from "@/lib/config/env";
 import { createIngestFile } from "@/lib/ingest/create-ingest-file";
 import { createLogger, logError } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Scraper, ScraperRepo, User } from "@/payload-types";
@@ -116,10 +117,9 @@ export const handleRunSuccess = async (
   const { payload } = context.req;
   const finishedAt = new Date().toISOString();
 
-  await payload.update({
+  await asSystem(payload).update({
     collection: "scraper-runs",
     id: runId,
-    overrideAccess: true,
     data: {
       status: result.status,
       finishedAt,
@@ -132,10 +132,9 @@ export const handleRunSuccess = async (
   });
 
   const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), result.status);
-  await payload.update({
+  await asSystem(payload).update({
     collection: "scrapers",
     id: scraper.id,
-    overrideAccess: true,
     data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
   });
 
@@ -205,10 +204,9 @@ export const handleRunFailure = async (
   const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
   try {
-    await payload.update({
+    await asSystem(payload).update({
       collection: "scraper-runs",
       id: runId,
-      overrideAccess: true,
       data: { status: "failed", finishedAt, error: errorMessage },
     });
   } catch (updateError) {
@@ -217,10 +215,9 @@ export const handleRunFailure = async (
 
   try {
     const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
-    await payload.update({
+    await asSystem(payload).update({
       collection: "scrapers",
       id: scraper.id,
-      overrideAccess: true,
       data: { lastRunAt: finishedAt, lastRunStatus: "failed", statistics: updatedStats },
     });
   } catch (updateError) {

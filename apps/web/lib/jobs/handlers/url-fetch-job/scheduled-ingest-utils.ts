@@ -14,6 +14,7 @@ import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { sendScheduledIngestRetriesExhaustedEmail } from "@/lib/ingest/scheduled-ingest-emails";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { asSystem } from "@/lib/services/system-payload";
 import {
   recordScheduledIngestFailure,
   recordScheduledIngestSuccess,
@@ -43,10 +44,9 @@ export const loadScheduledIngestConfig = async (
   }
 
   try {
-    const scheduledIngest = await payload.findByID({
+    const scheduledIngest = await asSystem(payload).findByID({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngestId,
-      overrideAccess: true,
     });
 
     if (!scheduledIngest.enabled) {
@@ -77,11 +77,7 @@ export const loadScheduledIngestForLifecycle = async (
   }
 
   try {
-    return await payload.findByID({
-      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-      id: scheduledIngestId,
-      overrideAccess: true,
-    });
+    return await asSystem(payload).findByID({ collection: COLLECTION_NAMES.SCHEDULED_INGESTS, id: scheduledIngestId });
   } catch (error) {
     logError(error, "Failed to load scheduled ingest for lifecycle update", { scheduledIngestId });
     return null;
@@ -150,10 +146,9 @@ const auditRetriesExhausted = async (
   if (!ownerId) return;
 
   try {
-    const owner = await payload.findByID({
+    const owner = await asSystem(payload).findByID({
       collection: "users",
       id: ownerId,
-      overrideAccess: true,
       depth: 0,
       ...(req ? { req } : {}),
     });

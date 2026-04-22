@@ -12,6 +12,7 @@ import { unlink } from "node:fs/promises";
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 
 /** Max concurrent `unlink()` calls per chunk. Bounded to avoid overwhelming the FS. */
 const UNLINK_CONCURRENCY = 10;
@@ -24,7 +25,7 @@ export const dataExportCleanupJob = {
   schedule: [{ cron: "0 * * * *", queue: "maintenance" as const }],
   concurrency: () => "data-export-cleanup",
   handler: async ({ job, req }: JobHandlerContext) => {
-    const { payload } = req;
+    const sys = asSystem(req.payload);
 
     try {
       logger.info({ jobId: job?.id }, "Starting data export cleanup job");
@@ -35,11 +36,10 @@ export const dataExportCleanupJob = {
       let errors = 0;
 
       // Find all ready exports that have expired
-      const expiredExports = await payload.find({
+      const expiredExports = await sys.find({
         collection: "data-exports",
         where: { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
         limit: 100,
-        overrideAccess: true,
       });
 
       logger.info({ count: expiredExports.docs.length, jobId: job?.id }, "Found expired exports to clean up");
@@ -53,11 +53,10 @@ export const dataExportCleanupJob = {
           const oldFilePath = exportRecord.filePath;
 
           // Mark as expired first to prevent download attempts during cleanup
-          await payload.update({
+          await sys.update({
             collection: "data-exports",
             id: exportRecord.id,
             data: { status: "expired", filePath: null },
-            overrideAccess: true,
           });
           recordsUpdated++;
 
@@ -94,19 +93,18 @@ export const dataExportCleanupJob = {
 
       // Also find and clean up old failed or expired records (older than 30 days)
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const oldRecords = await payload.find({
+      const oldRecords = await sys.find({
         collection: "data-exports",
         where: {
           and: [{ status: { in: ["failed", "expired"] } }, { requestedAt: { less_than: thirtyDaysAgo.toISOString() } }],
         },
         limit: 100,
-        overrideAccess: true,
       });
 
       let recordsDeleted = 0;
       for (const record of oldRecords.docs) {
         try {
-          await payload.delete({ collection: "data-exports", id: record.id, overrideAccess: true });
+          await sys.delete({ collection: "data-exports", id: record.id });
           recordsDeleted++;
         } catch (error) {
           errors++;

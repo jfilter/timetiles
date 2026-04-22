@@ -17,6 +17,7 @@ import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { asSystem } from "@/lib/services/system-payload";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
@@ -52,7 +53,7 @@ const disableScheduledIngestForInvalidConfig = async (
   if (!ownerId) return;
 
   try {
-    const owner = await payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0 });
+    const owner = await asSystem(payload).findByID({ collection: "users", id: ownerId, depth: 0 });
     await auditLog(payload, {
       action: AUDIT_ACTIONS.SCHEDULED_INGEST_CONFIG_INVALID,
       userId: ownerId,
