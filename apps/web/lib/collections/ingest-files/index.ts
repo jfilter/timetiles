@@ -24,6 +24,7 @@ import { ingestFilesAccess } from "./access";
 import { ingestFileFields } from "./fields";
 import {
   afterChangeHooks,
+  afterErrorHooks,
   ALLOWED_MIME_TYPES,
   beforeChangeHooks,
   beforeOperationHooks,
@@ -48,6 +49,7 @@ const IngestFiles: CollectionConfig = {
     beforeValidate: beforeValidateHooks,
     beforeChange: beforeChangeHooks,
     afterChange: afterChangeHooks,
+    afterError: afterErrorHooks,
   },
 };
 

@@ -5,11 +5,12 @@
  */
 import type {
   CollectionAfterChangeHook,
+  CollectionAfterErrorHook,
   CollectionBeforeChangeHook,
   CollectionBeforeOperationHook,
   CollectionBeforeValidateHook,
 } from "payload";
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
 import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
@@ -86,10 +87,13 @@ export const beforeOperationHooks: CollectionBeforeOperationHook[] = [
       // Always store original name in request context for use in beforeChange hook
       (req as typeof req & { originalFileName?: string }).originalFileName = originalName;
 
-      // Check if this is already a URL import file (starts with "url-import-")
-      // If so, keep the original filename to maintain consistency
-      if (originalName.startsWith("url-import-")) {
-        // Keep the URL import filename as-is
+      // URL imports are flagged via req.context.isUrlImport by createIngestFile.
+      // Trusting a filename prefix is spoofable — a user uploading a file named
+      // "url-import-…" would bypass the uniquifier and potentially collide with
+      // future URL imports.
+      const isUrlImport = req.context?.isUrlImport === true;
+      if (isUrlImport) {
+        // Keep the programmatic URL import filename as-is
         logger.debug("Preserving URL import filename", { originalName });
       } else {
         // Generate unique filename with timestamp and UUID to prevent conflicts
@@ -133,16 +137,6 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
 
     const quotaService = createQuotaService(req.payload);
 
-    // Check daily file upload quota
-    const uploadQuotaCheck = await quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1);
-
-    if (!uploadQuotaCheck.allowed) {
-      throw new Error(
-        `Daily file upload limit reached (${uploadQuotaCheck.current}/${uploadQuotaCheck.limit}). ` +
-          `Resets at midnight UTC.`
-      );
-    }
-
     // Check file size quota based on trust level
     if (req.file) {
       const quotas = quotaService.getEffectiveQuotas(user);
@@ -158,9 +152,39 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
       logger.debug("File size validation passed", { filesize: fileSize, maxSizeMB, trustLevel: user.trustLevel });
     }
 
+    // Atomic check-and-increment to prevent TOCTOU race between concurrent uploads.
+    // The claim is compensated by afterError hook (or downstream validation catch)
+    // if the create fails after this point. See compensateUploadQuotaOnError below.
+    await quotaService.checkAndIncrementUsage(user, "FILE_UPLOADS_PER_DAY", 1, req);
+
+    // Mark that the quota was claimed so afterError / afterChange hooks know whether
+    // a compensating decrement is needed.
+    (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = true;
+
     return data;
   },
 ];
+
+/**
+ * Compensate an already-claimed FILE_UPLOADS_PER_DAY quota when the create
+ * fails after the atomic claim. Safe to call multiple times — first call
+ * clears the flag so subsequent calls are no-ops.
+ */
+const compensateUploadQuotaOnError = async (
+  req: { payload: Payload; user?: User | null } & Record<string, unknown>
+): Promise<void> => {
+  const marked = req as { ingestFileQuotaClaimed?: boolean; user?: User | null };
+  if (!marked.ingestFileQuotaClaimed || !marked.user) return;
+
+  marked.ingestFileQuotaClaimed = false;
+
+  try {
+    const quotaService = createQuotaService(req.payload);
+    await quotaService.decrementUsage(marked.user.id, "FILE_UPLOADS_PER_DAY", 1, req as unknown as PayloadRequest);
+  } catch (error) {
+    logger.error("Failed to compensate FILE_UPLOADS_PER_DAY after create failure", error);
+  }
+};
 
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
   async ({ data, req, operation }) => {
@@ -203,9 +227,10 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     // Skip hook processing for programmatic creation (e.g., url-fetch-job handles its own pipeline)
     if (req.context?.skipIngestFileHooks) return doc;
 
-    // Track file upload usage (authentication is required)
-    const quotaService = createQuotaService(req.payload);
-    await quotaService.incrementUsage(req.user!.id, "FILE_UPLOADS_PER_DAY", 1, req);
+    // FILE_UPLOADS_PER_DAY was atomically claimed in beforeValidate — no
+    // separate increment here. Clear the compensation flag so afterError
+    // does not undo a quota claim that ultimately succeeded.
+    (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = false;
 
     // Skip processing for duplicate imports (they're already marked as completed)
     if (doc.metadata?.urlFetch?.isDuplicate === true) {
@@ -279,5 +304,18 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     }
 
     return doc;
+  },
+];
+
+/**
+ * afterError hook — compensate the FILE_UPLOADS_PER_DAY claim if the create
+ * failed after the atomic increment in beforeValidate.
+ *
+ * Runs for every error (not just create failures), but the `ingestFileQuotaClaimed`
+ * flag is only set during a create attempt, so other operations are no-ops.
+ */
+export const afterErrorHooks: CollectionAfterErrorHook[] = [
+  async ({ req }) => {
+    await compensateUploadQuotaOnError(req as unknown as Parameters<typeof compensateUploadQuotaOnError>[0]);
   },
 ];

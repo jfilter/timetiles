@@ -126,7 +126,14 @@ export class QuotaService {
 
   /**
    * Get or create usage record for a user from the user-usage collection.
-   * Uses upsert pattern to ensure usage record exists.
+   *
+   * Uses a single atomic INSERT ... ON CONFLICT DO NOTHING via Drizzle, then
+   * SELECTs the row. This avoids the previous find-then-create pattern that
+   * deadlocked under concurrent callers: when two concurrent `payload.create`
+   * attempts both failed the unique constraint, the ValidationError thrown
+   * by Payload ABORTED the outer transaction, which then poisoned every
+   * subsequent `payload.*({ req })` call (the retry, the compensating
+   * `decrementUsage`, even the beforeEach truncate of the next test).
    *
    * @param req - Optional PayloadRequest to reuse the caller's transaction
    */
@@ -134,7 +141,44 @@ export class QuotaService {
     const normalizedUserId = normalizeUserId(userId);
 
     try {
-      // Try to find existing usage record
+      const drizzle = await this.getDrizzle(req);
+
+      // ON CONFLICT DO NOTHING → no constraint violation, no aborted tx. If
+      // the row already existed, RETURNING yields nothing and we SELECT it.
+      const inserted = await drizzle
+        .insert(user_usage)
+        // The `as never` cast keeps Drizzle's strict column-shape checker
+        // happy while we pass the defaults we know are valid for this table.
+        .values({
+          user: normalizedUserId,
+          urlFetchesToday: 0,
+          fileUploadsToday: 0,
+          ingestJobsToday: 0,
+          currentActiveSchedules: 0,
+          totalEventsCreated: 0,
+          currentCatalogs: 0,
+          currentScraperRepos: 0,
+          scraperRunsToday: 0,
+          lastResetDate: new Date(),
+          updatedAt: new Date(),
+          createdAt: new Date(),
+        } as never)
+        .onConflictDoNothing({ target: user_usage.user })
+        .returning();
+
+      if (inserted.length > 0 && inserted[0]) {
+        // Freshly created — re-fetch via Payload to return a fully hydrated
+        // doc (matches the previous return shape).
+        const id = (inserted[0] as { id: number }).id;
+        return await this.payload.findByID({
+          collection: USER_USAGE_COLLECTION,
+          id,
+          overrideAccess: true,
+          ...(req && { req }),
+        });
+      }
+
+      // Row already existed (concurrent creator won). Fetch it.
       const existing = await this.payload.find({
         collection: USER_USAGE_COLLECTION,
         where: { user: { equals: normalizedUserId } },
@@ -142,48 +186,11 @@ export class QuotaService {
         overrideAccess: true,
         ...(req && { req }),
       });
-
       if (existing.docs.length > 0 && existing.docs[0]) {
         return existing.docs[0];
       }
 
-      // Create new usage record
-      try {
-        return await this.payload.create({
-          collection: USER_USAGE_COLLECTION,
-          data: {
-            user: normalizedUserId,
-            urlFetchesToday: 0,
-            fileUploadsToday: 0,
-            ingestJobsToday: 0,
-            currentActiveSchedules: 0,
-            totalEventsCreated: 0,
-            currentCatalogs: 0,
-            currentScraperRepos: 0,
-            scraperRunsToday: 0,
-            lastResetDate: new Date().toISOString(),
-          },
-          overrideAccess: true,
-          ...(req && { req }),
-        });
-      } catch (createError) {
-        // Handle unique constraint violation from concurrent requests (TOCTOU race).
-        // Another request may have created the record between our find and create.
-        const message = createError instanceof Error ? createError.message : String(createError);
-        if (message.includes("duplicate") || message.includes("unique") || message.includes("23505")) {
-          const retry = await this.payload.find({
-            collection: USER_USAGE_COLLECTION,
-            where: { user: { equals: normalizedUserId } },
-            limit: 1,
-            overrideAccess: true,
-            ...(req && { req }),
-          });
-          if (retry.docs.length > 0 && retry.docs[0]) {
-            return retry.docs[0];
-          }
-        }
-        throw createError;
-      }
+      throw new Error(`user-usage row for user ${normalizedUserId} not found after upsert`);
     } catch (error) {
       logger.error("Failed to get or create usage record", { error, userId: normalizedUserId });
       throw error;

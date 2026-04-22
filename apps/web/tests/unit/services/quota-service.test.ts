@@ -28,10 +28,26 @@ const createDrizzleChainMock = (shouldReject = false, error?: Error) => {
   return { updateMock, setMock, whereMock };
 };
 
+/**
+ * Chainable mock for Drizzle's `.insert(table).values(...).onConflictDoNothing(...).returning()`
+ * used by the rewritten `getOrCreateUsageRecord`. By default the insert
+ * "loses the race" (returns an empty array), so callers fall through to
+ * the follow-up `payload.find` that returns the pre-existing row.
+ */
+const createDrizzleInsertMock = (insertedRow?: { id: number }) => {
+  const returningMock = vi.fn().mockResolvedValue(insertedRow ? [insertedRow] : []);
+  const onConflictMock = vi.fn().mockReturnValue({ returning: returningMock });
+  const valuesMock = vi.fn().mockReturnValue({ onConflictDoNothing: onConflictMock });
+  const insertMock = vi.fn().mockReturnValue({ values: valuesMock });
+  return { insertMock, valuesMock, onConflictMock, returningMock };
+};
+
 const createMockPayload = (overrides?: {
   findResult?: unknown;
   drizzleShouldReject?: boolean;
   drizzleError?: Error;
+  /** When set, the ON CONFLICT insert "wins" and returns this row. */
+  insertedRow?: { id: number };
 }) => {
   const opts = { findResult: undefined, drizzleShouldReject: false, ...overrides };
 
@@ -48,15 +64,29 @@ const createMockPayload = (overrides?: {
   };
 
   const findMock = vi.fn().mockResolvedValue(opts.findResult ?? { docs: [usageRecord] });
+  const findByIDMock = vi.fn().mockResolvedValue(usageRecord);
   const { updateMock, setMock, whereMock } = createDrizzleChainMock(opts.drizzleShouldReject, opts.drizzleError);
+  const { insertMock, valuesMock, onConflictMock, returningMock } = createDrizzleInsertMock(opts.insertedRow);
 
   const payload = {
     find: findMock,
+    findByID: findByIDMock,
     create: vi.fn().mockResolvedValue(usageRecord),
-    db: { drizzle: { update: updateMock } },
+    db: { drizzle: { update: updateMock, insert: insertMock } },
   } as unknown as Payload;
 
-  return { payload, findMock, updateMock, setMock, whereMock };
+  return {
+    payload,
+    findMock,
+    findByIDMock,
+    updateMock,
+    setMock,
+    whereMock,
+    insertMock,
+    valuesMock,
+    onConflictMock,
+    returningMock,
+  };
 };
 
 describe("QuotaService", () => {
@@ -155,24 +185,48 @@ describe("QuotaService", () => {
   });
 
   describe("getOrCreateUsageRecord", () => {
-    it("should normalize relation-style user ids before querying usage", async () => {
-      const { payload, findMock } = createMockPayload({ findResult: { docs: [] } });
+    it("normalizes relation-style user ids and uses atomic ON CONFLICT insert", async () => {
+      // The "losing" path: insert returns nothing → fall back to find the row
+      // another concurrent caller already created.
+      const { payload, findMock, valuesMock, onConflictMock, returningMock } = createMockPayload();
       const service = new QuotaService(payload);
 
       await service.getOrCreateUsageRecord({ id: 42 });
 
+      // Insert was issued with user=42, ON CONFLICT(user), and RETURNING.
+      expect(valuesMock).toHaveBeenCalledWith(expect.objectContaining({ user: 42 }));
+      expect(onConflictMock).toHaveBeenCalled();
+      expect(returningMock).toHaveBeenCalled();
+
+      // Because the mock insert returns [], we fall through to find() to read
+      // the concurrently-created row.
       expect(findMock).toHaveBeenCalledWith(expect.objectContaining({ where: { user: { equals: 42 } } }));
-      expect(payload.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ user: 42 }) })
-      );
+
+      // The legacy find-then-create path is gone, so payload.create must not
+      // be used for upserting user-usage anymore.
+      expect(payload.create).not.toHaveBeenCalled();
     });
 
-    it("should reject non-decimal numeric user ids", async () => {
-      const { payload, findMock } = createMockPayload();
+    it("uses findByID when the insert wins the race (fresh row)", async () => {
+      // The "winning" path: insert returns the freshly-created row; we then
+      // re-fetch via findByID to hydrate the Payload doc shape.
+      const { payload, findByIDMock, findMock } = createMockPayload({ insertedRow: { id: 99 } });
+      const service = new QuotaService(payload);
+
+      await service.getOrCreateUsageRecord({ id: 42 });
+
+      expect(findByIDMock).toHaveBeenCalledWith(expect.objectContaining({ id: 99 }));
+      // find() (the "already existed" path) must not be reached.
+      expect(findMock).not.toHaveBeenCalled();
+    });
+
+    it("rejects non-decimal numeric user ids before touching the DB", async () => {
+      const { payload, findMock, insertMock } = createMockPayload();
       const service = new QuotaService(payload);
 
       await expect(service.getOrCreateUsageRecord("42e1")).rejects.toThrow("Invalid user ID for quota tracking: 42e1");
       expect(findMock).not.toHaveBeenCalled();
+      expect(insertMock).not.toHaveBeenCalled();
     });
   });
 
@@ -197,11 +251,13 @@ describe("QuotaService", () => {
     });
 
     it("should re-throw when getOrCreateUsageRecord fails", async () => {
-      const { payload } = createMockPayload();
-      (payload.find as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("Find failed"));
+      // Mock the ON CONFLICT insert chain to reject — this is the first DB
+      // op getOrCreateUsageRecord issues in its rewritten form.
+      const { payload, returningMock } = createMockPayload();
+      returningMock.mockRejectedValue(new Error("Insert failed"));
       const service = new QuotaService(payload);
 
-      await expect(service.incrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Find failed");
+      await expect(service.incrementUsage(42, "TOTAL_EVENTS", 1)).rejects.toThrow("Insert failed");
     });
 
     it("should handle daily usage types", async () => {
