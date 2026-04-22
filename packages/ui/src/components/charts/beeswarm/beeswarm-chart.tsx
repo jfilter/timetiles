@@ -23,6 +23,12 @@ import { computeLayoutConfig, computeXBounds } from "./layout-computation";
 import { computeDotSize } from "./sizing";
 import type { BeeswarmChartProps } from "./types";
 
+const resolveClickedEventId = (params: EChartsEventParams): number | null => {
+  if (!params.data || !Array.isArray(params.data) || params.data.length < 3) return null;
+  const eventId = params.data[2];
+  return typeof eventId === "number" && eventId > 0 ? eventId : null;
+};
+
 export const BeeswarmChart = ({
   series,
   onPointClick,
@@ -115,10 +121,9 @@ export const BeeswarmChart = ({
 
   const handleClick = useCallback(
     (params: EChartsEventParams) => {
-      if (!onPointClick || !params.data || !Array.isArray(params.data) || params.data.length < 3) return;
-      const eventId = params.data[2] as number;
-      // Only fire for individual events (positive IDs), not clusters
-      if (typeof eventId === "number" && eventId > 0) onPointClick(eventId);
+      if (!onPointClick) return;
+      const eventId = resolveClickedEventId(params);
+      if (eventId !== null) onPointClick(eventId);
     },
     [onPointClick]
   );

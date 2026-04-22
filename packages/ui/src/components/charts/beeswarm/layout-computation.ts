@@ -92,7 +92,7 @@ export const computeBeeswarmLayout = (
   const ticks = getIterations(nodes.length);
   for (let i = 0; i < ticks; i++) sim.tick();
 
-  const yPositions = new Array<number>(nodes.length).fill(0);
+  const yPositions: number[] = Array.from({ length: nodes.length }, () => 0);
   for (const n of nodes) yPositions[n.idx] = n.y ?? 0;
   return yPositions;
 };

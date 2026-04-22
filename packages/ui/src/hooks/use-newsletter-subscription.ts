@@ -78,7 +78,7 @@ export const useNewsletterSubscription = ({
   );
 
   const handleSubmit = useCallback(
-    (e: React.SyntheticEvent<HTMLFormElement>) => {
+    (e: React.SyntheticEvent<HTMLFormElement>): void => {
       e.preventDefault();
       if (!email) return;
 
@@ -93,20 +93,20 @@ export const useNewsletterSubscription = ({
         return;
       }
 
-      void submit(email, additionalData).then(
-        () => {
+      void (async () => {
+        try {
+          await submit(email, additionalData);
           setStatus("success");
           setMessage(messages.success);
           setEmail("");
-          scheduleReset(resetDelay);
-        },
-        (error: unknown) => {
+        } catch (error: unknown) {
           setStatus("error");
           const errorMessage = error instanceof Error ? error.message : messages.networkError;
           setMessage(errorMessage);
+        } finally {
           scheduleReset(resetDelay);
         }
-      );
+      })();
     },
     [email, onSubmit, onNewsletterSubmit, additionalData, messages, resetDelay, scheduleReset]
   );

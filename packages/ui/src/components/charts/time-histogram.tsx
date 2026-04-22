@@ -188,6 +188,117 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
   }
 };
 
+// Helper functions for chart configuration — hoisted out of the component
+// to keep `TimeHistogram`'s cyclomatic complexity under control.
+const getAxisConfig = (chartTheme: ChartTheme) => ({
+  xAxis: {
+    type: "time",
+    boundaryGap: false,
+    axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+    axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
+    splitLine: { show: false },
+  },
+  yAxis: {
+    type: "value",
+    axisLabel: { color: chartTheme.textColor, fontSize: 11 },
+    axisLine: { show: false },
+    axisTick: { show: false },
+    splitLine: { lineStyle: { color: chartTheme.splitLineColor, type: "dashed" } },
+  },
+});
+
+const getTooltipConfig = (
+  chartTheme: ChartTheme,
+  _darkMode: boolean,
+  bucketSeconds: number | null | undefined,
+  isStacked: boolean
+) => ({
+  trigger: "axis",
+  backgroundColor: chartTheme.tooltipBackground,
+  borderColor: chartTheme.axisLineColor,
+  textStyle: { color: chartTheme.tooltipForeground },
+  formatter: (
+    params: Array<{
+      value: [number, number, number];
+      data: [number, number, number];
+      marker: string;
+      seriesName: string;
+    }>
+  ) => {
+    const point = params[0];
+    if (!point) return "";
+    const startDate = new Date(point.data[0]);
+    const endDate = new Date(point.data[2]);
+
+    if (!isStacked) {
+      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${point.data[1].toLocaleString()}</div></div>`;
+    }
+
+    // Stacked: show each group's count
+    const total = params.reduce((sum, p) => sum + (p.data[1] ?? 0), 0);
+    const rows = params
+      .filter((p) => p.data[1] > 0)
+      .sort((a, b) => b.data[1] - a.data[1])
+      .map((p) => `<div>${p.marker} ${p.seriesName}: ${p.data[1].toLocaleString()}</div>`)
+      .join("");
+    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
+  },
+});
+
+const getSeriesConfig = (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
+  {
+    type: "bar",
+    // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
+    data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
+    itemStyle: {
+      color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
+      borderRadius: [2, 2, 0, 0],
+    },
+    emphasis: { itemStyle: { color: chartTheme.emphasisColor } },
+  },
+];
+
+const getStackedSeriesConfig = (grouped: TimeHistogramSeries[], chartTheme: ChartTheme) =>
+  grouped.map((s, i) => ({
+    type: "bar" as const,
+    name: s.name,
+    stack: "total",
+    color: s.color, // series-level color for legend + rendering
+    data: s.data.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
+    itemStyle: {
+      color: s.color, // explicit per-item color
+      borderColor: chartTheme.backgroundColor ?? "transparent",
+      borderWidth: 0.5,
+      borderRadius: i === grouped.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0],
+    },
+    emphasis: { itemStyle: { opacity: 1, borderWidth: 1 } },
+  }));
+
+const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number) => {
+  const primaryColor = Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor;
+  return [
+    {
+      type: "slider" as const,
+      show: true,
+      xAxisIndex: 0,
+      bottom: 8,
+      height: 24,
+      ...(start != null ? { start } : {}),
+      ...(end != null ? { end } : {}),
+      borderColor: chartTheme.axisLineColor,
+      fillerColor: `${primaryColor}33`,
+      dataBackground: { lineStyle: { color: chartTheme.axisLineColor }, areaStyle: { color: `${primaryColor}1A` } },
+      selectedDataBackground: { lineStyle: { color: primaryColor }, areaStyle: { color: `${primaryColor}33` } },
+      handleStyle: { color: primaryColor, borderColor: chartTheme.axisLineColor },
+      textStyle: { color: chartTheme.textColor, fontSize: 10 },
+    },
+    { type: "inside" as const, xAxisIndex: 0, ...(start != null ? { start } : {}), ...(end != null ? { end } : {}) },
+  ];
+};
+
+const detectDarkTheme = (theme: ChartTheme | undefined): boolean =>
+  theme ? theme.axisLineColor === defaultDarkTheme.axisLineColor : false;
+
 export const TimeHistogram = ({
   data = defaultData,
   groupedData,
@@ -206,123 +317,8 @@ export const TimeHistogram = ({
   dataZoomEnd,
   onDataZoomChange,
 }: TimeHistogramProps) => {
-  // Determine if dark theme based on theme prop
-  const isDark = (() => {
-    if (!theme) return false;
-    // Check axisLineColor which differs between light/dark themes
-    // (textColor is the same in both themes, so can't be used for detection)
-    return theme.axisLineColor === defaultDarkTheme.axisLineColor;
-  })();
-
-  // Get the effective theme, falling back to defaults
+  const isDark = detectDarkTheme(theme);
   const effectiveTheme = theme ?? (isDark ? defaultDarkTheme : defaultLightTheme);
-
-  // Helper functions for chart configuration - now uses theme colors
-  const getAxisConfig = (chartTheme: ChartTheme) => ({
-    xAxis: {
-      type: "time",
-      boundaryGap: false,
-      axisLabel: { color: chartTheme.textColor, fontSize: 11 },
-      axisLine: { lineStyle: { color: chartTheme.axisLineColor } },
-      splitLine: { show: false },
-    },
-    yAxis: {
-      type: "value",
-      axisLabel: { color: chartTheme.textColor, fontSize: 11 },
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: chartTheme.splitLineColor, type: "dashed" } },
-    },
-  });
-
-  const getTooltipConfig = (
-    chartTheme: ChartTheme,
-    _darkMode: boolean,
-    bucketSeconds: number | null | undefined,
-    isStacked: boolean
-  ) => ({
-    trigger: "axis",
-    backgroundColor: chartTheme.tooltipBackground,
-    borderColor: chartTheme.axisLineColor,
-    textStyle: { color: chartTheme.tooltipForeground },
-    formatter: (
-      params: Array<{
-        value: [number, number, number];
-        data: [number, number, number];
-        marker: string;
-        seriesName: string;
-      }>
-    ) => {
-      const point = params[0];
-      if (!point) return "";
-      const startDate = new Date(point.data[0]);
-      const endDate = new Date(point.data[2]);
-
-      if (!isStacked) {
-        return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${point.data[1].toLocaleString()}</div></div>`;
-      }
-
-      // Stacked: show each group's count
-      const total = params.reduce((sum, p) => sum + (p.data[1] ?? 0), 0);
-      const rows = params
-        .filter((p) => p.data[1] > 0)
-        .sort((a, b) => b.data[1] - a.data[1])
-        .map((p) => `<div>${p.marker} ${p.seriesName}: ${p.data[1].toLocaleString()}</div>`)
-        .join("");
-      return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
-    },
-  });
-
-  const getSeriesConfig = (chartTheme: ChartTheme, histogramData: TimeHistogramDataItem[]) => [
-    {
-      type: "bar",
-      // Include dateEnd as third element for tooltip access: [date, count, dateEnd]
-      data: histogramData.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
-      itemStyle: {
-        color: Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor,
-        borderRadius: [2, 2, 0, 0],
-      },
-      emphasis: { itemStyle: { color: chartTheme.emphasisColor } },
-    },
-  ];
-
-  const getStackedSeriesConfig = (grouped: TimeHistogramSeries[]) =>
-    grouped.map((s, i) => ({
-      type: "bar" as const,
-      name: s.name,
-      stack: "total",
-      color: s.color, // series-level color for legend + rendering
-      data: s.data.map((item) => [item.date, item.count, item.dateEnd ?? item.date]),
-      itemStyle: {
-        color: s.color, // explicit per-item color
-        borderColor: effectiveTheme.backgroundColor ?? "transparent",
-        borderWidth: 0.5,
-        borderRadius: i === grouped.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0],
-      },
-      emphasis: { itemStyle: { opacity: 1, borderWidth: 1 } },
-    }));
-
-  const getDataZoomConfig = (chartTheme: ChartTheme, start?: number, end?: number) => {
-    const primaryColor = Array.isArray(chartTheme.itemColor) ? chartTheme.itemColor[0] : chartTheme.itemColor;
-    return [
-      {
-        type: "slider" as const,
-        show: true,
-        xAxisIndex: 0,
-        bottom: 8,
-        height: 24,
-        ...(start != null ? { start } : {}),
-        ...(end != null ? { end } : {}),
-        borderColor: chartTheme.axisLineColor,
-        fillerColor: `${primaryColor}33`,
-        dataBackground: { lineStyle: { color: chartTheme.axisLineColor }, areaStyle: { color: `${primaryColor}1A` } },
-        selectedDataBackground: { lineStyle: { color: primaryColor }, areaStyle: { color: `${primaryColor}33` } },
-        handleStyle: { color: primaryColor, borderColor: chartTheme.axisLineColor },
-        textStyle: { color: chartTheme.textColor, fontSize: 10 },
-      },
-      { type: "inside" as const, xAxisIndex: 0, ...(start != null ? { start } : {}), ...(end != null ? { end } : {}) },
-    ];
-  };
 
   // Create ECharts option for the histogram
   const axisConfig = getAxisConfig(effectiveTheme);
@@ -339,7 +335,7 @@ export const TimeHistogram = ({
     },
     ...axisConfig,
     tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, !!groupedData),
-    series: groupedData ? getStackedSeriesConfig(groupedData) : getSeriesConfig(effectiveTheme, data),
+    series: groupedData ? getStackedSeriesConfig(groupedData, effectiveTheme) : getSeriesConfig(effectiveTheme, data),
     ...(groupedData && groupedData.length > 1
       ? {
           color: groupedData.map((s) => s.color),

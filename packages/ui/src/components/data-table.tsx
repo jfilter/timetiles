@@ -15,6 +15,7 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type Header,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
@@ -55,12 +56,7 @@ const SkeletonRow = ({ colCount }: { readonly colCount: number }) => (
   </TableRow>
 );
 
-// any is required here because @tanstack/react-table doesn't export a standalone Header type
-const HeaderCell = ({
-  header,
-}: {
-  readonly header: ReturnType<ReturnType<typeof useReactTable<any>>["getHeaderGroups"]>[number]["headers"][number];
-}) => {
+const HeaderCell = <TData, TValue>({ header }: { readonly header: Header<TData, TValue> }) => {
   if (header.isPlaceholder) return null;
 
   if (header.column.getCanSort()) {

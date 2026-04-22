@@ -20,9 +20,7 @@ const sourceBreakdownConfig: EChartsOption = {
   grid: { left: "4%", right: "6%", bottom: "4%", top: "8%", containLabel: true },
   xAxis: { type: "value" },
   yAxis: { type: "category", data: ["Open data", "Partner API", "CSV uploads", "Scheduled feed", "Community form"] },
-  series: [
-    { type: "bar", data: [486, 312, 221, 188, 94], itemStyle: { borderRadius: [0, 4, 4, 0], color: "#5f9e6e" } },
-  ],
+  series: [{ type: "bar", data: [486, 312, 221, 188, 94], itemStyle: { borderRadius: [0, 4, 4, 0] } }],
 };
 
 const attendanceLeadTimeConfig: EChartsOption = {
@@ -44,7 +42,6 @@ const attendanceLeadTimeConfig: EChartsOption = {
         [290, 35],
         [340, 42],
       ],
-      itemStyle: { color: "#cd853f" },
     },
   ],
 };
