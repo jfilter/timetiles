@@ -52,11 +52,12 @@ RUN pnpm build
 WORKDIR /app/apps/web
 # Use experimental build mode to avoid DB connection during build
 # This compiles the code without static generation
-RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
+RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
 
 # Remove dev dependencies (eslint, vitest, storybook, etc.) to reduce image size
-# and eliminate dev-only CVEs like handlebars
-RUN pnpm prune --prod
+# and eliminate dev-only CVEs like handlebars. CI=true suppresses pnpm's
+# interactive "recreate modules?" prompt (Docker buildx exposes a pseudo-TTY).
+RUN CI=true pnpm prune --prod --ignore-scripts
 
 # Stage 5: Production runner
 # Uses full build (not standalone) so both `next start` and `payload jobs:run` work

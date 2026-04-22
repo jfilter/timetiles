@@ -98,11 +98,12 @@ RUN pnpm build
 
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web
-RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile --webpack
+RUN pnpm exec payload generate:importmap && pnpm exec next build --experimental-build-mode compile
 
-# Remove dev dependencies to reduce image size and eliminate dev-only CVEs
+# Remove dev dependencies to reduce image size and eliminate dev-only CVEs.
+# CI=true suppresses pnpm's interactive "recreate modules?" prompt.
 WORKDIR /build
-RUN pnpm prune --prod
+RUN CI=true pnpm prune --prod --ignore-scripts
 
 # Production stage: final image
 FROM base AS production
