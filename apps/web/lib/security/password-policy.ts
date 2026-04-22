@@ -17,20 +17,20 @@ import { createHash } from "node:crypto";
 import { getEnv } from "@/lib/config/env";
 import { createLogger } from "@/lib/logger";
 
-const logger = createLogger("password-policy");
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, type PasswordPolicyResult } from "./password-policy-constants";
 
-export const PASSWORD_MIN_LENGTH = 12;
-export const PASSWORD_MAX_LENGTH = 256;
+export {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  validatePasswordLengthOnly,
+  type PasswordPolicyFailure,
+  type PasswordPolicyResult,
+} from "./password-policy-constants";
+
+const logger = createLogger("password-policy");
 
 const HIBP_RANGE_URL = "https://api.pwnedpasswords.com/range";
 const HIBP_TIMEOUT_MS = 3000;
-
-export type PasswordPolicyFailure =
-  | { ok: false; code: "too-short"; message: string }
-  | { ok: false; code: "too-long"; message: string }
-  | { ok: false; code: "compromised"; message: string };
-
-export type PasswordPolicyResult = { ok: true } | PasswordPolicyFailure;
 
 /**
  * Validate a plaintext password against the centralized policy.
@@ -55,17 +55,6 @@ export const validatePassword = async (password: string): Promise<PasswordPolicy
     };
   }
 
-  return { ok: true };
-};
-
-/** Synchronous-only policy check, for places that can't await (e.g. form UX). */
-export const validatePasswordLengthOnly = (password: string): PasswordPolicyResult => {
-  if (password.length < PASSWORD_MIN_LENGTH) {
-    return { ok: false, code: "too-short", message: `Password must be at least ${PASSWORD_MIN_LENGTH} characters.` };
-  }
-  if (password.length > PASSWORD_MAX_LENGTH) {
-    return { ok: false, code: "too-long", message: `Password must be at most ${PASSWORD_MAX_LENGTH} characters.` };
-  }
   return { ok: true };
 };
 

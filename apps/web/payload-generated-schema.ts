@@ -183,18 +183,6 @@ export const enum_ingest_jobs_stage = db_schema.enum("enum_ingest_jobs_stage", [
   "completed",
   "failed",
 ]);
-export const enum_ingest_jobs_last_successful_stage = db_schema.enum(
-  "enum_ingest_jobs_last_successful_stage",
-  [
-    "analyze-duplicates",
-    "detect-schema",
-    "validate-schema",
-    "needs-review",
-    "create-schema-version",
-    "geocode-batch",
-    "create-events",
-  ],
-);
 export const enum__ingest_jobs_v_version_stage = db_schema.enum(
   "enum__ingest_jobs_v_version_stage",
   [
@@ -207,18 +195,6 @@ export const enum__ingest_jobs_v_version_stage = db_schema.enum(
     "create-events",
     "completed",
     "failed",
-  ],
-);
-export const enum__ingest_jobs_v_version_last_successful_stage = db_schema.enum(
-  "enum__ingest_jobs_v_version_last_successful_stage",
-  [
-    "analyze-duplicates",
-    "detect-schema",
-    "validate-schema",
-    "needs-review",
-    "create-schema-version",
-    "geocode-batch",
-    "create-events",
   ],
 );
 export const enum_scheduled_ingests_execution_history_status = db_schema.enum(
@@ -936,7 +912,9 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
     "quota-reset",
+    "rate-limit-cleanup",
     "cache-cleanup",
+    "preview-cleanup",
     "schema-maintenance",
     "data-export",
     "data-export-cleanup",
@@ -972,7 +950,9 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "cleanup-stuck-scheduled-ingests",
     "cleanup-stuck-scrapers",
     "quota-reset",
+    "rate-limit-cleanup",
     "cache-cleanup",
+    "preview-cleanup",
     "schema-maintenance",
     "data-export",
     "data-export-cleanup",
@@ -2770,20 +2750,6 @@ export const ingest_jobs = db_schema.table(
     geocodingResults: jsonb("geocoding_results"),
     results: jsonb("results"),
     errorLog: jsonb("error_log"),
-    retryAttempts: numeric("retry_attempts", { mode: "number" }).default(0),
-    lastRetryAt: timestamp("last_retry_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    nextRetryAt: timestamp("next_retry_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    lastSuccessfulStage: enum_ingest_jobs_last_successful_stage(
-      "last_successful_stage",
-    ),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,
@@ -2956,23 +2922,6 @@ export const _ingest_jobs_v = db_schema.table(
     version_geocodingResults: jsonb("version_geocoding_results"),
     version_results: jsonb("version_results"),
     version_errorLog: jsonb("version_error_log"),
-    version_retryAttempts: numeric("version_retry_attempts", {
-      mode: "number",
-    }).default(0),
-    version_lastRetryAt: timestamp("version_last_retry_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_nextRetryAt: timestamp("version_next_retry_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_lastSuccessfulStage:
-      enum__ingest_jobs_v_version_last_successful_stage(
-        "version_last_successful_stage",
-      ),
     version_updatedAt: timestamp("version_updated_at", {
       mode: "string",
       withTimezone: true,
@@ -4392,6 +4341,11 @@ export const users = db_schema.table(
       precision: 3,
     }),
     deletionScheduledAt: timestamp("deletion_scheduled_at", {
+      mode: "string",
+      withTimezone: true,
+      precision: 3,
+    }),
+    _verificationTokenExpiresAt: timestamp("_verificationtokenexpiresat", {
       mode: "string",
       withTimezone: true,
       precision: 3,
@@ -11625,9 +11579,7 @@ type DatabaseSchema = {
   enum_ingest_files_status: typeof enum_ingest_files_status;
   enum__ingest_files_v_version_status: typeof enum__ingest_files_v_version_status;
   enum_ingest_jobs_stage: typeof enum_ingest_jobs_stage;
-  enum_ingest_jobs_last_successful_stage: typeof enum_ingest_jobs_last_successful_stage;
   enum__ingest_jobs_v_version_stage: typeof enum__ingest_jobs_v_version_stage;
-  enum__ingest_jobs_v_version_last_successful_stage: typeof enum__ingest_jobs_v_version_last_successful_stage;
   enum_scheduled_ingests_execution_history_status: typeof enum_scheduled_ingests_execution_history_status;
   trig_by: typeof trig_by;
   enum_scheduled_ingests_schedule_type: typeof enum_scheduled_ingests_schedule_type;

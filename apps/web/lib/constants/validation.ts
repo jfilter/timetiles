@@ -5,7 +5,7 @@
  * @category Constants
  */
 
-import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy";
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy-constants";
 
 /**
  * Validate a password and its confirmation value.

@@ -17,7 +17,7 @@ import { FormError, FormSuccess } from "@/components/auth/form-feedback";
 import { validatePasswords } from "@/lib/constants/validation";
 import { changePasswordRequest } from "@/lib/hooks/use-account-mutations";
 import { useInputState } from "@/lib/hooks/use-input-state";
-import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy";
+import { PASSWORD_MIN_LENGTH } from "@/lib/security/password-policy-constants";
 
 export const ChangePasswordForm = () => {
   const t = useTranslations("Account");
