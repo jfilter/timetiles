@@ -20,6 +20,7 @@ import type {
 
 import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
+import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
@@ -104,6 +105,42 @@ const processCatalogValidation = async (
  * Also forces datasets to be public if allowPrivateImports is disabled.
  * Sets createdBy and catalogCreatorId on creation/update.
  */
+/**
+ * Validate user-supplied regex patterns on `extract` ingest transforms before
+ * the dataset is saved.
+ *
+ * Mirrors the runtime guard in `applyExtractTransform` — rejects known
+ * catastrophic-backtracking shapes up front so the user sees the error at
+ * configuration time rather than having their import stall the worker.
+ */
+export const validateIngestTransformPatterns: CollectionBeforeChangeHook = ({ data, operation }) => {
+  if (operation !== "create" && operation !== "update") return data;
+
+  const transforms = (data?.ingestTransforms ?? []) as Array<Record<string, unknown>>;
+  if (!Array.isArray(transforms) || transforms.length === 0) return data;
+
+  for (const [index, transform] of transforms.entries()) {
+    if (transform?.type !== "extract") continue;
+
+    const pattern = transform.pattern;
+    if (pattern == null || pattern === "") {
+      // Empty pattern is tolerated at save-time — runtime skips the transform.
+      continue;
+    }
+
+    if (typeof pattern !== "string") {
+      throw new Error(`Transform ${index + 1}: extract pattern must be a string`);
+    }
+
+    const validation = validateExtractPattern(pattern);
+    if (!validation.valid) {
+      throw new Error(`Transform ${index + 1}: ${validation.reason}`);
+    }
+  }
+
+  return data;
+};
+
 export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
   data,
   req,

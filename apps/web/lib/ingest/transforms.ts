@@ -15,6 +15,7 @@
 
 import { Parser } from "expr-eval";
 
+import { safeExtractMatch } from "@/lib/ingest/safe-regex";
 import type {
   ConcatenateTransform,
   DateParseTransform,
@@ -464,7 +465,11 @@ const applyExtractTransform = (data: Record<string, unknown>, transform: Extract
   const value = getByPathOrKey(data, transform.from);
   if (typeof value !== "string") return;
 
-  const match = new RegExp(transform.pattern).exec(value);
+  // `safeExtractMatch` validates the pattern shape before compiling — rejects
+  // known catastrophic-backtracking shapes (e.g. `(a+)+`) that could stall
+  // the shared ingest worker via ReDoS. Unsafe or non-matching patterns return
+  // `null`; the source field is left untouched.
+  const match = safeExtractMatch(transform.pattern, value);
   if (match) {
     const groupIndex = transform.group ?? 1;
     const extracted = match[groupIndex] ?? match[0];
