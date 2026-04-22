@@ -173,32 +173,49 @@ export const validateExternalHttpUrl = (urlString: string): { url: URL } | { err
 };
 
 /**
+ * Resolve a hostname and validate that every returned address is public.
+ *
+ * Returns the resolved addresses on success so callers can pin the fetch to
+ * the already-validated IP — this closes the DNS-rebinding TOCTOU window
+ * between the validation lookup and the actual connect-time lookup undici
+ * would otherwise perform. Returns `null` when the DNS lookup itself fails
+ * (non-blocking — the caller's fetch will surface the transport error).
+ */
+export const resolvePublicHostname = async (
+  hostname: string
+): Promise<Array<{ address: string; family: 4 | 6 }> | null> => {
+  if (isPrivateUrlBypassEnabled()) {
+    return null;
+  }
+
+  let resolved: Array<{ address: string; family: number }>;
+  try {
+    const raw = (await dns.promises.lookup(hostname, { all: true, verbatim: true })) as
+      | Array<{ address: string; family: number }>
+      | { address: string; family: number };
+    resolved = Array.isArray(raw) ? raw : [raw];
+  } catch (error) {
+    logger.debug("DNS lookup failed during SSRF check (non-blocking)", { hostname, error });
+    return null;
+  }
+
+  for (const entry of resolved) {
+    if (isPrivateIP(entry.address)) {
+      throw new Error(`SSRF blocked: hostname "${hostname}" resolves to private IP ${entry.address}`);
+    }
+  }
+
+  return resolved.map((e) => ({ address: e.address, family: e.family === 6 ? 6 : 4 }));
+};
+
+/**
  * Validates that a hostname resolves only to public IP addresses.
  *
  * DNS lookup failures remain non-blocking so transport-level errors still
- * surface through the caller's normal fetch/clone path.
+ * surface through the caller's normal fetch/clone path. Kept for callers
+ * that only need the validation side-effect; prefer {@link resolvePublicHostname}
+ * when you also want to pin the resolved IP to defeat DNS-rebinding TOCTOU.
  */
 export const validateResolvedPublicHostname = async (hostname: string): Promise<void> => {
-  if (isPrivateUrlBypassEnabled()) {
-    return;
-  }
-
-  try {
-    const resolved = (await dns.promises.lookup(hostname, { all: true, verbatim: true })) as
-      | Array<{ address: string }>
-      | { address: string };
-    const addresses = Array.isArray(resolved) ? resolved : [resolved];
-
-    for (const entry of addresses) {
-      if (isPrivateIP(entry.address)) {
-        throw new Error(`SSRF blocked: hostname "${hostname}" resolves to private IP ${entry.address}`);
-      }
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith("SSRF blocked")) {
-      throw error;
-    }
-
-    logger.debug("DNS lookup failed during SSRF check (non-blocking)", { hostname, error });
-  }
+  await resolvePublicHostname(hostname);
 };
