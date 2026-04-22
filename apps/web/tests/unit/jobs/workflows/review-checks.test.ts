@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import {
   getResumePointForReason,
+  parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewGeocodingPartial,
@@ -24,7 +25,7 @@ describe.sequential("review-checks", () => {
   // ── REVIEW_REASONS constants ──────────────────────────────────────────
 
   describe("REVIEW_REASONS", () => {
-    it("should have all 8 reason values with correct strings", () => {
+    it("should have all reason values with correct strings", () => {
       expect(REVIEW_REASONS).toEqual({
         SCHEMA_DRIFT: "schema-drift",
         QUOTA_EXCEEDED: "quota-exceeded",
@@ -34,6 +35,7 @@ describe.sequential("review-checks", () => {
         HIGH_EMPTY_ROW_RATE: "high-empty-rows",
         NO_TIMESTAMP_DETECTED: "no-timestamp",
         NO_LOCATION_DETECTED: "no-location",
+        FILE_TOO_LARGE: "file-too-large",
       });
     });
   });
@@ -341,6 +343,50 @@ describe.sequential("review-checks", () => {
         id: "job-123",
         data: { stage: PROCESSING_STAGE.NEEDS_REVIEW, reviewReason: "high-duplicates", reviewDetails: details },
       });
+    });
+  });
+
+  // ── parseReviewChecksConfig ────────────────────────────────────────────
+
+  describe("parseReviewChecksConfig", () => {
+    it("returns undefined config without error for null/undefined input", () => {
+      expect(parseReviewChecksConfig(null)).toEqual({ config: undefined });
+      expect(parseReviewChecksConfig(undefined)).toEqual({ config: undefined });
+    });
+
+    it("returns the parsed config for a valid object", () => {
+      const raw = { skipDuplicateRateCheck: true, duplicateRateThreshold: 0.5 };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(error).toBeUndefined();
+      expect(config).toEqual(raw);
+    });
+
+    it("rejects unknown keys with an error message", () => {
+      const raw = { unknownKey: true };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(config).toBeUndefined();
+      expect(error).toContain("Invalid reviewChecks override");
+    });
+
+    it("rejects out-of-range thresholds", () => {
+      const raw = { duplicateRateThreshold: 2.5 };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(config).toBeUndefined();
+      expect(error).toContain("Invalid reviewChecks override");
+    });
+
+    it("rejects wrong-typed skip flags", () => {
+      const raw = { skipDuplicateRateCheck: "yes" };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(config).toBeUndefined();
+      expect(error).toContain("Invalid reviewChecks override");
+    });
+
+    it("accepts null values for nullable thresholds", () => {
+      const raw = { emptyRowThreshold: null };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(error).toBeUndefined();
+      expect(config).toEqual({ emptyRowThreshold: null });
     });
   });
 });

@@ -43,6 +43,29 @@ vi.mock("@/lib/config/app-config", () => ({
 
 vi.mock("@/lib/middleware/auth", () => ({}));
 
+// Rate limiting is opt-in on the configure route but the middleware touches
+// getPayload + the rate-limit service, which these tests don't wire up.
+// Short-circuit it so the actual handler logic (validation, quota, etc.) runs.
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn(() => Promise.resolve(null)) }));
+
+// Field-path validation re-parses the preview file. The tests mock fs without
+// providing a real CSV body, so stub `parseFileSheets` to return headers that
+// cover the fields referenced by `baseFieldMapping`. The fields that can be
+// referenced are explicitly those — any test that wants to assert validation
+// rejects an invalid path can override this mock in-test.
+vi.mock("@/app/api/ingest/preview-schema/helpers", () => ({
+  parseFileSheets: vi.fn(() =>
+    Promise.resolve([
+      {
+        index: 0,
+        name: "Sheet1",
+        rowCount: 3,
+        headers: ["title", "description", "date", "location", "lat", "lng", "id"],
+      },
+    ])
+  ),
+}));
+
 vi.mock("@/lib/services/quota-service", async () => {
   const { AppError } = await import("@/lib/types/errors");
   class QuotaExceededError extends AppError {

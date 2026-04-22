@@ -284,7 +284,10 @@ describe.sequential("processEventBatch", () => {
           overrideAccess: true,
           data: expect.objectContaining({
             transformedData: expect.objectContaining({ id: "a", title: "Updated Event" }),
-            sourceData: expect.objectContaining({ id: "a", title: "Updated Event" }),
+            // sourceData is intentionally undefined when no transform changed the row
+            // (dedup optimization in createEventData — avoids storing the same
+            // JSONB blob twice).
+            sourceData: undefined,
           }),
         })
       );

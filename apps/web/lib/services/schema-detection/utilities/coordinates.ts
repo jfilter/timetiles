@@ -79,36 +79,61 @@ const findCoordinateField = (
 
 /**
  * Check if samples contain comma-separated coordinates and determine lat/lng order.
- * Note: A simpler format-detection-only version exists in lib/geospatial/detection.ts.
- * This version additionally determines coordinate order (lat,lng vs lng,lat).
+ *
+ * When samples don't unambiguously imply one order (common for mid-latitude
+ * clusters where both values fit inside [-90, 90]), returns
+ * `format: "ambiguous"` with a reduced confidence — the caller must then ask
+ * the user rather than silently picking a default. Silently defaulting to
+ * "lat,lng" was the bug M3 is fixing: mid-latitude "lng,lat" data rendered on
+ * the wrong continent with no warning.
  */
-const checkCommaFormat = (samples: unknown[]): { format: string; confidence: number } | null => {
-  let matches = 0;
-  let latLngOrder = 0;
-  let lngLatOrder = 0;
+const MIN_SAMPLES_FOR_ORDER_DECISION = 3;
 
-  for (const sample of samples) {
-    if (typeof sample !== "string") continue;
-    const parts = sample.split(",").map((p) => Number.parseFloat(p.trim()));
-    if (parts.length === 2 && parts.every((p) => !isNaN(p))) {
-      matches++;
-      const [first, second] = parts as [number, number];
-      if (Math.abs(first) <= 90 && Math.abs(second) <= 180) latLngOrder++;
-      if (Math.abs(first) <= 180 && Math.abs(second) <= 90) lngLatOrder++;
-    }
-  }
+const tallyCommaSample = (
+  sample: unknown,
+  counts: { matches: number; latLngOnly: number; lngLatOnly: number }
+): void => {
+  if (typeof sample !== "string") return;
+  const parts = sample.split(",").map((p) => Number.parseFloat(p.trim()));
+  if (parts.length !== 2 || !parts.every((p) => !isNaN(p))) return;
+
+  counts.matches++;
+  const [first, second] = parts as [number, number];
+  const looksLatLng = Math.abs(first) <= 90 && Math.abs(second) <= 180;
+  const looksLngLat = Math.abs(first) <= 180 && Math.abs(second) <= 90;
+  if (looksLatLng && !looksLngLat) counts.latLngOnly++;
+  else if (looksLngLat && !looksLatLng) counts.lngLatOnly++;
+};
+
+const checkCommaFormat = (
+  samples: unknown[]
+): { format: "lat,lng" | "lng,lat" | "ambiguous"; confidence: number } | null => {
+  const counts = { matches: 0, latLngOnly: 0, lngLatOnly: 0 };
+  for (const sample of samples) tallyCommaSample(sample, counts);
+  const { matches, latLngOnly, lngLatOnly } = counts;
 
   if (matches === 0) return null;
   const confidence = matches / samples.length;
   if (confidence < 0.7) return null;
 
-  return { format: latLngOrder >= lngLatOrder ? "lat,lng" : "lng,lat", confidence };
+  // A single unambiguous sample is enough to decide the order.
+  if (latLngOnly > 0 && lngLatOnly === 0) return { format: "lat,lng", confidence };
+  if (lngLatOnly > 0 && latLngOnly === 0) return { format: "lng,lat", confidence };
+
+  // Otherwise the data is genuinely ambiguous (every sample fits both, or
+  // samples conflict). Mark ambiguous if we have enough samples to be
+  // confident it's not just sparsity; cap confidence so low-confidence UI
+  // branches can flag the field for review.
+  const enoughEvidence = matches >= MIN_SAMPLES_FOR_ORDER_DECISION;
+  if (!enoughEvidence) return null;
+
+  return { format: "ambiguous", confidence: Math.min(confidence, 0.4) };
 };
 
 /** Find a combined coordinate field. */
 const findCombinedCoordinateField = (
   fieldStats: Record<string, FieldStatistics>
-): { path: string; format: string; confidence: number } | null => {
+): { path: string; format: "lat,lng" | "lng,lat" | "ambiguous"; confidence: number } | null => {
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const fieldName = fieldPath.split(".").pop() ?? "";
     if (!COMBINED_COORDINATE_PATTERNS.some((p) => p.test(fieldName))) continue;
@@ -116,7 +141,13 @@ const findCombinedCoordinateField = (
 
     const samples = stats.uniqueSamples.slice(0, 10).filter((s) => s != null && s !== "");
     const formatResult = checkCommaFormat(samples);
-    if (formatResult && formatResult.confidence >= 0.7) {
+    if (!formatResult) continue;
+
+    // Accept the field if either (a) we have a concrete format with high
+    // confidence, or (b) the format is explicitly "ambiguous" — in which
+    // case we still surface the field so the wizard can prompt the user
+    // rather than silently dropping it.
+    if (formatResult.format === "ambiguous" || formatResult.confidence >= 0.7) {
       return { path: fieldPath, format: formatResult.format, confidence: formatResult.confidence };
     }
   }
@@ -181,6 +212,9 @@ const buildGeoResult = (
       confidence: combined.confidence,
       combined: { path: combined.path, format: combined.format },
       locationField,
+      // Flag ambiguous orderings so the preview UI prompts the user to
+      // confirm rather than silently picking a default.
+      ...(combined.format === "ambiguous" ? { requiresUserChoice: true } : {}),
     };
   }
 

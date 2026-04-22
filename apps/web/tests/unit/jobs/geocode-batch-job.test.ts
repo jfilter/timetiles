@@ -86,9 +86,11 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     QUOTA_EXCEEDED: "quota-exceeded",
     HIGH_DUPLICATE_RATE: "high-duplicates",
     GEOCODING_PARTIAL: "geocoding-partial",
+    FILE_TOO_LARGE: "file-too-large",
   },
   shouldReviewGeocodingPartial: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
+  parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
 }));
 
 // Spy on progress tracking so tests can assert updateStageProgress arguments

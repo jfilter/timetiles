@@ -79,9 +79,11 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     HIGH_EMPTY_ROW_RATE: "high-empty-rows",
     NO_TIMESTAMP_DETECTED: "no-timestamp",
     NO_LOCATION_DETECTED: "no-location",
+    FILE_TOO_LARGE: "file-too-large",
   },
   shouldReviewHighRowErrors: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
+  parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
 }));
 
 /** Get the events array from the Nth call to bulkInsertEvents (0-indexed). */

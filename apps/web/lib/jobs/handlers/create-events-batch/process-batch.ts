@@ -14,12 +14,13 @@ import { applyTransforms } from "@/lib/ingest/transforms";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
+import { asSystem } from "@/lib/services/system-payload";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, Event, IngestJob } from "@/payload-types";
 
 import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
-import { createEventData } from "../../utils/event-creation-helpers";
+import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
 import { extractDuplicateRows, readDuplicateStrategy } from "../../utils/resource-loading";
 import { buildTransformsFromDataset } from "../../utils/transform-builders";
 
@@ -136,7 +137,7 @@ const tryUpdateExistingEvent = async (
     log.warn("Refusing cross-dataset event update", { existingEventId, datasetId });
     return { updated: false, blocked: true };
   }
-  await payload.update({
+  await asSystem(payload).update({
     collection: "events",
     id: existingEventId,
     data: {
@@ -161,7 +162,6 @@ const tryUpdateExistingEvent = async (
       contentHash: eventData.contentHash,
       ingestJob: eventData.ingestJob,
     },
-    overrideAccess: true,
   });
   return { updated: true, blocked: false };
 };
@@ -246,7 +246,14 @@ export const processEventBatch = async (
       eventsToInsert.push(eventData);
       insertRowNumbers.push(rowNumber);
     } catch (error) {
-      log.warn("Failed to process event", { rowNumber, error });
+      // Oversize rows are surfaced per-row (batch continues). Other failures
+      // also become per-row entries so a single bad row doesn't poison the
+      // rest of the batch.
+      if (error instanceof EventPayloadTooLargeError) {
+        log.warn("Row exceeds per-event payload cap; skipping", { rowNumber, bytes: error.bytes, limit: error.limit });
+      } else {
+        log.warn("Failed to process event", { rowNumber, error });
+      }
       errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
     }
   }

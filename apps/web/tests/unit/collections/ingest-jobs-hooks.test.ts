@@ -53,6 +53,7 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     GEOCODING_PARTIAL: "geocoding-partial",
     QUOTA_EXCEEDED: "quota-exceeded",
     HIGH_ROW_ERROR_RATE: "high-row-errors",
+    FILE_TOO_LARGE: "file-too-large",
   },
 }));
 

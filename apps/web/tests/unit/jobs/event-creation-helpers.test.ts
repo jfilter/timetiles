@@ -12,11 +12,14 @@ const mocks = vi.hoisted(() => ({ generateUniqueId: vi.fn(() => "generated-id") 
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
+import { MAX_EVENT_PAYLOAD_BYTES } from "@/lib/constants/ingest-constants";
 import {
   createEventData,
+  EventPayloadTooLargeError,
   extractCoordinates,
   extractEndTimestamp,
   extractTimestamp,
+  measureEventPayloadBytes,
 } from "@/lib/jobs/utils/event-creation-helpers";
 
 // Reset mock before each test to guard against thread-pool contamination
@@ -353,5 +356,102 @@ describe("createEventData", () => {
 
     expect(result.ingestJob).toBeUndefined();
     expect(result.uniqueId).toBe("generated-id");
+  });
+
+  it("drops redundant sourceData when it matches transformedData", () => {
+    const row = { title: "Test Event", date: "2024-06-15T10:30:00Z" };
+    const result = createEventData(
+      row,
+      row,
+      { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+      42,
+      {},
+      {},
+      null
+    );
+
+    expect(result.transformedData).toBe(row);
+    expect(result.sourceData).toBeUndefined();
+  });
+
+  it("keeps sourceData when the shallow shape differs from transformedData", () => {
+    const sourceRow = { date: "2024-06-15", title: "Test Event" };
+    const row = { eventTimestamp: "2024-06-15", title: "Test Event" };
+    const result = createEventData(
+      row,
+      sourceRow,
+      { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+      42,
+      {},
+      {},
+      null
+    );
+
+    expect(result.transformedData).toBe(row);
+    expect(result.sourceData).toBe(sourceRow);
+  });
+
+  it("throws EventPayloadTooLargeError when the combined payload exceeds the cap", () => {
+    // Build a payload that is guaranteed to exceed the cap when source and
+    // transformed are stored separately. Use distinct shapes so the dedup
+    // optimization does not kick in.
+    const bigValue = "x".repeat(MAX_EVENT_PAYLOAD_BYTES);
+    const sourceRow = { big: bigValue };
+    const row = { different: bigValue };
+
+    expect(() =>
+      createEventData(
+        row,
+        sourceRow,
+        { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+        42,
+        {},
+        {},
+        null
+      )
+    ).toThrow(EventPayloadTooLargeError);
+  });
+
+  it("accepts a payload at the cap boundary", () => {
+    // Roughly fit within the cap — JSON.stringify overhead is ~15 bytes for
+    // {"big":"..."}; subtract a generous margin.
+    const bigValue = "x".repeat(MAX_EVENT_PAYLOAD_BYTES - 100);
+    const row = { big: bigValue };
+    expect(() =>
+      createEventData(
+        row,
+        row, // Same reference → dedup → only one payload charged
+        { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+        42,
+        {},
+        {},
+        null
+      )
+    ).not.toThrow();
+  });
+});
+
+describe("measureEventPayloadBytes", () => {
+  it("counts only one copy when source and transformed are the same reference", () => {
+    const row = { field: "hello" };
+    const bytes = measureEventPayloadBytes(row, row);
+    expect(bytes).toBe(Buffer.byteLength(JSON.stringify(row), "utf8"));
+  });
+
+  it("counts both copies when source and transformed differ", () => {
+    const row = { field: "transformed" };
+    const source = { field: "original" };
+    const bytes = measureEventPayloadBytes(row, source);
+    const expected = Buffer.byteLength(JSON.stringify(row), "utf8") + Buffer.byteLength(JSON.stringify(source), "utf8");
+    expect(bytes).toBe(expected);
+  });
+
+  it("handles multi-byte UTF-8 content accurately", () => {
+    // 'é' is 2 bytes in UTF-8; make sure we are using byteLength, not .length
+    const row = { field: "café" };
+    const bytes = measureEventPayloadBytes(row, row);
+    // JSON.stringify produces `{"field":"café"}` = 16 chars → 17 bytes due to é
+    expect(bytes).toBe(Buffer.byteLength(JSON.stringify(row), "utf8"));
+    expect(bytes).toBeGreaterThan(JSON.stringify(row).length);
   });
 });

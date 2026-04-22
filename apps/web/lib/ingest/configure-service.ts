@@ -15,6 +15,7 @@ import path from "node:path";
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
+import { ValidationError } from "@/lib/api/errors";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type {
   ConfigureIngestRequest,
@@ -22,6 +23,7 @@ import type {
   DatasetMappingEntry,
   FieldMapping,
   PreviewMetadata,
+  SheetInfo,
   SheetMapping,
 } from "@/lib/ingest/types/wizard";
 import { createLogger } from "@/lib/logger";
@@ -203,10 +205,117 @@ export const processDataset = async (
   return sheetMapping.datasetId;
 };
 
+/** Keys of FieldMapping that carry a column-name path and must exist in the detected schema. */
+const FIELD_MAPPING_PATH_KEYS = [
+  "titleField",
+  "descriptionField",
+  "locationNameField",
+  "dateField",
+  "endDateField",
+  "idField",
+  "locationField",
+  "latitudeField",
+  "longitudeField",
+] as const satisfies readonly (keyof FieldMapping)[];
+
+type FieldMappingPathKey = (typeof FIELD_MAPPING_PATH_KEYS)[number];
+
+/**
+ * Collect every path produced by a transform chain (rename `to`, concatenate `to`,
+ * split `toFields`, string-op `to`, extract `to`, etc.). Treat these as valid
+ * field paths even if they are not present in the raw headers — they will be
+ * materialized at import time.
+ */
+const collectTransformOutputPaths = (transforms: IngestTransform[] | undefined): Set<string> => {
+  const outputs = new Set<string>();
+  if (!transforms) return outputs;
+
+  for (const t of transforms) {
+    switch (t.type) {
+      case "rename":
+      case "concatenate":
+      case "extract":
+        if (t.to) outputs.add(t.to);
+        break;
+      case "string-op":
+      case "parse-json-array":
+      case "split-to-array":
+        if (t.to) outputs.add(t.to);
+        // These can write back to `from` when `to` is omitted — `from` is already
+        // a raw-header path, so no extra output needs registering.
+        break;
+      case "split":
+        for (const to of t.toFields ?? []) {
+          if (to) outputs.add(to);
+        }
+        break;
+      case "date-parse":
+        // Rewrites the value in-place on `from`; no new output path.
+        break;
+    }
+  }
+
+  return outputs;
+};
+
+/**
+ * Validate that every user-supplied field-mapping path exists in the detected
+ * schema for the matching sheet, or is produced by a transform. Throws a
+ * ValidationError listing any invalid paths so downstream jobs don't fail
+ * with opaque errors.
+ */
+export const validateFieldMappingPaths = (
+  sheets: SheetInfo[],
+  sheetMappings: SheetMapping[],
+  fieldMappings: FieldMapping[],
+  transformsBySheet?: Array<{ sheetIndex: number; transforms: IngestTransform[] }>
+): void => {
+  const invalid: Array<{ sheetIndex: number; field: FieldMappingPathKey; path: string }> = [];
+
+  for (const sheetMapping of sheetMappings) {
+    const fieldMapping = fieldMappings.find((fm) => fm.sheetIndex === sheetMapping.sheetIndex);
+    if (!fieldMapping) continue;
+
+    const sheet = sheets.find((s) => s.index === sheetMapping.sheetIndex);
+    if (!sheet) {
+      throw new ValidationError(
+        `Field mapping references sheet ${sheetMapping.sheetIndex}, but that sheet was not found in the preview`
+      );
+    }
+
+    const transforms = transformsBySheet?.find((t) => t.sheetIndex === sheetMapping.sheetIndex)?.transforms;
+    const transformOutputs = collectTransformOutputPaths(transforms);
+
+    // Valid paths = detected headers + paths produced by transforms on this sheet
+    const validPaths = new Set<string>([...sheet.headers, ...transformOutputs]);
+
+    for (const key of FIELD_MAPPING_PATH_KEYS) {
+      const path = fieldMapping[key];
+      if (typeof path !== "string" || path.length === 0) continue;
+      if (!validPaths.has(path)) {
+        invalid.push({ sheetIndex: sheetMapping.sheetIndex, field: key, path });
+      }
+    }
+  }
+
+  if (invalid.length > 0) {
+    const summary = invalid.map((x) => `sheet ${x.sheetIndex}.${x.field}="${x.path}"`).join(", ");
+    throw new ValidationError(
+      `Field mapping references paths not present in the detected schema: ${summary}. ` +
+        `Re-upload the file or update the mapping to a detected column.`,
+      { invalid }
+    );
+  }
+};
+
 /**
  * Process all sheet mappings and return dataset mapping entries.
  * Bug 28 fix: process sequentially instead of in parallel to prevent race conditions
  * when multiple sheets target the same dataset.
+ *
+ * Validates user-supplied field-mapping paths against the preview's detected
+ * schema before any dataset is persisted — invalid paths would otherwise be
+ * saved and cause opaque downstream job failures.
  */
 /* oxlint-disable-next-line max-params -- Transform support requires an additional parameter */
 export const processSheetMappings = async (
@@ -217,8 +326,17 @@ export const processSheetMappings = async (
   catalogId: number,
   deduplicationStrategy: ConfigureIngestRequest["deduplicationStrategy"],
   geocodingEnabled: boolean,
-  transformsBySheet?: Array<{ sheetIndex: number; transforms: IngestTransform[] }>
+  transformsBySheet?: Array<{ sheetIndex: number; transforms: IngestTransform[] }>,
+  previewSheets?: SheetInfo[]
 ): Promise<{ datasetIdMap: Map<number, number>; datasetMappingEntries: DatasetMappingEntry[] }> => {
+  // Validate field-mapping paths against the detected schema BEFORE persisting
+  // any datasets. Callers that skip passing previewSheets (legacy callers or
+  // tests) fall through without validation — this preserves backwards
+  // compatibility while opting the main route into validation.
+  if (previewSheets) {
+    validateFieldMappingPaths(previewSheets, sheetMappings, fieldMappings, transformsBySheet);
+  }
+
   const datasetIdMap = new Map<number, number>();
   const datasetMappingEntries: DatasetMappingEntry[] = [];
 

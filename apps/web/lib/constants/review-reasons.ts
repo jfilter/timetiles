@@ -16,4 +16,5 @@ export const REVIEW_REASONS = {
   HIGH_EMPTY_ROW_RATE: "high-empty-rows",
   NO_TIMESTAMP_DETECTED: "no-timestamp",
   NO_LOCATION_DETECTED: "no-location",
+  FILE_TOO_LARGE: "file-too-large",
 } as const;

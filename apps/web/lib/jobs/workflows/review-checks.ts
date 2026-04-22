@@ -13,31 +13,63 @@
  * @category Jobs
  */
 import type { Payload } from "payload";
+import { z } from "zod";
 
 import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+// Import from client-safe constants (avoids pulling server deps into client bundle)
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-/** Per-source review check overrides (stored in processingOptions.reviewChecks). */
-export interface ReviewChecksConfig {
-  skipTimestampCheck?: boolean;
-  skipLocationCheck?: boolean;
-  skipEmptyRowCheck?: boolean;
-  skipRowErrorCheck?: boolean;
-  skipDuplicateRateCheck?: boolean;
-  skipGeocodingCheck?: boolean;
-  emptyRowThreshold?: number | null;
-  rowErrorThreshold?: number | null;
-  duplicateRateThreshold?: number | null;
-  geocodingFailureThreshold?: number | null;
-}
-
-// Import + re-export from client-safe constants (avoids pulling server deps into client bundle)
-import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
-
 export { REVIEW_REASONS };
+
+/**
+ * Zod schema for per-source review check overrides.
+ *
+ * User-supplied config from `ingestFile.processingOptions.reviewChecks` is
+ * untyped JSON; parse it through this schema so malformed shapes fall back to
+ * defaults with a logged warning instead of silently type-punning into the
+ * wrong field.
+ */
+export const ReviewChecksConfigSchema = z
+  .object({
+    skipTimestampCheck: z.boolean().optional(),
+    skipLocationCheck: z.boolean().optional(),
+    skipEmptyRowCheck: z.boolean().optional(),
+    skipRowErrorCheck: z.boolean().optional(),
+    skipDuplicateRateCheck: z.boolean().optional(),
+    skipGeocodingCheck: z.boolean().optional(),
+    emptyRowThreshold: z.number().min(0).max(1).nullable().optional(),
+    rowErrorThreshold: z.number().min(0).max(1).nullable().optional(),
+    duplicateRateThreshold: z.number().min(0).max(1).nullable().optional(),
+    geocodingFailureThreshold: z.number().min(0).max(1).nullable().optional(),
+  })
+  .strict();
+
+/** Per-source review check overrides (stored in processingOptions.reviewChecks). */
+export type ReviewChecksConfig = z.infer<typeof ReviewChecksConfigSchema>;
+
+/**
+ * Safely parse raw reviewChecks JSON from processingOptions.
+ *
+ * Returns `{ config, error }` where `error` is a user-presentable message if
+ * parsing failed (for storage on `job.errors`). Unknown input shapes produce a
+ * single warning + undefined config — defaults apply downstream.
+ */
+export const parseReviewChecksConfig = (raw: unknown): { config: ReviewChecksConfig | undefined; error?: string } => {
+  if (raw == null) return { config: undefined };
+
+  const result = ReviewChecksConfigSchema.safeParse(raw);
+  if (result.success) return { config: result.data };
+
+  const message = `Invalid reviewChecks override: ${result.error.issues
+    .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
+    .join("; ")}`;
+  logger.warn({ issue: result.error.issues }, "Invalid reviewChecks override — falling back to defaults");
+  return { config: undefined, error: message };
+};
 
 /** Resume point constants for the ingest-process workflow. */
 const RESUME_DETECT_SCHEMA = "detect-schema";
@@ -54,6 +86,10 @@ export const REVIEW_RESUME_POINTS: Record<string, string> = {
   [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: RESUME_DETECT_SCHEMA,
   [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: RESUME_DETECT_SCHEMA,
   [REVIEW_REASONS.NO_LOCATION_DETECTED]: RESUME_DETECT_SCHEMA,
+  // FILE_TOO_LARGE is a hard limit — there is no meaningful resume point.
+  // Map to detect-schema so the workflow has a valid target; the user is
+  // expected to split the file and retry rather than resume in place.
+  [REVIEW_REASONS.FILE_TOO_LARGE]: RESUME_DETECT_SCHEMA,
 };
 
 /** Get the global review thresholds from app config. */

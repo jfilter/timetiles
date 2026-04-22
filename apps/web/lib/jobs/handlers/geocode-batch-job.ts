@@ -23,6 +23,7 @@ import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { hashForLog } from "@/lib/security/hash";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import type { GeocodingBias } from "@/lib/services/geocoding/types";
@@ -34,8 +35,12 @@ import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
-import type { ReviewChecksConfig } from "../workflows/review-checks";
-import { REVIEW_REASONS, setNeedsReview, shouldReviewGeocodingPartial } from "../workflows/review-checks";
+import {
+  parseReviewChecksConfig,
+  REVIEW_REASONS,
+  setNeedsReview,
+  shouldReviewGeocodingPartial,
+} from "../workflows/review-checks";
 
 /** Returns true and increments skippedWithCoords if the row has valid source coordinates. */
 const rowHasValidCoords = (
@@ -163,7 +168,13 @@ const geocodeUniqueLocations = async (
     for (const [address, resultOrError] of batchResult.results) {
       if (resultOrError instanceof Error) {
         const errorMessage = resultOrError.message;
-        logger.warn("Geocoding failed", { location: address, error: errorMessage });
+        // Log a correlation hash + length instead of the raw address — addresses
+        // are often PII and end up in aggregated log storage otherwise.
+        logger.warn("Geocoding failed", {
+          locationHash: hashForLog(address),
+          locationLength: address.length,
+          error: errorMessage,
+        });
         failures.push({ location: address, error: errorMessage });
         failureCount++;
       } else {
@@ -346,9 +357,9 @@ const checkGeocodingReview = async (
   successCount: number,
   failureCount: number
 ): Promise<{ needsReview: boolean }> => {
-  const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-    | ReviewChecksConfig
-    | undefined;
+  // Zod-validated; malformed configs fall back to defaults.
+  const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
+  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks);
   const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount, reviewChecks);
   if (geoCheck.needsReview) {
     await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {

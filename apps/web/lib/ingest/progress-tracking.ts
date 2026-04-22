@@ -244,13 +244,20 @@ export class ProgressTrackingService {
       }
     }
 
-    // Calculate processing rate
+    // Calculate processing rate. Raw instantaneous rate (rowsProcessed /
+    // elapsed) is very jumpy across non-uniform stages (e.g. geocoding with
+    // API throttling) — apply an EMA against the previous stored value so
+    // the ETA the frontend shows doesn't spike every batch.
+    const EMA_ALPHA = 0.2;
     const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
-    const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
+    const rawRate = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
+    const previousRate = stageData.rowsPerSecond ?? null;
+    const rowsPerSecond =
+      rawRate !== null && previousRate !== null ? EMA_ALPHA * rawRate + (1 - EMA_ALPHA) * previousRate : rawRate;
 
-    // Estimate time remaining
     const rowsRemaining = stageData.rowsTotal - rowsProcessed;
-    const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
+    const estimatedSecondsRemaining =
+      rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
     stages[stage] = { ...stageData, rowsProcessed, currentBatchRows, rowsPerSecond, estimatedSecondsRemaining };
 

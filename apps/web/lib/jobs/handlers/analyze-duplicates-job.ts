@@ -14,7 +14,13 @@
 import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
-import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import {
+  BATCH_SIZES,
+  COLLECTION_NAMES,
+  JOB_TYPES,
+  MAX_UNIQUE_ROWS_PER_SHEET,
+  PROCESSING_STAGE,
+} from "@/lib/constants/ingest-constants";
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { applyTransforms } from "@/lib/ingest/transforms";
@@ -28,13 +34,28 @@ import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources } from "../utils/resource-loading";
 import { buildTransformsForTargetPath, buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
-import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
   checkQuotaForSheet,
+  parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewHighDuplicates,
 } from "../workflows/review-checks";
+
+/**
+ * Error class carrying a review reason to surface cleanly via setNeedsReview.
+ * Distinct from generic errors so the outer handler can branch on it.
+ */
+class AnalyzeDuplicatesReviewError extends Error {
+  constructor(
+    message: string,
+    readonly reason: string,
+    readonly details: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = "AnalyzeDuplicatesReviewError";
+  }
+}
 
 interface DuplicateAnalysisResult {
   internalDuplicates: Array<{ rowNumber: number; uniqueId: string; firstOccurrence?: number; count?: number }>;
@@ -119,6 +140,17 @@ const analyzeInternalDuplicates = async (
 
     totalRows += rows.length;
     batchNumber++;
+
+    // Heap guard: a tall-narrow CSV could keep producing unique IDs until the
+    // map exhausts memory. Surface a review — the user is expected to split
+    // the file and retry rather than silently OOM the worker.
+    if (uniqueIdMap.size > MAX_UNIQUE_ROWS_PER_SHEET) {
+      throw new AnalyzeDuplicatesReviewError(
+        `File has more than ${MAX_UNIQUE_ROWS_PER_SHEET} unique rows; duplicate analysis aborted`,
+        REVIEW_REASONS.FILE_TOO_LARGE,
+        { uniqueRowsSeen: uniqueIdMap.size, maxUniqueRows: MAX_UNIQUE_ROWS_PER_SHEET, rowsScanned: totalRows }
+      );
+    }
 
     // Update progress after each batch
     await ProgressTrackingService.updateStageProgress(
@@ -235,6 +267,25 @@ const updateJobWithDuplicates = async (
   });
 };
 
+/**
+ * Append a single config-error row to `job.errors` using `row: -1` as the
+ * sentinel for "not tied to a specific row". Best-effort — a failure to persist
+ * the note should not block the analysis pipeline.
+ */
+const recordConfigError = async (payload: Payload, ingestJobId: string | number, message: string): Promise<void> => {
+  try {
+    const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+    const existingErrors = job?.errors ?? [];
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: ingestJobId,
+      data: { errors: [...existingErrors, { row: -1, error: message }] },
+    });
+  } catch (error) {
+    logError(error, "Failed to record config error on ingest job", { ingestJobId });
+  }
+};
+
 /** Initialize progress tracking if stages don't exist yet. */
 const initializeProgressIfNeeded = async (
   payload: Payload,
@@ -326,10 +377,13 @@ export const analyzeDuplicatesJob = {
         externalDuplicates: results.externalDuplicates.length,
       });
 
-      // Load per-source review check overrides
-      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-        | ReviewChecksConfig
-        | undefined;
+      // Load per-source review check overrides (Zod-validated; malformed configs
+      // fall back to defaults and surface a row in `job.errors` so the UI can show it).
+      const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
+      const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
+      if (reviewChecksError) {
+        await recordConfigError(payload, ingestJobId, reviewChecksError);
+      }
 
       // Review check: high duplicate rate (>80%)
       const dupCheck = shouldReviewHighDuplicates(results.totalRows, results.uniqueRows, reviewChecks);
@@ -374,6 +428,19 @@ export const analyzeDuplicatesJob = {
         },
       };
     } catch (error) {
+      // Review errors are expected user-facing outcomes (e.g. file exceeds the
+      // unique-row cap). Surface via setNeedsReview rather than retrying —
+      // this produces a clean UI message instead of a 500.
+      if (error instanceof AnalyzeDuplicatesReviewError) {
+        logger.warn("Duplicate analysis stopped for review", {
+          ingestJobId,
+          reason: error.reason,
+          details: error.details,
+        });
+        await setNeedsReview(payload, ingestJobId, error.reason, error.details);
+        return { output: { needsReview: true, reason: error.reason } };
+      }
+
       logError(error, "Duplicate analysis failed", { ingestJobId });
 
       // Clean up sidecar CSV files on error (Excel → CSV conversions)

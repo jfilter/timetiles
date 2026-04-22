@@ -35,8 +35,8 @@ import {
   setJobStage,
 } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
-import type { ReviewChecksConfig } from "../workflows/review-checks";
 import {
+  parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewHighEmptyRows,
@@ -92,14 +92,15 @@ const runSchemaReviewChecks = async (
   fieldMappings: Record<string, string | null | undefined> | null,
   lastSchemaBuilder: ProgressiveSchemaBuilder | null
 ): Promise<{ needsReview: true } | null> => {
-  // Load per-source review check overrides from the ingest file
+  // Load per-source review check overrides from the ingest file.
+  // Zod-validated; malformed configs fall back to defaults rather than
+  // silently type-punning into the wrong field.
   const ingestFileId = typeof job.ingestFile === "object" ? job.ingestFile?.id : job.ingestFile;
   const ingestFile = ingestFileId
     ? await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId })
     : null;
-  const reviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-    | ReviewChecksConfig
-    | undefined;
+  const rawReviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks;
+  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks);
 
   // Review check: high empty row rate
   const emptyCheck = shouldReviewHighEmptyRows(totalRowsProcessed, emptyRowCount, reviewChecks);

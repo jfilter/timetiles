@@ -23,8 +23,12 @@ import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { getIngestFilePath } from "../utils/upload-path";
-import type { ReviewChecksConfig } from "../workflows/review-checks";
-import { REVIEW_REASONS, setNeedsReview, shouldReviewHighRowErrors } from "../workflows/review-checks";
+import {
+  parseReviewChecksConfig,
+  REVIEW_REASONS,
+  setNeedsReview,
+  shouldReviewHighRowErrors,
+} from "../workflows/review-checks";
 import {
   checkEventQuotaBeforeProcessing,
   cleanupPriorAttempt,
@@ -83,10 +87,6 @@ export const createEventsBatchJob = {
       filePath = getIngestFilePath(ingestFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
 
-      // Compute denormalized access fields once (replaces per-row hook logic)
-      const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
-      const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
-
       // Clean slate: delete events from any prior failed attempt of this job.
       await cleanupPriorAttempt(payload, ingestJobId, logger);
 
@@ -112,6 +112,12 @@ export const createEventsBatchJob = {
         sheetIndex: job.sheetIndex ?? undefined,
         batchSize: BATCH_SIZE,
       })) {
+        // Re-fetch denormalized access fields per batch so an ownership /
+        // visibility change mid-import propagates to newly-written rows
+        // within one batch's latency, not on the next import.
+        const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
+        const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
+
         const batchCtx: ProcessBatchContext = { payload, job, dataset, ingestJobId, accessFields, logger };
         const { eventsCreated, eventsSkipped, errors } = await processEventBatch(batchCtx, rows, totalRowsProcessed);
 
@@ -157,10 +163,14 @@ export const createEventsBatchJob = {
       // Mark job completed (saves results, tracks quota, cleans up files)
       await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
 
-      // Review check: high row error rate — pause after completion so results are saved
-      const reviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks as
-        | ReviewChecksConfig
-        | undefined;
+      // Review check: high row error rate — pause after completion so results are saved.
+      // Zod-validated; malformed config falls back to defaults (rowErrorThreshold, etc.).
+      const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
+      const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
+      if (reviewChecksError) {
+        // Surface as a per-job error so the UI can show it.
+        await updateJobErrors(payload, ingestJobId, allErrors.length, [{ row: -1, error: reviewChecksError }]);
+      }
       const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
       const needsReview = errorCheck.needsReview;
       if (needsReview) {

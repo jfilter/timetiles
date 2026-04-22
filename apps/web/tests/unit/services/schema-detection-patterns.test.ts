@@ -182,11 +182,13 @@ describe("detectGeoFields", () => {
     expect(result?.longitude?.path).toBe("longitude");
   });
 
-  it("detects combined coordinate field", () => {
+  it("detects combined coordinate field with unambiguous lat,lng samples", () => {
+    // Samples where the second component is outside [-90, 90] (|lng| > 90),
+    // forcing the detector to conclude lat,lng ordering.
     const fieldStats: Record<string, FieldStatistics> = {
       coordinates: createFieldStats({
         typeDistribution: { string: 100 },
-        uniqueSamples: ["52.52,13.405", "48.8566,2.3522", "40.7128,-74.006"],
+        uniqueSamples: ["52.52,-179.5", "48.85,175.3", "-33.87,151.2"],
       }),
     };
 
@@ -196,6 +198,44 @@ describe("detectGeoFields", () => {
     expect(result?.type).toBe("combined");
     expect(result?.combined?.path).toBe("coordinates");
     expect(result?.combined?.format).toBe("lat,lng");
+    expect(result?.requiresUserChoice).toBeFalsy();
+  });
+
+  it("marks combined coordinate field as ambiguous when samples fit either order", () => {
+    // Every sample has |first| <= 90 AND |second| <= 90, so the data could
+    // be lat,lng (e.g. Berlin 52.52,13.4) or lng,lat (e.g. 52.52°E,13.4°N in
+    // Siberia). Silently picking was the M3 bug; now we flag it.
+    const fieldStats: Record<string, FieldStatistics> = {
+      coordinates: createFieldStats({
+        typeDistribution: { string: 100 },
+        uniqueSamples: ["52.52,13.405", "48.8566,2.3522", "45.0,10.0"],
+      }),
+    };
+
+    const result = detectGeoFields(fieldStats);
+
+    expect(result).not.toBeNull();
+    expect(result?.type).toBe("combined");
+    expect(result?.combined?.format).toBe("ambiguous");
+    expect(result?.requiresUserChoice).toBe(true);
+    // Ambiguous detections must report low confidence so UI flags them.
+    expect(result?.confidence).toBeLessThanOrEqual(0.4);
+  });
+
+  it("detects combined coordinate field with unambiguous lng,lat samples", () => {
+    // Samples where the FIRST component is outside [-90, 90] force lng,lat.
+    const fieldStats: Record<string, FieldStatistics> = {
+      coordinates: createFieldStats({
+        typeDistribution: { string: 100 },
+        uniqueSamples: ["-179.5,52.52", "175.3,48.85", "151.2,-33.87"],
+      }),
+    };
+
+    const result = detectGeoFields(fieldStats);
+
+    expect(result).not.toBeNull();
+    expect(result?.combined?.format).toBe("lng,lat");
+    expect(result?.requiresUserChoice).toBeFalsy();
   });
 
   it("returns null for invalid coordinate values", () => {

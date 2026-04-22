@@ -7,6 +7,7 @@
  * @module
  * @category Jobs
  */
+import { MAX_EVENT_PAYLOAD_BYTES } from "@/lib/constants/ingest-constants";
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import type { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
@@ -201,7 +202,67 @@ const classifyField = (stats: Record<string, unknown>): string | null => {
 };
 
 /**
+ * Measure the combined JSON size of a row's source + transformed payloads.
+ *
+ * Uses `Buffer.byteLength` for UTF-8 byte accuracy (not JS string length,
+ * which counts UTF-16 code units). Returns a worst-case upper bound on what
+ * Postgres will actually store for this event's JSONB columns.
+ *
+ * Exported for testability.
+ */
+export const measureEventPayloadBytes = (row: Record<string, unknown>, sourceRow: Record<string, unknown>): number => {
+  const rowJson = JSON.stringify(row);
+  // When source === transformed the caller will store only one copy, so
+  // charge just the single payload. Cheap reference check avoids
+  // double-stringify in the common path.
+  if (row === sourceRow) {
+    return Buffer.byteLength(rowJson, "utf8");
+  }
+  const sourceJson = JSON.stringify(sourceRow);
+  return Buffer.byteLength(rowJson, "utf8") + Buffer.byteLength(sourceJson, "utf8");
+};
+
+/**
+ * Shallow structural equality for row-shaped records.
+ *
+ * Used to drop redundant `sourceData` when no transform actually changed the
+ * row — CSV rows are flat `Record<string, string | number>` so reference +
+ * string-compare is sufficient and much cheaper than deep-equal.
+ */
+const rowsHaveSameShape = (a: Record<string, unknown>, b: Record<string, unknown>): boolean => {
+  if (a === b) return true;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+};
+
+/**
+ * Sentinel error thrown by createEventData when the combined sourceData +
+ * transformedData payload exceeds MAX_EVENT_PAYLOAD_BYTES.
+ *
+ * The batch processor catches this, records a per-row error, and skips the
+ * row — importing the rest of the batch continues unaffected.
+ */
+export class EventPayloadTooLargeError extends Error {
+  constructor(
+    readonly bytes: number,
+    readonly limit: number
+  ) {
+    super(`Event payload of ${bytes} bytes exceeds the ${limit}-byte per-event cap`);
+    this.name = "EventPayloadTooLargeError";
+  }
+}
+
+/**
  * Create event data structure from a row of imported data.
+ *
+ * Throws {@link EventPayloadTooLargeError} when the combined source +
+ * transformed payload exceeds {@link MAX_EVENT_PAYLOAD_BYTES}. The caller
+ * should record the error and continue with the next row.
  */
 export const createEventData = (
   row: Record<string, unknown>,
@@ -239,10 +300,23 @@ export const createEventData = (
   const { location, coordinateSource } = extractCoordinates(row, fieldMappings, geocodingResults);
   const locationName = extractLocationName(row, fieldMappings.locationNamePath);
 
+  // Drop redundant sourceData when no transform actually changed the row —
+  // avoids storing the same blob twice in JSONB, which otherwise doubles
+  // TOAST pressure for wide rows.
+  const storeSourceData = !rowsHaveSameShape(row, sourceRow);
+  const effectiveSource = storeSourceData ? sourceRow : undefined;
+
+  // Per-row TOAST guard: oversize rows are rejected before they hit the
+  // bulk writer so a single wide row doesn't fail the whole batch.
+  const payloadBytes = storeSourceData ? measureEventPayloadBytes(row, sourceRow) : measureEventPayloadBytes(row, row);
+  if (payloadBytes > MAX_EVENT_PAYLOAD_BYTES) {
+    throw new EventPayloadTooLargeError(payloadBytes, MAX_EVENT_PAYLOAD_BYTES);
+  }
+
   return {
     dataset: dataset.id,
     ingestJob: ingestJobNum ?? undefined,
-    sourceData: sourceRow,
+    sourceData: effectiveSource,
     transformedData: row,
     uniqueId,
     eventTimestamp: extractTimestamp(row, fieldMappings.timestampPath)?.toISOString() ?? null,

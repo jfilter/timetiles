@@ -65,10 +65,12 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
     HIGH_EMPTY_ROW_RATE: "high-empty-rows",
     NO_TIMESTAMP_DETECTED: "no-timestamp",
     NO_LOCATION_DETECTED: "no-location",
+    FILE_TOO_LARGE: "file-too-large",
   },
   shouldReviewHighDuplicates: vi.fn().mockReturnValue({ needsReview: false }),
   checkQuotaForSheet: vi.fn().mockResolvedValue({ allowed: true }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
+  parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
 }));
 
 /** Helper to create a mock async iterable from arrays of batches. */

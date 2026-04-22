@@ -104,10 +104,17 @@ export interface GeoFieldMapping {
   latitude?: FieldMapping;
   /** For separate lat/lng columns */
   longitude?: FieldMapping;
-  /** For combined coordinate field (e.g., "lat,lng" or GeoJSON) */
-  combined?: { path: string; format: string };
+  /** For combined coordinate field (e.g., "lat,lng" or GeoJSON).
+   *  `format === "ambiguous"` means the detector could not determine order
+   *  from the samples (typical for mid-latitude clusters where both
+   *  components sit inside [-90, 90]). The wizard must ask the user. */
+  combined?: { path: string; format: "lat,lng" | "lng,lat" | "ambiguous" };
   /** Address/location field for geocoding (when coordinates not available) */
   locationField?: FieldMapping;
+  /** True when the detection is ambiguous enough that the user must confirm
+   *  before the import proceeds (e.g. combined lat/lng order not decidable
+   *  from sample values). Consumers should surface this in the preview UI. */
+  requiresUserChoice?: boolean;
 }
 
 /**

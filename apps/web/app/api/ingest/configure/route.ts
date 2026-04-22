@@ -8,6 +8,8 @@
  * @module
  * @category API Routes
  */
+import path from "node:path";
+
 import { apiRoute, ForbiddenError, ValidationError } from "@/lib/api";
 import {
   createIngestFileRecord,
@@ -18,6 +20,7 @@ import {
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 
+import { parseFileSheets } from "../preview-schema/helpers";
 import {
   cleanupPreview,
   ConfigureImportBodySchema,
@@ -37,6 +40,7 @@ const logger = createLogger("api-wizard-configure-import");
 export const POST = apiRoute({
   auth: "required",
   site: "default",
+  rateLimit: { configName: "API_GENERAL", keyPrefix: (u) => `configure:${u!.id}` },
   body: ConfigureImportBodySchema,
   handler: async ({ body, req, user, payload }) => {
     logger.debug(
@@ -67,6 +71,18 @@ export const POST = apiRoute({
       throw new ValidationError("New catalog name is required");
     }
 
+    // Parse preview sheets so processSheetMappings can validate that every
+    // user-supplied field path exists in the detected schema. Catch parse
+    // failures and translate them into a user-friendly ValidationError.
+    const fileExtension = path.extname(previewMeta.filePath).toLowerCase();
+    let previewSheets;
+    try {
+      previewSheets = await parseFileSheets(previewMeta.filePath, fileExtension);
+    } catch (parseError) {
+      const message = parseError instanceof Error ? parseError.message : "Unknown error";
+      throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);
+    }
+
     // Process sheet mappings and create/update datasets
     const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
       payload,
@@ -76,7 +92,8 @@ export const POST = apiRoute({
       finalCatalogId,
       body.deduplicationStrategy,
       body.geocodingEnabled,
-      body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined
+      body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined,
+      previewSheets
     );
 
     // Create the import file record
