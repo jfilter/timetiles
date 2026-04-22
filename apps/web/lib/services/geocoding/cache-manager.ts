@@ -17,6 +17,7 @@ import { inArray, lt, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
+import { hashForLog } from "@/lib/security/hash";
 import { location_cache } from "@/payload-generated-schema";
 import type { LocationCache } from "@/payload-types";
 
@@ -88,7 +89,7 @@ export class CacheManager {
 
       return this.convertCachedResult(cached);
     } catch (error) {
-      logger.warn("Failed to retrieve cached result", { error, address: normalizedAddress });
+      logger.warn("Failed to retrieve cached result", { error, addressHash: hashForLog(normalizedAddress) });
       return null;
     }
   }
@@ -179,9 +180,12 @@ export class CacheManager {
         },
       });
 
-      logger.debug("Cached geocoding result", { address: normalizedAddress, provider: result.provider });
+      logger.debug("Cached geocoding result", {
+        addressHash: hashForLog(normalizedAddress),
+        provider: result.provider,
+      });
     } catch (error) {
-      logger.warn("Failed to cache geocoding result", { error, address: normalizedAddress });
+      logger.warn("Failed to cache geocoding result", { error, addressHash: hashForLog(normalizedAddress) });
     }
   }
 

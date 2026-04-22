@@ -61,6 +61,22 @@ export class RateLimitService {
     this.backend = selection.backend;
     this.store = selection.store;
 
+    // Fail loud if the in-memory backend is paired with a multi-worker
+    // deployment: per-process counters would silently give each worker its
+    // own budget, effectively multiplying rate limits by the cluster size.
+    // Better to crash at boot than to degrade the security control silently.
+    const env = getEnv();
+    if (this.backend === "memory" && env.NODE_ENV === "production") {
+      const workerHint = Math.max(env.WEB_CONCURRENCY, env.CLUSTER_WORKERS);
+      if (workerHint > 1) {
+        throw new Error(
+          `Refusing to start: RATE_LIMIT_BACKEND=memory with ${workerHint} workers. ` +
+            "Per-process counters cannot enforce shared limits. " +
+            "Set RATE_LIMIT_BACKEND=postgresql, or run a single worker."
+        );
+      }
+    }
+
     // The in-memory backend needs process-local cleanup to avoid unbounded Map
     // growth. PostgreSQL cleanup runs as a maintenance job instead.
     if (this.backend === "memory" && getEnv().NODE_ENV !== "test" && this.store.cleanup) {

@@ -58,6 +58,10 @@ const baseSchema = {
   // Kept as a string so unknown values can fall back to memory at runtime
   // with a prominent warning instead of failing startup validation.
   RATE_LIMIT_BACKEND: z.string().default("memory"),
+  // Worker-count hints used only to fail-loud when the in-memory rate limit
+  // backend is paired with a multi-worker deployment. Optional; default 1.
+  WEB_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  CLUSTER_WORKERS: z.coerce.number().int().positive().default(1),
 
   // === Security ===
   // Enables resolved-IP SSRF checks outside production. Production always

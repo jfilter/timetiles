@@ -16,6 +16,7 @@
 import type { Entry } from "node-geocoder";
 
 import { createLogger, logError, logPerformance } from "@/lib/logger";
+import { hashForLog } from "@/lib/security/hash";
 
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
@@ -43,7 +44,7 @@ export class GeocodingOperations {
 
   async geocode(address: string): Promise<GeocodingResult> {
     const startTime = Date.now();
-    logger.debug("Starting geocoding request", { address });
+    logger.debug("Starting geocoding request", { addressHash: hashForLog(address) });
 
     // Check cache first
     const cachedResult = await this.checkCache(address, startTime);
@@ -151,8 +152,9 @@ export class GeocodingOperations {
 
     const cached = await this.cacheManager.getCachedResult(address);
     if (cached != null) {
-      logger.debug("Cache hit for address", { address });
-      logPerformance("Geocoding (cache hit)", Date.now() - startTime, { address, provider: cached.provider });
+      const addressHash = hashForLog(address);
+      logger.debug("Cache hit for address", { addressHash });
+      logPerformance("Geocoding (cache hit)", Date.now() - startTime, { addressHash, provider: cached.provider });
       return cached;
     }
     return null;
@@ -179,7 +181,10 @@ export class GeocodingOperations {
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn(`Geocoding failed with provider ${provider.name}`, { error: errorMessage, address });
+        logger.warn(`Geocoding failed with provider ${provider.name}`, {
+          error: errorMessage,
+          addressHash: hashForLog(address),
+        });
       }
 
       if (!this.shouldContinueWithFallback()) {
@@ -312,7 +317,9 @@ export class GeocodingOperations {
   ): Promise<Record<string, unknown>> {
     const results: Record<string, unknown> = {};
 
-    logger.info("Testing geocoding configuration", { address: testAddress });
+    // Admin-only endpoint — still hash the address to match the rest of the
+    // service. Admins using the default fixture get a stable correlation hash.
+    logger.info("Testing geocoding configuration", { addressHash: hashForLog(testAddress) });
 
     for (const provider of this.providerManager.getProviders().filter((p) => Boolean(p.enabled))) {
       try {
