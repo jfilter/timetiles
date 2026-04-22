@@ -29,6 +29,9 @@ export { rateLimitCleanupJob } from "./handlers/rate-limit-cleanup-job";
 // Cache management job handlers
 export { cacheCleanupJob } from "./handlers/cache-cleanup-job";
 
+// Preview cleanup job handler
+export { previewCleanupJob } from "./handlers/preview-cleanup-job";
+
 // Schema maintenance job handlers
 export { schemaMaintenanceJob } from "./handlers/schema-maintenance-job";
 

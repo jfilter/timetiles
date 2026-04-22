@@ -16,6 +16,7 @@ import { z } from "zod";
 import { apiRoute, ForbiddenError } from "@/lib/api";
 import { getEnv } from "@/lib/config/env";
 import { createLogger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { isE2E } from "@/lib/utils/is-e2e";
 
 const logger = createLogger("api-admin-jobs-run");
@@ -47,13 +48,21 @@ const mapJobStages = (docs: Array<{ id: number; stage?: string | null }>) =>
 export const POST = apiRoute({
   auth: "admin",
   body: z.object({ limit: z.number().int().positive().optional(), iterations: z.number().int().positive().optional() }),
-  handler: async ({ payload, body }) => {
+  handler: async ({ payload, body, user }) => {
     if (getEnv().NODE_ENV === "production" && !isE2E()) {
       throw new ForbiddenError("Not available in production");
     }
 
     const limit = body.limit ?? 100;
     const iterations = body.iterations ?? 10;
+
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.JOBS_RUN_TRIGGERED,
+      userId: user.id,
+      userEmail: user.email,
+      performedBy: user.id,
+      details: { limit, iterations },
+    });
 
     const initial = await fetchJobStats(payload);
     logger.info(

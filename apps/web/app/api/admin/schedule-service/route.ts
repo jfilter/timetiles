@@ -9,6 +9,7 @@
 
 import { apiRoute } from "@/lib/api";
 import { createRequestLogger } from "@/lib/logger";
+import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 
 const logger = createRequestLogger("schedule-service-api");
 
@@ -48,10 +49,18 @@ export const GET = apiRoute({
 export const POST = apiRoute({
   auth: "admin",
   rateLimit: { type: "API_GENERAL" },
-  handler: async ({ payload }) => {
+  handler: async ({ payload, user }) => {
     const job = await payload.jobs.queue({ task: "schedule-manager", input: {} });
 
-    logger.info({ jobId: job.id }, "Schedule manager job manually queued");
+    logger.info({ jobId: job.id, adminUserId: user.id }, "Schedule manager job manually queued");
+
+    await auditLog(payload, {
+      action: AUDIT_ACTIONS.SCHEDULE_MANAGER_TRIGGERED,
+      userId: user.id,
+      userEmail: user.email,
+      performedBy: user.id,
+      details: { jobId: String(job.id) },
+    });
 
     return { message: "Schedule manager job queued", jobId: job.id };
   },
