@@ -13,7 +13,6 @@
     "lint": "oxlint --config ../../.oxlintrc.json . && eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache",
     "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write .",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
-    "typecheck:fast": "tsgo --noEmit",
     "check:ai": "tsx scripts/check-summary.ts",
     "payload": "payload",
     "payload:generate": "tsx scripts/generate-payload.ts",

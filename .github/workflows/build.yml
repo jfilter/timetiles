@@ -33,9 +33,9 @@ jobs:
         timeout-minutes: 5
         run: pnpm lint --filter=!docs
 
-      - name: Type check (tsc full)
+      - name: Type check (tsgo)
         timeout-minutes: 5
-        run: pnpm typecheck:full || (cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ 2>/dev/null | head -1) 2>/dev/null; exit 1)
+        run: pnpm typecheck || (cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ 2>/dev/null | head -1) 2>/dev/null; exit 1)
 
       - name: Lint infrastructure
         timeout-minutes: 2

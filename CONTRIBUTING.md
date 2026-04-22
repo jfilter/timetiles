@@ -7,6 +7,7 @@ Thank you for your interest in contributing! This guide covers everything you ne
 ```bash
 git clone https://github.com/jfilter/timetiles.git
 cd timetiles
+mise install     # if you use mise; installs the repo-pinned Node/pnpm versions
 make init        # setup + database + seed + dev server
 ```
 

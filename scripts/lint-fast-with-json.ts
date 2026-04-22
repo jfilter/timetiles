@@ -78,36 +78,53 @@ const historyDir = path.join(process.cwd(), ".lint-results");
 fs.mkdirSync(historyDir, { recursive: true });
 const resultsPath = path.join(historyDir, `${createTimestamp()}.json`);
 
+const writeResults = (results: ESLintFileResult[]): number => {
+  fs.writeFileSync(resultsPath, JSON.stringify(results, null, 2));
+  pruneOldResults(historyDir);
+
+  return results.reduce((sum, result) => sum + result.errorCount, 0);
+};
+
+const createConfigErrorResults = (message: string): ESLintFileResult[] => [
+  {
+    filePath: configPath,
+    errorCount: 1,
+    warningCount: 0,
+    messages: [
+      {
+        ruleId: "oxlint/config-error",
+        severity: 2,
+        message: message.trim() || "oxlint failed before producing JSON output.",
+        line: 1,
+        column: 1,
+      },
+    ],
+  },
+];
+
+let exitCode = 0;
+
 try {
   const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, { encoding: "utf-8" });
-
   const oxlintResult: OxlintOutput = JSON.parse(output);
   const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
-
-  fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
-
-  const totalErrors = eslintResults.reduce((sum, r) => sum + r.errorCount, 0);
-  if (totalErrors > 0) {
-    process.exit(1);
-  }
+  const totalErrors = writeResults(eslintResults);
+  exitCode = totalErrors > 0 ? 1 : 0;
 } catch (error) {
   const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer };
   const stdout = errorWithOutput.stdout?.toString() ?? "";
+  const stderr = errorWithOutput.stderr?.toString() ?? "";
+  const commandOutput = [stdout, stderr].filter(Boolean).join("\n").trim();
 
   try {
-    const oxlintResult: OxlintOutput = JSON.parse(stdout);
+    const oxlintResult: OxlintOutput = JSON.parse(stdout || commandOutput);
     const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
-
-    fs.writeFileSync(resultsPath, JSON.stringify(eslintResults, null, 2));
-
-    const totalErrors = eslintResults.reduce((sum, r) => sum + r.errorCount, 0);
-    if (totalErrors > 0) {
-      process.exit(1);
-    }
+    const totalErrors = writeResults(eslintResults);
+    exitCode = totalErrors > 0 ? 1 : 0;
   } catch {
-    fs.writeFileSync(resultsPath, JSON.stringify([], null, 2));
-    process.exit(1);
+    writeResults(createConfigErrorResults(commandOutput));
+    exitCode = 1;
   }
 }
 
-pruneOldResults(historyDir);
+process.exit(exitCode);

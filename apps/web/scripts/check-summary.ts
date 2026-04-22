@@ -210,8 +210,8 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
   const resultsPath = path.join(tcHistoryDir, `${tcTs}.json`);
 
   try {
-    // Run tsc with more verbose output
-    execSync("pnpm exec tsc --noEmit --pretty false", { stdio: "pipe" });
+    // Run tsgo with machine-readable output and parse the diagnostics below.
+    execSync("pnpm exec tsgo --noEmit --pretty false", { stdio: "pipe" });
 
     // No errors, save empty results
     const results = { success: true, errorCount: 0, warningCount: 0, errors: [], timestamp: new Date().toISOString() };

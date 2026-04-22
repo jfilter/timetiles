@@ -311,7 +311,6 @@
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch",
-    "typecheck:fast": "tsx ../../scripts/typecheck-with-json.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "lint": "mkdir -p .lint-results && eslint . --cache --format json --output-file .lint-results/latest.json; eslint . --cache",
     "format": "eslint . --fix --quiet --cache && oxfmt --write .",

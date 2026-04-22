@@ -24,6 +24,16 @@ interface TypeCheckResult {
   errorCount: number;
 }
 
+interface ResultFileInfo {
+  path: string | null;
+  mtimeMs: number;
+}
+
+interface CheckRunResult {
+  resultPath: string | null;
+  runnerError: string | null;
+}
+
 interface PackageResults {
   package: string;
   lintSuccess: boolean;
@@ -31,29 +41,89 @@ interface PackageResults {
   lintErrors: number;
   lintWarnings: number;
   typecheckErrors: number;
+  lintResultPath: string | null;
+  typecheckResultPath: string | null;
+  lintRunnerError: string | null;
+  typecheckRunnerError: string | null;
 }
 
 const PACKAGES = [
   { name: "apps/web", hasLint: true, hasTypecheck: true },
   { name: "apps/docs", hasLint: true, hasTypecheck: true },
   { name: "packages/ui", hasLint: true, hasTypecheck: true },
-  { name: "apps/timescrape", hasLint: true, hasTypecheck: false },
+  { name: "apps/timescrape", hasLint: true, hasTypecheck: true },
   { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
   { name: "packages/typescript-config", hasLint: true, hasTypecheck: false },
 ];
 
 const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
 
-/** Find the latest JSON file in a results directory, or null if none. */
-function getLatestResultPath(dir: string): string | null {
-  if (!fs.existsSync(dir)) return null;
+/** Find the latest JSON file in a results directory with its modification time. */
+function getLatestResultInfo(dir: string): ResultFileInfo {
+  if (!fs.existsSync(dir)) {
+    return { path: null, mtimeMs: 0 };
+  }
+
   const files = fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".json"))
-    .sort((a, b) => a.localeCompare(b));
-  if (files.length === 0) return null;
-  return path.join(dir, files[files.length - 1]);
+    .map((file) => {
+      const filePath = path.join(dir, file);
+      return { filePath, mtimeMs: fs.statSync(filePath).mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs || b.filePath.localeCompare(a.filePath));
+
+  if (files.length === 0) {
+    return { path: null, mtimeMs: 0 };
+  }
+
+  const latestFile = files[0]!;
+  return { path: latestFile.filePath, mtimeMs: latestFile.mtimeMs };
 }
+
+function summarizeCommandFailure(error: unknown): string {
+  const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer; message?: string };
+  const output =
+    [errorWithOutput.stdout?.toString(), errorWithOutput.stderr?.toString()].filter(Boolean).join("\n").trim() ||
+    errorWithOutput.message ||
+    "Command failed before writing results.";
+
+  return output.split(/\r?\n/).filter(Boolean).slice(0, 4).join(" ");
+}
+
+function truncateMessage(message: string, maxLength = 80): string {
+  return message.length > maxLength ? `${message.substring(0, maxLength)}...` : message;
+}
+
+function runCheckWithFreshResults(command: string, cwd: string, resultDir: string): CheckRunResult {
+  const before = getLatestResultInfo(resultDir);
+  let failureSummary: string | null = null;
+
+  try {
+    execSync(command, { cwd, stdio: "pipe" });
+  } catch (error) {
+    // Expected to fail when a check reports errors, but still useful for runner failures.
+    failureSummary = summarizeCommandFailure(error);
+  }
+
+  const after = getLatestResultInfo(resultDir);
+  const hasFreshResult = after.path !== null && (after.path !== before.path || after.mtimeMs > before.mtimeMs);
+
+  if (hasFreshResult) {
+    return { resultPath: after.path, runnerError: null };
+  }
+
+  const relativeDir = path.relative(process.cwd(), resultDir);
+  const runnerError =
+    failureSummary ?? `Check helper completed without writing a fresh results file in ${relativeDir}.`;
+
+  return {
+    resultPath: null,
+    runnerError: `Check helper failed before writing fresh results for ${relativeDir}: ${runnerError}`,
+  };
+}
+
+const runResults = new Map<string, { lint: CheckRunResult | null; typecheck: CheckRunResult | null }>();
 
 // Run checks for each package
 // Note: Running sequentially to avoid overwhelming the system
@@ -64,23 +134,25 @@ for (const pkg of PACKAGES) {
     continue;
   }
 
-  // Run lint with JSON output
+  const packageRunResults = { lint: null as CheckRunResult | null, typecheck: null as CheckRunResult | null };
+
   if (pkg.hasLint) {
-    try {
-      execSync(`tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`, { cwd: pkgPath, stdio: "pipe" });
-    } catch {
-      // Expected to fail if there are lint errors
-    }
+    packageRunResults.lint = runCheckWithFreshResults(
+      `tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`,
+      pkgPath,
+      path.join(pkgPath, ".lint-results")
+    );
   }
 
-  // Run typecheck with JSON output
   if (pkg.hasTypecheck) {
-    try {
-      execSync(`tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`, { cwd: pkgPath, stdio: "pipe" });
-    } catch {
-      // Expected to fail if there are type errors
-    }
+    packageRunResults.typecheck = runCheckWithFreshResults(
+      `tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`,
+      pkgPath,
+      path.join(pkgPath, ".typecheck-results")
+    );
   }
+
+  runResults.set(pkg.name, packageRunResults);
 }
 
 const results: PackageResults[] = [];
@@ -92,14 +164,17 @@ for (const pkg of PACKAGES) {
     continue;
   }
 
-  const lintPath = getLatestResultPath(path.join(pkgPath, ".lint-results"));
-  const typecheckPath = getLatestResultPath(path.join(pkgPath, ".typecheck-results"));
+  const packageRunResults = runResults.get(pkg.name);
+  const lintPath = packageRunResults?.lint?.resultPath ?? null;
+  const typecheckPath = packageRunResults?.typecheck?.resultPath ?? null;
 
   let lintErrors = 0;
   let lintWarnings = 0;
   let lintSuccess = true;
   let typecheckErrors = 0;
   let typecheckSuccess = true;
+  let lintRunnerError = packageRunResults?.lint?.runnerError ?? null;
+  let typecheckRunnerError = packageRunResults?.typecheck?.runnerError ?? null;
 
   // Read lint results
   if (pkg.hasLint && lintPath) {
@@ -109,9 +184,8 @@ for (const pkg of PACKAGES) {
         lintErrors += file.errorCount || 0;
         lintWarnings += file.warningCount || 0;
       });
-      lintSuccess = lintErrors === 0;
     } catch {
-      // Ignore parse errors
+      lintRunnerError ??= `Could not parse lint results from ${path.relative(process.cwd(), lintPath)}.`;
     }
   }
 
@@ -122,13 +196,36 @@ for (const pkg of PACKAGES) {
       typecheckErrors = typecheckData.errorCount || 0;
       typecheckSuccess = typecheckData.success && typecheckErrors === 0;
     } catch {
-      // Ignore parse errors
+      typecheckRunnerError ??= `Could not parse typecheck results from ${path.relative(process.cwd(), typecheckPath)}.`;
     }
+  }
+
+  if (lintRunnerError) {
+    lintErrors = Math.max(lintErrors, 1);
+    lintSuccess = false;
+  } else if (pkg.hasLint) {
+    lintSuccess = lintErrors === 0;
+  }
+
+  if (typecheckRunnerError) {
+    typecheckErrors = Math.max(typecheckErrors, 1);
+    typecheckSuccess = false;
   }
 
   const success = lintSuccess && typecheckSuccess;
 
-  results.push({ package: pkg.name, lintSuccess, typecheckSuccess, lintErrors, lintWarnings, typecheckErrors });
+  results.push({
+    package: pkg.name,
+    lintSuccess,
+    typecheckSuccess,
+    lintErrors,
+    lintWarnings,
+    typecheckErrors,
+    lintResultPath: lintPath,
+    typecheckResultPath: typecheckPath,
+    lintRunnerError,
+    typecheckRunnerError,
+  });
 
   if (!success) {
     allPassed = false;
@@ -139,6 +236,10 @@ const totalLintErrors = results.reduce((sum, r) => sum + r.lintErrors, 0);
 const totalTypecheckErrors = results.reduce((sum, r) => sum + r.typecheckErrors, 0);
 const totalErrors = totalLintErrors + totalTypecheckErrors;
 const totalWarnings = results.reduce((sum, r) => sum + r.lintWarnings, 0);
+const totalRunnerFailures = results.reduce(
+  (sum, r) => sum + (r.lintRunnerError ? 1 : 0) + (r.typecheckRunnerError ? 1 : 0),
+  0
+);
 const failedPackages = results.filter((r) => !r.lintSuccess || !r.typecheckSuccess);
 
 console.log("=".repeat(70));
@@ -147,7 +248,10 @@ if (allPassed && totalWarnings === 0) {
 } else if (allPassed) {
   console.log(`⚠️  ${totalWarnings} warnings (no errors)`);
 } else {
-  console.log(`❌ ${totalErrors} errors, ${totalWarnings} warnings across ${failedPackages.length} packages`);
+  const runnerFailureSummary = totalRunnerFailures > 0 ? `, ${totalRunnerFailures} runner failures` : "";
+  console.log(
+    `❌ ${totalErrors} errors, ${totalWarnings} warnings${runnerFailureSummary} across ${failedPackages.length} packages`
+  );
 }
 console.log("=".repeat(70));
 
@@ -161,59 +265,60 @@ if (totalErrors > 0) {
   for (const pkg of failedPackages) {
     if (errorCount >= maxErrors) break;
 
-    const pkgPath = path.join(process.cwd(), pkg.package);
     const packageName = pkg.package.replace(/^(apps|packages)\//, "");
 
-    // Show TypeScript errors
-    if (pkg.typecheckErrors > 0) {
-      const typecheckPath = getLatestResultPath(path.join(pkgPath, ".typecheck-results"));
-      if (typecheckPath) {
-        try {
-          const typecheckData = JSON.parse(fs.readFileSync(typecheckPath, "utf-8")) as {
-            errors?: Array<{ file: string; line: number; code: string; message: string }>;
-          };
+    if (pkg.lintRunnerError && errorCount < maxErrors) {
+      console.log(`  ${packageName}/lint`);
+      console.log(`    runner: ${truncateMessage(pkg.lintRunnerError)}`);
+      errorCount++;
+    }
 
-          if (typecheckData.errors) {
-            for (const error of typecheckData.errors.slice(0, maxErrors - errorCount)) {
-              const relPath = path.relative(process.cwd(), error.file);
-              console.log(`  ${packageName}/${relPath}:${error.line}`);
-              console.log(
-                `    ${error.code}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`
-              );
-              errorCount++;
-            }
+    if (pkg.typecheckRunnerError && errorCount < maxErrors) {
+      console.log(`  ${packageName}/typecheck`);
+      console.log(`    runner: ${truncateMessage(pkg.typecheckRunnerError)}`);
+      errorCount++;
+    }
+
+    // Show TypeScript errors
+    if (pkg.typecheckErrors > 0 && pkg.typecheckResultPath) {
+      try {
+        const typecheckData = JSON.parse(fs.readFileSync(pkg.typecheckResultPath, "utf-8")) as {
+          errors?: Array<{ file: string; line: number; code: string; message: string }>;
+        };
+
+        if (typecheckData.errors) {
+          for (const error of typecheckData.errors.slice(0, maxErrors - errorCount)) {
+            const relPath = path.relative(process.cwd(), error.file);
+            console.log(`  ${packageName}/${relPath}:${error.line}`);
+            console.log(`    ${error.code}: ${truncateMessage(error.message)}`);
+            errorCount++;
           }
-        } catch {
-          // Ignore parse errors
         }
+      } catch {
+        // Ignore parse errors here; they are already surfaced as runner failures above.
       }
     }
 
     // Show lint errors
-    if (pkg.lintErrors > 0 && errorCount < maxErrors) {
-      const lintPath = getLatestResultPath(path.join(pkgPath, ".lint-results"));
-      if (lintPath) {
-        try {
-          const lintData = JSON.parse(fs.readFileSync(lintPath, "utf-8")) as Array<{
-            filePath: string;
-            messages: Array<{ ruleId: string | null; severity: number; message: string; line: number; column: number }>;
-          }>;
+    if (pkg.lintErrors > 0 && errorCount < maxErrors && pkg.lintResultPath) {
+      try {
+        const lintData = JSON.parse(fs.readFileSync(pkg.lintResultPath, "utf-8")) as Array<{
+          filePath: string;
+          messages: Array<{ ruleId: string | null; severity: number; message: string; line: number; column: number }>;
+        }>;
 
-          for (const file of lintData) {
-            if (errorCount >= maxErrors) break;
-            const errors = file.messages.filter((m) => m.severity === 2);
-            for (const error of errors.slice(0, maxErrors - errorCount)) {
-              const relPath = path.relative(process.cwd(), file.filePath);
-              console.log(`  ${relPath}:${error.line}:${error.column}`);
-              console.log(
-                `    ${error.ruleId ?? "lint"}: ${error.message.substring(0, 80)}${error.message.length > 80 ? "..." : ""}`
-              );
-              errorCount++;
-            }
+        for (const file of lintData) {
+          if (errorCount >= maxErrors) break;
+          const errors = file.messages.filter((m) => m.severity === 2);
+          for (const error of errors.slice(0, maxErrors - errorCount)) {
+            const relPath = path.relative(process.cwd(), file.filePath);
+            console.log(`  ${relPath}:${error.line}:${error.column}`);
+            console.log(`    ${error.ruleId ?? "lint"}: ${truncateMessage(error.message)}`);
+            errorCount++;
           }
-        } catch {
-          // Ignore parse errors
         }
+      } catch {
+        // Ignore parse errors here; they are already surfaced as runner failures above.
       }
     }
   }
@@ -231,13 +336,13 @@ console.log("=".repeat(70));
 if (failedPackages.length > 0) {
   failedPackages.forEach((pkg) => {
     const pkgName = pkg.package.replace(/^(apps|packages)\//, "");
-    if (pkg.lintErrors > 0) {
+    if (pkg.lintErrors > 0 && pkg.lintResultPath) {
       console.log(`\n# ${pkgName} lint errors:`);
       console.log(
         `  cat ${pkg.package}/.lint-results/$(ls -t ${pkg.package}/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0)'`
       );
     }
-    if (pkg.typecheckErrors > 0) {
+    if (pkg.typecheckErrors > 0 && pkg.typecheckResultPath) {
       console.log(`\n# ${pkgName} typecheck errors:`);
       console.log(
         `  cat ${pkg.package}/.typecheck-results/$(ls -t ${pkg.package}/.typecheck-results/ | head -1) | jq '.errors[]'`

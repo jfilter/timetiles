@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Wrapper to run tsc and generate JSON results for check-ai.
+ * Wrapper to run tsgo and generate JSON results for check-ai.
  *
  * @module
  * @category Scripts
@@ -18,7 +18,7 @@ const resultsPath = path.join(historyDir, `${createTimestamp()}.json`);
 let errors: TypeScriptError[] = [];
 
 try {
-  execSync("pnpm exec tsc --noEmit --pretty false 2>&1", { encoding: "utf-8" });
+  execSync("pnpm exec tsgo --noEmit --pretty false 2>&1", { encoding: "utf-8" });
 } catch (error) {
   const e = error as { stdout?: string | Buffer; stderr?: string | Buffer };
   errors = parseTscOutput((e.stdout?.toString() ?? "") + "\n" + (e.stderr?.toString() ?? ""));

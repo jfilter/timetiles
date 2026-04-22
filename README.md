@@ -67,6 +67,12 @@ Full docs at **[docs.timetiles.io](https://docs.timetiles.io)**.
 - Docker & Docker Compose **or** local PostgreSQL 17+ with PostGIS
 - Git, Git LFS, Make
 
+If you use `mise`, this repo now pins the toolchain in `.mise.toml`:
+
+```bash
+mise install
+```
+
 ```bash
 # macOS
 brew install git git-lfs node pnpm docker postgresql jq curl

@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck typecheck-full format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-full check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -228,14 +228,10 @@ build:
 lint:
 	pnpm lint
 
-# Run typecheck with tsgo (fast, for development)
-# ~10x faster than tsc
+# Run typecheck with tsgo
+# ~10x faster than classic tsc
 typecheck:
 	pnpm typecheck
-
-# Run full typecheck with tsc (for CI)
-typecheck-full:
-	pnpm typecheck:full
 
 # Format code
 format:
@@ -435,13 +431,9 @@ migrate-create:
 	@echo "📝 Creating new database migration..."
 	pnpm --filter web payload:migrate:create
 
-# Run combined lint + typecheck (fast, for development)
+# Run combined lint + typecheck
 check:
 	pnpm check
-
-# Run combined full lint + typecheck (for CI)
-check-full:
-	pnpm check:full
 
 # =============================================================================
 # Docker Images
@@ -554,8 +546,7 @@ help:
 		'  build       - Build the project' '' \
 		'🔍 Code Quality:' \
 		'  lint        - Run linting (oxlint + ESLint)' \
-		'  typecheck   - Run tsgo (fast, ~15s for dev)' \
-		'  typecheck-full - Run tsc (thorough, for CI)' \
+		'  typecheck   - Run tsgo (~15s on the current repo)' \
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
 		'                Usage: make check-ai [PACKAGE=web|docs|ui|scraper] [FILES="..."]' \

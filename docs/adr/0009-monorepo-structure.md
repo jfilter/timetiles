@@ -120,17 +120,16 @@ A root `Makefile` wraps pnpm and Turborepo commands to provide a consistent deve
 
 Key commands and what they run:
 
-| Make Command      | Underlying Tool                      | Scope                                                       |
-| ----------------- | ------------------------------------ | ----------------------------------------------------------- |
-| `make dev`        | `turbo run dev`                      | All apps in parallel                                        |
-| `make check`      | `turbo run lint:fast typecheck:fast` | All packages (oxlint + tsgo)                                |
-| `make check-full` | `turbo run lint typecheck`           | All packages (ESLint + tsc)                                 |
-| `make check-ai`   | Custom script wrapping Turbo         | AI-formatted output, supports `PACKAGE` and `FILES` filters |
-| `make test-ai`    | `turbo run test:ai` or direct Vitest | AI-formatted output, supports `FILTER` pattern              |
-| `make build`      | `turbo run build`                    | Full production build                                       |
-| `make lint`       | `turbo run lint:fast`                | oxlint across all packages                                  |
+| Make Command    | Underlying Tool                      | Scope                                                       |
+| --------------- | ------------------------------------ | ----------------------------------------------------------- |
+| `make dev`      | `turbo run dev`                      | All apps in parallel                                        |
+| `make check`    | `turbo run lint typecheck`           | All packages (lint + tsgo)                                  |
+| `make check-ai` | Custom script wrapping Turbo         | AI-formatted output, supports `PACKAGE` and `FILES` filters |
+| `make test-ai`  | `turbo run test:ai` or direct Vitest | AI-formatted output, supports `FILTER` pattern              |
+| `make build`    | `turbo run build`                    | Full production build                                       |
+| `make lint`     | `turbo run lint`                     | Lint across all packages                                    |
 
-Fast variants (`lint:fast` using oxlint, `typecheck:fast` using tsgo) run during local development. Full variants (`lint` using ESLint, `typecheck` using tsc) run in CI.
+Typechecking now runs through `tsgo` in both local development and CI. The primary commands are `make check` and `make typecheck`.
 
 ### CI/CD Pipeline
 
@@ -141,7 +140,7 @@ ci.yml (push to main, PRs)
 ├── build.yml          Build & Quality Checks
 │   ├── Generate API docs (TypeDoc)
 │   ├── Lint (ESLint full, all packages except docs)
-│   ├── Typecheck (tsc full, all packages)
+│   ├── Typecheck (tsgo full, all packages)
 │   ├── Lint infrastructure (actionlint, hadolint, checkmake, shellcheck)
 │   └── Build web app (next build --experimental-build-mode compile)
 │

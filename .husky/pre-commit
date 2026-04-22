@@ -13,15 +13,15 @@ HAS_UI=$(echo "$STAGED_FILES" | grep -c "^packages/ui/" || true)
 
 if [ "$HAS_WEB" -gt 0 ]; then
   echo "Checking apps/web..."
-  pnpm --filter web lint && pnpm --filter web typecheck:fast
+  pnpm --filter web lint && pnpm --filter web typecheck
 fi
 
 if [ "$HAS_DOCS" -gt 0 ]; then
   echo "Checking apps/docs..."
-  pnpm --filter docs lint && pnpm --filter docs typecheck:fast
+  pnpm --filter docs lint && pnpm --filter docs typecheck
 fi
 
 if [ "$HAS_UI" -gt 0 ]; then
   echo "Checking packages/ui..."
-  pnpm --filter @timetiles/ui lint && pnpm --filter @timetiles/ui typecheck:fast
+  pnpm --filter @timetiles/ui lint && pnpm --filter @timetiles/ui typecheck
 fi

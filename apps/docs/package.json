@@ -11,7 +11,6 @@
     "lint": "oxlint --config ../../.oxlintrc.json . && mkdir -p .lint-results && eslint app content scripts --cache --format json --output-file .lint-results/latest.json; eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
-    "typecheck:fast": "tsgo --noEmit",
     "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
   },
   "dependencies": {

@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "tsup",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsgo --noEmit",
     "lint": "oxlint --config ../../.oxlintrc.json .",
     "prepublishOnly": "tsup"
   },
