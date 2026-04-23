@@ -132,8 +132,11 @@ test.describe("Explore Page - Basic Functionality", () => {
 
   test("should show loading state while fetching events", async ({ page }) => {
     // Delay the events-list response so the skeleton is observable.
-    // Matches useEventsListQuery, which calls /api/v1/events with query params.
-    await page.route("**/api/v1/events?**", async (route) => {
+    // Matches useEventsListQuery exactly, which calls /api/v1/events?<params>.
+    // Using a RegExp instead of a glob because Playwright's `?` in globs is a
+    // single-char wildcard — "events?**" also matches /events/bounds?…,
+    // /events/geo?…, /events/temporal?…, and stalls unrelated queries.
+    await page.route(/\/api\/v1\/events\?[^/]*$/, async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 2000));
       await route.fulfill({
         status: 200,

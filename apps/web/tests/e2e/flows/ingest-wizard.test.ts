@@ -39,7 +39,11 @@ const setRequiredFieldTarget = async (
     targetValue,
   ]
 ) => {
-  const row = page.locator("tr").filter({ hasText: columnName }).first();
+  // Each TARGET_OPTIONS entry ("Title *", "Date *", …) is rendered inside every
+  // row's <select>, so `filter({ hasText: columnName })` matches every row
+  // whenever the column name collides with any target label. Target the row
+  // by its stable data-testid instead.
+  const row = page.getByTestId(`column-row-${columnName}`);
   await expect(row).toBeVisible({ timeout: 5_000 });
   const targetSelect = row.locator("select");
 

@@ -114,17 +114,22 @@ export class ExplorePage {
       if (await loadingText.isVisible().catch(() => false)) throw err;
     });
 
-    // Wait for either the date range button (data state) or "No events to display".
-    // If neither appears within 10s the page has failed to render the timeline —
-    // let the error propagate so the test fails with a meaningful stack.
+    // Timeline has three "ready" states: collapsed date-range button (data
+    // state), two date inputs (already-in-edit-mode state), or "No events to
+    // display". The second state appears when the timeline re-renders while
+    // we're already mid-edit (e.g. after setStartDate) — waiting only for the
+    // collapsed-state button would time out because it's not rendered.
+    // If none of these appear within 10s the timeline has failed to render.
     const dateRangeButton = this.page
       .locator("button")
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
       .first();
+    const dateInputsReady = this.page.locator('input[type="date"]').nth(1);
     const noEventsText = this.page.getByText("No events to display");
 
     await Promise.race([
       dateRangeButton.waitFor({ state: "visible", timeout: 10000 }),
+      dateInputsReady.waitFor({ state: "visible", timeout: 10000 }),
       noEventsText.waitFor({ state: "visible", timeout: 10000 }),
     ]);
   }
