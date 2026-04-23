@@ -193,7 +193,7 @@ export class IngestPage {
 
     // Click login button and wait for API response
     const [response] = await Promise.all([
-      this.page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 5000 }),
+      this.page.waitForResponse((resp) => resp.url().includes("/api/auth/login"), { timeout: 5000 }),
       this.loginButton.click(),
     ]);
 

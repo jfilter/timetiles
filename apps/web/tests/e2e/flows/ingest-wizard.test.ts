@@ -140,7 +140,7 @@ test.describe("Import Wizard - Authentication", () => {
     await importPage.loginButton.click();
 
     // Wait for login API response
-    await page.waitForResponse((resp) => resp.url().includes("/api/users/login"), { timeout: 5000 });
+    await page.waitForResponse((resp) => resp.url().includes("/api/auth/login"), { timeout: 5000 });
 
     // Should still be on the auth step — sign in heading should remain visible
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
