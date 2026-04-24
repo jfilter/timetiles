@@ -64,12 +64,23 @@ export const checkRateLimit = async (
   const rateLimitService = getRateLimitService(payload);
   const clientId = getClientIdentifier(request);
 
-  // Resolve the rate limit key
-  let key = clientId;
+  // Resolve the rate limit key.
+  //
+  // For authenticated requests prefer a user-scoped key: without it two users
+  // behind the same egress IP (office NAT, carrier-grade NAT, shared cloud
+  // egress, or the parallel browsers of a CI runner) share one bucket and
+  // throttle each other. IP-only keys remain the fallback for anonymous
+  // traffic and are still honored when the caller supplies an explicit
+  // `keyPrefix`.
+  let key: string;
   if (typeof options.keyPrefix === "function") {
     key = options.keyPrefix(user);
   } else if (typeof options.keyPrefix === "string") {
     key = options.keyPrefix;
+  } else if (user?.id != null) {
+    key = `user:${user.id}`;
+  } else {
+    key = clientId;
   }
 
   // Resolve the rate limit config
