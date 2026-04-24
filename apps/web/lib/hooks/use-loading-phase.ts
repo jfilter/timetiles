@@ -37,11 +37,18 @@ export interface LoadingPhase {
  */
 export const useLoadingPhase = (isLoading: boolean): LoadingPhase => {
   const hasLoadedOnceRef = useRef(false);
+  const hasEverLoadedRef = useRef(false);
 
-  // Update during render — no effect needed because the parent already
-  // re-renders whenever isLoading changes, which is sufficient to
-  // re-evaluate the return values with the updated ref.
-  if (!isLoading) {
+  // Only flip `hasLoadedOnce` after we actually *finish* a load — the
+  // previous render must have been loading. A bare `!isLoading` check
+  // fires prematurely when the underlying query starts disabled
+  // (e.g. `useQuery({ enabled: false })`), because React Query then
+  // reports `isLoading=false` before any fetch begins. That made
+  // `isInitialLoad` stuck at false once the query finally ran, so the
+  // skeleton never appeared.
+  if (isLoading) {
+    hasEverLoadedRef.current = true;
+  } else if (hasEverLoadedRef.current) {
     hasLoadedOnceRef.current = true;
   }
 

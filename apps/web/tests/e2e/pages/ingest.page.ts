@@ -204,7 +204,17 @@ export class IngestPage {
       throw new Error(`Login API failed with status ${status}: ${body}`);
     }
 
-    // Wait for the upload heading to appear (wizard advances after client-side auth check)
+    // After login the wizard shows an explicit "You're signed in / Continue"
+    // step (no auto-advance — users must confirm before moving on). Click
+    // that Continue button when present, then wait for the upload step.
+    const signedInContinue = this.page.getByRole("button", { name: /^Continue$/i });
+    await signedInContinue.waitFor({ state: "visible", timeout: 5000 }).catch(() => {
+      // Skip if the wizard already moved to upload on its own.
+    });
+    if (await signedInContinue.isVisible().catch(() => false)) {
+      await signedInContinue.click();
+    }
+
     await uploadHeading.waitFor({ state: "visible", timeout: 15000 }).catch(async () => {
       const currentUrl = this.page.url();
       const stillOnAuth = await this.page
