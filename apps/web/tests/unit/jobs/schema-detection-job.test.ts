@@ -396,16 +396,21 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(mockSchemaBuilderInstance.processBatch).not.toHaveBeenCalled();
     });
 
-    it("should skip duplicate rows during schema building", async () => {
+    it("should skip internal but not external duplicate rows during schema building", async () => {
       // Create mock data using factories (with duplicates)
       const mockIngestJob = createMockIngestJob({ hasDuplicates: true });
       const mockIngestFile = createMockIngestFile();
 
-      // Mock file data (3 rows, but 2 are duplicates)
+      // Mock file data (3 rows, 1 internal dup, 1 external dup).
+      // Schema detection must skip the *internal* duplicate (it would double-
+      // count the same row's field stats) but must *include* the external
+      // duplicate — externals are rows that already exist in the dataset,
+      // they carry the dataset's current schema, and dropping them leaves an
+      // empty sample set on scheduled re-imports of unchanged URLs.
       const mockFileData = [
-        { id: "1", title: "Event 1" }, // Will be processed
-        { id: "2", title: "Event 2" }, // Internal duplicate - skip
-        { id: "3", title: "Event 3" }, // External duplicate - skip
+        { id: "1", title: "Event 1" }, // Unique — processed
+        { id: "2", title: "Event 2" }, // Internal duplicate — skipped
+        { id: "3", title: "Event 3" }, // External duplicate — processed
       ];
 
       // Mock schema and state
@@ -441,10 +446,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       // Verify result
       expect(result).toEqual({ output: { totalBatches: 1, totalRowsProcessed: 3 } });
 
-      // Verify schema builder was called with filtered non-duplicate rows
-      expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith(
-        [{ id: "1", title: "Event 1" }] // Only non-duplicate row
-      );
+      // Verify schema builder was called with internal-dedup'd rows but
+      // including external duplicates.
+      expect(mockSchemaBuilderInstance.processBatch).toHaveBeenCalledWith([
+        { id: "1", title: "Event 1" },
+        { id: "3", title: "Event 3" },
+      ]);
 
       // Verify progress tracking was called
       expect(mocks.startStage).toHaveBeenCalled();

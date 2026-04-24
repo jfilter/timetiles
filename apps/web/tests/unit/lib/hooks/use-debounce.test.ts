@@ -164,11 +164,26 @@ describe("useDebounce", () => {
   it("should cleanup timeout on unmount", () => {
     const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
 
-    const { unmount } = renderHook(() => useDebounce("initial", 500));
+    const { rerender, unmount } = renderHook(({ value }) => useDebounce(value, 500), {
+      initialProps: { value: "initial" },
+    });
+
+    // The first render fires immediately (leading edge) and schedules no
+    // timeout — exercise a subsequent change so the cleanup under test has
+    // a pending timer to clear.
+    rerender({ value: "changed" });
 
     unmount();
 
     expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it("should fire leading-edge on first value", () => {
+    const { result } = renderHook(() => useDebounce("initial", 500));
+
+    // No timer advance needed — the first value must be available immediately
+    // rather than gated behind `delay` ms of artificial latency.
+    expect(result.current).toBe("initial");
   });
 
   it("should handle null values", () => {
