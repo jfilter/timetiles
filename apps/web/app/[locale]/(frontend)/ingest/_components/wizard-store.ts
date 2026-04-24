@@ -340,20 +340,31 @@ export const useWizardStore = create<WizardStore>()(
             const updatedFieldMappings = [...s.fieldMappings];
             const fmIndex = updatedFieldMappings.findIndex((m) => m.sheetIndex === sheetIndex);
             const currentFm = updatedFieldMappings[fmIndex];
+            const sheet = s.sheets.find((sh) => sh.index === sheetIndex);
+
+            // Only apply overrides whose source column exists in this sheet.
+            // Without this guard, matching against a dataset with different
+            // column names leaves fieldMapping pointing at columns that don't
+            // exist in the new sheet — the row UI then marks those targets as
+            // "taken" in `assignedTargets` and disables them in every select,
+            // so the user cannot recover without clicking Reset.
+            const headerSet = new Set(sheet?.headers ?? []);
+            const keepIfPresent = (path: string | undefined | null): string | undefined =>
+              path != null && headerSet.has(path) ? path : undefined;
 
             if (fmIndex >= 0 && currentFm) {
               updatedFieldMappings[fmIndex] = {
                 ...currentFm,
-                titleField: overrides.titlePath ?? currentFm.titleField,
-                descriptionField: overrides.descriptionPath ?? currentFm.descriptionField,
-                locationNameField: overrides.locationNamePath ?? currentFm.locationNameField,
-                dateField: overrides.timestampPath ?? currentFm.dateField,
-                endDateField: overrides.endTimestampPath ?? currentFm.endDateField,
-                locationField: overrides.locationPath ?? currentFm.locationField,
-                latitudeField: overrides.latitudePath ?? currentFm.latitudeField,
-                longitudeField: overrides.longitudePath ?? currentFm.longitudeField,
+                titleField: keepIfPresent(overrides.titlePath) ?? currentFm.titleField,
+                descriptionField: keepIfPresent(overrides.descriptionPath) ?? currentFm.descriptionField,
+                locationNameField: keepIfPresent(overrides.locationNamePath) ?? currentFm.locationNameField,
+                dateField: keepIfPresent(overrides.timestampPath) ?? currentFm.dateField,
+                endDateField: keepIfPresent(overrides.endTimestampPath) ?? currentFm.endDateField,
+                locationField: keepIfPresent(overrides.locationPath) ?? currentFm.locationField,
+                latitudeField: keepIfPresent(overrides.latitudePath) ?? currentFm.latitudeField,
+                longitudeField: keepIfPresent(overrides.longitudePath) ?? currentFm.longitudeField,
                 idStrategy: (config.idStrategy?.type as FieldMapping["idStrategy"]) ?? currentFm.idStrategy,
-                idField: config.idStrategy?.externalIdPath ?? currentFm.idField,
+                idField: keepIfPresent(config.idStrategy?.externalIdPath) ?? currentFm.idField,
               };
             }
 
