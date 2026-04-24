@@ -286,6 +286,26 @@ export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): D
   return value === "update" ? "update" : "skip";
 };
 
+/**
+ * Extract only internal duplicate row numbers from a job's duplicate analysis.
+ *
+ * Schema detection uses this to skip same-file duplicates (which would otherwise
+ * bias sample statistics) while still including external duplicates — rows
+ * already present in the destination dataset — in the sample set, because their
+ * schema is the source of truth for what the detected schema should look like.
+ */
+export const extractInternalDuplicateRows = (job: IngestJob): Set<number> => {
+  const skipRows = new Set<number>();
+  const duplicates = job.duplicates;
+  if (!duplicates || typeof duplicates !== "object" || Array.isArray(duplicates)) {
+    return skipRows;
+  }
+  for (const d of parseDuplicateArray(duplicates.internal)) {
+    skipRows.add(d.rowNumber);
+  }
+  return skipRows;
+};
+
 export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string): DuplicateRowInfo => {
   const skipRows = new Set<number>();
   const updateRows = new Map<number, string | number>();

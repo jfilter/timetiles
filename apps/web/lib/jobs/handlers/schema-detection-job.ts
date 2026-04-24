@@ -28,10 +28,9 @@ import type { JobHandlerContext } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
   createStandardOnFail,
-  extractDuplicateRows,
+  extractInternalDuplicateRows,
   loadEffectiveDatasetForJob,
   loadJobAndFilePath,
-  readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
@@ -176,11 +175,15 @@ export const schemaDetectionJob = {
 
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
-      // Pass duplicateStrategy so that external duplicates with "update" strategy are NOT skipped.
-      // Without this, re-imports where all rows are external duplicates produce an empty schema,
-      // which then fails validation because all fields appear "removed".
-      const duplicateStrategy = readDuplicateStrategy(job);
-      const { skipRows: duplicateRows } = extractDuplicateRows(job, duplicateStrategy);
+      // Schema detection should only skip *internal* duplicates (same row appearing
+      // multiple times within the same file would otherwise double-count samples).
+      // External duplicates — rows already present in the dataset — carry the same
+      // schema as the existing data, and the downstream create-events stage is what
+      // applies the skip/update strategy. Skipping externals here meant that a
+      // scheduled re-import of an unchanged URL saw all rows as external dupes,
+      // produced zero samples, and then failed validation with every field marked
+      // "removed" under additive schema mode.
+      const duplicateRows = extractInternalDuplicateRows(job);
       const { batchNumber, totalRowsProcessed, lastSchemaBuilder, emptyRowCount } = await runSchemaDetectionBatches({
         payload,
         ingestJobId,
