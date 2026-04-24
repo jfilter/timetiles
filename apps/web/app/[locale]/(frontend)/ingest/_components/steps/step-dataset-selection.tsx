@@ -231,7 +231,10 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
             variant="ghost"
             size="sm"
             onClick={() => {
-              autoAppliedRef.current = false;
+              // Keep `autoAppliedRef.current = true` — it's a "has been applied
+              // once" marker, not a "currently applied" marker. Resetting it
+              // would let the auto-apply effect re-fire on the next render and
+              // silently undo the user's reset.
               setCatalog(null);
               // Clearing only the catalog leaves each sheet pointing at a
               // `datasetId` from the auto-applied catalog. Those refs would
