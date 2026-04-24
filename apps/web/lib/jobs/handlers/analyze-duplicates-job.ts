@@ -385,8 +385,16 @@ export const analyzeDuplicatesJob = {
         await recordConfigError(payload, ingestJobId, reviewChecksError);
       }
 
-      // Review check: high duplicate rate (>80%)
-      const dupCheck = shouldReviewHighDuplicates(results.totalRows, results.uniqueRows, reviewChecks);
+      // Review check: high duplicate rate (>80%).
+      //
+      // `results.uniqueRows` subtracts externals under the "skip" strategy,
+      // which makes scheduled re-imports of unchanged URLs look 100%
+      // duplicate and trip the review gate on every run. External duplicates
+      // are expected and handled by the dedup strategy itself — the review
+      // gate's real signal is *internal* duplication (same-file dupes that
+      // suggest a user error). Use the internal-unique count for the rate.
+      const internalUniqueRows = results.totalRows - results.internalDuplicates.length;
+      const dupCheck = shouldReviewHighDuplicates(results.totalRows, internalUniqueRows, reviewChecks);
       if (dupCheck.needsReview) {
         await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_DUPLICATE_RATE, {
           totalRows: results.totalRows,
