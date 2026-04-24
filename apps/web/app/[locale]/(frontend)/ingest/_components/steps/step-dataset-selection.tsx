@@ -233,6 +233,13 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
             onClick={() => {
               autoAppliedRef.current = false;
               setCatalog(null);
+              // Clearing only the catalog leaves each sheet pointing at a
+              // `datasetId` from the auto-applied catalog. Those refs would
+              // then resurface downstream (schema-drift checks, field-mapping
+              // auto-apply) against datasets the user never chose.
+              for (const m of sheetMappings) {
+                setSheetMapping(m.sheetIndex, { datasetId: "new" });
+              }
             }}
           >
             {t("resetToAutoDetected")}
