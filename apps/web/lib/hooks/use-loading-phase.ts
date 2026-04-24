@@ -52,5 +52,11 @@ export const useLoadingPhase = (isLoading: boolean): LoadingPhase => {
     hasLoadedOnceRef.current = true;
   }
 
-  return { isInitialLoad: isLoading && !hasLoadedOnceRef.current, isUpdating: isLoading && hasLoadedOnceRef.current };
+  // `isInitialLoad` means "we have nothing to render yet". That includes both
+  // the active-fetch state (isLoading=true, no data) and the pre-fetch state
+  // where the underlying query is still gated on some input (e.g. map bounds
+  // not yet resolved). Without the pre-fetch case, the consumer renders its
+  // empty state — "No events" — for the brief window between page mount and
+  // first query fire, which flickers badly on every navigation.
+  return { isInitialLoad: !hasLoadedOnceRef.current, isUpdating: isLoading && hasLoadedOnceRef.current };
 };
