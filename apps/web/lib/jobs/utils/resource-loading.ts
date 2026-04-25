@@ -4,7 +4,7 @@
  * These functions eliminate code duplication by providing reusable loaders for:
  * - Import jobs, datasets, and import files
  * - File paths for import files
- * - Duplicate row extraction
+ * - Stage-specific duplicate accessors (see "Duplicate accessors" section)
  *
  * @module
  * @category Jobs/Utils
@@ -249,20 +249,26 @@ export const setJobStage = async (payload: Payload, jobId: string | number, stag
   await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: jobId, data: { stage } });
 };
 
-/** Duplicate row info with optional update mapping for "update" strategy. */
-export interface DuplicateRowInfo {
-  /** Rows to skip entirely (internal dupes + external dupes when strategy=skip). */
-  skipRows: Set<number>;
-  /** External duplicate rows to update: rowNumber → existingEventId (only when strategy=update). */
-  updateRows: Map<number, string | number>;
-}
+// ---------------------------------------------------------------------------
+// Duplicate accessors
+//
+// Each pipeline stage interprets the shared `job.duplicates` struct
+// differently. Two production bugs were caused by stages mis-using a single
+// overloaded helper (`extractDuplicateRows`):
+//
+//   - 13768faf "review high-duplicates only on internal duplicates" — the
+//     review gate counted external duplicates and tripped on every scheduled
+//     re-import of an unchanged URL.
+//   - da87dd49 "include external duplicates in schema detection samples" —
+//     schema detection filtered external duplicates out of the sample set,
+//     which left the schema empty on full-overlap re-imports and failed
+//     additive validation with every field marked "removed".
+//
+// The accessors below name each stage's intent at the call site so this class
+// of "wrong duplicate semantics" bug becomes a name mismatch instead of a
+// shared-shape footgun.
+// ---------------------------------------------------------------------------
 
-/**
- * Extract duplicate row info from import job.
- *
- * When `duplicateStrategy` is "update", external duplicates are NOT skipped
- * but instead mapped to their existing event IDs for updating.
- */
 const isDuplicateEntry = (d: unknown): d is { rowNumber: number; existingEventId?: string | number } =>
   typeof d === "object" && d !== null && "rowNumber" in d;
 
@@ -270,31 +276,31 @@ const parseDuplicateArray = (arr: unknown): Array<{ rowNumber: number; existingE
   Array.isArray(arr) ? arr.filter(isDuplicateEntry) : [];
 
 /** Valid `duplicateStrategy` values for external duplicate handling. */
-export type DuplicateStrategy = "skip" | "update";
+type DuplicateStrategy = "skip" | "update";
 
 /**
  * Read the configured duplicate strategy from a job's `configSnapshot`.
  *
- * Payload persists `configSnapshot` as JSON, so the generated type surfaces
- * as `unknown`. This helper narrows to the {@link ConfigSnapshot} shape and
- * defaults to `"skip"` — matching the pipeline's conservative behaviour
- * when the field is missing, null, or of an unexpected type.
+ * Defaults to `"skip"` — the pipeline's conservative behaviour when the
+ * field is missing, null, or of an unexpected type. Private to this module:
+ * stages should ask for what they want (e.g. {@link getEventCreationDuplicates}),
+ * not for the strategy directly.
  */
-export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
+const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
   const snapshot = readConfigSnapshot(job);
   const value = snapshot?.idStrategy?.duplicateStrategy;
   return value === "update" ? "update" : "skip";
 };
 
 /**
- * Extract only internal duplicate row numbers from a job's duplicate analysis.
+ * Schema detection: skip internal duplicates only.
  *
- * Schema detection uses this to skip same-file duplicates (which would otherwise
- * bias sample statistics) while still including external duplicates — rows
- * already present in the destination dataset — in the sample set, because their
- * schema is the source of truth for what the detected schema should look like.
+ * External duplicates carry the dataset's existing schema and MUST be in the
+ * sample set, otherwise re-imports of unchanged URLs produce empty schemas
+ * (regression: da87dd49). The skip/update strategy is meaningful only at the
+ * event-creation stage; here we ignore it.
  */
-export const extractInternalDuplicateRows = (job: IngestJob): Set<number> => {
+export const getInternalDuplicateSkipSet = (job: IngestJob): Set<number> => {
   const skipRows = new Set<number>();
   const duplicates = job.duplicates;
   if (!duplicates || typeof duplicates !== "object" || Array.isArray(duplicates)) {
@@ -306,7 +312,18 @@ export const extractInternalDuplicateRows = (job: IngestJob): Set<number> => {
   return skipRows;
 };
 
-export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string): DuplicateRowInfo => {
+/**
+ * Event creation: read the dataset's duplicate-strategy and return rows to
+ * skip vs rows to update.
+ *
+ * Internal duplicates are always skipped. External duplicates: skipped under
+ * the `"skip"` strategy; mapped to their existing event IDs under the
+ * `"update"` strategy. The strategy is read internally — callers do not pass
+ * one in.
+ */
+export const getEventCreationDuplicates = (
+  job: IngestJob
+): { skipRows: Set<number>; updateRows: Map<number, string | number> } => {
   const skipRows = new Set<number>();
   const updateRows = new Map<number, string | number>();
 
@@ -315,6 +332,8 @@ export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string)
     return { skipRows, updateRows };
   }
 
+  const strategy = readDuplicateStrategy(job);
+
   // Internal duplicates are always skipped
   for (const d of parseDuplicateArray(duplicates.internal)) {
     skipRows.add(d.rowNumber);
@@ -322,7 +341,7 @@ export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string)
 
   // External duplicates: skip or update depending on strategy
   for (const d of parseDuplicateArray(duplicates.external)) {
-    if (duplicateStrategy === "update" && d.existingEventId != null) {
+    if (strategy === "update" && d.existingEventId != null) {
       updateRows.set(d.rowNumber, d.existingEventId);
     } else {
       skipRows.add(d.rowNumber);
@@ -330,4 +349,55 @@ export const extractDuplicateRows = (job: IngestJob, duplicateStrategy?: string)
   }
 
   return { skipRows, updateRows };
+};
+
+/**
+ * Review gate: internal-only duplicate rate.
+ *
+ * External duplicates are expected on scheduled re-imports of unchanged URLs
+ * — counting them would pause the schedule on every run (regression:
+ * 13768faf). Returns the internal-unique row count and the total row count
+ * so callers can compute the duplicate rate themselves.
+ *
+ * `totalRows` and the count of internal duplicates are read from
+ * `job.duplicates.summary` as written by analyze-duplicates-job; if missing,
+ * sane defaults of `0` are returned.
+ */
+export const getDuplicateRatesForReview = (job: IngestJob): { internalUniqueRows: number; totalRows: number } => {
+  const summary = job.duplicates?.summary;
+  const totalRows = summary?.totalRows ?? 0;
+  const internalDuplicates = summary?.internalDuplicates ?? 0;
+  const internalUniqueRows = Math.max(0, totalRows - internalDuplicates);
+  return { internalUniqueRows, totalRows };
+};
+
+/**
+ * UI + progress display: per-type duplicate counts.
+ *
+ * Reads from `job.duplicates.summary` as persisted by analyze-duplicates-job.
+ * All fields default to `0` when the summary is absent so callers can rely
+ * on stable shapes without optional chaining.
+ */
+export const getDuplicateSummary = (
+  job: IngestJob
+): { totalRows: number; uniqueRows: number; internalCount: number; externalCount: number } => {
+  const summary = job.duplicates?.summary;
+  return {
+    totalRows: summary?.totalRows ?? 0,
+    uniqueRows: summary?.uniqueRows ?? 0,
+    internalCount: summary?.internalDuplicates ?? 0,
+    externalCount: summary?.externalDuplicates ?? 0,
+  };
+};
+
+/**
+ * Quota + progress gates: post-dedup, strategy-adjusted event count.
+ *
+ * Reads `job.duplicates.summary.uniqueRows` as written by
+ * analyze-duplicates-job, which already applies the duplicate strategy when
+ * computing this number. Use this for any "how many events will we actually
+ * create?" decision.
+ */
+export const getUniqueRowsForQuota = (job: IngestJob): number => {
+  return job.duplicates?.summary?.uniqueRows ?? 0;
 };

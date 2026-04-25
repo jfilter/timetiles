@@ -26,7 +26,13 @@ import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
+import {
+  cleanupSidecarsForJob,
+  createStandardOnFail,
+  getUniqueRowsForQuota,
+  loadJobResources,
+  setJobStage,
+} from "../utils/resource-loading";
 import type { ProcessingOptions } from "./validate-schema/schema-evaluation";
 import {
   determineRequiresApproval,
@@ -115,7 +121,7 @@ export const validateSchemaJob = {
       const driftResult = await guardAgainstConcurrentReview(payload, dataset.id, jobIdTyped, ingestJobId, logger);
       if (driftResult) return driftResult;
 
-      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      const uniqueRows = getUniqueRowsForQuota(job);
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.VALIDATE_SCHEMA, uniqueRows);
 
       // Schema detection and comparison

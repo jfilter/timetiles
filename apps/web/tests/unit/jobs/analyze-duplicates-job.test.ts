@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import { getDuplicateRatesForReview } from "@/lib/jobs/utils/resource-loading";
+import type { IngestJob } from "@/payload-types";
 import { createMockIngestFile } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
@@ -922,5 +924,75 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
       expect(result.output).toEqual(expect.objectContaining({ needsReview: true }));
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getDuplicateRatesForReview
+//
+// The review gate's input — see regression note in resource-loading.ts and
+// the bug fixed by 13768faf. External duplicates are expected on scheduled
+// re-imports of unchanged URLs and must NOT count toward the duplicate rate
+// the review gate uses; only internal (same-file) duplicates count.
+// ---------------------------------------------------------------------------
+
+describe("getDuplicateRatesForReview", () => {
+  const buildJob = (summary: unknown): IngestJob => ({ duplicates: { summary } }) as unknown as IngestJob;
+
+  it("counts only internal duplicates against the unique-row total", () => {
+    // Total 100 rows: 5 internal dupes, 80 external dupes. Externals do NOT
+    // contribute to the review gate.
+    const result = getDuplicateRatesForReview(
+      buildJob({ totalRows: 100, internalDuplicates: 5, externalDuplicates: 80, uniqueRows: 15 })
+    );
+
+    expect(result.totalRows).toBe(100);
+    expect(result.internalUniqueRows).toBe(95);
+  });
+
+  it("ignores external duplicates entirely (regression: 13768faf)", () => {
+    // All 100 rows are external dupes — a full overlap re-import. The review
+    // gate must not pause this; internalUniqueRows should equal totalRows.
+    const result = getDuplicateRatesForReview(
+      buildJob({ totalRows: 100, internalDuplicates: 0, externalDuplicates: 100, uniqueRows: 0 })
+    );
+
+    expect(result.totalRows).toBe(100);
+    expect(result.internalUniqueRows).toBe(100);
+  });
+
+  it("returns sane defaults when totalRows is 0", () => {
+    const result = getDuplicateRatesForReview(buildJob({ totalRows: 0 }));
+
+    expect(result.totalRows).toBe(0);
+    expect(result.internalUniqueRows).toBe(0);
+  });
+
+  it("returns sane defaults when summary is missing", () => {
+    const job = { duplicates: undefined } as unknown as IngestJob;
+
+    const result = getDuplicateRatesForReview(job);
+
+    expect(result.totalRows).toBe(0);
+    expect(result.internalUniqueRows).toBe(0);
+  });
+
+  it("returns sane defaults when duplicates field is absent entirely", () => {
+    const job = {} as unknown as IngestJob;
+
+    const result = getDuplicateRatesForReview(job);
+
+    expect(result.totalRows).toBe(0);
+    expect(result.internalUniqueRows).toBe(0);
+  });
+
+  it("clamps internalUniqueRows to 0 when internalDuplicates exceeds totalRows", () => {
+    // Defensive: if the summary is malformed and reports more dupes than
+    // total rows, the unique count should not go negative.
+    const result = getDuplicateRatesForReview(
+      buildJob({ totalRows: 10, internalDuplicates: 99, externalDuplicates: 0, uniqueRows: 0 })
+    );
+
+    expect(result.internalUniqueRows).toBe(0);
   });
 });

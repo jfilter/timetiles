@@ -18,7 +18,13 @@ import { getFieldStats } from "@/lib/types/schema-detection";
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import { buildFieldTypes } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
-import { createStandardOnFail, loadDataset, loadIngestJob, setJobStage } from "../utils/resource-loading";
+import {
+  createStandardOnFail,
+  getUniqueRowsForQuota,
+  loadDataset,
+  loadIngestJob,
+  setJobStage,
+} from "../utils/resource-loading";
 
 // Helper to check if schema version creation should be skipped
 const shouldSkipSchemaVersionCreation = (job: {
@@ -78,7 +84,7 @@ export const createSchemaVersionJob = {
       await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
       // Start CREATE_SCHEMA_VERSION stage
-      const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+      const uniqueRows = getUniqueRowsForQuota(job);
       await ProgressTrackingService.startStage(
         payload,
         ingestJobId,

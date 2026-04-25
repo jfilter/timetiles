@@ -21,7 +21,7 @@ import type { Dataset, Event, IngestJob } from "@/payload-types";
 import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
-import { extractDuplicateRows, readDuplicateStrategy } from "../../utils/resource-loading";
+import { getEventCreationDuplicates } from "../../utils/resource-loading";
 import { buildTransformsFromDataset } from "../../utils/transform-builders";
 
 const getTransformPath = (t: IngestTransform): string => {
@@ -194,8 +194,7 @@ export const processEventBatch = async (
   globalRowOffset: number
 ) => {
   const { payload, job, dataset, logger: log } = ctx;
-  const duplicateStrategy = readDuplicateStrategy(job);
-  const { skipRows, updateRows } = extractDuplicateRows(job, duplicateStrategy);
+  const { skipRows, updateRows } = getEventCreationDuplicates(job);
   const geocodingResults = getIngestGeocodingResults(job);
   const transforms = buildTransformsFromDataset(dataset);
 
