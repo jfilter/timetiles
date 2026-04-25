@@ -189,9 +189,13 @@ export const apiRoute = <
     req: NextRequest,
     context: { params: Promise<Record<string, string>> }
   ): Promise<Response> => {
+    // Track the user across the try/catch boundary so unhandled-error logs
+    // can include the userId even when the failure happens after auth.
+    let authedUser: User | undefined;
     try {
       const payload = await getPayload({ config });
       const authReq = await authenticateRequest(payload, req, authMode);
+      authedUser = authReq.user;
 
       // --- Rate limiting (after auth so user-based keys work) ---
       if (routeConfig.rateLimit) {
@@ -224,7 +228,7 @@ export const apiRoute = <
       }
       return Response.json(result);
     } catch (err) {
-      return handleError(err);
+      return handleError(err, { url: req.url, method: req.method, userId: authedUser?.id });
     }
   };
 

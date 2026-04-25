@@ -82,10 +82,51 @@ export const safeFindByID = async <TSlug extends CollectionSlug>(
 };
 
 /**
+ * Request context attached to unhandled-error logs so 500s are diagnosable.
+ *
+ * The response body intentionally stays generic (no leaked stack/details), but
+ * the server log gets the route, method, and userId so we can correlate a
+ * client-visible 500 with the underlying exception in production logs.
+ */
+export interface ErrorRequestContext {
+  /** Request URL (path + query). */
+  url?: string;
+  /** HTTP method (GET/POST/etc). */
+  method?: string;
+  /** Authenticated user id, if known at the time of failure. */
+  userId?: string | number;
+}
+
+const buildErrorMetadata = (req?: ErrorRequestContext): Record<string, unknown> | undefined => {
+  if (!req) return undefined;
+  const meta: Record<string, unknown> = {};
+  if (req.url) {
+    try {
+      // Strip origin so logs stay compact and don't accidentally leak the host
+      // when forwarded; keep the path + searchParams.
+      const parsed = new URL(req.url);
+      meta.path = parsed.pathname;
+      if (parsed.search) meta.query = parsed.search;
+    } catch {
+      meta.url = req.url;
+    }
+  }
+  if (req.method) meta.method = req.method;
+  if (req.userId !== undefined) meta.userId = req.userId;
+  return Object.keys(meta).length > 0 ? meta : undefined;
+};
+
+/**
  * Centralized error handler for API routes.
  * Converts known error types to structured JSON responses.
+ *
+ * For unhandled errors (resulting in a generic 500), the underlying error
+ * (with stack) is logged server-side together with the optional request
+ * context so the next failure is debuggable. The HTTP response shape is
+ * deliberately kept generic to avoid leaking stack traces or implementation
+ * details to clients.
  */
-export const handleError = (err: unknown): Response => {
+export const handleError = (err: unknown, req?: ErrorRequestContext): Response => {
   if (err instanceof AppError) {
     const body: Record<string, unknown> = { error: err.message };
     if (err.code) body.code = err.code;
@@ -100,6 +141,6 @@ export const handleError = (err: unknown): Response => {
     );
   }
 
-  logError(err, "Unhandled error in API route");
+  logError(err, "Unhandled error in API route", buildErrorMetadata(req));
   return Response.json({ error: "Internal server error", code: "INTERNAL_ERROR" }, { status: 500 });
 };
