@@ -82,6 +82,26 @@ describe("convertJsonToCsv", () => {
       expect(csv).toContain("NYC");
     });
 
+    it("should remove nested excluded fields before flattening", () => {
+      const json = [
+        {
+          id: "1",
+          user: { name: "John", email: "john@example.test" },
+          internalNote: "private",
+        },
+      ];
+
+      const result = convertJsonToCsv(toBuffer(json), { excludeFields: ["user.email", "internalNote"] });
+
+      const csv = csvString(result.csv);
+      expect(csv).toContain("user.name");
+      expect(csv).toContain("John");
+      expect(csv).not.toContain("user.email");
+      expect(csv).not.toContain("john@example.test");
+      expect(csv).not.toContain("internalNote");
+      expect(csv).not.toContain("private");
+    });
+
     it("should serialize arrays as JSON strings", () => {
       const json = [{ tags: ["a", "b"], name: "X" }];
 

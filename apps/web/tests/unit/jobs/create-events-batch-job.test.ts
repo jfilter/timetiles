@@ -909,6 +909,75 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       );
     });
 
+    it("should record transformation audit values from target paths", async () => {
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        idStrategy: { type: "external", externalIdPath: "id" },
+        schemaConfig: { allowTransformations: true },
+        ingestTransforms: [
+          {
+            id: "transform-code-label",
+            type: "string-op",
+            from: "metadata.code",
+            to: "metadata.label",
+            operation: "uppercase",
+            active: true,
+          },
+          {
+            id: "transform-summary",
+            type: "concatenate",
+            fromFields: ["title", "city"],
+            separator: " - ",
+            to: "summary",
+            active: true,
+          },
+        ],
+      };
+
+      const mockIngestFile = createMockIngestFile();
+      const mockFileData = [{ id: "1", "metadata.code": "abc", title: "March", city: "Berlin" }];
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string; id: string | number }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
+
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+      mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:1");
+      mocks.getIngestGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      mockPayload.update.mockResolvedValueOnce({});
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      await createEventsBatchJob.handler(mockContext);
+
+      const insertedEvents = getBulkInsertedEvents();
+      expect(insertedEvents[0]).toEqual(
+        expect.objectContaining({
+          transformedData: expect.objectContaining({
+            metadata: { label: "ABC" },
+            summary: "March - Berlin",
+          }),
+          validationStatus: "transformed",
+          transformations: expect.arrayContaining([
+            expect.objectContaining({ path: "metadata.label", oldValue: "abc", newValue: "ABC" }),
+            expect.objectContaining({ path: "summary", newValue: "March - Berlin" }),
+          ]),
+        })
+      );
+    });
+
     it("should handle empty transformations array", async () => {
       const mockIngestJob = {
         id: "import-123",
@@ -1122,13 +1191,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       await createEventsBatchJob.handler(mockContext);
 
       // Event should still be created with original value preserved (transform failed)
-      // But transformations array tracks what was attempted (not what succeeded)
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
           transformedData: expect.objectContaining({ age: "not-a-number" }), // Original value preserved
-          validationStatus: "transformed", // Marks as transformed (attempted)
-          transformations: expect.arrayContaining([expect.objectContaining({ path: "age" })]),
+          validationStatus: "pending",
+          transformations: null,
         })
       );
     });

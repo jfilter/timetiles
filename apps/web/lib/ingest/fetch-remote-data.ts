@@ -20,17 +20,12 @@ import type { ScheduledIngest } from "@/payload-types";
 
 import { convertGeoJsonToCsv, isGeoJson, normalizeWfsUrl } from "./geojson-to-csv";
 import { enrichRecordsFromDetailPages, extractRecordsFromHtml, type HtmlExtractionConfig } from "./html-to-records";
-import { convertJsonToCsv, recordsToCsv } from "./json-to-csv";
+import { convertJsonToCsv, recordsToCsv, stripExcludedFieldsFromRecords } from "./json-to-csv";
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
 
-/** Remove specified fields from all records in-place. */
-const stripFields = (records: Record<string, unknown>[], fields: string[]): void => {
-  for (const record of records) {
-    for (const field of fields) {
-      delete record[field];
-    }
-  }
-};
+/** Remove specified fields from all records using ingest path semantics. */
+const stripFields = (records: Record<string, unknown>[], fields: string[]): Record<string, unknown>[] =>
+  stripExcludedFieldsFromRecords(records, fields);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,8 +110,8 @@ interface ConversionResult {
 }
 
 /** Convert a fetched GeoJSON buffer to CSV. */
-const convertFetchedGeoJson = (data: Buffer, url: string): ConversionResult => {
-  const result = convertGeoJsonToCsv(data);
+const convertFetchedGeoJson = (data: Buffer, url: string, excludeFields?: string[]): ConversionResult => {
+  const result = convertGeoJsonToCsv(data, { excludeFields });
   logger.info("GeoJSON conversion complete", {
     url: sanitizeUrlForLogging(url),
     featureCount: result.featureCount,
@@ -160,7 +155,7 @@ const convertHtmlInJson = async (
     await enrichRecordsFromDetailPages(records, htmlExtractConfig.detailPage, fetchFn);
   }
 
-  if (options.excludeFields?.length) stripFields(records, options.excludeFields);
+  if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
   return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed };
 };
 
@@ -182,7 +177,7 @@ const convertFetchedJson = async (
     });
     let records = result.allRecords;
     if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
-    if (options.excludeFields?.length) stripFields(records, options.excludeFields);
+    if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
     return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed: result.pagesProcessed };
   }
 
@@ -222,7 +217,7 @@ const fetchPostPaginated = async (
     records = preProcessRecords(records, options.preProcessing);
   }
   if (options.excludeFields?.length) {
-    stripFields(records, options.excludeFields);
+    records = stripFields(records, options.excludeFields);
   }
 
   const finalData = recordsToCsv(records);
@@ -283,7 +278,7 @@ const detectAndConvertFormat = async (
   }
 
   if (isGeoJsonDetected(contentType, responseFormat, fetchedData)) {
-    const geoResult = convertFetchedGeoJson(fetchedData, normalizedUrl);
+    const geoResult = convertFetchedGeoJson(fetchedData, normalizedUrl, options.excludeFields);
     return {
       finalData: geoResult.finalData,
       finalMimeType: "text/csv",
@@ -387,11 +382,11 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       header: true,
       skipEmptyLines: true,
     });
-    stripFields(parsed.data, options.excludeFields);
+    const strippedRows = stripFields(parsed.data, options.excludeFields);
     // Escape formula-like cells in case the raw upstream CSV contains
     // injection payloads (CWE-1236). The ingest pipeline re-reads this as
     // input and it can flow into user-facing exports later.
-    finalData = Buffer.from(Papa.unparse(escapeRowsFormulas(parsed.data)), "utf-8");
+    finalData = Buffer.from(Papa.unparse(escapeRowsFormulas(strippedRows)), "utf-8");
   }
 
   // Validate file extension

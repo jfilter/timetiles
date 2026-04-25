@@ -207,7 +207,7 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   const result = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
-    dynamicTyping: true,
+    transform: (value) => value.trim(),
     transformHeader: (header) => header.trim(),
     preview: SAMPLE_ROW_COUNT + 1, // +1 for header detection verification
   });
@@ -216,7 +216,7 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   const fullResult = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
-    dynamicTyping: true,
+    transform: (value) => value.trim(),
     transformHeader: (header) => header.trim(),
   });
 

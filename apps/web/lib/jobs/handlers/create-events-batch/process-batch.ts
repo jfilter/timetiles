@@ -15,6 +15,7 @@ import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import { getByPathOrKey } from "@/lib/utils/object-path";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, Event, IngestJob } from "@/payload-types";
 
@@ -24,20 +25,86 @@ import { createEventData, EventPayloadTooLargeError } from "../../utils/event-cr
 import { getEventCreationDuplicates } from "../../utils/resource-loading";
 import { buildTransformsFromDataset } from "../../utils/transform-builders";
 
-const getTransformPath = (t: IngestTransform): string => {
-  if ("from" in t) return t.from;
-  if ("fromFields" in t) return String(t.fromFields);
-  return "";
+type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
+
+const valuesEqual = (left: unknown, right: unknown): boolean => {
+  if (Object.is(left, right)) return true;
+  if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
+  return JSON.stringify(left) === JSON.stringify(right);
 };
 
-/** For rename transforms the source key is deleted, so newValue must read
- *  from the destination path (t.to). For all other transforms the value
- *  stays at t.from. */
-const getNewValuePath = (t: IngestTransform): string => {
-  if (t.type === "rename" && "to" in t) return t.to;
-  if ("from" in t) return t.from;
-  if ("fromFields" in t) return String(t.fromFields);
-  return "";
+const getTransformOutputPaths = (t: IngestTransform): string[] => {
+  switch (t.type) {
+    case "rename":
+      return [t.to];
+    case "date-parse":
+      return [t.from];
+    case "string-op":
+      return [t.to ?? t.from];
+    case "concatenate":
+      return [t.to];
+    case "split":
+      return t.toFields;
+    case "parse-json-array":
+      return [t.to ?? t.from];
+    case "split-to-array":
+      return [t.to ?? t.from];
+    case "extract":
+      return [t.to];
+  }
+};
+
+const getTransformInputValue = (t: IngestTransform, row: Record<string, unknown>): unknown => {
+  if (t.type === "concatenate") {
+    const values = Object.fromEntries(
+      t.fromFields
+        .map((field) => [field, getByPathOrKey(row, field)] as const)
+        .filter(([, value]) => value !== undefined)
+    );
+    return Object.keys(values).length > 0 ? values : undefined;
+  }
+
+  return "from" in t ? getByPathOrKey(row, t.from) : undefined;
+};
+
+const getTransformOutputValue = (t: IngestTransform, row: Record<string, unknown>): unknown => {
+  const outputPaths = getTransformOutputPaths(t);
+
+  if (outputPaths.length === 1) {
+    return getByPathOrKey(row, outputPaths[0]!);
+  }
+
+  const values = Object.fromEntries(
+    outputPaths.map((path) => [path, getByPathOrKey(row, path)] as const).filter(([, value]) => value !== undefined)
+  );
+  return Object.keys(values).length > 0 ? values : undefined;
+};
+
+const didMoveSource = (t: IngestTransform, row: Record<string, unknown>, transformedRow: Record<string, unknown>) => {
+  if (!(t.type === "rename" || t.type === "string-op")) return false;
+  const target = t.type === "rename" ? t.to : (t.to ?? t.from);
+  if (target === t.from) return false;
+  return getByPathOrKey(row, t.from) !== undefined && getByPathOrKey(transformedRow, t.from) === undefined;
+};
+
+const buildTransformationChange = (
+  t: IngestTransform,
+  row: Record<string, unknown>,
+  transformedRow: Record<string, unknown>
+): TransformationChange | null => {
+  const outputPaths = getTransformOutputPaths(t);
+  const oldValue = getTransformInputValue(t, row);
+  const previousOutputValue = getTransformOutputValue(t, row);
+  const newValue = getTransformOutputValue(t, transformedRow);
+
+  if (newValue === undefined) return null;
+  if (!didMoveSource(t, row, transformedRow) && valuesEqual(previousOutputValue, newValue)) return null;
+
+  return {
+    path: outputPaths.join(","),
+    oldValue: oldValue ?? null,
+    newValue: newValue ?? null,
+  };
 };
 
 /** Denormalized access fields computed once per job. */
@@ -66,23 +133,19 @@ const buildBulkEventFromRow = (
 
   const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
 
-  // Emit only transforms that actually fired on this row. A rename whose `from`
-  // field is absent (or any transform whose inputs are missing) leaves both
-  // `oldValue` and `newValue` as null — persisting those is noise on the event's
-  // `transformations` audit trail and misrepresents `validationStatus`.
-  const rawTransformationChanges =
-    transforms.length > 0
-      ? transforms.map((t) => ({
-          path: getTransformPath(t),
-          oldValue: "from" in t ? (row[t.from] ?? null) : null,
-          newValue: transformedRow[getNewValuePath(t)] ?? null,
-        }))
-      : null;
+  // Emit only transforms that changed this row, reading both source and target
+  // fields with the same dotted-path semantics as the transform engine.
   const transformationChanges =
-    rawTransformationChanges?.filter((c) => !(c.oldValue === null && c.newValue === null)) ?? null;
+    transforms.length > 0
+      ? transforms
+          .map((t) => buildTransformationChange(t, row, transformedRow))
+          .filter((change): change is TransformationChange => change !== null)
+      : null;
+  const appliedTransformationChanges =
+    transformationChanges && transformationChanges.length > 0 ? transformationChanges : null;
 
-  if (transformationChanges) {
-    log.debug("Applied transforms", { transformCount: transforms.length });
+  if (appliedTransformationChanges) {
+    log.debug("Applied transforms", { transformCount: appliedTransformationChanges.length });
   }
 
   const eventData = createEventData(
@@ -92,7 +155,7 @@ const buildBulkEventFromRow = (
     ingestJobId,
     ctx.job,
     geocodingResults,
-    transformationChanges
+    appliedTransformationChanges
   );
 
   return { ...eventData, datasetIsPublic: accessFields.datasetIsPublic, catalogOwnerId: accessFields.catalogOwnerId };

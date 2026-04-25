@@ -316,6 +316,39 @@ describe.sequential("JSON fetch integration", () => {
     expect(csv).toContain("John");
   });
 
+  it("applies excludeFields when converting GeoJSON sources", async () => {
+    server.respondWithJSON("/api/geojson", {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [13.4, 52.5] },
+          properties: {
+            name: "Berlin",
+            owner: { email: "owner@example.test", name: "Ops" },
+            internalNote: "sensitive",
+          },
+        },
+      ],
+    });
+
+    const result = await fetchRemoteData({
+      sourceUrl: server.getUrl("/api/geojson"),
+      maxRetries: 0,
+      excludeFields: ["owner.email", "internalNote"],
+    });
+
+    const csv = result.data.toString();
+    expect(result.wasConverted).toBe(true);
+    expect(csv).toContain("name");
+    expect(csv).toContain("owner.name");
+    expect(csv).toContain("latitude");
+    expect(csv).not.toContain("owner.email");
+    expect(csv).not.toContain("owner@example.test");
+    expect(csv).not.toContain("internalNote");
+    expect(csv).not.toContain("sensitive");
+  });
+
   // -------------------------------------------------------------------------
   // 11. responseFormat override: force JSON conversion on text/plain
   // -------------------------------------------------------------------------

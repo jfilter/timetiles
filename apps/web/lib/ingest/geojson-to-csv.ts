@@ -12,7 +12,7 @@ import Papa from "papaparse";
 import { logger } from "@/lib/logger";
 import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
 
-import { flattenObject } from "./json-to-csv";
+import { flattenObject, stripExcludedFieldsFromRecords } from "./json-to-csv";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,6 +22,11 @@ export interface GeoJsonToCsvResult {
   csv: Buffer;
   featureCount: number;
   geometryTypes: string[];
+}
+
+export interface GeoJsonToCsvOptions {
+  /** Fields to remove after GeoJSON properties are flattened. */
+  excludeFields?: string[];
 }
 
 interface GeoJsonGeometry {
@@ -202,7 +207,7 @@ export const isGeoJsonBuffer = (buffer: Buffer): boolean => {
  * @returns The generated CSV as a Buffer together with metadata
  * @throws {Error} When JSON cannot be parsed or is not valid GeoJSON
  */
-export const convertGeoJsonToCsv = (buffer: Buffer): GeoJsonToCsvResult => {
+export const convertGeoJsonToCsv = (buffer: Buffer, options?: GeoJsonToCsvOptions): GeoJsonToCsvResult => {
   const data: unknown = JSON.parse(buffer.toString("utf-8"));
 
   let featureCollection: GeoJsonFeatureCollection;
@@ -233,7 +238,8 @@ export const convertGeoJsonToCsv = (buffer: Buffer): GeoJsonToCsvResult => {
 
   // Escape formula-like cells so downstream user-facing exports of this
   // CSV cannot execute spreadsheet formulas (CWE-1236, defense in depth).
-  const csvString = Papa.unparse(escapeRowsFormulas(rows));
+  const strippedRows = stripExcludedFieldsFromRecords(rows, options?.excludeFields);
+  const csvString = Papa.unparse(escapeRowsFormulas(strippedRows));
   const csv = Buffer.from(csvString, "utf-8");
 
   logger.info(

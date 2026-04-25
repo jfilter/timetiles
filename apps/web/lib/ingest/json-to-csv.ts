@@ -11,7 +11,7 @@ import Papa from "papaparse";
 
 import { logger } from "@/lib/logger";
 import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
-import { getByPath } from "@/lib/utils/object-path";
+import { deleteByPathOrKey, getByPath } from "@/lib/utils/object-path";
 
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
 
@@ -134,6 +134,27 @@ export const extractRecordsFromJson = (
   return { records: detected.records, detectedPath: detected.path };
 };
 
+/**
+ * Remove excluded fields from records before flattening or CSV serialization.
+ *
+ * Exclusions use the same path semantics as ingest transforms: an exact key
+ * wins first, then dot-notation is used for nested JSON objects.
+ */
+export const stripExcludedFieldsFromRecords = (
+  records: Record<string, unknown>[],
+  excludeFields?: string[]
+): Record<string, unknown>[] => {
+  if (!excludeFields?.length) return records;
+
+  return records.map((record) => {
+    const copy = { ...record };
+    for (const field of excludeFields) {
+      deleteByPathOrKey(copy, field);
+    }
+    return copy;
+  });
+};
+
 // ---------------------------------------------------------------------------
 // Main exports
 // ---------------------------------------------------------------------------
@@ -155,14 +176,7 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
   let records = options?.preProcessing ? preProcessRecords(rawRecords, options.preProcessing) : rawRecords;
 
   // Remove excluded fields before CSV conversion
-  if (options?.excludeFields?.length) {
-    const fieldsToRemove = options.excludeFields;
-    records = records.map((r) => {
-      const copy = { ...r };
-      for (const f of fieldsToRemove) delete copy[f];
-      return copy;
-    });
-  }
+  records = stripExcludedFieldsFromRecords(records, options?.excludeFields);
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
 

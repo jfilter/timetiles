@@ -303,6 +303,28 @@ describe("convertGeoJsonToCsv", () => {
     expect(headers).toContain("address.city");
   });
 
+  it("removes excluded flattened properties from GeoJSON output", () => {
+    const geojson = makeFeatureCollection([
+      makePointFeature(13.4, 52.5, {
+        name: "Berlin",
+        owner: { email: "owner@example.test", name: "Ops" },
+        internalNote: "do not persist",
+      }),
+    ]);
+
+    const result = convertGeoJsonToCsv(toBuffer(geojson), { excludeFields: ["owner.email", "internalNote"] });
+    const { headers, rows } = parseCsv(result.csv);
+
+    expect(headers).toContain("name");
+    expect(headers).toContain("owner.name");
+    expect(headers).not.toContain("owner.email");
+    expect(headers).not.toContain("internalNote");
+    expect(rows[0]!.name).toBe("Berlin");
+    expect(rows[0]!["owner.name"]).toBe("Ops");
+    expect(rows[0]!["owner.email"]).toBeUndefined();
+    expect(rows[0]!.internalNote).toBeUndefined();
+  });
+
   it("handles null properties", () => {
     const geojson = makeFeatureCollection([
       { type: "Feature", geometry: { type: "Point", coordinates: [13.4, 52.5] }, properties: null },

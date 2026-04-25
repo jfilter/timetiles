@@ -424,8 +424,8 @@ describe.sequential("processEventBatch", () => {
       expect(data).toHaveProperty("ingestJob");
       expect(data).toHaveProperty("locationName", "Tempelhof");
       expect(data).toHaveProperty("coordinateSource");
-      expect(data).toHaveProperty("validationStatus", "transformed");
-      expect(data).toHaveProperty("transformations");
+      expect(data).toHaveProperty("validationStatus", "pending");
+      expect(data).toHaveProperty("transformations", null);
       expect(data).toHaveProperty("schemaVersionNumber", 7);
       // eventTimestamp and eventEndTimestamp are included (may be null/undefined)
       expect(data).toHaveProperty("eventTimestamp");
@@ -603,9 +603,9 @@ describe.sequential("processEventBatch", () => {
 
       await processEventBatch(ctx, rows, 0);
 
-      const insertedEvents = getBulkInsertedEvents() as Array<{ transformations: unknown[] }>;
+      const insertedEvents = getBulkInsertedEvents() as Array<{ transformations: unknown[] | null }>;
       expect(insertedEvents).toHaveLength(1);
-      expect(insertedEvents[0]?.transformations).toEqual([]);
+      expect(insertedEvents[0]?.transformations).toBeNull();
     });
   });
 
