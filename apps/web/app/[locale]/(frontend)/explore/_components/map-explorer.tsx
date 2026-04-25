@@ -13,7 +13,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 
-import { useLoadingPhase } from "@/lib/hooks/use-loading-phase";
 import { useUIStore } from "@/lib/store";
 
 import { ChartSection } from "./chart-section";
@@ -57,13 +56,15 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     clusterChildren,
     clusterSummary,
     clusterSummaryLoading,
-    clustersLoading,
+    clustersFetching,
+    clustersDataUpdatedAt,
     effectiveBounds: chartBounds,
     boundsData,
     isLoadingInitialBounds,
     events,
     eventsData,
-    eventsLoading,
+    eventsFetching,
+    eventsDataUpdatedAt,
     totalEventsData,
     hasTemporalData,
   } = data;
@@ -73,8 +74,11 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   const setClusterFilterCells = useUIStore((s) => s.setClusterFilterCells);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Loading states — shared hook tracks "has loaded at least once"
-  const { isInitialLoad, isUpdating } = useLoadingPhase(eventsLoading || clustersLoading);
+  // Loading phase derived from React Query's native fields:
+  //   - isInitialLoad: any query has no successful fetch yet (dataUpdatedAt === 0)
+  //   - isUpdating: at least one query is fetching while stale data is on screen
+  const isInitialLoad = eventsDataUpdatedAt === 0 || clustersDataUpdatedAt === 0;
+  const isUpdating = (eventsFetching || clustersFetching) && !isInitialLoad;
 
   // ResizeObserver to trigger map resize during grid transitions
   useEffect(() => {

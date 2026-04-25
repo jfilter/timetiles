@@ -44,14 +44,11 @@ export const useExplorerQueries = (
   // Effective bounds: use map viewport (cluster filtering is done by H3 cells, not bbox)
   const effectiveBounds = debouncedSimpleBounds;
 
-  const { data: clustersData, isLoading: clustersLoading } = useMapClustersQuery(
-    filters,
-    debouncedSimpleBounds,
-    mapZoom,
-    true,
-    scope,
-    clusterDensity
-  );
+  const {
+    data: clustersData,
+    isFetching: clustersFetching,
+    dataUpdatedAt: clustersDataUpdatedAt,
+  } = useMapClustersQuery(filters, debouncedSimpleBounds, mapZoom, true, scope, clusterDensity);
   const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
   const clusters = clustersData?.features ?? [];
@@ -81,14 +78,11 @@ export const useExplorerQueries = (
     scope
   );
 
-  const { data: eventsData, isLoading: eventsLoading } = useEventsListQuery(
-    filters,
-    effectiveBounds,
-    1000,
-    true,
-    scope,
-    clusterFilter
-  );
+  const {
+    data: eventsData,
+    isFetching: eventsFetching,
+    dataUpdatedAt: eventsDataUpdatedAt,
+  } = useEventsListQuery(filters, effectiveBounds, 1000, true, scope, clusterFilter);
   const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
   const events = eventsData?.events ?? EMPTY_ARRAY;
 
@@ -105,13 +99,15 @@ export const useExplorerQueries = (
     clusterChildren,
     clusterSummary,
     clusterSummaryLoading,
-    clustersLoading,
+    clustersFetching,
+    clustersDataUpdatedAt,
     effectiveBounds,
     boundsData,
     boundsLoading,
     events,
     eventsData,
-    eventsLoading,
+    eventsFetching,
+    eventsDataUpdatedAt,
     totalEventsData,
     hasTemporalData,
   };

@@ -35,13 +35,16 @@ import type { FilterState } from "../types/filter-state";
 import type { BoundsType, ViewScope } from "../utils/event-params";
 import { buildBaseEventParams, buildEventParams } from "../utils/event-params";
 import { QUERY_PRESETS } from "./query-presets";
-import type { LoadingPhase } from "./use-loading-phase";
-import { useLoadingPhase } from "./use-loading-phase";
 
 const logger = createLogger("EventsQueries");
 
 /** Query result enriched with loading-phase flags for chart components. */
-export type ChartQueryResult<TData, TError = Error> = UseQueryResult<TData, TError> & LoadingPhase;
+export type ChartQueryResult<TData, TError = Error> = UseQueryResult<TData, TError> & {
+  /** True when no successful fetch has completed yet (nothing rendered). */
+  isInitialLoad: boolean;
+  /** True when fetching but stale data is already on screen. */
+  isUpdating: boolean;
+};
 
 // Types for API responses
 
@@ -436,8 +439,9 @@ export const useHistogramQuery = (
     ...QUERY_PRESETS.expensive,
     placeholderData: (previousData) => previousData,
   });
-  const phase = useLoadingPhase(query.isLoading);
-  return { ...query, ...phase };
+  const isInitialLoad = query.dataUpdatedAt === 0;
+  const isUpdating = query.isFetching && !!query.data;
+  return { ...query, isInitialLoad, isUpdating };
 };
 
 /**
@@ -461,8 +465,9 @@ export const useTemporalClustersQuery = (
 
     placeholderData: (previousData) => previousData,
   });
-  const phase = useLoadingPhase(query.isLoading);
-  return { ...query, ...phase };
+  const isInitialLoad = query.dataUpdatedAt === 0;
+  const isUpdating = query.isFetching && !!query.data;
+  return { ...query, isInitialLoad, isUpdating };
 };
 
 /**
@@ -546,8 +551,9 @@ export const useEventsAggregationQuery = (
 
     placeholderData: (previousData) => previousData,
   });
-  const phase = useLoadingPhase(query.isLoading);
-  return { ...query, ...phase };
+  const isInitialLoad = query.dataUpdatedAt === 0;
+  const isUpdating = query.isFetching && !!query.data;
+  return { ...query, isInitialLoad, isUpdating };
 };
 
 // Infinite query hook for paginated events list
