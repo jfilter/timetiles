@@ -31,6 +31,11 @@ interface InitialAuth {
  */
 export const useWizardEffects = (initialAuth: InitialAuth): void => {
   // 1. Initialize store with server-provided auth (once)
+  // Category A (UI initialization): seeds startedAuthenticated and the
+  // initial step from server-known auth state. The data is the user's
+  // own session, not a fuzzy server suggestion, and `initialize` is
+  // idempotent (gated by `_initialized`). No user-facing config is
+  // mutated.
   useEffect(() => {
     useWizardStore.getState().initialize(initialAuth);
   }, [initialAuth]);
@@ -41,6 +46,12 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
   const validationEnabled = currentStep !== 7 && ingestFileId === null && !(editMode && !previewId);
   const { data: validationData } = usePreviewValidationQuery(previewId, validationEnabled);
 
+  // Category B but safe: this is forced session recovery, not silent
+  // auto-apply. The server has confirmed the preview file is gone (1h
+  // expiry on disk), so any wizard state referring to it is stale and
+  // the user must re-upload. There is no alternative UI path — the user
+  // can't "Apply / Ignore" a missing file. Resetting to the upload step
+  // is the only correct behaviour.
   useEffect(() => {
     if (validationData && !validationData.valid) {
       const store = useWizardStore.getState();

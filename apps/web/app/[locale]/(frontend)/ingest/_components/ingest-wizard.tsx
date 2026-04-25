@@ -49,7 +49,13 @@ export const IngestWizard = ({ className, editScheduleId }: Readonly<IngestWizar
   const router = useRouter();
   const { data: schedule, isLoading: isLoadingSchedule, isError } = useScheduledIngestQuery(editScheduleId ?? null);
 
-  // Initialize edit mode once the schedule is loaded
+  // Category B but safe: server-data-driven mutation that is the user's
+  // explicit request — they navigated here with `?edit=N` to load a
+  // schedule they already own. The full-screen loading state below
+  // blocks rendering until init runs, so the user never sees a
+  // half-applied state, and the per-id `Ref` guard makes init run
+  // exactly once. `initializeForEdit` is a single atomic `set()` that
+  // also clears any persisted wizard state.
   useEffect(() => {
     if (editScheduleId && schedule && editInitializedRef.current !== editScheduleId) {
       editInitializedRef.current = editScheduleId;
