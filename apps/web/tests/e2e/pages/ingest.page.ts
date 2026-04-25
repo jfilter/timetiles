@@ -283,13 +283,19 @@ export class IngestPage {
       if (tagName === "select") {
         await catalogDropdown.selectOption("new");
       } else {
-        // Radix Select — click trigger, wait for the option to be visible
-        // (Radix has an open animation; clicking before the option settles
-        // sometimes resolves the locator but misses the click target), then click.
+        // Radix Select: open the dropdown, then keyboard-navigate to the
+        // "+ Create new catalog" item which the component renders first.
+        // Click-targeting Radix options inside a Popper that opens upward
+        // (which happens whenever the trigger is near the bottom of the
+        // viewport with many options) is unreliable — Playwright's
+        // scroll-into-view doesn't always land inside the popper's own
+        // scroll container. Home + Enter is layout-independent.
         await catalogDropdown.click();
-        const newOption = this.page.getByRole("option", { name: /create new catalog/i });
-        await newOption.waitFor({ state: "visible", timeout: 10000 });
-        await newOption.click({ timeout: 10000 });
+        await this.page
+          .getByRole("option", { name: /create new catalog/i })
+          .waitFor({ state: "attached", timeout: 10000 });
+        await this.page.keyboard.press("Home");
+        await this.page.keyboard.press("Enter");
       }
       await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     }
