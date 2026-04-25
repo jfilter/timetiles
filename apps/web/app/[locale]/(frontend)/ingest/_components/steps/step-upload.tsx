@@ -122,11 +122,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     editMode,
     authConfig: storeAuthConfig,
     nextStep,
-    setFile,
-    setSourceUrl,
+    loadFile,
+    setSourceUrlInput,
     jsonApiConfig,
-    setJsonApiConfig,
-    clearFile,
+    setJsonApiInput,
+    unloadFile,
   } = useWizardUploadStepState();
   const canProceed = useWizardCanProceed();
 
@@ -188,13 +188,12 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
       const data = await uploadMutation.mutateAsync(formData);
 
-      setFile(
-        { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
-        data.sheets,
-        data.previewId,
-        undefined,
-        data.configSuggestions
-      );
+      loadFile({
+        file: { name: selectedFile.name, size: selectedFile.size, mimeType: selectedFile.type },
+        sheets: data.sheets,
+        previewId: data.previewId,
+        configSuggestions: data.configSuggestions,
+      });
     } catch (err) {
       dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : t("failedToProcessFile") });
     }
@@ -217,28 +216,28 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
         recordsPath: jsonApiConfig?.recordsPath,
       });
 
-      setSourceUrl(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
+      setSourceUrlInput(urlInput.trim(), authConfig.type === "none" ? null : authConfig);
 
       // Detect JSON conversion and store config
       dispatch({ type: "SET_JSON_DETECTED", detected: !!data.wasConverted });
       if (data.wasConverted && !jsonApiConfig) {
-        setJsonApiConfig({ wasAutoDetected: true });
+        setJsonApiInput({ wasAutoDetected: true });
       }
 
-      setFile(
-        { name: data.fileName, size: data.contentLength, mimeType: data.contentType },
-        data.sheets,
-        data.previewId,
-        urlInput.trim(),
-        data.configSuggestions
-      );
+      loadFile({
+        file: { name: data.fileName, size: data.contentLength, mimeType: data.contentType },
+        sheets: data.sheets,
+        previewId: data.previewId,
+        sourceUrl: urlInput.trim(),
+        configSuggestions: data.configSuggestions,
+      });
     } catch (err) {
       dispatch({ type: "SET_ERROR", error: err instanceof Error ? err.message : t("failedToFetchUrl") });
     }
   };
 
   const handleRemoveFile = () => {
-    clearFile();
+    unloadFile();
     dispatch({ type: "RESET_URL_STATE" });
   };
 
@@ -416,7 +415,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
           {jsonDetected && sourceUrl && (
             <JsonApiConfigPanel
               jsonApiConfig={jsonApiConfig}
-              onConfigChange={setJsonApiConfig}
+              onConfigChange={setJsonApiInput}
               onReload={handleFetchClick}
               isReloading={urlMutation.isPending}
             />

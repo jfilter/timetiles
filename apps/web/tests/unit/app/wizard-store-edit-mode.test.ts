@@ -124,7 +124,7 @@ describe("wizard store edit mode", () => {
     });
   });
 
-  describe("clearFile in edit mode", () => {
+  describe("unloadFile in edit mode", () => {
     it("preserves sourceUrl, authConfig, jsonApiConfig, scheduleConfig", () => {
       useWizardStore.getState().initializeForEdit(42, editData);
       useWizardStore.setState({
@@ -132,7 +132,7 @@ describe("wizard store edit mode", () => {
         previewId: "preview-123",
       });
 
-      useWizardStore.getState().clearFile();
+      useWizardStore.getState().unloadFile();
       const state = useWizardStore.getState();
 
       expect(state.file).toBeNull();
@@ -154,7 +154,7 @@ describe("wizard store edit mode", () => {
         file: { name: "data.csv", size: 500, mimeType: "text/csv" },
       });
 
-      useWizardStore.getState().clearFile();
+      useWizardStore.getState().unloadFile();
       const state = useWizardStore.getState();
 
       expect(state.sourceUrl).toBeNull();

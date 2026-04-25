@@ -36,9 +36,9 @@ vi.stubGlobal("localStorage", {
 // ---------------------------------------------------------------------------
 // Action spies — track calls to store actions
 // ---------------------------------------------------------------------------
-const mockSetFile = vi.fn();
-const mockSetSourceUrl = vi.fn();
-const mockClearFile = vi.fn();
+const mockLoadFile = vi.fn();
+const mockSetSourceUrlInput = vi.fn();
+const mockUnloadFile = vi.fn();
 const mockNextStep = vi.fn();
 
 /** Reset the store to a specific state with action spies */
@@ -51,9 +51,9 @@ const resetStore = (overrides?: Partial<WizardState>) => {
     startedAuthenticated: true,
     ...overrides,
     // Override actions with spies (must be after ...overrides)
-    setFile: mockSetFile,
-    setSourceUrl: mockSetSourceUrl,
-    clearFile: mockClearFile,
+    loadFile: mockLoadFile,
+    setSourceUrlInput: mockSetSourceUrlInput,
+    unloadFile: mockUnloadFile,
     nextStep: mockNextStep,
   });
 };
@@ -109,7 +109,7 @@ describe.sequential("StepUpload", () => {
   // File Upload Flow
   // -------------------------------------------------------------------------
   describe("file upload flow", () => {
-    test("uploads file via file input and calls setFile on success", async () => {
+    test("uploads file via file input and calls loadFile on success", async () => {
       const { container } = renderWithProviders(<StepUpload />);
 
       const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -127,13 +127,12 @@ describe.sequential("StepUpload", () => {
       });
 
       await waitFor(() => {
-        expect(mockSetFile).toHaveBeenCalledWith(
-          { name: "events.csv", size: expect.any(Number), mimeType: "text/csv" },
-          apiSuccess.sheets,
-          "preview-abc123",
-          undefined,
-          undefined
-        );
+        expect(mockLoadFile).toHaveBeenCalledWith({
+          file: { name: "events.csv", size: expect.any(Number), mimeType: "text/csv" },
+          sheets: apiSuccess.sheets,
+          previewId: "preview-abc123",
+          configSuggestions: undefined,
+        });
       });
     });
 
@@ -167,7 +166,7 @@ describe.sequential("StepUpload", () => {
       await waitFor(() => {
         expect(screen.getByText("File too large")).toBeInTheDocument();
       });
-      expect(mockSetFile).not.toHaveBeenCalled();
+      expect(mockLoadFile).not.toHaveBeenCalled();
     });
 
     test("shows error when fetch throws a network error", async () => {
@@ -216,7 +215,7 @@ describe.sequential("StepUpload", () => {
       resetStore({ sourceUrl: "https://placeholder.test" });
     };
 
-    test("user types URL, clicks Fetch — calls setSourceUrl + setFile", async () => {
+    test("user types URL, clicks Fetch — calls setSourceUrlInput + loadFile", async () => {
       activateUrlTab();
       fetchMock.mockImplementation(() => jsonResponse(urlApiSuccess));
 
@@ -239,14 +238,14 @@ describe.sequential("StepUpload", () => {
       });
 
       await waitFor(() => {
-        expect(mockSetSourceUrl).toHaveBeenCalledWith("https://example.com/data.csv", null);
-        expect(mockSetFile).toHaveBeenCalledWith(
-          { name: "remote-data.csv", size: 2048, mimeType: "text/csv" },
-          urlApiSuccess.sheets,
-          "preview-abc123",
-          "https://example.com/data.csv",
-          undefined
-        );
+        expect(mockSetSourceUrlInput).toHaveBeenCalledWith("https://example.com/data.csv", null);
+        expect(mockLoadFile).toHaveBeenCalledWith({
+          file: { name: "remote-data.csv", size: 2048, mimeType: "text/csv" },
+          sheets: urlApiSuccess.sheets,
+          previewId: "preview-abc123",
+          sourceUrl: "https://example.com/data.csv",
+          configSuggestions: undefined,
+        });
       });
     });
 
@@ -266,7 +265,7 @@ describe.sequential("StepUpload", () => {
       await waitFor(() => {
         expect(screen.getByText("URL not reachable")).toBeInTheDocument();
       });
-      expect(mockSetFile).not.toHaveBeenCalled();
+      expect(mockLoadFile).not.toHaveBeenCalled();
     });
 
     test("sends no auth payload when auth type is none", async () => {
@@ -335,7 +334,7 @@ describe.sequential("StepUpload", () => {
       expect(container.textContent).toContain("https://example.com/remote.csv");
     });
 
-    test("calls clearFile when remove button is clicked", () => {
+    test("calls unloadFile when remove button is clicked", () => {
       resetStore({
         file: { name: "events.csv", size: 1024, mimeType: "text/csv" },
         sheets: [{ index: 0, name: "Sheet1", rowCount: 10, headers: [], sampleData: [] }],
@@ -347,7 +346,7 @@ describe.sequential("StepUpload", () => {
       expect(removeButton).toBeTruthy();
       fireEvent.click(removeButton);
 
-      expect(mockClearFile).toHaveBeenCalledOnce();
+      expect(mockUnloadFile).toHaveBeenCalledOnce();
     });
 
     test("hides upload tabs when file is loaded", () => {

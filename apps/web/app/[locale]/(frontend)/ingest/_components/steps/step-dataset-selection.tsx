@@ -106,9 +106,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     configSuggestions,
     fileName,
     nextStep,
-    setCatalog,
-    setSheetMapping,
-    applySuggestionToDatasetSelection,
+    selectCatalog,
+    setDatasetTarget,
+    applyDatasetSelectionSuggestion,
   } = useWizardDatasetSelectionStepState();
   const canProceed = useWizardCanProceed();
 
@@ -128,9 +128,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   useEffect(() => {
     if (isLoading || selectedCatalogId !== null) return;
     if (!catalogsList || catalogsList.length === 0) {
-      setCatalog("new", suggestedCatalogName);
+      selectCatalog("new", suggestedCatalogName);
     }
-  }, [catalogsList, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
+  }, [catalogsList, selectedCatalogId, isLoading, selectCatalog, suggestedCatalogName]);
 
   // Track whether the user has explicitly applied or dismissed the suggestion
   // banner. Both are wizard-session-local and reset when the user reloads.
@@ -164,7 +164,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
   const handleApplySuggestion = () => {
     if (!bestSuggestion) return;
-    applySuggestionToDatasetSelection({ catalogId: bestSuggestion.catalogId, sheetMatches });
+    applyDatasetSelectionSuggestion({ catalogId: bestSuggestion.catalogId, sheetMatches });
     setSuggestionApplied(true);
   };
 
@@ -174,34 +174,34 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
   const handleResetSuggestion = () => {
     setSuggestionApplied(false);
-    setCatalog(null);
+    selectCatalog(null);
     // Clearing only the catalog leaves each sheet pointing at a `datasetId`
     // from the previously applied catalog. Those refs would then resurface
     // downstream (schema-drift checks, field-mapping auto-apply) against
     // datasets the user never chose.
     for (const m of sheetMappings) {
-      setSheetMapping(m.sheetIndex, { datasetId: "new" });
+      setDatasetTarget(m.sheetIndex, { datasetId: "new" });
     }
   };
 
   const handleCatalogChange = (value: string) => {
     if (value === "new") {
-      setCatalog("new");
+      selectCatalog("new");
     } else {
-      setCatalog(value ? Number(value) : null);
+      selectCatalog(value ? Number(value) : null);
     }
   };
 
   const handleNewCatalogNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCatalog("new", e.target.value);
+    selectCatalog("new", e.target.value);
   };
 
   const handleDatasetChange = (sheetIndex: number, value: string) => {
-    setSheetMapping(sheetIndex, { datasetId: value === "new" ? "new" : Number(value) });
+    setDatasetTarget(sheetIndex, { datasetId: value === "new" ? "new" : Number(value) });
   };
 
   const handleNewDatasetNameChange = (sheetIndex: number, name: string) => {
-    setSheetMapping(sheetIndex, { newDatasetName: name });
+    setDatasetTarget(sheetIndex, { newDatasetName: name });
   };
 
   // Callback for single sheet case (index 0) to avoid inline function in JSX
@@ -379,7 +379,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                         if (value) {
                           const suggestion = configSuggestions.find((s) => s.datasetId === Number(value));
                           if (suggestion) {
-                            setSheetMapping(0, { similarityScore: suggestion.score / 100 });
+                            setDatasetTarget(0, { similarityScore: suggestion.score / 100 });
                           }
                         }
                       }}

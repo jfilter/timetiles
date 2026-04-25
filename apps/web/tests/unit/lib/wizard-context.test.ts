@@ -107,9 +107,9 @@ describe("Wizard Store", () => {
       { index: 1, name: "Sheet2", rowCount: 50, headers: ["name", "location"], sampleData: [] },
     ];
 
-    it("setFile sets file, sheets, and previewId", () => {
+    it("loadFile sets file, sheets, and previewId", () => {
       resetStore();
-      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
+      useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
 
       const state = useWizardStore.getState();
       expect(state.file).toEqual(mockFile);
@@ -117,9 +117,9 @@ describe("Wizard Store", () => {
       expect(state.previewId).toBe("preview-123");
     });
 
-    it("setFile initializes sheetMappings for each sheet", () => {
+    it("loadFile initializes sheetMappings for each sheet", () => {
       resetStore();
-      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
+      useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
 
       const state = useWizardStore.getState();
       expect(state.sheetMappings).toHaveLength(2);
@@ -137,9 +137,9 @@ describe("Wizard Store", () => {
       });
     });
 
-    it("setFile initializes fieldMappings for each sheet", () => {
+    it("loadFile initializes fieldMappings for each sheet", () => {
       resetStore();
-      useWizardStore.getState().setFile(mockFile, mockSheets, "preview-123");
+      useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
 
       const state = useWizardStore.getState();
       expect(state.fieldMappings).toHaveLength(2);
@@ -148,7 +148,7 @@ describe("Wizard Store", () => {
       expect(state.fieldMappings[1]?.sheetIndex).toBe(1);
     });
 
-    it("clearFile resets file-related state", () => {
+    it("unloadFile resets file-related state", () => {
       resetStore({
         file: mockFile,
         sheets: mockSheets,
@@ -171,7 +171,7 @@ describe("Wizard Store", () => {
         ],
       });
 
-      useWizardStore.getState().clearFile();
+      useWizardStore.getState().unloadFile();
 
       const state = useWizardStore.getState();
       expect(state.file).toBeNull();
@@ -183,23 +183,23 @@ describe("Wizard Store", () => {
   });
 
   describe("Dataset Selection", () => {
-    it("setCatalog sets catalog ID", () => {
+    it("selectCatalog sets catalog ID", () => {
       resetStore();
-      useWizardStore.getState().setCatalog(42);
+      useWizardStore.getState().selectCatalog(42);
 
       expect(useWizardStore.getState().selectedCatalogId).toBe(42);
     });
 
-    it("setCatalog sets new catalog name", () => {
+    it("selectCatalog sets new catalog name", () => {
       resetStore();
-      useWizardStore.getState().setCatalog("new", "My New Catalog");
+      useWizardStore.getState().selectCatalog("new", "My New Catalog");
 
       const state = useWizardStore.getState();
       expect(state.selectedCatalogId).toBe("new");
       expect(state.newCatalogName).toBe("My New Catalog");
     });
 
-    it("setSheetMapping updates specific sheet mapping", () => {
+    it("setDatasetTarget updates specific sheet mapping", () => {
       resetStore({
         sheetMappings: [
           { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
@@ -207,14 +207,14 @@ describe("Wizard Store", () => {
         ],
       });
 
-      useWizardStore.getState().setSheetMapping(0, { datasetId: 123, newDatasetName: "" });
+      useWizardStore.getState().setDatasetTarget(0, { datasetId: 123, newDatasetName: "" });
 
       const state = useWizardStore.getState();
       expect(state.sheetMappings[0]?.datasetId).toBe(123);
       expect(state.sheetMappings[1]?.datasetId).toBe("new"); // Unchanged
     });
 
-    describe("applySuggestionToDatasetSelection", () => {
+    describe("applyDatasetSelectionSuggestion", () => {
       it("atomically sets catalog and per-sheet datasetId", () => {
         resetStore({
           sheetMappings: [
@@ -223,7 +223,7 @@ describe("Wizard Store", () => {
           ],
         });
 
-        useWizardStore.getState().applySuggestionToDatasetSelection({
+        useWizardStore.getState().applyDatasetSelectionSuggestion({
           catalogId: 42,
           sheetMatches: [
             { sheetIndex: 0, datasetId: 100 },
@@ -248,7 +248,7 @@ describe("Wizard Store", () => {
 
         useWizardStore
           .getState()
-          .applySuggestionToDatasetSelection({ catalogId: 7, sheetMatches: [{ sheetIndex: 1, datasetId: 50 }] });
+          .applyDatasetSelectionSuggestion({ catalogId: 7, sheetMatches: [{ sheetIndex: 1, datasetId: 50 }] });
 
         const state = useWizardStore.getState();
         expect(state.selectedCatalogId).toBe(7);
@@ -266,7 +266,7 @@ describe("Wizard Store", () => {
 
         useWizardStore
           .getState()
-          .applySuggestionToDatasetSelection({
+          .applyDatasetSelectionSuggestion({
             catalogId: 1,
             sheetMatches: [{ sheetIndex: 0, datasetId: 99, similarityScore: 0.85 }],
           });
@@ -295,7 +295,7 @@ describe("Wizard Store", () => {
         try {
           useWizardStore
             .getState()
-            .applySuggestionToDatasetSelection({ catalogId: 42, sheetMatches: [{ sheetIndex: 0, datasetId: 7 }] });
+            .applyDatasetSelectionSuggestion({ catalogId: 42, sheetMatches: [{ sheetIndex: 0, datasetId: 7 }] });
         } finally {
           unsubscribe();
         }
@@ -397,7 +397,7 @@ describe("Wizard Store", () => {
   describe("Processing", () => {
     it("startProcessing sets processing state", () => {
       resetStore();
-      useWizardStore.getState().startProcessing(456);
+      useWizardStore.getState().startProcessing({ ingestFileId: 456 });
 
       const state = useWizardStore.getState();
       expect(state.ingestFileId).toBe(456);
@@ -522,12 +522,12 @@ describe("Wizard Store", () => {
     it("second import after reset starts completely fresh", () => {
       // First import
       resetStore();
-      const { setFile, setCatalog } = useWizardStore.getState();
+      const { loadFile, selectCatalog } = useWizardStore.getState();
       const sheets: SheetInfo[] = [
         { index: 0, name: "Sheet1", rowCount: 100, headers: ["title", "date"], sampleData: [] },
       ];
-      setFile({ name: "first.csv", size: 1024, mimeType: "text/csv" }, sheets, "preview-1");
-      setCatalog(42, "First Catalog");
+      loadFile({ file: { name: "first.csv", size: 1024, mimeType: "text/csv" }, sheets, previewId: "preview-1" });
+      selectCatalog(42, "First Catalog");
 
       // Verify first import state
       expect(useWizardStore.getState().file?.name).toBe("first.csv");
@@ -540,7 +540,13 @@ describe("Wizard Store", () => {
       const sheets2: SheetInfo[] = [
         { index: 0, name: "Data", rowCount: 200, headers: ["name", "location"], sampleData: [] },
       ];
-      useWizardStore.getState().setFile({ name: "second.csv", size: 2048, mimeType: "text/csv" }, sheets2, "preview-2");
+      useWizardStore
+        .getState()
+        .loadFile({
+          file: { name: "second.csv", size: 2048, mimeType: "text/csv" },
+          sheets: sheets2,
+          previewId: "preview-2",
+        });
 
       const state = useWizardStore.getState();
 

@@ -55,7 +55,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
   useEffect(() => {
     if (validationData && !validationData.valid) {
       const store = useWizardStore.getState();
-      store.clearFile();
+      store.unloadFile();
       if (currentStep > 2) {
         store.goToStep(getPreviewInvalidatedStep(currentStep, startedAuthenticated));
       }

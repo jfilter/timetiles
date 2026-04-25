@@ -112,7 +112,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         transforms: transformsPayload.length > 0 ? transformsPayload : undefined,
         createSchedule,
       });
-      startProcessing(data.ingestFileId, data.scheduledIngestId);
+      startProcessing({ ingestFileId: data.ingestFileId, scheduledIngestId: data.scheduledIngestId });
       nextStep();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("failedToStartImport"));

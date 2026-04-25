@@ -100,8 +100,8 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
     setFieldMapping,
     setImportOptions,
     setTransforms,
-    applyDatasetConfig,
-    resetToAutoDetected,
+    applyFieldMappingSuggestion,
+    resetFieldMappingToAutoDetected,
   } = useWizardFieldMappingStepState();
   const canProceed = useWizardCanProceed();
 
@@ -223,11 +223,11 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
           suggestion={bestSuggestion}
           isApplied={suggestionState.applied}
           onApply={() => {
-            applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
+            applyFieldMappingSuggestion(activeSheetIndex, bestSuggestion.config);
             suggestionState.setApplied(true);
           }}
           onReset={() => {
-            resetToAutoDetected(activeSheetIndex);
+            resetFieldMappingToAutoDetected(activeSheetIndex);
             suggestionState.setApplied(false);
           }}
           onIgnore={() => suggestionState.setDismissed(true)}

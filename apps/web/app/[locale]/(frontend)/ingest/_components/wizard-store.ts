@@ -66,7 +66,7 @@ export interface WizardState {
   startedAuthenticated: boolean;
   editMode: boolean;
   editScheduleId: number | null;
-  /** Dataset ID from the schedule being edited — used by setFile to pre-select instead of "new" */
+  /** Dataset ID from the schedule being edited — used by loadFile to pre-select instead of "new" */
   _editDatasetId: number | null;
   previewId: string | null;
   file: { name: string; size: number; mimeType: string } | null;
@@ -94,21 +94,21 @@ interface WizardActions {
   goToStep: (step: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
-  setFile: (
-    file: WizardState["file"],
-    sheets: SheetInfo[],
-    previewId: string,
-    sourceUrl?: string,
-    configSuggestions?: ConfigSuggestion[]
-  ) => void;
-  setSourceUrl: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
-  setAuthConfig: (config: UrlAuthConfig | null) => void;
-  setScheduleConfig: (config: ScheduleConfig | null) => void;
-  setJsonApiConfig: (config: JsonApiConfig | null) => void;
-  clearFile: () => void;
-  setCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
-  setSheetMapping: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
-  applySuggestionToDatasetSelection: (params: {
+  loadFile: (params: {
+    file: WizardState["file"];
+    sheets: SheetInfo[];
+    previewId: string;
+    sourceUrl?: string;
+    configSuggestions?: ConfigSuggestion[];
+  }) => void;
+  setSourceUrlInput: (sourceUrl: string | null, authConfig?: UrlAuthConfig | null) => void;
+  setUrlAuth: (config: UrlAuthConfig | null) => void;
+  configureSchedule: (config: ScheduleConfig | null) => void;
+  setJsonApiInput: (config: JsonApiConfig | null) => void;
+  unloadFile: () => void;
+  selectCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
+  setDatasetTarget: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
+  applyDatasetSelectionSuggestion: (params: {
     catalogId: number;
     sheetMatches: Array<{ sheetIndex: number; datasetId: number; similarityScore?: number | null }>;
   }) => void;
@@ -118,10 +118,10 @@ interface WizardActions {
     deduplicationStrategy?: WizardState["deduplicationStrategy"];
     geocodingEnabled?: boolean;
   }) => void;
-  startProcessing: (ingestFileId: number, scheduledIngestId?: number) => void;
+  startProcessing: (params: { ingestFileId: number; scheduledIngestId?: number }) => void;
   setError: (error: string | null) => void;
-  applyDatasetConfig: (sheetIndex: number, config: ConfigSuggestion["config"]) => void;
-  resetToAutoDetected: (sheetIndex: number) => void;
+  applyFieldMappingSuggestion: (sheetIndex: number, config: ConfigSuggestion["config"]) => void;
+  resetFieldMappingToAutoDetected: (sheetIndex: number) => void;
   complete: () => void;
   reset: () => void;
 }
@@ -295,7 +295,7 @@ export const useWizardStore = create<WizardStore>()(
             return { currentStep: prev };
           }),
 
-        setFile: (file, sheets, previewId, sourceUrl, configSuggestions) => {
+        loadFile: ({ file, sheets, previewId, sourceUrl, configSuggestions }) => {
           const state = get();
           const getDatasetName = (sheet: SheetInfo) => {
             if (sheets.length === 1 && file?.name) {
@@ -325,15 +325,16 @@ export const useWizardStore = create<WizardStore>()(
           });
         },
 
-        setSourceUrl: (sourceUrl, authConfig) => set((s) => ({ sourceUrl, authConfig: authConfig ?? s.authConfig })),
+        setSourceUrlInput: (sourceUrl, authConfig) =>
+          set((s) => ({ sourceUrl, authConfig: authConfig ?? s.authConfig })),
 
-        setAuthConfig: (authConfig) => set({ authConfig }),
+        setUrlAuth: (authConfig) => set({ authConfig }),
 
-        setScheduleConfig: (scheduleConfig) => set({ scheduleConfig }),
+        configureSchedule: (scheduleConfig) => set({ scheduleConfig }),
 
-        setJsonApiConfig: (jsonApiConfig) => set({ jsonApiConfig }),
+        setJsonApiInput: (jsonApiConfig) => set({ jsonApiConfig }),
 
-        clearFile: () =>
+        unloadFile: () =>
           set((s) => ({
             file: null,
             sheets: [],
@@ -349,13 +350,13 @@ export const useWizardStore = create<WizardStore>()(
             scheduleConfig: s.editMode ? s.scheduleConfig : null,
           })),
 
-        setCatalog: (catalogId, newCatalogName) =>
+        selectCatalog: (catalogId, newCatalogName) =>
           set((s) => ({ selectedCatalogId: catalogId, newCatalogName: newCatalogName ?? s.newCatalogName })),
 
-        setSheetMapping: (sheetIndex, mapping) =>
+        setDatasetTarget: (sheetIndex, mapping) =>
           set((s) => ({ sheetMappings: updateBySheetIndex(s.sheetMappings, sheetIndex, mapping) })),
 
-        applySuggestionToDatasetSelection: ({ catalogId, sheetMatches }) =>
+        applyDatasetSelectionSuggestion: ({ catalogId, sheetMatches }) =>
           set((s) => {
             // Atomically set the catalog and matching sheet mappings in one
             // store update so consumers can never observe a half-applied
@@ -385,12 +386,12 @@ export const useWizardStore = create<WizardStore>()(
             geocodingEnabled: options.geocodingEnabled ?? s.geocodingEnabled,
           })),
 
-        startProcessing: (ingestFileId, scheduledIngestId) =>
+        startProcessing: ({ ingestFileId, scheduledIngestId }) =>
           set({ ingestFileId, scheduledIngestId: scheduledIngestId ?? null, error: null }),
 
         setError: (error) => set({ error }),
 
-        applyDatasetConfig: (sheetIndex, config) =>
+        applyFieldMappingSuggestion: (sheetIndex, config) =>
           set((s) => {
             const updatedFieldMappings = [...s.fieldMappings];
             const fmIndex = updatedFieldMappings.findIndex((m) => m.sheetIndex === sheetIndex);
@@ -421,7 +422,7 @@ export const useWizardStore = create<WizardStore>()(
             };
           }),
 
-        resetToAutoDetected: (sheetIndex) =>
+        resetFieldMappingToAutoDetected: (sheetIndex) =>
           set((s) => {
             const sheet = s.sheets.find((sh) => sh.index === sheetIndex);
             const updatedMappings = [...s.fieldMappings];
@@ -498,10 +499,10 @@ export const useWizardUploadStepState = () =>
     authConfig: state.authConfig,
     jsonApiConfig: state.jsonApiConfig,
     nextStep: state.nextStep,
-    setFile: state.setFile,
-    setSourceUrl: state.setSourceUrl,
-    setJsonApiConfig: state.setJsonApiConfig,
-    clearFile: state.clearFile,
+    loadFile: state.loadFile,
+    setSourceUrlInput: state.setSourceUrlInput,
+    setJsonApiInput: state.setJsonApiInput,
+    unloadFile: state.unloadFile,
   }));
 
 export const useWizardDatasetSelectionStepState = () =>
@@ -513,9 +514,9 @@ export const useWizardDatasetSelectionStepState = () =>
     configSuggestions: state.configSuggestions,
     fileName: state.file?.name,
     nextStep: state.nextStep,
-    setCatalog: state.setCatalog,
-    setSheetMapping: state.setSheetMapping,
-    applySuggestionToDatasetSelection: state.applySuggestionToDatasetSelection,
+    selectCatalog: state.selectCatalog,
+    setDatasetTarget: state.setDatasetTarget,
+    applyDatasetSelectionSuggestion: state.applyDatasetSelectionSuggestion,
   }));
 
 export const useWizardFieldMappingStepState = () =>
@@ -532,8 +533,8 @@ export const useWizardFieldMappingStepState = () =>
     setFieldMapping: state.setFieldMapping,
     setImportOptions: state.setImportOptions,
     setTransforms: state.setTransforms,
-    applyDatasetConfig: state.applyDatasetConfig,
-    resetToAutoDetected: state.resetToAutoDetected,
+    applyFieldMappingSuggestion: state.applyFieldMappingSuggestion,
+    resetFieldMappingToAutoDetected: state.resetFieldMappingToAutoDetected,
   }));
 
 export const useWizardScheduleStepState = () =>
@@ -545,8 +546,8 @@ export const useWizardScheduleStepState = () =>
     editMode: state.editMode,
     nextStep: state.nextStep,
     prevStep: state.prevStep,
-    setScheduleConfig: state.setScheduleConfig,
-    setAuthConfig: state.setAuthConfig,
+    configureSchedule: state.configureSchedule,
+    setUrlAuth: state.setUrlAuth,
   }));
 
 export const useWizardReviewStepState = () =>

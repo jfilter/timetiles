@@ -56,17 +56,8 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const t = useTranslations("Ingest");
-  const {
-    sourceUrl,
-    scheduleConfig,
-    authConfig,
-    file,
-    editMode,
-    nextStep,
-    prevStep,
-    setScheduleConfig,
-    setAuthConfig,
-  } = useWizardScheduleStepState();
+  const { sourceUrl, scheduleConfig, authConfig, file, editMode, nextStep, prevStep, configureSchedule, setUrlAuth } =
+    useWizardScheduleStepState();
 
   // In edit mode, schedule is always enabled
   const isScheduleEnabled = editMode || scheduleConfig?.enabled === true;
@@ -85,17 +76,17 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
 
   const handleToggleSchedule = useCallback(() => {
     if (isScheduleEnabled) {
-      setScheduleConfig(null);
+      configureSchedule(null);
     } else {
-      setScheduleConfig({ ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName });
+      configureSchedule({ ...DEFAULT_SCHEDULE_CONFIG, name: defaultScheduleName });
     }
-  }, [isScheduleEnabled, setScheduleConfig, defaultScheduleName]);
+  }, [isScheduleEnabled, configureSchedule, defaultScheduleName]);
 
   const updateField = useCallback(
     (updates: Partial<ScheduleConfig>) => {
-      setScheduleConfig({ ...activeConfig, ...updates });
+      configureSchedule({ ...activeConfig, ...updates });
     },
-    [activeConfig, setScheduleConfig]
+    [activeConfig, configureSchedule]
   );
 
   const handleNameChange = useCallback(
@@ -278,7 +269,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
             </div>
             <AuthConfigFields
               authConfig={authConfig ?? DEFAULT_AUTH_CONFIG}
-              onAuthConfigChange={(config) => setAuthConfig(config)}
+              onAuthConfigChange={(config) => setUrlAuth(config)}
               compact
             />
             <p className="text-muted-foreground text-xs">{t("authPersistHint")}</p>
