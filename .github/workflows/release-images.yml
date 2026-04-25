@@ -247,21 +247,7 @@ jobs:
           PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
           DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
         run: |
-          # Reusable health check: wait_for_health <url> <container> <max_attempts> <interval>
-          wait_for_health() {
-            local url=$1 container=$2 max=${3:-30} interval=${4:-2}
-            for ((i=1; i<=max; i++)); do
-              if curl -f --max-time 5 "$url" 2>/dev/null; then
-                echo " OK"
-                return 0
-              fi
-              echo "  waiting... ($i/$max)"
-              sleep "$interval"
-            done
-            echo "FAILED - $container logs:"
-            docker logs "$container"
-            return 1
-          }
+          # Health check helper: bash .github/scripts/wait-for-health.sh <url> <container> [max] [interval]
 
           echo "==> Starting PostgreSQL..."
           docker network create timetiles-test
@@ -273,7 +259,7 @@ jobs:
             postgis/postgis:17-3.5-alpine
 
           echo "==> Waiting for PostgreSQL..."
-          wait_for_health "" postgres 30 2 || true
+          bash .github/scripts/wait-for-health.sh "" postgres 30 2 || true
           for i in {1..30}; do
             docker exec postgres pg_isready -U timetiles_user -d timetiles 2>/dev/null && break
             sleep 2
@@ -288,7 +274,7 @@ jobs:
             "${IMAGE}:${VERSION}"
 
           echo "==> Checking main app health..."
-          wait_for_health http://localhost:3000/api/health timetiles 30 2
+          bash .github/scripts/wait-for-health.sh http://localhost:3000/api/health timetiles 30 2
 
           echo "==> Verifying payload CLI is available for workers..."
           docker exec timetiles node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
@@ -300,22 +286,13 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
           SCRAPER_KEY: ${{ steps.secrets.outputs.scraper_key }}
         run: |
-          wait_for_health() {
-            local url=$1 container=$2 max=${3:-30} interval=${4:-2}
-            for ((i=1; i<=max; i++)); do
-              if curl -f --max-time 5 "$url" 2>/dev/null; then echo " OK"; return 0; fi
-              echo "  waiting... ($i/$max)"; sleep "$interval"
-            done
-            echo "FAILED - $container logs:"; docker logs "$container"; return 1
-          }
-
           echo "==> Starting scraper runner..."
           docker run -d --name scraper-test -p 4000:4000 \
             -e SCRAPER_API_KEY="${SCRAPER_KEY}" \
             "${IMAGE}-timescrape:${VERSION}"
 
           echo "==> Checking scraper health..."
-          wait_for_health http://localhost:4000/health scraper-test 15 2
+          bash .github/scripts/wait-for-health.sh http://localhost:4000/health scraper-test 15 2
           docker stop scraper-test && docker rm scraper-test
 
       - name: Smoke test allinone image
@@ -326,15 +303,6 @@ jobs:
           PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
           DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
         run: |
-          wait_for_health() {
-            local url=$1 container=$2 max=${3:-30} interval=${4:-2}
-            for ((i=1; i<=max; i++)); do
-              if curl -f --max-time 5 "$url" 2>/dev/null; then echo " OK"; return 0; fi
-              echo "  waiting... ($i/$max)"; sleep "$interval"
-            done
-            echo "FAILED - $container logs:"; docker logs "$container"; return 1
-          }
-
           echo "==> Starting all-in-one..."
           docker run -d --name allinone-test -p 8080:80 \
             -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
@@ -342,7 +310,7 @@ jobs:
             "${IMAGE}:${VERSION}-allinone"
 
           echo "==> Checking all-in-one health (includes DB init)..."
-          wait_for_health http://localhost:8080/api/health allinone-test 45 3
+          bash .github/scripts/wait-for-health.sh http://localhost:8080/api/health allinone-test 45 3
           docker stop allinone-test && docker rm allinone-test
 
       - name: Verify arm64 manifests

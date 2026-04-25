@@ -1,0 +1,75 @@
+name: "Trivy Scan"
+description: "Run a Trivy scan with JSON output, convert to SARIF, and upload the SARIF to GitHub Security."
+
+inputs:
+  # Scan configuration (passed through to aquasecurity/trivy-action)
+  scan-type:
+    description: "Trivy scan type (fs, config, image)"
+    required: false
+    default: ""
+  scan-ref:
+    description: "Scan reference path (for fs/config scans)"
+    required: false
+    default: ""
+  image-ref:
+    description: "Image reference (for image scans)"
+    required: false
+    default: ""
+  scanners:
+    description: "Comma-separated scanners (vuln, license, secret, misconfig)"
+    required: false
+    default: ""
+  severity:
+    description: "Severity filter"
+    required: false
+    default: "CRITICAL,HIGH,MEDIUM,LOW"
+  skip-dirs:
+    description: "Comma-separated directories to skip"
+    required: false
+    default: ""
+  timeout:
+    description: "Trivy timeout"
+    required: false
+    default: "10m"
+  trivyignore:
+    description: "Path to .trivyignore"
+    required: false
+    default: ".trivyignore"
+
+  # Output / SARIF configuration
+  report-name:
+    description: "Base name used for JSON/SARIF outputs (e.g. 'deps' produces trivy-deps-report.json and trivy-deps-results.sarif)"
+    required: true
+  sarif-category:
+    description: "Category for github/codeql-action/upload-sarif"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Trivy scanner (${{ inputs.report-name }})
+      uses: aquasecurity/trivy-action@0.35.0
+      with:
+        scan-type: ${{ inputs.scan-type }}
+        scan-ref: ${{ inputs.scan-ref }}
+        image-ref: ${{ inputs.image-ref }}
+        scanners: ${{ inputs.scanners }}
+        format: "json"
+        output: "trivy-${{ inputs.report-name }}-report.json"
+        severity: ${{ inputs.severity }}
+        skip-dirs: ${{ inputs.skip-dirs }}
+        timeout: ${{ inputs.timeout }}
+        trivyignore: ${{ inputs.trivyignore }}
+
+    - name: Convert JSON to SARIF (${{ inputs.report-name }})
+      if: always()
+      shell: bash
+      run: trivy convert --format sarif --output "trivy-${{ inputs.report-name }}-results.sarif" "trivy-${{ inputs.report-name }}-report.json"
+
+    - name: Upload Trivy SARIF (${{ inputs.report-name }})
+      uses: github/codeql-action/upload-sarif@v4
+      if: always()
+      continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
+      with:
+        sarif_file: "trivy-${{ inputs.report-name }}-results.sarif"
+        category: ${{ inputs.sarif-category }}

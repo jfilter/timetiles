@@ -47,31 +47,15 @@ jobs:
         with:
           install: "false"
 
-      # Single scan producing JSON (used for both SARIF conversion and summary)
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.35.0
+      - name: Trivy dependency scan
+        uses: ./.github/actions/trivy-scan
         with:
           scan-type: "fs"
           scan-ref: "."
           scanners: "vuln,license"
-          format: "json"
-          output: "trivy-deps-report.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
           skip-dirs: "node_modules,dist,build,.next,.turbo"
-          timeout: "10m"
-          trivyignore: ".trivyignore"
-
-      - name: Convert JSON to SARIF
-        if: always()
-        run: trivy convert --format sarif --output trivy-deps-results.sarif trivy-deps-report.json
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
-        with:
-          sarif_file: "trivy-deps-results.sarif"
-          category: "dependency-scan"
+          report-name: "deps"
+          sarif-category: "dependency-scan"
 
       - name: Create summary
         if: always()
@@ -143,28 +127,13 @@ jobs:
           docker build -f deployment/Dockerfile.prod -t ${{ env.DOCKER_IMAGE }} .
           docker images ${{ env.DOCKER_IMAGE }}
 
-      - name: Run Trivy vulnerability scanner (prod)
-        uses: aquasecurity/trivy-action@0.35.0
+      - name: Trivy scan (prod image)
+        uses: ./.github/actions/trivy-scan
         with:
           image-ref: ${{ env.DOCKER_IMAGE }}
-          format: "json"
-          output: "trivy-docker-report.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          timeout: "10m"
           scanners: "vuln,secret,misconfig"
-          trivyignore: ".trivyignore"
-
-      - name: Convert JSON to SARIF (prod)
-        if: always()
-        run: trivy convert --format sarif --output trivy-docker-results.sarif trivy-docker-report.json
-
-      - name: Upload Trivy results to GitHub Security (prod)
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
-        with:
-          sarif_file: "trivy-docker-results.sarif"
-          category: "docker-scan-prod"
+          report-name: "docker"
+          sarif-category: "docker-scan-prod"
 
       - name: Create Docker scan summary (prod)
         if: always()
@@ -220,29 +189,14 @@ jobs:
           docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
           docker images timetiles:allinone
 
-      - name: Run Trivy vulnerability scanner (allinone)
+      - name: Trivy scan (allinone image)
         if: always()
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: ./.github/actions/trivy-scan
         with:
           image-ref: "timetiles:allinone"
-          format: "json"
-          output: "trivy-docker-allinone-report.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          timeout: "10m"
           scanners: "vuln,secret,misconfig"
-          trivyignore: ".trivyignore"
-
-      - name: Convert JSON to SARIF (allinone)
-        if: always()
-        run: trivy convert --format sarif --output trivy-docker-allinone-results.sarif trivy-docker-allinone-report.json
-
-      - name: Upload Trivy results to GitHub Security (allinone)
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
-        with:
-          sarif_file: "trivy-docker-allinone-results.sarif"
-          category: "docker-scan-allinone"
+          report-name: "docker-allinone"
+          sarif-category: "docker-scan-allinone"
 
       - name: Create Docker scan summary (allinone)
         if: always()
@@ -302,17 +256,13 @@ jobs:
         with:
           install: "false"
 
-      # Single scan producing JSON
-      - name: Run Trivy config scanner
-        uses: aquasecurity/trivy-action@0.35.0
+      - name: Trivy config scan
+        uses: ./.github/actions/trivy-scan
         with:
           scan-type: "config"
           scan-ref: "."
-          format: "json"
-          output: "trivy-config-report.json"
-          severity: "CRITICAL,HIGH,MEDIUM,LOW"
-          trivyignore: ".trivyignore"
-          timeout: "10m"
+          report-name: "config"
+          sarif-category: "config-scan"
 
       # Fail the job if HIGH or CRITICAL misconfigurations are found
       - name: Check for critical misconfigurations
@@ -325,18 +275,6 @@ jobs:
               exit 1
             fi
           fi
-
-      - name: Convert JSON to SARIF
-        if: always()
-        run: trivy convert --format sarif --output trivy-config-results.sarif trivy-config-report.json
-
-      - name: Upload config scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
-        with:
-          sarif_file: "trivy-config-results.sarif"
-          category: "config-scan"
 
       - name: Create config scan summary
         if: always()
@@ -398,30 +336,15 @@ jobs:
         with:
           install: "false"
 
-      # Single scan producing JSON
-      - name: Run Trivy secret scanner
-        uses: aquasecurity/trivy-action@0.35.0
+      - name: Trivy secret scan
+        uses: ./.github/actions/trivy-scan
         with:
           scan-type: "fs"
           scan-ref: "."
           scanners: "secret"
-          format: "json"
-          output: "trivy-secrets-report.json"
-          timeout: "10m"
           skip-dirs: "node_modules,dist,build,.next,.turbo,.git"
-          trivyignore: ".trivyignore"
-
-      - name: Convert JSON to SARIF
-        if: always()
-        run: trivy convert --format sarif --output trivy-secrets-results.sarif trivy-secrets-report.json
-
-      - name: Upload secret scan results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
-        with:
-          sarif_file: "trivy-secrets-results.sarif"
-          category: "secret-scan"
+          report-name: "secrets"
+          sarif-category: "secret-scan"
 
       - name: Create secret scan summary
         if: always()

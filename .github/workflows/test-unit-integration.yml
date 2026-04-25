@@ -8,6 +8,13 @@ jobs:
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
+    # NOTE: The `services:` block below is duplicated across
+    # test-unit-integration.yml, test-e2e.yml, and check-payload-types.yml.
+    # GitHub Actions does not allow extracting `services:` into a composite
+    # action or shared YAML anchor across workflows; the only dedup option
+    # would be a reusable workflow that wraps the entire job, which would
+    # change the structure significantly. We accept the duplication —
+    # keep the three blocks in sync if you change one of them.
     services:
       postgres:
         image: kartoza/postgis:17-3.5
