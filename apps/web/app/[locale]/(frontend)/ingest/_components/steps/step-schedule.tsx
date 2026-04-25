@@ -36,14 +36,22 @@ const DEFAULT_AUTH_CONFIG: UrlAuthConfig = {
   password: "",
 };
 
-/** Default schedule config used when enabling scheduling for the first time */
+/**
+ * Default schedule config used when enabling scheduling for the first time.
+ *
+ * `schemaMode: "flexible"` because scheduled imports are by-design periodic
+ * re-fetches of (often-evolving) URLs. Additive (the manual-upload default)
+ * pauses on any breaking change including reasonable schema drift; flexible
+ * auto-approves non-breaking changes and only pauses on hard breaks. Manual
+ * users still pick additive explicitly via the dropdown if they want it.
+ */
 const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
   enabled: true,
   name: "",
   scheduleType: "frequency",
   frequency: "daily",
   cronExpression: "",
-  schemaMode: "additive",
+  schemaMode: "flexible",
 };
 
 export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {

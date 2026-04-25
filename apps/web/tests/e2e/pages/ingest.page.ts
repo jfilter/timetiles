@@ -251,17 +251,25 @@ export class IngestPage {
    * Handles both cases: when no catalogs exist (input shown directly)
    * and when catalogs exist (must select "+ Create new catalog" first).
    *
+   * If the dataset-suggestion banner is visible (server detected a similar
+   * existing dataset), dismiss it via "Ignore" so we land on the manual
+   * catalog form. The applied banner is unreachable here because this
+   * helper never clicks "Use this config".
+   *
    * Waits for the catalog API to finish loading before interacting,
    * since isVisible() checks immediately without waiting.
    */
   async createNewCatalog(catalogName: string): Promise<void> {
     const catalogDropdown = this.page.locator("#catalog-select");
     const catalogNameInput = this.page.locator("#new-catalog-name");
-    const resetButton = this.page.getByRole("button", { name: /reset to auto-detected/i });
 
-    // If auto-selection applied a suggestion, reset it first
-    if (await resetButton.isVisible().catch(() => false)) {
-      await resetButton.click();
+    // Dismiss the dataset-suggestion banner if it's visible — the test wants
+    // a fresh catalog, not the server's match.
+    const ignoreButton = this.page
+      .locator('[data-testid="dataset-suggestion-banner"]')
+      .getByRole("button", { name: /ignore/i });
+    if (await ignoreButton.isVisible().catch(() => false)) {
+      await ignoreButton.click();
     }
 
     // Wait for the loading spinner to disappear and the form to render.

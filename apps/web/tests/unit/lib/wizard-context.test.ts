@@ -213,6 +213,98 @@ describe("Wizard Store", () => {
       expect(state.sheetMappings[0]?.datasetId).toBe(123);
       expect(state.sheetMappings[1]?.datasetId).toBe("new"); // Unchanged
     });
+
+    describe("applySuggestionToDatasetSelection", () => {
+      it("atomically sets catalog and per-sheet datasetId", () => {
+        resetStore({
+          sheetMappings: [
+            { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
+            { sheetIndex: 1, datasetId: "new" as const, newDatasetName: "Sheet2", similarityScore: null },
+          ],
+        });
+
+        useWizardStore.getState().applySuggestionToDatasetSelection({
+          catalogId: 42,
+          sheetMatches: [
+            { sheetIndex: 0, datasetId: 100 },
+            { sheetIndex: 1, datasetId: 200 },
+          ],
+        });
+
+        const state = useWizardStore.getState();
+        expect(state.selectedCatalogId).toBe(42);
+        expect(state.sheetMappings[0]?.datasetId).toBe(100);
+        expect(state.sheetMappings[1]?.datasetId).toBe(200);
+      });
+
+      it("only updates sheets present in sheetMatches", () => {
+        resetStore({
+          sheetMappings: [
+            { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
+            { sheetIndex: 1, datasetId: "new" as const, newDatasetName: "Sheet2", similarityScore: null },
+            { sheetIndex: 2, datasetId: "new" as const, newDatasetName: "Sheet3", similarityScore: null },
+          ],
+        });
+
+        useWizardStore
+          .getState()
+          .applySuggestionToDatasetSelection({ catalogId: 7, sheetMatches: [{ sheetIndex: 1, datasetId: 50 }] });
+
+        const state = useWizardStore.getState();
+        expect(state.selectedCatalogId).toBe(7);
+        expect(state.sheetMappings[0]?.datasetId).toBe("new"); // Unchanged
+        expect(state.sheetMappings[1]?.datasetId).toBe(50);
+        expect(state.sheetMappings[2]?.datasetId).toBe("new"); // Unchanged
+      });
+
+      it("optionally records similarityScore for matched sheets", () => {
+        resetStore({
+          sheetMappings: [
+            { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
+          ],
+        });
+
+        useWizardStore
+          .getState()
+          .applySuggestionToDatasetSelection({
+            catalogId: 1,
+            sheetMatches: [{ sheetIndex: 0, datasetId: 99, similarityScore: 0.85 }],
+          });
+
+        expect(useWizardStore.getState().sheetMappings[0]?.similarityScore).toBe(0.85);
+      });
+
+      it("performs the catalog + sheet update in a single store transaction", () => {
+        // Subscribe to the store and capture every intermediate state — there
+        // must be exactly one state where both the catalog AND sheet mappings
+        // are updated together (no half-applied intermediate visible).
+        resetStore({
+          sheetMappings: [
+            { sheetIndex: 0, datasetId: "new" as const, newDatasetName: "Sheet1", similarityScore: null },
+          ],
+        });
+
+        const observed: Array<{ selectedCatalogId: unknown; firstDatasetId: unknown }> = [];
+        const unsubscribe = useWizardStore.subscribe((state) => {
+          observed.push({
+            selectedCatalogId: state.selectedCatalogId,
+            firstDatasetId: state.sheetMappings[0]?.datasetId,
+          });
+        });
+
+        try {
+          useWizardStore
+            .getState()
+            .applySuggestionToDatasetSelection({ catalogId: 42, sheetMatches: [{ sheetIndex: 0, datasetId: 7 }] });
+        } finally {
+          unsubscribe();
+        }
+
+        // Exactly one observed change, and it has both fields updated.
+        expect(observed).toHaveLength(1);
+        expect(observed[0]).toEqual({ selectedCatalogId: 42, firstDatasetId: 7 });
+      });
+    });
   });
 
   describe("Field Mapping", () => {
