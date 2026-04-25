@@ -72,6 +72,14 @@ export const triggerAutoImport = async (
     if (found) user = found;
   }
 
+  // The `scrapers` collection does not currently expose a `schemaMode` field
+  // (only `scheduled-ingests` does — see `apps/web/payload-types.ts:1600`).
+  // Scraper-driven imports therefore omit `schemaMode` from `processingOptions`,
+  // which lets `validate-schema-job` fall through to the dataset-level
+  // `schemaConfig` (the permissive fallback documented on `translateSchemaMode`
+  // in `apps/web/lib/ingest/configure-service.ts`). If the scraper schema ever
+  // gains a `schemaMode` field, propagate it here in the same shape as the
+  // `url-fetch-job` writes for scheduled re-runs.
   const importFileData: Record<string, unknown> = {
     originalName,
     status: "pending",
