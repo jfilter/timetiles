@@ -100,8 +100,20 @@ const footer = (
 
       <div className="tt-footer-funding">
         <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer" className="tt-funding-logo">
-          <img src={ptfBannerEnLight} alt="Supported by Prototype Fund" className="tt-logo-light" height={60} />
-          <img src={ptfBannerEnDark} alt="Supported by Prototype Fund" className="tt-logo-dark" height={60} />
+          <Image
+            src={ptfBannerEnLight}
+            alt="Supported by Prototype Fund"
+            className="tt-logo-light"
+            width={90}
+            height={60}
+          />
+          <Image
+            src={ptfBannerEnDark}
+            alt="Supported by Prototype Fund"
+            className="tt-logo-dark"
+            width={90}
+            height={60}
+          />
         </a>
         <a
           href="https://www.bmftr.bund.de"
@@ -109,9 +121,10 @@ const footer = (
           rel="noopener noreferrer"
           className="tt-funding-logo tt-funding-logo-bmftr"
         >
-          <img
+          <Image
             src={bmftrEn}
             alt="Funded by the German Federal Ministry for Research, Technology and Space"
+            width={90}
             height={60}
           />
         </a>
