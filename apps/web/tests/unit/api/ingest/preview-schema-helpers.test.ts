@@ -66,11 +66,7 @@ describe("parseCSVPreview", () => {
     const [sheet] = parseCSVPreview(filePath);
 
     expect(sheet?.rowCount).toBe(2);
-    expect(sheet?.sampleData[0]).toMatchObject({
-      external_id: "00123",
-      count: "42",
-      active: "true",
-    });
+    expect(sheet?.sampleData[0]).toMatchObject({ external_id: "00123", count: "42", active: "true" });
     expect(sheet?.sampleData[1]).toMatchObject({ external_id: "123" });
   });
 });

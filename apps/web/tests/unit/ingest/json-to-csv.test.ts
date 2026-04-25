@@ -83,13 +83,7 @@ describe("convertJsonToCsv", () => {
     });
 
     it("should remove nested excluded fields before flattening", () => {
-      const json = [
-        {
-          id: "1",
-          user: { name: "John", email: "john@example.test" },
-          internalNote: "private",
-        },
-      ];
+      const json = [{ id: "1", user: { name: "John", email: "john@example.test" }, internalNote: "private" }];
 
       const result = convertJsonToCsv(toBuffer(json), { excludeFields: ["user.email", "internalNote"] });
 

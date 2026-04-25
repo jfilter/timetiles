@@ -965,10 +965,7 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       const insertedEvents = getBulkInsertedEvents();
       expect(insertedEvents[0]).toEqual(
         expect.objectContaining({
-          transformedData: expect.objectContaining({
-            metadata: { label: "ABC" },
-            summary: "March - Berlin",
-          }),
+          transformedData: expect.objectContaining({ metadata: { label: "ABC" }, summary: "March - Berlin" }),
           validationStatus: "transformed",
           transformations: expect.arrayContaining([
             expect.objectContaining({ path: "metadata.label", oldValue: "abc", newValue: "ABC" }),

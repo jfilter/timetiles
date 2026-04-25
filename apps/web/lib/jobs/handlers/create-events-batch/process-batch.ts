@@ -100,11 +100,7 @@ const buildTransformationChange = (
   if (newValue === undefined) return null;
   if (!didMoveSource(t, row, transformedRow) && valuesEqual(previousOutputValue, newValue)) return null;
 
-  return {
-    path: outputPaths.join(","),
-    oldValue: oldValue ?? null,
-    newValue: newValue ?? null,
-  };
+  return { path: outputPaths.join(","), oldValue: oldValue ?? null, newValue: newValue ?? null };
 };
 
 /** Denormalized access fields computed once per job. */
