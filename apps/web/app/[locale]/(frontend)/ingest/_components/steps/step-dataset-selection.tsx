@@ -52,12 +52,14 @@ const DatasetSelect = ({ sheetIndex, value, datasets, disabled, onDatasetChange 
           <SelectValue placeholder={t("createNewDataset")} />
         </SelectTrigger>
         <SelectContent>
+          {/* Same reasoning as catalog "create new" — top of list so it stays
+              visible regardless of how many existing datasets the user has. */}
+          <SelectItem value="new">{t("createNewDataset")}</SelectItem>
           {datasets.map((dataset) => (
             <SelectItem key={dataset.id} value={String(dataset.id)}>
               {dataset.name}
             </SelectItem>
           ))}
-          <SelectItem value="new">{t("createNewDataset")}</SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -301,12 +303,16 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                       <SelectValue placeholder={t("chooseCatalog")} />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* "Create new catalog" stays at the top so the most common
+                          action is always visible without scrolling — necessary for
+                          users (and Playwright auto-scroll) when the catalog list
+                          grows beyond the dropdown viewport. */}
+                      <SelectItem value="new">{t("createNewCatalog")}</SelectItem>
                       {catalogs.map((catalog) => (
                         <SelectItem key={catalog.id} value={String(catalog.id)}>
                           {catalog.name}
                         </SelectItem>
                       ))}
-                      <SelectItem value="new">{t("createNewCatalog")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
