@@ -687,11 +687,15 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       await POST(req, routeContext);
 
+      // Flexible shares the dataset-fallback shape with additive — see
+      // translateSchemaMode docs and ingest-configure-service.test.ts.
+      // The mode-specific permissiveness (auto-approve high-confidence
+      // transforms) lives in evaluateSchemaMode, not in this fallback.
       expect(mocks.mockPayload.update).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "datasets",
           data: expect.objectContaining({
-            schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: false },
+            schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
           }),
         })
       );
