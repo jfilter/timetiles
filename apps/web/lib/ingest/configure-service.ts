@@ -526,6 +526,30 @@ export const getOrCreateCatalog = async (
 };
 
 /**
+ * Build `processingOptions` for the ingest-file from the wizard's schedule config.
+ *
+ * When the user enabled scheduling and picked a `schemaMode`, that choice must
+ * land on the *first-run* ingest-file (not just on the scheduled-ingests
+ * record) so `validate-schema-job` can run the explicit `evaluateSchemaMode`
+ * path on this run. Without this, the first run goes through the dataset-config
+ * fallback while subsequent re-fetches via `url-fetch-job` use the explicit
+ * mode-evaluator path — an inconsistency that this helper closes.
+ *
+ * Mirrors the `processingOptions` shape that `url-fetch-job` writes for
+ * scheduled re-runs (see `apps/web/lib/jobs/handlers/url-fetch-job/index.ts`).
+ *
+ * Returns `undefined` for non-scheduled uploads so the field stays unset on
+ * one-off imports — the dataset-config fallback handles those correctly.
+ */
+export const buildWizardProcessingOptions = (
+  scheduleConfig: ConfigureIngestRequest["createSchedule"]
+): Record<string, unknown> | undefined => {
+  if (!scheduleConfig?.enabled) return undefined;
+
+  return { skipDuplicateChecking: false, autoApproveSchema: false, schemaMode: scheduleConfig.schemaMode };
+};
+
+/**
  * Create the import file record from preview metadata and wizard configuration.
  */
 export const createIngestFileRecord = async (
@@ -556,6 +580,8 @@ export const createIngestFileRecord = async (
     fileMimeType = previewExt === ".csv" ? "text/csv" : previewMeta.mimeType;
   }
 
+  const processingOptions = buildWizardProcessingOptions(body.createSchedule);
+
   const ingestFile = await payload.create({
     collection: "ingest-files",
     user,
@@ -573,6 +599,7 @@ export const createIngestFileRecord = async (
         deduplicationStrategy: body.deduplicationStrategy,
         wizardConfig: { sheetMappings: body.sheetMappings, fieldMappings: body.fieldMappings },
       },
+      ...(processingOptions ? { processingOptions } : {}),
     },
     file: { data: fileBuffer, name: fileName, mimetype: fileMimeType, size: fileBuffer.length },
   });

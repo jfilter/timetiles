@@ -447,6 +447,29 @@ describe.sequential("scraperExecutionJob", () => {
       expect(deleteCall[0]).toBe("https://runner.example.com/output/test-uuid-1234");
       expect(deleteCall[1]).toEqual(expect.objectContaining({ method: "DELETE" }));
     });
+
+    // The `scrapers` collection has no `schemaMode` field (only `scheduled-ingests`
+    // does — see `apps/web/payload-types.ts:1600`). Auto-import therefore omits
+    // `schemaMode` from `processingOptions` and falls through to the dataset-level
+    // `schemaConfig`. If the scraper schema ever gains a `schemaMode` field, this
+    // test should be updated to assert it is propagated in the same shape as
+    // `url-fetch-job` writes for scheduled re-runs.
+    it("should omit schemaMode from processingOptions (scrapers collection has no schemaMode field)", async () => {
+      setupAutoImportFetch();
+
+      const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+      await scraperExecutionJob.handler(context);
+
+      const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
+      const callArg = (createIngestFile as any).mock.calls[0]?.[0] as {
+        importFileData?: { processingOptions?: Record<string, unknown> };
+      };
+      const processingOptions = callArg?.importFileData?.processingOptions ?? {};
+
+      expect(processingOptions).not.toHaveProperty("schemaMode");
+      // But the existing fields still pass through
+      expect(processingOptions).toMatchObject({ autoApproveSchema: true, skipDuplicateChecking: false });
+    });
   });
 
   describe("handleRunFailure error resilience", () => {
