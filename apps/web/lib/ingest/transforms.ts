@@ -317,14 +317,16 @@ const applyStringOpTransform = (data: Record<string, unknown>, transform: String
   // Other operations (uppercase, lowercase, replace) require strings.
   if (transform.operation === "expression") {
     if (!transform.expression) return;
+    let expressionSucceeded = false;
     try {
       const exprResult = runCustomTransform(rawValue, transform.expression);
       setByPathOrKey(data, target, exprResult);
+      expressionSucceeded = true;
     } catch {
       // Keep original value if expression fails
     }
     // Remove source field when writing to a different target (same as rename)
-    if (target !== transform.from) deleteByPathOrKey(data, transform.from);
+    if (expressionSucceeded && target !== transform.from) deleteByPathOrKey(data, transform.from);
     return;
   }
 
@@ -491,6 +493,11 @@ const parseAsDate = (value: unknown): string => {
 };
 
 const parseAsBoolean = (value: unknown): boolean => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") {
+    if (value === 1) return true;
+    if (value === 0) return false;
+  }
   if (typeof value === "string") {
     const lower = value.trim().toLowerCase();
     if (lower === "true" || lower === "1" || lower === "yes") return true;
@@ -565,7 +572,8 @@ const safeParser = createSafeParser();
 const runCustomTransform = (value: unknown, expression: string): unknown => {
   try {
     const parsed = safeParser.parse(expression);
-    return parsed.evaluate({ value: value as string | number });
+    const variables = { value } as unknown as Parameters<typeof parsed.evaluate>[0];
+    return parsed.evaluate(variables);
   } catch (error) {
     throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
   }

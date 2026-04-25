@@ -12,6 +12,7 @@ import readline from "node:readline";
 
 import Papa from "papaparse";
 
+import { countCsvRecords } from "@/lib/ingest/file-readers";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
@@ -58,23 +59,7 @@ export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => 
   const headerResult = Papa.parse(headerLine, { header: false, skipEmptyLines: true });
   const headers = (headerResult.data[0] as string[]) ?? [];
 
-  // Stream-count remaining data rows (excludes header, skips empty lines)
-  const rowCount = await new Promise<number>((resolve, reject) => {
-    let count = 0;
-    let isHeader = true;
-    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-
-    rl.on("line", (line) => {
-      if (isHeader) {
-        isHeader = false;
-        return;
-      }
-      if (line.trim().length > 0) count++;
-    });
-    rl.on("close", () => resolve(count));
-    rl.on("error", reject);
-  });
+  const rowCount = await countCsvRecords(filePath);
 
   if (rowCount === 0 && headers.length === 0) {
     throw new Error("No data rows found in file");

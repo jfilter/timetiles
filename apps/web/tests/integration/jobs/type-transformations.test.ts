@@ -2,8 +2,8 @@
  * Integration tests for expression transform feature in import pipeline.
  *
  * Tests the transformation workflow by directly calling the job handler
- * with mock data, bypassing CSV file parsing to avoid Papa Parse's
- * automatic type conversion (dynamicTyping: true).
+ * with mock data, bypassing CSV file parsing while covering explicit
+ * transformation-based type conversion.
  *
  * @module
  * @category Integration Tests

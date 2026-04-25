@@ -272,9 +272,7 @@ describe.sequential("All Transform Types Pipeline", () => {
     expect(firstData.split_city).toBe("Berlin");
 
     // expression: attendees should be a number
-    // Papa Parse with dynamicTyping may already parse "150" as number,
-    // so the expression toNumber() may be a no-op.
-    // Either way, the result must be the number 150.
+    // Raw CSV values stay strings; the expression toNumber() performs the numeric conversion.
     expect(typeof firstData.attendees).toBe("number");
     expect(firstData.attendees).toBe(150);
 

@@ -9,7 +9,6 @@
  * @module
  */
 import fs from "node:fs";
-import readline from "node:readline";
 
 import Papa from "papaparse";
 
@@ -140,7 +139,6 @@ async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncG
     Papa.parse(fileStream, {
       header: true,
       skipEmptyLines: true,
-      dynamicTyping: true,
       transformHeader: (header: string) => header.trim(),
       transform: (value: string) => value.trim(),
       step: (result: Papa.ParseStepResult<Record<string, unknown>>, parser: Papa.Parser) => {
@@ -240,14 +238,14 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
 /**
  * Get total row count from a file.
  *
- * For CSV files, uses streaming line count to avoid loading the entire file into memory.
+ * For CSV files, uses Papa's streaming parser to count records without loading the file into memory.
  * For Excel/ODS files, loads the workbook (xlsx library requires this).
  */
 export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise<number> => {
   const fileExtension = getFileExtension(filePath);
 
   if (fileExtension === "csv") {
-    return countCsvRows(filePath);
+    return countCsvRecords(filePath);
   } else if (isExcelExtension(fileExtension)) {
     // xlsx library handles .xls, .xlsx, and .ods files
     const { read, utils } = await loadXlsx();
@@ -271,21 +269,21 @@ export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise
   return 0;
 };
 
-/** Stream-count CSV data rows (excludes header, skips empty lines). */
-const countCsvRows = (filePath: string): Promise<number> =>
+/** Stream-count CSV records using the same parser semantics as import processing. */
+export const countCsvRecords = (filePath: string): Promise<number> =>
   new Promise((resolve, reject) => {
     let count = 0;
-    let isHeader = true;
-    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+    const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
 
-    rl.on("line", (line) => {
-      if (isHeader) {
-        isHeader = false;
-        return;
-      }
-      if (line.trim().length > 0) count++;
+    Papa.parse(fileStream, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header: string) => header.trim(),
+      transform: (value: string) => value.trim(),
+      step: () => {
+        count++;
+      },
+      complete: () => resolve(count),
+      error: (error: Error) => reject(error),
     });
-    rl.on("close", () => resolve(count));
-    rl.on("error", reject);
   });

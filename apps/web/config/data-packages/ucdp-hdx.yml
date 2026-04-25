@@ -106,9 +106,9 @@ transforms:
     to: Violence Type
     operation: expression
     expression: >-
-      (value == 1 ? "State-based" :
-       value == 2 ? "Non-state" :
-       value == 3 ? "One-sided" : value)
+      (toNumber(value) == 1 ? "State-based" :
+       toNumber(value) == 2 ? "Non-state" :
+       toNumber(value) == 3 ? "One-sided" : value)
   # Rename fields for readable labels in event detail
   - type: rename
     from: conflict_name

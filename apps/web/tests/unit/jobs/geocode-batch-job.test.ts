@@ -387,6 +387,23 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       expect(result.output).toEqual({ geocoded: 1, failed: 0, skipped: 0, uniqueLocations: 1 });
     });
+
+    it("should skip geocoding rows with parseable source coordinates", async () => {
+      const mockIngestJob = {
+        ...createMockIngestJob(),
+        id: 123,
+        detectedFieldMappings: { locationPath: "address", latitudePath: "latitude", longitudePath: "longitude" },
+      };
+
+      mockStreamBatches([{ id: "1", address: "40.7128 N, 74.0060 W", latitude: "40.7128 N", longitude: "74.0060 W" }]);
+
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      expect(mocks.geocode).not.toHaveBeenCalled();
+      expect(result.output).toEqual({ skipped: true, skippedWithCoords: 1 });
+    });
   });
 
   describe("Error Handling", () => {

@@ -15,6 +15,7 @@
 import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
@@ -48,8 +49,8 @@ const rowHasValidCoords = (
   coordinateFields: { latitudeField?: string; longitudeField?: string }
 ): boolean => {
   if (!coordinateFields.latitudeField || !coordinateFields.longitudeField) return false;
-  const lat = Number(getByPathOrKey(row, coordinateFields.latitudeField));
-  const lng = Number(getByPathOrKey(row, coordinateFields.longitudeField));
+  const lat = parseCoordinate(getByPathOrKey(row, coordinateFields.latitudeField));
+  const lng = parseCoordinate(getByPathOrKey(row, coordinateFields.longitudeField));
   return isValidCoordinate(lat, lng);
 };
 

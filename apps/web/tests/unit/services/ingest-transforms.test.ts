@@ -681,6 +681,62 @@ describe("string-op expression on numeric values", () => {
     expect(applyTransforms({ type: 3 }, transforms).type).toBe("One-sided");
   });
 
+  it("should require explicit parsing for numeric equality on string values", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "type",
+        operation: "expression",
+        expression: '(toNumber(value) == 1 ? "State-based" : toNumber(value) == 2 ? "Non-state" : value)',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    expect(applyTransforms({ type: "1" }, transforms).type).toBe("State-based");
+    expect(applyTransforms({ type: "2" }, transforms).type).toBe("Non-state");
+  });
+
+  it("should keep numeric-looking strings raw in expressions unless explicitly parsed", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "external_id",
+        operation: "expression",
+        expression: '(value == 123 ? "matched" : value)',
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms({ external_id: "00123" }, transforms);
+
+    expect(result.external_id).toBe("00123");
+    expect(applyTransforms({ external_id: "123" }, transforms).external_id).toBe("123");
+  });
+
+  it("should keep source field when expression fails while writing to a different target", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "external_id",
+        to: "external_id_number",
+        operation: "expression",
+        expression: "parseNumber(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms({ external_id: "abc" }, transforms);
+
+    expect(result.external_id).toBe("abc");
+    expect(result.external_id_number).toBeUndefined();
+  });
+
   it("should return numeric value unchanged for non-matching expression", () => {
     const transforms: IngestTransform[] = [
       {

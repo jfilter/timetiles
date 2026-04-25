@@ -336,7 +336,8 @@ const buildTestManifest = (sourceUrl: string): DataPackageManifest => ({
       from: "type_of_violence",
       to: "Violence Type",
       operation: "expression",
-      expression: '(value == 1 ? "State-based" : value == 2 ? "Non-state" : value == 3 ? "One-sided" : value)',
+      expression:
+        '(toNumber(value) == 1 ? "State-based" : toNumber(value) == 2 ? "Non-state" : toNumber(value) == 3 ? "One-sided" : value)',
     },
     { type: "rename", from: "conflict_name", to: "Conflict" },
     { type: "rename", from: "dyad_name", to: "Parties" },
@@ -398,7 +399,8 @@ const buildUcdpManifest = (sourceUrl: string): DataPackageManifest => ({
       from: "type_of_violence",
       to: "Violence Type",
       operation: "expression",
-      expression: '(value == 1 ? "State-based" : value == 2 ? "Non-state" : value == 3 ? "One-sided" : value)',
+      expression:
+        '(toNumber(value) == 1 ? "State-based" : toNumber(value) == 2 ? "Non-state" : toNumber(value) == 3 ? "One-sided" : value)',
     },
     { type: "rename", from: "conflict_name", to: "Conflict" },
     { type: "rename", from: "dyad_name", to: "Parties" },
@@ -765,10 +767,10 @@ describe.sequential("Data Package Activation", () => {
 
     // Find events by unique ID (external id from CSV)
     const stateBasedEvent = events.docs.find(
-      (e: Record<string, unknown>) => (e.transformedData as Record<string, unknown>)?.id === 558782
+      (e: Record<string, unknown>) => (e.transformedData as Record<string, unknown>)?.id === "558782"
     )!;
     const nonStateEvent = events.docs.find(
-      (e: Record<string, unknown>) => (e.transformedData as Record<string, unknown>)?.id === 558790
+      (e: Record<string, unknown>) => (e.transformedData as Record<string, unknown>)?.id === "558790"
     )!;
     expect(stateBasedEvent).toBeDefined();
     expect(nonStateEvent).toBeDefined();

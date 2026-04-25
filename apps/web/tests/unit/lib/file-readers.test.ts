@@ -58,8 +58,8 @@ describe.sequential("File Readers", () => {
 
       expect(batches).toHaveLength(1);
       expect(batches[0]).toHaveLength(3);
-      expect(batches[0]![0]).toEqual({ id: 1, name: "Alice" });
-      expect(batches[0]![2]).toEqual({ id: 3, name: "Charlie" });
+      expect(batches[0]![0]).toEqual({ id: "1", name: "Alice" });
+      expect(batches[0]![2]).toEqual({ id: "3", name: "Charlie" });
     });
 
     it("should split rows into multiple batches", async () => {
@@ -114,13 +114,14 @@ describe.sequential("File Readers", () => {
       expect(batches).toHaveLength(0);
     });
 
-    it("should preserve data types with dynamicTyping", async () => {
-      const csvPath = writeTempCSV("types.csv", "str,num,float,bool\nhello,42,3.14,true\n");
+    it("should preserve raw CSV values as strings for identity-sensitive fields", async () => {
+      const csvPath = writeTempCSV("types.csv", "external_id,num,float,bool\n00123,42,3.14,true\n123,7,2.71,false\n");
 
       const rows = await flattenBatches(streamBatchesFromFile(csvPath, { batchSize: 10 }));
 
-      expect(rows).toHaveLength(1);
-      expect(rows[0]).toEqual({ str: "hello", num: 42, float: 3.14, bool: true });
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toEqual({ external_id: "00123", num: "42", float: "3.14", bool: "true" });
+      expect(rows[1]).toEqual({ external_id: "123", num: "7", float: "2.71", bool: "false" });
     });
 
     it("should trim whitespace from headers", async () => {
@@ -235,7 +236,7 @@ describe.sequential("File Readers", () => {
       expect(rows).toHaveLength(1);
       // Papa Parse strips BOM from stream input — first header should be clean
       expect(rows[0]).toHaveProperty("id");
-      expect(rows[0]!.id).toBe(1);
+      expect(rows[0]!.id).toBe("1");
     });
 
     it("should handle quoted fields with embedded newlines", async () => {
@@ -337,6 +338,12 @@ describe.sequential("File Readers", () => {
       const csvPath = writeTempCSV("count.csv", "id,name\n1,A\n2,B\n3,C\n");
 
       expect(await getFileRowCount(csvPath)).toBe(3);
+    });
+
+    it("should count CSV records with quoted multiline fields", async () => {
+      const csvPath = writeTempCSV("multiline-count.csv", 'id,description\n1,"line one\nline two"\n2,"simple"\n');
+
+      expect(await getFileRowCount(csvPath)).toBe(2);
     });
 
     it("should return 0 for header-only CSV", async () => {

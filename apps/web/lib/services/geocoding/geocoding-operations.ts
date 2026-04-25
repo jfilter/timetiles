@@ -42,24 +42,24 @@ export class GeocodingOperations {
     private readonly settings: GeocodingSettings | null
   ) {}
 
-  async geocode(address: string): Promise<GeocodingResult> {
+  async geocode(address: string, bias?: GeocodingBias): Promise<GeocodingResult> {
     const startTime = Date.now();
     logger.debug("Starting geocoding request", { addressHash: hashForLog(address) });
 
     // Check cache first
-    const cachedResult = await this.checkCache(address, startTime);
+    const cachedResult = await this.checkCache(address, startTime, bias);
     if (cachedResult != null) {
       return cachedResult;
     }
 
     // Try geocoding with enabled providers, sequential with retry on transient errors
-    const result = await this.tryProviders(address);
+    const result = await this.tryProviders(address, bias);
     if (result != null) {
       // Validate the result before accepting it
       if (!this.isResultAcceptable(result)) {
         throw new GeocodingError("Geocoding result failed validation", "VALIDATION_FAILED", false);
       }
-      await this.cacheManager.cacheResult(address, result);
+      await this.cacheResult(address, result, bias);
       return result;
     }
 
@@ -73,11 +73,11 @@ export class GeocodingOperations {
    * E.g. VersaTiles(15 req/s) + Komoot(10 req/s) → VersaTiles gets 60%, Komoot 40%.
    * On failure, falls back to remaining providers in priority order.
    */
-  private async geocodeDistributed(address: string): Promise<GeocodingResult> {
+  private async geocodeDistributed(address: string, bias?: GeocodingBias): Promise<GeocodingResult> {
     const startTime = Date.now();
 
     // Check cache first
-    const cachedResult = await this.checkCache(address, startTime);
+    const cachedResult = await this.checkCache(address, startTime, bias);
     if (cachedResult != null) {
       return cachedResult;
     }
@@ -87,7 +87,7 @@ export class GeocodingOperations {
 
     const available = enabledProviders.filter((p) => rateLimiter.isAvailable(p.name));
     if (available.length === 0) {
-      return this.geocode(address);
+      return this.geocode(address, bias);
     }
 
     // Weighted selection: pick provider based on rateLimit proportions
@@ -95,12 +95,12 @@ export class GeocodingOperations {
 
     // Try the round-robin-selected provider first
     try {
-      const result = await this.tryProviderWithRetry(primary, address);
+      const result = await this.tryProviderWithRetry(primary, address, bias);
       if (result != null) {
         if (!this.isResultAcceptable(result)) {
           throw new GeocodingError("Geocoding result failed validation", "VALIDATION_FAILED", false);
         }
-        await this.cacheManager.cacheResult(address, result);
+        await this.cacheResult(address, result, bias);
         return result;
       }
     } catch (error) {
@@ -113,14 +113,15 @@ export class GeocodingOperations {
     }
 
     // Primary failed — try remaining providers in priority order
-    return this.tryFallbackProviders(available, primary.name, address);
+    return this.tryFallbackProviders(available, primary.name, address, bias);
   }
 
   /** Try remaining providers in priority order after the primary failed. */
   private async tryFallbackProviders(
     available: ProviderConfig[],
     primaryName: string,
-    address: string
+    address: string,
+    bias?: GeocodingBias
   ): Promise<GeocodingResult> {
     const rateLimiter = getProviderRateLimiter();
 
@@ -129,10 +130,10 @@ export class GeocodingOperations {
       if (!rateLimiter.isAvailable(provider.name)) continue;
 
       try {
-        const result = await this.tryProviderWithRetry(provider, address);
+        const result = await this.tryProviderWithRetry(provider, address, bias);
         if (result != null) {
           if (!this.isResultAcceptable(result)) continue;
-          await this.cacheManager.cacheResult(address, result);
+          await this.cacheResult(address, result, bias);
           return result;
         }
       } catch {
@@ -145,7 +146,11 @@ export class GeocodingOperations {
     throw new GeocodingError("All geocoding providers failed", "ALL_PROVIDERS_FAILED", false);
   }
 
-  private async checkCache(address: string, startTime: number): Promise<GeocodingResult | null> {
+  private async checkCache(address: string, startTime: number, bias?: GeocodingBias): Promise<GeocodingResult | null> {
+    if (this.hasBias(bias)) {
+      return null;
+    }
+
     if (this.settings?.caching?.enabled !== true) {
       return null;
     }
@@ -160,11 +165,22 @@ export class GeocodingOperations {
     return null;
   }
 
+  private async cacheResult(address: string, result: GeocodingResult, bias?: GeocodingBias): Promise<void> {
+    if (this.hasBias(bias)) {
+      return;
+    }
+    await this.cacheManager.cacheResult(address, result);
+  }
+
+  private hasBias(bias?: GeocodingBias): boolean {
+    return Object.keys(this.buildBiasParams(bias)).length > 0;
+  }
+
   /**
    * Try providers sequentially by priority. Providers in the same group are
    * available as fallbacks but distribution happens at the batch level, not here.
    */
-  private async tryProviders(address: string): Promise<GeocodingResult | null> {
+  private async tryProviders(address: string, bias?: GeocodingBias): Promise<GeocodingResult | null> {
     const enabledProviders = this.providerManager.getEnabledProviders();
     const rateLimiter = getProviderRateLimiter();
 
@@ -175,7 +191,7 @@ export class GeocodingOperations {
       }
 
       try {
-        const result = await this.tryProviderWithRetry(provider, address);
+        const result = await this.tryProviderWithRetry(provider, address, bias);
         if (result != null) {
           return result;
         }
@@ -201,13 +217,14 @@ export class GeocodingOperations {
   private async tryProviderWithRetry(
     provider: ProviderConfig,
     address: string,
+    bias?: GeocodingBias,
     maxRetries: number = 1
   ): Promise<GeocodingResult | null> {
     const rateLimiter = getProviderRateLimiter();
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const result = await this.tryProvider(provider, address);
+        const result = await this.tryProvider(provider, address, bias);
         rateLimiter.reportSuccess(provider.name);
         return result;
       } catch (error) {
@@ -253,14 +270,18 @@ export class GeocodingOperations {
     return providers[0]!;
   }
 
-  private async tryProvider(provider: ProviderConfig, address: string): Promise<GeocodingResult | null> {
+  private async tryProvider(
+    provider: ProviderConfig,
+    address: string,
+    bias?: GeocodingBias
+  ): Promise<GeocodingResult | null> {
     const rateLimiter = getProviderRateLimiter();
     await rateLimiter.waitForSlot(provider.name);
 
     // Use object form if provider has extra geocode params (bbox, country codes, etc.)
-    const query: string | Record<string, string | number> = provider.geocodeParams
-      ? { q: address, ...provider.geocodeParams }
-      : address;
+    const geocodeParams = this.buildGeocodeParams(provider, bias);
+    const query: string | Record<string, string | number> =
+      Object.keys(geocodeParams).length > 0 ? { q: address, ...geocodeParams } : address;
 
     const results = await this.geocodeWithProvider(provider.geocoder, query);
     if (this.hasValidResults(results)) {
@@ -272,11 +293,7 @@ export class GeocodingOperations {
     return null;
   }
 
-  async batchGeocode(
-    addresses: string[],
-    batchSize: number = 10,
-    _bias?: GeocodingBias
-  ): Promise<BatchGeocodingResult> {
+  async batchGeocode(addresses: string[], batchSize: number = 10, bias?: GeocodingBias): Promise<BatchGeocodingResult> {
     const results = new Map<string, GeocodingResult | GeocodingError>();
     const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
 
@@ -285,7 +302,7 @@ export class GeocodingOperations {
     for (const batch of batches) {
       const batchPromises = batch.map(async (address) => {
         try {
-          const result = await this.geocodeDistributed(address);
+          const result = await this.geocodeDistributed(address, bias);
           if (result.fromCache === true) summary.cached++;
           summary.successful++;
           return { address, result };
@@ -310,6 +327,30 @@ export class GeocodingOperations {
     }
 
     return { results, summary };
+  }
+
+  private buildGeocodeParams(provider: ProviderConfig, bias?: GeocodingBias): Record<string, string | number> {
+    return { ...provider.geocodeParams, ...this.buildBiasParams(bias) };
+  }
+
+  private buildBiasParams(bias?: GeocodingBias): Record<string, string | number> {
+    const params: Record<string, string | number> = {};
+
+    const countryCodes = bias?.countryCodes?.map((code) => code.trim().toLowerCase()).filter(Boolean) ?? [];
+    if (countryCodes.length > 0) {
+      params.countrycodes = countryCodes.join(",");
+    }
+
+    if (bias?.viewBox != null) {
+      const { minLon, minLat, maxLon, maxLat } = bias.viewBox;
+      params.viewbox = `${minLon},${minLat},${maxLon},${maxLat}`;
+    }
+
+    if (bias?.bounded != null) {
+      params.bounded = bias.bounded ? 1 : 0;
+    }
+
+    return params;
   }
 
   async testConfiguration(

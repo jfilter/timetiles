@@ -140,6 +140,66 @@ describe.sequential("GeocodingOperations", () => {
   });
 
   describe("geocodeDistributed (via batchGeocode)", () => {
+    it("should pass batch geocoding bias to provider queries", async () => {
+      const geocoder = createMockGeocoder();
+      const provider = createProvider("nominatim", 10, geocoder);
+      const providerManager = createMockProviderManager([provider]);
+      const cacheManager = createMockCacheManager();
+
+      const ops = new GeocodingOperations(providerManager as any, cacheManager as any, defaultSettings);
+
+      await ops.batchGeocode(["Odessa"], 10, {
+        countryCodes: ["ua", "pl"],
+        viewBox: { minLon: 22, minLat: 44, maxLon: 41, maxLat: 53 },
+        bounded: true,
+      });
+
+      expect(geocoder.geocode).toHaveBeenCalledWith({
+        q: "Odessa",
+        countrycodes: "ua,pl",
+        viewbox: "22,44,41,53",
+        bounded: 1,
+      });
+    });
+
+    it("should bypass address-only cache for biased requests", async () => {
+      const geocoder = createMockGeocoder({ city: "Odessa" });
+      const provider = createProvider("nominatim", 10, geocoder);
+      const providerManager = createMockProviderManager([provider]);
+      const cacheManager = createMockCacheManager();
+      cacheManager.getCachedResult.mockResolvedValue({
+        latitude: 52.52,
+        longitude: 13.405,
+        confidence: 0.9,
+        provider: "nominatim",
+        normalizedAddress: "Odessa",
+        components: {
+          streetNumber: null,
+          streetName: null,
+          city: "Odessa",
+          region: null,
+          postalCode: null,
+          country: "United States",
+        },
+        metadata: {
+          requestTimestamp: new Date().toISOString(),
+          responseTime: null,
+          accuracy: null,
+          formattedAddress: "Odessa, TX, USA",
+        },
+        fromCache: true,
+      });
+
+      const settingsWithCache: GeocodingSettings = { ...defaultSettings, caching: { enabled: true, ttlDays: 30 } };
+      const ops = new GeocodingOperations(providerManager as any, cacheManager as any, settingsWithCache);
+
+      await ops.batchGeocode(["Odessa"], 10, { countryCodes: ["UA"] });
+
+      expect(cacheManager.getCachedResult).not.toHaveBeenCalled();
+      expect(geocoder.geocode).toHaveBeenCalledWith({ q: "Odessa", countrycodes: "ua" });
+      expect(cacheManager.cacheResult).not.toHaveBeenCalled();
+    });
+
     it("should fall back to other providers when primary fails", async () => {
       const failingGeocoder = createMockGeocoder({
         throws: new GeocodingError("Rate limited", "RATE_LIMITED", true, 429),

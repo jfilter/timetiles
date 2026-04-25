@@ -205,8 +205,7 @@ describe.sequential("Combined Transformations Integration", () => {
     expect(firstEventData.titel).toBe("Technische Konferenz");
     expect(firstEventData.Ereignis_Titel).toBeUndefined(); // Original field removed
 
-    // 2. Expression transform resulted in number (Papa Parse auto-converted)
-    // Note: CSV parser with dynamicTyping=true converts "150" to 150 before expression runs
+    // 2. Expression transform explicitly converts the raw CSV string to a number
     expect(firstEventData.Teilnehmer_Anzahl).toBe(150);
     expect(typeof firstEventData.Teilnehmer_Anzahl).toBe("number");
 
