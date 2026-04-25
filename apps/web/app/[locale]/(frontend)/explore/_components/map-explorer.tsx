@@ -82,7 +82,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
 
   // ResizeObserver to trigger map resize during grid transitions
   useEffect(() => {
-    const mapContainer = gridRef.current?.querySelector('[class*="h-full"]');
+    const mapContainer = gridRef.current?.querySelector("[data-map-resize-observer-target]");
     if (!mapContainer) return;
 
     let rafId: number;

@@ -49,7 +49,7 @@ export const MapPanel = ({
   className,
   scope,
 }: MapPanelProps) => (
-  <div className={className ?? "relative h-full"}>
+  <div className={className ?? "relative h-full"} data-map-resize-observer-target>
     <ClusteredMap
       ref={mapRef}
       clusters={clusters}
