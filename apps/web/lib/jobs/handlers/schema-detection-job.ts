@@ -28,7 +28,7 @@ import type { JobHandlerContext } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
   createStandardOnFail,
-  extractInternalDuplicateRows,
+  getInternalDuplicateSkipSet,
   loadEffectiveDatasetForJob,
   loadJobAndFilePath,
   setJobStage,
@@ -183,7 +183,7 @@ export const schemaDetectionJob = {
       // scheduled re-import of an unchanged URL saw all rows as external dupes,
       // produced zero samples, and then failed validation with every field marked
       // "removed" under additive schema mode.
-      const duplicateRows = extractInternalDuplicateRows(job);
+      const duplicateRows = getInternalDuplicateSkipSet(job);
       const { batchNumber, totalRowsProcessed, lastSchemaBuilder, emptyRowCount } = await runSchemaDetectionBatches({
         payload,
         ingestJobId,

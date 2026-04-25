@@ -19,6 +19,8 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob } from "@/payload-types";
 
+import { getDuplicateSummary, getUniqueRowsForQuota } from "../../utils/resource-loading";
+
 /** Maximum number of individual errors stored on an import job. */
 export const MAX_STORED_ERRORS = 500;
 
@@ -38,9 +40,8 @@ export const markJobCompleted = async (
   });
   const totalEventsCreated = eventsResult.totalDocs;
 
-  const duplicatesSkipped =
-    (currentJob.duplicates?.summary?.internalDuplicates ?? 0) +
-    (currentJob.duplicates?.summary?.externalDuplicates ?? 0);
+  const { internalCount, externalCount } = getDuplicateSummary(currentJob);
+  const duplicatesSkipped = internalCount + externalCount;
 
   // Store results and mark job as COMPLETED
   await payload.update({
@@ -142,7 +143,7 @@ export const checkEventQuotaBeforeProcessing = async (
 
   // Use uniqueRows from deduplication summary -- this is the actual number of events
   // that will be created, not the total file rows (which includes duplicates).
-  const uniqueRows = job.duplicates?.summary?.uniqueRows ?? 0;
+  const uniqueRows = getUniqueRowsForQuota(job);
 
   // Check if this import would exceed the per-import limit
   const quotaCheck = await quotaService.checkQuota(user, "EVENTS_PER_IMPORT", uniqueRows);

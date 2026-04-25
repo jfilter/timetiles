@@ -17,6 +17,7 @@ import { apiRoute, NotFoundError } from "@/lib/api";
 import { STAGE_ORDER } from "@/lib/constants/stage-graph";
 import { STAGE_DISPLAY_NAMES, STAGE_TIME_WEIGHTS } from "@/lib/constants/stage-time-weights";
 import type { FormattedJobProgress, FormattedStage, StageProgress } from "@/lib/ingest/types/progress-tracking";
+import { getDuplicateSummary } from "@/lib/jobs/utils/resource-loading";
 import { createLogger } from "@/lib/logger";
 import { getDatasetInfo } from "@/lib/utils/event-detail";
 import type { IngestJob } from "@/payload-types";
@@ -91,6 +92,7 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
 
   const overallPercentage = (job.progress?.overallPercentage as number | undefined) ?? 0;
   const estimatedCompletionTime = (job.progress?.estimatedCompletionTime as Date | undefined) ?? null;
+  const { internalCount, externalCount } = getDuplicateSummary(job);
 
   return {
     id: job.id,
@@ -101,10 +103,7 @@ const formatJobProgress = (job: IngestJob): FormattedJobProgress => {
     estimatedCompletionTime: estimatedCompletionTime ? new Date(estimatedCompletionTime).toISOString() : null,
     stages: extractFormattedStages(job),
     errors: job.errors?.length ?? 0,
-    duplicates: {
-      internal: job.duplicates?.summary?.internalDuplicates ?? 0,
-      external: job.duplicates?.summary?.externalDuplicates ?? 0,
-    },
+    duplicates: { internal: internalCount, external: externalCount },
     schemaValidation: job.schemaValidation as FormattedJobProgress["schemaValidation"],
     reviewReason: job.reviewReason ?? null,
     reviewDetails: (job.reviewDetails as Record<string, unknown>) ?? null,

@@ -1,9 +1,17 @@
 /**
- * Unit tests for the "update" duplicate strategy in extractDuplicateRows and processEventBatch.
+ * Unit tests for the duplicate accessors used by event creation, plus the
+ * `processEventBatch` integration.
  *
  * Verifies that:
- * - extractDuplicateRows correctly routes duplicates to skipRows vs updateRows based on strategy
- * - processEventBatch calls payload.update() for update-strategy rows and bulk-inserts new rows
+ * - `getEventCreationDuplicates` correctly routes duplicates to skipRows vs
+ *   updateRows based on the strategy persisted on the job's configSnapshot
+ *   (read internally — callers no longer pass a strategy)
+ * - `processEventBatch` calls `payload.update()` for update-strategy rows
+ *   and bulk-inserts new rows
+ *
+ * Folded in: legacy "readDuplicateStrategy" coverage. The strategy parser is
+ * now private to `resource-loading.ts`; we exercise it through
+ * `getEventCreationDuplicates` instead.
  *
  * @module
  * @category Tests
@@ -39,72 +47,84 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
-import { extractDuplicateRows } from "@/lib/jobs/utils/resource-loading";
+import { getEventCreationDuplicates } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockLogger } from "@/tests/mocks/services/logger";
 
 // ---------------------------------------------------------------------------
-// extractDuplicateRows
+// getEventCreationDuplicates
 // ---------------------------------------------------------------------------
 
-describe("extractDuplicateRows", () => {
-  const buildJob = (duplicates: unknown): IngestJob => ({ duplicates }) as unknown as IngestJob;
+describe("getEventCreationDuplicates", () => {
+  /** Build an IngestJob-like object with configurable duplicates and strategy. */
+  const buildJob = (opts: { duplicates?: unknown; duplicateStrategy?: string } = {}): IngestJob => {
+    const configSnapshot = opts.duplicateStrategy
+      ? { idStrategy: { duplicateStrategy: opts.duplicateStrategy } }
+      : undefined;
+    return { duplicates: opts.duplicates, configSnapshot } as unknown as IngestJob;
+  };
 
   describe("with no duplicates", () => {
     it("returns empty skipRows and updateRows when duplicates is undefined", () => {
-      const job = buildJob(undefined);
-      const { skipRows, updateRows } = extractDuplicateRows(job);
+      const { skipRows, updateRows } = getEventCreationDuplicates(buildJob({ duplicates: undefined }));
 
       expect(skipRows.size).toBe(0);
       expect(updateRows.size).toBe(0);
     });
 
     it("returns empty skipRows and updateRows when duplicates has empty arrays", () => {
-      const job = buildJob({ internal: [], external: [] });
-      const { skipRows, updateRows } = extractDuplicateRows(job, "skip");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({ duplicates: { internal: [], external: [] }, duplicateStrategy: "skip" })
+      );
 
       expect(skipRows.size).toBe(0);
       expect(updateRows.size).toBe(0);
     });
   });
 
-  describe('with strategy "skip"', () => {
+  describe('strategy "skip" (default)', () => {
     it("puts all internal and external duplicates into skipRows", () => {
-      const job = buildJob({
-        internal: [{ rowNumber: 1 }, { rowNumber: 3 }],
-        external: [
-          { rowNumber: 5, existingEventId: "evt-100" },
-          { rowNumber: 7, existingEventId: "evt-200" },
-        ],
-      });
-
-      const { skipRows, updateRows } = extractDuplicateRows(job, "skip");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({
+          duplicateStrategy: "skip",
+          duplicates: {
+            internal: [{ rowNumber: 1 }, { rowNumber: 3 }],
+            external: [
+              { rowNumber: 5, existingEventId: "evt-100" },
+              { rowNumber: 7, existingEventId: "evt-200" },
+            ],
+          },
+        })
+      );
 
       expect(skipRows).toEqual(new Set([1, 3, 5, 7]));
       expect(updateRows.size).toBe(0);
     });
 
-    it("defaults to skip when no strategy is provided", () => {
-      const job = buildJob({ internal: [], external: [{ rowNumber: 2, existingEventId: "evt-50" }] });
-
-      const { skipRows, updateRows } = extractDuplicateRows(job);
+    it("defaults to skip when no configSnapshot is provided", () => {
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({ duplicates: { internal: [], external: [{ rowNumber: 2, existingEventId: "evt-50" }] } })
+      );
 
       expect(skipRows).toEqual(new Set([2]));
       expect(updateRows.size).toBe(0);
     });
   });
 
-  describe('with strategy "update"', () => {
+  describe('strategy "update"', () => {
     it("puts internal dupes into skipRows and external dupes into updateRows", () => {
-      const job = buildJob({
-        internal: [{ rowNumber: 0 }, { rowNumber: 4 }],
-        external: [
-          { rowNumber: 2, existingEventId: "evt-10" },
-          { rowNumber: 6, existingEventId: 42 },
-        ],
-      });
-
-      const { skipRows, updateRows } = extractDuplicateRows(job, "update");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({
+          duplicateStrategy: "update",
+          duplicates: {
+            internal: [{ rowNumber: 0 }, { rowNumber: 4 }],
+            external: [
+              { rowNumber: 2, existingEventId: "evt-10" },
+              { rowNumber: 6, existingEventId: 42 },
+            ],
+          },
+        })
+      );
 
       // Internal dupes are always skipped
       expect(skipRows).toEqual(new Set([0, 4]));
@@ -116,16 +136,19 @@ describe("extractDuplicateRows", () => {
     });
 
     it("falls back to skipRows when existingEventId is missing", () => {
-      const job = buildJob({
-        internal: [],
-        external: [
-          { rowNumber: 1, existingEventId: "evt-10" },
-          { rowNumber: 3 }, // no existingEventId
-          { rowNumber: 5, existingEventId: undefined },
-        ],
-      });
-
-      const { skipRows, updateRows } = extractDuplicateRows(job, "update");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({
+          duplicateStrategy: "update",
+          duplicates: {
+            internal: [],
+            external: [
+              { rowNumber: 1, existingEventId: "evt-10" },
+              { rowNumber: 3 }, // no existingEventId
+              { rowNumber: 5, existingEventId: undefined },
+            ],
+          },
+        })
+      );
 
       // Row 1 has an existingEventId → updateRows
       expect(updateRows.get(1)).toBe("evt-10");
@@ -136,18 +159,77 @@ describe("extractDuplicateRows", () => {
     });
   });
 
+  describe("strategy parsing (folded from readDuplicateStrategy)", () => {
+    // The strategy parser used to be exported as `readDuplicateStrategy` and
+    // had its own test file. Now that it's a private helper, we exercise it
+    // through `getEventCreationDuplicates` by checking whether external dupes
+    // route to updateRows (only happens under the "update" strategy).
+    const externalDupe = { rowNumber: 1, existingEventId: 42 };
+    const dupes = { internal: [], external: [externalDupe] };
+
+    const expectsSkipBranch = (job: IngestJob) => {
+      const { skipRows, updateRows } = getEventCreationDuplicates(job);
+      // "skip" → external goes to skipRows, updateRows is empty
+      expect(updateRows.size).toBe(0);
+      expect(skipRows).toEqual(new Set([1]));
+    };
+
+    const expectsUpdateBranch = (job: IngestJob) => {
+      const { skipRows, updateRows } = getEventCreationDuplicates(job);
+      // "update" → external goes to updateRows, skipRows is empty
+      expect(skipRows.size).toBe(0);
+      expect(updateRows.get(1)).toBe(42);
+    };
+
+    const buildJobWithSnapshot = (configSnapshot: unknown): IngestJob =>
+      ({ duplicates: dupes, configSnapshot }) as unknown as IngestJob;
+
+    it("defaults to 'skip' when configSnapshot is missing", () => {
+      expectsSkipBranch(buildJobWithSnapshot(undefined));
+      expectsSkipBranch(buildJobWithSnapshot(null));
+    });
+
+    it("defaults to 'skip' when idStrategy is absent", () => {
+      expectsSkipBranch(buildJobWithSnapshot({}));
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: null }));
+    });
+
+    it("defaults to 'skip' when duplicateStrategy is unset or unexpected", () => {
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: { type: "external" } }));
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: { duplicateStrategy: null } }));
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: { duplicateStrategy: "overwrite" } }));
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: { duplicateStrategy: 42 } }));
+    });
+
+    it("returns 'update' branch only when duplicateStrategy is exactly 'update'", () => {
+      expectsUpdateBranch(buildJobWithSnapshot({ idStrategy: { duplicateStrategy: "update" } }));
+    });
+
+    it("returns 'skip' branch when duplicateStrategy is 'skip'", () => {
+      expectsSkipBranch(buildJobWithSnapshot({ idStrategy: { duplicateStrategy: "skip" } }));
+    });
+
+    it("returns 'skip' branch for malformed snapshots", () => {
+      expectsSkipBranch(buildJobWithSnapshot("not an object"));
+      expectsSkipBranch(buildJobWithSnapshot(42));
+      expectsSkipBranch(buildJobWithSnapshot([]));
+    });
+  });
+
   describe("edge cases", () => {
     it("handles non-object duplicates gracefully", () => {
-      const job = buildJob("not-an-object");
-      const { skipRows, updateRows } = extractDuplicateRows(job, "update");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({ duplicates: "not-an-object", duplicateStrategy: "update" })
+      );
 
       expect(skipRows.size).toBe(0);
       expect(updateRows.size).toBe(0);
     });
 
     it("handles array duplicates gracefully", () => {
-      const job = buildJob([1, 2, 3]);
-      const { skipRows, updateRows } = extractDuplicateRows(job, "update");
+      const { skipRows, updateRows } = getEventCreationDuplicates(
+        buildJob({ duplicates: [1, 2, 3], duplicateStrategy: "update" })
+      );
 
       expect(skipRows.size).toBe(0);
       expect(updateRows.size).toBe(0);

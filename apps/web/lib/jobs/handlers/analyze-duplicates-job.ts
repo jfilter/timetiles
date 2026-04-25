@@ -31,7 +31,12 @@ import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources } from "../utils/resource-loading";
+import {
+  cleanupSidecarsForJob,
+  createStandardOnFail,
+  getDuplicateRatesForReview,
+  loadJobResources,
+} from "../utils/resource-loading";
 import { buildTransformsForTargetPath, buildTransformsFromDataset } from "../utils/transform-builders";
 import { getIngestFilePath } from "../utils/upload-path";
 import {
@@ -392,9 +397,24 @@ export const analyzeDuplicatesJob = {
       // duplicate and trip the review gate on every run. External duplicates
       // are expected and handled by the dedup strategy itself — the review
       // gate's real signal is *internal* duplication (same-file dupes that
-      // suggest a user error). Use the internal-unique count for the rate.
-      const internalUniqueRows = results.totalRows - results.internalDuplicates.length;
-      const dupCheck = shouldReviewHighDuplicates(results.totalRows, internalUniqueRows, reviewChecks);
+      // suggest a user error). `getDuplicateRatesForReview` reads
+      // `job.duplicates.summary`, which we just wrote above; we mirror the
+      // freshly persisted shape onto the in-memory `job` so the accessor
+      // sees the latest values without an extra DB round-trip.
+      const jobWithFreshSummary: IngestJob = {
+        ...job,
+        duplicates: {
+          ...job.duplicates,
+          summary: {
+            totalRows: results.totalRows,
+            uniqueRows: results.uniqueRows,
+            internalDuplicates: results.internalDuplicates.length,
+            externalDuplicates: results.externalDuplicates.length,
+          },
+        },
+      };
+      const { internalUniqueRows, totalRows } = getDuplicateRatesForReview(jobWithFreshSummary);
+      const dupCheck = shouldReviewHighDuplicates(totalRows, internalUniqueRows, reviewChecks);
       if (dupCheck.needsReview) {
         await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_DUPLICATE_RATE, {
           totalRows: results.totalRows,
