@@ -476,7 +476,14 @@ export const useTemporalClustersQuery = (
  * Used by the time range slider to show the complete temporal distribution
  * regardless of the currently selected date range.
  */
-/** Strip date range but preserve field filters for the time range slider histogram. */
+/**
+ * Strip date range but preserve field filters for the time range slider histogram.
+ *
+ * Exported only so the unit test (`use-full-histogram-filters.test.ts`) can
+ * exercise the pure logic directly without spinning up React Query
+ * infrastructure to drive the calling hook. The single in-tree caller is
+ * `useFullHistogramQuery` below.
+ */
 export const buildFullRangeFilters = (filters: FilterState): FilterState => ({
   ...filters,
   startDate: null,
