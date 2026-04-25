@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, FileSpreadsheetIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useCatalogsQuery } from "@/lib/hooks/use-catalogs-query";
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
@@ -106,6 +106,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     nextStep,
     setCatalog,
     setSheetMapping,
+    applySuggestionToDatasetSelection,
   } = useWizardDatasetSelectionStepState();
   const canProceed = useWizardCanProceed();
 
@@ -118,47 +119,68 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   // Derive a clean catalog name from the uploaded file name
   const suggestedCatalogName = fileName ? humanizeFileName(fileName) : "";
 
-  // Auto-select from config suggestions when available, otherwise default to "new catalog"
-  const autoAppliedRef = useRef(false);
+  // UI initialization only: when the user has no catalogs yet, default to
+  // "new catalog" so the catalog-name input is visible immediately. Match-
+  // based auto-application of dataset-config suggestions is intentionally
+  // user-initiated (see the suggested banner below).
   useEffect(() => {
-    if (isLoading || selectedCatalogId !== null || autoAppliedRef.current) return;
-
-    // Try to auto-apply suggestions: match each sheet to its best suggestion
-    const goodSuggestions = configSuggestions.filter((s) => s.score >= 60);
-    if (goodSuggestions.length > 0 && catalogsList && catalogsList.length > 0) {
-      const bestCatalogId = goodSuggestions[0]!.catalogId;
-      if (catalogsList.some((c) => c.id === bestCatalogId)) {
-        setCatalog(bestCatalogId);
-        // Match each sheet to its best suggestion by name similarity
-        for (let i = 0; i < sheetMappings.length; i++) {
-          const sheetName = sheets[i]?.name?.toLowerCase() ?? "";
-          const match = goodSuggestions.find(
-            (s) => s.datasetName.toLowerCase().includes(sheetName) || sheetName.includes(s.datasetName.toLowerCase())
-          );
-          if (match) {
-            setSheetMapping(i, { datasetId: match.datasetId });
-          }
-        }
-        autoAppliedRef.current = true;
-        return;
-      }
-    }
-
-    // Fallback: auto-select "new catalog" if no catalogs exist
+    if (isLoading || selectedCatalogId !== null) return;
     if (!catalogsList || catalogsList.length === 0) {
       setCatalog("new", suggestedCatalogName);
     }
-  }, [
-    catalogsList,
-    selectedCatalogId,
-    isLoading,
-    setCatalog,
-    suggestedCatalogName,
-    configSuggestions,
-    sheetMappings.length,
-    sheets,
-    setSheetMapping,
-  ]);
+  }, [catalogsList, selectedCatalogId, isLoading, setCatalog, suggestedCatalogName]);
+
+  // Track whether the user has explicitly applied or dismissed the suggestion
+  // banner. Both are wizard-session-local and reset when the user reloads.
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
+  // Best dataset-config suggestion (≥60% match) whose catalog is loaded.
+  const bestSuggestion = useMemo(() => {
+    const goodSuggestions = configSuggestions.filter((s) => s.score >= 60);
+    if (goodSuggestions.length === 0 || !catalogsList || catalogsList.length === 0) return null;
+    const candidate = goodSuggestions[0];
+    if (!candidate) return null;
+    return catalogsList.some((c) => c.id === candidate.catalogId) ? candidate : null;
+  }, [configSuggestions, catalogsList]);
+
+  // Compute per-sheet dataset matches for the suggestion (used by both the
+  // banner click handler and applied-state detection).
+  const sheetMatches = useMemo(() => {
+    if (!bestSuggestion) return [];
+    const goodSuggestions = configSuggestions.filter((s) => s.score >= 60);
+    return sheets
+      .map((sheet) => {
+        const sheetName = sheet.name?.toLowerCase() ?? "";
+        const match = goodSuggestions.find(
+          (s) => s.datasetName.toLowerCase().includes(sheetName) || sheetName.includes(s.datasetName.toLowerCase())
+        );
+        return match ? { sheetIndex: sheet.index, datasetId: match.datasetId } : null;
+      })
+      .filter((m): m is { sheetIndex: number; datasetId: number } => m !== null);
+  }, [bestSuggestion, configSuggestions, sheets]);
+
+  const handleApplySuggestion = () => {
+    if (!bestSuggestion) return;
+    applySuggestionToDatasetSelection({ catalogId: bestSuggestion.catalogId, sheetMatches });
+    setSuggestionApplied(true);
+  };
+
+  const handleIgnoreSuggestion = () => {
+    setSuggestionDismissed(true);
+  };
+
+  const handleResetSuggestion = () => {
+    setSuggestionApplied(false);
+    setCatalog(null);
+    // Clearing only the catalog leaves each sheet pointing at a `datasetId`
+    // from the previously applied catalog. Those refs would then resurface
+    // downstream (schema-drift checks, field-mapping auto-apply) against
+    // datasets the user never chose.
+    for (const m of sheetMappings) {
+      setSheetMapping(m.sheetIndex, { datasetId: "new" });
+    }
+  };
 
   const handleCatalogChange = (value: string) => {
     if (value === "new") {
@@ -194,9 +216,6 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     return selectedCatalog?.datasets ?? [];
   }, [selectedCatalogId, selectedCatalog]);
 
-  // Show info when auto-applied from suggestions
-  const wasAutoApplied = autoAppliedRef.current;
-
   // Status message for the sticky footer
   const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
   const statusMessageKey = canProceed ? "readyToContinue" : pendingStatusKey;
@@ -218,33 +237,40 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
 
       {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
 
-      {/* Info banner when catalog + datasets were auto-selected from previous import */}
-      {wasAutoApplied && (
+      {/* Suggestion banner: prompt the user to apply a server-detected match.
+          Applying is explicit (button click) so we never silently mutate
+          wizard state from a fuzzy server match. */}
+      {bestSuggestion && !suggestionApplied && !suggestionDismissed && (
+        <div
+          className="border-ring/20 bg-ring/5 flex items-center justify-between rounded-sm border px-4 py-3"
+          data-testid="dataset-suggestion-banner"
+        >
+          <span className="text-ring text-sm">
+            {t("similarConfig", { name: bestSuggestion.datasetName, score: bestSuggestion.score })}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleIgnoreSuggestion}>
+              {t("ignoreSuggestion")}
+            </Button>
+            <Button size="sm" onClick={handleApplySuggestion}>
+              {t("useThisConfig")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Applied banner: shown after the user clicks "Use this config".
+          Reset clears catalog + sheet mappings and returns to the suggested
+          banner state. */}
+      {suggestionApplied && bestSuggestion && (
         <div
           className="border-accent/20 bg-accent/5 flex items-center justify-between rounded-sm border px-4 py-3"
           data-testid="dataset-suggestion-applied"
         >
           <span className="text-accent text-sm">
-            {t("configLoadedFromDataset", { name: configSuggestions[0]?.datasetName ?? "" })}
+            {t("configLoadedFromDataset", { name: bestSuggestion.datasetName })}
           </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Keep `autoAppliedRef.current = true` — it's a "has been applied
-              // once" marker, not a "currently applied" marker. Resetting it
-              // would let the auto-apply effect re-fire on the next render and
-              // silently undo the user's reset.
-              setCatalog(null);
-              // Clearing only the catalog leaves each sheet pointing at a
-              // `datasetId` from the auto-applied catalog. Those refs would
-              // then resurface downstream (schema-drift checks, field-mapping
-              // auto-apply) against datasets the user never chose.
-              for (const m of sheetMappings) {
-                setSheetMapping(m.sheetIndex, { datasetId: "new" });
-              }
-            }}
-          >
+          <Button variant="ghost" size="sm" onClick={handleResetSuggestion}>
             {t("resetToAutoDetected")}
           </Button>
         </div>

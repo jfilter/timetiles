@@ -64,11 +64,12 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(page.getByText("Sports Events")).toBeVisible();
   });
 
-  test("should auto-select catalog from config suggestions when available", async ({ page }) => {
+  test("should show suggested banner (not auto-applied) when match score >= 60", async ({ page }) => {
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
-    // Upload CSV (if a previous import exists, suggestions will auto-apply)
+    // Upload CSV — if a previous import exists with a similar schema, the
+    // server returns config suggestions and the wizard surfaces a banner.
     const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
     await importPage.uploadFile(csvPath);
 
@@ -80,17 +81,20 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const catalogNameInput = page.locator("#new-catalog-name");
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible({ timeout: 10000 });
 
-    // Check if config suggestion was auto-applied (green banner)
-    const suggestionBanner = page.locator('[data-testid="dataset-suggestion-applied"]');
-    const hasSuggestion = await suggestionBanner.isVisible().catch(() => false);
+    // The applied banner should NEVER be reached without an explicit click —
+    // it is no longer auto-shown when the server returns a match.
+    const appliedBanner = page.locator('[data-testid="dataset-suggestion-applied"]');
+    await expect(appliedBanner).not.toBeVisible();
+
+    const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
+    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
 
     if (hasSuggestion) {
-      // Suggestion was applied — catalog dropdown should show a selected catalog name
-      await expect(catalogDropdown).toBeVisible();
-      const displayedText = await catalogDropdown.textContent();
-      expect(displayedText?.trim().length).toBeGreaterThan(0);
+      // The suggested banner is in the un-applied state: both buttons present.
+      await expect(suggestedBanner.getByRole("button", { name: /use this config/i })).toBeVisible();
+      await expect(suggestedBanner.getByRole("button", { name: /ignore/i })).toBeVisible();
     } else {
-      // No suggestion — either dropdown or name input should be visible
+      // No suggestion — either dropdown or name input should be visible.
       const hasDropdown = await catalogDropdown.isVisible().catch(() => false);
       const hasInput = await catalogNameInput.isVisible().catch(() => false);
       expect(hasDropdown || hasInput).toBe(true);
@@ -101,6 +105,61 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
         expect(inputValue.length).toBeGreaterThan(0);
       }
     }
+  });
+
+  test("Ignore dismisses banner and lets user manually create a catalog", async ({ page }) => {
+    await importPage.goto();
+    await importPage.waitForWizardLoad();
+
+    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
+    await importPage.uploadFile(csvPath);
+    await importPage.clickNext();
+
+    const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
+    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
+
+    test.skip(!hasSuggestion, "No suggestion was returned — nothing to dismiss");
+
+    // Click Ignore
+    await suggestedBanner.getByRole("button", { name: /ignore/i }).click();
+
+    // Banner should disappear; applied banner should NOT appear
+    await expect(suggestedBanner).not.toBeVisible();
+    await expect(page.locator('[data-testid="dataset-suggestion-applied"]')).not.toBeVisible();
+
+    // Catalog form (dropdown or name input) should remain visible
+    const catalogDropdown = page.locator("#catalog-select");
+    const catalogNameInput = page.locator("#new-catalog-name");
+    await expect(catalogDropdown.or(catalogNameInput)).toBeVisible();
+  });
+
+  test("Use this config sets catalog and sheet mappings atomically", async ({ page }) => {
+    await importPage.goto();
+    await importPage.waitForWizardLoad();
+
+    const csvPath = path.join(FIXTURES_PATH, "valid-events.csv");
+    await importPage.uploadFile(csvPath);
+    await importPage.clickNext();
+
+    const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
+    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
+
+    test.skip(!hasSuggestion, "No suggestion was returned — nothing to apply");
+
+    // Click "Use this config"
+    await suggestedBanner.getByRole("button", { name: /use this config/i }).click();
+
+    // Suggested banner should be replaced by applied banner
+    await expect(suggestedBanner).not.toBeVisible();
+    const appliedBanner = page.locator('[data-testid="dataset-suggestion-applied"]');
+    await expect(appliedBanner).toBeVisible();
+    await expect(appliedBanner.getByRole("button", { name: /reset to auto-detected/i })).toBeVisible();
+
+    // Catalog must show a selected catalog (not empty/null)
+    const catalogDropdown = page.locator("#catalog-select");
+    await expect(catalogDropdown).toBeVisible();
+    const catalogText = await catalogDropdown.textContent();
+    expect(catalogText?.trim().length).toBeGreaterThan(0);
   });
 
   test("should show Continue button on Step 3", async ({ page }) => {

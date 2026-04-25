@@ -15,11 +15,11 @@ import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowRight, ChevronDownIcon, FileSpreadsheetIcon, WorkflowIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { applyPreviewTransforms } from "@/lib/ingest/transforms";
-import { type ConfigSuggestion, type FieldMapping, isFieldMappingComplete } from "@/lib/ingest/types/wizard";
+import { type FieldMapping, isFieldMappingComplete } from "@/lib/ingest/types/wizard";
 
 import { useWizardCanProceed } from "../use-wizard-effects";
 import { useWizardFieldMappingStepState } from "../wizard-store";
@@ -40,40 +40,17 @@ export interface StepFieldMappingProps {
 }
 
 /**
- * Manage config suggestion state (applied/dismissed) keyed per sheet.
+ * Per-sheet config-suggestion state container (`applied` and `dismissed`
+ * sets keyed by sheet index).
  *
- * Uses `useState` for both rendering and as the single source of truth.
- * The effect uses a functional updater to atomically check-and-set the
- * applied state, eliminating the previous `useRef` sync risk.
+ * Apply is user-initiated via the "Use this config" button on the
+ * suggestion banner — there is no auto-apply effect. Removing the effect
+ * eliminates the class of bugs where the auto-apply ran against the wrong
+ * sheet/dataset and silently mutated wizard state.
  */
-const useConfigSuggestion = (
-  bestSuggestion: ConfigSuggestion | null,
-  sheetMappings: { sheetIndex: number; datasetId?: number | "new" }[],
-  activeSheetIndex: number,
-  applyDatasetConfig: (sheetIndex: number, config: ConfigSuggestion["config"]) => void
-) => {
+const useConfigSuggestion = (activeSheetIndex: number) => {
   const [dismissedSheets, setDismissedSheets] = useState<Set<number>>(new Set());
   const [appliedSheets, setAppliedSheets] = useState<Set<number>>(new Set());
-
-  useEffect(() => {
-    if (!bestSuggestion) return;
-    const mapping = sheetMappings.find((m) => m.sheetIndex === activeSheetIndex);
-    if (typeof mapping?.datasetId !== "number") return;
-
-    // Functional updater: atomically check if already applied and mark if not.
-    // This avoids the previous useRef guard that could drift from state.
-    let alreadyApplied = false;
-    setAppliedSheets((prev) => {
-      if (prev.has(activeSheetIndex)) {
-        alreadyApplied = true;
-        return prev;
-      }
-      return new Set(prev).add(activeSheetIndex);
-    });
-    if (!alreadyApplied) {
-      applyDatasetConfig(activeSheetIndex, bestSuggestion.config);
-    }
-  }, [activeSheetIndex, sheetMappings, bestSuggestion, applyDatasetConfig]);
 
   const dismissed = dismissedSheets.has(activeSheetIndex);
   const applied = appliedSheets.has(activeSheetIndex);
@@ -137,7 +114,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
 
   // Config suggestion state
   const bestSuggestion = configSuggestions.find((s) => s.score >= 60) ?? null;
-  const suggestionState = useConfigSuggestion(bestSuggestion, sheetMappings, activeSheetIndex, applyDatasetConfig);
+  const suggestionState = useConfigSuggestion(activeSheetIndex);
 
   const headers = useMemo(() => activeSheet?.headers ?? [], [activeSheet?.headers]);
 

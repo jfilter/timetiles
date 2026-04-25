@@ -108,6 +108,10 @@ interface WizardActions {
   clearFile: () => void;
   setCatalog: (catalogId: number | "new" | null, newCatalogName?: string) => void;
   setSheetMapping: (sheetIndex: number, mapping: Partial<SheetMapping>) => void;
+  applySuggestionToDatasetSelection: (params: {
+    catalogId: number;
+    sheetMatches: Array<{ sheetIndex: number; datasetId: number; similarityScore?: number | null }>;
+  }) => void;
   setFieldMapping: (sheetIndex: number, mapping: Partial<FieldMapping>) => void;
   setTransforms: (sheetIndex: number, transforms: IngestTransform[]) => void;
   setImportOptions: (options: {
@@ -351,6 +355,24 @@ export const useWizardStore = create<WizardStore>()(
         setSheetMapping: (sheetIndex, mapping) =>
           set((s) => ({ sheetMappings: updateBySheetIndex(s.sheetMappings, sheetIndex, mapping) })),
 
+        applySuggestionToDatasetSelection: ({ catalogId, sheetMatches }) =>
+          set((s) => {
+            // Atomically set the catalog and matching sheet mappings in one
+            // store update so consumers can never observe a half-applied
+            // intermediate state (e.g. catalog set but sheet mappings still
+            // "new"). This is the user-initiated counterpart to the prior
+            // auto-apply effect and replaces the multi-call sequence that
+            // produced reset/re-fire bugs.
+            let nextSheetMappings = s.sheetMappings;
+            for (const match of sheetMatches) {
+              nextSheetMappings = updateBySheetIndex(nextSheetMappings, match.sheetIndex, {
+                datasetId: match.datasetId,
+                similarityScore: match.similarityScore ?? null,
+              });
+            }
+            return { selectedCatalogId: catalogId, sheetMappings: nextSheetMappings };
+          }),
+
         setFieldMapping: (sheetIndex, mapping) =>
           set((s) => ({ fieldMappings: updateBySheetIndex(s.fieldMappings, sheetIndex, mapping) })),
 
@@ -493,6 +515,7 @@ export const useWizardDatasetSelectionStepState = () =>
     nextStep: state.nextStep,
     setCatalog: state.setCatalog,
     setSheetMapping: state.setSheetMapping,
+    applySuggestionToDatasetSelection: state.applySuggestionToDatasetSelection,
   }));
 
 export const useWizardFieldMappingStepState = () =>
