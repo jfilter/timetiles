@@ -100,6 +100,15 @@ export const buildDatasetMapping = (
 
 /**
  * Translate user-friendly schema mode to dataset schemaConfig fields.
+ *
+ * The dataset-level config is the *fallback* when validate-schema-job has no
+ * explicit `processingOptions.schemaMode` to consult — it must therefore
+ * encode the most permissive interpretation of each mode so a missing
+ * processingOptions.schemaMode doesn't escalate harmlessly compatible runs
+ * into "needs review". Mode-specific finer points (e.g. flexible's
+ * "auto-approve high-confidence transforms" behaviour, which additive does
+ * not allow) live in `evaluateSchemaMode` and only fire when
+ * processingOptions.schemaMode is set.
  */
 export const translateSchemaMode = (
   mode: CreateScheduleConfig["schemaMode"]
@@ -108,9 +117,11 @@ export const translateSchemaMode = (
     case "strict":
       return { locked: true, autoGrow: false, autoApproveNonBreaking: false };
     case "additive":
-      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
     case "flexible":
-      return { locked: false, autoGrow: true, autoApproveNonBreaking: false };
+      // Flexible is strictly *more* permissive than additive at the mode
+      // layer; at the dataset-fallback layer the two should look identical
+      // (both: schema may grow, non-breaking changes auto-approve).
+      return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
     default:
       return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
   }

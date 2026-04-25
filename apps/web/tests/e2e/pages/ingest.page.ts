@@ -283,9 +283,13 @@ export class IngestPage {
       if (tagName === "select") {
         await catalogDropdown.selectOption("new");
       } else {
-        // Radix Select — click trigger, then click the "new" option
+        // Radix Select — click trigger, wait for the option to be visible
+        // (Radix has an open animation; clicking before the option settles
+        // sometimes resolves the locator but misses the click target), then click.
         await catalogDropdown.click();
-        await this.page.getByRole("option", { name: /create new catalog/i }).click();
+        const newOption = this.page.getByRole("option", { name: /create new catalog/i });
+        await newOption.waitFor({ state: "visible", timeout: 10000 });
+        await newOption.click({ timeout: 10000 });
       }
       await expect(catalogNameInput).toBeVisible({ timeout: 5000 });
     }
