@@ -73,6 +73,13 @@ describe("wizard store edit mode", () => {
       expect(state.scheduleConfig?.schemaMode).toBe("strict");
     });
 
+    it("stores editScheduleData.datasetId so loadFile can pre-select it", () => {
+      useWizardStore.getState().initializeForEdit(42, editData);
+      const state = useWizardStore.getState();
+
+      expect(state.editScheduleData?.datasetId).toBe(42);
+    });
+
     it("does not pre-fill file, sheets, or previewId", () => {
       useWizardStore.getState().initializeForEdit(42, editData);
       const state = useWizardStore.getState();

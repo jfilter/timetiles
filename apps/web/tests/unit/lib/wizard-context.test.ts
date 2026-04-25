@@ -61,9 +61,9 @@ describe("Wizard Store", () => {
   });
 
   describe("Navigation", () => {
-    it("goToStep changes current step", () => {
+    it("recoverFromInvalidPreview changes current step", () => {
       resetStore();
-      useWizardStore.getState().goToStep(3);
+      useWizardStore.getState().recoverFromInvalidPreview(3);
       expect(useWizardStore.getState().currentStep).toBe(3);
     });
 
@@ -95,7 +95,7 @@ describe("Wizard Store", () => {
   describe("Authentication", () => {
     it("startedAuthenticated is preserved in state", () => {
       resetStore({ startedAuthenticated: true });
-      useWizardStore.getState().goToStep(2);
+      useWizardStore.getState().recoverFromInvalidPreview(2);
       expect(useWizardStore.getState().startedAuthenticated).toBe(true);
     });
   });

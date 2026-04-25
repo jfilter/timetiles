@@ -66,8 +66,11 @@ export interface WizardState {
   startedAuthenticated: boolean;
   editMode: boolean;
   editScheduleId: number | null;
-  /** Dataset ID from the schedule being edited — used by loadFile to pre-select instead of "new" */
-  _editDatasetId: number | null;
+  /**
+   * Dataset preference embedded in the schedule being edited — used by loadFile
+   * to pre-select an existing dataset instead of defaulting to "new" on re-fetch.
+   */
+  editScheduleData: { datasetId: number | null } | null;
   previewId: string | null;
   file: { name: string; size: number; mimeType: string } | null;
   sheets: SheetInfo[];
@@ -91,7 +94,7 @@ export interface WizardState {
 interface WizardActions {
   initialize: (auth: { isAuthenticated: boolean; isEmailVerified: boolean }) => void;
   initializeForEdit: (scheduleId: number, data: EditScheduleData) => void;
-  goToStep: (step: WizardStep) => void;
+  recoverFromInvalidPreview: (targetStep: WizardStep) => void;
   nextStep: () => void;
   prevStep: () => void;
   loadFile: (params: {
@@ -135,7 +138,7 @@ export const initialState: WizardState = {
   startedAuthenticated: false,
   editMode: false,
   editScheduleId: null,
-  _editDatasetId: null,
+  editScheduleData: null,
   previewId: null,
   file: null,
   sheets: [],
@@ -272,11 +275,11 @@ export const useWizardStore = create<WizardStore>()(
             jsonApiConfig: data.jsonApiConfig,
             selectedCatalogId: data.selectedCatalogId,
             scheduleConfig: data.scheduleConfig,
-            _editDatasetId: data.datasetId,
+            editScheduleData: { datasetId: data.datasetId },
           });
         },
 
-        goToStep: (step) => set({ currentStep: step }),
+        recoverFromInvalidPreview: (targetStep) => set({ currentStep: targetStep }),
 
         nextStep: () =>
           set((s) => {
@@ -305,7 +308,7 @@ export const useWizardStore = create<WizardStore>()(
           };
 
           // In edit mode with an existing dataset, pre-select it instead of "new"
-          const editDatasetId = state.editMode ? state._editDatasetId : null;
+          const editDatasetId = state.editMode ? (state.editScheduleData?.datasetId ?? null) : null;
 
           set({
             file,
@@ -460,7 +463,7 @@ export const useWizardStore = create<WizardStore>()(
             authConfig,
             editMode,
             editScheduleId,
-            _editDatasetId,
+            editScheduleData,
             ...rest
           } = state;
           // Don't save during processing or in edit mode
