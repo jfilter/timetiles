@@ -13,17 +13,10 @@ import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials"
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
-type ApiDoc = {
-  id: number | string;
-  name?: string;
-  isPublic?: boolean;
-  data?: { title?: string };
-};
+type ApiDoc = { id: number | string; name?: string; isPublic?: boolean; data?: { title?: string } };
 
 type PlaywrightRequestFactory = {
-  request: {
-    newContext: (options: { baseURL: string }) => Promise<APIRequestContext>;
-  };
+  request: { newContext: (options: { baseURL: string }) => Promise<APIRequestContext> };
 };
 
 const createAdminApi = async (
@@ -38,18 +31,16 @@ const createAdminApi = async (
   expect(loginResponse.status()).toBe(200);
 
   const body = (await loginResponse.json()) as { token: string };
-  return {
-    api,
-    authHeaders: { Authorization: `JWT ${body.token}`, "Content-Type": "application/json" },
-  };
+  return { api, authHeaders: { Authorization: `JWT ${body.token}`, "Content-Type": "application/json" } };
 };
 
-const createPrivateCatalog = async (adminApi: APIRequestContext, authHeaders: Record<string, string>, suffix: string) => {
+const createPrivateCatalog = async (
+  adminApi: APIRequestContext,
+  authHeaders: Record<string, string>,
+  suffix: string
+) => {
   const name = `E2E Private Catalog ${suffix}`;
-  const response = await adminApi.post("/api/catalogs", {
-    data: { name, isPublic: false },
-    headers: authHeaders,
-  });
+  const response = await adminApi.post("/api/catalogs", { data: { name, isPublic: false }, headers: authHeaders });
   expect(response.status()).toBe(201);
 
   const body = (await response.json()) as { doc: ApiDoc };
