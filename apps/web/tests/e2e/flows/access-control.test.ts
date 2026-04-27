@@ -123,17 +123,17 @@ test.describe("Access Control - User Perspective", () => {
       console.log("Available catalogs for unauthenticated user:", catalogs);
     });
 
-    test("should display only events from public datasets", async () => {
+    test("should hide private catalogs and their datasets from unauthenticated users", async () => {
       await explorePage.goto();
-      await explorePage.waitForEventsToLoad();
 
-      // All displayed events should be from public datasets
-      // We can verify this by checking that events are visible
-      const eventCount = await explorePage.getEventCount();
-      console.log(`Unauthenticated user can see ${eventCount} events`);
+      // The E2E seed contains a private catalog "Historical Records" with
+      // private datasets. Neither the catalog nor its datasets may leak.
+      const catalogs = await explorePage.getAvailableCatalogs();
+      expect(catalogs.length).toBeGreaterThan(0);
+      expect(catalogs).not.toContain("Historical Records");
 
-      // Events count should be >= 0 (depending on seeded public data)
-      expect(eventCount).toBeGreaterThanOrEqual(0);
+      const datasets = await explorePage.getAvailableDatasets();
+      expect(datasets).not.toContain("Historical Records");
     });
 
     test("should return 401 when trying to access admin API endpoints", async ({ request }) => {

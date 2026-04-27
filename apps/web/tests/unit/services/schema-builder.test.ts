@@ -1196,12 +1196,9 @@ describe("schema-comparison — direct function tests", () => {
       const changes = compareSchemas(oldSchema, newSchema).changes;
       const suggestions = detectTransforms(oldSchema, newSchema, changes);
 
-      // Should suggest renaming event_title to title
-      expect(suggestions.length).toBeGreaterThanOrEqual(0);
-      if (suggestions.length > 0) {
-        expect(suggestions[0]!.type).toBe("rename");
-        expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
-      }
+      expect(suggestions).toHaveLength(1);
+      expect(suggestions[0]!.type).toBe("rename");
+      expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
     });
 
     it("returns empty suggestions when no renames detected", () => {
@@ -1229,9 +1226,9 @@ describe("schema-comparison — direct function tests", () => {
       const changes = compareSchemas(oldSchema, newSchema).changes;
       const suggestions = detectTransforms(oldSchema, newSchema, changes);
 
-      if (suggestions.length > 0) {
-        expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
-      }
+      expect(suggestions).toHaveLength(1);
+      expect(suggestions[0]!.type).toBe("rename");
+      expect(suggestions[0]!.confidence).toBeGreaterThanOrEqual(70);
     });
   });
 });

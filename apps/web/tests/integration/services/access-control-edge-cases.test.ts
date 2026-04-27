@@ -23,6 +23,8 @@ import {
   withUsers,
 } from "@/tests/setup/integration/environment";
 
+const FORBIDDEN = /Forbidden|not allowed|not found|permission/i;
+
 /**
  * Edge case tests for access control.
  * Refactored to avoid triggering job processing hooks.
@@ -76,8 +78,10 @@ describe.sequential("Access Control Edge Cases", () => {
   });
 
   describe("Orphaned Resources", () => {
-    it("should handle events when parent dataset is deleted", async () => {
-      // Create catalog, dataset, and event (admin creates datasets/events)
+    // Events and datasets use denormalized access fields (`datasetIsPublic`,
+    // `catalogOwnerId`, `isPublic`) — orphaned children stay readable based on
+    // their frozen flags rather than re-checking the now-deleted parent.
+    it("keeps a public event readable to other users after its parent dataset is deleted", async () => {
       const catalog = await payload.create({
         collection: "catalogs",
         data: { name: "Catalog for Orphan Test", isPublic: true },
@@ -101,21 +105,16 @@ describe.sequential("Access Control Edge Cases", () => {
         user: adminUser,
       });
 
-      // Delete the dataset (admin only can delete)
       await payload.delete({ collection: "datasets", id: dataset.id, user: adminUser, overrideAccess: false });
 
-      // Try to access the event - it should still exist but may have access issues
-      // This tests the system's handling of orphaned relationships
-      try {
-        await payload.findByID({ collection: "events", id: event.id, user: otherUser, overrideAccess: false });
-        // If this succeeds, the event is orphaned but still accessible
-        // The behavior depends on how Payload handles deleted relationships
-      } catch (error) {
-        // If this fails, it's expected for orphaned resources
-        expect(error).toBeDefined();
-      }
+      const orphanedRead = await payload.findByID({
+        collection: "events",
+        id: event.id,
+        user: otherUser,
+        overrideAccess: false,
+      });
+      expect(orphanedRead.id).toBe(event.id);
 
-      // Admin should still be able to access it
       const adminEvent = await payload.findByID({
         collection: "events",
         id: event.id,
@@ -125,8 +124,7 @@ describe.sequential("Access Control Edge Cases", () => {
       expect(adminEvent.id).toBe(event.id);
     });
 
-    it("should handle datasets when parent catalog is deleted", async () => {
-      // Create catalog and dataset (admin creates datasets)
+    it("keeps a public dataset readable to other users after its parent catalog is deleted", async () => {
       const catalog = await payload.create({
         collection: "catalogs",
         data: { name: "Catalog to be deleted", isPublic: true },
@@ -139,19 +137,16 @@ describe.sequential("Access Control Edge Cases", () => {
         user: adminUser,
       });
 
-      // Delete the catalog (admin only)
       await payload.delete({ collection: "catalogs", id: catalog.id, user: adminUser, overrideAccess: false });
 
-      // Try to access the dataset
-      try {
-        await payload.findByID({ collection: "datasets", id: dataset.id, user: otherUser, overrideAccess: false });
-        // Dataset might be accessible if catalog relationship is optional
-      } catch (error) {
-        // Or it might fail due to missing catalog
-        expect(error).toBeDefined();
-      }
+      const orphanedRead = await payload.findByID({
+        collection: "datasets",
+        id: dataset.id,
+        user: otherUser,
+        overrideAccess: false,
+      });
+      expect(orphanedRead.id).toBe(dataset.id);
 
-      // Admin should be able to access
       const adminDataset = await payload.findByID({
         collection: "datasets",
         id: dataset.id,
@@ -225,7 +220,7 @@ describe.sequential("Access Control Edge Cases", () => {
       console.log("[TEST] Testing otherUser access (should fail)...");
       await expect(
         payload.findByID({ collection: "ingest-jobs", id: ingestJob.id, user: otherUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
       console.log("[TEST] otherUser correctly denied");
 
       // ownerUser CAN access (they own the import file, regardless of dataset visibility)
@@ -268,7 +263,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // otherUser should not be able to read it
       await expect(
         payload.findByID({ collection: "ingest-files", id: ingestFile.id, user: otherUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
 
       // ownerUser should be able to read it
       const ownerFile = await payload.findByID({
@@ -288,7 +283,7 @@ describe.sequential("Access Control Edge Cases", () => {
           user: otherUser,
           overrideAccess: false,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
 
       // ownerUser should be able to update it
       const updated = await payload.update({
@@ -347,7 +342,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Now otherUser should NOT be able to access the dataset
       await expect(
         payload.findByID({ collection: "datasets", id: dataset.id, user: otherUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
 
       // ownerUser CAN access their own private datasets (owner access)
       const ownerDataset = await payload.findByID({
@@ -520,7 +515,7 @@ describe.sequential("Access Control Edge Cases", () => {
           user: otherUser,
           overrideAccess: false,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
 
       const unchanged = await payload.findByID({ collection: "catalogs", id: catalog.id, overrideAccess: true });
       expect(unchanged.name).toBe("System Catalog");
@@ -576,14 +571,14 @@ describe.sequential("Access Control Edge Cases", () => {
       // otherUser should not access event (private dataset - admin only)
       await expect(
         payload.findByID({ collection: "events", id: event.id, user: otherUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
       console.log("[CHAIN TEST] Step 4 done: otherUser correctly denied");
 
       console.log("[CHAIN TEST] Step 5: Testing ownerUser access...");
       // ownerUser also should not access (admin-only for private data)
       await expect(
         payload.findByID({ collection: "events", id: event.id, user: ownerUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
       console.log("[CHAIN TEST] Step 5 done: ownerUser correctly denied");
 
       console.log("[CHAIN TEST] Step 6: Making catalog public...");
@@ -638,7 +633,7 @@ describe.sequential("Access Control Edge Cases", () => {
           enabled: false,
           user: otherUser,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(FORBIDDEN);
 
       // Admin should be able to create scheduled ingest in private catalog
       const { scheduledIngest } = await withScheduledIngest(
