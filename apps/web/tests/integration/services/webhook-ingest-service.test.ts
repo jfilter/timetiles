@@ -846,11 +846,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
       const sourceUrl = `http://localhost:${testServerPort}/timeout.csv`;
 
-      await payload.update({
-        collection: "scheduled-ingests",
-        id: testScheduledIngest.id,
-        data: { sourceUrl },
-      });
+      await payload.update({ collection: "scheduled-ingests", id: testScheduledIngest.id, data: { sourceUrl } });
 
       try {
         await expect(
@@ -881,11 +877,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
     it("should reject invalid content types", async () => {
       const sourceUrl = `http://localhost:${testServerPort}/wrong-type.html`;
-      await payload.update({
-        collection: "scheduled-ingests",
-        id: testScheduledIngest.id,
-        data: { sourceUrl },
-      });
+      await payload.update({ collection: "scheduled-ingests", id: testScheduledIngest.id, data: { sourceUrl } });
 
       await expect(
         urlFetchJob.handler({
@@ -911,11 +903,7 @@ describe.sequential("Webhook Import Service Integration", () => {
 
     it("should handle HTTP error responses", async () => {
       const sourceUrl = `http://localhost:${testServerPort}/500-error.csv`;
-      await payload.update({
-        collection: "scheduled-ingests",
-        id: testScheduledIngest.id,
-        data: { sourceUrl },
-      });
+      await payload.update({ collection: "scheduled-ingests", id: testScheduledIngest.id, data: { sourceUrl } });
 
       await expect(
         urlFetchJob.handler({
