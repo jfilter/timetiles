@@ -99,17 +99,9 @@ export const detectFileTypeFromResponse = (
     if (match) return match;
   }
 
-  if (isDeclaredUnsupportedContentType(normalizedType)) {
-    return { mimeType: normalizedType, fileExtension: ".bin" };
-  }
-
-  // Try to detect from URL extension
-  const urlPath = new URL(sourceUrl).pathname;
-  const urlExtension = path.extname(urlPath).toLowerCase();
-  const extMatch = extensionMap.get(urlExtension);
-  if (extMatch) return extMatch;
-
-  // Try to detect from file content
+  // Try to detect from file content before rejecting declared but non-canonical
+  // MIME types. Real Excel files are often served as application/zip or
+  // application/x-ms-excel, but their magic bytes are still authoritative.
   const header = data.subarray(0, 8).toString("hex");
 
   // Excel files have specific magic bytes
@@ -131,6 +123,18 @@ export const detectFileTypeFromResponse = (
   if (firstNonWhitespace === 0x7b || firstNonWhitespace === 0x5b) {
     return { mimeType: "application/json", fileExtension: ".json" };
   }
+
+  if (isDeclaredUnsupportedContentType(normalizedType)) {
+    return { mimeType: normalizedType, fileExtension: ".bin" };
+  }
+
+  // Try to detect from URL extension only when the server did not declare a
+  // specific unsupported type. This keeps HTML error pages from being imported
+  // as CSV just because the URL ends in .csv.
+  const urlPath = new URL(sourceUrl).pathname;
+  const urlExtension = path.extname(urlPath).toLowerCase();
+  const extMatch = extensionMap.get(urlExtension);
+  if (extMatch) return extMatch;
 
   // No reliable signal — fall back to octet-stream rather than silently
   // routing unknown content through the CSV parser. Dataset-detection will

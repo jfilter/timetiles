@@ -844,6 +844,13 @@ describe.sequential("Webhook Import Service Integration", () => {
     it("should handle fetch timeouts", async () => {
       const previousTestTimeout = process.env.URL_FETCH_TEST_TIMEOUT_MS;
       process.env.URL_FETCH_TEST_TIMEOUT_MS = "300";
+      const sourceUrl = `http://localhost:${testServerPort}/timeout.csv`;
+
+      await payload.update({
+        collection: "scheduled-ingests",
+        id: testScheduledIngest.id,
+        data: { sourceUrl },
+      });
 
       try {
         await expect(
@@ -854,7 +861,7 @@ describe.sequential("Webhook Import Service Integration", () => {
               task: JOB_TYPES.URL_FETCH,
               input: {
                 scheduledIngestId: testScheduledIngest.id,
-                sourceUrl: `http://localhost:${testServerPort}/timeout.csv`,
+                sourceUrl,
                 catalogId: testCatalog.id,
                 originalName: "Timeout Test",
                 userId: testUser.id,
@@ -873,6 +880,13 @@ describe.sequential("Webhook Import Service Integration", () => {
     });
 
     it("should reject invalid content types", async () => {
+      const sourceUrl = `http://localhost:${testServerPort}/wrong-type.html`;
+      await payload.update({
+        collection: "scheduled-ingests",
+        id: testScheduledIngest.id,
+        data: { sourceUrl },
+      });
+
       await expect(
         urlFetchJob.handler({
           req: { payload },
@@ -881,7 +895,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             task: JOB_TYPES.URL_FETCH,
             input: {
               scheduledIngestId: testScheduledIngest.id,
-              sourceUrl: `http://localhost:${testServerPort}/wrong-type.html`,
+              sourceUrl,
               catalogId: testCatalog.id,
               originalName: "HTML Test",
               userId: testUser.id,
@@ -896,6 +910,13 @@ describe.sequential("Webhook Import Service Integration", () => {
     });
 
     it("should handle HTTP error responses", async () => {
+      const sourceUrl = `http://localhost:${testServerPort}/500-error.csv`;
+      await payload.update({
+        collection: "scheduled-ingests",
+        id: testScheduledIngest.id,
+        data: { sourceUrl },
+      });
+
       await expect(
         urlFetchJob.handler({
           req: { payload },
@@ -904,7 +925,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             task: JOB_TYPES.URL_FETCH,
             input: {
               scheduledIngestId: testScheduledIngest.id,
-              sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
+              sourceUrl,
               catalogId: testCatalog.id,
               originalName: "500 Test",
               userId: testUser.id,

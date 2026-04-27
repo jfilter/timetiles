@@ -165,7 +165,7 @@ const createEffectiveInput = (input: UrlFetchJobInput, scheduledIngest: Schedule
 
   return {
     ...input,
-    sourceUrl: input.sourceUrl ?? scheduledIngest.sourceUrl,
+    sourceUrl: scheduledIngest.sourceUrl ?? input.sourceUrl,
     authConfig: scheduledIngest.authConfig ?? input.authConfig,
     catalogId: extractRelationId(scheduledIngest.catalog) ?? input.catalogId,
     userId: extractRelationId(scheduledIngest.createdBy) ?? input.userId,

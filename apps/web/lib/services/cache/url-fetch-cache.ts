@@ -144,7 +144,11 @@ export class UrlFetchCache {
     return headers;
   }
 
-  private assertCompleteResponseBody(data: Buffer, headers: Record<string, string>): void {
+  private assertCompleteResponseBody(data: Buffer, headers: Record<string, string>, status: number): void {
+    if (status < 200 || status >= 300) {
+      return;
+    }
+
     if (headers["content-encoding"]) {
       return;
     }
@@ -162,7 +166,7 @@ export class UrlFetchCache {
   private async readResponseBody(response: Response): Promise<{ data: Buffer; headers: Record<string, string> }> {
     const headers = this.collectResponseHeaders(response);
     const data = Buffer.from(await response.arrayBuffer());
-    this.assertCompleteResponseBody(data, headers);
+    this.assertCompleteResponseBody(data, headers, response.status);
     return { data, headers };
   }
 

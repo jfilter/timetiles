@@ -30,4 +30,26 @@ describe("UrlFetchCache", () => {
 
     expect(cache.calculateTTL({})).toBe(3600);
   });
+
+  it("rejects truncated successful responses", async () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as {
+      readResponseBody: (response: Response) => Promise<{ data: Buffer; headers: Record<string, string> }>;
+    };
+    const response = new Response("short", { status: 200, headers: { "Content-Length": "100" } });
+
+    await expect(cache.readResponseBody(response)).rejects.toThrow(/Incomplete response body/);
+  });
+
+  it("preserves HTTP error status even when error body is truncated", async () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as {
+      readResponseBody: (response: Response) => Promise<{ data: Buffer; headers: Record<string, string> }>;
+    };
+    const response = new Response("missing", { status: 404, headers: { "Content-Length": "100" } });
+
+    await expect(cache.readResponseBody(response)).resolves.toMatchObject({ data: Buffer.from("missing") });
+  });
 });

@@ -109,11 +109,26 @@ describe("detectFileTypeFromResponse", () => {
       expect(result.fileExtension).toBe(".xlsx");
     });
 
+    it("detects XLSX magic bytes even with application/zip content-type", () => {
+      const body = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00]);
+      const result = detectFileTypeFromResponse("application/zip", body, "https://example.com/data.xlsx");
+      expect(result).toEqual({
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileExtension: ".xlsx",
+      });
+    });
+
     it("detects XLS magic bytes", () => {
       // OLE2 compound document magic
       const body = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
       const result = detectFileTypeFromResponse(undefined, body, URL_NO_EXT);
       expect(result.fileExtension).toBe(".xls");
+    });
+
+    it("detects XLS magic bytes even with application/x-ms-excel content-type", () => {
+      const body = Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+      const result = detectFileTypeFromResponse("application/x-ms-excel", body, "https://example.com/data.xls");
+      expect(result).toEqual({ mimeType: "application/vnd.ms-excel", fileExtension: ".xls" });
     });
   });
 });

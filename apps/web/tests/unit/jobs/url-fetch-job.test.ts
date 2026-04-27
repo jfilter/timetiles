@@ -845,6 +845,63 @@ describe.sequential("urlFetchJob", () => {
       expect(mockLogger.logError).not.toHaveBeenCalled();
     });
 
+    it("uses saved scheduled ingest sourceUrl instead of caller input", async () => {
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: unknown }) => {
+        if (collection === "scheduled-ingests" && id === "scheduled-123") {
+          return Promise.resolve({
+            id: "scheduled-123",
+            enabled: true,
+            sourceUrl: "https://trusted.example.com/data.csv",
+            authConfig: { type: "api-key", apiKey: TEST_CREDENTIALS.apiKey.shortSecretKey, apiKeyHeader: "X-API-Key" },
+            catalog: "catalog-123",
+            createdBy: "user-123",
+            statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
+          });
+        }
+        if (collection === "users" && id === "user-123") {
+          return Promise.resolve({ id: "user-123", role: "user" });
+        }
+        return Promise.resolve(null);
+      });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "import-123" });
+
+      const mockResponse = createMockResponse("id,name\n1,test", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      await urlFetchJob.handler({
+        input: {
+          scheduledIngestId: "scheduled-123",
+          sourceUrl: "https://evil.example.com/data.csv",
+          catalogId: "catalog-123",
+          originalName: "Scheduled Import",
+          userId: "user-123",
+        },
+        job: mockJob,
+        req: mockReq,
+      });
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "https://trusted.example.com/data.csv",
+        expect.objectContaining({
+          headers: expect.objectContaining({ "X-API-Key": TEST_CREDENTIALS.apiKey.shortSecretKey }),
+        })
+      );
+      expect(globalThis.fetch).not.toHaveBeenCalledWith(
+        "https://evil.example.com/data.csv",
+        expect.objectContaining({})
+      );
+
+      const ingestFileCreate = mockPayload.create.mock.calls.find(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "ingest-files"
+      );
+      expect(ingestFileCreate).toBeDefined();
+      const createData = (ingestFileCreate![0] as Record<string, unknown>).data as {
+        metadata?: { urlFetch?: { sourceUrl?: string } };
+      };
+      expect(createData.metadata?.urlFetch?.sourceUrl).toBe("https://trusted.example.com/data.csv");
+    });
+
     it("should not dilute averageDuration with zero when duplicate is detected", async () => {
       // Bug: handleDuplicateCheck calls updateScheduledIngestSuccess with duration=0,
       // which progressively dilutes the averageDuration toward 0 with each duplicate
