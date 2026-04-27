@@ -484,8 +484,9 @@ describe.sequential("Access Control Edge Cases", () => {
     it("should handle catalog with null createdBy field", async () => {
       // Try to create catalog without user context (system operation)
       // This might fail depending on beforeChange hooks
+      let catalog: any;
       try {
-        const catalog = await payload.create({
+        catalog = await payload.create({
           collection: "catalogs",
           data: {
             name: "System Catalog",
@@ -493,42 +494,46 @@ describe.sequential("Access Control Edge Cases", () => {
             // No createdBy - testing null ownership
           },
         });
-
-        // If creation succeeds, test access
-        // Public catalog should be readable by everyone
-        const result = await payload.findByID({
-          collection: "catalogs",
-          id: catalog.id,
-          user: otherUser,
-          overrideAccess: false,
-        });
-        expect(result.id).toBe(catalog.id);
-
-        // But who can update it if no owner?
-        // Only admins should be able to update
-        await expect(
-          payload.update({
-            collection: "catalogs",
-            id: catalog.id,
-            data: { name: "Hacked System Catalog" },
-            user: otherUser,
-            overrideAccess: false,
-          })
-        ).rejects.toThrow();
-
-        // Admin should be able to update
-        const updated = await payload.update({
-          collection: "catalogs",
-          id: catalog.id,
-          data: { name: "Admin Updated System Catalog" },
-          user: adminUser,
-          overrideAccess: false,
-        });
-        expect(updated.name).toBe("Admin Updated System Catalog");
       } catch (error) {
         // If creation fails, that's also valid (enforcing user requirement)
         expect(error).toBeDefined();
+        return;
       }
+
+      // If creation succeeds, test access
+      // Public catalog should be readable by everyone
+      const result = await payload.findByID({
+        collection: "catalogs",
+        id: catalog.id,
+        user: otherUser,
+        overrideAccess: false,
+      });
+      expect(result.id).toBe(catalog.id);
+
+      // But who can update it if no owner?
+      // Only admins should be able to update
+      await expect(
+        payload.update({
+          collection: "catalogs",
+          id: catalog.id,
+          data: { name: "Hacked System Catalog" },
+          user: otherUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow();
+
+      const unchanged = await payload.findByID({ collection: "catalogs", id: catalog.id, overrideAccess: true });
+      expect(unchanged.name).toBe("System Catalog");
+
+      // Admin should be able to update
+      const updated = await payload.update({
+        collection: "catalogs",
+        id: catalog.id,
+        data: { name: "Admin Updated System Catalog" },
+        user: adminUser,
+        overrideAccess: false,
+      });
+      expect(updated.name).toBe("Admin Updated System Catalog");
     });
 
     // Note: Session-based unauthenticated uploads are no longer supported.

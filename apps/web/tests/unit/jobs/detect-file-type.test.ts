@@ -41,6 +41,24 @@ describe("detectFileTypeFromResponse", () => {
       const result = detectFileTypeFromResponse(undefined, Buffer.from("a,b\n1,2"), "https://example.com/data.csv");
       expect(result.fileExtension).toBe(".csv");
     });
+
+    it("does not trust URL extension when server declares an unsupported content type", () => {
+      const result = detectFileTypeFromResponse(
+        "text/html; charset=utf-8",
+        Buffer.from("<html>not csv</html>"),
+        "https://example.com/data.csv"
+      );
+      expect(result).toEqual({ mimeType: "text/html", fileExtension: ".bin" });
+    });
+
+    it("still allows URL extension fallback for generic binary content types", () => {
+      const result = detectFileTypeFromResponse(
+        "application/octet-stream",
+        Buffer.from("a,b\n1,2"),
+        "https://example.com/data.csv"
+      );
+      expect(result).toEqual({ mimeType: "text/csv", fileExtension: ".csv" });
+    });
   });
 
   describe("content sniffing (regression)", () => {

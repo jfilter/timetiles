@@ -11,12 +11,50 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import type { APIRequestContext, APIResponse } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
 import { IngestPage } from "../pages/ingest.page";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_PATH = path.join(__dirname, "../../fixtures");
+
+const parseCreatedDoc = async <T extends { id: number }>(response: APIResponse): Promise<T> => {
+  if (response.status() !== 201) {
+    throw new Error(`Expected API create to return 201, got ${response.status()}: ${await response.text()}`);
+  }
+  const body = await response.json();
+  return (body.doc ?? body) as T;
+};
+
+const seedDatasetSuggestion = async (request: APIRequestContext): Promise<void> => {
+  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const catalog = await parseCreatedDoc<{ id: number }>(
+    await request.post("/api/catalogs", { data: { name: `Suggestion Catalog ${uniqueId}`, isPublic: true } })
+  );
+
+  await parseCreatedDoc<{ id: number }>(
+    await request.post("/api/datasets", {
+      data: {
+        name: `Sheet1 Suggested Config ${uniqueId}`,
+        catalog: catalog.id,
+        language: "eng",
+        isPublic: true,
+        fieldMappingOverrides: {
+          titlePath: "title",
+          descriptionPath: "description",
+          timestampPath: "date",
+          locationNamePath: "location",
+          endTimestampPath: "category",
+        },
+        idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
+        deduplicationConfig: { enabled: true },
+      },
+    })
+  );
+};
 
 test.describe("Import Wizard - Dataset Selection Step", () => {
   let importPage: IngestPage;
@@ -64,7 +102,8 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(page.getByText("Sports Events")).toBeVisible();
   });
 
-  test("should show suggested banner (not auto-applied) when match score >= 60", async ({ page }) => {
+  test("should show suggested banner (not auto-applied) when match score >= 60", async ({ page, request }) => {
+    await seedDatasetSuggestion(request);
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
@@ -87,27 +126,13 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(appliedBanner).not.toBeVisible();
 
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
-    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
-
-    if (hasSuggestion) {
-      // The suggested banner is in the un-applied state: both buttons present.
-      await expect(suggestedBanner.getByRole("button", { name: /use this config/i })).toBeVisible();
-      await expect(suggestedBanner.getByRole("button", { name: /ignore/i })).toBeVisible();
-    } else {
-      // No suggestion — either dropdown or name input should be visible.
-      const hasDropdown = await catalogDropdown.isVisible().catch(() => false);
-      const hasInput = await catalogNameInput.isVisible().catch(() => false);
-      expect(hasDropdown || hasInput).toBe(true);
-
-      // If name input is shown, it should have a filename-derived default value
-      if (hasInput) {
-        const inputValue = await catalogNameInput.inputValue();
-        expect(inputValue.length).toBeGreaterThan(0);
-      }
-    }
+    await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
+    await expect(suggestedBanner.getByRole("button", { name: /use this config/i })).toBeVisible();
+    await expect(suggestedBanner.getByRole("button", { name: /ignore/i })).toBeVisible();
   });
 
-  test("Ignore dismisses banner and lets user manually create a catalog", async ({ page }) => {
+  test("Ignore dismisses banner and lets user manually create a catalog", async ({ page, request }) => {
+    await seedDatasetSuggestion(request);
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
@@ -116,9 +141,7 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await importPage.clickNext();
 
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
-    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
-
-    test.skip(!hasSuggestion, "No suggestion was returned — nothing to dismiss");
+    await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
 
     // Click Ignore
     await suggestedBanner.getByRole("button", { name: /ignore/i }).click();
@@ -133,7 +156,8 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible();
   });
 
-  test("Use this config sets catalog and sheet mappings atomically", async ({ page }) => {
+  test("Use this config sets catalog and sheet mappings atomically", async ({ page, request }) => {
+    await seedDatasetSuggestion(request);
     await importPage.goto();
     await importPage.waitForWizardLoad();
 
@@ -142,9 +166,7 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await importPage.clickNext();
 
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
-    const hasSuggestion = await suggestedBanner.isVisible().catch(() => false);
-
-    test.skip(!hasSuggestion, "No suggestion was returned — nothing to apply");
+    await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
 
     // Click "Use this config"
     await suggestedBanner.getByRole("button", { name: /use this config/i }).click();

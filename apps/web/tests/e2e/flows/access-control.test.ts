@@ -7,8 +7,105 @@
  * @module
  * @category E2E Tests
  */
+import type { APIRequestContext } from "@playwright/test";
+
+import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
+
+type ApiDoc = {
+  id: number | string;
+  name?: string;
+  isPublic?: boolean;
+  data?: { title?: string };
+};
+
+type PlaywrightRequestFactory = {
+  request: {
+    newContext: (options: { baseURL: string }) => Promise<APIRequestContext>;
+  };
+};
+
+const createAdminApi = async (
+  playwright: PlaywrightRequestFactory,
+  baseURL: string
+): Promise<{ api: APIRequestContext; authHeaders: Record<string, string> }> => {
+  const api = await playwright.request.newContext({ baseURL });
+  const loginResponse = await api.post("/api/users/login", {
+    data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.seed.admin },
+    headers: { "Content-Type": "application/json" },
+  });
+  expect(loginResponse.status()).toBe(200);
+
+  const body = (await loginResponse.json()) as { token: string };
+  return {
+    api,
+    authHeaders: { Authorization: `JWT ${body.token}`, "Content-Type": "application/json" },
+  };
+};
+
+const createPrivateCatalog = async (adminApi: APIRequestContext, authHeaders: Record<string, string>, suffix: string) => {
+  const name = `E2E Private Catalog ${suffix}`;
+  const response = await adminApi.post("/api/catalogs", {
+    data: { name, isPublic: false },
+    headers: authHeaders,
+  });
+  expect(response.status()).toBe(201);
+
+  const body = (await response.json()) as { doc: ApiDoc };
+  return { id: body.doc.id, name };
+};
+
+const createPrivateDataset = async (
+  adminApi: APIRequestContext,
+  authHeaders: Record<string, string>,
+  catalogId: number | string,
+  suffix: string
+) => {
+  const name = `E2E Private Dataset ${suffix}`;
+  const response = await adminApi.post("/api/datasets", {
+    data: { name, catalog: catalogId, language: "eng", isPublic: false },
+    headers: authHeaders,
+  });
+  expect(response.status()).toBe(201);
+
+  const body = (await response.json()) as { doc: ApiDoc };
+  return { id: body.doc.id, name };
+};
+
+const createPrivateEvent = async (
+  adminApi: APIRequestContext,
+  authHeaders: Record<string, string>,
+  datasetId: number | string,
+  suffix: string
+) => {
+  const title = `E2E Private Event ${suffix}`;
+  const response = await adminApi.post("/api/events", {
+    data: {
+      uniqueId: `e2e-private-event-${suffix}`,
+      dataset: datasetId,
+      sourceData: { title },
+      transformedData: { title },
+      eventTimestamp: new Date("2024-07-10T00:00:00.000Z").toISOString(),
+      location: { latitude: 40.7128, longitude: -74.006 },
+    },
+    headers: authHeaders,
+  });
+  expect(response.status()).toBe(201);
+
+  const body = (await response.json()) as { doc: ApiDoc };
+  return { id: body.doc.id, title };
+};
+
+const deleteApiDoc = async (
+  adminApi: APIRequestContext,
+  authHeaders: Record<string, string>,
+  path: string,
+  doc: { id: number | string } | undefined
+) => {
+  if (!doc) return;
+  await adminApi.delete(`${path}/${doc.id}`, { headers: authHeaders }).catch(() => undefined);
+};
 
 test.describe("Access Control - User Perspective", () => {
   // Access control tests need unauthenticated state to verify public vs private
@@ -85,55 +182,87 @@ test.describe("Access Control - User Perspective", () => {
   });
 
   test.describe("API Access Control Enforcement", () => {
-    test("should enforce access control on catalog list endpoint", async ({ request }) => {
-      // Unauthenticated request
-      const response = await request.get("/api/catalogs");
+    test("should enforce access control on catalog list endpoint", async ({ request, playwright, baseURL }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
 
-      // Should succeed but only return public catalogs
-      expect(response.status()).toBe(200);
+        // Unauthenticated request
+        const response = await request.get("/api/catalogs");
 
-      const data = await response.json();
-      console.log(`Public catalogs returned: ${data.totalDocs}`);
+        // Should succeed but only return public catalogs
+        expect(response.status()).toBe(200);
 
-      // All returned catalogs should be public
-      if (data.docs && data.docs.length > 0) {
-        // Note: API might not return isPublic field, or might filter server-side
-        console.log(
-          "Catalog visibility:",
-          data.docs.map((c: any) => ({ id: c.id, isPublic: c.isPublic }))
-        );
+        const data = await response.json();
+        const docs = (data.docs ?? []) as ApiDoc[];
+
+        expect(docs.map((catalog) => catalog.id)).not.toContain(privateCatalog.id);
+        expect(docs.map((catalog) => catalog.name)).not.toContain(privateCatalog.name);
+        expect(docs.some((catalog) => catalog.isPublic === false)).toBe(false);
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
       }
     });
 
-    test("should enforce access control on dataset list endpoint", async ({ request }) => {
-      // Unauthenticated request
-      const response = await request.get("/api/datasets");
+    test("should enforce access control on dataset list endpoint", async ({ request, playwright, baseURL }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
+      let privateDataset: { id: number | string; name: string } | undefined;
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
+        privateDataset = await createPrivateDataset(admin.api, admin.authHeaders, privateCatalog.id, suffix);
 
-      // Should succeed but only return public datasets (or datasets in public catalogs)
-      expect(response.status()).toBe(200);
+        // Unauthenticated request
+        const response = await request.get("/api/datasets");
 
-      const data = await response.json();
-      console.log(`Public datasets returned: ${data.totalDocs}`);
+        // Should succeed but only return public datasets (or datasets in public catalogs)
+        expect(response.status()).toBe(200);
 
-      if (data.docs && data.docs.length > 0) {
-        // Check that returned datasets are either public or in public catalogs
-        const datasetInfo = data.docs.map((d: any) => ({ id: d.id, name: d.name, isPublic: d.isPublic }));
-        console.log("Dataset visibility:", datasetInfo);
+        const data = await response.json();
+        const docs = (data.docs ?? []) as ApiDoc[];
+
+        expect(docs.map((dataset) => dataset.id)).not.toContain(privateDataset.id);
+        expect(docs.map((dataset) => dataset.name)).not.toContain(privateDataset.name);
+        expect(docs.some((dataset) => dataset.isPublic === false)).toBe(false);
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/datasets", privateDataset);
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
       }
     });
 
-    test("should enforce access control on event list endpoint", async ({ request }) => {
-      // Unauthenticated request
-      const response = await request.get("/api/v1/events");
+    test("should enforce access control on event list endpoint", async ({ request, playwright, baseURL }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
+      let privateDataset: { id: number | string; name: string } | undefined;
+      let privateEvent: { id: number | string; title: string } | undefined;
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
+        privateDataset = await createPrivateDataset(admin.api, admin.authHeaders, privateCatalog.id, suffix);
+        privateEvent = await createPrivateEvent(admin.api, admin.authHeaders, privateDataset.id, suffix);
 
-      // Should succeed and return only events from accessible datasets
-      expect(response.status()).toBe(200);
+        // Unauthenticated request
+        const response = await request.get("/api/v1/events");
 
-      const data = await response.json();
-      console.log(`Public events returned: ${data.pagination.totalDocs}`);
+        // Should succeed and return only events from accessible datasets
+        expect(response.status()).toBe(200);
 
-      // Events should be accessible
-      expect(data.pagination.totalDocs).toBeGreaterThanOrEqual(0);
+        const data = await response.json();
+        const events = (data.events ?? []) as ApiDoc[];
+        const eventTitles = events.map((event) => event.data?.title);
+
+        expect(eventTitles).not.toContain(privateEvent.title);
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/events", privateEvent);
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/datasets", privateDataset);
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
+      }
     });
 
     test("should block create operations without authentication", async ({ request }) => {
@@ -209,7 +338,8 @@ test.describe("Access Control - User Perspective", () => {
         const data = await response.json();
         // If accessible, should return empty list for unauthenticated user
         // (depending on implementation)
-        console.log("scheduled ingests for unauthenticated:", data.totalDocs);
+        expect(data.totalDocs).toBe(0);
+        expect(data.docs ?? []).toHaveLength(0);
       }
     });
   });

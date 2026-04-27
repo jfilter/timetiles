@@ -48,12 +48,15 @@ type _UrlFetchOutput = UrlFetchSuccessOutput;
  * Returns the error message for further assertions.
  */
 const expectHandlerToThrow = async (handlerArgs: Parameters<typeof urlFetchJob.handler>[0]): Promise<string> => {
+  let caughtError: unknown;
   try {
     await urlFetchJob.handler(handlerArgs);
-    throw new Error("Expected handler to throw but it did not");
   } catch (error) {
-    return error instanceof Error ? error.message : String(error);
+    caughtError = error;
   }
+
+  expect(caughtError).toBeDefined();
+  return caughtError instanceof Error ? caughtError.message : String(caughtError);
 };
 
 describe.sequential("Network Error Handling Tests", () => {
@@ -406,36 +409,25 @@ describe.sequential("Network Error Handling Tests", () => {
         frequency: "daily",
       });
 
-      // Connection drop mid-download may either succeed (if partial data is valid CSV)
-      // or throw (if connection termination is detected). Either outcome is acceptable —
-      // the important thing is it doesn't hang or crash.
-      try {
-        const result = await urlFetchJob.handler({
-          job: { id: "test-job-8" },
-          req: { payload },
-          input: {
-            scheduledIngestId: scheduledIngest.id,
-            sourceUrl: scheduledIngest.sourceUrl,
-            authConfig: scheduledIngest.authConfig,
-            catalogId: testCatalogId as any,
-            originalName: "Test Import",
-            userId: testUser.id,
-          },
-        });
+      const errorMsg = await expectHandlerToThrow({
+        job: { id: "test-job-8" },
+        req: { payload },
+        input: {
+          scheduledIngestId: scheduledIngest.id,
+          sourceUrl: scheduledIngest.sourceUrl,
+          authConfig: scheduledIngest.authConfig,
+          catalogId: testCatalogId as any,
+          originalName: "Test Import",
+          userId: testUser.id,
+        },
+      });
 
-        // If it succeeds, an ingest file should be created
-        expect(result.output.ingestFileId).toBeDefined();
-      } catch (error) {
-        // If it throws due to connection termination, that's also acceptable
-        expect(error).toBeDefined();
-        const msg = error instanceof Error ? error.message : String(error);
-        expect(msg).toMatch(/terminated|abort|premature|fetch failed|socket|ECONNRESET/i);
-      }
+      expect(errorMsg).toMatch(/terminated|abort|premature|fetch failed|socket|ECONNRESET|incomplete response body/i);
     });
   });
 
   describe("Content Type Mismatches", () => {
-    it("should handle wrong content type when expecting CSV", async () => {
+    it("should reject HTML responses even when URL ends in .csv", async () => {
       testServer.respond("/wrong-type.csv", {
         status: 200,
         body: "<html><body>Not a CSV</body></html>",
@@ -446,11 +438,9 @@ describe.sequential("Network Error Handling Tests", () => {
         user: testUser,
         name: "Wrong Content Type Import",
         frequency: "daily",
-        additionalData: { advancedConfig: { expectedContentType: "csv" } },
       });
 
-      // Execute the job
-      const result = await urlFetchJob.handler({
+      const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-9" },
         req: { payload },
         input: {
@@ -463,16 +453,10 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // Handler currently accepts HTML and overrides content type to CSV
-      // This is documented behavior
-      expect(result.output.ingestFileId).toBeDefined();
-      if (result.output.ingestFileId) {
-        const successOutput = result.output as UrlFetchSuccessOutput;
-        expect(successOutput.contentType).toBe("text/csv");
-      }
+      expect(errorMsg).toMatch(/Unsupported file type: text\/html/i);
     });
 
-    it("should handle binary data when expecting text", async () => {
+    it("should reject binary data when URL ends in .csv", async () => {
       testServer.respond("/binary.csv", {
         status: 200,
         body: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
@@ -483,10 +467,8 @@ describe.sequential("Network Error Handling Tests", () => {
         user: testUser,
         name: "Binary Data Import",
         frequency: "daily",
-        additionalData: { advancedConfig: { expectedContentType: "csv" } },
       });
 
-      // Execute the job - should throw for binary data when expecting CSV
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-10" },
         req: { payload },
@@ -500,8 +482,7 @@ describe.sequential("Network Error Handling Tests", () => {
         },
       });
 
-      // Binary data causes parsing error when expecting CSV
-      expect(typeof errorMsg).toBe("string");
+      expect(errorMsg).toMatch(/Unsupported file type: image\/png/i);
     });
   });
 

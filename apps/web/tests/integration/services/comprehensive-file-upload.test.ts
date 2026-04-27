@@ -379,26 +379,30 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       const corruptedContent = "This is not a valid Excel file";
       const fileName = `corrupted-${Date.now()}.xlsx`;
 
+      let ingestFile: any;
       try {
-        const { ingestFile } = await withIngestFile(testEnv, testCatalogId, corruptedContent, {
+        const result = await withIngestFile(testEnv, testCatalogId, corruptedContent, {
           filename: fileName,
           mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           user: approverUser.id,
           triggerWorkflow: true,
         });
-
-        const result = await runJobsUntilImportSettled(payload, ingestFile.id);
-
-        // Check that processing failed gracefully
-        expect(result.settled).toBe(true);
-        const failedFile = result.ingestFile;
-
-        expect(failedFile.status).toBe("failed");
-        logger.debug("✓ Corrupted Excel file handled gracefully");
-      } catch {
+        ingestFile = result.ingestFile;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        expect(message).toMatch(/invalid|corrupt|excel|spreadsheet|zip|unsupported|parse/i);
         logger.debug("✓ Corrupted Excel file rejected during upload");
-        // This is also acceptable - Payload might reject the file immediately
+        return;
       }
+
+      const result = await runJobsUntilImportSettled(payload, ingestFile.id);
+
+      // Check that processing failed gracefully
+      expect(result.settled).toBe(true);
+      const failedFile = result.ingestFile;
+
+      expect(failedFile.status).toBe("failed");
+      logger.debug("✓ Corrupted Excel file handled gracefully");
     });
   });
 

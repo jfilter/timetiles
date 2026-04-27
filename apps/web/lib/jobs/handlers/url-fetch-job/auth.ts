@@ -75,11 +75,13 @@ export const buildAuthHeaders = async (
 ): Promise<Record<string, string>> => {
   const headers: Record<string, string> = { "User-Agent": "TimeTiles/1.0 (Data Import Service)" };
 
-  if (!authConfig || authConfig.type === "none") {
+  if (!authConfig) {
     return headers;
   }
 
   switch (authConfig.type) {
+    case "none":
+      break;
     case "api-key":
       if (authConfig.apiKey && authConfig.apiKeyHeader) {
         headers[authConfig.apiKeyHeader] = authConfig.apiKey;

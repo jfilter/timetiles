@@ -136,16 +136,42 @@ export class UrlFetchCache {
     return false;
   }
 
+  private collectResponseHeaders(response: Response): Record<string, string> {
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      headers[key.toLowerCase()] = value;
+    });
+    return headers;
+  }
+
+  private assertCompleteResponseBody(data: Buffer, headers: Record<string, string>): void {
+    if (headers["content-encoding"]) {
+      return;
+    }
+
+    const expectedLength = parseStrictInteger(headers["content-length"]);
+    if (expectedLength == null) {
+      return;
+    }
+
+    if (data.length !== expectedLength) {
+      throw new Error(`Incomplete response body: received ${data.length} bytes, expected ${expectedLength} bytes`);
+    }
+  }
+
+  private async readResponseBody(response: Response): Promise<{ data: Buffer; headers: Record<string, string> }> {
+    const headers = this.collectResponseHeaders(response);
+    const data = Buffer.from(await response.arrayBuffer());
+    this.assertCompleteResponseBody(data, headers);
+    return { data, headers };
+  }
+
   /**
    * Helper to fetch without caching
    */
   private async fetchWithoutCache(url: string, options?: RequestInit): Promise<CachedResponse> {
     const response = await safeFetch(url, options);
-    const data = Buffer.from(await response.arrayBuffer());
-    const headers: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      headers[key.toLowerCase()] = value;
-    });
+    const { data, headers } = await this.readResponseBody(response);
     return { data, headers, status: response.status };
   }
 
@@ -251,11 +277,7 @@ export class UrlFetchCache {
    * Helper to fetch and cache response
    */
   private async fetchAndCache(_url: string, cacheKey: string, response: Response): Promise<CachedResponse> {
-    const data = Buffer.from(await response.arrayBuffer());
-    const respHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      respHeaders[key.toLowerCase()] = value;
-    });
+    const { data, headers: respHeaders } = await this.readResponseBody(response);
 
     await this.cacheResponse(cacheKey, data, respHeaders, response.status);
 
@@ -273,11 +295,7 @@ export class UrlFetchCache {
     const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
     const response = await safeFetch(url, fetchOptions);
 
-    const data = Buffer.from(await response.arrayBuffer());
-    const headers: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      headers[key.toLowerCase()] = value;
-    });
+    const { data, headers } = await this.readResponseBody(response);
 
     // Cache successful GET responses
     if (response.ok && this.isCacheable(response.status, headers)) {

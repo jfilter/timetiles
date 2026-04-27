@@ -79,16 +79,28 @@ const extensionMap = new Map<string, FileTypeInfo>(
   ])
 );
 
+const GENERIC_BINARY_CONTENT_TYPES = new Set(["application/octet-stream", "binary/octet-stream"]);
+
+const normalizeContentType = (contentType: string | undefined): string | undefined =>
+  contentType?.split(";")[0]?.trim().toLowerCase();
+
+const isDeclaredUnsupportedContentType = (normalizedType: string | undefined): normalizedType is string =>
+  Boolean(normalizedType && !contentTypeMap.has(normalizedType) && !GENERIC_BINARY_CONTENT_TYPES.has(normalizedType));
+
 export const detectFileTypeFromResponse = (
   contentType: string | undefined,
   data: Buffer,
   sourceUrl: string
 ): FileTypeInfo => {
   // Try to detect from content type header
-  if (contentType) {
-    const normalizedType = contentType.split(";")[0]?.trim().toLowerCase();
-    const match = normalizedType ? contentTypeMap.get(normalizedType) : undefined;
+  const normalizedType = normalizeContentType(contentType);
+  if (normalizedType) {
+    const match = contentTypeMap.get(normalizedType);
     if (match) return match;
+  }
+
+  if (isDeclaredUnsupportedContentType(normalizedType)) {
+    return { mimeType: normalizedType, fileExtension: ".bin" };
   }
 
   // Try to detect from URL extension

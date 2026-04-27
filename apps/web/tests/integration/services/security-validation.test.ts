@@ -38,6 +38,20 @@ interface UrlFetchSuccessOutput {
 
 type _UrlFetchOutput = UrlFetchSuccessOutput;
 
+const withPrivateUrlBypass = async <T>(enabled: boolean, fn: () => Promise<T>): Promise<T> => {
+  const previous = process.env.ALLOW_PRIVATE_URLS;
+  process.env.ALLOW_PRIVATE_URLS = enabled ? "true" : "";
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.ALLOW_PRIVATE_URLS;
+    } else {
+      process.env.ALLOW_PRIVATE_URLS = previous;
+    }
+  }
+};
+
 describe.sequential("Security Validation Tests", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: any;
@@ -79,45 +93,46 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("URL Validation and SSRF Prevention", () => {
     it("should reject localhost URLs", async () => {
-      await expect(
-        payload.create({
-          collection: "scheduled-ingests",
-          data: {
-            name: "Localhost Import",
-            sourceUrl: "http://localhost/internal.csv",
-            enabled: true,
-            catalog: testCatalogId,
-            scheduleType: "frequency",
+      await withPrivateUrlBypass(false, async () => {
+        await expect(
+          payload.create({
+            collection: "scheduled-ingests",
+            data: {
+              name: "Localhost Import",
+              sourceUrl: "http://localhost/internal.csv",
+              enabled: true,
+              catalog: testCatalogId,
+              scheduleType: "frequency",
+              frequency: "daily",
+            },
+            user: adminUser,
+          })
+        ).rejects.toThrow(/private|internal|Source URL/i);
+
+        await expect(
+          withScheduledIngest(testEnv, testCatalogId, "http://127.0.0.1/internal.csv", {
+            user: adminUser,
+            name: "Loopback Import Test",
             frequency: "daily",
-          },
-          user: adminUser,
-        })
-      ).resolves.toBeTruthy(); // Currently allows localhost - this might need to be restricted
-
-      // Test that the job handler rejects localhost in production
-      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, "http://127.0.0.1/internal.csv", {
-        user: adminUser,
-        name: "Localhost Import Test",
-        frequency: "daily",
+          })
+        ).rejects.toThrow(/private|internal|Source URL/i);
       });
-
-      // In production, this should be blocked
-      expect(scheduledIngest).toBeTruthy();
     });
 
     it("should reject private IP ranges", async () => {
       const privateIPs = ["http://192.168.1.1/data.csv", "http://10.0.0.1/data.csv", "http://172.16.0.1/data.csv"];
 
-      for (const url of privateIPs) {
-        const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, url, {
-          user: adminUser,
-          name: `Private IP Import ${url}`,
-          frequency: "daily",
-        });
-
-        // Currently allows private IPs - in production this should be configurable
-        expect(scheduledIngest).toBeTruthy();
-      }
+      await withPrivateUrlBypass(false, async () => {
+        for (const url of privateIPs) {
+          await expect(
+            withScheduledIngest(testEnv, testCatalogId, url, {
+              user: adminUser,
+              name: `Private IP Import ${url}`,
+              frequency: "daily",
+            })
+          ).rejects.toThrow(/private|internal|Source URL/i);
+        }
+      });
     });
 
     it("should reject file:// protocol URLs", async () => {
@@ -355,12 +370,9 @@ describe.sequential("Security Validation Tests", () => {
   });
 
   describe("Access Control", () => {
-    it("should enforce role-based access for scheduled ingests", async () => {
-      // Set up test server endpoints for access control tests
+    it("should enforce ownership-based access for scheduled ingests", async () => {
       testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
-      testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
-      // Create import as admin
       const { scheduledIngest: adminImport } = await withScheduledIngest(
         testEnv,
         testCatalogId,
@@ -368,53 +380,54 @@ describe.sequential("Security Validation Tests", () => {
         { user: adminUser, name: "Admin Import", frequency: "daily" }
       );
 
-      // Regular user should be able to read
       const canRead = await payload.find({
         collection: "scheduled-ingests",
         where: { id: { equals: adminImport.id } },
-        user: { id: regularUser.id, role: "user" } as any,
+        user: regularUser,
+        overrideAccess: false,
       });
+      expect(canRead.docs).toHaveLength(0);
 
-      expect(canRead.docs).toHaveLength(1);
-
-      // Regular user should not be able to delete
-      // Note: This test expects role-based access control to be implemented
-      // Currently Payload doesn't enforce this without custom access control
-      try {
-        await payload.delete({
+      await expect(
+        payload.findByID({
           collection: "scheduled-ingests",
           id: adminImport.id,
-          user: { id: regularUser.id, role: "user" } as any,
-        });
-        // Should have thrown but didn't - access control not enforced
-        // Reaching this point documents that the security vulnerability still exists
-      } catch (error) {
-        // Expected behavior when access control is enforced
-        expect(error).toBeDefined();
-      }
+          user: regularUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow();
+
+      await expect(
+        payload.delete({
+          collection: "scheduled-ingests",
+          id: adminImport.id,
+          user: regularUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow();
+
+      const stillExists = await payload.findByID({
+        collection: "scheduled-ingests",
+        id: adminImport.id,
+        overrideAccess: true,
+      });
+      expect(stillExists.id).toBe(adminImport.id);
     });
 
     it("should prevent unauthorized catalog access", async () => {
-      // Set up test server endpoints for access control tests
-      testServer.respondWithCSV("/admin.csv", "test,data\n1,2");
       testServer.respondWithCSV("/private-catalog.csv", "test,data\n1,2");
 
-      // Create another user (admin2) who owns the private catalog
       const { users: admin2Users } = await withUsers(testEnv, { admin2: { role: "user" } });
       const admin2 = admin2Users.admin2;
 
-      // Create a private catalog owned by admin2
       const privateCatalog = await payload.create({
         collection: "catalogs",
         data: { name: "Private Catalog", description: "Should not be accessible to regularUser", isPublic: false },
         user: admin2,
       });
 
-      // Fetch the full regular user object (needed for quota checks in access control)
       const regularUserFull = await payload.findByID({ collection: "users", id: regularUser.id });
 
-      // Try to create scheduled ingest for private catalog as regular user
-      // This should fail because regularUser doesn't own the catalog
       await expect(
         payload.create({
           collection: "scheduled-ingests",
@@ -431,8 +444,7 @@ describe.sequential("Security Validation Tests", () => {
       ).rejects.toThrow();
     });
 
-    it("should validate catalog access during URL fetch job execution", async () => {
-      // Create a private catalog owned by adminUser
+    it("should prevent URL fetch job inputs from impersonating another schedule owner", async () => {
       const privateCatalog = await payload.create({
         collection: "catalogs",
         data: {
@@ -443,7 +455,6 @@ describe.sequential("Security Validation Tests", () => {
         user: { id: adminUser.id },
       });
 
-      // Create scheduled ingest for private catalog
       const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         privateCatalog.id,
@@ -453,16 +464,11 @@ describe.sequential("Security Validation Tests", () => {
 
       testServer.respondWithCSV("/fetch-test.csv", "test,data\n1,2");
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
-
-      // Execute job with regularUser's context
-      // The handler may throw if catalog ownership validation fails,
-      // or succeed if catalog access is not enforced at the job level.
       const regularUserFull = await payload.findByID({ collection: "users", id: regularUser.id });
 
-      try {
-        const result = await urlFetchJob.handler({
+      await expect(
+        urlFetchJob.handler({
           job: { id: "test-job-catalog-access" },
           req: { payload, user: regularUserFull },
           input: {
@@ -473,19 +479,11 @@ describe.sequential("Security Validation Tests", () => {
             originalName: "Test Import",
             userId: regularUserFull.id,
           },
-        });
-
-        // If it succeeds, the output should be defined
-        expect(result.output).toBeDefined();
-      } catch (error) {
-        // If catalog ownership is enforced at job level, the handler throws
-        expect(error).toBeDefined();
-      }
+        })
+      ).rejects.toThrow(/owner|scheduled ingest/i);
     });
 
     it("should enforce import file access through user ownership", async () => {
-      // Create import file as adminUser with actual file data
-      // Need to get full admin user object for context
       const adminUserFull = await payload.findByID({ collection: "users", id: adminUser.id });
       const csvContent = "name,date\nAdmin Event,2024-01-01";
       const fileBuffer = new Uint8Array(Buffer.from(csvContent, "utf8"));
@@ -493,34 +491,28 @@ describe.sequential("Security Validation Tests", () => {
         collection: "ingest-files",
         data: { user: adminUser.id, status: "pending" },
         file: { data: fileBuffer, name: "admin-owned-file.csv", size: fileBuffer.length, mimetype: "text/csv" },
-        user: adminUserFull, // Provide user context for access control hooks
+        user: adminUserFull,
       });
 
-      // regularUser should not be able to access adminUser's import file
       await expect(
         payload.findByID({
           collection: "ingest-files",
           id: adminIngestFile.id,
-          user: { id: regularUser.id, role: "user" },
+          user: regularUser,
           overrideAccess: false,
         })
       ).rejects.toThrow();
 
-      // adminUser should be able to access their own file
       const adminFile = await payload.findByID({
         collection: "ingest-files",
         id: adminIngestFile.id,
-        user: { id: adminUser.id, role: "admin" },
+        user: adminUser,
         overrideAccess: false,
       });
       expect(adminFile.id).toBe(adminIngestFile.id);
     });
 
-    // Note: Session-based unauthenticated uploads are no longer supported.
-    // All import files now require an authenticated user.
-
     it("should prevent cross-user scheduled ingest modification", async () => {
-      // Create scheduled ingest as regularUser
       const regularUserFull = await payload.findByID({ collection: "users", id: regularUser.id });
 
       const { scheduledIngest } = await withScheduledIngest(
@@ -530,26 +522,25 @@ describe.sequential("Security Validation Tests", () => {
         { name: "Regular User's scheduled ingest", enabled: false, frequency: "daily", user: regularUserFull }
       );
 
-      // Create another regular user
       const { users: anotherUsers } = await withUsers(testEnv, { anotherUser: { role: "user" } });
       const anotherUser = anotherUsers.anotherUser;
 
-      // Another user should not be able to modify this scheduled ingest
-      // Currently scheduled-ingests don't have explicit ownership checks
-      // but they should respect general access control principles
-      try {
-        await payload.update({
+      await expect(
+        payload.update({
           collection: "scheduled-ingests",
           id: scheduledIngest.id,
           data: { name: "Hijacked Import" },
           user: anotherUser,
-        });
-        // If this succeeds, ownership is not being checked
-        // Reaching this point documents that ownership validation is not enforced
-      } catch (error) {
-        // Expected behavior with proper access control
-        expect(error).toBeDefined();
-      }
+          overrideAccess: false,
+        })
+      ).rejects.toThrow();
+
+      const unchanged = await payload.findByID({
+        collection: "scheduled-ingests",
+        id: scheduledIngest.id,
+        overrideAccess: true,
+      });
+      expect(unchanged.name).toBe("Regular User's scheduled ingest");
     });
   });
 
