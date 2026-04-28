@@ -115,6 +115,38 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     });
   });
 
+  it("should cancel old queued scraper workflow jobs when resetting a stuck scraper", async () => {
+    const scraper = createMockScraper({ id: 7 });
+    const orphanedJob = { id: "payload-job-1" };
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 })
+      .mockResolvedValueOnce({ docs: [orphanedJob], totalDocs: 1 });
+
+    const context = createMockContext({ stuckThresholdHours: 4 });
+    await cleanupStuckScrapersJob.handler(context as any);
+
+    expect(mockPayload.find).toHaveBeenCalledWith({
+      collection: "payload-jobs",
+      overrideAccess: true,
+      where: {
+        and: [
+          { "input.scraperId": { equals: "7" } },
+          { processing: { equals: false } },
+          { completedAt: { exists: false } },
+          { createdAt: { less_than: expect.any(String) } },
+        ],
+      },
+      limit: 50,
+      pagination: false,
+    });
+    expect(mockPayload.update).toHaveBeenCalledWith({
+      collection: "payload-jobs",
+      id: "payload-job-1",
+      overrideAccess: true,
+      data: { completedAt: expect.any(String), hasError: true, processing: false },
+    });
+  });
+
   it("should skip a scraper that has an active Payload job", async () => {
     const scraper = createMockScraper();
     mockPayload.find.mockResolvedValue({ docs: [scraper], totalDocs: 1 });

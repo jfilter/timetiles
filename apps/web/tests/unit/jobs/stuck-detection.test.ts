@@ -87,7 +87,7 @@ describe.sequential("stuck-detection utilities", () => {
     });
 
     it("should return true when Payload finds matching active jobs", async () => {
-      mockPayload.find.mockImplementationOnce(async (query: unknown) => {
+      mockPayload.find.mockImplementationOnce((query: unknown) => {
         expectPayloadJobsQueryUsesKnownFields(query);
         return { docs: [{ id: "job-1", processing: true, hasError: false }], totalDocs: 1 };
       });

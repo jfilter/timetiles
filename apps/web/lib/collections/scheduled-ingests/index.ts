@@ -19,9 +19,10 @@
  * @category Collections
  */
 
-import type { CollectionConfig, Payload, PayloadRequest } from "payload";
+import type { CollectionAfterErrorHook, CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -47,18 +48,68 @@ const shouldSkipQuotaChecks = (
 const shouldSkipQuotaSideEffects = (req: { context?: Record<string, unknown> }): boolean =>
   req.context?.skipQuotaChecks === true || req.context?.seed === true;
 
-// Helper to check active schedules quota
-const checkActiveSchedulesQuota = async (
-  user: User,
-  quotaService: ReturnType<typeof createQuotaService>
-): Promise<void> => {
-  const quotaCheck = await quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1);
-  if (!quotaCheck.allowed) {
-    const message =
-      quotaCheck.remaining === 0
-        ? `Maximum active schedules reached (${quotaCheck.limit}). Disable another schedule first.`
-        : `Cannot enable schedule: quota exceeded`;
-    throw new Error(message);
+type OwnerId = string | number;
+type OptionalOwnerId = OwnerId | null | undefined;
+type ActiveScheduleQuotaClaim = { ownerId: OwnerId };
+type ActiveScheduleQuotaRequest = PayloadRequest & { activeScheduleQuotaClaim?: ActiveScheduleQuotaClaim };
+
+const sameOwner = (left: OptionalOwnerId, right: OptionalOwnerId): boolean =>
+  left != null && right != null && String(left) === String(right);
+
+/* eslint-disable sonarjs/function-return-type -- Relation IDs are intentionally nullable until ownership is known. */
+const getRelationValue = (value: unknown): OwnerId | null => {
+  let relationId: OwnerId | null = null;
+  if (value != null) {
+    relationId = extractRelationId(value as { id: OwnerId } | OwnerId) ?? null;
+  }
+  return relationId;
+};
+
+const getScheduleOwnerId = (
+  data: Record<string, unknown>,
+  originalDoc: Record<string, unknown> | undefined,
+  operation: "create" | "update",
+  req: PayloadRequest
+): OwnerId | null => {
+  const ownerSource =
+    operation === "create" ? (data.createdBy ?? req.user?.id) : (originalDoc?.createdBy ?? data.createdBy);
+  return getRelationValue(ownerSource);
+};
+/* eslint-enable sonarjs/function-return-type */
+
+const getQuotaUser = async (req: PayloadRequest, ownerId: OwnerId): Promise<User> => {
+  if (sameOwner(req.user?.id, ownerId)) return req.user as User;
+  return req.payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0, req });
+};
+
+const claimActiveSchedulesQuota = async (req: PayloadRequest, ownerId: OwnerId): Promise<void> => {
+  const quotaService = createQuotaService(req.payload);
+  const user = await getQuotaUser(req, ownerId);
+
+  await quotaService.checkAndIncrementUsage(user, "ACTIVE_SCHEDULES", 1, req);
+  (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim = { ownerId };
+};
+
+const hasActiveScheduleQuotaClaim = (req: PayloadRequest, ownerId: OwnerId): boolean =>
+  sameOwner((req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim?.ownerId, ownerId);
+
+const clearActiveScheduleQuotaClaim = (req: PayloadRequest, ownerId: OwnerId): void => {
+  if (hasActiveScheduleQuotaClaim(req, ownerId)) {
+    delete (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim;
+  }
+};
+
+const compensateActiveScheduleQuotaOnError = async (req: PayloadRequest): Promise<void> => {
+  const claim = (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim;
+  if (!claim) return;
+
+  delete (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim;
+
+  try {
+    const quotaService = createQuotaService(req.payload);
+    await quotaService.decrementUsage(claim.ownerId, "ACTIVE_SCHEDULES", 1, req);
+  } catch (error) {
+    logger.error("Failed to compensate ACTIVE_SCHEDULES after schedule save failure", error);
   }
 };
 
@@ -90,18 +141,19 @@ const handleScheduleQuotaTracking = async ({
 
   if (!isCreate && !isUpdate) return data;
 
-  const quotaService = createQuotaService(req.payload);
-
   // Handle update operations (enabling a disabled schedule)
   if (isUpdate && isEnablingSchedule(originalDoc, data)) {
-    await checkActiveSchedulesQuota(req.user!, quotaService);
-    // Note: Actual increment happens in afterChange hook to avoid nested Payload operations
+    const ownerId = getScheduleOwnerId(data, originalDoc, operation, req as PayloadRequest);
+    if (!ownerId) throw new Error("Cannot enable schedule without an owner");
+    await claimActiveSchedulesQuota(req as PayloadRequest, ownerId);
     return data;
   }
 
   // Handle new schedule creation (enabled by default)
   if (isCreate && data?.enabled !== false) {
-    await checkActiveSchedulesQuota(req.user!, quotaService);
+    const ownerId = getScheduleOwnerId(data, originalDoc, operation, req as PayloadRequest);
+    if (!ownerId) throw new Error("Cannot create active schedule without an owner");
+    await claimActiveSchedulesQuota(req as PayloadRequest, ownerId);
   }
 
   return data;
@@ -138,12 +190,13 @@ const trackScheduleQuotaUsage = async (
   ownerId: string | number,
   operation: "create" | "update",
   doc: Record<string, unknown>,
-  previousDoc?: Record<string, unknown>
+  previousDoc?: Record<string, unknown>,
+  quotaAlreadyClaimed = false
 ): Promise<void> => {
   const quotaService = createQuotaService(req.payload);
 
   if (operation === "create" && doc.enabled !== false) {
-    await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
+    if (!quotaAlreadyClaimed) await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
     return;
   }
 
@@ -153,11 +206,17 @@ const trackScheduleQuotaUsage = async (
   const isEnabled = doc.enabled;
 
   if (!wasEnabled && isEnabled) {
-    await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
+    if (!quotaAlreadyClaimed) await quotaService.incrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
   } else if (wasEnabled && !isEnabled) {
     await quotaService.decrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
   }
 };
+
+const afterErrorHooks: CollectionAfterErrorHook[] = [
+  async ({ req }) => {
+    await compensateActiveScheduleQuotaOnError(req);
+  },
+];
 
 const isAdminModifyingOtherUser = (
   operation: "create" | "update",
@@ -245,7 +304,9 @@ const ScheduledIngests: CollectionConfig = {
         const ownerId = extractRelationId(doc.createdBy);
 
         if (ownerId && !shouldSkipQuotaSideEffects(req)) {
-          await trackScheduleQuotaUsage(req, ownerId, operation, doc, previousDoc);
+          const quotaAlreadyClaimed = hasActiveScheduleQuotaClaim(req, ownerId);
+          await trackScheduleQuotaUsage(req, ownerId, operation, doc, previousDoc, quotaAlreadyClaimed);
+          clearActiveScheduleQuotaClaim(req, ownerId);
         }
 
         if (ownerId && isAdminModifyingOtherUser(operation, req, ownerId)) {
@@ -255,6 +316,7 @@ const ScheduledIngests: CollectionConfig = {
         return doc;
       },
     ],
+    afterError: afterErrorHooks,
     afterDelete: [
       async ({ doc, req }) => {
         // Decrement usage for the schedule owner when deleted

@@ -376,19 +376,31 @@ export const processSheetMappings = async (
   return { datasetIdMap, datasetMappingEntries };
 };
 
+interface CreateScheduledIngestArgs {
+  payload: Payload;
+  req: NextRequest;
+  scheduleConfig: CreateScheduleConfig;
+  catalogId: number;
+  datasetMappingEntries: DatasetMappingEntry[];
+  user: User;
+  ingestFileId: number;
+  previewMeta: PreviewMetadata;
+}
+
 /**
  * Create scheduled ingest from wizard configuration.
  * Checks the active-schedules quota before creation to prevent bypass (Bug 15).
  */
-export const createScheduledIngest = async (
-  payload: Payload,
-  scheduleConfig: CreateScheduleConfig,
-  catalogId: number,
-  datasetMappingEntries: DatasetMappingEntry[],
-  user: User,
-  ingestFileId: number,
-  previewMeta: PreviewMetadata
-): Promise<number | null> => {
+export const createScheduledIngest = async ({
+  payload,
+  req,
+  scheduleConfig,
+  catalogId,
+  datasetMappingEntries,
+  user,
+  ingestFileId,
+  previewMeta,
+}: CreateScheduledIngestArgs): Promise<number | null> => {
   if (!scheduleConfig.enabled || !scheduleConfig.sourceUrl) {
     return null;
   }
@@ -449,7 +461,7 @@ export const createScheduledIngest = async (
         : undefined,
   };
 
-  const scheduledIngest = await payload.create({ collection: "scheduled-ingests", data: baseData });
+  const scheduledIngest = await payload.create({ collection: "scheduled-ingests", data: baseData, req });
 
   logger.info(
     {

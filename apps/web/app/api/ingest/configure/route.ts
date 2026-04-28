@@ -83,51 +83,57 @@ export const POST = apiRoute({
       throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);
     }
 
-    // Process sheet mappings and create/update datasets
-    const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
-      payload,
-      req,
-      body.sheetMappings,
-      body.fieldMappings,
-      finalCatalogId,
-      body.deduplicationStrategy,
-      body.geocodingEnabled,
-      body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined,
-      previewSheets
-    );
-
-    // Create the import file record
-    const ingestFile = await createIngestFileRecord(
-      payload,
-      user,
-      previewMeta,
-      body as ConfigureIngestRequest,
-      finalCatalogId,
-      datasetIdMap,
-      datasetMappingEntries
-    );
-
-    // Create scheduled ingest if requested
-    let scheduledIngestId: number | null = null;
-    if (body.createSchedule?.enabled) {
-      scheduledIngestId = await createScheduledIngest(
+    let shouldCleanupPreview = false;
+    try {
+      // Process sheet mappings and create/update datasets
+      const { datasetIdMap, datasetMappingEntries } = await processSheetMappings(
         payload,
-        body.createSchedule,
+        req,
+        body.sheetMappings,
+        body.fieldMappings,
         finalCatalogId,
-        datasetMappingEntries,
-        user,
-        ingestFile.id,
-        previewMeta
+        body.deduplicationStrategy,
+        body.geocodingEnabled,
+        body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined,
+        previewSheets
       );
+
+      shouldCleanupPreview = true;
+
+      // Create the import file record
+      const ingestFile = await createIngestFileRecord(
+        payload,
+        user,
+        previewMeta,
+        body as ConfigureIngestRequest,
+        finalCatalogId,
+        datasetIdMap,
+        datasetMappingEntries
+      );
+
+      // Create scheduled ingest if requested
+      let scheduledIngestId: number | null = null;
+      if (body.createSchedule?.enabled) {
+        scheduledIngestId = await createScheduledIngest({
+          payload,
+          req,
+          scheduleConfig: body.createSchedule,
+          catalogId: finalCatalogId,
+          datasetMappingEntries,
+          user,
+          ingestFileId: ingestFile.id,
+          previewMeta,
+        });
+      }
+
+      return {
+        ingestFileId: ingestFile.id,
+        catalogId: finalCatalogId,
+        datasets: Object.fromEntries(datasetIdMap),
+        scheduledIngestId: scheduledIngestId ?? undefined,
+      };
+    } finally {
+      if (shouldCleanupPreview) cleanupPreview(body.previewId);
     }
-
-    cleanupPreview(body.previewId);
-
-    return {
-      ingestFileId: ingestFile.id,
-      catalogId: finalCatalogId,
-      datasets: Object.fromEntries(datasetIdMap),
-      scheduledIngestId: scheduledIngestId ?? undefined,
-    };
   },
 });

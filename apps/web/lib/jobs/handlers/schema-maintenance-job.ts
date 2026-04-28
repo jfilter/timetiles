@@ -198,19 +198,8 @@ export const schemaMaintenanceJob = {
         },
       };
     } catch (error) {
-      const duration = Date.now() - startTime;
       logError(error, "Schema maintenance job failed");
-
-      return {
-        output: {
-          success: false,
-          datasetsChecked: 0,
-          schemasGenerated: 0,
-          schemasSkipped: 0,
-          schemasFailed: 0,
-          duration,
-        },
-      };
+      throw error;
     }
   },
 };

@@ -31,7 +31,7 @@ describe("fetchPaginated", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-04-28T12:00:00.000Z"));
 
-    mocks.fetchWithRetry.mockImplementation(async () => {
+    mocks.fetchWithRetry.mockImplementation(() => {
       vi.setSystemTime(new Date("2026-04-28T12:00:01.001Z"));
       return {
         data: Buffer.from(JSON.stringify({ items: [{ id: 1 }, { id: 2 }] })),

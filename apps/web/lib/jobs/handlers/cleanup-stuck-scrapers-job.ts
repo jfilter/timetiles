@@ -38,7 +38,51 @@ export interface CleanupStuckScrapersJobInput {
 /**
  * Resets a stuck scraper to failed status.
  */
-const resetStuckScraper = async (payload: Payload, scraper: Scraper, currentTime: Date): Promise<void> => {
+const cancelOrphanedWorkflowJobs = async (
+  payload: Payload,
+  scraperId: number | string,
+  currentTime: Date,
+  thresholdHours: number
+): Promise<number> => {
+  const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
+
+  try {
+    const orphanedJobs = await asSystem(payload).find({
+      collection: "payload-jobs" as const,
+      where: {
+        and: [
+          { "input.scraperId": { equals: String(scraperId) } },
+          { processing: { equals: false } },
+          { completedAt: { exists: false } },
+          { createdAt: { less_than: orphanedJobCutoff } },
+        ],
+      },
+      limit: 50,
+      pagination: false,
+    });
+
+    let cancelled = 0;
+    for (const job of orphanedJobs.docs) {
+      await asSystem(payload).update({
+        collection: "payload-jobs" as const,
+        id: job.id,
+        data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
+      });
+      cancelled++;
+    }
+    return cancelled;
+  } catch (error) {
+    logError(error, "Failed to cancel orphaned scraper workflow jobs", { scraperId, orphanedJobCutoff });
+    return 0;
+  }
+};
+
+const resetStuckScraper = async (
+  payload: Payload,
+  scraper: Scraper,
+  currentTime: Date,
+  thresholdHours: number
+): Promise<void> => {
   const lastRunTime = scraper.lastRunAt ? parseDateInput(scraper.lastRunAt) : null;
   const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
@@ -51,10 +95,13 @@ const resetStuckScraper = async (payload: Payload, scraper: Scraper, currentTime
     data: { lastRunStatus: "failed", statistics: updatedStats },
   });
 
+  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
+
   logger.info("Reset stuck scraper", {
     scraperId: scraper.id,
     name: scraper.name,
     stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
+    cancelledJobs,
   });
 };
 
@@ -111,7 +158,7 @@ export const cleanupStuckScrapersJob = {
 
             stuckCount++;
             if (!dryRun) {
-              await resetStuckScraper(payload, scraper, currentTime);
+              await resetStuckScraper(payload, scraper, currentTime, stuckThresholdHours);
               resetCount++;
             }
           }

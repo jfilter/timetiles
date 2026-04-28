@@ -41,7 +41,7 @@ export const rateLimitCleanupJob = {
       return { output: { success: true, backend, cleaned } };
     } catch (error) {
       logError(error, "Rate-limit cleanup job failed", { backend });
-      return { output: { success: false, backend, error: error instanceof Error ? error.message : "Unknown error" } };
+      throw error;
     }
   },
 };

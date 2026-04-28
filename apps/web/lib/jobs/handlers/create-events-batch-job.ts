@@ -13,11 +13,14 @@
  * @module
  * @category Jobs
  */
+import type { Payload } from "payload";
+
 import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import type { IngestFile, IngestJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
@@ -33,10 +36,88 @@ import {
   checkEventQuotaBeforeProcessing,
   cleanupPriorAttempt,
   markJobCompleted,
+  releaseReservedEventQuota,
   updateJobErrors,
 } from "./create-events-batch/job-completion";
 import type { ProcessBatchContext } from "./create-events-batch/process-batch";
 import { processEventBatch } from "./create-events-batch/process-batch";
+
+/** Write progress to DB every N batches instead of every batch. */
+const PROGRESS_WRITE_INTERVAL = 10;
+
+const writeFinalProgressIfNeeded = async (
+  payload: Payload,
+  job: IngestJob,
+  batchNumber: number,
+  totalRowsProcessed: number
+): Promise<void> => {
+  if (batchNumber % PROGRESS_WRITE_INTERVAL !== 0) {
+    await ProgressTrackingService.updateAndCompleteBatch(
+      payload,
+      job,
+      PROCESSING_STAGE.CREATE_EVENTS,
+      totalRowsProcessed,
+      batchNumber
+    );
+  }
+};
+
+const reviewHighRowErrors = async ({
+  payload,
+  ingestJobId,
+  ingestFile,
+  totalEventsCreated,
+  totalErrors,
+  storedErrorCount,
+}: {
+  payload: Payload;
+  ingestJobId: string | number;
+  ingestFile: IngestFile;
+  totalEventsCreated: number;
+  totalErrors: number;
+  storedErrorCount: number;
+}): Promise<boolean> => {
+  const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
+  const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
+  if (reviewChecksError) {
+    // Surface as a per-job error so the UI can show it.
+    await updateJobErrors(payload, ingestJobId, storedErrorCount, [{ row: -1, error: reviewChecksError }]);
+  }
+
+  const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
+  if (errorCheck.needsReview) {
+    await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_ROW_ERROR_RATE, {
+      totalEvents: totalEventsCreated,
+      errorCount: totalErrors,
+      errorRate: errorCheck.errorRate,
+    });
+  }
+
+  return errorCheck.needsReview;
+};
+
+const releaseEventQuotaOnFailure = async ({
+  payload,
+  ingestJobId,
+  reservedEventQuota,
+  trackedEventQuota,
+  eventQuotaFinalized,
+}: {
+  payload: Payload;
+  ingestJobId: string | number;
+  reservedEventQuota: number;
+  trackedEventQuota: number;
+  eventQuotaFinalized: boolean;
+}): Promise<void> => {
+  const quotaToRelease = trackedEventQuota > 0 ? trackedEventQuota : reservedEventQuota;
+  if (quotaToRelease <= 0 || eventQuotaFinalized) return;
+
+  try {
+    await releaseReservedEventQuota(payload, ingestJobId, quotaToRelease);
+  } catch (compensationError) {
+    logError(compensationError, "Failed to release reserved event quota", { ingestJobId, quotaToRelease });
+  }
+};
 
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
@@ -78,6 +159,9 @@ export const createEventsBatchJob = {
 
     let filePath = "";
     let sheetIndex = 0;
+    let reservedEventQuota = 0;
+    let trackedEventQuota = 0;
+    let eventQuotaFinalized = false;
 
     try {
       // Set stage for UI progress tracking (workflow controls sequencing)
@@ -95,11 +179,9 @@ export const createEventsBatchJob = {
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS, totalFileRows);
 
       // Check EVENTS_PER_IMPORT quota before processing
-      await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
+      reservedEventQuota = await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
 
       const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
-      /** Write progress to DB every N batches instead of every batch. */
-      const PROGRESS_WRITE_INTERVAL = 10;
 
       let batchNumber = 0;
       let totalRowsProcessed = 0;
@@ -144,15 +226,7 @@ export const createEventsBatchJob = {
       }
 
       // Final progress write for any remaining batches since the last interval
-      if (batchNumber % PROGRESS_WRITE_INTERVAL !== 0) {
-        await ProgressTrackingService.updateAndCompleteBatch(
-          payload,
-          job,
-          PROCESSING_STAGE.CREATE_EVENTS,
-          totalRowsProcessed,
-          batchNumber
-        );
-      }
+      await writeFinalProgressIfNeeded(payload, job, batchNumber, totalRowsProcessed);
 
       // Write all accumulated errors in a single DB operation
       await updateJobErrors(payload, ingestJobId, 0, allErrors);
@@ -160,26 +234,23 @@ export const createEventsBatchJob = {
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Mark job completed (saves results, tracks quota, cleans up files)
-      await markJobCompleted(payload, ingestJobId, filePath, sheetIndex);
+      // Mark job completed (saves results and reconciles quota)
+      await markJobCompleted(payload, ingestJobId, reservedEventQuota);
+      trackedEventQuota = totalEventsCreated;
 
       // Review check: high row error rate — pause after completion so results are saved.
       // Zod-validated; malformed config falls back to defaults (rowErrorThreshold, etc.).
-      const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
-      const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
-      if (reviewChecksError) {
-        // Surface as a per-job error so the UI can show it.
-        await updateJobErrors(payload, ingestJobId, allErrors.length, [{ row: -1, error: reviewChecksError }]);
-      }
-      const errorCheck = shouldReviewHighRowErrors(totalEventsCreated, totalErrors, reviewChecks);
-      const needsReview = errorCheck.needsReview;
-      if (needsReview) {
-        await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.HIGH_ROW_ERROR_RATE, {
-          totalEvents: totalEventsCreated,
-          errorCount: totalErrors,
-          errorRate: errorCheck.errorRate,
-        });
-      }
+      const needsReview = await reviewHighRowErrors({
+        payload,
+        ingestJobId,
+        ingestFile,
+        totalEventsCreated,
+        totalErrors,
+        storedErrorCount: allErrors.length,
+      });
+
+      cleanupSidecarFiles(filePath, sheetIndex);
+      eventQuotaFinalized = true;
 
       logPerformance("Event creation", Date.now() - startTime, {
         ingestJobId,
@@ -192,6 +263,13 @@ export const createEventsBatchJob = {
       return { output: { needsReview, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
+      await releaseEventQuotaOnFailure({
+        payload,
+        ingestJobId,
+        reservedEventQuota,
+        trackedEventQuota,
+        eventQuotaFinalized,
+      });
       await cleanupSidecarsForJob(payload, ingestJobId);
 
       // Re-throw — Payload retries up to `retries` count, then onFail handles failure

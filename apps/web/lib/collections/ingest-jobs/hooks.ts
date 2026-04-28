@@ -231,8 +231,15 @@ const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise
   if (!ingestFile?.user) return;
 
   const userId = requireRelationId(ingestFile.user, "ingestFile.user");
+  const user =
+    typeof ingestFile.user === "object"
+      ? ingestFile.user
+      : await req.payload.findByID({ collection: "users", id: userId, req });
+
+  if (!user) return;
+
   const quotaService = createQuotaService(req.payload);
-  await quotaService.incrementUsage(userId, "IMPORT_JOBS_PER_DAY", 1, req);
+  await quotaService.checkAndIncrementUsage(user, "IMPORT_JOBS_PER_DAY", 1, req);
   logger.info("Ingest job creation tracked for quota", { userId, ingestJobId: doc.id });
 };
 

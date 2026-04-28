@@ -528,6 +528,32 @@ describe.sequential("POST /api/ingest/configure", () => {
       );
       expect(dataFileCleanups.length).toBeGreaterThan(0);
     });
+
+    it("should clean up preview files when scheduled ingest creation fails after the import file is created", async () => {
+      mocks.mockPayload.create.mockImplementation((args: { collection: string }) => {
+        if (args.collection === "datasets") return Promise.resolve({ id: 42 });
+        if (args.collection === "ingest-files") return Promise.resolve({ id: 123 });
+        if (args.collection === "scheduled-ingests") return Promise.reject(new Error("schedule create failed"));
+        return Promise.resolve({ id: 999 });
+      });
+
+      const req = createRequest({
+        ...baseBody,
+        createSchedule: {
+          enabled: true,
+          sourceUrl: "https://example.com/data.csv",
+          name: "Daily Import",
+          scheduleType: "frequency",
+          frequency: "daily",
+          schemaMode: "additive",
+        },
+      });
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(500);
+      expect(mocks.mockUnlinkSync).toHaveBeenCalled();
+    });
   });
 
   describe("scheduled ingest Creation", () => {

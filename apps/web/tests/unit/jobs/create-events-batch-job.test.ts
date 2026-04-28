@@ -58,7 +58,9 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
 vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: vi.fn(() => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 10000, remaining: 10000 }),
+    checkAndIncrementUsage: vi.fn().mockResolvedValue(true),
     incrementUsage: vi.fn().mockResolvedValue(undefined),
+    decrementUsage: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -693,10 +695,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       // totalRows=1000, uniqueRows=50 (950 internal duplicates)
       // Quota limit is 100 — uniqueRows (50) is within limit
       const mockCheckQuota = vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 50 });
+      const mockCheckAndIncrementUsage = vi.fn().mockResolvedValue(true);
+      const mockDecrementUsage = vi.fn().mockResolvedValue(undefined);
 
       // Must mock quota-service BEFORE handler reads it; use dynamic import override
       const { createQuotaService } = await import("@/lib/services/quota-service");
-      vi.mocked(createQuotaService).mockReturnValue({ checkQuota: mockCheckQuota } as any);
+      vi.mocked(createQuotaService).mockReturnValue({
+        checkQuota: mockCheckQuota,
+        checkAndIncrementUsage: mockCheckAndIncrementUsage,
+        decrementUsage: mockDecrementUsage,
+      } as any);
 
       const mockIngestJob: any = {
         id: "import-123",
@@ -744,6 +752,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         expect.any(String), // "EVENTS_PER_IMPORT"
         50
       );
+      expect(mockCheckAndIncrementUsage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "user-1" }),
+        "TOTAL_EVENTS",
+        50
+      );
+      expect(mockDecrementUsage).toHaveBeenCalledWith("user-1", "TOTAL_EVENTS", 48);
     });
   });
 

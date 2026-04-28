@@ -8,6 +8,7 @@ import "@/tests/mocks/services/logger";
 
 const quotaMocks = vi.hoisted(() => ({
   mockCheckQuota: vi.fn(),
+  mockCheckAndIncrementUsage: vi.fn(),
   mockIncrementUsage: vi.fn(),
   mockDecrementUsage: vi.fn(),
 }));
@@ -17,6 +18,7 @@ const auditMocks = vi.hoisted(() => ({ auditLog: vi.fn() }));
 vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: vi.fn(() => ({
     checkQuota: quotaMocks.mockCheckQuota,
+    checkAndIncrementUsage: quotaMocks.mockCheckAndIncrementUsage,
     incrementUsage: quotaMocks.mockIncrementUsage,
     decrementUsage: quotaMocks.mockDecrementUsage,
   })),
@@ -33,8 +35,9 @@ import ScheduledIngests from "@/lib/collections/scheduled-ingests";
 
 const afterChangeHook = ScheduledIngests.hooks?.afterChange?.[0];
 const afterDeleteHook = ScheduledIngests.hooks?.afterDelete?.[0];
+const afterErrorHook = ScheduledIngests.hooks?.afterError?.[0];
 
-if (!afterChangeHook || !afterDeleteHook) {
+if (!afterChangeHook || !afterDeleteHook || !afterErrorHook) {
   throw new Error("scheduled ingest quota hooks are not configured");
 }
 
@@ -42,6 +45,7 @@ describe.sequential("scheduled-ingests quota hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     quotaMocks.mockCheckQuota.mockResolvedValue({ allowed: true, remaining: 1, limit: 1 });
+    quotaMocks.mockCheckAndIncrementUsage.mockResolvedValue(true);
     quotaMocks.mockIncrementUsage.mockResolvedValue(undefined);
     quotaMocks.mockDecrementUsage.mockResolvedValue(undefined);
     auditMocks.auditLog.mockResolvedValue(undefined);
@@ -77,6 +81,21 @@ describe.sequential("scheduled-ingests quota hooks", () => {
 
     expect(quotaMocks.mockIncrementUsage).toHaveBeenCalledWith(1, "ACTIVE_SCHEDULES", 1, expect.anything());
     expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("does not double-increment ACTIVE_SCHEDULES when beforeChange already claimed quota", async () => {
+    const req = { user: { id: 1 }, payload: {}, activeScheduleQuotaClaim: { ownerId: 1 } };
+
+    await afterChangeHook({ doc: { enabled: true, createdBy: 1 }, operation: "create", req } as never);
+
+    expect(quotaMocks.mockIncrementUsage).not.toHaveBeenCalled();
+    expect(req.activeScheduleQuotaClaim).toBeUndefined();
+  });
+
+  it("compensates ACTIVE_SCHEDULES when a claimed schedule create fails", async () => {
+    await afterErrorHook({ req: { user: { id: 1 }, payload: {}, activeScheduleQuotaClaim: { ownerId: 1 } } } as never);
+
+    expect(quotaMocks.mockDecrementUsage).toHaveBeenCalledWith(1, "ACTIVE_SCHEDULES", 1, expect.anything());
   });
 
   it("does not increment ACTIVE_SCHEDULES when skipQuotaChecks context is set", async () => {

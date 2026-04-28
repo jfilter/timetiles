@@ -2,7 +2,7 @@
  * Job completion, error handling, and quota helpers for create-events-batch.
  *
  * Handles marking jobs as completed, persisting errors, cleaning up
- * sidecar files, checking event quotas, and cleaning up prior attempts.
+ * checking event quotas, and cleaning up prior attempts.
  *
  * @module
  * @category Jobs
@@ -11,25 +11,81 @@ import { eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
-import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
-import { createJobLogger, logError, logger } from "@/lib/logger";
+import { createJobLogger, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
-import type { IngestFile, IngestJob } from "@/payload-types";
+import type { IngestFile, IngestJob, User } from "@/payload-types";
 
 import { getDuplicateSummary, getUniqueRowsForQuota } from "../../utils/resource-loading";
 
 /** Maximum number of individual errors stored on an import job. */
 export const MAX_STORED_ERRORS = 500;
 
-export const markJobCompleted = async (
+const getEventQuotaOwner = async (
+  payload: Payload,
+  ingestJobId: string | number
+): Promise<{ user: User; userId: string | number } | null> => {
+  const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+
+  if (!ingestJob?.ingestFile) return null;
+
+  const ingestFileId = requireRelationId(ingestJob.ingestFile, "ingestJob.ingestFile");
+  const ingestFile = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId });
+
+  if (!ingestFile?.user) return null;
+
+  const userId = requireRelationId(ingestFile.user, "ingestFile.user");
+  const user =
+    typeof ingestFile.user === "object" ? ingestFile.user : await payload.findByID({ collection: "users", id: userId });
+
+  if (!user) return null;
+
+  return { user, userId };
+};
+
+const reconcileReservedEventQuota = async (
   payload: Payload,
   ingestJobId: string | number,
-  filePath: string,
-  sheetIndex: number
-) => {
+  reservedEvents: number,
+  actualEventsCreated: number
+): Promise<void> => {
+  const owner = await getEventQuotaOwner(payload, ingestJobId);
+  if (!owner) return;
+
+  const quotaService = createQuotaService(payload);
+  const adjustment = actualEventsCreated - reservedEvents;
+
+  if (adjustment > 0) {
+    await quotaService.checkAndIncrementUsage(owner.user, "TOTAL_EVENTS", adjustment);
+  } else if (adjustment < 0) {
+    await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", Math.abs(adjustment));
+  }
+
+  createJobLogger(String(ingestJobId), "create-events-batch").info("Event creation tracked for quota", {
+    userId: owner.userId,
+    eventsCreated: actualEventsCreated,
+    reservedEvents,
+    ingestJobId,
+  });
+};
+
+export const releaseReservedEventQuota = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  reservedEvents: number
+): Promise<void> => {
+  if (reservedEvents <= 0) return;
+
+  const owner = await getEventQuotaOwner(payload, ingestJobId);
+  if (!owner) return;
+
+  const quotaService = createQuotaService(payload);
+  await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", reservedEvents);
+};
+
+export const markJobCompleted = async (payload: Payload, ingestJobId: string | number, reservedEventQuota = 0) => {
   // Re-query job for current state (errors may have accumulated across batches)
   const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 
@@ -57,38 +113,7 @@ export const markJobCompleted = async (
     },
   });
 
-  // Clean up sidecar CSV files
-  cleanupSidecarFiles(filePath, sheetIndex);
-
-  // Quota phase 3 of 3: authoritative usage tracking after events are created.
-  // Note: bulkInsertEvents uses raw Drizzle INSERT (bypasses Payload hooks), so the
-  // beforeChange quota check on events doesn't run for imports. Quota is enforced via
-  // a pre-check in review-checks.ts (phase 1 gate, before import starts), phase 2 re-check
-  // below in checkEventQuotaBeforeProcessing, and this post-increment (phase 3).
-  // There is a small TOCTOU window where concurrent imports by the same user could
-  // both pass the pre-check and overshoot the quota — accepted tradeoff for bulk perf.
-  try {
-    const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
-
-    if (ingestJob?.ingestFile) {
-      const ingestFileId = requireRelationId(ingestJob.ingestFile, "ingestJob.ingestFile");
-      const ingestFile = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId });
-
-      if (ingestFile?.user) {
-        const log = createJobLogger(String(ingestJobId), "create-events-batch");
-
-        const userId = extractRelationId(ingestFile.user);
-
-        const quotaService = createQuotaService(payload);
-        await quotaService.incrementUsage(userId, "TOTAL_EVENTS", totalEventsCreated);
-
-        log.info("Event creation tracked for quota", { userId, eventsCreated: totalEventsCreated, ingestJobId });
-      }
-    }
-  } catch (error) {
-    // Don't fail the job if quota tracking fails
-    logError(error, "Failed to track event creation quota", { ingestJobId });
-  }
+  await reconcileReservedEventQuota(payload, ingestJobId, reservedEventQuota, totalEventsCreated);
 };
 
 export const updateJobErrors = async (
@@ -124,9 +149,9 @@ export const checkEventQuotaBeforeProcessing = async (
   payload: Payload,
   ingestFile: IngestFile,
   job: IngestJob
-): Promise<void> => {
+): Promise<number> => {
   if (!ingestFile?.user) {
-    return;
+    return 0;
   }
 
   const userId = requireRelationId(ingestFile.user, "ingestFile.user");
@@ -134,11 +159,13 @@ export const checkEventQuotaBeforeProcessing = async (
     typeof ingestFile.user === "object" ? ingestFile.user : await payload.findByID({ collection: "users", id: userId });
 
   if (!user) {
-    return;
+    return 0;
   }
 
-  // Quota phase 2 of 3: re-check before processing (TOCTOU mitigation).
-  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 3 (increment) above in markJobCompleted.
+  // Quota phase 2 of 3: re-check per-import quota and atomically reserve
+  // TOTAL_EVENTS before the raw Drizzle bulk insert bypasses Payload hooks.
+  // See also: phase 1 (gate) in workflows/review-checks.ts, phase 3
+  // reconciliation in markJobCompleted.
   const quotaService = createQuotaService(payload);
 
   // Use uniqueRows from deduplication summary -- this is the actual number of events
@@ -154,6 +181,11 @@ export const checkEventQuotaBeforeProcessing = async (
         `Please split your data into smaller files.`
     );
   }
+
+  if (uniqueRows <= 0) return 0;
+
+  await quotaService.checkAndIncrementUsage(user, "TOTAL_EVENTS", uniqueRows);
+  return uniqueRows;
 };
 
 /** Delete events and their versions left by a prior failed attempt, in small chunks to avoid table locks. */

@@ -376,6 +376,7 @@ export default [
       ],
     },
   },
+  { files: ["tests/unit/jobs/url-fetch-job.test.ts"], rules: { "sonarjs/max-lines": "off" } },
   // Complex wizard/service files - allow higher limits
   {
     files: [

@@ -37,7 +37,9 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: vi.fn(() => 
 vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: vi.fn(() => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true }),
+    checkAndIncrementUsage: vi.fn().mockResolvedValue(true),
     incrementUsage: vi.fn(),
+    decrementUsage: vi.fn(),
   })),
 }));
 vi.mock("@/lib/jobs/utils/bulk-event-insert", () => ({ bulkInsertEvents: vi.fn() }));

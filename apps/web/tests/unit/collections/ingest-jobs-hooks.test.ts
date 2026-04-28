@@ -550,9 +550,9 @@ describe.sequential("afterChangeHooks", () => {
   });
 
   describe("trackIngestJobQuota on create", () => {
-    it("should increment quota on job creation", async () => {
-      const mockIncrementUsage = vi.fn().mockResolvedValue({});
-      mocks.createQuotaService.mockReturnValue({ incrementUsage: mockIncrementUsage });
+    it("should atomically claim quota on job creation", async () => {
+      const mockCheckAndIncrementUsage = vi.fn().mockResolvedValue(true);
+      mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
       const mockFindByID = vi.fn().mockResolvedValue({ user: { id: 42 } });
       const doc = { id: 1, ingestFile: { id: 10 } };
       const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
@@ -567,12 +567,12 @@ describe.sequential("afterChangeHooks", () => {
       } as any);
 
       expect(mocks.createQuotaService).toHaveBeenCalledWith(req.payload);
-      expect(mockIncrementUsage).toHaveBeenCalledWith(42, "IMPORT_JOBS_PER_DAY", 1, req);
+      expect(mockCheckAndIncrementUsage).toHaveBeenCalledWith({ id: 42 }, "IMPORT_JOBS_PER_DAY", 1, req);
     });
 
     it("should skip quota tracking when ingest file has no user", async () => {
-      const mockIncrementUsage = vi.fn();
-      mocks.createQuotaService.mockReturnValue({ incrementUsage: mockIncrementUsage });
+      const mockCheckAndIncrementUsage = vi.fn();
+      mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
       const mockFindByID = vi.fn().mockResolvedValue({ user: null });
       const doc = { id: 1, ingestFile: { id: 10 } };
       const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
@@ -586,7 +586,27 @@ describe.sequential("afterChangeHooks", () => {
         context: {} as never,
       } as any);
 
-      expect(mockIncrementUsage).not.toHaveBeenCalled();
+      expect(mockCheckAndIncrementUsage).not.toHaveBeenCalled();
+    });
+
+    it("should reject job creation when the daily import-job quota is exhausted", async () => {
+      const quotaError = new Error("Import job quota exceeded");
+      const mockCheckAndIncrementUsage = vi.fn().mockRejectedValue(quotaError);
+      mocks.createQuotaService.mockReturnValue({ checkAndIncrementUsage: mockCheckAndIncrementUsage });
+      const mockFindByID = vi.fn().mockResolvedValue({ user: { id: 42 } });
+      const doc = { id: 1, ingestFile: { id: 10 } };
+      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID, jobs: { queue: vi.fn() } } };
+
+      await expect(
+        hook({
+          doc,
+          previousDoc: undefined,
+          req,
+          operation: "create",
+          collection: {} as never,
+          context: {} as never,
+        } as any)
+      ).rejects.toThrow("Import job quota exceeded");
     });
   });
 });

@@ -187,11 +187,7 @@ const isRetryableFetchError = (error: Error): boolean => {
     return isRetryableHttpStatus(error.status);
   }
 
-  if (error.message.startsWith("File too large:")) {
-    return false;
-  }
-
-  return true;
+  return !error.message.startsWith("File too large:");
 };
 
 /**

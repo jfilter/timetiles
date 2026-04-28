@@ -60,9 +60,7 @@ export const previewCleanupJob = {
       });
     } catch (error) {
       logError(error, "Preview cleanup job failed");
-      return Promise.resolve({
-        output: { success: false, error: error instanceof Error ? error.message : "Unknown error" },
-      });
+      return Promise.reject(error instanceof Error ? error : new Error("Preview cleanup job failed"));
     }
   },
 };
