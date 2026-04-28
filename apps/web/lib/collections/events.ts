@@ -23,7 +23,7 @@ import type { CollectionConfig, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 
-import { eventsBeforeChangeHook } from "./events/hooks";
+import { eventsAfterErrorHook, eventsBeforeChangeHook } from "./events/hooks";
 import { createCommonConfig, isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const Events: CollectionConfig = {
@@ -302,6 +302,7 @@ const Events: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [eventsBeforeChangeHook],
+    afterError: [eventsAfterErrorHook],
     // Note: afterChange and afterDelete hooks for dataset stats were removed
     // for performance. Stats are computed on-demand or via scheduled job.
   },

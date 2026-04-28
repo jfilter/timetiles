@@ -44,12 +44,24 @@ export interface CleanupStuckScheduledIngestsJobInput {
  * slots and prevents future imports from running. Mark them as completed
  * with an error so the concurrency key is released.
  */
-const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: number | string): Promise<number> => {
+const cancelOrphanedWorkflowJobs = async (
+  payload: Payload,
+  scheduledIngestId: number | string,
+  currentTime: Date,
+  thresholdHours: number
+): Promise<number> => {
+  const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
+
   try {
     const orphanedJobs = await asSystem(payload).find({
       collection: "payload-jobs" as const,
       where: {
-        and: [{ "input.scheduledIngestId": { equals: String(scheduledIngestId) } }, { completedAt: { exists: false } }],
+        and: [
+          { "input.scheduledIngestId": { equals: String(scheduledIngestId) } },
+          { processing: { equals: false } },
+          { completedAt: { exists: false } },
+          { createdAt: { less_than: orphanedJobCutoff } },
+        ],
       },
       limit: 50,
       pagination: false,
@@ -66,7 +78,7 @@ const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: n
     }
     return cancelled;
   } catch (error) {
-    logError(error, "Failed to cancel orphaned workflow jobs", { scheduledIngestId });
+    logError(error, "Failed to cancel orphaned workflow jobs", { scheduledIngestId, orphanedJobCutoff });
     return 0;
   }
 };
@@ -74,7 +86,8 @@ const cancelOrphanedWorkflowJobs = async (payload: Payload, scheduledIngestId: n
 const resetStuckImport = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
-  currentTime: Date
+  currentTime: Date,
+  thresholdHours: number
 ): Promise<void> => {
   try {
     // Calculate how long it was stuck
@@ -82,7 +95,7 @@ const resetStuckImport = async (
     const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
     // Cancel orphaned workflow jobs to release concurrency slots
-    const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id);
+    const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id, currentTime, thresholdHours);
 
     // Update execution history with failure
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -233,7 +246,7 @@ const processStuckImports = async (
         });
 
         if (!dryRun) {
-          await resetStuckImport(payload, scheduledIngest, currentTime);
+          await resetStuckImport(payload, scheduledIngest, currentTime, thresholdHours);
           resetCount++;
         }
       }

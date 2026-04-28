@@ -6,6 +6,7 @@
  */
 import type { Payload } from "payload";
 
+import { logError } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
 import { parseDateInput } from "@/lib/utils/date";
 
@@ -71,7 +72,7 @@ export const hasActivePayloadJob = async (
       where: {
         and: [
           { [resourceFieldPath]: { equals: String(resourceId) } },
-          { processingStarted: { equals: true } },
+          { processing: { equals: true } },
           { hasError: { equals: false } },
           { completedAt: { exists: false } },
         ],
@@ -80,9 +81,13 @@ export const hasActivePayloadJob = async (
       pagination: false,
     });
     return activeJobs.docs.length > 0;
-  } catch {
-    // If we can't check (e.g., collection doesn't exist), assume not active
-    // and fall through to the threshold-based check
-    return false;
+  } catch (error) {
+    // This check gates destructive cleanup. If it fails, leave the resource
+    // alone so a transient query/schema issue cannot cancel active work.
+    logError(error, "Failed to check active Payload job; treating resource as active", {
+      resourceFieldPath,
+      resourceId: String(resourceId),
+    });
+    return true;
   }
 };

@@ -10,6 +10,7 @@
 import type {
   CollectionAfterChangeHook,
   CollectionAfterDeleteHook,
+  CollectionAfterErrorHook,
   CollectionBeforeChangeHook,
   PayloadRequest,
 } from "payload";
@@ -22,6 +23,8 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { setCreatedByHook } from "../shared-fields";
 
 const logger = createLogger("catalogs");
+
+type CatalogQuotaRequest = PayloadRequest & { catalogQuotaClaimedForUser?: string | number };
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
@@ -40,6 +43,26 @@ const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
 
   const quotaService = createQuotaService(req.payload);
   await quotaService.checkAndIncrementUsage(req.user, "CATALOGS_PER_USER", 1, req);
+  (req as CatalogQuotaRequest).catalogQuotaClaimedForUser = req.user.id;
+};
+
+const clearCatalogQuotaClaim = (req: PayloadRequest): void => {
+  (req as CatalogQuotaRequest).catalogQuotaClaimedForUser = undefined;
+};
+
+const compensateCatalogQuotaOnError = async (req: PayloadRequest): Promise<void> => {
+  const marked = req as CatalogQuotaRequest;
+  const userId = marked.catalogQuotaClaimedForUser;
+  if (userId == null) return;
+
+  marked.catalogQuotaClaimedForUser = undefined;
+
+  try {
+    const quotaService = createQuotaService(req.payload);
+    await quotaService.decrementUsage(userId, "CATALOGS_PER_USER", 1, req);
+  } catch (error) {
+    logger.error("Failed to compensate CATALOGS_PER_USER after catalog create failure", { userId, error });
+  }
 };
 
 /** Detect what changed between previous and new catalog doc */
@@ -176,6 +199,11 @@ export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
 
 export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, operation, req }) => {
+    if (operation === "create") {
+      clearCatalogQuotaClaim(req);
+      return doc;
+    }
+
     // Sync catalog changes to datasets and events (for access control)
     if (operation !== "update") return doc;
 
@@ -262,4 +290,8 @@ export const catalogAfterDeleteHook: CollectionAfterDeleteHook = async ({ doc, r
     const quotaService = createQuotaService(req.payload);
     await quotaService.decrementUsage(doc.createdBy, "CATALOGS_PER_USER", 1, req);
   }
+};
+
+export const catalogAfterErrorHook: CollectionAfterErrorHook = async ({ req }) => {
+  await compensateCatalogQuotaOnError(req);
 };

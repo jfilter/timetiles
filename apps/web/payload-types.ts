@@ -1653,7 +1653,7 @@ export interface ScheduledIngest {
    */
   retryConfig?: {
     /**
-     * Maximum number of retry attempts
+     * Maximum failed scheduled runs before disabling this ingest
      */
     maxRetries?: number | null;
     /**

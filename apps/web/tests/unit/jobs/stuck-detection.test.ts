@@ -7,10 +7,24 @@
  * @module
  * @category Tests
  */
+import "@/tests/mocks/services/logger";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { hasActivePayloadJob, isResourceStuck } from "@/lib/jobs/utils/stuck-detection";
 import { createMockPayload } from "@/tests/setup/factories";
+
+const expectPayloadJobsQueryUsesKnownFields = (query: unknown): void => {
+  const args = query as { collection?: string; where?: { and?: Array<Record<string, unknown>> } };
+  expect(args.collection).toBe("payload-jobs");
+
+  for (const clause of args.where?.and ?? []) {
+    for (const field of Object.keys(clause)) {
+      const isKnownField = field.startsWith("input.") || ["processing", "hasError", "completedAt"].includes(field);
+      expect(isKnownField, `Unexpected payload-jobs query field: ${field}`).toBe(true);
+    }
+  }
+};
 
 describe.sequential("stuck-detection utilities", () => {
   describe("isResourceStuck", () => {
@@ -73,9 +87,9 @@ describe.sequential("stuck-detection utilities", () => {
     });
 
     it("should return true when Payload finds matching active jobs", async () => {
-      mockPayload.find.mockResolvedValueOnce({
-        docs: [{ id: "job-1", processingStarted: true, hasError: false }],
-        totalDocs: 1,
+      mockPayload.find.mockImplementationOnce(async (query: unknown) => {
+        expectPayloadJobsQueryUsesKnownFields(query);
+        return { docs: [{ id: "job-1", processing: true, hasError: false }], totalDocs: 1 };
       });
 
       const result = await hasActivePayloadJob(mockPayload, "input.scheduledIngestId", "si-123");
@@ -86,7 +100,7 @@ describe.sequential("stuck-detection utilities", () => {
         where: {
           and: [
             { "input.scheduledIngestId": { equals: "si-123" } },
-            { processingStarted: { equals: true } },
+            { processing: { equals: true } },
             { hasError: { equals: false } },
             { completedAt: { exists: false } },
           ],
@@ -105,12 +119,13 @@ describe.sequential("stuck-detection utilities", () => {
       expect(result).toBe(false);
     });
 
-    it("should return false when Payload throws an error (safe fallback)", async () => {
-      mockPayload.find.mockRejectedValueOnce(new Error("Collection not found"));
+    it("should return true when Payload throws an error (conservative fallback)", async () => {
+      const error = new Error("Collection not found");
+      mockPayload.find.mockRejectedValueOnce(error);
 
       const result = await hasActivePayloadJob(mockPayload, "input.scheduledIngestId", "si-789");
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
 
     it("should convert numeric resourceId to string for the query", async () => {

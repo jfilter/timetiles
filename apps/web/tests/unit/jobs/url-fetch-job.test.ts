@@ -19,6 +19,13 @@ import { mockLogger } from "@/tests/mocks/services/logger";
 
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 
+const quotaServiceMocks = vi.hoisted(() => ({
+  checkQuota: vi.fn(),
+  incrementUsage: vi.fn(),
+  checkAndIncrementUsage: vi.fn(),
+  decrementUsage: vi.fn(),
+}));
+
 // Type definitions for urlFetchJob output
 interface UrlFetchSuccessOutput {
   ingestFileId: string | number;
@@ -60,13 +67,7 @@ vi.mock("@/lib/config/app-config", () => ({
 vi.mock("uuid", () => ({ v4: () => "test-uuid-1234" }));
 
 // Mock quota service for unit tests
-vi.mock("@/lib/services/quota-service", () => ({
-  createQuotaService: () => ({
-    checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 }),
-    incrementUsage: vi.fn().mockResolvedValue(undefined),
-    checkAndIncrementUsage: vi.fn().mockResolvedValue(true),
-  }),
-}));
+vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: () => quotaServiceMocks }));
 
 // Mock fetch globally
 globalThis.fetch = vi.fn();
@@ -108,6 +109,11 @@ describe.sequential("urlFetchJob", () => {
 
     // Reset environment
     process.env.UPLOAD_DIR = "/tmp/uploads";
+
+    quotaServiceMocks.checkQuota.mockResolvedValue({ allowed: true, current: 0, limit: 100, remaining: 100 });
+    quotaServiceMocks.incrementUsage.mockResolvedValue(undefined);
+    quotaServiceMocks.checkAndIncrementUsage.mockResolvedValue(true);
+    quotaServiceMocks.decrementUsage.mockResolvedValue(undefined);
 
     // Reset global fetch mock
     (globalThis.fetch as any) = vi.fn();
@@ -480,6 +486,95 @@ describe.sequential("urlFetchJob", () => {
             statistics: expect.objectContaining({ totalRuns: 1, failedRuns: 1, averageDuration: expect.any(Number) }),
           }),
           req: expect.any(Object),
+        })
+      );
+    });
+
+    it("should compensate URL fetch quota when the remote fetch fails", async () => {
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: unknown }) => {
+        if (collection === "scheduled-ingests" && id === "scheduled-123") {
+          return Promise.resolve({
+            id: "scheduled-123",
+            enabled: true,
+            createdBy: "user-123",
+            catalog: "catalog-123",
+            retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+            statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
+          });
+        }
+
+        if (collection === "users" && id === "user-123") {
+          return Promise.resolve({ id: "user-123", role: "user" });
+        }
+
+        return Promise.resolve(null);
+      });
+      mockPayload.update.mockResolvedValue({});
+
+      (globalThis.fetch as any).mockRejectedValue(new Error("network down"));
+
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/unavailable.csv",
+            catalogId: "catalog-123",
+            originalName: "Unavailable Import",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow("network down");
+
+      expect(quotaServiceMocks.checkAndIncrementUsage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "user-123" }),
+        "URL_FETCHES_PER_DAY",
+        1
+      );
+      expect(quotaServiceMocks.decrementUsage).toHaveBeenCalledWith("user-123", "URL_FETCHES_PER_DAY", 1);
+    });
+
+    it("should not multiply scheduled-ingest retries with per-fetch retries", async () => {
+      mockPayload.findByID.mockImplementation(({ collection, id }: { collection: string; id: unknown }) => {
+        if (collection === "scheduled-ingests" && id === "scheduled-123") {
+          return Promise.resolve({
+            id: "scheduled-123",
+            enabled: true,
+            createdBy: "user-123",
+            catalog: "catalog-123",
+            retryConfig: { maxRetries: 3, retryDelayMinutes: 0.0001 },
+            statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
+          });
+        }
+
+        if (collection === "users" && id === "user-123") {
+          return Promise.resolve({ id: "user-123", role: "user" });
+        }
+
+        return Promise.resolve(null);
+      });
+      mockPayload.update.mockResolvedValue({});
+
+      (globalThis.fetch as any).mockRejectedValue(new Error("network down"));
+
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            scheduledIngestId: "scheduled-123",
+            sourceUrl: "https://example.com/unavailable.csv",
+            catalogId: "catalog-123",
+            originalName: "Scheduled Retry Budget",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow("network down");
+
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "scheduled-ingests",
+          data: expect.objectContaining({ currentRetries: 1 }),
         })
       );
     });
@@ -1163,6 +1258,7 @@ describe.sequential("urlFetchJob", () => {
       const createArg = createCall![0] as Record<string, unknown>;
       const context = createArg.context as Record<string, unknown>;
       expect(context.skipIngestFileHooks).toBe(true);
+      expect(context.skipFileUploadQuota).toBe(true);
     });
 
     it("persists targetDataset as the numeric relation id when scheduledIngest.dataset is populated (regression)", async () => {

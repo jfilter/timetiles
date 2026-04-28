@@ -125,6 +125,7 @@ export const updateScheduledIngestSuccess = async (
     });
   } catch (error) {
     logError(error, "Failed to update scheduled ingest success status", { scheduledIngestId: scheduledIngest.id });
+    throw error;
   }
 };
 

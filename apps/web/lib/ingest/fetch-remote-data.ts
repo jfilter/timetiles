@@ -137,6 +137,7 @@ const convertHtmlInJson = async (
     const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, undefined, {
       authHeaders,
       timeout,
+      maxRetries: options.maxRetries ?? 0,
       htmlExtractConfig,
     });
     records = result.allRecords;
@@ -149,7 +150,11 @@ const convertHtmlInJson = async (
   // Enrich records from detail pages (dates, descriptions, etc.)
   if (htmlExtractConfig.detailPage) {
     const fetchFn = async (url: string) => {
-      const result = await fetchWithRetry(url, { authHeaders, timeout });
+      const result = await fetchWithRetry(url, {
+        authHeaders,
+        timeout,
+        retryConfig: { maxRetries: options.maxRetries ?? 0 },
+      });
       return result.data;
     };
     await enrichRecordsFromDetailPages(records, htmlExtractConfig.detailPage, fetchFn);
@@ -173,6 +178,7 @@ const convertFetchedJson = async (
     const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, {
       authHeaders,
       timeout,
+      maxRetries: options.maxRetries ?? 0,
       isFirstRun: options.isFirstRun,
     });
     let records = result.allRecords;
@@ -209,6 +215,7 @@ const fetchPostPaginated = async (
   const result = await fetchPaginated(sourceUrl, jsonApiConfig!.pagination!, recordsPath, {
     authHeaders,
     timeout,
+    maxRetries: options.maxRetries ?? 0,
     isFirstRun: options.isFirstRun,
   });
 

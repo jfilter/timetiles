@@ -51,12 +51,10 @@ export interface CreateIngestFileResult {
  * (e.g. `scheduled-ingest` and `scraper-ingest` workflows run their
  * own `dataset-detection` task after this step).
  *
- * Sets `isUrlImport: true` on the request context so the ingest-files
- * beforeOperation hook preserves the caller-provided `url-import-…`
- * filename instead of applying the usual uniquifier. Relying on this
- * context flag (rather than sniffing the filename prefix) prevents
- * users from bypassing the uniquifier by uploading files named
- * `url-import-…`.
+ * Sets request context flags so ingest-files hooks know this is a
+ * programmatic file produced by another metered workflow. The hooks preserve
+ * the caller-provided filename and skip FILE_UPLOADS_PER_DAY counting so URL
+ * fetches and scraper runs are not double-charged as manual uploads.
  */
 export const createIngestFile = async ({
   payload,
@@ -69,7 +67,7 @@ export const createIngestFile = async ({
     data: importFileData as Omit<IngestFile, "id" | "createdAt" | "updatedAt">,
     file,
     ...(user ? { user } : {}),
-    context: { skipIngestFileHooks: true, isUrlImport: true },
+    context: { skipIngestFileHooks: true, isUrlImport: true, skipFileUploadQuota: true },
   });
 
   return { ingestFileId: ingestFile.id };

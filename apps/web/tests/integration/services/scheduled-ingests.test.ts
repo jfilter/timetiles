@@ -885,19 +885,19 @@ describe.sequential("scheduled ingests Integration", () => {
         }
       });
 
-      const result = await urlFetchJob.handler({
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalog.id,
-          originalName: "Retry Test",
-        },
-        job: { id: "job-retry" },
-        req: { payload },
-      });
+      const input = {
+        scheduledIngestId: scheduledIngest.id,
+        sourceUrl: scheduledIngest.sourceUrl,
+        authConfig: scheduledIngest.authConfig,
+        catalogId: testCatalog.id,
+        originalName: "Retry Test",
+      };
 
-      // Verify retry succeeded after 3 attempts
+      await expect(urlFetchJob.handler({ input, job: { id: "job-retry-1" }, req: { payload } })).rejects.toThrow();
+      await expect(urlFetchJob.handler({ input, job: { id: "job-retry-2" }, req: { payload } })).rejects.toThrow();
+      const result = await urlFetchJob.handler({ input, job: { id: "job-retry-3" }, req: { payload } });
+
+      // Verify retry succeeded after 3 schedule-level executions
       expect(result.output).toMatchObject({ isDuplicate: false });
 
       // Verify import file was created successfully

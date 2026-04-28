@@ -233,6 +233,67 @@ describe.sequential("HTTP Cache Integration", () => {
         })
       ).rejects.toThrow();
     });
+
+    it("should not retry terminal HTTP errors", async () => {
+      let requestCount = 0;
+      testServer.route("/status/404-counted", (_req: IncomingMessage, res: ServerResponse) => {
+        requestCount++;
+        res.writeHead(404, { "Content-Type": "text/plain" });
+        res.end("Not Found");
+      });
+
+      await expect(
+        fetchWithRetry(`${serverUrl}/status/404-counted`, {
+          cacheOptions: { useCache: false },
+          retryConfig: { maxRetries: 3 },
+        })
+      ).rejects.toThrow("HTTP 404");
+
+      expect(requestCount).toBe(1);
+    });
+
+    it("should retry transient HTTP errors", async () => {
+      let requestCount = 0;
+      testServer.route("/status/flaky-500", (_req: IncomingMessage, res: ServerResponse) => {
+        requestCount++;
+        if (requestCount === 1) {
+          res.writeHead(500, { "Content-Type": "text/plain" });
+          res.end("Server Error");
+          return;
+        }
+
+        res.writeHead(200, { "Content-Type": "text/csv" });
+        res.end("id,name\n1,test");
+      });
+
+      const result = await fetchWithRetry(`${serverUrl}/status/flaky-500`, {
+        cacheOptions: { useCache: false },
+        retryConfig: { maxRetries: 1 },
+      });
+
+      expect(requestCount).toBe(2);
+      expect(result.attempts).toBe(2);
+      expect(result.data.toString("utf-8")).toContain("id,name");
+    });
+
+    it("should not retry deterministic file-size failures", async () => {
+      let requestCount = 0;
+      testServer.route("/too-large-counted", (_req: IncomingMessage, res: ServerResponse) => {
+        requestCount++;
+        res.writeHead(200, { "Content-Type": "text/csv" });
+        res.end("too large");
+      });
+
+      await expect(
+        fetchWithRetry(`${serverUrl}/too-large-counted`, {
+          maxSize: 1,
+          cacheOptions: { useCache: false },
+          retryConfig: { maxRetries: 3 },
+        })
+      ).rejects.toThrow("File too large");
+
+      expect(requestCount).toBe(1);
+    });
   });
 
   describe("Advanced caching features", () => {

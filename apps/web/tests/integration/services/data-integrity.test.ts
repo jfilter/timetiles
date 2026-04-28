@@ -694,21 +694,28 @@ describe.sequential("Data Integrity Tests", () => {
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job (should retry and eventually succeed)
+      const jobInput = {
+        scheduledIngestId: scheduledIngest.id,
+        sourceUrl: scheduledIngest.sourceUrl,
+        authConfig: scheduledIngest.authConfig,
+        catalogId: testCatalogId as any,
+        originalName: "Retry Consistency Test",
+        userId: testUser.id,
+      };
+
+      // Scheduled ingests retry between job executions, not inside one fetch
+      // execution. First run fails, second run sees consistent data.
+      await expect(
+        urlFetchJob.handler({ job: { id: "test-job-retry-consistency-1" }, req: { payload }, input: jobInput })
+      ).rejects.toThrow("HTTP 503");
+
       const result = await urlFetchJob.handler({
         job: { id: "test-job-retry-consistency" },
         req: { payload },
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalogId as any,
-          originalName: "Retry Consistency Test",
-          userId: testUser.id,
-        },
+        input: jobInput,
       });
 
-      // Should succeed after one retry
+      // Should succeed after one schedule-level retry
       expect(result.output.ingestFileId).toBeDefined();
       expect(attemptCount).toBe(2);
     });

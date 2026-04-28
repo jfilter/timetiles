@@ -415,24 +415,28 @@ describe.sequential("Performance and Concurrency Tests", () => {
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
 
-      // Execute the job
-      const result = await urlFetchJob.handler({
-        job: { id: "test-job-rate-limit" },
-        req: { payload },
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalogId as any,
-          originalName: "Rate Limit Test",
-          userId: testUser.id,
-        },
-      });
+      const input = {
+        scheduledIngestId: scheduledIngest.id,
+        sourceUrl: scheduledIngest.sourceUrl,
+        authConfig: scheduledIngest.authConfig,
+        catalogId: testCatalogId as any,
+        originalName: "Rate Limit Test",
+        userId: testUser.id,
+      };
 
-      // Should eventually succeed after retries
+      // Scheduled ingests retry between job executions, so each handler call
+      // makes one remote request and advances currentRetries on failure.
+      await expect(
+        urlFetchJob.handler({ job: { id: "test-job-rate-limit-1" }, req: { payload }, input })
+      ).rejects.toThrow("HTTP 429");
+      await expect(
+        urlFetchJob.handler({ job: { id: "test-job-rate-limit-2" }, req: { payload }, input })
+      ).rejects.toThrow("HTTP 429");
+      const result = await urlFetchJob.handler({ job: { id: "test-job-rate-limit-3" }, req: { payload }, input });
+
+      // Should eventually succeed after schedule-level retries
       expect(result.output.ingestFileId).toBeDefined();
-      // Note: attempts not included in output, but request count verifies retries happened
-      expect(requestCount).toBeGreaterThan(2); // Should have made at least 3 requests
+      expect(requestCount).toBe(3);
     });
   });
 

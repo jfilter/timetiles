@@ -158,17 +158,40 @@ const findFirstNonWhitespaceByte = (data: Buffer): number | undefined => {
 /**
  * Helper to validate response and check size limits
  */
+class HttpFetchError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+    this.name = "HttpFetchError";
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 const validateResponse = (
   cachedResponse: { status: number; data: Buffer; headers: Record<string, string> },
   maxSize?: number
 ) => {
   if (cachedResponse.status < 200 || cachedResponse.status >= 300) {
-    throw new Error(`HTTP ${cachedResponse.status}`);
+    throw new HttpFetchError(cachedResponse.status);
   }
 
   if (maxSize && cachedResponse.data.length > maxSize) {
     throw new Error(`File too large: ${cachedResponse.data.length} bytes (max: ${maxSize})`);
   }
+};
+
+const isRetryableHttpStatus = (status: number): boolean =>
+  status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;
+
+const isRetryableFetchError = (error: Error): boolean => {
+  if (error instanceof HttpFetchError) {
+    return isRetryableHttpStatus(error.status);
+  }
+
+  if (error.message.startsWith("File too large:")) {
+    return false;
+  }
+
+  return true;
 };
 
 /**
@@ -275,16 +298,20 @@ export const fetchWithRetry = async (
       return await processFetchResponse(urlFetchCache, sourceUrl, fetchOpts, fetchOptions, attempt);
     } catch (error) {
       lastError = error as Error;
+      const shouldRetry = attempt < attemptCount && isRetryableFetchError(lastError);
       logger.warn(`Fetch attempt ${attempt} failed`, {
         url: sanitizeUrlForLogging(sourceUrl),
         error: lastError.message,
-        nextRetryIn: attempt < attemptCount ? currentDelay : null,
+        retryable: shouldRetry,
+        nextRetryIn: shouldRetry ? currentDelay : null,
       });
 
-      if (attempt < attemptCount) {
-        await new Promise((resolve) => setTimeout(resolve, currentDelay));
-        currentDelay *= backoffMultiplier;
+      if (!shouldRetry) {
+        break;
       }
+
+      await new Promise((resolve) => setTimeout(resolve, currentDelay));
+      currentDelay *= backoffMultiplier;
     }
   }
 

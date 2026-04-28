@@ -8,7 +8,7 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { CollectionConfig, PayloadRequest, Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
@@ -17,6 +17,31 @@ import { createQuotaService } from "@/lib/services/quota-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
+
+type ScraperRepoQuotaRequest = PayloadRequest & { scraperRepoQuotaClaimedForUser?: string | number };
+
+const markScraperRepoQuotaClaimed = (req: PayloadRequest): void => {
+  if (req.user) (req as ScraperRepoQuotaRequest).scraperRepoQuotaClaimedForUser = req.user.id;
+};
+
+const clearScraperRepoQuotaClaim = (req: PayloadRequest): void => {
+  (req as ScraperRepoQuotaRequest).scraperRepoQuotaClaimedForUser = undefined;
+};
+
+const compensateScraperRepoQuotaOnError = async (req: PayloadRequest): Promise<void> => {
+  const marked = req as ScraperRepoQuotaRequest;
+  const userId = marked.scraperRepoQuotaClaimedForUser;
+  if (userId == null) return;
+
+  marked.scraperRepoQuotaClaimedForUser = undefined;
+
+  try {
+    const quotaService = createQuotaService(req.payload);
+    await quotaService.decrementUsage(userId, "SCRAPER_REPOS", 1, req);
+  } catch (error) {
+    logger.error({ userId, error }, "Failed to compensate scraper repo quota after create failure");
+  }
+};
 
 const validateGitRepoUrl = (value: string): string | true => {
   let url: URL;
@@ -158,6 +183,7 @@ const ScraperRepos: CollectionConfig = {
         if (operation === "create" && req.user) {
           const quotaService = createQuotaService(req.payload);
           await quotaService.checkAndIncrementUsage(req.user, "SCRAPER_REPOS", 1, req);
+          markScraperRepoQuotaClaimed(req);
         }
         return data;
       },
@@ -165,6 +191,9 @@ const ScraperRepos: CollectionConfig = {
     afterChange: [
       async ({ doc, previousDoc, operation, req }) => {
         if (req.context?.seed) return doc;
+        if (operation === "create") {
+          clearScraperRepoQuotaClaim(req);
+        }
         // Auto-trigger repo sync on create, or on update when source fields change
         const shouldSync =
           operation === "create" ||
@@ -196,6 +225,11 @@ const ScraperRepos: CollectionConfig = {
             logger.error({ repoId: doc.id, error }, "Failed to decrement scraper repo quota");
           }
         }
+      },
+    ],
+    afterError: [
+      async ({ req }) => {
+        await compensateScraperRepoQuotaOnError(req);
       },
     ],
   },

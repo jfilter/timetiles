@@ -31,7 +31,7 @@ const executionFields: Field[] = [
         defaultValue: 3,
         min: 0,
         max: 10,
-        admin: { description: "Maximum number of retry attempts" },
+        admin: { description: "Maximum failed scheduled runs before disabling this ingest" },
       },
       {
         name: "retryDelayMinutes",

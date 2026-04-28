@@ -79,6 +79,17 @@ describe.sequential("scheduled-ingests quota hooks", () => {
     expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
   });
 
+  it("does not increment ACTIVE_SCHEDULES when skipQuotaChecks context is set", async () => {
+    await afterChangeHook({
+      doc: { enabled: true, createdBy: 1 },
+      operation: "create",
+      req: { user: { id: 1 }, payload: {}, context: { skipQuotaChecks: true } },
+    } as never);
+
+    expect(quotaMocks.mockIncrementUsage).not.toHaveBeenCalled();
+    expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
+  });
+
   it("decrements ACTIVE_SCHEDULES when update disables schedule", async () => {
     await afterChangeHook({
       doc: { enabled: false, createdBy: 1 },
@@ -99,6 +110,15 @@ describe.sequential("scheduled-ingests quota hooks", () => {
 
   it("does not decrement when deleting a disabled schedule", async () => {
     await afterDeleteHook({ doc: { enabled: false, createdBy: 1 }, req: { user: { id: 1 }, payload: {} } } as never);
+
+    expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("does not decrement ACTIVE_SCHEDULES on delete when skipQuotaChecks context is set", async () => {
+    await afterDeleteHook({
+      doc: { enabled: true, createdBy: 1 },
+      req: { user: { id: 1 }, payload: {}, context: { skipQuotaChecks: true } },
+    } as never);
 
     expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
   });

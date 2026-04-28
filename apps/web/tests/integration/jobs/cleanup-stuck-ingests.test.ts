@@ -240,6 +240,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
           workflowSlug: "scheduled-ingest",
           queue: "ingest",
           processing: false,
+          createdAt: fiveHoursAgo.toISOString(),
         } as Record<string, unknown>,
       });
       const orphanedJob2 = await payload.create({
@@ -248,7 +249,8 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
           input: { scheduledIngestId: String(stuckImport.id) },
           workflowSlug: "scheduled-ingest",
           queue: "ingest",
-          processing: true, // simulates stuck mid-processing
+          processing: false,
+          createdAt: fiveHoursAgo.toISOString(),
         } as Record<string, unknown>,
       });
 
@@ -269,6 +271,45 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       expect(job2After.completedAt).toBeTruthy();
       expect(job2After.hasError).toBe(true);
       expect(job2After.processing).toBe(false);
+    });
+
+    it("should not cancel freshly queued workflow jobs for a stuck import", async () => {
+      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
+
+      const stuckImport = await payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          sourceUrl: "https://example.com/fresh-queued-test.csv",
+          enabled: true,
+          scheduleType: "frequency",
+          frequency: "daily",
+          name: "Fresh Queued Workflow Test",
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          lastStatus: "running",
+          lastRun: fiveHoursAgo.toISOString(),
+        },
+      });
+
+      const freshJob = await payload.create({
+        collection: "payload-jobs" as const,
+        data: {
+          input: { scheduledIngestId: String(stuckImport.id) },
+          workflowSlug: "scheduled-ingest",
+          queue: "ingest",
+          processing: false,
+          createdAt: new Date().toISOString(),
+        } as Record<string, unknown>,
+      });
+
+      await cleanupStuckScheduledIngestsJob.handler({
+        req: { payload },
+        job: { id: "cleanup-orphan-fresh", task: "cleanup-stuck-scheduled-ingests" },
+      });
+
+      const jobAfter = await payload.findByID({ collection: "payload-jobs" as const, id: freshJob.id });
+      expect(jobAfter.completedAt).toBeNull();
+      expect(jobAfter.hasError).toBe(false);
     });
 
     it("should not cancel workflow jobs for non-stuck imports", async () => {

@@ -51,21 +51,15 @@ describe.sequential("cacheCleanupJob", () => {
     expect(result.output.results).toEqual({ urlFetchCache: { cleaned: 5, stats: { size: 10 } } });
   });
 
-  it("should return success:false with error message when cleanup throws", async () => {
+  it("should throw when cleanup fails so Payload can retry the job", async () => {
     mockCleanup.mockRejectedValue(new Error("Cache storage unavailable"));
 
-    const result = await cacheCleanupJob.handler(createContext({ force: true }));
-
-    expect(result.output.success).toBe(false);
-    expect(result.output.error).toBe("Cache storage unavailable");
+    await expect(cacheCleanupJob.handler(createContext({ force: true }))).rejects.toThrow("Cache storage unavailable");
   });
 
-  it("should return 'Unknown error' when cleanup throws a non-Error", async () => {
+  it("should rethrow non-Error cleanup failures", async () => {
     mockCleanup.mockRejectedValue("something went wrong");
 
-    const result = await cacheCleanupJob.handler(createContext());
-
-    expect(result.output.success).toBe(false);
-    expect(result.output.error).toBe("Unknown error");
+    await expect(cacheCleanupJob.handler(createContext())).rejects.toBe("something went wrong");
   });
 });

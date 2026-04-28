@@ -64,6 +64,8 @@ type FetchSuccessResult = {
   isDuplicate: boolean;
 };
 
+type UrlFetchQuotaClaim = User["id"] | null;
+
 /**
  * Checks for duplicate content and returns early if found.
  */
@@ -226,15 +228,34 @@ const checkAndTrackQuota = async (
   payload: Payload,
   userId: string | number | User | null | undefined,
   _scheduledImport: ScheduledIngest | null
-): Promise<void> => {
-  if (!userId) return;
+): Promise<UrlFetchQuotaClaim> => {
+  if (!userId) return null;
 
   const user = await loadUser(payload, userId);
-  if (!user) return;
+  if (!user) return null;
 
   // Atomic check+increment prevents TOCTOU race when concurrent jobs run
   const quotaService = createQuotaService(payload);
   await quotaService.checkAndIncrementUsage(user, "URL_FETCHES_PER_DAY", 1);
+  return user.id;
+};
+
+const compensateUrlFetchQuotaOnError = async (
+  payload: Payload,
+  userId: UrlFetchQuotaClaim,
+  sourceUrl: string
+): Promise<void> => {
+  if (userId == null) return;
+
+  try {
+    const quotaService = createQuotaService(payload);
+    await quotaService.decrementUsage(userId, "URL_FETCHES_PER_DAY", 1);
+  } catch (error) {
+    logError(error, "Failed to compensate URL fetch quota after fetch failure", {
+      userId,
+      sourceUrl: sanitizeUrlForLogging(sourceUrl),
+    });
+  }
 };
 
 // Helper to prepare cache options
@@ -273,13 +294,16 @@ const buildFetchOptions = (
   cachingEnabled: boolean
 ): FetchRemoteDataOptions => {
   const advancedOptions = scheduledIngest?.advancedOptions;
+  // Scheduled ingests already use retryConfig.maxRetries at the run level
+  // (currentRetries). Do not multiply that by per-request network retries.
+  const maxRetries = scheduledIngest ? 0 : 3;
 
   return {
     sourceUrl: input.sourceUrl,
     authConfig: scheduledIngest?.authConfig ?? input.authConfig,
     timeout: computeTimeout(scheduledIngest),
     maxSize: advancedOptions?.maxFileSizeMB ? advancedOptions.maxFileSizeMB * 1024 * 1024 : undefined,
-    maxRetries: scheduledIngest?.retryConfig?.maxRetries ?? 3,
+    maxRetries,
     cacheOptions: prepareCacheOptions(scheduledIngest, input.triggeredBy, cachingEnabled),
     jsonApiConfig: advancedOptions?.jsonApiConfig as FetchRemoteDataOptions["jsonApiConfig"],
     excludeFields: Array.isArray(scheduledIngest?.excludeFields)
@@ -368,6 +392,8 @@ export const urlFetchJob = {
       throw new Error("scheduled ingest is disabled or not found");
     }
     const effectiveInput = createEffectiveInput(input, scheduledIngest);
+    let urlFetchQuotaClaim: UrlFetchQuotaClaim = null;
+    let remoteFetchSucceeded = false;
 
     try {
       assertScheduledIngestInputMatches(input, scheduledIngest, context.req.user as User | null | undefined);
@@ -375,7 +401,7 @@ export const urlFetchJob = {
       const resolvedUserId = effectiveInput.userId;
 
       // Check and track quota (handles undefined userId gracefully)
-      await checkAndTrackQuota(payload, resolvedUserId, scheduledIngest);
+      urlFetchQuotaClaim = await checkAndTrackQuota(payload, resolvedUserId, scheduledIngest);
 
       // Check if URL fetch caching is enabled
       const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
@@ -383,6 +409,7 @@ export const urlFetchJob = {
 
       // Fetch + detect file type + convert JSON to CSV (single call)
       const result = await fetchRemoteData(buildFetchOptions(effectiveInput, scheduledIngest, cachingEnabled));
+      remoteFetchSucceeded = true;
 
       logger.info("URL fetch successful", {
         sourceUrl: sanitizeUrlForLogging(effectiveInput.sourceUrl),
@@ -429,6 +456,10 @@ export const urlFetchJob = {
         sourceUrl: sanitizeUrlForLogging(effectiveInput.sourceUrl),
         scheduledIngestId: input.scheduledIngestId,
       });
+
+      if (!remoteFetchSucceeded) {
+        await compensateUrlFetchQuotaOnError(payload, urlFetchQuotaClaim, effectiveInput.sourceUrl);
+      }
 
       if (scheduledIngest && !deferLifecycleUpdates) {
         // JobHandlerContext.req is narrowly typed as { payload, user }, but it

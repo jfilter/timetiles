@@ -44,6 +44,9 @@ const shouldSkipQuotaChecks = (
   !req.user ||
   Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);
 
+const shouldSkipQuotaSideEffects = (req: { context?: Record<string, unknown> }): boolean =>
+  req.context?.skipQuotaChecks === true || req.context?.seed === true;
+
 // Helper to check active schedules quota
 const checkActiveSchedulesQuota = async (
   user: User,
@@ -241,7 +244,7 @@ const ScheduledIngests: CollectionConfig = {
       async ({ doc, operation, req, previousDoc }) => {
         const ownerId = extractRelationId(doc.createdBy);
 
-        if (ownerId) {
+        if (ownerId && !shouldSkipQuotaSideEffects(req)) {
           await trackScheduleQuotaUsage(req, ownerId, operation, doc, previousDoc);
         }
 
@@ -256,7 +259,7 @@ const ScheduledIngests: CollectionConfig = {
       async ({ doc, req }) => {
         // Decrement usage for the schedule owner when deleted
         const ownerId = extractRelationId(doc.createdBy);
-        if (ownerId && doc.enabled) {
+        if (ownerId && doc.enabled && !shouldSkipQuotaSideEffects(req)) {
           const quotaService = createQuotaService(req.payload);
           await quotaService.decrementUsage(ownerId, "ACTIVE_SCHEDULES", 1, req);
         }

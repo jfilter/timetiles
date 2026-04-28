@@ -152,6 +152,11 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
       logger.debug("File size validation passed", { filesize: fileSize, maxSizeMB, trustLevel: user.trustLevel });
     }
 
+    if (req.context?.skipFileUploadQuota) {
+      logger.debug("Skipping file upload count quota for programmatic ingest file");
+      return data;
+    }
+
     // Atomic check-and-increment to prevent TOCTOU race between concurrent uploads.
     // The claim is compensated by afterError hook (or downstream validation catch)
     // if the create fails after this point. See compensateUploadQuotaOnError below.

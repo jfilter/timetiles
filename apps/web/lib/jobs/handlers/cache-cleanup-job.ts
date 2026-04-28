@@ -36,7 +36,7 @@ export const cacheCleanupJob = {
   retries: 2,
   waitUntil: 300000, // 5 minutes timeout
   handler: async (context: JobHandlerContext) => {
-    const input = (context.input ?? context.job?.input) as CacheCleanupJobInput;
+    const input = ((context.input ?? context.job?.input) as CacheCleanupJobInput | undefined) ?? {};
 
     const startTime = Date.now();
     logger.info("Starting cache cleanup job", { force: input.force });
@@ -66,8 +66,7 @@ export const cacheCleanupJob = {
       };
     } catch (error) {
       logError(error, "Cache cleanup job failed");
-
-      return { output: { success: false, error: error instanceof Error ? error.message : "Unknown error" } };
+      throw error;
     }
   },
 };

@@ -8,12 +8,15 @@
  * @module
  * @category Collections
  */
-import type { CollectionBeforeChangeHook, PayloadRequest } from "payload";
+import type { CollectionAfterErrorHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
 
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
+import { logError } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import type { Event } from "@/payload-types";
+
+type EventQuotaRequest = PayloadRequest & { eventQuotaClaimedForUser?: string | number };
 
 /** Check and increment event creation quota for user */
 const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
@@ -21,6 +24,22 @@ const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
 
   const quotaService = createQuotaService(req.payload);
   await quotaService.checkAndIncrementUsage(req.user, "TOTAL_EVENTS", 1, req);
+  (req as EventQuotaRequest).eventQuotaClaimedForUser = req.user.id;
+};
+
+const compensateEventQuotaOnError = async (req: PayloadRequest): Promise<void> => {
+  const marked = req as EventQuotaRequest;
+  const userId = marked.eventQuotaClaimedForUser;
+  if (userId == null) return;
+
+  marked.eventQuotaClaimedForUser = undefined;
+
+  try {
+    const quotaService = createQuotaService(req.payload);
+    await quotaService.decrementUsage(userId, "TOTAL_EVENTS", 1, req);
+  } catch (error) {
+    logError(error, "Failed to compensate TOTAL_EVENTS after event create failure", { userId });
+  }
 };
 
 /**
@@ -52,4 +71,8 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   }
 
   return data;
+};
+
+export const eventsAfterErrorHook: CollectionAfterErrorHook = async ({ req }) => {
+  await compensateEventQuotaOnError(req);
 };

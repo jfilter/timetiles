@@ -53,6 +53,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   describe("Finding Stuck Imports", () => {
@@ -338,6 +339,49 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       expect(mockPayload.update).not.toHaveBeenCalled();
       // stuckCount should be 0 because it was skipped before incrementing
       expect(result.output.resetCount).toBe(0);
+    });
+
+    it("only cancels queued workflow jobs older than the stuck threshold", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-04-28T12:00:00.000Z"));
+
+      const stuckImport = {
+        id: "import-1",
+        name: "Stuck Import",
+        lastStatus: "running",
+        lastRun: "2026-04-28T07:00:00.000Z",
+        executionHistory: [],
+        statistics: {},
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [{ id: "old-workflow-job" }], totalDocs: 1 });
+
+      await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockPayload.find).toHaveBeenNthCalledWith(3, {
+        collection: "payload-jobs",
+        where: {
+          and: [
+            { "input.scheduledIngestId": { equals: "import-1" } },
+            { processing: { equals: false } },
+            { completedAt: { exists: false } },
+            { createdAt: { less_than: "2026-04-28T08:00:00.000Z" } },
+          ],
+        },
+        limit: 50,
+        overrideAccess: true,
+        pagination: false,
+      });
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "payload-jobs",
+        id: "old-workflow-job",
+        data: { completedAt: "2026-04-28T12:00:00.000Z", hasError: true, processing: false },
+        overrideAccess: true,
+      });
     });
   });
 });

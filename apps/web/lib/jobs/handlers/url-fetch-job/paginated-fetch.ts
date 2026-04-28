@@ -61,6 +61,7 @@ export interface PaginationConfig {
 export interface PaginatedFetchOptions {
   authHeaders?: Record<string, string>;
   timeout?: number;
+  maxRetries?: number;
   cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl: boolean };
   /** When set, extract records from HTML embedded in the JSON response instead of treating JSON as structured data. */
   htmlExtractConfig?: HtmlExtractionConfig;
@@ -247,7 +248,8 @@ interface PageFetchConfig {
 /** Fetch a single page and return parsed JSON plus extracted records. */
 const fetchOnePage = async (
   state: { page: number; offset: number; cursor: string },
-  config: PageFetchConfig
+  config: PageFetchConfig,
+  pageTimeout: number | undefined
 ): Promise<{ json: unknown; pageRecords: Record<string, unknown>[] }> => {
   const { baseUrl, isPost, activeBodyTemplate, limitValue, recordsPath, paginationConfig, options } = config;
   const pageUrl = isPost ? baseUrl : buildPageUrl(baseUrl, paginationConfig, state);
@@ -263,7 +265,8 @@ const fetchOnePage = async (
     method: isPost ? "POST" : undefined,
     body: pageBody,
     authHeaders: options.authHeaders,
-    timeout: options.timeout,
+    timeout: pageTimeout,
+    retryConfig: { maxRetries: options.maxRetries ?? 0 },
     cacheOptions,
   });
 
@@ -283,6 +286,19 @@ const advancePaginationState = (
   if (nextCursor) state.cursor = nextCursor;
 };
 
+const getRemainingPaginationTimeout = (startedAt: number, timeout: number | undefined): number | undefined => {
+  if (!timeout || timeout <= 0) {
+    return undefined;
+  }
+
+  const remaining = timeout - (Date.now() - startedAt);
+  if (remaining <= 0) {
+    throw new Error(`Paginated fetch exceeded overall timeout of ${timeout}ms`);
+  }
+
+  return remaining;
+};
+
 export const fetchPaginated = async (
   baseUrl: string,
   paginationConfig: PaginationConfig,
@@ -293,6 +309,7 @@ export const fetchPaginated = async (
   const maxRecords = paginationConfig.maxRecords ?? MAX_TOTAL_RECORDS;
   const allRecords: Record<string, unknown>[] = [];
   let pagesProcessed = 0;
+  const startedAt = Date.now();
 
   const state = { page: 1, offset: 0, cursor: "" };
 
@@ -315,7 +332,8 @@ export const fetchPaginated = async (
   };
 
   while (pagesProcessed < maxPages) {
-    const { json, pageRecords } = await fetchOnePage(state, pageConfig);
+    const pageTimeout = getRemainingPaginationTimeout(startedAt, options.timeout);
+    const { json, pageRecords } = await fetchOnePage(state, pageConfig, pageTimeout);
 
     allRecords.push(...pageRecords);
     pagesProcessed++;

@@ -17,7 +17,12 @@ import type { CollectionConfig } from "payload";
 import { createCommonConfig } from "../shared-fields";
 import { catalogsAccess } from "./access";
 import { catalogFields } from "./fields";
-import { catalogAfterChangeHooks, catalogAfterDeleteHook, catalogBeforeChangeHooks } from "./hooks";
+import {
+  catalogAfterChangeHooks,
+  catalogAfterDeleteHook,
+  catalogAfterErrorHook,
+  catalogBeforeChangeHooks,
+} from "./hooks";
 
 const Catalogs: CollectionConfig = {
   slug: "catalogs",
@@ -29,6 +34,7 @@ const Catalogs: CollectionConfig = {
     beforeChange: catalogBeforeChangeHooks,
     afterChange: catalogAfterChangeHooks,
     afterDelete: [catalogAfterDeleteHook],
+    afterError: [catalogAfterErrorHook],
   },
 };
 
