@@ -89,6 +89,7 @@ services:
 
       # Application
       NODE_ENV: ${NODE_ENV:-production}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
       PORT: ${CONTAINER_PORT:-3000}
 
       # Logging (all containers write to /var/log/timetiles/ via shared volume)
