@@ -255,13 +255,17 @@ jobs:
             -e POSTGRES_USER=timetiles_user \
             -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
             -e POSTGRES_DB=timetiles \
+            -e POSTGRES_PASS="${DB_PASSWORD}" \
+            -e POSTGRES_DBNAME=timetiles \
+            -e ALLOW_IP_RANGE=0.0.0.0/0 \
+            -e FORCE_SSL=false \
             -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
-            postgis/postgis:17-3.5-alpine
+            kartoza/postgis:17-3.5
 
-          echo "==> Waiting for PostgreSQL..."
-          bash .github/scripts/wait-for-health.sh "" postgres 30 2 || true
-          for i in {1..30}; do
-            docker exec postgres pg_isready -U timetiles_user -d timetiles 2>/dev/null && break
+          echo "==> Waiting for PostgreSQL (kartoza first-run init can take >90s)..."
+          bash .github/scripts/wait-for-health.sh "" postgres 60 2 || true
+          for i in {1..60}; do
+            docker exec postgres pg_isready -h localhost -U timetiles_user -d timetiles 2>/dev/null && break
             sleep 2
           done
 
