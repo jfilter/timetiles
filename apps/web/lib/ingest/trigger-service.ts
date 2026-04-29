@@ -29,10 +29,10 @@ export const generateIngestName = (scheduledIngest: ScheduledIngest, currentTime
   const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
 
   return importName
-    .replace("{{name}}", scheduledIngest.name)
-    .replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
-    .replace("{{time}}", timeString)
-    .replace("{{url}}", new URL(scheduledIngest.sourceUrl).hostname);
+    .replaceAll("{{name}}", scheduledIngest.name)
+    .replaceAll("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
+    .replaceAll("{{time}}", timeString)
+    .replaceAll("{{url}}", new URL(scheduledIngest.sourceUrl).hostname);
 };
 
 interface TriggerOptions {

@@ -361,37 +361,63 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      // Create multiple schedules
-      await withScheduledIngest(testEnv, testCatalogId, "https://example.com/success.csv", {
-        user: testUser,
-        name: "Success Import",
-        frequency: "hourly",
+      const { scheduledIngest: firstSuccess } = await withScheduledIngest(
+        testEnv,
+        testCatalogId,
+        "https://example.com/success.csv",
+        { user: testUser, name: "Success Import", frequency: "hourly" }
+      );
+
+      const { scheduledIngest: failedImport } = await withScheduledIngest(
+        testEnv,
+        testCatalogId,
+        "https://example.com/error.csv",
+        { user: testUser, name: "Error Import", frequency: "hourly" }
+      );
+
+      const { scheduledIngest: secondSuccess } = await withScheduledIngest(
+        testEnv,
+        testCatalogId,
+        "https://example.com/success2.csv",
+        { user: testUser, name: "Another Success Import", frequency: "hourly" }
+      );
+
+      let queuedJobId = 1;
+      const queueSpy = vi.spyOn(payload.jobs, "queue").mockImplementation(async (job: any) => {
+        if (String(job.input?.sourceUrl ?? "").includes("/error.csv")) {
+          throw new Error("Queue unavailable for error import");
+        }
+
+        return { id: queuedJobId++ };
       });
 
-      await withScheduledIngest(testEnv, testCatalogId, "https://example.com/error.csv", {
-        user: testUser,
-        name: "Error Import",
-        frequency: "hourly",
-      });
+      try {
+        // Move to next hour
+        vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      await withScheduledIngest(testEnv, testCatalogId, "https://example.com/success2.csv", {
-        user: testUser,
-        name: "Another Success Import",
-        frequency: "hourly",
-      });
+        // Import and run the schedule manager
+        const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
+        const result = await scheduleManagerJob.handler({
+          job: { id: "test-schedule-manager-partial-failure" },
+          req: { payload },
+        });
 
-      // Move to next hour
-      vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
+        expect(result.output).toMatchObject({ success: true, triggered: 2, errors: 1 });
+        expect(queueSpy).toHaveBeenCalledTimes(3);
 
-      // Import and run the schedule manager
-      const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-partial-failure" },
-        req: { payload },
-      });
+        const [firstAfter, failedAfter, secondAfter] = await Promise.all([
+          payload.findByID({ collection: "scheduled-ingests", id: firstSuccess.id }),
+          payload.findByID({ collection: "scheduled-ingests", id: failedImport.id }),
+          payload.findByID({ collection: "scheduled-ingests", id: secondSuccess.id }),
+        ]);
 
-      expect(result.output.success).toBe(true);
-      expect(result.output.triggered).toBeGreaterThanOrEqual(0);
+        expect(firstAfter.lastStatus).toBe("running");
+        expect(secondAfter.lastStatus).toBe("running");
+        expect(failedAfter.lastStatus).toBe("failed");
+        expect(failedAfter.lastError).toContain("Queue unavailable for error import");
+      } finally {
+        queueSpy.mockRestore();
+      }
     });
   });
 
@@ -433,32 +459,46 @@ describe.sequential("Schedule Edge Case Tests", () => {
       const currentTime = new Date("2024-01-01T12:00:00.000Z");
       vi.setSystemTime(currentTime);
 
-      await withScheduledIngest(testEnv, testCatalogId, "https://example.com/template.csv", {
-        user: testUser,
-        name: "Template Test Import",
-        frequency: "hourly",
-        ingestNameTemplate: "{{name}} - {{date}} {{time}} from {{url}}",
-      });
+      const { scheduledIngest } = await withScheduledIngest(
+        testEnv,
+        testCatalogId,
+        "https://example.com/template.csv",
+        {
+          user: testUser,
+          name: "Template Test Import",
+          frequency: "hourly",
+          ingestNameTemplate: "{{name}} - {{date}} {{time}} from {{url}}",
+        }
+      );
 
       // Move to next hour
       vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
-      // Import and run the schedule manager
-      const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-      const result = await scheduleManagerJob.handler({
-        job: { id: "test-schedule-manager-template" },
-        req: { payload },
-      });
+      const queueSpy = vi.spyOn(payload.jobs, "queue");
 
-      // The schedule manager should have processed scheduled ingests
-      expect(result.output.triggered).toBeGreaterThanOrEqual(0);
+      try {
+        // Import and run the schedule manager
+        const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
+        const result = await scheduleManagerJob.handler({
+          job: { id: "test-schedule-manager-template" },
+          req: { payload },
+        });
 
-      // Verify that the job queue system is available
-      expect(payload.jobs).toBeDefined();
-      expect(payload.jobs.queue).toBeDefined();
+        expect(result.output.triggered).toBe(1);
 
-      // In a real system, the job would be queued with the proper name from the template
-      // The actual template expansion happens in the url-fetch job handler
+        const queueCall = queueSpy.mock.calls.find(([queuedJob]) => {
+          const job = queuedJob as { input?: { scheduledIngestId?: string | number }; workflow?: string };
+          const input = job.input as { scheduledIngestId?: string | number } | undefined;
+          return job.workflow === "scheduled-ingest" && String(input?.scheduledIngestId) === String(scheduledIngest.id);
+        });
+        expect(queueCall).toBeDefined();
+
+        const queuedInput = (queueCall![0] as { input?: { originalName?: string } }).input;
+        expect(queuedInput).toBeDefined();
+        expect(queuedInput!.originalName).toBe("Template Test Import - 2024-01-01 13:00:00 from example.com");
+      } finally {
+        queueSpy.mockRestore();
+      }
     });
   });
 });

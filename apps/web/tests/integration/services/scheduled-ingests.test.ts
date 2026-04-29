@@ -972,7 +972,7 @@ describe.sequential("scheduled ingests Integration", () => {
   describe("End-to-End scheduled ingest Flow", () => {
     it("should complete full scheduled ingest flow", { timeout: 30000 }, async () => {
       vi.useFakeTimers();
-      vi.setSystemTime(new Date("2024-01-15 10:00:00"));
+      vi.setSystemTime(new Date("2024-01-15T10:00:00.000Z"));
 
       // Create scheduled ingest with explicit nextRun in the past so
       // the schedule manager triggers it at the current fake time.
@@ -986,8 +986,8 @@ describe.sequential("scheduled ingests Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "cron",
           cronExpression: "0 * * * *", // Hourly
-          lastRun: new Date("2024-01-15 08:00:00"), // 2 hours ago
-          nextRun: new Date("2024-01-15 09:00:00"), // Past due
+          lastRun: new Date("2024-01-15T08:00:00.000Z"), // 2 hours ago
+          nextRun: new Date("2024-01-15T09:00:00.000Z"), // Past due
           ingestNameTemplate: "Products - {{date}} {{time}}",
         },
         user: testUser,
@@ -997,23 +997,51 @@ describe.sequential("scheduled ingests Integration", () => {
       const mockCsvData = "id,name,price\n1,Product A,99.99\n2,Product B,149.99";
       testServer.respondWithCSV("/products.csv", mockCsvData);
 
+      let queuedInput:
+        | {
+            authConfig?: unknown;
+            catalogId?: string;
+            originalName?: string;
+            scheduledIngestId?: string | number;
+            sourceUrl?: string;
+            triggeredBy?: string;
+            userId?: string;
+          }
+        | undefined;
+      const queueSpy = vi.spyOn(payload.jobs, "queue");
+
       // Run schedule manager
-      const scheduleResult = await scheduleManagerJob.handler({ job: { id: "schedule-job" }, req: { payload } });
+      try {
+        const scheduleResult = await scheduleManagerJob.handler({ job: { id: "schedule-job" }, req: { payload } });
 
-      // In shared test environments, other scheduled ingests may also trigger
-      expect(scheduleResult.output.triggered).toBeGreaterThanOrEqual(1);
+        expect(scheduleResult.output.triggered).toBe(1);
 
-      // Since we're mocking payload.jobs.queue, we need to manually run the URL fetch job
-      // to simulate what would happen in production
-      const fetchResult = await urlFetchJob.handler({
-        input: {
+        const queueCall = queueSpy.mock.calls.find(([queuedJob]) => {
+          const job = queuedJob as { input?: { scheduledIngestId?: string | number }; workflow?: string };
+          const input = job.input as { scheduledIngestId?: string | number } | undefined;
+          return job.workflow === "scheduled-ingest" && String(input?.scheduledIngestId) === String(scheduledIngest.id);
+        });
+        expect(queueCall).toBeDefined();
+
+        queuedInput = (queueCall![0] as { input?: typeof queuedInput }).input;
+
+        expect(queuedInput).toMatchObject({
           sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: scheduledIngest.catalog,
-          originalName: "Hourly Import - 2024-01-15 - api.example.com",
-          userId: testUser.id,
+          originalName: "Products - 2024-01-15 10:00:00",
           scheduledIngestId: scheduledIngest.id,
-        },
+          triggeredBy: "schedule",
+        });
+      } finally {
+        queueSpy.mockRestore();
+      }
+
+      if (!queuedInput) {
+        throw new Error("Expected scheduled ingest workflow input to be queued");
+      }
+
+      // Manually run the queued workflow input to simulate the worker picking it up.
+      const fetchResult = await urlFetchJob.handler({
+        input: queuedInput,
         job: { id: "url-fetch-job" },
         req: { payload },
       });

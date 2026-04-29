@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { JOB_TYPES } from "@/lib/constants/ingest-constants";
+import { queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { urlFetchJob } from "@/lib/jobs/handlers/url-fetch-job";
 import type { Catalog, Dataset, ScheduledIngest, User } from "@/payload-types";
 
@@ -616,14 +617,27 @@ describe.sequential("Webhook Import Service Integration", () => {
 
   describe("Import Name Templates", () => {
     it("should generate names from template variables", async () => {
+      const hostname = new URL(testScheduledIngest.sourceUrl).hostname;
       const templates = [
-        { template: "{{name}} - {{date}}", expectedPattern: /Service Import.*\d{4}-\d{2}-\d{2}/ },
-        { template: "{{url}} at {{time}}", expectedPattern: /localhost at \d{2}:\d{2}:\d{2}/ },
-        { template: "Webhook {{date}} from {{url}}", expectedPattern: /Webhook \d{4}-\d{2}-\d{2} from localhost/ },
+        {
+          template: "{{name}} - {{date}}",
+          expectedPattern: new RegExp(`${testScheduledIngest.name} - \\d{4}-\\d{2}-\\d{2}`),
+        },
+        { template: "{{url}} at {{time}}", expectedPattern: new RegExp(`${hostname} at \\d{2}:\\d{2}:\\d{2}`) },
+        {
+          template: "Webhook {{date}} from {{url}}",
+          expectedPattern: new RegExp(`Webhook \\d{4}-\\d{2}-\\d{2} from ${hostname}`),
+        },
+        {
+          template: "{{name}}/{{name}} from {{url}}/{{url}}",
+          expectedPattern: new RegExp(
+            `${testScheduledIngest.name}/${testScheduledIngest.name} from ${hostname}/${hostname}`
+          ),
+        },
       ];
 
       for (const { template, expectedPattern } of templates) {
-        await payload.update({
+        const updatedScheduledIngest = await payload.update({
           collection: "scheduled-ingests",
           id: testScheduledIngest.id,
           data: {
@@ -632,74 +646,27 @@ describe.sequential("Webhook Import Service Integration", () => {
           },
         });
 
-        // Generate name from template
-        const currentTime = new Date();
-        let importName = template;
-        importName = importName.replace("{{name}}", testScheduledIngest.name ?? "");
-        importName = importName.replace("{{date}}", currentTime.toISOString().split("T")[0] ?? "");
-        importName = importName.replace("{{time}}", currentTime.toTimeString().split(" ")[0] ?? "");
-        // Use the actual test server URL
-        const actualUrl = `http://localhost:${testServerPort}/test-data.csv`;
-        importName = importName.replace("{{url}}", new URL(actualUrl).hostname);
+        const { jobId } = await queueWebhookImport(payload, updatedScheduledIngest);
+        const queuedJob = await payload.findByID({ collection: "payload-jobs", id: jobId });
+        const queuedInput = queuedJob.input as { originalName?: string; triggeredBy?: string };
 
-        const result = await urlFetchJob.handler({
-          req: { payload },
-          job: {
-            id: `job-template-${Date.now()}`,
-            task: JOB_TYPES.URL_FETCH,
-            input: {
-              scheduledIngestId: testScheduledIngest.id,
-              sourceUrl: testScheduledIngest.sourceUrl,
-              catalogId: testCatalog.id,
-              originalName: importName, // Use the generated name from template
-              userId: testUser.id,
-              triggeredBy: "webhook",
-            },
-          },
-        });
-
-        if (!("ingestFileId" in result.output)) {
-          throw new Error("Expected successful result with ingestFileId");
-        }
-        const ingestFile = await payload.findByID({ collection: "ingest-files", id: result.output.ingestFileId });
-
-        expect(ingestFile.originalName).toMatch(expectedPattern);
+        expect(queuedInput.originalName).toMatch(expectedPattern);
+        expect(queuedInput.triggeredBy).toBe("webhook");
       }
     });
 
     it("should handle missing template gracefully", async () => {
-      await payload.update({
+      const updatedScheduledIngest = await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
         data: { ingestNameTemplate: null },
       });
 
-      const defaultName = `${testScheduledIngest.name} - ${new Date().toISOString().split("T")[0]}`;
+      const { jobId } = await queueWebhookImport(payload, updatedScheduledIngest);
+      const queuedJob = await payload.findByID({ collection: "payload-jobs", id: jobId });
+      const queuedInput = queuedJob.input as { originalName?: string };
 
-      const result = await urlFetchJob.handler({
-        req: { payload },
-        job: {
-          id: `job-notemplate-${Date.now()}`,
-          task: JOB_TYPES.URL_FETCH,
-          input: {
-            scheduledIngestId: testScheduledIngest.id,
-            sourceUrl: testScheduledIngest.sourceUrl,
-            catalogId: testCatalog.id,
-            originalName: defaultName,
-            userId: testUser.id,
-            triggeredBy: "webhook",
-          },
-        },
-      });
-
-      // Check if successful and has ingestFileId
-      if (!("ingestFileId" in result.output)) {
-        throw new Error("Expected successful result with ingestFileId");
-      }
-
-      const ingestFile = await payload.findByID({ collection: "ingest-files", id: result.output.ingestFileId });
-
-      expect(ingestFile.originalName).toBe(defaultName);
+      expect(queuedInput.originalName).toMatch(new RegExp(`${testScheduledIngest.name} - \\d{4}-\\d{2}-\\d{2}`));
     });
   });
 

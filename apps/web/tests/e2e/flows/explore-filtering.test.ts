@@ -9,8 +9,39 @@
  * @module
  * @category E2E Tests
  */
+import type { Page, Response } from "@playwright/test";
+
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
+
+const waitForEventsListResponse = (page: Page, expectedParams: Record<string, string>) =>
+  page.waitForResponse(
+    (response) => {
+      if (response.request().method() !== "GET") return false;
+
+      const url = new URL(response.url());
+      return (
+        url.pathname === "/api/v1/events" &&
+        Object.entries(expectedParams).every(([key, value]) => url.searchParams.get(key) === value)
+      );
+    },
+    { timeout: 15000 }
+  );
+
+const expectEventsWithinDateRange = async (response: Response, startDate: string, endDate: string) => {
+  expect(response.status()).toBe(200);
+
+  const body = (await response.json()) as { events?: Array<{ eventTimestamp?: string | null }> };
+  const start = new Date(`${startDate}T00:00:00.000Z`).getTime();
+  const end = new Date(`${endDate}T23:59:59.999Z`).getTime();
+
+  for (const event of body.events ?? []) {
+    expect(event.eventTimestamp).toBeTruthy();
+    const timestamp = new Date(event.eventTimestamp!).getTime();
+    expect(timestamp).toBeGreaterThanOrEqual(start);
+    expect(timestamp).toBeLessThanOrEqual(end);
+  }
+};
 
 test.describe("Explore Page - Filtering", () => {
   let explorePage: ExplorePage;
@@ -73,11 +104,14 @@ test.describe("Explore Page - Filtering", () => {
     expect(ids.length).toBe(2);
   });
 
-  test("should filter by date range", async () => {
+  test("should filter by date range", async ({ page }) => {
     await explorePage.toggleDataset("Air Quality Measurements");
+
+    const filteredResponsePromise = waitForEventsListResponse(page, { startDate: "2024-01-01", endDate: "2024-12-31" });
 
     await explorePage.setStartDate("2024-01-01");
     await explorePage.setEndDate("2024-12-31");
+    const filteredResponse = await filteredResponsePromise;
 
     await explorePage.page.waitForFunction(
       () => {
@@ -92,6 +126,7 @@ test.describe("Explore Page - Filtering", () => {
 
     await explorePage.assertUrlParam("startDate", "2024-01-01");
     await explorePage.assertUrlParam("endDate", "2024-12-31");
+    await expectEventsWithinDateRange(filteredResponse, "2024-01-01", "2024-12-31");
   });
 
   test("should clear date filters", async () => {
@@ -133,40 +168,53 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
-    const initialCount = await explorePage.getEventCount();
+    const initialParams = await explorePage.getUrlParams();
+    const initialIds = initialParams.get("datasets")?.split(",") ?? [];
+    expect(initialIds).toHaveLength(1);
 
     // Deselect it
     await explorePage.toggleDataset("Air Quality Measurements");
     await explorePage.waitForApiResponse();
 
     // Select a different dataset from a different catalog
+    const changedDatasetResponsePromise = explorePage.page.waitForResponse(
+      (response) => {
+        if (response.request().method() !== "GET") return false;
+
+        const url = new URL(response.url());
+        const datasets = url.searchParams.get("datasets");
+        return url.pathname === "/api/v1/events" && datasets != null && datasets !== initialIds[0];
+      },
+      { timeout: 15000 }
+    );
+
     await explorePage.toggleDataset("GDP Growth Rates");
-    await explorePage.waitForApiResponse();
+    const changedDatasetResponse = await changedDatasetResponsePromise;
+    expect(changedDatasetResponse.status()).toBe(200);
     await explorePage.waitForEventsToLoad();
-    const newCount = await explorePage.getEventCount();
 
     // Counts may differ — but the assertion is the URL state changed correctly
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
     const ids = params.get("datasets")?.split(",") ?? [];
     expect(ids.length).toBe(1);
-
-    // Log for diagnostic clarity
-    console.log(`initial=${initialCount} new=${newCount}`);
+    expect(ids).not.toEqual(initialIds);
   });
 
-  test("should handle edge cases in date filtering", async () => {
+  test("should handle edge cases in date filtering", async ({ page }) => {
     await explorePage.toggleDataset("Air Quality Measurements");
 
     // Single-month date range
+    const julyResponsePromise = waitForEventsListResponse(page, { startDate: "2024-07-01", endDate: "2024-07-31" });
+
     await explorePage.setStartDate("2024-07-01");
     await explorePage.setEndDate("2024-07-31");
+    const julyResponse = await julyResponsePromise;
 
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    const count = await explorePage.getEventCount();
-    expect(count).toBeGreaterThanOrEqual(0);
+    await expectEventsWithinDateRange(julyResponse, "2024-07-01", "2024-07-31");
   });
 
   test("should preserve filters when navigating", async () => {

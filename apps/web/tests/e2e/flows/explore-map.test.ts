@@ -94,26 +94,21 @@ test.describe("Explore Page - Map Interactions", () => {
     expect(mapBox!.height).toBeGreaterThan(0);
   });
 
-  test("should display map popups when clicking markers", async ({ page }) => {
+  test("should handle rendered map feature clicks", async ({ page }) => {
     // Load events
     await explorePage.selectAllInCatalog("Environmental Data");
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Check if there are any markers
-    const markerCount = await page.locator(".maplibregl-marker").count();
+    const clickedFeature = await explorePage.clickFirstRenderedMapFeature();
 
-    if (markerCount > 0) {
-      // Click on first marker
-      await explorePage.clickMapMarker(0);
-
-      // Wait for popup to appear
-      await expect(page.locator(".maplibregl-popup")).toBeVisible({ timeout: 5000 });
-
-      // Popup should contain some content
-      const popupContent = await explorePage.getPopupContent();
-      expect(popupContent).not.toBeNull();
-      expect(popupContent!.length).toBeGreaterThan(0);
+    if (clickedFeature.type === "event-cluster") {
+      await expect(page.getByRole("button", { name: /show only these events/i })).toBeVisible({ timeout: 5000 });
+      await expect(page.getByRole("button", { name: /zoom into area/i })).toBeVisible();
+    } else if (clickedFeature.type === "event-location" && clickedFeature.count === 1) {
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 10000 });
+    } else {
+      await expect(page.getByText(/filtered to cluster/i)).toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -154,9 +149,9 @@ test.describe("Explore Page - Map Interactions", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    // Get the event count for logging
+    // The seeded catalog should produce a real result set, not only a non-crashing map.
     const eventCount = await explorePage.getEventCount();
-    console.log(`Loaded ${eventCount} events`);
+    expect(eventCount).toBeGreaterThan(0);
 
     // Map should still be visible and interactive after loading events
     await expect(explorePage.map).toBeVisible();

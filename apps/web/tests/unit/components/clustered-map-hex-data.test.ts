@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { buildHoverFetchParams } from "@/components/maps/clustered-map-hex-data";
+import { buildHoverFetchParams, resolveParentCells } from "@/components/maps/clustered-map-hex-data";
 
 describe("buildHoverFetchParams", () => {
   it("copies supported filter params and hover metadata", () => {
@@ -46,5 +46,29 @@ describe("buildHoverFetchParams", () => {
     expect(params.has("bounds")).toBe(false);
     expect(params.get("zoom")).toBe("4");
     expect(params.get("targetClusters")).toBe("100");
+  });
+});
+
+describe("resolveParentCells", () => {
+  it("accepts arrays and JSON arrays while ignoring invalid cell entries", () => {
+    expect(resolveParentCells(["8928308280fffff", "", 12, "8928308280bffff"], "")).toEqual([
+      "8928308280fffff",
+      "8928308280bffff",
+    ]);
+    expect(resolveParentCells('["8928308280fffff",null,"8928308280bffff"]', "")).toEqual([
+      "8928308280fffff",
+      "8928308280bffff",
+    ]);
+  });
+
+  it("does not treat malformed JSON or non-array JSON as source cells", () => {
+    expect(resolveParentCells("{bad json", "")).toEqual([]);
+    expect(resolveParentCells('"8928308280fffff"', "")).toEqual([]);
+    expect(resolveParentCells('{"cell":"8928308280fffff"}', "")).toEqual([]);
+  });
+
+  it("falls back to a valid H3 cluster ID when no source cells are present", () => {
+    expect(resolveParentCells(undefined, "8928308280fffff")).toEqual(["8928308280fffff"]);
+    expect(resolveParentCells(undefined, "not-a-cell")).toEqual([]);
   });
 });

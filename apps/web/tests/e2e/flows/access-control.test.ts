@@ -118,9 +118,8 @@ test.describe("Access Control - User Perspective", () => {
       // Should have at least one catalog visible
       expect(catalogs.length).toBeGreaterThan(0);
 
-      // Note: Without authentication, only public catalogs should be visible
-      // The exact number depends on seeded data
-      console.log("Available catalogs for unauthenticated user:", catalogs);
+      // Note: Without authentication, only public catalogs should be visible.
+      expect(catalogs).toContain("Environmental Data");
     });
 
     test("should hide private catalogs and their datasets from unauthenticated users", async () => {
@@ -146,18 +145,28 @@ test.describe("Access Control - User Perspective", () => {
       expect([401, 403]).toContain(response.status());
     });
 
-    test("should return proper error when accessing private catalog via API", async ({ request }) => {
-      // First, we need to know a private catalog ID
-      // This test assumes we have seeded a private catalog
-      // We'll try to access events from a catalog that doesn't exist or is private
+    test("should return proper error when accessing a real private catalog via API", async ({
+      request,
+      playwright,
+      baseURL,
+    }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
 
-      // Try to access with an ID that likely doesn't exist or is private
-      const response = await request.get("/api/catalogs/999999", {
-        timeout: 10000, // Increase timeout to handle server resource constraints
-      });
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
 
-      // Should return 403 (forbidden) or 404 (not found)
-      expect([403, 404]).toContain(response.status());
+        const response = await request.get(`/api/catalogs/${privateCatalog.id}`, {
+          timeout: 10000, // Increase timeout to handle server resource constraints
+        });
+
+        // 404 is acceptable for access-hidden records, but this record exists.
+        expect([403, 404]).toContain(response.status());
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
+      }
     });
 
     test("should not display admin navigation elements", async ({ page }) => {
@@ -266,20 +275,56 @@ test.describe("Access Control - User Perspective", () => {
       expect([401, 403]).toContain(createResponse.status());
     });
 
-    test("should block update operations without authentication", async ({ request }) => {
-      // Try to update a catalog without authentication
-      const updateResponse = await request.patch("/api/catalogs/1", { data: { name: "Hacked Catalog Name" } });
+    test("should block update operations without authentication", async ({ request, playwright, baseURL }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
 
-      // Should be unauthorized
-      expect([401, 403, 404]).toContain(updateResponse.status());
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
+
+        const updateResponse = await request.patch(`/api/catalogs/${privateCatalog.id}`, {
+          data: { name: "Hacked Catalog Name" },
+        });
+
+        // 404 is acceptable if the API hides inaccessible records, but the
+        // admin follow-up below proves the record existed and stayed unchanged.
+        expect([401, 403, 404]).toContain(updateResponse.status());
+
+        const verifyResponse = await admin.api.get(`/api/catalogs/${privateCatalog.id}`, {
+          headers: admin.authHeaders,
+        });
+        expect(verifyResponse.status()).toBe(200);
+        const verifyBody = (await verifyResponse.json()) as ApiDoc;
+        expect(verifyBody.name).toBe(privateCatalog.name);
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
+      }
     });
 
-    test("should block delete operations without authentication", async ({ request }) => {
-      // Try to delete a catalog without authentication
-      const deleteResponse = await request.delete("/api/catalogs/1");
+    test("should block delete operations without authentication", async ({ request, playwright, baseURL }) => {
+      const suffix = `${Date.now()}-${test.info().parallelIndex}`;
+      const admin = await createAdminApi(playwright, baseURL);
+      let privateCatalog: { id: number | string; name: string } | undefined;
 
-      // Should be unauthorized
-      expect([401, 403, 404]).toContain(deleteResponse.status());
+      try {
+        privateCatalog = await createPrivateCatalog(admin.api, admin.authHeaders, suffix);
+
+        const deleteResponse = await request.delete(`/api/catalogs/${privateCatalog.id}`);
+
+        // 404 is acceptable if the API hides inaccessible records, but the
+        // admin follow-up below proves the record was not deleted.
+        expect([401, 403, 404]).toContain(deleteResponse.status());
+
+        const verifyResponse = await admin.api.get(`/api/catalogs/${privateCatalog.id}`, {
+          headers: admin.authHeaders,
+        });
+        expect(verifyResponse.status()).toBe(200);
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/catalogs", privateCatalog);
+        await admin.api.dispose();
+      }
     });
   });
 
@@ -342,10 +387,7 @@ test.describe("Access Control - User Perspective", () => {
       // Check that only appropriate catalogs are shown (new UI uses buttons)
       const catalogs = await explorePage.getAvailableCatalogs();
 
-      // Should have at least one catalog visible
-      expect(catalogs.length).toBeGreaterThanOrEqual(1);
-
-      console.log(`Visible catalogs in UI: ${catalogs.length}`, catalogs);
+      expect(catalogs).toContain("Environmental Data");
     });
 
     test("should show appropriate dataset count", async ({ page }) => {
@@ -356,13 +398,12 @@ test.describe("Access Control - User Perspective", () => {
       const datasetsSection = page.locator("text=Datasets").first();
       await expect(datasetsSection).toBeVisible();
 
-      // Count accessible datasets (each dataset has a checkbox)
-      const datasetCheckboxes = await page.locator('[role="checkbox"]').count();
+      await explorePage.expandAllCatalogs();
+      const datasets = await explorePage.getAvailableDatasets();
 
-      console.log(`Visible dataset checkboxes in UI: ${datasetCheckboxes}`);
-
-      // Should be 0 or more depending on seeded data
-      expect(datasetCheckboxes).toBeGreaterThanOrEqual(0);
+      expect(datasets).toEqual(
+        expect.arrayContaining(["Air Quality Measurements", "Water Quality Assessments", "Climate Station Data"])
+      );
     });
 
     test("should handle empty state when no public data exists", async ({ page }) => {
@@ -372,16 +413,17 @@ test.describe("Access Control - User Perspective", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            docs: [],
-            totalDocs: 0,
-            limit: 1000,
-            page: 1,
-            totalPages: 0,
-            pagingCounter: 1,
-            hasPrevPage: false,
-            hasNextPage: false,
-            prevPage: null,
-            nextPage: null,
+            events: [],
+            pagination: {
+              totalDocs: 0,
+              limit: 1000,
+              page: 1,
+              totalPages: 0,
+              hasPrevPage: false,
+              hasNextPage: false,
+              prevPage: null,
+              nextPage: null,
+            },
           }),
         });
       });
@@ -400,12 +442,6 @@ test.describe("Access Control - User Perspective", () => {
 
       // Check for security headers (these might vary based on Next.js config)
       const headers = response.headers();
-
-      console.log("Security headers:", {
-        "x-frame-options": headers["x-frame-options"],
-        "x-content-type-options": headers["x-content-type-options"],
-        "content-type": headers["content-type"],
-      });
 
       // Content-Type should be JSON
       expect(headers["content-type"]).toContain("application/json");
@@ -434,7 +470,6 @@ test.describe("Access Control - Error Handling", () => {
     await page.locator('input[type="email"]').first().waitFor({ timeout: 5000 });
 
     const url = page.url();
-    console.log("Redirect URL after admin access attempt:", url);
 
     // Should be on login page (accepts /login, /auth, or /dashboard/login)
     const isOnLogin = url.includes("/login") || url.includes("/auth");

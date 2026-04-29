@@ -16,6 +16,7 @@ import type { MapRef } from "react-map-gl/maplibre";
 import { useUIStore } from "@/lib/store";
 
 import { getValidCoordinates } from "./clustered-map-helpers";
+import { resolveParentCells } from "./clustered-map-hex-data";
 
 export interface PopupInfo {
   longitude: number;
@@ -48,21 +49,16 @@ export const useMapInteractions = ({
   const closePopup = useCallback(() => setPopupInfo(null), []);
 
   const handleClusterClick = useCallback(
-    (feature: GeoJSON.Feature) => {
-      const coordinates = getValidCoordinates(feature);
+    (feature: GeoJSON.Feature, fallbackCoordinates?: [number, number]) => {
+      const coordinates = getValidCoordinates(feature) ?? fallbackCoordinates;
       if (!coordinates) return;
 
       const clusterId = String(feature.properties?.clusterId ?? feature.id ?? "");
       const count = Number(feature.properties?.count ?? 1);
 
-      // Parse sourceCells from feature properties (MapLibre serializes as JSON string)
       const rawSourceCells = feature.properties?.sourceCells;
-      let sourceCells: string[] | null = null;
-      if (typeof rawSourceCells === "string") {
-        sourceCells = JSON.parse(rawSourceCells) as string[];
-      } else if (Array.isArray(rawSourceCells)) {
-        sourceCells = rawSourceCells as string[];
-      }
+      const resolvedSourceCells = resolveParentCells(rawSourceCells, clusterId);
+      const sourceCells = resolvedSourceCells.length > 0 ? resolvedSourceCells : null;
 
       const h3Resolution = Math.min(15, Math.max(2, Math.round(zoom * h3ResolutionScale)));
 
@@ -132,7 +128,7 @@ export const useMapInteractions = ({
         return;
       }
       const { type } = feature.properties ?? {};
-      if (type === "event-cluster") handleClusterClick(feature);
+      if (type === "event-cluster") handleClusterClick(feature, [event.lngLat.lng, event.lngLat.lat]);
       else if (type === "event-location") handleLocationClick(feature);
     },
     [handleClusterClick, handleLocationClick, clearFocusedCluster]

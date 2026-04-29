@@ -11,6 +11,7 @@ import {
   getNextFrequencyExecution,
   shouldRunNow,
 } from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
+import { generateIngestName } from "@/lib/ingest/trigger-service";
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies
@@ -569,6 +570,21 @@ describe.sequential("scheduleManagerJob", () => {
           ),
         }),
       });
+    });
+
+    it("should replace every occurrence of each import name template variable", () => {
+      const name = generateIngestName(
+        {
+          name: "Repeat Import",
+          sourceUrl: "https://api.example.com/data.csv",
+          ingestNameTemplate: "{{name}}/{{name}} {{date}} {{date}} {{time}} {{time}} {{url}} {{url}}",
+        } as any,
+        new Date("2024-01-15T14:30:45.000Z")
+      );
+
+      expect(name).toBe(
+        "Repeat Import/Repeat Import 2024-01-15 2024-01-15 14:30:45 14:30:45 api.example.com api.example.com"
+      );
     });
 
     it("should handle feature flag disabled", async () => {

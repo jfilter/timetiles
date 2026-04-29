@@ -44,11 +44,7 @@ export class ExplorePage {
       .filter({ hasText: /Showing .* event/ })
       .first();
     this.loadingIndicator = page.getByText("Loading...").first();
-    // New UI shows "Showing all 0 events" or "Showing 0 of X events" when no events match
-    this.noEventsMessage = page
-      .locator("p")
-      .filter({ hasText: /Showing (?:all )?0|No events/ })
-      .first();
+    this.noEventsMessage = page.getByText(/No events found|Keine Ereignisse gefunden/i).first();
     this.noDatasetsMessage = page.getByText(/No data(sets)? available/).first();
   }
 
@@ -450,9 +446,6 @@ export class ExplorePage {
     // Remove commas from number (e.g., "1,245" -> "1245")
     const count = Number.parseInt(matches[1].replaceAll(",", ""), 10);
 
-    // Debug logging to help understand what's happening
-    console.log(`getEventCount: text="${text}", count=${count}`);
-
     return count;
   }
 
@@ -463,6 +456,76 @@ export class ExplorePage {
   async clickMapMarker(markerIndex: number) {
     const markers = this.page.locator(".maplibregl-marker");
     await markers.nth(markerIndex).click();
+  }
+
+  async clickFirstRenderedMapFeature(): Promise<{ type: string; count: number; eventId: number | null }> {
+    const feature = await this.page.waitForFunction(
+      () => {
+        const map = (
+          globalThis as typeof globalThis & {
+            __TIMETILES_E2E_MAP__?: {
+              getCanvas: () => HTMLCanvasElement;
+              queryRenderedFeatures: (
+                point: { x: number; y: number },
+                options: { layers: string[] }
+              ) => Array<{ geometry?: { type?: string; coordinates?: unknown }; properties?: Record<string, unknown> }>;
+              isMoving?: () => boolean;
+              project: (coordinates: [number, number]) => { x: number; y: number };
+            };
+          }
+        ).__TIMETILES_E2E_MAP__;
+
+        if (!map) return null;
+
+        const canvas = map.getCanvas();
+        const width = canvas.clientWidth;
+        const height = canvas.clientHeight;
+        if (width <= 0 || height <= 0) return null;
+        if (map.isMoving?.()) return null;
+
+        const layers = ["event-locations", "location-count-label", "event-clusters", "cluster-count-label"];
+        const columns = 12;
+        const rows = 8;
+        for (let row = 1; row < rows; row++) {
+          for (let column = 1; column < columns; column++) {
+            const point = { x: Math.round((width * column) / columns), y: Math.round((height * row) / rows) };
+            const [renderedFeature] = map.queryRenderedFeatures(point, { layers });
+            if (!renderedFeature?.properties) continue;
+
+            const { type, count, eventId } = renderedFeature.properties;
+            const projected =
+              renderedFeature.geometry?.type === "Point" && Array.isArray(renderedFeature.geometry.coordinates)
+                ? map.project(renderedFeature.geometry.coordinates as [number, number])
+                : point;
+            return {
+              x: Math.round(projected.x),
+              y: Math.round(projected.y),
+              type: typeof type === "string" ? type : "",
+              count: Number(count ?? 1),
+              eventId: eventId == null ? null : Number(eventId),
+            };
+          }
+        }
+
+        return null;
+      },
+      { timeout: 15000 }
+    );
+
+    const featureData = (await feature.jsonValue()) as {
+      x: number;
+      y: number;
+      type: string;
+      count: number;
+      eventId: number | null;
+    } | null;
+    if (!featureData) throw new Error("No rendered map feature found");
+
+    await this.page
+      .locator(".maplibregl-canvas")
+      .first()
+      .click({ force: true, position: { x: featureData.x, y: featureData.y } });
+    return { type: featureData.type, count: featureData.count, eventId: featureData.eventId };
   }
 
   async getPopupContent(): Promise<string | null> {

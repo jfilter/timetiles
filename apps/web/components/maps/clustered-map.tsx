@@ -81,6 +81,15 @@ export interface ClusteredMapHandle {
   fitBounds: (bounds: SimpleBounds, options?: { padding?: number; animate?: boolean }) => void;
 }
 
+type MapDiagnosticsGlobal = typeof globalThis & { __TIMETILES_E2E_MAP__?: MapRef };
+
+const exposeMapForLocalDiagnostics = (map: MapRef): void => {
+  const host = globalThis.location?.hostname;
+  if (host !== "localhost" && host !== "127.0.0.1") return;
+
+  (globalThis as MapDiagnosticsGlobal).__TIMETILES_E2E_MAP__ = map;
+};
+
 // ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
@@ -136,6 +145,10 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       mapRef,
       setCurrentZoom,
     });
+    const handleLoadWithDiagnostics: typeof handleLoad = (event) => {
+      handleLoad(event);
+      exposeMapForLocalDiagnostics(event.target as MapRef);
+    };
     const { hoverHexData, handleH3Hover, handleH3HoverLeave } = useH3Hover({
       algorithm,
       currentZoom,
@@ -206,7 +219,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
         clusterSummary={clusterSummary}
         clusterSummaryLoading={clusterSummaryLoading}
         onMoveEnd={handleMoveEnd}
-        onLoad={handleLoad}
+        onLoad={handleLoadWithDiagnostics}
         onClick={handleClick}
         onDblClick={handleDblClick}
         onMouseEnter={handleH3Hover}

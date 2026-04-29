@@ -37,8 +37,13 @@ export const INITIAL_VIEW_STATE = { longitude: 13.4125, latitude: 52.5219, zoom:
 /** CSS style for the map component */
 export const MAP_COMPONENT_STYLE = { width: "100%", height: "100%", minHeight: "400px" };
 
-/** Layer IDs that respond to click events */
-export const INTERACTIVE_LAYER_IDS = ["event-clusters", "event-locations", "cluster-count-label"];
+/** Layer IDs that respond to pointer interactions. */
+export const INTERACTIVE_LAYER_IDS = [
+  "event-clusters",
+  "event-locations",
+  "cluster-count-label",
+  "location-count-label",
+];
 
 /**
  * Build location marker layer — same gradient style as clusters but for

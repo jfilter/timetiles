@@ -19,6 +19,9 @@ type HoverFilterSearchParams = Pick<URLSearchParams, "get">;
 /** Stable empty feature collection — reuse for memoization-friendly empty returns. */
 export const EMPTY_FEATURE_COLLECTION: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
+const toCellList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((cell): cell is string => typeof cell === "string" && cell.length > 0) : [];
+
 /**
  * Resolve parent cells from a cluster feature's sourceCells property.
  * Handles both JSON-encoded strings and arrays, with fallback to the cluster ID.
@@ -27,12 +30,12 @@ export const resolveParentCells = (rawSourceCells: unknown, clusterId: string): 
   let parentCells: string[] = [];
   if (typeof rawSourceCells === "string") {
     try {
-      parentCells = JSON.parse(rawSourceCells) as string[];
+      parentCells = toCellList(JSON.parse(rawSourceCells) as unknown);
     } catch {
       /* use default */
     }
   } else if (Array.isArray(rawSourceCells)) {
-    parentCells = rawSourceCells as string[];
+    parentCells = toCellList(rawSourceCells);
   }
   if (parentCells.length === 0 && clusterId.length > 5) {
     try {
