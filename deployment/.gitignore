@@ -1,0 +1,24 @@
+# Operator state on production hosts. The install dir is a symlink into a
+# real working tree, so `git status` here would otherwise list every secret
+# and runtime artifact as untracked — and tempt someone to commit them.
+#
+# Keep in sync with the matching entries in the repo-root .gitignore.
+
+.env.production
+.env.production.local
+.env.production.overrides
+.env.production.pre-test-backup
+docker-compose.override.yml
+docker-compose.test.yml
+docker-compose.ssl-override.yml
+credentials.txt
+
+# Runtime + scraper extract dirs created by bootstrap/CLI.
+backups/
+uploads/
+ssl/
+data/
+logs/
+nginx-test/
+scraper-runner/
+config/timetiles.yml

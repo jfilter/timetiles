@@ -29,17 +29,30 @@ timetiles check      # full verification
 
 ## Directory Structure
 
-After installation:
+After installation, the bootstrap places a real git working tree at
+`/opt/timetiles-src/` (sparse-checkout: `deployment/`) and points
+`/opt/timetiles` at it via a symlink. `timetiles update` then refreshes
+tracked files with a plain `git pull`; operator state is `.gitignore`d
+inside `deployment/` so it survives the pull.
 
 ```
-/opt/timetiles/
-├── timetiles                    # CLI script
-├── docker-compose.prod.yml      # Service definitions
-├── .env.production              # Configuration (created by setup)
-├── nginx/                       # Nginx configs
-├── backups/                     # Backup files
-└── credentials.txt              # Generated credentials
+/opt/timetiles-src/                    # Real git working tree
+├── .git/
+└── deployment/
+    ├── timetiles                      # CLI script (tracked)
+    ├── docker-compose.prod.yml        # Service definitions (tracked)
+    ├── nginx/, allinone/, …           # Other tracked deployment files
+    ├── .env.production                # Operator state (.gitignored)
+    ├── docker-compose.override.yml    # Operator override (.gitignored)
+    ├── backups/, uploads/, logs/, …   # Runtime state (.gitignored)
+    └── credentials.txt                # Generated credentials (.gitignored)
+
+/opt/timetiles -> /opt/timetiles-src/deployment       # compat symlink
 ```
+
+If you bootstrapped before this layout existed (flat copy in
+`/opt/timetiles/`, no `.git`), convert in place by running
+`deployment/scripts/migrate-to-source-layout.sh` once on the host.
 
 ## Configuration Files
 

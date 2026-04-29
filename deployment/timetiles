@@ -1128,10 +1128,33 @@ EOF
             fi
         fi
 
-        # Pull latest deployment files if this is a git-based install
-        if git rev-parse --git-dir &>/dev/null 2>&1; then
-            git pull origin main
+        # Refresh tracked deployment files (compose, nginx, init-db, CLI itself).
+        # The install dir is a symlink into a real working tree under .../-src,
+        # set up by the bootstrap (or by deployment/scripts/migrate-to-source-layout.sh
+        # for hosts installed before that change).
+        REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+        if [ -d "$REPO_ROOT/.git" ]; then
+            REPO_BRANCH="${TIMETILES_REPO_BRANCH:-main}"
+            echo -e "${YELLOW}Pulling latest deployment files (${REPO_BRANCH})...${NC}"
+            # fetch + reset --hard converges to remote even if a tracked file was
+            # locally edited; operator state lives in .gitignored files and is
+            # untouched.
+            git -C "$REPO_ROOT" fetch --depth 1 origin "$REPO_BRANCH"
+            git -C "$REPO_ROOT" reset --hard "origin/$REPO_BRANCH"
+
+            # Re-apply ${DOMAIN_NAME} substitution on nginx site files
+            # (mirrors deployment/bootstrap/lib/common.sh:configure_nginx).
+            load_env_vars DOMAIN_NAME
+            if [[ -n "${DOMAIN_NAME:-}" ]] && [[ -d "$SCRIPT_DIR/nginx/sites-enabled" ]]; then
+                find "$SCRIPT_DIR/nginx/sites-enabled" -type f -name "*.conf" -exec \
+                    sed -i "s/\${DOMAIN_NAME}/$DOMAIN_NAME/g" {} \;
+            fi
+        else
+            echo -e "${YELLOW}Install dir is not a git working tree.${NC}"
+            echo -e "${YELLOW}Run deployment/scripts/migrate-to-source-layout.sh to convert,${NC}"
+            echo -e "${YELLOW}otherwise this update only refreshes Docker images.${NC}"
         fi
+
         if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then
             echo -e "${YELLOW}Rebuilding local images...${NC}"
             $DC_CMD build web
@@ -1147,7 +1170,7 @@ EOF
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
             load_env_vars TIMETILES_VERSION SCRAPER_IMAGE SCRAPER_PYTHON_IMAGE SCRAPER_NODE_IMAGE
             version="${TIMETILES_VERSION:-latest}"
-            runner_dir="$SCRIPT_DIR/../scraper-runner"
+            runner_dir="$SCRIPT_DIR/scraper-runner"
 
             echo -e "${YELLOW}Updating scraper runner...${NC}"
 

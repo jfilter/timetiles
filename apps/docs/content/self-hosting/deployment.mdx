@@ -182,18 +182,27 @@ dc exec web sh     # Shell into web container
 
 ## File Structure
 
-After setup, deployment files are in `/opt/timetiles/` (bootstrap) or `./deployment/` (manual):
+A bootstrapped host keeps the deployment files in a real git working tree at `/opt/timetiles-src/` and exposes them as `/opt/timetiles/` via a symlink. `timetiles update` runs `git pull` against that tree, so tracked files (compose, nginx, the CLI itself) stay in sync with the upstream branch. Operator state is `.gitignore`d inside `deployment/` and survives every pull.
 
 ```
-deployment/
-├── timetiles                  # CLI script
-├── docker-compose.prod.yml    # Service orchestration
-├── .env.production            # Your configuration
-├── nginx/
-│   ├── nginx.conf             # Main nginx config
-│   └── sites-enabled/         # Site-specific configs
-└── backups/                   # Backup files (restic)
+/opt/timetiles-src/
+├── .git/                              # sparse-checkout: deployment/
+└── deployment/
+    ├── timetiles                      # CLI script (tracked)
+    ├── docker-compose.prod.yml        # Service orchestration (tracked)
+    ├── nginx/                         # Nginx config (tracked)
+    │   ├── nginx.conf
+    │   └── sites-enabled/
+    ├── .env.production                # Your configuration (.gitignored)
+    ├── docker-compose.override.yml    # Optional override (.gitignored)
+    └── backups/                       # Backup files (.gitignored)
+
+/opt/timetiles -> /opt/timetiles-src/deployment    # compat symlink
 ```
+
+A manual install just keeps the `deployment/` directory in your repo checkout and there is no symlink.
+
+If you bootstrapped before this layout existed (flat copy in `/opt/timetiles/`, no `.git`), run `deployment/scripts/migrate-to-source-layout.sh` once on the host to convert in place — operator state is preserved and a flat backup is kept for rollback.
 
 ## Security
 
