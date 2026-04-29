@@ -264,6 +264,16 @@ EOF
     systemctl daemon-reload
     systemctl enable timescrape-runner.service
 
+    # Allow the deploy user to restart the runner without a password so
+    # `timetiles update` can do it non-interactively. Scoped to this one
+    # unit + a couple of inspection commands.
+    local sudoers_file="/etc/sudoers.d/timetiles-timescrape-runner"
+    cat > "$sudoers_file" <<EOF
+$user ALL=(root) NOPASSWD: /bin/systemctl restart timescrape-runner.service, /bin/systemctl restart timescrape-runner, /bin/systemctl status timescrape-runner.service, /bin/systemctl is-active timescrape-runner.service
+EOF
+    chmod 440 "$sudoers_file"
+    visudo -c -f "$sudoers_file" >/dev/null || die "Generated sudoers file is invalid: $sudoers_file"
+
     print_success "Systemd service created: timescrape-runner"
 }
 

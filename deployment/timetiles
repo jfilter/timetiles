@@ -1219,7 +1219,7 @@ EOF
                 sudo -u "$DEPLOY_USER" podman build -t timescrape-node "$SCRIPT_DIR/../apps/scraper/images/node/"
             fi
 
-            systemctl restart timescrape-runner
+            sudo -n /bin/systemctl restart timescrape-runner.service
             echo -e "${GREEN}Scraper runner updated!${NC}"
         fi
         ;;
