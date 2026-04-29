@@ -257,17 +257,33 @@ jobs:
             -e POSTGRES_DB=timetiles \
             -e POSTGRES_PASS="${DB_PASSWORD}" \
             -e POSTGRES_DBNAME=timetiles \
-            -e ALLOW_IP_RANGE=0.0.0.0/0 \
+            -e ALLOW_IP_RANGE=172.16.0.0/12 \
             -e FORCE_SSL=false \
+            --health-cmd='pg_isready -h localhost -U timetiles_user -d timetiles' \
+            --health-interval=5s \
+            --health-timeout=5s \
+            --health-retries=60 \
+            --health-start-period=180s \
             -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
             kartoza/postgis:17-3.5
 
-          echo "==> Waiting for PostgreSQL (kartoza first-run init can take >90s)..."
-          bash .github/scripts/wait-for-health.sh "" postgres 60 2 || true
-          for i in {1..60}; do
-            docker exec postgres pg_isready -h localhost -U timetiles_user -d timetiles 2>/dev/null && break
+          echo "==> Waiting for PostgreSQL to become healthy (kartoza init can take >90s)..."
+          for i in $(seq 1 150); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' postgres 2>/dev/null || echo "unknown")
+            if [ "$status" = "healthy" ]; then
+              echo "PostgreSQL healthy after $((i * 2))s"
+              break
+            fi
+            if [ $((i % 15)) -eq 0 ]; then
+              echo "  still waiting ($((i * 2))s elapsed, status=$status)"
+            fi
             sleep 2
           done
+          if [ "$(docker inspect --format='{{.State.Health.Status}}' postgres 2>/dev/null)" != "healthy" ]; then
+            echo "PostgreSQL did not become healthy in time"
+            docker logs postgres | tail -100
+            exit 1
+          fi
 
           echo "==> Starting main app..."
           docker run -d --name timetiles --network timetiles-test -p 3000:3000 \
