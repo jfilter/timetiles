@@ -385,10 +385,10 @@ describe.sequential("Schedule Edge Case Tests", () => {
       let queuedJobId = 1;
       const queueSpy = vi.spyOn(payload.jobs, "queue").mockImplementation((job: any) => {
         if (String(job.input?.sourceUrl ?? "").includes("/error.csv")) {
-          return Promise.reject(new Error("Queue unavailable for error import"));
+          throw new Error("Queue unavailable for error import");
         }
 
-        return Promise.resolve({ id: queuedJobId++ });
+        return { id: queuedJobId++ };
       });
 
       try {
