@@ -1154,6 +1154,14 @@ EOF
                         git -C "$REPO_ROOT" update-index --assume-unchanged "${f#"$REPO_ROOT/"}" 2>/dev/null || true
                     done
             fi
+
+            # The git pull may have rewritten this very script. Re-exec so
+            # the rest of `update` (compose changes, scraper-runner restart,
+            # …) runs with the new code, not the version bash already loaded
+            # into memory. --no-self-update prevents recursion.
+            if [[ "${2:-}" != "--no-self-update" ]]; then
+                exec "$SCRIPT_DIR/timetiles" update --no-self-update
+            fi
         else
             echo -e "${YELLOW}Install dir is not a git working tree —${NC}"
             echo -e "${YELLOW}this update only refreshes Docker images.${NC}"
@@ -1169,6 +1177,13 @@ EOF
         fi
         # Recreate all services to pick up config/image changes
         $DC_CMD up -d
+
+        # nginx site configs are bind-mounted; `up -d` does not recreate the
+        # nginx container when only those files change. Force a config
+        # reload so site-config edits land. Tolerate failure when the
+        # container isn't up yet.
+        $DC_CMD exec -T nginx nginx -s reload 2>/dev/null || true
+
         echo -e "${GREEN}Services updated! Migrations will run automatically.${NC}"
 
         # Update scraper runner if configured
