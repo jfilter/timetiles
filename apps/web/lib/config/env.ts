@@ -32,6 +32,11 @@ const baseSchema = {
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   NEXT_PUBLIC_SITE_URL: z.string().optional(),
   DEFAULT_LOCALE: z.enum(["en", "de"]).default("en"),
+  // Surface-level deployment label, independent of NODE_ENV. Drives the
+  // EnvironmentBanner so visitors can tell staging/preview apart from prod.
+  // Read server-side only — kept out of the NEXT_PUBLIC_* namespace so the
+  // same Docker image can run as either staging or prod without rebuilding.
+  DEPLOYMENT_ENVIRONMENT: z.enum(["production", "staging", "preview", "development"]).default("production"),
 
   // === Logging ===
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"]).optional(),

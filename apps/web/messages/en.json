@@ -998,5 +998,10 @@
     "bmftrAlt": "Funded by the German Federal Ministry for Research, Technology and Space",
     "openSource": "Open source",
     "madeIn": "Made in Berlin"
+  },
+  "EnvironmentBanner": {
+    "staging": "Staging — test environment, data may be reset at any time",
+    "preview": "Preview — unreleased build, expect rough edges",
+    "development": "Development build"
   }
 }

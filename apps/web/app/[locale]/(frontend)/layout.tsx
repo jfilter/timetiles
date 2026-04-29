@@ -41,6 +41,7 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { ConditionalTopMenuBar } from "@/app/_components/conditional-top-menu-bar";
+import { EnvironmentBanner } from "@/components/environment-banner";
 import { IconMapper } from "@/components/icon-mapper";
 import { NewsletterFormClient } from "@/components/newsletter-form-client";
 import { Providers } from "@/components/providers";
@@ -277,6 +278,7 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
         <NextIntlClientProvider messages={messages}>
           <Providers>
             <SiteProvider site={site}>
+              <EnvironmentBanner />
               <SiteBranding />
               <ConditionalTopMenuBar />
               {children}

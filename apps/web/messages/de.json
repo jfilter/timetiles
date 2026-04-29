@@ -1002,5 +1002,10 @@
     "bmftrAlt": "Gefördert vom Bundesministerium für Forschung, Technologie und Raumfahrt",
     "openSource": "Open Source",
     "madeIn": "Made in Berlin"
+  },
+  "EnvironmentBanner": {
+    "staging": "Staging — Testumgebung, Daten können jederzeit zurückgesetzt werden",
+    "preview": "Preview — unveröffentlichter Build, kann noch ruckeln",
+    "development": "Development-Build"
   }
 }
