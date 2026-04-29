@@ -383,12 +383,12 @@ describe.sequential("Schedule Edge Case Tests", () => {
       );
 
       let queuedJobId = 1;
-      const queueSpy = vi.spyOn(payload.jobs, "queue").mockImplementation(async (job: any) => {
+      const queueSpy = vi.spyOn(payload.jobs, "queue").mockImplementation((job: any) => {
         if (String(job.input?.sourceUrl ?? "").includes("/error.csv")) {
-          throw new Error("Queue unavailable for error import");
+          return Promise.reject(new Error("Queue unavailable for error import"));
         }
 
-        return { id: queuedJobId++ };
+        return Promise.resolve({ id: queuedJobId++ });
       });
 
       try {
@@ -488,7 +488,7 @@ describe.sequential("Schedule Edge Case Tests", () => {
 
         const queueCall = queueSpy.mock.calls.find(([queuedJob]) => {
           const job = queuedJob as { input?: { scheduledIngestId?: string | number }; workflow?: string };
-          const input = job.input as { scheduledIngestId?: string | number } | undefined;
+          const input = job.input;
           return job.workflow === "scheduled-ingest" && String(input?.scheduledIngestId) === String(scheduledIngest.id);
         });
         expect(queueCall).toBeDefined();

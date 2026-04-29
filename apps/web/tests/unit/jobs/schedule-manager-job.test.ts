@@ -5,13 +5,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { generateIngestName } from "@/lib/ingest/trigger-service";
 import {
   calculateNextRun,
   getNextExecutionTime,
   getNextFrequencyExecution,
   shouldRunNow,
 } from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
-import { generateIngestName } from "@/lib/ingest/trigger-service";
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies

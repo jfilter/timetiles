@@ -1018,7 +1018,7 @@ describe.sequential("scheduled ingests Integration", () => {
 
         const queueCall = queueSpy.mock.calls.find(([queuedJob]) => {
           const job = queuedJob as { input?: { scheduledIngestId?: string | number }; workflow?: string };
-          const input = job.input as { scheduledIngestId?: string | number } | undefined;
+          const input = job.input;
           return job.workflow === "scheduled-ingest" && String(input?.scheduledIngestId) === String(scheduledIngest.id);
         });
         expect(queueCall).toBeDefined();

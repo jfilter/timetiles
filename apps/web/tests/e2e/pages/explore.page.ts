@@ -444,9 +444,7 @@ export class ExplorePage {
     }
 
     // Remove commas from number (e.g., "1,245" -> "1245")
-    const count = Number.parseInt(matches[1].replaceAll(",", ""), 10);
-
-    return count;
+    return Number.parseInt(matches[1].replaceAll(",", ""), 10);
   }
 
   async getEventTitles(): Promise<string[]> {
@@ -512,13 +510,7 @@ export class ExplorePage {
       { timeout: 15000 }
     );
 
-    const featureData = (await feature.jsonValue()) as {
-      x: number;
-      y: number;
-      type: string;
-      count: number;
-      eventId: number | null;
-    } | null;
+    const featureData = await feature.jsonValue();
     if (!featureData) throw new Error("No rendered map feature found");
 
     await this.page
