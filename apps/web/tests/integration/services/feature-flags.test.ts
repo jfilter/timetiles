@@ -237,7 +237,7 @@ describe.sequential("Feature Flag Service", () => {
 
   describe("Access Control", () => {
     it("should reject unauthenticated read access to Settings global", async () => {
-      await expect(payload.findGlobal({ slug: "settings", overrideAccess: false })).rejects.toThrow();
+      await expect(payload.findGlobal({ slug: "settings", overrideAccess: false })).rejects.toThrow(/not allowed/i);
     });
 
     it("should allow admin read access to Settings global", async () => {
@@ -258,7 +258,7 @@ describe.sequential("Feature Flag Service", () => {
           user: users.regularUser,
           overrideAccess: false,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/not allowed/i);
     });
 
     it("should allow admin updates", async () => {

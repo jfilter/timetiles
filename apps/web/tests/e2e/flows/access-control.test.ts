@@ -367,16 +367,8 @@ test.describe("Access Control - User Perspective", () => {
     test("should not list scheduled ingests without authentication", async ({ request }) => {
       const response = await request.get("/api/scheduled-ingests");
 
-      // Should be unauthorized or return empty list
-      expect([200, 401, 403]).toContain(response.status());
-
-      if (response.status() === 200) {
-        const data = await response.json();
-        // If accessible, should return empty list for unauthenticated user
-        // (depending on implementation)
-        expect(data.totalDocs).toBe(0);
-        expect(data.docs ?? []).toHaveLength(0);
-      }
+      // Collection access denies unauthenticated reads — must be 401/403, not 200.
+      expect([401, 403]).toContain(response.status());
     });
   });
 

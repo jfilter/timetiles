@@ -180,7 +180,7 @@ describe.sequential("Hierarchical Access Control", () => {
           user: otherUser,
           overrideAccess: false,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/not allowed/i);
     });
 
     it("should allow owner to update their catalog", async () => {
@@ -215,7 +215,7 @@ describe.sequential("Hierarchical Access Control", () => {
 
       await expect(
         payload.delete({ collection: "catalogs", id: tempCatalog.id, user: otherUser, overrideAccess: false })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/not allowed/i);
     });
   });
 

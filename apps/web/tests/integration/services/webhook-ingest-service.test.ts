@@ -795,7 +795,7 @@ describe.sequential("Webhook Import Service Integration", () => {
             },
           },
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/HTTP 500/);
 
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
@@ -832,7 +832,11 @@ describe.sequential("Webhook Import Service Integration", () => {
               },
             },
           })
-        ).rejects.toThrow();
+        ).rejects.toThrow(/Request timeout after \d+ms/);
+
+        const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
+        expect(updatedImport.lastStatus).toBe("failed");
+        expect(updatedImport.lastError).toMatch(/timeout/i);
       } finally {
         if (previousTestTimeout === undefined) {
           delete process.env.URL_FETCH_TEST_TIMEOUT_MS;
