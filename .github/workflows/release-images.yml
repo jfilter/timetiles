@@ -259,10 +259,10 @@ jobs:
             -e POSTGRES_DBNAME=timetiles \
             -e ALLOW_IP_RANGE=172.16.0.0/12 \
             -e FORCE_SSL=false \
-            --health-cmd='pg_isready -h localhost -U timetiles_user -d timetiles' \
-            --health-interval=5s \
+            --health-cmd='pg_isready -h localhost -U timetiles_user' \
+            --health-interval=10s \
             --health-timeout=5s \
-            --health-retries=60 \
+            --health-retries=5 \
             --health-start-period=180s \
             -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
             kartoza/postgis:17-3.5
