@@ -107,7 +107,9 @@ ensure_symlink() {
 
     if [[ -e "$install_dir" ]]; then
         die "$install_dir already exists as a regular directory.
-Run deployment/scripts/migrate-to-source-layout.sh to convert a flat install."
+The current bootstrap expects $install_dir to be a symlink into $src_dir.
+If this is a flat install from an older bootstrap, back it up and remove it
+so the bootstrap can take over."
     fi
 
     ln -sfn "$target" "$install_dir"

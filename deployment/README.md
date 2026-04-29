@@ -50,10 +50,6 @@ inside `deployment/` so it survives the pull.
 /opt/timetiles -> /opt/timetiles-src/deployment       # compat symlink
 ```
 
-If you bootstrapped before this layout existed (flat copy in
-`/opt/timetiles/`, no `.git`), convert in place by running
-`deployment/scripts/migrate-to-source-layout.sh` once on the host.
-
 ## Configuration Files
 
 | File                           | Purpose               |

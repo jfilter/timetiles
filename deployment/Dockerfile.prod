@@ -89,8 +89,10 @@ USER nextjs
 
 EXPOSE 3000
 
+# 127.0.0.1 not localhost: BusyBox wget in alpine resolves localhost to ::1
+# and does not fall back to the AAAA-less IPv4 address.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1
 
 # Start Next.js (non-standalone mode)
 WORKDIR /app/apps/web

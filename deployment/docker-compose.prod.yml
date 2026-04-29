@@ -48,10 +48,15 @@ services:
       # Use -h localhost to force TCP connection (avoids peer auth issues with kartoza/postgis)
       # Don't check for specific database (-d) as it may not exist yet during initial startup
       test: ["CMD-SHELL", "pg_isready -h localhost -U ${DB_USER:-timetiles_user}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 120s # kartoza/postgis first-run init (extensions, users, restart) can take >90s
+      retries: 10
+      # kartoza/postgis first-run init (extensions, users, restart) can take
+      # >90s on slow disks; on subsequent recreates the container also bounces
+      # postgres briefly during the entrypoint's "restart in foreground" step.
+      # 180s gives both cases enough headroom; 5s interval + 10 retries keeps
+      # recovery detection snappy after start_period elapses.
+      start_period: 180s
     networks:
       - timetiles-network
 
@@ -102,6 +107,7 @@ services:
       # Email (SMTP) - required for production
       EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
       EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
       EMAIL_FROM: ${EMAIL_FROM}
       EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
@@ -123,12 +129,14 @@ services:
     networks:
       - timetiles-network
     healthcheck:
+      # 127.0.0.1 not localhost: Node resolves localhost via dns.lookup which
+      # tries the AAAA record first, but the server only binds 0.0.0.0.
       test:
         [
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://localhost:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })",
+          "require('http').get('http://127.0.0.1:3000/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => { process.exit(1); })",
         ]
       interval: 30s
       timeout: 10s
@@ -184,6 +192,11 @@ services:
       - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
     networks:
       - timetiles-network
+    # Image carries an HTTP-based HEALTHCHECK (Dockerfile.prod) that targets
+    # the Next.js server. Workers run `payload jobs:run` instead, so they
+    # never bind a port — the inherited check would always fail. Disable.
+    healthcheck:
+      disable: true
 
   # General worker — scheduled jobs, webhooks, maintenance, cleanup
   worker-general:
@@ -235,6 +248,9 @@ services:
       - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
     networks:
       - timetiles-network
+    # See worker-ingest above.
+    healthcheck:
+      disable: true
 
   # Nginx reverse proxy with SSL support
   nginx:
@@ -272,7 +288,10 @@ services:
     networks:
       - timetiles-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/api/health || exit 1"]
+      # 127.0.0.1 not localhost: nginx binds 0.0.0.0:80, but BusyBox wget
+      # in the alpine image resolves localhost to ::1 first and never
+      # falls back to IPv4 → the check would always report unhealthy.
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

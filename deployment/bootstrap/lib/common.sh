@@ -281,9 +281,20 @@ configure_nginx() {
         return 0
     fi
 
-    # Substitute ${DOMAIN_NAME} in all nginx config files
-    find "$nginx_dir/sites-enabled" -type f -name "*.conf" -exec \
-        sed -i "s/\${DOMAIN_NAME}/$domain/g" {} \;
+    # Substitute ${DOMAIN_NAME} in all nginx config files. install_dir is a
+    # symlink into a real working tree under .../-src; mark the substituted
+    # files assume-unchanged so `git status` stays clean. `git reset --hard`
+    # in `timetiles update` still overwrites them, so upstream template
+    # changes propagate normally.
+    local repo_root
+    repo_root="$(cd "$nginx_dir/../.." 2>/dev/null && pwd || true)"
+    find "$nginx_dir/sites-enabled" -type f -name "*.conf" -print0 \
+        | while IFS= read -r -d '' f; do
+            sed -i "s/\${DOMAIN_NAME}/$domain/g" "$f"
+            if [[ -n "$repo_root" ]] && [[ -d "$repo_root/.git" ]]; then
+                git -C "$repo_root" update-index --assume-unchanged "${f#"$repo_root/"}" 2>/dev/null || true
+            fi
+        done
 
     print_success "Nginx configured for domain: $domain"
 }

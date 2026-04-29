@@ -52,6 +52,11 @@ const baseSchema = {
   EMAIL_SMTP_PORT: z.coerce.number().default(587),
   EMAIL_SMTP_USER: z.string().optional(),
   EMAIL_SMTP_PASS: z.string().optional(),
+  // Override the SNI / TLS hostname used to validate the server cert.
+  // Useful when EMAIL_SMTP_HOST is a private IP whose cert SAN names a
+  // public DNS name (e.g., reaching a Cloudron mailserver at 10.x via
+  // its public hostname `daten.cool`).
+  EMAIL_SMTP_TLS_SERVERNAME: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().default("noreply@timetiles.io"),
   EMAIL_FROM_NAME: z.string().default("TimeTiles"),
 

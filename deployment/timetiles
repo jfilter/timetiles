@@ -1130,8 +1130,7 @@ EOF
 
         # Refresh tracked deployment files (compose, nginx, init-db, CLI itself).
         # The install dir is a symlink into a real working tree under .../-src,
-        # set up by the bootstrap (or by deployment/scripts/migrate-to-source-layout.sh
-        # for hosts installed before that change).
+        # set up by the bootstrap.
         REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
         if [ -d "$REPO_ROOT/.git" ]; then
             REPO_BRANCH="${TIMETILES_REPO_BRANCH:-main}"
@@ -1144,15 +1143,21 @@ EOF
 
             # Re-apply ${DOMAIN_NAME} substitution on nginx site files
             # (mirrors deployment/bootstrap/lib/common.sh:configure_nginx).
+            # Then mark the substituted files assume-unchanged so `git status`
+            # stays clean. `git reset --hard` still overwrites them on the
+            # next pull, so upstream template changes propagate normally.
             load_env_vars DOMAIN_NAME
             if [[ -n "${DOMAIN_NAME:-}" ]] && [[ -d "$SCRIPT_DIR/nginx/sites-enabled" ]]; then
-                find "$SCRIPT_DIR/nginx/sites-enabled" -type f -name "*.conf" -exec \
-                    sed -i "s/\${DOMAIN_NAME}/$DOMAIN_NAME/g" {} \;
+                find "$SCRIPT_DIR/nginx/sites-enabled" -type f -name "*.conf" -print0 \
+                    | while IFS= read -r -d '' f; do
+                        sed -i "s/\${DOMAIN_NAME}/$DOMAIN_NAME/g" "$f"
+                        git -C "$REPO_ROOT" update-index --assume-unchanged "${f#"$REPO_ROOT/"}" 2>/dev/null || true
+                    done
             fi
         else
-            echo -e "${YELLOW}Install dir is not a git working tree.${NC}"
-            echo -e "${YELLOW}Run deployment/scripts/migrate-to-source-layout.sh to convert,${NC}"
-            echo -e "${YELLOW}otherwise this update only refreshes Docker images.${NC}"
+            echo -e "${YELLOW}Install dir is not a git working tree —${NC}"
+            echo -e "${YELLOW}this update only refreshes Docker images.${NC}"
+            echo -e "${YELLOW}Re-run the bootstrap to pick up the cloned-source layout.${NC}"
         fi
 
         if [ -f "$SCRIPT_DIR/docker-compose.override.yml" ]; then

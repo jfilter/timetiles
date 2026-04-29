@@ -202,8 +202,6 @@ A bootstrapped host keeps the deployment files in a real git working tree at `/o
 
 A manual install just keeps the `deployment/` directory in your repo checkout and there is no symlink.
 
-If you bootstrapped before this layout existed (flat copy in `/opt/timetiles/`, no `.git`), run `deployment/scripts/migrate-to-source-layout.sh` once on the host to convert in place — operator state is preserved and a flat backup is kept for rollback.
-
 ## Security
 
 - Only ports 80 and 443 are exposed externally

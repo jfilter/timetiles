@@ -262,6 +262,9 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
         host: env.EMAIL_SMTP_HOST,
         port: env.EMAIL_SMTP_PORT,
         auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
+        // When the SMTP host is reached by a private IP but the server cert
+        // names a public hostname, override the SNI/cert-validation name.
+        ...(env.EMAIL_SMTP_TLS_SERVERNAME ? { tls: { servername: env.EMAIL_SMTP_TLS_SERVERNAME } } : {}),
       },
     });
   } else {
