@@ -5,7 +5,6 @@
  * @category Unit Tests
  */
 // Import centralized logger mock FIRST (before anything that uses @/lib/logger)
-// eslint-disable-next-line simple-import-sort/imports -- mock side-effect must load before parser helpers
 import "@/tests/mocks/services/logger";
 
 import fs from "node:fs";

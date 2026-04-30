@@ -157,6 +157,46 @@ const configureProduction = (config: Config, serverURL: string) => {
   config.upload = DEFAULT_UPLOAD_CONFIG;
 };
 
+const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, environment: string) => {
+  // Build phase has no DB, no SMTP env, and no network access in CI; the
+  // ethereal fallback below tries to provision an SMTP test account via
+  // api.nodemailer.com and fails the whole `next build`. Use the in-memory
+  // jsonTransport during build so config evaluation completes.
+  if (environment === "test" || env.NEXT_PHASE === "phase-production-build") {
+    config.email = nodemailerAdapter({
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
+      transport: nodemailer.createTransport({ jsonTransport: true }),
+      skipVerify: true,
+    });
+    return;
+  }
+
+  if (env.EMAIL_SMTP_HOST) {
+    config.email = nodemailerAdapter({
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
+      transportOptions: {
+        host: env.EMAIL_SMTP_HOST,
+        port: env.EMAIL_SMTP_PORT,
+        auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
+        // When the SMTP host is reached by a private IP but the server cert
+        // names a public hostname, override the SNI/cert-validation name.
+        ...(env.EMAIL_SMTP_TLS_SERVERNAME ? { tls: { servername: env.EMAIL_SMTP_TLS_SERVERNAME } } : {}),
+      },
+    });
+    return;
+  }
+
+  const ethereal = await getEtherealCredentials();
+  config.email = nodemailerAdapter({
+    defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+    defaultFromName: env.EMAIL_FROM_NAME,
+    transportOptions: { host: "smtp.ethereal.email", port: 587, auth: { user: ethereal.user, pass: ethereal.pass } },
+  });
+};
+
 /**
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
@@ -244,42 +284,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     sharp: sharp,
   };
 
-  // Configure email adapter
-  // Build phase has no DB, no SMTP env, and no network access in CI; the
-  // ethereal fallback below tries to provision an SMTP test account via
-  // api.nodemailer.com and fails the whole `next build`. Use the in-memory
-  // jsonTransport during build so config evaluation completes.
-  if (environment === "test" || env.NEXT_PHASE === "phase-production-build") {
-    config.email = nodemailerAdapter({
-      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
-      defaultFromName: env.EMAIL_FROM_NAME,
-      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory and test-only
-      transport: nodemailer.createTransport({ jsonTransport: true }),
-      skipVerify: true,
-    });
-  } else if (env.EMAIL_SMTP_HOST) {
-    // Production: Use SMTP transport
-    config.email = nodemailerAdapter({
-      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
-      defaultFromName: env.EMAIL_FROM_NAME,
-      transportOptions: {
-        host: env.EMAIL_SMTP_HOST,
-        port: env.EMAIL_SMTP_PORT,
-        auth: env.EMAIL_SMTP_USER ? { user: env.EMAIL_SMTP_USER, pass: env.EMAIL_SMTP_PASS } : undefined,
-        // When the SMTP host is reached by a private IP but the server cert
-        // names a public hostname, override the SNI/cert-validation name.
-        ...(env.EMAIL_SMTP_TLS_SERVERNAME ? { tls: { servername: env.EMAIL_SMTP_TLS_SERVERNAME } } : {}),
-      },
-    });
-  } else {
-    // Development: Use ethereal.email with cached credentials
-    const ethereal = await getEtherealCredentials();
-    config.email = nodemailerAdapter({
-      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
-      defaultFromName: env.EMAIL_FROM_NAME,
-      transportOptions: { host: "smtp.ethereal.email", port: 587, auth: { user: ethereal.user, pass: ethereal.pass } },
-    });
-  }
+  await configureEmail(config, env, environment);
 
   // Add production-specific configuration
   if (environment === "production" && serverURL) {
