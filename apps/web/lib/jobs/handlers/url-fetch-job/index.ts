@@ -369,6 +369,13 @@ export const urlFetchJob = {
   slug: "url-fetch",
   queue: "ingest" as const,
   concurrency: () => "ingest-pipeline",
+  // Retry transient infrastructure failures (DNS not ready at container cold-start,
+  // upstream blips, brief network flaps). The handler defers lifecycle updates to
+  // the scheduled-ingest workflow's catch via `deferLifecycleUpdates`, so retries
+  // here do NOT bump the application-level `currentRetries` counter — only the
+  // final failure does. Quota claims are compensated in the catch on every attempt
+  // before re-throw, so retries don't leak quota.
+  retries: { attempts: 3, backoff: { type: "exponential" as const, delay: 5000 } },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as UrlFetchJobInput;
