@@ -49,6 +49,9 @@ run_step() {
         git config core.sparseCheckout true
         {
             echo "deployment/"
+            # Bundled data-package manifests + the timetiles.yml.example
+            # template. Tiny dir, but lets `git pull` deliver new packages.
+            echo "apps/web/config/"
             if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
                 echo "apps/timescrape/"
             fi

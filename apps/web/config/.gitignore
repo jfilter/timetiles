@@ -1,0 +1,6 @@
+# Operator's runtime config — copy timetiles.example.yml as a starting
+# point. This dir is sparse-checked-out on production hosts so the root
+# .gitignore is not in the working tree; this file replaces it for the
+# subset that ships to install hosts.
+
+timetiles.yml

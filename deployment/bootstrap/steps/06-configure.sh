@@ -60,6 +60,11 @@ run_step() {
     # Set NEXT_PUBLIC_PAYLOAD_URL (derived from domain)
     sed -i "s|NEXT_PUBLIC_PAYLOAD_URL=.*|NEXT_PUBLIC_PAYLOAD_URL=https://$DOMAIN_NAME|" "$env_file"
 
+    # Point the container's /app/apps/web/config mount at the cloned source
+    # repo's apps/web/config dir, so bundled data-package manifests refresh
+    # on every `git pull`. The path is resolved relative to the compose file.
+    sed -i "s|^CONFIG_DIR=.*|CONFIG_DIR=../apps/web/config|" "$env_file"
+
     # Pre-configure scraper API key (if enabled). SCRAPER_RUNNER_URL is set later
     # by step 13 after the runner is installed, so the health check doesn't fail
     # during step 07 when the runner isn't running yet.
