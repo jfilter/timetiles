@@ -181,6 +181,11 @@ describe("Coordinate Parser Utilities", () => {
         expect(parseCoordinate("-74.0060")).toBe(-74.006);
       });
 
+      it("should parse spreadsheet-prefixed decimal degrees", () => {
+        expect(parseCoordinate("'4.000000")).toBe(4);
+        expect(parseCoordinate("'-72.000000")).toBe(-72);
+      });
+
       it("should parse integer coordinates", () => {
         expect(parseCoordinate("42")).toBe(42);
         expect(parseCoordinate("-180")).toBe(-180);

@@ -248,5 +248,6 @@ const validateAndNormalizeInput = (value: unknown): string | null => {
   }
 
   // Convert to string and clean
-  return valueToString(value).trim();
+  const trimmed = valueToString(value).trim();
+  return trimmed.startsWith("'") ? trimmed.slice(1).trim() : trimmed;
 };
