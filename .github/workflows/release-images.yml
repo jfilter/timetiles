@@ -246,58 +246,93 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
           PAYLOAD_SECRET: ${{ steps.secrets.outputs.payload_secret }}
           DB_PASSWORD: ${{ steps.secrets.outputs.db_password }}
+        working-directory: deployment
         run: |
-          # Health check helper: bash .github/scripts/wait-for-health.sh <url> <container> [max] [interval]
+          # Drive the smoke test from the production compose file. Standalone
+          # `docker run` for postgres drifts from prod (no shm_size, no
+          # EXTRA_CONF tuning, divergent healthcheck flags) and the kartoza
+          # init dance has been making the standalone postgres flaky for
+          # months. Compose is the same path operators run.
 
-          echo "==> Starting PostgreSQL..."
-          docker network create timetiles-test
-          docker run -d --name postgres --network timetiles-test \
-            -e POSTGRES_USER=timetiles_user \
-            -e POSTGRES_PASSWORD="${DB_PASSWORD}" \
-            -e POSTGRES_DB=timetiles \
-            -e POSTGRES_PASS="${DB_PASSWORD}" \
-            -e POSTGRES_DBNAME=timetiles \
-            -e ALLOW_IP_RANGE=172.16.0.0/12 \
-            -e FORCE_SSL=false \
-            --health-cmd='pg_isready -h localhost -U timetiles_user' \
-            --health-interval=10s \
-            --health-timeout=5s \
-            --health-retries=5 \
-            --health-start-period=180s \
-            -v ${{ github.workspace }}/deployment/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro \
-            kartoza/postgis:17-3.5
+          cat > .env.production <<EOF
+          COMPOSE_PROJECT_NAME=timetiles
+          TIMETILES_IMAGE=${IMAGE}
+          TIMETILES_VERSION=${VERSION}
+          DB_NAME=timetiles
+          DB_USER=timetiles_user
+          DB_PASSWORD=${DB_PASSWORD}
+          DATABASE_URL=postgresql://timetiles_user:${DB_PASSWORD}@postgres:5432/timetiles
+          PAYLOAD_SECRET=${PAYLOAD_SECRET}
+          DOMAIN_NAME=localhost
+          NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000
+          NODE_ENV=production
+          DEPLOYMENT_ENVIRONMENT=production
+          HOST_PORT=3000
+          CONTAINER_PORT=3000
+          LOG_LEVEL=info
+          EMAIL_SMTP_HOST=smtp.test.invalid
+          EMAIL_FROM=test@localhost
+          UPLOAD_HOST_DIR=./uploads
+          LOG_HOST_DIR=./logs
+          CONFIG_DIR=./config
+          RESTIC_PASSWORD=test
+          EOF
 
-          echo "==> Waiting for PostgreSQL to become healthy (kartoza init can take >90s)..."
-          for i in $(seq 1 150); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' postgres 2>/dev/null || echo "unknown")
+          # Bind mounts must be writable by the container's nextjs uid (1001).
+          install -d -o 1001 -g 1001 logs uploads config
+
+          echo "==> Pulling images..."
+          docker compose -f docker-compose.prod.yml --env-file .env.production pull postgres web
+
+          # Two-phase startup mirrors the production `timetiles up` flow.
+          # Bringing postgres + web up together makes compose treat the brief
+          # postgres process bounce during kartoza's first-run init as a
+          # dependency failure and exit early ("dependency postgres failed
+          # to start"). Waiting for postgres health explicitly first avoids
+          # that race.
+          echo "==> Starting postgres (kartoza init dance can take ~30s)..."
+          docker compose -f docker-compose.prod.yml --env-file .env.production up -d postgres
+          for i in $(seq 1 90); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' timetiles-postgres 2>/dev/null || echo "unknown")
             if [ "$status" = "healthy" ]; then
-              echo "PostgreSQL healthy after $((i * 2))s"
+              echo "postgres healthy after $((i * 2))s"
               break
             fi
             if [ $((i % 15)) -eq 0 ]; then
-              echo "  still waiting ($((i * 2))s elapsed, status=$status)"
+              echo "  still waiting ($((i * 2))s elapsed, postgres=$status)"
             fi
             sleep 2
           done
-          if [ "$(docker inspect --format='{{.State.Health.Status}}' postgres 2>/dev/null)" != "healthy" ]; then
-            echo "PostgreSQL did not become healthy in time"
-            docker logs postgres | tail -100
+          if [ "$(docker inspect --format='{{.State.Health.Status}}' timetiles-postgres 2>/dev/null)" != "healthy" ]; then
+            echo "postgres did not become healthy"
+            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail 80 postgres
             exit 1
           fi
 
-          echo "==> Starting main app..."
-          docker run -d --name timetiles --network timetiles-test -p 3000:3000 \
-            -e DATABASE_URL="postgresql://timetiles_user:${DB_PASSWORD}@postgres:5432/timetiles" \
-            -e PAYLOAD_SECRET="${PAYLOAD_SECRET}" \
-            -e NEXT_PUBLIC_PAYLOAD_URL=http://localhost:3000 \
-            -e EMAIL_SMTP_HOST=smtp.test.invalid \
-            "${IMAGE}:${VERSION}"
+          echo "==> Starting web..."
+          docker compose -f docker-compose.prod.yml --env-file .env.production up -d web
+          for i in $(seq 1 90); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' timetiles-web 2>/dev/null || echo "unknown")
+            if [ "$status" = "healthy" ]; then
+              echo "web healthy after $((i * 2))s"
+              break
+            fi
+            if [ $((i % 15)) -eq 0 ]; then
+              echo "  still waiting ($((i * 2))s elapsed, web=$status)"
+            fi
+            sleep 2
+          done
+          if [ "$(docker inspect --format='{{.State.Health.Status}}' timetiles-web 2>/dev/null)" != "healthy" ]; then
+            echo "web did not become healthy in time"
+            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail 80 web
+            exit 1
+          fi
 
-          echo "==> Checking main app health..."
-          bash .github/scripts/wait-for-health.sh http://localhost:3000/api/health timetiles 30 2
+          echo "==> /api/health responds inside the container..."
+          docker exec timetiles-web wget -qO- http://127.0.0.1:3000/api/health
 
-          echo "==> Verifying payload CLI is available for workers..."
-          docker exec timetiles node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
+          echo "==> Payload CLI is reachable for workers..."
+          docker exec timetiles-web node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
 
       - name: Smoke test timescrape image
         if: ${{ needs.merge-timescrape.result == 'success' }}
@@ -358,8 +393,13 @@ jobs:
 
       - name: Collect logs on failure
         if: failure()
+        working-directory: deployment
         run: |
-          for name in timetiles postgres scraper-test allinone-test; do
+          if [ -f .env.production ]; then
+            echo "=== compose containers ==="
+            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail 100 postgres web 2>&1 || true
+          fi
+          for name in scraper-test allinone-test; do
             echo "=== $name ==="
             docker logs "$name" 2>&1 || echo "(not running)"
             echo ""
@@ -367,7 +407,11 @@ jobs:
 
       - name: Cleanup
         if: always()
+        working-directory: deployment
         run: |
-          docker stop timetiles postgres scraper-test allinone-test 2>/dev/null || true
-          docker rm timetiles postgres scraper-test allinone-test 2>/dev/null || true
-          docker network rm timetiles-test 2>/dev/null || true
+          if [ -f .env.production ]; then
+            docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
+            rm -f .env.production
+          fi
+          docker stop scraper-test allinone-test 2>/dev/null || true
+          docker rm scraper-test allinone-test 2>/dev/null || true
