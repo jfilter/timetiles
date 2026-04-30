@@ -3,4 +3,5 @@ export default {
   "testing-guidelines": "Testing Guidelines",
   "payload-deadlocks": "Payload CMS Deadlock Prevention",
   "commit-guidelines": "Git & Commit Guidelines",
+  "release-process": "Release Process",
 };
