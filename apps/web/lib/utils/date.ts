@@ -20,11 +20,38 @@ export {
   parseImportDateWithFormat,
 } from "@/lib/utils/date-parsing";
 
-const HTTP_DATE_REGEX =
-  /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+const HTTP_WEEKDAYS = new Set(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
+const HTTP_MONTHS = new Set(["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]);
+
+const isFixedWidthDigits = (value: string, width: number): boolean => {
+  if (value.length !== width) return false;
+  for (const char of value) {
+    if (char < "0" || char > "9") return false;
+  }
+  return true;
+};
+
+const isHttpTime = (value: string): boolean => {
+  const parts = value.split(":");
+  return parts.length === 3 && parts.every((part) => isFixedWidthDigits(part, 2));
+};
+
+const hasHttpDateShape = (value: string): boolean => {
+  const [weekday, day, month, year, time, zone, extra] = value.split(" ");
+  return (
+    extra === undefined &&
+    zone === "GMT" &&
+    weekday?.endsWith(",") === true &&
+    HTTP_WEEKDAYS.has(weekday.slice(0, -1)) &&
+    isFixedWidthDigits(day ?? "", 2) &&
+    HTTP_MONTHS.has(month ?? "") &&
+    isFixedWidthDigits(year ?? "", 4) &&
+    isHttpTime(time ?? "")
+  );
+};
 
 const parseTrustedHttpDate = (value: string): Date | null => {
-  if (!HTTP_DATE_REGEX.test(value)) return null;
+  if (!hasHttpDateShape(value)) return null;
 
   const date = new Date(value);
   return isValidDate(date) ? date : null;
