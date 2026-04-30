@@ -6,7 +6,56 @@ See the [release process](/development/contributing/release-process) for how new
 
 ## [Unreleased]
 
-Changes landed on `main` since the last tagged release will be summarised here and rolled into the next release.
+Changes landed on `main` since the last tagged release.
+
+### Added
+
+- Environment banner on non-prod deployments
+- Auto-activation of data packages on boot per environment
+- Bundled data-package manifests delivered via `git pull` on deploy
+- Demonstrations.org data packages with POST pagination
+- UCDP HDX data package and catalog metadata
+- NSU Offener Prozess scraper example
+- Transactional emails queued via Payload tasks
+- Storybook stories for UI primitives, charts, layout/editorial blocks, overlays, navigation, map controls, and form/feedback components
+- `LOGIN_SUCCESS`, `LOGIN_FAILED`, and `REGISTERED` audit events
+- Points cluster display mode
+- Smart groupBy filtering with shared settings panel
+- URL-sync for fullscreen state and groupBy UX
+- Contextual category filters with cross-filtering
+- Multi-column grid layout (renamed from List view)
+- Collapsible chart section with unified header
+- `CardToolbar` primitive and "Analyze" chart button
+- Info popover on catalog group headers
+- Split-to-array transform for multi-value CSV fields
+- `E2E_MODE` signal and `isE2E()` helper
+- ESLint rule preventing `sql.raw()` with dynamic strings
+- SonarCloud scripts: coverage-per-file, security-hotspot review, quality-gate fetch
+
+### Changed
+
+- Wizard store actions renamed to intent-based names
+- Trivy scan and `wait_for_health` extracted into reusable CI helpers
+- Explore view-toggle terminology unified on "List"
+- `editDatasetId` replaced with `editScheduleData` state
+- Documentation `<img>` tags converted to `next/image`
+
+### Fixed
+
+- Scheduled-ingest retries, quotas, and URL-fetch hardening regressions
+- CSV identity values preserved through import
+- Map and import flows hardened (replacing fake tests with real assertions)
+- Maintenance job task enum values aligned with code
+- Numeric strings no longer accepted as inferred dates; trusted HTTP date guard simplified
+- Deployment: nginx healthcheck timing, postgres race on first boot, SMTP cert mismatch, container UID for `logs/`/`uploads/`, `DEPLOYMENT_ENVIRONMENT` propagated to the web container, post-pull re-exec
+- `schemaMode` propagation in wizard first-run and scraper paths
+- "Create new catalog/dataset" placed at top of dropdown
+
+### Security
+
+- Scheduled ingest validation hardened
+- HTTP security headers baseline and SSRF/path-traversal hardening on import
+- Critical and high-priority findings from the 2026-04-16 audit closed
 
 ## [0.1.0-alpha.4] - 2026-03-31
 
