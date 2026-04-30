@@ -69,7 +69,12 @@ export const normalizeIngestErrorMessage = (error: unknown, fallback = "Unknown 
     return truncateErrorMessage(message);
   }
 
-  const message = error instanceof Error ? error.message.trim() : typeof error === "string" ? error.trim() : "";
+  let message = "";
+  if (error instanceof Error) {
+    message = error.message.trim();
+  } else if (typeof error === "string") {
+    message = error.trim();
+  }
   if (!message) return fallback;
 
   // Drizzle wraps database failures with the full generated SQL and params in
