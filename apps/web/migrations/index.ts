@@ -46,6 +46,7 @@ import * as migration_20260417_210000_verification_token_expires_at from './2026
 import * as migration_20260417_220000_rate_limit_counters from './20260417_220000_rate_limit_counters';
 import * as migration_20260420_150654_add_send_email_task from './20260420_150654_add_send_email_task';
 import * as migration_20260421_100000_hash_webhook_tokens from './20260421_100000_hash_webhook_tokens';
+import * as migration_20260430_145549_add_maintenance_job_task_slugs from './20260430_145549_add_maintenance_job_task_slugs';
 
 export const migrations = [
   {
@@ -287,5 +288,10 @@ export const migrations = [
     up: migration_20260421_100000_hash_webhook_tokens.up,
     down: migration_20260421_100000_hash_webhook_tokens.down,
     name: '20260421_100000_hash_webhook_tokens',
+  },
+  {
+    up: migration_20260430_145549_add_maintenance_job_task_slugs.up,
+    down: migration_20260430_145549_add_maintenance_job_task_slugs.down,
+    name: '20260430_145549_add_maintenance_job_task_slugs',
   },
 ];
