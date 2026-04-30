@@ -27,7 +27,7 @@ import type {
   SplitTransform,
   StringOpTransform,
 } from "@/lib/ingest/types/transforms";
-import { isValidDate } from "@/lib/utils/date";
+import { parseImportDate, parseImportDateWithFormat } from "@/lib/utils/date-parsing";
 import { deleteByPathOrKey, getByPathOrKey, setByPathOrKey } from "@/lib/utils/object-path";
 
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -135,117 +135,11 @@ const applyRenameTransform = (data: Record<string, unknown>, transform: RenameTr
 };
 
 /**
- * Parse a date string using the specified input format.
- *
- * Handles known date formats from DATE_FORMAT_OPTIONS by splitting
- * the string into components based on the format's separator and
- * component order. Falls back to `new Date()` for unrecognized formats.
- *
- * @returns Parsed Date, or null if parsing fails or the date is invalid.
- */
-const parseFormatParts = (
-  parts: string[],
-  order: ("D" | "M" | "Y")[]
-): { year: number; month: number; day: number } | null => {
-  let year = 0,
-    month = 0,
-    day = 0;
-  for (let i = 0; i < 3; i++) {
-    const num = Number.parseInt(parts[i]!, 10);
-    if (isNaN(num)) return null;
-    switch (order[i]) {
-      case "Y":
-        year = num;
-        break;
-      case "M":
-        month = num;
-        break;
-      case "D":
-        day = num;
-        break;
-    }
-  }
-  return { year, month, day };
-};
-
-const MONTH_NAMES: Record<string, number> = {
-  january: 1,
-  february: 2,
-  march: 3,
-  april: 4,
-  may: 5,
-  june: 6,
-  july: 7,
-  august: 8,
-  september: 9,
-  october: 10,
-  november: 11,
-  december: 12,
-};
-
-const parseTextMonthDate = (value: string, inputFormat: string): Date | null => {
-  // "D MMMM YYYY" → "31 December 2024"
-  // "MMMM D, YYYY" → "December 31, 2024"
-  const cleaned = value.replace(/,/g, "").trim();
-  const parts = cleaned.split(/\s+/);
-  if (parts.length !== 3) return null;
-
-  let day: number, month: number, year: number;
-  if (inputFormat === "D MMMM YYYY") {
-    day = Number.parseInt(parts[0]!, 10);
-    month = MONTH_NAMES[parts[1]!.toLowerCase()] ?? 0;
-    year = Number.parseInt(parts[2]!, 10);
-  } else {
-    month = MONTH_NAMES[parts[0]!.toLowerCase()] ?? 0;
-    day = Number.parseInt(parts[1]!, 10);
-    year = Number.parseInt(parts[2]!, 10);
-  }
-
-  if (!month || isNaN(day) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31 || year < 1) return null;
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
-  return date;
-};
-
-const parseDateWithFormat = (value: string, inputFormat: string): Date | null => {
-  if (inputFormat === "D MMMM YYYY" || inputFormat === "MMMM D, YYYY") {
-    return parseTextMonthDate(value, inputFormat);
-  }
-
-  const FORMAT_PATTERNS: Record<string, { order: ("D" | "M" | "Y")[]; separator: RegExp }> = {
-    "DD/MM/YYYY": { order: ["D", "M", "Y"], separator: /\// },
-    "MM/DD/YYYY": { order: ["M", "D", "Y"], separator: /\// },
-    "YYYY-MM-DD": { order: ["Y", "M", "D"], separator: /-/ },
-    "DD-MM-YYYY": { order: ["D", "M", "Y"], separator: /-/ },
-    "MM-DD-YYYY": { order: ["M", "D", "Y"], separator: /-/ },
-    "DD.MM.YYYY": { order: ["D", "M", "Y"], separator: /\./ },
-    "YYYY/MM/DD": { order: ["Y", "M", "D"], separator: /\// },
-  };
-  const pattern = FORMAT_PATTERNS[inputFormat];
-  if (pattern) {
-    const parts = value.split(pattern.separator);
-    if (parts.length === 3) {
-      const parsed = parseFormatParts(parts, pattern.order);
-      if (!parsed) return null;
-      const { year, month, day } = parsed;
-      if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1) return null;
-      const date = new Date(Date.UTC(year, month - 1, day));
-      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-        return null;
-      }
-      return date;
-    }
-  }
-  const fallback = new Date(value);
-  return isNaN(fallback.getTime()) ? null : fallback;
-};
-
-/**
  * Apply a date parse transform to convert date strings.
  *
  * Uses the transform's inputFormat to correctly interpret date strings,
  * handling ambiguous formats like DD/MM/YYYY vs MM/DD/YYYY.
- * Falls back to new Date() for unrecognized formats.
+ * Unknown legacy format values fall back to the safe import parser.
  */
 /**
  * Adjust a UTC date to account for a source timezone.
@@ -280,7 +174,7 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
 
   try {
     const trimmedValue = value.trim();
-    const parsed = parseDateWithFormat(trimmedValue, transform.inputFormat);
+    const parsed = parseImportDateWithFormat(trimmedValue, transform.inputFormat);
     if (parsed && !isNaN(parsed.getTime())) {
       // Apply timezone if configured
       const adjusted = transform.timezone ? adjustForTimezone(parsed, transform.timezone) : parsed;
@@ -481,8 +375,8 @@ const applyExtractTransform = (data: Record<string, unknown>, transform: Extract
 
 const parseAsDate = (value: unknown): string => {
   const stringValue = String(value).trim();
-  const date = new Date(stringValue);
-  if (!isValidDate(date)) throw new Error(`Cannot parse "${String(value)}" as date`);
+  const date = parseImportDate(stringValue);
+  if (!date) throw new Error(`Cannot parse "${String(value)}" as date`);
 
   const isoDate = date.toISOString().split("T")[0];
   if (ISO_DATE_ONLY_REGEX.test(stringValue) && isoDate !== stringValue) {

@@ -9,101 +9,45 @@
  * @module
  */
 
+import { isValidDate, parseImportDate } from "@/lib/utils/date-parsing";
 import { valueToString } from "@/lib/utils/format";
 
-const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/;
+export {
+  hasInvalidIsoDatePart,
+  isImportDateLike,
+  isValidDate,
+  parseImportDate,
+  parseImportDateWithFormat,
+} from "@/lib/utils/date-parsing";
+
+const HTTP_DATE_REGEX =
+  /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4} \d{2}:\d{2}:\d{2} GMT$/;
+
+const parseTrustedHttpDate = (value: string): Date | null => {
+  if (!HTTP_DATE_REGEX.test(value)) return null;
+
+  const date = new Date(value);
+  return isValidDate(date) ? date : null;
+};
 
 /**
- * Check if a Date object is valid.
+ * Parse date-like input for trusted internal/system timestamps.
  *
- * @param date - Date object to validate
- * @returns True if the date is valid, false if invalid (NaN time)
- *
- * @example
- * ```typescript
- * const date = new Date('invalid');
- * isValidDate(date); // Returns false
- *
- * const validDate = new Date('2024-01-15');
- * isValidDate(validDate); // Returns true
- * ```
+ * Import inference should use `parseImportDate` directly. This helper keeps
+ * the existing broader API surface for trusted timestamps such as HTTP
+ * `Expires` headers while still rejecting arbitrary numeric strings and
+ * accidental free-text matches.
  */
-export const isValidDate = (date: Date): boolean => {
-  return !Number.isNaN(date.getTime());
-};
-
-const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
-  if (month < 1 || month > 12) {
-    return false;
-  }
-
-  const maxDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  return day >= 1 && day <= maxDay;
-};
-
-export const hasInvalidIsoDatePart = (date: string): boolean => {
-  const match = ISO_DATE_PREFIX_REGEX.exec(date);
-  if (!match?.[1] || !match[2] || !match[3]) {
-    return false;
-  }
-
-  const year = Number.parseInt(match[1], 10);
-  const month = Number.parseInt(match[2], 10);
-  const day = Number.parseInt(match[3], 10);
-
-  return !isValidCalendarDate(year, month, day);
-};
-
-const isNumericString = (value: string): boolean => value !== "" && Number.isFinite(Number(value));
-
 export const parseDateInput = (date: string | number | Date | null | undefined): Date | null => {
-  if (date == null) {
-    return null;
-  }
+  const importDate = parseImportDate(date);
+  if (importDate) return importDate;
 
-  if (typeof date === "number") {
-    // Bare years (1000-9999) should be treated as years, not milliseconds
-    if (Number.isInteger(date) && date >= 1000 && date <= 9999) {
-      const dateObj = new Date(`${date}-01-01T00:00:00Z`);
-      return isValidDate(dateObj) ? dateObj : null;
-    }
-    const dateObj = new Date(date);
-    return isValidDate(dateObj) ? dateObj : null;
-  }
-
-  if (typeof date !== "string") {
-    return isValidDate(date) ? date : null;
-  }
+  if (typeof date !== "string") return null;
 
   const trimmedDate = date.trim();
-  if (trimmedDate === "") {
-    return null;
-  }
+  if (trimmedDate === "") return null;
 
-  // Bare 4-digit year string: treat as January 1st of that year
-  if (/^\d{4}$/.test(trimmedDate)) {
-    const dateObj = new Date(`${trimmedDate}-01-01T00:00:00Z`);
-    return isValidDate(dateObj) ? dateObj : null;
-  }
-
-  // Do not let JavaScript's Date parser reinterpret arbitrary numeric
-  // strings as huge years (for example "39135" -> year 39135). CSV readers
-  // commonly leave ID, income, and count columns as strings; only bare
-  // four-digit year strings are accepted above.
-  if (isNumericString(trimmedDate)) {
-    return null;
-  }
-
-  if (hasInvalidIsoDatePart(trimmedDate)) {
-    return null;
-  }
-
-  const dateObj = new Date(trimmedDate);
-  if (!isValidDate(dateObj)) {
-    return null;
-  }
-
-  return dateObj;
+  return parseTrustedHttpDate(trimmedDate);
 };
 
 /**

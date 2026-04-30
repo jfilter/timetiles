@@ -9,7 +9,7 @@
  */
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import { hasInvalidIsoDatePart, isValidDate } from "@/lib/utils/date";
+import { isImportDateLike } from "@/lib/utils/date-parsing";
 
 const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void => {
   if (!stats.typeDistribution) {
@@ -177,16 +177,7 @@ export const getValueType = (value: unknown): string => {
  * Checks if a string looks like a date.
  */
 const isDateString = (value: string): boolean => {
-  // ISO date pattern
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple date pattern, false positive
-  if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/.test(value)) {
-    if (hasInvalidIsoDatePart(value)) return false;
-    const date = new Date(value);
-    return isValidDate(date);
-  }
-
-  // Common date formats
-  return /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(value);
+  return isImportDateLike(value);
 };
 
 const mergeDistributions = <T extends Record<string, number>>(existing: T, incoming: T): T => {

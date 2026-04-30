@@ -437,6 +437,9 @@ describe("date-parse inputFormat handling", () => {
   it("should still parse ISO format YYYY-MM-DD (backward compatibility)", () => {
     expect(applyTransforms({ date: "2024-03-15" }, makeDateTransform("YYYY-MM-DD")).date).toBe("2024-03-15");
   });
+  it("should parse known formats strictly instead of falling back to auto-detection", () => {
+    expect(applyTransforms({ date: "03/15/2024" }, makeDateTransform("YYYY-MM-DD")).date).toBe("03/15/2024");
+  });
   it("should parse DD.MM.YYYY (European dot separator)", () => {
     expect(applyTransforms({ date: "15.03.2024" }, makeDateTransform("DD.MM.YYYY")).date).toBe("2024-03-15");
   });
@@ -449,10 +452,13 @@ describe("date-parse inputFormat handling", () => {
   it("should parse YYYY/MM/DD format", () => {
     expect(applyTransforms({ date: "2024/03/15" }, makeDateTransform("YYYY/MM/DD")).date).toBe("2024-03-15");
   });
-  it("should fall back to new Date() for unrecognized formats", () => {
+  it("should fall back to the safe parser for unrecognized formats", () => {
     expect(applyTransforms({ date: "2024-03-15T00:00:00Z" }, makeDateTransform("UNKNOWN-FORMAT")).date).toBe(
       "2024-03-15"
     );
+  });
+  it("should keep numeric strings unchanged for unrecognized formats", () => {
+    expect(applyTransforms({ date: "39135" }, makeDateTransform("UNKNOWN-FORMAT")).date).toBe("39135");
   });
 });
 
@@ -715,6 +721,24 @@ describe("string-op expression on numeric values", () => {
 
     expect(result.external_id).toBe("00123");
     expect(applyTransforms({ external_id: "123" }, transforms).external_id).toBe("123");
+  });
+
+  it("should reject numeric strings in parseDate expressions", () => {
+    const transforms: IngestTransform[] = [
+      {
+        id: "1",
+        type: "string-op",
+        from: "external_id",
+        operation: "expression",
+        expression: "parseDate(value)",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+
+    const result = applyTransforms({ external_id: "39135" }, transforms);
+
+    expect(result.external_id).toBe("39135");
   });
 
   it("should keep source field when expression fails while writing to a different target", () => {

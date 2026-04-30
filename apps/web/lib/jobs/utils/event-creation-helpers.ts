@@ -15,7 +15,7 @@ import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
-import { parseDateInput } from "@/lib/utils/date";
+import { parseImportDate } from "@/lib/utils/date-parsing";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { getByPathOrKey } from "@/lib/utils/object-path";
 import type { Dataset } from "@/payload-types";
@@ -95,7 +95,7 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
     if (mappedValue == null || mappedValue === "") {
       return null;
     }
-    return parseDateInput(mappedValue as string | number) ?? null;
+    return parseImportDate(mappedValue as string | number) ?? null;
   }
 
   // No mapping configured — try common timestamp field names
@@ -104,7 +104,7 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
   for (const field of timestampFields) {
     const value = getByPathOrKey(row, field);
     if (value) {
-      const date = parseDateInput(value as string | number);
+      const date = parseImportDate(value as string | number);
       if (date) {
         return date;
       }
@@ -126,7 +126,7 @@ export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPa
     return null;
   }
 
-  return parseDateInput(value as string | number);
+  return parseImportDate(value as string | number);
 };
 
 /**

@@ -31,6 +31,14 @@ describe("UrlFetchCache", () => {
     expect(cache.calculateTTL({})).toBe(3600);
   });
 
+  it("uses RFC-1123 Expires headers to calculate cache TTL", () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
+
+    expect(cache.calculateTTL({ expires: "Wed, 21 Oct 2030 07:28:00 GMT" })).toBe(2_592_000);
+  });
+
   it("rejects truncated successful responses", async () => {
     process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
 

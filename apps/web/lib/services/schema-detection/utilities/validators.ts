@@ -10,32 +10,9 @@
  * @category Utilities
  */
 
+import { isImportDateLike, isValidDate } from "@/lib/utils/date-parsing";
+
 import type { FieldStatistics, ValidatorConfig } from "../types";
-
-// ---------------------------------------------------------------------------
-// Date validation helpers (inlined from lib/utils/date to avoid circular deps)
-// ---------------------------------------------------------------------------
-
-const isValidDate = (date: Date): boolean => !Number.isNaN(date.getTime());
-
-const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
-  if (month < 1 || month > 12) return false;
-  return day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
-};
-
-const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})/;
-
-const hasInvalidIsoDatePart = (date: string): boolean => {
-  const match = ISO_DATE_PREFIX_REGEX.exec(date);
-  if (!match?.[1] || !match[2] || !match[3]) return false;
-  return !isValidCalendarDate(
-    Number.parseInt(match[1], 10),
-    Number.parseInt(match[2], 10),
-    Number.parseInt(match[3], 10)
-  );
-};
-
-const isNumericString = (value: string): boolean => value !== "" && Number.isFinite(Number(value));
 
 // ---------------------------------------------------------------------------
 // Individual field type validators
@@ -117,10 +94,8 @@ const checkDateObjectsOrISOStrings = (stats: FieldStatistics): number => {
     return 0;
   }
 
-  const dateObjects = stats.uniqueSamples.filter((v) => v instanceof Date);
-  const isoDateStrings = stats.uniqueSamples.filter(
-    (v): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(v)
-  );
+  const dateObjects = stats.uniqueSamples.filter((v) => v instanceof Date && isValidDate(v));
+  const isoDateStrings = stats.uniqueSamples.filter((v): v is string => typeof v === "string" && isImportDateLike(v));
   const dateValueCount = dateObjects.length + isoDateStrings.length;
   const dateValuePct = dateValueCount / stats.uniqueSamples.length;
 
@@ -149,11 +124,7 @@ const checkParseableStrings = (stats: FieldStatistics, stringPct: number): numbe
   let validDateCount = 0;
 
   for (const value of stringValues.slice(0, 10)) {
-    const trimmedValue = value.trim();
-    if (isNumericString(trimmedValue) && !/^\d{4}$/.test(trimmedValue)) continue;
-    if (hasInvalidIsoDatePart(value)) continue;
-    const date = new Date(value);
-    if (isValidDate(date)) {
+    if (isImportDateLike(value)) {
       validDateCount++;
     }
   }

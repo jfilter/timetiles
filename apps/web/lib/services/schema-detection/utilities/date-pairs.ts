@@ -8,7 +8,7 @@
  * @category Utilities
  */
 
-import { parseDateInput } from "@/lib/utils/date";
+import { parseImportDate } from "@/lib/utils/date-parsing";
 import { getByPathOrKey } from "@/lib/utils/object-path";
 
 import type { FieldStatistics } from "../types";
@@ -59,7 +59,7 @@ interface CandidatePairMetrics {
 
 type ParseableDateInput = string | number | Date | null | undefined;
 
-const isDateParseable = (value: unknown): boolean => parseDateInput(value as ParseableDateInput) !== null;
+const isDateParseable = (value: unknown): boolean => parseImportDate(value as ParseableDateInput) !== null;
 
 const uniquePathsInOrder = (
   headers: string[],
@@ -196,8 +196,8 @@ export const createPairedDateInference = (options: PairedDateInferenceOptions) =
             pair.rowsWithParseableValue++;
           }
 
-          const startDate = parseDateInput(startValue as ParseableDateInput);
-          const endDate = parseDateInput(endValue as ParseableDateInput);
+          const startDate = parseImportDate(startValue as ParseableDateInput);
+          const endDate = parseImportDate(endValue as ParseableDateInput);
 
           if (!startDate || !endDate) continue;
 

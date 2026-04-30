@@ -138,6 +138,19 @@ describe("preProcessRecords", () => {
     expect(result[0]!.price).toBe("2.25");
   });
 
+  it("should merge large numeric CSV strings numerically instead of treating them as dates", () => {
+    const records = [
+      { uid: 1, hhincome_median_census_tract: "39135" },
+      { uid: 1, hhincome_median_census_tract: "59955" },
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { hhincome_median_census_tract: "max" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.hhincome_median_census_tract).toBe("59955");
+    expect(mockLogger.logger.warn).not.toHaveBeenCalled();
+  });
+
   it("should skip merging fields with mixed numeric and date values", () => {
     const records = [
       { uid: 1, marker: "2" },

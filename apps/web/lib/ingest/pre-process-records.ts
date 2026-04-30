@@ -10,6 +10,7 @@
  */
 
 import { logger } from "@/lib/logger";
+import { parseImportDate } from "@/lib/utils/date-parsing";
 import { getByPath } from "@/lib/utils/object-path";
 
 /** Merge strategy for a field: keep the minimum or maximum value. */
@@ -99,8 +100,8 @@ const parseMergeValue = (value: unknown): ParsedMergeValue | null => {
     return { kind: "number", comparable: Number(trimmed), original: value };
   }
 
-  const parsedDate = new Date(trimmed);
-  if (Number.isNaN(parsedDate.getTime())) {
+  const parsedDate = parseImportDate(trimmed);
+  if (!parsedDate) {
     return null;
   }
 

@@ -20,6 +20,12 @@ describe("parseDateInput", () => {
     expect(result!.toISOString()).toBe("2024-06-15T10:30:00.000Z");
   });
 
+  it("should parse trusted HTTP Expires dates", () => {
+    const result = parseDateInput("Wed, 21 Oct 2015 07:28:00 GMT");
+    expect(result).toBeInstanceOf(Date);
+    expect(result!.toISOString()).toBe("2015-10-21T07:28:00.000Z");
+  });
+
   it("should return null for null/undefined/empty", () => {
     expect(parseDateInput(null)).toBeNull();
     expect(parseDateInput(undefined)).toBeNull();
@@ -31,6 +37,12 @@ describe("parseDateInput", () => {
     const result = parseDateInput(1718451000000);
     expect(result).toBeInstanceOf(Date);
     expect(result!.getFullYear()).toBe(2024);
+  });
+
+  it("should parse Unix timestamps in seconds", () => {
+    const result = parseDateInput(1718451000);
+    expect(result).toBeInstanceOf(Date);
+    expect(result!.toISOString()).toBe("2024-06-15T11:30:00.000Z");
   });
 
   // This is the bug: a bare year like 1898 should be parsed as a year, not milliseconds
@@ -49,6 +61,12 @@ describe("parseDateInput", () => {
   it("should reject non-year numeric strings instead of treating them as large years", () => {
     expect(parseDateInput("39135")).toBeNull();
     expect(parseDateInput("16928")).toBeNull();
+    expect(parseDateInput("1718451000000")).toBeNull();
+  });
+
+  it("should reject free text that JavaScript Date would parse accidentally", () => {
+    expect(parseDateInput("Event 1")).toBeNull();
+    expect(parseDateInput("Location 1")).toBeNull();
   });
 
   it("should parse year 2024 as a year, not milliseconds", () => {
@@ -61,5 +79,11 @@ describe("parseDateInput", () => {
     // 1718451000000 = 2024-06-15
     const result = parseDateInput(1718451000000);
     expect(result!.getFullYear()).toBe(2024);
+  });
+
+  it("should reject finite numbers outside supported year and Unix timestamp ranges", () => {
+    expect(parseDateInput(999)).toBeNull();
+    expect(parseDateInput(10000)).toBeNull();
+    expect(parseDateInput(39135)).toBeNull();
   });
 });
