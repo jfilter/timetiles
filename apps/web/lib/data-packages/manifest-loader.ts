@@ -26,13 +26,18 @@ const logger = createLogger("data-packages");
 
 const authConfigSchema = z
   .object({
-    type: z.enum(["none", "api-key", "bearer", "basic"]),
+    type: z.enum(["none", "api-key", "bearer", "basic", "oauth"]),
     apiKey: z.string().optional(),
     apiKeyHeader: z.string().optional(),
     bearerToken: z.string().optional(),
     username: z.string().optional(),
     password: z.string().optional(),
     customHeaders: z.record(z.string(), z.string()).optional(),
+    // OAuth client-credentials flow (type "oauth"): tokenUrl + clientId
+    // are required, with username/password serving as the OAuth user
+    // credentials. ACLED is the canonical example.
+    tokenUrl: z.string().optional(),
+    clientId: z.string().optional(),
   })
   .optional();
 

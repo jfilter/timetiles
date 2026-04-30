@@ -1,0 +1,37 @@
+# Auto-activated data packages per DEPLOYMENT_ENVIRONMENT.
+#
+# Each entry: { slug, params? }. `slug` references a manifest in
+# config/data-packages/. `params` provides values for parameterized
+# manifests (e.g. ucdp-hdx country/dataset/resource UUIDs) — leave it
+# off for non-parameterized packages.
+#
+# Activation runs on Payload boot when RUN_AUTO_ACTIVATIONS=true and
+# DEPLOYMENT_ENVIRONMENT matches a key below. Already-activated entries
+# are skipped silently.
+
+staging:
+  - slug: bellingcat-ukraine
+  - slug: us-mapping-police-violence
+  - slug: ucdp-hdx
+    params:
+      country: Colombia
+      dataset_id: 3fe49e27-6d27-425e-bdc0-decc7201daff
+      resource_id: 4dad0006-954e-4820-ae88-5c7b58a77e64
+  - slug: ucdp-hdx
+    params:
+      country: Myanmar
+      dataset_id: e7d38839-fd46-4693-9a5f-b8776262e3f8
+      resource_id: 858cbf79-6c0b-4a9b-9135-cb85ae3bb348
+  - slug: ucdp-hdx
+    params:
+      country: Sudan
+      dataset_id: fcb19835-b5ce-4bfb-bf61-dd3df45984b5
+      resource_id: 9ccd63fc-98de-43f8-bbbf-7358092a2b19
+
+# Operator-driven for now. Add entries here once production is ready
+# to take auto-activations.
+production: []
+
+preview: []
+
+development: []

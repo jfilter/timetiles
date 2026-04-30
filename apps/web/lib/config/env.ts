@@ -37,6 +37,15 @@ const baseSchema = {
   // Read server-side only — kept out of the NEXT_PUBLIC_* namespace so the
   // same Docker image can run as either staging or prod without rebuilding.
   DEPLOYMENT_ENVIRONMENT: z.enum(["production", "staging", "preview", "development"]).default("production"),
+  // Run the data-package auto-activator on Payload init. Should be set
+  // only on a single instance per deployment (the web container, not
+  // workers) — multiple racing onInits would all try to activate. The
+  // idempotency check on `dataPackageSlug` prevents duplicates either
+  // way, but keeping this single-instance keeps logs clean.
+  RUN_AUTO_ACTIVATIONS: z
+    .string()
+    .default("false")
+    .transform((v) => v === "true"),
 
   // === Logging ===
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"]).optional(),

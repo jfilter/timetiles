@@ -95,6 +95,10 @@ services:
       # Application
       NODE_ENV: ${NODE_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
+      # Auto-activate data packages on Payload boot (web container only —
+      # workers leave this unset to avoid racing on the same idempotency
+      # check). See apps/web/lib/data-packages/auto-activator.ts.
+      RUN_AUTO_ACTIVATIONS: ${RUN_AUTO_ACTIVATIONS:-true}
       PORT: ${CONTAINER_PORT:-3000}
 
       # Logging (all containers write to /var/log/timetiles/ via shared volume)

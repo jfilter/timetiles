@@ -286,6 +286,14 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     configureProduction(config, serverURL);
   }
 
+  // Auto-activate data packages on first boot, gated by the
+  // RUN_AUTO_ACTIVATIONS env var (the runner itself early-returns when
+  // unset, so the import + cost is negligible when disabled).
+  config.onInit = async (payload) => {
+    const { runAutoActivations } = await import("@/lib/data-packages/auto-activator");
+    await runAutoActivations(payload);
+  };
+
   return buildConfig(config);
 };
 
