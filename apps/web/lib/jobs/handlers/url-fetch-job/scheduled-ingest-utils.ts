@@ -184,8 +184,9 @@ const auditRetriesExhausted = async (
  *
  * Increments `currentRetries` and checks it against `retryConfig.maxRetries`.
  * When the retry budget is exhausted, disables the ingest (`enabled: false`)
- * so the scheduler stops re-queueing it, logs at `error`, and emits an audit
- * log entry. Operators can re-enable after investigating the root cause.
+ * so the scheduler stops re-queueing it. Audit/email notifications are emitted
+ * only when the run crosses the retry budget; later failures for already
+ * exhausted jobs keep the record disabled without spamming the owner.
  */
 export const updateScheduledIngestFailure = async (
   payload: Payload,
@@ -197,9 +198,11 @@ export const updateScheduledIngestFailure = async (
     const stats = resolveScheduledIngestStats(scheduledIngest.statistics);
     const updatedStats = recordScheduledIngestFailure(stats);
 
-    const currentRetries = (scheduledIngest.currentRetries ?? 0) + 1;
+    const previousRetries = scheduledIngest.currentRetries ?? 0;
+    const currentRetries = previousRetries + 1;
     const maxRetries = scheduledIngest.retryConfig?.maxRetries ?? 3;
     const retriesExhausted = currentRetries > maxRetries;
+    const retryBudgetJustExhausted = previousRetries <= maxRetries && retriesExhausted;
 
     // Update execution history
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -229,7 +232,7 @@ export const updateScheduledIngestFailure = async (
       ...(req ? { req } : {}),
     });
 
-    if (retriesExhausted) {
+    if (retryBudgetJustExhausted) {
       logger.error(
         {
           scheduledIngestId: scheduledIngest.id,
