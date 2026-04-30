@@ -1,52 +1,55 @@
 # Release Process
 
-How to cut a new TimeTiles release. Versions follow [SemVer](https://semver.org/) with [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) for the changelog format.
+How to cut a new TimeTiles release. Versions follow [SemVer](https://semver.org/) and the changelog uses the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format.
 
 ## Versioning
 
-TimeTiles is currently in the **pre-1.0 alpha** phase. Released versions take the form:
+TimeTiles uses standard [SemVer](https://semver.org/): `MAJOR.MINOR.PATCH` with optional pre-release identifiers (`-alpha.N`, `-beta.N`, `-rc.N`).
 
-```
-v0.1.0-alpha.<N>
-```
+- **MAJOR** — breaking changes to public APIs, data model, or migration path.
+- **MINOR** — new features, backwards-compatible.
+- **PATCH** — bug fixes only.
+- **Pre-release suffix** — `-alpha.N`, `-beta.N`, or `-rc.N` for unstable builds leading up to a target version.
 
-where `<N>` increases monotonically. A stable `v0.1.0` (and beyond) will be cut once the API surface and data model are considered stable enough to commit to.
-
-Why pre-1.0 alphas: the platform is in active production use with partner organisations, but several subsystems (data pipeline, multi-user access control) are still evolving and we do not yet make stability guarantees.
+The current pre-1.0 phase is being shipped as `v0.1.0-alpha.<N>` while the API surface and data model stabilise. Once stable, releases will move to plain `MAJOR.MINOR.PATCH` tags.
 
 ## When to release
 
-Cut a new alpha when one of the following applies:
+Cut a new release when one of the following applies:
 
 - A meaningful batch of user-facing changes has accumulated on `main` since the last tag.
-- A partner integration depends on a fixed reference point.
-- A milestone moment (e.g. funding-period checkpoint) is worth marking in the history.
+- An integration depends on a fixed reference point.
+- A milestone moment is worth marking in the history.
 
 There is no fixed cadence — releases are intentional, not automatic.
 
 ## Steps
 
-### 1. Move `Unreleased` to a dated version in the changelog
+### 1. Pick the next version
+
+Decide whether the change set is a `MAJOR`, `MINOR`, or `PATCH` bump (or a new pre-release iteration). The `Unreleased` section of the changelog is the source of truth for what is going in.
+
+### 2. Move `Unreleased` to a dated version in the changelog
 
 Edit `apps/docs/content/reference/changelog.mdx`:
 
 - Rename the `## [Unreleased]` heading to the new version and date, e.g.  
-  `## [0.1.0-alpha.5] - 2026-05-15`
+  `## [1.2.0] - 2026-09-15` or `## [0.1.0-alpha.5] - 2026-05-15`
 - Add a fresh `## [Unreleased]` block above it for the next cycle.
-- Group entries under `### Added`, `### Changed`, `### Fixed`, `### Removed`, `### Security` (skip headings with no entries).
+- Group entries under `### Added`, `### Changed`, `### Fixed`, `### Removed`, `### Deprecated`, `### Security` (skip headings with no entries).
 - Cross-check against `git log <previous-tag>..HEAD --oneline` so nothing relevant is missed.
 
-### 2. Commit the changelog
+### 3. Commit the changelog
 
 ```bash
 git add apps/docs/content/reference/changelog.mdx
-git commit -m "docs(docs): prepare v0.1.0-alpha.5 changelog"
+git commit -m "docs(docs): prepare <version> changelog"
 ```
 
-### 3. Tag the release commit
+### 4. Tag the release commit
 
 ```bash
-git tag -a v0.1.0-alpha.5 -m "v0.1.0-alpha.5
+git tag -a <version> -m "<version>
 
 <short summary of the release — copy the headline points from the
 changelog entry>"
@@ -54,32 +57,31 @@ changelog entry>"
 
 Annotated tags (`-a`) are required so the message is preserved on GitHub.
 
-### 4. Push commit and tag
+### 5. Push commit and tag
 
 ```bash
 git push origin main
-git push origin v0.1.0-alpha.5
+git push origin <version>
 ```
 
 The `Deploy Documentation` workflow rebuilds the docs site (including the changelog) on push to `main`. The `Release Images` workflow builds and publishes container images on tag push.
 
-### 5. (Optional) Create a GitHub Release
+### 6. (Optional) Create a GitHub Release
 
 ```bash
-gh release create v0.1.0-alpha.5 \
-  --title "v0.1.0-alpha.5" \
-  --notes-from-tag \
-  --prerelease
+gh release create <version> \
+  --title "<version>" \
+  --notes-from-tag
 ```
 
-Mark every pre-1.0 release as `--prerelease` so it does not show up as the recommended download.
+Add `--prerelease` for any version with a pre-release suffix (`-alpha`, `-beta`, `-rc`) so it does not show up as the recommended download.
 
 ## Backfilling tags
 
-When tagging existing commits after the fact (as was done for `v0.1.0-alpha.{1..4}` at the close of the Prototype Fund funding period), use the same annotated-tag command but with the historical commit:
+When tagging existing commits after the fact, use the same annotated-tag command but pointed at the historical commit:
 
 ```bash
-git tag -a v0.1.0-alpha.<N> <commit-sha> -m "<message>"
+git tag -a <version> <commit-sha> -m "<message>"
 ```
 
 The tagger date will reflect when the tag was created, which is fine — the commit date stays accurate.
@@ -89,5 +91,5 @@ The tagger date will reflect when the tag was created, which is fine — the com
 For urgent fixes between releases:
 
 1. Land the fix on `main` as usual.
-2. Cut a new alpha (`alpha.N+1`) — there is no separate hotfix branch in the alpha phase.
-3. Note in the release message which prior alpha the fix supersedes.
+2. Cut a new `PATCH` release from `main` (or, post-1.0, from a release branch if maintaining older majors).
+3. Note in the release message which prior version the fix supersedes.
