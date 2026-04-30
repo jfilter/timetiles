@@ -54,6 +54,10 @@ import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
 import type { Branding, Footer as FooterType } from "@/payload-types";
 
+interface ImportedAsset {
+  src: string;
+}
+
 const fontSans = DM_Sans({ subsets: ["latin"], variable: "--font-sans", display: "swap" });
 
 const fontSerif = Playfair_Display({ subsets: ["latin"], variable: "--font-serif", display: "swap" });
@@ -63,6 +67,16 @@ const fontMono = Space_Mono({ subsets: ["latin"], variable: "--font-mono", weigh
 // Modern theme fonts (loaded alongside cartographic fonts — CSS variables switch which is active)
 const fontInter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const fontJetBrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains", display: "swap" });
+
+const resolveImportedAssetSrc = (asset: string | ImportedAsset): string =>
+  typeof asset === "string" ? asset : asset.src;
+
+const bmftrDeSrc = resolveImportedAssetSrc(bmftrDe);
+const bmftrEnSrc = resolveImportedAssetSrc(bmftrEn);
+const ptfBannerDeDarkSrc = resolveImportedAssetSrc(ptfBannerDeDark);
+const ptfBannerDeLightSrc = resolveImportedAssetSrc(ptfBannerDeLight);
+const ptfBannerEnDarkSrc = resolveImportedAssetSrc(ptfBannerEnDark);
+const ptfBannerEnLightSrc = resolveImportedAssetSrc(ptfBannerEnLight);
 
 const getFooterData = async (locale: Locale): Promise<FooterType> => {
   const payload = await getPayload({ config });
@@ -90,17 +104,11 @@ export const generateMetadata = async (): Promise<Metadata> => {
     description: branding.siteDescription ?? "Making spatial and temporal data analysis accessible to everyone.",
     icons: {
       icon: [
-        { url: "/favicon-light.ico", media: "(prefers-color-scheme: light)" },
-        { url: "/favicon-dark.ico", media: "(prefers-color-scheme: dark)" },
+        { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
       ],
-      apple: [
-        { url: "/apple-touch-icon.png", media: "(prefers-color-scheme: light)" },
-        { url: "/apple-touch-icon-dark.png", media: "(prefers-color-scheme: dark)" },
-      ],
-      other: [
-        { rel: "icon", url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-        { rel: "icon", url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      ],
+      apple: [{ url: "/apple-touch-icon.png" }],
     },
   };
 };
@@ -194,20 +202,24 @@ const SiteFooter = ({
             <a href="https://prototypefund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={locale === "de" ? ptfBannerDeLight : ptfBannerEnLight}
+                src={locale === "de" ? ptfBannerDeLightSrc : ptfBannerEnLightSrc}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="h-16 w-auto dark:hidden"
               />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={locale === "de" ? ptfBannerDeDark : ptfBannerEnDark}
+                src={locale === "de" ? ptfBannerDeDarkSrc : ptfBannerEnDarkSrc}
                 alt={locale === "de" ? "Unterstützt durch Prototype Fund" : "Supported by Prototype Fund"}
                 className="hidden h-16 w-auto dark:block"
               />
             </a>
             <a href="https://www.bmftr.bund.de" target="_blank" rel="noopener noreferrer">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={locale === "de" ? bmftrDe : bmftrEn} alt={footerMessages.bmftrAlt} className="h-16 w-auto" />
+              <img
+                src={locale === "de" ? bmftrDeSrc : bmftrEnSrc}
+                alt={footerMessages.bmftrAlt}
+                className="h-16 w-auto"
+              />
             </a>
             <span className="text-muted-foreground text-xs">{footerMessages.fundingText}</span>
           </div>

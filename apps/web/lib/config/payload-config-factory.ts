@@ -295,6 +295,9 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // RUN_AUTO_ACTIVATIONS env var (the runner itself early-returns when
   // unset, so the import + cost is negligible when disabled).
   config.onInit = async (payload) => {
+    const { bootstrapDefaultCoreContent } = await import("@/lib/services/bootstrap/core-content");
+    await bootstrapDefaultCoreContent(payload);
+
     const { bootstrapDefaultGeocodingProviders } = await import("@/lib/services/geocoding/bootstrap-providers");
     await bootstrapDefaultGeocodingProviders(payload);
 
