@@ -58,8 +58,14 @@ const buildPinnedDispatcher = (resolved: Array<{ address: string; family: 4 | 6 
   // Prefer IPv4 if available; undici's connect expects a single address.
   const preferred = resolved.find((r) => r.family === 4) ?? resolved[0]!;
 
-  const pinnedLookup: LookupFunction = (_host, _opts, cb) => {
-    cb(null, preferred.address, preferred.family);
+  // undici 7 calls the lookup hook with `{ all: true }` and expects the
+  // array-of-records callback shape. The legacy `(err, address, family)`
+  // form makes connect read `address` as undefined and throw
+  // ERR_INVALID_IP_ADDRESS on every request — masked by Node's generic
+  // "fetch failed" error. Always emit the array form.
+  // oxlint-disable-next-line no-explicit-any -- LookupFunction's type is the legacy 3-arg shape
+  const pinnedLookup: LookupFunction = (_host, _opts, cb: any) => {
+    cb(null, [{ address: preferred.address, family: preferred.family }]);
   };
 
   return new Agent({ connect: { lookup: pinnedLookup } });
