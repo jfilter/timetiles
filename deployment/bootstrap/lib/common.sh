@@ -286,8 +286,10 @@ configure_nginx() {
     # files assume-unchanged so `git status` stays clean. `git reset --hard`
     # in `timetiles update` still overwrites them, so upstream template
     # changes propagate normally.
-    local repo_root
-    repo_root="$(cd "$nginx_dir/../.." 2>/dev/null && pwd || true)"
+    local repo_root=""
+    if [[ -d "$nginx_dir/../.." ]]; then
+        repo_root="$(cd "$nginx_dir/../.." && pwd)"
+    fi
     find "$nginx_dir/sites-enabled" -type f -name "*.conf" -print0 \
         | while IFS= read -r -d '' f; do
             sed -i "s/\${DOMAIN_NAME}/$domain/g" "$f"
