@@ -832,6 +832,15 @@ describe("validateFieldType", () => {
       expect(validateFieldType(stats, "timestamp")).toBe(0);
     });
 
+    it("returns 0 for numeric strings that JavaScript Date would treat as huge years", () => {
+      const stats = createFieldStats({
+        occurrences: 100,
+        typeDistribution: { string: 100 },
+        uniqueSamples: ["39135", "59955", "52847", "75620"],
+      });
+      expect(validateFieldType(stats, "timestamp")).toBe(0);
+    });
+
     it("returns 0 for Date objects when objectPct is too low", () => {
       const stats = createFieldStats({
         occurrences: 100,

@@ -46,6 +46,11 @@ describe("parseDateInput", () => {
     expect(result!.getFullYear()).toBe(1898);
   });
 
+  it("should reject non-year numeric strings instead of treating them as large years", () => {
+    expect(parseDateInput("39135")).toBeNull();
+    expect(parseDateInput("16928")).toBeNull();
+  });
+
   it("should parse year 2024 as a year, not milliseconds", () => {
     const result = parseDateInput(2024);
     expect(result).toBeInstanceOf(Date);

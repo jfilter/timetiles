@@ -46,7 +46,10 @@ vi.mock("@/lib/jobs/utils/upload-path", () => ({
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
-import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
+import {
+  MAX_INGEST_ERROR_MESSAGE_LENGTH,
+  processEventBatch,
+} from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { getEventCreationDuplicates } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockLogger } from "@/tests/mocks/services/logger";
@@ -661,6 +664,29 @@ describe.sequential("processEventBatch", () => {
       const result = await processEventBatch(ctx, rows, 100);
 
       expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([101, 102]);
+    });
+
+    it("stores concise database causes instead of Drizzle's full SQL wrapper", async () => {
+      const drizzleError = new Error(
+        `Failed query: insert into payload.events values ${"x".repeat(2_000)}`
+      ) as Error & { cause?: unknown };
+      drizzleError.cause = {
+        message: "value too long for type character varying",
+        code: "22001",
+        table: "events",
+        column: "unique_id",
+      };
+      mocks.bulkInsertEvents.mockImplementationOnce(() => {
+        throw drizzleError;
+      });
+
+      const result = await processEventBatch(baseCtx, [{ id: "a", title: "A" }], 0);
+
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]?.error).toContain("value too long for type character varying");
+      expect(result.errors[0]?.error).toContain("code 22001");
+      expect(result.errors[0]?.error).not.toContain("Failed query");
+      expect(result.errors[0]?.error.length).toBeLessThanOrEqual(MAX_INGEST_ERROR_MESSAGE_LENGTH);
     });
   });
 });

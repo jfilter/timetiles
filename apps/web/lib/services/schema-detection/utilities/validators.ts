@@ -24,6 +24,7 @@ const isValidCalendarDate = (year: number, month: number, day: number): boolean 
 };
 
 const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})/;
+const NUMERIC_STRING_REGEX = /^[+-]?\d+(?:\.\d+)?$/;
 
 const hasInvalidIsoDatePart = (date: string): boolean => {
   const match = ISO_DATE_PREFIX_REGEX.exec(date);
@@ -147,6 +148,8 @@ const checkParseableStrings = (stats: FieldStatistics, stringPct: number): numbe
   let validDateCount = 0;
 
   for (const value of stringValues.slice(0, 10)) {
+    const trimmedValue = value.trim();
+    if (NUMERIC_STRING_REGEX.test(trimmedValue) && !/^\d{4}$/.test(trimmedValue)) continue;
     if (hasInvalidIsoDatePart(value)) continue;
     const date = new Date(value);
     if (isValidDate(date)) {

@@ -27,6 +27,61 @@ import { buildTransformsFromDataset } from "../../utils/transform-builders";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 
+export const MAX_INGEST_ERROR_MESSAGE_LENGTH = 500;
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
+const getStringProperty = (value: unknown, key: string): string | undefined => {
+  if (!isRecord(value)) return undefined;
+  const property = value[key];
+  return typeof property === "string" && property.trim() !== "" ? property.trim() : undefined;
+};
+
+const truncateErrorMessage = (message: string): string =>
+  message.length > MAX_INGEST_ERROR_MESSAGE_LENGTH
+    ? `${message.slice(0, MAX_INGEST_ERROR_MESSAGE_LENGTH - 1)}…`
+    : message;
+
+const formatCauseDetails = (cause: unknown): string[] => {
+  const details: string[] = [];
+  const code = getStringProperty(cause, "code");
+  const detail = getStringProperty(cause, "detail");
+  const constraint = getStringProperty(cause, "constraint");
+  const table = getStringProperty(cause, "table");
+  const column = getStringProperty(cause, "column");
+
+  if (code) details.push(`code ${code}`);
+  if (detail) details.push(`detail: ${detail}`);
+  if (constraint) details.push(`constraint: ${constraint}`);
+  if (table) details.push(`table: ${table}`);
+  if (column) details.push(`column: ${column}`);
+
+  return details;
+};
+
+/** Convert DB/row errors into short, non-empty messages safe for ingest job storage. */
+export const normalizeIngestErrorMessage = (error: unknown, fallback = "Unknown error"): string => {
+  const cause = isRecord(error) ? error.cause : undefined;
+  const causeMessage = getStringProperty(cause, "message");
+  if (causeMessage) {
+    const details = formatCauseDetails(cause);
+    const message = details.length > 0 ? `${causeMessage} (${details.join("; ")})` : causeMessage;
+    return truncateErrorMessage(message);
+  }
+
+  const message = error instanceof Error ? error.message.trim() : typeof error === "string" ? error.trim() : "";
+  if (!message) return fallback;
+
+  // Drizzle wraps database failures with the full generated SQL and params in
+  // `error.message`. Store/log the structured error for operators, but keep
+  // row-level import errors concise and free of giant SQL strings.
+  if (message.startsWith("Failed query:")) {
+    return fallback;
+  }
+
+  return truncateErrorMessage(message);
+};
+
 const valuesEqual = (left: unknown, right: unknown): boolean => {
   if (Object.is(left, right)) return true;
   if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
@@ -236,8 +291,8 @@ const bulkInsertNewEvents = async (
     const created = await bulkInsertEvents(payload, eventsToInsert);
     return { created, errors: [] };
   } catch (error) {
-    log.error("Bulk insert failed for batch", { count: eventsToInsert.length, error });
-    const msg = error instanceof Error ? error.message : "Bulk insert failed";
+    log.error({ count: eventsToInsert.length, err: error }, "Bulk insert failed for batch");
+    const msg = normalizeIngestErrorMessage(error, "Database bulk insert failed");
     // Report the actual source row numbers rather than positions in the
     // filtered `eventsToInsert` array — callers scanning error CSVs would
     // otherwise be pointed at the wrong rows whenever the batch contained
@@ -308,11 +363,11 @@ export const processEventBatch = async (
       // also become per-row entries so a single bad row doesn't poison the
       // rest of the batch.
       if (error instanceof EventPayloadTooLargeError) {
-        log.warn("Row exceeds per-event payload cap; skipping", { rowNumber, bytes: error.bytes, limit: error.limit });
+        log.warn({ rowNumber, bytes: error.bytes, limit: error.limit }, "Row exceeds per-event payload cap; skipping");
       } else {
-        log.warn("Failed to process event", { rowNumber, error });
+        log.warn({ rowNumber, err: error }, "Failed to process event");
       }
-      errors.push({ row: rowNumber, error: error instanceof Error ? error.message : "Unknown error" });
+      errors.push({ row: rowNumber, error: normalizeIngestErrorMessage(error) });
     }
   }
 

@@ -109,4 +109,23 @@ describe("createPairedDateInference", () => {
 
     expect(inference.getResult()).toMatchObject({ timestampPath: "phase_one", endTimestampPath: "phase_two" });
   });
+
+  it("does not pair a real date column with numeric string attributes", () => {
+    const headers = ["date", "hhincome_median_census_tract", "name"];
+    const rows = [
+      { date: "3/17/2026", hhincome_median_census_tract: "39135", name: "Justin Eric Hardin" },
+      { date: "3/17/2026", hhincome_median_census_tract: "59955", name: "Michael John Krause Jr." },
+      { date: "3/16/2026", hhincome_median_census_tract: "52847", name: "Kenny R. Risley" },
+      { date: "3/16/2026", hhincome_median_census_tract: "75620", name: "Susanne Michele Clarke" },
+    ];
+
+    const inference = createPairedDateInference({
+      headers,
+      fieldStats: buildFieldStats(rows),
+      existingMappings: { timestampPath: "date" },
+    });
+    inference.processRows(rows);
+
+    expect(inference.getResult()).toBeNull();
+  });
 });

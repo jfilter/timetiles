@@ -12,6 +12,7 @@
 import { valueToString } from "@/lib/utils/format";
 
 const ISO_DATE_PREFIX_REGEX = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/;
+const NUMERIC_STRING_REGEX = /^[+-]?\d+(?:\.\d+)?$/;
 
 /**
  * Check if a Date object is valid.
@@ -82,6 +83,14 @@ export const parseDateInput = (date: string | number | Date | null | undefined):
   if (/^\d{4}$/.test(trimmedDate)) {
     const dateObj = new Date(`${trimmedDate}-01-01T00:00:00Z`);
     return isValidDate(dateObj) ? dateObj : null;
+  }
+
+  // Do not let JavaScript's Date parser reinterpret arbitrary numeric
+  // strings as huge years (for example "39135" -> year 39135). CSV readers
+  // commonly leave ID, income, and count columns as strings; only bare
+  // four-digit year strings are accepted above.
+  if (NUMERIC_STRING_REGEX.test(trimmedDate)) {
+    return null;
   }
 
   if (hasInvalidIsoDatePart(trimmedDate)) {

@@ -19,6 +19,7 @@ import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob, User } from "@/payload-types";
 
 import { getDuplicateSummary, getUniqueRowsForQuota } from "../../utils/resource-loading";
+import { normalizeIngestErrorMessage } from "./process-batch";
 
 /** Maximum number of individual errors stored on an import job. */
 export const MAX_STORED_ERRORS = 500;
@@ -131,14 +132,12 @@ export const updateJobErrors = async (
 
   const remaining = MAX_STORED_ERRORS - storedErrorCount;
   // The collection's `errors` array enforces a non-empty `error` text per
-  // entry (required: true). An upstream error.message of "" — observed
-  // with at least one HDX/CSV source — would otherwise reject the whole
-  // payload.update with a validation error, causing the import to retry
-  // forever on the same un-storable error and eventually disable the
-  // schedule. Substitute a generic message for empty entries.
+  // entry (required: true). Keep stored messages short and sanitized so a
+  // giant database wrapper error cannot make the error persistence itself
+  // fail and retry forever.
   const errorsToStore = errors
     .slice(0, remaining)
-    .map(({ row, error }) => ({ row, error: error.trim() === "" ? "Unknown error" : error }));
+    .map(({ row, error }) => ({ row, error: normalizeIngestErrorMessage(error) }));
 
   // Re-read current errors from DB to merge correctly
   const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
