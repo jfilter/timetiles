@@ -73,8 +73,10 @@ cp "$DEPLOY_DIR/nginx/security-headers-https.conf" "$DEPLOY_DIR/nginx-test/secur
 cp -r "$DEPLOY_DIR/nginx/sites-enabled/"* "$DEPLOY_DIR/nginx-test/sites-enabled/"
 
 # Substitute domain name in all nginx config files
-# First detect what domain was substituted by bootstrap (if any)
-BOOTSTRAP_DOMAIN=$(grep -oP 'server_name \K[^;]+' "$DEPLOY_DIR/nginx-test/sites-enabled/app.conf" 2>/dev/null | grep -v 'www\.' | head -1 | tr -d ' ')
+# First detect what domain was substituted by bootstrap (if any). Skip
+# `_` (the catchall used in default_server blocks) — substituting that
+# would also rewrite directives like `default_server`.
+BOOTSTRAP_DOMAIN=$(grep -oP 'server_name \K[^;]+' "$DEPLOY_DIR/nginx-test/sites-enabled/app.conf" 2>/dev/null | grep -vE '^(_|www\.)' | head -1 | tr -d ' ')
 BOOTSTRAP_DOMAIN="${BOOTSTRAP_DOMAIN:-\$\{DOMAIN_NAME\}}"
 # Replace all occurrences (server_name, redirects, cert paths) with 'localhost'
 if [[ "$BOOTSTRAP_DOMAIN" != "localhost" ]]; then
