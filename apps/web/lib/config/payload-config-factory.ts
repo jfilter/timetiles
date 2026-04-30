@@ -245,7 +245,11 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   };
 
   // Configure email adapter
-  if (environment === "test") {
+  // Build phase has no DB, no SMTP env, and no network access in CI; the
+  // ethereal fallback below tries to provision an SMTP test account via
+  // api.nodemailer.com and fails the whole `next build`. Use the in-memory
+  // jsonTransport during build so config evaluation completes.
+  if (environment === "test" || env.NEXT_PHASE === "phase-production-build") {
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
