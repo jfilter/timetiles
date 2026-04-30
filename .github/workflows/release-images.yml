@@ -310,7 +310,10 @@ jobs:
           fi
 
           echo "==> Starting web..."
-          docker compose -f docker-compose.prod.yml --env-file .env.production up -d web
+          # Postgres was explicitly started and health-checked above. Avoid a
+          # second compose dependency gate here because a transient healthcheck
+          # sample can make compose fail before the web container even starts.
+          docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps web
           for i in $(seq 1 90); do
             status=$(docker inspect --format='{{.State.Health.Status}}' timetiles-web 2>/dev/null || echo "unknown")
             if [ "$status" = "healthy" ]; then
