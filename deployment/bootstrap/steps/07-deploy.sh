@@ -15,6 +15,14 @@ run_step() {
         sudo -u "$user" sg docker -c "cd $install_dir && $*"
     }
 
+    # The web/worker images run as a non-root user with uid 1001 (nextjs).
+    # Bind-mounted log + upload dirs need to be writable by that uid; without
+    # an explicit chown, containers fail with EACCES and the worker process
+    # crash-loops at first log write. Create the dirs before `up` so the
+    # ownership is right from the first container start.
+    install -d -o 1001 -g 1001 "$install_dir/logs"
+    install -d -o 1001 -g 1001 "$install_dir/uploads"
+
     # Always generate self-signed SSL certificate as a fallback
     # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
     setup_self_signed_ssl "$install_dir" "$user"
