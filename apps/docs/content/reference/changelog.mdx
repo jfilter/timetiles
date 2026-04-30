@@ -2,63 +2,136 @@
 
 All notable changes to TimeTiles are documented here. Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [0.2.0] - 2026-03-23
+## [0.1.0-alpha.4] - 2026-03-31
+
+End-of-funding-period iteration. Final state of the platform on the last day of the Prototype Fund Software Sprint funding period (FKZ 16IS25S03).
+
+### Added
+
+- H3 hexagonal grid clustering with expert mode
+- Cluster focus mode, H3-based cluster filtering, mini dashboard
+- Unique-locations model — separate locations from clusters
+- Dataset-centric filter sidebar with multi-catalog support
+- Dataset info popover, colored checkboxes, dataset bounds API
+- Auto-zoom to data on dataset selection change
+- Beeswarm chart type with d3-force layout and server-side temporal clustering
+- Grouped charts: groupBy for beeswarm and stacked histogram
+- Chart type synced to URL parameter
+- Tag field support for multi-value array filtering
+- HTML-in-JSON import format with detail-page enrichment
+- JSON pre-processing with group-by and date merge
+- Embeddable views via `/embed` route
+- Photon and LocationIQ geocoding providers (weighted distribution)
+- Funding logos (Prototype Fund, BMFTR) in docs, web app, and README
+
+### Changed
+
+- Tag chips in event detail show field labels
+- Filter rows left-aligned; redundant catalog labels removed
+- Catalog chart hidden for single-catalog selections
+
+### Fixed
+
+- `cluster_events()` location_name cast to text
+
+## [0.1.0-alpha.3] - 2026-03-22
+
+Second Second-Stage iteration. Feature work in direct response to feedback from the partner-organisation cooperation: internationalization, scraper sandboxing, JSON API ingestion, full wizard redesign.
 
 ### Added
 
 - Internationalization with next-intl (English and German locales)
-- Content management system (Pages collection with block-based builder)
-- Site branding globals (logos, favicons, site name)
-- Footer and MainMenu globals for navigation
-- Audit log system tracking 20 action types across 5 domains
-- Account management: self-service deletion with 7-day grace period
-- Data export: users can download all their data as ZIP archives
-- Sites collection for multi-tenant configuration
-- Views collection for saved display configurations
-- Feature flags system (8 toggleable platform capabilities)
-- User quotas and rate limiting with trust levels (0-5)
-- Scheduled URL ingestion with cron-based automation
-- Multi-provider geocoding with priority-based fallback (Nominatim, Google, OpenCage)
-- Dynamic filtering system with URL-based state (nuqs)
-- Custom scraper system (Python/Node.js scripts in isolated Podman containers)
-- Webhook triggers for scheduled imports and scrapers
-- UI customization: themes, branding, custom CSS, layout templates
-- Restic-based backup system with S3 offsite support
-- Bootstrap script for automated Ubuntu server setup
-- Comprehensive documentation site (Nextra)
+- Translation of all user-facing components and email templates (EN/DE)
+- Payload CMS content localization for EN/DE
+- Custom scraper system with isolated Podman runner, scraper management UI, and CLI
+- Scraper quota enforcement
+- Block registry, UI customization, and layout templates
+- Branding global wired into emails (siteName and logo)
+- API key authentication
+- Configurable legal notices on the registration form
+- Timezone support for scheduled imports
+- JSON API import with pagination and wizard UX
+- JSON file upload in the import wizard
+- Edit scheduled import via the import wizard
+- Multi-stage progress timeline and column-centric mapping in the import wizard
+- Multi-worker support with concurrency control for jobs
+- Error boundaries on explore and import pages
+- React Compiler enabled
 
 ### Changed
 
-- Migrated all frontend routes to locale-aware `[locale]/(frontend)/` structure
+- Renamed service factories to `create*Service` convention
 - Replaced custom fade animations with native View Transitions API
-- Renamed service factories from `get*Service` to `create*Service`
-- Unified API response format via `apiRoute()` auto-wrapping
-- Payload config refactored into factory pattern (`payload-config-factory.ts`)
-- Import pipeline migrated from hook-driven state machine to Payload Workflows
-- Formatter migration from Prettier to oxfmt
+- Migrated all frontend routes to locale-aware `[locale]/(frontend)/` structure
+- Renamed `import` → `ingest` across the codebase
+- Schema-detection package consolidated into the app
 
-### Fixed
+## [0.1.0-alpha.2] - 2026-03-12
 
-- Access control hardening (5 audit findings including a security bug)
-- Seed data relationship resolution
-- E2E tests stabilized after import-to-ingest refactoring
-- WCAG 2.1 AA accessibility violations
-
-## [0.1.0] - 2025-01-01
+First Second-Stage iteration. Code quality, infrastructure hardening, and platform consolidation in preparation for the partner-cooperation work.
 
 ### Added
 
-- Initial release of TimeTiles
+- Restic-based backup system with S3 offsite support
+- All-in-one Docker image for single-server deployments
+- Pre-built GHCR images in docker-compose, pull-based deployment workflow
+- Integration tests for nginx routing, backup/restore, and Docker container lifecycle
+- Forgot-password and reset-password pages
+- Generic audit log with broad codebase coverage (extends the original audit-logging service)
+- `apiRoute()` framework with auto-wrapping; all API routes migrated
+- Zod validation schemas across all API routes
+- Encryption of credentials at rest
+- Sites collection wired into layouts with data-scope filtering
+- Worktree-management script with env-file setup
+- 80 additional oxlint native rules
+- Shared `ContentState` component for empty/error/no-match states
+
+### Changed
+
+- Decomposed large files into focused modules
+- Logo and asset reorganisation with new naming and folder structure
+
+### Fixed
+
+- Access control hardening (5 audit findings, including a security bug)
+- Dataset-schemas access control denormalised for performance
+- Constant-time email change, quota caching, env naming
+
+## [0.1.0-alpha.1] - 2025-12-02
+
+First feature-complete public alpha at the close of the regular Prototype Fund Software Sprint Phase 1 (June–November 2025, FKZ 16IS25S03). Implements the milestones from the original proposal: design system, geocoding/data ingest, layout components, filters, visualisation, documentation.
+
+### Added
+
+- Initial public alpha of TimeTiles
 - Interactive geospatial timeline visualization with MapLibre GL JS
 - Data import system supporting CSV, Excel, and ODS formats
-- Automatic schema detection and geocoding
-- Real-time map clustering and filtering
+- Automatic schema detection and field mapping
+- Multi-provider geocoding (Nominatim, Google) with database-driven provider configuration and persistent location cache
+- Real-time map clustering and timeline scrubbing
 - Timeline histogram for event distribution over time
-- Dynamic filters synced to URL state
-- Responsive web interface
+- Dynamic filters by category, date, and location with URL-based state
+- Categorical field filters with schema-based enum support
+- Map theme toggle and zoom controls
+- Adaptive tooltip formatting for histogram chart
+- Responsive web interface with light/dark themes
+- Mobile navigation drawer and filter sheet
+- Import wizard with field-mapping detection and user usage tracking
+- Transforms UI and flow editor
+- Scheduled URL-based imports with automatic execution and webhook triggers
+- Background job runner
+- Account management, feature flags, and branding globals (logos, favicons, site name)
+- Newsletter signup integrated with Payload CMS in the footer
+- Pages collection and MainMenu global for CMS-driven navigation; flexible page builder with block-based content
+- Multi-user permission and quota system with trust levels (0–5)
+- Owner-based access control for private data
+- Comprehensive audit logging service
+- Views collection for saved display configurations
+- Comprehensive E2E testing with Playwright
 - PostgreSQL 17 + PostGIS 3.5 backend
-- Next.js 16 frontend with Payload CMS 3
-- Testing suite (Vitest + Playwright)
+- Next.js 16 frontend with Payload CMS 3 (integrated mode)
+- Documentation site (Nextra)
+- AGPL-3.0 license
 
 ---
 
