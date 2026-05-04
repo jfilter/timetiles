@@ -59,16 +59,28 @@ runs:
         severity: ${{ inputs.severity }}
         skip-dirs: ${{ inputs.skip-dirs }}
         timeout: ${{ inputs.timeout }}
-        trivyignore: ${{ inputs.trivyignore }}
+        trivyignores: ${{ inputs.trivyignore }}
 
     - name: Convert JSON to SARIF (${{ inputs.report-name }})
+      id: convert
       if: always()
       shell: bash
-      run: trivy convert --format sarif --output "trivy-${{ inputs.report-name }}-results.sarif" "trivy-${{ inputs.report-name }}-report.json"
+      run: |
+        report="trivy-${{ inputs.report-name }}-report.json"
+        sarif="trivy-${{ inputs.report-name }}-results.sarif"
+
+        if [[ ! -s "$report" ]]; then
+          echo "Trivy JSON report was not created; skipping SARIF conversion."
+          echo "has_sarif=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        trivy convert --format sarif --output "$sarif" "$report"
+        echo "has_sarif=true" >> "$GITHUB_OUTPUT"
 
     - name: Upload Trivy SARIF (${{ inputs.report-name }})
       uses: github/codeql-action/upload-sarif@v4
-      if: always()
+      if: ${{ always() && steps.convert.outputs.has_sarif == 'true' }}
       continue-on-error: ${{ github.actor == 'dependabot[bot]' }}
       with:
         sarif_file: "trivy-${{ inputs.report-name }}-results.sarif"

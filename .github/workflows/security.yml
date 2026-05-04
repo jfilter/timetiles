@@ -184,13 +184,14 @@ jobs:
       # --- Scan 2: Dockerfile.allinone ---
       # Also scan the all-in-one image which has a different base (ubuntu) and attack surface
       - name: Build Docker image (allinone)
+        id: build_allinone
         if: always()
         run: |
           docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
           docker images timetiles:allinone
 
       - name: Trivy scan (allinone image)
-        if: always()
+        if: ${{ always() && steps.build_allinone.outcome == 'success' }}
         uses: ./.github/actions/trivy-scan
         with:
           image-ref: "timetiles:allinone"
