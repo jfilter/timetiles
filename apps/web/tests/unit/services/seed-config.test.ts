@@ -140,7 +140,7 @@ describe("Configuration System", () => {
 
 describe("Configuration Validation", () => {
   it("should have all required presets with valid configurations", () => {
-    const requiredPresets = ["testing", "e2e", "development"];
+    const requiredPresets = ["testing", "e2e", "development", "deploy"];
 
     requiredPresets.forEach((preset) => {
       expect(SEED_CONFIG.presets[preset]).toBeDefined();
@@ -160,7 +160,7 @@ describe("Configuration Validation", () => {
       expect(presetConfig).toHaveProperty("debugging");
     });
 
-    expect(Object.keys(SEED_CONFIG.presets)).toHaveLength(3);
+    expect(Object.keys(SEED_CONFIG.presets)).toHaveLength(4);
 
     const devPreset = SEED_CONFIG.presets.development;
     if (!devPreset) {

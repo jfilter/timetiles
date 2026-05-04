@@ -27,6 +27,27 @@ export abstract class SeedManagerBase {
   protected relationshipResolver: RelationshipResolver | null = null;
   protected databaseOperations: DatabaseOperations | null = null;
   protected isCleaningUp = false;
+  /**
+   * True when an external Payload instance was attached (via `attachPayload`).
+   * In that case the seed manager does not own the connection and must skip
+   * cleanup — the framework owns the lifecycle (e.g. Payload `onInit`).
+   */
+  private payloadIsExternal = false;
+
+  /**
+   * Attach an existing Payload instance instead of bootstrapping a new one.
+   * Used when seeding runs inside `onInit` — calling `getPayload()` from
+   * there would recurse, since `getPayload()` is what triggered `onInit`.
+   */
+  attachPayload(payload: Payload): void {
+    if (this.payload && this.payload !== payload) {
+      throw new Error("SeedManager already initialized with a different Payload instance");
+    }
+    this.payload = payload;
+    this.relationshipResolver = new RelationshipResolver(payload);
+    this.databaseOperations = new DatabaseOperations(payload);
+    this.payloadIsExternal = true;
+  }
 
   async initialize() {
     if (!this.payload) {
@@ -47,6 +68,14 @@ export abstract class SeedManagerBase {
 
   async cleanup() {
     if (this.isCleaningUp || !this.payload) {
+      return;
+    }
+
+    // Externally-owned Payload (attached from onInit) — never close the
+    // shared connection. Just drop our references so we stop holding it.
+    if (this.payloadIsExternal) {
+      this.cleanupPayloadInstance();
+      this.payloadIsExternal = false;
       return;
     }
 

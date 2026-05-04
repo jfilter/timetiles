@@ -43,8 +43,14 @@ export class ConfigDrivenSeeding {
       configOverrides = {},
       collections: requestedCollections,
       exitOnFailure = true,
+      idempotent = false,
+      deploymentEnv,
+      payload,
     } = options;
 
+    if (payload) {
+      this.seedManager.attachPayload(payload);
+    }
     await this.seedManager.initialize();
     const presetConfig = SEED_CONFIG.presets[preset];
 
@@ -56,11 +62,20 @@ export class ConfigDrivenSeeding {
 
     const collectionsToSeed = this.determineCollectionsToSeed(preset, requestedCollections);
 
+    if (truncate && idempotent) {
+      throw new Error("idempotent and truncate cannot both be enabled");
+    }
     if (truncate) {
       await this.seedManager.truncateCollections(collectionsToSeed);
     }
 
-    const overallResults = await this.processCollections(collectionsToSeed, configOverrides, preset);
+    const overallResults = await this.processCollections(
+      collectionsToSeed,
+      configOverrides,
+      preset,
+      idempotent,
+      deploymentEnv
+    );
 
     // Generate schemas and field metadata for datasets if generateSchemas is enabled
     if (collectionsToSeed.includes("events")) {
@@ -103,7 +118,9 @@ export class ConfigDrivenSeeding {
   private async processCollections(
     collectionsToSeed: string[],
     configOverrides: Record<string, Partial<CollectionConfig>>,
-    preset: string
+    preset: string,
+    idempotent: boolean,
+    deploymentEnv: SeedOptions["deploymentEnv"]
   ): Promise<OverallSeedResults> {
     const overallResults: OverallSeedResults = {
       totalCreated: 0,
@@ -123,7 +140,13 @@ export class ConfigDrivenSeeding {
       const finalConfig = this.applyConfigOverrides(config, configOverrides, collectionName);
 
       try {
-        const result = await this.seedManager.seedCollectionWithConfig(collectionName, finalConfig, preset);
+        const result = await this.seedManager.seedCollectionWithConfig(
+          collectionName,
+          finalConfig,
+          preset,
+          idempotent,
+          deploymentEnv
+        );
 
         // Track results (null means global collection or invalid config)
         if (result) {

@@ -62,8 +62,8 @@ export interface GeneratorConfig {
   options: Record<string, unknown>;
 }
 
-/** Valid preset names - only these 3 presets are supported */
-export type PresetName = "testing" | "e2e" | "development";
+/** Valid preset names. `deploy` is idempotent on-boot bootstrap; the others run via `pnpm seed`. */
+export type PresetName = "testing" | "e2e" | "development" | "deploy";
 
 /**
  * Preset configuration - bundles together related settings for a specific use case.
@@ -187,12 +187,8 @@ export const SEED_CONFIG: SeedConfiguration = {
       options: { staticContent: true },
     },
 
-    // Pages - static content (home, about, contact)
-    pages: {
-      count: 3, // Static: home, about, contact pages
-      dependencies: ["sites"],
-      options: { staticContent: true },
-    },
+    // Pages - static content (home, about, contact, terms, privacy)
+    pages: { count: 5, dependencies: ["sites"], options: { staticContent: true } },
 
     // Scheduled ingests - recurring URL imports (development only)
     "scheduled-ingests": { count: 5, dependencies: ["users", "catalogs"] },
@@ -231,12 +227,13 @@ export const SEED_CONFIG: SeedConfiguration = {
       count: (preset) => {
         switch (preset) {
           case "development":
+          case "deploy":
             return 3;
           case "e2e":
           case "testing":
             return 1;
           default:
-            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development`);
+            throw new Error(`Unknown preset: ${preset}. Valid presets: testing, e2e, development, deploy`);
         }
       },
       dependencies: [],
@@ -414,6 +411,18 @@ export const SEED_CONFIG: SeedConfiguration = {
         },
         datasets: { options: { includeArchivedDatasets: true, generateExtendedSchemas: true } },
       },
+    },
+
+    // Deploy: idempotent on-boot bootstrap for staging/production/dev. Skip-if-exists per
+    // record (slug/name) and per-global (isEmpty check). The full seed array is used as-is —
+    // count is irrelevant in idempotent mode.
+    deploy: {
+      description: "Idempotent on-boot bootstrap for deployments and local dev",
+      enabled: ["sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG, SETTINGS_SLUG, COLLECTION_GEOCODING_PROVIDERS],
+      volume: "small",
+      realism: "simple",
+      performance: "fast",
+      debugging: "quiet",
     },
   },
 };

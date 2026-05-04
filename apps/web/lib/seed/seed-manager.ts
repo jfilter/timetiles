@@ -213,9 +213,17 @@ export class SeedManager extends SeedManagerBase {
   async seedCollectionWithConfig(
     collectionName: string,
     config: CollectionConfig,
-    environment: string
+    environment: string,
+    idempotent = false,
+    deploymentEnv?: SeedOptions["deploymentEnv"]
   ): Promise<SeedResult | null> {
-    return this.seedingOperations.seedCollectionWithConfig(collectionName, config, environment);
+    return this.seedingOperations.seedCollectionWithConfig(
+      collectionName,
+      config,
+      environment,
+      idempotent,
+      deploymentEnv
+    );
   }
 }
 

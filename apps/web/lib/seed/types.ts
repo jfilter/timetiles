@@ -8,7 +8,11 @@
  *
  * @module
  */
+import type { Payload } from "payload";
+
 import type { CollectionConfig } from "./seed.config";
+
+export type DeploymentEnv = "staging" | "production";
 import type { CatalogSeed } from "./seeds/catalogs";
 import type { DatasetSeed } from "./seeds/datasets";
 import type { EventSeed } from "./seeds/events";
@@ -45,7 +49,26 @@ export type SeedData =
 export interface SeedOptions {
   collections?: string[];
   truncate?: boolean;
-  /** Seeding preset name (testing, e2e, development) */
+  /**
+   * Idempotent mode for deploy bootstraps:
+   * - skip records that already exist (by slug/name/email) instead of generating unique slugs
+   * - skip globals that already have meaningful data (per-slug isEmpty check)
+   * - never truncate
+   */
+  idempotent?: boolean;
+  /**
+   * Deployment environment for env-specific seed variants. Only honored by the
+   * `deploy` preset. Globals like `settings` can export per-env overrides
+   * (e.g. `settingsSeedDeploy.staging`); when this is set the SeedManager
+   * picks the matching variant, falling back to the default seed if none.
+   */
+  deploymentEnv?: DeploymentEnv;
+  /**
+   * Existing Payload instance to attach to (used by `onInit` to avoid the
+   * SeedManager bootstrapping its own Payload — which would recurse onInit).
+   */
+  payload?: Payload;
+  /** Seeding preset name (testing, e2e, development, deploy) */
   preset?: string;
   /** How much data to generate */
   volume?: "small" | "medium" | "large";

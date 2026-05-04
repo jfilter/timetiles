@@ -291,16 +291,37 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     configureProduction(config, serverURL);
   }
 
-  // Auto-activate data packages on first boot, gated by the
-  // RUN_AUTO_ACTIVATIONS env var (the runner itself early-returns when
-  // unset, so the import + cost is negligible when disabled).
+  // On-boot bootstrap: idempotent seed of deploy-essential content (sites,
+  // pages, globals, geocoding providers). Picks per-deployment-env variants
+  // from DEPLOYMENT_ENVIRONMENT only on real production builds — local dev
+  // uses the default seeds. Skipped entirely in test mode so integration
+  // tests see a clean DB; tests that need data call seedManager explicitly.
+  // See lib/seed/operations/config-driven-seeding.ts for idempotent semantics.
   config.onInit = async (payload) => {
-    const { bootstrapDefaultCoreContent } = await import("@/lib/services/bootstrap/core-content");
-    await bootstrapDefaultCoreContent(payload);
+    if (environment !== "test") {
+      const { createSeedManager } = await import("@/lib/seed/seed-manager");
+      const env = await import("@/lib/config/env").then((m) => m.getEnv());
+      // Only apply deploy-env overrides on production builds. In dev, the
+      // DEPLOYMENT_ENVIRONMENT env var defaults to "production" but isn't a
+      // real deploy — we'd otherwise install prod-only legal copy locally.
+      const rawDeployEnv = environment === "production" ? env.DEPLOYMENT_ENVIRONMENT : undefined;
+      const deploymentEnv = rawDeployEnv === "staging" || rawDeployEnv === "production" ? rawDeployEnv : undefined;
+      const seedManager = createSeedManager();
+      try {
+        await seedManager.seedWithConfig({
+          preset: "deploy",
+          idempotent: true,
+          deploymentEnv,
+          payload,
+          exitOnFailure: false,
+        });
+      } finally {
+        await seedManager.cleanup();
+      }
+    }
 
-    const { bootstrapDefaultGeocodingProviders } = await import("@/lib/services/geocoding/bootstrap-providers");
-    await bootstrapDefaultGeocodingProviders(payload);
-
+    // Auto-activate data packages on first boot, gated by RUN_AUTO_ACTIVATIONS
+    // (the runner itself early-returns when unset).
     const { runAutoActivations } = await import("@/lib/data-packages/auto-activator");
     await runAutoActivations(payload);
   };

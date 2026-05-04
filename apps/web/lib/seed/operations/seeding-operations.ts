@@ -31,11 +31,11 @@ import { scheduledIngestSeeds } from "../seeds/scheduled-ingests";
 import { scraperRepoSeeds } from "../seeds/scraper-repos-seed";
 import { scraperRunSeeds } from "../seeds/scraper-runs-seed";
 import { scraperSeeds } from "../seeds/scrapers-seed";
-import { settingsSeed, settingsSeedDe } from "../seeds/settings";
+import { settingsSeed, settingsSeedDe, settingsSeedDeploy, settingsSeedDeployDe } from "../seeds/settings";
 import { siteSeeds } from "../seeds/sites";
 import { userSeeds } from "../seeds/users";
 import { viewSeeds } from "../seeds/views";
-import type { SeedData } from "../types";
+import type { DeploymentEnv, SeedData } from "../types";
 import { DataProcessing } from "./data-processing";
 import { QueryBuilders } from "./query-builders";
 
@@ -66,7 +66,9 @@ export class SeedingOperations {
   async seedCollectionWithConfig(
     collectionName: string,
     config: CollectionConfig,
-    environment: string
+    environment: string,
+    idempotent = false,
+    deploymentEnv?: DeploymentEnv
   ): Promise<SeedResult | null> {
     logger.debug({ collection: collectionName, config }, `Starting configuration-driven seeding for ${collectionName}`);
 
@@ -77,21 +79,25 @@ export class SeedingOperations {
     }
 
     // Get base seed data
-    const baseSeedData = this.getSeedData(collectionName, environment);
+    const baseSeedData = this.getSeedData(collectionName, environment, deploymentEnv);
     if (!this.dataProcessing.isValidSeedData(baseSeedData)) {
       logger.warn(`No seed data available for ${collectionName}`);
       return null;
     }
 
-    // Prepare seed data according to configuration
-    const preparedData = this.dataProcessing.prepareSeedData(baseSeedData, count, collectionName);
+    // Prepare seed data according to configuration. In idempotent mode the
+    // full seed array is used as-is — count limits and synthetic generation
+    // would create unwanted duplicates on re-runs.
+    const preparedData = idempotent
+      ? baseSeedData
+      : this.dataProcessing.prepareSeedData(baseSeedData, count, collectionName);
 
     // Apply data transformations
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
     // Handle global collections
     if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG || collectionName === SETTINGS_SLUG) {
-      await this.seedGlobalCollection(transformedData, collectionName);
+      await this.seedGlobalCollection(transformedData, collectionName, idempotent, deploymentEnv);
       return null;
     }
 
@@ -106,7 +112,7 @@ export class SeedingOperations {
     );
 
     // Create collection items
-    const result = await this.createCollectionItems(resolvedSeedData, collectionName, environment, config);
+    const result = await this.createCollectionItems(resolvedSeedData, collectionName, environment, config, idempotent);
 
     // Log summary
     this.logCollectionSummary(collectionName, result, resolvedSeedData.length);
@@ -114,7 +120,12 @@ export class SeedingOperations {
     return result;
   }
 
-  private async seedGlobalCollection(seedData: SeedData, collectionName: string): Promise<void> {
+  private async seedGlobalCollection(
+    seedData: SeedData,
+    collectionName: string,
+    idempotent: boolean,
+    deploymentEnv: DeploymentEnv | undefined
+  ): Promise<void> {
     if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG && collectionName !== SETTINGS_SLUG) return;
 
     try {
@@ -129,6 +140,20 @@ export class SeedingOperations {
 
       const slug = collectionName;
 
+      // Idempotent mode: skip if a previous deploy or admin has already
+      // populated this global. Empty defaults must not clobber configured
+      // data on re-runs.
+      if (idempotent) {
+        const existing = (await payload.findGlobal({ slug, locale: "en", depth: 0 })) as unknown as Record<
+          string,
+          unknown
+        >;
+        if (!isGlobalEmpty(slug, existing)) {
+          logger.debug(`Skipping ${collectionName} global — already populated`);
+          return;
+        }
+      }
+
       // Initial update creates the array structure (localized fields inside arrays are dropped)
       await payload.updateGlobal({ slug, data: enData, locale: "en" });
 
@@ -140,7 +165,7 @@ export class SeedingOperations {
       await payload.updateGlobal({ slug, data: enWithIds, locale: "en" });
 
       // Seed German locale with same array IDs
-      const deData = this.getGermanGlobalSeedData(collectionName);
+      const deData = this.getGermanGlobalSeedData(collectionName, deploymentEnv);
       if (deData) {
         const deWithIds = mergeGlobalArrayIds(created, deData);
         await payload.updateGlobal({ slug, data: deWithIds, locale: "de" });
@@ -153,14 +178,17 @@ export class SeedingOperations {
     }
   }
 
-  private getGermanGlobalSeedData(collectionName: string): Record<string, unknown> | null {
+  private getGermanGlobalSeedData(
+    collectionName: string,
+    deploymentEnv: DeploymentEnv | undefined
+  ): Record<string, unknown> | null {
     switch (collectionName) {
       case MAIN_MENU_SLUG:
         return mainMenuSeedDe;
       case FOOTER_SLUG:
         return footerSeedDe;
       case SETTINGS_SLUG:
-        return settingsSeedDe;
+        return deploymentEnv ? settingsSeedDeployDe[deploymentEnv] : settingsSeedDe;
       default:
         return null;
     }
@@ -170,7 +198,8 @@ export class SeedingOperations {
     resolvedSeedData: Record<string, unknown>[],
     collectionName: string,
     environment: string,
-    config: CollectionConfig
+    config: CollectionConfig,
+    idempotent: boolean
   ): Promise<SeedResult> {
     const BATCH_SIZE = 10; // Process in smaller batches
     const isCI = process.env.CI === "true";
@@ -182,7 +211,7 @@ export class SeedingOperations {
       const batch = resolvedSeedData.slice(i, i + BATCH_SIZE);
       this.logBatchProgress(collectionName, i, batch.length, resolvedSeedData.length, BATCH_SIZE);
 
-      const batchResult = await this.processBatch(batch, collectionName, environment, config, isCI);
+      const batchResult = await this.processBatch(batch, collectionName, environment, config, isCI, idempotent);
 
       // Accumulate results
       result.created += batchResult.created;
@@ -248,7 +277,8 @@ export class SeedingOperations {
     collectionName: string,
     environment: string,
     config: CollectionConfig,
-    isCI: boolean
+    isCI: boolean,
+    idempotent: boolean
   ): Promise<SeedResult> {
     const result: SeedResult = { created: 0, skipped: 0, failed: 0, errors: [] };
 
@@ -259,7 +289,8 @@ export class SeedingOperations {
         collectionName,
         environment,
         config,
-        isCI
+        isCI,
+        idempotent
       );
 
       if (itemResult.result === "created") {
@@ -282,12 +313,13 @@ export class SeedingOperations {
     collectionName: string,
     environment: string,
     config: CollectionConfig,
-    isCI: boolean
+    isCI: boolean,
+    idempotent: boolean
   ): Promise<{ result: SeedItemResult; error?: SeedItemError }> {
     const OPERATION_TIMEOUT = 30000; // 30 second timeout per item
 
     try {
-      const createItemPromise = this.createSingleItem(resolvedItem, collectionName, environment);
+      const createItemPromise = this.createSingleItem(resolvedItem, collectionName, environment, idempotent);
 
       if (isCI) {
         const result = await Promise.race([
@@ -362,10 +394,12 @@ export class SeedingOperations {
   private async createSingleItem(
     resolvedItem: Record<string, unknown>,
     collectionName: string,
-    environment: string
+    environment: string,
+    idempotent: boolean
   ): Promise<SeedItemResult> {
-    // For test environment, add timestamp to slug to ensure uniqueness
-    if (environment === "test" && resolvedItem.slug != null) {
+    // For test environment (non-idempotent), add timestamp to slug to ensure uniqueness.
+    // In idempotent mode the seed slug is the identity key — must be preserved verbatim.
+    if (!idempotent && environment === "test" && resolvedItem.slug != null) {
       resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
     }
 
@@ -487,7 +521,11 @@ export class SeedingOperations {
     }
   }
 
-  private getSeedData(collectionOrGlobal: string, environment: string): SeedData {
+  private getSeedData(
+    collectionOrGlobal: string,
+    environment: string,
+    deploymentEnv: DeploymentEnv | undefined
+  ): SeedData {
     switch (collectionOrGlobal) {
       case "users":
         return userSeeds(environment);
@@ -504,7 +542,7 @@ export class SeedingOperations {
       case FOOTER_SLUG:
         return [footerSeed];
       case SETTINGS_SLUG:
-        return [settingsSeed];
+        return [deploymentEnv ? settingsSeedDeploy[deploymentEnv] : settingsSeed];
       case "sites":
         return siteSeeds;
       case "views":
@@ -529,6 +567,29 @@ export class SeedingOperations {
     }
   }
 }
+
+/**
+ * Per-global emptiness check used by the idempotent deploy path: if the
+ * global already has meaningful data, skip the seed so admin edits and
+ * earlier deploys are never clobbered. Mirrors the legacy bootstrap rules
+ * (apps/web/lib/services/bootstrap/core-content.ts pre-refactor).
+ */
+const isGlobalEmpty = (slug: string, doc: Record<string, unknown>): boolean => {
+  const hasItems = (value: unknown): boolean => Array.isArray(value) && value.length > 0;
+
+  switch (slug) {
+    case FOOTER_SLUG:
+      return !doc.tagline && !hasItems(doc.socialLinks) && !hasItems(doc.columns);
+    case MAIN_MENU_SLUG:
+      return !hasItems(doc.navItems);
+    case SETTINGS_SLUG: {
+      const legal = doc.legal as Record<string, unknown> | undefined;
+      return !legal || Object.values(legal).every((value) => value == null || value === "");
+    }
+    default:
+      return true;
+  }
+};
 
 /**
  * Merge Payload-generated IDs from created blocks into seed data so that
