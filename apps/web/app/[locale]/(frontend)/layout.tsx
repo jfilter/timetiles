@@ -49,10 +49,11 @@ import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
 import { SiteProvider } from "@/lib/context/site-context";
+import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
-import type { Branding, Footer as FooterType } from "@/payload-types";
+import type { Footer as FooterType } from "@/payload-types";
 
 interface ImportedAsset {
   src: string;
@@ -83,18 +84,17 @@ const getFooterData = async (locale: Locale): Promise<FooterType> => {
   return payload.findGlobal({ slug: "footer", locale });
 };
 
-const getBranding = async (locale: Locale): Promise<Branding> => {
-  const payload = await getPayload({ config });
-  return payload.findGlobal({ slug: "branding", locale });
-};
-
 export const generateMetadata = async (): Promise<Metadata> => {
-  const locale = (await getLocale()) as Locale;
-  const branding = await getBranding(locale);
-  const payload = await getPayload({ config });
-  const headersList = await headers();
+  const [locale, payload, headersList] = await Promise.all([
+    getLocale() as Promise<Locale>,
+    getPayload({ config }),
+    headers(),
+  ]);
   const host = headersList.get("host");
-  const site = await resolveSite(payload, host);
+  const [branding, site] = await Promise.all([
+    payload.findGlobal({ slug: "branding", locale }),
+    resolveSite(payload, host),
+  ]);
 
   // Site branding title overrides platform branding
   const title = site?.branding?.title ?? branding.siteName ?? "TimeTiles";
@@ -102,14 +102,7 @@ export const generateMetadata = async (): Promise<Metadata> => {
   return {
     title,
     description: branding.siteDescription ?? "Making spatial and temporal data analysis accessible to everyone.",
-    icons: {
-      icon: [
-        { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
-        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-      ],
-      apple: [{ url: "/apple-touch-icon.png" }],
-    },
+    icons: buildFaviconIcons({ branding, site }),
   };
 };
 
