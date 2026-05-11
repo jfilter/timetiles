@@ -47,6 +47,9 @@ import * as migration_20260417_220000_rate_limit_counters from './20260417_22000
 import * as migration_20260420_150654_add_send_email_task from './20260420_150654_add_send_email_task';
 import * as migration_20260421_100000_hash_webhook_tokens from './20260421_100000_hash_webhook_tokens';
 import * as migration_20260430_145549_add_maintenance_job_task_slugs from './20260430_145549_add_maintenance_job_task_slugs';
+import * as migration_20260511_221810_consolidate_snapshot_baseline from './20260511_221810_consolidate_snapshot_baseline';
+import * as migration_20260511_221811_drop_ingest_jobs_retry_columns from './20260511_221811_drop_ingest_jobs_retry_columns';
+import * as migration_20260511_221812_add_branding_contact_email from './20260511_221812_add_branding_contact_email';
 
 export const migrations = [
   {
@@ -293,5 +296,20 @@ export const migrations = [
     up: migration_20260430_145549_add_maintenance_job_task_slugs.up,
     down: migration_20260430_145549_add_maintenance_job_task_slugs.down,
     name: '20260430_145549_add_maintenance_job_task_slugs',
+  },
+  {
+    up: migration_20260511_221810_consolidate_snapshot_baseline.up,
+    down: migration_20260511_221810_consolidate_snapshot_baseline.down,
+    name: '20260511_221810_consolidate_snapshot_baseline',
+  },
+  {
+    up: migration_20260511_221811_drop_ingest_jobs_retry_columns.up,
+    down: migration_20260511_221811_drop_ingest_jobs_retry_columns.down,
+    name: '20260511_221811_drop_ingest_jobs_retry_columns',
+  },
+  {
+    up: migration_20260511_221812_add_branding_contact_email.up,
+    down: migration_20260511_221812_add_branding_contact_email.down,
+    name: '20260511_221812_add_branding_contact_email',
   },
 ];

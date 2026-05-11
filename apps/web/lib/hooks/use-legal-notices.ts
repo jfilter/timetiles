@@ -23,6 +23,7 @@ export interface LegalNotices {
   termsUrl: string | null;
   privacyUrl: string | null;
   registrationDisclaimer: string | null;
+  contactEmail: string | null;
 }
 
 export const useLegalNotices = () => {

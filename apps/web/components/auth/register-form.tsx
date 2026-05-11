@@ -76,12 +76,25 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
 
   // Show message when registration is disabled
   if (!registrationEnabled) {
+    const contactEmail = legalNotices?.contactEmail ?? null;
     return (
       <div className={cn("space-y-4 text-center", className)}>
         <div className="bg-muted/50 border-border rounded-sm border p-6">
           <Lock className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
           <h3 className="text-lg font-semibold">{t("registrationUnavailable")}</h3>
           <p className="text-muted-foreground mt-2 text-sm">{t("registrationDisabled")}</p>
+          {contactEmail && (
+            <p className="text-muted-foreground mt-3 text-sm">
+              {t.rich("registrationContactPrompt", {
+                address: contactEmail,
+                email: (chunks) => (
+                  <a href={`mailto:${contactEmail}`} className="text-primary hover:underline">
+                    {chunks}
+                  </a>
+                ),
+              })}
+            </p>
+          )}
         </div>
       </div>
     );
