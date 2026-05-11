@@ -836,12 +836,20 @@ EOF
         # Verifies all bootstrap steps are properly configured
         # Uses shared verification functions from bootstrap/lib/common.sh
 
+        # Disable fail-fast for the whole branch: this command is meant to
+        # *collect* failures across many sub-checks (any of which can exit
+        # non-zero by design) and exit at the end with the aggregate result.
+        set +e
+        set +o pipefail
+
         # Source shared verification functions
         BOOTSTRAP_LIB="$SCRIPT_DIR/bootstrap/lib/common.sh"
         if [[ -f "$BOOTSTRAP_LIB" ]]; then
             # Disable trap handler from common.sh (we handle our own exit)
             trap - EXIT INT TERM
             source "$BOOTSTRAP_LIB"
+            # common.sh re-installs the trap when sourced; clear it again.
+            trap - EXIT INT TERM
         fi
 
         ERRORS=0
@@ -854,6 +862,8 @@ EOF
 
         # Run a verify function and print result
         # Usage: run_check verify_function_name
+        # The enclosing `check` branch runs with `set +e` so a non-zero
+        # verify return doesn't abort the script — see top of the branch.
         run_check() {
             local func="$1"
             if type "$func" &>/dev/null; then
@@ -910,6 +920,54 @@ EOF
         else
             print_fail "Configuration file missing (.env.production)"
         fi
+
+        print_section "Deployment files"
+
+        # Hosts bootstrapped before the cloned-source layout was introduced
+        # (March 2026) have flat copies of deployment files instead of a git
+        # working tree. `timetiles update` then silently leaves those files
+        # stale — and stale compose files miss new env passthroughs (the SMTP
+        # cert hostname issue, May 2026). Compare local files against the
+        # version actually running to surface drift.
+
+        DEPLOYED_VERSION=$(grep "^TIMETILES_VERSION=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"')
+        if [[ -n "$DEPLOYED_VERSION" && "$DEPLOYED_VERSION" != "edge" && "$DEPLOYED_VERSION" != "latest" ]]; then
+            CHECK_REF="v$DEPLOYED_VERSION"
+        else
+            CHECK_REF="${TIMETILES_REPO_BRANCH:-main}"
+        fi
+        print_ok "Comparing against upstream ref: $CHECK_REF"
+
+        # Files that ship from deployment/ and should match the running release.
+        # Templated files (nginx site configs) are excluded — they're sed'd
+        # with ${DOMAIN_NAME} on install so a direct hash comparison is noisy.
+        TRACKED_FILES=(
+            "docker-compose.prod.yml"
+            "init-db.sql"
+            "timetiles"
+        )
+
+        for file in "${TRACKED_FILES[@]}"; do
+            local_path="$SCRIPT_DIR/$file"
+            if [[ ! -f "$local_path" ]]; then
+                print_fail "$file: missing locally"
+                continue
+            fi
+            tmpfile=$(mktemp)
+            upstream_url="https://raw.githubusercontent.com/jfilter/timetiles/${CHECK_REF}/deployment/$file"
+            if curl -fsSL --max-time 10 -o "$tmpfile" "$upstream_url" 2>/dev/null; then
+                upstream_hash=$(sha256sum "$tmpfile" | cut -d' ' -f1)
+                local_hash=$(sha256sum "$local_path" | cut -d' ' -f1)
+                if [[ "$upstream_hash" == "$local_hash" ]]; then
+                    print_ok "$file matches $CHECK_REF"
+                else
+                    print_warn "$file drifted from $CHECK_REF — diff with: curl -sSL $upstream_url | diff - $local_path"
+                fi
+            else
+                print_warn "$file: cannot fetch upstream at $CHECK_REF (check ref name and network)"
+            fi
+            rm -f "$tmpfile"
+        done
 
         print_section "Application"
 
@@ -1073,54 +1131,6 @@ EOF
         else
             print_warn "DOMAIN_NAME not set, skipping DNS check"
         fi
-
-        print_section "Deployment files"
-
-        # Hosts bootstrapped before the cloned-source layout was introduced
-        # (March 2026) have flat copies of deployment files instead of a git
-        # working tree. `timetiles update` then silently leaves those files
-        # stale — and stale compose files miss new env passthroughs (the SMTP
-        # cert hostname issue, May 2026). Compare local files against the
-        # version actually running to surface drift.
-
-        DEPLOYED_VERSION=$(grep "^TIMETILES_VERSION=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"')
-        if [[ -n "$DEPLOYED_VERSION" && "$DEPLOYED_VERSION" != "edge" && "$DEPLOYED_VERSION" != "latest" ]]; then
-            CHECK_REF="v$DEPLOYED_VERSION"
-        else
-            CHECK_REF="${TIMETILES_REPO_BRANCH:-main}"
-        fi
-        print_ok "Comparing against upstream ref: $CHECK_REF"
-
-        # Files that ship from deployment/ and should match the running release.
-        # Templated files (nginx site configs) are excluded — they're sed'd
-        # with ${DOMAIN_NAME} on install so a direct hash comparison is noisy.
-        TRACKED_FILES=(
-            "docker-compose.prod.yml"
-            "init-db.sql"
-            "timetiles"
-        )
-
-        for file in "${TRACKED_FILES[@]}"; do
-            local_path="$SCRIPT_DIR/$file"
-            if [[ ! -f "$local_path" ]]; then
-                print_fail "$file: missing locally"
-                continue
-            fi
-            tmpfile=$(mktemp)
-            upstream_url="https://raw.githubusercontent.com/jfilter/timetiles/${CHECK_REF}/deployment/$file"
-            if curl -fsSL --max-time 10 -o "$tmpfile" "$upstream_url" 2>/dev/null; then
-                upstream_hash=$(sha256sum "$tmpfile" | cut -d' ' -f1)
-                local_hash=$(sha256sum "$local_path" | cut -d' ' -f1)
-                if [[ "$upstream_hash" == "$local_hash" ]]; then
-                    print_ok "$file matches $CHECK_REF"
-                else
-                    print_warn "$file drifted from $CHECK_REF — diff with: curl -sSL $upstream_url | diff - $local_path"
-                fi
-            else
-                print_warn "$file: cannot fetch upstream at $CHECK_REF (check ref name and network)"
-            fi
-            rm -f "$tmpfile"
-        done
 
         print_section "Monitoring"
         run_check verify_backup_cron
