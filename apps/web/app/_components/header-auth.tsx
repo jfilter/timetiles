@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@timetiles/ui";
-import { Activity, LogOut, Settings, Upload, User as UserIcon } from "lucide-react";
+import { Activity, LogOut, Package, Settings, Upload, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
@@ -104,6 +104,13 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
               <Link href="/account/imports" className="cursor-pointer">
                 <Activity className="mr-2 h-4 w-4" />
                 {tHeader("importActivity")}
+              </Link>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem asChild>
+              <Link href="/account/data-packages" className="cursor-pointer">
+                <Package className="mr-2 h-4 w-4" />
+                {tHeader("dataPackages")}
               </Link>
             </DropdownMenuItem>
           </>

@@ -932,6 +932,7 @@
   "Header": {
     "importData": "Daten importieren",
     "importActivity": "Import-Aktivität",
+    "dataPackages": "Datenpakete",
     "accountSettings": "Kontöinstellungen"
   },
   "NotFound": {
