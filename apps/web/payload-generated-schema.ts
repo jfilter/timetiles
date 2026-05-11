@@ -8870,6 +8870,7 @@ export const branding = db_schema.table(
   "branding",
   {
     id: serial("id").primaryKey(),
+    contactEmail: varchar("contact_email"),
     logoLight: integer("logo_light_id").references((): AnyPgColumn => media.id, {
       onDelete: "set null",
     }),
