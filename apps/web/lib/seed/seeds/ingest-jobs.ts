@@ -14,7 +14,6 @@ export interface IngestJobSeed {
   progress?: Record<string, unknown>;
   results?: Record<string, unknown>;
   errors?: Array<{ row: number; error: string }>;
-  retryAttempts?: number;
 }
 
 export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
