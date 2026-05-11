@@ -8,6 +8,28 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.6] - 2026-05-12
+
+Tightens the authenticated surface: data-packages moved behind the account section, optional public contact email on the disabled-registration screen, and the Payload migration history is reconsolidated so `migrate:create` stops rediscovering historical changes.
+
+### Added
+
+- `contactEmail` field on the Branding global, rendered as a mailto link on the disabled-registration screen so visitors know how to request an account
+- `timetiles check` flags drift between deployed `deployment/` files and the repository checkout
+
+### Changed
+
+- `/data-packages` is now `/account/data-packages` and requires authentication; the link moved from the main menu to the header user dropdown
+- Snapshot baseline reset migration so `payload migrate:create` starts from the current schema instead of rediscovering changes from earlier hand-written migrations
+
+### Removed
+
+- Unused retry-tracking columns (`retry_attempts`, `last_retry_at`, `next_retry_at`, `last_successful_stage`) and dependent enums from `ingest_jobs` / `_ingest_jobs_v`, catching up a code-vs-schema drift
+
+### Fixed
+
+- `timetiles check` SSL, podman, and `run_check` robustness; false negatives in `verify_ufw`, `verify_fail2ban`, and `verify_backup_cron`
+
 ## [0.1.0-alpha.5] - 2026-05-11
 
 First post-funding-period release. Operational hardening for the public launch: deployment robustness, geocoding correctness, CMS bootstrap, and image-supply-chain security.
