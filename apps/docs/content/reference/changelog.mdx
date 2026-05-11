@@ -8,11 +8,17 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.5] - 2026-05-11
+
+First post-funding-period release. Operational hardening for the public launch: deployment robustness, geocoding correctness, CMS bootstrap, and image-supply-chain security.
+
 ### Added
 
 - Environment banner on non-prod deployments
 - Auto-activation of data packages on boot per environment
 - Bundled data-package manifests delivered via `git pull` on deploy
+- Auto-bootstrap of free-tier geocoding providers on first boot
+- Default CMS content bootstrapped as part of the deploy seed preset
 - Demonstrations.org data packages with POST pagination
 - UCDP HDX data package and catalog metadata
 - NSU Offener Prozess scraper example
@@ -39,6 +45,8 @@ Changes landed on `main` since the last tagged release.
 - Explore view-toggle terminology unified on "List"
 - `editDatasetId` replaced with `editScheduleData` state
 - Documentation `<img>` tags converted to `next/image`
+- Favicon metadata and assets refreshed
+- Seed bootstrap consolidated into the deploy preset of `SeedManager`
 
 ### Fixed
 
@@ -50,12 +58,17 @@ Changes landed on `main` since the last tagged release.
 - Deployment: nginx healthcheck timing, postgres race on first boot, SMTP cert mismatch, container UID for `logs/`/`uploads/`, `DEPLOYMENT_ENVIRONMENT` propagated to the web container, post-pull re-exec
 - `schemaMode` propagation in wizard first-run and scraper paths
 - "Create new catalog/dataset" placed at top of dropdown
+- Spreadsheet-prefixed coordinates (e.g. `=52.5, 13.4`) now parse correctly during import
+- Duplicate retry-exhausted notification emails on scheduled ingests
+- Array-form callback emitted for pinned undici hostname lookup
 
 ### Security
 
 - Scheduled ingest validation hardened
 - HTTP security headers baseline and SSRF/path-traversal hardening on import
 - Critical and high-priority findings from the 2026-04-16 audit closed
+- Docker image security scanning hardened (Trivy fails the build on findings)
+- Seeded user credentials moved out of `tests/` so they no longer ship in production builds
 
 ## [0.1.0-alpha.4] - 2026-03-31
 
