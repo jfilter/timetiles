@@ -40,6 +40,7 @@ describe("useLegalNotices", () => {
       termsUrl: "/terms",
       privacyUrl: "/privacy",
       registrationDisclaimer: "This is a demo.",
+      contactEmail: "hi@example.com",
     };
     mockUseQuery.mockReturnValue({ data: notices, isLoading: false, error: null });
 
@@ -52,7 +53,12 @@ describe("useLegalNotices", () => {
   });
 
   it("should return null fields when no legal settings configured", () => {
-    const emptyNotices: LegalNotices = { termsUrl: null, privacyUrl: null, registrationDisclaimer: null };
+    const emptyNotices: LegalNotices = {
+      termsUrl: null,
+      privacyUrl: null,
+      registrationDisclaimer: null,
+      contactEmail: null,
+    };
     mockUseQuery.mockReturnValue({ data: emptyNotices, isLoading: false, error: null });
 
     const result = useLegalNotices();

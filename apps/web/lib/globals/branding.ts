@@ -51,6 +51,15 @@ export const Branding: GlobalConfig = {
       admin: { description: "Meta description for SEO and social sharing (og:description)" },
     },
     {
+      name: "contactEmail",
+      type: "email",
+      label: "Contact Email",
+      admin: {
+        description:
+          "Public contact address. Shown on the disabled-registration screen so visitors know how to request an account.",
+      },
+    },
+    {
       type: "row",
       fields: [
         {

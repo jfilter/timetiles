@@ -13,7 +13,12 @@ import { cacheHeaders } from "@/lib/api/cache-headers";
 import type { LegalNotices } from "@/lib/hooks/use-legal-notices";
 import { logError } from "@/lib/logger";
 
-const EMPTY_NOTICES: LegalNotices = { termsUrl: null, privacyUrl: null, registrationDisclaimer: null };
+const EMPTY_NOTICES: LegalNotices = {
+  termsUrl: null,
+  privacyUrl: null,
+  registrationDisclaimer: null,
+  contactEmail: null,
+};
 
 export const GET = apiRoute({
   auth: "none",
@@ -25,13 +30,17 @@ export const GET = apiRoute({
         ? (rawLocale as Locale)
         : "en";
 
-      const settings = await payload.findGlobal({ slug: "settings", locale });
+      const [settings, branding] = await Promise.all([
+        payload.findGlobal({ slug: "settings", locale }),
+        payload.findGlobal({ slug: "branding", locale }),
+      ]);
       const legal = settings.legal;
 
       const notices: LegalNotices = {
         termsUrl: legal?.termsUrl ?? null,
         privacyUrl: legal?.privacyUrl ?? null,
         registrationDisclaimer: legal?.registrationDisclaimer ?? null,
+        contactEmail: branding.contactEmail ?? null,
       };
 
       return new Response(JSON.stringify(notices), {

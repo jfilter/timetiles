@@ -5869,6 +5869,10 @@ export interface Branding {
    */
   siteDescription?: string | null;
   /**
+   * Public contact address. Shown on the disabled-registration screen so visitors know how to request an account.
+   */
+  contactEmail?: string | null;
+  /**
    * Logo for light backgrounds. Recommended: 128x128px PNG with transparency.
    */
   logoLight?: (number | null) | Media;
@@ -6081,6 +6085,7 @@ export interface FooterSelect<T extends boolean = true> {
 export interface BrandingSelect<T extends boolean = true> {
   siteName?: T;
   siteDescription?: T;
+  contactEmail?: T;
   logoLight?: T;
   logoDark?: T;
   faviconSourceLight?: T;
