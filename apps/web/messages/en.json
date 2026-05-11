@@ -929,7 +929,12 @@
     "lastRunAt": "Last run: {date}",
     "runsStats": "{total} runs ({success} ok, {failed} failed)"
   },
-  "Header": { "importData": "Import Data", "importActivity": "Import Activity", "accountSettings": "Account Settings" },
+  "Header": {
+    "importData": "Import Data",
+    "importActivity": "Import Activity",
+    "dataPackages": "Data Packages",
+    "accountSettings": "Account Settings"
+  },
   "NotFound": {
     "title": "Off the Map",
     "heading": "404",
