@@ -14,6 +14,11 @@ updates:
     # Cooldown: Wait 7 days for all releases to stabilize before creating PRs
     cooldown:
       default-days: 7
+    # Pinned: vitest 4.1.x has test-isolation/fake-timer regressions.
+    # Tracked in GitHub issue — unpin once tests are updated.
+    ignore:
+      - dependency-name: "vitest"
+      - dependency-name: "@vitest/coverage-v8"
     # Group by risk level
     groups:
       # All minor and patch updates together (low-medium risk)
