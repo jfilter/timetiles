@@ -180,6 +180,22 @@ check_env() {
 
 # Load specific variables from env file without exposing secrets
 # Usage: load_env_vars VAR1 VAR2 ...
+# Run a command as the deploy user.
+# Avoids two pitfalls in `sudo -u "$DEPLOY_USER" …`:
+#   - When the script is already running as DEPLOY_USER (e.g. invoked by
+#     `sudo -u timetiles timetiles check` or by the systemd unit), sudo
+#     to self is denied by the default policy.
+#   - sudo inherits cwd; if it isn't readable by the target user (e.g.
+#     /home/ubuntu when sudoing to timetiles), every command fails with
+#     "cannot chdir". Always change to a known-readable dir first.
+as_deploy_user() {
+    if [[ "$(id -un)" == "${DEPLOY_USER:-timetiles}" ]]; then
+        ( cd /tmp && "$@" )
+    else
+        sudo -u "${DEPLOY_USER:-timetiles}" --chdir=/tmp -- "$@"
+    fi
+}
+
 load_env_vars() {
     local wanted="$*"
     while IFS= read -r line; do
@@ -861,13 +877,14 @@ EOF
         print_section() { echo -e "\n${YELLOW}=== $1 ===${NC}"; }
 
         # Run a verify function and print result
-        # Usage: run_check verify_function_name
+        # Usage: run_check verify_function_name [args...]
         # The enclosing `check` branch runs with `set +e` so a non-zero
         # verify return doesn't abort the script — see top of the branch.
         run_check() {
             local func="$1"
+            shift
             if type "$func" &>/dev/null; then
-                "$func"
+                "$func" "$@"
                 local result=$?
                 case $result in
                     0) print_ok "${CHECK_MSG:-}" ;;
@@ -1018,7 +1035,7 @@ EOF
 
             # Check base images (as deploy user)
             for img in timescrape-python timescrape-node; do
-                if sudo -u "$DEPLOY_USER" podman images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
+                if as_deploy_user podman images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
                     print_ok "Base image: $img"
                 else
                     print_fail "Base image missing: $img"
@@ -1026,7 +1043,7 @@ EOF
             done
 
             # Check sandbox network
-            if sudo -u "$DEPLOY_USER" podman network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
+            if as_deploy_user podman network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
                 print_ok "Scraper sandbox network exists"
             else
                 print_fail "Scraper sandbox network missing"
@@ -1059,34 +1076,48 @@ EOF
 
         print_section "SSL"
 
-        # Check SSL certificate (inline - requires DC_CMD and DOMAIN_NAME)
-        if [[ -n "$DOMAIN_NAME" ]]; then
-            CERT_PATH="/etc/letsencrypt/live/$DOMAIN_NAME/fullchain.pem"
-            # Check via docker if volume mounted
-            CERT_INFO=$($DC_CMD exec -T nginx openssl x509 -in "$CERT_PATH" -noout -dates -subject 2>/dev/null)
-            if [[ -n "$CERT_INFO" ]]; then
+        # SSL — inspect the cert nginx is actually serving on :443. This
+        # avoids two pitfalls of file-based checks: (a) nginx:alpine has
+        # no openssl binary so `docker exec nginx openssl` fails, and
+        # (b) leftover self-signed files from bootstrap step 07 can mask
+        # a working Let's Encrypt cert that lives in the letsencrypt volume.
+        # The host has openssl; use it against 127.0.0.1 + SNI so the check
+        # works without depending on public DNS.
+        if [[ -n "$DOMAIN_NAME" ]] && command -v openssl &>/dev/null; then
+            CERT_INFO=$(echo | openssl s_client -connect 127.0.0.1:443 -servername "$DOMAIN_NAME" 2>/dev/null | openssl x509 -noout -dates -issuer 2>/dev/null)
+            if [[ "$CERT_INFO" == *"notAfter="* ]]; then
                 EXPIRY=$(echo "$CERT_INFO" | grep "notAfter" | cut -d= -f2)
+                ISSUER=$(echo "$CERT_INFO" | grep "issuer" | sed -E 's/^issuer=//; s/^[[:space:]]+//; s/[[:space:]]+$//')
                 EXPIRY_EPOCH=$(date -d "$EXPIRY" +%s 2>/dev/null || date -j -f "%b %d %T %Y %Z" "$EXPIRY" +%s 2>/dev/null)
-                NOW_EPOCH=$(date +%s)
-                DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
-
-                if [[ "$DAYS_LEFT" -gt 30 ]]; then
-                    print_ok "SSL certificate valid (expires in $DAYS_LEFT days)"
-                elif [[ "$DAYS_LEFT" -gt 0 ]]; then
-                    print_warn "SSL certificate expiring soon ($DAYS_LEFT days)"
+                if [[ -z "$EXPIRY_EPOCH" ]]; then
+                    print_warn "SSL certificate present but expiry date parse failed (raw: $EXPIRY)"
                 else
-                    print_fail "SSL certificate expired"
+                    NOW_EPOCH=$(date +%s)
+                    DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+                    # Distinguish self-signed from real CA-issued certs by
+                    # checking the issuer string. Self-signed certs are
+                    # acceptable as a temporary bridge but worth flagging.
+                    SELF_SIGNED=false
+                    if [[ "$ISSUER" == *"$DOMAIN_NAME"* ]] || [[ "$ISSUER" == *"self-signed"* ]]; then
+                        SELF_SIGNED=true
+                    fi
+                    if $SELF_SIGNED; then
+                        print_warn "Using self-signed SSL certificate (expires in $DAYS_LEFT days)"
+                    elif [[ "$DAYS_LEFT" -gt 30 ]]; then
+                        print_ok "SSL certificate valid (expires in $DAYS_LEFT days, issuer: $ISSUER)"
+                    elif [[ "$DAYS_LEFT" -gt 0 ]]; then
+                        print_warn "SSL certificate expiring soon ($DAYS_LEFT days, issuer: $ISSUER)"
+                    else
+                        print_fail "SSL certificate expired (issuer: $ISSUER)"
+                    fi
                 fi
             else
-                # Check for self-signed fallback
-                if [[ -f "$SCRIPT_DIR/ssl/live/$DOMAIN_NAME/fullchain.pem" ]]; then
-                    print_warn "Using self-signed SSL certificate"
-                else
-                    print_fail "No SSL certificate found"
-                fi
+                print_fail "No SSL certificate found at 127.0.0.1:443 (nginx not serving HTTPS?)"
             fi
-        else
+        elif [[ -z "$DOMAIN_NAME" ]]; then
             print_warn "DOMAIN_NAME not set, skipping SSL check"
+        else
+            print_warn "openssl not available on host, skipping SSL check"
         fi
 
         # Check certbot renewal
@@ -1135,7 +1166,7 @@ EOF
         print_section "Monitoring"
         run_check verify_backup_cron
         run_check verify_log_rotation
-        run_check "verify_alerting $ALERT_SCRIPT"
+        run_check verify_alerting "$ALERT_SCRIPT"
 
         # Summary
         echo ""
@@ -1280,16 +1311,16 @@ EOF
             python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
             node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
-            if sudo -u "$DEPLOY_USER" podman pull "$python_image" 2>/dev/null; then
-                sudo -u "$DEPLOY_USER" podman tag "$python_image" timescrape-python
+            if as_deploy_user podman pull "$python_image" 2>/dev/null; then
+                as_deploy_user podman tag "$python_image" timescrape-python
             elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/python/Dockerfile" ]]; then
-                sudo -u "$DEPLOY_USER" podman build -t timescrape-python "$SCRIPT_DIR/../apps/scraper/images/python/"
+                as_deploy_user podman build -t timescrape-python "$SCRIPT_DIR/../apps/scraper/images/python/"
             fi
 
-            if sudo -u "$DEPLOY_USER" podman pull "$node_image" 2>/dev/null; then
-                sudo -u "$DEPLOY_USER" podman tag "$node_image" timescrape-node
+            if as_deploy_user podman pull "$node_image" 2>/dev/null; then
+                as_deploy_user podman tag "$node_image" timescrape-node
             elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/node/Dockerfile" ]]; then
-                sudo -u "$DEPLOY_USER" podman build -t timescrape-node "$SCRIPT_DIR/../apps/scraper/images/node/"
+                as_deploy_user podman build -t timescrape-node "$SCRIPT_DIR/../apps/scraper/images/node/"
             fi
 
             sudo -n /bin/systemctl restart timescrape-runner.service
