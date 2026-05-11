@@ -27,7 +27,7 @@
     "@timetiles/typescript-config": "workspace:*",
     "@typescript/native-preview": "beta",
     "chalk": "^5.6.2",
-    "eslint-plugin-oxlint": "^1.61.0",
+    "eslint-plugin-oxlint": "^1.62.0",
     "glob": "^13.0.6",
     "husky": "^9.1.7",
     "nyc": "^17.1.0",
@@ -35,7 +35,7 @@
     "oxlint": "^1.62.0",
     "oxlint-tsgolint": "^0.22.1",
     "tsx": "catalog:",
-    "turbo": "^2.9.7",
+    "turbo": "^2.9.9",
     "typescript": "catalog:"
   },
   "engines": {
