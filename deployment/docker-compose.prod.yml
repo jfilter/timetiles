@@ -84,6 +84,12 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+      # Next.js image optimizer writes to .next/cache/images on every
+      # /_next/image hit. Without a writable cache mount it errors on
+      # each request (read-only rootfs) and degrades to non-cached
+      # responses — sharp resizes per request. tmpfs is ephemeral but
+      # the image cache is fully regenerable.
+      - /app/apps/web/.next/cache:size=512m,uid=1001,gid=1001
     environment:
       # Database
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}

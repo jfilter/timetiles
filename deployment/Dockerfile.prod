@@ -75,9 +75,13 @@ RUN apk upgrade --no-cache \
 # Copy full built project (works for both next start AND payload CLI workers)
 COPY --from=builder --chown=nextjs:nodejs /app ./
 
-# Create uploads directory with proper ownership for volume mount
-RUN mkdir -p /app/apps/web/uploads \
-    && chown -R nextjs:nodejs /app/apps/web/uploads
+# Create uploads + Next.js image-cache directories with proper ownership.
+# .next/cache/images is created by Next.js's image optimizer on first
+# /_next/image hit, but the runtime mkdir is non-recursive and fails with
+# ENOENT when the parent dir was pruned during the build. Pre-create both
+# at build time so the first image request caches instead of throwing.
+RUN mkdir -p /app/apps/web/uploads /app/apps/web/.next/cache/images \
+    && chown -R nextjs:nodejs /app/apps/web/uploads /app/apps/web/.next/cache
 
 # Set runtime environment
 ENV NODE_ENV=production
