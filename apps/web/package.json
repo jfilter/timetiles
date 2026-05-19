@@ -106,7 +106,7 @@
     "@timetiles/eslint-config": "workspace:*",
     "@types/geojson": "^7946.0.16",
     "@types/jsdom": "^28.0.1",
-    "@types/node": "^25.6.0",
+    "@types/node": "^25.7.0",
     "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.20.0",
     "@types/postcss-safe-parser": "^5.0.4",
