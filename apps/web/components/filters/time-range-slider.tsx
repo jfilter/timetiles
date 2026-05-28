@@ -17,6 +17,8 @@ import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
 import { formatISODate, formatMonthYear, parseISODate } from "@/lib/utils/date";
 
+/* oxlint-disable jsx-a11y/prefer-tag-over-role -- dual-thumb slider: each thumb is a button with role="slider" per the WAI-ARIA multi-thumb slider pattern; no native dual-range <input> element exists */
+
 const DATE_INPUT_CLASS =
   "border-primary/20 focus:border-secondary focus:ring-secondary/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
 

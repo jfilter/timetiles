@@ -95,7 +95,7 @@ const DatasetNameInput = ({ sheetIndex, value, disabled, onNameChange }: Readonl
   );
 };
 
-// oxlint-disable-next-line eslint(complexity) -- wizard step with many conditional UI branches
+// oxlint-disable-next-line complexity -- wizard step with many conditional UI branches
 export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectionProps>) => {
   const t = useTranslations("Ingest");
   const {

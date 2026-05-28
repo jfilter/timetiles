@@ -14,10 +14,10 @@
     "test:ai": "vitest run --reporter=json --outputFile=.test-results/latest.json"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.1",
-    "hono": "^4.7.6",
+    "@hono/node-server": "^1.19.14",
+    "hono": "^4.12.23",
     "pino": "^9.6.0",
-    "simple-git": "^3.27.0",
+    "simple-git": "^3.36.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
