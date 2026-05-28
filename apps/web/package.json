@@ -49,6 +49,7 @@
     "@payloadcms/ui": "3.80.0",
     "@tanstack/react-query": "^5.94.5",
     "@tanstack/react-query-devtools": "^5.94.5",
+    "@tanstack/react-virtual": "^3.13.26",
     "@timetiles/assets": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@timetiles/ui": "workspace:*",

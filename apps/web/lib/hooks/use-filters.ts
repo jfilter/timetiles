@@ -14,7 +14,7 @@
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
 import { useMemo } from "react";
 
-import { formatLocalISODate } from "@/lib/utils/date";
+import { formatISODate } from "@/lib/utils/date";
 
 import type { FilterState } from "../types/filter-state";
 import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
@@ -121,7 +121,11 @@ export const useFilters = () => {
   };
 
   const setSingleDayFilter = (date: Date) => {
-    const formatted = formatLocalISODate(date);
+    // Use the UTC calendar day so a histogram bar-click filters the same day
+    // the time-range slider would (it uses formatISODate), and so the value
+    // matches the UTC-based histogram buckets and the timestamptz date filters.
+    // formatLocalISODate would shift the day by one in non-UTC timezones.
+    const formatted = formatISODate(date.getTime());
     void setFilterParams({ startDate: formatted, endDate: formatted });
   };
 

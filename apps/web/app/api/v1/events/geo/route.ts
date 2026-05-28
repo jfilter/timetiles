@@ -40,12 +40,17 @@ export const GET = apiRoute({
       return { type: "FeatureCollection", features: [], clusters: [], totalCount: 0 };
     }
 
+    // Defaults live in MapClustersQuerySchema (applied by the apiRoute Zod
+    // validation), so these `??` fallbacks only fire if a field is ever made
+    // non-defaulted. They MUST mirror the schema defaults — previously they
+    // read `?? false` / `?? 60`, contradicting the schema's `true` / `25` and
+    // misrepresenting the actual effective default.
     const algorithm = query.clusterAlgorithm ?? "h3";
-    const mergeOverlapping = query.mergeOverlapping ?? false;
+    const mergeOverlapping = query.mergeOverlapping ?? true;
     const h3Scale = query.h3ResolutionScale ?? 0.6;
     const parentCells = query.parentCells ? query.parentCells.split(",").filter(Boolean) : undefined;
     const result = await executeClusteringQuery(payload, bounds, query.zoom, ctx.filters, {
-      targetClusters: query.targetClusters ?? 60,
+      targetClusters: query.targetClusters ?? 25,
       algorithm,
       minPoints: query.minPoints ?? 2,
       mergeOverlapping,

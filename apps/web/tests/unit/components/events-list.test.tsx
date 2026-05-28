@@ -126,4 +126,19 @@ describe("EventsList", () => {
     const innerContainer = container.querySelector(".space-y-2");
     expect(innerContainer).toBeInTheDocument();
   });
+
+  test("virtualizes into an own scroll container and windows the rows when virtualize is set", () => {
+    const manyEvents = Array.from({ length: 200 }, (_, i) =>
+      createMockEvent({ id: i + 1, data: { title: `Event ${i + 1}` } })
+    );
+
+    const { container } = renderWithProviders(<EventsList events={manyEvents} virtualize />);
+
+    // Virtualized path renders a bounded scroll container, not the plain stack.
+    expect(container.querySelector(".overflow-y-auto")).toBeInTheDocument();
+    expect(container.querySelector(".space-y-2")).not.toBeInTheDocument();
+
+    // Only a window of rows mounts — never all 200 cards.
+    expect(screen.queryAllByRole("heading").length).toBeLessThan(manyEvents.length);
+  });
 });
