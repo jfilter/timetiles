@@ -849,6 +849,41 @@ describe("isFieldMappingComplete", () => {
       )
     ).toBe(true);
   });
+
+  it("should be incomplete when the external ID strategy has no ID field", () => {
+    expect(
+      isFieldMappingComplete(
+        createFieldMapping({ titleField: "name", dateField: "date", locationField: "address", idStrategy: "external" })
+      )
+    ).toBe(false);
+  });
+
+  it("should be complete when the external ID strategy has an ID field", () => {
+    expect(
+      isFieldMappingComplete(
+        createFieldMapping({
+          titleField: "name",
+          dateField: "date",
+          locationField: "address",
+          idStrategy: "external",
+          idField: "id",
+        })
+      )
+    ).toBe(true);
+  });
+
+  it("does not require an ID field for non-external strategies", () => {
+    expect(
+      isFieldMappingComplete(
+        createFieldMapping({
+          titleField: "name",
+          dateField: "date",
+          locationField: "address",
+          idStrategy: "content-hash",
+        })
+      )
+    ).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------

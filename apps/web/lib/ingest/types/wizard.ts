@@ -105,14 +105,17 @@ export type FieldMappingStringField = {
 /**
  * Check if a field mapping has all required fields filled in.
  *
- * Requires title, date, and either a location field or both lat/lng fields.
+ * Requires title, date, either a location field or both lat/lng fields, and —
+ * when the external ID strategy is chosen — an ID field, since an external
+ * strategy with no ID field fails ID generation on every row.
  */
 export const isFieldMappingComplete = (mapping: FieldMapping | undefined): boolean => {
   if (!mapping) return false;
   return (
     !!mapping.titleField &&
     !!mapping.dateField &&
-    (!!mapping.locationField || (!!mapping.latitudeField && !!mapping.longitudeField))
+    (!!mapping.locationField || (!!mapping.latitudeField && !!mapping.longitudeField)) &&
+    (mapping.idStrategy !== "external" || !!mapping.idField)
   );
 };
 

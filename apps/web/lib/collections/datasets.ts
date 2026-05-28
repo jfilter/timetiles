@@ -19,8 +19,10 @@ import {
   handleDatasetUniqueConstraintError,
   syncIsPublicToEvents,
   validateDatasetNameUniqueness,
+  validateExternalIdPresent,
   validateExternalIdTransforms,
   validateIngestTransformPatterns,
+  validateMappingOverrideTransforms,
   validatePublicCatalogDataset,
 } from "./datasets/hooks";
 import { transformationFields } from "./datasets/transformation-fields";
@@ -41,9 +43,11 @@ const Datasets: CollectionConfig = {
   access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
     beforeChange: [
-      validateDatasetNameUniqueness,
       validateIngestTransformPatterns,
+      validateExternalIdPresent,
       validateExternalIdTransforms,
+      validateMappingOverrideTransforms,
+      validateDatasetNameUniqueness,
       validatePublicCatalogDataset,
     ],
     afterChange: [syncIsPublicToEvents],
