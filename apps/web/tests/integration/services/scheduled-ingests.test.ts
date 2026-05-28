@@ -78,7 +78,7 @@ describe.sequential("scheduled ingests Integration", () => {
         catalog: testCatalog.id,
         language: "eng",
         isPublic: false,
-        idStrategy: { type: "external", duplicateStrategy: "skip" },
+        idStrategy: { type: "external", externalIdPath: "id", duplicateStrategy: "skip" },
       },
     });
   });
