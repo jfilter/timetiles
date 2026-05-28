@@ -50,11 +50,20 @@ const resolveManifestParameters = (
   return deepSubstitute(manifest, params) as DataPackageManifest;
 };
 
-/** Build activation key from slug + parameters for uniqueness. */
-const buildActivationKey = (slug: string, params: Record<string, string>): string => {
+/**
+ * Build activation key from slug + parameters for uniqueness.
+ *
+ * Parameters are sorted by UTF-16 code unit (NOT localeCompare) so the key is
+ * byte-for-byte reproducible across machines — it is persisted as
+ * `dataPackageSlug` and compared to enforce one activation per slug+params, so
+ * a locale-dependent ordering could let a duplicate activation slip past.
+ *
+ * Exported for testing.
+ */
+export const buildActivationKey = (slug: string, params: Record<string, string>): string => {
   if (Object.keys(params).length === 0) return slug;
   const sorted = Object.entries(params)
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .map(([k, v]) => `${k}=${v}`)
     .join(",");
   return `${slug}:${sorted}`;

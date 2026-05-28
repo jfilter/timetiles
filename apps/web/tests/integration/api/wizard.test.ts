@@ -418,7 +418,7 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `skip-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: { type: "external", duplicateStrategy: "skip" },
+          idStrategy: { type: "external", externalIdPath: "event_id", duplicateStrategy: "skip" },
           deduplicationConfig: { enabled: true },
         },
       });
@@ -437,7 +437,7 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `update-dedup-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          idStrategy: { type: "external", duplicateStrategy: "update" },
+          idStrategy: { type: "external", externalIdPath: "event_id", duplicateStrategy: "update" },
           deduplicationConfig: { enabled: true },
         },
       });

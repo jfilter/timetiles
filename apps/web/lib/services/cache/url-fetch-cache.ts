@@ -441,10 +441,13 @@ export class UrlFetchCache {
         parsed.pathname = parsed.pathname.slice(0, -1);
       }
 
-      // Sort query parameters alphabetically
+      // Sort query parameters by UTF-16 code unit (NOT localeCompare) so the
+      // cache key is identical across machines regardless of runtime locale/ICU.
       if (parsed.search) {
         const params = new URLSearchParams(parsed.search);
-        const sortedParams = new URLSearchParams(Array.from(params.entries()).sort(([a], [b]) => a.localeCompare(b)));
+        const sortedParams = new URLSearchParams(
+          Array.from(params.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        );
         parsed.search = sortedParams.toString();
       }
 

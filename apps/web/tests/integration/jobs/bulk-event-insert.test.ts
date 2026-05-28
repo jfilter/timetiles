@@ -77,9 +77,10 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
     const prefix = `bulk-happy-${crypto.randomUUID().slice(0, 8)}`;
     const batch = Array.from({ length: 12 }, (_, i) => makeEvent(`${prefix}-${i}`, i));
 
-    const inserted = await bulkInsertEvents(payload, batch);
+    const { created, failures } = await bulkInsertEvents(payload, batch);
 
-    expect(inserted).toBe(batch.length);
+    expect(created).toBe(batch.length);
+    expect(failures).toEqual([]);
 
     const eventRows = (await payload.db.drizzle.execute(sql`
       SELECT id, unique_id
@@ -106,7 +107,6 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
     const originalTransaction = payload.db.drizzle.transaction.bind(payload.db.drizzle);
     vi.spyOn(payload.db.drizzle, "transaction").mockImplementationOnce(
       // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
       (callback: any) =>
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any
         originalTransaction((tx: any) => {
@@ -122,7 +122,11 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
         })
     );
 
-    await expect(bulkInsertEvents(payload, batch)).rejects.toThrow(/simulated _events_v insert failure/);
+    // The single failed sub-batch rolls back and is reported via `failures` —
+    // no events committed, no orphaned rows, no throw to the caller.
+    const { created, failures } = await bulkInsertEvents(payload, batch);
+    expect(created).toBe(0);
+    expect(failures.map((f) => f.index).sort((a, b) => a - b)).toEqual([0, 1, 2]);
 
     const remaining = (await payload.db.drizzle.execute(sql`
       SELECT COUNT(*)::int AS count
@@ -130,5 +134,51 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
        WHERE unique_id LIKE ${`${prefix}-%`}
     `)) as { rows: Array<{ count: number }> };
     expect(remaining.rows[0]?.count).toBe(0);
+  });
+
+  it("keeps committed sub-batches when a later sub-batch fails", async () => {
+    // Regression: with multiple sub-batches, an earlier sub-batch commits in its
+    // own transaction. A failure in a later sub-batch must NOT discard the
+    // committed rows or report them as failures. Previously bulkInsertEvents
+    // threw after the first commit, so the caller counted 0 created and marked
+    // every row (including the committed ones) as errored.
+    const prefix = `bulk-partial-${crypto.randomUUID().slice(0, 8)}`;
+    const batch = Array.from({ length: 4 }, (_, i) => makeEvent(`${prefix}-${i}`, i));
+
+    // batchSize=2 → two sub-batches: rows [0,1] then [2,3]. Fail only the 2nd.
+    const originalTransaction = payload.db.drizzle.transaction.bind(payload.db.drizzle);
+    let txCall = 0;
+    vi.spyOn(payload.db.drizzle, "transaction").mockImplementation(
+      // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+      (callback: any) => {
+        txCall++;
+        if (txCall !== 2) return originalTransaction(callback);
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+        return originalTransaction((tx: any) => {
+          const originalInsert = tx.insert.bind(tx);
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+          tx.insert = (table: any) => {
+            if (table === _events_v) {
+              throw new Error("simulated failure on second sub-batch");
+            }
+            return originalInsert(table);
+          };
+          return callback(tx);
+        });
+      }
+    );
+
+    const { created, failures } = await bulkInsertEvents(payload, batch, 2);
+
+    // First sub-batch committed and counted; only the second sub-batch's rows fail.
+    expect(created).toBe(2);
+    expect(failures.map((f) => f.index).sort((a, b) => a - b)).toEqual([2, 3]);
+
+    const remaining = (await payload.db.drizzle.execute(sql`
+      SELECT COUNT(*)::int AS count
+        FROM payload.events
+       WHERE unique_id LIKE ${`${prefix}-%`}
+    `)) as { rows: Array<{ count: number }> };
+    expect(remaining.rows[0]?.count).toBe(2);
   });
 });

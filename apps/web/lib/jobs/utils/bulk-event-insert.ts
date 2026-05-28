@@ -154,29 +154,54 @@ const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string
   });
 };
 
+/** Outcome of a {@link bulkInsertEvents} call. */
+export interface BulkInsertResult {
+  /** Number of rows committed across all successful sub-batches. */
+  created: number;
+  /**
+   * Rows whose sub-batch failed to commit. Each `index` points back into the
+   * `allEvents` array passed in, so the caller can map it to a source row
+   * number. All rows in a failed sub-batch share the same `error`.
+   */
+  failures: Array<{ index: number; error: unknown }>;
+}
+
 /**
  * Bulk-insert events into the `events` and `_events_v` tables,
  * bypassing Payload hooks.
  *
- * Splits the input into batches of {@link BATCH_SIZE} rows and executes
- * typed Drizzle INSERT statements. This is orders of magnitude faster
- * than calling `payload.create()` per row.
+ * Splits the input into sub-batches of `batchSize` rows, each committed in its
+ * own transaction. A failure in one sub-batch rolls back only that sub-batch —
+ * already-committed sub-batches are kept and counted. Failed rows are returned
+ * in {@link BulkInsertResult.failures} rather than thrown, so a late failure
+ * can't make the caller discard or mislabel rows that were actually written.
  *
- * @returns The total number of inserted rows.
+ * @returns The committed count and the rows belonging to failed sub-batches.
  */
-export const bulkInsertEvents = async (payload: Payload, allEvents: BulkEventData[]): Promise<number> => {
-  if (allEvents.length === 0) return 0;
+export const bulkInsertEvents = async (
+  payload: Payload,
+  allEvents: BulkEventData[],
+  batchSize: number = BATCH_SIZE
+): Promise<BulkInsertResult> => {
+  if (allEvents.length === 0) return { created: 0, failures: [] };
 
   const now = new Date().toISOString();
   let totalInserted = 0;
+  const failures: Array<{ index: number; error: unknown }> = [];
 
-  for (let i = 0; i < allEvents.length; i += BATCH_SIZE) {
-    const batch = allEvents.slice(i, i + BATCH_SIZE);
-    const inserted = await insertBatch(payload, batch, now);
-    totalInserted += inserted;
+  for (let i = 0; i < allEvents.length; i += batchSize) {
+    const batch = allEvents.slice(i, i + batchSize);
+    try {
+      totalInserted += await insertBatch(payload, batch, now);
+    } catch (error) {
+      logger.error({ err: error, startIndex: i, count: batch.length }, "Bulk insert sub-batch failed");
+      for (let j = i; j < i + batch.length; j++) {
+        failures.push({ index: j, error });
+      }
+    }
   }
 
-  logger.debug({ totalInserted, totalRequested: allEvents.length }, "Bulk insert complete");
+  logger.debug({ totalInserted, totalRequested: allEvents.length, failed: failures.length }, "Bulk insert complete");
 
-  return totalInserted;
+  return { created: totalInserted, failures };
 };
