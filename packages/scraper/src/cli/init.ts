@@ -15,11 +15,12 @@ import { nodeScraperTemplate } from "./templates/node-scraper.js";
 import { pythonScraperTemplate } from "./templates/python-scraper.js";
 import { readmeTemplate } from "./templates/readme.js";
 
+// eslint-disable-next-line security/detect-unsafe-regex -- kebab-case validator: dash-delimited, non-overlapping segments, so no catastrophic backtracking
 const VALID_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const VALID_RUNTIMES = ["python", "node"] as const;
 type Runtime = (typeof VALID_RUNTIMES)[number];
 
-function printUsage(): void {
+const printUsage = (): void => {
   console.log(`
 Usage: timetiles-scraper init <name> [options]
 
@@ -32,9 +33,9 @@ Options:
   --runtime <runtime>   Runtime environment: python or node (default: python)
   --help                Show this help message
 `);
-}
+};
 
-function parseArgs(argv: string[]): { name: string; runtime: Runtime } | null {
+const parseArgs = (argv: string[]): { name: string; runtime: Runtime } | null => {
   const args = argv.slice(2);
 
   if (args.length === 0 || args.includes("--help") || args.includes("-h")) {
@@ -80,16 +81,15 @@ function parseArgs(argv: string[]): { name: string; runtime: Runtime } | null {
   }
 
   return { name, runtime };
-}
+};
 
-function toTitleCase(slug: string): string {
-  return slug
+const toTitleCase = (slug: string): string =>
+  slug
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-}
 
-function scaffoldProject(name: string, runtime: Runtime): void {
+const scaffoldProject = (name: string, runtime: Runtime): void => {
   const targetDir = join(process.cwd(), name);
 
   if (existsSync(targetDir)) {
@@ -130,7 +130,7 @@ function scaffoldProject(name: string, runtime: Runtime): void {
   console.log(`  cd ${name}`);
   console.log(`  # Edit ${entrypoint} with your scraping logic`);
   console.log("  # Push to a git repository and add it in TimeTiles");
-}
+};
 
 const parsed = parseArgs(process.argv);
 if (parsed) {

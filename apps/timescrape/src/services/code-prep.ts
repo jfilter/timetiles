@@ -6,7 +6,7 @@
  * @category Services
  */
 
-import { writeFile, mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { simpleGit } from "simple-git";
@@ -16,7 +16,7 @@ import { RunnerError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
 import type { RunRequest } from "../types.js";
 
-export async function prepareCode(request: RunRequest, codeDir: string): Promise<void> {
+export const prepareCode = async (request: RunRequest, codeDir: string): Promise<void> => {
   if (request.code_url) {
     await cloneRepo(request.code_url, codeDir);
   } else if (request.code) {
@@ -24,9 +24,9 @@ export async function prepareCode(request: RunRequest, codeDir: string): Promise
   } else {
     throw new RunnerError("Either code_url or code must be provided", "INVALID_REQUEST", 400);
   }
-}
+};
 
-async function cloneRepo(codeUrl: string, codeDir: string): Promise<void> {
+const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   // Parse URL: "https://github.com/user/repo.git#branch"
   const [url, branch] = codeUrl.split("#");
 
@@ -49,7 +49,7 @@ async function cloneRepo(codeUrl: string, codeDir: string): Promise<void> {
 
     // Check repo size
     const stdout = await git.cwd(codeDir).raw(["count-objects", "-v"]);
-    const sizeMatch = stdout.match(/size-pack:\s+(\d+)/);
+    const sizeMatch = /size-pack:\s+(\d+)/.exec(stdout);
     const sizeMb = sizeMatch ? Number(sizeMatch[1]) / 1024 : 0;
 
     if (sizeMb > config.SCRAPER_MAX_REPO_SIZE_MB) {
@@ -67,9 +67,9 @@ async function cloneRepo(codeUrl: string, codeDir: string): Promise<void> {
       500
     );
   }
-}
+};
 
-async function writeInlineCode(code: Record<string, string>, codeDir: string): Promise<void> {
+const writeInlineCode = async (code: Record<string, string>, codeDir: string): Promise<void> => {
   logger.info({ fileCount: Object.keys(code).length }, "Writing inline code");
 
   for (const [filename, content] of Object.entries(code)) {
@@ -82,4 +82,4 @@ async function writeInlineCode(code: Record<string, string>, codeDir: string): P
     await mkdir(dirname(filePath), { recursive: true });
     await writeFile(filePath, content, "utf-8");
   }
-}
+};

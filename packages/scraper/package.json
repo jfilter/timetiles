@@ -33,12 +33,14 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsgo --noEmit",
-    "lint": "oxlint --config ../../.oxlintrc.json .",
+    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache",
     "prepublishOnly": "tsup"
   },
   "devDependencies": {
+    "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "^25.6.0",
+    "eslint": "catalog:",
     "tsup": "^8.5.1",
     "typescript": "catalog:"
   }

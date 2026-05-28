@@ -20,7 +20,7 @@ import { z } from "zod";
 import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
 import { logError } from "../lib/logger.js";
-import { executeRun, isRunActive, stopRun, getActiveRunCount, getMetrics } from "../services/runner.js";
+import { executeRun, getActiveRunCount, getMetrics, isRunActive, stopRun } from "../services/runner.js";
 
 const runRequestSchema = z.object({
   run_id: z.string().uuid(),

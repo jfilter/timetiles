@@ -5,8 +5,7 @@
  * @category CLI Templates
  */
 
-export function pythonScraperTemplate(vars: { name: string }): string {
-  return `"""
+export const pythonScraperTemplate = (vars: { name: string }): string => `"""
 ${vars.name} — a TimeTiles scraper.
 
 Uses the timetiles scraper SDK for CSV output.
@@ -26,4 +25,3 @@ for row in rows:
 output.save()
 print(f"Wrote {output.row_count} rows")
 `;
-}

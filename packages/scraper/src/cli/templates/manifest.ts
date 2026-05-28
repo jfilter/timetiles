@@ -5,8 +5,12 @@
  * @category CLI Templates
  */
 
-export function manifestTemplate(vars: { name: string; slug: string; runtime: string; entrypoint: string }): string {
-  return `# TimeTiles scraper manifest — defines scrapers in this repository.
+export const manifestTemplate = (vars: {
+  name: string;
+  slug: string;
+  runtime: string;
+  entrypoint: string;
+}): string => `# TimeTiles scraper manifest — defines scrapers in this repository.
 # See https://docs.timetiles.io/reference/scrapers for documentation.
 
 scrapers:
@@ -20,4 +24,3 @@ scrapers:
     #   timeout: 300
     #   memory: 512
 `;
-}

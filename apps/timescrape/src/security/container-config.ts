@@ -26,7 +26,7 @@ export interface ContainerConfig {
   limits: ContainerLimits;
 }
 
-export function buildPodmanArgs(config: ContainerConfig): string[] {
+export const buildPodmanArgs = (config: ContainerConfig): string[] => {
   const { runId, runtime, entrypoint, codeDir, outputDir, env, limits } = config;
 
   const args: string[] = [
@@ -59,7 +59,7 @@ export function buildPodmanArgs(config: ContainerConfig): string[] {
   ];
 
   // Environment variables — validate key names and skip reserved keys
-  const ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
+  const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
   const RESERVED_ENV_KEYS = new Set([
     "PATH",
     "LD_PRELOAD",
@@ -91,4 +91,4 @@ export function buildPodmanArgs(config: ContainerConfig): string[] {
   }
 
   return args;
-}
+};

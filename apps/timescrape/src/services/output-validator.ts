@@ -7,7 +7,8 @@
 
 import { OutputValidationError } from "../lib/errors.js";
 
-export async function validateOutput(content: Buffer, maxSizeMb: number): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/require-await -- async by contract: part of the awaited validation pipeline and covered by promise-based tests
+export const validateOutput = async (content: Buffer, maxSizeMb: number): Promise<void> => {
   const sizeMb = content.length / (1024 * 1024);
 
   if (sizeMb > maxSizeMb) {
@@ -23,4 +24,4 @@ export async function validateOutput(content: Buffer, maxSizeMb: number): Promis
   if (!firstLine || firstLine.trim().length === 0) {
     throw new OutputValidationError("Output file has no header row");
   }
-}
+};

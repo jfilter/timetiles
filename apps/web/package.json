@@ -10,7 +10,7 @@
     "build": "payload generate:types --silent && next build",
     "build:compile": "payload generate:types --silent && payload generate:importmap --silent && next build --experimental-build-mode compile",
     "start": "next start",
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . && eslint app lib components tests scripts --cache",
     "format": "eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write .",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "check:ai": "tsx scripts/check-summary.ts",

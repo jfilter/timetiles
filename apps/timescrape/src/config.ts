@@ -16,6 +16,7 @@ const envSchema = z.object({
   SCRAPER_MAX_REPO_SIZE_MB: z.coerce.number().default(50),
   // Output is served via file download endpoint. Keep conservative for disk usage.
   SCRAPER_MAX_OUTPUT_SIZE_MB: z.coerce.number().default(50),
+  // eslint-disable-next-line sonarjs/publicly-writable-directories -- ephemeral default for the containerized runner; overridden by SCRAPER_DATA_DIR in deployments
   SCRAPER_DATA_DIR: z.string().default("/tmp/timescrape"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
@@ -24,13 +25,13 @@ export type Config = z.infer<typeof envSchema>;
 
 let _config: Config | null = null;
 
-export function loadConfig(): Config {
+export const loadConfig = (): Config => {
   if (_config) return _config;
   _config = envSchema.parse(process.env);
   return _config;
-}
+};
 
-export function getConfig(): Config {
+export const getConfig = (): Config => {
   if (!_config) return loadConfig();
   return _config;
-}
+};

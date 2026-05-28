@@ -18,7 +18,7 @@ import { promisify } from "node:util";
 
 import { getConfig } from "../config.js";
 import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
-import { logger, logError } from "../lib/logger.js";
+import { logError, logger } from "../lib/logger.js";
 import { buildPodmanArgs } from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
 import { prepareCode } from "./code-prep.js";
@@ -46,7 +46,7 @@ export interface RunnerMetrics {
   queue_capacity: number;
 }
 
-export function getMetrics(): RunnerMetrics {
+export const getMetrics = (): RunnerMetrics => {
   const config = getConfig();
   return {
     active_runs: activeRuns.size,
@@ -57,12 +57,12 @@ export function getMetrics(): RunnerMetrics {
     uptime_seconds: Math.floor((Date.now() - startedAt) / 1000),
     queue_capacity: config.SCRAPER_MAX_CONCURRENT,
   };
-}
+};
 
-async function runPodmanContainer(
+const runPodmanContainer = async (
   podmanArgs: string[],
   timeoutSecs: number
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
   const timeoutMs = timeoutSecs * 1000 + 5000; // 5s grace
   try {
     const result = await execFileAsync("podman", podmanArgs, { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 });
@@ -74,16 +74,16 @@ async function runPodmanContainer(
     const execError = error as { stdout?: string; stderr?: string; code?: number };
     return { stdout: execError.stdout ?? "", stderr: execError.stderr ?? "", exitCode: execError.code ?? 1 };
   }
-}
+};
 
-async function collectOutput(
+const collectOutput = async (
   outputDir: string,
   outputFileName: string,
   maxSizeMb: number,
   exitCode: number,
   stderr: string,
   runId: string
-): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> {
+): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> => {
   const outputFile = join(outputDir, outputFileName);
   if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
     throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
@@ -122,9 +122,9 @@ async function collectOutput(
     }
     return { output: undefined, exitCode, stderr };
   }
-}
+};
 
-export async function executeRun(request: RunRequest): Promise<RunResult> {
+export const executeRun = async (request: RunRequest): Promise<RunResult> => {
   const config = getConfig();
 
   if (activeRuns.size >= config.SCRAPER_MAX_CONCURRENT) {
@@ -235,29 +235,25 @@ export async function executeRun(request: RunRequest): Promise<RunResult> {
       logError("Failed to cleanup work directory", error, { runId, workDir });
     }
   }
-}
+};
 
-export async function stopRun(runId: string): Promise<void> {
+export const stopRun = async (runId: string): Promise<void> => {
   try {
     await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 15_000 });
     logger.info({ runId }, "Container stopped");
   } catch (error) {
     logError("Failed to stop container", error, { runId });
   }
-}
+};
 
-export function isRunActive(runId: string): boolean {
-  return activeRuns.has(runId);
-}
+export const isRunActive = (runId: string): boolean => activeRuns.has(runId);
 
-export function getActiveRunCount(): number {
-  return activeRuns.size;
-}
+export const getActiveRunCount = (): number => activeRuns.size;
 
-function truncateLog(log: string, maxBytes: number = 1024 * 1024): string {
+const truncateLog = (log: string, maxBytes: number = 1024 * 1024): string => {
   const byteLength = Buffer.byteLength(log, "utf-8");
   if (byteLength <= maxBytes) return log;
   // Slice conservatively (multi-byte chars may overshoot)
   const truncated = Buffer.from(log, "utf-8").subarray(0, maxBytes).toString("utf-8");
   return truncated + `\n... truncated (${byteLength} bytes total)`;
-}
+};

@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --dts",
     "start": "node dist/index.js",
-    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**'",
+    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**' && eslint . --cache",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:ai": "vitest run --reporter=json --outputFile=.test-results/latest.json"
@@ -24,6 +24,7 @@
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "^25.6.0",
+    "eslint": "catalog:",
     "pino-pretty": "^13.0.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",

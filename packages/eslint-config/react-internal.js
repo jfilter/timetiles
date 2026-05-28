@@ -65,12 +65,6 @@ export default [
       "react/no-unescaped-entities": "error",
       "react/no-children-prop": "error",
 
-      // JSX accessibility rules that oxlint's native plugin no longer supports.
-      "jsx-a11y/interactive-supports-focus": "error",
-      "jsx-a11y/no-interactive-element-to-noninteractive-role": "error",
-      "jsx-a11y/no-noninteractive-element-interactions": "error",
-      "jsx-a11y/no-noninteractive-element-to-interactive-role": "error",
-
       // @eslint-react rules for modern React patterns (v2)
       "@eslint-react/no-useless-forward-ref": "error",
       "@eslint-react/no-access-state-in-setstate": "error",

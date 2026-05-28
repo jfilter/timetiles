@@ -12,4 +12,4 @@
  * output.save();
  * ```
  */
-export { output, OutputWriter, type OutputRow } from "./output.js";
+export { output, type OutputRow, OutputWriter } from "./output.js";

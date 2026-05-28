@@ -13,6 +13,9 @@
  *
  * @module
  */
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import js from "@eslint/js";
 import boundariesPlugin from "eslint-plugin-boundaries";
 import importPlugin from "eslint-plugin-import";
@@ -27,8 +30,6 @@ import sonarPlugin from "eslint-plugin-sonarjs";
 import turboPlugin from "eslint-plugin-turbo";
 import unicornPlugin from "eslint-plugin-unicorn";
 import unusedImports from "eslint-plugin-unused-imports";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import tseslint from "typescript-eslint";
 
 // Monorepo root, derived from this file's location (packages/eslint-config/base.js).

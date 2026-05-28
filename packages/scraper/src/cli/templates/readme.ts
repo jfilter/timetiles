@@ -5,7 +5,7 @@
  * @category CLI Templates
  */
 
-export function readmeTemplate(vars: { name: string; runtime: string; entrypoint: string }): string {
+export const readmeTemplate = (vars: { name: string; runtime: string; entrypoint: string }): string => {
   const installStep = vars.runtime === "node" ? "\n2. Install the SDK: `npm install @timetiles/scraper`" : "";
 
   const testCommand =
@@ -39,4 +39,4 @@ Edit \`scrapers.yml\` to configure scheduling, resource limits, and additional s
 - [TimeTiles Scraper Guide](https://docs.timetiles.io/reference/scrapers)
 - [@timetiles/scraper SDK](https://www.npmjs.com/package/@timetiles/scraper)
 `;
-}
+};

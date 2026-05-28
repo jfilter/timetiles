@@ -5,8 +5,7 @@
  * @category CLI Templates
  */
 
-export function nodeScraperTemplate(vars: { name: string }): string {
-  return `/**
+export const nodeScraperTemplate = (vars: { name: string }): string => `/**
  * ${vars.name} — a TimeTiles scraper.
  *
  * Uses @timetiles/scraper for type-safe CSV output.
@@ -27,4 +26,3 @@ for (const row of rows) {
 output.save();
 console.log(\`Wrote \${output.rowCount} rows\`);
 `;
-}

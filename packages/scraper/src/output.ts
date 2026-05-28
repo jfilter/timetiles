@@ -32,9 +32,9 @@ export type OutputRow = Record<string, string | number>;
  * ```
  */
 export class OutputWriter<T extends OutputRow = OutputRow> {
-  #rows: T[] = [];
+  readonly #rows: T[] = [];
   #headers: string[] | null = null;
-  #outputDir: string;
+  readonly #outputDir: string;
   #filename = "data.csv";
 
   constructor(outputDir?: string) {
@@ -82,7 +82,7 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
 
     const lines = [this.#headers.join(",")];
     for (const row of this.#rows) {
-      const values = this.#headers!.map((h) => {
+      const values = this.#headers.map((h) => {
         const val = row[h] ?? "";
         const str = String(val);
         if (str.includes(",") || str.includes('"') || str.includes("\n")) {
@@ -102,7 +102,7 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
     if (!this.#rows.length || !this.#headers) return "";
     const lines = [this.#headers.join(",")];
     for (const row of this.#rows) {
-      const values = this.#headers!.map((h) => String(row[h] ?? ""));
+      const values = this.#headers.map((h) => String(row[h] ?? ""));
       lines.push(values.join(","));
     }
     return lines.join("\n") + "\n";

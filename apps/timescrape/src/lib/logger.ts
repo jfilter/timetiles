@@ -27,8 +27,8 @@ const createLogger = (): pino.Logger => {
 
 export const logger = createLogger();
 
-export function logError(message: string, error: unknown, context?: Record<string, unknown>): void {
+export const logError = (message: string, error: unknown, context?: Record<string, unknown>): void => {
   const errorInfo =
     error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
   logger.error({ error: errorInfo, ...context }, message);
-}
+};
