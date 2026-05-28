@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { generateEventId, generateUniqueId } from "../../../lib/services/id-generation";
 import type { Dataset } from "../../../payload-types";
@@ -144,6 +144,33 @@ describe("id-generation", () => {
         const result2 = generateEventId(data2, mockDataset as Dataset);
 
         expect(result1.uniqueId).not.toBe(result2.uniqueId);
+      });
+
+      it("uses a locale-independent key sort so the hash is stable across environments", () => {
+        // Regression: content-hash keys were sorted with String.prototype.localeCompare,
+        // whose ordering depends on the runtime locale/ICU. The same row could then hash
+        // differently on different machines, silently breaking dedup. The hash must not
+        // depend on localeCompare at all.
+        const data = { id: 1, _id: 2, Zebra: 3, apple: 4, "user.name": 5 };
+
+        const before = generateEventId(data, mockDataset as Dataset).uniqueId;
+
+        // Force localeCompare to reverse ordering. If the implementation still relies on
+        // it, the canonical key order — and therefore the hash — changes.
+        const spy = vi.spyOn(String.prototype, "localeCompare").mockImplementation(function (
+          this: string,
+          that: string
+        ): number {
+          if (this < that) return 1;
+          if (this > that) return -1;
+          return 0;
+        });
+        try {
+          const after = generateEventId(data, mockDataset as Dataset).uniqueId;
+          expect(after).toBe(before);
+        } finally {
+          spy.mockRestore();
+        }
       });
 
       it("excludes specified fields from hash", () => {
