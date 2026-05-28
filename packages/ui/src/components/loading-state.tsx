@@ -66,14 +66,13 @@ export const LoadingState = ({ variant = "spinner", message, height, className }
 
   if (variant === "skeleton") {
     return (
-      <div
-        className={cn("bg-muted animate-pulse rounded", className)}
+      <output
+        className={cn("bg-muted block animate-pulse rounded", className)}
         style={containerStyle ?? { height: "200px" }}
-        role="status"
         aria-label="Loading"
       >
         <span className="sr-only">Loading...</span>
-      </div>
+      </output>
     );
   }
 
