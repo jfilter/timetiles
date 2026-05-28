@@ -79,7 +79,7 @@ vi.mock("@/lib/services/cache/url-fetch-cache", () => {
 // Imports under test (must come AFTER vi.mock calls)
 // ---------------------------------------------------------------------------
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
-import { fetchPaginated } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
+import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { TestServer } from "@/tests/setup/integration/http-server";
 
 describe.sequential("JSON fetch integration", () => {

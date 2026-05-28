@@ -9,8 +9,7 @@
  * @category Types
  */
 import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
-
-import type { TransformSuggestion } from "./transforms";
+import type { TransformSuggestion } from "@/lib/definitions/transform-registry";
 
 /**
  * Status of a processing stage.

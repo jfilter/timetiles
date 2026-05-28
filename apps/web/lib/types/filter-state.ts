@@ -8,6 +8,8 @@
  * @category Types
  */
 
+import { compareCodeUnits } from "@/lib/utils/compare";
+
 export interface FilterState {
   datasets: string[];
   startDate: string | null;
@@ -106,7 +108,7 @@ export const serializeFilterKey = (filters: FilterState): string =>
     // same regardless of runtime locale/ICU.
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => compareCodeUnits(a, b))
       );
     }
     return value;

@@ -14,6 +14,7 @@ import crypto from "node:crypto";
 import { getAppConfig } from "@/lib/config/app-config";
 import { logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
+import { compareCodeUnits } from "@/lib/utils/compare";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
@@ -446,7 +447,7 @@ export class UrlFetchCache {
       if (parsed.search) {
         const params = new URLSearchParams(parsed.search);
         const sortedParams = new URLSearchParams(
-          Array.from(params.entries()).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          Array.from(params.entries()).sort(([a], [b]) => compareCodeUnits(a, b))
         );
         parsed.search = sortedParams.toString();
       }

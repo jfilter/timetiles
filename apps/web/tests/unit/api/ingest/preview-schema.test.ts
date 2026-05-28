@@ -65,9 +65,9 @@ vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks
 
 vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid") }));
 
-vi.mock("@/lib/jobs/handlers/url-fetch-job/auth", () => ({ buildAuthHeaders: mocks.mockBuildAuthHeaders }));
+vi.mock("@/lib/ingest/url-fetch/auth", () => ({ buildAuthHeaders: mocks.mockBuildAuthHeaders }));
 
-vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({
+vi.mock("@/lib/ingest/url-fetch/fetch-utils", () => ({
   fetchWithRetry: mocks.mockFetchWithRetry,
   detectFileTypeFromResponse: mocks.mockDetectFileTypeFromResponse,
 }));

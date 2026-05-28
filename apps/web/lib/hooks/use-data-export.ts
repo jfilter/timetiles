@@ -8,19 +8,14 @@
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import type { DataExport, ExportListResponse, RequestExportResponse } from "@/lib/export/api-types";
 import type { ExportSummary } from "@/lib/export/types";
 import type { DataExport as PayloadDataExport } from "@/payload-types";
 
 import { fetchJson } from "../api/http-error";
-import type { DataExport, ExportListResponse, RequestExportResponse } from "../types/data-export-api";
 import { createItemPollingInterval, QUERY_PRESETS } from "./query-presets";
 
-export type {
-  DataExport,
-  ExportListResponse,
-  RequestExportError,
-  RequestExportResponse,
-} from "../types/data-export-api";
+export type { DataExport, ExportListResponse, RequestExportError, RequestExportResponse } from "@/lib/export/api-types";
 
 /**
  * Query key for data exports.

@@ -11,6 +11,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 
+import { compareCodeUnits } from "@/lib/utils/compare";
 import { extractExternalIdValue, formatEventId, ID_PREFIXES, sanitizeId } from "@/lib/utils/event-id";
 import { deleteByPathOrKey } from "@/lib/utils/object-path";
 import type { Dataset } from "@/payload-types";
@@ -131,7 +132,7 @@ const generateContentHash = (data: unknown): string => {
       // Sort by UTF-16 code unit, NOT localeCompare: the dedup key must be
       // byte-for-byte reproducible across machines, and localeCompare ordering
       // depends on the runtime locale/ICU version.
-      for (const k of Object.keys(value).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
+      for (const k of Object.keys(value).sort((a, b) => compareCodeUnits(a, b))) {
         sorted[k] = (value as Record<string, unknown>)[k];
       }
       return sorted;

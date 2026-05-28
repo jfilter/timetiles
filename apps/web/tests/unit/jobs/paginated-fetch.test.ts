@@ -14,9 +14,9 @@ vi.mock("@/lib/logger", () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() }),
 }));
 
-vi.mock("@/lib/jobs/handlers/url-fetch-job/fetch-utils", () => ({ fetchWithRetry: mocks.fetchWithRetry }));
+vi.mock("@/lib/ingest/url-fetch/fetch-utils", () => ({ fetchWithRetry: mocks.fetchWithRetry }));
 
-import { fetchPaginated } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
+import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 
 describe("fetchPaginated", () => {
   beforeEach(() => {

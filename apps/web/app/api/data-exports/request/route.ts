@@ -12,12 +12,12 @@ import type { Payload } from "payload";
 
 import { apiRoute, ConflictError } from "@/lib/api";
 import { queueJobWithRollback } from "@/lib/api/job-helpers";
+import type { RequestExportResponse } from "@/lib/export/api-types";
 import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
-import type { RequestExportResponse } from "@/lib/types/data-export-api";
 import type { DataExport as DataExportRecord } from "@/payload-types";
 
-export type { RequestExportError, RequestExportResponse } from "@/lib/types/data-export-api";
+export type { RequestExportError, RequestExportResponse } from "@/lib/export/api-types";
 
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 

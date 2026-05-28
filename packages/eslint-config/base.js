@@ -27,7 +27,15 @@ import sonarPlugin from "eslint-plugin-sonarjs";
 import turboPlugin from "eslint-plugin-turbo";
 import unicornPlugin from "eslint-plugin-unicorn";
 import unusedImports from "eslint-plugin-unused-imports";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import tseslint from "typescript-eslint";
+
+// Monorepo root, derived from this file's location (packages/eslint-config/base.js).
+// boundaries/element patterns are written relative to the repo root, so pin the
+// root path here instead of letting it default to process.cwd() — otherwise the
+// layered-architecture rules silently match nothing when eslint runs from a package dir.
+const MONOREPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
  * Default global ignores for the monorepo.
@@ -131,10 +139,36 @@ export default [
       jsdoc: jsdocPlugin,
     },
     settings: {
+      // Match boundaries/element patterns relative to the repo root, not the
+      // (per-package) eslint cwd.
+      "boundaries/root-path": MONOREPO_ROOT,
+      // Resolve TS path aliases (@/...) and workspace packages so boundaries
+      // (and import/no-cycle) can classify the import target. Without this the
+      // layered-architecture rules are silently inert for @/ imports.
+      "import/resolver": {
+        typescript: { alwaysTryTypes: true },
+        node: { extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts"] },
+      },
+      // `mode: "full"` matches each pattern against the whole file path (relative
+      // to root-path) so files directly inside a layer folder (e.g. lib/ingest/x.ts)
+      // are classified, not just files in sub-folders. The first matching element
+      // wins, so more specific layers are listed before the catch-alls.
       "boundaries/elements": [
+        // Composition root — the Payload config assembly wires collections, jobs,
+        // globals and migrations together, so it is allowed to import anything.
+        {
+          type: "web-config",
+          mode: "full",
+          pattern: [
+            "apps/web/payload.config.ts",
+            "apps/web/lib/config/payload-config-factory.ts",
+            "apps/web/lib/config/payload-shared-config.ts",
+          ],
+        },
         // Layer 0 — Foundation (pure functions, no service/domain deps)
         {
           type: "web-lib-foundation",
+          mode: "full",
           pattern: [
             "apps/web/lib/utils/**/*",
             "apps/web/lib/security/**/*",
@@ -142,34 +176,49 @@ export default [
             "apps/web/lib/constants/**/*",
             "apps/web/lib/geospatial/**/*",
             "apps/web/lib/filters/**/*",
+            "apps/web/lib/definitions/**/*",
+            "apps/web/lib/schemas/**/*",
+            // Foundational modules that live in otherwise-higher-layer folders:
+            "apps/web/lib/logger.ts",
+            "apps/web/lib/config/env.ts",
+            "apps/web/lib/config/app-config.ts",
+            "apps/web/lib/api/errors.ts",
+            "apps/web/lib/api/http-error.ts",
+            "apps/web/i18n/config.ts",
+            // Generated Payload artifacts — imported throughout every layer.
+            "apps/web/payload-types.ts",
+            "apps/web/payload-generated-schema.ts",
           ],
         },
         // Layer 1 — Infrastructure (cross-cutting services, DB, middleware)
         {
           type: "web-lib-infra",
+          mode: "full",
           pattern: ["apps/web/lib/services/**/*", "apps/web/lib/database/**/*", "apps/web/lib/middleware/**/*"],
         },
-        // Layer 2 — Domain (import pipeline, account, export, email, collections)
+        // Layer 2 — Domain (ingest pipeline, account, export, email, collections)
         {
           type: "web-lib-domain",
+          mode: "full",
           pattern: [
-            "apps/web/lib/import/**/*",
+            "apps/web/lib/ingest/**/*",
             "apps/web/lib/account/**/*",
             "apps/web/lib/export/**/*",
             "apps/web/lib/email/**/*",
             "apps/web/lib/collections/**/*",
+            "apps/web/lib/blocks/**/*",
           ],
         },
         // Layer 3 — Application (hooks, api helpers, blocks, jobs, etc.)
-        { type: "web-lib", pattern: "apps/web/lib/**/*" },
-        { type: "web-api", pattern: "apps/web/app/api/**/*" },
-        { type: "web-components", pattern: "apps/web/components/**/*" },
-        { type: "web-pages", pattern: "apps/web/app/**/page.tsx" },
-        { type: "app-web", pattern: "apps/web/**/*" },
-        { type: "app-docs", pattern: "apps/docs/**/*" },
-        { type: "app", pattern: "apps/*" },
-        { type: "package", pattern: "packages/*/**/*" },
-        { type: "root", pattern: ["*.js", "*.ts", "*.json", "scripts/**/*"] },
+        { type: "web-lib", mode: "full", pattern: "apps/web/lib/**/*" },
+        { type: "web-api", mode: "full", pattern: "apps/web/app/api/**/*" },
+        { type: "web-components", mode: "full", pattern: "apps/web/components/**/*" },
+        { type: "web-pages", mode: "full", pattern: "apps/web/app/**/page.tsx" },
+        { type: "app-web", mode: "full", pattern: "apps/web/**/*" },
+        { type: "app-docs", mode: "full", pattern: "apps/docs/**/*" },
+        { type: "app", mode: "full", pattern: "apps/*" },
+        { type: "package", mode: "full", pattern: "packages/*/**/*" },
+        { type: "root", mode: "full", pattern: ["*.js", "*.ts", "*.json", "scripts/**/*"] },
       ],
     },
     rules: {
@@ -249,31 +298,45 @@ export default [
         {
           default: "disallow",
           rules: [
-            // Apps can use packages but not other apps
-            { from: ["app-web", "app-docs"], allow: ["package", "package-ui", "package-config"] },
-            // Packages can only use other packages
+            // Composition root assembles the whole app — it may import anything.
+            { from: "web-config", allow: "*" },
+            // Apps can use their own modules and packages, but not other apps.
+            { from: "app-docs", allow: ["app-docs", "package"] },
+            // Packages can only use other packages.
             { from: "package", allow: ["package"] },
 
-            // ── Layered Architecture (lib/) ──────────────────────────
+            // ── Layered Architecture (lib/) — each layer imports only same-or-below ──
             // Layer 0: Foundation → Foundation + packages only
             { from: "web-lib-foundation", allow: ["web-lib-foundation", "package"] },
-            // Layer 1: Infrastructure → Foundation + Infrastructure + packages
-            { from: "web-lib-infra", allow: ["web-lib-foundation", "web-lib-infra", "package"] },
+            // Layer 1: Infrastructure → Foundation + Infrastructure + packages (+ config root for the Payload instance)
+            { from: "web-lib-infra", allow: ["web-lib-foundation", "web-lib-infra", "package", "web-config"] },
             // Layer 2: Domain → Foundation + Infrastructure + Domain + packages
             { from: "web-lib-domain", allow: ["web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
-            // Layer 3: Application lib → all lib layers + packages
-            { from: "web-lib", allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+            // Layer 3: Application lib → all lib layers + packages (+ config root)
+            {
+              from: "web-lib",
+              allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package", "web-config"],
+            },
 
-            // ── Web app boundaries ───────────────────────────────────
+            // ── Web application tier (pages, route handlers, components, app shell) ──
+            // One cohesive layer above lib: may use any lib layer, each other, packages,
+            // and the config root — but NOT lib→app-shell (enforced by the lib rules above)
+            // and NOT other apps.
             {
-              from: "web-components",
-              allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"],
+              from: ["app-web", "web-pages", "web-components", "web-api"],
+              allow: [
+                "app-web",
+                "web-pages",
+                "web-components",
+                "web-api",
+                "web-lib",
+                "web-lib-foundation",
+                "web-lib-infra",
+                "web-lib-domain",
+                "web-config",
+                "package",
+              ],
             },
-            {
-              from: "web-pages",
-              allow: ["web-components", "web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"],
-            },
-            { from: "web-api", allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
 
             // Root can access everything
             { from: "root", allow: "*" },

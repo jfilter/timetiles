@@ -70,7 +70,7 @@ vi.mock("@/lib/ingest/file-readers", () => ({
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
+vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
 // Mock cleanupSidecarsForJob directly — with isolate: false, the mock of file-readers
 // doesn't propagate to resource-loading.ts's cached import of cleanupSidecarFiles

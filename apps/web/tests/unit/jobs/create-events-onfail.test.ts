@@ -33,7 +33,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
     completeStage: vi.fn(),
   },
 }));
-vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: vi.fn(() => "/mock/path") }));
+vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: vi.fn(() => "/mock/path") }));
 vi.mock("@/lib/services/quota-service", () => ({
   createQuotaService: vi.fn(() => ({
     checkQuota: vi.fn().mockResolvedValue({ allowed: true }),

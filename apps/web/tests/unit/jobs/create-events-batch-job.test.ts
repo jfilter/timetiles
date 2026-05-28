@@ -51,7 +51,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
   },
 }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({
+vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 

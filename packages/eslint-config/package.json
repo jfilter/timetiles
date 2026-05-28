@@ -23,6 +23,7 @@
     "@tanstack/eslint-plugin-query": "^5.94.5",
     "@typescript-eslint/parser": "^8.58.2",
     "eslint": "catalog:",
+    "eslint-import-resolver-typescript": "^3.8.3",
     "eslint-plugin-boundaries": "^5.4.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-jsdoc": "^62.8.0",

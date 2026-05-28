@@ -15,10 +15,10 @@ import { apiRoute } from "@/lib/api";
 import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
 import type { Event, User } from "@/payload-types";
 

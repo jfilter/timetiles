@@ -24,6 +24,7 @@ import {
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { applyTransforms } from "@/lib/ingest/transforms";
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { events as eventsTable } from "@/payload-generated-schema";
@@ -38,7 +39,6 @@ import {
   loadJobResources,
 } from "../utils/resource-loading";
 import { buildTransformsForTargetPath, buildTransformsFromDataset } from "../utils/transform-builders";
-import { getIngestFilePath } from "../utils/upload-path";
 import {
   checkQuotaForSheet,
   parseReviewChecksConfig,

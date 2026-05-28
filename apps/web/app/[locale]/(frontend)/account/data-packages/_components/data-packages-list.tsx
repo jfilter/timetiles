@@ -23,12 +23,12 @@ import {
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import type { DataPackageListItem } from "@/lib/data-packages/types";
 import {
   useActivateDataPackageMutation,
   useDataPackagesQuery,
   useDeactivateDataPackageMutation,
 } from "@/lib/hooks/use-data-packages-query";
-import type { DataPackageListItem } from "@/lib/types/data-packages";
 
 const formatNumber = (n: number): string => {
   if (n >= 1000) return `~${Math.round(n / 1000)}k`;

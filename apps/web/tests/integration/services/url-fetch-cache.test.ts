@@ -13,7 +13,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { getUrlFetchCache } from "@/lib/services/cache";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 

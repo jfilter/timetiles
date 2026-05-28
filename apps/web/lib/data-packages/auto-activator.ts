@@ -27,8 +27,8 @@ import { z } from "zod";
 
 import { createSystemUserService } from "@/lib/account/system-user";
 import { getEnv } from "@/lib/config/env";
+import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { createLogger } from "@/lib/logger";
-import type { DataPackageManifest } from "@/lib/types/data-packages";
 
 import { activateDataPackage } from "./activation-service";
 import { loadAllManifests } from "./manifest-loader";

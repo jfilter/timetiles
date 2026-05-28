@@ -10,10 +10,11 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/data-packages/types";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import { createLogger } from "@/lib/logger";
-import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/types/data-packages";
+import { compareCodeUnits } from "@/lib/utils/compare";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
 
@@ -63,7 +64,7 @@ const resolveManifestParameters = (
 export const buildActivationKey = (slug: string, params: Record<string, string>): string => {
   if (Object.keys(params).length === 0) return slug;
   const sorted = Object.entries(params)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .sort(([a], [b]) => compareCodeUnits(a, b))
     .map(([k, v]) => `${k}=${v}`)
     .join(",");
   return `${slug}:${sorted}`;

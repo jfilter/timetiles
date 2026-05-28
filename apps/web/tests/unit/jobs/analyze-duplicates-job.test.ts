@@ -52,7 +52,7 @@ vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
 });
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({
+vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 

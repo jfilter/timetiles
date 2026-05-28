@@ -19,10 +19,10 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import { DEFAULT_CLUSTER_STATS } from "@/lib/constants/map";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { logger } from "@/lib/logger";
 import { ClusterStatsQuerySchema } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 export const GET = apiRoute({
   auth: "optional",

@@ -17,9 +17,9 @@ import { and, count, eq, isNotNull, max, min } from "@payloadcms/db-postgres/dri
 
 import { apiRoute } from "@/lib/api";
 import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { logger } from "@/lib/logger";
 import { EventFiltersSchema } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
 
 export type { BoundsResponse } from "@/lib/types/event-bounds";

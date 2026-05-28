@@ -178,54 +178,6 @@ export type IngestTransform =
   | ExtractTransform;
 
 /**
- * A suggested transform detected by comparing schema versions.
- *
- * When schema changes are detected (e.g., field removed + field added),
- * the system analyzes whether this represents a rename and suggests
- * a transform rule if confidence is high enough.
- */
-export interface TransformSuggestion {
-  /** Type of transformation being suggested */
-  type: TransformType;
-
-  /**
-   * Source field path (what's in the new import file).
-   *
-   * This is the field name that appears in the incoming data
-   * that doesn't match the existing schema.
-   */
-  from: string;
-
-  /**
-   * Target field path (what's in the existing schema).
-   *
-   * This is the canonical field name in the dataset schema
-   * that the incoming field should be mapped to.
-   */
-  to: string;
-
-  /**
-   * Confidence score (0-100) based on multiple factors:
-   * - Name similarity (Levenshtein distance)
-   * - Type compatibility
-   * - Common rename patterns
-   * - Position proximity in schema
-   *
-   * Threshold: >= 70 for suggestion, >= 80 for high confidence
-   */
-  confidence: number;
-
-  /**
-   * Human-readable explanation of why this transform was suggested.
-   *
-   * Examples:
-   * - "Similar names (87%), Compatible types, Matches common rename pattern"
-   * - "Similar names (95%), Compatible types"
-   */
-  reason: string;
-}
-
-/**
  * Display labels for transform types.
  *
  * Derived from the canonical {@link TRANSFORM_DEFINITIONS} registry.

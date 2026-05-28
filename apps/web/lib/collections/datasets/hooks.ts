@@ -163,7 +163,7 @@ export const findTransformMovingAwayPath = (
   if (!protectedPath) return null;
 
   for (const [index, transform] of transforms.entries()) {
-    if (!transform || transform.active !== true) continue;
+    if (transform?.active !== true) continue;
     if (transform.type !== "rename" && transform.type !== "string-op") continue;
     if (transform.from !== protectedPath) continue;
 

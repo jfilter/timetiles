@@ -9,9 +9,9 @@
  * @category API
  */
 import { apiRoute } from "@/lib/api";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { AggregateQuerySchema } from "@/lib/schemas/events";
 import { executeAggregationQuery } from "@/lib/services/aggregation-service";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 /**
  * GET handler for event aggregation.

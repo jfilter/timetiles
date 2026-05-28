@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
+vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
 vi.mock("@/lib/services/audit-log-service", () => ({
   AUDIT_ACTIONS: { IMPORT_JOB_STAGE_OVERRIDE: "import.job_stage_override" },
@@ -43,7 +43,7 @@ vi.mock("@/lib/utils/relation-id", () => ({
   requireRelationId: mocks.requireRelationId,
 }));
 
-vi.mock("@/lib/jobs/workflows/review-checks", () => ({
+vi.mock("@/lib/constants/review-reasons", () => ({
   getResumePointForReason: mocks.getResumePointForReason,
   REVIEW_REASONS: {
     HIGH_DUPLICATE_RATE: "high-duplicates",

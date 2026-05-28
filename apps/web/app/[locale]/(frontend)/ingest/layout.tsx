@@ -13,7 +13,7 @@ import { headers } from "next/headers";
 import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
 
-import { redirectIfNotDefaultSite } from "@/lib/api/server-page-helpers";
+import { redirectIfNotDefaultSite } from "@/app/_lib/server-page-helpers";
 
 import { WizardLayoutClient } from "./_components/wizard-layout-client";
 

@@ -13,10 +13,10 @@ import type { Payload } from "payload";
 import { apiRoute } from "@/lib/api";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { TemporalClustersQuery, TemporalClustersResponse } from "@/lib/schemas/events";
 import { TemporalClustersQuerySchema } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 interface TemporalClusterRow {
   bucket_start: string;

@@ -21,10 +21,10 @@ import type { Payload } from "payload";
 
 import { apiRoute } from "@/lib/api";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { HistogramQuery } from "@/lib/schemas/events";
 import { HistogramQuerySchema } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 export const GET = apiRoute({
   auth: "optional",

@@ -11,7 +11,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { fetchJson } from "@/lib/api/http-error";
-import type { DataPackageListItem } from "@/lib/types/data-packages";
+import type { DataPackageListItem } from "@/lib/data-packages/types";
 
 import { QUERY_PRESETS } from "./query-presets";
 

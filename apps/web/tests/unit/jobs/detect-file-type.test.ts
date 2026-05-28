@@ -10,7 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { detectFileTypeFromResponse } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
+import { detectFileTypeFromResponse } from "@/lib/ingest/url-fetch/fetch-utils";
 
 const URL_NO_EXT = "https://example.com/data";
 

@@ -39,7 +39,7 @@ vi.mock("@/lib/ingest/transforms", () => ({ applyTransforms: vi.fn((row: Record<
 
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: vi.fn(() => "mock-unique-id") }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({
+vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 

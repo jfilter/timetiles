@@ -23,6 +23,7 @@ import { applyTransformsBatch } from "@/lib/ingest/transforms";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
 import { createGeocodingService, type GeocodingService } from "@/lib/services/geocoding";
@@ -35,7 +36,6 @@ import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
-import { getIngestFilePath } from "../utils/upload-path";
 import {
   parseReviewChecksConfig,
   REVIEW_REASONS,

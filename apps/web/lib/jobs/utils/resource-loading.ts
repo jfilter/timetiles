@@ -13,12 +13,12 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE, type ProcessingStage } from "@/lib/constants/ingest-constants";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError } from "@/lib/logger";
 import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
 import type { ConfigSnapshot } from "../handlers/dataset-detection/catalog-dataset-helpers";
 import type { TaskCallbackArgs } from "./job-context";
-import { getIngestFilePath } from "./upload-path";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && value !== undefined && typeof value === "object" && !Array.isArray(value);

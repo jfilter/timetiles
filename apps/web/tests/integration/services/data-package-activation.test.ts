@@ -15,7 +15,7 @@ process.env.ALLOW_PRIVATE_URLS = "true";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { activateDataPackage, deactivateDataPackage } from "@/lib/data-packages/activation-service";
-import type { DataPackageManifest } from "@/lib/types/data-packages";
+import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
 
 import {

@@ -17,6 +17,7 @@ import path from "node:path";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
 import { parseStrictInteger } from "@/lib/utils/event-params";
@@ -24,7 +25,6 @@ import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { getIngestFilePath } from "../utils/upload-path";
 import {
   buildConfigSnapshot,
   findOrCreateDataset,

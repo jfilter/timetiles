@@ -18,9 +18,9 @@ import {
   createFilteredLocatedEventDatasetScope,
 } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
-import { resolveEventQueryContext } from "@/lib/filters/resolve-event-query-context";
 import { buildH3CellSqlCondition } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
+import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 /**
  * Cache-Control for cluster summary responses.

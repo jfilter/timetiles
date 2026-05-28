@@ -17,13 +17,9 @@ import { z } from "zod";
 
 import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-// Import from client-safe constants (avoids pulling server deps into client bundle)
-import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
-
-export { REVIEW_REASONS };
 
 /**
  * Zod schema for per-source review check overrides.
@@ -69,27 +65,6 @@ export const parseReviewChecksConfig = (raw: unknown): { config: ReviewChecksCon
     .join("; ")}`;
   logger.warn({ issue: result.error.issues }, "Invalid reviewChecks override — falling back to defaults");
   return { config: undefined, error: message };
-};
-
-/** Resume point constants for the ingest-process workflow. */
-const RESUME_DETECT_SCHEMA = "detect-schema";
-const RESUME_CREATE_EVENTS = "create-events";
-const RESUME_CREATE_SCHEMA_VERSION = "create-schema-version";
-
-/** Maps review reason → resume point for the ingest-process workflow. */
-export const REVIEW_RESUME_POINTS: Record<string, string> = {
-  [REVIEW_REASONS.SCHEMA_DRIFT]: RESUME_CREATE_SCHEMA_VERSION,
-  [REVIEW_REASONS.QUOTA_EXCEEDED]: RESUME_DETECT_SCHEMA,
-  [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: RESUME_DETECT_SCHEMA,
-  [REVIEW_REASONS.GEOCODING_PARTIAL]: RESUME_CREATE_EVENTS,
-  [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: RESUME_CREATE_EVENTS,
-  [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: RESUME_DETECT_SCHEMA,
-  [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: RESUME_DETECT_SCHEMA,
-  [REVIEW_REASONS.NO_LOCATION_DETECTED]: RESUME_DETECT_SCHEMA,
-  // FILE_TOO_LARGE is a hard limit — there is no meaningful resume point.
-  // Map to detect-schema so the workflow has a valid target; the user is
-  // expected to split the file and retry rather than resume in place.
-  [REVIEW_REASONS.FILE_TOO_LARGE]: RESUME_DETECT_SCHEMA,
 };
 
 /** Get the global review thresholds from app config. */
@@ -292,10 +267,4 @@ export const shouldReviewNoLocation = (
   return { needsReview: !hasCoordinates && !hasLocation };
 };
 
-/**
- * Get the resume point for a given review reason.
- */
-export const getResumePointForReason = (reason: string | null | undefined): string => {
-  if (!reason) return RESUME_CREATE_SCHEMA_VERSION; // default (backward compat with schema-drift)
-  return REVIEW_RESUME_POINTS[reason] ?? RESUME_CREATE_SCHEMA_VERSION;
-};
+export { REVIEW_REASONS } from "@/lib/constants/review-reasons";

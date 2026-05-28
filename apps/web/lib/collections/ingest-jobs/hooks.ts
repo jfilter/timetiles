@@ -14,15 +14,14 @@ import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getResumePointForReason, REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
-import { getResumePointForReason, REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 import type { IngestJob } from "@/payload-types";
-
-import { getIngestFilePath } from "../../jobs/utils/upload-path";
 
 /**
  * Enforces terminal state for COMPLETED jobs.

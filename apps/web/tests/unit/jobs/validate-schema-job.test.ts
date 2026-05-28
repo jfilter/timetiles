@@ -42,7 +42,7 @@ const mocks = vi.hoisted(() => {
 // Mock external dependencies
 vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
 
-vi.mock("@/lib/jobs/utils/upload-path", () => ({
+vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
 

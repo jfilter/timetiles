@@ -14,9 +14,9 @@ import path from "node:path";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
+import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { STRING_OPERATIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
 import { createLogger } from "@/lib/logger";
-import type { DataPackageManifest } from "@/lib/types/data-packages";
 
 const logger = createLogger("data-packages");
 

@@ -10,12 +10,11 @@
  */
 import type { Payload } from "payload";
 
+import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 import { canAccessCatalog } from "@/lib/services/access-control";
 import type { User } from "@/payload-types";
-
-import { buildCanonicalFilters } from "./build-canonical-filters";
-import type { CanonicalEventFilters } from "./canonical-event-filters";
 
 interface ResolveOptions {
   payload: Payload;

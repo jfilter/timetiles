@@ -64,7 +64,7 @@ describe.sequential("TOTAL_EVENTS quota — update strategy", () => {
       user: user.id,
     });
 
-    const job = (await payload.create({
+    const job = await payload.create({
       collection: "ingest-jobs",
       data: {
         ingestFile: ingestFile.id,
@@ -75,14 +75,14 @@ describe.sequential("TOTAL_EVENTS quota — update strategy", () => {
         duplicates: { strategy: "external", internal: [], external: [], summary },
       },
       overrideAccess: true,
-    })) as unknown as IngestJob;
+    });
 
     // Re-read so relations are populated the way the handler sees them.
-    const ingestFileFull = (await payload.findByID({
+    const ingestFileFull = await payload.findByID({
       collection: "ingest-files",
       id: ingestFile.id,
       overrideAccess: true,
-    })) as unknown as IngestFile;
+    });
 
     return { ingestFile: ingestFileFull, job, datasetId: dataset.id };
   };

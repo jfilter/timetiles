@@ -6,7 +6,7 @@
 import { apiRoute } from "@/lib/api";
 import { getActivationStatus } from "@/lib/data-packages/activation-service";
 import { loadAllManifests } from "@/lib/data-packages/manifest-loader";
-import type { DataPackageListItem } from "@/lib/types/data-packages";
+import type { DataPackageListItem } from "@/lib/data-packages/types";
 
 export const GET = apiRoute({
   auth: "optional",

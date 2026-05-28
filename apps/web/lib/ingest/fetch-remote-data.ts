@@ -10,9 +10,9 @@
  */
 import Papa from "papaparse";
 
-import { buildAuthHeaders } from "@/lib/jobs/handlers/url-fetch-job/auth";
-import { calculateDataHash, fetchWithRetry } from "@/lib/jobs/handlers/url-fetch-job/fetch-utils";
-import { fetchPaginated, type PaginationConfig } from "@/lib/jobs/handlers/url-fetch-job/paginated-fetch";
+import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
+import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
+import { fetchPaginated, type PaginationConfig } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { logger } from "@/lib/logger";
 import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
