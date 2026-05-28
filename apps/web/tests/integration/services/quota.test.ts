@@ -23,6 +23,12 @@ const getUserUsage = async (payload: PayloadInstance, userId: number): Promise<U
   return result.docs[0] ?? null;
 };
 
+const expectDailyCountersReset = (usage: UserUsage | null): void => {
+  expect(usage?.fileUploadsToday).toBe(0);
+  expect(usage?.urlFetchesToday).toBe(0);
+  expect(usage?.ingestJobsToday).toBe(0);
+};
+
 // Helper to reset user usage for clean test state
 const resetUserUsage = async (payload: PayloadInstance, userId: number): Promise<void> => {
   const usage = await getUserUsage(payload, userId);
@@ -202,6 +208,13 @@ describe.sequential("Quota System", () => {
       // First add some usage to reset
       await quotaService.incrementUsage(testUser.id, "FILE_UPLOADS_PER_DAY", 3);
       await quotaService.incrementUsage(testUser.id, "URL_FETCHES_PER_DAY", 5);
+      // Lifetime total — must survive the daily reset
+      await quotaService.incrementUsage(testUser.id, "TOTAL_EVENTS", 7);
+
+      // Capture the lifetime total before reset (it's cumulative across the suite,
+      // so compare against the pre-reset value rather than a fixed number).
+      const beforeReset = await getUserUsage(payload, testUser.id);
+      expect(beforeReset?.totalEventsCreated).toBeGreaterThan(0);
 
       // Reset the daily counters
       await quotaService.resetDailyCounters(testUser.id);
@@ -209,11 +222,9 @@ describe.sequential("Quota System", () => {
       // Check counters were reset in user-usage collection
       const usage = await getUserUsage(payload, testUser.id);
 
-      expect(usage?.fileUploadsToday).toBe(0);
-      expect(usage?.urlFetchesToday).toBe(0);
-      expect(usage?.ingestJobsToday).toBe(0);
-      // Total events should NOT be reset
-      expect(usage?.totalEventsCreated).toBeGreaterThanOrEqual(0);
+      expectDailyCountersReset(usage);
+      // Total events should NOT be reset — it retains its pre-reset value
+      expect(usage?.totalEventsCreated).toBe(beforeReset?.totalEventsCreated);
     });
 
     it("should allow operations after daily reset", async () => {
@@ -249,6 +260,10 @@ describe.sequential("Quota System", () => {
       await quotaService.incrementUsage(user2.id, "FILE_UPLOADS_PER_DAY", 2);
       await quotaService.incrementUsage(user2.id, "IMPORT_JOBS_PER_DAY", 1);
       await quotaService.incrementUsage(user3.id, "URL_FETCHES_PER_DAY", 7);
+      // Lifetime totals — must survive the daily reset
+      await quotaService.incrementUsage(testUser.id, "TOTAL_EVENTS", 11);
+      await quotaService.incrementUsage(user2.id, "TOTAL_EVENTS", 22);
+      await quotaService.incrementUsage(user3.id, "TOTAL_EVENTS", 33);
 
       // Verify users have usage in user-usage collection
       const beforeReset1 = await getUserUsage(payload, testUser.id);
@@ -258,6 +273,9 @@ describe.sequential("Quota System", () => {
       expect(beforeReset1?.fileUploadsToday).toBe(5);
       expect(beforeReset2?.fileUploadsToday).toBe(2);
       expect(beforeReset3?.urlFetchesToday).toBe(7);
+      expect(beforeReset1?.totalEventsCreated).toBeGreaterThan(0);
+      expect(beforeReset2?.totalEventsCreated).toBe(22);
+      expect(beforeReset3?.totalEventsCreated).toBe(33);
 
       // Reset all daily counters using Payload's bulk update API
       await quotaService.resetAllDailyCounters();
@@ -268,27 +286,19 @@ describe.sequential("Quota System", () => {
       const afterReset3 = await getUserUsage(payload, user3.id);
 
       // All daily counters should be 0
-      expect(afterReset1?.fileUploadsToday).toBe(0);
-      expect(afterReset1?.urlFetchesToday).toBe(0);
-      expect(afterReset1?.ingestJobsToday).toBe(0);
-
-      expect(afterReset2?.fileUploadsToday).toBe(0);
-      expect(afterReset2?.urlFetchesToday).toBe(0);
-      expect(afterReset2?.ingestJobsToday).toBe(0);
-
-      expect(afterReset3?.fileUploadsToday).toBe(0);
-      expect(afterReset3?.urlFetchesToday).toBe(0);
-      expect(afterReset3?.ingestJobsToday).toBe(0);
+      expectDailyCountersReset(afterReset1);
+      expectDailyCountersReset(afterReset2);
+      expectDailyCountersReset(afterReset3);
 
       // Verify lastResetDate was updated for all users
       expect(afterReset1?.lastResetDate).toBeDefined();
       expect(afterReset2?.lastResetDate).toBeDefined();
       expect(afterReset3?.lastResetDate).toBeDefined();
 
-      // Total events should NOT be reset
-      expect(afterReset1?.totalEventsCreated).toBeGreaterThanOrEqual(0);
-      expect(afterReset2?.totalEventsCreated).toBeGreaterThanOrEqual(0);
-      expect(afterReset3?.totalEventsCreated).toBeGreaterThanOrEqual(0);
+      // Total events should NOT be reset — each retains its pre-reset value
+      expect(afterReset1?.totalEventsCreated).toBe(beforeReset1?.totalEventsCreated);
+      expect(afterReset2?.totalEventsCreated).toBe(beforeReset2?.totalEventsCreated);
+      expect(afterReset3?.totalEventsCreated).toBe(beforeReset3?.totalEventsCreated);
 
       // Cleanup additional users (delete user-usage first due to FK constraint)
       const usage2 = await getUserUsage(payload, user2.id);
