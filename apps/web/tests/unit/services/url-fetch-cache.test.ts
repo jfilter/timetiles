@@ -4,7 +4,7 @@
  * @module
  * @category Tests
  */
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 
@@ -59,5 +59,41 @@ describe("UrlFetchCache", () => {
     const response = new Response("missing", { status: 404, headers: { "Content-Length": "100" } });
 
     await expect(cache.readResponseBody(response)).resolves.toMatchObject({ data: Buffer.from("missing") });
+  });
+
+  it("normalizes query params identically regardless of input order", () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
+
+    expect(cache.normalizeUrl("https://example.com/p?b=2&a=1")).toBe(
+      cache.normalizeUrl("https://example.com/p?a=1&b=2")
+    );
+  });
+
+  it("sorts query params locale-independently so the cache key is stable across environments", () => {
+    // Regression: query params were sorted with String.prototype.localeCompare,
+    // whose ordering depends on the runtime locale/ICU. The cache key is persisted,
+    // so two machines could key the same URL differently. Ordering must not depend
+    // on localeCompare.
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
+    const url = "https://example.com/p?a=1&b=2";
+    const expected = cache.normalizeUrl(url);
+
+    const spy = vi.spyOn(String.prototype, "localeCompare").mockImplementation(function (
+      this: string,
+      that: string
+    ): number {
+      if (this < that) return 1;
+      if (this > that) return -1;
+      return 0;
+    });
+    try {
+      expect(cache.normalizeUrl(url)).toBe(expected);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
