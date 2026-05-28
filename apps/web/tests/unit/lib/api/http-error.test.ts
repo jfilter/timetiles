@@ -137,6 +137,7 @@ describe("fetchJson", () => {
 
     try {
       await fetchJson("/api/test");
+      expect.fail("Expected fetchJson to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(HttpError);
       const httpError = error as HttpError;
@@ -156,6 +157,7 @@ describe("fetchJson", () => {
 
     try {
       await fetchJson("/api/test");
+      expect.fail("Expected fetchJson to throw");
     } catch (error) {
       expect(error).toBeInstanceOf(HttpError);
       const httpError = error as HttpError;

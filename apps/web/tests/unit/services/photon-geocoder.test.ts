@@ -145,6 +145,7 @@ describe.sequential("Photon Geocoder", () => {
 
       try {
         await geocoder.geocode("Berlin");
+        expect.unreachable("should have thrown");
       } catch (error) {
         expect(error).toBeInstanceOf(GeocodingError);
         expect((error as GeocodingError).retryAfterMs).toBe(5000);

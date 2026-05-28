@@ -477,25 +477,18 @@ describe.sequential("Access Control Edge Cases", () => {
 
   describe("Null and Undefined Ownership", () => {
     it("should handle catalog with null createdBy field", async () => {
-      // Try to create catalog without user context (system operation)
-      // This might fail depending on beforeChange hooks
-      let catalog: any;
-      try {
-        catalog = await payload.create({
-          collection: "catalogs",
-          data: {
-            name: "System Catalog",
-            isPublic: true,
-            // No createdBy - testing null ownership
-          },
-        });
-      } catch (error) {
-        // If creation fails, that's also valid (enforcing user requirement)
-        expect(error).toBeDefined();
-        return;
-      }
+      // System operation without user context: createdBy is optional and setCreatedByHook
+      // only sets it when req.user exists, so the catalog is created with null ownership.
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: {
+          name: "System Catalog",
+          isPublic: true,
+          // No createdBy - testing null ownership
+        },
+      });
+      expect(catalog.createdBy).toBeFalsy();
 
-      // If creation succeeds, test access
       // Public catalog should be readable by everyone
       const result = await payload.findByID({
         collection: "catalogs",
