@@ -141,6 +141,71 @@ export const validateIngestTransformPatterns: CollectionBeforeChangeHook = ({ da
   return data;
 };
 
+/**
+ * Detect a transform that moves the external-ID field to a different path.
+ *
+ * For the `external` ID strategy, duplicate analysis derives the uniqueId from
+ * only the transforms that *produce* `externalIdPath`, while event creation
+ * runs the full transform set (see analyze-duplicates-job and create-events).
+ * The two agree as long as no transform deletes `externalIdPath` — but `rename`
+ * and `string-op` delete their source when they write to a different target.
+ * Such a "move-away" makes the two stages derive different IDs (or fail ID
+ * generation), silently breaking deduplication. Returns the offending transform
+ * so the caller can reject the config.
+ *
+ * Only active transforms are considered, mirroring the runtime filter in
+ * `buildTransformsFromDataset` (inactive transforms never run).
+ */
+export const findExternalIdMoveAway = (
+  idStrategy: unknown,
+  transforms: Array<Record<string, unknown>>
+): { index: number; from: string; to: string } | null => {
+  if (!idStrategy || typeof idStrategy !== "object") return null;
+  const strategy = idStrategy as { type?: unknown; externalIdPath?: unknown };
+  if (strategy.type !== "external") return null;
+
+  const idPath = typeof strategy.externalIdPath === "string" ? strategy.externalIdPath : "";
+  if (!idPath) return null;
+
+  for (const [index, transform] of transforms.entries()) {
+    if (!transform || transform.active !== true) continue;
+    if (transform.type !== "rename" && transform.type !== "string-op") continue;
+    if (transform.from !== idPath) continue;
+
+    // A target equal to the source is an in-place edit (no deletion). Only a
+    // different, non-empty target moves the value away and deletes the source.
+    const to = typeof transform.to === "string" ? transform.to : "";
+    if (to && to !== idPath) {
+      return { index, from: idPath, to };
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Reject dataset configs where an active transform moves the external-ID field
+ * to a different path, which would make duplicate analysis and event creation
+ * derive different uniqueIds. See {@link findExternalIdMoveAway}.
+ */
+export const validateExternalIdTransforms: CollectionBeforeChangeHook = ({ data, operation }) => {
+  if (operation !== "create" && operation !== "update") return data;
+
+  const transforms = (data?.ingestTransforms ?? []) as Array<Record<string, unknown>>;
+  if (!Array.isArray(transforms) || transforms.length === 0) return data;
+
+  const offender = findExternalIdMoveAway(data?.idStrategy, transforms);
+  if (offender) {
+    throw new Error(
+      `Transform ${offender.index + 1} moves the external ID field "${offender.from}" to "${offender.to}". ` +
+        `The external ID strategy needs this field to stay in place. Rename the source field to "${offender.from}" ` +
+        `instead, or point the external ID path at "${offender.to}".`
+    );
+  }
+
+  return data;
+};
+
 export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
   data,
   req,

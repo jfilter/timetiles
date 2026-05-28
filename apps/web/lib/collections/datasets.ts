@@ -19,6 +19,7 @@ import {
   handleDatasetUniqueConstraintError,
   syncIsPublicToEvents,
   validateDatasetNameUniqueness,
+  validateExternalIdTransforms,
   validateIngestTransformPatterns,
   validatePublicCatalogDataset,
 } from "./datasets/hooks";
@@ -39,7 +40,12 @@ const Datasets: CollectionConfig = {
   admin: { useAsTitle: "name", defaultColumns: ["name", "catalog", "language", "isPublic"], group: "Data" },
   access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
-    beforeChange: [validateDatasetNameUniqueness, validateIngestTransformPatterns, validatePublicCatalogDataset],
+    beforeChange: [
+      validateDatasetNameUniqueness,
+      validateIngestTransformPatterns,
+      validateExternalIdTransforms,
+      validatePublicCatalogDataset,
+    ],
     afterChange: [syncIsPublicToEvents],
     // Translates the DB-level unique violation (from the catalog+name index)
     // into the same user-friendly message thrown by validateDatasetNameUniqueness
