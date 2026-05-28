@@ -272,9 +272,12 @@ describe.sequential("processEventBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default: bulkInsertEvents returns the count of events passed in
+    // Default: bulkInsertEvents commits every event with no failures
     // eslint-disable-next-line @typescript-eslint/require-await
-    mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => events.length);
+    mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => ({
+      created: events.length,
+      failures: [],
+    }));
 
     mocks.getIngestGeocodingResults.mockReturnValue({});
 
@@ -664,6 +667,33 @@ describe.sequential("processEventBatch", () => {
       const result = await processEventBatch(ctx, rows, 100);
 
       expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([101, 102]);
+    });
+
+    it("counts committed rows and errors only the failed sub-batch on a partial insert", async () => {
+      // Regression: bulkInsertEvents commits sub-batches in separate transactions.
+      // When a later sub-batch fails, the committed rows must be counted as created
+      // and NOT reported as errors. `failures[].index` is relative to the events
+      // handed to bulkInsertEvents and must map back to the source row number.
+      mocks.bulkInsertEvents.mockImplementationOnce((_p: unknown, _events: unknown[]) =>
+        Promise.resolve({ created: 1, failures: [{ index: 1, error: new Error("second sub-batch failed") }] })
+      );
+
+      const job = buildIngestJob({ duplicates: { internal: [{ rowNumber: 0 }], external: [] } });
+      const ctx: ProcessBatchContext = { ...baseCtx, job };
+
+      // Row 0 is an internal duplicate (skipped). Rows 1 and 2 become
+      // eventsToInsert[0] (row 1, committed) and eventsToInsert[1] (row 2, failed).
+      const rows = [
+        { id: "skip", title: "Internal Dup" },
+        { id: "ok", title: "Committed" },
+        { id: "boom", title: "Failed" },
+      ];
+
+      const result = await processEventBatch(ctx, rows, 0);
+
+      expect(result.eventsSkipped).toBe(1);
+      expect(result.eventsCreated).toBe(1);
+      expect(result.errors).toEqual([{ row: 2, error: "second sub-batch failed" }]);
     });
 
     it("stores concise database causes instead of Drizzle's full SQL wrapper", async () => {

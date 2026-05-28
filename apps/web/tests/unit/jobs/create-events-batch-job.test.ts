@@ -161,9 +161,12 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     mocks.completeBatch.mockResolvedValue(undefined);
     mocks.completeStage.mockResolvedValue(undefined);
 
-    // Default mock for bulkInsertEvents: return the number of events passed in
+    // Default mock for bulkInsertEvents: commit every event, no failures.
     // eslint-disable-next-line @typescript-eslint/require-await
-    mocks.bulkInsertEvents.mockImplementation(async (_payload: unknown, events: unknown[]) => events.length);
+    mocks.bulkInsertEvents.mockImplementation(async (_payload: unknown, events: unknown[]) => ({
+      created: events.length,
+      failures: [],
+    }));
 
     // Default mock for extractDenormalizedAccessFields
     mocks.extractDenormalizedAccessFields.mockReturnValue({ datasetIsPublic: false, catalogOwnerId: undefined });

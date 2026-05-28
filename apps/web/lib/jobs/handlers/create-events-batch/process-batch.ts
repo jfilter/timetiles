@@ -293,15 +293,25 @@ const bulkInsertNewEvents = async (
 ): Promise<{ created: number; errors: Array<{ row: number; error: string }> }> => {
   if (eventsToInsert.length === 0) return { created: 0, errors: [] };
   try {
-    const created = await bulkInsertEvents(payload, eventsToInsert);
-    return { created, errors: [] };
+    const { created, failures } = await bulkInsertEvents(payload, eventsToInsert);
+    if (failures.length === 0) return { created, errors: [] };
+
+    log.error({ count: failures.length, err: failures[0]?.error }, "Bulk insert failed for some rows");
+    // Only rows in failed sub-batches are errors; committed sub-batches stay in
+    // `created`. Map each failed index to its actual source row number rather
+    // than its position in the filtered `eventsToInsert` array, so error reports
+    // point at the right rows even when the batch contained skips/updates.
+    const errors = failures.map(({ index, error }) => ({
+      row: insertRowNumbers[index]!,
+      error: normalizeIngestErrorMessage(error, "Database bulk insert failed"),
+    }));
+    return { created, errors };
   } catch (error) {
+    // Defensive: sub-batch failures come back via `failures`, but an unexpected
+    // throw around the loop should still mark every row failed rather than
+    // silently dropping the batch.
     log.error({ count: eventsToInsert.length, err: error }, "Bulk insert failed for batch");
     const msg = normalizeIngestErrorMessage(error, "Database bulk insert failed");
-    // Report the actual source row numbers rather than positions in the
-    // filtered `eventsToInsert` array — callers scanning error CSVs would
-    // otherwise be pointed at the wrong rows whenever the batch contained
-    // skipped or updated duplicates.
     const errors = insertRowNumbers.map((row) => ({ row, error: msg }));
     return { created: 0, errors };
   }
