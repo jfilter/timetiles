@@ -400,7 +400,6 @@ export const urlFetchJob = {
     }
     const effectiveInput = createEffectiveInput(input, scheduledIngest);
     let urlFetchQuotaClaim: UrlFetchQuotaClaim = null;
-    let remoteFetchSucceeded = false;
 
     try {
       assertScheduledIngestInputMatches(input, scheduledIngest, context.req.user as User | null | undefined);
@@ -416,7 +415,6 @@ export const urlFetchJob = {
 
       // Fetch + detect file type + convert JSON to CSV (single call)
       const result = await fetchRemoteData(buildFetchOptions(effectiveInput, scheduledIngest, cachingEnabled));
-      remoteFetchSucceeded = true;
 
       logger.info("URL fetch successful", {
         sourceUrl: sanitizeUrlForLogging(effectiveInput.sourceUrl),
@@ -464,9 +462,14 @@ export const urlFetchJob = {
         scheduledIngestId: input.scheduledIngestId,
       });
 
-      if (!remoteFetchSucceeded) {
-        await compensateUrlFetchQuotaOnError(payload, urlFetchQuotaClaim, effectiveInput.sourceUrl);
-      }
+      // Compensate on EVERY failed attempt (not only pre-fetch failures):
+      // `retries` re-runs the whole handler, and each attempt re-increments
+      // URL_FETCHES_PER_DAY at the top. Without refunding here, a failure that
+      // occurs *after* a successful fetch (duplicate check, import creation,
+      // lifecycle update) would leak a quota unit on every retry. The claim is
+      // non-null only when this attempt actually incremented, and the helper
+      // no-ops on a null claim, so this refunds exactly this attempt's charge.
+      await compensateUrlFetchQuotaOnError(payload, urlFetchQuotaClaim, effectiveInput.sourceUrl);
 
       if (scheduledIngest && !deferLifecycleUpdates) {
         // JobHandlerContext.req is narrowly typed as { payload, user }, but it

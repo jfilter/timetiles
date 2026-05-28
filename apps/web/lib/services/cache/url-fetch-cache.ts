@@ -163,19 +163,67 @@ export class UrlFetchCache {
     }
   }
 
-  private async readResponseBody(response: Response): Promise<{ data: Buffer; headers: Record<string, string> }> {
+  private async readResponseBody(
+    response: Response,
+    maxSize?: number
+  ): Promise<{ data: Buffer; headers: Record<string, string> }> {
     const headers = this.collectResponseHeaders(response);
-    const data = Buffer.from(await response.arrayBuffer());
+    const data = await this.readBodyWithLimit(response, maxSize);
     this.assertCompleteResponseBody(data, headers, response.status);
     return { data, headers };
   }
 
   /**
+   * Read the response body without buffering an unbounded payload into memory.
+   *
+   * When a size limit is provided, reject up-front via Content-Length and
+   * otherwise stream chunk-by-chunk with a running guard, aborting as soon as
+   * the limit is exceeded — a malicious/compromised endpoint must not be able
+   * to force a body far larger than the limit into memory before it is checked.
+   */
+  private async readBodyWithLimit(response: Response, maxSize?: number): Promise<Buffer> {
+    if (maxSize == null || maxSize <= 0) {
+      return Buffer.from(await response.arrayBuffer());
+    }
+
+    const declaredLength = parseStrictInteger(response.headers.get("content-length") ?? undefined);
+    if (declaredLength != null && declaredLength > maxSize) {
+      throw new Error(`File too large: ${declaredLength} bytes (max: ${maxSize})`);
+    }
+
+    const body = response.body;
+    if (body == null) {
+      const data = Buffer.from(await response.arrayBuffer());
+      if (data.length > maxSize) {
+        throw new Error(`File too large: ${data.length} bytes (max: ${maxSize})`);
+      }
+      return data;
+    }
+
+    const reader = body.getReader();
+    const chunks: Buffer[] = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxSize) {
+        await reader.cancel(`File too large (max: ${maxSize})`);
+        throw new Error(`File too large: ${total} bytes (max: ${maxSize})`);
+      }
+      chunks.push(Buffer.from(value));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  /**
    * Helper to fetch without caching
    */
-  private async fetchWithoutCache(url: string, options?: RequestInit): Promise<CachedResponse> {
-    const response = await safeFetch(url, options);
-    const { data, headers } = await this.readResponseBody(response);
+  private async fetchWithoutCache(url: string, options?: RequestInit & { maxSize?: number }): Promise<CachedResponse> {
+    const { maxSize, ...fetchOptions } = options ?? {};
+    const response = await safeFetch(url, fetchOptions);
+    const { data, headers } = await this.readResponseBody(response, maxSize);
     return { data, headers, status: response.status };
   }
 
@@ -216,7 +264,7 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
   ): Promise<CachedResponse> {
     const normalizedCached = this.normalizeCachedEntry(cached);
     const isStale = this.isStale(normalizedCached);
@@ -243,7 +291,7 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
   ): Promise<CachedResponse> {
     logger.debug("HTTP cache stale, attempting revalidation", { url });
     const headers = new Headers(options?.headers);
@@ -256,7 +304,7 @@ export class UrlFetchCache {
     }
 
     try {
-      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, maxSize, ...fetchOptions } = options ?? {};
       const response = await safeFetch(url, { ...fetchOptions, headers });
 
       // Handle 304 Not Modified
@@ -269,7 +317,7 @@ export class UrlFetchCache {
       }
 
       // Got new content, cache and return it
-      return await this.fetchAndCache(url, cacheKey, response);
+      return await this.fetchAndCache(url, cacheKey, response, maxSize);
     } catch (error) {
       // On error during revalidation, return stale cache
       logger.warn("Revalidation failed, returning stale cache", { url, error });
@@ -280,8 +328,13 @@ export class UrlFetchCache {
   /**
    * Helper to fetch and cache response
    */
-  private async fetchAndCache(_url: string, cacheKey: string, response: Response): Promise<CachedResponse> {
-    const { data, headers: respHeaders } = await this.readResponseBody(response);
+  private async fetchAndCache(
+    _url: string,
+    cacheKey: string,
+    response: Response,
+    maxSize?: number
+  ): Promise<CachedResponse> {
+    const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
     await this.cacheResponse(cacheKey, data, respHeaders, response.status);
 
@@ -294,12 +347,12 @@ export class UrlFetchCache {
   private async fetchFresh(
     url: string,
     cacheKey: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean }
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
   ): Promise<CachedResponse> {
-    const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+    const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, maxSize, ...fetchOptions } = options ?? {};
     const response = await safeFetch(url, fetchOptions);
 
-    const { data, headers } = await this.readResponseBody(response);
+    const { data, headers } = await this.readResponseBody(response, maxSize);
 
     // Cache successful GET responses
     if (response.ok && this.isCacheable(response.status, headers)) {
@@ -318,7 +371,13 @@ export class UrlFetchCache {
    */
   async fetch(
     url: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number }
+    options?: RequestInit & {
+      bypassCache?: boolean;
+      forceRevalidate?: boolean;
+      userId?: string;
+      timeout?: number;
+      maxSize?: number;
+    }
   ): Promise<CachedResponse> {
     const { timeout, ...rest } = options ?? {};
 
@@ -351,7 +410,7 @@ export class UrlFetchCache {
    */
   private async fetchInner(
     url: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string }
+    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; maxSize?: number }
   ): Promise<CachedResponse> {
     const method = options?.method ?? "GET";
     const userId = options?.userId;

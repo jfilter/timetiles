@@ -462,11 +462,17 @@ export const syncDatasetTemporalFlag = async (
   if (!dataset) return;
 
   const hasTimestamp = Boolean(fieldMappings?.timestampPath);
-  if (dataset.hasTemporalData === hasTimestamp) return;
+
+  // Only ever turn the flag ON. `hasTemporalData` reflects whether the dataset
+  // has ANY temporal data, so a single sheet/import without a timestamp must
+  // not clear it: sheets run in parallel (one temporal, one not) and prior
+  // imports may already have contributed dates. Clearing it here would race
+  // those and wrongly disable the temporal-filter/histogram UI.
+  if (!hasTimestamp || dataset.hasTemporalData) return;
 
   await asSystem(payload).update({
     collection: COLLECTION_NAMES.DATASETS,
     id: typeof dataset.id === "string" ? dataset.id : String(dataset.id),
-    data: { hasTemporalData: hasTimestamp },
+    data: { hasTemporalData: true },
   });
 };

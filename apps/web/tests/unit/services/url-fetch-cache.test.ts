@@ -60,4 +60,40 @@ describe("UrlFetchCache", () => {
 
     await expect(cache.readResponseBody(response)).resolves.toMatchObject({ data: Buffer.from("missing") });
   });
+
+  type ReadResponseBody = {
+    readResponseBody: (
+      response: Response,
+      maxSize?: number
+    ) => Promise<{ data: Buffer; headers: Record<string, string> }>;
+  };
+
+  it("rejects an oversized declared Content-Length before reading the body", async () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as ReadResponseBody;
+    const response = new Response("x", { status: 200, headers: { "Content-Length": "100000" } });
+
+    await expect(cache.readResponseBody(response, 100)).rejects.toThrow(/File too large/);
+  });
+
+  it("aborts a streamed body once it exceeds the size limit", async () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as ReadResponseBody;
+    // No Content-Length header: the cap must be enforced during streaming.
+    const body = new Uint8Array(5000);
+    const response = new Response(body, { status: 200 });
+
+    await expect(cache.readResponseBody(response, 1000)).rejects.toThrow(/File too large/);
+  });
+
+  it("returns the body unchanged when it is within the size limit", async () => {
+    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
+
+    const cache = new UrlFetchCache() as unknown as ReadResponseBody;
+    const response = new Response("hello world", { status: 200 });
+
+    await expect(cache.readResponseBody(response, 1000)).resolves.toMatchObject({ data: Buffer.from("hello world") });
+  });
 });

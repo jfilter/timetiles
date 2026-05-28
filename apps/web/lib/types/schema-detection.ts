@@ -36,8 +36,10 @@ export interface FieldStatistics {
     numeric?: number; // numeric strings
   };
 
-  // Numeric stats
-  numericStats?: { min: number; max: number; avg: number; isInteger: boolean };
+  // Numeric stats. `count` is the number of numeric values that contributed to
+  // `avg` (NOT the field's total occurrences, which include nulls/non-numeric
+  // values) — required for a correct running mean across mixed columns/batches.
+  numericStats?: { min: number; max: number; avg: number; isInteger: boolean; count?: number };
 
   // Enum detection
   isEnumCandidate: boolean;

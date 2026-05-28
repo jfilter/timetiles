@@ -96,7 +96,12 @@ export const createEnforceSingleDefault = <T extends TypeWithID = TypeWithID>(
         depth: number;
         overrideAccess: boolean;
         context: Record<string, unknown>;
+        req: PayloadRequest;
       };
+      // Pass `req` so the sibling un-defaulting runs inside the parent
+      // transaction. Without it, clearing the previous default commits in a
+      // separate transaction; if the outer create/update later rolls back the
+      // scope is left with zero defaults.
       await (req.payload.update as (args: UpdateArgs) => Promise<unknown>)({
         collection,
         where,
@@ -104,6 +109,7 @@ export const createEnforceSingleDefault = <T extends TypeWithID = TypeWithID>(
         depth: 0,
         overrideAccess: true,
         context: { skipEnforceSingleDefault: true },
+        req,
       });
     }
 

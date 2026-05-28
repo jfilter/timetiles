@@ -114,11 +114,16 @@ export const POST = apiRoute({
         verificationRequired: true,
       };
 
-      // Check if new email is already in use
+      // Check if new email is already in use. overrideAccess is required:
+      // without it the Users read access scopes a non-admin to their own row,
+      // so this find could never match another account — making the
+      // anti-enumeration branch below dead code and leaking account existence
+      // via a unique-constraint 500 vs. 200 oracle.
       const existingUser = await payload.find({
         collection: "users",
         where: { email: { equals: newEmail } },
         limit: 1,
+        overrideAccess: true,
       });
 
       if (existingUser.docs.length > 0) {

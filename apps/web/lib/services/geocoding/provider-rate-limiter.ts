@@ -58,21 +58,28 @@ export class ProviderRateLimiter {
   async waitForSlot(providerName: string): Promise<void> {
     const state = this.getOrCreateState(providerName);
 
-    // If provider is in backoff, wait until backoff expires
-    const now = Date.now();
-    if (now < state.backoffUntil) {
-      const backoffWait = state.backoffUntil - now;
-      logger.debug("Provider in backoff, waiting", { providerName, backoffWaitMs: backoffWait });
-      await this.delay(backoffWait);
-    }
-
-    // Chain: this caller waits for the previous slot + interval.
-    // The async IIFE preserves synchronous chain assignment while avoiding a
-    // TOCTOU race between concurrent callers.
+    // Chain: this caller waits for the previous slot, then honors any active
+    // backoff, then the per-request interval. The async IIFE preserves
+    // synchronous chain assignment while avoiding a TOCTOU race between
+    // concurrent callers.
+    //
+    // The backoff is evaluated *inside* the chain (not before joining it) and
+    // re-read in a loop: a throttle reported by an earlier in-flight request
+    // must be observed by callers already queued, and reportThrottle can
+    // extend backoffUntil while we sleep. Otherwise queued callers would skip
+    // the backoff and burst the moment the first one's wait elapses.
     const minInterval = 1000 / state.requestsPerSecond;
     const previousSlot = state.lastSlotPromise;
     const mySlot = (async () => {
       await previousSlot;
+
+      let backoffWait = state.backoffUntil - Date.now();
+      while (backoffWait > 0) {
+        logger.debug("Provider in backoff, waiting", { providerName, backoffWaitMs: backoffWait });
+        await this.delay(backoffWait);
+        backoffWait = state.backoffUntil - Date.now();
+      }
+
       await this.delay(minInterval);
     })();
     state.lastSlotPromise = mySlot;

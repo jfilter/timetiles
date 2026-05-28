@@ -99,6 +99,11 @@ export const getNextFrequencyExecution = (frequency: string, fromDate?: Date, ti
       next.setUTCHours(0);
       const daysUntilSunday = 7 - next.getUTCDay() || 7;
       next.setUTCDate(next.getUTCDate() + daysUntilSunday);
+      // Guard for parity with the other branches: always return a future
+      // instant even if upstream normalization of `now` ever changes.
+      while (next <= now) {
+        next.setUTCDate(next.getUTCDate() + 7);
+      }
       break;
     }
 

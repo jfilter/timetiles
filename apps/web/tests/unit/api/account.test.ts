@@ -232,6 +232,11 @@ describe.sequential("POST /api/users/change-email", () => {
     expect(data.verificationRequired).toBe(true);
     // Should NOT actually update the user's email
     expect(mockPayload.update).not.toHaveBeenCalled();
+    // The duplicate-email lookup MUST bypass access control. Without
+    // overrideAccess the Users read access scopes a non-admin to their own
+    // row, so this branch could never fire in production — leaking account
+    // existence via a unique-constraint 500 vs. 200 oracle.
+    expect(mockPayload.find).toHaveBeenCalledWith(expect.objectContaining({ overrideAccess: true }));
   });
 
   it("should successfully change email and require verification", async () => {

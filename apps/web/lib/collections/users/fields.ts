@@ -149,6 +149,14 @@ export const usersFields: Field[] = [
     ],
     defaultValue: "active",
     admin: { position: "sidebar", description: "Account deletion status" },
+    // SECURITY: the deletion lifecycle is driven exclusively by the
+    // password-gated schedule/cancel-deletion routes and the
+    // execute-account-deletion job (all via overrideAccess). `admin.readOnly`
+    // is a dashboard-only hint and does NOT block REST writes, so without this
+    // a non-admin could PATCH their own user doc to flip deletionStatus back to
+    // "active" (bypassing the password check on cancellation), set an arbitrary
+    // deletionScheduledAt, or corrupt the deletion job's due-deletion query.
+    access: { update: ({ req: { user } }) => user?.role === "admin" },
   },
   {
     name: "deletionRequestedAt",
@@ -159,6 +167,7 @@ export const usersFields: Field[] = [
       readOnly: true,
       description: "When the user requested account deletion",
     },
+    access: { update: ({ req: { user } }) => user?.role === "admin" },
   },
   {
     name: "deletionScheduledAt",
@@ -169,6 +178,7 @@ export const usersFields: Field[] = [
       readOnly: true,
       description: "When the account will be permanently deleted",
     },
+    access: { update: ({ req: { user } }) => user?.role === "admin" },
   },
   // SECURITY: TTL marker for email verification tokens (24h).
   // Locked down so external API callers cannot read or mutate it — only the

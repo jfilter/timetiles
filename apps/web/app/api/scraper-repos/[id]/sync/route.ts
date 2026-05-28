@@ -15,6 +15,7 @@ import { loadManageableScraperRepo } from "@/lib/api/scraper-helpers";
 export const POST = apiRoute({
   auth: "required",
   site: "default",
+  rateLimit: { configName: "SCRAPER_TRIGGER", keyPrefix: (u) => `scraper-sync:${u!.id}` },
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ user, payload, params }) => {
     const repo = await loadManageableScraperRepo(payload, user, params.id);
