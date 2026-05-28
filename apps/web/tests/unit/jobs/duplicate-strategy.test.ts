@@ -50,7 +50,7 @@ import {
   MAX_INGEST_ERROR_MESSAGE_LENGTH,
   processEventBatch,
 } from "@/lib/jobs/handlers/create-events-batch/process-batch";
-import { getEventCreationDuplicates } from "@/lib/jobs/utils/resource-loading";
+import { getEventCreationDuplicates, getNewEventCountForQuota } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockLogger } from "@/tests/mocks/services/logger";
 
@@ -237,6 +237,53 @@ describe("getEventCreationDuplicates", () => {
       expect(skipRows.size).toBe(0);
       expect(updateRows.size).toBe(0);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getNewEventCountForQuota
+// ---------------------------------------------------------------------------
+
+describe("getNewEventCountForQuota", () => {
+  const buildJob = (opts: { uniqueRows: number; externalDuplicates: number; duplicateStrategy?: string }): IngestJob =>
+    ({
+      duplicates: {
+        summary: {
+          totalRows: 0,
+          uniqueRows: opts.uniqueRows,
+          internalDuplicates: 0,
+          externalDuplicates: opts.externalDuplicates,
+        },
+      },
+      configSnapshot: opts.duplicateStrategy
+        ? { idStrategy: { duplicateStrategy: opts.duplicateStrategy } }
+        : undefined,
+    }) as unknown as IngestJob;
+
+  it("excludes to-be-updated external duplicates under the 'update' strategy", () => {
+    // uniqueRows includes externals under "update"; only the 2 genuinely-new
+    // rows should count toward the lifetime TOTAL_EVENTS quota.
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3, duplicateStrategy: "update" }))
+    ).toBe(2);
+  });
+
+  it("returns zero when every row is an in-place update", () => {
+    // Canonical scheduled re-import: all rows match existing events. Charging
+    // these against the lifetime counter is the leak this fix prevents.
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 4, externalDuplicates: 4, duplicateStrategy: "update" }))
+    ).toBe(0);
+  });
+
+  it("does not subtract externals under the 'skip' strategy (uniqueRows already excludes them)", () => {
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3, duplicateStrategy: "skip" }))
+    ).toBe(5);
+  });
+
+  it("defaults to skip semantics when no strategy is configured", () => {
+    expect(getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3 }))).toBe(5);
   });
 });
 

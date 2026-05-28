@@ -18,7 +18,7 @@ import { requireRelationId } from "@/lib/utils/relation-id";
 import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob, User } from "@/payload-types";
 
-import { getDuplicateSummary, getUniqueRowsForQuota } from "../../utils/resource-loading";
+import { getDuplicateSummary, getNewEventCountForQuota, getUniqueRowsForQuota } from "../../utils/resource-loading";
 import { normalizeIngestErrorMessage } from "./process-batch";
 
 /** Maximum number of individual errors stored on an import job. */
@@ -86,16 +86,29 @@ export const releaseReservedEventQuota = async (
   await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", reservedEvents);
 };
 
-export const markJobCompleted = async (payload: Payload, ingestJobId: string | number, reservedEventQuota = 0) => {
+export const markJobCompleted = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  reservedEventQuota = 0,
+  eventsUpdated = 0
+): Promise<number> => {
   // Re-query job for current state (errors may have accumulated across batches)
   const currentJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
 
-  // Count actual events created for this import job (reliable source of truth)
+  // Count events written by this import job (reliable source of truth). This
+  // includes in-place updates of existing events, whose `ingestJob` was
+  // reassigned to this job.
   const eventsResult = await payload.count({
     collection: COLLECTION_NAMES.EVENTS,
     where: { ingestJob: { equals: ingestJobId } },
   });
-  const totalEventsCreated = eventsResult.totalDocs;
+  const totalEventsWritten = eventsResult.totalDocs;
+
+  // Only newly-created events increase the lifetime TOTAL_EVENTS count. Updates
+  // re-touch events that already existed (and were already counted), so subtract
+  // them before reconciling the quota — otherwise repeated "update"-strategy
+  // re-imports inflate usage without bound.
+  const newEventsCreated = Math.max(0, totalEventsWritten - eventsUpdated);
 
   const { internalCount, externalCount } = getDuplicateSummary(currentJob);
   const duplicatesSkipped = internalCount + externalCount;
@@ -106,7 +119,7 @@ export const markJobCompleted = async (payload: Payload, ingestJobId: string | n
     id: ingestJobId,
     data: {
       results: {
-        totalEvents: totalEventsCreated,
+        totalEvents: totalEventsWritten,
         duplicatesSkipped,
         geocoded: Object.keys(getIngestGeocodingResults(currentJob)).length,
         errors: currentJob.errors?.length ?? 0,
@@ -114,7 +127,8 @@ export const markJobCompleted = async (payload: Payload, ingestJobId: string | n
     },
   });
 
-  await reconcileReservedEventQuota(payload, ingestJobId, reservedEventQuota, totalEventsCreated);
+  await reconcileReservedEventQuota(payload, ingestJobId, reservedEventQuota, newEventsCreated);
+  return newEventsCreated;
 };
 
 export const updateJobErrors = async (
@@ -175,8 +189,8 @@ export const checkEventQuotaBeforeProcessing = async (
   // reconciliation in markJobCompleted.
   const quotaService = createQuotaService(payload);
 
-  // Use uniqueRows from deduplication summary -- this is the actual number of events
-  // that will be created, not the total file rows (which includes duplicates).
+  // Per-import gate counts every row that will be written, including in-place
+  // updates of existing events under the "update" strategy.
   const uniqueRows = getUniqueRowsForQuota(job);
 
   // Check if this import would exceed the per-import limit
@@ -189,10 +203,14 @@ export const checkEventQuotaBeforeProcessing = async (
     );
   }
 
-  if (uniqueRows <= 0) return 0;
+  // TOTAL_EVENTS is a lifetime count of events that EXIST — reserve only for
+  // newly-created events, never in-place updates. Reserving `uniqueRows` here
+  // would over-charge "update"-strategy re-imports that re-process the same rows.
+  const newEvents = getNewEventCountForQuota(job);
+  if (newEvents <= 0) return 0;
 
-  await quotaService.checkAndIncrementUsage(user, "TOTAL_EVENTS", uniqueRows);
-  return uniqueRows;
+  await quotaService.checkAndIncrementUsage(user, "TOTAL_EVENTS", newEvents);
+  return newEvents;
 };
 
 /** Delete events and their versions left by a prior failed attempt, in small chunks to avoid table locks. */
