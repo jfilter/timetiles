@@ -50,7 +50,7 @@ import {
   MAX_INGEST_ERROR_MESSAGE_LENGTH,
   processEventBatch,
 } from "@/lib/jobs/handlers/create-events-batch/process-batch";
-import { getEventCreationDuplicates } from "@/lib/jobs/utils/resource-loading";
+import { getEventCreationDuplicates, getNewEventCountForQuota } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockLogger } from "@/tests/mocks/services/logger";
 
@@ -241,6 +241,53 @@ describe("getEventCreationDuplicates", () => {
 });
 
 // ---------------------------------------------------------------------------
+// getNewEventCountForQuota
+// ---------------------------------------------------------------------------
+
+describe("getNewEventCountForQuota", () => {
+  const buildJob = (opts: { uniqueRows: number; externalDuplicates: number; duplicateStrategy?: string }): IngestJob =>
+    ({
+      duplicates: {
+        summary: {
+          totalRows: 0,
+          uniqueRows: opts.uniqueRows,
+          internalDuplicates: 0,
+          externalDuplicates: opts.externalDuplicates,
+        },
+      },
+      configSnapshot: opts.duplicateStrategy
+        ? { idStrategy: { duplicateStrategy: opts.duplicateStrategy } }
+        : undefined,
+    }) as unknown as IngestJob;
+
+  it("excludes to-be-updated external duplicates under the 'update' strategy", () => {
+    // uniqueRows includes externals under "update"; only the 2 genuinely-new
+    // rows should count toward the lifetime TOTAL_EVENTS quota.
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3, duplicateStrategy: "update" }))
+    ).toBe(2);
+  });
+
+  it("returns zero when every row is an in-place update", () => {
+    // Canonical scheduled re-import: all rows match existing events. Charging
+    // these against the lifetime counter is the leak this fix prevents.
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 4, externalDuplicates: 4, duplicateStrategy: "update" }))
+    ).toBe(0);
+  });
+
+  it("does not subtract externals under the 'skip' strategy (uniqueRows already excludes them)", () => {
+    expect(
+      getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3, duplicateStrategy: "skip" }))
+    ).toBe(5);
+  });
+
+  it("defaults to skip semantics when no strategy is configured", () => {
+    expect(getNewEventCountForQuota(buildJob({ uniqueRows: 5, externalDuplicates: 3 }))).toBe(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // processEventBatch
 // ---------------------------------------------------------------------------
 
@@ -272,9 +319,12 @@ describe.sequential("processEventBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default: bulkInsertEvents returns the count of events passed in
+    // Default: bulkInsertEvents commits every event with no failures
     // eslint-disable-next-line @typescript-eslint/require-await
-    mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => events.length);
+    mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => ({
+      created: events.length,
+      failures: [],
+    }));
 
     mocks.getIngestGeocodingResults.mockReturnValue({});
 
@@ -664,6 +714,33 @@ describe.sequential("processEventBatch", () => {
       const result = await processEventBatch(ctx, rows, 100);
 
       expect(result.errors.map((e) => e.row).sort((a, b) => a - b)).toEqual([101, 102]);
+    });
+
+    it("counts committed rows and errors only the failed sub-batch on a partial insert", async () => {
+      // Regression: bulkInsertEvents commits sub-batches in separate transactions.
+      // When a later sub-batch fails, the committed rows must be counted as created
+      // and NOT reported as errors. `failures[].index` is relative to the events
+      // handed to bulkInsertEvents and must map back to the source row number.
+      mocks.bulkInsertEvents.mockImplementationOnce((_p: unknown, _events: unknown[]) =>
+        Promise.resolve({ created: 1, failures: [{ index: 1, error: new Error("second sub-batch failed") }] })
+      );
+
+      const job = buildIngestJob({ duplicates: { internal: [{ rowNumber: 0 }], external: [] } });
+      const ctx: ProcessBatchContext = { ...baseCtx, job };
+
+      // Row 0 is an internal duplicate (skipped). Rows 1 and 2 become
+      // eventsToInsert[0] (row 1, committed) and eventsToInsert[1] (row 2, failed).
+      const rows = [
+        { id: "skip", title: "Internal Dup" },
+        { id: "ok", title: "Committed" },
+        { id: "boom", title: "Failed" },
+      ];
+
+      const result = await processEventBatch(ctx, rows, 0);
+
+      expect(result.eventsSkipped).toBe(1);
+      expect(result.eventsCreated).toBe(1);
+      expect(result.errors).toEqual([{ row: 2, error: "second sub-batch failed" }]);
     });
 
     it("stores concise database causes instead of Drizzle's full SQL wrapper", async () => {

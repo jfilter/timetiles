@@ -187,6 +187,7 @@ export const createEventsBatchJob = {
       let totalRowsProcessed = 0;
       let totalEventsCreated = 0;
       let totalEventsSkipped = 0;
+      let totalEventsUpdated = 0;
       let totalErrors = 0;
       const allErrors: Array<{ row: number; error: string }> = [];
 
@@ -201,11 +202,16 @@ export const createEventsBatchJob = {
         const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
 
         const batchCtx: ProcessBatchContext = { payload, job, dataset, ingestJobId, accessFields, logger };
-        const { eventsCreated, eventsSkipped, errors } = await processEventBatch(batchCtx, rows, totalRowsProcessed);
+        const { eventsCreated, eventsSkipped, eventsUpdated, errors } = await processEventBatch(
+          batchCtx,
+          rows,
+          totalRowsProcessed
+        );
 
         totalRowsProcessed += rows.length;
         totalEventsCreated += eventsCreated;
         totalEventsSkipped += eventsSkipped;
+        totalEventsUpdated += eventsUpdated;
         totalErrors += errors.length;
         if (errors.length > 0) {
           allErrors.push(...errors);
@@ -234,9 +240,10 @@ export const createEventsBatchJob = {
       // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Mark job completed (saves results and reconciles quota)
-      await markJobCompleted(payload, ingestJobId, reservedEventQuota);
-      trackedEventQuota = totalEventsCreated;
+      // Mark job completed (saves results and reconciles quota). Returns the
+      // count of newly-created events the TOTAL_EVENTS quota was reconciled to,
+      // so the failure-compensation path releases the right amount.
+      trackedEventQuota = await markJobCompleted(payload, ingestJobId, reservedEventQuota, totalEventsUpdated);
 
       // Review check: high row error rate — pause after completion so results are saved.
       // Zod-validated; malformed config falls back to defaults (rowErrorThreshold, etc.).

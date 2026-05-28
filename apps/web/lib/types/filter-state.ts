@@ -101,10 +101,12 @@ export const clearAllFilters = (filters: FilterState): FilterState => ({
  */
 export const serializeFilterKey = (filters: FilterState): string =>
   JSON.stringify(filters, (_, value: unknown) => {
-    // Sort object keys so the output is deterministic regardless of insertion order
+    // Sort object keys so the output is deterministic regardless of insertion
+    // order. Use UTF-16 code-unit order, NOT localeCompare, so the key is the
+    // same regardless of runtime locale/ICU.
     if (value !== null && typeof value === "object" && !Array.isArray(value)) {
       return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
       );
     }
     return value;

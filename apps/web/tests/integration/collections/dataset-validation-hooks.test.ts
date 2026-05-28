@@ -200,4 +200,106 @@ describe.sequential("Dataset validation hooks", () => {
       ).rejects.toThrow("You can only create datasets in your own catalogs");
     });
   });
+
+  describe("external ID and mapping transform validation", () => {
+    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
+    const createDataset = async (extra: Record<string, any>) => {
+      const catalog = await createCatalog(true, ownerUser.id);
+      return payload.create({
+        collection: "datasets",
+        data: {
+          name: `DS ${Date.now()}-${Math.random()}`,
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: true,
+          ...extra,
+        },
+        overrideAccess: true,
+      });
+    };
+
+    const rename = (from: string, to: string) => ({
+      id: crypto.randomUUID(),
+      type: "rename" as const,
+      from,
+      to,
+      active: true,
+    });
+
+    it("rejects an external strategy with no externalIdPath", async () => {
+      await expect(createDataset({ idStrategy: { type: "external", duplicateStrategy: "skip" } })).rejects.toThrow(
+        /requires an External ID Path/
+      );
+    });
+
+    it("rejects a transform that moves the external-ID field away (create)", async () => {
+      await expect(
+        createDataset({
+          idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
+          ingestTransforms: [rename("ref", "archived")],
+        })
+      ).rejects.toThrow(/moves the external ID field "ref" to "archived"/);
+    });
+
+    it("allows a valid external config and a transform that PRODUCES the ID path", async () => {
+      const dataset = await createDataset({
+        idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
+        ingestTransforms: [rename("raw_id", "ref")],
+      });
+      expect(dataset.id).toBeDefined();
+    });
+
+    it("rejects adding a move-away transform via a partial update (idStrategy untouched)", async () => {
+      const dataset = await createDataset({
+        idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
+      });
+
+      // The patch carries only ingestTransforms; idStrategy lives in originalDoc.
+      await expect(
+        payload.update({
+          collection: "datasets",
+          id: dataset.id,
+          data: { ingestTransforms: [rename("ref", "archived")] },
+          overrideAccess: true,
+        })
+      ).rejects.toThrow(/moves the external ID field "ref" to "archived"/);
+    });
+
+    it("rejects when a partial update repoints externalIdPath onto an existing move-away transform", async () => {
+      const dataset = await createDataset({
+        idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
+        ingestTransforms: [rename("location", "archived_location")],
+      });
+
+      // Patch carries only idStrategy; transforms live in originalDoc. The
+      // existing rename now moves the new ID path away.
+      await expect(
+        payload.update({
+          collection: "datasets",
+          id: dataset.id,
+          data: { idStrategy: { type: "external", externalIdPath: "location", duplicateStrategy: "skip" } },
+          overrideAccess: true,
+        })
+      ).rejects.toThrow(/moves the external ID field "location" to "archived_location"/);
+    });
+
+    it("rejects a transform that moves away a geo/time mapping override field", async () => {
+      await expect(
+        createDataset({
+          idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
+          fieldMappingOverrides: { timestampPath: "event_date" },
+          ingestTransforms: [rename("event_date", "date")],
+        })
+      ).rejects.toThrow(/the timestamp mapping points at "event_date"/);
+    });
+
+    it("allows a mapping override whose field is produced (not deleted) by a transform", async () => {
+      const dataset = await createDataset({
+        idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
+        fieldMappingOverrides: { timestampPath: "date" },
+        ingestTransforms: [rename("event_date", "date")],
+      });
+      expect(dataset.id).toBeDefined();
+    });
+  });
 });

@@ -401,3 +401,21 @@ export const getDuplicateSummary = (
 export const getUniqueRowsForQuota = (job: IngestJob): number => {
   return job.duplicates?.summary?.uniqueRows ?? 0;
 };
+
+/**
+ * Lifetime TOTAL_EVENTS quota: the number of events this import will NEWLY
+ * CREATE (never updates of existing events).
+ *
+ * Under the `"update"` strategy, {@link getUniqueRowsForQuota} includes external
+ * duplicates — they are written as in-place updates and must count toward
+ * progress and the per-import gate. But updates do NOT create new events, so
+ * charging them against the lifetime counter would inflate usage on every
+ * scheduled re-import. Subtract the to-be-updated externals so only genuinely
+ * new events are counted. Under `"skip"`/`"disabled"`, `uniqueRows` already
+ * excludes externals, so no adjustment is needed.
+ */
+export const getNewEventCountForQuota = (job: IngestJob): number => {
+  const { uniqueRows, externalCount } = getDuplicateSummary(job);
+  const willUpdateExternals = readDuplicateStrategy(job) === "update";
+  return Math.max(0, willUpdateExternals ? uniqueRows - externalCount : uniqueRows);
+};
