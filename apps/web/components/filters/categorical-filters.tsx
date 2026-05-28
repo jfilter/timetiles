@@ -30,6 +30,7 @@ const CategoricalFiltersSkeleton = () => {
   const t = useTranslations("Common");
 
   return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live region wraps block-level skeleton rows; <output> only permits phrasing content
     <div className="space-y-3" role="status" aria-label={t("loadingFilters")}>
       {[1, 2, 3].map((i) => (
         <div key={i} className="space-y-1">

@@ -155,6 +155,39 @@ describe("ProviderRateLimiter", () => {
       const wait = rateLimiter.getTimeUntilAllowed("test-provider");
       expect(wait).toBeLessThanOrEqual(30_000);
     });
+
+    it("makes callers already queued honor a throttle reported after they joined the chain", async () => {
+      vi.useRealTimers(); // real timers for promise-chain + backoff serialization
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 100); // 10ms interval
+
+      let firstResolved = false;
+      let secondResolved = false;
+      // Invoke both synchronously so both join the chain before the throttle;
+      // each async IIFE runs up to its `await waitForSlot(...)` immediately.
+      const first = (async () => {
+        await rateLimiter.waitForSlot("test-provider");
+        firstResolved = true;
+      })();
+      const second = (async () => {
+        await rateLimiter.waitForSlot("test-provider");
+        secondResolved = true;
+      })();
+
+      // Throttle reported AFTER both callers already entered waitForSlot. With
+      // the old pre-chain backoff check (a timestamp captured before joining),
+      // both would have skipped the backoff and resolved within ~10-20ms. The
+      // chained, re-read check forces them to wait the full window out.
+      rateLimiter.reportThrottle("test-provider", 100); // 100ms backoff
+
+      await new Promise((resolve) => setTimeout(resolve, 40));
+      expect(firstResolved).toBe(false);
+      expect(secondResolved).toBe(false);
+
+      await Promise.all([first, second]);
+      expect(firstResolved).toBe(true);
+      expect(secondResolved).toBe(true);
+    });
   });
 
   describe("isAvailable / canMakeRequest", () => {

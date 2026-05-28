@@ -13,7 +13,7 @@
  * @module
  * @category API
  */
-import { and, count, eq, isNotNull, max, min } from "@payloadcms/db-postgres/drizzle";
+import { and, count, eq, isNotNull, max, min, sql } from "@payloadcms/db-postgres/drizzle";
 
 import { apiRoute } from "@/lib/api";
 import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
@@ -80,14 +80,72 @@ export const GET = apiRoute({
       return { bounds: null, count: 0 } satisfies BoundsResponse;
     }
 
-    logger.debug(
-      { count: row.count, bounds: { west: row.west, south: row.south, east: row.east, north: row.north } },
-      "Computed event bounds"
-    );
+    const south = Number(row.south);
+    const north = Number(row.north);
+    let west = Number(row.west);
+    let east = Number(row.east);
 
-    return {
-      bounds: { north: Number(row.north), south: Number(row.south), east: Number(row.east), west: Number(row.west) },
-      count: row.count,
-    } satisfies BoundsResponse;
+    // Plain MIN/MAX returns a near-global longitude box for data clustered
+    // around the ±180° antimeridian (e.g. points at 179 and -179 give
+    // west=-179, east=179). When the span exceeds half the globe, recompute the
+    // tightest longitude extent as the complement of the largest gap between
+    // consecutive longitudes: if that interior gap is wider than the gap across
+    // the antimeridian, the box crosses it and is returned as west > east.
+    if (east - west > ANTIMERIDIAN_LON_SPAN_THRESHOLD) {
+      const refined = await computeAntimeridianLongitude(payload, eventTable, datasetTable, whereClause);
+      if (refined) {
+        west = refined.west;
+        east = refined.east;
+      }
+    }
+
+    logger.debug({ count: row.count, bounds: { west, south, east, north } }, "Computed event bounds");
+
+    return { bounds: { north, south, east, west }, count: row.count } satisfies BoundsResponse;
   },
 });
+
+/** Longitude span (degrees) above which the antimeridian-aware path engages. */
+const ANTIMERIDIAN_LON_SPAN_THRESHOLD = 180;
+
+/**
+ * Compute the tightest longitude extent of the filtered, located events,
+ * accounting for clusters that straddle the ±180° antimeridian. Returns
+ * `west > east` when the minimal box crosses the dateline.
+ */
+const computeAntimeridianLongitude = async (
+  payload: Parameters<Parameters<typeof apiRoute>[0]["handler"]>[0]["payload"],
+  eventTable: ReturnType<typeof createFilteredEventDatasetScope>["eventTable"],
+  datasetTable: ReturnType<typeof createFilteredEventDatasetScope>["datasetTable"],
+  whereClause: ReturnType<typeof createFilteredEventDatasetScope>["whereClause"]
+): Promise<{ west: number; east: number } | null> => {
+  // Build the located-longitude set with the query builder so table aliases
+  // (e/d) and schema qualification are emitted correctly, then embed it as a
+  // CTE for the window-function gap analysis.
+  const locatedQuery = payload.db.drizzle
+    // Alias via sql so the emitted column is `lng` (a plain column select would
+    // keep its real name and break the `lng` reference in the CTEs below).
+    .select({ lng: sql<number>`${eventTable.location_longitude}`.as("lng") })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .where(and(isNotNull(eventTable.location_longitude), whereClause));
+
+  const result = (await payload.db.drizzle.execute(sql`
+    WITH located AS (${locatedQuery}),
+    sorted AS (SELECT DISTINCT lng FROM located),
+    gaps AS (SELECT lng, LEAD(lng) OVER (ORDER BY lng) - lng AS gap FROM sorted),
+    agg AS (SELECT MIN(lng) AS lng_min, MAX(lng) AS lng_max FROM sorted),
+    widest AS (
+      SELECT lng AS gap_start, lng + gap AS gap_end, gap
+      FROM gaps WHERE gap IS NOT NULL ORDER BY gap DESC LIMIT 1
+    )
+    SELECT
+      CASE WHEN COALESCE(w.gap, 0) > (a.lng_min + 360 - a.lng_max) THEN w.gap_end ELSE a.lng_min END AS west,
+      CASE WHEN COALESCE(w.gap, 0) > (a.lng_min + 360 - a.lng_max) THEN w.gap_start ELSE a.lng_max END AS east
+    FROM agg a LEFT JOIN widest w ON true
+  `)) as { rows: Array<{ west: number | string | null; east: number | string | null }> };
+
+  const refined = result.rows[0];
+  if (refined?.west == null || refined?.east == null) return null;
+  return { west: Number(refined.west), east: Number(refined.east) };
+};

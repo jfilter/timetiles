@@ -99,9 +99,12 @@ export const getDatePartsWithFormatter = (utcDate: Date, formatter: Intl.DateTim
  * Given a set of date/time components that represent a wall-clock time in
  * the specified timezone, returns the corresponding UTC Date.
  *
- * This uses a binary-search approach: we start with an initial UTC guess
- * (treating the components as if they were UTC), then adjust based on the
- * observed offset.
+ * We want a UTC instant `t` whose local time in `timezone` equals the given
+ * wall-clock. Since the zone offset is itself a function of `t`, we solve
+ * `t = wanted - offset(t)` by fixed-point iteration. A single correction is
+ * wrong when the first estimate lands on the opposite side of a DST boundary
+ * from the answer (the offset differs by an hour), so we run a second pass,
+ * which converges for standard whole-hour DST transitions.
  */
 export const wallClockToUtc = (
   year: number,
@@ -111,28 +114,18 @@ export const wallClockToUtc = (
   minute: number,
   timezone: string
 ): Date => {
-  // Start with a naive UTC guess
-  const naiveUtc = new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
+  // The desired wall-clock expressed as a UTC epoch (offset 0).
+  const wantedMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  const formatter = createTimezoneFormatter(timezone);
 
-  // See what wall-clock time that UTC instant corresponds to in the target timezone
-  const observed = getDatePartsInTimezone(naiveUtc, timezone);
+  // The zone's offset at instant `t`: (local wall-clock of `t`, expressed as a
+  // UTC epoch) minus `t`.
+  const offsetMs = (t: number): number => {
+    const o = getDatePartsWithFormatter(new Date(t), formatter);
+    return Date.UTC(o.year, o.month - 1, o.day, o.hour, o.minute, o.second, 0) - t;
+  };
 
-  // Calculate the offset in minutes between what we wanted and what we got
-  const wantedMinutes = hour * 60 + minute;
-  const observedMinutes = observed.hour * 60 + observed.minute;
-
-  // Also account for date differences (DST transitions can shift the date)
-  let dayDiffMinutes = 0;
-  if (observed.day !== day || observed.month !== month || observed.year !== year) {
-    // Use a simpler approach: compute the difference in epoch time
-    const wantedEpoch = Date.UTC(year, month - 1, day);
-    const observedEpoch = Date.UTC(observed.year, observed.month - 1, observed.day);
-    dayDiffMinutes = (observedEpoch - wantedEpoch) / 60_000;
-  }
-
-  const offsetMinutes = observedMinutes - wantedMinutes + dayDiffMinutes;
-
-  // Adjust: if observed time is ahead of wanted, the UTC time should be later
-  // (we need to subtract the offset)
-  return new Date(naiveUtc.getTime() - offsetMinutes * 60_000);
+  const firstPass = wantedMs - offsetMs(wantedMs);
+  const corrected = wantedMs - offsetMs(firstPass);
+  return new Date(corrected);
 };

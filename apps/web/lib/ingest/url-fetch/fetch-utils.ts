@@ -211,7 +211,13 @@ const buildCacheOptions = (
   useCache: boolean,
   cacheOptions?: UrlFetchCacheOptions,
   userId?: string
-): RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number } => {
+): RequestInit & {
+  bypassCache?: boolean;
+  forceRevalidate?: boolean;
+  userId?: string;
+  timeout?: number;
+  maxSize?: number;
+} => {
   const method = fetchOptions.method ?? "GET";
   const headers: Record<string, string> = { ...authHeaders, ...fetchOptions.headers };
 
@@ -228,13 +234,16 @@ const buildCacheOptions = (
     forceRevalidate: cacheOptions?.forceRevalidate,
     userId,
     timeout: fetchOptions.timeout,
+    // Enforce the size limit during streaming so the cache layer never buffers
+    // an unbounded body into memory (validateResponse double-checks after).
+    maxSize: fetchOptions.maxSize,
   };
 };
 
 const processFetchResponse = async (
   urlFetchCache: UrlFetchCache,
   sourceUrl: string,
-  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; timeout?: number },
+  fetchOpts: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; timeout?: number; maxSize?: number },
   fetchOptions: FetchOptions,
   attempt: number
 ): Promise<FetchResult> => {

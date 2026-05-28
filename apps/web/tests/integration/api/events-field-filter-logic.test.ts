@@ -14,6 +14,7 @@ import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { GET } from "../../../app/api/v1/events/route";
+import { GET as temporalClustersGET } from "../../../app/api/v1/events/temporal-clusters/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
 describe.sequential("/api/v1/events - field filter logic", () => {
@@ -281,5 +282,50 @@ describe.sequential("/api/v1/events - field filter logic", () => {
 
       expect(data.events.length).toBeLessThanOrEqual(baseCount);
     }
+  });
+
+  it("temporal-clusters: should exclude events where the filtered field is missing/null (cluster_events_temporal)", async () => {
+    // Regression for the migration typo (calculate_temporal_clusters vs
+    // cluster_events_temporal) that left the temporal/beeswarm endpoint with
+    // the buggy `WHERE NOT (... = ANY(...))` pattern, which over-includes
+    // events whose filtered field is NULL/missing.
+    //
+    // Guarantee at least one null-status event exists for this dataset.
+    await payload.create({
+      collection: "events",
+      data: {
+        uniqueId: "temporal-null-status",
+        dataset: testDatasetId,
+        sourceData: { category: "Music" },
+        transformedData: { category: "Music" },
+        location: { latitude: 40.75, longitude: -74.04 },
+        eventTimestamp: new Date(2024, 0, 23).toISOString(),
+      },
+    });
+
+    const fieldFilters = JSON.stringify({ status: ["Active"] });
+
+    // Ground truth: the /events endpoint (already fixed by 20260401) returns
+    // only the 4 original Active events and excludes every null-status event.
+    const eventsReq = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const eventsRes = await GET(eventsReq, { params: Promise.resolve({}) });
+    const eventsData = await eventsRes.json();
+    expect(eventsData.events).toHaveLength(4);
+
+    // temporal-clusters (cluster_events_temporal) must agree. Force individual
+    // mode so metadata.total equals the number of matching events.
+    const tcReq = new NextRequest(
+      `http://localhost:3000/api/v1/events/temporal-clusters?datasets=${testDatasetId}&ff=${encodeURIComponent(fieldFilters)}&individualThreshold=2000`
+    );
+    const tcRes = await temporalClustersGET(tcReq, { params: Promise.resolve({}) });
+    expect(tcRes.status).toBe(200);
+    const tcData = await tcRes.json();
+
+    expect(tcData.metadata.mode).toBe("individual");
+    // With the bug, the null-status events would be over-included (> 4).
+    expect(tcData.metadata.total).toBe(4);
+    expect(tcData.metadata.total).toBe(eventsData.events.length);
   });
 });

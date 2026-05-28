@@ -7,11 +7,13 @@
  * @module
  * @category Components
  */
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Card, CardDescription, CardTitle, ContentState } from "@timetiles/ui";
 import { cn } from "@timetiles/ui/lib/utils";
 import { Calendar, MapPin } from "lucide-react";
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
+import { memo, useRef } from "react";
 
 import { getDatasetBadgeClass } from "@/lib/constants/dataset-colors";
 import type { EventListItem } from "@/lib/schemas/events";
@@ -60,6 +62,12 @@ interface EventsListProps {
   multiColumn?: boolean;
   /** Hide dataset badge (e.g. when only one dataset is selected) */
   hideDatasetBadge?: boolean;
+  /**
+   * Virtualize the (single-column) list in an own bounded scroll container.
+   * Use for large, unpaginated sets (e.g. the map explorer's up-to-1000 events)
+   * so only visible rows mount.
+   */
+  virtualize?: boolean;
 }
 
 interface EventItemProps {
@@ -69,7 +77,7 @@ interface EventItemProps {
   hideDatasetBadge?: boolean;
 }
 
-const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItemProps) => {
+const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: EventItemProps) => {
   const locale = useLocale();
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
@@ -164,6 +172,58 @@ const EventItem = ({ event, eventId, onEventClick, hideDatasetBadge }: EventItem
       </div>
     </Card>
   );
+});
+EventItem.displayName = "EventItem";
+
+/** Rough card height (px) used as the initial virtual row estimate. */
+const ESTIMATED_ROW_HEIGHT = 132;
+
+/**
+ * Virtualized single-column list for large event sets (the map explorer can
+ * return up to 1000 events). Owns its own bounded scroll container so only the
+ * visible rows mount, instead of rendering every card.
+ */
+const VirtualizedEventsList = ({
+  events,
+  onEventClick,
+  hideDatasetBadge,
+}: Pick<EventsListProps, "events" | "onEventClick" | "hideDatasetBadge">) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: events.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ESTIMATED_ROW_HEIGHT,
+    overscan: 6,
+    gap: 8,
+    getItemKey: (index) => events[index]?.id ?? index,
+  });
+
+  return (
+    <div ref={scrollRef} className="max-h-[70vh] overflow-y-auto [scrollbar-gutter:stable]">
+      <div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualizer.getVirtualItems().map((item) => {
+          const event = events[item.index];
+          if (!event) return null;
+          return (
+            <div
+              key={item.key}
+              data-index={item.index}
+              ref={virtualizer.measureElement}
+              className="absolute top-0 left-0 w-full"
+              style={{ transform: `translateY(${item.start}px)` }}
+            >
+              <EventItem
+                event={event}
+                eventId={event.id}
+                onEventClick={onEventClick}
+                hideDatasetBadge={hideDatasetBadge}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 };
 
 export const EventsList = ({
@@ -175,6 +235,7 @@ export const EventsList = ({
   onEventClick,
   multiColumn = false,
   hideDatasetBadge = false,
+  virtualize = false,
 }: Readonly<EventsListProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
@@ -213,22 +274,22 @@ export const EventsList = ({
           </div>
         </div>
       )}
-      <div
-        className={cn(
-          "transition-opacity",
-          isUpdating ? "opacity-90" : "opacity-100",
-          multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2"
+      <div className={cn("transition-opacity", isUpdating ? "opacity-90" : "opacity-100")}>
+        {virtualize ? (
+          <VirtualizedEventsList events={events} onEventClick={onEventClick} hideDatasetBadge={hideDatasetBadge} />
+        ) : (
+          <div className={cn(multiColumn ? "grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3" : "space-y-2")}>
+            {events.map((event) => (
+              <EventItem
+                key={event.id}
+                event={event}
+                eventId={event.id}
+                onEventClick={onEventClick}
+                hideDatasetBadge={hideDatasetBadge}
+              />
+            ))}
+          </div>
         )}
-      >
-        {events.map((event) => (
-          <EventItem
-            key={event.id}
-            event={event}
-            eventId={event.id}
-            onEventClick={onEventClick}
-            hideDatasetBadge={hideDatasetBadge}
-          />
-        ))}
       </div>
     </div>
   );

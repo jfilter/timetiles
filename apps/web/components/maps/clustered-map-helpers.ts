@@ -141,7 +141,7 @@ export const buildLocationLabelLayerConfig = (
       "text-field": [
         "case",
         [">=", ["get", "count"], 1000000],
-        ["concat", ["to-string", ["round", ["/", ["get", "count"], 100000]]], "M"],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000000]]], "M"],
         [">=", ["get", "count"], 10000],
         ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000]]], "k"],
         [">=", ["get", "count"], 1000],
@@ -344,7 +344,7 @@ export const buildClusterLabelLayerConfig = (
       "text-field": [
         "case",
         [">=", ["get", "count"], 1000000],
-        ["concat", ["to-string", ["round", ["/", ["get", "count"], 100000]]], "M"],
+        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000000]]], "M"],
         [">=", ["get", "count"], 10000],
         ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000]]], "k"],
         [">=", ["get", "count"], 1000],
@@ -379,10 +379,16 @@ export const fitMapToBounds = (
     return;
   }
 
+  // The bounds API returns west > east for extents that cross the ±180°
+  // antimeridian. MapLibre's fitBounds needs a monotonically increasing
+  // longitude range, so shift the eastern edge past +180° (MapLibre wraps
+  // out-of-range longitudes back onto the map).
+  const east = bounds.east < bounds.west ? bounds.east + 360 : bounds.east;
+
   map.fitBounds(
     [
       [bounds.west, bounds.south],
-      [bounds.east, bounds.north],
+      [east, bounds.north],
     ],
     { padding, animate, maxZoom }
   );

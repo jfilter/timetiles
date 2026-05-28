@@ -18,15 +18,19 @@ const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void
   stats.typeDistribution[valueType] = (stats.typeDistribution[valueType] ?? 0) + 1;
 };
 
-const updateNumericStats = (stats: FieldStatistics, value: number, occurrences: number): void => {
+const updateNumericStats = (stats: FieldStatistics, value: number): void => {
   if (stats.numericStats) {
+    // Divide by the running count of NUMERIC values, not stats.occurrences
+    // (which is bumped for every value including nulls/non-numeric strings),
+    // otherwise the mean is diluted on mixed columns.
+    const count = (stats.numericStats.count ?? 0) + 1;
     stats.numericStats.min = Math.min(stats.numericStats.min, value);
     stats.numericStats.max = Math.max(stats.numericStats.max, value);
-    // Update average (simplified)
-    stats.numericStats.avg = (stats.numericStats.avg * (occurrences - 1) + value) / occurrences;
+    stats.numericStats.avg = (stats.numericStats.avg * (count - 1) + value) / count;
     stats.numericStats.isInteger = stats.numericStats.isInteger && Number.isInteger(value);
+    stats.numericStats.count = count;
   } else {
-    stats.numericStats = { min: value, max: value, avg: value, isInteger: Number.isInteger(value) };
+    stats.numericStats = { min: value, max: value, avg: value, isInteger: Number.isInteger(value), count: 1 };
   }
 };
 
@@ -105,7 +109,7 @@ export const updateFieldStats = (stats: FieldStatistics, value: unknown, maxUniq
 
   // Track numeric stats
   if (typeof value === "number" && !Number.isNaN(value)) {
-    updateNumericStats(stats, value, stats.occurrences);
+    updateNumericStats(stats, value);
   }
 
   // Track unique samples
@@ -193,18 +197,25 @@ const mergeDistributions = <T extends Record<string, number>>(existing: T, incom
 
 const mergeNumericStats = (
   existing: FieldStatistics["numericStats"],
-  incoming: FieldStatistics["numericStats"],
-  existingOccurrences: number,
-  incomingOccurrences: number,
-  totalOccurrences: number
+  incoming: FieldStatistics["numericStats"]
 ): FieldStatistics["numericStats"] => {
   if (!existing || !incoming) return existing ?? incoming;
+
+  // Weight the combined mean by each side's NUMERIC count, not total
+  // occurrences (which include nulls/non-numeric values).
+  const existingCount = existing.count ?? 0;
+  const incomingCount = incoming.count ?? 0;
+  const count = existingCount + incomingCount;
 
   return {
     min: Math.min(existing.min, incoming.min),
     max: Math.max(existing.max, incoming.max),
-    avg: (existing.avg * existingOccurrences + incoming.avg * incomingOccurrences) / totalOccurrences,
+    avg:
+      count === 0
+        ? (existing.avg + incoming.avg) / 2
+        : (existing.avg * existingCount + incoming.avg * incomingCount) / count,
     isInteger: existing.isInteger && incoming.isInteger,
+    count,
   };
 };
 
@@ -250,14 +261,8 @@ export const mergeFieldStats = (existing: FieldStatistics, incoming: FieldStatis
     depth: existing.depth,
   };
 
-  // Merge numeric stats
-  merged.numericStats = mergeNumericStats(
-    existing.numericStats,
-    incoming.numericStats,
-    existing.occurrences,
-    incoming.occurrences,
-    merged.occurrences
-  );
+  // Merge numeric stats (weighted by each side's numeric count internally)
+  merged.numericStats = mergeNumericStats(existing.numericStats, incoming.numericStats);
 
   // Merge unique samples
   const allSamples = [...existing.uniqueSamples, ...incoming.uniqueSamples];

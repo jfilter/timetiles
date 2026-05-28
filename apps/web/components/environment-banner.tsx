@@ -27,13 +27,12 @@ export const EnvironmentBanner = async (): Promise<React.ReactElement | null> =>
 
   const t = await getTranslations("EnvironmentBanner");
   return (
-    <div
-      role="status"
+    <output
       aria-live="polite"
-      className={`${ENV_STYLES[env]} sticky top-0 z-50 w-full px-4 py-1 text-center text-xs font-medium tracking-wide`}
+      className={`${ENV_STYLES[env]} sticky top-0 z-50 block w-full px-4 py-1 text-center text-xs font-medium tracking-wide`}
       data-environment={env}
     >
       {t(env)}
-    </div>
+    </output>
   );
 };

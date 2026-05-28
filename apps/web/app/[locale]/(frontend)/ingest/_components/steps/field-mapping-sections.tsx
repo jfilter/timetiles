@@ -115,31 +115,37 @@ export const LocationSection = ({
           <p className="text-muted-foreground text-sm">{t("locationDescription")}</p>
         </div>
         <div className="border-primary/10 inline-flex rounded-sm border" role="radiogroup">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={locationMode === "address"}
+          <label
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
+              "flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
               locationMode === "address" ? "bg-foreground text-white" : "text-muted-foreground hover:bg-card/50"
             )}
-            onClick={() => onLocationModeChange("address")}
           >
+            <input
+              type="radio"
+              name="location-mode"
+              className="sr-only"
+              checked={locationMode === "address"}
+              onChange={() => onLocationModeChange("address")}
+            />
             <MapPinIcon className="h-3.5 w-3.5" />
             {t("locationTypeAddress")}
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={locationMode === "coordinates"}
+          </label>
+          <label
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
+              "flex cursor-pointer items-center gap-1.5 px-3 py-1.5 text-sm transition-colors",
               locationMode === "coordinates" ? "bg-foreground text-white" : "text-muted-foreground hover:bg-card/50"
             )}
-            onClick={() => onLocationModeChange("coordinates")}
           >
+            <input
+              type="radio"
+              name="location-mode"
+              className="sr-only"
+              checked={locationMode === "coordinates"}
+              onChange={() => onLocationModeChange("coordinates")}
+            />
             {t("locationTypeCoordinates")}
-          </button>
+          </label>
         </div>
       </div>
 

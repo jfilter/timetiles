@@ -83,7 +83,7 @@ const isIdStrategyLocked = (
   activeSheetIndex: number
 ): boolean => typeof sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.datasetId === "number";
 
-// oxlint-disable-next-line eslint(complexity) -- UI component with many conditional rendering branches for multi-sheet, suggestions, and location modes
+// oxlint-disable-next-line complexity -- UI component with many conditional rendering branches for multi-sheet, suggestions, and location modes
 export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>) => {
   const t = useTranslations("Ingest");
   const router = useRouter();

@@ -192,6 +192,35 @@ describe.sequential("urlFetchJob", () => {
       });
     });
 
+    it("compensates the URL-fetch quota when a step after a successful fetch fails", async () => {
+      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockPayload.find.mockResolvedValue({ docs: [] }); // no duplicate content
+      // Fail AFTER the fetch + quota claim (during import-file creation).
+      mockPayload.create.mockRejectedValue(new Error("import creation failed"));
+
+      const mockResponse = createMockResponse("id,name\n1,a", { contentType: "text/csv" });
+      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+
+      await expect(
+        urlFetchJob.handler({
+          input: {
+            sourceUrl: "https://example.com/data.csv",
+            authConfig: { type: "none" },
+            catalogId: "catalog-123",
+            originalName: "data.csv",
+            userId: "user-123",
+          },
+          job: mockJob,
+          req: mockReq,
+        })
+      ).rejects.toThrow();
+
+      // The increment made at the top of this attempt must be refunded so the
+      // retry doesn't leak a URL_FETCHES_PER_DAY unit. The old code skipped
+      // compensation once the fetch had succeeded.
+      expect(quotaServiceMocks.decrementUsage).toHaveBeenCalledWith("user-123", "URL_FETCHES_PER_DAY", 1);
+    });
+
     it("should handle API key authentication", async () => {
       mockPayload.create.mockResolvedValue({ id: "import-123" });
       mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });

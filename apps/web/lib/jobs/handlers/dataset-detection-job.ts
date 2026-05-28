@@ -368,12 +368,20 @@ export const datasetDetectionJob = {
         output: {
           sheetsDetected: sheets.length,
           ingestJobsCreated: createdJobs.length,
-          sheets: createdJobs.map((j, i) => ({
-            index: i,
-            ingestJobId: j.id,
-            name: sheets[i]?.name ?? `Sheet ${i}`,
-            rowCount: sheets[i]?.rowCount ?? 0,
-          })),
+          sheets: createdJobs.map((j) => {
+            // Use the job's stored sheetIndex (authoritative) rather than the
+            // array position: when sheets are skipped (no mapping /
+            // skipIfMissing), createdJobs is shorter than `sheets`, so a
+            // positional lookup attaches the wrong sheet's name/rowCount.
+            const sheetIndex = Number(j.sheetIndex ?? 0);
+            const sheet = sheets.find((s) => s.index === sheetIndex);
+            return {
+              index: sheetIndex,
+              ingestJobId: j.id,
+              name: sheet?.name ?? `Sheet ${sheetIndex}`,
+              rowCount: sheet?.rowCount ?? 0,
+            };
+          }),
         },
       };
     } catch (error) {

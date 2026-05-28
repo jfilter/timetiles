@@ -200,6 +200,17 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
     ],
   },
+  // Manual scraper run / repo-sync triggers. These queue expensive work
+  // (container-based execution, git clone + manifest re-parse), so throttle
+  // per-user re-queues for defense in depth (ownership + a concurrency claim
+  // already gate them, but neither bounds repeated re-triggers after a run).
+  SCRAPER_TRIGGER: {
+    windows: [
+      { limit: 1, windowMs: 30 * 1000, name: "burst" },
+      { limit: 20, windowMs: 60 * 60 * 1000, name: "hourly" },
+      { limit: 100, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
+    ],
+  },
 } satisfies Record<string, RateLimitConfig>;
 
 const DEFAULT_QUOTAS = {
@@ -438,7 +449,8 @@ export type RateLimitName =
   | "DATA_EXPORT"
   | "REGISTRATION"
   | "LOGIN"
-  | "FORGOT_PASSWORD";
+  | "FORGOT_PASSWORD"
+  | "SCRAPER_TRIGGER";
 
 export interface AppConfig {
   rateLimits: Record<RateLimitName, RateLimitConfig>;

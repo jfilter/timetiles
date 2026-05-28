@@ -50,6 +50,7 @@ import * as migration_20260430_145549_add_maintenance_job_task_slugs from './202
 import * as migration_20260511_221810_consolidate_snapshot_baseline from './20260511_221810_consolidate_snapshot_baseline';
 import * as migration_20260511_221811_drop_ingest_jobs_retry_columns from './20260511_221811_drop_ingest_jobs_retry_columns';
 import * as migration_20260511_221812_add_branding_contact_email from './20260511_221812_add_branding_contact_email';
+import * as migration_20260528_000000_fix_temporal_null_and_date_timestamptz from './20260528_000000_fix_temporal_null_and_date_timestamptz';
 
 export const migrations = [
   {
@@ -311,5 +312,10 @@ export const migrations = [
     up: migration_20260511_221812_add_branding_contact_email.up,
     down: migration_20260511_221812_add_branding_contact_email.down,
     name: '20260511_221812_add_branding_contact_email',
+  },
+  {
+    up: migration_20260528_000000_fix_temporal_null_and_date_timestamptz.up,
+    down: migration_20260528_000000_fix_temporal_null_and_date_timestamptz.down,
+    name: '20260528_000000_fix_temporal_null_and_date_timestamptz',
   },
 ];

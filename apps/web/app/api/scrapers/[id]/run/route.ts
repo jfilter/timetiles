@@ -17,6 +17,7 @@ import { claimScraperRunning } from "@/lib/services/webhook-registry";
 export const POST = apiRoute({
   auth: "required",
   site: "default",
+  rateLimit: { configName: "SCRAPER_TRIGGER", keyPrefix: (u) => `scraper-run:${u!.id}` },
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ user, payload, params }) => {
     const scraper = await loadManageableScraper(payload, user, params.id);
