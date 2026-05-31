@@ -45,6 +45,7 @@ vi.mock("@/lib/utils/relation-id", () => ({
 
 vi.mock("@/lib/constants/review-reasons", () => ({
   getResumePointForReason: mocks.getResumePointForReason,
+  PER_SHEET_REVIEW_CHECKS_KEY: "perSheet",
   REVIEW_REASONS: {
     HIGH_DUPLICATE_RATE: "high-duplicates",
     HIGH_EMPTY_ROW_RATE: "high-empty-rows",

@@ -380,8 +380,11 @@ describe.sequential("review-checks", () => {
 
     it("does not leak one sheet's approval flag to a sibling sheet", () => {
       const raw = { perSheet: { "0": { skipDuplicateRateCheck: true } } };
+      // Sheet 0 approved the duplicate-rate check...
       expect(parseReviewChecksConfig(raw, 0).config).toEqual({ skipDuplicateRateCheck: true });
-      expect(parseReviewChecksConfig(raw, 1).config).toBeUndefined();
+      // ...sheet 1 must NOT inherit it. An empty config and undefined are
+      // equivalent downstream (`?.skip…` is falsy), so assert the flag's absence.
+      expect(parseReviewChecksConfig(raw, 1).config?.skipDuplicateRateCheck).toBeUndefined();
     });
 
     it("rejects unknown keys with an error message", () => {
