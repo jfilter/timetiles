@@ -361,6 +361,29 @@ describe.sequential("review-checks", () => {
       expect(config).toEqual(raw);
     });
 
+    it("ignores the perSheet namespace when no sheetIndex is given", () => {
+      const raw = { skipLocationCheck: true, perSheet: { "0": { skipDuplicateRateCheck: true } } };
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(config).toEqual({ skipLocationCheck: true });
+      expect(error).toBeUndefined();
+    });
+
+    it("merges a sheet's approval flags on top of file-level config", () => {
+      const raw = {
+        skipLocationCheck: true,
+        perSheet: { "0": { skipDuplicateRateCheck: true }, "1": { skipEmptyRowCheck: true } },
+      };
+      const { config, error } = parseReviewChecksConfig(raw, 0);
+      expect(config).toEqual({ skipLocationCheck: true, skipDuplicateRateCheck: true });
+      expect(error).toBeUndefined();
+    });
+
+    it("does not leak one sheet's approval flag to a sibling sheet", () => {
+      const raw = { perSheet: { "0": { skipDuplicateRateCheck: true } } };
+      expect(parseReviewChecksConfig(raw, 0).config).toEqual({ skipDuplicateRateCheck: true });
+      expect(parseReviewChecksConfig(raw, 1).config).toBeUndefined();
+    });
+
     it("rejects unknown keys with an error message", () => {
       const raw = { unknownKey: true };
       const { config, error } = parseReviewChecksConfig(raw);

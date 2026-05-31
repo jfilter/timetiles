@@ -92,16 +92,75 @@ export const requireDefaultSite = async (payload: Payload, req: { headers: Heade
 };
 
 /**
+ * Decode the `sid` (session id) claim from a Payload-issued JWT without
+ * verifying the signature. The token is freshly minted by `payload.login`, so
+ * the only goal here is to read back the session id that login just created.
+ * Returns `null` if the token is malformed or carries no `sid`.
+ */
+const decodeSessionIdFromToken = (token: string | undefined): string | null => {
+  if (!token) return null;
+  const payloadSegment = token.split(".")[1];
+  if (payloadSegment === undefined) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(payloadSegment, "base64url").toString("utf8")) as { sid?: unknown };
+    return typeof payload.sid === "string" ? payload.sid : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Confirming an already-authenticated user's password must not mint a real
+ * login session. `payload.login` always appends a session row (sessions are
+ * enabled on the Users collection) whose token we discard, leaving an orphan
+ * row that lingers until the user's next real login. Remove that just-created
+ * session so password confirmation has no lasting session side effect.
+ */
+const revokeVerificationSession = async (payload: Payload, user: User, token: string | undefined): Promise<void> => {
+  const sid = decodeSessionIdFromToken(token);
+  if (!sid) return;
+  try {
+    const current = await payload.findByID({ collection: "users", id: user.id, depth: 0, overrideAccess: true });
+    const remaining = (current.sessions ?? []).filter((session) => session.id !== sid);
+    await payload.update({ collection: "users", id: user.id, data: { sessions: remaining }, overrideAccess: true });
+  } catch (error) {
+    // Best-effort cleanup: a stale orphan session is harmless (it expires on
+    // its own and is pruned on next login), so never fail the request over it.
+    logger.warn({ userId: user.id, error }, "Failed to revoke password-verification session");
+  }
+};
+
+/**
  * Verify a user's password by attempting a login.
  * Throws an error with a descriptive message on failure.
+ *
+ * Password confirmation runs for an already-authenticated session, so it must
+ * not affect the shared login lockout counter or leak a session:
+ * - On failure, reset the login-attempt counter that `payload.login`
+ *   increments (and may lock the account on), so repeated mistypes here cannot
+ *   lock a legitimate user out of the real `/api/auth/login` path.
+ * - On success, revoke the session `payload.login` just created.
  */
 const verifyPassword = async (payload: Payload, user: User, password: string): Promise<void> => {
+  let result: Awaited<ReturnType<typeof payload.login>>;
   try {
-    await payload.login({ collection: "users", data: { email: user.email, password } });
+    result = await payload.login({ collection: "users", data: { email: user.email, password }, depth: 0 });
   } catch {
+    // `payload.login` increments loginAttempts (and may set lockUntil) outside
+    // the request transaction, so the side effect persists. Undo it here: a
+    // failed in-session password confirmation must never lock the account.
+    // `unlock` matches the user by email and resets loginAttempts/lockUntil; it
+    // ignores the password value (typed only for parity with the login op).
+    try {
+      await payload.unlock({ collection: "users", data: { email: user.email, password }, overrideAccess: true });
+    } catch (unlockError) {
+      logger.warn({ userId: user.id, error: unlockError }, "Failed to reset login attempts after password check");
+    }
     logger.warn({ userId: user.id }, "Failed password verification");
     throw new Error("Password is incorrect");
   }
+
+  await revokeVerificationSession(payload, user, result.token);
 };
 
 /**

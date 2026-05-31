@@ -183,12 +183,13 @@ describe.sequential("scraperExecutionJob", () => {
       }),
     });
 
-    // Also verify the scraper itself is marked as running
+    // Also verify the scraper itself is marked as running and stamps lastRunAt at
+    // run start, so stuck-detection measures from the trigger time (not the prior run).
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "scrapers",
       id: 10,
       overrideAccess: true,
-      data: { lastRunStatus: "running" },
+      data: { lastRunStatus: "running", lastRunAt: expect.any(String) },
     });
   });
 

@@ -43,6 +43,43 @@ const shouldScraperRunNow = (scraper: Scraper, currentTime: Date): boolean => {
 };
 
 /**
+ * Advance a scraper's nextRunAt so the scheduler doesn't retry every minute.
+ *
+ * Mirrors the scheduled-ingest path (handleImportError): without advancing
+ * nextRunAt a queue failure leaves the old time in the past and re-triggers on
+ * every 1-minute scheduler tick. When the cron never matches again
+ * (calculateNextCronRun returns null) the scraper is disabled instead, so an
+ * invalid/never-matching schedule is surfaced rather than producing a
+ * per-minute trigger storm.
+ *
+ * @param extraData - additional fields merged into the update (e.g. lastRunStatus).
+ */
+const advanceScraperNextRunOrDisable = async (
+  payload: Payload,
+  scraper: Scraper,
+  currentTime: Date,
+  extraData: Partial<Scraper> = {}
+): Promise<void> => {
+  const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
+
+  if (!nextRun) {
+    logger.warn("Scraper schedule never matches — disabling to avoid per-minute trigger storm", {
+      scraperId: scraper.id,
+      name: scraper.name,
+      schedule: scraper.schedule,
+    });
+    await asSystem(payload).update({ collection: "scrapers", id: scraper.id, data: { ...extraData, enabled: false } });
+    return;
+  }
+
+  await asSystem(payload).update({
+    collection: "scrapers",
+    id: scraper.id,
+    data: { ...extraData, nextRunAt: nextRun.toISOString() },
+  });
+};
+
+/**
  * Process all due scrapers and queue execution jobs.
  *
  * Called from the main schedule-manager handler after scheduled ingests.
@@ -92,28 +129,22 @@ export const processScheduledScrapers = async (
           input: { scraperId: scraper.id, triggeredBy: "schedule" },
         });
 
-        // Calculate and update nextRunAt
-        const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
-        await asSystem(payload).update({
-          collection: "scrapers",
-          id: scraper.id,
-          data: nextRun ? { nextRunAt: nextRun.toISOString() } : {},
-        });
+        // Advance nextRunAt so the scheduler doesn't re-trigger on every tick;
+        // disable the scraper if its cron never matches again.
+        await advanceScraperNextRunOrDisable(payload, scraper, currentTime);
 
-        logger.info("Queued scraper execution", {
-          scraperId: scraper.id,
-          name: scraper.name,
-          nextRunAt: nextRun?.toISOString(),
-        });
+        logger.info("Queued scraper execution", { scraperId: scraper.id, name: scraper.name });
 
         triggered++;
       } catch (queueError) {
-        // Revert "running" status so the scraper doesn't get stuck permanently
+        // Revert "running" status so the scraper doesn't get stuck permanently,
+        // and advance nextRunAt so a broken queue doesn't re-trigger every minute
+        // (mirrors the scheduled-ingest path's handleImportError).
         logError(queueError, "Failed to queue scraper, reverting status", {
           scraperId: scraper.id,
           name: scraper.name,
         });
-        await asSystem(payload).update({ collection: "scrapers", id: scraper.id, data: { lastRunStatus: "failed" } });
+        await advanceScraperNextRunOrDisable(payload, scraper, currentTime, { lastRunStatus: "failed" });
         errors++;
       }
     } catch (error) {

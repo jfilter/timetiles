@@ -65,7 +65,11 @@ const createRunRecord = async (
     },
   });
 
-  await asSystem(payload).update({ collection: "scrapers", id: scraperId, data: { lastRunStatus: "running" } });
+  await asSystem(payload).update({
+    collection: "scrapers",
+    id: scraperId,
+    data: { lastRunStatus: "running", lastRunAt: new Date().toISOString() },
+  });
 
   return run;
 };

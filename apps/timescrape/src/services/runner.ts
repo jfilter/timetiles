@@ -12,7 +12,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readFile, rm, stat } from "node:fs/promises";
+import { copyFile, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -58,6 +58,114 @@ export const getMetrics = (): RunnerMetrics => {
     queue_capacity: config.SCRAPER_MAX_CONCURRENT,
   };
 };
+
+/** Default TTL for persistent output dirs when SCRAPER_OUTPUT_TTL_HOURS is unset. */
+const DEFAULT_OUTPUT_TTL_HOURS = 24;
+/** How often the output sweep runs. */
+const OUTPUT_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
+
+/**
+ * Remove persistent output dirs under {SCRAPER_DATA_DIR}/outputs whose mtime is
+ * older than the configured TTL.
+ *
+ * The runner owns the persistent outputs dir but cannot rely on the web app's
+ * best-effort `DELETE /output/:runId` to clean it up: that call only fires on
+ * the autoImport-success path, so disabled-autoImport runs and any failed
+ * download/DELETE leak files forever. This sweep is the backstop.
+ */
+export const sweepStaleOutputs = async (): Promise<void> => {
+  const config = getConfig();
+  const ttlHours = Number(process.env.SCRAPER_OUTPUT_TTL_HOURS) || DEFAULT_OUTPUT_TTL_HOURS;
+  const ttlMs = ttlHours * 60 * 60 * 1000;
+  const base = join(config.SCRAPER_DATA_DIR, "outputs");
+
+  const entries = await readdir(base).catch(() => [] as string[]);
+  for (const entry of entries) {
+    const dir = join(base, entry);
+    try {
+      const stats = await stat(dir);
+      if (Date.now() - stats.mtimeMs > ttlMs) {
+        await rm(dir, { recursive: true, force: true });
+        logger.info({ dir, ttlHours }, "Swept stale scraper output directory");
+      }
+    } catch (error) {
+      logError("Failed to sweep scraper output directory", error, { dir });
+    }
+  }
+};
+
+let sweepTimer: ReturnType<typeof setInterval> | undefined;
+
+/**
+ * Start the periodic output-directory sweep. Idempotent. The interval handle is
+ * unref'd so it never keeps the process alive on its own.
+ */
+export const startOutputSweep = (): void => {
+  if (sweepTimer) return;
+  sweepTimer = setInterval(() => {
+    void sweepStaleOutputs();
+  }, OUTPUT_SWEEP_INTERVAL_MS);
+  sweepTimer.unref();
+};
+
+// Auto-start the sweep on module load (skipped under test to avoid leaking timers).
+if (process.env.NODE_ENV !== "test") {
+  startOutputSweep();
+}
+
+/** Default TTL for persistent output dirs when SCRAPER_OUTPUT_TTL_HOURS is unset. */
+const DEFAULT_OUTPUT_TTL_HOURS = 24;
+/** How often the output sweep runs. */
+const OUTPUT_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
+
+/**
+ * Remove persistent output dirs under {SCRAPER_DATA_DIR}/outputs whose mtime is
+ * older than the configured TTL.
+ *
+ * The runner owns the persistent outputs dir but cannot rely on the web app's
+ * best-effort `DELETE /output/:runId` to clean it up: that call only fires on
+ * the autoImport-success path, so disabled-autoImport runs and any failed
+ * download/DELETE leak files forever. This sweep is the backstop.
+ */
+export const sweepStaleOutputs = async (): Promise<void> => {
+  const config = getConfig();
+  const ttlHours = Number(process.env.SCRAPER_OUTPUT_TTL_HOURS) || DEFAULT_OUTPUT_TTL_HOURS;
+  const ttlMs = ttlHours * 60 * 60 * 1000;
+  const base = join(config.SCRAPER_DATA_DIR, "outputs");
+
+  const entries = await readdir(base).catch(() => [] as string[]);
+  for (const entry of entries) {
+    const dir = join(base, entry);
+    try {
+      const stats = await stat(dir);
+      if (Date.now() - stats.mtimeMs > ttlMs) {
+        await rm(dir, { recursive: true, force: true });
+        logger.info({ dir, ttlHours }, "Swept stale scraper output directory");
+      }
+    } catch (error) {
+      logError("Failed to sweep scraper output directory", error, { dir });
+    }
+  }
+};
+
+let sweepTimer: ReturnType<typeof setInterval> | undefined;
+
+/**
+ * Start the periodic output-directory sweep. Idempotent. The interval handle is
+ * unref'd so it never keeps the process alive on its own.
+ */
+export const startOutputSweep = (): void => {
+  if (sweepTimer) return;
+  sweepTimer = setInterval(() => {
+    void sweepStaleOutputs();
+  }, OUTPUT_SWEEP_INTERVAL_MS);
+  sweepTimer.unref();
+};
+
+// Auto-start the sweep on module load (skipped under test to avoid leaking timers).
+if (process.env.NODE_ENV !== "test") {
+  startOutputSweep();
+}
 
 const runPodmanContainer = async (
   podmanArgs: string[],

@@ -14,6 +14,10 @@ const envSchema = z.object({
   SCRAPER_DEFAULT_TIMEOUT: z.coerce.number().default(300),
   SCRAPER_DEFAULT_MEMORY: z.coerce.number().default(512),
   SCRAPER_MAX_REPO_SIZE_MB: z.coerce.number().default(50),
+  // Idle (block) timeout in ms for git operations. Kills a stalled/trickling
+  // git process so a malicious or unresponsive server cannot hold a concurrency
+  // slot indefinitely.
+  SCRAPER_GIT_CLONE_TIMEOUT: z.coerce.number().default(60_000),
   // Output is served via file download endpoint. Keep conservative for disk usage.
   SCRAPER_MAX_OUTPUT_SIZE_MB: z.coerce.number().default(50),
   // eslint-disable-next-line sonarjs/publicly-writable-directories -- ephemeral default for the containerized runner; overridden by SCRAPER_DATA_DIR in deployments

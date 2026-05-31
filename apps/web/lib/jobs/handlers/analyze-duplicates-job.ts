@@ -385,7 +385,10 @@ export const analyzeDuplicatesJob = {
       // Load per-source review check overrides (Zod-validated; malformed configs
       // fall back to defaults and surface a row in `job.errors` so the UI can show it).
       const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
-      const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
+      const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(
+        rawReviewChecks,
+        job.sheetIndex
+      );
       if (reviewChecksError) {
         await recordConfigError(payload, ingestJobId, reviewChecksError);
       }

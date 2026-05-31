@@ -99,7 +99,7 @@ const runSchemaReviewChecks = async (
     ? await payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId })
     : null;
   const rawReviewChecks = (ingestFile?.processingOptions as Record<string, unknown> | null)?.reviewChecks;
-  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks);
+  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks, job.sheetIndex);
 
   // Review check: high empty row rate
   const emptyCheck = shouldReviewHighEmptyRows(totalRowsProcessed, emptyRowCount, reviewChecks);

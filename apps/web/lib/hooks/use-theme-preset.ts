@@ -10,7 +10,8 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { create } from "zustand";
 
 const STORAGE_KEY = "timetiles-theme-preset";
 const DEFAULT_PRESET = "cartographic";
@@ -32,6 +33,32 @@ interface UseThemePresetReturn {
   presets: typeof THEME_PRESETS;
 }
 
+const isValidPreset = (value: string | null): value is ThemePresetId =>
+  value != null && THEME_PRESETS.some((p) => p.id === value);
+
+/**
+ * Shared store for the active theme preset.
+ *
+ * A single module-level store is the source of truth so every consumer
+ * (providers UIBridge, clustered-map, map-preferences-control, the header
+ * picker) reads and writes the same value and re-renders on change. A
+ * component-local `useState` would give each call site its own copy, leaving
+ * JS-driven theming (ECharts themes, MapLibre tile style) stale after a switch.
+ */
+interface ThemePresetStore {
+  preset: ThemePresetId;
+  setPreset: (preset: ThemePresetId) => void;
+}
+
+const useThemePresetStore = create<ThemePresetStore>((set) => ({
+  preset: DEFAULT_PRESET,
+  setPreset: (newPreset: ThemePresetId) => {
+    set({ preset: newPreset });
+    localStorage.setItem(STORAGE_KEY, newPreset);
+    applyPresetClass(newPreset);
+  },
+}));
+
 /**
  * Manages the active theme preset.
  *
@@ -41,21 +68,26 @@ interface UseThemePresetReturn {
  * - Other presets add `.theme-{id}` to `<html>`
  */
 export const useThemePreset = (): UseThemePresetReturn => {
-  const [preset, setPresetState] = useState<ThemePresetId>(DEFAULT_PRESET);
+  const preset = useThemePresetStore((state) => state.preset);
+  const setPreset = useThemePresetStore((state) => state.setPreset);
 
-  // Read from localStorage on mount
+  // Hydrate from localStorage on mount and keep in sync across tabs.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY) as ThemePresetId | null;
-    if (stored && THEME_PRESETS.some((p) => p.id === stored)) {
-      setPresetState(stored);
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (isValidPreset(stored)) {
+      useThemePresetStore.setState({ preset: stored });
       applyPresetClass(stored);
     }
-  }, []);
 
-  const setPreset = useCallback((newPreset: ThemePresetId) => {
-    setPresetState(newPreset);
-    localStorage.setItem(STORAGE_KEY, newPreset);
-    applyPresetClass(newPreset);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      const next = isValidPreset(event.newValue) ? event.newValue : DEFAULT_PRESET;
+      useThemePresetStore.setState({ preset: next });
+      applyPresetClass(next);
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   return { preset, setPreset, presets: THEME_PRESETS };

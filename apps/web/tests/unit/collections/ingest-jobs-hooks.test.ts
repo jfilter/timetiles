@@ -386,12 +386,19 @@ describe.sequential("afterChangeHooks", () => {
 
       await hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any);
 
-      // Should set skip flag on ingest file
+      // Should set skip flag on ingest file, scoped to this sheet (index 0)
+      // under the perSheet namespace — NOT file-wide — so sibling sheets are
+      // not silently affected.
       expect(mockUpdate).toHaveBeenCalledWith(
         expect.objectContaining({
           collection: "ingest-files",
           id: 10,
-          data: { processingOptions: { existing: true, reviewChecks: { skipDuplicateRateCheck: true } } },
+          data: {
+            processingOptions: {
+              existing: true,
+              reviewChecks: { perSheet: { "0": { skipDuplicateRateCheck: true } } },
+            },
+          },
         })
       );
       // Should queue ingest-process workflow

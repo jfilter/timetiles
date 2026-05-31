@@ -34,7 +34,13 @@ import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
-import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
+import {
+  cleanupSidecarsForJob,
+  createStandardOnFail,
+  loadIngestJob,
+  loadJobResources,
+  setJobStage,
+} from "../utils/resource-loading";
 import { buildTransformsFromDataset } from "../utils/transform-builders";
 import {
   parseReviewChecksConfig,
@@ -356,11 +362,12 @@ const checkGeocodingReview = async (
   ingestJobId: string | number,
   ingestFile: { processingOptions?: unknown },
   successCount: number,
-  failureCount: number
+  failureCount: number,
+  sheetIndex?: number | null
 ): Promise<{ needsReview: boolean }> => {
   // Zod-validated; malformed configs fall back to defaults.
   const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
-  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks);
+  const { config: reviewChecks } = parseReviewChecksConfig(rawReviewChecks, sheetIndex);
   const geoCheck = shouldReviewGeocodingPartial(successCount, failureCount, reviewChecks);
   if (geoCheck.needsReview) {
     await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.GEOCODING_PARTIAL, {
@@ -407,7 +414,7 @@ export const geocodeBatchJob = {
       if (skipResult.skipped) {
         return { output: skipResult };
       }
-      const { geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords } = skipResult;
+      const { geocodingService, ingestFile, uniqueLocations, totalRows, skippedWithCoords } = skipResult;
 
       // Start tracking with unique locations count as total
       await ProgressTrackingService.startStage(
@@ -417,6 +424,12 @@ export const geocodeBatchJob = {
         uniqueLocations.size
       );
 
+      // Re-read the job AFTER startStage so the in-memory copy carries the persisted
+      // stage `startedAt`. The job loaded in prepareGeocodingLocations predates startStage,
+      // so its GEOCODE_BATCH stage still has startedAt=null — passing that stale snapshot
+      // to progress updates yields a null ETA for the entire geocoding stage.
+      const freshJob = await loadIngestJob(payload, ingestJobId);
+
       // Extract geocoding bias from processing options (set by data package or scheduled ingest)
       const processingOptions = (ingestFile.processingOptions as Record<string, unknown> | null) ?? {};
       const geocodingBias = processingOptions.geocodingBias as GeocodingBias | undefined;
@@ -425,7 +438,7 @@ export const geocodeBatchJob = {
       const { results, successCount, failureCount, failures } = await geocodeUniqueLocations(
         geocodingService,
         payload,
-        job,
+        freshJob,
         uniqueLocations,
         geocodingBias,
         logger

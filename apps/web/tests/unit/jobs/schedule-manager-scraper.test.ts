@@ -266,13 +266,14 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
 
     await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-    // Should revert the scraper status to 'failed'
+    // Reverts status to 'failed' AND advances nextRunAt (cron "0 * * * *" from
+    // 12:05 → 13:00) so a broken queue does not re-trigger every scheduler tick.
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scrapers",
         id: 77,
         overrideAccess: true,
-        data: { lastRunStatus: "failed" },
+        data: { lastRunStatus: "failed", nextRunAt: "2026-03-15T13:00:00.000Z" },
       })
     );
   });

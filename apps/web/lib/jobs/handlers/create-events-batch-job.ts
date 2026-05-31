@@ -69,6 +69,7 @@ const reviewHighRowErrors = async ({
   totalEventsCreated,
   totalErrors,
   storedErrorCount,
+  sheetIndex,
 }: {
   payload: Payload;
   ingestJobId: string | number;
@@ -76,9 +77,10 @@ const reviewHighRowErrors = async ({
   totalEventsCreated: number;
   totalErrors: number;
   storedErrorCount: number;
+  sheetIndex?: number | null;
 }): Promise<boolean> => {
   const rawReviewChecks = (ingestFile.processingOptions as Record<string, unknown> | null)?.reviewChecks;
-  const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks);
+  const { config: reviewChecks, error: reviewChecksError } = parseReviewChecksConfig(rawReviewChecks, sheetIndex);
   if (reviewChecksError) {
     // Surface as a per-job error so the UI can show it.
     await updateJobErrors(payload, ingestJobId, storedErrorCount, [{ row: -1, error: reviewChecksError }]);

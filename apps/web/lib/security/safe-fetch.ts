@@ -134,10 +134,29 @@ const nextRedirectUrl = (response: Response, currentUrl: string): string | null 
   return new URL(location, currentUrl).toString();
 };
 
+/**
+ * Strip credential-bearing headers from a fetch init.
+ *
+ * Mirrors the behavior browsers/undici apply to automatic cross-origin
+ * redirects: because we use `redirect: 'manual'` and re-issue each hop
+ * ourselves, undici's built-in stripping is disabled and we must drop
+ * sensitive headers on cross-origin redirects to avoid leaking credentials
+ * to the redirect target. Normalizes `headers` to a `Headers` instance so it
+ * works whether the caller passed a plain object or a `Headers`.
+ */
+const stripSensitiveHeaders = <T extends { headers?: HeadersInit }>(init: T): T => {
+  const headers = new Headers(init.headers);
+  headers.delete("authorization");
+  headers.delete("cookie");
+  headers.delete("proxy-authorization");
+  return { ...init, headers };
+};
+
 export const safeFetch = async (url: string, options?: SafeFetchOptions): Promise<Response> => {
   const maxRedirects = options?.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
   const dnsCheck = isDnsCheckEnabled(options?.dnsCheck);
-  const { maxRedirects: _maxRedirects, dnsCheck: _dnsCheck, ...fetchOptions } = options ?? {};
+  const { maxRedirects: _maxRedirects, dnsCheck: _dnsCheck, ...initialFetchOptions } = options ?? {};
+  let fetchOptions = initialFetchOptions;
 
   let currentUrl = url;
   const visited = new Set<string>();
@@ -163,11 +182,19 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
     const nextUrl = nextRedirectUrl(response, currentUrl);
     if (nextUrl === null) return response;
 
+    // Cross-origin redirects must not carry credential-bearing headers, matching
+    // undici's automatic-redirect behavior that `redirect: 'manual'` disables.
+    const crossOrigin = new URL(nextUrl).origin !== new URL(currentUrl).origin;
+    if (crossOrigin) {
+      fetchOptions = stripSensitiveHeaders(fetchOptions);
+    }
+
     logger.debug("Following redirect with SSRF validation", {
       from: currentUrl,
       to: nextUrl,
       status: response.status,
       redirect: redirectCount + 1,
+      crossOrigin,
     });
     currentUrl = nextUrl;
   }

@@ -8,6 +8,8 @@
  * @module
  * @category Services
  */
+import { unlink } from "node:fs/promises";
+
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
@@ -502,7 +504,20 @@ export class AccountDeletionService {
     });
 
     for (const exportRecord of dataExports.docs) {
+      // Capture the on-disk path before deleting the row. The data-exports
+      // collection is not a Payload upload collection and has no delete hook,
+      // so the ZIP — which contains the user's full PII — must be unlinked here
+      // or it orphans on disk indefinitely.
+      const { filePath } = exportRecord;
       await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true, req });
+      if (filePath != null && filePath !== "") {
+        await unlink(filePath).catch((error: unknown) => {
+          logError(error, "Failed to unlink data export file during account deletion", {
+            exportId: exportRecord.id,
+            filePath,
+          });
+        });
+      }
     }
 
     if (dataExports.docs.length > 0) {

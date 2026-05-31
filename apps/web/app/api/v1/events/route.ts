@@ -33,11 +33,12 @@ export const transformEvent = (event: Event): EventListItem => {
   const id = extractFieldFromData(eventData, "id");
 
   // Enrich data with extracted fields so UI can always access title/description/id
-  // regardless of original field names (e.g., "titel" in German data becomes "title")
-  if (typeof eventData !== "object" || eventData == null || Array.isArray(eventData)) {
-    throw new Error(`Invalid event data: expected object, got ${typeof eventData}`);
-  }
-  const enrichedData = { ...eventData, title, description, id };
+  // regardless of original field names (e.g., "titel" in German data becomes "title").
+  // transformedData can legitimately be a non-object (null/string/number/boolean/array)
+  // when written directly via Payload's API, so degrade gracefully to an empty base
+  // rather than throwing and 500ing the entire list page for one malformed row.
+  const baseData = typeof eventData === "object" && eventData != null && !Array.isArray(eventData) ? eventData : {};
+  const enrichedData = { ...baseData, title, description, id };
 
   const datasetSummary = getDatasetInfo(event.dataset);
   const datasetInfo = datasetSummary ?? {

@@ -17,6 +17,7 @@ import { z } from "zod";
 
 import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { PER_SHEET_REVIEW_CHECKS_KEY } from "@/lib/constants/review-reasons";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -48,16 +49,51 @@ export const ReviewChecksConfigSchema = z
 export type ReviewChecksConfig = z.infer<typeof ReviewChecksConfigSchema>;
 
 /**
+ * Extract the file-level review checks (everything except the `perSheet`
+ * namespace) and the raw `perSheet` map from the stored JSON.
+ */
+const splitReviewChecks = (raw: unknown): { fileLevel: unknown; perSheet: Record<string, unknown> } => {
+  if (raw == null || typeof raw !== "object") return { fileLevel: raw, perSheet: {} };
+
+  const { [PER_SHEET_REVIEW_CHECKS_KEY]: perSheetRaw, ...fileLevel } = raw as Record<string, unknown>;
+  const perSheet =
+    perSheetRaw != null && typeof perSheetRaw === "object" ? (perSheetRaw as Record<string, unknown>) : {};
+
+  return { fileLevel, perSheet };
+};
+
+/**
  * Safely parse raw reviewChecks JSON from processingOptions.
  *
  * Returns `{ config, error }` where `error` is a user-presentable message if
  * parsing failed (for storage on `job.errors`). Unknown input shapes produce a
  * single warning + undefined config — defaults apply downstream.
+ *
+ * When `sheetIndex` is provided, per-sheet approval skip flags stored under the
+ * `perSheet` namespace are merged on top of the file-level config so that an
+ * approval for one sheet only affects that sheet. File-level flags (set
+ * intentionally by scheduled-ingests / scrapers / data-packages) still apply to
+ * every sheet.
  */
-export const parseReviewChecksConfig = (raw: unknown): { config: ReviewChecksConfig | undefined; error?: string } => {
+export const parseReviewChecksConfig = (
+  raw: unknown,
+  sheetIndex?: number | null
+): { config: ReviewChecksConfig | undefined; error?: string } => {
   if (raw == null) return { config: undefined };
 
-  const result = ReviewChecksConfigSchema.safeParse(raw);
+  const { fileLevel, perSheet } = splitReviewChecks(raw);
+
+  const sheetOverride =
+    sheetIndex != null && perSheet[String(sheetIndex)] != null ? perSheet[String(sheetIndex)] : undefined;
+
+  // Merge file-level config with this sheet's approval flags. The sheet override
+  // can only ever ADD skip flags (approvals), so a shallow merge is sufficient.
+  const merged =
+    sheetOverride != null && typeof fileLevel === "object" && fileLevel != null
+      ? { ...(fileLevel as Record<string, unknown>), ...(sheetOverride as Record<string, unknown>) }
+      : (sheetOverride ?? fileLevel);
+
+  const result = ReviewChecksConfigSchema.safeParse(merged);
   if (result.success) return { config: result.data };
 
   const message = `Invalid reviewChecks override: ${result.error.issues
@@ -252,6 +288,7 @@ export const shouldReviewNoLocation = (
   fieldMappings: {
     latitudePath?: string | null;
     longitudePath?: string | null;
+    coordinatePath?: string | null;
     locationPath?: string | null;
     locationNamePath?: string | null;
   },
@@ -259,7 +296,10 @@ export const shouldReviewNoLocation = (
 ): { needsReview: boolean } => {
   if (reviewChecks?.skipLocationCheck) return { needsReview: false };
 
-  const hasCoordinates = Boolean(fieldMappings.latitudePath && fieldMappings.longitudePath);
+  // A single combined-coordinate column (e.g. "40.7,-74.0") is a valid coordinate
+  // source, so it counts the same as separate lat/lng paths.
+  const hasCoordinates =
+    Boolean(fieldMappings.latitudePath && fieldMappings.longitudePath) || Boolean(fieldMappings.coordinatePath);
   // Payload fields are `string | null | undefined`; `??` correctly treats empty strings as
   // "present" (falsy-but-set should not trigger the fallback) while `||` would incorrectly
   // fall through on `""`.

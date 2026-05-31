@@ -7,7 +7,7 @@
  * @module
  * @category DataPackages
  */
-import type { Payload } from "payload";
+import type { Payload, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/data-packages/types";
@@ -68,6 +68,18 @@ export const buildActivationKey = (slug: string, params: Record<string, string>)
     .map(([k, v]) => `${k}=${v}`)
     .join(",");
   return `${slug}:${sorted}`;
+};
+
+/**
+ * Recover the bare package slug from a stored activation key.
+ *
+ * Parameterized activations persist `dataPackageSlug` as `slug:k=v,...` (see
+ * buildActivationKey), while non-parameterized ones store the bare slug. The
+ * bare slug never contains `:`, so splitting on the first `:` is unambiguous.
+ */
+const bareSlugFromActivationKey = (activationKey: string): string => {
+  const colonIndex = activationKey.indexOf(":");
+  return colonIndex === -1 ? activationKey : activationKey.slice(0, colonIndex);
 };
 
 /** Build Lexical rich text from a plain string. */
@@ -198,7 +210,10 @@ const findOrCreateCatalog = async (
   if (existing.docs[0]) {
     const cat = existing.docs[0];
     const needsUpdate =
-      (!cat.license && meta.license) ?? (!cat.sourceUrl && meta.sourceUrl) ?? (!cat.category && meta.category);
+      (!cat.license && Boolean(meta.license)) ||
+      (!cat.sourceUrl && Boolean(meta.sourceUrl)) ||
+      (!cat.category && Boolean(meta.category)) ||
+      (!cat.region && Boolean(meta.region));
     if (needsUpdate) {
       const updated = await payload.update({
         collection: COLLECTION_NAMES.CATALOGS,
@@ -288,6 +303,7 @@ const createDatasetFromManifest = async (
             timezone: t.timezone,
             operation: t.operation,
             pattern: t.pattern,
+            group: t.group,
             replacement: t.replacement,
             expression: t.expression,
             fromFields: t.fromFields,
@@ -359,8 +375,31 @@ export const activateDataPackage = async (
         id: scheduledIngest.id,
         overrideAccess: true,
       });
-      await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
-      logger.info({ scheduledIngestId: scheduledIngest.id }, "Triggered first import for data package");
+      // Capture the pre-claim status so we can revert if the queue step fails
+      // after triggerScheduledIngest's atomic claim has already set lastStatus
+      // to "running". Without this, a transient queue failure leaves the freshly
+      // activated ingest stuck "running", blocking all future triggers (manual,
+      // webhook, scheduler) until the hourly stuck-ingest cleanup heals it.
+      const previousStatus = fullIngest.lastStatus ?? null;
+      try {
+        await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
+        logger.info({ scheduledIngestId: scheduledIngest.id }, "Triggered first import for data package");
+      } catch (triggerError) {
+        // The atomic claim was rejected (already running) means nothing was
+        // claimed here, so there is nothing to revert. Otherwise the claim
+        // succeeded but queueing failed, leaving the record stuck "running" —
+        // revert so future triggers are not silently blocked. Mirrors the
+        // recovery in queueWebhookImport and the manual trigger route.
+        if (!(triggerError instanceof Error && triggerError.message.includes("already running"))) {
+          await payload.update({
+            collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+            id: scheduledIngest.id,
+            data: { lastStatus: previousStatus },
+            overrideAccess: true,
+          });
+        }
+        throw triggerError;
+      }
     } catch (error) {
       logger.warn({ scheduledIngestId: scheduledIngest.id, error }, "Failed to trigger first import");
     }
@@ -373,11 +412,28 @@ export const activateDataPackage = async (
 // Deactivation
 // ---------------------------------------------------------------------------
 
-/** Deactivate a data package by disabling its scheduled ingest. */
-export const deactivateDataPackage = async (payload: Payload, slug: string, user: User): Promise<void> => {
+/**
+ * Deactivate a data package by disabling its scheduled ingest.
+ *
+ * `slug` is the bare package slug. Parameterized activations are persisted with
+ * a composite `dataPackageSlug` (`slug:k=v,...`), so when no explicit
+ * `parameters` are supplied we match the bare slug exactly OR by the
+ * parameterized prefix `slug:` to find the activation regardless of form.
+ */
+export const deactivateDataPackage = async (
+  payload: Payload,
+  slug: string,
+  user: User,
+  parameters?: Record<string, string>
+): Promise<void> => {
+  const where: Where =
+    parameters && Object.keys(parameters).length > 0
+      ? { dataPackageSlug: { equals: buildActivationKey(slug, parameters) } }
+      : { or: [{ dataPackageSlug: { equals: slug } }, { dataPackageSlug: { like: `${slug}:%` } }] };
+
   const result = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    where: { dataPackageSlug: { equals: slug } },
+    where,
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -407,7 +463,16 @@ export const deactivateDataPackage = async (payload: Payload, slug: string, user
 // Status
 // ---------------------------------------------------------------------------
 
-/** Get activation status for a list of data package slugs. */
+/**
+ * Get activation status for a list of data package slugs, keyed by bare slug.
+ *
+ * Parameterized activations persist `dataPackageSlug` as a composite
+ * `slug:k=v,...` key, so an exact-slug query would miss them. We match both the
+ * bare slug exactly and the parameterized prefix `slug:`, then key the returned
+ * map by the bare slug (recovered from the stored key) so callers can look up
+ * status by `manifest.slug`. When a slug has multiple parameter activations we
+ * collapse to a single entry, preferring an enabled one.
+ */
 export const getActivationStatus = async (
   payload: Payload,
   slugs: string[]
@@ -416,21 +481,28 @@ export const getActivationStatus = async (
 
   const result = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    where: { dataPackageSlug: { in: slugs } },
-    limit: slugs.length,
+    where: {
+      or: slugs.flatMap((slug) => [{ dataPackageSlug: { equals: slug } }, { dataPackageSlug: { like: `${slug}:%` } }]),
+    },
+    limit: 0,
     depth: 0,
     overrideAccess: true,
   });
 
   const statusMap = new Map<string, DataPackageActivation>();
   for (const doc of result.docs) {
-    if (doc.dataPackageSlug) {
-      statusMap.set(doc.dataPackageSlug, {
-        scheduledIngestId: doc.id,
-        catalogId: extractRelationId(doc.catalog) as number,
-        datasetId: extractRelationId(doc.dataset) as number,
-        enabled: doc.enabled ?? false,
-      });
+    if (!doc.dataPackageSlug) continue;
+    const bareSlug = bareSlugFromActivationKey(doc.dataPackageSlug);
+    const activation: DataPackageActivation = {
+      scheduledIngestId: doc.id,
+      catalogId: extractRelationId(doc.catalog) as number,
+      datasetId: extractRelationId(doc.dataset) as number,
+      enabled: doc.enabled ?? false,
+    };
+    // Prefer an enabled activation when a slug has multiple parameter sets.
+    const current = statusMap.get(bareSlug);
+    if (!current || (!current.enabled && activation.enabled)) {
+      statusMap.set(bareSlug, activation);
     }
   }
 

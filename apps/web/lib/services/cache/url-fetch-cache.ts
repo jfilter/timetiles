@@ -311,8 +311,28 @@ export class UrlFetchCache {
       // Handle 304 Not Modified
       if (response.status === 304) {
         logger.info("HTTP cache revalidated (304)", { url });
-        // Update metadata and re-cache
-        const updatedCached = { ...cached, metadata: { ...cached.metadata, fetchedAt: new Date() } };
+        // Per RFC 7234 §4.3.4, freshen the stored response from the 304's headers:
+        // merge updated freshness/validator headers while preserving the original
+        // body, status, and contentHash.
+        const respHeaders = this.collectResponseHeaders(response);
+        const mergedHeaders = { ...cached.headers };
+        for (const key of ["cache-control", "expires", "etag", "last-modified"]) {
+          if (respHeaders[key] !== undefined) mergedHeaders[key] = respHeaders[key];
+        }
+        const updatedCached: CachedEntry = {
+          ...cached,
+          headers: mergedHeaders,
+          metadata: {
+            ...cached.metadata,
+            etag: mergedHeaders["etag"] ?? cached.metadata.etag,
+            lastModified: mergedHeaders["last-modified"] ?? cached.metadata.lastModified,
+            expires: mergedHeaders["expires"]
+              ? (parseDateInput(mergedHeaders["expires"]) ?? undefined)
+              : cached.metadata.expires,
+            maxAge: this.parseMaxAge(mergedHeaders["cache-control"]) ?? cached.metadata.maxAge,
+            fetchedAt: new Date(),
+          },
+        };
         await this.cache.set(cacheKey, updatedCached, { ttl: this.calculateTTL(updatedCached.headers) });
         return this.buildCacheResponse(updatedCached, "REVALIDATED");
       }

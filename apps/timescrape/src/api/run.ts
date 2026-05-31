@@ -31,7 +31,11 @@ const runRequestSchema = z.object({
     .refine((v) => !v.includes("..") && !v.startsWith("/"), "Invalid entrypoint path"),
   output_file: z
     .string()
-    .refine((v) => !v.includes(".."), "output_file must not contain path traversal")
+    .min(1)
+    .refine(
+      (v) => !v.includes("..") && !v.includes("/") && !v.startsWith("."),
+      "output_file must be a plain filename without path separators"
+    )
     .optional(),
   code_url: z
     .string()

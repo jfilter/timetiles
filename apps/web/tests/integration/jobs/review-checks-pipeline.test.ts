@@ -289,10 +289,13 @@ describe.sequential("Review Checks Pipeline", () => {
     // Approve → skip flag set → resume → may hit no-location next
     await approveAndResume(payload, ingestFile.id, jobs.docs[0].id, jobs.docs[0].schemaValidation, uploadUserId);
 
-    // Verify skip flag was set
+    // Verify skip flag was set — scoped to this sheet (index 0), NOT file-wide,
+    // so a sibling sheet's identical check is not silently suppressed.
     const updatedFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
     const checks = (updatedFile.processingOptions as Record<string, unknown>)?.reviewChecks as Record<string, unknown>;
-    expect(checks?.skipTimestampCheck).toBe(true);
+    const perSheet0 = (checks?.perSheet as Record<string, Record<string, unknown>> | undefined)?.["0"];
+    expect(perSheet0?.skipTimestampCheck).toBe(true);
+    expect(checks?.skipTimestampCheck).toBeUndefined();
 
     // The pipeline may have completed or paused for no-location
     jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
@@ -374,10 +377,12 @@ describe.sequential("Review Checks Pipeline", () => {
     jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
     expect(jobs.docs[0].stage).toBe("completed");
 
-    // Verify skip flag
+    // Verify skip flag — scoped to this sheet (index 0), NOT file-wide.
     const updatedFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
     const checks = (updatedFile.processingOptions as Record<string, unknown>)?.reviewChecks as Record<string, unknown>;
-    expect(checks?.skipDuplicateRateCheck).toBe(true);
+    const perSheet0 = (checks?.perSheet as Record<string, Record<string, unknown>> | undefined)?.["0"];
+    expect(perSheet0?.skipDuplicateRateCheck).toBe(true);
+    expect(checks?.skipDuplicateRateCheck).toBeUndefined();
   }, 60_000);
 
   it("should complete after approving high-empty-rows (sets skip flag)", async () => {
@@ -421,9 +426,11 @@ describe.sequential("Review Checks Pipeline", () => {
     jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
     expect(jobs.docs[0].stage).toBe("completed");
 
-    // Verify skip flag
+    // Verify skip flag — scoped to this sheet (index 0), NOT file-wide.
     const updatedFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
     const checks = (updatedFile.processingOptions as Record<string, unknown>)?.reviewChecks as Record<string, unknown>;
-    expect(checks?.skipEmptyRowCheck).toBe(true);
+    const perSheet0 = (checks?.perSheet as Record<string, Record<string, unknown>> | undefined)?.["0"];
+    expect(perSheet0?.skipEmptyRowCheck).toBe(true);
+    expect(checks?.skipEmptyRowCheck).toBeUndefined();
   }, 60_000);
 });

@@ -230,15 +230,16 @@ export const dropDatabase = async (databaseName: string, options: { ifExists?: b
  * ```
  */
 export const createDatabase = async (databaseName: string, options: { ifNotExists?: boolean } = {}): Promise<void> => {
+  // PostgreSQL has no native `CREATE DATABASE IF NOT EXISTS`, so guard with an
+  // existence check when ifNotExists is requested.
+  if (options.ifNotExists && (await databaseExists(databaseName))) {
+    return;
+  }
+
   const client = createDatabaseClient({ database: "postgres" });
   try {
     await client.connect();
-
-    const sql = options.ifNotExists
-      ? `CREATE DATABASE "${databaseName}"`
-      : `CREATE DATABASE IF NOT EXISTS "${databaseName}"`;
-
-    await client.query(sql);
+    await client.query(`CREATE DATABASE "${databaseName}"`);
   } finally {
     await client.end();
   }

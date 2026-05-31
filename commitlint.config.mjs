@@ -83,13 +83,15 @@ function getExpectedScopes(files) {
 
     // Web app specific paths
     "apps/web/app/explore/": "explore",
-    "apps/web/app/api/import/": "import",
+    "apps/web/app/api/ingest/": "ingest",
     "apps/web/app/api/events/": "events",
     "apps/web/lib/services/geocoding": "geocoding",
     "apps/web/lib/collections/events": "events",
     "apps/web/lib/collections/datasets": "schema",
-    "apps/web/lib/collections/import": "import",
-    "apps/web/lib/collections/scheduled-imports": "import",
+    "apps/web/lib/ingest/": "ingest",
+    "apps/web/lib/collections/ingest-files": "ingest",
+    "apps/web/lib/collections/ingest-jobs": "ingest",
+    "apps/web/lib/collections/scheduled-ingests": "ingest",
     "apps/web/lib/jobs/": "jobs",
     "apps/web/migrations/": "db",
     "apps/web/lib/seed/": "seed",
@@ -122,6 +124,53 @@ function getExpectedScopes(files) {
 
   return Array.from(detectedScopes);
 }
+
+/**
+ * Single source of truth for allowed commit scopes.
+ *
+ * Used by both the `scope-enum` rule and the `scope-file-match` suggestion logic
+ * so the two never drift out of sync.
+ */
+const SCOPES = [
+  // Monorepo packages & apps
+  "web", // Next.js web application (apps/web)
+  "docs", // Documentation site (apps/docs)
+  "ui", // Shared UI components package
+  "assets", // Shared assets package (logos, images)
+  "config", // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
+  "scraper", // TimeScrape runner and scraper system (apps/scraper)
+
+  // Core features
+  "explore", // Explore page and data exploration UI
+  "ingest", // File ingest system (manual, scheduled, webhook) — internal term for "import"
+  "geocoding", // Address geocoding services
+  "events", // Event data management
+  "schema", // Schema detection and validation
+  "deploy", // Deployment and self-hosting features
+  "quota", // Quota management and rate limiting
+  "access", // Access control and permissions
+  "cache", // Caching systems (HTTP, URL fetch, etc.)
+  "webhooks", // Webhook functionality
+  "admin", // Admin panel features
+  "auth", // Authentication and user sessions
+  "media", // Media and file management
+  "charts", // Charts and data visualization
+  "map", // Map visualization and clustering
+
+  // Technical areas
+  "db", // Database, migrations, PostGIS functions
+  "api", // API endpoints (REST)
+  "jobs", // Background jobs & queue processing
+  "deps", // Dependencies and package management
+  "seed", // Test and development data generation
+  "test", // Testing infrastructure and test files
+  "e2e", // End-to-end tests
+
+  // Infrastructure
+  "ci", // GitHub Actions, CI/CD pipelines
+  "build", // Docker, build configuration, Turbo
+  "infra", // Infrastructure and DevOps
+];
 
 export default {
   extends: ["@commitlint/config-conventional"],
@@ -194,28 +243,7 @@ export default {
           // If scope is provided, check if it matches expected scopes
           if (scope && expectedScopes.length > 0 && !expectedScopes.includes(scope)) {
             // Allow the scope if it's in our enum, but provide a suggestion
-            const validScopes = [
-              "web",
-              "docs",
-              "ui",
-              "assets",
-              "config",
-              "import",
-              "geocoding",
-              "events",
-              "schema",
-              "deploy",
-              "db",
-              "api",
-              "jobs",
-              "deps",
-              "seed",
-              "ci",
-              "build",
-              "test",
-              "e2e",
-              "infra",
-            ];
+            const validScopes = SCOPES;
 
             if (validScopes.includes(scope) && expectedScopes.length === 1) {
               // It's a valid scope but might not match the files
@@ -320,52 +348,8 @@ export default {
       ],
     ],
 
-    // Scope enum - what part of the codebase
-    "scope-enum": [
-      2,
-      "always",
-      [
-        // Monorepo packages & apps
-        "web", // Next.js web application (apps/web)
-        "docs", // Documentation site (apps/docs)
-        "ui", // Shared UI components package
-        "assets", // Shared assets package (logos, images)
-        "config", // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
-
-        "scraper", // TimeScrape runner and scraper system (apps/scraper)
-
-        // Core features
-        "explore", // Explore page and data exploration UI
-        "import", // File import system (manual, scheduled, webhook)
-        "geocoding", // Address geocoding services
-        "events", // Event data management
-        "schema", // Schema detection and validation
-        "deploy", // Deployment and self-hosting features
-        "quota", // Quota management and rate limiting
-        "access", // Access control and permissions
-        "cache", // Caching systems (HTTP, URL fetch, etc.)
-        "webhooks", // Webhook functionality
-        "admin", // Admin panel features
-        "auth", // Authentication and user sessions
-        "media", // Media and file management
-        "charts", // Charts and data visualization
-        "map", // Map visualization and clustering
-
-        // Technical areas
-        "db", // Database, migrations, PostGIS functions
-        "api", // API endpoints (REST)
-        "jobs", // Background jobs & queue processing
-        "deps", // Dependencies and package management
-        "seed", // Test and development data generation
-        "test", // Testing infrastructure and test files
-        "e2e", // End-to-end tests
-
-        // Infrastructure
-        "ci", // GitHub Actions, CI/CD pipelines
-        "build", // Docker, build configuration, Turbo
-        "infra", // Infrastructure and DevOps
-      ],
-    ],
+    // Scope enum - what part of the codebase (see SCOPES above)
+    "scope-enum": [2, "always", SCOPES],
 
     "scope-empty": [0, "never"], // Disabled - scope-file-match handles this intelligently
     "subject-case": [0, "always", ["lower-case", "sentence-case"]],
@@ -429,7 +413,7 @@ export default {
 
           // Features
           explore: "Explore page and data exploration UI",
-          import: "File import system",
+          ingest: "File ingest system (internal term for import)",
           geocoding: "Geocoding services",
           events: "Event management",
           schema: "Schema detection/validation",

@@ -274,9 +274,8 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
 
       const obj: Record<string, unknown> = {};
       headerEntries.forEach(({ header, originalIndex }) => {
-        if (!Object.hasOwn(Object.prototype, header)) {
-          obj[header] = row[originalIndex] ?? null;
-        }
+        if (header === "__proto__" || header === "constructor" || header === "prototype") return;
+        obj[header] = row[originalIndex] ?? null;
       });
       allRows.push(obj);
       if (sampleData.length < SAMPLE_ROW_COUNT) {

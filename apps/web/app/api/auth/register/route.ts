@@ -125,27 +125,29 @@ const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail:
   try {
     await createUserAndQueueVerification(payload, req, normalizedEmail, password);
   } catch (createError) {
-    const errorMessage = createError instanceof Error ? createError.message : String(createError);
+    // The create may fail for several reasons; the security-relevant one is a
+    // race where the user was inserted between our pre-flight find and this
+    // create. We cannot reliably detect that from the error message — Payload's
+    // drizzle adapter rethrows the unique violation as a generic ValidationError
+    // ("The following field is invalid: Email") that contains neither "unique"
+    // nor "duplicate". So instead re-query structurally: if a row now exists,
+    // treat it as the same account-exists path as the sync branch and send the
+    // identical email — otherwise we'd silently skip the email and create a
+    // message-volume enumeration side-channel.
+    const raceUser = await payload.find({
+      collection: "users",
+      where: { email: { equals: normalizedEmail } },
+      limit: 1,
+      overrideAccess: true,
+    });
 
-    if (errorMessage.includes("unique") || errorMessage.includes("duplicate")) {
-      // Race condition: user was created between our check and create. Re-query
-      // the row so we can send the same account-exists email as the sync path —
-      // otherwise we'd silently skip the email and create a message-volume
-      // enumeration side-channel.
+    if (raceUser.docs.length > 0) {
       logger.warn({ email: maskEmail(normalizedEmail) }, "Race condition during registration");
-
-      const raceUser = await payload.find({
-        collection: "users",
-        where: { email: { equals: normalizedEmail } },
-        limit: 1,
-        overrideAccess: true,
-      });
-
       await queueAccountExistsEmail(payload, normalizedEmail, raceUser.docs[0]?.locale);
       return;
     }
 
-    // Re-throw non-race errors immediately
+    // No row exists, so this was a genuine failure unrelated to duplication.
     throw createError;
   }
 };

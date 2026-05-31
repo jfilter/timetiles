@@ -35,7 +35,10 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   }
 
   const config = getConfig();
-  const git = simpleGit();
+  // Configure a block (idle) timeout so a stalled or trickling git server kills
+  // the git process and rejects, rather than hanging forever and permanently
+  // holding a concurrency slot in the runner.
+  const git = simpleGit({ timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT } });
 
   logger.info({ url, branch: branch ?? "default" }, "Cloning repository");
 

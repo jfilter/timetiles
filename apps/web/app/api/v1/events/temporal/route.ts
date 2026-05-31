@@ -40,17 +40,25 @@ export const GET = apiRoute({
   },
 });
 
-const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, filters: CanonicalEventFilters) =>
-  (await payload.db.drizzle.execute(sql`
+const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, filters: CanonicalEventFilters) => {
+  // The SQL function caps bucket count to maxBuckets first, then unconditionally
+  // enforces minBuckets afterwards. If a caller supplies minBuckets > maxBuckets the
+  // min clamp would override the max cap and return more buckets than requested.
+  // Clamp minBuckets so the max cap always wins.
+  const maxBuckets = query.maxBuckets;
+  const minBuckets = Math.min(query.minBuckets, maxBuckets);
+
+  return (await payload.db.drizzle.execute(sql`
     SELECT * FROM calculate_event_histogram(
       ${toHistogramJsonb(filters)}::jsonb,
       ${query.targetBuckets}::integer,
-      ${query.minBuckets}::integer,
-      ${query.maxBuckets}::integer
+      ${minBuckets}::integer,
+      ${maxBuckets}::integer
     )
   `)) as {
     rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>;
   };
+};
 
 const buildEmptyHistogramResponse = () => ({
   histogram: [],

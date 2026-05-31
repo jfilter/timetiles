@@ -19,6 +19,16 @@ export const REVIEW_REASONS = {
   FILE_TOO_LARGE: "file-too-large",
 } as const;
 
+/**
+ * Namespace key under `processingOptions.reviewChecks` for per-sheet approval
+ * skip flags. A multi-sheet upload shares one ingest file across N ingest jobs
+ * (one per sheet), so a sheet's approval is stored under
+ * `reviewChecks.perSheet[<sheetIndex>]` to avoid suppressing the same safety
+ * gate for sibling sheets the user never reviewed. File-level keys (set by
+ * scheduled-ingests / scrapers / data-packages) still apply to every sheet.
+ */
+export const PER_SHEET_REVIEW_CHECKS_KEY = "perSheet";
+
 /** Resume point constants for the ingest-process workflow. */
 const RESUME_DETECT_SCHEMA = "detect-schema";
 const RESUME_CREATE_EVENTS = "create-events";

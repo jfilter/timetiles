@@ -14,7 +14,7 @@ import { validateCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { getResumePointForReason, REVIEW_REASONS } from "@/lib/constants/review-reasons";
+import { getResumePointForReason, PER_SHEET_REVIEW_CHECKS_KEY, REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
@@ -200,6 +200,13 @@ const APPROVAL_SKIP_FLAGS: Record<string, string> = {
 /**
  * When a review is approved, set the corresponding skip flag on the ingest file's
  * processingOptions so the same check doesn't fire again on resume.
+ *
+ * A multi-sheet upload produces ONE ingest file shared by N ingest jobs (one per
+ * sheet). Writing the skip flag at the file level would suppress the same safety
+ * gate for sibling sheets the user never reviewed. To prevent that leak, the flag
+ * is namespaced per sheet under `reviewChecks.perSheet[<sheetIndex>]`. The readers
+ * merge this sheet-scoped flag on top of any file-level (source-configured)
+ * override via `parseReviewChecksConfig(raw, sheetIndex)`.
  */
 const setApprovalSkipFlag = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {
   const skipFlag = doc.reviewReason ? APPROVAL_SKIP_FLAGS[doc.reviewReason] : undefined;
@@ -208,19 +215,39 @@ const setApprovalSkipFlag = async (req: PayloadRequest, doc: IngestJob): Promise
   const ingestFileId = extractRelationId(doc.ingestFile);
   if (!ingestFileId) return;
 
+  const sheetKey = String(doc.sheetIndex ?? 0);
+
   const ingestFile = await req.payload.findByID({ collection: COLLECTION_NAMES.INGEST_FILES, id: ingestFileId, req });
   const existing = (ingestFile?.processingOptions as Record<string, unknown>) ?? {};
   const existingChecks = (existing.reviewChecks as Record<string, unknown>) ?? {};
+  const existingPerSheet = (existingChecks[PER_SHEET_REVIEW_CHECKS_KEY] as Record<string, unknown>) ?? {};
+  const existingSheetChecks = (existingPerSheet[sheetKey] as Record<string, unknown>) ?? {};
 
   await req.payload.update({
     collection: COLLECTION_NAMES.INGEST_FILES,
     id: ingestFileId,
     req, // Stay in same transaction to prevent deadlock
-    data: { processingOptions: { ...existing, reviewChecks: { ...existingChecks, [skipFlag]: true } } },
+    data: {
+      processingOptions: {
+        ...existing,
+        reviewChecks: {
+          ...existingChecks,
+          [PER_SHEET_REVIEW_CHECKS_KEY]: {
+            ...existingPerSheet,
+            [sheetKey]: { ...existingSheetChecks, [skipFlag]: true },
+          },
+        },
+      },
+    },
     context: { skipIngestFileHooks: true }, // Don't re-trigger ingest-file hooks
   });
 
-  logger.info("Set approval skip flag on ingest file", { ingestFileId, skipFlag, reviewReason: doc.reviewReason });
+  logger.info("Set approval skip flag on ingest file", {
+    ingestFileId,
+    skipFlag,
+    sheetIndex: doc.sheetIndex ?? 0,
+    reviewReason: doc.reviewReason,
+  });
 };
 
 const trackIngestJobQuota = async (req: PayloadRequest, doc: IngestJob): Promise<void> => {

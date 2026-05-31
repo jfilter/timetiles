@@ -34,6 +34,8 @@ export const getByPath = (obj: unknown, path: string): unknown =>
 const hasOwnPathKey = (obj: unknown, path: string): obj is Record<string, unknown> =>
   obj !== null && obj !== undefined && typeof obj === "object" && Object.hasOwn(obj, path);
 
+const isUnsafeKey = (key: string): boolean => key === "__proto__" || key === "constructor" || key === "prototype";
+
 /**
  * Get a value from a row-like object where dotted field names may be literal keys.
  *
@@ -69,8 +71,15 @@ export const setByPath = (obj: Record<string, unknown>, path: string, value: unk
     throw new Error(`Invalid path: ${path}`);
   }
 
+  if (keys.some(isUnsafeKey) || isUnsafeKey(lastKey)) {
+    throw new Error(`Unsafe path segment in: ${path}`);
+  }
+
   const target = keys.reduce((current: Record<string, unknown>, key: string) => {
-    if (!(key in current) || typeof current[key] !== "object" || current[key] === null) {
+    // Use Object.hasOwn so inherited keys (e.g. __proto__) are never reused;
+    // otherwise the reduce would descend into Object.prototype and the final
+    // assignment would pollute the shared prototype.
+    if (!Object.hasOwn(current, key) || typeof current[key] !== "object" || current[key] === null) {
       current[key] = {};
     }
     return current[key] as Record<string, unknown>;

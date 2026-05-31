@@ -391,17 +391,37 @@ describe.sequential("database operations", () => {
     it("creates a database with the given name (default options)", async () => {
       await createDatabase("new_db");
 
+      // Default options skip the existence probe — a single client issues a plain
+      // CREATE DATABASE (PostgreSQL has no native CREATE DATABASE IF NOT EXISTS).
       expect(allClients).toHaveLength(1);
       const client = allClients[0]!;
       expect(client.connect).toHaveBeenCalledOnce();
-      // Note: source code has swapped conditional — default produces IF NOT EXISTS
-      expect(client.query).toHaveBeenCalledWith('CREATE DATABASE IF NOT EXISTS "new_db"');
+      expect(client.query).toHaveBeenCalledWith('CREATE DATABASE "new_db"');
       expect(client.end).toHaveBeenCalledOnce();
     });
 
-    it("generates plain CREATE DATABASE when ifNotExists is true", async () => {
+    it("probes existence then creates when ifNotExists is true and the db is absent", async () => {
       await createDatabase("new_db", { ifNotExists: true });
-      expect(allClients[0]!.query).toHaveBeenCalledWith('CREATE DATABASE "new_db"');
+
+      // databaseExists() probes pg_database first on its own client...
+      expect(allClients[0]!.query).toHaveBeenCalledWith("SELECT 1 FROM pg_database WHERE datname = $1", ["new_db"]);
+      // ...and since it does not exist, a second client issues the plain CREATE.
+      expect(allClients[1]!.query).toHaveBeenCalledWith('CREATE DATABASE "new_db"');
+    });
+
+    it("skips creation when ifNotExists is true and the database already exists", async () => {
+      setClientFactory(() => {
+        const c = pgState.newMockClient();
+        c.query.mockResolvedValue({ rows: [{ "?column?": 1 }] });
+        return c;
+      });
+
+      await createDatabase("new_db", { ifNotExists: true });
+
+      // Only the existence-check client is created; no CREATE DATABASE is issued.
+      expect(allClients).toHaveLength(1);
+      expect(allClients[0]!.query).toHaveBeenCalledWith("SELECT 1 FROM pg_database WHERE datname = $1", ["new_db"]);
+      expect(allClients[0]!.query).not.toHaveBeenCalledWith('CREATE DATABASE "new_db"');
     });
 
     it("always disconnects even when create fails", async () => {
