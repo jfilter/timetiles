@@ -292,44 +292,14 @@ jobs:
           # that race.
           echo "==> Starting postgres (kartoza init dance can take ~30s)..."
           docker compose -f docker-compose.prod.yml --env-file .env.production up -d postgres
-          for i in $(seq 1 90); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' timetiles-postgres 2>/dev/null || echo "unknown")
-            if [ "$status" = "healthy" ]; then
-              echo "postgres healthy after $((i * 2))s"
-              break
-            fi
-            if [ $((i % 15)) -eq 0 ]; then
-              echo "  still waiting ($((i * 2))s elapsed, postgres=$status)"
-            fi
-            sleep 2
-          done
-          if [ "$(docker inspect --format='{{.State.Health.Status}}' timetiles-postgres 2>/dev/null)" != "healthy" ]; then
-            echo "postgres did not become healthy"
-            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail 80 postgres
-            exit 1
-          fi
+          bash .github/scripts/wait-for-container-healthy.sh timetiles-postgres 90 2 postgres
 
           echo "==> Starting web..."
           # Postgres was explicitly started and health-checked above. Avoid a
           # second compose dependency gate here because a transient healthcheck
           # sample can make compose fail before the web container even starts.
           docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps web
-          for i in $(seq 1 90); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' timetiles-web 2>/dev/null || echo "unknown")
-            if [ "$status" = "healthy" ]; then
-              echo "web healthy after $((i * 2))s"
-              break
-            fi
-            if [ $((i % 15)) -eq 0 ]; then
-              echo "  still waiting ($((i * 2))s elapsed, web=$status)"
-            fi
-            sleep 2
-          done
-          if [ "$(docker inspect --format='{{.State.Health.Status}}' timetiles-web 2>/dev/null)" != "healthy" ]; then
-            echo "web did not become healthy in time"
-            docker compose -f docker-compose.prod.yml --env-file .env.production logs --tail 80 web
-            exit 1
-          fi
+          bash .github/scripts/wait-for-container-healthy.sh timetiles-web 90 2 web
 
           echo "==> /api/health responds inside the container..."
           docker exec timetiles-web wget -qO- http://127.0.0.1:3000/api/health
