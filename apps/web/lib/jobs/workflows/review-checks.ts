@@ -310,6 +310,88 @@ export const shouldReviewNoLocation = (
 };
 
 /**
+ * The sentinel `*Order`/`*Format` value the schema detector writes when a
+ * per-column interpretation choice (combined-coordinate axis order, date
+ * day/month order) could not be settled from the samples.
+ */
+const AMBIGUOUS_INTERPRETATION_VALUE = "ambiguous";
+
+/**
+ * Shared shape for every "a column was detected but its interpretation order is
+ * ambiguous" review gate. Each descriptor pairs the detected path field with the
+ * order/format field that carries the ambiguous sentinel and the skip flag that
+ * suppresses it. Adding a future ambiguous-order dimension is one new entry here.
+ *
+ * `reason` / `message` / `samplePredicate` are consumed by the schema-detection
+ * job when it builds the NEEDS_REVIEW details; they live alongside the gate so a
+ * new dimension is described in exactly one place.
+ */
+export interface AmbiguousInterpretationCheck {
+  /** fieldMappings key holding the detected column path (e.g. "coordinatePath"). */
+  pathKey: "coordinatePath" | "timestampPath";
+  /** fieldMappings key holding the order/format value (e.g. "coordinateFormat"). */
+  orderKey: "coordinateFormat" | "timestampOrder";
+  /** reviewChecks flag that suppresses this gate. */
+  skipFlag: "skipAmbiguousCoordinateCheck" | "skipAmbiguousDateCheck";
+  /** Review reason key used when the gate fires. */
+  reason: "AMBIGUOUS_COORDINATE_ORDER" | "AMBIGUOUS_DATE_ORDER";
+  /** User-facing message stored on the review details. */
+  message: string;
+  /** Optional filter narrowing which sample value is shown to the user. */
+  samplePredicate?: (sample: string) => boolean;
+}
+
+/**
+ * Ambiguous-order review gates, in evaluation order (coordinate axis order, then
+ * date day/month order). The single source of truth for both the public wrappers
+ * below and the schema-detection job's review loop.
+ */
+export const AMBIGUOUS_INTERPRETATION_CHECKS: readonly AmbiguousInterpretationCheck[] = [
+  {
+    pathKey: "coordinatePath",
+    orderKey: "coordinateFormat",
+    skipFlag: "skipAmbiguousCoordinateCheck",
+    reason: "AMBIGUOUS_COORDINATE_ORDER",
+    message:
+      "A single column holds both coordinates, but their order (latitude,longitude vs longitude,latitude) could not be determined. Please confirm the order.",
+    // A combined-coordinate cell is a "lat,lng" string, so only comma-bearing
+    // samples are useful examples.
+    samplePredicate: (s) => s.includes(","),
+  },
+  {
+    pathKey: "timestampPath",
+    orderKey: "timestampOrder",
+    skipFlag: "skipAmbiguousDateCheck",
+    reason: "AMBIGUOUS_DATE_ORDER",
+    message:
+      "A date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
+  },
+];
+
+/**
+ * Shared driver for the ambiguous-interpretation gates. Fires when the detected
+ * path is set, its order/format carries the `ambiguous` sentinel, and the check
+ * is not skipped. The order is a per-column decision the data cannot settle, so
+ * we ask rather than guess — a wrong guess silently corrupts every affected row.
+ *
+ * Used by the public wrappers below and by the schema-detection job's review loop
+ * (driven by {@link AMBIGUOUS_INTERPRETATION_CHECKS}).
+ */
+export const shouldReviewAmbiguousInterpretation = (
+  fieldMappings: Partial<
+    Record<AmbiguousInterpretationCheck["pathKey"] | AmbiguousInterpretationCheck["orderKey"], string | null>
+  >,
+  check: Pick<AmbiguousInterpretationCheck, "pathKey" | "orderKey" | "skipFlag">,
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean } => {
+  if (reviewChecks?.[check.skipFlag]) return { needsReview: false };
+  return {
+    needsReview:
+      Boolean(fieldMappings[check.pathKey]) && fieldMappings[check.orderKey] === AMBIGUOUS_INTERPRETATION_VALUE,
+  };
+};
+
+/**
  * Check if a single combined-coordinate column was detected but its axis order
  * is ambiguous (every sample fit both "lat,lng" and "lng,lat"). The order is a
  * per-column decision the data cannot settle, so we must ask rather than guess —
@@ -317,14 +399,19 @@ export const shouldReviewNoLocation = (
  * combined column exists with `coordinateFormat === "ambiguous"` and the check
  * is not skipped. Separate lat/lng columns and explicit-order combined columns
  * never trigger this.
+ *
+ * Thin wrapper over {@link shouldReviewAmbiguousInterpretation}; see
+ * {@link AMBIGUOUS_INTERPRETATION_CHECKS} for the shared shape.
  */
 export const shouldReviewAmbiguousCoordinates = (
   fieldMappings: { coordinatePath?: string | null; coordinateFormat?: string | null },
   reviewChecks?: ReviewChecksConfig
-): { needsReview: boolean } => {
-  if (reviewChecks?.skipAmbiguousCoordinateCheck) return { needsReview: false };
-  return { needsReview: Boolean(fieldMappings.coordinatePath) && fieldMappings.coordinateFormat === "ambiguous" };
-};
+): { needsReview: boolean } =>
+  shouldReviewAmbiguousInterpretation(
+    fieldMappings,
+    { pathKey: "coordinatePath", orderKey: "coordinateFormat", skipFlag: "skipAmbiguousCoordinateCheck" },
+    reviewChecks
+  );
 
 /**
  * Check if a timestamp column was detected but its day/month order is ambiguous
@@ -334,13 +421,18 @@ export const shouldReviewAmbiguousCoordinates = (
  * such row. Returns true when a timestamp column exists with
  * `timestampOrder === "ambiguous"` and the check is not skipped. Explicit-order
  * (D/M | M/D) and ISO-only columns never trigger this.
+ *
+ * Thin wrapper over {@link shouldReviewAmbiguousInterpretation}; see
+ * {@link AMBIGUOUS_INTERPRETATION_CHECKS} for the shared shape.
  */
 export const shouldReviewAmbiguousDateOrder = (
   fieldMappings: { timestampPath?: string | null; timestampOrder?: string | null },
   reviewChecks?: ReviewChecksConfig
-): { needsReview: boolean } => {
-  if (reviewChecks?.skipAmbiguousDateCheck) return { needsReview: false };
-  return { needsReview: Boolean(fieldMappings.timestampPath) && fieldMappings.timestampOrder === "ambiguous" };
-};
+): { needsReview: boolean } =>
+  shouldReviewAmbiguousInterpretation(
+    fieldMappings,
+    { pathKey: "timestampPath", orderKey: "timestampOrder", skipFlag: "skipAmbiguousDateCheck" },
+    reviewChecks
+  );
 
 export { REVIEW_REASONS } from "@/lib/constants/review-reasons";

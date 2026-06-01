@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { schemaDetectionJob } from "@/lib/jobs/handlers/schema-detection-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
+import type * as ReviewChecksModule from "@/lib/jobs/workflows/review-checks";
 import {
   createMockContext,
   createMockDataset,
@@ -68,28 +69,35 @@ vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
 });
 
 // Mock review checks — default: no review needed
-vi.mock("@/lib/jobs/workflows/review-checks", () => ({
-  REVIEW_REASONS: {
-    SCHEMA_DRIFT: "schema-drift",
-    QUOTA_EXCEEDED: "quota-exceeded",
-    HIGH_DUPLICATE_RATE: "high-duplicates",
-    GEOCODING_PARTIAL: "geocoding-partial",
-    HIGH_ROW_ERROR_RATE: "high-row-errors",
-    HIGH_EMPTY_ROW_RATE: "high-empty-rows",
-    NO_TIMESTAMP_DETECTED: "no-timestamp",
-    NO_LOCATION_DETECTED: "no-location",
-    AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
-    AMBIGUOUS_DATE_ORDER: "ambiguous-date-order",
-    FILE_TOO_LARGE: "file-too-large",
-  },
-  shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
-  shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
-  shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),
-  shouldReviewAmbiguousCoordinates: vi.fn().mockReturnValue({ needsReview: false }),
-  shouldReviewAmbiguousDateOrder: vi.fn().mockReturnValue({ needsReview: false }),
-  setNeedsReview: vi.fn().mockResolvedValue(undefined),
-  parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
-}));
+vi.mock("@/lib/jobs/workflows/review-checks", async (importOriginal) => {
+  // Keep the real ambiguous-interpretation descriptor table so the handler's
+  // table-driven loop iterates the same entries it does in production; only the
+  // gate predicates / side effects are stubbed below so the success-case tests
+  // don't trip a review.
+  const actual = await importOriginal<typeof ReviewChecksModule>();
+  return {
+    AMBIGUOUS_INTERPRETATION_CHECKS: actual.AMBIGUOUS_INTERPRETATION_CHECKS,
+    REVIEW_REASONS: {
+      SCHEMA_DRIFT: "schema-drift",
+      QUOTA_EXCEEDED: "quota-exceeded",
+      HIGH_DUPLICATE_RATE: "high-duplicates",
+      GEOCODING_PARTIAL: "geocoding-partial",
+      HIGH_ROW_ERROR_RATE: "high-row-errors",
+      HIGH_EMPTY_ROW_RATE: "high-empty-rows",
+      NO_TIMESTAMP_DETECTED: "no-timestamp",
+      NO_LOCATION_DETECTED: "no-location",
+      AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
+      AMBIGUOUS_DATE_ORDER: "ambiguous-date-order",
+      FILE_TOO_LARGE: "file-too-large",
+    },
+    shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
+    shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
+    shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),
+    shouldReviewAmbiguousInterpretation: vi.fn().mockReturnValue({ needsReview: false }),
+    setNeedsReview: vi.fn().mockResolvedValue(undefined),
+    parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
+  };
+});
 
 /** Helper to create a mock async iterable from arrays of batches. */
 const mockAsyncGenerator = (batches: Record<string, unknown>[][]) => ({
