@@ -109,9 +109,10 @@ export const extractCoordinates = (
     }
   }
 
-  // Try a single combined-coordinate column (e.g. "40.7,-74.0"). Order is
-  // decided by coordinateFormat; "ambiguous"/missing defaults to lat-first to
-  // match the schema detector's default interpretation.
+  // Try a single combined-coordinate column (e.g. "40.7,-74.0"). Only an
+  // explicit coordinateFormat ("lat,lng"/"lng,lat") is used; ambiguous/unset
+  // yields no points and falls through to geocoding (the AMBIGUOUS_COORDINATE_ORDER
+  // review gate resolves the order rather than guessing per row).
   if (coordinatePath) {
     const combined = extractCombinedCoordinates(getByPathOrKey(row, coordinatePath), coordinateFormat);
     if (combined) {
