@@ -19,6 +19,7 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import type { AmbiguityResolution } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import type { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -113,11 +114,15 @@ const runAmbiguousOrderChecks = async (
   fieldMappings: Record<string, string | null | undefined>,
   availableColumns: string[],
   reviewChecks: ReviewChecksConfig | undefined,
-  lastSchemaBuilder: ProgressiveSchemaBuilder | null
+  lastSchemaBuilder: ProgressiveSchemaBuilder | null,
+  ambiguityResolution: AmbiguityResolution
 ): Promise<{ needsReview: true } | null> => {
   for (const check of AMBIGUOUS_INTERPRETATION_CHECKS) {
     const path = fieldMappings[check.pathKey];
-    if (!path || !shouldReviewAmbiguousInterpretation(fieldMappings, check, reviewChecks).needsReview) {
+    if (
+      !path ||
+      !shouldReviewAmbiguousInterpretation(fieldMappings, check, reviewChecks, ambiguityResolution).needsReview
+    ) {
       continue;
     }
 
@@ -137,15 +142,25 @@ const runAmbiguousOrderChecks = async (
 };
 
 /** Run post-detection review checks (empty rows, missing timestamp/location, ambiguous orders). */
-const runSchemaReviewChecks = async (
-  payload: Payload,
-  ingestJobId: number | string,
-  job: IngestJob,
-  totalRowsProcessed: number,
-  emptyRowCount: number,
-  fieldMappings: Record<string, string | null | undefined> | null,
-  lastSchemaBuilder: ProgressiveSchemaBuilder | null
-): Promise<{ needsReview: true } | null> => {
+const runSchemaReviewChecks = async ({
+  payload,
+  ingestJobId,
+  job,
+  totalRowsProcessed,
+  emptyRowCount,
+  fieldMappings,
+  lastSchemaBuilder,
+  ambiguityResolution,
+}: {
+  payload: Payload;
+  ingestJobId: number | string;
+  job: IngestJob;
+  totalRowsProcessed: number;
+  emptyRowCount: number;
+  fieldMappings: Record<string, string | null | undefined> | null;
+  lastSchemaBuilder: ProgressiveSchemaBuilder | null;
+  ambiguityResolution: AmbiguityResolution;
+}): Promise<{ needsReview: true } | null> => {
   // Load per-source review check overrides from the ingest file.
   // Zod-validated; malformed configs fall back to defaults rather than
   // silently type-punning into the wrong field.
@@ -202,7 +217,8 @@ const runSchemaReviewChecks = async (
       fieldMappings,
       availableColumns,
       reviewChecks,
-      lastSchemaBuilder
+      lastSchemaBuilder,
+      ambiguityResolution
     );
     if (ambiguousResult) return ambiguousResult;
   }
@@ -285,16 +301,23 @@ export const schemaDetectionJob = {
         totalRowsProcessed,
       });
 
+      // The dataset-wide sticky ambiguity policy (ADR 0040). `best-effort` opts
+      // out of the ambiguous-order review gates (the pipeline guesses per row for
+      // dates; combined coordinates fall through to geocoding). Defaults to
+      // `strict` (ask, don't guess) when the dataset has no plan.
+      const ambiguityResolution = readInterpretationPlan(dataset ?? {})?.ambiguityResolution ?? "strict";
+
       // Run post-detection review checks
-      const reviewResult = await runSchemaReviewChecks(
+      const reviewResult = await runSchemaReviewChecks({
         payload,
         ingestJobId,
         job,
         totalRowsProcessed,
         emptyRowCount,
         fieldMappings,
-        lastSchemaBuilder
-      );
+        lastSchemaBuilder,
+        ambiguityResolution,
+      });
       if (reviewResult) {
         return { output: { needsReview: true, totalBatches: batchNumber, totalRowsProcessed } };
       }

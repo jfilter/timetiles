@@ -44,7 +44,10 @@ export const readInterpretationPlan = (record: { interpretationPlan?: unknown })
     ops: Array.isArray(plan.ops) ? (plan.ops as IngestTransform[]) : [],
     columns: Array.isArray(plan.columns) ? (plan.columns as DatasetInterpretationPlan["columns"]) : [],
     roles: isRecord(plan.roles) ? plan.roles : {},
-    ambiguityResolution: plan.ambiguityResolution === "strict" ? "strict" : "best-effort",
+    // `strict` is the default (ADR 0040): interpret per column and pause for
+    // review when an order is ambiguous. Only an explicit `best-effort` opts into
+    // per-row guessing; a missing/malformed value falls back to the safe default.
+    ambiguityResolution: plan.ambiguityResolution === "best-effort" ? "best-effort" : "strict",
   };
 };
 
@@ -61,7 +64,7 @@ export const planFromOps = (ops: IngestTransform[]): DatasetInterpretationPlan =
   ops,
   columns: [],
   roles: {},
-  ambiguityResolution: "best-effort",
+  ambiguityResolution: "strict",
 });
 
 export interface InterpretRowOptions {

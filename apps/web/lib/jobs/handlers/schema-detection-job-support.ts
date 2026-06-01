@@ -391,7 +391,7 @@ export const finalizeSchemaDetection = async ({
   // mappings maps to policy.order=undefined + requiresChoice in the plan; the
   // flat mappings (with the sentinel) are still RETURNED for the review gates,
   // which fire before this plan is read.
-  const ambiguityResolution = readInterpretationPlan(dataset ?? {})?.ambiguityResolution ?? "best-effort";
+  const ambiguityResolution = readInterpretationPlan(dataset ?? {})?.ambiguityResolution ?? "strict";
   const jobPlan = buildDetectionPlan(transforms, fieldMappings, ambiguityResolution);
 
   await payload.update({

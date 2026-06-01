@@ -313,6 +313,24 @@ describe.sequential("review-checks", () => {
       );
       expect(result).toEqual({ needsReview: false });
     });
+
+    it("should return needsReview false under the best-effort dataset policy", () => {
+      const result = shouldReviewAmbiguousCoordinates(
+        { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        undefined,
+        "best-effort"
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("should still review ambiguous order under the explicit strict policy", () => {
+      const result = shouldReviewAmbiguousCoordinates(
+        { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        undefined,
+        "strict"
+      );
+      expect(result).toEqual({ needsReview: true });
+    });
   });
 
   // ── shouldReviewAmbiguousDateOrder ────────────────────────────────────
@@ -349,6 +367,24 @@ describe.sequential("review-checks", () => {
         { skipAmbiguousDateCheck: true }
       );
       expect(result).toEqual({ needsReview: false });
+    });
+
+    it("should return needsReview false under the best-effort dataset policy (opt-in per-row guessing)", () => {
+      const result = shouldReviewAmbiguousDateOrder(
+        { timestampPath: "date", timestampOrder: "ambiguous" },
+        undefined,
+        "best-effort"
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("should still review ambiguous order under the explicit strict policy", () => {
+      const result = shouldReviewAmbiguousDateOrder(
+        { timestampPath: "date", timestampOrder: "ambiguous" },
+        undefined,
+        "strict"
+      );
+      expect(result).toEqual({ needsReview: true });
     });
   });
 

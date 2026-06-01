@@ -51,7 +51,7 @@ const bodySchema = z
   })
   .optional();
 
-type ApproveBody = z.infer<typeof bodySchema>;
+export type ApproveBody = z.infer<typeof bodySchema>;
 
 /** True if the column-picker body carries any path or order pick to apply. */
 const hasOverridePicks = (body: ApproveBody): boolean =>
@@ -113,29 +113,47 @@ const setCoordinateColumnOrder = (
   }
 };
 
+type MutableRoles = InterpretationRoles & Record<string, string | null | undefined>;
+
+/**
+ * Seed the order-bearing roles from detection-resolved roles for order-only
+ * picks. An ambiguous-ORDER confirmation carries only the order, not the column
+ * path; for an auto-detected dataset the AUTHORED plan has empty roles, so
+ * without this seed `set*ColumnOrder` no-ops (no field to target) and the user's
+ * confirmed order is silently lost on the detect-schema resume (which re-derives
+ * "ambiguous" while the approval skip flag now suppresses the gate).
+ */
+const seedOrderRoles = (roles: MutableRoles, body: ApproveBody, resolvedRoles: InterpretationRoles): void => {
+  if (body?.timestampOrder) roles.timestamp ??= resolvedRoles.timestamp ?? undefined;
+  if (body?.endTimestampOrder) roles.endTimestamp ??= resolvedRoles.endTimestamp ?? undefined;
+  if (body?.coordinateFormat) roles.coordinate ??= resolvedRoles.coordinate ?? undefined;
+};
+
 /**
  * Patch a plan with the column-picker body: path picks → roles, order picks →
  * the matching column policy. Returns a NEW plan (does not mutate the input),
  * or null when there is nothing to apply.
  */
-const patchPlanFromBody = (
+export const patchPlanFromBody = (
   base: DatasetInterpretationPlan | null,
-  body: ApproveBody
+  body: ApproveBody,
+  resolvedRoles?: InterpretationRoles
 ): DatasetInterpretationPlan | null => {
   if (!hasOverridePicks(body)) return null;
 
   const plan: DatasetInterpretationPlan = base
     ? { ...base, roles: { ...base.roles }, columns: base.columns.map((c) => ({ ...c })) }
-    : { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" };
+    : { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" };
 
-  const roles = plan.roles as InterpretationRoles & Record<string, string | null | undefined>;
+  const roles = plan.roles as MutableRoles;
   for (const [roleKey, bodyKey] of ROLE_PATH_PICKS) {
     const value = body?.[bodyKey];
     if (value) roles[roleKey] = value;
   }
+  if (resolvedRoles) seedOrderRoles(roles, body, resolvedRoles);
 
   // Order picks resolve the column policy. The role must already point at the
-  // column (set above for new picks, or carried by the plan from detection).
+  // column (set above for new picks, carried from detection, or seeded above).
   setDateColumnOrder(plan, roles.timestamp, legacyDayMonthToDateOrder(body?.timestampOrder));
   setDateColumnOrder(plan, roles.endTimestamp, legacyDayMonthToDateOrder(body?.endTimestampOrder));
   setCoordinateColumnOrder(plan, roles.coordinate, toCoordinateOrder(body?.coordinateFormat));
@@ -164,8 +182,13 @@ const applyFieldMappingOverrides = async (
 
   const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
 
+  // The detection-resolved roles (on the JOB plan) name the columns the order
+  // picks belong to — used to seed the authored dataset plan's order roles when
+  // it has none (auto-detected datasets), so the confirmed order survives resume.
+  const resolvedRoles = readInterpretationPlan(ingestJob)?.roles;
+
   // Patch the AUTHORED dataset plan so resume re-derives the resolved orders.
-  const datasetPlan = patchPlanFromBody(readInterpretationPlan(dataset), body);
+  const datasetPlan = patchPlanFromBody(readInterpretationPlan(dataset), body, resolvedRoles);
   if (datasetPlan) {
     await payload.update({
       collection: COLLECTION_NAMES.DATASETS,
@@ -175,7 +198,7 @@ const applyFieldMappingOverrides = async (
   }
 
   // Patch the in-flight JOB plan so the immediate resume reads the resolved orders.
-  const jobPlan = patchPlanFromBody(readInterpretationPlan(ingestJob), body);
+  const jobPlan = patchPlanFromBody(readInterpretationPlan(ingestJob), body, resolvedRoles);
 
   // Freeze the resolved authored plan onto the configSnapshot for deterministic resume.
   const snapshot = readConfigSnapshot(ingestJob);

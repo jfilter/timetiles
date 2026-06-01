@@ -20,6 +20,7 @@ import {
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
   runJobsUntilIngestJobStage,
   withCatalog,
+  withDataset,
   withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
@@ -196,6 +197,45 @@ describe.sequential("Review Checks Pipeline", () => {
     const timestampPath = readInterpretationPlan(jobs.docs[0])?.roles.timestamp;
     expect(timestampPath).toBe("date");
     expectUndecidedDateColumn(jobs.docs[0], "date");
+  });
+
+  it("should NOT pause for ambiguous-date-order under the best-effort dataset policy (guesses per row)", async () => {
+    // Same ambiguous-date CSV as the strict gate test above, but routed to a
+    // pre-created dataset whose sticky policy is best-effort (ADR 0040). The
+    // ambiguous-order gate is suppressed and the parser guesses day/month per row
+    // (inferDayMonthOrder) instead of pausing — the explicit opt-in to per-row
+    // resolution. Contrast with the strict default, which pauses for review.
+    const { dataset } = await withDataset(testEnv, Number.parseInt(testCatalogId, 10), {
+      name: "Best-effort ambiguous dates",
+      // Match the auto-created-dataset schema policy so the first import's schema
+      // auto-approves; the only gate left to exercise is the ambiguous-date one.
+      schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
+      interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+    });
+
+    const csvContent = "name,date,location\nA,01/02/2024,Berlin\nB,03/04/2024,Munich\nC,05/06/2024,Hamburg\n";
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "best-effort-dates.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+      // Route the file to the pre-created best-effort dataset (single-dataset mapping).
+      additionalData: {
+        metadata: { source: "import-wizard", datasetMapping: { mappingType: "single", singleDataset: dataset.id } },
+      },
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+
+    const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(jobs.docs[0].stage).toBe("completed");
+    expect(jobs.docs[0].reviewReason).toBeFalsy();
+
+    // The per-row heuristic resolved each date rather than blocking, so all
+    // three rows became events.
+    const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } } });
+    expect(events.docs).toHaveLength(3);
   });
 
   it("should pause for ambiguous-date-order when the paired heuristic infers an undecided date column", async () => {

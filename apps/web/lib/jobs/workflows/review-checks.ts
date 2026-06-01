@@ -18,6 +18,7 @@ import { z } from "zod";
 import { getAppConfig } from "@/lib/config/app-config";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { PER_SHEET_REVIEW_CHECKS_KEY } from "@/lib/constants/review-reasons";
+import type { AmbiguityResolution } from "@/lib/ingest/types/interpretation";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -372,7 +373,18 @@ export const AMBIGUOUS_INTERPRETATION_CHECKS: readonly AmbiguousInterpretationCh
  * Shared driver for the ambiguous-interpretation gates. Fires when the detected
  * path is set, its order/format carries the `ambiguous` sentinel, and the check
  * is not skipped. The order is a per-column decision the data cannot settle, so
- * we ask rather than guess — a wrong guess silently corrupts every affected row.
+ * by default (`strict`) we ask rather than guess — a wrong guess silently
+ * corrupts every affected row.
+ *
+ * `ambiguityResolution` is the dataset-wide sticky policy (ADR 0040). Under
+ * `best-effort` the gate is suppressed and the pipeline does its best per row:
+ * dates fall back to the parser's per-row day/month heuristic
+ * (`inferDayMonthOrder`); combined coordinates stay strict (no per-row guess —
+ * a wrong axis order lands points on the wrong continent) and fall through to
+ * geocoding. This is the opt-in escape from the `strict` default. It differs
+ * from the per-source `skipFlag` (a transient per-import approval) by being a
+ * persistent per-dataset choice. When omitted it defaults to `strict` so the
+ * safe (ask-don't-guess) behavior holds for any caller that doesn't supply it.
  *
  * Used by the public wrappers below and by the schema-detection job's review loop
  * (driven by {@link AMBIGUOUS_INTERPRETATION_CHECKS}).
@@ -382,8 +394,10 @@ export const shouldReviewAmbiguousInterpretation = (
     Record<AmbiguousInterpretationCheck["pathKey"] | AmbiguousInterpretationCheck["orderKey"], string | null>
   >,
   check: Pick<AmbiguousInterpretationCheck, "pathKey" | "orderKey" | "skipFlag">,
-  reviewChecks?: ReviewChecksConfig
+  reviewChecks?: ReviewChecksConfig,
+  ambiguityResolution: AmbiguityResolution = "strict"
 ): { needsReview: boolean } => {
+  if (ambiguityResolution === "best-effort") return { needsReview: false };
   if (reviewChecks?.[check.skipFlag]) return { needsReview: false };
   return {
     needsReview:
@@ -405,12 +419,14 @@ export const shouldReviewAmbiguousInterpretation = (
  */
 export const shouldReviewAmbiguousCoordinates = (
   fieldMappings: { coordinatePath?: string | null; coordinateFormat?: string | null },
-  reviewChecks?: ReviewChecksConfig
+  reviewChecks?: ReviewChecksConfig,
+  ambiguityResolution: AmbiguityResolution = "strict"
 ): { needsReview: boolean } =>
   shouldReviewAmbiguousInterpretation(
     fieldMappings,
     { pathKey: "coordinatePath", orderKey: "coordinateFormat", skipFlag: "skipAmbiguousCoordinateCheck" },
-    reviewChecks
+    reviewChecks,
+    ambiguityResolution
   );
 
 /**
@@ -427,12 +443,14 @@ export const shouldReviewAmbiguousCoordinates = (
  */
 export const shouldReviewAmbiguousDateOrder = (
   fieldMappings: { timestampPath?: string | null; timestampOrder?: string | null },
-  reviewChecks?: ReviewChecksConfig
+  reviewChecks?: ReviewChecksConfig,
+  ambiguityResolution: AmbiguityResolution = "strict"
 ): { needsReview: boolean } =>
   shouldReviewAmbiguousInterpretation(
     fieldMappings,
     { pathKey: "timestampPath", orderKey: "timestampOrder", skipFlag: "skipAmbiguousDateCheck" },
-    reviewChecks
+    reviewChecks,
+    ambiguityResolution
   );
 
 export { REVIEW_REASONS } from "@/lib/constants/review-reasons";

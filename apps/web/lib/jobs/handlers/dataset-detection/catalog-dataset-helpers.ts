@@ -166,9 +166,11 @@ export const findOrCreateDataset = async (
       deduplicationConfig: { enabled: true },
       schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
-      // Empty authored plan — auto-detected datasets have no configured mappings,
-      // so "best-effort" matches today's no-overrides behavior (per-row date heuristic).
-      interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+      // Empty authored plan. "strict" is the default (ADR 0040): an ambiguous
+      // order pauses for review rather than guessing per row. Unattended sources
+      // (scraper/url-fetch/data-package) suppress that gate via their own
+      // skipAmbiguous* review-check flags, so strict here does not stall them.
+      interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" },
       _status: "published" as const,
       ...(userId ? { createdBy: userId } : {}),
     },

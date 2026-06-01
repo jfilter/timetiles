@@ -221,6 +221,10 @@ const MAPPING_ROLE_FIELDS = [
   ["locationName", "location name"],
   ["timestamp", "timestamp"],
   ["endTimestamp", "end timestamp"],
+  // A combined-coordinate column is read directly at event creation
+  // (extractCombinedCoordinates); a transform moving it away would silently
+  // drop all coordinates, so it must be protected like the other roles.
+  ["coordinate", "coordinate"],
 ] as const;
 
 /**
