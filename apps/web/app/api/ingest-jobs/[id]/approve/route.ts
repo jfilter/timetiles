@@ -48,12 +48,18 @@ const bodySchema = z
     timestampOrder: z.enum(["D/M", "M/D"]).optional(),
     /** For ambiguous-date-order: the confirmed day/month order of the end timestamp column. */
     endTimestampOrder: z.enum(["D/M", "M/D"]).optional(),
+    /**
+     * For an ambiguous-order "continue, best-guess" approval: make per-row
+     * guessing sticky by flipping the dataset (and this job) to "best-effort"
+     * instead of confirming an order. (ADR 0040.)
+     */
+    ambiguityResolution: z.enum(["best-effort"]).optional(),
   })
   .optional();
 
 export type ApproveBody = z.infer<typeof bodySchema>;
 
-/** True if the column-picker body carries any path or order pick to apply. */
+/** True if the column-picker body carries any path/order pick or a policy flip to apply. */
 const hasOverridePicks = (body: ApproveBody): boolean =>
   [
     body?.timestampPath,
@@ -64,6 +70,9 @@ const hasOverridePicks = (body: ApproveBody): boolean =>
     body?.coordinateFormat,
     body?.timestampOrder,
     body?.endTimestampOrder,
+    // A best-effort flip is an override even with no path/order pick — it must
+    // trigger the patch path so the policy is written to the plans.
+    body?.ambiguityResolution,
   ].some(Boolean);
 
 /** Map of role keys → the body path-pick that should overwrite them. */
@@ -131,8 +140,9 @@ const seedOrderRoles = (roles: MutableRoles, body: ApproveBody, resolvedRoles: I
 
 /**
  * Patch a plan with the column-picker body: path picks → roles, order picks →
- * the matching column policy. Returns a NEW plan (does not mutate the input),
- * or null when there is nothing to apply.
+ * the matching column policy, and a best-effort flip → the plan's sticky
+ * `ambiguityResolution`. Returns a NEW plan (does not mutate the input), or null
+ * when there is nothing to apply.
  */
 export const patchPlanFromBody = (
   base: DatasetInterpretationPlan | null,
@@ -144,6 +154,11 @@ export const patchPlanFromBody = (
   const plan: DatasetInterpretationPlan = base
     ? { ...base, roles: { ...base.roles }, columns: base.columns.map((c) => ({ ...c })) }
     : { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" };
+
+  // A "continue, best-guess" approval flips the sticky policy instead of (or
+  // alongside) supplying a confirmed order, making the per-row guessing explicit
+  // and persistent rather than an accidental side effect of the skip flag.
+  if (body?.ambiguityResolution) plan.ambiguityResolution = body.ambiguityResolution;
 
   const roles = plan.roles as MutableRoles;
   for (const [roleKey, bodyKey] of ROLE_PATH_PICKS) {

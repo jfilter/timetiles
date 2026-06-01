@@ -329,9 +329,9 @@ const AMBIGUOUS_INTERPRETATION_VALUE = "ambiguous";
  */
 export interface AmbiguousInterpretationCheck {
   /** fieldMappings key holding the detected column path (e.g. "coordinatePath"). */
-  pathKey: "coordinatePath" | "timestampPath";
+  pathKey: "coordinatePath" | "timestampPath" | "endTimestampPath";
   /** fieldMappings key holding the order/format value (e.g. "coordinateFormat"). */
-  orderKey: "coordinateFormat" | "timestampOrder";
+  orderKey: "coordinateFormat" | "timestampOrder" | "endTimestampOrder";
   /** reviewChecks flag that suppresses this gate. */
   skipFlag: "skipAmbiguousCoordinateCheck" | "skipAmbiguousDateCheck";
   /** Review reason key used when the gate fires. */
@@ -367,6 +367,19 @@ export const AMBIGUOUS_INTERPRETATION_CHECKS: readonly AmbiguousInterpretationCh
     message:
       "A date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
   },
+  // End-date dimension. Reuses the AMBIGUOUS_DATE_ORDER reason + skipAmbiguousDateCheck
+  // flag; it is distinguished downstream by `reviewDetails.endTimestampPath` (the
+  // start-date entry stores `reviewDetails.timestampPath`). Evaluated after the start
+  // timestamp entry, so a file ambiguous on both pauses on the start date first, then
+  // on the end date after the resume — one decision per resume.
+  {
+    pathKey: "endTimestampPath",
+    orderKey: "endTimestampOrder",
+    skipFlag: "skipAmbiguousDateCheck",
+    reason: "AMBIGUOUS_DATE_ORDER",
+    message:
+      "An end-date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
+  },
 ];
 
 /**
@@ -381,10 +394,22 @@ export const AMBIGUOUS_INTERPRETATION_CHECKS: readonly AmbiguousInterpretationCh
  * dates fall back to the parser's per-row day/month heuristic
  * (`inferDayMonthOrder`); combined coordinates stay strict (no per-row guess —
  * a wrong axis order lands points on the wrong continent) and fall through to
- * geocoding. This is the opt-in escape from the `strict` default. It differs
- * from the per-source `skipFlag` (a transient per-import approval) by being a
- * persistent per-dataset choice. When omitted it defaults to `strict` so the
- * safe (ask-don't-guess) behavior holds for any caller that doesn't supply it.
+ * geocoding. This is the opt-in escape from the `strict` default. When omitted
+ * it defaults to `strict` so the safe (ask-don't-guess) behavior holds for any
+ * caller that doesn't supply it.
+ *
+ * `check.skipFlag` (e.g. `skipAmbiguousDateCheck`) is a SEPARATE, narrower escape
+ * hatch and must not be confused with `best-effort`. It is a TRANSIENT, per-import
+ * approval that suppresses this one gate for one run while the dataset's policy
+ * stays `strict` — set by the unattended paths (url-fetch-job/index.ts and
+ * scraper-execution/auto-import.ts via reviewChecks) so a scheduled/scraped import
+ * does not stall waiting for a human. It deliberately trades strict's
+ * no-undecided-order guarantee for unattended throughput: with the gate skipped,
+ * an undecided date column reaches `extractTimestamp` with order=undefined and the
+ * parser per-row-guesses via `inferDayMonthOrder` (see the STRICT-BY-GATE note in
+ * event-creation-helpers.ts). That is intentional, not a leak — distinct from the
+ * persistent per-dataset `best-effort` policy, which makes the same per-row
+ * guessing sticky and explicit rather than a one-off approval side effect.
  *
  * Used by the public wrappers below and by the schema-detection job's review loop
  * (driven by {@link AMBIGUOUS_INTERPRETATION_CHECKS}).

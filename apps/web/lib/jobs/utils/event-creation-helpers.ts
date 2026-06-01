@@ -11,6 +11,7 @@ import { MAX_EVENT_PAYLOAD_BYTES } from "@/lib/constants/ingest-constants";
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
 import type { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createLogger } from "@/lib/logger";
@@ -158,6 +159,19 @@ export const extractCoordinates = (
  * the parser keeps its legacy per-row heuristic — the AMBIGUOUS_DATE_ORDER review
  * gate (not a per-row best-effort path here) is what stops an undecided column
  * from reaching create-events un-resolved.
+ *
+ * STRICT-BY-GATE (ADR 0040 / M2): `order` arrives undefined here only when (a) the
+ * dataset's ambiguityResolution is "best-effort" or (b) a transient per-import
+ * `skipAmbiguousDateCheck` approval suppressed the review gate (unattended runs:
+ * url-fetch-job/index.ts, scraper-execution/auto-import.ts). For attended strict
+ * imports an undecided column never reaches here — the AMBIGUOUS_DATE_ORDER gate
+ * pauses for review before rows are created. So the per-row `inferDayMonthOrder`
+ * fallback inside `parseImportDate` is the deliberate unattended-throughput choice,
+ * NOT silent strict corruption: strict's "an undecided column yields no resolved
+ * order" guarantee is enforced at the gate, not at this extractor. Do not "fix"
+ * this by forcing undecided→null here — for an unattended all-≤12 DD/MM file that
+ * would strip eventTimestamp from every row, which is worse than a best-effort
+ * guess on the throughput path.
  */
 const resolveDayMonthOrder = (order: string | null | undefined): DayMonthOrder | undefined =>
   order === "D/M" || order === "M/D" ? order : undefined;
@@ -169,6 +183,11 @@ const resolveDayMonthOrder = (order: string | null | undefined): DayMonthOrder |
  * (the timestamp column's date policy in the job's interpretationPlan). When explicit it is
  * passed straight through so every row uses the same order; ambiguous/unset
  * defers to the parser's legacy heuristic.
+ *
+ * See {@link resolveDayMonthOrder} for why an undefined `order` is gate-mediated
+ * (best-effort dataset or skipped-gate unattended run), not silent strict
+ * corruption — strict's no-undecided-order guarantee is enforced by the
+ * AMBIGUOUS_DATE_ORDER review gate before any row reaches this extractor.
  */
 export const extractTimestamp = (
   row: Record<string, unknown>,
@@ -211,7 +230,10 @@ export const extractTimestamp = (
  *
  * `order` is the column-level day/month order for the end-timestamp column
  * (the end-timestamp column's date policy in the job's interpretationPlan); same strict semantics
- * as {@link extractTimestamp}.
+ * as {@link extractTimestamp}. An undefined `order` is gate-mediated (best-effort
+ * dataset or skipped-gate unattended run) per {@link resolveDayMonthOrder}, not
+ * silent strict corruption — the AMBIGUOUS_DATE_ORDER end-date gate resolves the
+ * order before rows reach here under attended strict imports.
  */
 export const extractEndTimestamp = (
   row: Record<string, unknown>,
@@ -363,6 +385,20 @@ export class EventPayloadTooLargeError extends Error {
   }
 }
 
+/** Trailing per-row extras for {@link createEventData}. */
+export interface CreateEventDataExtras {
+  /** Transform diffs applied to this row, or null when nothing changed. */
+  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null;
+  /**
+   * Precomputed flat projection of the job's interpretation plan. The batch
+   * processor computes it ONCE per batch (`planToFieldMappings(plan)`) and threads
+   * it in so the projection is not re-run per row. When omitted it falls back to
+   * `planToFieldMappings(readInterpretationPlan(job))` (direct unit-test callers
+   * that pass `{}` as `job` therefore keep working unchanged).
+   */
+  fieldMappings?: FlatPlanFieldMappings;
+}
+
 /**
  * Create event data structure from a row of imported data.
  *
@@ -377,7 +413,7 @@ export const createEventData = (
   ingestJobId: string | number,
   job: { datasetSchemaVersion?: unknown; interpretationPlan?: unknown },
   geocodingResults: ReturnType<typeof getIngestGeocodingResults>,
-  transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
+  { transformationChanges, fieldMappings }: CreateEventDataExtras
 ) => {
   const uniqueId = generateUniqueId(row, dataset);
   const ingestJobNum = typeof ingestJobId === "string" ? parseStrictInteger(ingestJobId) : ingestJobId;
@@ -393,10 +429,12 @@ export const createEventData = (
   }
 
   // Project the detection-resolved plan back to the flat shape the extractors
-  // expect (roles → paths; column policies → "lat,lng"/"D/M" orders).
-  const fieldMappings = planToFieldMappings(readInterpretationPlan(job));
-  const { location, coordinateSource } = extractCoordinates(row, fieldMappings, geocodingResults);
-  const locationName = extractLocationName(row, fieldMappings.locationNamePath);
+  // expect (roles → paths; column policies → "lat,lng"/"D/M" orders). The batch
+  // processor passes a precomputed projection (computed once per batch); fall
+  // back to deriving it from the job when a direct caller omits it.
+  const resolvedFieldMappings = fieldMappings ?? planToFieldMappings(readInterpretationPlan(job));
+  const { location, coordinateSource } = extractCoordinates(row, resolvedFieldMappings, geocodingResults);
+  const locationName = extractLocationName(row, resolvedFieldMappings.locationNamePath);
 
   // Drop redundant sourceData when no transform actually changed the row —
   // avoids storing the same blob twice in JSONB, which otherwise doubles
@@ -418,9 +456,14 @@ export const createEventData = (
     transformedData: row,
     uniqueId,
     eventTimestamp:
-      extractTimestamp(row, fieldMappings.timestampPath, fieldMappings.timestampOrder)?.toISOString() ?? null,
+      extractTimestamp(row, resolvedFieldMappings.timestampPath, resolvedFieldMappings.timestampOrder)?.toISOString() ??
+      null,
     eventEndTimestamp:
-      extractEndTimestamp(row, fieldMappings.endTimestampPath, fieldMappings.endTimestampOrder)?.toISOString() ?? null,
+      extractEndTimestamp(
+        row,
+        resolvedFieldMappings.endTimestampPath,
+        resolvedFieldMappings.endTimestampOrder
+      )?.toISOString() ?? null,
     location,
     locationName,
     coordinateSource,

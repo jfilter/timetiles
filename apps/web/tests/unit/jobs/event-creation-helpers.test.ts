@@ -517,7 +517,7 @@ describe("createEventData", () => {
       "123abc",
       {},
       {},
-      null
+      { transformationChanges: null }
     );
 
     expect(result.ingestJob).toBeUndefined();
@@ -533,7 +533,7 @@ describe("createEventData", () => {
       42,
       {},
       {},
-      null
+      { transformationChanges: null }
     );
 
     expect(result.transformedData).toBe(row);
@@ -550,7 +550,7 @@ describe("createEventData", () => {
       42,
       {},
       {},
-      null
+      { transformationChanges: null }
     );
 
     expect(result.transformedData).toBe(row);
@@ -573,9 +573,28 @@ describe("createEventData", () => {
         42,
         {},
         {},
-        null
+        { transformationChanges: null }
       )
     ).toThrow(EventPayloadTooLargeError);
+  });
+
+  it("uses the precomputed fieldMappings over the job-derived projection", () => {
+    // L6: the batch processor projects the plan once per batch and passes it in.
+    // When provided, createEventData must use it (not re-derive from the job).
+    const row = { ts: "2024-06-15T10:30:00Z", lat: 52.52, lng: 13.405 };
+    const result = createEventData(
+      row,
+      row,
+      { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+      42,
+      {}, // empty job → job-derived projection would yield NO mappings
+      {},
+      { transformationChanges: null, fieldMappings: { timestampPath: "ts", latitudePath: "lat", longitudePath: "lng" } }
+    );
+
+    expect(result.eventTimestamp).toBe("2024-06-15T10:30:00.000Z");
+    expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+    expect(result.coordinateSource.type).toBe("source-data");
   });
 
   it("accepts a payload at the cap boundary", () => {
@@ -591,7 +610,7 @@ describe("createEventData", () => {
         42,
         {},
         {},
-        null
+        { transformationChanges: null }
       )
     ).not.toThrow();
   });

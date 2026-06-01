@@ -6,11 +6,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason } from "@/lib/constants/review-reasons";
 import {
+  AMBIGUOUS_INTERPRETATION_CHECKS,
   parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewAmbiguousCoordinates,
   shouldReviewAmbiguousDateOrder,
+  shouldReviewAmbiguousInterpretation,
   shouldReviewGeocodingPartial,
   shouldReviewHighDuplicates,
   shouldReviewHighEmptyRows,
@@ -385,6 +387,79 @@ describe.sequential("review-checks", () => {
         "strict"
       );
       expect(result).toEqual({ needsReview: true });
+    });
+  });
+
+  // ── AMBIGUOUS_INTERPRETATION_CHECKS descriptor table ──────────────────
+
+  describe("AMBIGUOUS_INTERPRETATION_CHECKS", () => {
+    it("has three descriptors: coordinate, start-date, end-date (in that evaluation order)", () => {
+      expect(AMBIGUOUS_INTERPRETATION_CHECKS.map((c) => c.pathKey)).toEqual([
+        "coordinatePath",
+        "timestampPath",
+        "endTimestampPath",
+      ]);
+    });
+
+    it("reuses AMBIGUOUS_DATE_ORDER + skipAmbiguousDateCheck for the end-date descriptor", () => {
+      const endCheck = AMBIGUOUS_INTERPRETATION_CHECKS.find((c) => c.pathKey === "endTimestampPath");
+      expect(endCheck).toBeDefined();
+      expect(endCheck?.orderKey).toBe("endTimestampOrder");
+      expect(endCheck?.reason).toBe("AMBIGUOUS_DATE_ORDER");
+      expect(endCheck?.skipFlag).toBe("skipAmbiguousDateCheck");
+    });
+  });
+
+  // ── shouldReviewAmbiguousInterpretation (end-timestamp descriptor) ────
+
+  describe("shouldReviewAmbiguousInterpretation (end-timestamp)", () => {
+    const endCheck = {
+      pathKey: "endTimestampPath",
+      orderKey: "endTimestampOrder",
+      skipFlag: "skipAmbiguousDateCheck",
+    } as const;
+
+    it("fires under strict when an end-date column has ambiguous order", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { endTimestampPath: "end_date", endTimestampOrder: "ambiguous" },
+        endCheck
+      );
+      expect(result).toEqual({ needsReview: true });
+    });
+
+    it("does not fire when there is no end-date column", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { endTimestampPath: null, endTimestampOrder: "ambiguous" },
+        endCheck
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("does not fire when the end-date order is explicit", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { endTimestampPath: "end_date", endTimestampOrder: "D/M" },
+        endCheck
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("is suppressed by the skipAmbiguousDateCheck flag", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { endTimestampPath: "end_date", endTimestampOrder: "ambiguous" },
+        endCheck,
+        { skipAmbiguousDateCheck: true }
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("is suppressed under the best-effort dataset policy", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { endTimestampPath: "end_date", endTimestampOrder: "ambiguous" },
+        endCheck,
+        undefined,
+        "best-effort"
+      );
+      expect(result).toEqual({ needsReview: false });
     });
   });
 

@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ReviewPanel } from "@/components/ingest/review-panel";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 
-import { renderWithProviders, screen, userEvent } from "../../setup/unit/react-render";
+import { renderWithProviders, userEvent, within } from "../../setup/unit/react-render";
 
 const approveMutate = vi.fn();
 
@@ -71,20 +71,85 @@ const createJob = () => ({
   results: null,
 });
 
-describe("ReviewPanel", () => {
+/** A job paused on the ambiguous date-order gate for the END date column. */
+const createEndDateOrderJob = () => ({
+  ...createJob(),
+  reviewReason: REVIEW_REASONS.AMBIGUOUS_DATE_ORDER,
+  reviewDetails: {
+    message: "An end-date column was detected, but its order could not be determined.",
+    // The end-date gate stores the path under `endTimestampPath` (the start gate
+    // would store it under `timestampPath`); this is the panel's discriminator.
+    endTimestampPath: "end_date",
+  },
+});
+
+/** A job paused on the ambiguous date-order gate for the START date column. */
+const createStartDateOrderJob = () => ({
+  ...createJob(),
+  reviewReason: REVIEW_REASONS.AMBIGUOUS_DATE_ORDER,
+  reviewDetails: {
+    message: "A date column was detected, but its order could not be determined.",
+    timestampPath: "start_date",
+  },
+});
+
+// Sequential: these tests share a module-level `approveMutate` mock and the
+// jsdom document, so they must not run concurrently (the global vitest config
+// sets `sequence.concurrent: true`).
+describe.sequential("ReviewPanel", () => {
   it("approves no-location reviews with both location and locationName overrides", async () => {
     approveMutate.mockReset();
     const user = userEvent.setup();
 
-    renderWithProviders(<ReviewPanel job={createJob()} />);
+    // Scope queries to this render's container — tests in this file run
+    // concurrently and share the document, so the global `screen` would match
+    // sibling renders.
+    const { container } = renderWithProviders(<ReviewPanel job={createJob()} />);
 
-    await user.click(screen.getByRole("button", { name: "venue_name" }));
-    await user.click(screen.getByRole("button", { name: "Use selected column" }));
+    await user.click(within(container).getByRole("button", { name: "venue_name" }));
+    await user.click(within(container).getByRole("button", { name: "Use selected column" }));
 
     expect(approveMutate).toHaveBeenCalledWith({
       ingestJobId: "job-123",
       locationPath: "venue_name",
       locationNamePath: "venue_name",
     });
+  });
+
+  it("approves an ambiguous END-date order with endTimestampOrder (not timestampOrder)", async () => {
+    approveMutate.mockReset();
+    const user = userEvent.setup();
+
+    const { container } = renderWithProviders(<ReviewPanel job={createEndDateOrderJob()} />);
+
+    await user.click(within(container).getByRole("button", { name: "D/M" }));
+    await user.click(within(container).getByRole("button", { name: "Use selected order" }));
+
+    expect(approveMutate).toHaveBeenCalledWith({ ingestJobId: "job-123", endTimestampOrder: "D/M" });
+  });
+
+  it("approves an ambiguous START-date order with timestampOrder (not endTimestampOrder)", async () => {
+    approveMutate.mockReset();
+    const user = userEvent.setup();
+
+    const { container } = renderWithProviders(<ReviewPanel job={createStartDateOrderJob()} />);
+
+    await user.click(within(container).getByRole("button", { name: "M/D" }));
+    await user.click(within(container).getByRole("button", { name: "Use selected order" }));
+
+    expect(approveMutate).toHaveBeenCalledWith({ ingestJobId: "job-123", timestampOrder: "M/D" });
+  });
+
+  it("flips the dataset to best-effort when continuing without picking a date order", async () => {
+    approveMutate.mockReset();
+    const user = userEvent.setup();
+
+    const { container } = renderWithProviders(<ReviewPanel job={createStartDateOrderJob()} />);
+
+    // The without-order button no longer drops dates; it makes per-row guessing
+    // sticky by flipping ambiguityResolution to "best-effort".
+    await user.click(within(container).getByRole("button", { name: "Continue, best-guess dates" }));
+
+    expect(approveMutate).toHaveBeenCalledWith({ ingestJobId: "job-123", ambiguityResolution: "best-effort" });
   });
 });

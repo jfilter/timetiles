@@ -797,6 +797,8 @@
     "approveUseColumn": "Ausgewählte Spalte verwenden",
     "approveContinueWithoutDates": "Ohne Datum fortfahren",
     "approveContinueWithoutLocations": "Ohne Orte fortfahren",
+    "approveContinueBestEffortDates": "Fortfahren, Datum schätzen",
+    "approveContinueBestEffortCoordinates": "Fortfahren, mehrdeutige Koordinaten überspringen",
     "approveImportAnyway": "Trotzdem importieren",
     "approveAcceptPartial": "Teilimport akzeptieren",
     "approveContinuePartialGeocoding": "Mit teilweiser Geocodierung fortfahren",
@@ -810,6 +812,8 @@
     "selectDateOrder": "In welcher Reihenfolge stehen die Datumsangaben? (D/M = Tag zuerst, M/D = Monat zuerst)",
     "selectDateOrderWithSample": "In welcher Reihenfolge stehen die Datumsangaben? (z. B. \"{sample}\" — D/M = Tag zuerst, M/D = Monat zuerst)",
     "selectDateOrderPlaceholder": "Datums-Reihenfolge auswählen...",
+    "selectEndDateOrder": "In welcher Reihenfolge stehen die End-Datumsangaben? (D/M = Tag zuerst, M/D = Monat zuerst)",
+    "selectEndDateOrderWithSample": "In welcher Reihenfolge stehen die End-Datumsangaben? (z. B. \"{sample}\" — D/M = Tag zuerst, M/D = Monat zuerst)",
     "contentHashPreview": "Inhaltshash aller Felder"
   },
   "ImportActivity": {

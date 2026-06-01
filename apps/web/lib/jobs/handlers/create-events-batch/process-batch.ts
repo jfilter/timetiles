@@ -11,6 +11,8 @@ import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
+import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
+import { planToFieldMappings } from "@/lib/ingest/plan-builder";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -183,7 +185,8 @@ const buildBulkEventFromRow = (
   row: Record<string, unknown>,
   plan: DatasetInterpretationPlan,
   ctx: ProcessBatchContext,
-  geocodingResults: ReturnType<typeof getIngestGeocodingResults>
+  geocodingResults: ReturnType<typeof getIngestGeocodingResults>,
+  fieldMappings: FlatPlanFieldMappings
 ): BulkEventData => {
   const { dataset, ingestJobId, accessFields, logger: log } = ctx;
 
@@ -204,15 +207,10 @@ const buildBulkEventFromRow = (
     log.debug("Applied transforms", { transformCount: appliedTransformationChanges.length });
   }
 
-  const eventData = createEventData(
-    transformedRow,
-    row,
-    dataset,
-    ingestJobId,
-    ctx.job,
-    geocodingResults,
-    appliedTransformationChanges
-  );
+  const eventData = createEventData(transformedRow, row, dataset, ingestJobId, ctx.job, geocodingResults, {
+    transformationChanges: appliedTransformationChanges,
+    fieldMappings,
+  });
 
   return { ...eventData, datasetIsPublic: accessFields.datasetIsPublic, catalogOwnerId: accessFields.catalogOwnerId };
 };
@@ -327,6 +325,8 @@ export const processEventBatch = async (
   const geocodingResults = getIngestGeocodingResults(job);
   // The detection-resolved JOB plan carries the authored ops + resolved policies.
   const plan = readInterpretationPlan(job) ?? planFromOps([]);
+  // Project the plan to the flat extractor shape ONCE per batch (was O(rows)).
+  const fieldMappings = planToFieldMappings(plan);
 
   // Dataset-scope guard: `analyze-duplicates` already filters candidates by
   // dataset, but we re-verify at the write site. If ever anyone widens the
@@ -349,7 +349,7 @@ export const processEventBatch = async (
     }
 
     try {
-      const eventData = buildBulkEventFromRow(row, plan, ctx, geocodingResults);
+      const eventData = buildBulkEventFromRow(row, plan, ctx, geocodingResults, fieldMappings);
 
       // External duplicates with "update" strategy: update existing event via Payload API
       const existingEventId = updateRows.get(rowNumber);

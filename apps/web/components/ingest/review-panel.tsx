@@ -48,12 +48,16 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
   [REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER]: {
     icon: MapPinOffIcon,
     approveLabel: t("approveUseOrder"),
-    approveWithoutLabel: t("approveContinueWithoutLocations"),
+    // The without-order button here does NOT drop coordinates — it flips the
+    // dataset to best-effort (per-row guessing), so the label must say so.
+    approveWithoutLabel: t("approveContinueBestEffortCoordinates"),
   },
   [REVIEW_REASONS.AMBIGUOUS_DATE_ORDER]: {
     icon: CalendarOffIcon,
     approveLabel: t("approveUseOrder"),
-    approveWithoutLabel: t("approveContinueWithoutDates"),
+    // The without-order button here does NOT drop dates — it flips the dataset to
+    // best-effort (per-row day/month guessing), so the label must say so.
+    approveWithoutLabel: t("approveContinueBestEffortDates"),
   },
   [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
   [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
@@ -71,13 +75,26 @@ const COORDINATE_ORDER_OPTIONS = ["lat,lng", "lng,lat"];
 // eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
 const DATE_ORDER_OPTIONS = ["D/M", "M/D"];
 
+/**
+ * The AMBIGUOUS_DATE_ORDER reason is reused for both the start and the end date
+ * column. The schema-detection gate stores the detected path under
+ * `reviewDetails.endTimestampPath` for the end column (and under `timestampPath`
+ * for the start column), so the presence of `endTimestampPath` (with no
+ * `timestampPath`) is the discriminator that routes the pick to the end role.
+ */
+const isEndDateOrderReview = (reason: string, details: Record<string, unknown> | null): boolean =>
+  reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER &&
+  Boolean(details?.endTimestampPath) &&
+  details?.timestampPath == null;
+
 /** Build the approve request for a column/order pick. Kept outside the component to bound its complexity. */
 const buildApproveRequest = (
   ingestJobId: string,
   reason: string,
   selectedColumn: string,
   coordinateOrder: string,
-  dateOrder: string
+  dateOrder: string,
+  isEndDate: boolean
 ): ApproveIngestJobRequest => {
   const request: ApproveIngestJobRequest = { ingestJobId };
   if (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED && selectedColumn) {
@@ -91,7 +108,12 @@ const buildApproveRequest = (
   ) {
     request.coordinateFormat = coordinateOrder;
   } else if (reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER && (dateOrder === "D/M" || dateOrder === "M/D")) {
-    request.timestampOrder = dateOrder;
+    // Same picker, different role: end-date picks target endTimestampOrder.
+    if (isEndDate) {
+      request.endTimestampOrder = dateOrder;
+    } else {
+      request.timestampOrder = dateOrder;
+    }
   }
   return request;
 };
@@ -210,6 +232,7 @@ const ReviewPicker = ({
   setCoordinateOrder,
   dateOrder,
   setDateOrder,
+  isEndDate,
   t,
 }: {
   reason: string;
@@ -221,6 +244,7 @@ const ReviewPicker = ({
   setCoordinateOrder: (v: string) => void;
   dateOrder: string;
   setDateOrder: (v: string) => void;
+  isEndDate: boolean;
   t: ReturnType<typeof useTranslations>;
 }) => {
   if (
@@ -261,15 +285,22 @@ const ReviewPicker = ({
   }
 
   if (reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER) {
+    const hasSample = typeof details?.sampleValue === "string";
+    let label: string;
+    if (isEndDate) {
+      label = hasSample
+        ? t("selectEndDateOrderWithSample", { sample: details.sampleValue as string })
+        : t("selectEndDateOrder");
+    } else {
+      label = hasSample
+        ? t("selectDateOrderWithSample", { sample: details.sampleValue as string })
+        : t("selectDateOrder");
+    }
     return (
       <div className="bg-background rounded-sm border p-4">
         <ColumnPicker
           columns={DATE_ORDER_OPTIONS}
-          label={
-            typeof details?.sampleValue === "string"
-              ? t("selectDateOrderWithSample", { sample: details.sampleValue })
-              : t("selectDateOrder")
-          }
+          label={label}
           placeholder={t("selectDateOrderPlaceholder")}
           value={dateOrder}
           onChange={setDateOrder}
@@ -289,6 +320,7 @@ const ReviewActions = ({
   isPending,
   onApprove,
   onApproveWithout,
+  onApproveBestEffort,
 }: {
   reason: string;
   config: ReasonConfig;
@@ -296,21 +328,25 @@ const ReviewActions = ({
   isPending: boolean;
   onApprove: () => void;
   onApproveWithout: () => void;
+  onApproveBestEffort: () => void;
 }) => {
+  // Ambiguous-ORDER reasons: the without-button flips the dataset to best-effort
+  // (sticky per-row guessing). No-timestamp/no-location: the without-button
+  // genuinely imports with no date / no location (plain approve, no override).
+  const isOrderReason =
+    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER || reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER;
   const isFieldPickerReason =
-    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ||
-    reason === REVIEW_REASONS.NO_LOCATION_DETECTED ||
-    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER ||
-    reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER;
+    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED || isOrderReason;
 
   if (isFieldPickerReason) {
+    const onWithout = isOrderReason ? onApproveBestEffort : onApproveWithout;
     return (
       <>
         <Button size="sm" onClick={onApprove} disabled={!canApproveWithColumn || isPending}>
           <CheckIcon className="mr-1.5 h-4 w-4" />
           {config.approveLabel}
         </Button>
-        <Button size="sm" variant="outline" onClick={onApproveWithout} disabled={isPending}>
+        <Button size="sm" variant="outline" onClick={onWithout} disabled={isPending}>
           {config.approveWithoutLabel}
         </Button>
       </>
@@ -354,6 +390,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
     reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
   const isOrderPickerReason = reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER;
   const isDateOrderPickerReason = reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER;
+  const isEndDate = isEndDateOrderReview(reason, details);
   // A pick is ready when the relevant reason has its selection made.
   const canApproveWithColumn = Boolean(
     (isColumnPickerReason && selectedColumn) ||
@@ -362,11 +399,21 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
   );
 
   const handleApprove = () => {
-    approveMutation.mutate(buildApproveRequest(String(job.id), reason, selectedColumn, coordinateOrder, dateOrder));
+    approveMutation.mutate(
+      buildApproveRequest(String(job.id), reason, selectedColumn, coordinateOrder, dateOrder, isEndDate)
+    );
   };
 
   const handleApproveWithout = () => {
     approveMutation.mutate({ ingestJobId: String(job.id) });
+  };
+
+  // For ambiguous-order reasons, "continue without picking an order" means: keep
+  // importing but let the dataset guess per row. Flip the sticky policy to
+  // best-effort so the guessing is explicit and persistent (ADR 0040) rather than
+  // an accidental side effect of the per-import skip flag.
+  const handleApproveBestEffort = () => {
+    approveMutation.mutate({ ingestJobId: String(job.id), ambiguityResolution: "best-effort" });
   };
 
   return (
@@ -396,6 +443,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           setCoordinateOrder={setCoordinateOrder}
           dateOrder={dateOrder}
           setDateOrder={setDateOrder}
+          isEndDate={isEndDate}
           t={t}
         />
 
@@ -418,6 +466,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
             isPending={approveMutation.isPending}
             onApprove={handleApprove}
             onApproveWithout={handleApproveWithout}
+            onApproveBestEffort={handleApproveBestEffort}
           />
         </div>
       </CardContent>

@@ -25,6 +25,8 @@ import { asSystem } from "@/lib/services/system-payload";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
 import type { Dataset, IngestJob } from "@/payload-types";
 
+import { backfillResolvedRolesToDataset } from "./schema-detection-role-backfill";
+
 export type FlatFieldMappings = ReturnType<typeof detectFlatFieldMappings>;
 
 /**
@@ -399,6 +401,12 @@ export const finalizeSchemaDetection = async ({
     id: ingestJobId,
     data: { interpretationPlan: jobPlan as unknown as Record<string, unknown> },
   });
+
+  // Backfill the detection-resolved roles/policies onto the AUTHORED dataset
+  // plan (auto-detected datasets only — authored intent is never clobbered) so
+  // `event-detail.ts planRolesToFieldPathMappings` resolves the detected
+  // title/timestamp/location columns instead of returning blank.
+  await backfillResolvedRolesToDataset(payload, dataset, jobPlan);
 
   return fieldMappings;
 };

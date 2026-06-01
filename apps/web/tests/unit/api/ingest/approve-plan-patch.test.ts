@@ -70,4 +70,25 @@ describe("patchPlanFromBody — order-pick persistence", () => {
   it("returns null when the body has no picks", () => {
     expect(patchPlanFromBody(emptyPlan(), {}, { timestamp: "date" })).toBeNull();
   });
+
+  it("flips ambiguityResolution to best-effort for an order-less best-effort approval", () => {
+    // "Continue, best-guess" carries no path/order pick — only the policy flip.
+    // It must still produce a patched plan with the sticky policy set.
+    const result = patchPlanFromBody(emptyPlan(), { ambiguityResolution: "best-effort" });
+
+    expect(result).not.toBeNull();
+    expect(result?.ambiguityResolution).toBe("best-effort");
+  });
+
+  it("flips the policy while still applying a co-supplied order pick", () => {
+    const resolvedRoles: InterpretationRoles = { timestamp: "date" };
+    const result = patchPlanFromBody(
+      emptyPlan(),
+      { ambiguityResolution: "best-effort", timestampOrder: "D/M" },
+      resolvedRoles
+    );
+
+    expect(result?.ambiguityResolution).toBe("best-effort");
+    expect(policyOrder(result, "date")).toBe("DMY");
+  });
 });

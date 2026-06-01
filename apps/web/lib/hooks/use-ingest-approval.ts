@@ -34,6 +34,13 @@ export interface ApproveIngestJobRequest {
   timestampOrder?: "D/M" | "M/D";
   /** For ambiguous-date-order: confirmed day/month order of the end timestamp column. */
   endTimestampOrder?: "D/M" | "M/D";
+  /**
+   * For an ambiguous-order "continue, best-guess" approval: flip the dataset to
+   * sticky per-row best-effort guessing instead of supplying a confirmed order.
+   * Makes the per-row guess explicit and persistent (ADR 0040) rather than an
+   * accidental side effect of the per-import skip flag.
+   */
+  ambiguityResolution?: "best-effort";
 }
 
 interface ApproveIngestJobResponse {

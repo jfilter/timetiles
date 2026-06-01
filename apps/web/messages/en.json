@@ -797,6 +797,8 @@
     "approveUseColumn": "Use selected column",
     "approveContinueWithoutDates": "Continue without dates",
     "approveContinueWithoutLocations": "Continue without locations",
+    "approveContinueBestEffortDates": "Continue, best-guess dates",
+    "approveContinueBestEffortCoordinates": "Continue, skip ambiguous coordinates",
     "approveImportAnyway": "Import anyway",
     "approveAcceptPartial": "Accept partial import",
     "approveContinuePartialGeocoding": "Continue with partial geocoding",
@@ -810,6 +812,8 @@
     "selectDateOrder": "Which order are the dates in? (D/M = day first, M/D = month first)",
     "selectDateOrderWithSample": "Which order are the dates in? (e.g. \"{sample}\" — D/M = day first, M/D = month first)",
     "selectDateOrderPlaceholder": "Select date order...",
+    "selectEndDateOrder": "Which order are the end dates in? (D/M = day first, M/D = month first)",
+    "selectEndDateOrderWithSample": "Which order are the end dates in? (e.g. \"{sample}\" — D/M = day first, M/D = month first)",
     "contentHashPreview": "Content hash of all fields"
   },
   "ImportActivity": {

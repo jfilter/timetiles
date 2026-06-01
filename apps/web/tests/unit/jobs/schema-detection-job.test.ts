@@ -550,6 +550,102 @@ describe.sequential("SchemaDetectionJob Handler", () => {
           }),
         })
       );
+
+      // L5: the detection-resolved roles are backfilled onto the AUTHORED dataset
+      // plan (this dataset has no authored interpretationPlan, so detection fills
+      // the empty roles). event-detail.ts reads dataset.interpretationPlan.roles.
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "datasets",
+          id: String(TEST_IDS.DATASET),
+          data: expect.objectContaining({
+            interpretationPlan: expect.objectContaining({
+              roles: expect.objectContaining({ timestamp: "phase_one", endTimestamp: "phase_two" }),
+            }),
+          }),
+        })
+      );
+    });
+
+    it("does NOT backfill the dataset plan when authored roles already cover detection", async () => {
+      const mockIngestJob = createMockIngestJob();
+      const mockIngestFile = createMockIngestFile();
+      // Authored dataset plan already names the timestamp/end roles AND has column
+      // entries for both date fields, so the conservative merge contributes
+      // nothing and no datasets update should be issued.
+      const mockDataset = {
+        ...createMockDataset(TEST_IDS.DATASET),
+        interpretationPlan: {
+          ops: [],
+          columns: [
+            { field: "phase_one", kind: "date", policy: { kind: "date", order: "DMY" } },
+            { field: "phase_two", kind: "date", policy: { kind: "date", order: "DMY" } },
+          ],
+          roles: { timestamp: "phase_one", endTimestamp: "phase_two" },
+          ambiguityResolution: "strict",
+        },
+      };
+
+      // Only date columns — no title/location columns — so detection resolves
+      // only the paired timestamp/end roles the authored plan already covers.
+      const mockFileData = [
+        { phase_one: "2026-05-01", phase_two: "2026-05-02" },
+        { phase_one: "2026-06-03", phase_two: "2026-06-04" },
+        { phase_one: "2026-07-05", phase_two: "2026-07-06" },
+      ];
+
+      const mockSchema = {
+        type: "object",
+        properties: { phase_one: { type: "string", format: "date" }, phase_two: { type: "string", format: "date" } },
+      };
+
+      const mockState = {
+        fieldStats: {
+          phase_one: {
+            path: "phase_one",
+            occurrences: 3,
+            uniqueValues: 3,
+            typeDistribution: { string: 3 },
+            uniqueSamples: ["2026-05-01", "2026-06-03", "2026-07-05"],
+          },
+          phase_two: {
+            path: "phase_two",
+            occurrences: 3,
+            uniqueValues: 3,
+            typeDistribution: { string: 3 },
+            uniqueSamples: ["2026-05-02", "2026-06-04", "2026-07-06"],
+          },
+        },
+        recordCount: 3,
+      };
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        return Promise.resolve(null);
+      });
+
+      // Authored roles already map both date columns, so the paired-date
+      // heuristic finds no candidates and never re-reads the stream — queue a
+      // single batch (a dangling second mockReturnValueOnce would leak into the
+      // next sequential test).
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
+
+      mockSchemaBuilderInstance.processBatch.mockResolvedValueOnce(undefined);
+      mockSchemaBuilderInstance.getSchema.mockResolvedValue(mockSchema);
+      mockSchemaBuilderInstance.getState.mockReturnValue(mockState);
+
+      mocks.startStage.mockResolvedValueOnce(undefined);
+      mocks.updateAndCompleteBatch.mockResolvedValueOnce(undefined);
+
+      await schemaDetectionJob.handler(mockContext);
+
+      // No datasets update with interpretationPlan should be issued (no-op merge).
+      const datasetPlanUpdates = (mockPayload.update.mock.calls as Array<[{ collection: string; data?: any }]>).filter(
+        ([arg]) => arg.collection === "datasets" && arg.data?.interpretationPlan != null
+      );
+      expect(datasetPlanUpdates).toHaveLength(0);
     });
   });
 

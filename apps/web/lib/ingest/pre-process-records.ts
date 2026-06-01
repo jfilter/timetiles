@@ -38,6 +38,28 @@ export interface PreProcessingConfig {
   extractFields?: ExtractFieldConfig[];
 }
 
+/**
+ * Strict US-format numeric-string test for the grouped-record min/max merge
+ * (`parseMergeValue` → {@link mergeGroup}).
+ *
+ * Intentionally accepts ONLY US-format decimals — an optional leading `-`, ASCII
+ * digits, and at most one interior `.` decimal point (e.g. `"1.5"`,
+ * `"-1234.56"`). European-style values like `"1,5"` or `"1.234,56"` deliberately
+ * do NOT match here; they fall through to {@link parseImportDate}, and if that
+ * also rejects them the field is left out of the merge via the safe skip path
+ * (logged as "Skipping merge field with invalid values"). That is the correct
+ * conservative behavior: the field is simply not merged, never silently
+ * mis-parsed.
+ *
+ * Per-row separator guessing is deliberately NOT done here. The decimal /
+ * thousands separator is a per-COLUMN property; a row-local heuristic that reads
+ * `"1,5"` as 1.5 in one row and `"1,500"` as 1500 in another within the same
+ * column reintroduces exactly the silent cross-row corruption class that the
+ * ADR 0040 refactor removed for date order and coordinate order. Proper European
+ * (and arbitrary-locale) number support is therefore DEFERRED to a future
+ * per-column `NumberPolicy` extension (decimalSeparator / thousandsSeparator on
+ * the interpretation plan), not a cleanup-time row heuristic.
+ */
 const isStrictNumericString = (value: string): boolean => {
   if (value === "") {
     return false;
