@@ -36,6 +36,10 @@ const bodySchema = z
     longitudePath: z.string().optional(),
     /** For ambiguous-coordinate-order: the confirmed axis order of the combined column. */
     coordinateFormat: z.enum(["lat,lng", "lng,lat"]).optional(),
+    /** For ambiguous-date-order: the confirmed day/month order of the timestamp column. */
+    timestampOrder: z.enum(["D/M", "M/D"]).optional(),
+    /** For ambiguous-date-order: the confirmed day/month order of the end timestamp column. */
+    endTimestampOrder: z.enum(["D/M", "M/D"]).optional(),
   })
   .optional();
 
@@ -50,6 +54,8 @@ const buildOverrideUpdate = (body: ApproveBody): Record<string, string> => {
   if (body?.latitudePath) overrideUpdate.latitudePath = body.latitudePath;
   if (body?.longitudePath) overrideUpdate.longitudePath = body.longitudePath;
   if (body?.coordinateFormat) overrideUpdate.coordinateFormat = body.coordinateFormat;
+  if (body?.timestampOrder) overrideUpdate.timestampOrder = body.timestampOrder;
+  if (body?.endTimestampOrder) overrideUpdate.endTimestampOrder = body.endTimestampOrder;
   return overrideUpdate;
 };
 

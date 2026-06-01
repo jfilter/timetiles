@@ -140,7 +140,7 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
       // yield no points rather than stalling the run). An explicit source config
       // wins; declaring the true order via dataset.fieldMappingOverrides instead
       // makes the format explicit so the gate never fires.
-      reviewChecks: { skipAmbiguousCoordinateCheck: true, ...advancedOpts?.reviewChecks },
+      reviewChecks: { skipAmbiguousCoordinateCheck: true, skipAmbiguousDateCheck: true, ...advancedOpts?.reviewChecks },
       geocodingBias: advancedOpts?.geocodingBias,
     },
   };

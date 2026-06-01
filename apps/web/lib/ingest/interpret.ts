@@ -19,8 +19,8 @@
  * @module
  * @category Ingest
  */
-import { applyTransforms } from "@/lib/ingest/transforms";
 import { collectTransformsForTargetPath } from "@/lib/ingest/transform-builders";
+import { applyTransforms } from "@/lib/ingest/transforms";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 

@@ -141,10 +141,14 @@ type PathFieldDefinition = Extract<EventFieldDefinition, { pathName: string }>;
  * (not a strict union) because it is persisted as free text on Payload
  * (datasets/ingest-jobs); the allowed values "lat,lng" | "lng,lat" | "ambiguous"
  * are enforced at write boundaries (detector output, approve-route Zod enum).
+ *
+ * `timestampOrder` / `endTimestampOrder` are the date analogue: they record a
+ * column's day/month order ("D/M" | "M/D" | "ambiguous") as decided once by the
+ * date-order detector. Same free-text persistence + boundary-enforced rationale.
  */
 export type FieldPathMappings = {
   [K in PathFieldDefinition as K["pathName"]]: string | null;
-} & { coordinateFormat?: string | null };
+} & { coordinateFormat?: string | null; timestampOrder?: string | null; endTimestampOrder?: string | null };
 
 // ---------------------------------------------------------------------------
 // Derived arrays for UI consumption

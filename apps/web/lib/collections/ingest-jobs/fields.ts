@@ -130,6 +130,16 @@ export const ingestJobFields: Field[] = [
         admin: { description: "Path to end timestamp/date field in source data", readOnly: true },
       },
       {
+        name: "timestampOrder",
+        type: "text",
+        admin: { description: "Day/month order of the timestamp column: D/M | M/D | ambiguous", readOnly: true },
+      },
+      {
+        name: "endTimestampOrder",
+        type: "text",
+        admin: { description: "Day/month order of the end timestamp column: D/M | M/D | ambiguous", readOnly: true },
+      },
+      {
         name: "latitudePath",
         type: "text",
         admin: { description: "Path to latitude coordinate field in source data", readOnly: true },

@@ -807,6 +807,9 @@
     "selectCoordinateOrder": "In welcher Reihenfolge stehen die Koordinaten?",
     "selectCoordinateOrderWithSample": "In welcher Reihenfolge stehen die Koordinaten? (z. B. \"{sample}\")",
     "selectCoordinateOrderPlaceholder": "Koordinaten-Reihenfolge auswählen...",
+    "selectDateOrder": "In welcher Reihenfolge stehen die Datumsangaben? (D/M = Tag zuerst, M/D = Monat zuerst)",
+    "selectDateOrderWithSample": "In welcher Reihenfolge stehen die Datumsangaben? (z. B. \"{sample}\" — D/M = Tag zuerst, M/D = Monat zuerst)",
+    "selectDateOrderPlaceholder": "Datums-Reihenfolge auswählen...",
     "contentHashPreview": "Inhaltshash aller Felder"
   },
   "ImportActivity": {

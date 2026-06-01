@@ -165,6 +165,59 @@ describe.sequential("Review Checks Pipeline", () => {
     expect(jobs.docs[0].reviewReason).toBe("ambiguous-coordinate-order");
   });
 
+  it("should pause for ambiguous-date-order when a date column's day/month order is undecided", async () => {
+    // Every date sample has both parts ≤ 12, so the detector cannot tell D/M from
+    // M/D → timestampOrder "ambiguous". A location column is present so the
+    // no-location gate (which runs before the date gate) does not fire first.
+    const csvContent = "name,date,location\nA,01/02/2024,Berlin\nB,03/04/2024,Munich\nC,05/06/2024,Hamburg\n";
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "ambiguous-dates.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+
+    const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(jobs.docs[0].stage).toBe("needs-review");
+    expect(jobs.docs[0].reviewReason).toBe("ambiguous-date-order");
+    expect(jobs.docs[0].detectedFieldMappings?.timestampOrder).toBe("ambiguous");
+  });
+
+  it("should pause for ambiguous-date-order when the paired heuristic infers an undecided date column", async () => {
+    // The primary detector misses the date columns (`opens_on`/`closes_on` match
+    // no timestamp pattern), so the paired-date heuristic infers them instead.
+    // Every value has both parts ≤ 12, so the re-derived order is "ambiguous".
+    // Without re-deriving order on the heuristic path the column would keep
+    // `timestampOrder === null`, the gate would not fire, and the rows would reach
+    // create-events with no explicit order. A location column is present so the
+    // no-location gate (which runs first) does not fire.
+    const csvContent = [
+      "name,opens_on,closes_on,location",
+      "A,01/02/2024,03/02/2024,Berlin",
+      "B,04/05/2024,06/05/2024,Munich",
+      "C,07/08/2024,09/08/2024,Hamburg",
+      "",
+    ].join("\n");
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "ambiguous-paired-dates.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+
+    const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(jobs.docs[0].stage).toBe("needs-review");
+    expect(jobs.docs[0].reviewReason).toBe("ambiguous-date-order");
+    expect(jobs.docs[0].detectedFieldMappings?.timestampPath).toBe("opens_on");
+    expect(jobs.docs[0].detectedFieldMappings?.timestampOrder).toBe("ambiguous");
+  });
+
   it("should pause for high-duplicates when duplicate rate exceeds threshold", async () => {
     // 3 identical rows + 1 unique = 75% duplicates. Use threshold 0.5 to trigger easily.
     const csvContent = [

@@ -18,6 +18,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import type { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -33,12 +34,12 @@ import {
   loadJobAndFilePath,
   setJobStage,
 } from "../utils/resource-loading";
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewAmbiguousCoordinates,
+  shouldReviewAmbiguousDateOrder,
   shouldReviewHighEmptyRows,
   shouldReviewNoLocation,
   shouldReviewNoTimestamp,
@@ -82,7 +83,66 @@ const loadDatasetAndTransforms = async (
   return { dataset, transforms };
 };
 
-/** Run post-detection review checks (empty rows, missing timestamp/location). */
+/** Find the first string sample for a column (used to show the user an example value). */
+const firstStringSample = (
+  lastSchemaBuilder: ProgressiveSchemaBuilder | null,
+  path: string,
+  predicate: (s: string) => boolean = () => true
+): string | undefined => {
+  const sample = lastSchemaBuilder
+    ?.getState()
+    ?.fieldStats?.[path]?.uniqueSamples?.find((s) => typeof s === "string" && predicate(s));
+  return typeof sample === "string" ? sample : undefined;
+};
+
+/**
+ * Ambiguous-order gates: a column was detected but its order could not be settled
+ * from the samples. Both mirror each other — ask the user rather than guess, since
+ * a wrong guess silently corrupts every affected row. Run AFTER the no-location /
+ * no-timestamp gates (those guarantee the relevant path is set).
+ */
+const runAmbiguousOrderChecks = async (
+  payload: Payload,
+  ingestJobId: number | string,
+  fieldMappings: Record<string, string | null | undefined>,
+  availableColumns: string[],
+  reviewChecks: Parameters<typeof shouldReviewAmbiguousCoordinates>[1],
+  lastSchemaBuilder: ProgressiveSchemaBuilder | null
+): Promise<{ needsReview: true } | null> => {
+  // Combined-coordinate axis order (lat,lng vs lng,lat) is ambiguous.
+  const coordinatePath = fieldMappings.coordinatePath;
+  if (coordinatePath && shouldReviewAmbiguousCoordinates(fieldMappings, reviewChecks).needsReview) {
+    await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER, {
+      detectedMappings: fieldMappings,
+      availableColumns,
+      coordinatePath,
+      sampleValue: firstStringSample(lastSchemaBuilder, coordinatePath, (s) => s.includes(",")),
+      message:
+        "A single column holds both coordinates, but their order (latitude,longitude vs longitude,latitude) could not be determined. Please confirm the order.",
+    });
+    return { needsReview: true };
+  }
+
+  // Date day/month order (D/M vs M/D) is ambiguous (every sample fit both —
+  // typical when all parts ≤ 12). A wrong guess maps "01/02" to the wrong month
+  // for every such row. Mirrors the coordinate gate above.
+  const timestampPath = fieldMappings.timestampPath;
+  if (timestampPath && shouldReviewAmbiguousDateOrder(fieldMappings, reviewChecks).needsReview) {
+    await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.AMBIGUOUS_DATE_ORDER, {
+      detectedMappings: fieldMappings,
+      availableColumns,
+      timestampPath,
+      sampleValue: firstStringSample(lastSchemaBuilder, timestampPath),
+      message:
+        "A date column was detected, but its order (day/month vs month/day) could not be determined. Please confirm the order.",
+    });
+    return { needsReview: true };
+  }
+
+  return null;
+};
+
+/** Run post-detection review checks (empty rows, missing timestamp/location, ambiguous orders). */
 const runSchemaReviewChecks = async (
   payload: Payload,
   ingestJobId: number | string,
@@ -139,27 +199,18 @@ const runSchemaReviewChecks = async (
       return { needsReview: true };
     }
 
-    // A combined-coordinate column was detected but its axis order is ambiguous
-    // (every sample fit both lat,lng and lng,lat). Ask the user which order to
-    // use rather than guess — a wrong guess silently maps points to the wrong
-    // place. shouldReviewNoLocation already passed (coordinatePath is set), so
-    // this is a separate gate.
-    const coordinatePath = fieldMappings.coordinatePath;
-    const ambiguousCoordCheck = shouldReviewAmbiguousCoordinates(fieldMappings, reviewChecks);
-    if (ambiguousCoordCheck.needsReview && coordinatePath) {
-      const sampleValue = lastSchemaBuilder
-        ?.getState()
-        ?.fieldStats?.[coordinatePath]?.uniqueSamples?.find((s) => typeof s === "string" && s.includes(","));
-      await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER, {
-        detectedMappings: fieldMappings,
-        availableColumns,
-        coordinatePath,
-        sampleValue: typeof sampleValue === "string" ? sampleValue : undefined,
-        message:
-          "A single column holds both coordinates, but their order (latitude,longitude vs longitude,latitude) could not be determined. Please confirm the order.",
-      });
-      return { needsReview: true };
-    }
+    // Ambiguous combined-coordinate axis order / date day-month order. Both run
+    // after the no-location / no-timestamp gates above (which guarantee the
+    // relevant path is set), and ask the user rather than guess.
+    const ambiguousResult = await runAmbiguousOrderChecks(
+      payload,
+      ingestJobId,
+      fieldMappings,
+      availableColumns,
+      reviewChecks,
+      lastSchemaBuilder
+    );
+    if (ambiguousResult) return ambiguousResult;
   }
 
   return null;

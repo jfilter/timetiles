@@ -195,6 +195,7 @@ const APPROVAL_SKIP_FLAGS: Record<string, string> = {
   [REVIEW_REASONS.NO_TIMESTAMP_DETECTED]: "skipTimestampCheck",
   [REVIEW_REASONS.NO_LOCATION_DETECTED]: "skipLocationCheck",
   [REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER]: "skipAmbiguousCoordinateCheck",
+  [REVIEW_REASONS.AMBIGUOUS_DATE_ORDER]: "skipAmbiguousDateCheck",
   [REVIEW_REASONS.GEOCODING_PARTIAL]: "skipGeocodingCheck",
 };
 

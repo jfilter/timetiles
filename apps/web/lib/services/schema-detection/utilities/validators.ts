@@ -114,6 +114,25 @@ const checkDateFormat = (stats: FieldStatistics): number => {
   return Math.min(1, 0.7 + dateFormatPct * 0.3);
 };
 
+/**
+ * Check the schema builder's own date typing.
+ *
+ * `getValueType` classifies any `isImportDateLike` string as type `"date"` —
+ * including non-ISO separated dates like `DD/MM/YYYY` that set neither
+ * `formats.date` (ISO-only) nor count as `string`. Without crediting this, a
+ * column of `01/02/2024` values scores 0 across the other timestamp checks and is
+ * never detected as a timestamp (it then falls into the no-timestamp gate instead
+ * of the ambiguous-date-order gate). Mirror `checkDateFormat`'s scoring.
+ */
+const checkDateTypeDistribution = (stats: FieldStatistics): number => {
+  const dateCount = stats.typeDistribution?.date ?? 0;
+  if (dateCount <= 0 || stats.occurrences <= 0) return 0;
+
+  const datePct = dateCount / stats.occurrences;
+  if (datePct < 0.5) return 0;
+  return Math.min(1, 0.7 + datePct * 0.3);
+};
+
 /** Check if string values can be parsed as dates */
 const checkParseableStrings = (stats: FieldStatistics, stringPct: number): number => {
   if (stringPct <= 0.5 || !stats.uniqueSamples || stats.uniqueSamples.length === 0) {
@@ -162,6 +181,11 @@ const validateTimestampField = (stats: FieldStatistics, stringPct: number): numb
 
   const dateFormatScore = checkDateFormat(stats);
   if (dateFormatScore > 0) return dateFormatScore;
+
+  // Non-ISO date strings (e.g. DD/MM/YYYY) are typed `date` by the schema builder
+  // but set no format flag and don't count as `string`; credit that typing.
+  const dateTypeScore = checkDateTypeDistribution(stats);
+  if (dateTypeScore > 0) return dateTypeScore;
 
   const parseableScore = checkParseableStrings(stats, stringPct);
   if (parseableScore > 0) return parseableScore;

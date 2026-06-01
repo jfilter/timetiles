@@ -10,6 +10,7 @@ import {
   REVIEW_REASONS,
   setNeedsReview,
   shouldReviewAmbiguousCoordinates,
+  shouldReviewAmbiguousDateOrder,
   shouldReviewGeocodingPartial,
   shouldReviewHighDuplicates,
   shouldReviewHighEmptyRows,
@@ -37,6 +38,7 @@ describe.sequential("review-checks", () => {
         NO_TIMESTAMP_DETECTED: "no-timestamp",
         NO_LOCATION_DETECTED: "no-location",
         AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
+        AMBIGUOUS_DATE_ORDER: "ambiguous-date-order",
         FILE_TOO_LARGE: "file-too-large",
       });
     });
@@ -313,6 +315,43 @@ describe.sequential("review-checks", () => {
     });
   });
 
+  // ── shouldReviewAmbiguousDateOrder ────────────────────────────────────
+
+  describe("shouldReviewAmbiguousDateOrder", () => {
+    it("should return needsReview true when a timestamp column has ambiguous order", () => {
+      const result = shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "ambiguous" });
+      expect(result).toEqual({ needsReview: true });
+    });
+
+    it("should return needsReview false when the date order is explicit", () => {
+      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "D/M" })).toEqual({
+        needsReview: false,
+      });
+      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "M/D" })).toEqual({
+        needsReview: false,
+      });
+    });
+
+    it("should return needsReview false when the order is unset (e.g. ISO-only column)", () => {
+      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: null })).toEqual({
+        needsReview: false,
+      });
+    });
+
+    it("should return needsReview false when there is no timestamp column", () => {
+      const result = shouldReviewAmbiguousDateOrder({ timestampPath: null, timestampOrder: "ambiguous" });
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("should return needsReview false when skipAmbiguousDateCheck is true", () => {
+      const result = shouldReviewAmbiguousDateOrder(
+        { timestampPath: "date", timestampOrder: "ambiguous" },
+        { skipAmbiguousDateCheck: true }
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+  });
+
   // ── getResumePointForReason ───────────────────────────────────────────
 
   describe("getResumePointForReason", () => {
@@ -350,6 +389,10 @@ describe.sequential("review-checks", () => {
 
     it("should return detect-schema for ambiguous-coordinate-order", () => {
       expect(getResumePointForReason("ambiguous-coordinate-order")).toBe("detect-schema");
+    });
+
+    it("should return detect-schema for ambiguous-date-order", () => {
+      expect(getResumePointForReason("ambiguous-date-order")).toBe("detect-schema");
     });
 
     it("should return create-schema-version as default for null", () => {

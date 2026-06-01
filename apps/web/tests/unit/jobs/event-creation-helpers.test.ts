@@ -455,6 +455,40 @@ describe("extractTimestamp", () => {
       expect(result).toBeNull();
     });
   });
+
+  describe("persisted day/month order", () => {
+    // Cross-row consistency: when the column's order is "D/M" (decided once by
+    // detection from a disambiguating row like 13/02), every other row — even an
+    // all-≤12 row like 01/02 — must parse day-first, NOT be re-guessed per row.
+    it("parses the disambiguating row 13/02 as day-first under D/M", () => {
+      const result = extractTimestamp({ d: "13/02/2024" }, "d", "D/M");
+      expect(result!.toISOString()).toBe("2024-02-13T00:00:00.000Z");
+    });
+
+    it("parses the ambiguous row 01/02 day-first under D/M (consistent with 13/02)", () => {
+      const result = extractTimestamp({ d: "01/02/2024" }, "d", "D/M");
+      // 01/02 under D/M = 1 February (not 2 January as a per-row MM/DD guess).
+      expect(result!.toISOString()).toBe("2024-02-01T00:00:00.000Z");
+    });
+
+    it("parses the ambiguous row 01/02 month-first under M/D", () => {
+      const result = extractTimestamp({ d: "01/02/2024" }, "d", "M/D");
+      // 01/02 under M/D = 2 January.
+      expect(result!.toISOString()).toBe("2024-01-02T00:00:00.000Z");
+    });
+
+    it("falls back to the per-row heuristic when order is 'ambiguous'", () => {
+      // 13/02 is itself unambiguous (13 > 12 → day-first), so the heuristic still
+      // resolves it. The review gate is what stops an ambiguous column reaching here.
+      const result = extractTimestamp({ d: "13/02/2024" }, "d", "ambiguous");
+      expect(result!.toISOString()).toBe("2024-02-13T00:00:00.000Z");
+    });
+
+    it("falls back to the per-row heuristic when order is unset", () => {
+      const result = extractTimestamp({ d: "13/02/2024" }, "d");
+      expect(result!.toISOString()).toBe("2024-02-13T00:00:00.000Z");
+    });
+  });
 });
 
 describe("extractEndTimestamp", () => {
@@ -464,6 +498,12 @@ describe("extractEndTimestamp", () => {
 
     expect(result).toBeInstanceOf(Date);
     expect(result!.toISOString()).toBe("2024-06-15T12:30:00.000Z");
+  });
+
+  it("applies the persisted end-timestamp order to all rows", () => {
+    // 01/02 under M/D = 2 January, regardless of the per-row heuristic.
+    const result = extractEndTimestamp({ end: "01/02/2024" }, "end", "M/D");
+    expect(result!.toISOString()).toBe("2024-01-02T00:00:00.000Z");
   });
 });
 

@@ -839,6 +839,14 @@ export interface Dataset {
      */
     endTimestampPath?: string | null;
     /**
+     * Day/month order of the timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
+     */
+    timestampOrder?: string | null;
+    /**
+     * Day/month order of the end timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
+     */
+    endTimestampOrder?: string | null;
+    /**
      * Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')
      */
     latitudePath?: string | null;
@@ -1188,6 +1196,14 @@ export interface IngestJob {
      * Path to end timestamp/date field in source data
      */
     endTimestampPath?: string | null;
+    /**
+     * Day/month order of the timestamp column: D/M | M/D | ambiguous
+     */
+    timestampOrder?: string | null;
+    /**
+     * Day/month order of the end timestamp column: D/M | M/D | ambiguous
+     */
+    endTimestampOrder?: string | null;
     /**
      * Path to latitude coordinate field in source data
      */
@@ -4461,6 +4477,8 @@ export interface DatasetsSelect<T extends boolean = true> {
         locationNamePath?: T;
         timestampPath?: T;
         endTimestampPath?: T;
+        timestampOrder?: T;
+        endTimestampOrder?: T;
         latitudePath?: T;
         longitudePath?: T;
         coordinatePath?: T;
@@ -4625,6 +4643,8 @@ export interface IngestJobsSelect<T extends boolean = true> {
         locationNamePath?: T;
         timestampPath?: T;
         endTimestampPath?: T;
+        timestampOrder?: T;
+        endTimestampOrder?: T;
         latitudePath?: T;
         longitudePath?: T;
         coordinatePath?: T;

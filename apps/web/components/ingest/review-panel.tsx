@@ -50,6 +50,11 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
     approveLabel: t("approveUseOrder"),
     approveWithoutLabel: t("approveContinueWithoutLocations"),
   },
+  [REVIEW_REASONS.AMBIGUOUS_DATE_ORDER]: {
+    icon: CalendarOffIcon,
+    approveLabel: t("approveUseOrder"),
+    approveWithoutLabel: t("approveContinueWithoutDates"),
+  },
   [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
   [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
   [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveAcceptPartial") },
@@ -62,12 +67,17 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
 // eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
 const COORDINATE_ORDER_OPTIONS = ["lat,lng", "lng,lat"];
 
+/** Day/month order options for the ambiguous date-order picker. */
+// eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
+const DATE_ORDER_OPTIONS = ["D/M", "M/D"];
+
 /** Build the approve request for a column/order pick. Kept outside the component to bound its complexity. */
 const buildApproveRequest = (
   ingestJobId: string,
   reason: string,
   selectedColumn: string,
-  coordinateOrder: string
+  coordinateOrder: string,
+  dateOrder: string
 ): ApproveIngestJobRequest => {
   const request: ApproveIngestJobRequest = { ingestJobId };
   if (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED && selectedColumn) {
@@ -80,6 +90,8 @@ const buildApproveRequest = (
     (coordinateOrder === "lat,lng" || coordinateOrder === "lng,lat")
   ) {
     request.coordinateFormat = coordinateOrder;
+  } else if (reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER && (dateOrder === "D/M" || dateOrder === "M/D")) {
+    request.timestampOrder = dateOrder;
   }
   return request;
 };
@@ -187,7 +199,7 @@ const ReasonStats = ({
   }
 };
 
-/** Renders the column picker (no-timestamp/no-location) or the axis-order picker (ambiguous coords). */
+/** Renders the column picker (no-timestamp/no-location) or the axis-order picker (ambiguous coords/dates). */
 const ReviewPicker = ({
   reason,
   details,
@@ -196,6 +208,8 @@ const ReviewPicker = ({
   setSelectedColumn,
   coordinateOrder,
   setCoordinateOrder,
+  dateOrder,
+  setDateOrder,
   t,
 }: {
   reason: string;
@@ -205,6 +219,8 @@ const ReviewPicker = ({
   setSelectedColumn: (v: string) => void;
   coordinateOrder: string;
   setCoordinateOrder: (v: string) => void;
+  dateOrder: string;
+  setDateOrder: (v: string) => void;
   t: ReturnType<typeof useTranslations>;
 }) => {
   if (
@@ -244,6 +260,24 @@ const ReviewPicker = ({
     );
   }
 
+  if (reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER) {
+    return (
+      <div className="bg-background rounded-sm border p-4">
+        <ColumnPicker
+          columns={DATE_ORDER_OPTIONS}
+          label={
+            typeof details?.sampleValue === "string"
+              ? t("selectDateOrderWithSample", { sample: details.sampleValue })
+              : t("selectDateOrder")
+          }
+          placeholder={t("selectDateOrderPlaceholder")}
+          value={dateOrder}
+          onChange={setDateOrder}
+        />
+      </div>
+    );
+  }
+
   return null;
 };
 
@@ -266,7 +300,8 @@ const ReviewActions = ({
   const isFieldPickerReason =
     reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ||
     reason === REVIEW_REASONS.NO_LOCATION_DETECTED ||
-    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER;
+    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER ||
+    reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER;
 
   if (isFieldPickerReason) {
     return (
@@ -309,6 +344,7 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
 
   const [selectedColumn, setSelectedColumn] = useState("");
   const [coordinateOrder, setCoordinateOrder] = useState("");
+  const [dateOrder, setDateOrder] = useState("");
   const approveMutation = useApproveIngestJobMutation();
 
   if (!reason || !config) return null;
@@ -317,13 +353,16 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
   const isColumnPickerReason =
     reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
   const isOrderPickerReason = reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER;
+  const isDateOrderPickerReason = reason === REVIEW_REASONS.AMBIGUOUS_DATE_ORDER;
   // A pick is ready when the relevant reason has its selection made.
   const canApproveWithColumn = Boolean(
-    (isColumnPickerReason && selectedColumn) || (isOrderPickerReason && coordinateOrder)
+    (isColumnPickerReason && selectedColumn) ||
+    (isOrderPickerReason && coordinateOrder) ||
+    (isDateOrderPickerReason && dateOrder)
   );
 
   const handleApprove = () => {
-    approveMutation.mutate(buildApproveRequest(String(job.id), reason, selectedColumn, coordinateOrder));
+    approveMutation.mutate(buildApproveRequest(String(job.id), reason, selectedColumn, coordinateOrder, dateOrder));
   };
 
   const handleApproveWithout = () => {
@@ -355,6 +394,8 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           setSelectedColumn={setSelectedColumn}
           coordinateOrder={coordinateOrder}
           setCoordinateOrder={setCoordinateOrder}
+          dateOrder={dateOrder}
+          setDateOrder={setDateOrder}
           t={t}
         />
 

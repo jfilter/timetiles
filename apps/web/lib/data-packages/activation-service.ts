@@ -136,11 +136,15 @@ const buildScheduledIngestData = (
   // preProcessing is a top-level field on ScheduledIngest, not inside advancedOptions
 
   // Data-package imports run unattended, so default the ambiguous
-  // coordinate-order gate to skipped (an ambiguous combined column yields no
-  // points rather than stalling the activation). A manifest's explicit
-  // reviewChecks win; declaring the true order via fieldMappingOverrides keeps
-  // the format explicit so the gate never fires.
-  advancedOptions.reviewChecks = { skipAmbiguousCoordinateCheck: true, ...manifest.reviewChecks };
+  // coordinate-order and date-order gates to skipped (an ambiguous column yields
+  // no points / falls back to the per-row date heuristic rather than stalling the
+  // activation). A manifest's explicit reviewChecks win; declaring the true order
+  // via fieldMappingOverrides keeps the format explicit so the gate never fires.
+  advancedOptions.reviewChecks = {
+    skipAmbiguousCoordinateCheck: true,
+    skipAmbiguousDateCheck: true,
+    ...manifest.reviewChecks,
+  };
 
   // Merge geocodingBias: use coverage.countries as fallback for countryCodes
   const coverageCountries = manifest.coverage?.countries;

@@ -329,6 +329,75 @@ describe("Field Mapping Detection", () => {
     });
   });
 
+  describe("Date day/month order detection", () => {
+    it("attaches timestampOrder=D/M when a sample disambiguates day-first (13/02)", () => {
+      // The exact cross-row consistency bug: 13/02 forces day-first, so 01/02 in
+      // the same column must NOT be re-guessed as month-first per row.
+      const fieldStats = createFieldStats({
+        date: { uniqueSamples: ["13/02/2024", "01/02/2024", "05/06/2024"], typeDistribution: { string: 100 } },
+      });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampPath).toBe("date");
+      expect(mappings.timestampOrder).toBe("D/M");
+    });
+
+    it("attaches timestampOrder=M/D when a sample disambiguates month-first (02/13)", () => {
+      const fieldStats = createFieldStats({
+        date: { uniqueSamples: ["02/13/2024", "02/01/2024", "06/05/2024"], typeDistribution: { string: 100 } },
+      });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampOrder).toBe("M/D");
+    });
+
+    it("attaches timestampOrder=ambiguous when every sample fits both orders", () => {
+      const fieldStats = createFieldStats({
+        date: { uniqueSamples: ["01/02/2024", "03/04/2024", "05/06/2024"], typeDistribution: { string: 100 } },
+      });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampPath).toBe("date");
+      expect(mappings.timestampOrder).toBe("ambiguous");
+    });
+
+    it("leaves timestampOrder null for ISO dates (handled by the ISO parser)", () => {
+      const fieldStats = createFieldStats({ date: { fieldType: "timestamp" } });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampPath).toBe("date");
+      expect(mappings.timestampOrder).toBeNull();
+    });
+
+    it("attaches endTimestampOrder independently of the start column", () => {
+      // "date" matches the timestamp patterns; "end_date" matches endTimestamp.
+      const fieldStats = createFieldStats({
+        date: { uniqueSamples: ["13/02/2024", "01/02/2024", "05/06/2024"], typeDistribution: { string: 100 } },
+        end_date: { uniqueSamples: ["02/13/2024", "02/01/2024", "06/05/2024"], typeDistribution: { string: 100 } },
+      });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampPath).toBe("date");
+      expect(mappings.timestampOrder).toBe("D/M");
+      expect(mappings.endTimestampPath).toBe("end_date");
+      expect(mappings.endTimestampOrder).toBe("M/D");
+    });
+
+    it("leaves both order fields null when no timestamp column is detected", () => {
+      const fieldStats = createFieldStats({ title: { fieldType: "title" } });
+
+      const mappings = detectFieldMappings(fieldStats, "eng");
+
+      expect(mappings.timestampOrder).toBeNull();
+      expect(mappings.endTimestampOrder).toBeNull();
+    });
+  });
+
   describe("No matches", () => {
     it("should return null when no fields match", () => {
       const fieldStats = createFieldStats({

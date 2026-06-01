@@ -15,6 +15,7 @@ import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { FIELD_TYPE_MAJORITY_THRESHOLD } from "@/lib/services/schema-detection/utilities/geo";
+import type { DayMonthOrder } from "@/lib/utils/date-parsing";
 import { parseImportDate } from "@/lib/utils/date-parsing";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import { getByPathOrKey } from "@/lib/utils/object-path";
@@ -148,9 +149,31 @@ export const extractCoordinates = (
 };
 
 /**
- * Extract timestamp from row data using field mapping.
+ * Resolve a persisted free-text day/month order into the parser's DayMonthOrder.
+ *
+ * Mirrors `extractCombinedCoordinates`' strict order semantics: only an explicit
+ * "D/M"/"M/D" is passed to the parser. "ambiguous"/null/unset yields undefined so
+ * the parser keeps its legacy per-row heuristic — the AMBIGUOUS_DATE_ORDER review
+ * gate (not a per-row best-effort path here) is what stops an undecided column
+ * from reaching create-events un-resolved.
  */
-export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: string | null): Date | null => {
+const resolveDayMonthOrder = (order: string | null | undefined): DayMonthOrder | undefined =>
+  order === "D/M" || order === "M/D" ? order : undefined;
+
+/**
+ * Extract timestamp from row data using field mapping.
+ *
+ * `order` is the column-level day/month order decided once by schema detection
+ * (persisted on `detectedFieldMappings.timestampOrder`). When explicit it is
+ * passed straight through so every row uses the same order; ambiguous/unset
+ * defers to the parser's legacy heuristic.
+ */
+export const extractTimestamp = (
+  row: Record<string, unknown>,
+  timestampPath?: string | null,
+  order?: string | null
+): Date | null => {
+  const dayMonthOrder = resolveDayMonthOrder(order);
   // When a timestamp field is explicitly mapped, trust it. Falling back to
   // guessed columns here silently picks up unrelated data (e.g. an audit
   // `created_at` column) when the mapped value is empty or unparseable.
@@ -159,7 +182,7 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
     if (mappedValue == null || mappedValue === "") {
       return null;
     }
-    return parseImportDate(mappedValue as string | number) ?? null;
+    return parseImportDate(mappedValue as string | number, dayMonthOrder) ?? null;
   }
 
   // No mapping configured — try common timestamp field names
@@ -183,14 +206,22 @@ export const extractTimestamp = (row: Record<string, unknown>, timestampPath?: s
 /**
  * Extract end timestamp from row data using field mapping.
  * Returns null if no end date is found (most events don't have one).
+ *
+ * `order` is the column-level day/month order for the end-timestamp column
+ * (persisted on `detectedFieldMappings.endTimestampOrder`); same strict semantics
+ * as {@link extractTimestamp}.
  */
-export const extractEndTimestamp = (row: Record<string, unknown>, endTimestampPath?: string | null): Date | null => {
+export const extractEndTimestamp = (
+  row: Record<string, unknown>,
+  endTimestampPath?: string | null,
+  order?: string | null
+): Date | null => {
   const value = endTimestampPath ? getByPathOrKey(row, endTimestampPath) : undefined;
   if (!endTimestampPath || !value) {
     return null;
   }
 
-  return parseImportDate(value as string | number);
+  return parseImportDate(value as string | number, resolveDayMonthOrder(order));
 };
 
 /**
@@ -344,6 +375,8 @@ export const createEventData = (
       locationNamePath?: string | null;
       timestampPath?: string | null;
       endTimestampPath?: string | null;
+      timestampOrder?: string | null;
+      endTimestampOrder?: string | null;
     };
   },
   geocodingResults: ReturnType<typeof getIngestGeocodingResults>,
@@ -385,8 +418,10 @@ export const createEventData = (
     sourceData: effectiveSource,
     transformedData: row,
     uniqueId,
-    eventTimestamp: extractTimestamp(row, fieldMappings.timestampPath)?.toISOString() ?? null,
-    eventEndTimestamp: extractEndTimestamp(row, fieldMappings.endTimestampPath)?.toISOString() ?? null,
+    eventTimestamp:
+      extractTimestamp(row, fieldMappings.timestampPath, fieldMappings.timestampOrder)?.toISOString() ?? null,
+    eventEndTimestamp:
+      extractEndTimestamp(row, fieldMappings.endTimestampPath, fieldMappings.endTimestampOrder)?.toISOString() ?? null,
     location,
     locationName,
     coordinateSource,

@@ -90,6 +90,11 @@ export interface FieldMapping {
   path: string;
   /** Confidence score from 0-1 */
   confidence: number;
+  /** For timestamp/endTimestamp columns: the day/month order decided once for
+   *  the whole column by the date-order detector. `"ambiguous"` means every
+   *  sample fit both D/M and M/D (typical when all parts ≤ 12) — the review gate
+   *  must then ask the user rather than guess. Mirrors `geo.combined.format`. */
+  order?: "D/M" | "M/D" | "ambiguous";
 }
 
 /**

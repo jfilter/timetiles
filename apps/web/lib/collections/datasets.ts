@@ -335,6 +335,25 @@ const Datasets: CollectionConfig = {
           admin: { description: "Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')" },
         },
         {
+          // Stored as text (not a select) to avoid exceeding Postgres' 63-char
+          // enum-name limit on the version table; allowed values ("D/M" / "M/D")
+          // are enforced at the app layer (approve-route Zod enum).
+          name: "timestampOrder",
+          type: "text",
+          admin: {
+            description:
+              "Day/month order of the timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
+          },
+        },
+        {
+          name: "endTimestampOrder",
+          type: "text",
+          admin: {
+            description:
+              "Day/month order of the end timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
+          },
+        },
+        {
           name: "latitudePath",
           type: "text",
           admin: { description: "Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')" },

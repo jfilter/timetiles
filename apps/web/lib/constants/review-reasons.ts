@@ -17,6 +17,7 @@ export const REVIEW_REASONS = {
   NO_TIMESTAMP_DETECTED: "no-timestamp",
   NO_LOCATION_DETECTED: "no-location",
   AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
+  AMBIGUOUS_DATE_ORDER: "ambiguous-date-order",
   FILE_TOO_LARGE: "file-too-large",
 } as const;
 
@@ -48,6 +49,9 @@ export const REVIEW_RESUME_POINTS: Record<string, string> = {
   // Combined-coordinate axis order is decided in detection, so re-run from there
   // after the user/config supplies the order.
   [REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER]: RESUME_DETECT_SCHEMA,
+  // Date day/month order is likewise decided in detection, so re-run from there
+  // after the user/config supplies the order.
+  [REVIEW_REASONS.AMBIGUOUS_DATE_ORDER]: RESUME_DETECT_SCHEMA,
   // FILE_TOO_LARGE is a hard limit — there is no meaningful resume point.
   // Map to detect-schema so the workflow has a valid target; the user is
   // expected to split the file and retry rather than resume in place.

@@ -12,8 +12,8 @@ import type { Payload } from "payload";
 
 import { interpretRow } from "@/lib/ingest/interpret";
 import { toPlan } from "@/lib/ingest/to-plan";
-import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";

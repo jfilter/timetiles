@@ -45,6 +45,10 @@ export const toFlatMappings = (result: FieldMappingsResult): FieldMappings => ({
   locationNamePath: result.locationName?.path ?? null,
   timestampPath: result.timestamp?.path ?? null,
   endTimestampPath: result.endTimestamp?.path ?? null,
+  // Per-column day/month order decided once by the date-order detector — mirrors
+  // coordinateFormat. Persisted as free text so the parser/review gate can read it.
+  timestampOrder: result.timestamp?.order ?? null,
+  endTimestampOrder: result.endTimestamp?.order ?? null,
   ...toGeoPaths(result.geo),
 });
 

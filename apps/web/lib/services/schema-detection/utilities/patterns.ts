@@ -498,6 +498,28 @@ const findFieldByPattern = (
 
 // oxlint-disable-next-line import/no-cycle -- Constants-only cycle with coordinates.ts; no runtime risk
 import { detectGeoFields } from "./coordinates";
+import { checkDateOrder } from "./date-order";
+
+/**
+ * Attach the per-column day/month order to a detected date field mapping.
+ *
+ * Mirrors how `checkCommaFormat` decides a combined-coordinate column's axis
+ * order once for the whole column: scan the chosen column's samples and record
+ * `"D/M"`, `"M/D"`, or `"ambiguous"` on the mapping so the parser uses a single
+ * column-level decision instead of re-guessing each row. Columns with too little
+ * date-shaped evidence get no order (the legacy per-row heuristic still applies).
+ */
+const attachDateOrder = (
+  mapping: FieldMapping | null,
+  fieldStats: Record<string, FieldStatistics>
+): FieldMapping | null => {
+  if (!mapping) return null;
+  const samples = fieldStats[mapping.path]?.uniqueSamples;
+  if (!samples || samples.length === 0) return mapping;
+  const orderResult = checkDateOrder(samples);
+  if (!orderResult) return mapping;
+  return { ...mapping, order: orderResult.order };
+};
 
 // ---------------------------------------------------------------------------
 // Field mapping detection
@@ -541,8 +563,13 @@ export const detectFieldMappings = (
 
   const title = findFieldWithFallback(fieldStats, "title", language, options);
   const description = findFieldWithFallback(fieldStats, "description", language, options);
-  const timestamp = findFieldWithFallback(fieldStats, "timestamp", language, options);
-  const endTimestamp = findFieldWithFallback(fieldStats, "endTimestamp", language, options);
+  // Decide the day/month order for the chosen timestamp/endTimestamp columns once
+  // (per column), mirroring the combined-coordinate axis-order detection above.
+  const timestamp = attachDateOrder(findFieldWithFallback(fieldStats, "timestamp", language, options), fieldStats);
+  const endTimestamp = attachDateOrder(
+    findFieldWithFallback(fieldStats, "endTimestamp", language, options),
+    fieldStats
+  );
   const locationName = findFieldWithFallback(fieldStats, "locationName", language, options);
   const geo = options?.skip?.coordinates ? null : detectGeoFields(fieldStats, options);
 

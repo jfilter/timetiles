@@ -9,13 +9,14 @@ import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
-import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
+import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import type { SchemaDetectionService } from "@/lib/services/schema-detection/service";
 import type { DetectionContext } from "@/lib/services/schema-detection/types";
+import { checkDateOrder } from "@/lib/services/schema-detection/utilities/date-order";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
@@ -51,6 +52,11 @@ const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Datase
     // ambiguous-coordinate review) wins over detection — detection re-runs on
     // resume and would otherwise re-derive "ambiguous", losing the chosen order.
     coordinateFormat: pickOverride("coordinateFormat") ?? null,
+    // Date day/month order overrides behave exactly like coordinateFormat: a
+    // confirmed order (from an ambiguous-date-order review) must survive the
+    // detection re-run on resume, which would otherwise re-derive "ambiguous".
+    timestampOrder: pickOverride("timestampOrder") ?? null,
+    endTimestampOrder: pickOverride("endTimestampOrder") ?? null,
   };
 };
 
@@ -198,6 +204,8 @@ const OVERRIDE_FLAG_KEYS = {
   locationName: "locationNamePath",
   timestamp: "timestampPath",
   endTimestamp: "endTimestampPath",
+  timestampOrder: "timestampOrder",
+  endTimestampOrder: "endTimestampOrder",
   latitude: "latitudePath",
   longitude: "longitudePath",
   coordinate: "coordinatePath",
@@ -223,6 +231,25 @@ const logDetectedFieldMappings = (
     language: detectedLanguage ?? dataset?.language ?? "eng",
     overridesUsed: buildOverridesUsed(dataset),
   });
+};
+
+/**
+ * Re-derive the day/month order for date columns the paired heuristic just filled.
+ *
+ * Columns discovered by the paired heuristic never passed through the primary
+ * detector's `attachDateOrder` (that only runs inside `detectFieldMappings`), so
+ * their order is still null. Re-derive it here for any path the heuristic filled.
+ * Without this, an inferred column of all-≤12 DD/MM dates (e.g. "01/02/2024") keeps
+ * `timestampOrder === null`, the ambiguous-date-order review gate (which checks for
+ * `=== "ambiguous"`) never fires, and rows reach create-events with no explicit
+ * order — the exact cross-row inconsistency this feature exists to prevent.
+ */
+const rederiveOrderForInferredDate = (
+  fieldStats: Record<string, FieldStatistics>,
+  path: string | null
+): string | null => {
+  if (!path) return null;
+  return checkDateOrder(fieldStats[path]?.uniqueSamples ?? [])?.order ?? null;
 };
 
 const applyPairedDateHeuristic = async ({
@@ -280,8 +307,20 @@ const applyPairedDateHeuristic = async ({
   const inferredPair = pairedDateInference.getResult();
   if (!inferredPair) return;
 
+  const filledTimestamp = !fieldMappings.timestampPath && Boolean(inferredPair.timestampPath);
+  const filledEndTimestamp = !fieldMappings.endTimestampPath && Boolean(inferredPair.endTimestampPath);
+
   fieldMappings.timestampPath ??= inferredPair.timestampPath;
   fieldMappings.endTimestampPath ??= inferredPair.endTimestampPath;
+
+  // For any date column the heuristic just filled, re-derive its order so the
+  // ambiguous-date-order review gate fires (see `rederiveOrderForInferredDate`).
+  if (filledTimestamp) {
+    fieldMappings.timestampOrder ??= rederiveOrderForInferredDate(fieldStats, inferredPair.timestampPath);
+  }
+  if (filledEndTimestamp) {
+    fieldMappings.endTimestampOrder ??= rederiveOrderForInferredDate(fieldStats, inferredPair.endTimestampPath);
+  }
 
   logger.info("Applied paired date heuristic", {
     timestampPath: fieldMappings.timestampPath,

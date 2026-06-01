@@ -13,8 +13,8 @@ import { describe, expect, it } from "vitest";
 
 import { interpretRow, interpretRows } from "@/lib/ingest/interpret";
 import { toPlan } from "@/lib/ingest/to-plan";
-import { applyTransforms } from "@/lib/ingest/transforms";
 import { buildTransformsForTargetPath, buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
+import { applyTransforms } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { Dataset } from "@/payload-types";
 

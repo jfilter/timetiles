@@ -53,6 +53,7 @@ import * as migration_20260511_221812_add_branding_contact_email from './2026051
 import * as migration_20260528_000000_fix_temporal_null_and_date_timestamptz from './20260528_000000_fix_temporal_null_and_date_timestamptz';
 import * as migration_20260601_033306_add_combined_coordinate_mapping from './20260601_033306_add_combined_coordinate_mapping';
 import * as migration_20260601_090406_add_coordinate_format_override from './20260601_090406_add_coordinate_format_override';
+import * as migration_20260601_145541_add_date_order_mappings from './20260601_145541_add_date_order_mappings';
 
 export const migrations = [
   {
@@ -329,5 +330,10 @@ export const migrations = [
     up: migration_20260601_090406_add_coordinate_format_override.up,
     down: migration_20260601_090406_add_coordinate_format_override.down,
     name: '20260601_090406_add_coordinate_format_override'
+  },
+  {
+    up: migration_20260601_145541_add_date_order_mappings.up,
+    down: migration_20260601_145541_add_date_order_mappings.down,
+    name: '20260601_145541_add_date_order_mappings'
   },
 ];

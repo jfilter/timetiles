@@ -20,6 +20,7 @@
  * @module
  * @category Ingest
  */
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type {
   ColumnInterpretation,
   CoordinateOrder,
@@ -27,7 +28,6 @@ import type {
   DateOrder,
   InterpretationRoles,
 } from "@/lib/ingest/types/interpretation";
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { Dataset } from "@/payload-types";
 

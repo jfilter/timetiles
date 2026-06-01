@@ -39,6 +39,7 @@ export const ReviewChecksConfigSchema = z
     skipDuplicateRateCheck: z.boolean().optional(),
     skipGeocodingCheck: z.boolean().optional(),
     skipAmbiguousCoordinateCheck: z.boolean().optional(),
+    skipAmbiguousDateCheck: z.boolean().optional(),
     emptyRowThreshold: z.number().min(0).max(1).nullable().optional(),
     rowErrorThreshold: z.number().min(0).max(1).nullable().optional(),
     duplicateRateThreshold: z.number().min(0).max(1).nullable().optional(),
@@ -323,6 +324,23 @@ export const shouldReviewAmbiguousCoordinates = (
 ): { needsReview: boolean } => {
   if (reviewChecks?.skipAmbiguousCoordinateCheck) return { needsReview: false };
   return { needsReview: Boolean(fieldMappings.coordinatePath) && fieldMappings.coordinateFormat === "ambiguous" };
+};
+
+/**
+ * Check if a timestamp column was detected but its day/month order is ambiguous
+ * (every sample fit both D/M and M/D — typical when all parts are ≤ 12). The
+ * order is a per-column decision the data cannot settle, so we must ask rather
+ * than guess — a wrong guess silently maps `01/02` to the wrong month for every
+ * such row. Returns true when a timestamp column exists with
+ * `timestampOrder === "ambiguous"` and the check is not skipped. Explicit-order
+ * (D/M | M/D) and ISO-only columns never trigger this.
+ */
+export const shouldReviewAmbiguousDateOrder = (
+  fieldMappings: { timestampPath?: string | null; timestampOrder?: string | null },
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean } => {
+  if (reviewChecks?.skipAmbiguousDateCheck) return { needsReview: false };
+  return { needsReview: Boolean(fieldMappings.timestampPath) && fieldMappings.timestampOrder === "ambiguous" };
 };
 
 export { REVIEW_REASONS } from "@/lib/constants/review-reasons";

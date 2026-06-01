@@ -807,6 +807,9 @@
     "selectCoordinateOrder": "Which order are the coordinates in?",
     "selectCoordinateOrderWithSample": "Which order are the coordinates in? (e.g. \"{sample}\")",
     "selectCoordinateOrderPlaceholder": "Select coordinate order...",
+    "selectDateOrder": "Which order are the dates in? (D/M = day first, M/D = month first)",
+    "selectDateOrderWithSample": "Which order are the dates in? (e.g. \"{sample}\" — D/M = day first, M/D = month first)",
+    "selectDateOrderPlaceholder": "Select date order...",
     "contentHashPreview": "Content hash of all fields"
   },
   "ImportActivity": {
