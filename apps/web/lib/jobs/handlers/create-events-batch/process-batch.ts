@@ -23,7 +23,7 @@ import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
 import { getEventCreationDuplicates } from "../../utils/resource-loading";
-import { buildTransformsFromDataset } from "../../utils/transform-builders";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 

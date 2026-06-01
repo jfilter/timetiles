@@ -8,7 +8,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { buildTransformsFromDataset } from "@/lib/jobs/utils/transform-builders";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type { Dataset } from "@/payload-types";
 
 const makeDataset = (transforms: Record<string, unknown>[]): Dataset =>

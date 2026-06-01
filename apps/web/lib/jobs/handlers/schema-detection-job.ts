@@ -33,7 +33,7 @@ import {
   loadJobAndFilePath,
   setJobStage,
 } from "../utils/resource-loading";
-import { buildTransformsFromDataset } from "../utils/transform-builders";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import {
   parseReviewChecksConfig,
   REVIEW_REASONS,

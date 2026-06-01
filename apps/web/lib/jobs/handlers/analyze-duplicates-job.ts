@@ -38,7 +38,7 @@ import {
   getDuplicateRatesForReview,
   loadJobResources,
 } from "../utils/resource-loading";
-import { buildTransformsForTargetPath, buildTransformsFromDataset } from "../utils/transform-builders";
+import { buildTransformsForTargetPath, buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import {
   checkQuotaForSheet,
   parseReviewChecksConfig,
