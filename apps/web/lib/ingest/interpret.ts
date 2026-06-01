@@ -22,6 +22,23 @@
 import { applyTransforms } from "@/lib/ingest/transforms";
 import { collectTransformsForTargetPath } from "@/lib/ingest/transform-builders";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
+
+/**
+ * Wrap an already-built ordered transform list as a minimal plan (ops only).
+ *
+ * Transitional helper for call sites that still receive `transforms` rather than
+ * a dataset. `interpretRows(rows, planFromOps(transforms))` is byte-identical to
+ * the legacy `applyTransformsBatch(rows, transforms)`. The typed `columns`/`roles`
+ * are populated by `toPlan` from the dataset; sites using this shim only need the
+ * structural step, which the ops carry. Removed once those sites take a full plan.
+ */
+export const planFromOps = (ops: IngestTransform[]): DatasetInterpretationPlan => ({
+  ops,
+  columns: [],
+  roles: {},
+  ambiguityResolution: "best-effort",
+});
 
 export interface InterpretRowOptions {
   /**

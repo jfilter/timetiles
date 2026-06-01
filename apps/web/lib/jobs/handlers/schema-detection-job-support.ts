@@ -10,7 +10,7 @@ import type { Payload } from "payload";
 import { BATCH_SIZES, COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { applyTransformsBatch } from "@/lib/ingest/transforms";
+import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -271,8 +271,7 @@ const applyPairedDateHeuristic = async ({
       const rowNumber = globalRowOffset + index;
       return !duplicateRows.has(rowNumber);
     });
-    const transformedRows =
-      transforms.length > 0 ? applyTransformsBatch(nonDuplicateRows, transforms) : nonDuplicateRows;
+    const transformedRows = interpretRows(nonDuplicateRows, planFromOps(transforms));
 
     pairedDateInference.processRows(transformedRows);
     globalRowOffset += rows.length;
@@ -373,7 +372,7 @@ const processBatchSchema = async ({
     const rowNumber = globalRowOffset + index;
     return !duplicateRows.has(rowNumber);
   });
-  const transformedRows = transforms.length > 0 ? applyTransformsBatch(nonDuplicateRows, transforms) : nonDuplicateRows;
+  const transformedRows = interpretRows(nonDuplicateRows, planFromOps(transforms));
   const schemaBuilder = new ProgressiveSchemaBuilder(previousState ?? undefined, builderConfig);
 
   if (transformedRows.length > 0) {

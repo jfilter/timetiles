@@ -18,11 +18,12 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { interpretRows } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { applyTransformsBatch } from "@/lib/ingest/transforms";
+import { toPlan } from "@/lib/ingest/to-plan";
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
-import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
@@ -41,7 +42,6 @@ import {
   loadJobResources,
   setJobStage,
 } from "../utils/resource-loading";
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
@@ -100,7 +100,7 @@ const extractUniqueLocations = async (
   locationField: string | undefined,
   locationNameField: string | undefined,
   coordinateFields: { latitudeField?: string; longitudeField?: string },
-  transforms: IngestTransform[],
+  plan: DatasetInterpretationPlan,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
   const uniqueLocations = new Set<string>();
@@ -108,7 +108,7 @@ const extractUniqueLocations = async (
   let skippedWithCoords = 0;
 
   for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
-    const transformedRows = transforms.length > 0 ? applyTransformsBatch(rows, transforms) : rows;
+    const transformedRows = interpretRows(rows, plan);
     for (const row of transformedRows) {
       const { skipped } = processRowForLocation(
         row,
@@ -289,7 +289,7 @@ const prepareGeocodingLocations = async (
 
   // Resolve coordinate fields: use detectedFieldMappings, falling back to dataset config
   const coordinateFields = resolveCoordinateFields(geocodingCandidate, dataset);
-  const transforms = buildTransformsFromDataset(dataset);
+  const plan = toPlan(dataset);
 
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
@@ -300,7 +300,7 @@ const prepareGeocodingLocations = async (
     geocodingCandidate.locationField,
     geocodingCandidate.locationNameField,
     coordinateFields,
-    transforms,
+    plan,
     logger
   );
 

@@ -10,7 +10,9 @@
 import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
-import { applyTransforms } from "@/lib/ingest/transforms";
+import { interpretRow } from "@/lib/ingest/interpret";
+import { toPlan } from "@/lib/ingest/to-plan";
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
@@ -23,7 +25,6 @@ import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
 import { getEventCreationDuplicates } from "../../utils/resource-loading";
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 
@@ -178,22 +179,22 @@ export interface ProcessBatchContext {
   logger: ReturnType<typeof createJobLogger>;
 }
 
-/** Apply transforms to a row and build the corresponding BulkEventData. */
+/** Apply the plan's structural rewrites to a row and build the corresponding BulkEventData. */
 const buildBulkEventFromRow = (
   row: Record<string, unknown>,
-  transforms: IngestTransform[],
+  plan: DatasetInterpretationPlan,
   ctx: ProcessBatchContext,
   geocodingResults: ReturnType<typeof getIngestGeocodingResults>
 ): BulkEventData => {
   const { dataset, ingestJobId, accessFields, logger: log } = ctx;
 
-  const transformedRow = transforms.length > 0 ? applyTransforms(row, transforms) : row;
+  const transformedRow = interpretRow(row, plan);
 
-  // Emit only transforms that changed this row, reading both source and target
-  // fields with the same dotted-path semantics as the transform engine.
+  // Emit only ops that changed this row, reading both source and target fields
+  // with the same dotted-path semantics as the transform engine.
   const transformationChanges =
-    transforms.length > 0
-      ? transforms
+    plan.ops.length > 0
+      ? plan.ops
           .map((t) => buildTransformationChange(t, row, transformedRow))
           .filter((change): change is TransformationChange => change !== null)
       : null;
@@ -325,7 +326,7 @@ export const processEventBatch = async (
   const { payload, job, dataset, logger: log } = ctx;
   const { skipRows, updateRows } = getEventCreationDuplicates(job);
   const geocodingResults = getIngestGeocodingResults(job);
-  const transforms = buildTransformsFromDataset(dataset);
+  const plan = toPlan(dataset);
 
   // Dataset-scope guard: `analyze-duplicates` already filters candidates by
   // dataset, but we re-verify at the write site. If ever anyone widens the
@@ -348,7 +349,7 @@ export const processEventBatch = async (
     }
 
     try {
-      const eventData = buildBulkEventFromRow(row, transforms, ctx, geocodingResults);
+      const eventData = buildBulkEventFromRow(row, plan, ctx, geocodingResults);
 
       // External duplicates with "update" strategy: update existing event via Payload API
       const existingEventId = updateRows.get(rowNumber);
