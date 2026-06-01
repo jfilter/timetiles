@@ -22,8 +22,9 @@ import {
   PROCESSING_STAGE,
 } from "@/lib/constants/ingest-constants";
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+import { interpretRow } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { applyTransforms } from "@/lib/ingest/transforms";
+import { toPlan } from "@/lib/ingest/to-plan";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -38,7 +39,6 @@ import {
   getDuplicateRatesForReview,
   loadJobResources,
 } from "../utils/resource-loading";
-import { buildTransformsForTargetPath, buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import {
   checkQuotaForSheet,
   parseReviewChecksConfig,
@@ -114,18 +114,18 @@ const analyzeInternalDuplicates = async (
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
-  // Keep duplicate analysis aligned with create-events:
-  // - external IDs only need the transforms that materialize the ID path
-  // - content-hash IDs must see the fully transformed row
-  const idTransforms = ((): ReturnType<typeof buildTransformsFromDataset> => {
-    if (dataset.idStrategy?.type === "external") {
-      return buildTransformsForTargetPath(dataset, dataset.idStrategy.externalIdPath);
-    }
-    if (dataset.idStrategy?.type === "content-hash") {
-      return buildTransformsFromDataset(dataset);
-    }
-    return [];
-  })();
+  // Keep duplicate analysis aligned with create-events via the shared interpreter:
+  // - external IDs only need the ops that materialize the ID path (`only`)
+  // - content-hash IDs must see the fully transformed row (no projection)
+  // - auto-generate needs no rewrite at all
+  const plan = toPlan(dataset);
+  const idStrategyType = dataset.idStrategy?.type;
+  const idOnlyPath = idStrategyType === "external" ? dataset.idStrategy?.externalIdPath : undefined;
+  const interpretForId = (row: Record<string, unknown>): Record<string, unknown> => {
+    if (idStrategyType === "external") return interpretRow(row, plan, { only: idOnlyPath });
+    if (idStrategyType === "content-hash") return interpretRow(row, plan);
+    return row;
+  };
 
   for await (const rows of streamBatchesFromFile(filePath, {
     sheetIndex: job.sheetIndex ?? undefined,
@@ -133,7 +133,7 @@ const analyzeInternalDuplicates = async (
   })) {
     for (const [index, row] of rows.entries()) {
       const rowNumber = totalRows + index;
-      const idRow = idTransforms.length > 0 ? applyTransforms(row, idTransforms) : row;
+      const idRow = interpretForId(row);
       const uniqueId = generateUniqueId(idRow, dataset);
 
       if (uniqueIdMap.has(uniqueId)) {
