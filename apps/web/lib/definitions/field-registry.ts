@@ -136,12 +136,15 @@ type PathFieldDefinition = Extract<EventFieldDefinition, { pathName: string }>;
  * interfaces — now derived from the single registry.
  *
  * `coordinateFormat` is not a path but a sibling of `coordinatePath`: it records
- * the order of a single combined-coordinate column. It is added by intersection
- * because it is metadata, not a source-data path.
+ * the axis order of a single combined-coordinate column. It is added by
+ * intersection because it is metadata, not a source-data path. Typed as `string`
+ * (not a strict union) because it is persisted as free text on Payload
+ * (datasets/ingest-jobs); the allowed values "lat,lng" | "lng,lat" | "ambiguous"
+ * are enforced at write boundaries (detector output, approve-route Zod enum).
  */
 export type FieldPathMappings = {
   [K in PathFieldDefinition as K["pathName"]]: string | null;
-} & { coordinateFormat?: "lat,lng" | "lng,lat" | "ambiguous" | null };
+} & { coordinateFormat?: string | null };
 
 // ---------------------------------------------------------------------------
 // Derived arrays for UI consumption

@@ -28,6 +28,8 @@ export interface ApproveIngestJobRequest {
   latitudePath?: string;
   /** For no-location: column name for longitude. */
   longitudePath?: string;
+  /** For ambiguous-coordinate-order: confirmed axis order of the combined column. */
+  coordinateFormat?: "lat,lng" | "lng,lat";
 }
 
 interface ApproveIngestJobResponse {

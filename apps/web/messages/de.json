@@ -802,7 +802,11 @@
     "approveContinuePartialGeocoding": "Mit teilweiser Geocodierung fortfahren",
     "approveContactAdmin": "Admin kontaktieren",
     "approveSchemaChanges": "Änderungen genehmigen",
+    "approveUseOrder": "Ausgewählte Reihenfolge verwenden",
     "selectColumnPlaceholder": "Spalte auswählen...",
+    "selectCoordinateOrder": "In welcher Reihenfolge stehen die Koordinaten?",
+    "selectCoordinateOrderWithSample": "In welcher Reihenfolge stehen die Koordinaten? (z. B. \"{sample}\")",
+    "selectCoordinateOrderPlaceholder": "Koordinaten-Reihenfolge auswählen...",
     "contentHashPreview": "Inhaltshash aller Felder"
   },
   "ImportActivity": {

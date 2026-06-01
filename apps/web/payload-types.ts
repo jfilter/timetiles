@@ -851,6 +851,10 @@ export interface Dataset {
      */
     coordinatePath?: string | null;
     /**
+     * Axis order of the combined-coordinate column: 'lat,lng' or 'lng,lat'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
+     */
+    coordinateFormat?: string | null;
+    /**
      * Override detected location field (e.g., 'address', 'location', 'venue', 'city')
      */
     locationPath?: string | null;
@@ -4460,6 +4464,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         latitudePath?: T;
         longitudePath?: T;
         coordinatePath?: T;
+        coordinateFormat?: T;
         locationPath?: T;
       };
   hasTemporalData?: T;

@@ -802,7 +802,11 @@
     "approveContinuePartialGeocoding": "Continue with partial geocoding",
     "approveContactAdmin": "Contact admin",
     "approveSchemaChanges": "Approve changes",
+    "approveUseOrder": "Use selected order",
     "selectColumnPlaceholder": "Select a column...",
+    "selectCoordinateOrder": "Which order are the coordinates in?",
+    "selectCoordinateOrderWithSample": "Which order are the coordinates in? (e.g. \"{sample}\")",
+    "selectCoordinateOrderPlaceholder": "Select coordinate order...",
     "contentHashPreview": "Content hash of all fields"
   },
   "ImportActivity": {

@@ -135,7 +135,12 @@ const buildImportFileData = (sourceUrl: string, dataHash: string, context: Impor
       skipDuplicateChecking: advancedOpts?.skipDuplicateChecking ?? false,
       autoApproveSchema: advancedOpts?.autoApproveSchema ?? false,
       schemaMode: scheduledIngest?.schemaMode ?? undefined,
-      reviewChecks: advancedOpts?.reviewChecks,
+      // Automated imports have no human to resolve an ambiguous coordinate-order
+      // review, so default that gate to skipped (ambiguous combined columns then
+      // yield no points rather than stalling the run). An explicit source config
+      // wins; declaring the true order via dataset.fieldMappingOverrides instead
+      // makes the format explicit so the gate never fires.
+      reviewChecks: { skipAmbiguousCoordinateCheck: true, ...advancedOpts?.reviewChecks },
       geocodingBias: advancedOpts?.geocodingBias,
     },
   };

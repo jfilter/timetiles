@@ -9,6 +9,7 @@ import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
+  shouldReviewAmbiguousCoordinates,
   shouldReviewGeocodingPartial,
   shouldReviewHighDuplicates,
   shouldReviewHighEmptyRows,
@@ -35,6 +36,7 @@ describe.sequential("review-checks", () => {
         HIGH_EMPTY_ROW_RATE: "high-empty-rows",
         NO_TIMESTAMP_DETECTED: "no-timestamp",
         NO_LOCATION_DETECTED: "no-location",
+        AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
         FILE_TOO_LARGE: "file-too-large",
       });
     });
@@ -280,6 +282,37 @@ describe.sequential("review-checks", () => {
     });
   });
 
+  // ── shouldReviewAmbiguousCoordinates ──────────────────────────────────
+
+  describe("shouldReviewAmbiguousCoordinates", () => {
+    it("should return needsReview true when a combined column has ambiguous order", () => {
+      const result = shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "ambiguous" });
+      expect(result).toEqual({ needsReview: true });
+    });
+
+    it("should return needsReview false when the combined order is explicit", () => {
+      expect(shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "lat,lng" })).toEqual({
+        needsReview: false,
+      });
+      expect(shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "lng,lat" })).toEqual({
+        needsReview: false,
+      });
+    });
+
+    it("should return needsReview false when there is no combined column", () => {
+      const result = shouldReviewAmbiguousCoordinates({ coordinatePath: null, coordinateFormat: "ambiguous" });
+      expect(result).toEqual({ needsReview: false });
+    });
+
+    it("should return needsReview false when skipAmbiguousCoordinateCheck is true", () => {
+      const result = shouldReviewAmbiguousCoordinates(
+        { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        { skipAmbiguousCoordinateCheck: true }
+      );
+      expect(result).toEqual({ needsReview: false });
+    });
+  });
+
   // ── getResumePointForReason ───────────────────────────────────────────
 
   describe("getResumePointForReason", () => {
@@ -313,6 +346,10 @@ describe.sequential("review-checks", () => {
 
     it("should return detect-schema for no-location", () => {
       expect(getResumePointForReason("no-location")).toBe("detect-schema");
+    });
+
+    it("should return detect-schema for ambiguous-coordinate-order", () => {
+      expect(getResumePointForReason("ambiguous-coordinate-order")).toBe("detect-schema");
     });
 
     it("should return create-schema-version as default for null", () => {

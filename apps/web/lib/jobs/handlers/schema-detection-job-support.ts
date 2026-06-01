@@ -25,12 +25,17 @@ import type { Dataset, IngestJob } from "@/payload-types";
 
 export type FlatFieldMappings = ReturnType<typeof detectFlatFieldMappings>;
 
-/** Override-eligible mapping keys: those present on the dataset's path overrides. */
-type OverridePathKey = keyof NonNullable<Dataset["fieldMappingOverrides"]> & keyof FlatFieldMappings;
+/**
+ * Override-eligible mapping keys = the flat-mapping keys. The dataset's
+ * `fieldMappingOverrides` now shares this key set, so a single `keyof` suffices
+ * (intersecting the two identical sets would be a duplicate constituent).
+ */
+type OverridePathKey = keyof FlatFieldMappings;
 
 const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Dataset | null): FlatFieldMappings => {
+  const overrides = dataset?.fieldMappingOverrides as Partial<FlatFieldMappings> | null | undefined;
   const pickOverride = <K extends OverridePathKey>(key: K): FlatFieldMappings[K] =>
-    dataset?.fieldMappingOverrides?.[key] ?? detectedMappings[key];
+    overrides?.[key] ?? detectedMappings[key];
 
   return {
     titlePath: pickOverride("titlePath"),
@@ -42,9 +47,10 @@ const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Datase
     longitudePath: pickOverride("longitudePath"),
     coordinatePath: pickOverride("coordinatePath"),
     locationPath: pickOverride("locationPath"),
-    // coordinateFormat is metadata for the combined column, not a dataset
-    // path override; carry through whatever detection produced.
-    coordinateFormat: detectedMappings.coordinateFormat ?? null,
+    // A dataset coordinateFormat override (e.g. the order a user confirmed in an
+    // ambiguous-coordinate review) wins over detection — detection re-runs on
+    // resume and would otherwise re-derive "ambiguous", losing the chosen order.
+    coordinateFormat: pickOverride("coordinateFormat") ?? null,
   };
 };
 
@@ -185,17 +191,26 @@ const persistDetectedLanguage = async (
   });
 };
 
-const buildOverridesUsed = (dataset: Dataset | null) => ({
-  title: Boolean(dataset?.fieldMappingOverrides?.titlePath),
-  description: Boolean(dataset?.fieldMappingOverrides?.descriptionPath),
-  locationName: Boolean(dataset?.fieldMappingOverrides?.locationNamePath),
-  timestamp: Boolean(dataset?.fieldMappingOverrides?.timestampPath),
-  endTimestamp: Boolean(dataset?.fieldMappingOverrides?.endTimestampPath),
-  latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
-  longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),
-  coordinate: Boolean(dataset?.fieldMappingOverrides?.coordinatePath),
-  location: Boolean(dataset?.fieldMappingOverrides?.locationPath),
-});
+/** Maps the logged override flag name → the dataset.fieldMappingOverrides key it reflects. */
+const OVERRIDE_FLAG_KEYS = {
+  title: "titlePath",
+  description: "descriptionPath",
+  locationName: "locationNamePath",
+  timestamp: "timestampPath",
+  endTimestamp: "endTimestampPath",
+  latitude: "latitudePath",
+  longitude: "longitudePath",
+  coordinate: "coordinatePath",
+  coordinateFormat: "coordinateFormat",
+  location: "locationPath",
+} as const;
+
+const buildOverridesUsed = (dataset: Dataset | null): Record<keyof typeof OVERRIDE_FLAG_KEYS, boolean> => {
+  const overrides = (dataset?.fieldMappingOverrides ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(
+    Object.entries(OVERRIDE_FLAG_KEYS).map(([flag, key]) => [flag, Boolean(overrides[key])])
+  ) as Record<keyof typeof OVERRIDE_FLAG_KEYS, boolean>;
+};
 
 const logDetectedFieldMappings = (
   logger: ReturnType<typeof createJobLogger>,

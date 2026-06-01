@@ -83,6 +83,7 @@ vi.mock("@/lib/jobs/workflows/review-checks", () => ({
   shouldReviewHighEmptyRows: vi.fn().mockReturnValue({ needsReview: false }),
   shouldReviewNoTimestamp: vi.fn().mockReturnValue({ needsReview: false }),
   shouldReviewNoLocation: vi.fn().mockReturnValue({ needsReview: false }),
+  shouldReviewAmbiguousCoordinates: vi.fn().mockReturnValue({ needsReview: false }),
   setNeedsReview: vi.fn().mockResolvedValue(undefined),
   parseReviewChecksConfig: vi.fn().mockReturnValue({ config: undefined }),
 }));
@@ -817,5 +818,12 @@ describe.sequential("SchemaDetectionJob Handler", () => {
 
       expect(result).toEqual(expect.objectContaining({ output: expect.objectContaining({ needsReview: true }) }));
     });
+
+    // The ambiguous-coordinate gate's logic is covered by the
+    // shouldReviewAmbiguousCoordinates unit tests; its wiring into
+    // runSchemaReviewChecks (import + call) is exercised by every test above,
+    // which runs the real review-check sequence with the check mocked to pass.
+    // A full handler-level trigger test belongs in the DB-backed integration
+    // suite (real detection must produce coordinatePath="...").
   });
 });

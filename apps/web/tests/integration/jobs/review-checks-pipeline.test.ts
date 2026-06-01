@@ -145,6 +145,26 @@ describe.sequential("Review Checks Pipeline", () => {
     expect(jobs.docs[0].reviewReason).toBe("no-location");
   });
 
+  it("should pause for ambiguous-coordinate-order when a combined column's axis order is undecided", async () => {
+    // Every coordinate sample is mid-latitude (both components ≤90), so the
+    // detector cannot tell lat,lng from lng,lat → coordinateFormat "ambiguous".
+    const csvContent =
+      'name,date,coordinates\nA,2024-06-15,"45.1,50.2"\nB,2024-07-20,"12.3,34.4"\nC,2024-08-01,"40.5,41.6"\n';
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "ambiguous-coords.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+
+    const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(jobs.docs[0].stage).toBe("needs-review");
+    expect(jobs.docs[0].reviewReason).toBe("ambiguous-coordinate-order");
+  });
+
   it("should pause for high-duplicates when duplicate rate exceeds threshold", async () => {
     // 3 identical rows + 1 unique = 75% duplicates. Use threshold 0.5 to trigger easily.
     const csvContent = [

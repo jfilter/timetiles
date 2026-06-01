@@ -38,6 +38,7 @@ import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
+  shouldReviewAmbiguousCoordinates,
   shouldReviewHighEmptyRows,
   shouldReviewNoLocation,
   shouldReviewNoTimestamp,
@@ -134,6 +135,28 @@ const runSchemaReviewChecks = async (
         detectedMappings: fieldMappings,
         availableColumns,
         message: "No location, address, or coordinate columns were detected in your data.",
+      });
+      return { needsReview: true };
+    }
+
+    // A combined-coordinate column was detected but its axis order is ambiguous
+    // (every sample fit both lat,lng and lng,lat). Ask the user which order to
+    // use rather than guess — a wrong guess silently maps points to the wrong
+    // place. shouldReviewNoLocation already passed (coordinatePath is set), so
+    // this is a separate gate.
+    const coordinatePath = fieldMappings.coordinatePath;
+    const ambiguousCoordCheck = shouldReviewAmbiguousCoordinates(fieldMappings, reviewChecks);
+    if (ambiguousCoordCheck.needsReview && coordinatePath) {
+      const sampleValue = lastSchemaBuilder
+        ?.getState()
+        ?.fieldStats?.[coordinatePath]?.uniqueSamples?.find((s) => typeof s === "string" && s.includes(","));
+      await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER, {
+        detectedMappings: fieldMappings,
+        availableColumns,
+        coordinatePath,
+        sampleValue: typeof sampleValue === "string" ? sampleValue : undefined,
+        message:
+          "A single column holds both coordinates, but their order (latitude,longitude vs longitude,latitude) could not be determined. Please confirm the order.",
       });
       return { needsReview: true };
     }

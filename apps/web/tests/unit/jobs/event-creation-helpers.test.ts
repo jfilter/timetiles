@@ -82,24 +82,27 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.type).toBe("source-data");
     });
 
-    it("should default to lat-first when format is ambiguous", () => {
+    it("should NOT guess when format is ambiguous — returns none", () => {
+      // Axis order is a per-column decision the data cannot settle. Guessing per
+      // row would mix orders within one column, so ambiguous yields no points;
+      // the AMBIGUOUS_COORDINATE_ORDER review gate resolves the order instead.
       const row = { coords: "52.52,13.405" };
       const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
 
       const result = extractCoordinates(row, fieldMappings, {});
 
-      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
-      expect(result.coordinateSource.type).toBe("source-data");
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
     });
 
-    it("should default to lat-first when format is omitted", () => {
+    it("should NOT guess when format is omitted — returns none", () => {
       const row = { coords: "52.52,13.405" };
       const fieldMappings = { coordinatePath: "coords" };
 
       const result = extractCoordinates(row, fieldMappings, {});
 
-      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
-      expect(result.coordinateSource.type).toBe("source-data");
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
     });
 
     it("should fall through to none for a garbage cell", () => {
@@ -132,11 +135,23 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.type).toBe("none");
     });
 
-    it("should salvage lng,lat order for ambiguous data when lat-first is out of range", () => {
-      // "120,45": lat=120 is invalid, but interpreting as lng=120/lat=45 is
-      // valid. Ambiguous/unset format must recover this instead of dropping it.
+    it("should return none for ambiguous data even when one order would validate", () => {
+      // "120,45": lng=120/lat=45 would be valid, but the column order is undecided.
+      // Option B never guesses per row — it returns none until the order is set.
       const row = { coords: "120,45" };
       const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should use explicit lng,lat order once the order is supplied", () => {
+      // After the review picker resolves the order, the format is explicit and
+      // the strict branch applies: "120,45" → lng=120, lat=45.
+      const row = { coords: "120,45" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lng,lat" as const };
 
       const result = extractCoordinates(row, fieldMappings, {});
 
@@ -144,19 +159,7 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.type).toBe("source-data");
     });
 
-    it("should keep lat-first when both orders are valid (truly ambiguous)", () => {
-      // "45,50": valid as lat=45/lng=50 AND as lng=45/lat=50. Keep lat-first
-      // (the detector's documented default; a UI order-picker is the real fix).
-      const row = { coords: "45,50" };
-      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
-
-      const result = extractCoordinates(row, fieldMappings, {});
-
-      expect(result.location).toEqual({ latitude: 45, longitude: 50 });
-      expect(result.coordinateSource.type).toBe("source-data");
-    });
-
-    it("should NOT salvage swapped order when the format is explicit", () => {
+    it("should NOT reinterpret when the format is explicit and out of range", () => {
       // Explicit "lat,lng" is trusted strictly: "120,45" has lat=120 invalid and
       // must drop (no silent reinterpretation against a declared order).
       const row = { coords: "120,45" };

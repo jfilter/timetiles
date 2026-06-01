@@ -35,18 +35,20 @@ const validatedLocation = (latitude: number, longitude: number): CombinedCoordin
 
 /**
  * Parse a single combined-coordinate cell (e.g. "40.7,-74.0") into a validated
- * location, interpreting axis order from the detected coordinateFormat.
+ * location, using the column-level detected coordinateFormat. Axis order is a
+ * per-column decision (made once by the schema detector), never re-decided per
+ * row — so this is a strict parser, not a guesser:
  *
- * - Explicit `"lat,lng"` / `"lng,lat"`: trust the order; null if out of range.
- * - `"ambiguous"` / null / unset: try lat-first, and if that is out of range
- *   fall back to the swapped (lng-first) interpretation before giving up. This
- *   recovers genuinely lng,lat rows (e.g. "120,45" — lat=120 is invalid, but
- *   lng=120/lat=45 is valid) that would otherwise be silently dropped. When
- *   BOTH orders validate the value is truly ambiguous and lat-first is kept
- *   (the detector's documented default; a UI order-picker is the real fix).
+ * - Explicit `"lat,lng"` / `"lng,lat"`: validate in that order; null if out of range.
+ * - `"ambiguous"` / null / unset: the column's order is undecided, so return
+ *   null (the caller falls through to geocoding / none). Guessing per row would
+ *   render some rows in one order and others swapped within the same column.
+ *   The AMBIGUOUS_COORDINATE_ORDER review gate is what resolves the order; once
+ *   a user/config supplies it, coordinateFormat becomes explicit and the strict
+ *   branches above apply.
  *
- * Returns null when the cell is missing, malformed, or fails validation in
- * every applicable order, so the caller can fall through to geocoding.
+ * Returns null when the cell is missing, malformed, the order is undecided, or
+ * the values fail validation, so the caller can fall through to geocoding.
  */
 const extractCombinedCoordinates = (
   cellValue: unknown,
@@ -57,6 +59,9 @@ const extractCombinedCoordinates = (
   // hold two axes, and objects/arrays are not source-data cells, so bail.
   if (typeof cellValue !== "string") return null;
 
+  // Only an explicit, decided order is usable. Ambiguous/unset is never guessed.
+  if (coordinateFormat !== "lat,lng" && coordinateFormat !== "lng,lat") return null;
+
   const parts = cellValue.split(",");
   if (parts.length !== 2) return null;
 
@@ -64,11 +69,7 @@ const extractCombinedCoordinates = (
   const second = parseCoordinate(parts[1]);
   if (first === null || second === null) return null;
 
-  if (coordinateFormat === "lng,lat") return validatedLocation(second, first);
-  if (coordinateFormat === "lat,lng") return validatedLocation(first, second);
-
-  // Ambiguous / unset: prefer lat-first, salvage lng-first rather than drop.
-  return validatedLocation(first, second) ?? validatedLocation(second, first);
+  return coordinateFormat === "lng,lat" ? validatedLocation(second, first) : validatedLocation(first, second);
 };
 
 /**

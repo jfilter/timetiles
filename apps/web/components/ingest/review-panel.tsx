@@ -45,6 +45,11 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
     approveLabel: t("approveUseColumn"),
     approveWithoutLabel: t("approveContinueWithoutLocations"),
   },
+  [REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER]: {
+    icon: MapPinOffIcon,
+    approveLabel: t("approveUseOrder"),
+    approveWithoutLabel: t("approveContinueWithoutLocations"),
+  },
   [REVIEW_REASONS.HIGH_DUPLICATE_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
   [REVIEW_REASONS.HIGH_EMPTY_ROW_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveImportAnyway") },
   [REVIEW_REASONS.HIGH_ROW_ERROR_RATE]: { icon: AlertTriangleIcon, approveLabel: t("approveAcceptPartial") },
@@ -52,6 +57,32 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
   [REVIEW_REASONS.QUOTA_EXCEEDED]: { icon: AlertTriangleIcon, approveLabel: t("approveContactAdmin") },
   [REVIEW_REASONS.SCHEMA_DRIFT]: { icon: AlertTriangleIcon, approveLabel: t("approveSchemaChanges") },
 });
+
+/** Axis-order options for the ambiguous combined-coordinate picker. */
+// eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
+const COORDINATE_ORDER_OPTIONS = ["lat,lng", "lng,lat"];
+
+/** Build the approve request for a column/order pick. Kept outside the component to bound its complexity. */
+const buildApproveRequest = (
+  ingestJobId: string,
+  reason: string,
+  selectedColumn: string,
+  coordinateOrder: string
+): ApproveIngestJobRequest => {
+  const request: ApproveIngestJobRequest = { ingestJobId };
+  if (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED && selectedColumn) {
+    request.timestampPath = selectedColumn;
+  } else if (reason === REVIEW_REASONS.NO_LOCATION_DETECTED && selectedColumn) {
+    request.locationPath = selectedColumn;
+    request.locationNamePath = selectedColumn;
+  } else if (
+    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER &&
+    (coordinateOrder === "lat,lng" || coordinateOrder === "lng,lat")
+  ) {
+    request.coordinateFormat = coordinateOrder;
+  }
+  return request;
+};
 
 /** Column picker for no-timestamp / no-location reviews. */
 const ColumnPicker = ({
@@ -156,6 +187,66 @@ const ReasonStats = ({
   }
 };
 
+/** Renders the column picker (no-timestamp/no-location) or the axis-order picker (ambiguous coords). */
+const ReviewPicker = ({
+  reason,
+  details,
+  availableColumns,
+  selectedColumn,
+  setSelectedColumn,
+  coordinateOrder,
+  setCoordinateOrder,
+  t,
+}: {
+  reason: string;
+  details: Record<string, unknown> | null;
+  availableColumns: string[];
+  selectedColumn: string;
+  setSelectedColumn: (v: string) => void;
+  coordinateOrder: string;
+  setCoordinateOrder: (v: string) => void;
+  t: ReturnType<typeof useTranslations>;
+}) => {
+  if (
+    (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED) &&
+    availableColumns.length > 0
+  ) {
+    return (
+      <div className="bg-background rounded-sm border p-4">
+        <ColumnPicker
+          columns={availableColumns}
+          label={
+            reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ? t("selectTimestampColumn") : t("selectLocationColumn")
+          }
+          placeholder={t("selectColumnPlaceholder")}
+          value={selectedColumn}
+          onChange={setSelectedColumn}
+        />
+      </div>
+    );
+  }
+
+  if (reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER) {
+    return (
+      <div className="bg-background rounded-sm border p-4">
+        <ColumnPicker
+          columns={COORDINATE_ORDER_OPTIONS}
+          label={
+            typeof details?.sampleValue === "string"
+              ? t("selectCoordinateOrderWithSample", { sample: details.sampleValue })
+              : t("selectCoordinateOrder")
+          }
+          placeholder={t("selectCoordinateOrderPlaceholder")}
+          value={coordinateOrder}
+          onChange={setCoordinateOrder}
+        />
+      </div>
+    );
+  }
+
+  return null;
+};
+
 /** Action buttons for the review panel. */
 const ReviewActions = ({
   reason,
@@ -167,13 +258,15 @@ const ReviewActions = ({
 }: {
   reason: string;
   config: ReasonConfig;
-  canApproveWithColumn: string | false;
+  canApproveWithColumn: boolean;
   isPending: boolean;
   onApprove: () => void;
   onApproveWithout: () => void;
 }) => {
   const isFieldPickerReason =
-    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
+    reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ||
+    reason === REVIEW_REASONS.NO_LOCATION_DETECTED ||
+    reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER;
 
   if (isFieldPickerReason) {
     return (
@@ -215,28 +308,22 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
   const Icon = config?.icon ?? AlertTriangleIcon;
 
   const [selectedColumn, setSelectedColumn] = useState("");
+  const [coordinateOrder, setCoordinateOrder] = useState("");
   const approveMutation = useApproveIngestJobMutation();
 
   if (!reason || !config) return null;
 
   const availableColumns = (details?.availableColumns as string[]) ?? [];
-  const isFieldPickerReason =
+  const isColumnPickerReason =
     reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED || reason === REVIEW_REASONS.NO_LOCATION_DETECTED;
-  const canApproveWithColumn = isFieldPickerReason && selectedColumn;
+  const isOrderPickerReason = reason === REVIEW_REASONS.AMBIGUOUS_COORDINATE_ORDER;
+  // A pick is ready when the relevant reason has its selection made.
+  const canApproveWithColumn = Boolean(
+    (isColumnPickerReason && selectedColumn) || (isOrderPickerReason && coordinateOrder)
+  );
 
   const handleApprove = () => {
-    const request: ApproveIngestJobRequest = { ingestJobId: String(job.id) };
-
-    if (canApproveWithColumn) {
-      if (reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED) {
-        request.timestampPath = selectedColumn;
-      } else if (reason === REVIEW_REASONS.NO_LOCATION_DETECTED) {
-        request.locationPath = selectedColumn;
-        request.locationNamePath = selectedColumn;
-      }
-    }
-
-    approveMutation.mutate(request);
+    approveMutation.mutate(buildApproveRequest(String(job.id), reason, selectedColumn, coordinateOrder));
   };
 
   const handleApproveWithout = () => {
@@ -259,20 +346,17 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
           </div>
         </div>
 
-        {/* Column picker for no-timestamp / no-location */}
-        {isFieldPickerReason && availableColumns.length > 0 && (
-          <div className="bg-background rounded-sm border p-4">
-            <ColumnPicker
-              columns={availableColumns}
-              label={
-                reason === REVIEW_REASONS.NO_TIMESTAMP_DETECTED ? t("selectTimestampColumn") : t("selectLocationColumn")
-              }
-              placeholder={t("selectColumnPlaceholder")}
-              value={selectedColumn}
-              onChange={setSelectedColumn}
-            />
-          </div>
-        )}
+        {/* Column picker (no-timestamp/no-location) or axis-order picker (ambiguous coords) */}
+        <ReviewPicker
+          reason={reason}
+          details={details}
+          availableColumns={availableColumns}
+          selectedColumn={selectedColumn}
+          setSelectedColumn={setSelectedColumn}
+          coordinateOrder={coordinateOrder}
+          setCoordinateOrder={setCoordinateOrder}
+          t={t}
+        />
 
         {/* Reason-specific stats */}
         {details && <ReasonStats reason={reason} details={details} t={t} />}

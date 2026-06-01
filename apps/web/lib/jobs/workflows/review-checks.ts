@@ -38,6 +38,7 @@ export const ReviewChecksConfigSchema = z
     skipRowErrorCheck: z.boolean().optional(),
     skipDuplicateRateCheck: z.boolean().optional(),
     skipGeocodingCheck: z.boolean().optional(),
+    skipAmbiguousCoordinateCheck: z.boolean().optional(),
     emptyRowThreshold: z.number().min(0).max(1).nullable().optional(),
     rowErrorThreshold: z.number().min(0).max(1).nullable().optional(),
     duplicateRateThreshold: z.number().min(0).max(1).nullable().optional(),
@@ -305,6 +306,23 @@ export const shouldReviewNoLocation = (
   // fall through on `""`.
   const hasLocation = Boolean(fieldMappings.locationPath ?? fieldMappings.locationNamePath);
   return { needsReview: !hasCoordinates && !hasLocation };
+};
+
+/**
+ * Check if a single combined-coordinate column was detected but its axis order
+ * is ambiguous (every sample fit both "lat,lng" and "lng,lat"). The order is a
+ * per-column decision the data cannot settle, so we must ask rather than guess —
+ * a wrong guess renders points on the wrong continent. Returns true when a
+ * combined column exists with `coordinateFormat === "ambiguous"` and the check
+ * is not skipped. Separate lat/lng columns and explicit-order combined columns
+ * never trigger this.
+ */
+export const shouldReviewAmbiguousCoordinates = (
+  fieldMappings: { coordinatePath?: string | null; coordinateFormat?: string | null },
+  reviewChecks?: ReviewChecksConfig
+): { needsReview: boolean } => {
+  if (reviewChecks?.skipAmbiguousCoordinateCheck) return { needsReview: false };
+  return { needsReview: Boolean(fieldMappings.coordinatePath) && fieldMappings.coordinateFormat === "ambiguous" };
 };
 
 export { REVIEW_REASONS } from "@/lib/constants/review-reasons";

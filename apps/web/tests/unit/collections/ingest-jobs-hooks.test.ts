@@ -51,6 +51,7 @@ vi.mock("@/lib/constants/review-reasons", () => ({
     HIGH_EMPTY_ROW_RATE: "high-empty-rows",
     NO_TIMESTAMP_DETECTED: "no-timestamp",
     NO_LOCATION_DETECTED: "no-location",
+    AMBIGUOUS_COORDINATE_ORDER: "ambiguous-coordinate-order",
     GEOCODING_PARTIAL: "geocoding-partial",
     QUOTA_EXCEEDED: "quota-exceeded",
     HIGH_ROW_ERROR_RATE: "high-row-errors",

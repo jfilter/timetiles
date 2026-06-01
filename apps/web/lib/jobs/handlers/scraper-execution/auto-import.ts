@@ -89,7 +89,10 @@ export const triggerAutoImport = async (
     processingOptions: {
       autoApproveSchema: true,
       skipDuplicateChecking: false,
-      reviewChecks: scraper.reviewChecks ?? undefined,
+      // No human resolves reviews for scraper-driven imports, so default the
+      // ambiguous coordinate-order gate to skipped (ambiguous combined columns
+      // yield no points rather than stalling). Explicit scraper config wins.
+      reviewChecks: { skipAmbiguousCoordinateCheck: true, ...scraper.reviewChecks },
     },
   };
 

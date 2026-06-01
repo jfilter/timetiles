@@ -352,6 +352,17 @@ const Datasets: CollectionConfig = {
           },
         },
         {
+          // Stored as text (not a select) to avoid exceeding Postgres' 63-char
+          // enum-name limit on the version table; allowed values ("lat,lng" /
+          // "lng,lat") are enforced at the app layer (approve-route Zod enum).
+          name: "coordinateFormat",
+          type: "text",
+          admin: {
+            description:
+              "Axis order of the combined-coordinate column: 'lat,lng' or 'lng,lat'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
+          },
+        },
+        {
           name: "locationPath",
           type: "text",
           admin: { description: "Override detected location field (e.g., 'address', 'location', 'venue', 'city')" },

@@ -34,6 +34,8 @@ const bodySchema = z
     latitudePath: z.string().optional(),
     /** For no-location: column name for longitude. */
     longitudePath: z.string().optional(),
+    /** For ambiguous-coordinate-order: the confirmed axis order of the combined column. */
+    coordinateFormat: z.enum(["lat,lng", "lng,lat"]).optional(),
   })
   .optional();
 
@@ -47,6 +49,7 @@ const buildOverrideUpdate = (body: ApproveBody): Record<string, string> => {
   if (body?.locationNamePath) overrideUpdate.locationNamePath = body.locationNamePath;
   if (body?.latitudePath) overrideUpdate.latitudePath = body.latitudePath;
   if (body?.longitudePath) overrideUpdate.longitudePath = body.longitudePath;
+  if (body?.coordinateFormat) overrideUpdate.coordinateFormat = body.coordinateFormat;
   return overrideUpdate;
 };
 
