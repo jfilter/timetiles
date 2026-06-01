@@ -132,6 +132,42 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.type).toBe("none");
     });
 
+    it("should salvage lng,lat order for ambiguous data when lat-first is out of range", () => {
+      // "120,45": lat=120 is invalid, but interpreting as lng=120/lat=45 is
+      // valid. Ambiguous/unset format must recover this instead of dropping it.
+      const row = { coords: "120,45" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 45, longitude: 120 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should keep lat-first when both orders are valid (truly ambiguous)", () => {
+      // "45,50": valid as lat=45/lng=50 AND as lng=45/lat=50. Keep lat-first
+      // (the detector's documented default; a UI order-picker is the real fix).
+      const row = { coords: "45,50" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 45, longitude: 50 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should NOT salvage swapped order when the format is explicit", () => {
+      // Explicit "lat,lng" is trusted strictly: "120,45" has lat=120 invalid and
+      // must drop (no silent reinterpretation against a declared order).
+      const row = { coords: "120,45" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lat,lng" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
     it("should prefer separate lat/lng over a combined column", () => {
       const row = { latitude: 52.52, longitude: 13.405, coords: "40.7128,-74.006" };
       const fieldMappings = {

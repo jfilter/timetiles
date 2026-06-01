@@ -22,19 +22,36 @@ import type { Dataset } from "@/payload-types";
 
 const logger = createLogger("event-creation-helpers");
 
+type CombinedCoordinateResult = {
+  location: { latitude: number; longitude: number };
+  coordinateSource: { type: "source-data" };
+};
+
+/** Build a validated result for a given axis assignment, or null if out of range. */
+const validatedLocation = (latitude: number, longitude: number): CombinedCoordinateResult | null =>
+  isValidCoordinate(latitude, longitude)
+    ? { location: { latitude, longitude }, coordinateSource: { type: "source-data" as const } }
+    : null;
+
 /**
  * Parse a single combined-coordinate cell (e.g. "40.7,-74.0") into a validated
  * location, interpreting axis order from the detected coordinateFormat.
  *
- * "lng,lat" => first value is longitude; "lat,lng"/"ambiguous"/null => first
- * value is latitude (lat-first default, matching the schema detector). Returns
- * null when the cell is missing, malformed, or fails coordinate validation so
- * the caller can fall through to geocoding.
+ * - Explicit `"lat,lng"` / `"lng,lat"`: trust the order; null if out of range.
+ * - `"ambiguous"` / null / unset: try lat-first, and if that is out of range
+ *   fall back to the swapped (lng-first) interpretation before giving up. This
+ *   recovers genuinely lng,lat rows (e.g. "120,45" — lat=120 is invalid, but
+ *   lng=120/lat=45 is valid) that would otherwise be silently dropped. When
+ *   BOTH orders validate the value is truly ambiguous and lat-first is kept
+ *   (the detector's documented default; a UI order-picker is the real fix).
+ *
+ * Returns null when the cell is missing, malformed, or fails validation in
+ * every applicable order, so the caller can fall through to geocoding.
  */
 const extractCombinedCoordinates = (
   cellValue: unknown,
   coordinateFormat: string | null | undefined
-): { location: { latitude: number; longitude: number }; coordinateSource: { type: "source-data" } } | null => {
+): CombinedCoordinateResult | null => {
   if (cellValue == null || cellValue === "") return null;
   // A combined-coordinate cell is a "lat,lng" string. A bare number can never
   // hold two axes, and objects/arrays are not source-data cells, so bail.
@@ -47,13 +64,11 @@ const extractCombinedCoordinates = (
   const second = parseCoordinate(parts[1]);
   if (first === null || second === null) return null;
 
-  const lngFirst = coordinateFormat === "lng,lat";
-  const latitude = lngFirst ? second : first;
-  const longitude = lngFirst ? first : second;
+  if (coordinateFormat === "lng,lat") return validatedLocation(second, first);
+  if (coordinateFormat === "lat,lng") return validatedLocation(first, second);
 
-  if (!isValidCoordinate(latitude, longitude)) return null;
-
-  return { location: { latitude, longitude }, coordinateSource: { type: "source-data" as const } };
+  // Ambiguous / unset: prefer lat-first, salvage lng-first rather than drop.
+  return validatedLocation(first, second) ?? validatedLocation(second, first);
 };
 
 /**
