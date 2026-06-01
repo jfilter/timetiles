@@ -91,6 +91,8 @@ export interface FieldMapping {
   locationField: string | null;
   latitudeField: string | null;
   longitudeField: string | null;
+  /** Single column holding both coordinates (e.g. "lat,lng"). */
+  coordinateField: string | null;
 }
 
 /** Keys of FieldMapping that hold `string | null` column names (excludes sheetIndex and idStrategy). */

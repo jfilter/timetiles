@@ -495,6 +495,33 @@ describe("Field Mapping Detection", () => {
 
         expect(mappings.longitudePath).toBeNull();
       });
+
+      it("should emit coordinatePath/coordinateFormat from a combined column", () => {
+        // Longitudes beyond ±90 make the order unambiguously lat,lng.
+        const fieldStats = createFieldStats({
+          coordinates: {
+            uniqueSamples: ["40.7128,-174.006", "51.5074,-120.1278", "48.8566,135.3522"],
+            typeDistribution: { string: 100 },
+          },
+        });
+
+        const mappings = detectFieldMappings(fieldStats, "eng");
+
+        expect(mappings.coordinatePath).toBe("coordinates");
+        expect(mappings.coordinateFormat).toBe("lat,lng");
+        // Separate lat/lng paths stay null when only a combined column exists.
+        expect(mappings.latitudePath).toBeNull();
+        expect(mappings.longitudePath).toBeNull();
+      });
+
+      it("should leave coordinatePath null when no combined column exists", () => {
+        const fieldStats = createFieldStats({ lat: { fieldType: "latitude" }, lon: { fieldType: "longitude" } });
+
+        const mappings = detectFieldMappings(fieldStats, "eng");
+
+        expect(mappings.coordinatePath).toBeNull();
+        expect(mappings.coordinateFormat).toBeNull();
+      });
     });
 
     describe("Location fields (English)", () => {

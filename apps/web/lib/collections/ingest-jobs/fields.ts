@@ -140,6 +140,19 @@ export const ingestJobFields: Field[] = [
         admin: { description: "Path to longitude coordinate field in source data", readOnly: true },
       },
       {
+        name: "coordinatePath",
+        type: "text",
+        admin: { description: "Path to a single combined-coordinate column in source data", readOnly: true },
+      },
+      {
+        name: "coordinateFormat",
+        type: "text",
+        admin: {
+          description: "Order of the combined coordinate column: lat,lng | lng,lat | ambiguous",
+          readOnly: true,
+        },
+      },
+      {
         name: "locationPath",
         type: "text",
         admin: { description: "Path to location/address field in source data (for geocoding)", readOnly: true },

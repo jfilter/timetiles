@@ -47,6 +47,7 @@ const fullFieldMapping: FieldMapping = {
   locationField: "Address",
   latitudeField: "Lat",
   longitudeField: "Lng",
+  coordinateField: null,
 };
 
 const nullFieldMapping: FieldMapping = {
@@ -61,6 +62,7 @@ const nullFieldMapping: FieldMapping = {
   locationField: null,
   latitudeField: null,
   longitudeField: null,
+  coordinateField: null,
 };
 
 describe("import-configure-service", () => {
@@ -78,6 +80,7 @@ describe("import-configure-service", () => {
         endTimestampPath: null,
         latitudePath: "Lat",
         longitudePath: "Lng",
+        coordinatePath: null,
         locationPath: "Address",
       });
     });
@@ -92,8 +95,16 @@ describe("import-configure-service", () => {
         endTimestampPath: null,
         latitudePath: null,
         longitudePath: null,
+        coordinatePath: null,
         locationPath: null,
       });
+    });
+
+    it("maps a combined coordinate column to coordinatePath", () => {
+      const result = buildFieldMappingOverrides({ ...nullFieldMapping, coordinateField: "coordinates" });
+      expect(result.coordinatePath).toBe("coordinates");
+      expect(result.latitudePath).toBeNull();
+      expect(result.longitudePath).toBeNull();
     });
   });
 

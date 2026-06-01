@@ -1504,6 +1504,9 @@ export const datasets = db_schema.table(
     fieldMappingOverrides_longitudePath: varchar(
       "field_mapping_overrides_longitude_path",
     ),
+    fieldMappingOverrides_coordinatePath: varchar(
+      "field_mapping_overrides_coordinate_path",
+    ),
     fieldMappingOverrides_locationPath: varchar(
       "field_mapping_overrides_location_path",
     ),
@@ -1783,6 +1786,9 @@ export const _datasets_v = db_schema.table(
     ),
     version_fieldMappingOverrides_longitudePath: varchar(
       "version_field_mapping_overrides_longitude_path",
+    ),
+    version_fieldMappingOverrides_coordinatePath: varchar(
+      "version_field_mapping_overrides_coordinate_path",
     ),
     version_fieldMappingOverrides_locationPath: varchar(
       "version_field_mapping_overrides_location_path",
@@ -2694,6 +2700,12 @@ export const ingest_jobs = db_schema.table(
     detectedFieldMappings_longitudePath: varchar(
       "detected_field_mappings_longitude_path",
     ),
+    detectedFieldMappings_coordinatePath: varchar(
+      "detected_field_mappings_coordinate_path",
+    ),
+    detectedFieldMappings_coordinateFormat: varchar(
+      "detected_field_mappings_coordinate_format",
+    ),
     detectedFieldMappings_locationPath: varchar(
       "detected_field_mappings_location_path",
     ),
@@ -2858,6 +2870,12 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_detectedFieldMappings_longitudePath: varchar(
       "version_detected_field_mappings_longitude_path",
+    ),
+    version_detectedFieldMappings_coordinatePath: varchar(
+      "version_detected_field_mappings_coordinate_path",
+    ),
+    version_detectedFieldMappings_coordinateFormat: varchar(
+      "version_detected_field_mappings_coordinate_format",
     ),
     version_detectedFieldMappings_locationPath: varchar(
       "version_detected_field_mappings_location_path",

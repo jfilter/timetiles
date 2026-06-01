@@ -25,8 +25,11 @@ import type { Dataset, IngestJob } from "@/payload-types";
 
 export type FlatFieldMappings = ReturnType<typeof detectFlatFieldMappings>;
 
+/** Override-eligible mapping keys: those present on the dataset's path overrides. */
+type OverridePathKey = keyof NonNullable<Dataset["fieldMappingOverrides"]> & keyof FlatFieldMappings;
+
 const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Dataset | null): FlatFieldMappings => {
-  const pickOverride = <K extends keyof FlatFieldMappings>(key: K): FlatFieldMappings[K] =>
+  const pickOverride = <K extends OverridePathKey>(key: K): FlatFieldMappings[K] =>
     dataset?.fieldMappingOverrides?.[key] ?? detectedMappings[key];
 
   return {
@@ -37,7 +40,11 @@ const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Datase
     endTimestampPath: pickOverride("endTimestampPath"),
     latitudePath: pickOverride("latitudePath"),
     longitudePath: pickOverride("longitudePath"),
+    coordinatePath: pickOverride("coordinatePath"),
     locationPath: pickOverride("locationPath"),
+    // coordinateFormat is metadata for the combined column, not a dataset
+    // path override; carry through whatever detection produced.
+    coordinateFormat: detectedMappings.coordinateFormat ?? null,
   };
 };
 
@@ -52,8 +59,14 @@ const applyDatasetLanguageFallback = (
     fieldStats as Parameters<typeof detectFlatFieldMappings>[0],
     datasetLang
   );
-  for (const key of Object.keys(detectedMappings) as Array<keyof typeof detectedMappings>) {
-    detectedMappings[key] ??= fallbackMappings[key];
+  // FlatFieldMappings mixes `string | null` paths with the literal-union
+  // `coordinateFormat`. The per-key fill is homogeneous in practice (key and
+  // value share the same shape), so treat both as a flat string record for the
+  // loop rather than fighting the per-property indexed types.
+  const target = detectedMappings as Record<string, string | null | undefined>;
+  const fallback = fallbackMappings as Record<string, string | null | undefined>;
+  for (const key of Object.keys(target)) {
+    target[key] ??= fallback[key];
   }
 };
 
@@ -180,6 +193,7 @@ const buildOverridesUsed = (dataset: Dataset | null) => ({
   endTimestamp: Boolean(dataset?.fieldMappingOverrides?.endTimestampPath),
   latitude: Boolean(dataset?.fieldMappingOverrides?.latitudePath),
   longitude: Boolean(dataset?.fieldMappingOverrides?.longitudePath),
+  coordinate: Boolean(dataset?.fieldMappingOverrides?.coordinatePath),
   location: Boolean(dataset?.fieldMappingOverrides?.locationPath),
 });
 

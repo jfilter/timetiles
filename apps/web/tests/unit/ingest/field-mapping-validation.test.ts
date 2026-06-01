@@ -39,6 +39,7 @@ const baseFieldMapping: FieldMapping = {
   locationField: null,
   latitudeField: "lat",
   longitudeField: "lng",
+  coordinateField: null,
 };
 
 describe("validateFieldMappingPaths", () => {

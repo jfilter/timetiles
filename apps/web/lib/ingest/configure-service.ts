@@ -44,6 +44,7 @@ export const buildFieldMappingOverrides = (
     | "endTimestampPath"
     | "latitudePath"
     | "longitudePath"
+    | "coordinatePath"
     | "locationPath",
     string | null
   >
@@ -57,6 +58,7 @@ export const buildFieldMappingOverrides = (
     endTimestampPath: fieldMapping.endDateField,
     latitudePath: fieldMapping.latitudeField,
     longitudePath: fieldMapping.longitudeField,
+    coordinatePath: fieldMapping.coordinateField,
     locationPath: fieldMapping.locationField,
   };
 };
@@ -227,6 +229,7 @@ const FIELD_MAPPING_PATH_KEYS = [
   "locationField",
   "latitudeField",
   "longitudeField",
+  "coordinateField",
 ] as const satisfies readonly (keyof FieldMapping)[];
 
 type FieldMappingPathKey = (typeof FIELD_MAPPING_PATH_KEYS)[number];

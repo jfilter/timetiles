@@ -74,6 +74,15 @@ export const EVENT_FIELD_DEFINITIONS = [
     description: "Geographic longitude coordinate",
   },
   {
+    key: "coordinate",
+    pathName: "coordinatePath",
+    fieldName: "coordinateField",
+    label: "Coordinates",
+    icon: "MapPin",
+    required: false,
+    description: 'Single column holding both coordinates (e.g. "lat,lng")',
+  },
+  {
     key: "description",
     pathName: "descriptionPath",
     fieldName: "descriptionField",
@@ -125,10 +134,14 @@ type PathFieldDefinition = Extract<EventFieldDefinition, { pathName: string }>;
  *
  * Equivalent to the old hand-written `FieldMappings` and `DataPackageFieldMappings`
  * interfaces — now derived from the single registry.
+ *
+ * `coordinateFormat` is not a path but a sibling of `coordinatePath`: it records
+ * the order of a single combined-coordinate column. It is added by intersection
+ * because it is metadata, not a source-data path.
  */
 export type FieldPathMappings = {
   [K in PathFieldDefinition as K["pathName"]]: string | null;
-};
+} & { coordinateFormat?: "lat,lng" | "lng,lat" | "ambiguous" | null };
 
 // ---------------------------------------------------------------------------
 // Derived arrays for UI consumption

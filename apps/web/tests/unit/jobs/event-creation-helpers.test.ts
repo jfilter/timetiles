@@ -61,6 +61,93 @@ describe("extractCoordinates", () => {
     });
   });
 
+  describe("with a combined coordinate column", () => {
+    it("should extract lat,lng order from a single column", () => {
+      const row = { coords: "40.7128,-74.006" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lat,lng" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should swap axes for lng,lat order", () => {
+      const row = { coords: "-74.006,40.7128" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lng,lat" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 40.7128, longitude: -74.006 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should default to lat-first when format is ambiguous", () => {
+      const row = { coords: "52.52,13.405" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "ambiguous" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should default to lat-first when format is omitted", () => {
+      const row = { coords: "52.52,13.405" };
+      const fieldMappings = { coordinatePath: "coords" };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+
+    it("should fall through to none for a garbage cell", () => {
+      const row = { coords: "not-a-coordinate" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lat,lng" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should fall through to none when the cell lacks two parts", () => {
+      const row = { coords: "52.52" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lat,lng" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should fall through to none for out-of-range combined values", () => {
+      const row = { coords: "999,13.405" };
+      const fieldMappings = { coordinatePath: "coords", coordinateFormat: "lat,lng" as const };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should prefer separate lat/lng over a combined column", () => {
+      const row = { latitude: 52.52, longitude: 13.405, coords: "40.7128,-74.006" };
+      const fieldMappings = {
+        latitudePath: "latitude",
+        longitudePath: "longitude",
+        coordinatePath: "coords",
+        coordinateFormat: "lat,lng" as const,
+      };
+
+      const result = extractCoordinates(row, fieldMappings, {});
+
+      expect(result.location).toEqual({ latitude: 52.52, longitude: 13.405 });
+      expect(result.coordinateSource.type).toBe("source-data");
+    });
+  });
+
   describe("with geocoded coordinates", () => {
     it("should extract geocoded coordinates with normalizedAddress", () => {
       const row = { location: "Berlin Germany" };

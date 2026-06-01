@@ -167,6 +167,7 @@ describe("Wizard Store", () => {
             locationField: null,
             latitudeField: null,
             longitudeField: null,
+            coordinateField: null,
           },
         ],
       });
@@ -323,6 +324,7 @@ describe("Wizard Store", () => {
             locationField: null,
             latitudeField: null,
             longitudeField: null,
+            coordinateField: null,
           },
         ],
       });
@@ -353,6 +355,7 @@ describe("Wizard Store", () => {
             locationField: null,
             latitudeField: null,
             longitudeField: null,
+            coordinateField: null,
           },
         ],
       });
@@ -488,6 +491,7 @@ describe("Wizard Store", () => {
             idStrategy: "external" as const,
             latitudeField: null,
             longitudeField: null,
+            coordinateField: null,
           },
         ],
         transforms: { 0: [] },
@@ -697,6 +701,7 @@ describe("canProceed Validation", () => {
       locationField: null,
       latitudeField: null,
       longitudeField: null,
+      coordinateField: null,
     };
 
     it("blocks when missing titleField", () => {
@@ -729,6 +734,7 @@ describe("canProceed Validation", () => {
             locationField: null,
             latitudeField: null,
             longitudeField: null,
+            coordinateField: null,
           },
         ],
       };

@@ -25,6 +25,17 @@ import { validateFieldType } from "./validators";
  */
 export type FieldMappings = FieldPathMappings;
 
+/** Flatten the geo sub-result into separate/combined coordinate paths. */
+const toGeoPaths = (
+  geo: FieldMappingsResult["geo"]
+): Pick<FieldMappings, "latitudePath" | "longitudePath" | "locationPath" | "coordinatePath" | "coordinateFormat"> => ({
+  latitudePath: geo?.latitude?.path ?? null,
+  longitudePath: geo?.longitude?.path ?? null,
+  locationPath: geo?.locationField?.path ?? null,
+  coordinatePath: geo?.combined?.path ?? null,
+  coordinateFormat: geo?.combined?.format ?? null,
+});
+
 /**
  * Convert a structured FieldMappingsResult to flat FieldMappings.
  */
@@ -34,9 +45,7 @@ export const toFlatMappings = (result: FieldMappingsResult): FieldMappings => ({
   locationNamePath: result.locationName?.path ?? null,
   timestampPath: result.timestamp?.path ?? null,
   endTimestampPath: result.endTimestamp?.path ?? null,
-  latitudePath: result.geo?.latitude?.path ?? null,
-  longitudePath: result.geo?.longitude?.path ?? null,
-  locationPath: result.geo?.locationField?.path ?? null,
+  ...toGeoPaths(result.geo),
 });
 
 /**

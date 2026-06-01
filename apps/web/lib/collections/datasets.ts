@@ -345,6 +345,13 @@ const Datasets: CollectionConfig = {
           admin: { description: "Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')" },
         },
         {
+          name: "coordinatePath",
+          type: "text",
+          admin: {
+            description: "Override detected combined-coordinate field (single column, e.g., 'coordinates', 'latlng')",
+          },
+        },
+        {
           name: "locationPath",
           type: "text",
           admin: { description: "Override detected location field (e.g., 'address', 'location', 'venue', 'city')" },

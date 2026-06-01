@@ -23,6 +23,40 @@ import type { Dataset } from "@/payload-types";
 const logger = createLogger("event-creation-helpers");
 
 /**
+ * Parse a single combined-coordinate cell (e.g. "40.7,-74.0") into a validated
+ * location, interpreting axis order from the detected coordinateFormat.
+ *
+ * "lng,lat" => first value is longitude; "lat,lng"/"ambiguous"/null => first
+ * value is latitude (lat-first default, matching the schema detector). Returns
+ * null when the cell is missing, malformed, or fails coordinate validation so
+ * the caller can fall through to geocoding.
+ */
+const extractCombinedCoordinates = (
+  cellValue: unknown,
+  coordinateFormat: string | null | undefined
+): { location: { latitude: number; longitude: number }; coordinateSource: { type: "source-data" } } | null => {
+  if (cellValue == null || cellValue === "") return null;
+  // A combined-coordinate cell is a "lat,lng" string. A bare number can never
+  // hold two axes, and objects/arrays are not source-data cells, so bail.
+  if (typeof cellValue !== "string") return null;
+
+  const parts = cellValue.split(",");
+  if (parts.length !== 2) return null;
+
+  const first = parseCoordinate(parts[0]);
+  const second = parseCoordinate(parts[1]);
+  if (first === null || second === null) return null;
+
+  const lngFirst = coordinateFormat === "lng,lat";
+  const latitude = lngFirst ? second : first;
+  const longitude = lngFirst ? first : second;
+
+  if (!isValidCoordinate(latitude, longitude)) return null;
+
+  return { location: { latitude, longitude }, coordinateSource: { type: "source-data" as const } };
+};
+
+/**
  * Extract coordinates from a row based on field mappings and geocoding results.
  * Priority: import coordinates from data > geocoded location > none
  */
@@ -31,6 +65,8 @@ export const extractCoordinates = (
   fieldMappings: {
     latitudePath?: string | null;
     longitudePath?: string | null;
+    coordinatePath?: string | null;
+    coordinateFormat?: string | null;
     locationPath?: string | null;
     locationNamePath?: string | null;
   },
@@ -40,7 +76,8 @@ export const extractCoordinates = (
   coordinateSource: { type: "source-data" | "geocoded" | "none"; confidence?: number; normalizedAddress?: string };
 } => {
   // Try to read coordinates directly from the row (imported data)
-  const { latitudePath, longitudePath, locationPath, locationNamePath } = fieldMappings;
+  const { latitudePath, longitudePath, coordinatePath, coordinateFormat, locationPath, locationNamePath } =
+    fieldMappings;
 
   if (latitudePath && longitudePath) {
     // Parse string coordinates (e.g. from split transforms)
@@ -53,6 +90,16 @@ export const extractCoordinates = (
         location: { latitude: parsedLat, longitude: parsedLng },
         coordinateSource: { type: "source-data" as const },
       };
+    }
+  }
+
+  // Try a single combined-coordinate column (e.g. "40.7,-74.0"). Order is
+  // decided by coordinateFormat; "ambiguous"/missing defaults to lat-first to
+  // match the schema detector's default interpretation.
+  if (coordinatePath) {
+    const combined = extractCombinedCoordinates(getByPathOrKey(row, coordinatePath), coordinateFormat);
+    if (combined) {
+      return combined;
     }
   }
 
@@ -274,6 +321,8 @@ export const createEventData = (
     detectedFieldMappings?: {
       latitudePath?: string | null;
       longitudePath?: string | null;
+      coordinatePath?: string | null;
+      coordinateFormat?: string | null;
       locationPath?: string | null;
       locationNamePath?: string | null;
       timestampPath?: string | null;

@@ -95,6 +95,7 @@ const createFieldMapping = (overrides: Partial<FieldMapping> = {}): FieldMapping
   locationField: null,
   latitudeField: null,
   longitudeField: null,
+  coordinateField: null,
   ...overrides,
 });
 

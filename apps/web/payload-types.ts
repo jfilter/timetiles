@@ -847,6 +847,10 @@ export interface Dataset {
      */
     longitudePath?: string | null;
     /**
+     * Override detected combined-coordinate field (single column, e.g., 'coordinates', 'latlng')
+     */
+    coordinatePath?: string | null;
+    /**
      * Override detected location field (e.g., 'address', 'location', 'venue', 'city')
      */
     locationPath?: string | null;
@@ -1188,6 +1192,14 @@ export interface IngestJob {
      * Path to longitude coordinate field in source data
      */
     longitudePath?: string | null;
+    /**
+     * Path to a single combined-coordinate column in source data
+     */
+    coordinatePath?: string | null;
+    /**
+     * Order of the combined coordinate column: lat,lng | lng,lat | ambiguous
+     */
+    coordinateFormat?: string | null;
     /**
      * Path to location/address field in source data (for geocoding)
      */
@@ -4447,6 +4459,7 @@ export interface DatasetsSelect<T extends boolean = true> {
         endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
+        coordinatePath?: T;
         locationPath?: T;
       };
   hasTemporalData?: T;
@@ -4609,6 +4622,8 @@ export interface IngestJobsSelect<T extends boolean = true> {
         endTimestampPath?: T;
         latitudePath?: T;
         longitudePath?: T;
+        coordinatePath?: T;
+        coordinateFormat?: T;
         locationPath?: T;
       };
   configSnapshot?: T;

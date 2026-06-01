@@ -22,6 +22,7 @@ export const createEmptyFieldMapping = (sheetIndex: number): FieldMapping => ({
   locationField: null,
   latitudeField: null,
   longitudeField: null,
+  coordinateField: null,
 });
 
 /** All FieldMapping keys that hold `string | null` column names. */
@@ -35,6 +36,7 @@ const FIELD_MAPPING_STRING_KEYS: readonly FieldMappingStringField[] = [
   "locationField",
   "latitudeField",
   "longitudeField",
+  "coordinateField",
 ] as const;
 
 /** Type-safe setter: assigns `value` to `fieldKey` only if it's a valid string field. */
@@ -60,4 +62,5 @@ export const createFieldMappingFromSuggestions = (
   locationField: suggestions?.locationPath.path ?? null,
   latitudeField: suggestions?.latitudePath.path ?? null,
   longitudeField: suggestions?.longitudePath.path ?? null,
+  coordinateField: null,
 });

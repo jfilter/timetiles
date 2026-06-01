@@ -37,6 +37,7 @@ export const fieldMappingsSchema = z
       locationField: z.string().nullable(),
       latitudeField: z.string().nullable(),
       longitudeField: z.string().nullable(),
+      coordinateField: z.string().nullable().optional().default(null),
     })
   )
   .min(1);

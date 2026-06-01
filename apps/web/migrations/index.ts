@@ -51,6 +51,7 @@ import * as migration_20260511_221810_consolidate_snapshot_baseline from './2026
 import * as migration_20260511_221811_drop_ingest_jobs_retry_columns from './20260511_221811_drop_ingest_jobs_retry_columns';
 import * as migration_20260511_221812_add_branding_contact_email from './20260511_221812_add_branding_contact_email';
 import * as migration_20260528_000000_fix_temporal_null_and_date_timestamptz from './20260528_000000_fix_temporal_null_and_date_timestamptz';
+import * as migration_20260601_033306_add_combined_coordinate_mapping from './20260601_033306_add_combined_coordinate_mapping';
 
 export const migrations = [
   {
@@ -317,5 +318,10 @@ export const migrations = [
     up: migration_20260528_000000_fix_temporal_null_and_date_timestamptz.up,
     down: migration_20260528_000000_fix_temporal_null_and_date_timestamptz.down,
     name: '20260528_000000_fix_temporal_null_and_date_timestamptz',
+  },
+  {
+    up: migration_20260601_033306_add_combined_coordinate_mapping.up,
+    down: migration_20260601_033306_add_combined_coordinate_mapping.down,
+    name: '20260601_033306_add_combined_coordinate_mapping'
   },
 ];
