@@ -74,6 +74,28 @@ describe("parseImportDate", () => {
   });
 });
 
+describe("parseImportDate with an explicit dayMonthOrder (per-column)", () => {
+  it("uses D/M for an ambiguous slash date when the column order is D/M", () => {
+    expect(parseImportDate("01/02/2024", "D/M")?.toISOString()).toBe("2024-02-01T00:00:00.000Z");
+  });
+
+  it("uses M/D for an ambiguous slash date when the column order is M/D", () => {
+    expect(parseImportDate("01/02/2024", "M/D")?.toISOString()).toBe("2024-01-02T00:00:00.000Z");
+  });
+
+  it("is consistent across rows in one column (the bug case): 13/02 and 01/02 both D/M", () => {
+    // The whole point: a column resolved to D/M parses BOTH rows day-first,
+    // never re-guessing 01/02 as month-first.
+    expect(parseImportDate("13/02/2024", "D/M")?.toISOString()).toBe("2024-02-13T00:00:00.000Z");
+    expect(parseImportDate("01/02/2024", "D/M")?.toISOString()).toBe("2024-02-01T00:00:00.000Z");
+  });
+
+  it("falls back to the per-row heuristic when no order is given (legacy behavior)", () => {
+    // 13>12 forces D/M regardless; preserved when order is omitted.
+    expect(parseImportDate("13/02/2024")?.toISOString()).toBe("2024-02-13T00:00:00.000Z");
+  });
+});
+
 describe("parseImportDateWithFormat", () => {
   it("should parse known formats strictly and disambiguate slash dates", () => {
     expect(parseImportDateWithFormat("01/02/2024", "MM/DD/YYYY")?.toISOString()).toBe("2024-01-02T00:00:00.000Z");

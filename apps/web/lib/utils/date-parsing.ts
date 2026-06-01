@@ -14,6 +14,9 @@ export type ImportDateInput = string | number | Date | null | undefined;
 
 type DatePart = "D" | "M" | "Y";
 
+/** A column-level day/month order resolved by schema detection (vs. per-row guessing). */
+export type DayMonthOrder = "D/M" | "M/D";
+
 interface DateFormatPattern {
   separator: string;
   order: readonly [DatePart, DatePart, DatePart];
@@ -203,7 +206,25 @@ const inferDayMonthOrder = (
   return ["M", "D", "Y"];
 };
 
-const parseSeparatedDate = (value: string): { matched: boolean; date: Date | null } => {
+/**
+ * Resolve the day/month part order for a separated date.
+ *
+ * When the column's order is known (`dayMonthOrder`, decided once per column by
+ * the schema detector), use it directly — this is the per-column fix that avoids
+ * re-guessing each row. Otherwise fall back to the legacy per-row heuristic.
+ */
+const resolveSeparatedOrder = (
+  first: number,
+  second: number,
+  separator: string,
+  dayMonthOrder?: DayMonthOrder
+): readonly [DatePart, DatePart, DatePart] => {
+  if (dayMonthOrder === "D/M") return ["D", "M", "Y"];
+  if (dayMonthOrder === "M/D") return ["M", "D", "Y"];
+  return inferDayMonthOrder(first, second, separator);
+};
+
+const parseSeparatedDate = (value: string, dayMonthOrder?: DayMonthOrder): { matched: boolean; date: Date | null } => {
   for (const separator of ["/", "-", "."]) {
     if (!value.includes(separator)) continue;
 
@@ -219,7 +240,10 @@ const parseSeparatedDate = (value: string): { matched: boolean; date: Date | nul
       return { matched: true, date: parseDateParts(parts, ["Y", "M", "D"]) };
     }
 
-    return { matched: true, date: parseDateParts(parts, inferDayMonthOrder(first, second, separator)) };
+    return {
+      matched: true,
+      date: parseDateParts(parts, resolveSeparatedOrder(first, second, separator, dayMonthOrder)),
+    };
   }
 
   return { matched: false, date: null };
@@ -235,8 +259,13 @@ const parseIsoDate = (value: string): Date | null => {
 
 /**
  * Parse an untrusted import date using TimeTiles' safe ingest rules.
+ *
+ * When `dayMonthOrder` is supplied (the column's order decided once by schema
+ * detection), separated dates use it instead of the per-row `inferDayMonthOrder`
+ * heuristic — the per-column fix for the silent DD/MM-vs-MM/DD bug. Omitting it
+ * preserves the exact legacy behavior.
  */
-export const parseImportDate = (value: ImportDateInput): Date | null => {
+export const parseImportDate = (value: ImportDateInput, dayMonthOrder?: DayMonthOrder): Date | null => {
   if (value == null) return null;
 
   if (value instanceof Date) {
@@ -261,7 +290,7 @@ export const parseImportDate = (value: ImportDateInput): Date | null => {
   const isoDate = parseIsoDate(trimmed);
   if (isoDate) return isoDate;
 
-  const separated = parseSeparatedDate(trimmed);
+  const separated = parseSeparatedDate(trimmed, dayMonthOrder);
   if (separated.matched) return separated.date;
 
   const textMonth = parseTextMonthDate(trimmed, "D MMMM YYYY") ?? parseTextMonthDate(trimmed, "MMMM D, YYYY");
