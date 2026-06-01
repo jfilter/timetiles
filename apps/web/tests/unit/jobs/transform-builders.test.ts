@@ -8,11 +8,11 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
-import type { Dataset } from "@/payload-types";
+import { buildTransformsFromDataset, type TransformSource } from "@/lib/ingest/transform-builders";
 
-const makeDataset = (transforms: Record<string, unknown>[]): Dataset =>
-  ({ ingestTransforms: transforms.map((t, i) => ({ id: `t${i}`, active: true, ...t })) }) as unknown as Dataset;
+const makeDataset = (transforms: Record<string, unknown>[]): TransformSource => ({
+  ingestTransforms: transforms.map((t, i) => ({ id: `t${i}`, active: true, ...t })),
+});
 
 describe("buildTransformsFromDataset", () => {
   it("should build string-op expression with to field", () => {
@@ -72,7 +72,7 @@ describe("buildTransformsFromDataset", () => {
         { id: "t1", type: "rename", from: "a", to: "b", active: false },
         { id: "t2", type: "rename", from: "c", to: "d", active: true },
       ],
-    } as unknown as Dataset;
+    } as unknown as TransformSource;
 
     const transforms = buildTransformsFromDataset(dataset);
     expect(transforms).toHaveLength(1);

@@ -88,6 +88,20 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         schema: { title: { type: "string" }, date: { type: "date" } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: { summary: { uniqueRows: 100 } },
+        // The job's resolved interpretation plan; createSchemaVersion persists the
+        // role paths projected via planToSchemaFieldMappings (ADR 0040).
+        interpretationPlan: {
+          ops: [],
+          columns: [],
+          roles: {
+            title: "title",
+            description: "details",
+            locationName: "venue",
+            timestamp: "date",
+            endTimestamp: "end_date",
+          },
+          ambiguityResolution: "best-effort",
+        },
       };
 
       // Mock dataset
@@ -125,7 +139,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schema: mockIngestJob.schema,
         fieldMetadata: mockFieldStats,
-        fieldMappings: undefined,
+        fieldMappings: {
+          titlePath: "title",
+          descriptionPath: "details",
+          locationNamePath: "venue",
+          timestampPath: "date",
+          endTimestampPath: "end_date",
+        },
         autoApproved: false,
         approvedBy: 789,
         ingestSources: [],
@@ -274,7 +294,8 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         dataset: "dataset-456",
         schema: mockIngestJob.schema,
         fieldMetadata: {},
-        fieldMappings: undefined,
+        // No interpretationPlan on this job → planToSchemaFieldMappings(null) === {}.
+        fieldMappings: {},
         autoApproved: false,
         approvedBy: "user-789", // Should extract ID from object
         ingestSources: [],

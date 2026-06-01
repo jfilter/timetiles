@@ -17,8 +17,8 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import type { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
@@ -64,7 +64,9 @@ const loadDatasetAndTransforms = async (
     dataset = await loadEffectiveDatasetForJob(payload, job);
 
     if (dataset) {
-      transforms = buildTransformsFromDataset(dataset);
+      // Authored ops come from the dataset plan (frozen on the config snapshot at
+      // job creation). The detector resolves them into the job plan downstream.
+      transforms = readInterpretationPlan(dataset)?.ops ?? [];
     }
   } catch (error) {
     // If dataset loading fails, continue with no transforms

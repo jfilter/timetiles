@@ -25,7 +25,6 @@ import {
   validateMappingOverrideTransforms,
   validatePublicCatalogDataset,
 } from "./datasets/hooks";
-import { transformationFields } from "./datasets/transformation-fields";
 import {
   basicMetadataFields,
   createCommonConfig,
@@ -272,8 +271,19 @@ const Datasets: CollectionConfig = {
           "Field type groups from schema detection: { tags: [...], enum: [...], date: [...], url: [...], number: [...] }",
       },
     },
-    // Type Transformations and Import Transforms (extracted to separate file)
-    ...transformationFields,
+    // Canonical interpretation plan (ADR 0040). Stored verbatim as JSON: the
+    // authored DatasetInterpretationPlan (ops + columns + roles + ambiguity).
+    // Machine-authored by the wizard / data-package activation, never hand-edited.
+    // Readers narrow via readInterpretationPlan(); writers cast through unknown.
+    {
+      name: "interpretationPlan",
+      type: "json",
+      admin: {
+        readOnly: true,
+        description:
+          "Canonical import interpretation plan: ordered transforms (ops), per-column typing (columns), semantic roles, and ambiguity policy.",
+      },
+    },
     // Geographic Field Detection (integrates with existing)
     {
       name: "geoFieldDetection",
@@ -295,96 +305,6 @@ const Datasets: CollectionConfig = {
           name: "longitudePath",
           type: "text",
           admin: { description: "Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)" },
-        },
-      ],
-    },
-    // Field Mapping Overrides (Language-aware field detection)
-    {
-      name: "fieldMappingOverrides",
-      type: "group",
-      label: "Field Mapping Overrides",
-      admin: {
-        condition: editorOrAdminCondition,
-        description:
-          "Override language-aware auto-detection of field mappings. Leave empty to use automatic detection based on dataset language.",
-      },
-      fields: [
-        {
-          name: "titlePath",
-          type: "text",
-          admin: { description: "Override detected title field (e.g., 'event_name', 'titel', 'titre')" },
-        },
-        {
-          name: "descriptionPath",
-          type: "text",
-          admin: { description: "Override detected description field (e.g., 'details', 'beschreibung', 'détails')" },
-        },
-        {
-          name: "locationNamePath",
-          type: "text",
-          admin: { description: "Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')" },
-        },
-        {
-          name: "timestampPath",
-          type: "text",
-          admin: { description: "Override detected timestamp field (e.g., 'created_at', 'datum', 'date')" },
-        },
-        {
-          name: "endTimestampPath",
-          type: "text",
-          admin: { description: "Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')" },
-        },
-        {
-          // Stored as text (not a select) to avoid exceeding Postgres' 63-char
-          // enum-name limit on the version table; allowed values ("D/M" / "M/D")
-          // are enforced at the app layer (approve-route Zod enum).
-          name: "timestampOrder",
-          type: "text",
-          admin: {
-            description:
-              "Day/month order of the timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
-          },
-        },
-        {
-          name: "endTimestampOrder",
-          type: "text",
-          admin: {
-            description:
-              "Day/month order of the end timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
-          },
-        },
-        {
-          name: "latitudePath",
-          type: "text",
-          admin: { description: "Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')" },
-        },
-        {
-          name: "longitudePath",
-          type: "text",
-          admin: { description: "Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')" },
-        },
-        {
-          name: "coordinatePath",
-          type: "text",
-          admin: {
-            description: "Override detected combined-coordinate field (single column, e.g., 'coordinates', 'latlng')",
-          },
-        },
-        {
-          // Stored as text (not a select) to avoid exceeding Postgres' 63-char
-          // enum-name limit on the version table; allowed values ("lat,lng" /
-          // "lng,lat") are enforced at the app layer (approve-route Zod enum).
-          name: "coordinateFormat",
-          type: "text",
-          admin: {
-            description:
-              "Axis order of the combined-coordinate column: 'lat,lng' or 'lng,lat'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).",
-          },
-        },
-        {
-          name: "locationPath",
-          type: "text",
-          admin: { description: "Override detected location field (e.g., 'address', 'location', 'venue', 'city')" },
         },
       ],
     },

@@ -26,6 +26,15 @@ import { getPayload } from "payload";
 import type { CollectionName } from "@/lib/config/payload-config-factory";
 import { createTestConfig } from "@/lib/config/payload-config-factory";
 import { COLLECTIONS } from "@/lib/config/payload-shared-config";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import {
+  buildPlanFromPaths,
+  type FlatPlanFieldMappings,
+  type PlanRolesInput,
+  planToFieldMappings,
+} from "@/lib/ingest/plan-builder";
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 import { SeedManager } from "@/lib/seed/index";
 import type { IngestJob } from "@/payload-types";
@@ -581,6 +590,28 @@ export const withCatalog = async (
  * });
  * ```
  */
+/**
+ * Build a canonical interpretation plan for tests from declared roles + transforms.
+ *
+ * Mirrors what the wizard/data-package authoring does: routes transforms through
+ * the same active/complete filter and projects role paths. Tests express intent as
+ * `fieldMappingOverrides` (role paths) + `ingestTransforms`; this translates that
+ * into the stored `interpretationPlan`.
+ */
+export const buildTestInterpretationPlan = (
+  fieldMappingOverrides?: PlanRolesInput | null,
+  ingestTransforms?: IngestTransform[] | null
+): DatasetInterpretationPlan => buildPlanFromPaths(fieldMappingOverrides ?? {}, ingestTransforms ?? [], "best-effort");
+
+/**
+ * Project a record's persisted `interpretationPlan` (dataset or ingest job) back
+ * to the flat field-mapping shape (titlePath/timestampPath/coordinateFormat/…)
+ * tests previously read off the removed `fieldMappingOverrides` /
+ * `detectedFieldMappings` groups.
+ */
+export const readPlanFieldMappings = (record: { interpretationPlan?: unknown }): FlatPlanFieldMappings =>
+  planToFieldMappings(readInterpretationPlan(record));
+
 export const withDataset = async (
   testEnv: TestEnvironment,
   catalogId: string | number,
@@ -600,10 +631,22 @@ export const withDataset = async (
     isPublic?: boolean;
     idStrategy?: { type?: string; externalIdPath?: string; duplicateStrategy?: string };
     description?: any;
+    /** Convenience: role paths the test wants on the dataset's interpretation plan. */
+    fieldMappingOverrides?: PlanRolesInput;
+    /** Convenience: authored transforms for the dataset's interpretation plan. */
     ingestTransforms?: any[];
+    /** Escape hatch: pass a fully-built interpretation plan directly. */
+    interpretationPlan?: DatasetInterpretationPlan;
   }
 ): Promise<TestEnvironment & { dataset: any }> => {
   const timestamp = Date.now();
+
+  const hasPlanInputs = options?.fieldMappingOverrides != null || options?.ingestTransforms != null;
+  const interpretationPlan =
+    options?.interpretationPlan ??
+    (hasPlanInputs
+      ? buildTestInterpretationPlan(options?.fieldMappingOverrides, options?.ingestTransforms as IngestTransform[])
+      : undefined);
 
   const dataset = await testEnv.payload.create({
     collection: "datasets",
@@ -616,7 +659,7 @@ export const withDataset = async (
       isPublic: options?.isPublic ?? false,
       idStrategy: options?.idStrategy as any,
       description: options?.description,
-      ingestTransforms: options?.ingestTransforms,
+      ...(interpretationPlan ? { interpretationPlan: interpretationPlan as any } : {}),
     },
   });
 

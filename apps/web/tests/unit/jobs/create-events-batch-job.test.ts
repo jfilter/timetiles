@@ -819,22 +819,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        // The job plan is the detection-resolved plan; an inactive authored
+        // transform is filtered out, leaving no ops.
+        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: false },
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: false,
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -876,22 +869,28 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-age",
+              type: "string-op",
+              from: "age",
+              operation: "expression",
+              expression: "toNumber(value)",
+              active: true,
+              autoDetected: false,
+            },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: true,
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -933,30 +932,37 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-code-label",
+              type: "string-op",
+              from: "metadata.code",
+              to: "metadata.label",
+              operation: "uppercase",
+              active: true,
+              autoDetected: false,
+            },
+            {
+              id: "transform-summary",
+              type: "concatenate",
+              fromFields: ["title", "city"],
+              separator: " - ",
+              to: "summary",
+              active: true,
+              autoDetected: false,
+            },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [
-          {
-            id: "transform-code-label",
-            type: "string-op",
-            from: "metadata.code",
-            to: "metadata.label",
-            operation: "uppercase",
-            active: true,
-          },
-          {
-            id: "transform-summary",
-            type: "concatenate",
-            fromFields: ["title", "city"],
-            separator: " - ",
-            to: "summary",
-            active: true,
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -999,13 +1005,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -1043,30 +1049,37 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-age",
+              type: "string-op",
+              from: "age",
+              operation: "expression",
+              expression: "toNumber(value)",
+              active: true,
+              autoDetected: false,
+            },
+            {
+              id: "transform-active",
+              type: "string-op",
+              from: "active",
+              operation: "expression",
+              expression: "parseBool(value)",
+              active: true,
+              autoDetected: false,
+            },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: true,
-          },
-          {
-            id: "transform-active",
-            type: "string-op",
-            from: "active",
-            operation: "expression",
-            expression: "parseBool(value)",
-            active: true,
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -1109,22 +1122,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        // A disabled authored transform is filtered out during plan authoring,
+        // so the detection-resolved job plan carries no ops.
+        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: false, // Disabled
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -1164,22 +1170,28 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         ingestFile: "file-789",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-age",
+              type: "string-op",
+              from: "age",
+              operation: "expression",
+              expression: "parseNumber(value)",
+              active: true,
+              autoDetected: false,
+            },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockDataset = {
         id: "dataset-456",
         idStrategy: { type: "external", externalIdPath: "id" },
         schemaConfig: { allowTransformations: true },
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "parseNumber(value)",
-            active: true,
-          },
-        ],
       };
 
       const mockIngestFile = createMockIngestFile();

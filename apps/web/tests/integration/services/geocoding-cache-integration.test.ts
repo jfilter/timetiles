@@ -22,6 +22,7 @@ const mockNominatimGeocode = vi.fn();
 
 import {
   createIntegrationTestEnvironment,
+  readPlanFieldMappings,
   runJobsUntilImportSettled,
   withCatalog,
   withIngestFile,
@@ -221,7 +222,7 @@ describe.sequential("Geocoding Cache Integration", () => {
         where: { ingestFile: { equals: ingestFile.id } },
       });
       expect(importJobs.docs.length).toBeGreaterThan(0);
-      expect(importJobs.docs[0].detectedFieldMappings?.locationPath).toBeDefined();
+      expect(readPlanFieldMappings(importJobs.docs[0]).locationPath).toBeDefined();
 
       // Verify location-cache was populated with 10 unique locations
       const locationCache = await payload.find({ collection: "location-cache", limit: 100 });

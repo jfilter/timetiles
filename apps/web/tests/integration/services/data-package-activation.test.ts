@@ -16,6 +16,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 
 import { activateDataPackage, deactivateDataPackage } from "@/lib/data-packages/activation-service";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { User } from "@/payload-types";
 
 import {
@@ -501,12 +502,11 @@ describe.sequential("Data Package Activation", () => {
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: false });
     const dataset = await payload.findByID({ collection: "datasets", id: result.datasetId });
 
-    expect(dataset.ingestTransforms).toHaveLength(8);
+    const ops = readInterpretationPlan(dataset)?.ops ?? [];
+    expect(ops).toHaveLength(8);
 
     // String-op expression transform
-    const exprTransform = dataset.ingestTransforms.find(
-      (t: any) => t.type === "string-op" && t.operation === "expression"
-    );
+    const exprTransform = ops.find((t: any) => t.type === "string-op" && t.operation === "expression") as any;
     expect(exprTransform).toBeDefined();
     expect(exprTransform.from).toBe("type_of_violence");
     expect(exprTransform.to).toBe("Violence Type");
@@ -514,7 +514,7 @@ describe.sequential("Data Package Activation", () => {
     expect(exprTransform.active).toBe(true);
 
     // Rename transforms
-    const renames = dataset.ingestTransforms.filter((t: any) => t.type === "rename");
+    const renames = ops.filter((t: any) => t.type === "rename");
     expect(renames).toHaveLength(6);
     expect(renames.map((r: any) => r.to).sort((a: string, b: string) => a.localeCompare(b))).toEqual(
       ["Civilian Deaths", "Conflict", "District", "Fatalities", "Parties", "Province"].sort((a: string, b: string) =>
@@ -523,28 +523,28 @@ describe.sequential("Data Package Activation", () => {
     );
 
     // Concatenate transform
-    const concat = dataset.ingestTransforms.find((t: any) => t.type === "concatenate");
+    const concat = ops.find((t: any) => t.type === "concatenate") as any;
     expect(concat).toBeDefined();
     expect(concat.fromFields).toEqual(["Violence Type", "Parties"]);
     expect(concat.separator).toBe(" — ");
     expect(concat.to).toBe("event_summary");
   });
 
-  it("should store field mapping overrides on dataset", async () => {
+  it("should store field mapping roles on the dataset interpretation plan", async () => {
     testServer.respondWithCSV("/data.csv", MOCK_CSV);
     const manifest = buildTestManifest(`${testServerUrl}/data.csv`);
 
     const result = await activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: false });
     const dataset = await payload.findByID({ collection: "datasets", id: result.datasetId });
 
-    expect(dataset.fieldMappingOverrides).toMatchObject({
-      titlePath: "source_headline",
-      descriptionPath: "event_summary",
-      timestampPath: "date_start",
-      endTimestampPath: "date_end",
-      locationNamePath: "where_description",
-      latitudePath: "latitude",
-      longitudePath: "longitude",
+    expect(readInterpretationPlan(dataset)?.roles).toMatchObject({
+      title: "source_headline",
+      description: "event_summary",
+      timestamp: "date_start",
+      endTimestamp: "date_end",
+      locationName: "where_description",
+      latitude: "latitude",
+      longitude: "longitude",
     });
   });
 

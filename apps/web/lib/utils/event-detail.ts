@@ -16,8 +16,40 @@ export interface EventData {
   [key: string]: unknown;
 }
 
-/** Field mappings from a dataset's fieldMappingOverrides — derived from the canonical field registry. */
+/** Field-path mappings projected from a dataset's interpretation plan roles — derived from the canonical field registry. */
 export type FieldMappingOverrides = Partial<FieldPathMappings>;
+
+/** Read a string-or-null role value from a plan's roles object. */
+const roleValue = (roles: Record<string, unknown>, key: string): string | null => {
+  const value = roles[key];
+  return typeof value === "string" ? value : null;
+};
+
+/**
+ * Project a dataset's interpretation plan roles to the flat `*Path` shape the
+ * field-extraction helpers ({@link extractEventFields}/{@link buildConsumedFieldSet})
+ * consume. Narrows the dataset's JSON `interpretationPlan` (`unknown`) inline so
+ * this foundation util stays independent of the ingest layer.
+ */
+export const planRolesToFieldPathMappings = (dataset: unknown): FieldMappingOverrides | null => {
+  if (typeof dataset !== "object" || dataset == null) return null;
+  const plan = (dataset as { interpretationPlan?: unknown }).interpretationPlan;
+  if (typeof plan !== "object" || plan == null) return null;
+  const rolesValue = (plan as { roles?: unknown }).roles;
+  if (typeof rolesValue !== "object" || rolesValue == null) return null;
+  const roles = rolesValue as Record<string, unknown>;
+  return {
+    titlePath: roleValue(roles, "title"),
+    descriptionPath: roleValue(roles, "description"),
+    locationNamePath: roleValue(roles, "locationName"),
+    timestampPath: roleValue(roles, "timestamp"),
+    endTimestampPath: roleValue(roles, "endTimestamp"),
+    locationPath: roleValue(roles, "location"),
+    latitudePath: roleValue(roles, "latitude"),
+    longitudePath: roleValue(roles, "longitude"),
+    coordinatePath: roleValue(roles, "coordinate"),
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Field extraction
@@ -37,8 +69,8 @@ export const extractFieldFromData = (data: unknown, path: string | null | undefi
  * Build the set of transformedData keys already rendered by dedicated UI sections.
  *
  * Includes:
- * - Dynamic mapping paths from dataset fieldMappingOverrides (actual column names
- *   whose values were extracted into top-level Event fields during import)
+ * - Dynamic mapping paths from the dataset interpretation plan roles (actual column
+ *   names whose values were extracted into top-level Event fields during import)
  * - Literal keys probed by extractEventFields as fallbacks ("title", "name", "description")
  * - "id" (structural, not user data)
  */

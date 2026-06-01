@@ -152,7 +152,13 @@ export class SchemaVersioningService {
       dataset: Dataset | string | number;
       schema: unknown;
       fieldMetadata?: Record<string, unknown>;
-      fieldMappings?: { titlePath?: string | null; descriptionPath?: string | null; timestampPath?: string | null };
+      fieldMappings?: {
+        titlePath?: string | null;
+        descriptionPath?: string | null;
+        locationNamePath?: string | null;
+        timestampPath?: string | null;
+        endTimestampPath?: string | null;
+      };
       autoApproved?: boolean;
       approvedBy?: string | number | null;
       ingestSources?: Array<{ ingestJob: string | number; recordCount?: number; batchCount?: number }>;

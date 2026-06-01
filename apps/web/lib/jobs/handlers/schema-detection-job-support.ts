@@ -9,7 +9,8 @@ import type { Payload } from "payload";
 
 import { BATCH_SIZES, COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
-import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
+import { interpretRows, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
+import { buildDetectionPlan, planToFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
@@ -27,16 +28,24 @@ import type { Dataset, IngestJob } from "@/payload-types";
 export type FlatFieldMappings = ReturnType<typeof detectFlatFieldMappings>;
 
 /**
- * Override-eligible mapping keys = the flat-mapping keys. The dataset's
- * `fieldMappingOverrides` now shares this key set, so a single `keyof` suffices
- * (intersecting the two identical sets would be a duplicate constituent).
+ * Override-eligible mapping keys = the flat-mapping keys. The authored dataset
+ * plan, projected to the flat shape via `planToFieldMappings`, shares this key
+ * set, so a single `keyof` suffices.
  */
 type OverridePathKey = keyof FlatFieldMappings;
 
+/**
+ * Read the dataset's AUTHORED plan roles/policies as the flat override source.
+ *
+ * Replaces the former `dataset.fieldMappingOverrides` read. A confirmed order
+ * (from an ambiguous review, written by the approve-route to the dataset plan)
+ * wins over re-detection on resume — detection re-runs and would otherwise
+ * re-derive "ambiguous", losing the chosen order.
+ */
 const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Dataset | null): FlatFieldMappings => {
-  const overrides = dataset?.fieldMappingOverrides as Partial<FlatFieldMappings> | null | undefined;
+  const overrides: Partial<FlatFieldMappings> = dataset ? planToFieldMappings(readInterpretationPlan(dataset)) : {};
   const pickOverride = <K extends OverridePathKey>(key: K): FlatFieldMappings[K] =>
-    overrides?.[key] ?? detectedMappings[key];
+    overrides[key] ?? detectedMappings[key];
 
   return {
     titlePath: pickOverride("titlePath"),
@@ -48,13 +57,7 @@ const mergeFieldMappings = (detectedMappings: FlatFieldMappings, dataset: Datase
     longitudePath: pickOverride("longitudePath"),
     coordinatePath: pickOverride("coordinatePath"),
     locationPath: pickOverride("locationPath"),
-    // A dataset coordinateFormat override (e.g. the order a user confirmed in an
-    // ambiguous-coordinate review) wins over detection — detection re-runs on
-    // resume and would otherwise re-derive "ambiguous", losing the chosen order.
     coordinateFormat: pickOverride("coordinateFormat") ?? null,
-    // Date day/month order overrides behave exactly like coordinateFormat: a
-    // confirmed order (from an ambiguous-date-order review) must survive the
-    // detection re-run on resume, which would otherwise re-derive "ambiguous".
     timestampOrder: pickOverride("timestampOrder") ?? null,
     endTimestampOrder: pickOverride("endTimestampOrder") ?? null,
   };
@@ -197,7 +200,7 @@ const persistDetectedLanguage = async (
   });
 };
 
-/** Maps the logged override flag name → the dataset.fieldMappingOverrides key it reflects. */
+/** Maps the logged override flag name → the flat authored-plan key it reflects. */
 const OVERRIDE_FLAG_KEYS = {
   title: "titlePath",
   description: "descriptionPath",
@@ -214,7 +217,7 @@ const OVERRIDE_FLAG_KEYS = {
 } as const;
 
 const buildOverridesUsed = (dataset: Dataset | null): Record<keyof typeof OVERRIDE_FLAG_KEYS, boolean> => {
-  const overrides = (dataset?.fieldMappingOverrides ?? {}) as Record<string, unknown>;
+  const overrides = (dataset ? planToFieldMappings(readInterpretationPlan(dataset)) : {}) as Record<string, unknown>;
   return Object.fromEntries(
     Object.entries(OVERRIDE_FLAG_KEYS).map(([flag, key]) => [flag, Boolean(overrides[key])])
   ) as Record<keyof typeof OVERRIDE_FLAG_KEYS, boolean>;
@@ -383,10 +386,18 @@ export const finalizeSchemaDetection = async ({
 
   logDetectedFieldMappings(logger, fieldMappings, detectedLanguage, dataset);
 
+  // Persist the DETECTION-RESOLVED job plan: authored ops + merged detector roles
+  // + resolved column policies. The ambiguous sentinel in the in-memory flat
+  // mappings maps to policy.order=undefined + requiresChoice in the plan; the
+  // flat mappings (with the sentinel) are still RETURNED for the review gates,
+  // which fire before this plan is read.
+  const ambiguityResolution = readInterpretationPlan(dataset ?? {})?.ambiguityResolution ?? "best-effort";
+  const jobPlan = buildDetectionPlan(transforms, fieldMappings, ambiguityResolution);
+
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { detectedFieldMappings: fieldMappings },
+    data: { interpretationPlan: jobPlan as unknown as Record<string, unknown> },
   });
 
   return fieldMappings;

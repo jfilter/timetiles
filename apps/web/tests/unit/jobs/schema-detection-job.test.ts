@@ -544,9 +544,8 @@ describe.sequential("SchemaDetectionJob Handler", () => {
           collection: "ingest-jobs",
           id: TEST_IDS.IMPORT_JOB,
           data: expect.objectContaining({
-            detectedFieldMappings: expect.objectContaining({
-              timestampPath: "phase_one",
-              endTimestampPath: "phase_two",
+            interpretationPlan: expect.objectContaining({
+              roles: expect.objectContaining({ timestamp: "phase_one", endTimestamp: "phase_two" }),
             }),
           }),
         })

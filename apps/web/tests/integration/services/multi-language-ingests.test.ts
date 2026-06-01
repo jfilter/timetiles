@@ -24,6 +24,7 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
   createIntegrationTestEnvironment,
+  readPlanFieldMappings,
   runJobsUntilImportSettled,
   runJobsUntilIngestJobStage,
   withCatalog,
@@ -175,10 +176,10 @@ describe.sequential("Multi-Language Import Tests", () => {
     ingestJob: any,
     expectedMappings: { titlePath: string; descriptionPath: string; timestampPath: string }
   ) => {
-    expect(ingestJob.detectedFieldMappings).toBeDefined();
-    expect(ingestJob.detectedFieldMappings.titlePath).toBe(expectedMappings.titlePath);
-    expect(ingestJob.detectedFieldMappings.descriptionPath).toBe(expectedMappings.descriptionPath);
-    expect(ingestJob.detectedFieldMappings.timestampPath).toBe(expectedMappings.timestampPath);
+    const mappings = readPlanFieldMappings(ingestJob);
+    expect(mappings.titlePath).toBe(expectedMappings.titlePath);
+    expect(mappings.descriptionPath).toBe(expectedMappings.descriptionPath);
+    expect(mappings.timestampPath).toBe(expectedMappings.timestampPath);
   };
 
   const assertImportedEvents = async (ingestJob: any, expectedEventCount: number, expectedFields: string[]) => {
@@ -248,6 +249,6 @@ describe.sequential("Multi-Language Import Tests", () => {
     });
   });
 
-  // Note: Field mappings are stored on import-job.detectedFieldMappings, not dataset.fieldMappingOverrides
-  // fieldMappingOverrides is for manual user overrides, detectedFieldMappings is auto-detected per import
+  // Note: detection-resolved field mappings live on the ingest job's interpretationPlan
+  // (roles); the dataset's interpretationPlan holds the authored intent.
 });

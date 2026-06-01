@@ -9,6 +9,8 @@
 import type { PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import { planToSchemaFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
@@ -116,7 +118,7 @@ export const createSchemaVersionJob = {
         dataset: dataset.id,
         schema: job.schema,
         fieldMetadata: fieldStats || {},
-        fieldMappings: job.detectedFieldMappings,
+        fieldMappings: planToSchemaFieldMappings(readInterpretationPlan(job)),
         autoApproved: isAutoApproved,
         approvedBy: approvedById,
         ingestSources: [],

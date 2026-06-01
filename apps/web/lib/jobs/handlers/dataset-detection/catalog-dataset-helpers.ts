@@ -18,12 +18,13 @@ import type { Dataset } from "@/payload-types";
 
 /** Build an immutable config snapshot from a dataset for the import job record. */
 export const buildConfigSnapshot = (dataset: Dataset) => ({
-  fieldMappingOverrides: dataset.fieldMappingOverrides ?? null,
+  // The AUTHORED interpretation plan, frozen at job-creation time. The detector
+  // resolves it into the job plan; freezing it keeps the deterministic-run guarantee.
+  interpretationPlan: dataset.interpretationPlan ?? null,
   idStrategy: dataset.idStrategy ?? null,
   deduplicationConfig: dataset.deduplicationConfig ?? null,
   geoFieldDetection: dataset.geoFieldDetection ?? null,
   schemaConfig: dataset.schemaConfig ?? null,
-  ingestTransforms: dataset.ingestTransforms ?? [],
 });
 
 /**
@@ -165,6 +166,9 @@ export const findOrCreateDataset = async (
       deduplicationConfig: { enabled: true },
       schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
       idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
+      // Empty authored plan — auto-detected datasets have no configured mappings,
+      // so "best-effort" matches today's no-overrides behavior (per-row date heuristic).
+      interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
       _status: "published" as const,
       ...(userId ? { createdBy: userId } : {}),
     },

@@ -16,7 +16,9 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import {
+  buildTestInterpretationPlan,
   createIntegrationTestEnvironment,
+  readPlanFieldMappings,
   withCatalog,
   withDataset,
   withUsers,
@@ -215,15 +217,20 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `new-test-dataset-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationPath: "location" },
+          interpretationPlan: buildTestInterpretationPlan({
+            titlePath: "title",
+            timestampPath: "date",
+            locationPath: "location",
+          }) as any,
           idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
         },
       });
 
       expect(dataset.id).toBeDefined();
       expect(dataset.name).toBe(datasetName);
-      expect(dataset.fieldMappingOverrides.titlePath).toBe("title");
-      expect(dataset.fieldMappingOverrides.timestampPath).toBe("date");
+      const datasetMappings = readPlanFieldMappings(dataset);
+      expect(datasetMappings.titlePath).toBe("title");
+      expect(datasetMappings.timestampPath).toBe("date");
       expect(dataset.idStrategy.type).toBe("content-hash");
     });
 
@@ -231,25 +238,26 @@ describe.sequential("Import Wizard API Endpoints", () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
       const { dataset } = await withDataset(testEnv, catalog.id, { name: "Existing Dataset" });
 
-      // Update dataset with field mapping overrides
+      // Update dataset with field mapping roles via the interpretation plan
       const updated = await payload.update({
         collection: "datasets",
         id: dataset.id,
         data: {
-          fieldMappingOverrides: {
+          interpretationPlan: buildTestInterpretationPlan({
             titlePath: "event_name",
             descriptionPath: "event_description",
             timestampPath: "event_date",
             latitudePath: "lat",
             longitudePath: "lng",
-          },
+          }) as any,
           idStrategy: { type: "external", externalIdPath: "event_id", duplicateStrategy: "update" },
         },
       });
 
-      expect(updated.fieldMappingOverrides.titlePath).toBe("event_name");
-      expect(updated.fieldMappingOverrides.timestampPath).toBe("event_date");
-      expect(updated.fieldMappingOverrides.latitudePath).toBe("lat");
+      const updatedMappings = readPlanFieldMappings(updated);
+      expect(updatedMappings.titlePath).toBe("event_name");
+      expect(updatedMappings.timestampPath).toBe("event_date");
+      expect(updatedMappings.latitudePath).toBe("lat");
       expect(updated.idStrategy.type).toBe("external");
       expect(updated.idStrategy.externalIdPath).toBe("event_id");
     });
@@ -336,18 +344,19 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `geo-test-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          fieldMappingOverrides: {
+          interpretationPlan: buildTestInterpretationPlan({
             titlePath: "name",
             timestampPath: "date",
             latitudePath: "lat",
             longitudePath: "lng",
-          },
+          }) as any,
           geoFieldDetection: { autoDetect: false, latitudePath: "lat", longitudePath: "lng" },
         },
       });
 
-      expect(dataset.fieldMappingOverrides.latitudePath).toBe("lat");
-      expect(dataset.fieldMappingOverrides.longitudePath).toBe("lng");
+      const geoMappings = readPlanFieldMappings(dataset);
+      expect(geoMappings.latitudePath).toBe("lat");
+      expect(geoMappings.longitudePath).toBe("lng");
       expect(dataset.geoFieldDetection.latitudePath).toBe("lat");
       expect(dataset.geoFieldDetection.longitudePath).toBe("lng");
     });
@@ -362,12 +371,16 @@ describe.sequential("Import Wizard API Endpoints", () => {
           slug: `location-test-${Date.now()}`,
           catalog: catalog.id,
           language: "eng",
-          fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationPath: "address" },
+          interpretationPlan: buildTestInterpretationPlan({
+            titlePath: "title",
+            timestampPath: "date",
+            locationPath: "address",
+          }) as any,
           geoFieldDetection: { autoDetect: true },
         },
       });
 
-      expect(dataset.fieldMappingOverrides.locationPath).toBe("address");
+      expect(readPlanFieldMappings(dataset).locationPath).toBe("address");
       expect(dataset.geoFieldDetection.autoDetect).toBe(true);
     });
 

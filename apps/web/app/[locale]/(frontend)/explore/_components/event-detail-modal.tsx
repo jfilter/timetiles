@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 
 import { EventDetailContent, EventDetailError, EventDetailSkeleton } from "@/components/events";
 import { useEventDetailQuery } from "@/lib/hooks/use-events-queries";
-import { getEventData, getEventTitle } from "@/lib/utils/event-detail";
+import { getEventData, getEventTitle, planRolesToFieldPathMappings } from "@/lib/utils/event-detail";
 
 interface EventDetailModalProps {
   /** The event ID to display, or null if closed */
@@ -44,8 +44,7 @@ export const EventDetailModal = ({ eventId, onClose }: EventDetailModalProps) =>
   const dialogTitle = (() => {
     if (isLoading) return t("loadingEventDetails");
     if (event) {
-      const fieldMappings =
-        typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+      const fieldMappings = planRolesToFieldPathMappings(event.dataset);
       return getEventTitle(getEventData(event), fieldMappings);
     }
     return t("eventDetails");

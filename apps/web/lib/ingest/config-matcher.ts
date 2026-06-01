@@ -8,12 +8,23 @@
  * @category Services
  */
 
-import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { ConfigSuggestion } from "@/lib/ingest/types/wizard";
 import type { Dataset } from "@/payload-types";
 
 const MIN_SCORE = 40;
 const MAX_RESULTS = 3;
+
+/** Collect the input column names referenced by a plan's ops (rename/string-op `from`, concatenate `fromFields`, …). */
+const collectPlanInputColumns = (plan: DatasetInterpretationPlan, columns: Set<string>): void => {
+  for (const t of plan.ops) {
+    if ("from" in t && typeof t.from === "string") columns.add(t.from);
+    if (t.type === "concatenate") {
+      for (const f of t.fromFields) columns.add(f);
+    }
+  }
+};
 
 /** Collect all column names a dataset "knows about" from schema + config. */
 const getDatasetKnownColumns = (dataset: Dataset & { schemaColumns?: string[] }): string[] => {
@@ -24,31 +35,14 @@ const getDatasetKnownColumns = (dataset: Dataset & { schemaColumns?: string[] })
     for (const col of dataset.schemaColumns) columns.add(col);
   }
 
-  // Fallback: field mapping overrides (only mapped fields)
-  const overrides = dataset.fieldMappingOverrides;
-  if (overrides) {
-    for (const path of [
-      overrides.titlePath,
-      overrides.descriptionPath,
-      overrides.locationNamePath,
-      overrides.timestampPath,
-      overrides.endTimestampPath,
-      overrides.latitudePath,
-      overrides.longitudePath,
-      overrides.locationPath,
-    ]) {
-      if (path) columns.add(path);
+  const plan = readInterpretationPlan(dataset);
+  if (plan) {
+    // Fallback: authored role paths (only mapped fields)
+    for (const path of Object.values(plan.roles)) {
+      if (typeof path === "string" && path) columns.add(path);
     }
-  }
-
-  // Fallback: 'from' fields from transforms
-  const transforms = dataset.ingestTransforms;
-  if (Array.isArray(transforms)) {
-    for (const t of transforms) {
-      if (t && typeof t === "object" && "from" in t && typeof t.from === "string") {
-        columns.add(t.from);
-      }
-    }
+    // Fallback: input columns referenced by the authored ops
+    collectPlanInputColumns(plan, columns);
   }
 
   return [...columns];
@@ -96,7 +90,6 @@ export const findConfigSuggestions = (
     const { score, matched } = calculateMatchScore(headers, knownColumns);
     if (score < MIN_SCORE) continue;
 
-    const overrides = dataset.fieldMappingOverrides;
     suggestions.push({
       datasetId: dataset.id,
       datasetName: dataset.name,
@@ -105,8 +98,7 @@ export const findConfigSuggestions = (
       score,
       matchedColumns: matched,
       config: {
-        fieldMappingOverrides: overrides ?? {},
-        ingestTransforms: (dataset.ingestTransforms ?? []) as IngestTransform[],
+        interpretationPlan: readInterpretationPlan(dataset),
         idStrategy: dataset.idStrategy ?? { type: "content-hash" },
         deduplicationConfig: dataset.deduplicationConfig ?? { enabled: true },
         geocodingEnabled: dataset.geoFieldDetection?.autoDetect ?? false,

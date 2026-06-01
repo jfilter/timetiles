@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { User } from "@/payload-types";
 import {
+  buildTestInterpretationPlan,
   createIntegrationTestEnvironment,
   type TestEnvironment,
   withUsers,
@@ -224,7 +225,13 @@ describe.sequential("Dataset validation hooks", () => {
       from,
       to,
       active: true,
+      autoDetected: false,
     });
+
+    // Build the canonical interpretation plan the hooks now read (ops + roles).
+    // Typed loosely for the JSON `interpretationPlan` column on create/update.
+    const plan = (transforms: ReturnType<typeof rename>[], roles?: Record<string, string>): Record<string, unknown> =>
+      buildTestInterpretationPlan(roles ?? {}, transforms) as unknown as Record<string, unknown>;
 
     it("rejects an external strategy with no externalIdPath", async () => {
       await expect(createDataset({ idStrategy: { type: "external", duplicateStrategy: "skip" } })).rejects.toThrow(
@@ -236,7 +243,7 @@ describe.sequential("Dataset validation hooks", () => {
       await expect(
         createDataset({
           idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
-          ingestTransforms: [rename("ref", "archived")],
+          interpretationPlan: plan([rename("ref", "archived")]),
         })
       ).rejects.toThrow(/moves the external ID field "ref" to "archived"/);
     });
@@ -244,7 +251,7 @@ describe.sequential("Dataset validation hooks", () => {
     it("allows a valid external config and a transform that PRODUCES the ID path", async () => {
       const dataset = await createDataset({
         idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
-        ingestTransforms: [rename("raw_id", "ref")],
+        interpretationPlan: plan([rename("raw_id", "ref")]),
       });
       expect(dataset.id).toBeDefined();
     });
@@ -254,12 +261,12 @@ describe.sequential("Dataset validation hooks", () => {
         idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
       });
 
-      // The patch carries only ingestTransforms; idStrategy lives in originalDoc.
+      // The patch carries only the plan; idStrategy lives in originalDoc.
       await expect(
         payload.update({
           collection: "datasets",
           id: dataset.id,
-          data: { ingestTransforms: [rename("ref", "archived")] },
+          data: { interpretationPlan: plan([rename("ref", "archived")]) },
           overrideAccess: true,
         })
       ).rejects.toThrow(/moves the external ID field "ref" to "archived"/);
@@ -268,11 +275,11 @@ describe.sequential("Dataset validation hooks", () => {
     it("rejects when a partial update repoints externalIdPath onto an existing move-away transform", async () => {
       const dataset = await createDataset({
         idStrategy: { type: "external", externalIdPath: "ref", duplicateStrategy: "skip" },
-        ingestTransforms: [rename("location", "archived_location")],
+        interpretationPlan: plan([rename("location", "archived_location")]),
       });
 
-      // Patch carries only idStrategy; transforms live in originalDoc. The
-      // existing rename now moves the new ID path away.
+      // Patch carries only idStrategy; the plan (with the rename op) lives in
+      // originalDoc. The existing rename now moves the new ID path away.
       await expect(
         payload.update({
           collection: "datasets",
@@ -283,21 +290,19 @@ describe.sequential("Dataset validation hooks", () => {
       ).rejects.toThrow(/moves the external ID field "location" to "archived_location"/);
     });
 
-    it("rejects a transform that moves away a geo/time mapping override field", async () => {
+    it("rejects a transform that moves away a geo/time mapping role field", async () => {
       await expect(
         createDataset({
           idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
-          fieldMappingOverrides: { timestampPath: "event_date" },
-          ingestTransforms: [rename("event_date", "date")],
+          interpretationPlan: plan([rename("event_date", "date")], { timestampPath: "event_date" }),
         })
       ).rejects.toThrow(/the timestamp mapping points at "event_date"/);
     });
 
-    it("allows a mapping override whose field is produced (not deleted) by a transform", async () => {
+    it("allows a mapping role whose field is produced (not deleted) by a transform", async () => {
       const dataset = await createDataset({
         idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
-        fieldMappingOverrides: { timestampPath: "date" },
-        ingestTransforms: [rename("event_date", "date")],
+        interpretationPlan: plan([rename("event_date", "date")], { timestampPath: "date" }),
       });
       expect(dataset.id).toBeDefined();
     });

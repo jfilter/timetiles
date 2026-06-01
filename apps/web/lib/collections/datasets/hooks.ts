@@ -113,11 +113,25 @@ const processCatalogValidation = async (
  * catastrophic-backtracking shapes up front so the user sees the error at
  * configuration time rather than having their import stall the worker.
  */
-export const validateIngestTransformPatterns: CollectionBeforeChangeHook = ({ data, operation }) => {
+/** Read the ordered transform ops from an interpretationPlan value. */
+const planOps = (plan: unknown): Array<Record<string, unknown>> => {
+  if (!plan || typeof plan !== "object") return [];
+  const ops = (plan as Record<string, unknown>).ops;
+  return Array.isArray(ops) ? (ops as Array<Record<string, unknown>>) : [];
+};
+
+/** Read the semantic roles map from an interpretationPlan value. */
+const planRoles = (plan: unknown): Record<string, unknown> => {
+  if (!plan || typeof plan !== "object") return {};
+  const roles = (plan as Record<string, unknown>).roles;
+  return roles && typeof roles === "object" ? (roles as Record<string, unknown>) : {};
+};
+
+export const validateIngestTransformPatterns: CollectionBeforeChangeHook = ({ data, operation, originalDoc }) => {
   if (operation !== "create" && operation !== "update") return data;
 
-  const transforms = (data?.ingestTransforms ?? []) as Array<Record<string, unknown>>;
-  if (!Array.isArray(transforms) || transforms.length === 0) return data;
+  const transforms = planOps(mergedConfigValue<unknown>(data, originalDoc, "interpretationPlan"));
+  if (transforms.length === 0) return data;
 
   for (const [index, transform] of transforms.entries()) {
     if (transform?.type !== "extract") continue;
@@ -199,29 +213,26 @@ export const findExternalIdMoveAway = (
   return findTransformMovingAwayPath(transforms, idPath);
 };
 
-/** Geo/time mapping fields whose paths event creation and geocoding read directly. */
-const MAPPING_PATH_FIELDS = [
-  ["latitudePath", "latitude"],
-  ["longitudePath", "longitude"],
-  ["locationPath", "location"],
-  ["locationNamePath", "location name"],
-  ["timestampPath", "timestamp"],
-  ["endTimestampPath", "end timestamp"],
+/** Geo/time mapping roles whose paths event creation and geocoding read directly. */
+const MAPPING_ROLE_FIELDS = [
+  ["latitude", "latitude"],
+  ["longitude", "longitude"],
+  ["location", "location"],
+  ["locationName", "location name"],
+  ["timestamp", "timestamp"],
+  ["endTimestamp", "end timestamp"],
 ] as const;
 
 /**
  * Collect the user-set geo/time mapping paths that downstream stages read.
  *
- * These come from the dataset's `fieldMappingOverrides` and `geoFieldDetection`
- * groups. Auto-detected mappings are computed from already-transformed rows so
- * they can never point at a deleted field — only these explicit overrides can.
- * Returns de-duplicated `{ path, label }` entries so callers can name the
- * offending mapping in an error.
+ * These come from the dataset's `interpretationPlan.roles` and the
+ * `geoFieldDetection` group. Auto-detected mappings are computed from
+ * already-transformed rows so they can never point at a deleted field — only
+ * these explicit authored roles can. Returns de-duplicated `{ path, label }`
+ * entries so callers can name the offending mapping in an error.
  */
-export const collectProtectedMappingPaths = (
-  overrides: unknown,
-  geo: unknown
-): Array<{ path: string; label: string }> => {
+export const collectProtectedMappingPaths = (roles: unknown, geo: unknown): Array<{ path: string; label: string }> => {
   const seen = new Set<string>();
   const result: Array<{ path: string; label: string }> = [];
 
@@ -235,10 +246,10 @@ export const collectProtectedMappingPaths = (
     result.push({ path, label });
   };
 
-  for (const [field, label] of MAPPING_PATH_FIELDS) {
-    add(overrides, field, label);
+  for (const [field, label] of MAPPING_ROLE_FIELDS) {
+    add(roles, field, label);
   }
-  // geoFieldDetection only carries lat/lng.
+  // geoFieldDetection only carries lat/lng (still its own group, out of scope).
   add(geo, "latitudePath", "latitude");
   add(geo, "longitudePath", "longitude");
 
@@ -258,10 +269,7 @@ const mergedConfigValue = <T>(data: Record<string, unknown> | undefined, origina
 const getMergedTransforms = (
   data: Record<string, unknown> | undefined,
   originalDoc: unknown
-): Array<Record<string, unknown>> => {
-  const transforms = mergedConfigValue<unknown>(data, originalDoc, "ingestTransforms");
-  return Array.isArray(transforms) ? (transforms as Array<Record<string, unknown>>) : [];
-};
+): Array<Record<string, unknown>> => planOps(mergedConfigValue<unknown>(data, originalDoc, "interpretationPlan"));
 
 /**
  * Reject `external` ID strategy configs without an `externalIdPath`. Without it
@@ -323,10 +331,10 @@ export const validateMappingOverrideTransforms: CollectionBeforeChangeHook = ({ 
   const transforms = getMergedTransforms(data, originalDoc);
   if (transforms.length === 0) return data;
 
-  const overrides = mergedConfigValue<unknown>(data, originalDoc, "fieldMappingOverrides");
+  const roles = planRoles(mergedConfigValue<unknown>(data, originalDoc, "interpretationPlan"));
   const geo = mergedConfigValue<unknown>(data, originalDoc, "geoFieldDetection");
 
-  for (const { path, label } of collectProtectedMappingPaths(overrides, geo)) {
+  for (const { path, label } of collectProtectedMappingPaths(roles, geo)) {
     const offender = findTransformMovingAwayPath(transforms, path);
     if (offender) {
       throw new Error(

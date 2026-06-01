@@ -16,6 +16,7 @@ import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-jo
 import type { Catalog, Dataset, Event } from "@/payload-types";
 
 import {
+  buildTestInterpretationPlan,
   createIntegrationTestEnvironment,
   withCatalog,
   withIngestFile,
@@ -85,31 +86,35 @@ describe.sequential("Expression Transforms Integration", () => {
 
     vi.spyOn(fileReaders, "streamBatchesFromFile").mockReturnValue(mockStreamBatch(mockData) as any);
 
+    const transforms = [
+      {
+        id: "transform-age",
+        type: "string-op" as const,
+        from: "age",
+        operation: "expression" as const,
+        expression: "toNumber(value)",
+        active: true as const,
+        autoDetected: false,
+      },
+      {
+        id: "transform-temperature",
+        type: "string-op" as const,
+        from: "temperature",
+        operation: "expression" as const,
+        expression: "toNumber(value)",
+        active: true as const,
+        autoDetected: false,
+      },
+    ];
+    const plan = buildTestInterpretationPlan({}, transforms);
+
     const dataset: Dataset = await payload.create({
       collection: "datasets",
       data: {
         name: "Transform Test Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        ingestTransforms: [
-          {
-            id: "transform-age",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: true,
-          },
-          {
-            id: "transform-temperature",
-            type: "string-op",
-            from: "temperature",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: true,
-          },
-        ] as any,
-
+        interpretationPlan: plan as any,
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
@@ -125,6 +130,9 @@ describe.sequential("Expression Transforms Integration", () => {
         dataset: dataset.id,
         ingestFile: ingestFile.id,
         stage: "create-events",
+        // create-events reads the detection-resolved job plan; seed it directly
+        // since this test bypasses the detect-schema stage.
+        interpretationPlan: plan as any,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
           internal: [],
@@ -159,23 +167,27 @@ describe.sequential("Expression Transforms Integration", () => {
     const mockData = [{ id: "100", name: "Alice", age: "25" }];
     vi.spyOn(fileReaders, "streamBatchesFromFile").mockReturnValue(mockStreamBatch(mockData) as any);
 
+    // An inactive transform is filtered out during plan authoring, so the
+    // resolved plan carries no ops (nothing is transformed).
+    const disabledPlan = buildTestInterpretationPlan({}, [
+      {
+        id: "transform-age-disabled",
+        type: "string-op",
+        from: "age",
+        operation: "expression",
+        expression: "toNumber(value)",
+        active: false,
+        autoDetected: false,
+      } as any,
+    ]);
+
     const dataset: Dataset = await payload.create({
       collection: "datasets",
       data: {
         name: "No Transform Dataset",
         catalog: testCatalog.id,
         language: "eng",
-        ingestTransforms: [
-          {
-            id: "transform-age-disabled",
-            type: "string-op",
-            from: "age",
-            operation: "expression",
-            expression: "toNumber(value)",
-            active: false,
-          },
-        ] as any,
-
+        interpretationPlan: disabledPlan as any,
         idStrategy: { type: "external", externalIdPath: "id" },
       },
     });
@@ -191,6 +203,7 @@ describe.sequential("Expression Transforms Integration", () => {
         dataset: dataset.id,
         ingestFile: ingestFile.id,
         stage: "create-events",
+        interpretationPlan: disabledPlan as any,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
         duplicates: {
           internal: [],

@@ -2,7 +2,8 @@
  * Unit tests for config matcher service.
  *
  * Tests the pure header-matching logic that finds existing dataset configs
- * similar to an uploaded file's column structure.
+ * similar to an uploaded file's column structure. Datasets now carry their
+ * config in the canonical `interpretationPlan` (roles + ops).
  *
  * @module
  * @category Unit Tests
@@ -10,29 +11,37 @@
 import { describe, expect, it } from "vitest";
 
 import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
+import { buildPlanFromPaths, type PlanRolesInput } from "@/lib/ingest/plan-builder";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { Dataset } from "@/payload-types";
 
-/** Create a minimal Dataset stub with only the fields config-matcher inspects. */
-const makeDataset = (
-  overrides: Partial<Dataset> & {
-    id: number;
-    name: string;
-    catalogName?: string;
-    catalogId?: number;
-    schemaColumns?: string[];
-  }
-): Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] } => {
-  const { catalogName, catalogId, schemaColumns, ...rest } = overrides;
+type DatasetStub = Dataset & { catalogName?: string; catalogId?: number; schemaColumns?: string[] };
+
+/** Create a minimal Dataset stub with an interpretation plan built from roles + transforms. */
+const makeDataset = (overrides: {
+  id: number;
+  name: string;
+  catalogName?: string;
+  catalogId?: number;
+  schemaColumns?: string[];
+  roles?: PlanRolesInput;
+  transforms?: IngestTransform[];
+}): DatasetStub => {
+  const { catalogName, catalogId, schemaColumns, roles, transforms, id, name } = overrides;
+  const interpretationPlan =
+    roles != null || transforms != null ? buildPlanFromPaths(roles ?? {}, transforms, "best-effort") : undefined;
   return {
+    id,
+    name,
     catalog: 1,
     language: "eng",
     updatedAt: "2026-01-01T00:00:00Z",
     createdAt: "2026-01-01T00:00:00Z",
-    ...rest,
+    ...(interpretationPlan ? { interpretationPlan } : {}),
     catalogName,
     catalogId: catalogId ?? 1,
     schemaColumns,
-  };
+  } as DatasetStub;
 };
 
 describe("findConfigSuggestions", () => {
@@ -43,7 +52,7 @@ describe("findConfigSuggestions", () => {
         id: 1,
         name: "Events",
         catalogName: "My Catalog",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
+        roles: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
       }),
     ];
 
@@ -57,16 +66,16 @@ describe("findConfigSuggestions", () => {
     // 3 matched out of max(4 headers, 3 known) = 3/4 = 75%
     expect(results[0]!.score).toBe(75);
     expect(results[0]!.matchedColumns).toEqual(expect.arrayContaining(["title", "date", "location"]));
-    expect(results[0]!.config.fieldMappingOverrides.titlePath).toBe("title");
+    expect(results[0]!.config.interpretationPlan?.roles.title).toBe("title");
   });
 
-  it("includes endTimestampPath in known columns and returned config", () => {
+  it("includes endTimestamp role in known columns and returned config", () => {
     const headers = ["title", "start_date", "end_date"];
     const datasets = [
       makeDataset({
         id: 1,
         name: "Events",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "start_date", endTimestampPath: "end_date" },
+        roles: { titlePath: "title", timestampPath: "start_date", endTimestampPath: "end_date" },
       }),
     ];
 
@@ -74,21 +83,19 @@ describe("findConfigSuggestions", () => {
 
     expect(results).toHaveLength(1);
     expect(results[0]!.matchedColumns).toEqual(expect.arrayContaining(["title", "start_date", "end_date"]));
-    expect(results[0]!.config.fieldMappingOverrides.endTimestampPath).toBe("end_date");
+    expect(results[0]!.config.interpretationPlan?.roles.endTimestamp).toBe("end_date");
   });
 
   it("returns empty array when no headers overlap", () => {
     const headers = ["alpha", "beta", "gamma"];
-    const datasets = [
-      makeDataset({ id: 1, name: "Events", fieldMappingOverrides: { titlePath: "title", timestampPath: "date" } }),
-    ];
+    const datasets = [makeDataset({ id: 1, name: "Events", roles: { titlePath: "title", timestampPath: "date" } })];
 
     const results = findConfigSuggestions(headers, datasets);
 
     expect(results).toHaveLength(0);
   });
 
-  it("returns empty array for dataset with no fieldMappingOverrides", () => {
+  it("returns empty array for dataset with no interpretation plan", () => {
     const headers = ["title", "date"];
     const datasets = [makeDataset({ id: 1, name: "Empty Config" })];
 
@@ -100,11 +107,11 @@ describe("findConfigSuggestions", () => {
   it("ranks multiple datasets by score (highest first)", () => {
     const headers = ["title", "date", "location", "description"];
     const datasets = [
-      makeDataset({ id: 1, name: "Low Match", fieldMappingOverrides: { titlePath: "title", timestampPath: "date" } }),
+      makeDataset({ id: 1, name: "Low Match", roles: { titlePath: "title", timestampPath: "date" } }),
       makeDataset({
         id: 2,
         name: "High Match",
-        fieldMappingOverrides: {
+        roles: {
           titlePath: "title",
           timestampPath: "date",
           locationNamePath: "location",
@@ -125,11 +132,7 @@ describe("findConfigSuggestions", () => {
   it("limits results to maxResults", () => {
     const headers = ["title", "date"];
     const datasets = Array.from({ length: 5 }, (_, i) =>
-      makeDataset({
-        id: i + 1,
-        name: `Dataset ${i + 1}`,
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "date" },
-      })
+      makeDataset({ id: i + 1, name: `Dataset ${i + 1}`, roles: { titlePath: "title", timestampPath: "date" } })
     );
 
     const results = findConfigSuggestions(headers, datasets, 2);
@@ -143,7 +146,7 @@ describe("findConfigSuggestions", () => {
       makeDataset({
         id: 1,
         name: "Case Test",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
+        roles: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
       }),
     ];
 
@@ -159,10 +162,10 @@ describe("findConfigSuggestions", () => {
       makeDataset({
         id: 1,
         name: "Transform Dataset",
-        fieldMappingOverrides: { titlePath: "name" },
-        ingestTransforms: [
-          { id: "t1", type: "rename" as const, from: "raw_date", to: "date", active: true },
-          { id: "t2", type: "rename" as const, from: "raw_name", to: "name", active: true },
+        roles: { titlePath: "name" },
+        transforms: [
+          { id: "t1", type: "rename", from: "raw_date", to: "date", active: true, autoDetected: false },
+          { id: "t2", type: "rename", from: "raw_name", to: "name", active: true, autoDetected: false },
         ],
       }),
     ];
@@ -170,7 +173,7 @@ describe("findConfigSuggestions", () => {
     const results = findConfigSuggestions(headers, datasets);
 
     expect(results).toHaveLength(1);
-    // 'name' from overrides + 'raw_date' and 'raw_name' from transforms = 3 known
+    // 'name' from roles + 'raw_date' and 'raw_name' from transforms = 3 known
     // 2 of 3 known match the 3 headers: raw_date, raw_name
     // score = 2 / max(3 headers, 3 known) * 100 = 67
     expect(results[0]!.matchedColumns).toEqual(expect.arrayContaining(["raw_date", "raw_name"]));
@@ -178,7 +181,7 @@ describe("findConfigSuggestions", () => {
   });
 
   it("returns empty array when headers are empty", () => {
-    const datasets = [makeDataset({ id: 1, name: "Dataset", fieldMappingOverrides: { titlePath: "title" } })];
+    const datasets = [makeDataset({ id: 1, name: "Dataset", roles: { titlePath: "title" } })];
 
     const results = findConfigSuggestions([], datasets);
 
@@ -187,15 +190,13 @@ describe("findConfigSuggestions", () => {
 
   it("populates config fields with defaults when dataset fields are undefined", () => {
     const headers = ["title", "date"];
-    const datasets = [
-      makeDataset({ id: 1, name: "Minimal", fieldMappingOverrides: { titlePath: "title", timestampPath: "date" } }),
-    ];
+    const datasets = [makeDataset({ id: 1, name: "Minimal", roles: { titlePath: "title", timestampPath: "date" } })];
 
     const results = findConfigSuggestions(headers, datasets);
 
     expect(results).toHaveLength(1);
     const config = results[0]!.config;
-    expect(config.ingestTransforms).toEqual([]);
+    expect(config.interpretationPlan?.ops).toEqual([]);
     expect(config.idStrategy).toEqual({ type: "content-hash" });
     expect(config.deduplicationConfig).toEqual({ enabled: true });
     expect(config.geocodingEnabled).toBe(false);
@@ -203,9 +204,7 @@ describe("findConfigSuggestions", () => {
 
   it("uses dataset catalogName when provided", () => {
     const headers = ["title"];
-    const datasets = [
-      makeDataset({ id: 1, name: "DS", catalogName: "Science Data", fieldMappingOverrides: { titlePath: "title" } }),
-    ];
+    const datasets = [makeDataset({ id: 1, name: "DS", catalogName: "Science Data", roles: { titlePath: "title" } })];
 
     const results = findConfigSuggestions(headers, datasets);
 
@@ -215,7 +214,7 @@ describe("findConfigSuggestions", () => {
 
   it("defaults catalogName to empty string when not provided", () => {
     const headers = ["title"];
-    const datasets = [makeDataset({ id: 1, name: "DS", fieldMappingOverrides: { titlePath: "title" } })];
+    const datasets = [makeDataset({ id: 1, name: "DS", roles: { titlePath: "title" } })];
 
     const results = findConfigSuggestions(headers, datasets);
 
@@ -229,8 +228,8 @@ describe("findConfigSuggestions", () => {
       makeDataset({
         id: 1,
         name: "Events",
-        // Only 2 overrides — would give low score without schemaColumns
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "event_date" },
+        // Only 2 roles — would give low score without schemaColumns
+        roles: { titlePath: "title", timestampPath: "event_date" },
         // All 5 columns from the schema
         schemaColumns: ["title", "event_date", "venue", "city", "description"],
       }),
@@ -243,13 +242,13 @@ describe("findConfigSuggestions", () => {
     expect(results[0]!.score).toBe(100);
   });
 
-  it("falls back to overrides when schemaColumns not available", () => {
+  it("falls back to plan roles when schemaColumns not available", () => {
     const headers = ["title", "event_date", "venue", "city", "description"];
     const datasets = [
       makeDataset({
         id: 1,
         name: "Events",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "event_date" },
+        roles: { titlePath: "title", timestampPath: "event_date" },
         // No schemaColumns
       }),
     ];
@@ -261,15 +260,15 @@ describe("findConfigSuggestions", () => {
     expect(results[0]!.score).toBe(40);
   });
 
-  it("combines schemaColumns with overrides and transforms", () => {
+  it("combines schemaColumns with roles and transforms", () => {
     const headers = ["title", "date", "extra_col"];
     const datasets = [
       makeDataset({
         id: 1,
         name: "Events",
-        fieldMappingOverrides: { titlePath: "title" },
+        roles: { titlePath: "title" },
         schemaColumns: ["title", "date"],
-        ingestTransforms: [{ id: "1", type: "rename", from: "extra_col", to: "extra", active: true }],
+        transforms: [{ id: "1", type: "rename", from: "extra_col", to: "extra", active: true, autoDetected: false }],
       }),
     ];
 

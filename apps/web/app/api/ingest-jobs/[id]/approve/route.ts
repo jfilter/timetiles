@@ -16,6 +16,14 @@ import { z } from "zod";
 
 import { apiRoute, ForbiddenError, safeFindByID, ValidationError } from "@/lib/api";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import { legacyDayMonthToDateOrder, toCoordinateOrder } from "@/lib/ingest/plan-builder";
+import type {
+  CoordinateOrder,
+  DatasetInterpretationPlan,
+  DateOrder,
+  InterpretationRoles,
+} from "@/lib/ingest/types/interpretation";
 import { readConfigSnapshot } from "@/lib/jobs/utils/resource-loading";
 import { REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
@@ -45,23 +53,103 @@ const bodySchema = z
 
 type ApproveBody = z.infer<typeof bodySchema>;
 
-/** Collect requested overrides from the body. */
-const buildOverrideUpdate = (body: ApproveBody): Record<string, string> => {
-  const overrideUpdate: Record<string, string> = {};
-  if (body?.timestampPath) overrideUpdate.timestampPath = body.timestampPath;
-  if (body?.locationPath) overrideUpdate.locationPath = body.locationPath;
-  if (body?.locationNamePath) overrideUpdate.locationNamePath = body.locationNamePath;
-  if (body?.latitudePath) overrideUpdate.latitudePath = body.latitudePath;
-  if (body?.longitudePath) overrideUpdate.longitudePath = body.longitudePath;
-  if (body?.coordinateFormat) overrideUpdate.coordinateFormat = body.coordinateFormat;
-  if (body?.timestampOrder) overrideUpdate.timestampOrder = body.timestampOrder;
-  if (body?.endTimestampOrder) overrideUpdate.endTimestampOrder = body.endTimestampOrder;
-  return overrideUpdate;
+/** True if the column-picker body carries any path or order pick to apply. */
+const hasOverridePicks = (body: ApproveBody): boolean =>
+  [
+    body?.timestampPath,
+    body?.locationPath,
+    body?.locationNamePath,
+    body?.latitudePath,
+    body?.longitudePath,
+    body?.coordinateFormat,
+    body?.timestampOrder,
+    body?.endTimestampOrder,
+  ].some(Boolean);
+
+/** Map of role keys → the body path-pick that should overwrite them. */
+const ROLE_PATH_PICKS = [
+  ["timestamp", "timestampPath"],
+  ["location", "locationPath"],
+  ["locationName", "locationNamePath"],
+  ["latitude", "latitudePath"],
+  ["longitude", "longitudePath"],
+] as const;
+
+/** Overlay one column's date policy order onto a plan (creating the column if absent). */
+const setDateColumnOrder = (
+  plan: DatasetInterpretationPlan,
+  field: string | null | undefined,
+  order: DateOrder | undefined
+): void => {
+  if (!field || !order) return;
+  const existing = plan.columns.find((c) => c.field === field);
+  if (existing) {
+    existing.kind = "date";
+    existing.policy = { ...existing.policy, kind: "date", order };
+    if (existing.detection) existing.detection = { ...existing.detection, requiresChoice: undefined };
+  } else {
+    plan.columns.push({ field, kind: "date", policy: { kind: "date", order } });
+  }
+};
+
+/** Overlay the coordinate column's axis order onto a plan (creating the column if absent). */
+const setCoordinateColumnOrder = (
+  plan: DatasetInterpretationPlan,
+  field: string | null | undefined,
+  order: CoordinateOrder | undefined
+): void => {
+  if (!field || !order) return;
+  const existing = plan.columns.find((c) => c.field === field);
+  if (existing) {
+    existing.kind = "coordinate-pair";
+    existing.policy = { ...existing.policy, kind: "coordinate-pair", order, combinedSource: field };
+    if (existing.detection) existing.detection = { ...existing.detection, requiresChoice: undefined };
+  } else {
+    plan.columns.push({
+      field,
+      kind: "coordinate-pair",
+      policy: { kind: "coordinate-pair", order, combinedSource: field },
+    });
+  }
 };
 
 /**
- * Apply field mapping overrides from the column picker to the dataset.
- * Returns true if overrides were applied.
+ * Patch a plan with the column-picker body: path picks → roles, order picks →
+ * the matching column policy. Returns a NEW plan (does not mutate the input),
+ * or null when there is nothing to apply.
+ */
+const patchPlanFromBody = (
+  base: DatasetInterpretationPlan | null,
+  body: ApproveBody
+): DatasetInterpretationPlan | null => {
+  if (!hasOverridePicks(body)) return null;
+
+  const plan: DatasetInterpretationPlan = base
+    ? { ...base, roles: { ...base.roles }, columns: base.columns.map((c) => ({ ...c })) }
+    : { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" };
+
+  const roles = plan.roles as InterpretationRoles & Record<string, string | null | undefined>;
+  for (const [roleKey, bodyKey] of ROLE_PATH_PICKS) {
+    const value = body?.[bodyKey];
+    if (value) roles[roleKey] = value;
+  }
+
+  // Order picks resolve the column policy. The role must already point at the
+  // column (set above for new picks, or carried by the plan from detection).
+  setDateColumnOrder(plan, roles.timestamp, legacyDayMonthToDateOrder(body?.timestampOrder));
+  setDateColumnOrder(plan, roles.endTimestamp, legacyDayMonthToDateOrder(body?.endTimestampOrder));
+  setCoordinateColumnOrder(plan, roles.coordinate, toCoordinateOrder(body?.coordinateFormat));
+
+  return plan;
+};
+
+/**
+ * Apply column-picker / order-confirm picks to the canonical interpretation plan.
+ *
+ * Writes the resolved plan to BOTH the dataset (so a resume re-derives the same
+ * resolved plan — this replaces the override-precedence-on-resume mechanism) and
+ * the in-flight job (so the resume reads the resolved orders immediately), plus
+ * the job's configSnapshot (frozen authored plan). Returns true if applied.
  */
 const applyFieldMappingOverrides = async (
   payload: Parameters<Parameters<typeof apiRoute>[0]["handler"]>[0]["payload"],
@@ -69,42 +157,41 @@ const applyFieldMappingOverrides = async (
   body: ApproveBody,
   ingestJobId: string
 ): Promise<boolean> => {
-  const overrideUpdate = buildOverrideUpdate(body);
-  if (Object.keys(overrideUpdate).length === 0) return false;
+  if (!hasOverridePicks(body)) return false;
 
   const datasetId = extractRelationId(ingestJob.dataset);
   if (!datasetId) return false;
 
   const dataset = await payload.findByID({ collection: COLLECTION_NAMES.DATASETS, id: datasetId });
-  const existingOverrides = dataset?.fieldMappingOverrides ?? {};
 
-  await payload.update({
-    collection: COLLECTION_NAMES.DATASETS,
-    id: datasetId,
-    data: { fieldMappingOverrides: { ...existingOverrides, ...overrideUpdate } },
-  });
+  // Patch the AUTHORED dataset plan so resume re-derives the resolved orders.
+  const datasetPlan = patchPlanFromBody(readInterpretationPlan(dataset), body);
+  if (datasetPlan) {
+    await payload.update({
+      collection: COLLECTION_NAMES.DATASETS,
+      id: datasetId,
+      data: { interpretationPlan: datasetPlan as unknown as Record<string, unknown> },
+    });
+  }
 
+  // Patch the in-flight JOB plan so the immediate resume reads the resolved orders.
+  const jobPlan = patchPlanFromBody(readInterpretationPlan(ingestJob), body);
+
+  // Freeze the resolved authored plan onto the configSnapshot for deterministic resume.
   const snapshot = readConfigSnapshot(ingestJob);
-  const configSnapshotUpdate = snapshot
-    ? {
-        configSnapshot: {
-          ...snapshot,
-          fieldMappingOverrides: { ...snapshot.fieldMappingOverrides, ...overrideUpdate },
-        },
-      }
-    : undefined;
+  const configSnapshotUpdate =
+    snapshot && datasetPlan ? { configSnapshot: { ...snapshot, interpretationPlan: datasetPlan } } : undefined;
 
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { detectedFieldMappings: { ...ingestJob.detectedFieldMappings, ...overrideUpdate }, ...configSnapshotUpdate },
+    data: {
+      ...(jobPlan ? { interpretationPlan: jobPlan as unknown as Record<string, unknown> } : {}),
+      ...configSnapshotUpdate,
+    },
   });
 
-  logger.info("Set field mapping overrides on dataset before approval", {
-    datasetId,
-    overrides: overrideUpdate,
-    ingestJobId,
-  });
+  logger.info("Resolved interpretation plan from column picker before approval", { datasetId, ingestJobId });
 
   return true;
 };

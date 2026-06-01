@@ -11,6 +11,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import * as geocodingModule from "@/lib/services/geocoding";
 import type { IngestJob } from "@/payload-types";
 
@@ -22,6 +23,15 @@ import {
   withIngestFile,
   withUsers,
 } from "../../setup/integration/environment";
+
+/** The persisted plan represents an undecided date column as order:undefined + requiresChoice. */
+const expectUndecidedDateColumn = (job: unknown, field: string): void => {
+  const plan = readInterpretationPlan(job as { interpretationPlan?: unknown });
+  const col = plan?.columns.find((c) => c.field === field);
+  expect(col?.kind).toBe("date");
+  expect((col?.policy as { order?: string } | undefined)?.order).toBeUndefined();
+  expect(col?.detection?.requiresChoice).toBe("date-order");
+};
 
 /** Helper: run jobs until a job reaches needs-review, completed, or failed. */
 const isSettled = (job: Pick<IngestJob, "stage">) =>
@@ -183,7 +193,9 @@ describe.sequential("Review Checks Pipeline", () => {
     const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
     expect(jobs.docs[0].stage).toBe("needs-review");
     expect(jobs.docs[0].reviewReason).toBe("ambiguous-date-order");
-    expect(jobs.docs[0].detectedFieldMappings?.timestampOrder).toBe("ambiguous");
+    const timestampPath = readInterpretationPlan(jobs.docs[0])?.roles.timestamp;
+    expect(timestampPath).toBe("date");
+    expectUndecidedDateColumn(jobs.docs[0], "date");
   });
 
   it("should pause for ambiguous-date-order when the paired heuristic infers an undecided date column", async () => {
@@ -214,8 +226,8 @@ describe.sequential("Review Checks Pipeline", () => {
     const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
     expect(jobs.docs[0].stage).toBe("needs-review");
     expect(jobs.docs[0].reviewReason).toBe("ambiguous-date-order");
-    expect(jobs.docs[0].detectedFieldMappings?.timestampPath).toBe("opens_on");
-    expect(jobs.docs[0].detectedFieldMappings?.timestampOrder).toBe("ambiguous");
+    expect(readInterpretationPlan(jobs.docs[0])?.roles.timestamp).toBe("opens_on");
+    expectUndecidedDateColumn(jobs.docs[0], "opens_on");
   });
 
   it("should pause for high-duplicates when duplicate rate exceeds threshold", async () => {

@@ -9,6 +9,7 @@
  * @category Types
  */
 
+import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { LanguageResult } from "@/lib/services/schema-detection/types";
 
 import type { IngestTransform } from "./transforms";
@@ -200,17 +201,8 @@ export interface ConfigSuggestion {
   score: number;
   matchedColumns: string[];
   config: {
-    fieldMappingOverrides: {
-      titlePath?: string | null;
-      descriptionPath?: string | null;
-      locationNamePath?: string | null;
-      timestampPath?: string | null;
-      endTimestampPath?: string | null;
-      latitudePath?: string | null;
-      longitudePath?: string | null;
-      locationPath?: string | null;
-    };
-    ingestTransforms?: IngestTransform[];
+    /** The dataset's authored interpretation plan (roles + ops) for wizard prefill. */
+    interpretationPlan?: DatasetInterpretationPlan | null;
     idStrategy?: { type?: string; externalIdPath?: string | null; duplicateStrategy?: string | null };
     deduplicationConfig?: { enabled?: boolean | null };
     geocodingEnabled?: boolean;

@@ -22,9 +22,8 @@ import {
   PROCESSING_STAGE,
 } from "@/lib/constants/ingest-constants";
 import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-readers";
-import { interpretRow } from "@/lib/ingest/interpret";
+import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { toPlan } from "@/lib/ingest/to-plan";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
@@ -118,7 +117,9 @@ const analyzeInternalDuplicates = async (
   // - external IDs only need the ops that materialize the ID path (`only`)
   // - content-hash IDs must see the fully transformed row (no projection)
   // - auto-generate needs no rewrite at all
-  const plan = toPlan(dataset);
+  // analyze-duplicates runs BEFORE detect-schema, so the JOB plan is not finalized
+  // yet — read the AUTHORED ops from the dataset plan (wizard/data-package).
+  const plan = readInterpretationPlan(dataset) ?? planFromOps([]);
   const idStrategyType = dataset.idStrategy?.type;
   const idOnlyPath = idStrategyType === "external" ? dataset.idStrategy?.externalIdPath : undefined;
   const interpretForId = (row: Record<string, unknown>): Record<string, unknown> => {

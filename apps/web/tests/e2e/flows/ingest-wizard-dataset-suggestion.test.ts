@@ -42,12 +42,19 @@ const seedDatasetSuggestion = async (request: APIRequestContext): Promise<void> 
         catalog: catalog.id,
         language: "eng",
         isPublic: true,
-        fieldMappingOverrides: {
-          titlePath: "title",
-          descriptionPath: "description",
-          timestampPath: "date",
-          locationNamePath: "location",
-          endTimestampPath: "category",
+        // Canonical interpretation plan (ADR 0040): roles replace the removed
+        // fieldMappingOverrides group. The config-suggestion matcher reads role paths.
+        interpretationPlan: {
+          ops: [],
+          columns: [],
+          roles: {
+            title: "title",
+            description: "description",
+            timestamp: "date",
+            locationName: "location",
+            endTimestamp: "category",
+          },
+          ambiguityResolution: "best-effort",
         },
         idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
         deduplicationConfig: { enabled: true },

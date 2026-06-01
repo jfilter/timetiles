@@ -10,6 +10,8 @@
  * @category Types
  */
 
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+
 export interface IngestGeocodingCandidate {
   /** Field name containing location information (address, city, venue, etc.) */
   locationField?: string;
@@ -70,27 +72,24 @@ export const getIngestGeocodingResults = (job: { geocodingResults?: unknown }): 
 
 /**
  * Safe getter for geocoding candidates from an ingest job.
- * Reads from detectedFieldMappings.locationPath.
+ *
+ * Reads the location/coordinate roles from the job's detection-resolved
+ * `interpretationPlan` (narrowed via {@link readInterpretationPlan}).
  */
-export const getIngestGeocodingCandidate = (job: {
-  detectedFieldMappings?: unknown;
-}): IngestGeocodingCandidate | null => {
-  // Extract locationPath from detected field mappings
-  if (!job.detectedFieldMappings || typeof job.detectedFieldMappings !== "object") {
-    return null;
-  }
+export const getIngestGeocodingCandidate = (job: { interpretationPlan?: unknown }): IngestGeocodingCandidate | null => {
+  const roles = readInterpretationPlan(job)?.roles;
+  if (!roles) return null;
 
-  const mappings = job.detectedFieldMappings as Record<string, unknown>;
-  const locationField = typeof mappings.locationPath === "string" ? mappings.locationPath : undefined;
-  const locationNameField = typeof mappings.locationNamePath === "string" ? mappings.locationNamePath : undefined;
+  const locationField = typeof roles.location === "string" ? roles.location : undefined;
+  const locationNameField = typeof roles.locationName === "string" ? roles.locationName : undefined;
 
   // Return null if neither location field nor location name field was detected
   if (!locationField && !locationNameField) {
     return null;
   }
 
-  const latitudeField = typeof mappings.latitudePath === "string" ? mappings.latitudePath : undefined;
-  const longitudeField = typeof mappings.longitudePath === "string" ? mappings.longitudePath : undefined;
+  const latitudeField = typeof roles.latitude === "string" ? roles.latitude : undefined;
+  const longitudeField = typeof roles.longitude === "string" ? roles.longitude : undefined;
 
   return { locationField, locationNameField, latitudeField, longitudeField };
 };

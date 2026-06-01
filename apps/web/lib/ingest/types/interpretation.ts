@@ -3,12 +3,12 @@
  *
  * This is the single declarative description of how each source column is turned
  * into its final typed event value. It unifies three previously-separate, partly
- * overlapping mechanisms:
+ * overlapping mechanisms (all now folded into this one persisted plan):
  *
- * - `dataset.ingestTransforms` (the {@link IngestTransform} union) — structural and
- *   value rewrites applied before detection.
- * - `dataset.fieldMappingOverrides` — semantic field identity (which column is the
- *   title / timestamp / coordinate, …) plus the `coordinateFormat` interpretation knob.
+ * - the {@link IngestTransform} union ({@link DatasetInterpretationPlan.ops}) —
+ *   structural and value rewrites applied before detection.
+ * - semantic field identity ({@link InterpretationRoles}) — which column is the
+ *   title / timestamp / coordinate, … plus the per-column order policies.
  * - The implicit per-row guessing in `parseImportDate`/`extractCombinedCoordinates`
  *   at event-creation time (the source of the recurring "per-row vs per-column" bugs).
  *
@@ -16,9 +16,10 @@
  * shared by both schema detection and event creation, eliminating the
  * pre-detection / post-detection interpretation seam.
  *
- * Phase 0 introduces the types and a pure `toPlan(dataset)` adapter only; no behavior
- * changes until later phases route the pipeline through `interpretRow`. See
- * `docs/adr/0040-unified-column-interpretation.md`.
+ * The plan is the CANONICAL storage: it is persisted verbatim as a Payload
+ * `type: "json"` field (`interpretationPlan`) on both `datasets` (authored) and
+ * `ingest-jobs` (detection-resolved), and assembled by `@/lib/ingest/plan-builder`.
+ * See `docs/adr/0040-unified-column-interpretation.md`.
  *
  * @module
  * @category Types
@@ -103,7 +104,8 @@ export interface ColumnInterpretation {
 
 /**
  * The semantic role each event field plays, mapped to a source column name.
- * Replaces the path fields of `dataset.fieldMappingOverrides`.
+ * The canonical home for field identity (formerly the path fields of the
+ * removed `dataset.fieldMappingOverrides` group).
  */
 export interface InterpretationRoles {
   title?: string | null;

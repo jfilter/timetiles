@@ -21,6 +21,7 @@ import type { DetectionContext, FieldStatistics } from "@/lib/services/schema-de
 import {
   createIntegrationTestEnvironment,
   IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
+  readPlanFieldMappings,
   runJobsUntilIngestJobStage,
   withCatalog,
   withDataset,
@@ -228,7 +229,7 @@ describe.sequential("Schema Detection Plugin Integration", () => {
   // 4. Detection during actual import pipeline
   // ---------------------------------------------------------------------------
   describe("detection during import pipeline", () => {
-    it("should populate detectedFieldMappings when running the import pipeline", async () => {
+    it("should populate the interpretation plan roles when running the import pipeline", async () => {
       // Set up users, catalog, and dataset
       const { users } = await withUsers(testEnv, { importer: { role: "user" } });
 
@@ -288,11 +289,11 @@ describe.sequential("Schema Detection Plugin Integration", () => {
       expect(importJobs.docs.length).toBeGreaterThan(0);
       const ingestJob = importJobs.docs[0];
 
-      // Verify detectedFieldMappings are populated
-      expect(ingestJob.detectedFieldMappings).toBeDefined();
-      expect(ingestJob.detectedFieldMappings.titlePath).toBe("titel");
-      expect(ingestJob.detectedFieldMappings.timestampPath).toBe("datum");
-      expect(ingestJob.detectedFieldMappings.descriptionPath).toBe("beschreibung");
+      // Verify the detection-resolved interpretation plan roles are populated
+      const ingestMappings = readPlanFieldMappings(ingestJob);
+      expect(ingestMappings.titlePath).toBe("titel");
+      expect(ingestMappings.timestampPath).toBe("datum");
+      expect(ingestMappings.descriptionPath).toBe("beschreibung");
     });
   });
 

@@ -291,9 +291,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     it("should apply the full transform chain for content-hash ids so normalized rows hash identically", async () => {
       // Regression: prior to commit 0496522e, content-hash dedup hashed the RAW
       // row and missed duplicates that only collapse after lowercase/trim
-      // transforms. The handler now uses buildTransformsFromDataset() for
-      // content-hash strategies, feeding the fully transformed row to
-      // generateUniqueId — mirroring what create-events-batch-job does.
+      // transforms. The handler now reads the authored ops from the dataset
+      // interpretationPlan for content-hash strategies, feeding the fully
+      // transformed row to generateUniqueId — mirroring create-events-batch-job.
       const mockIngestJob = {
         id: "import-123",
         dataset: "dataset-456",
@@ -308,16 +308,21 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         id: "dataset-456",
         deduplicationConfig: { enabled: true },
         idStrategy: { type: "content-hash" },
-        ingestTransforms: [
-          {
-            id: "transform-1",
-            type: "string-op",
-            from: "title",
-            operation: "lowercase",
-            active: true,
-            autoDetected: false,
-          },
-        ],
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-1",
+              type: "string-op",
+              from: "title",
+              operation: "lowercase",
+              active: true,
+              autoDetected: false,
+            },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockIngestFile = createMockIngestFile();
@@ -372,26 +377,31 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         id: "dataset-456",
         deduplicationConfig: { enabled: true },
         idStrategy: { type: "external", externalIdPath: "id" },
-        ingestTransforms: [
-          {
-            id: "transform-1",
-            type: "rename",
-            from: "user.name",
-            to: "metadata.raw",
-            active: true,
-            autoDetected: false,
-          },
-          {
-            id: "transform-2",
-            type: "string-op",
-            from: "metadata.raw",
-            to: "id",
-            operation: "lowercase",
-            active: true,
-            autoDetected: false,
-          },
-          { id: "transform-3", type: "rename", from: "title", to: "unused", active: true, autoDetected: false },
-        ],
+        interpretationPlan: {
+          ops: [
+            {
+              id: "transform-1",
+              type: "rename",
+              from: "user.name",
+              to: "metadata.raw",
+              active: true,
+              autoDetected: false,
+            },
+            {
+              id: "transform-2",
+              type: "string-op",
+              from: "metadata.raw",
+              to: "id",
+              operation: "lowercase",
+              active: true,
+              autoDetected: false,
+            },
+            { id: "transform-3", type: "rename", from: "title", to: "unused", active: true, autoDetected: false },
+          ],
+          columns: [],
+          roles: {},
+          ambiguityResolution: "best-effort",
+        },
       };
 
       const mockIngestFile = createMockIngestFile();

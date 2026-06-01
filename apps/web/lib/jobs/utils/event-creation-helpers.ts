@@ -10,6 +10,8 @@
 import { MAX_EVENT_PAYLOAD_BYTES } from "@/lib/constants/ingest-constants";
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
+import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import { planToFieldMappings } from "@/lib/ingest/plan-builder";
 import type { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createLogger } from "@/lib/logger";
 import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
@@ -164,7 +166,7 @@ const resolveDayMonthOrder = (order: string | null | undefined): DayMonthOrder |
  * Extract timestamp from row data using field mapping.
  *
  * `order` is the column-level day/month order decided once by schema detection
- * (persisted on `detectedFieldMappings.timestampOrder`). When explicit it is
+ * (the timestamp column's date policy in the job's interpretationPlan). When explicit it is
  * passed straight through so every row uses the same order; ambiguous/unset
  * defers to the parser's legacy heuristic.
  */
@@ -208,7 +210,7 @@ export const extractTimestamp = (
  * Returns null if no end date is found (most events don't have one).
  *
  * `order` is the column-level day/month order for the end-timestamp column
- * (persisted on `detectedFieldMappings.endTimestampOrder`); same strict semantics
+ * (the end-timestamp column's date policy in the job's interpretationPlan); same strict semantics
  * as {@link extractTimestamp}.
  */
 export const extractEndTimestamp = (
@@ -373,21 +375,7 @@ export const createEventData = (
   sourceRow: Record<string, unknown>,
   dataset: Dataset,
   ingestJobId: string | number,
-  job: {
-    datasetSchemaVersion?: unknown;
-    detectedFieldMappings?: {
-      latitudePath?: string | null;
-      longitudePath?: string | null;
-      coordinatePath?: string | null;
-      coordinateFormat?: string | null;
-      locationPath?: string | null;
-      locationNamePath?: string | null;
-      timestampPath?: string | null;
-      endTimestampPath?: string | null;
-      timestampOrder?: string | null;
-      endTimestampOrder?: string | null;
-    };
-  },
+  job: { datasetSchemaVersion?: unknown; interpretationPlan?: unknown },
   geocodingResults: ReturnType<typeof getIngestGeocodingResults>,
   transformationChanges: Array<{ path: string; oldValue: unknown; newValue: unknown; error?: string }> | null
 ) => {
@@ -404,7 +392,9 @@ export const createEventData = (
     schemaVersion = undefined;
   }
 
-  const fieldMappings = job.detectedFieldMappings ?? {};
+  // Project the detection-resolved plan back to the flat shape the extractors
+  // expect (roles → paths; column policies → "lat,lng"/"D/M" orders).
+  const fieldMappings = planToFieldMappings(readInterpretationPlan(job));
   const { location, coordinateSource } = extractCoordinates(row, fieldMappings, geocodingResults);
   const locationName = extractLocationName(row, fieldMappings.locationNamePath);
 

@@ -2,7 +2,13 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0040: Unified Column Interpretation Plan](0040-unified-column-interpretation.md).
+
+The mechanisms described below (`importTransforms`/`ingestTransforms` and the separate
+`fieldMappingOverrides` paths) were unified into a single persisted `interpretationPlan`.
+The surviving structural transforms and the `expr-eval` sandbox are carried forward; the
+per-column interpretation knobs and role paths now live on the plan. See ADR 0040 for the
+current model. The remainder of this document is retained for historical context.
 
 ## Context
 

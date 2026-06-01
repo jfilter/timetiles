@@ -24,14 +24,38 @@ import { applyTransforms } from "@/lib/ingest/transforms";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Narrow a persisted `interpretationPlan` (Payload stores it as `type: "json"`,
+ * so the generated type surfaces it as `unknown`) to the canonical
+ * {@link DatasetInterpretationPlan}, or `null` when the field is unset/malformed.
+ *
+ * The plan is machine-authored (wizard/detector/data-package) and round-tripped
+ * through JSON, so a light structural check is sufficient — missing array
+ * members default to empty so downstream readers can rely on stable shapes.
+ * Mirrors `readConfigSnapshot` in `resource-loading.ts`.
+ */
+export const readInterpretationPlan = (record: { interpretationPlan?: unknown }): DatasetInterpretationPlan | null => {
+  const plan = record.interpretationPlan;
+  if (!isRecord(plan)) return null;
+  return {
+    ops: Array.isArray(plan.ops) ? (plan.ops as IngestTransform[]) : [],
+    columns: Array.isArray(plan.columns) ? (plan.columns as DatasetInterpretationPlan["columns"]) : [],
+    roles: isRecord(plan.roles) ? plan.roles : {},
+    ambiguityResolution: plan.ambiguityResolution === "strict" ? "strict" : "best-effort",
+  };
+};
+
 /**
  * Wrap an already-built ordered transform list as a minimal plan (ops only).
  *
  * Transitional helper for call sites that still receive `transforms` rather than
- * a dataset. `interpretRows(rows, planFromOps(transforms))` is byte-identical to
+ * a full plan. `interpretRows(rows, planFromOps(transforms))` is byte-identical to
  * the legacy `applyTransformsBatch(rows, transforms)`. The typed `columns`/`roles`
- * are populated by `toPlan` from the dataset; sites using this shim only need the
- * structural step, which the ops carry. Removed once those sites take a full plan.
+ * are populated by the plan-builder; sites using this shim only need the
+ * structural step, which the ops carry.
  */
 export const planFromOps = (ops: IngestTransform[]): DatasetInterpretationPlan => ({
   ops,

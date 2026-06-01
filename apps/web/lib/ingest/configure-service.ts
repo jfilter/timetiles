@@ -16,6 +16,7 @@ import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
 import { ValidationError } from "@/lib/api/errors";
+import { buildPlanFromWizard } from "@/lib/ingest/plan-builder";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type {
   ConfigureIngestRequest,
@@ -31,37 +32,6 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import type { Dataset, IngestFile, User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");
-
-/** Build field mapping overrides from wizard configuration. */
-export const buildFieldMappingOverrides = (
-  fieldMapping: FieldMapping | undefined
-): Partial<
-  Record<
-    | "titlePath"
-    | "descriptionPath"
-    | "locationNamePath"
-    | "timestampPath"
-    | "endTimestampPath"
-    | "latitudePath"
-    | "longitudePath"
-    | "coordinatePath"
-    | "locationPath",
-    string | null
-  >
-> => {
-  if (!fieldMapping) return {};
-  return {
-    titlePath: fieldMapping.titleField,
-    descriptionPath: fieldMapping.descriptionField,
-    locationNamePath: fieldMapping.locationNameField,
-    timestampPath: fieldMapping.dateField,
-    endTimestampPath: fieldMapping.endDateField,
-    latitudePath: fieldMapping.latitudeField,
-    longitudePath: fieldMapping.longitudeField,
-    coordinatePath: fieldMapping.coordinateField,
-    locationPath: fieldMapping.locationField,
-  };
-};
 
 /** Build ID strategy configuration. */
 export const buildIdStrategy = (
@@ -141,7 +111,6 @@ export const processDataset = async (
   geocodingEnabled: boolean,
   transforms?: IngestTransform[]
 ): Promise<number> => {
-  const fieldMappingOverrides = buildFieldMappingOverrides(fieldMapping);
   const idStrategy = buildIdStrategy(fieldMapping, deduplicationStrategy);
   const deduplicationConfig = { enabled: true };
   const geoFieldDetection = buildGeoFieldDetection(fieldMapping, geocodingEnabled);
@@ -149,6 +118,15 @@ export const processDataset = async (
   // Auto-approve non-breaking schema changes for wizard imports
   // since the user already configured field mappings
   const schemaConfig = { autoApproveNonBreaking: true };
+
+  // Canonical authored plan (ADR 0040): ops + roles + column policies. Wizard
+  // datasets default to "strict" — the user explicitly configured mappings, so
+  // ambiguous orders are decided once per column rather than guessed per row.
+  // The plan is stored verbatim as JSON; cast through unknown like schemaBuilderState.
+  const interpretationPlan = buildPlanFromWizard(fieldMapping, transforms, "strict") as unknown as Record<
+    string,
+    unknown
+  >;
 
   if (sheetMapping.datasetId === "new") {
     // Bug 14 fix: pass req so Payload hooks and access control know the acting user
@@ -159,17 +137,11 @@ export const processDataset = async (
         catalog: catalogId,
         language: "eng",
         isPublic: true, // Default to public for wizard imports
-        fieldMappingOverrides,
+        interpretationPlan,
         idStrategy,
         deduplicationConfig,
         geoFieldDetection,
         schemaConfig,
-        // IngestTransform (discriminated union with Date, required booleans, typed arrays)
-        // vs Dataset["ingestTransforms"] (flat type with string dates, optional nullables, loose arrays).
-        // The double cast bridges these structural differences; Payload handles serialization at write time.
-        ...(transforms && transforms.length > 0
-          ? { ingestTransforms: transforms as unknown as NonNullable<Dataset["ingestTransforms"]> }
-          : {}),
       },
       req,
     });
@@ -189,12 +161,10 @@ export const processDataset = async (
   });
 
   const updateData: Record<string, unknown> = {
-    fieldMappingOverrides,
+    interpretationPlan,
     deduplicationConfig,
     geoFieldDetection,
     schemaConfig,
-    // Same IngestTransform vs Dataset["ingestTransforms"] mismatch — see comment above.
-    ...(transforms ? { ingestTransforms: transforms } : {}),
   };
 
   // Only update idStrategy if dataset has no events yet

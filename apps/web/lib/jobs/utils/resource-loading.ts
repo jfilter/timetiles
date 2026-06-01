@@ -51,12 +51,11 @@ export const applyConfigSnapshotToDataset = (
   // We coerce here because the Dataset type uses `undefined` for optional-unset fields.
   return {
     ...dataset,
-    fieldMappingOverrides: snapshot.fieldMappingOverrides ?? undefined,
+    interpretationPlan: snapshot.interpretationPlan ?? undefined,
     idStrategy: snapshot.idStrategy ?? undefined,
     deduplicationConfig: snapshot.deduplicationConfig ?? undefined,
     geoFieldDetection: snapshot.geoFieldDetection ?? undefined,
     schemaConfig: snapshot.schemaConfig ?? undefined,
-    ingestTransforms: snapshot.ingestTransforms,
   };
 };
 

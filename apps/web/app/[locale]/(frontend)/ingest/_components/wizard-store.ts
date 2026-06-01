@@ -210,34 +210,35 @@ const updateBySheetIndex = <T extends { sheetIndex: number }>(
 };
 
 /**
- * Merge dataset-config overrides into a sheet's field mapping, keeping only
- * overrides whose source column exists in that sheet.
+ * Merge a suggested dataset plan's roles into a sheet's field mapping, keeping
+ * only roles whose source column exists in that sheet.
  *
- * Copying an override path whose column isn't in the target sheet leaves
+ * Copying a role path whose column isn't in the target sheet leaves
  * `fieldMapping.titleField = "title"` pointing at a column that doesn't
  * exist, which the row UI then marks as "taken" in `assignedTargets` and
  * disables in every select — the user gets stuck unable to reassign.
  */
 const mergeFieldMappingOverrides = (
   currentFm: FieldMapping,
-  overrides: ConfigSuggestion["config"]["fieldMappingOverrides"],
+  plan: ConfigSuggestion["config"]["interpretationPlan"],
   idStrategy: ConfigSuggestion["config"]["idStrategy"],
   sheetHeaders: readonly string[]
 ): FieldMapping => {
   const headerSet = new Set(sheetHeaders);
   const keepIfPresent = (path: string | undefined | null): string | undefined =>
     path != null && headerSet.has(path) ? path : undefined;
+  const roles = plan?.roles ?? {};
 
   return {
     ...currentFm,
-    titleField: keepIfPresent(overrides.titlePath) ?? currentFm.titleField,
-    descriptionField: keepIfPresent(overrides.descriptionPath) ?? currentFm.descriptionField,
-    locationNameField: keepIfPresent(overrides.locationNamePath) ?? currentFm.locationNameField,
-    dateField: keepIfPresent(overrides.timestampPath) ?? currentFm.dateField,
-    endDateField: keepIfPresent(overrides.endTimestampPath) ?? currentFm.endDateField,
-    locationField: keepIfPresent(overrides.locationPath) ?? currentFm.locationField,
-    latitudeField: keepIfPresent(overrides.latitudePath) ?? currentFm.latitudeField,
-    longitudeField: keepIfPresent(overrides.longitudePath) ?? currentFm.longitudeField,
+    titleField: keepIfPresent(roles.title) ?? currentFm.titleField,
+    descriptionField: keepIfPresent(roles.description) ?? currentFm.descriptionField,
+    locationNameField: keepIfPresent(roles.locationName) ?? currentFm.locationNameField,
+    dateField: keepIfPresent(roles.timestamp) ?? currentFm.dateField,
+    endDateField: keepIfPresent(roles.endTimestamp) ?? currentFm.endDateField,
+    locationField: keepIfPresent(roles.location) ?? currentFm.locationField,
+    latitudeField: keepIfPresent(roles.latitude) ?? currentFm.latitudeField,
+    longitudeField: keepIfPresent(roles.longitude) ?? currentFm.longitudeField,
     idStrategy: (idStrategy?.type as FieldMapping["idStrategy"]) ?? currentFm.idStrategy,
     idField: keepIfPresent(idStrategy?.externalIdPath) ?? currentFm.idField,
   };
@@ -404,15 +405,16 @@ export const useWizardStore = create<WizardStore>()(
             if (fmIndex >= 0 && currentFm) {
               updatedFieldMappings[fmIndex] = mergeFieldMappingOverrides(
                 currentFm,
-                config.fieldMappingOverrides,
+                config.interpretationPlan,
                 config.idStrategy,
                 sheet?.headers ?? []
               );
             }
 
             const updatedTransforms = { ...s.transforms };
-            if (config.ingestTransforms != null) {
-              updatedTransforms[sheetIndex] = config.ingestTransforms;
+            const planOps = config.interpretationPlan?.ops;
+            if (planOps != null) {
+              updatedTransforms[sheetIndex] = planOps;
             }
 
             return {

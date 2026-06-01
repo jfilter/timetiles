@@ -18,7 +18,7 @@ import { getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { EventDetailContent } from "@/components/events";
-import { extractEventFields } from "@/lib/utils/event-detail";
+import { extractEventFields, planRolesToFieldPathMappings } from "@/lib/utils/event-detail";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -41,8 +41,7 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
     return { title: "Event | TimeTiles", description: "View event details on TimeTiles" };
   }
 
-  const fieldMappings =
-    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+  const fieldMappings = planRolesToFieldPathMappings(event.dataset);
   const { title, description } = extractEventFields(event.transformedData, fieldMappings, event.id);
 
   return { title: `${title} | TimeTiles`, description: description ?? "View event details on TimeTiles" };

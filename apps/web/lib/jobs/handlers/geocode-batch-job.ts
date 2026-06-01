@@ -18,9 +18,8 @@ import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/li
 import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
-import { interpretRows } from "@/lib/ingest/interpret";
+import { interpretRows, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
-import { toPlan } from "@/lib/ingest/to-plan";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
@@ -235,26 +234,33 @@ const fillCoordsFromConfig = (
 
 /**
  * Resolve coordinate field paths from the geocoding candidate, falling back to
- * the dataset's `fieldMappingOverrides` or `geoFieldDetection` when the schema
- * detection step did not populate `detectedFieldMappings` with lat/lng paths.
+ * the job plan's lat/lng roles, then the dataset's `geoFieldDetection`, when the
+ * detected mappings did not carry lat/lng paths.
  */
 const resolveCoordinateFields = (
   geocodingCandidate: ReturnType<typeof getIngestGeocodingCandidate>,
+  job: IngestJob,
   dataset: unknown
 ): { latitudeField?: string; longitudeField?: string } => {
   let latitudeField = geocodingCandidate?.latitudeField;
   let longitudeField = geocodingCandidate?.longitudeField;
 
-  if ((latitudeField != null && longitudeField != null) || dataset == null || typeof dataset !== "object") {
+  if (latitudeField != null && longitudeField != null) {
     return { latitudeField, longitudeField };
   }
 
-  const ds = dataset as Record<string, unknown>;
-  const overrides = ds.fieldMappingOverrides as Record<string, unknown> | null | undefined;
-  ({ latitudeField, longitudeField } = fillCoordsFromConfig(overrides, latitudeField, longitudeField));
+  // First fallback: the job plan's latitude/longitude roles (replaces the former
+  // dataset.fieldMappingOverrides read).
+  const roles = readInterpretationPlan(job)?.roles;
+  ({ latitudeField, longitudeField } = fillCoordsFromConfig(
+    { latitudePath: roles?.latitude ?? undefined, longitudePath: roles?.longitude ?? undefined },
+    latitudeField,
+    longitudeField
+  ));
 
-  if (!latitudeField || !longitudeField) {
-    const geo = ds.geoFieldDetection as Record<string, unknown> | null | undefined;
+  if ((!latitudeField || !longitudeField) && dataset != null && typeof dataset === "object") {
+    // Second fallback: dataset.geoFieldDetection (out of scope, unchanged).
+    const geo = (dataset as Record<string, unknown>).geoFieldDetection as Record<string, unknown> | null | undefined;
     ({ latitudeField, longitudeField } = fillCoordsFromConfig(geo, latitudeField, longitudeField));
   }
 
@@ -287,9 +293,11 @@ const prepareGeocodingLocations = async (
     return { skipped: true };
   }
 
-  // Resolve coordinate fields: use detectedFieldMappings, falling back to dataset config
-  const coordinateFields = resolveCoordinateFields(geocodingCandidate, dataset);
-  const plan = toPlan(dataset);
+  // Resolve coordinate fields: use the geocoding candidate, falling back to the
+  // job plan roles, then dataset geoFieldDetection.
+  const coordinateFields = resolveCoordinateFields(geocodingCandidate, job, dataset);
+  // Use the detection-resolved JOB plan so the ops match event-creation.
+  const plan = readInterpretationPlan(job) ?? planFromOps([]);
 
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;

@@ -393,10 +393,8 @@ describe.sequential("POST /api/ingest/configure", () => {
             catalog: 1,
             language: "eng",
             isPublic: true,
-            fieldMappingOverrides: expect.objectContaining({
-              titlePath: "title",
-              descriptionPath: "description",
-              timestampPath: "date",
+            interpretationPlan: expect.objectContaining({
+              roles: expect.objectContaining({ title: "title", description: "description", timestamp: "date" }),
             }),
           }),
         })
@@ -441,7 +439,9 @@ describe.sequential("POST /api/ingest/configure", () => {
         expect.objectContaining({
           collection: "datasets",
           id: 42,
-          data: expect.objectContaining({ fieldMappingOverrides: expect.objectContaining({ titlePath: "title" }) }),
+          data: expect.objectContaining({
+            interpretationPlan: expect.objectContaining({ roles: expect.objectContaining({ title: "title" }) }),
+          }),
         })
       );
     });
@@ -463,7 +463,7 @@ describe.sequential("POST /api/ingest/configure", () => {
       expect(datasetUpdateCalls).toHaveLength(1);
       const updateData = (datasetUpdateCalls[0]![0] as Record<string, unknown>).data as Record<string, unknown>;
       expect(updateData).not.toHaveProperty("idStrategy");
-      expect(updateData).toHaveProperty("fieldMappingOverrides"); // Other config still updated
+      expect(updateData).toHaveProperty("interpretationPlan"); // Other config still updated
     });
   });
 

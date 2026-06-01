@@ -13,7 +13,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { findConfigSuggestionsForUser } from "@/app/api/ingest/preview-schema/helpers";
 
-import { createIntegrationTestEnvironment, withCatalog, withUsers } from "../../setup/integration/environment";
+import {
+  buildTestInterpretationPlan,
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withUsers,
+} from "../../setup/integration/environment";
 
 describe.sequential("Config Suggestions - Integration", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -46,7 +51,11 @@ describe.sequential("Config Suggestions - Integration", () => {
         slug: `config-match-${Date.now()}`,
         catalog: catalog.id,
         language: "eng",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "date", locationNamePath: "location" },
+        interpretationPlan: buildTestInterpretationPlan({
+          titlePath: "title",
+          timestampPath: "date",
+          locationNamePath: "location",
+        }) as any,
         idStrategy: { type: "content-hash" },
       },
     });
@@ -60,9 +69,9 @@ describe.sequential("Config Suggestions - Integration", () => {
     expect(match).toBeDefined();
     expect(match!.score).toBeGreaterThanOrEqual(40);
     expect(match!.matchedColumns).toEqual(expect.arrayContaining(["title", "date", "location"]));
-    expect(match!.config.fieldMappingOverrides.titlePath).toBe("title");
-    expect(match!.config.fieldMappingOverrides.timestampPath).toBe("date");
-    expect(match!.config.fieldMappingOverrides.locationNamePath).toBe("location");
+    expect(match!.config.interpretationPlan?.roles.title).toBe("title");
+    expect(match!.config.interpretationPlan?.roles.timestamp).toBe("date");
+    expect(match!.config.interpretationPlan?.roles.locationName).toBe("location");
   });
 
   it("should return empty when no datasets match", async () => {
@@ -75,7 +84,11 @@ describe.sequential("Config Suggestions - Integration", () => {
         slug: `no-match-${Date.now()}`,
         catalog: catalog.id,
         language: "eng",
-        fieldMappingOverrides: { titlePath: "alpha", timestampPath: "beta", locationNamePath: "gamma" },
+        interpretationPlan: buildTestInterpretationPlan({
+          titlePath: "alpha",
+          timestampPath: "beta",
+          locationNamePath: "gamma",
+        }) as any,
       },
     });
 
@@ -118,20 +131,22 @@ describe.sequential("Config Suggestions - Integration", () => {
         slug: `transform-config-${Date.now()}`,
         catalog: catalog.id,
         language: "eng",
-        fieldMappingOverrides: { titlePath: "name", timestampPath: "date", locationNamePath: "location" },
-        ingestTransforms: transforms,
+        interpretationPlan: buildTestInterpretationPlan(
+          { titlePath: "name", timestampPath: "date", locationNamePath: "location" },
+          transforms
+        ) as any,
         idStrategy: { type: "content-hash" },
       },
     });
 
-    // Use headers that match known columns: "name" from overrides, "raw_date" and "raw_name" from transforms
+    // Use headers that match known columns: "name" from roles, "raw_date" and "raw_name" from transforms
     const headers = ["raw_date", "raw_name", "location"];
     const suggestions = await findConfigSuggestionsForUser(payload, testUser.id, headers);
 
     const match = suggestions.find((s) => s.matchedColumns.includes("raw_date"));
     expect(match).toBeDefined();
-    expect(match!.config.ingestTransforms).toBeDefined();
-    expect(match!.config.ingestTransforms!.length).toBeGreaterThanOrEqual(2);
+    expect(match!.config.interpretationPlan?.ops).toBeDefined();
+    expect(match!.config.interpretationPlan!.ops.length).toBeGreaterThanOrEqual(2);
   });
 
   it("should rank multiple datasets by score (best match first)", async () => {
@@ -145,7 +160,7 @@ describe.sequential("Config Suggestions - Integration", () => {
         slug: `low-match-${Date.now()}`,
         catalog: catalog.id,
         language: "eng",
-        fieldMappingOverrides: { titlePath: "title", timestampPath: "date" },
+        interpretationPlan: buildTestInterpretationPlan({ titlePath: "title", timestampPath: "date" }) as any,
       },
     });
 
@@ -157,12 +172,12 @@ describe.sequential("Config Suggestions - Integration", () => {
         slug: `high-match-${Date.now()}`,
         catalog: catalog.id,
         language: "eng",
-        fieldMappingOverrides: {
+        interpretationPlan: buildTestInterpretationPlan({
           titlePath: "title",
           timestampPath: "date",
           locationNamePath: "location",
           descriptionPath: "description",
-        },
+        }) as any,
       },
     });
 

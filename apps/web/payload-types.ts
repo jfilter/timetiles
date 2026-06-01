@@ -674,131 +674,16 @@ export interface Dataset {
     | boolean
     | null;
   /**
-   * Transform rules applied to incoming data before validation (e.g., field renames)
+   * Canonical import interpretation plan: ordered transforms (ops), per-column typing (columns), semantic roles, and ambiguity policy.
    */
-  ingestTransforms?:
+  interpretationPlan?:
     | {
-        /**
-         * Unique identifier for this transform rule
-         */
-        id: string;
-        /**
-         * Type of transformation to apply
-         */
-        type:
-          | 'rename'
-          | 'date-parse'
-          | 'string-op'
-          | 'concatenate'
-          | 'split'
-          | 'parse-json-array'
-          | 'split-to-array'
-          | 'extract';
-        /**
-         * Source field path in import file (e.g., 'date' or 'user.email')
-         */
-        from?: string | null;
-        /**
-         * Target field path in dataset schema (e.g., 'start_date' or 'contact.email')
-         */
-        to?: string | null;
-        /**
-         * Expected input date format
-         */
-        inputFormat?:
-          | (
-              | 'DD/MM/YYYY'
-              | 'MM/DD/YYYY'
-              | 'YYYY-MM-DD'
-              | 'DD-MM-YYYY'
-              | 'MM-DD-YYYY'
-              | 'DD.MM.YYYY'
-              | 'YYYY/MM/DD'
-              | 'D MMMM YYYY'
-              | 'MMMM D, YYYY'
-            )
-          | null;
-        /**
-         * Output date format
-         */
-        outputFormat?: ('YYYY-MM-DD' | 'DD/MM/YYYY' | 'MM/DD/YYYY') | null;
-        /**
-         * Optional timezone (e.g., 'America/New_York')
-         */
-        timezone?: string | null;
-        /**
-         * String operation to apply
-         */
-        operation?: ('uppercase' | 'lowercase' | 'trim' | 'replace' | 'expression') | null;
-        /**
-         * Pattern (text for replace, regex for extract)
-         */
-        pattern?: string | null;
-        /**
-         * Regex capture group index (default: 1)
-         */
-        group?: number | null;
-        /**
-         * Replacement text
-         */
-        replacement?: string | null;
-        /**
-         * Safe expression using the value variable. Functions: upper, lower, trim, concat, replace, substring, toNumber, parseDate, parseBool, round, floor, ceil, abs, len, ifEmpty. Example: upper(value) or toNumber(value)
-         */
-        expression?: string | null;
-        /**
-         * Array of source field paths to concatenate (e.g., ["first_name", "last_name"])
-         */
-        fromFields?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        /**
-         * Separator between concatenated values
-         */
-        separator?: string | null;
-        /**
-         * Delimiter to split on
-         */
-        delimiter?: string | null;
-        /**
-         * Array of target field names for split values (e.g., ["first_name", "last_name"])
-         */
-        toFields?:
-          | {
-              [k: string]: unknown;
-            }
-          | unknown[]
-          | string
-          | number
-          | boolean
-          | null;
-        /**
-         * Uncheck to disable without deleting
-         */
-        active?: boolean | null;
-        /**
-         * When this transform was created
-         */
-        addedAt?: string | null;
-        /**
-         * User who created this transform
-         */
-        addedBy?: (number | null) | User;
-        /**
-         * Confidence score if auto-detected (0-100)
-         */
-        confidence?: number | null;
-        /**
-         * Whether this transform was suggested by auto-detection
-         */
-        autoDetected?: boolean | null;
-      }[]
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
     | null;
   geoFieldDetection?: {
     /**
@@ -813,59 +698,6 @@ export interface Dataset {
      * Override: JSON path to longitude (detected: location.lng, lng, lon, longitude)
      */
     longitudePath?: string | null;
-  };
-  /**
-   * Override language-aware auto-detection of field mappings. Leave empty to use automatic detection based on dataset language.
-   */
-  fieldMappingOverrides?: {
-    /**
-     * Override detected title field (e.g., 'event_name', 'titel', 'titre')
-     */
-    titlePath?: string | null;
-    /**
-     * Override detected description field (e.g., 'details', 'beschreibung', 'détails')
-     */
-    descriptionPath?: string | null;
-    /**
-     * Override detected location name field (e.g., 'venue', 'place', 'ort', 'lieu')
-     */
-    locationNamePath?: string | null;
-    /**
-     * Override detected timestamp field (e.g., 'created_at', 'datum', 'date')
-     */
-    timestampPath?: string | null;
-    /**
-     * Override detected end timestamp field (e.g., 'end_date', 'enddatum', 'date_fin')
-     */
-    endTimestampPath?: string | null;
-    /**
-     * Day/month order of the timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
-     */
-    timestampOrder?: string | null;
-    /**
-     * Day/month order of the end timestamp column: 'D/M' or 'M/D'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
-     */
-    endTimestampOrder?: string | null;
-    /**
-     * Override detected latitude field (e.g., 'lat', 'latitude', 'y_coord')
-     */
-    latitudePath?: string | null;
-    /**
-     * Override detected longitude field (e.g., 'lon', 'longitude', 'x_coord')
-     */
-    longitudePath?: string | null;
-    /**
-     * Override detected combined-coordinate field (single column, e.g., 'coordinates', 'latlng')
-     */
-    coordinatePath?: string | null;
-    /**
-     * Axis order of the combined-coordinate column: 'lat,lng' or 'lng,lat'. Set this when auto-detection cannot determine the order (the detected order is otherwise used).
-     */
-    coordinateFormat?: string | null;
-    /**
-     * Override detected location field (e.g., 'address', 'location', 'venue', 'city')
-     */
-    locationPath?: string | null;
   };
   /**
    * Whether this dataset contains events with timestamps. Auto-set during import.
@@ -1173,58 +1005,17 @@ export interface IngestJob {
     | boolean
     | null;
   /**
-   * Detected or configured field mappings for standard event properties
+   * Detection-resolved interpretation plan for this import: ordered transforms, per-column typing, roles, and ambiguity policy.
    */
-  detectedFieldMappings?: {
-    /**
-     * Path to title/name field in source data
-     */
-    titlePath?: string | null;
-    /**
-     * Path to description/details field in source data
-     */
-    descriptionPath?: string | null;
-    /**
-     * Path to location/venue name field in source data (for display)
-     */
-    locationNamePath?: string | null;
-    /**
-     * Path to timestamp/date field in source data
-     */
-    timestampPath?: string | null;
-    /**
-     * Path to end timestamp/date field in source data
-     */
-    endTimestampPath?: string | null;
-    /**
-     * Day/month order of the timestamp column: D/M | M/D | ambiguous
-     */
-    timestampOrder?: string | null;
-    /**
-     * Day/month order of the end timestamp column: D/M | M/D | ambiguous
-     */
-    endTimestampOrder?: string | null;
-    /**
-     * Path to latitude coordinate field in source data
-     */
-    latitudePath?: string | null;
-    /**
-     * Path to longitude coordinate field in source data
-     */
-    longitudePath?: string | null;
-    /**
-     * Path to a single combined-coordinate column in source data
-     */
-    coordinatePath?: string | null;
-    /**
-     * Order of the combined coordinate column: lat,lng | lng,lat | ambiguous
-     */
-    coordinateFormat?: string | null;
-    /**
-     * Path to location/address field in source data (for geocoding)
-     */
-    locationPath?: string | null;
-  };
+  interpretationPlan?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Snapshot of dataset config (field mappings, transforms, ID strategy, etc.) at import creation time
    */
@@ -4437,53 +4228,13 @@ export interface DatasetsSelect<T extends boolean = true> {
       };
   fieldMetadata?: T;
   fieldTypes?: T;
-  ingestTransforms?:
-    | T
-    | {
-        id?: T;
-        type?: T;
-        from?: T;
-        to?: T;
-        inputFormat?: T;
-        outputFormat?: T;
-        timezone?: T;
-        operation?: T;
-        pattern?: T;
-        group?: T;
-        replacement?: T;
-        expression?: T;
-        fromFields?: T;
-        separator?: T;
-        delimiter?: T;
-        toFields?: T;
-        active?: T;
-        addedAt?: T;
-        addedBy?: T;
-        confidence?: T;
-        autoDetected?: T;
-      };
+  interpretationPlan?: T;
   geoFieldDetection?:
     | T
     | {
         autoDetect?: T;
         latitudePath?: T;
         longitudePath?: T;
-      };
-  fieldMappingOverrides?:
-    | T
-    | {
-        titlePath?: T;
-        descriptionPath?: T;
-        locationNamePath?: T;
-        timestampPath?: T;
-        endTimestampPath?: T;
-        timestampOrder?: T;
-        endTimestampOrder?: T;
-        latitudePath?: T;
-        longitudePath?: T;
-        coordinatePath?: T;
-        coordinateFormat?: T;
-        locationPath?: T;
       };
   hasTemporalData?: T;
   schemaDetector?: T;
@@ -4635,22 +4386,7 @@ export interface IngestJobsSelect<T extends boolean = true> {
       };
   schema?: T;
   schemaBuilderState?: T;
-  detectedFieldMappings?:
-    | T
-    | {
-        titlePath?: T;
-        descriptionPath?: T;
-        locationNamePath?: T;
-        timestampPath?: T;
-        endTimestampPath?: T;
-        timestampOrder?: T;
-        endTimestampOrder?: T;
-        latitudePath?: T;
-        longitudePath?: T;
-        coordinatePath?: T;
-        coordinateFormat?: T;
-        locationPath?: T;
-      };
+  interpretationPlan?: T;
   configSnapshot?: T;
   schemaValidation?:
     | T

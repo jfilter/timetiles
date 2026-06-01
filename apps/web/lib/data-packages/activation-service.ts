@@ -10,9 +10,11 @@
 import type { Payload, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
-import type { DataPackageActivation, DataPackageFieldMappings, DataPackageManifest } from "@/lib/data-packages/types";
+import type { DataPackageActivation, DataPackageManifest, DataPackageTransform } from "@/lib/data-packages/types";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
+import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 import { compareCodeUnits } from "@/lib/utils/compare";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -94,24 +96,28 @@ const toRichText = (text: string) => ({
   },
 });
 
-/** Convert manifest field mappings to dataset fieldMappingOverrides. */
-const buildFieldMappingOverrides = (mappings: DataPackageFieldMappings): Record<string, string | null | undefined> => {
-  const overrides: Record<string, string | null | undefined> = {};
-  const keys: Array<keyof DataPackageFieldMappings> = [
-    "titlePath",
-    "descriptionPath",
-    "locationNamePath",
-    "timestampPath",
-    "endTimestampPath",
-    "locationPath",
-    "latitudePath",
-    "longitudePath",
-  ];
-  for (const key of keys) {
-    if (mappings[key]) overrides[key] = mappings[key];
-  }
-  return overrides;
-};
+/** Convert a manifest transform spec to a typed {@link IngestTransform}. */
+const manifestTransformToIngest = (t: DataPackageTransform): IngestTransform =>
+  ({
+    id: crypto.randomUUID(),
+    type: t.type,
+    active: true,
+    autoDetected: false,
+    from: t.from,
+    to: t.to,
+    delimiter: t.delimiter,
+    toFields: t.toFields,
+    inputFormat: t.inputFormat,
+    outputFormat: t.outputFormat,
+    timezone: t.timezone,
+    operation: t.operation,
+    pattern: t.pattern,
+    group: t.group,
+    replacement: t.replacement,
+    expression: t.expression,
+    fromFields: t.fromFields,
+    separator: t.separator,
+  }) as unknown as IngestTransform;
 
 /** Build scheduled ingest data from manifest. */
 const buildScheduledIngestData = (
@@ -139,7 +145,7 @@ const buildScheduledIngestData = (
   // coordinate-order and date-order gates to skipped (an ambiguous column yields
   // no points / falls back to the per-row date heuristic rather than stalling the
   // activation). A manifest's explicit reviewChecks win; declaring the true order
-  // via fieldMappingOverrides keeps the format explicit so the gate never fires.
+  // in the interpretation plan keeps the format explicit so the gate never fires.
   advancedOptions.reviewChecks = {
     skipAmbiguousCoordinateCheck: true,
     skipAmbiguousDateCheck: true,
@@ -268,7 +274,30 @@ const createDatasetFromManifest = async (
     duplicateStrategy: "skip" as const,
   };
   const schemaConfig = translateSchemaMode(resolved.schedule.schemaMode ?? "additive");
-  const fieldMappingOverrides = buildFieldMappingOverrides(resolved.fieldMappings);
+
+  // Build the AUTHORED interpretation plan from manifest mappings + transforms.
+  // Data packages run unattended → "best-effort"; a manifest can pin the
+  // coordinate/date order so the ambiguous-order gate never fires.
+  const fm = resolved.fieldMappings;
+  const transforms = resolved.transforms?.map(manifestTransformToIngest);
+  const interpretationPlan = buildPlanFromPaths(
+    {
+      titlePath: fm.titlePath,
+      descriptionPath: fm.descriptionPath,
+      locationNamePath: fm.locationNamePath,
+      timestampPath: fm.timestampPath,
+      endTimestampPath: fm.endTimestampPath,
+      locationPath: fm.locationPath,
+      latitudePath: fm.latitudePath,
+      longitudePath: fm.longitudePath,
+      coordinatePath: fm.coordinatePath,
+      coordinateFormat: fm.coordinateFormat,
+      timestampOrder: fm.timestampOrder,
+      endTimestampOrder: fm.endTimestampOrder,
+    },
+    transforms,
+    "best-effort"
+  ) as unknown as Record<string, unknown>;
 
   return payload.create({
     collection: COLLECTION_NAMES.DATASETS,
@@ -287,36 +316,13 @@ const createDatasetFromManifest = async (
         duplicateStrategy: (idStrategy.duplicateStrategy ?? "skip") as "skip" | "update",
       },
       schemaConfig,
-      fieldMappingOverrides,
+      interpretationPlan,
       geoFieldDetection: {
         autoDetect: true,
         latitudePath: resolved.fieldMappings.latitudePath,
         longitudePath: resolved.fieldMappings.longitudePath,
       },
       deduplicationConfig: { enabled: true },
-      ingestTransforms: resolved.transforms?.map(
-        (t) =>
-          ({
-            id: crypto.randomUUID(),
-            type: t.type,
-            active: true,
-            autoDetected: false,
-            from: t.from,
-            to: t.to,
-            delimiter: t.delimiter,
-            toFields: t.toFields,
-            inputFormat: t.inputFormat,
-            outputFormat: t.outputFormat,
-            timezone: t.timezone,
-            operation: t.operation,
-            pattern: t.pattern,
-            group: t.group,
-            replacement: t.replacement,
-            expression: t.expression,
-            fromFields: t.fromFields,
-            separator: t.separator,
-          }) as NonNullable<Dataset["ingestTransforms"]>[number]
-      ),
     },
     overrideAccess: true,
   });

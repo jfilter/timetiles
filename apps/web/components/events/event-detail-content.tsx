@@ -28,6 +28,7 @@ import {
   getEventData,
   getLocationDisplay,
   hasValidCoordinates,
+  planRolesToFieldPathMappings,
 } from "@/lib/utils/event-detail";
 import { formatFieldLabel, valueToString } from "@/lib/utils/format";
 import type { Event } from "@/payload-types";
@@ -165,7 +166,7 @@ export const EventDetailContent = ({
   if (error) return <EventDetailError error={error} onRetry={onRetry} />;
 
   const eventData = getEventData(event);
-  const fieldMappings = getDatasetProperty<Record<string, unknown>>(event.dataset, "fieldMappingOverrides");
+  const fieldMappings = planRolesToFieldPathMappings(event.dataset);
   const { title, description: rawDescription } = extractEventFields(eventData, fieldMappings, event.id);
   const description = rawDescription ?? "";
   const eventDate = formatDateRange(event.eventTimestamp, event.eventEndTimestamp, locale);

@@ -19,13 +19,17 @@ import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
-import { extractEventFields, extractFieldFromData, getDatasetInfo } from "@/lib/utils/event-detail";
+import {
+  extractEventFields,
+  extractFieldFromData,
+  getDatasetInfo,
+  planRolesToFieldPathMappings,
+} from "@/lib/utils/event-detail";
 import type { Event, User } from "@/payload-types";
 
 export const transformEvent = (event: Event): EventListItem => {
-  // Extract field mappings from dataset
-  const fieldMappings =
-    typeof event.dataset === "object" && event.dataset != null ? event.dataset.fieldMappingOverrides : null;
+  // Project the dataset's interpretation plan roles to the field-path shape.
+  const fieldMappings = planRolesToFieldPathMappings(event.dataset);
 
   // Extract title, description, and id using shared normalization
   const eventData = event.transformedData;

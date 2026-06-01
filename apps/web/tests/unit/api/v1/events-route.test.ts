@@ -65,7 +65,7 @@ describe("transformEvent", () => {
   it("prefers coordinateSource.normalizedAddress for geocodedAddress", () => {
     const result = transformEvent({
       id: 202,
-      dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", fieldMappingOverrides: null },
+      dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", interpretationPlan: null },
       transformedData: { title: "Filtered Event" },
       location: { latitude: 52.52, longitude: 13.405 },
       locationName: "Berlin",
@@ -164,7 +164,7 @@ describe.sequential("GET /api/v1/events", () => {
       docs: [
         {
           id: 202,
-          dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", fieldMappingOverrides: null },
+          dataset: { id: 10, name: "Dataset A", catalog: "Catalog A", interpretationPlan: null },
           transformedData: { title: "Filtered Event", category: "Music" },
           location: { latitude: 52.52, longitude: 13.405 },
           locationName: "Berlin",

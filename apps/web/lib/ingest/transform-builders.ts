@@ -1,16 +1,54 @@
 /**
- * Shared utility for building typed IngestTransform arrays from dataset configuration.
+ * Shared utility for normalizing loosely-typed transform entries into the typed
+ * {@link IngestTransform} array, applying the canonical active/complete filter.
  *
- * Used by both schema-detection-job and create-events-batch-job to ensure
- * all 6 transform types are handled consistently.
+ * This is the byte-identical authoring filter: the plan-builder funnels the
+ * wizard/data-package transform array through it so the persisted `plan.ops`
+ * matches the historical `dataset.ingestTransforms` round-trip exactly (drops
+ * `active !== true` and incomplete entries; normalizes per-type fields). The
+ * content-hash dedup ID hashes the row after these ops replay, so this filter is
+ * load-bearing for dedup stability — never diverge it from a parallel filter.
  *
  * @module
  * @category Jobs
  */
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-import type { Dataset } from "@/payload-types";
 
-type DatasetTransformEntry = NonNullable<Dataset["ingestTransforms"]>[number];
+/**
+ * Loosely-typed transform entry (as authored/stored before normalization).
+ *
+ * Every field is optional with a wide value type so both the already-typed
+ * {@link IngestTransform} union and raw stored/JSON entries are assignable. The
+ * `expression`/`pattern`/`group`/`replacement` fields are read via cast in the
+ * builders; they are declared here so a typed `IngestTransform` carrying them is
+ * structurally compatible.
+ */
+type DatasetTransformEntry = {
+  id?: string | null;
+  type?: string | null;
+  active?: boolean | null;
+  autoDetected?: boolean | null;
+  from?: string | null;
+  to?: string | null;
+  inputFormat?: string | null;
+  outputFormat?: string | null;
+  timezone?: string | null;
+  operation?: string | null;
+  pattern?: string | null;
+  replacement?: string | null;
+  expression?: string | null;
+  group?: number | null;
+  fromFields?: unknown;
+  toFields?: unknown;
+  separator?: string | null;
+  delimiter?: string | null;
+};
+
+/** A source carrying a loosely-typed transform array (a dataset or a plan-builder shell). */
+export interface TransformSource {
+  ingestTransforms?: ReadonlyArray<DatasetTransformEntry | IngestTransform> | null;
+}
+
 type TransformBase = { id: string; active: true; autoDetected: boolean };
 
 const buildRenameTransform = (t: DatasetTransformEntry, base: TransformBase): IngestTransform | null =>
@@ -124,11 +162,11 @@ const getTransformInputPaths = (transform: IngestTransform): string[] => {
   }
 };
 
-/** Build typed IngestTransform[] from a dataset's ingestTransforms configuration. */
-export const buildTransformsFromDataset = (dataset: Dataset): IngestTransform[] => {
+/** Build typed IngestTransform[] from a loosely-typed transform array, applying the active/complete filter. */
+export const buildTransformsFromDataset = (source: TransformSource): IngestTransform[] => {
   const transforms: IngestTransform[] = [];
 
-  for (const t of dataset.ingestTransforms ?? []) {
+  for (const t of source.ingestTransforms ?? []) {
     if (typeof t !== "object" || !t?.id || !t.type || t.active !== true) {
       continue;
     }
@@ -191,6 +229,6 @@ export const collectTransformsForTargetPath = (
 
 /** Build only the transforms required to materialize a specific target path. */
 export const buildTransformsForTargetPath = (
-  dataset: Dataset,
+  source: TransformSource,
   targetPath: string | null | undefined
-): IngestTransform[] => collectTransformsForTargetPath(buildTransformsFromDataset(dataset), targetPath);
+): IngestTransform[] => collectTransformsForTargetPath(buildTransformsFromDataset(source), targetPath);

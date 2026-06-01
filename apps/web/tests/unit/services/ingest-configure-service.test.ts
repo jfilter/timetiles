@@ -19,13 +19,13 @@ vi.mock("@/lib/services/quota-service", () => ({ createQuotaService: vi.fn() }))
 
 import {
   buildDatasetMapping,
-  buildFieldMappingOverrides,
   buildGeoFieldDetection,
   buildIdStrategy,
   buildWizardProcessingOptions,
   createIngestFileRecord,
   translateSchemaMode,
 } from "@/lib/ingest/configure-service";
+import { buildPlanFromWizard, fieldMappingToRoles } from "@/lib/ingest/plan-builder";
 import type {
   ConfigureIngestRequest,
   CreateScheduleConfig,
@@ -66,45 +66,49 @@ const nullFieldMapping: FieldMapping = {
 };
 
 describe("import-configure-service", () => {
-  describe("buildFieldMappingOverrides", () => {
-    it("returns empty object for undefined input", () => {
-      expect(buildFieldMappingOverrides(undefined)).toEqual({});
+  describe("fieldMappingToRoles (interpretation plan roles)", () => {
+    it("returns empty roles for undefined input", () => {
+      expect(fieldMappingToRoles(undefined)).toEqual({});
     });
 
-    it("maps all fields including endTimestampPath and locationNamePath", () => {
-      expect(buildFieldMappingOverrides(fullFieldMapping)).toEqual({
-        titlePath: "Title",
-        descriptionPath: "Description",
-        locationNamePath: "Venue",
-        timestampPath: "Date",
-        endTimestampPath: null,
-        latitudePath: "Lat",
-        longitudePath: "Lng",
-        coordinatePath: null,
-        locationPath: "Address",
+    it("maps all FieldMapping fields to the matching roles", () => {
+      expect(fieldMappingToRoles(fullFieldMapping)).toEqual({
+        title: "Title",
+        description: "Description",
+        locationName: "Venue",
+        timestamp: "Date",
+        endTimestamp: null,
+        latitude: "Lat",
+        longitude: "Lng",
+        coordinate: null,
+        location: "Address",
+        id: "ExternalId",
       });
     });
 
     it("preserves null values for unmapped fields", () => {
-      const result = buildFieldMappingOverrides(nullFieldMapping);
-      expect(result).toEqual({
-        titlePath: null,
-        descriptionPath: null,
-        locationNamePath: null,
-        timestampPath: null,
-        endTimestampPath: null,
-        latitudePath: null,
-        longitudePath: null,
-        coordinatePath: null,
-        locationPath: null,
+      expect(fieldMappingToRoles(nullFieldMapping)).toEqual({
+        title: null,
+        description: null,
+        locationName: null,
+        timestamp: null,
+        endTimestamp: null,
+        latitude: null,
+        longitude: null,
+        coordinate: null,
+        location: null,
+        id: null,
       });
     });
 
-    it("maps a combined coordinate column to coordinatePath", () => {
-      const result = buildFieldMappingOverrides({ ...nullFieldMapping, coordinateField: "coordinates" });
-      expect(result.coordinatePath).toBe("coordinates");
-      expect(result.latitudePath).toBeNull();
-      expect(result.longitudePath).toBeNull();
+    it("maps a combined coordinate column to the coordinate role with an undecided policy", () => {
+      const plan = buildPlanFromWizard({ ...nullFieldMapping, coordinateField: "coordinates" }, [], "strict");
+      expect(plan.roles.coordinate).toBe("coordinates");
+      expect(plan.roles.latitude).toBeNull();
+      const coordCol = plan.columns.find((c) => c.field === "coordinates");
+      expect(coordCol?.kind).toBe("coordinate-pair");
+      const policy = coordCol?.policy as { order?: string } | undefined;
+      expect(policy?.order).toBeUndefined();
     });
   });
 

@@ -10,8 +10,7 @@
 import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
-import { interpretRow } from "@/lib/ingest/interpret";
-import { toPlan } from "@/lib/ingest/to-plan";
+import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -326,7 +325,8 @@ export const processEventBatch = async (
   const { payload, job, dataset, logger: log } = ctx;
   const { skipRows, updateRows } = getEventCreationDuplicates(job);
   const geocodingResults = getIngestGeocodingResults(job);
-  const plan = toPlan(dataset);
+  // The detection-resolved JOB plan carries the authored ops + resolved policies.
+  const plan = readInterpretationPlan(job) ?? planFromOps([]);
 
   // Dataset-scope guard: `analyze-duplicates` already filters candidates by
   // dataset, but we re-verify at the write site. If ever anyone widens the

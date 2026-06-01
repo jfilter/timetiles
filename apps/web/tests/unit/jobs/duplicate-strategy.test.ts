@@ -443,14 +443,24 @@ describe.sequential("processEventBatch", () => {
         job: {
           ...job,
           datasetSchemaVersion: 7,
-          detectedFieldMappings: { locationPath: "location", locationNamePath: "venue" },
+          // process-batch reads the detection-resolved JOB plan (ops + roles).
+          interpretationPlan: {
+            ops: [
+              {
+                id: "rename-title",
+                type: "rename",
+                active: true,
+                autoDetected: false,
+                from: "title",
+                to: "eventTitle",
+              },
+            ],
+            columns: [],
+            roles: { location: "location", locationName: "venue" },
+            ambiguityResolution: "best-effort",
+          },
         },
-        dataset: {
-          ...baseCtx.dataset,
-          ingestTransforms: [
-            { id: "rename-title", type: "rename", active: true, autoDetected: false, from: "title", to: "eventTitle" },
-          ],
-        },
+        dataset: { ...baseCtx.dataset },
       };
 
       mocks.getIngestGeocodingResults.mockReturnValue({
@@ -643,13 +653,22 @@ describe.sequential("processEventBatch", () => {
     // used to emit a spurious { oldValue: null, newValue: null } entry on the
     // event's `transformations` audit trail. Those must now be filtered out.
     it("does not record no-op transformation entries for rows missing the source field", async () => {
-      const mockDataset: any = {
-        id: 456,
-        idStrategy: { type: "external", externalIdPath: "id" },
-        ingestTransforms: [{ id: "t1", type: "rename", from: "alt_name", to: "alternate", active: true }],
-      };
+      const mockDataset: any = { id: 456, idStrategy: { type: "external", externalIdPath: "id" } };
 
-      const ctx: ProcessBatchContext = { ...baseCtx, dataset: mockDataset };
+      const ctx: ProcessBatchContext = {
+        ...baseCtx,
+        dataset: mockDataset,
+        // The rename op now lives in the detection-resolved JOB plan.
+        job: {
+          ...baseCtx.job,
+          interpretationPlan: {
+            ops: [{ id: "t1", type: "rename", from: "alt_name", to: "alternate", active: true, autoDetected: false }],
+            columns: [],
+            roles: {},
+            ambiguityResolution: "best-effort",
+          },
+        },
+      };
 
       // Row has no `alt_name` field — the rename is a no-op for this row.
       const rows = [{ id: "a", title: "Event without alt name" }];

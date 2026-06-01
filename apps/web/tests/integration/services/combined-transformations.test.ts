@@ -20,6 +20,7 @@ import type { Event } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
+  readPlanFieldMappings,
   runJobsUntilImportSettled,
   runJobsUntilIngestJobStage,
   withCatalog,
@@ -183,10 +184,10 @@ describe.sequential("Combined Transformations Integration", () => {
     const completedJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJob!.id });
 
     // Verify field mappings were detected (after import transform applied)
-    expect(completedJob.detectedFieldMappings).toBeDefined();
-    expect(completedJob.detectedFieldMappings.titlePath).toBe("titel"); // Transformed from Ereignis_Titel
-    expect(completedJob.detectedFieldMappings.descriptionPath).toBe("beschreibung");
-    expect(completedJob.detectedFieldMappings.timestampPath).toBe("datum");
+    const completedMappings = readPlanFieldMappings(completedJob);
+    expect(completedMappings.titlePath).toBe("titel"); // Transformed from Ereignis_Titel
+    expect(completedMappings.descriptionPath).toBe("beschreibung");
+    expect(completedMappings.timestampPath).toBe("datum");
 
     // Verify events were created
     const events = await payload.find({
@@ -352,10 +353,10 @@ Workshop,Learning session,2024-02-20,Munich`;
     const ingestJob = await waitForSchemaDetection(ingestFile.id);
 
     // Field mapping should detect the TRANSFORMED field name "titel"
-    expect(ingestJob!.detectedFieldMappings).toBeDefined();
-    expect(ingestJob!.detectedFieldMappings!.titlePath).toBe("titel");
-    expect(ingestJob!.detectedFieldMappings!.descriptionPath).toBe("description");
-    expect(ingestJob!.detectedFieldMappings!.timestampPath).toBe("date");
+    const ingestMappings = readPlanFieldMappings(ingestJob!);
+    expect(ingestMappings.titlePath).toBe("titel");
+    expect(ingestMappings.descriptionPath).toBe("description");
+    expect(ingestMappings.timestampPath).toBe("date");
   });
 
   // Test 4: Import transform + type transform interaction

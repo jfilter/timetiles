@@ -87,12 +87,17 @@ export const ingestJobFields: Field[] = [
       condition: (data) => [PROCESSING_STAGE.DETECT_SCHEMA, PROCESSING_STAGE.VALIDATE_SCHEMA].includes(data.stage),
     },
   },
+  // Canonical interpretation plan (ADR 0040). Stored verbatim as JSON: the
+  // DETECTION-RESOLVED DatasetInterpretationPlan (authored ops + merged detector
+  // roles + resolved column policies). Written by finalizeSchemaDetection; read at
+  // geocoding / event creation via readInterpretationPlan(job).
   {
-    name: "detectedFieldMappings",
-    type: "group",
-    label: "Field Mappings",
+    name: "interpretationPlan",
+    type: "json",
     admin: {
-      description: "Detected or configured field mappings for standard event properties",
+      readOnly: true,
+      description:
+        "Detection-resolved interpretation plan for this import: ordered transforms, per-column typing, roles, and ambiguity policy.",
       condition: (data) =>
         [
           PROCESSING_STAGE.VALIDATE_SCHEMA,
@@ -103,71 +108,6 @@ export const ingestJobFields: Field[] = [
           PROCESSING_STAGE.COMPLETED,
         ].includes(data.stage),
     },
-    fields: [
-      {
-        name: "titlePath",
-        type: "text",
-        admin: { description: "Path to title/name field in source data", readOnly: true },
-      },
-      {
-        name: "descriptionPath",
-        type: "text",
-        admin: { description: "Path to description/details field in source data", readOnly: true },
-      },
-      {
-        name: "locationNamePath",
-        type: "text",
-        admin: { description: "Path to location/venue name field in source data (for display)", readOnly: true },
-      },
-      {
-        name: "timestampPath",
-        type: "text",
-        admin: { description: "Path to timestamp/date field in source data", readOnly: true },
-      },
-      {
-        name: "endTimestampPath",
-        type: "text",
-        admin: { description: "Path to end timestamp/date field in source data", readOnly: true },
-      },
-      {
-        name: "timestampOrder",
-        type: "text",
-        admin: { description: "Day/month order of the timestamp column: D/M | M/D | ambiguous", readOnly: true },
-      },
-      {
-        name: "endTimestampOrder",
-        type: "text",
-        admin: { description: "Day/month order of the end timestamp column: D/M | M/D | ambiguous", readOnly: true },
-      },
-      {
-        name: "latitudePath",
-        type: "text",
-        admin: { description: "Path to latitude coordinate field in source data", readOnly: true },
-      },
-      {
-        name: "longitudePath",
-        type: "text",
-        admin: { description: "Path to longitude coordinate field in source data", readOnly: true },
-      },
-      {
-        name: "coordinatePath",
-        type: "text",
-        admin: { description: "Path to a single combined-coordinate column in source data", readOnly: true },
-      },
-      {
-        name: "coordinateFormat",
-        type: "text",
-        admin: {
-          description: "Order of the combined coordinate column: lat,lng | lng,lat | ambiguous",
-          readOnly: true,
-        },
-      },
-      {
-        name: "locationPath",
-        type: "text",
-        admin: { description: "Path to location/address field in source data (for geocoding)", readOnly: true },
-      },
-    ],
   },
 
   // Config snapshot — immutable record of dataset config at import creation time

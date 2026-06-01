@@ -41,41 +41,6 @@ export const enum_data_exports_status = db_schema.enum(
   "enum_data_exports_status",
   ["pending", "processing", "ready", "failed", "expired"],
 );
-export const enum_datasets_ingest_transforms_type = db_schema.enum(
-  "enum_datasets_ingest_transforms_type",
-  [
-    "rename",
-    "date-parse",
-    "string-op",
-    "concatenate",
-    "split",
-    "parse-json-array",
-    "split-to-array",
-    "extract",
-  ],
-);
-export const enum_datasets_ingest_transforms_input_format = db_schema.enum(
-  "enum_datasets_ingest_transforms_input_format",
-  [
-    "DD/MM/YYYY",
-    "MM/DD/YYYY",
-    "YYYY-MM-DD",
-    "DD-MM-YYYY",
-    "MM-DD-YYYY",
-    "DD.MM.YYYY",
-    "YYYY/MM/DD",
-    "D MMMM YYYY",
-    "MMMM D, YYYY",
-  ],
-);
-export const enum_datasets_ingest_transforms_output_format = db_schema.enum(
-  "enum_datasets_ingest_transforms_output_format",
-  ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"],
-);
-export const enum_datasets_ingest_transforms_operation = db_schema.enum(
-  "enum_datasets_ingest_transforms_operation",
-  ["uppercase", "lowercase", "trim", "replace", "expression"],
-);
 export const enum_datasets_id_strategy_type = db_schema.enum(
   "enum_datasets_id_strategy_type",
   ["external", "content-hash", "auto-generate"],
@@ -92,45 +57,6 @@ export const enum_datasets_status = db_schema.enum("enum_datasets_status", [
   "draft",
   "published",
 ]);
-export const enum__datasets_v_version_ingest_transforms_type = db_schema.enum(
-  "enum__datasets_v_version_ingest_transforms_type",
-  [
-    "rename",
-    "date-parse",
-    "string-op",
-    "concatenate",
-    "split",
-    "parse-json-array",
-    "split-to-array",
-    "extract",
-  ],
-);
-export const enum__datasets_v_version_ingest_transforms_input_format =
-  db_schema.enum("enum__datasets_v_version_ingest_transforms_input_format", [
-    "DD/MM/YYYY",
-    "MM/DD/YYYY",
-    "YYYY-MM-DD",
-    "DD-MM-YYYY",
-    "MM-DD-YYYY",
-    "DD.MM.YYYY",
-    "YYYY/MM/DD",
-    "D MMMM YYYY",
-    "MMMM D, YYYY",
-  ]);
-export const enum__datasets_v_version_ingest_transforms_output_format =
-  db_schema.enum("enum__datasets_v_version_ingest_transforms_output_format", [
-    "YYYY-MM-DD",
-    "DD/MM/YYYY",
-    "MM/DD/YYYY",
-  ]);
-export const enum__datasets_v_version_ingest_transforms_operation =
-  db_schema.enum("enum__datasets_v_version_ingest_transforms_operation", [
-    "uppercase",
-    "lowercase",
-    "trim",
-    "replace",
-    "expression",
-  ]);
 export const enum__datasets_v_version_id_strategy_type = db_schema.enum(
   "enum__datasets_v_version_id_strategy_type",
   ["external", "content-hash", "auto-generate"],
@@ -1074,7 +1000,7 @@ export const catalogs = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     isPublic: boolean("is_public").default(false),
@@ -1168,13 +1094,14 @@ export const _catalogs_v = db_schema.table(
   "_catalogs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => catalogs.id, {
+    parent: integer("parent_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -1262,7 +1189,7 @@ export const data_exports = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     status: enum_data_exports_status("status").notNull().default("pending"),
@@ -1372,54 +1299,6 @@ export const datasets_id_strategy_exclude_fields = db_schema.table(
   ],
 );
 
-export const datasets_ingest_transforms = db_schema.table(
-  "datasets_ingest_transforms",
-  {
-    _order: integer("_order").notNull(),
-    _parentID: integer("_parent_id").notNull(),
-    id: varchar("id").primaryKey(),
-    type: enum_datasets_ingest_transforms_type("type").default("rename"),
-    from: varchar("from"),
-    to: varchar("to"),
-    inputFormat: enum_datasets_ingest_transforms_input_format("input_format"),
-    outputFormat:
-      enum_datasets_ingest_transforms_output_format("output_format").default(
-        "YYYY-MM-DD",
-      ),
-    timezone: varchar("timezone"),
-    operation: enum_datasets_ingest_transforms_operation("operation"),
-    pattern: varchar("pattern"),
-    group: numeric("group", { mode: "number" }),
-    replacement: varchar("replacement"),
-    expression: varchar("expression"),
-    fromFields: jsonb("from_fields"),
-    separator: varchar("separator").default(" "),
-    delimiter: varchar("delimiter").default(","),
-    toFields: jsonb("to_fields"),
-    active: boolean("active").default(true),
-    addedAt: timestamp("added_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
-      onDelete: "set null",
-    }),
-    confidence: numeric("confidence", { mode: "number" }),
-    autoDetected: boolean("auto_detected").default(false),
-  },
-  (columns) => [
-    index("datasets_ingest_transforms_order_idx").on(columns._order),
-    index("datasets_ingest_transforms_parent_id_idx").on(columns._parentID),
-    index("datasets_ingest_transforms_added_by_idx").on(columns.addedBy),
-    foreignKey({
-      columns: [columns["_parentID"]],
-      foreignColumns: [datasets.id],
-      name: "datasets_ingest_transforms_parent_id_fk",
-    }).onDelete("cascade"),
-  ],
-);
-
 export const datasets = db_schema.table(
   "datasets",
   {
@@ -1427,14 +1306,14 @@ export const datasets = db_schema.table(
     name: varchar("name"),
     description: jsonb("description"),
     slug: varchar("slug"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     catalogCreatorId: numeric("catalog_creator_id", { mode: "number" }),
     catalogIsPublic: boolean("catalog_is_public").default(false),
     language: varchar("language"),
     isPublic: boolean("is_public").default(false),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     license: varchar("license"),
@@ -1474,6 +1353,7 @@ export const datasets = db_schema.table(
     ).default(true),
     fieldMetadata: jsonb("field_metadata"),
     fieldTypes: jsonb("field_types"),
+    interpretationPlan: jsonb("interpretation_plan"),
     geoFieldDetection_autoDetect: boolean(
       "geo_field_detection_auto_detect",
     ).default(true),
@@ -1483,35 +1363,9 @@ export const datasets = db_schema.table(
     geoFieldDetection_longitudePath: varchar(
       "geo_field_detection_longitude_path",
     ),
-    fieldMappingOverrides_titlePath: varchar(
-      "field_mapping_overrides_title_path",
-    ),
-    fieldMappingOverrides_descriptionPath: varchar(
-      "field_mapping_overrides_description_path",
-    ),
-    fieldMappingOverrides_locationNamePath: varchar(
-      "field_mapping_overrides_location_name_path",
-    ),
-    fieldMappingOverrides_timestampPath: varchar(
-      "field_mapping_overrides_timestamp_path",
-    ),
-    fieldMappingOverrides_endTimestampPath: varchar(
-      "field_mapping_overrides_end_timestamp_path",
-    ),
-    fieldMappingOverrides_latitudePath: varchar(
-      "field_mapping_overrides_latitude_path",
-    ),
-    fieldMappingOverrides_longitudePath: varchar(
-      "field_mapping_overrides_longitude_path",
-    ),
-    fieldMappingOverrides_coordinatePath: varchar(
-      "field_mapping_overrides_coordinate_path",
-    ),
-    fieldMappingOverrides_locationPath: varchar(
-      "field_mapping_overrides_location_path",
-    ),
     hasTemporalData: boolean("has_temporal_data").default(true),
-    schemaDetector: integer("schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
+    schemaDetector: integer("schema_detector_id").references(
+      () => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1624,74 +1478,18 @@ export const _datasets_v_version_id_strategy_exclude_fields = db_schema.table(
   ],
 );
 
-export const _datasets_v_version_ingest_transforms = db_schema.table(
-  "_datasets_v_version_ingest_transforms",
-  {
-    _order: integer("_order").notNull(),
-    _parentID: integer("_parent_id").notNull(),
-    id: serial("id").primaryKey(),
-    _uuid: varchar("_uuid"),
-    type: enum__datasets_v_version_ingest_transforms_type("type").default(
-      "rename",
-    ),
-    from: varchar("from"),
-    to: varchar("to"),
-    inputFormat:
-      enum__datasets_v_version_ingest_transforms_input_format("input_format"),
-    outputFormat:
-      enum__datasets_v_version_ingest_transforms_output_format(
-        "output_format",
-      ).default("YYYY-MM-DD"),
-    timezone: varchar("timezone"),
-    operation:
-      enum__datasets_v_version_ingest_transforms_operation("operation"),
-    pattern: varchar("pattern"),
-    group: numeric("group", { mode: "number" }),
-    replacement: varchar("replacement"),
-    expression: varchar("expression"),
-    fromFields: jsonb("from_fields"),
-    separator: varchar("separator").default(" "),
-    delimiter: varchar("delimiter").default(","),
-    toFields: jsonb("to_fields"),
-    active: boolean("active").default(true),
-    addedAt: timestamp("added_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    addedBy: integer("added_by_id").references((): AnyPgColumn => users.id, {
-      onDelete: "set null",
-    }),
-    confidence: numeric("confidence", { mode: "number" }),
-    autoDetected: boolean("auto_detected").default(false),
-  },
-  (columns) => [
-    index("_datasets_v_version_ingest_transforms_order_idx").on(columns._order),
-    index("_datasets_v_version_ingest_transforms_parent_id_idx").on(
-      columns._parentID,
-    ),
-    index("_datasets_v_version_ingest_transforms_added_by_idx").on(
-      columns.addedBy,
-    ),
-    foreignKey({
-      columns: [columns["_parentID"]],
-      foreignColumns: [_datasets_v.id],
-      name: "_datasets_v_version_ingest_transforms_parent_id_fk",
-    }).onDelete("cascade"),
-  ],
-);
-
 export const _datasets_v = db_schema.table(
   "_datasets_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => datasets.id, {
+    parent: integer("parent_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_description: jsonb("version_description"),
     version_slug: varchar("version_slug"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
@@ -1704,7 +1502,8 @@ export const _datasets_v = db_schema.table(
     ),
     version_language: varchar("version_language"),
     version_isPublic: boolean("version_is_public").default(false),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -1757,6 +1556,7 @@ export const _datasets_v = db_schema.table(
     ).default(true),
     version_fieldMetadata: jsonb("version_field_metadata"),
     version_fieldTypes: jsonb("version_field_types"),
+    version_interpretationPlan: jsonb("version_interpretation_plan"),
     version_geoFieldDetection_autoDetect: boolean(
       "version_geo_field_detection_auto_detect",
     ).default(true),
@@ -1766,35 +1566,9 @@ export const _datasets_v = db_schema.table(
     version_geoFieldDetection_longitudePath: varchar(
       "version_geo_field_detection_longitude_path",
     ),
-    version_fieldMappingOverrides_titlePath: varchar(
-      "version_field_mapping_overrides_title_path",
-    ),
-    version_fieldMappingOverrides_descriptionPath: varchar(
-      "version_field_mapping_overrides_description_path",
-    ),
-    version_fieldMappingOverrides_locationNamePath: varchar(
-      "version_field_mapping_overrides_location_name_path",
-    ),
-    version_fieldMappingOverrides_timestampPath: varchar(
-      "version_field_mapping_overrides_timestamp_path",
-    ),
-    version_fieldMappingOverrides_endTimestampPath: varchar(
-      "version_field_mapping_overrides_end_timestamp_path",
-    ),
-    version_fieldMappingOverrides_latitudePath: varchar(
-      "version_field_mapping_overrides_latitude_path",
-    ),
-    version_fieldMappingOverrides_longitudePath: varchar(
-      "version_field_mapping_overrides_longitude_path",
-    ),
-    version_fieldMappingOverrides_coordinatePath: varchar(
-      "version_field_mapping_overrides_coordinate_path",
-    ),
-    version_fieldMappingOverrides_locationPath: varchar(
-      "version_field_mapping_overrides_location_path",
-    ),
     version_hasTemporalData: boolean("version_has_temporal_data").default(true),
-    version_schemaDetector: integer("version_schema_detector_id").references((): AnyPgColumn => schema_detectors.id,
+    version_schemaDetector: integer("version_schema_detector_id").references(
+      () => schema_detectors.id,
       {
         onDelete: "set null",
       },
@@ -1976,7 +1750,7 @@ export const dataset_schemas_ingest_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
-    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -2000,7 +1774,7 @@ export const dataset_schemas = db_schema.table(
   "dataset_schemas",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
@@ -2016,7 +1790,7 @@ export const dataset_schemas = db_schema.table(
       mode: "number",
     }),
     approvalRequired: boolean("approval_required"),
-    approvedBy: integer("approved_by_id").references((): AnyPgColumn => users.id, {
+    approvedBy: integer("approved_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     approvalNotes: varchar("approval_notes"),
@@ -2174,7 +1948,7 @@ export const _dataset_schemas_v_version_ingest_sources = db_schema.table(
     _order: integer("_order").notNull(),
     _parentID: integer("_parent_id").notNull(),
     id: serial("id").primaryKey(),
-    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     recordCount: numeric("record_count", { mode: "number" }),
@@ -2203,10 +1977,11 @@ export const _dataset_schemas_v = db_schema.table(
   "_dataset_schemas_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => dataset_schemas.id, {
+    parent: integer("parent_id").references(() => dataset_schemas.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -2231,7 +2006,8 @@ export const _dataset_schemas_v = db_schema.table(
       { mode: "number" },
     ),
     version_approvalRequired: boolean("version_approval_required"),
-    version_approvedBy: integer("version_approved_by_id").references((): AnyPgColumn => users.id,
+    version_approvedBy: integer("version_approved_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -2337,7 +2113,7 @@ export const audit_log = db_schema.table(
     action: varchar("action").notNull(),
     userId: numeric("user_id", { mode: "number" }).notNull(),
     userEmailHash: varchar("user_email_hash").notNull(),
-    performedBy: integer("performed_by_id").references((): AnyPgColumn => users.id, {
+    performedBy: integer("performed_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     timestamp: timestamp("timestamp", {
@@ -2378,12 +2154,12 @@ export const ingest_files = db_schema.table(
   {
     id: serial("id").primaryKey(),
     originalName: varchar("original_name"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     status: enum_ingest_files_status("status").default("pending"),
@@ -2407,7 +2183,7 @@ export const ingest_files = db_schema.table(
     rateLimitInfo: jsonb("rate_limit_info"),
     metadata: jsonb("metadata"),
     processingOptions: jsonb("processing_options"),
-    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
+    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     scheduledIngest: integer("scheduled_ingest_id").references(
@@ -2488,18 +2264,19 @@ export const _ingest_files_v = db_schema.table(
   "_ingest_files_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => ingest_files.id, {
+    parent: integer("parent_id").references(() => ingest_files.id, {
       onDelete: "set null",
     }),
     version_originalName: varchar("version_original_name"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
     version_user: integer("version_user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     version_status:
@@ -2526,12 +2303,14 @@ export const _ingest_files_v = db_schema.table(
     version_rateLimitInfo: jsonb("version_rate_limit_info"),
     version_metadata: jsonb("version_metadata"),
     version_processingOptions: jsonb("version_processing_options"),
-    version_targetDataset: integer("version_target_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_targetDataset: integer("version_target_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
     ),
-    version_scheduledIngest: integer("version_scheduled_ingest_id").references((): AnyPgColumn => scheduled_ingests.id,
+    version_scheduledIngest: integer("version_scheduled_ingest_id").references(
+      () => scheduled_ingests.id,
       {
         onDelete: "set null",
       },
@@ -2657,12 +2436,12 @@ export const ingest_jobs = db_schema.table(
     id: serial("id").primaryKey(),
     ingestFile: integer("ingest_file_id")
       .notNull()
-      .references((): AnyPgColumn => ingest_files.id, {
+      .references(() => ingest_files.id, {
         onDelete: "set null",
       }),
     dataset: integer("dataset_id")
       .notNull()
-      .references((): AnyPgColumn => datasets.id, {
+      .references(() => datasets.id, {
         onDelete: "set null",
       }),
     sheetIndex: numeric("sheet_index", { mode: "number" }),
@@ -2679,36 +2458,7 @@ export const ingest_jobs = db_schema.table(
     ),
     schema: jsonb("schema"),
     schemaBuilderState: jsonb("schema_builder_state"),
-    detectedFieldMappings_titlePath: varchar(
-      "detected_field_mappings_title_path",
-    ),
-    detectedFieldMappings_descriptionPath: varchar(
-      "detected_field_mappings_description_path",
-    ),
-    detectedFieldMappings_locationNamePath: varchar(
-      "detected_field_mappings_location_name_path",
-    ),
-    detectedFieldMappings_timestampPath: varchar(
-      "detected_field_mappings_timestamp_path",
-    ),
-    detectedFieldMappings_endTimestampPath: varchar(
-      "detected_field_mappings_end_timestamp_path",
-    ),
-    detectedFieldMappings_latitudePath: varchar(
-      "detected_field_mappings_latitude_path",
-    ),
-    detectedFieldMappings_longitudePath: varchar(
-      "detected_field_mappings_longitude_path",
-    ),
-    detectedFieldMappings_coordinatePath: varchar(
-      "detected_field_mappings_coordinate_path",
-    ),
-    detectedFieldMappings_coordinateFormat: varchar(
-      "detected_field_mappings_coordinate_format",
-    ),
-    detectedFieldMappings_locationPath: varchar(
-      "detected_field_mappings_location_path",
-    ),
+    interpretationPlan: jsonb("interpretation_plan"),
     configSnapshot: jsonb("config_snapshot"),
     schemaValidation_isCompatible: boolean("schema_validation_is_compatible"),
     schemaValidation_breakingChanges: jsonb(
@@ -2727,7 +2477,7 @@ export const ingest_jobs = db_schema.table(
     schemaValidation_approved: boolean("schema_validation_approved"),
     schemaValidation_approvedBy: integer(
       "schema_validation_approved_by_id",
-    ).references((): AnyPgColumn => users.id, {
+    ).references(() => users.id, {
       onDelete: "set null",
     }),
     schemaValidation_approvedAt: timestamp("schema_validation_approved_at", {
@@ -2737,7 +2487,8 @@ export const ingest_jobs = db_schema.table(
     }),
     reviewReason: varchar("review_reason"),
     reviewDetails: jsonb("review_details"),
-    datasetSchemaVersion: integer("dataset_schema_version_id").references((): AnyPgColumn => dataset_schemas.id,
+    datasetSchemaVersion: integer("dataset_schema_version_id").references(
+      () => dataset_schemas.id,
       {
         onDelete: "set null",
       },
@@ -2822,17 +2573,17 @@ export const _ingest_jobs_v = db_schema.table(
   "_ingest_jobs_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => ingest_jobs.id, {
+    parent: integer("parent_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     version_ingestFile: integer("version_ingest_file_id")
       .notNull()
-      .references((): AnyPgColumn => ingest_files.id, {
+      .references(() => ingest_files.id, {
         onDelete: "set null",
       }),
     version_dataset: integer("version_dataset_id")
       .notNull()
-      .references((): AnyPgColumn => datasets.id, {
+      .references(() => datasets.id, {
         onDelete: "set null",
       }),
     version_sheetIndex: numeric("version_sheet_index", { mode: "number" }),
@@ -2850,36 +2601,7 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_schema: jsonb("version_schema"),
     version_schemaBuilderState: jsonb("version_schema_builder_state"),
-    version_detectedFieldMappings_titlePath: varchar(
-      "version_detected_field_mappings_title_path",
-    ),
-    version_detectedFieldMappings_descriptionPath: varchar(
-      "version_detected_field_mappings_description_path",
-    ),
-    version_detectedFieldMappings_locationNamePath: varchar(
-      "version_detected_field_mappings_location_name_path",
-    ),
-    version_detectedFieldMappings_timestampPath: varchar(
-      "version_detected_field_mappings_timestamp_path",
-    ),
-    version_detectedFieldMappings_endTimestampPath: varchar(
-      "version_detected_field_mappings_end_timestamp_path",
-    ),
-    version_detectedFieldMappings_latitudePath: varchar(
-      "version_detected_field_mappings_latitude_path",
-    ),
-    version_detectedFieldMappings_longitudePath: varchar(
-      "version_detected_field_mappings_longitude_path",
-    ),
-    version_detectedFieldMappings_coordinatePath: varchar(
-      "version_detected_field_mappings_coordinate_path",
-    ),
-    version_detectedFieldMappings_coordinateFormat: varchar(
-      "version_detected_field_mappings_coordinate_format",
-    ),
-    version_detectedFieldMappings_locationPath: varchar(
-      "version_detected_field_mappings_location_path",
-    ),
+    version_interpretationPlan: jsonb("version_interpretation_plan"),
     version_configSnapshot: jsonb("version_config_snapshot"),
     version_schemaValidation_isCompatible: boolean(
       "version_schema_validation_is_compatible",
@@ -2904,7 +2626,7 @@ export const _ingest_jobs_v = db_schema.table(
     ),
     version_schemaValidation_approvedBy: integer(
       "version_schema_validation_approved_by_id",
-    ).references((): AnyPgColumn => users.id, {
+    ).references(() => users.id, {
       onDelete: "set null",
     }),
     version_schemaValidation_approvedAt: timestamp(
@@ -2915,7 +2637,7 @@ export const _ingest_jobs_v = db_schema.table(
     version_reviewDetails: jsonb("version_review_details"),
     version_datasetSchemaVersion: integer(
       "version_dataset_schema_version_id",
-    ).references((): AnyPgColumn => dataset_schemas.id, {
+    ).references(() => dataset_schemas.id, {
       onDelete: "set null",
     }),
     version_duplicates_strategy: varchar("version_duplicates_strategy"),
@@ -3005,7 +2727,7 @@ export const scheduled_ingests_multi_sheet_config_sheets = db_schema.table(
     _parentID: integer("_parent_id").notNull(),
     id: varchar("id").primaryKey(),
     sheetIdentifier: varchar("sheet_identifier"),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     skipIfMissing: boolean("skip_if_missing").default(false),
@@ -3064,16 +2786,16 @@ export const scheduled_ingests = db_schema.table(
   {
     id: serial("id").primaryKey(),
     name: varchar("name"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     description: varchar("description"),
     enabled: boolean("enabled").default(true),
     sourceUrl: varchar("source_url"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     multiSheetConfig_enabled: boolean("multi_sheet_config_enabled").default(
@@ -3332,7 +3054,7 @@ export const _scheduled_ingests_v_version_multi_sheet_config_sheets =
       _parentID: integer("_parent_id").notNull(),
       id: serial("id").primaryKey(),
       sheetIdentifier: varchar("sheet_identifier"),
-      dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+      dataset: integer("dataset_id").references(() => datasets.id, {
         onDelete: "set null",
       }),
       skipIfMissing: boolean("skip_if_missing").default(false),
@@ -3395,11 +3117,12 @@ export const _scheduled_ingests_v = db_schema.table(
   "_scheduled_ingests_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => scheduled_ingests.id, {
+    parent: integer("parent_id").references(() => scheduled_ingests.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -3407,12 +3130,14 @@ export const _scheduled_ingests_v = db_schema.table(
     version_description: varchar("version_description"),
     version_enabled: boolean("version_enabled").default(true),
     version_sourceUrl: varchar("version_source_url"),
-    version_catalog: integer("version_catalog_id").references((): AnyPgColumn => catalogs.id,
+    version_catalog: integer("version_catalog_id").references(
+      () => catalogs.id,
       {
         onDelete: "set null",
       },
     ),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -3436,7 +3161,7 @@ export const _scheduled_ingests_v = db_schema.table(
     ).default("additive"),
     version_sourceIngestFile: integer(
       "version_source_ingest_file_id",
-    ).references((): AnyPgColumn => ingest_files.id, {
+    ).references(() => ingest_files.id, {
       onDelete: "set null",
     }),
     version_authConfig_type: enum__scheduled_ingests_v_version_auth_config_type(
@@ -3728,7 +3453,7 @@ export const scraper_repos = db_schema.table(
     name: varchar("name").notNull(),
     description: jsonb("description"),
     slug: varchar("slug"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     sourceType: enum_scraper_repos_source_type("source_type")
@@ -3737,7 +3462,7 @@ export const scraper_repos = db_schema.table(
     gitUrl: varchar("git_url"),
     gitBranch: varchar("git_branch").default("main"),
     code: jsonb("code"),
-    catalog: integer("catalog_id").references((): AnyPgColumn => catalogs.id, {
+    catalog: integer("catalog_id").references(() => catalogs.id, {
       onDelete: "set null",
     }),
     lastSyncAt: timestamp("last_sync_at", {
@@ -3785,7 +3510,7 @@ export const scrapers = db_schema.table(
     slug: varchar("slug").notNull(),
     repo: integer("repo_id")
       .notNull()
-      .references((): AnyPgColumn => scraper_repos.id, {
+      .references(() => scraper_repos.id, {
         onDelete: "set null",
       }),
     repoCreatedBy: numeric("repo_created_by", { mode: "number" }),
@@ -3797,7 +3522,7 @@ export const scrapers = db_schema.table(
     timeoutSecs: numeric("timeout_secs", { mode: "number" }).default(300),
     memoryMb: numeric("memory_mb", { mode: "number" }).default(512),
     envVars: jsonb("env_vars").default(sql`'{}'::jsonb`),
-    targetDataset: integer("target_dataset_id").references((): AnyPgColumn => datasets.id, {
+    targetDataset: integer("target_dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     autoImport: boolean("auto_import").default(false),
@@ -3890,7 +3615,7 @@ export const scraper_runs = db_schema.table(
     id: serial("id").primaryKey(),
     scraper: integer("scraper_id")
       .notNull()
-      .references((): AnyPgColumn => scrapers.id, {
+      .references(() => scrapers.id, {
         onDelete: "set null",
       }),
     scraperOwner: numeric("scraper_owner", { mode: "number" }),
@@ -3914,7 +3639,7 @@ export const scraper_runs = db_schema.table(
     error: varchar("error"),
     outputRows: numeric("output_rows", { mode: "number" }),
     outputBytes: numeric("output_bytes", { mode: "number" }),
-    resultFile: integer("result_file_id").references((): AnyPgColumn => ingest_files.id, {
+    resultFile: integer("result_file_id").references(() => ingest_files.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -3946,12 +3671,12 @@ export const events = db_schema.table(
   "events",
   {
     id: serial("id").primaryKey(),
-    dataset: integer("dataset_id").references((): AnyPgColumn => datasets.id, {
+    dataset: integer("dataset_id").references(() => datasets.id, {
       onDelete: "set null",
     }),
     datasetIsPublic: boolean("dataset_is_public").default(false),
     catalogOwnerId: numeric("catalog_owner_id", { mode: "number" }),
-    ingestJob: integer("ingest_job_id").references((): AnyPgColumn => ingest_jobs.id, {
+    ingestJob: integer("ingest_job_id").references(() => ingest_jobs.id, {
       onDelete: "set null",
     }),
     sourceData: jsonb("source_data"),
@@ -4073,10 +3798,11 @@ export const _events_v = db_schema.table(
   "_events_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => events.id, {
+    parent: integer("parent_id").references(() => events.id, {
       onDelete: "set null",
     }),
-    version_dataset: integer("version_dataset_id").references((): AnyPgColumn => datasets.id,
+    version_dataset: integer("version_dataset_id").references(
+      () => datasets.id,
       {
         onDelete: "set null",
       },
@@ -4087,7 +3813,8 @@ export const _events_v = db_schema.table(
     version_catalogOwnerId: numeric("version_catalog_owner_id", {
       mode: "number",
     }),
-    version_ingestJob: integer("version_ingest_job_id").references((): AnyPgColumn => ingest_jobs.id,
+    version_ingestJob: integer("version_ingest_job_id").references(
+      () => ingest_jobs.id,
       {
         onDelete: "set null",
       },
@@ -4422,7 +4149,7 @@ export const user_usage = db_schema.table(
     id: serial("id").primaryKey(),
     user: integer("user_id")
       .notNull()
-      .references((): AnyPgColumn => users.id, {
+      .references(() => users.id, {
         onDelete: "set null",
       }),
     urlFetchesToday: numeric("url_fetches_today", { mode: "number" }).default(
@@ -4485,7 +4212,7 @@ export const media = db_schema.table(
   "media",
   {
     id: serial("id").primaryKey(),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     alt: varchar("alt"),
@@ -4564,10 +4291,11 @@ export const _media_v = db_schema.table(
   "_media_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => media.id, {
+    parent: integer("parent_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -4755,7 +4483,7 @@ export const _location_cache_v = db_schema.table(
   "_location_cache_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => location_cache.id, {
+    parent: integer("parent_id").references(() => location_cache.id, {
       onDelete: "set null",
     }),
     version_originalAddress: varchar("version_original_address"),
@@ -5014,7 +4742,7 @@ export const _geocoding_providers_v = db_schema.table(
   "_geocoding_providers_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => geocoding_providers.id, {
+    parent: integer("parent_id").references(() => geocoding_providers.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -5950,15 +5678,16 @@ export const pages = db_schema.table(
   {
     id: serial("id").primaryKey(),
     slug: varchar("slug"),
-    site: integer("site_id").references((): AnyPgColumn => sites.id, {
+    site: integer("site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
-    layoutOverride: integer("layout_override_id").references((): AnyPgColumn => layout_templates.id,
+    layoutOverride: integer("layout_override_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -6832,19 +6561,21 @@ export const _pages_v = db_schema.table(
   "_pages_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => pages.id, {
+    parent: integer("parent_id").references(() => pages.id, {
       onDelete: "set null",
     }),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
+    version_site: integer("version_site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
-    version_layoutOverride: integer("version_layout_override_id").references((): AnyPgColumn => layout_templates.id,
+    version_layoutOverride: integer("version_layout_override_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -6967,15 +6698,17 @@ export const sites = db_schema.table(
     domain: varchar("domain"),
     isDefault: boolean("is_default").default(false),
     branding_title: varchar("branding_title"),
-    branding_logo: integer("branding_logo_id").references((): AnyPgColumn => media.id, {
+    branding_logo: integer("branding_logo_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    branding_logoDark: integer("branding_logo_dark_id").references((): AnyPgColumn => media.id,
+    branding_logoDark: integer("branding_logo_dark_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
-    branding_favicon: integer("branding_favicon_id").references((): AnyPgColumn => media.id,
+    branding_favicon: integer("branding_favicon_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -7013,20 +6746,21 @@ export const sites = db_schema.table(
     branding_style_density: enum_sites_branding_style_density(
       "branding_style_density",
     ),
-    branding_theme: integer("branding_theme_id").references((): AnyPgColumn => themes.id, {
+    branding_theme: integer("branding_theme_id").references(() => themes.id, {
       onDelete: "set null",
     }),
     customCode_headHtml: varchar("custom_code_head_html"),
     customCode_customCSS: varchar("custom_code_custom_c_s_s"),
     customCode_bodyStartHtml: varchar("custom_code_body_start_html"),
     customCode_bodyEndHtml: varchar("custom_code_body_end_html"),
-    defaultLayout: integer("default_layout_id").references((): AnyPgColumn => layout_templates.id,
+    defaultLayout: integer("default_layout_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7097,7 +6831,7 @@ export const _sites_v = db_schema.table(
   "_sites_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => sites.id, {
+    parent: integer("parent_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -7105,17 +6839,19 @@ export const _sites_v = db_schema.table(
     version_domain: varchar("version_domain"),
     version_isDefault: boolean("version_is_default").default(false),
     version_branding_title: varchar("version_branding_title"),
-    version_branding_logo: integer("version_branding_logo_id").references((): AnyPgColumn => media.id,
+    version_branding_logo: integer("version_branding_logo_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
     version_branding_logoDark: integer(
       "version_branding_logo_dark_id",
-    ).references((): AnyPgColumn => media.id, {
+    ).references(() => media.id, {
       onDelete: "set null",
     }),
-    version_branding_favicon: integer("version_branding_favicon_id").references((): AnyPgColumn => media.id,
+    version_branding_favicon: integer("version_branding_favicon_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -7165,7 +6901,8 @@ export const _sites_v = db_schema.table(
       enum__sites_v_version_branding_style_density(
         "version_branding_style_density",
       ),
-    version_branding_theme: integer("version_branding_theme_id").references((): AnyPgColumn => themes.id,
+    version_branding_theme: integer("version_branding_theme_id").references(
+      () => themes.id,
       {
         onDelete: "set null",
       },
@@ -7178,13 +6915,15 @@ export const _sites_v = db_schema.table(
     version_customCode_bodyEndHtml: varchar(
       "version_custom_code_body_end_html",
     ),
-    version_defaultLayout: integer("version_default_layout_id").references((): AnyPgColumn => layout_templates.id,
+    version_defaultLayout: integer("version_default_layout_id").references(
+      () => layout_templates.id,
       {
         onDelete: "set null",
       },
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -7307,7 +7046,7 @@ export const themes = db_schema.table(
     ),
     style_borderRadius: enum_themes_style_border_radius("style_border_radius"),
     style_density: enum_themes_style_density("style_density"),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7344,7 +7083,7 @@ export const _themes_v = db_schema.table(
   "_themes_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => themes.id, {
+    parent: integer("parent_id").references(() => themes.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -7405,7 +7144,8 @@ export const _themes_v = db_schema.table(
     version_style_density: enum__themes_v_version_style_density(
       "version_style_density",
     ),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -7487,7 +7227,7 @@ export const layout_templates = db_schema.table(
       enum_layout_templates_content_max_width("content_max_width").default(
         "lg",
       ),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7524,7 +7264,7 @@ export const _layout_templates_v = db_schema.table(
   "_layout_templates_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => layout_templates.id, {
+    parent: integer("parent_id").references(() => layout_templates.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
@@ -7539,7 +7279,8 @@ export const _layout_templates_v = db_schema.table(
     version_contentMaxWidth: enum__layout_templates_v_version_content_max_width(
       "version_content_max_width",
     ).default("lg"),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -7640,7 +7381,7 @@ export const views = db_schema.table(
     id: serial("id").primaryKey(),
     name: varchar("name"),
     slug: varchar("slug"),
-    site: integer("site_id").references((): AnyPgColumn => sites.id, {
+    site: integer("site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     isDefault: boolean("is_default").default(false),
@@ -7684,7 +7425,7 @@ export const views = db_schema.table(
     ).default("default"),
     mapSettings_customStyleUrl: varchar("map_settings_custom_style_url"),
     isPublic: boolean("is_public").default(true),
-    createdBy: integer("created_by_id").references((): AnyPgColumn => users.id, {
+    createdBy: integer("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     updatedAt: timestamp("updated_at", {
@@ -7783,12 +7524,12 @@ export const _views_v = db_schema.table(
   "_views_v",
   {
     id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => views.id, {
+    parent: integer("parent_id").references(() => views.id, {
       onDelete: "set null",
     }),
     version_name: varchar("version_name"),
     version_slug: varchar("version_slug"),
-    version_site: integer("version_site_id").references((): AnyPgColumn => sites.id, {
+    version_site: integer("version_site_id").references(() => sites.id, {
       onDelete: "set null",
     }),
     version_isDefault: boolean("version_is_default").default(false),
@@ -7841,7 +7582,8 @@ export const _views_v = db_schema.table(
       "version_map_settings_custom_style_url",
     ),
     version_isPublic: boolean("version_is_public").default(true),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
+    version_createdBy: integer("version_created_by_id").references(
+      () => users.id,
       {
         onDelete: "set null",
       },
@@ -8889,18 +8631,20 @@ export const branding = db_schema.table(
   {
     id: serial("id").primaryKey(),
     contactEmail: varchar("contact_email"),
-    logoLight: integer("logo_light_id").references((): AnyPgColumn => media.id, {
+    logoLight: integer("logo_light_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    logoDark: integer("logo_dark_id").references((): AnyPgColumn => media.id, {
+    logoDark: integer("logo_dark_id").references(() => media.id, {
       onDelete: "set null",
     }),
-    faviconSourceLight: integer("favicon_source_light_id").references((): AnyPgColumn => media.id,
+    faviconSourceLight: integer("favicon_source_light_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
     ),
-    faviconSourceDark: integer("favicon_source_dark_id").references((): AnyPgColumn => media.id,
+    faviconSourceDark: integer("favicon_source_dark_id").references(
+      () => media.id,
       {
         onDelete: "set null",
       },
@@ -9176,21 +8920,6 @@ export const relations_datasets_id_strategy_exclude_fields = relations(
     }),
   }),
 );
-export const relations_datasets_ingest_transforms = relations(
-  datasets_ingest_transforms,
-  ({ one }) => ({
-    _parentID: one(datasets, {
-      fields: [datasets_ingest_transforms._parentID],
-      references: [datasets.id],
-      relationName: "ingestTransforms",
-    }),
-    addedBy: one(users, {
-      fields: [datasets_ingest_transforms.addedBy],
-      references: [users.id],
-      relationName: "addedBy",
-    }),
-  }),
-);
 export const relations_datasets = relations(datasets, ({ one, many }) => ({
   catalog: one(catalogs, {
     fields: [datasets.catalog],
@@ -9210,9 +8939,6 @@ export const relations_datasets = relations(datasets, ({ one, many }) => ({
   }),
   idStrategy_excludeFields: many(datasets_id_strategy_exclude_fields, {
     relationName: "idStrategy_excludeFields",
-  }),
-  ingestTransforms: many(datasets_ingest_transforms, {
-    relationName: "ingestTransforms",
   }),
   schemaDetector: one(schema_detectors, {
     fields: [datasets.schemaDetector],
@@ -9246,21 +8972,6 @@ export const relations__datasets_v_version_id_strategy_exclude_fields =
       relationName: "version_idStrategy_excludeFields",
     }),
   }));
-export const relations__datasets_v_version_ingest_transforms = relations(
-  _datasets_v_version_ingest_transforms,
-  ({ one }) => ({
-    _parentID: one(_datasets_v, {
-      fields: [_datasets_v_version_ingest_transforms._parentID],
-      references: [_datasets_v.id],
-      relationName: "version_ingestTransforms",
-    }),
-    addedBy: one(users, {
-      fields: [_datasets_v_version_ingest_transforms.addedBy],
-      references: [users.id],
-      relationName: "addedBy",
-    }),
-  }),
-);
 export const relations__datasets_v = relations(
   _datasets_v,
   ({ one, many }) => ({
@@ -9294,9 +9005,6 @@ export const relations__datasets_v = relations(
         relationName: "version_idStrategy_excludeFields",
       },
     ),
-    version_ingestTransforms: many(_datasets_v_version_ingest_transforms, {
-      relationName: "version_ingestTransforms",
-    }),
     version_schemaDetector: one(schema_detectors, {
       fields: [_datasets_v.version_schemaDetector],
       references: [schema_detectors.id],
@@ -11575,18 +11283,10 @@ type DatabaseSchema = {
   enum__catalogs_v_version_status: typeof enum__catalogs_v_version_status;
   enum__catalogs_v_published_locale: typeof enum__catalogs_v_published_locale;
   enum_data_exports_status: typeof enum_data_exports_status;
-  enum_datasets_ingest_transforms_type: typeof enum_datasets_ingest_transforms_type;
-  enum_datasets_ingest_transforms_input_format: typeof enum_datasets_ingest_transforms_input_format;
-  enum_datasets_ingest_transforms_output_format: typeof enum_datasets_ingest_transforms_output_format;
-  enum_datasets_ingest_transforms_operation: typeof enum_datasets_ingest_transforms_operation;
   enum_datasets_id_strategy_type: typeof enum_datasets_id_strategy_type;
   enum_datasets_id_strategy_duplicate_strategy: typeof enum_datasets_id_strategy_duplicate_strategy;
   enum_datasets_schema_config_enum_mode: typeof enum_datasets_schema_config_enum_mode;
   enum_datasets_status: typeof enum_datasets_status;
-  enum__datasets_v_version_ingest_transforms_type: typeof enum__datasets_v_version_ingest_transforms_type;
-  enum__datasets_v_version_ingest_transforms_input_format: typeof enum__datasets_v_version_ingest_transforms_input_format;
-  enum__datasets_v_version_ingest_transforms_output_format: typeof enum__datasets_v_version_ingest_transforms_output_format;
-  enum__datasets_v_version_ingest_transforms_operation: typeof enum__datasets_v_version_ingest_transforms_operation;
   enum__datasets_v_version_id_strategy_type: typeof enum__datasets_v_version_id_strategy_type;
   enum__datasets_v_version_id_strategy_duplicate_strategy: typeof enum__datasets_v_version_id_strategy_duplicate_strategy;
   enum__datasets_v_version_schema_config_enum_mode: typeof enum__datasets_v_version_schema_config_enum_mode;
@@ -11750,12 +11450,10 @@ type DatabaseSchema = {
   datasets_coverage_countries: typeof datasets_coverage_countries;
   datasets_id_strategy_computed_id_fields: typeof datasets_id_strategy_computed_id_fields;
   datasets_id_strategy_exclude_fields: typeof datasets_id_strategy_exclude_fields;
-  datasets_ingest_transforms: typeof datasets_ingest_transforms;
   datasets: typeof datasets;
   _datasets_v_version_coverage_countries: typeof _datasets_v_version_coverage_countries;
   _datasets_v_version_id_strategy_computed_id_fields: typeof _datasets_v_version_id_strategy_computed_id_fields;
   _datasets_v_version_id_strategy_exclude_fields: typeof _datasets_v_version_id_strategy_exclude_fields;
-  _datasets_v_version_ingest_transforms: typeof _datasets_v_version_ingest_transforms;
   _datasets_v: typeof _datasets_v;
   dataset_schemas_schema_summary_new_fields: typeof dataset_schemas_schema_summary_new_fields;
   dataset_schemas_schema_summary_removed_fields: typeof dataset_schemas_schema_summary_removed_fields;
@@ -11927,12 +11625,10 @@ type DatabaseSchema = {
   relations_datasets_coverage_countries: typeof relations_datasets_coverage_countries;
   relations_datasets_id_strategy_computed_id_fields: typeof relations_datasets_id_strategy_computed_id_fields;
   relations_datasets_id_strategy_exclude_fields: typeof relations_datasets_id_strategy_exclude_fields;
-  relations_datasets_ingest_transforms: typeof relations_datasets_ingest_transforms;
   relations_datasets: typeof relations_datasets;
   relations__datasets_v_version_coverage_countries: typeof relations__datasets_v_version_coverage_countries;
   relations__datasets_v_version_id_strategy_computed_id_fields: typeof relations__datasets_v_version_id_strategy_computed_id_fields;
   relations__datasets_v_version_id_strategy_exclude_fields: typeof relations__datasets_v_version_id_strategy_exclude_fields;
-  relations__datasets_v_version_ingest_transforms: typeof relations__datasets_v_version_ingest_transforms;
   relations__datasets_v: typeof relations__datasets_v;
   relations_dataset_schemas_schema_summary_new_fields: typeof relations_dataset_schemas_schema_summary_new_fields;
   relations_dataset_schemas_schema_summary_removed_fields: typeof relations_dataset_schemas_schema_summary_removed_fields;

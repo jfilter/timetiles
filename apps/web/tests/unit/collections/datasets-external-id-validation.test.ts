@@ -78,11 +78,14 @@ describe("validateExternalIdTransforms", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validateExternalIdTransforms({ data, operation } as any);
 
+  /** Wrap an ops array in the interpretation-plan shape the hooks now read. */
+  const planWith = (ops: unknown[], roles: Record<string, unknown> = {}) => ({ ops, roles, columns: [] });
+
   it("throws when a transform moves the external-ID field away", () => {
     expect(() =>
       run({
         idStrategy: external("ref"),
-        ingestTransforms: [{ type: "rename", from: "ref", to: "archived", active: true }],
+        interpretationPlan: planWith([{ type: "rename", from: "ref", to: "archived", active: true }]),
       })
     ).toThrow(/moves the external ID field "ref" to "archived"/);
   });
@@ -90,7 +93,7 @@ describe("validateExternalIdTransforms", () => {
   it("passes a valid external-ID config through unchanged", () => {
     const data = {
       idStrategy: external("ref"),
-      ingestTransforms: [{ type: "rename", from: "raw_id", to: "ref", active: true }],
+      interpretationPlan: planWith([{ type: "rename", from: "raw_id", to: "ref", active: true }]),
     };
     expect(run(data)).toBe(data);
   });
@@ -98,7 +101,7 @@ describe("validateExternalIdTransforms", () => {
   it("is a no-op for non create/update operations", () => {
     const data = {
       idStrategy: external("ref"),
-      ingestTransforms: [{ type: "rename", from: "ref", to: "archived", active: true }],
+      interpretationPlan: planWith([{ type: "rename", from: "ref", to: "archived", active: true }]),
     };
     expect(run(data, "read")).toBe(data);
   });
@@ -107,7 +110,7 @@ describe("validateExternalIdTransforms", () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdTransforms({
-        data: { ingestTransforms: [{ type: "rename", from: "ref", to: "archived", active: true }] },
+        data: { interpretationPlan: planWith([{ type: "rename", from: "ref", to: "archived", active: true }]) },
         operation: "update",
         originalDoc: { idStrategy: external("ref") },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,13 +118,15 @@ describe("validateExternalIdTransforms", () => {
     ).toThrow(/moves the external ID field "ref" to "archived"/);
   });
 
-  it("detects a move-away on a partial update where transforms live in originalDoc", () => {
+  it("detects a move-away on a partial update where the plan lives in originalDoc", () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdTransforms({
         data: { idStrategy: external("location") },
         operation: "update",
-        originalDoc: { ingestTransforms: [{ type: "rename", from: "location", to: "archived", active: true }] },
+        originalDoc: {
+          interpretationPlan: planWith([{ type: "rename", from: "location", to: "archived", active: true }]),
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/moves the external ID field "location" to "archived"/);
@@ -193,25 +198,26 @@ describe("findTransformMovingAwayPath", () => {
 });
 
 describe("collectProtectedMappingPaths", () => {
-  it("extracts all override + geo fields with labels", () => {
-    const overrides = {
-      latitudePath: "lat",
-      longitudePath: "lng",
-      locationPath: "loc",
-      locationNamePath: "venue",
-      timestampPath: "date",
-      endTimestampPath: "end",
+  it("extracts all plan-role + geo fields with labels", () => {
+    const roles = {
+      latitude: "lat",
+      longitude: "lng",
+      location: "loc",
+      locationName: "venue",
+      timestamp: "date",
+      endTimestamp: "end",
     };
-    const paths = collectProtectedMappingPaths(overrides, undefined).map((p) => p.path);
+    const paths = collectProtectedMappingPaths(roles, undefined).map((p) => p.path);
     expect(paths).toEqual(["lat", "lng", "loc", "venue", "date", "end"]);
   });
 
   it("skips empty/whitespace paths", () => {
-    expect(collectProtectedMappingPaths({ timestampPath: "  ", locationPath: "" }, undefined)).toEqual([]);
+    expect(collectProtectedMappingPaths({ timestamp: "  ", location: "" }, undefined)).toEqual([]);
   });
 
-  it("de-dupes a lat/lng path shared between overrides and geoFieldDetection", () => {
-    const result = collectProtectedMappingPaths({ latitudePath: "lat" }, { latitudePath: "lat", longitudePath: "lng" });
+  it("de-dupes a lat/lng path shared between plan roles and geoFieldDetection", () => {
+    // geoFieldDetection still uses its own *Path keys (out of scope, unchanged).
+    const result = collectProtectedMappingPaths({ latitude: "lat" }, { latitudePath: "lat", longitudePath: "lng" });
     expect(result.map((p) => p.path)).toEqual(["lat", "lng"]);
   });
 
@@ -250,7 +256,7 @@ describe("validateExternalIdPresent", () => {
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdPresent({
-        data: { ingestTransforms: [] },
+        data: { name: "Renamed" },
         operation: "update",
         originalDoc: { idStrategy: { type: "external" } },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -265,35 +271,46 @@ describe("validateMappingOverrideTransforms", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validateMappingOverrideTransforms({ data, operation: "create", originalDoc } as any);
 
+  /** Wrap ops + roles in the interpretation-plan shape the hook now reads. */
+  const planWith = (ops: unknown[], roles: Record<string, unknown> = {}) => ({ ops, roles, columns: [] });
+
   it("throws when a transform moves away a mapped timestamp field", () => {
     expect(() =>
       run({
-        fieldMappingOverrides: { timestampPath: "event_date" },
-        ingestTransforms: [{ type: "rename", from: "event_date", to: "date", active: true }],
+        interpretationPlan: planWith([{ type: "rename", from: "event_date", to: "date", active: true }], {
+          timestamp: "event_date",
+        }),
       })
     ).toThrow(/the timestamp mapping points at "event_date"/);
   });
 
   it("passes when the mapping points at the transform target (produced field)", () => {
     const data = {
-      fieldMappingOverrides: { timestampPath: "date" },
-      ingestTransforms: [{ type: "rename", from: "event_date", to: "date", active: true }],
+      interpretationPlan: planWith([{ type: "rename", from: "event_date", to: "date", active: true }], {
+        timestamp: "date",
+      }),
     };
     expect(run(data)).toBe(data);
   });
 
-  it("is a no-op without overrides", () => {
-    const data = { ingestTransforms: [{ type: "rename", from: "x", to: "y", active: true }] };
+  it("is a no-op without roles", () => {
+    const data = { interpretationPlan: planWith([{ type: "rename", from: "x", to: "y", active: true }]) };
     expect(run(data)).toBe(data);
   });
 
-  it("detects an override move-away on a partial update (transforms in originalDoc)", () => {
+  it("detects a role move-away on a partial update (plan only in originalDoc)", () => {
+    // Payload replaces the whole `interpretationPlan` JSON value on write; a PATCH
+    // that omits it falls back to originalDoc's plan (validated via mergedConfigValue).
     expect(() =>
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateMappingOverrideTransforms({
-        data: { fieldMappingOverrides: { locationPath: "place" } },
+        data: { name: "Renamed" },
         operation: "update",
-        originalDoc: { ingestTransforms: [{ type: "rename", from: "place", to: "where", active: true }] },
+        originalDoc: {
+          interpretationPlan: planWith([{ type: "rename", from: "place", to: "where", active: true }], {
+            location: "place",
+          }),
+        },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/the location mapping points at "place"/);
