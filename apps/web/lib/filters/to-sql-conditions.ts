@@ -9,7 +9,9 @@
  */
 import { sql } from "@payloadcms/db-postgres";
 
-import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-filters";
+import type { NumberFormat } from "@/lib/utils/number-parsing";
+
+import type { CanonicalBounds, CanonicalEventFilters, RangeFilter } from "./canonical-event-filters";
 import { isValidFieldKey } from "./field-validation";
 
 type SqlFragment = ReturnType<typeof sql>;
@@ -50,6 +52,9 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
 
   // Field filters (keys already validated by canonical builder, re-validate for defense-in-depth)
   conditions.push(...buildFieldFilterConditions(filters.fieldFilters, filters.tagFields));
+
+  // Numeric range filters (locale-aware, query-time ::numeric normalization)
+  conditions.push(...buildRangeFilterConditions(filters.rangeFilters, filters.numberFormats));
 
   // H3 cell filter (precise spatial filter by pre-computed H3 columns)
   const h3Condition = buildH3CellSqlCondition(filters.clusterCells, filters.h3Resolution);
@@ -175,6 +180,68 @@ export const buildFieldFilterConditions = (
     }
   }
   return conditions;
+};
+
+/**
+ * Build SQL conditions for numeric range filters.
+ *
+ * Each range key's stored text (at `transformed_data #>> path`) is normalized
+ * with the column's resolved {@link NumberFormat}: strip the thousands separator
+ * (first, so a `.`-thousands EU column does not collide with decimal conversion),
+ * then convert a `,` decimal separator to `.`. A regex-guarded CASE then yields a
+ * `::numeric` ONLY for cleanly-formed US-canonical text and `NULL` otherwise, so
+ * the cast NEVER throws on non-numeric/empty cells. Because `NULL >= x` /
+ * `NULL <= x` are `NULL` (not TRUE), out-of-format rows are excluded by WHERE —
+ * identical semantics to the PG-function copy that Phase 3 must mirror.
+ *
+ * The `^-?[0-9]+(\.[0-9]+)?$` pattern matches `parseLocaleNumber`'s final
+ * canonical-form check so the TS builder, the PG functions, and the in-app
+ * parser all agree on what counts as a clean number.
+ */
+export const buildRangeFilterConditions = (
+  rangeFilters?: Record<string, RangeFilter>,
+  numberFormats?: Record<string, NumberFormat>
+): SqlFragment[] => {
+  if (!rangeFilters) return [];
+
+  const conditions: SqlFragment[] = [];
+  for (const [fieldKey, range] of Object.entries(rangeFilters)) {
+    // Defense-in-depth: re-validate even though sanitizeRangeFilters ran at construction
+    if (!isValidFieldKey(fieldKey)) continue;
+
+    // No resolved NumberFormat → not range-filterable. Never cast blind.
+    const format = numberFormats?.[fieldKey];
+    if (!format) continue;
+
+    const hasMin = range.min != null && Number.isFinite(range.min);
+    const hasMax = range.max != null && Number.isFinite(range.max);
+    if (!hasMin && !hasMax) continue;
+
+    const safeNumeric = buildNormalizedNumericExpr(fieldKey, format);
+    if (hasMin) conditions.push(sql`${safeNumeric} >= ${range.min}`);
+    if (hasMax) conditions.push(sql`${safeNumeric} <= ${range.max}`);
+  }
+  return conditions;
+};
+
+/** Build the regex-guarded `::numeric` (NULL for non-numeric cells) for one field/format. */
+const buildNormalizedNumericExpr = (fieldKey: string, format: NumberFormat): SqlFragment => {
+  // Raw text value at the path.
+  let normalized: SqlFragment = sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.'))`;
+
+  // Strip thousands separator first, then convert the decimal separator to '.'.
+  if (format.thousandsSeparator) {
+    normalized = sql`replace(${normalized}, ${format.thousandsSeparator}, '')`;
+  }
+  if (format.decimalSeparator === ",") {
+    normalized = sql`replace(${normalized}, ',', '.')`;
+  }
+
+  // Guard: only US-canonical numeric text becomes ::numeric; everything else → NULL
+  // (so the cast never throws and out-of-format rows are excluded by WHERE). The
+  // regex's literal dot must reach Postgres as `\.`; in a JS template literal that
+  // requires `\\.` here so the emitted SQL string is `^-?[0-9]+(\.[0-9]+)?$`.
+  return sql`CASE WHEN ${normalized} ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN ${normalized}::numeric ELSE NULL END`;
 };
 
 /** Validate H3 cell ID format (15 hex characters). */

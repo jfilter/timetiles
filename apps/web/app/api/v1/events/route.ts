@@ -89,6 +89,7 @@ export const GET = apiRoute({
 
 const requiresSqlFilteredPagination = (filters: CanonicalEventFilters): boolean =>
   (filters.fieldFilters != null && Object.keys(filters.fieldFilters).length > 0) ||
+  (filters.rangeFilters != null && Object.keys(filters.rangeFilters).length > 0) ||
   (filters.clusterCells?.length ?? 0) > 0;
 
 const executeEventsQuery = async (

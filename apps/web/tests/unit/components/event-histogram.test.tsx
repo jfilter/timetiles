@@ -34,7 +34,7 @@ vi.mock("@/lib/context/view-context", () => ({
 // Mock the filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({
-    filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} },
+    filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {}, rangeFilters: {} },
     setSingleDayFilter: vi.fn(),
   }),
 }));

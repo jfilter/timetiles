@@ -10,6 +10,7 @@
 
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { isImportDateLike } from "@/lib/utils/date-parsing";
+import { classifyNumericFormat } from "@/lib/utils/number-parsing";
 
 const updateTypeDistribution = (stats: FieldStatistics, valueType: string): void => {
   if (!stats.typeDistribution) {
@@ -86,9 +87,11 @@ const detectStringFormats = (value: string, stats: FieldStatistics): void => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     stats.formats.date = (stats.formats.date ?? 0) + 1;
   }
-  // Numeric string detection
-  // eslint-disable-next-line security/detect-unsafe-regex -- Simple numeric pattern, false positive
-  if (/^-?\d+(\.\d+)?$/.test(value)) {
+  // Numeric string detection — locale-aware (US and EU separators) via
+  // classifyNumericFormat so "1.234,56" counts toward formats.numeric too, not
+  // only US-style "1234.56". This is what revives string-numeric columns into
+  // dataset.fieldTypes.number for the numeric range filter.
+  if (classifyNumericFormat(value) !== null) {
     stats.formats.numeric = (stats.formats.numeric ?? 0) + 1;
   }
 };

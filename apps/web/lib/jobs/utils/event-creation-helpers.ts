@@ -326,6 +326,12 @@ const classifyField = (stats: Record<string, unknown>): string | null => {
   }
 
   if (((dist.number ?? 0) + (dist.integer ?? 0)) / occ > FIELD_TYPE_MAJORITY_THRESHOLD) return "number";
+
+  // String-numeric columns (CSV values arrive as strings, so typeDistribution
+  // has 0 number/integer) — locale-aware formats.numeric counts both US and EU
+  // separators. This is the server-side signal the numeric range filter reads to
+  // know which columns are numeric.
+  if ((formats.numeric ?? 0) / occ > FIELD_TYPE_MAJORITY_THRESHOLD) return "number";
   return null;
 };
 

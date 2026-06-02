@@ -44,3 +44,31 @@ export const sanitizeFieldFilters = (fieldFilters: Record<string, string[]>): Re
   }
   return result;
 };
+
+/** A single numeric range bound (either end may be open). */
+export interface RangeFilterValue {
+  min?: number | null;
+  max?: number | null;
+}
+
+/**
+ * Filter a range filters object, removing entries with invalid keys, entries
+ * with no usable bound (both min and max null/undefined), and entries where a
+ * finite min exceeds a finite max (defense-in-depth — also enforced in Zod).
+ *
+ * @returns A new object containing only entries with valid field keys and bounds
+ */
+export const sanitizeRangeFilters = (
+  rangeFilters: Record<string, RangeFilterValue>
+): Record<string, RangeFilterValue> => {
+  const result: Record<string, RangeFilterValue> = {};
+  for (const [key, range] of Object.entries(rangeFilters)) {
+    if (!isValidFieldKey(key) || range == null) continue;
+    const hasMin = range.min != null && Number.isFinite(range.min);
+    const hasMax = range.max != null && Number.isFinite(range.max);
+    if (!hasMin && !hasMax) continue;
+    if (hasMin && hasMax && (range.min as number) > (range.max as number)) continue;
+    result[key] = { min: hasMin ? range.min : null, max: hasMax ? range.max : null };
+  }
+  return result;
+};

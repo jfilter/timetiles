@@ -30,6 +30,7 @@ import type {
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { FieldMapping } from "@/lib/ingest/types/wizard";
 import type { DayMonthOrder } from "@/lib/utils/date-parsing";
+import type { NumberFormat } from "@/lib/utils/number-parsing";
 
 // ---------------------------------------------------------------------------
 // Order converters (legacy free-text <-> DateOrder/CoordinateOrder)
@@ -108,6 +109,20 @@ interface DateColumnInput {
 }
 
 /**
+ * Inputs describing a number column's resolved locale convention.
+ *
+ * The `format` is decided ONCE per column from its samples via
+ * `decideNumberFormat`, then persisted as the column's `NumberPolicy`
+ * separators. Consumed at QUERY time for locale-aware numeric range filtering;
+ * never applied at import (stored raw values stay byte-identical so the dedup
+ * hash is stable).
+ */
+export interface NumberColumnInput {
+  field: string;
+  format: NumberFormat;
+}
+
+/**
  * Derive the order-INDEPENDENT per-column typing from the ordered ops plus the
  * coordinate/date column inputs.
  *
@@ -121,7 +136,8 @@ interface DateColumnInput {
 const buildColumns = (
   ops: IngestTransform[],
   coordinate: CoordinateColumnInput | null,
-  dates: DateColumnInput[]
+  dates: DateColumnInput[],
+  numbers: NumberColumnInput[] = []
 ): ColumnInterpretation[] => {
   const byField = new Map<string, ColumnInterpretation>();
   const upsert = (field: string, patch: Omit<Partial<ColumnInterpretation>, "field">): void => {
@@ -165,7 +181,40 @@ const buildColumns = (
     });
   }
 
+  // Number columns are upserted LAST so the date/coordinate upserts win on
+  // conflict (a numeric-looking date column must stay a date).
+  applyNumberColumns(byField, upsert, numbers);
+
   return [...byField.values()];
+};
+
+/**
+ * Upsert the resolved `number`-kind columns onto the field map.
+ *
+ * Skips any field already resolved to a date or coordinate-pair kind so a
+ * numeric-looking date column (e.g. "2024" / "20240131") or coordinate column
+ * keeps its kind. Each surviving column carries its per-column `NumberPolicy`
+ * separators for QUERY-time locale-aware range filtering. Extracted from
+ * {@link buildColumns} purely to keep that builder under the complexity budget.
+ */
+const applyNumberColumns = (
+  byField: Map<string, ColumnInterpretation>,
+  upsert: (field: string, patch: Omit<Partial<ColumnInterpretation>, "field">) => void,
+  numbers: NumberColumnInput[]
+): void => {
+  for (const n of numbers) {
+    if (!n.field) continue;
+    const existingKind = byField.get(n.field)?.kind;
+    if (existingKind === "date" || existingKind === "coordinate-pair") continue;
+    upsert(n.field, {
+      kind: "number",
+      policy: {
+        kind: "number",
+        decimalSeparator: n.format.decimalSeparator,
+        thousandsSeparator: n.format.thousandsSeparator,
+      },
+    });
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -222,7 +271,9 @@ export const buildPlanFromWizard = (
   const ops = filterAuthoredOps(transforms);
   const roles = fieldMappingToRoles(fieldMapping);
   const coordinate = roles.coordinate ? { combinedSource: roles.coordinate } : null;
-  return { ops, columns: buildColumns(ops, coordinate, []), roles, ambiguityResolution };
+  // Authored plans have no field samples; detection fills number policies later
+  // (the range filter is detection-driven).
+  return { ops, columns: buildColumns(ops, coordinate, [], []), roles, ambiguityResolution };
 };
 
 /** Roles + free-text orders for the data-package AUTHORED plan. */
@@ -277,7 +328,8 @@ export const buildPlanFromPaths = (
   if (roles.timestamp) dates.push({ field: roles.timestamp, order: legacyDayMonthToDateOrder(paths.timestampOrder) });
   if (roles.endTimestamp)
     dates.push({ field: roles.endTimestamp, order: legacyDayMonthToDateOrder(paths.endTimestampOrder) });
-  return { ops, columns: buildColumns(ops, coordinate, dates), roles, ambiguityResolution };
+  // Authored plans have no field samples; detection fills number policies later.
+  return { ops, columns: buildColumns(ops, coordinate, dates, []), roles, ambiguityResolution };
 };
 
 /** Detector field-mapping inputs for the DETECTION-RESOLVED job plan. */
@@ -312,11 +364,18 @@ const isUndecidedOrder = (value: string | null | undefined): boolean =>
  * identically. The in-memory flat field mappings still carry the sentinel for
  * the review gates (which fire before this plan is persisted); the plan is the
  * persisted form.
+ *
+ * `numberColumns` carries the per-column locale convention the detector resolved
+ * from each numeric column's samples (`decideNumberFormat`); each becomes a
+ * `number`-kind column whose `NumberPolicy` separators drive QUERY-time
+ * locale-aware range filtering. A numeric-looking date/coordinate column is left
+ * as-is (see `buildColumns`).
  */
 export const buildDetectionPlan = (
   ops: IngestTransform[],
   detection: DetectionPlanInput,
-  ambiguityResolution: AmbiguityResolution
+  ambiguityResolution: AmbiguityResolution,
+  numberColumns: NumberColumnInput[] = []
 ): DatasetInterpretationPlan => {
   const roles: InterpretationRoles = {
     title: detection.titlePath ?? null,
@@ -354,7 +413,7 @@ export const buildDetectionPlan = (
     });
   }
 
-  return { ops, columns: buildColumns(ops, coordinate, dates), roles, ambiguityResolution };
+  return { ops, columns: buildColumns(ops, coordinate, dates, numberColumns), roles, ambiguityResolution };
 };
 
 // ---------------------------------------------------------------------------

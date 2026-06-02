@@ -39,6 +39,23 @@ const parseFieldFilters = (raw: string | null): Record<string, string[]> => {
   }
 };
 
+/** A single numeric range bound (either end may be open). */
+type RangeBound = { min: number | null; max: number | null };
+
+/** Serialize numeric range filters to a JSON string (empty string if none). */
+const serializeRangeFilters = (rf: Record<string, RangeBound>) =>
+  Object.keys(rf).length > 0 ? JSON.stringify(rf) : "";
+
+/** Parse numeric range filters from a JSON string. */
+const parseRangeFilters = (raw: string | null): Record<string, RangeBound> => {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw) as Record<string, RangeBound>;
+  } catch {
+    return {};
+  }
+};
+
 // Custom hook for managing all filter state via URL
 // Uses useQueryStates to batch related URL param updates into a single URL change,
 // avoiding intermediate states and unnecessary rerenders.
@@ -48,27 +65,30 @@ export const useFilters = () => {
     startDate: parseAsStringOrNull,
     endDate: parseAsStringOrNull,
     ff: parseAsStringOrNull,
+    rf: parseAsStringOrNull,
   });
 
   const datasets = filterParams.datasets;
   const startDate = filterParams.startDate;
   const endDate = filterParams.endDate;
   const fieldFiltersParam = filterParams.ff;
+  const rangeFiltersParam = filterParams.rf;
 
   // Memoize on primitive URL params so downstream consumers that use `filters`
   // or `fieldFilters` as query keys / memo deps don't rekey on every render.
   // `datasets` is a stable array reference from nuqs; its identity changes
   // only when the URL actually changes.
   const fieldFilters = useMemo(() => parseFieldFilters(fieldFiltersParam), [fieldFiltersParam]);
+  const rangeFilters = useMemo(() => parseRangeFilters(rangeFiltersParam), [rangeFiltersParam]);
 
   const filters: FilterState = useMemo(
-    () => ({ datasets, startDate: startDate || null, endDate: endDate || null, fieldFilters }),
-    [datasets, startDate, endDate, fieldFilters]
+    () => ({ datasets, startDate: startDate || null, endDate: endDate || null, fieldFilters, rangeFilters }),
+    [datasets, startDate, endDate, fieldFilters, rangeFilters]
   );
 
-  // Enhanced setDatasets — clears field filters (dataset-specific)
+  // Enhanced setDatasets — clears field + range filters (dataset-specific)
   const handleSetDatasets = (newDatasets: string[]) => {
-    void setFilterParams({ datasets: newDatasets, ff: "" });
+    void setFilterParams({ datasets: newDatasets, ff: "", rf: "" });
   };
 
   const setFieldFilters = (newFieldFilters: Record<string, string[]>) =>
@@ -84,12 +104,23 @@ export const useFilters = () => {
     void setFilterParams({ ff: serializeFieldFilters(updated) });
   };
 
+  const setRangeFilter = (fieldPath: string, min: number | null, max: number | null) => {
+    const updated = { ...rangeFilters };
+    if (min == null && max == null) {
+      delete updated[fieldPath];
+    } else {
+      updated[fieldPath] = { min, max };
+    }
+    void setFilterParams({ rf: serializeRangeFilters(updated) });
+  };
+
   const applyFilterState = (newFilters: FilterState) => {
     void setFilterParams({
       datasets: newFilters.datasets,
       startDate: newFilters.startDate ?? "",
       endDate: newFilters.endDate ?? "",
       ff: serializeFieldFilters(newFilters.fieldFilters),
+      rf: serializeRangeFilters(newFilters.rangeFilters),
     });
   };
 
@@ -139,6 +170,7 @@ export const useFilters = () => {
   return {
     // Filter state
     filters,
+    rangeFilters,
 
     // Individual filter setters
     setDatasets: handleSetDatasets,
@@ -146,6 +178,7 @@ export const useFilters = () => {
     setEndDate: (value: string | null) => void setFilterParams({ endDate: value ?? "" }),
     setFieldFilters,
     setFieldFilter,
+    setRangeFilter,
 
     // Higher-level actions
     toggleCatalogDatasets,

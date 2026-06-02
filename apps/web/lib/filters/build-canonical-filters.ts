@@ -11,7 +11,7 @@
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 
 import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-filters";
-import { sanitizeFieldFilters } from "./field-validation";
+import { sanitizeFieldFilters, sanitizeRangeFilters } from "./field-validation";
 
 /**
  * Options for building canonical event filters.
@@ -86,13 +86,8 @@ export const buildCanonicalFilters = ({
     } satisfies CanonicalBounds;
   }
 
-  // Field filters (validate keys at construction time)
-  if (Object.keys(parameters.ff).length > 0) {
-    const sanitized = sanitizeFieldFilters(parameters.ff);
-    if (Object.keys(sanitized).length > 0) {
-      filters.fieldFilters = sanitized;
-    }
-  }
+  // Field + numeric range filters (validate keys/bounds at construction time)
+  applyDataFieldFilters(filters, parameters);
 
   // H3 cell filter (precise spatial constraint)
   if (parameters.clusterCells != null && parameters.h3Resolution != null) {
@@ -107,6 +102,29 @@ export const buildCanonicalFilters = ({
   applyScopeConstraints(filters, parameters);
 
   return filters;
+};
+
+/**
+ * Apply categorical field filters and numeric range filters from the parameters.
+ *
+ * The per-field NumberFormat needed to normalize stored text for range filters
+ * is NOT known here — it is projected from the single dataset's interpretation
+ * plan in resolveEventQueryContext, which also enforces the single-dataset gate.
+ */
+const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  if (Object.keys(parameters.ff).length > 0) {
+    const sanitized = sanitizeFieldFilters(parameters.ff);
+    if (Object.keys(sanitized).length > 0) {
+      filters.fieldFilters = sanitized;
+    }
+  }
+
+  if (Object.keys(parameters.rf).length > 0) {
+    const sanitizedRanges = sanitizeRangeFilters(parameters.rf);
+    if (Object.keys(sanitizedRanges).length > 0) {
+      filters.rangeFilters = sanitizedRanges;
+    }
+  }
 };
 
 /** Apply view-level scope constraints (scopeCatalogs / scopeDatasets). */

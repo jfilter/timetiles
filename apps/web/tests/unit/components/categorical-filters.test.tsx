@@ -15,7 +15,7 @@ import { renderWithProviders, screen } from "../../setup/unit/react-render";
 const mockSetFieldFilter = vi.fn();
 vi.mock("@/lib/hooks/use-filters", () => ({
   useFilters: () => ({
-    filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} },
+    filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {}, rangeFilters: {} },
     setFieldFilter: mockSetFieldFilter,
   }),
 }));

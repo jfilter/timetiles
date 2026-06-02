@@ -38,9 +38,14 @@ const makeHistogram = (buckets: Array<{ date: string; dateEnd: string; count: nu
 });
 
 const defaultProps = () => ({
-  filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {} } as Parameters<
-    typeof useTimeRangeSlider
-  >[0]["filters"],
+  filters: {
+    catalog: null,
+    datasets: [],
+    startDate: null,
+    endDate: null,
+    fieldFilters: {},
+    rangeFilters: {},
+  } as Parameters<typeof useTimeRangeSlider>[0]["filters"],
   onStartDateChange: vi.fn(),
   onEndDateChange: vi.fn(),
 });

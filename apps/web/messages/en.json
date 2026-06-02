@@ -256,7 +256,12 @@
     "catalog": "Catalog",
     "clearFieldFilter": "Clear {label} filter",
     "showMoreCategories": "+{count} more categories",
-    "showLessCategories": "Show less"
+    "showLessCategories": "Show less",
+    "numericRanges": "Numeric Ranges",
+    "showMoreRanges": "+{count} more ranges",
+    "showLessRanges": "Show less",
+    "rangeMinSlider": "{label} minimum",
+    "rangeMaxSlider": "{label} maximum"
   },
   "Events": {
     "title": "Events",

@@ -19,6 +19,7 @@ import { EMPTY_ARRAY } from "@/lib/constants/empty";
 import { useDataSourceStatsQuery } from "@/lib/hooks/use-data-source-stats";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
+import { useDatasetNumericFieldsQuery } from "@/lib/hooks/use-dataset-numeric-fields";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
@@ -27,7 +28,70 @@ import { hasVisibleTemporalData } from "@/lib/utils/temporal-data";
 import { CategoricalFilters } from "./categorical-filters";
 import { DataSourceSelector } from "./data-source-selector";
 import { FilterSection } from "./filter-section";
+import { NumericRangeFilters } from "./numeric-range-filters";
 import { TimeRangeSlider } from "./time-range-slider";
+
+interface SimpleBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+/**
+ * Categorical + numeric range filter sections for a single selected dataset.
+ *
+ * Both are dataset-specific (enum values / number formats), so this whole block
+ * only renders when exactly one dataset is selected. Extracted from
+ * {@link EventFilters} to keep that component within the complexity budget and to
+ * co-locate the two per-dataset SQL-aggregation fetches.
+ */
+const DatasetFieldFilters = ({
+  singleDatasetId,
+  bounds,
+}: {
+  singleDatasetId: string | null;
+  bounds: SimpleBounds | null;
+}) => {
+  const t = useTranslations("Filters");
+  const { filters } = useFilters();
+
+  // Pass current filters + bounds so values/bounds reflect the visible subset.
+  const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(
+    singleDatasetId,
+    filters,
+    bounds
+  );
+  const { data: numericFields, isLoading: isNumericFieldsLoading } = useDatasetNumericFieldsQuery(
+    singleDatasetId,
+    filters,
+    bounds
+  );
+
+  const hasEnumFields = enumFields != null && enumFields.length > 0;
+  const hasNumericFields = numericFields != null && numericFields.length > 0;
+
+  const categoricalActiveCount = Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0);
+  const numericRangeActiveCount = Object.values(filters.rangeFilters ?? {}).filter(
+    (r) => r.min != null || r.max != null
+  ).length;
+
+  return (
+    <>
+      {(hasEnumFields || isEnumFieldsLoading) && (
+        <FilterSection title={t("categories")} defaultOpen activeCount={categoricalActiveCount}>
+          <CategoricalFilters enumFields={enumFields ?? EMPTY_ARRAY} isLoading={isEnumFieldsLoading} />
+        </FilterSection>
+      )}
+
+      {(hasNumericFields || isNumericFieldsLoading) && (
+        <FilterSection title={t("numericRanges")} defaultOpen activeCount={numericRangeActiveCount}>
+          <NumericRangeFilters numericFields={numericFields ?? EMPTY_ARRAY} isLoading={isNumericFieldsLoading} />
+        </FilterSection>
+      )}
+    </>
+  );
+};
 
 export const EventFilters = () => {
   const t = useTranslations("Filters");
@@ -57,15 +121,9 @@ export const EventFilters = () => {
     }
   }, [showTemporalFilters]); // eslint-disable-line react-hooks/exhaustive-deps -- only react to visibility change
 
-  // Fetch enum fields for categorical filters (only when single dataset selected)
-  // Pass current filters + bounds so dropdown values reflect the visible data subset
+  // Categorical + numeric range filters are dataset-specific (enum values /
+  // number formats), so they only render when exactly one dataset is selected.
   const singleDatasetId = filters.datasets.length === 1 ? (filters.datasets[0] ?? null) : null;
-  const { data: enumFields, isLoading: isEnumFieldsLoading } = useDatasetEnumFieldsQuery(
-    singleDatasetId,
-    filters,
-    debouncedMapBounds
-  );
-  const hasEnumFields = enumFields != null && enumFields.length > 0;
 
   // Calculate active filter counts per section
   const dataSourcesActiveCount = filters.datasets.length;
@@ -96,16 +154,8 @@ export const EventFilters = () => {
         />
       </FilterSection>
 
-      {/* Categorical Filters Section - only shown when single dataset selected and has enum fields */}
-      {filters.datasets.length === 1 && (hasEnumFields || isEnumFieldsLoading) && (
-        <FilterSection
-          title={t("categories")}
-          defaultOpen
-          activeCount={Object.values(filters.fieldFilters ?? {}).reduce((sum, vals) => sum + vals.length, 0)}
-        >
-          <CategoricalFilters enumFields={enumFields ?? EMPTY_ARRAY} isLoading={isEnumFieldsLoading} />
-        </FilterSection>
-      )}
+      {/* Categorical + numeric range sections — only when a single dataset is selected */}
+      {singleDatasetId != null && <DatasetFieldFilters singleDatasetId={singleDatasetId} bounds={debouncedMapBounds} />}
 
       {/* Time Range Section — hidden when no visible datasets have temporal data */}
       {showTemporalFilters && (

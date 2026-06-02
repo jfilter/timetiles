@@ -28,6 +28,10 @@ export const toClusteringJsonb = (filters: CanonicalEventFilters): string =>
     endDate: filters.endDate,
     fieldFilters:
       filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+    rangeFilters:
+      filters.rangeFilters && Object.keys(filters.rangeFilters).length > 0 ? filters.rangeFilters : undefined,
+    numberFormats:
+      filters.numberFormats && Object.keys(filters.numberFormats).length > 0 ? filters.numberFormats : undefined,
     tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
     clusterCells: filters.clusterCells?.length ? filters.clusterCells : undefined,
     h3Resolution: filters.h3Resolution,
@@ -59,6 +63,10 @@ export const toHistogramJsonb = (filters: CanonicalEventFilters): string =>
     requireLocation: filters.requireLocation,
     fieldFilters:
       filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
+    rangeFilters:
+      filters.rangeFilters && Object.keys(filters.rangeFilters).length > 0 ? filters.rangeFilters : undefined,
+    numberFormats:
+      filters.numberFormats && Object.keys(filters.numberFormats).length > 0 ? filters.numberFormats : undefined,
     tagFields: filters.tagFields?.size ? [...filters.tagFields] : undefined,
     clusterCells: filters.clusterCells?.length ? filters.clusterCells : undefined,
     h3Resolution: filters.h3Resolution,

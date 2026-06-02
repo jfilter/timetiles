@@ -14,6 +14,7 @@ import {
   DateParamSchema,
   FieldFiltersParamSchema,
   PaginationSchema,
+  RangeFiltersParamSchema,
   ScopeIdsParamSchema,
   z,
 } from "./common";
@@ -28,6 +29,7 @@ export const EventFiltersSchema = z.object({
   endDate: DateParamSchema,
   bounds: BoundsParamSchema,
   ff: FieldFiltersParamSchema,
+  rf: RangeFiltersParamSchema,
   scopeCatalogs: ScopeIdsParamSchema.optional(),
   scopeDatasets: ScopeIdsParamSchema.optional(),
   /** H3 cell IDs for precise spatial filtering (comma-separated) */

@@ -52,3 +52,25 @@ describe("field-statistics numeric averaging", () => {
     expect(merged.numericStats?.max).toBe(100);
   });
 });
+
+describe("field-statistics formats.numeric — locale-aware", () => {
+  it("counts EU-style numeric strings toward formats.numeric", () => {
+    const stats = createFieldStats("price");
+    updateFieldStats(stats, "1.234,56", 100); // EU: thousands "." + decimal ","
+    updateFieldStats(stats, "9,99", 100); // EU decimal ","
+    updateFieldStats(stats, "1234.56", 100); // US decimal "."
+    updateFieldStats(stats, "42", 100); // plain
+
+    // All four are numeric under the locale-aware classifier (the old US-only
+    // regex would have missed the two EU strings).
+    expect(stats.formats.numeric).toBe(4);
+  });
+
+  it("does not count non-numeric strings toward formats.numeric", () => {
+    const stats = createFieldStats("label");
+    updateFieldStats(stats, "alpha", 100);
+    updateFieldStats(stats, "not-a-number", 100);
+
+    expect(stats.formats.numeric).toBeUndefined();
+  });
+});

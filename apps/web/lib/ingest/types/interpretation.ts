@@ -61,6 +61,16 @@ export interface CoordinatePolicy {
 
 export interface NumberPolicy {
   kind: "number";
+  /**
+   * The character that separates the integer and fractional parts (per-column,
+   * resolved once via `decideNumberFormat`). Optional so existing persisted
+   * plans — which predate number-kind columns — still narrow cleanly through
+   * `readInterpretationPlan`. Consumed at QUERY time for locale-aware numeric
+   * range filtering; never applied at import (stored values stay raw).
+   */
+  decimalSeparator?: "." | ",";
+  /** The digit-grouping character, or null when the column uses none. */
+  thousandsSeparator?: "." | "," | null;
 }
 
 export interface ArrayPolicy {

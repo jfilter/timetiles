@@ -114,6 +114,11 @@ export const buildBaseEventParams = (
     params.append("ff", JSON.stringify(filters.fieldFilters));
   }
 
+  // Add numeric range filters if any
+  if (filters.rangeFilters && Object.keys(filters.rangeFilters).length > 0) {
+    params.append("rf", JSON.stringify(filters.rangeFilters));
+  }
+
   // Add view scope params
   if (scope?.catalogIds?.length) {
     params.append("scopeCatalogs", scope.catalogIds.join(","));

@@ -15,6 +15,8 @@ export interface FilterState {
   startDate: string | null;
   endDate: string | null;
   fieldFilters: Record<string, string[]>;
+  /** Numeric range filters keyed by field path (min/max, either end open). */
+  rangeFilters: Record<string, { min: number | null; max: number | null }>;
 }
 
 /**
@@ -27,6 +29,7 @@ export const getActiveFilterCount = (filters: FilterState): number => {
   if (filters.fieldFilters) {
     count += Object.values(filters.fieldFilters).reduce((sum, vals) => sum + vals.length, 0);
   }
+  count += Object.values(filters.rangeFilters ?? {}).filter((r) => r.min != null || r.max != null).length;
   return count;
 };
 
@@ -35,10 +38,12 @@ export const getActiveFilterCount = (filters: FilterState): number => {
  */
 export const hasActiveFilters = (filters: FilterState): boolean => {
   const hasFieldFilters = filters.fieldFilters && Object.values(filters.fieldFilters).some((vals) => vals.length > 0);
+  const hasRangeFilters = Object.values(filters.rangeFilters ?? {}).some((r) => r.min != null || r.max != null);
   return !!(
     (filters.startDate != null && filters.startDate !== "") ||
     (filters.endDate != null && filters.endDate !== "") ||
-    hasFieldFilters
+    hasFieldFilters ||
+    hasRangeFilters
   );
 };
 
@@ -62,12 +67,19 @@ const removeFieldFilterValue = (fieldFilters: Record<string, string[]>, value: s
 };
 
 export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
-  const newFilters = { ...filters, fieldFilters: { ...filters.fieldFilters } };
+  const newFilters = {
+    ...filters,
+    fieldFilters: { ...filters.fieldFilters },
+    rangeFilters: { ...filters.rangeFilters },
+  };
 
   switch (filterType) {
     case "datasets":
       newFilters.datasets = value != null && value !== "" ? newFilters.datasets.filter((id) => id !== value) : [];
       newFilters.fieldFilters = {};
+      // Range filters are single-dataset and number-format specific; clear them
+      // whenever the dataset selection changes, mirroring fieldFilters.
+      newFilters.rangeFilters = {};
       break;
     case "startDate":
       newFilters.startDate = null;
@@ -78,6 +90,13 @@ export const removeFilter = (filters: FilterState, filterType: keyof FilterState
     case "fieldFilters":
       newFilters.fieldFilters =
         value != null && value !== "" ? removeFieldFilterValue(newFilters.fieldFilters, value) : {};
+      break;
+    case "rangeFilters":
+      if (value != null && value !== "") {
+        delete newFilters.rangeFilters[value];
+      } else {
+        newFilters.rangeFilters = {};
+      }
       break;
   }
 
@@ -92,6 +111,7 @@ export const clearAllFilters = (filters: FilterState): FilterState => ({
   startDate: null,
   endDate: null,
   fieldFilters: {},
+  rangeFilters: {},
 });
 
 /**

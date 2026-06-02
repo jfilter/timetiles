@@ -308,3 +308,49 @@ describe("planToSchemaFieldMappings — five-field projection", () => {
     expect(planToSchemaFieldMappings(null)).toEqual({});
   });
 });
+
+describe("buildDetectionPlan — number column policies", () => {
+  const numberColumn = (plan: DatasetInterpretationPlan, field: string): ColumnInterpretation | undefined =>
+    plan.columns.find((c) => c.field === field);
+
+  it("persists the resolved decimal/thousands separators on the number policy", () => {
+    const plan = buildDetectionPlan(NO_OPS, {}, "strict", [
+      { field: "price", format: { decimalSeparator: ",", thousandsSeparator: "." } },
+      { field: "count", format: { decimalSeparator: ".", thousandsSeparator: "," } },
+    ]);
+
+    expect(numberColumn(plan, "price")).toEqual({
+      field: "price",
+      kind: "number",
+      policy: { kind: "number", decimalSeparator: ",", thousandsSeparator: "." },
+    });
+    expect(numberColumn(plan, "count")).toEqual({
+      field: "count",
+      kind: "number",
+      policy: { kind: "number", decimalSeparator: ".", thousandsSeparator: "," },
+    });
+  });
+
+  it("does not override a date column that also looks numeric", () => {
+    // "year" is both the timestamp role AND supplied as a number column; the date
+    // upsert must win so the column stays a date.
+    const plan = buildDetectionPlan(NO_OPS, { timestampPath: "year", timestampOrder: "D/M" }, "strict", [
+      { field: "year", format: { decimalSeparator: ".", thousandsSeparator: null } },
+    ]);
+
+    expect(numberColumn(plan, "year")?.kind).toBe("date");
+  });
+
+  it("does not override a coordinate column that also looks numeric", () => {
+    const plan = buildDetectionPlan(NO_OPS, { coordinatePath: "coords", coordinateFormat: "lat,lng" }, "strict", [
+      { field: "coords", format: { decimalSeparator: ".", thousandsSeparator: null } },
+    ]);
+
+    expect(numberColumn(plan, "coords")?.kind).toBe("coordinate-pair");
+  });
+
+  it("defaults to no number columns when none are supplied", () => {
+    const plan = buildDetectionPlan(NO_OPS, { timestampPath: "start", timestampOrder: "D/M" }, "strict");
+    expect(plan.columns.some((c) => c.kind === "number")).toBe(false);
+  });
+});

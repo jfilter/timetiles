@@ -102,6 +102,36 @@ export const FieldFiltersParamSchema = z.preprocess(
 );
 
 /**
+ * Numeric range filters parameter (JSON-encoded record of field paths to min/max).
+ *
+ * Parses `?rf={"price":{"min":10,"max":50}}` into
+ * `Record<string, { min?: number | null; max?: number | null }>`.
+ * Each entry must satisfy `min <= max` (open-ended when either side is null).
+ * Invalid JSON silently defaults to an empty object. Keys are capped at 64
+ * chars (matching MAX_FIELD_KEY_LENGTH) and the record at 20 entries.
+ */
+export const RangeFiltersParamSchema = z.preprocess(
+  (val) => {
+    if (typeof val !== "string") return {};
+    try {
+      return JSON.parse(val) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  },
+  z
+    .record(
+      z.string().max(64),
+      z
+        // z.number() already rejects NaN/Infinity in Zod 4, so no explicit .finite() needed.
+        .object({ min: z.number().nullable().optional(), max: z.number().nullable().optional() })
+        .refine((r) => r.min == null || r.max == null || r.min <= r.max, { message: "min must be ≤ max" })
+    )
+    .default({})
+    .refine((rec) => Object.keys(rec).length <= 20, { message: "Range filters may contain at most 20 keys" })
+);
+
+/**
  * Parse and validate a JSON bounds string. Returns the parsed object or undefined.
  */
 export const parseBoundsString = (val: unknown): Record<string, unknown> | undefined => {

@@ -27,6 +27,33 @@ describe("event schemas", () => {
       const result = EventFiltersSchema.safeParse({ catalog: "1", startDate: "2024-01-01", endDate: "2024-12-31" });
       expect(result.success).toBe(true);
     });
+
+    it("parses the rf range-filter param from a JSON string", () => {
+      const result = EventFiltersSchema.safeParse({ rf: JSON.stringify({ price: { min: 10, max: 50 } }) });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.rf).toEqual({ price: { min: 10, max: 50 } });
+      }
+    });
+
+    it("defaults rf to an empty object when absent or malformed JSON", () => {
+      const absent = EventFiltersSchema.safeParse({});
+      const malformed = EventFiltersSchema.safeParse({ rf: "not-json" });
+      expect(absent.success && absent.data.rf).toEqual({});
+      expect(malformed.success && malformed.data.rf).toEqual({});
+    });
+
+    it("rejects an rf entry whose min exceeds its max", () => {
+      const result = EventFiltersSchema.safeParse({ rf: JSON.stringify({ price: { min: 50, max: 10 } }) });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects rf with more than 20 keys", () => {
+      const tooMany: Record<string, { min: number }> = {};
+      for (let i = 0; i < 21; i++) tooMany[`f${i}`] = { min: i };
+      const result = EventFiltersSchema.safeParse({ rf: JSON.stringify(tooMany) });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("EventListQuerySchema", () => {

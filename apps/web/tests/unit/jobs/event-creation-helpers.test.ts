@@ -14,6 +14,7 @@ vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generat
 
 import { MAX_EVENT_PAYLOAD_BYTES } from "@/lib/constants/ingest-constants";
 import {
+  buildFieldTypes,
   createEventData,
   EventPayloadTooLargeError,
   extractCoordinates,
@@ -638,5 +639,44 @@ describe("measureEventPayloadBytes", () => {
     // JSON.stringify produces `{"field":"café"}` = 16 chars → 17 bytes due to é
     expect(bytes).toBe(Buffer.byteLength(JSON.stringify(row), "utf8"));
     expect(bytes).toBeGreaterThan(JSON.stringify(row).length);
+  });
+});
+
+describe("buildFieldTypes — classifyField number group", () => {
+  it("classifies a string-numeric column (formats.numeric majority) as number", () => {
+    // CSV values arrive as strings → typeDistribution has 0 number/integer; only
+    // the locale-aware formats.numeric signal lifts the column into `number`.
+    const fieldTypes = buildFieldTypes({
+      price: {
+        occurrences: 10,
+        typeDistribution: { string: 10 },
+        formats: { numeric: 8 },
+        uniqueSamples: ["1.234,56", "12,50", "9,99"],
+      },
+    });
+
+    expect(fieldTypes?.number).toContain("price");
+  });
+
+  it("classifies a native-number column (typeDistribution) as number", () => {
+    const fieldTypes = buildFieldTypes({
+      count: { occurrences: 4, typeDistribution: { integer: 3, number: 1 }, formats: {}, uniqueSamples: [1, 2, 3.5] },
+    });
+
+    expect(fieldTypes?.number).toContain("count");
+  });
+
+  it("does not classify a mostly-textual column with a few numeric strings as number", () => {
+    // Only 1/10 numeric → below the 0.5 majority threshold; stays unclassified.
+    const fieldTypes = buildFieldTypes({
+      label: {
+        occurrences: 10,
+        typeDistribution: { string: 10 },
+        formats: { numeric: 1 },
+        uniqueSamples: ["alpha", "beta", "42"],
+      },
+    });
+
+    expect(fieldTypes?.number).toBeUndefined();
   });
 });

@@ -18,6 +18,7 @@ describe("buildFullRangeFilters", () => {
       startDate: "2020-01-01",
       endDate: "2020-12-31",
       fieldFilters: {},
+      rangeFilters: {},
     });
     expect(result.startDate).toBeNull();
     expect(result.endDate).toBeNull();
@@ -30,6 +31,7 @@ describe("buildFullRangeFilters", () => {
       startDate: "2020-01-01",
       endDate: "2020-12-31",
       fieldFilters: ff,
+      rangeFilters: {},
     });
     expect(result.fieldFilters).toEqual(ff);
   });
@@ -40,6 +42,7 @@ describe("buildFullRangeFilters", () => {
       startDate: null,
       endDate: null,
       fieldFilters: {},
+      rangeFilters: {},
     });
     expect(result.datasets).toEqual(["1", "2", "3"]);
   });

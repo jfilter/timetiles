@@ -14,6 +14,7 @@ describe("serializeFilterKey", () => {
     startDate: null,
     endDate: null,
     fieldFilters: { category: ["a"], _city: ["berlin"], year: ["2026"] },
+    rangeFilters: {},
   };
 
   it("produces the same key regardless of fieldFilters insertion order", () => {

@@ -29,7 +29,7 @@ vi.mock("@/lib/context/view-context", () => ({
 // Mock filters hook
 vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({
-    filters: { datasets: [], startDate: null, endDate: null, fieldFilters: {} },
+    filters: { datasets: [], startDate: null, endDate: null, fieldFilters: {}, rangeFilters: {} },
     toggleCatalogDatasets: vi.fn(),
     toggleDataset: vi.fn(),
   }),

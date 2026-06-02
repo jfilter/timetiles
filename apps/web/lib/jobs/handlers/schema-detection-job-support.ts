@@ -10,6 +10,7 @@ import type { Payload } from "payload";
 import { BATCH_SIZES, COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { interpretRows, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
+import type { NumberColumnInput } from "@/lib/ingest/plan-builder";
 import { buildDetectionPlan, planToFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -23,6 +24,7 @@ import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-d
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import { asSystem } from "@/lib/services/system-payload";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
+import { classifyNumericFormat, decideNumberFormat } from "@/lib/utils/number-parsing";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import { backfillResolvedRolesToDataset } from "./schema-detection-role-backfill";
@@ -337,6 +339,56 @@ const applyPairedDateHeuristic = async ({
   });
 };
 
+/** Minimum number of numeric samples that must agree before a column is treated as numeric. */
+const MIN_NUMERIC_SAMPLES = 3;
+
+/**
+ * Derive the per-column number conventions for the detection plan.
+ *
+ * For every analyzed field NOT already used in a date/coordinate role (those
+ * keep their date/coordinate kind), decide the column's locale convention from
+ * its samples via `decideNumberFormat`. A column is included only when a format
+ * is decidable (non-null) AND at least {@link MIN_NUMERIC_SAMPLES} samples are
+ * actually numeric — guarding against a stray one-off numeric string in an
+ * otherwise textual column.
+ *
+ * Samples are stringified first: native-number columns (CSV parsed as JS
+ * numbers) stringify to plain `"42"`/`"1.5"` → US format (`"."` decimal), which
+ * is already `::numeric`-castable; locale-string columns ("1.234,56") resolve to
+ * their real EU/US convention. The decided separators are what QUERY-time range
+ * filtering uses to normalize each column before casting to numeric.
+ */
+const deriveNumberColumns = (
+  fieldStats: Record<string, FieldStatistics>,
+  fieldMappings: FlatFieldMappings
+): NumberColumnInput[] => {
+  const excluded = new Set(
+    [
+      fieldMappings.timestampPath,
+      fieldMappings.endTimestampPath,
+      fieldMappings.coordinatePath,
+      fieldMappings.latitudePath,
+      fieldMappings.longitudePath,
+    ].filter((path): path is string => Boolean(path))
+  );
+
+  const result: NumberColumnInput[] = [];
+  for (const [path, stats] of Object.entries(fieldStats)) {
+    if (excluded.has(path)) continue;
+    const samples = (stats?.uniqueSamples ?? []).filter((s) => s !== null && typeof s !== "object").map(String);
+    if (samples.length === 0) continue;
+
+    const format = decideNumberFormat(samples);
+    if (!format) continue;
+
+    const numericCount = samples.filter((s) => classifyNumericFormat(s) !== null).length;
+    if (numericCount < MIN_NUMERIC_SAMPLES) continue;
+
+    result.push({ field: path, format });
+  }
+  return result;
+};
+
 export const finalizeSchemaDetection = async ({
   payload,
   ingestJobId,
@@ -394,7 +446,8 @@ export const finalizeSchemaDetection = async ({
   // flat mappings (with the sentinel) are still RETURNED for the review gates,
   // which fire before this plan is read.
   const ambiguityResolution = readInterpretationPlan(dataset ?? {})?.ambiguityResolution ?? "strict";
-  const jobPlan = buildDetectionPlan(transforms, fieldMappings, ambiguityResolution);
+  const numberColumns = deriveNumberColumns(finalState.fieldStats, fieldMappings);
+  const jobPlan = buildDetectionPlan(transforms, fieldMappings, ambiguityResolution, numberColumns);
 
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
