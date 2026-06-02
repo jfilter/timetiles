@@ -166,13 +166,18 @@ export const NumericRangeSlider = ({
     }
   };
 
+  // Typed inputs route through `commit` so a value at the domain edge collapses
+  // to `null` (open end), consistent with the drag/keyboard paths. `?? min`/`?? max`
+  // resolve an already-open side to its domain edge, which commit collapses back.
   const handleMinInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const parsed = e.target.value === "" ? null : Number(e.target.value);
-    onChange(parsed != null && Number.isFinite(parsed) ? parsed : null, value.max);
+    const nextMin = parsed != null && Number.isFinite(parsed) ? parsed : null;
+    commit(nextMin ?? min, value.max ?? max);
   };
   const handleMaxInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const parsed = e.target.value === "" ? null : Number(e.target.value);
-    onChange(value.min, parsed != null && Number.isFinite(parsed) ? parsed : null);
+    const nextMax = parsed != null && Number.isFinite(parsed) ? parsed : null;
+    commit(value.min ?? min, nextMax ?? max);
   };
 
   return (

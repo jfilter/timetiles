@@ -143,14 +143,51 @@ const getCatalogConfigs = (environment: string) => {
   return baseCatalogs;
 };
 
+/** Field paths in a seed schema whose JSON type is numeric (number/integer). */
+const deriveNumberFields = (schema: { [k: string]: unknown } | null): string[] => {
+  const properties = (schema?.properties ?? {}) as Record<string, { type?: string } | undefined>;
+  return Object.entries(properties)
+    .filter(([, def]) => def?.type === "number" || def?.type === "integer")
+    .map(([field]) => field);
+};
+
 // Create dataset from template
 const createDatasetFromTemplate = (
   template: { name: string; description: string; slug: string },
   catalog: { slug: string; type: string },
-  _schema: { [k: string]: unknown } | null,
+  schema: { [k: string]: unknown } | null,
   datasetIndex: number
 ): DatasetSeed => {
   const isArchived = catalog.slug === "historical-records";
+
+  // Model the post-detection field typing real datasets carry after ingest:
+  // mark the schema's numeric fields as `number` and give them metadata keys so
+  // the numeric-range-filter UI (which reads dataset.fieldTypes.number +
+  // fieldMetadata) has fields to offer. Live MIN/MAX bounds come from the events.
+  const numberFields = deriveNumberFields(schema);
+  const numericMetadata =
+    numberFields.length > 0
+      ? {
+          fieldTypes: { number: numberFields },
+          fieldMetadata: Object.fromEntries(
+            numberFields.map((field) => [field, { occurrences: 0, numericStats: { isInteger: false } }])
+          ),
+          // The interpretation plan carries the per-column NumberFormat the
+          // query-time range-filter normalizer reads (US default — seed values
+          // are US-format numbers). Without a number-kind column policy the
+          // range filter for that field is dropped at query time.
+          interpretationPlan: {
+            ops: [],
+            roles: {},
+            ambiguityResolution: "strict" as const,
+            columns: numberFields.map((field) => ({
+              field,
+              kind: "number" as const,
+              policy: { kind: "number" as const, decimalSeparator: "." as const, thousandsSeparator: null },
+            })),
+          },
+        }
+      : {};
 
   return {
     name: template.name,
@@ -160,6 +197,7 @@ const createDatasetFromTemplate = (
     language: "eng",
     _status: isArchived ? "draft" : "published",
     isPublic: catalog.slug !== "historical-records", // All datasets are public except archived ones
+    ...numericMetadata,
     metadata: {
       update_frequency: isArchived ? "none" : getUpdateFrequency(catalog.type),
       data_source: getDataSource(catalog.type),

@@ -99,6 +99,45 @@ describe("NumericRangeSlider", () => {
     expect(onChange).toHaveBeenCalledWith(25, null);
   });
 
+  it("collapses a typed min at the domain edge to null (open end)", () => {
+    const onChange = vi.fn();
+    const { container } = renderWithProviders(
+      <NumericRangeSlider
+        label="Price"
+        min={0}
+        max={100}
+        isInteger={false}
+        value={{ min: 50, max: null }}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "50 → 100" }));
+    const minInput = within(container).getAllByRole("spinbutton")[0]!;
+    // Typing the domain minimum collapses to null, matching the drag/keyboard paths.
+    fireEvent.change(minInput, { target: { value: "0" } });
+    expect(onChange).toHaveBeenCalledWith(null, null);
+  });
+
+  it("collapses a typed max at the domain edge to null (open end)", () => {
+    const onChange = vi.fn();
+    const { container } = renderWithProviders(
+      <NumericRangeSlider
+        label="Price"
+        min={0}
+        max={100}
+        isInteger={false}
+        value={{ min: 10, max: 50 }}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "10 → 50" }));
+    const maxInput = within(container).getAllByRole("spinbutton")[1]!;
+    fireEvent.change(maxInput, { target: { value: "100" } });
+    expect(onChange).toHaveBeenCalledWith(10, null);
+  });
+
   it("clears a bound to null when its input is emptied", () => {
     const onChange = vi.fn();
     const { container } = renderWithProviders(

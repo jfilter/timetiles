@@ -112,40 +112,44 @@ export const GET = apiRoute({
     // Force dataset filter to this dataset (regardless of URL params).
     const baseQuery = { ...query, datasets: [datasetId] };
 
-    const fields = [];
-    for (const path of numberPaths) {
-      const format = planFormats[path] ?? US_FORMAT;
+    // The dataset scope/where is identical for every field, so resolve it once
+    // rather than per field.
+    const filters = buildCanonicalFilters({ parameters: baseQuery, includePublic: true, ownerId: user?.id ?? null });
+    if (filters.denyResults) return { fields: [] };
+    const whereClause = toSqlWhereClause(filters);
 
-      const filters = buildCanonicalFilters({ parameters: baseQuery, includePublic: true, ownerId: user?.id ?? null });
-      if (filters.denyResults) continue;
+    // Run the per-field MIN/MAX bounds queries concurrently instead of N
+    // sequential round-trips.
+    const fields = (
+      await Promise.all(
+        numberPaths.map(async (path) => {
+          const value = normalizedNumericExpr(path, planFormats[path] ?? US_FORMAT);
+          // isInteger from precomputed numericStats when present (native numbers),
+          // else from the live parse: all numeric rows whole.
+          const knownIsInteger = fm[path]?.numericStats?.isInteger;
+          const sqlQuery = sql`
+            SELECT MIN(v)::float8 AS min, MAX(v)::float8 AS max, bool_and(v = trunc(v)) AS is_integer
+            FROM (
+              SELECT ${value} AS v
+              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
+              WHERE ${whereClause}
+            ) s
+            WHERE v IS NOT NULL`;
 
-      const whereClause = toSqlWhereClause(filters);
-      const value = normalizedNumericExpr(path, format);
+          const result = await payload.db.drizzle.execute<NumericBoundsRow>(sqlQuery);
+          const row = result.rows[0];
+          if (row?.min == null || row.max == null) return null; // No numeric rows in scope.
 
-      // Determine isInteger from precomputed numericStats when present (native
-      // numbers), else from the live parse: all numeric rows whole.
-      const knownIsInteger = fm[path]?.numericStats?.isInteger;
-      const sqlQuery = sql`
-        SELECT MIN(v)::float8 AS min, MAX(v)::float8 AS max, bool_and(v = trunc(v)) AS is_integer
-        FROM (
-          SELECT ${value} AS v
-          FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
-          WHERE ${whereClause}
-        ) s
-        WHERE v IS NOT NULL`;
-
-      const result = await payload.db.drizzle.execute<NumericBoundsRow>(sqlQuery);
-      const row = result.rows[0];
-      if (row?.min == null || row.max == null) continue; // No numeric rows in scope.
-
-      fields.push({
-        path,
-        label: labelFor(path),
-        min: Number(row.min),
-        max: Number(row.max),
-        isInteger: knownIsInteger ?? row.is_integer ?? false,
-      });
-    }
+          return {
+            path,
+            label: labelFor(path),
+            min: Number(row.min),
+            max: Number(row.max),
+            isInteger: knownIsInteger ?? row.is_integer ?? false,
+          };
+        })
+      )
+    ).filter((field): field is NonNullable<typeof field> => field !== null);
 
     return { fields };
   },
