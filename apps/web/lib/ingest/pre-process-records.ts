@@ -11,6 +11,7 @@
 
 import { logger } from "@/lib/logger";
 import { parseImportDate } from "@/lib/utils/date-parsing";
+import { decideNumberFormat, type NumberFormat, parseLocaleNumber } from "@/lib/utils/number-parsing";
 import { getByPath } from "@/lib/utils/object-path";
 
 /** Merge strategy for a field: keep the minimum or maximum value. */
@@ -38,73 +39,11 @@ export interface PreProcessingConfig {
   extractFields?: ExtractFieldConfig[];
 }
 
-/**
- * Strict US-format numeric-string test for the grouped-record min/max merge
- * (`parseMergeValue` → {@link mergeGroup}).
- *
- * Intentionally accepts ONLY US-format decimals — an optional leading `-`, ASCII
- * digits, and at most one interior `.` decimal point (e.g. `"1.5"`,
- * `"-1234.56"`). European-style values like `"1,5"` or `"1.234,56"` deliberately
- * do NOT match here; they fall through to {@link parseImportDate}, and if that
- * also rejects them the field is left out of the merge via the safe skip path
- * (logged as "Skipping merge field with invalid values"). That is the correct
- * conservative behavior: the field is simply not merged, never silently
- * mis-parsed.
- *
- * Per-row separator guessing is deliberately NOT done here. The decimal /
- * thousands separator is a per-COLUMN property; a row-local heuristic that reads
- * `"1,5"` as 1.5 in one row and `"1,500"` as 1500 in another within the same
- * column reintroduces exactly the silent cross-row corruption class that the
- * ADR 0040 refactor removed for date order and coordinate order. Proper European
- * (and arbitrary-locale) number support is therefore DEFERRED to a future
- * per-column `NumberPolicy` extension (decimalSeparator / thousandsSeparator on
- * the interpretation plan), not a cleanup-time row heuristic.
- */
-const isStrictNumericString = (value: string): boolean => {
-  if (value === "") {
-    return false;
-  }
-
-  let index = 0;
-  let hasDigit = false;
-  let hasDecimalPoint = false;
-
-  if (value[0] === "-") {
-    if (value.length === 1) {
-      return false;
-    }
-    index = 1;
-  }
-
-  for (; index < value.length; index++) {
-    const char = value[index];
-    if (!char) {
-      return false;
-    }
-
-    if (char === ".") {
-      if (hasDecimalPoint || !hasDigit || index === value.length - 1) {
-        return false;
-      }
-      hasDecimalPoint = true;
-      continue;
-    }
-
-    if (char < "0" || char > "9") {
-      return false;
-    }
-
-    hasDigit = true;
-  }
-
-  return hasDigit;
-};
-
 type ParsedMergeValue =
   | { kind: "number"; comparable: number; original: string | number }
   | { kind: "date"; comparable: number; original: string };
 
-const parseMergeValue = (value: unknown): ParsedMergeValue | null => {
+const parseMergeValue = (value: unknown, numberFormat: NumberFormat | null): ParsedMergeValue | null => {
   if (typeof value === "number") {
     return Number.isFinite(value) ? { kind: "number", comparable: value, original: value } : null;
   }
@@ -118,8 +57,14 @@ const parseMergeValue = (value: unknown): ParsedMergeValue | null => {
     return null;
   }
 
-  if (isStrictNumericString(trimmed)) {
-    return { kind: "number", comparable: Number(trimmed), original: value };
+  // When the field resolved to a numeric column, parse under its per-column
+  // locale convention (decided once in `mergeGroup` from all the field's values,
+  // never guessed per row); otherwise fall through to date parsing.
+  if (numberFormat) {
+    const parsed = parseLocaleNumber(trimmed, numberFormat);
+    if (parsed !== null) {
+      return { kind: "number", comparable: parsed, original: value };
+    }
   }
 
   const parsedDate = parseImportDate(trimmed);
@@ -225,7 +170,12 @@ const mergeGroup = (
       continue;
     }
 
-    const parsedEntries = rawEntries.map((value) => ({ raw: value, parsed: parseMergeValue(value) }));
+    // Decide the field's number convention ONCE from all its string values
+    // (per-column), so EU values like "1.234,56" parse consistently. Returns
+    // null for non-numeric (date) or contradictory columns → number parsing is
+    // then skipped and the values fall through to date parsing.
+    const numberFormat = decideNumberFormat(rawEntries.filter((value): value is string => typeof value === "string"));
+    const parsedEntries = rawEntries.map((value) => ({ raw: value, parsed: parseMergeValue(value, numberFormat) }));
     const invalidCount = parsedEntries.filter((entry) => entry.parsed === null).length;
 
     if (invalidCount > 0) {

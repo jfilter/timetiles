@@ -151,6 +151,38 @@ describe("preProcessRecords", () => {
     expect(mockLogger.logger.warn).not.toHaveBeenCalled();
   });
 
+  it("should merge European-format numbers using the column's separator convention", () => {
+    // The column carries an unambiguous EU value ("12,5"), so the ambiguous
+    // "1.500" is read as EU thousands (1500), not a US decimal (1.5). Under the
+    // old US-only check, "12,5" was rejected and the whole field was skipped.
+    const records = [
+      { uid: 1, amount: "1.500" },
+      { uid: 1, amount: "12,5" },
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { amount: "max" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.amount).toBe("1.500"); // 1500 > 12.5
+    expect(mockLogger.logger.warn).not.toHaveBeenCalled();
+  });
+
+  it("should skip a field that mixes US and EU number formats rather than guess", () => {
+    const records = [
+      { uid: 1, val: "1.234,5" }, // EU
+      { uid: 1, val: "1,234.5" }, // US
+    ];
+
+    const result = preProcessRecords(records, { groupBy: "uid", mergeFields: { val: "max" } });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.val).toBe("1.234,5"); // base value preserved; field not merged
+    expect(mockLogger.logger.warn).toHaveBeenCalledWith(
+      "Skipping merge field with invalid values",
+      expect.objectContaining({ field: "val" })
+    );
+  });
+
   it("should skip merging fields with mixed numeric and date values", () => {
     const records = [
       { uid: 1, marker: "2" },
