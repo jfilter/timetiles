@@ -131,15 +131,72 @@ export const RangeFiltersParamSchema = z.preprocess(
     .refine((rec) => Object.keys(rec).length <= 20, { message: "Range filters may contain at most 20 keys" })
 );
 
+/** Wrap an out-of-range longitude into [-180, 180]; in-range values (incl. ±180) pass through. */
+const wrapLongitude = (lng: number): number =>
+  lng >= -180 && lng <= 180 ? lng : ((((lng + 180) % 360) + 360) % 360) - 180;
+
 /**
- * Parse and validate a JSON bounds string. Returns the parsed object or undefined.
+ * Normalize map-viewport bounds before validation.
+ *
+ * A fully zoomed-out or antimeridian-crossing map viewport is a legitimate
+ * state, not malformed input: MapLibre's `getBounds()` reports *unwrapped*
+ * longitudes (e.g. `west: -197.4` on the world view, or `east: 185` after
+ * panning across the dateline). Rejecting those made `/api/v1/events/geo`
+ * return 400 on the initial world view. Instead:
+ *
+ * - spans ≥ 360° collapse to the full world,
+ * - out-of-range longitudes are wrapped into [-180, 180],
+ * - viewports that still cross the antimeridian after wrapping fall back to
+ *   the full longitude range (a superset of the viewport — over-fetching
+ *   beats a 400; the clustering query can't represent west > east),
+ * - latitudes are clamped defensively.
+ */
+const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, unknown> => {
+  const { north, south, east, west } = parsed;
+  if (
+    typeof north !== "number" ||
+    typeof south !== "number" ||
+    typeof east !== "number" ||
+    typeof west !== "number" ||
+    !Number.isFinite(east) ||
+    !Number.isFinite(west)
+  ) {
+    return parsed;
+  }
+
+  let normWest: number;
+  let normEast: number;
+  if (east - west >= 360) {
+    [normWest, normEast] = [-180, 180];
+  } else {
+    normWest = wrapLongitude(west);
+    normEast = wrapLongitude(east);
+    if (normWest > normEast) {
+      [normWest, normEast] = [-180, 180];
+    }
+  }
+
+  return {
+    ...parsed,
+    // Non-finite latitudes pass through unchanged so validation still rejects them.
+    north: Number.isFinite(north) ? Math.min(north, 90) : north,
+    south: Number.isFinite(south) ? Math.max(south, -90) : south,
+    east: normEast,
+    west: normWest,
+  };
+};
+
+/**
+ * Parse, normalize and validate a JSON bounds string. Returns the normalized
+ * object or undefined.
  */
 export const parseBoundsString = (val: unknown): Record<string, unknown> | undefined => {
   if (typeof val !== "string" || !val) return undefined;
   try {
     const parsed = JSON.parse(val) as Record<string, unknown>;
-    if (!isValidBoundsObject(parsed)) return undefined;
-    return parsed;
+    const normalized = normalizeBoundsObject(parsed);
+    if (!isValidBoundsObject(normalized)) return undefined;
+    return normalized;
   } catch {
     return undefined;
   }

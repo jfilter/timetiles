@@ -149,7 +149,10 @@ export const buildLocationLabelLayerConfig = (
         ["to-string", ["get", "count"]],
       ],
       "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 9, 25, 13],
-      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      // Must exist on the style's glyph server (tiles.versatiles.org). The
+      // MapLibre default ("Open Sans Bold", …) 404s there and cluster counts
+      // silently fail to render.
+      "text-font": ["noto_sans_bold"],
       "text-allow-overlap": true,
     },
     paint: {
@@ -352,7 +355,10 @@ export const buildClusterLabelLayerConfig = (
         ["to-string", ["get", "count"]],
       ],
       "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 10, 25, 14],
-      "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      // Must exist on the style's glyph server (tiles.versatiles.org). The
+      // MapLibre default ("Open Sans Bold", …) 404s there and cluster counts
+      // silently fail to render.
+      "text-font": ["noto_sans_bold"],
       "text-allow-overlap": true,
     },
     paint: {
