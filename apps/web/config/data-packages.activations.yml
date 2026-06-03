@@ -12,6 +12,7 @@
 staging:
   - slug: bellingcat-ukraine
   - slug: us-mapping-police-violence
+  - slug: berlin-demonstrations
   - slug: ucdp-hdx
     params:
       country: Colombia
@@ -28,9 +29,10 @@ staging:
       dataset_id: fcb19835-b5ce-4bfb-bf61-dd3df45984b5
       resource_id: 9ccd63fc-98de-43f8-bbbf-7358092a2b19
 
-# Operator-driven for now. Add entries here once production is ready
-# to take auto-activations.
-production: []
+production:
+  - slug: bellingcat-ukraine
+  - slug: us-mapping-police-violence
+  - slug: berlin-demonstrations
 
 preview: []
 
