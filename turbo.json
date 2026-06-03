@@ -77,7 +77,7 @@
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },
-    "dev": { "cache": false, "persistent": true },
+    "dev": { "dependsOn": ["^build"], "cache": false, "persistent": true },
     "storybook": { "cache": false, "persistent": true },
     "storybook:build": { "dependsOn": ["^build"], "outputs": ["storybook-static/**"] },
     "test": {

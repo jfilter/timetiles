@@ -92,6 +92,20 @@ install_deps() {
 }
 
 # ---------------------------------------------------------------------------
+# build_packages <target_dir>
+# Builds workspace packages (e.g. @timetiles/ui dist/) so the worktree is
+# usable for `make dev` / `make build` / `make test-e2e`. apps/web resolves
+# bare `@timetiles/ui` imports via the package `exports` field -> dist/, which
+# a fresh worktree never has. Packages without a build script are skipped.
+# ---------------------------------------------------------------------------
+build_packages() {
+    local target="$1"
+    header "Building workspace packages"
+    (cd "$target" && pnpm --filter "./packages/*" build 2>&1 | tail -5)
+    info "Workspace packages built"
+}
+
+# ---------------------------------------------------------------------------
 # create_uploads <target_dir>
 # ---------------------------------------------------------------------------
 create_uploads() {
@@ -133,6 +147,7 @@ cmd_create() {
 
     copy_env_files "$wt_dir"
     install_deps "$wt_dir"
+    build_packages "$wt_dir"
     create_uploads "$wt_dir"
 
     echo ""
@@ -157,6 +172,7 @@ cmd_setup() {
     header "Setting up worktree at $target"
     copy_env_files "$target"
     install_deps "$target"
+    build_packages "$target"
     create_uploads "$target"
 
     echo ""
