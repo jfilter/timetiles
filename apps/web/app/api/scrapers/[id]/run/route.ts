@@ -12,17 +12,36 @@ import { z } from "zod";
 import { apiRoute, ConflictError } from "@/lib/api";
 import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { loadManageableScraper } from "@/lib/api/scraper-helpers";
+import { checkRateLimit } from "@/lib/middleware/rate-limit";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 
 export const POST = apiRoute({
   auth: "required",
   site: "default",
-  rateLimit: { configName: "SCRAPER_TRIGGER", keyPrefix: (u) => `scraper-run:${u!.id}` },
+  // Rate limiting is applied inside the handler (after the "already running"
+  // check) rather than declaratively here, so a 409 takes precedence over a 429.
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
-  handler: async ({ user, payload, params }) => {
+  handler: async ({ req, user, payload, params }) => {
     const scraper = await loadManageableScraper(payload, user, params.id);
 
-    // Atomically claim running status to prevent concurrent triggers
+    // Report "already running" (409) ahead of the rate limit (429): 409 is the
+    // more specific, actionable response, and the atomic claim below — not the
+    // rate limit — is what actually prevents duplicate concurrent runs. The
+    // rate limit still bounds genuine re-triggers once the scraper is idle.
+    if (scraper.lastRunStatus === "running") {
+      throw new ConflictError("Scraper is already running");
+    }
+
+    // Defense-in-depth rate limit on re-triggers, checked only after the
+    // running check so it can never mask the 409.
+    const rateLimited = await checkRateLimit(req, user, {
+      configName: "SCRAPER_TRIGGER",
+      keyPrefix: (u) => `scraper-run:${u!.id}`,
+    });
+    if (rateLimited) return rateLimited;
+
+    // Atomically claim running status to guard against a concurrent trigger
+    // that slipped past the read above.
     const claimed = await claimScraperRunning(payload, scraper.id);
     if (!claimed) {
       throw new ConflictError("Scraper is already running");
