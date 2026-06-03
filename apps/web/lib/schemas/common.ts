@@ -145,10 +145,10 @@ const wrapLongitude = (lng: number): number =>
  * return 400 on the initial world view. Instead:
  *
  * - spans ≥ 360° collapse to the full world,
- * - out-of-range longitudes are wrapped into [-180, 180],
- * - viewports that still cross the antimeridian after wrapping fall back to
- *   the full longitude range (a superset of the viewport — over-fetching
- *   beats a 400; the clustering query can't represent west > east),
+ * - out-of-range longitudes are wrapped into [-180, 180]; the result may have
+ *   west > east, which is the established antimeridian-crossing encoding the
+ *   query layer already handles with an OR longitude filter (see
+ *   events-bounds-antimeridian tests),
  * - latitudes are clamped defensively.
  */
 const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, unknown> => {
@@ -164,17 +164,9 @@ const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, 
     return parsed;
   }
 
-  let normWest: number;
-  let normEast: number;
-  if (east - west >= 360) {
-    [normWest, normEast] = [-180, 180];
-  } else {
-    normWest = wrapLongitude(west);
-    normEast = wrapLongitude(east);
-    if (normWest > normEast) {
-      [normWest, normEast] = [-180, 180];
-    }
-  }
+  const spansWholeWorld = east - west >= 360;
+  const normWest = spansWholeWorld ? -180 : wrapLongitude(west);
+  const normEast = spansWholeWorld ? 180 : wrapLongitude(east);
 
   return {
     ...parsed,

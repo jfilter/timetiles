@@ -156,13 +156,19 @@ describe("common schemas", () => {
     });
 
     it("should accept the world-zoom viewport with an unwrapped west instead of rejecting it", () => {
-      // MapLibre getBounds() on the initial world view (observed in prod):
-      // west=-197.41 wraps to +162.59, which crosses the antimeridian relative
-      // to east=72.45 → falls back to the full longitude range (the viewport
-      // really does span the dateline; over-fetching beats the previous 400).
-      const result = BoundsParamSchema.safeParse('{"north":85.05,"south":-82.17,"east":72.45,"west":-197.41}');
+      // MapLibre getBounds() on the initial world view reports unwrapped
+      // longitudes (observed in prod as west=-197.41). The wrapped result has
+      // west > east — the antimeridian-crossing encoding the query layer
+      // resolves with an OR longitude filter.
+      const result = BoundsParamSchema.safeParse('{"north":85.05,"south":-82.17,"east":72.45,"west":-197.5}');
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({ north: 85.05, south: -82.17, east: 180, west: -180 });
+      expect(result.data).toEqual({ north: 85.05, south: -82.17, east: 72.45, west: 162.5 });
+    });
+
+    it("should pass in-range antimeridian-crossing bounds (west > east) through unchanged", () => {
+      const result = BoundsParamSchema.safeParse('{"north":10,"south":-10,"east":-170,"west":170}');
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual({ north: 10, south: -10, east: -170, west: 170 });
     });
 
     it("should keep a legal east=180 edge untouched", () => {
@@ -183,11 +189,12 @@ describe("common schemas", () => {
       expect(result.data).toEqual({ north: 40, south: 30, east: -170, west: -175 });
     });
 
-    it("should fall back to the full longitude range when the viewport crosses the antimeridian", () => {
-      // west=175, east=185 → wraps to west=175, east=-175 (west > east) → full range.
+    it("should wrap an unwrapped dateline crossing into the west > east encoding", () => {
+      // west=175, east=185 → east wraps to -175; west > east is preserved as
+      // the antimeridian-crossing encoding (OR longitude filter downstream).
       const result = BoundsParamSchema.safeParse('{"north":40,"south":30,"east":185,"west":175}');
       expect(result.success).toBe(true);
-      expect(result.data).toEqual({ north: 40, south: 30, east: 180, west: -180 });
+      expect(result.data).toEqual({ north: 40, south: 30, east: -175, west: 175 });
     });
 
     it("should clamp out-of-range latitudes", () => {
