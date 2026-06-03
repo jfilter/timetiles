@@ -53,12 +53,36 @@ jobs:
           name: web-build
           path: apps/web/.next
 
+      - name: Determine Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+        working-directory: apps/web
+
+      - name: Restore Playwright browser cache
+        id: pw-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}
+
+      # On a cache miss Chromium is re-downloaded from cdn.playwright.dev, which
+      # is occasionally slow — hence the generous timeout. On a cache hit the
+      # browser is already present and only the (fast) OS deps are installed.
       - name: Setup Playwright
-        timeout-minutes: 5
+        timeout-minutes: 12
         run: |
           pnpm playwright install chromium --with-deps
           mkdir -p uploads
         working-directory: apps/web
+
+      # Save only after a successful install (never cache a partial download
+      # from a timed-out run) and only when the restore was a miss.
+      - name: Save Playwright browser cache
+        if: success() && steps.pw-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.pw.outputs.version }}
 
       - name: Run E2E tests (parallel workers)
         timeout-minutes: 20
