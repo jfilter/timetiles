@@ -215,6 +215,10 @@ export class ExplorePage {
     await this.page.waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), {
       timeout: 5000,
     });
+
+    // The selection triggers an async events load; wait for it to settle with
+    // results so downstream count/list/marker assertions aren't racy.
+    await this.waitForEventsLoaded();
   }
 
   /**
@@ -529,6 +533,24 @@ export class ExplorePage {
     // Wait for loading indicator to disappear
     // Use longer timeout to handle server resource constraints
     await expect(this.loadingIndicator).not.toBeVisible({ timeout: 10000 });
+  }
+
+  /**
+   * Wait until the events query has settled with results.
+   *
+   * Selecting a catalog kicks off an async pipeline (filter -> debounce -> API
+   * -> render), during which the "Showing N events" count briefly reads 0.
+   * Reading the count/list/markers before it settles makes assertions flaky
+   * under slow CI rendering. Poll the count until it reaches `min` (callers
+   * always select seeded, non-empty catalogs).
+   */
+  async waitForEventsLoaded(min = 1, timeout = 20000): Promise<void> {
+    await expect
+      .poll(async () => this.getEventCount().catch(() => 0), {
+        timeout,
+        message: `events count never settled at >= ${min}`,
+      })
+      .toBeGreaterThanOrEqual(min);
   }
 
   async waitForApiResponse() {
