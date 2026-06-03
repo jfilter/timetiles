@@ -17,6 +17,11 @@ loadEnv({ path: ".env.local" });
 
 const isCI = process.env.CI != null && process.env.CI !== "";
 
+// Chromium launch args. GPU/WebGL flags make MapLibre GL JS render in headless
+// mode. In CI the E2E job runs inside the Playwright container as root, where
+// Chromium refuses to start without --no-sandbox; locally the sandbox stays on.
+const chromiumArgs = ["--use-gl=angle", "--use-angle=swiftshader", ...(isCI ? ["--no-sandbox"] : [])];
+
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -91,7 +96,11 @@ export default defineConfig({
           { name: "setup", testMatch: /auth\.setup\.ts/ },
           {
             name: "chromium",
-            use: { ...devices["Desktop Chrome"], storageState: "test-results/.auth/admin.json" },
+            use: {
+              ...devices["Desktop Chrome"],
+              storageState: "test-results/.auth/admin.json",
+              launchOptions: { args: chromiumArgs },
+            },
             dependencies: ["setup"],
           },
           {
@@ -124,8 +133,7 @@ export default defineConfig({
             use: {
               ...devices["Desktop Chrome"],
               storageState: "test-results/.auth/admin.json",
-              // Enable GPU/WebGL in headless mode for MapLibre GL JS
-              launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader"] },
+              launchOptions: { args: chromiumArgs },
             },
             dependencies: ["setup"],
           },
