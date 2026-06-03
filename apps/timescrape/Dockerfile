@@ -32,8 +32,11 @@ RUN pnpm exec tsup src/index.ts --format esm --dts
 FROM node:24-slim AS deps
 WORKDIR /app
 COPY --from=builder /app/apps/timescrape/package.json ./
-# Remove workspace: refs (devDependencies only), then install prod deps with npm
-RUN grep -v '"workspace:' package.json > pkg.clean.json && mv pkg.clean.json package.json && \
+# Drop devDependencies before installing prod deps with npm. They use pnpm-only
+# `workspace:`/`catalog:` protocols that npm can't parse (EUNSUPPORTEDPROTOCOL),
+# and `--omit=dev` excludes them from the install anyway. Prod dependencies are
+# plain semver and install cleanly. Done via node so the JSON stays valid.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.devDependencies;fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
     npm install --omit=dev
 
 # Stage 5: Production runner
