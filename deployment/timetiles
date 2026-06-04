@@ -962,6 +962,8 @@ EOF
             "docker-compose.prod.yml"
             "init-db.sql"
             "timetiles"
+            "scripts/health-check.sh"
+            "scripts/alert.sh"
         )
 
         for file in "${TRACKED_FILES[@]}"; do
