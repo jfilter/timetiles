@@ -12,6 +12,16 @@ docker-compose.override.yml
 docker-compose.test.yml
 docker-compose.ssl-override.yml
 credentials.txt
+admin-init-password.txt
+
+# The app user's home directory IS the install dir, so shell dotfiles
+# and XDG dirs land in the working tree.
+.bash_logout
+.bash_history
+.bashrc
+.profile
+.config/
+.local/
 
 # Runtime + scraper extract dirs created by bootstrap/CLI.
 .cache/

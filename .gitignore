@@ -26,6 +26,7 @@ deployment/nginx-test/
 deployment/ssl/
 deployment/uploads/
 deployment/credentials.txt
+deployment/admin-init-password.txt
 deployment/docker-compose.test.yml
 deployment/docker-compose.ssl-override.yml
 
