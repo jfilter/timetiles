@@ -988,6 +988,49 @@ EOF
             rm -f "$tmpfile"
         done
 
+        print_section "System references"
+
+        # Persistent system configs (cron, systemd units) reference paths
+        # inside the install dir. A layout migration once deleted a
+        # bootstrap-generated script while /etc/cron.d/timetiles kept
+        # invoking it every 5 minutes (June 2026: cron error mail ->
+        # Pushover spam, and no health checks running). Verify every
+        # absolute path they reference still exists.
+        REF_SOURCES=()
+        [[ -f /etc/cron.d/timetiles ]] && REF_SOURCES+=("/etc/cron.d/timetiles")
+        for unit in /etc/systemd/system/timetiles.service /etc/systemd/system/timescrape-runner.service; do
+            [[ -f "$unit" ]] && REF_SOURCES+=("$unit")
+        done
+
+        if [[ ${#REF_SOURCES[@]} -eq 0 ]]; then
+            print_warn "No cron file or systemd units found to verify"
+        else
+            for src in "${REF_SOURCES[@]}"; do
+                MISSING_REFS=0
+                CHECKED_REFS=0
+                while IFS= read -r ref; do
+                    CHECKED_REFS=$((CHECKED_REFS + 1))
+                    if [[ "$ref" == *.log ]]; then
+                        # Log files are created on first write — only their
+                        # parent directory must exist.
+                        ref_dir=$(dirname "$ref")
+                        if [[ ! -d "$ref_dir" ]]; then
+                            print_fail "$src references $ref but $ref_dir/ is missing"
+                            MISSING_REFS=$((MISSING_REFS + 1))
+                        fi
+                    elif [[ ! -e "$ref" ]]; then
+                        print_fail "$src references missing path: $ref"
+                        MISSING_REFS=$((MISSING_REFS + 1))
+                    fi
+                done < <(grep -hv '^[[:space:]]*#' "$src" 2>/dev/null \
+                    | grep -oE '(^|[ =])/[A-Za-z0-9._/-]+' \
+                    | sed 's/^[ =]//' | sort -u)
+                if [[ $MISSING_REFS -eq 0 ]]; then
+                    print_ok "$src: all $CHECKED_REFS referenced paths exist"
+                fi
+            done
+        fi
+
         print_section "Application"
 
         # Check containers (inline - requires DC_CMD)
