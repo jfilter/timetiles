@@ -14,7 +14,10 @@ runs:
     - uses: actions/setup-node@v6
       with:
         node-version: "24"
-        cache: "pnpm"
+        # Only cache the pnpm store when we actually install: without
+        # `pnpm install` the store path never exists, and the post-step
+        # cache save fails the job on a cache miss.
+        cache: ${{ inputs.install == 'true' && 'pnpm' || '' }}
 
     - if: inputs.install == 'true'
       shell: bash
