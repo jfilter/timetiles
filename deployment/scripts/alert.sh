@@ -56,7 +56,7 @@ if [[ -n "${EMAIL_SMTP_USER:-}" ]] && [[ -n "${EMAIL_SMTP_PASS:-}" ]]; then
     CURL_ARGS+=(--user "$EMAIL_SMTP_USER:$EMAIL_SMTP_PASS")
 fi
 
-curl "${CURL_ARGS[@]}" \
+if curl "${CURL_ARGS[@]}" \
      -T <(cat <<EOF
 From: TimeTiles <$EMAIL_FROM>
 To: $ALERT_EMAIL
@@ -69,8 +69,10 @@ $MESSAGE
 Server: $HOSTNAME
 Time: $TIMESTAMP
 EOF
-) && echo "Alert sent to $ALERT_EMAIL" || {
+); then
+    echo "Alert sent to $ALERT_EMAIL"
+else
     echo "[$(date)] FAILED to send alert: $SUBJECT - $MESSAGE" >> /var/log/timetiles/alerts.log
     echo "Warning: Failed to send alert, logged to /var/log/timetiles/alerts.log"
     exit 1
-}
+fi
