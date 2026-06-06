@@ -206,7 +206,7 @@ async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncG
     // otherwise the waitForDrain() promise leaks if the consumer exits early.
     signalDrain();
     fileStream.destroy();
-    // oxlint-disable-next-line eslint-plugin-promise(prefer-await-to-then) -- fire-and-forget; awaiting would deadlock early-abort flows
+    // oxlint-disable-next-line prefer-await-to-then -- fire-and-forget; awaiting would deadlock early-abort flows
     parsePromise.catch(() => {});
   }
 }
