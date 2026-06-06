@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev --port 3001 --webpack",
-    "build": "next build --webpack",
+    "build": "next build --webpack && pnpm build:search-index",
+    "build:search-index": "pagefind --site out --output-path out/_pagefind && tsx scripts/verify-search-index.ts",
     "start": "next start --port 3001",
     "lint": "oxlint --config ../../.oxlintrc.json . && eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
@@ -31,6 +32,7 @@
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
     "glob": "^13.0.6",
+    "pagefind": "^1.5.2",
     "tsx": "catalog:",
     "typescript": "catalog:"
   }
