@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^20.5.3",
-    "@commitlint/config-conventional": "^20.5.3",
+    "@commitlint/config-conventional": "^21.0.2",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@typescript/native-preview": "beta",
