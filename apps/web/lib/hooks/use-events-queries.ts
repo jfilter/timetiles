@@ -242,7 +242,7 @@ export const eventsQueryKeys = {
     [...eventsQueryKeys.aggregations(), { filters, bounds, groupBy, scope }] as const,
   histogramsFull: () => [...eventsQueryKeys.all, "histogram-full"] as const,
   histogramFull: (filters: FilterState, scope?: ViewScope) =>
-    [...eventsQueryKeys.histogramsFull(), { datasets: filters.datasets, scope }] as const,
+    [...eventsQueryKeys.histogramsFull(), { filters, scope }] as const,
   bounds: () => [...eventsQueryKeys.all, "bounds"] as const,
   boundsFiltered: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.bounds(), { filters, scope }] as const,
