@@ -10,6 +10,7 @@
  */
 
 import { parseCronExpression } from "@/lib/ingest/cron-parser";
+import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { validateExternalHttpUrl } from "@/lib/security/url-validation";
 
 /**
@@ -174,4 +175,46 @@ export const validateScheduleConfig = (
   }
 
   return true;
+};
+
+// ---------------------------------------------------------------------------
+// HTML-in-JSON detail-page regex validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Validate user-supplied regex patterns inside a stored `htmlExtractConfig`.
+ *
+ * `htmlExtractConfig` is an opaque `json` field, so its `detailPage.fields[].pattern`
+ * values are not reached by Payload field-level validation. Those patterns are
+ * compiled and run against fetched detail-page text inside the shared ingest
+ * worker (see `enrichRecordsFromDetailPages`), so a catastrophic-backtracking
+ * shape would block the worker (ReDoS). We reject unsafe patterns at save time
+ * using the same validator the `extract` transform uses at runtime.
+ *
+ * Returns `null` when every pattern is safe, or a user-presentable error string.
+ */
+export const validateHtmlExtractConfig = (htmlExtractConfig: unknown): string | null => {
+  if (htmlExtractConfig == null || typeof htmlExtractConfig !== "object") return null;
+
+  const detailPage = (htmlExtractConfig as { detailPage?: unknown }).detailPage;
+  if (detailPage == null || typeof detailPage !== "object") return null;
+
+  const fields = (detailPage as { fields?: unknown }).fields;
+  if (!Array.isArray(fields)) return null;
+
+  for (const [index, field] of fields.entries()) {
+    if (field == null || typeof field !== "object") continue;
+    const pattern = (field as { pattern?: unknown }).pattern;
+    // Empty/omitted pattern is tolerated — runtime extracts plain text instead.
+    if (pattern == null || pattern === "") continue;
+    if (typeof pattern !== "string") {
+      return `htmlExtractConfig detail-page field ${index + 1}: pattern must be a string`;
+    }
+    const validation = validateExtractPattern(pattern);
+    if (!validation.valid) {
+      return `htmlExtractConfig detail-page field ${index + 1}: ${validation.reason}`;
+    }
+  }
+
+  return null;
 };

@@ -17,6 +17,8 @@ import { logger } from "@/lib/logger";
 import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
+import { validateHtmlExtractConfig } from "./validation";
+
 /**
  * Handle schedule initialization and statistics.
  *
@@ -67,6 +69,15 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
   // Prevent changing createdBy on update - preserve the original value
   if (operation === "update" && originalDoc?.createdBy) {
     data.createdBy = extractRelationId(originalDoc.createdBy);
+  }
+
+  // Reject unsafe user regex patterns in htmlExtractConfig.detailPage at save
+  // time so a ReDoS pattern never reaches the ingest worker (the json field
+  // itself has no per-pattern validation).
+  const advancedOptions = data.advancedOptions as { htmlExtractConfig?: unknown } | undefined;
+  const htmlExtractError = validateHtmlExtractConfig(advancedOptions?.htmlExtractConfig);
+  if (htmlExtractError) {
+    throw new Error(htmlExtractError);
   }
 
   // Handle webhook token generation

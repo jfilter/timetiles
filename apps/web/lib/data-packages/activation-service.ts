@@ -16,6 +16,8 @@ import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
+import type { AuthenticatedRequest } from "@/lib/middleware/auth";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { compareCodeUnits } from "@/lib/utils/compare";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, Dataset, User } from "@/payload-types";
@@ -188,6 +190,13 @@ const buildScheduledIngestData = (
 interface ActivateOptions {
   triggerFirstImport?: boolean;
   parameters?: Record<string, string>;
+  /**
+   * The originating request, carrying the acting `user`. When present (an
+   * interactive user activation), it is threaded into the scheduled-ingest
+   * create so the maxActiveSchedules quota hook fires. Omitted for the
+   * server-side auto-activator, which runs as a trusted system actor.
+   */
+  req?: AuthenticatedRequest;
 }
 
 interface ActivateResult {
@@ -335,7 +344,7 @@ export const activateDataPackage = async (
   user: User,
   options: ActivateOptions = {}
 ): Promise<ActivateResult> => {
-  const { triggerFirstImport = true, parameters = {} } = options;
+  const { triggerFirstImport = true, parameters = {}, req } = options;
 
   // Resolve template parameters if the manifest defines any
   const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
@@ -352,6 +361,15 @@ export const activateDataPackage = async (
 
   if (existing.docs.length > 0) {
     throw new Error(`Data package "${activationKey}" is already activated`);
+  }
+
+  // For interactive user activations (req present) enforce the active-schedules
+  // quota up front, before any catalog/dataset writes, so a quota-exceeded user
+  // gets a clean error and no partial state. The auto-activator (no req) is a
+  // trusted system actor and is intentionally not quota-limited. Mirrors
+  // createScheduledIngest in configure-service.
+  if (req?.user) {
+    await createQuotaService(payload).validateQuota(req.user, "ACTIVE_SCHEDULES", 1);
   }
 
   const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user);
@@ -373,6 +391,10 @@ export const activateDataPackage = async (
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
     data: { ...ingestData, _status: "published" },
     overrideAccess: true,
+    // Threading `req` (with the acting user) makes the maxActiveSchedules quota
+    // hook increment usage for this owner. Without it the hook skips on
+    // `!req.user` and the quota is silently bypassed.
+    req,
   });
 
   logger.info(

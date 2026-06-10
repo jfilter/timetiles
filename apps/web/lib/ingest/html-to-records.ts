@@ -9,6 +9,7 @@
  */
 import * as cheerio from "cheerio";
 
+import { safeExtractMatch } from "@/lib/ingest/safe-regex";
 import { createLogger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 
@@ -150,7 +151,11 @@ const extractDetailField = ($: cheerio.CheerioAPI, field: DetailPageFieldDef): s
   const text = el.text().trim();
 
   if (field.pattern) {
-    const match = new RegExp(field.pattern).exec(text);
+    // Route through safeExtractMatch: the pattern is user-editable (stored on a
+    // scheduled-ingest's htmlExtractConfig), and this runs in the shared ingest
+    // worker. The wrapper rejects catastrophic-backtracking shapes before
+    // compiling so a malicious pattern cannot stall the worker (ReDoS).
+    const match = safeExtractMatch(field.pattern, text);
     return match ? (match[1] ?? match[0]).trim() : "";
   }
 
