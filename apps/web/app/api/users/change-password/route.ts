@@ -53,8 +53,8 @@ export const POST = apiRoute({
 
       // Invalidate every other session so a stolen or older session cannot
       // survive the password change (the current device's session is kept).
-      const cookiePrefix = payload.config.cookiePrefix ?? "payload";
-      const currentToken = req.cookies.get(`${cookiePrefix}-token`)?.value;
+      const cookiePrefix = payload.config?.cookiePrefix ?? "payload";
+      const currentToken = req.cookies?.get(`${cookiePrefix}-token`)?.value;
       await revokeOtherSessions(payload, user, currentToken);
 
       await auditLog(payload, {
