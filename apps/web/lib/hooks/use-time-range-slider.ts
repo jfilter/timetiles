@@ -106,7 +106,9 @@ export const useTimeRangeSlider = ({
   // When bounds are provided, spatially filter the histogram to match the map viewport
   const scope = useViewScope();
   const fullRangeFilters = useMemo(() => ({ ...filters, startDate: null, endDate: null }), [filters]);
-  const unboundedQuery = useFullHistogramQuery(filters, scope);
+  // Only one of these is used (see histogramQuery below); disable the other so
+  // the discarded query does not fire its expensive aggregation.
+  const unboundedQuery = useFullHistogramQuery(filters, scope, bounds == null);
   const boundedQuery = useHistogramQuery(fullRangeFilters, bounds ?? null, bounds != null, scope);
   const histogramQuery = bounds != null ? boundedQuery : unboundedQuery;
   const histogramData = histogramQuery.data;

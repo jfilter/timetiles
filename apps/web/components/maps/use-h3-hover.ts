@@ -126,9 +126,16 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, sc
     if (!map) return;
 
     const onMove = (e: MapMouseEvent) => {
+      // The `event-clusters` layer is not mounted in hexagon/H3 mode. Querying a
+      // missing layer makes MapLibre emit an ErrorEvent on every mousemove, so
+      // bail out (and clear any stale hover) when the layer is absent.
+      if (!map.getLayer("event-clusters")) {
+        handleH3HoverLeaveRef.current();
+        return;
+      }
       const features = map.queryRenderedFeatures(e.point, { layers: ["event-clusters"] });
       if (features.length > 0 && features[0]?.properties?.type === "event-cluster") {
-        handleH3HoverRef.current({ features: features });
+        handleH3HoverRef.current({ features });
       } else {
         handleH3HoverLeaveRef.current();
       }

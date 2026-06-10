@@ -490,12 +490,16 @@ export const buildFullRangeFilters = (filters: FilterState): FilterState => ({
   endDate: null,
 });
 
-export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope) => {
+export const useFullHistogramQuery = (filters: FilterState, scope?: ViewScope, enabled: boolean = true) => {
   const fullRangeFilters = buildFullRangeFilters(filters);
 
   return useQuery({
     queryKey: eventsQueryKeys.histogramFull(fullRangeFilters, scope),
     queryFn: ({ signal }) => fetchHistogram(fullRangeFilters, null, signal, scope),
+    // Caller passes `enabled: false` when the bounded query supersedes this one
+    // (bounds present), so the expensive /temporal aggregation does not fire only
+    // to have its result discarded.
+    enabled,
     ...QUERY_PRESETS.stable,
   });
 };
