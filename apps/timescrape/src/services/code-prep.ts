@@ -14,6 +14,7 @@ import { simpleGit } from "simple-git";
 import { getConfig } from "../config.js";
 import { RunnerError } from "../lib/errors.js";
 import { logger } from "../lib/logger.js";
+import { assertGitTargetIsPublic } from "../lib/ssrf-guard.js";
 import type { RunRequest } from "../types.js";
 
 export const prepareCode = async (request: RunRequest, codeDir: string): Promise<void> => {
@@ -41,6 +42,11 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   const git = simpleGit({ timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT } });
 
   logger.info({ url, branch: branch ?? "default" }, "Cloning repository");
+
+  // Re-resolve the host and reject private/internal targets before cloning.
+  // The web side only validated the hostname pattern, so this closes the
+  // DNS-rebinding window toward internal hosts (defence-in-depth).
+  await assertGitTargetIsPublic(url);
 
   try {
     const cloneArgs = ["--depth", "1", "--single-branch"];

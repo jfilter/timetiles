@@ -67,6 +67,27 @@ const validateGitRepoUrl = (value: string): string | true => {
   return true;
 };
 
+// Characters git forbids in ref names, plus whitespace and `\` — anything outside
+// this safe set is rejected. We do not need git's full ref grammar here, only a
+// conservative allow-list that keeps the value from being mistaken for a flag or
+// containing shell/path metacharacters. Clone runs via execFile (no shell), so
+// this is defence-in-depth, not the primary injection guard.
+const VALID_GIT_BRANCH_RE = /^[A-Za-z0-9._/-]+$/;
+
+const validateGitBranch = (value: string): string | true => {
+  // A leading "-" / "--" would be parsed as a git flag rather than a branch name.
+  if (value.startsWith("-")) {
+    return "Branch name must not start with '-'";
+  }
+  if (value.includes("..")) {
+    return "Branch name must not contain '..'";
+  }
+  if (!VALID_GIT_BRANCH_RE.test(value)) {
+    return "Branch name may only contain letters, digits, '.', '_', '/', and '-'";
+  }
+  return true;
+};
+
 import {
   basicMetadataFields,
   createCommonConfig,
@@ -137,6 +158,12 @@ const ScraperRepos: CollectionConfig = {
       type: "text",
       defaultValue: "main",
       admin: { description: "Branch to clone (default: main)", condition: (data) => data?.sourceType === "git" },
+      validate: (value: unknown) => {
+        // Empty is allowed — the runner falls back to the repository default branch.
+        if (value == null || value === "") return true;
+        if (typeof value !== "string") return "Branch name must be a string";
+        return validateGitBranch(value);
+      },
     },
     // Upload fields
     {
