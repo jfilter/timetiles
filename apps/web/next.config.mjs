@@ -16,6 +16,13 @@ const isProduction = process.env.NODE_ENV === "production";
 const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
   { key: "X-Content-Type-Options", value: "nosniff" },
+  // Clickjacking defense, set at the app level so deployments without the nginx
+  // proxy are still protected. X-Frame-Options covers older browsers; the CSP
+  // frame-ancestors directive is the modern equivalent. A full resource CSP
+  // (script/style/connect-src) is intentionally left to the deployment proxy so
+  // it can be tuned to the configured map tile/style hosts without breaking them.
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=()" },
 ];
