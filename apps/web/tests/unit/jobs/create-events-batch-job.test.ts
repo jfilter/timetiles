@@ -609,6 +609,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         dataset: "dataset-456",
         ingestFile: "file-789",
         sheetIndex: 0,
+        // cleanupPriorAttempt scopes the delete to rows created at/after the job
+        // was created, so the mock job must carry a createdAt.
+        createdAt: "2026-01-01T00:00:00.000Z",
         duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       };

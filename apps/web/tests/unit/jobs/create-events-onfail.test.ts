@@ -85,7 +85,12 @@ describe.sequential("create-events-batch onFail isolation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockPayload = { update: vi.fn().mockResolvedValue({}), findByID: vi.fn(), db: { drizzle: createDrizzleMock() } };
+    mockPayload = {
+      // cleanupPriorAttempt loads the job to scope its delete by createdAt.
+      update: vi.fn().mockResolvedValue({}),
+      findByID: vi.fn().mockResolvedValue({ id: "import-onfail-1", createdAt: "2026-01-01T00:00:00.000Z" }),
+      db: { drizzle: createDrizzleMock() },
+    };
   });
 
   /** Build TaskCallbackArgs for onFail. */

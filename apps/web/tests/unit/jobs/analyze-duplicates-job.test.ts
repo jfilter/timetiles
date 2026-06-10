@@ -245,7 +245,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
+        .mockResolvedValue(mockIngestJob); // Refetch after init + re-read after startStage
 
       // No getFileRowCount call when dedup is enabled — totalRows derived from streaming
 
@@ -334,7 +334,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob);
+        .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       // Because the handler now applies the full transform chain before
@@ -411,7 +411,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob);
+        .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
       mocks.generateUniqueId.mockReturnValueOnce("dataset-456:ext:alpha-123");
@@ -463,7 +463,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
+        .mockResolvedValue(mockIngestJob); // Refetch after init + re-read after startStage
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -524,7 +524,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
+        .mockResolvedValue(mockIngestJob); // Refetch after init + re-read after startStage
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -579,7 +579,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob);
+        .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -717,7 +717,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
+        .mockResolvedValue(mockIngestJob); // Refetch after init + re-read after startStage
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
 
@@ -764,7 +764,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob); // Refetch after initializeStageProgress
+        .mockResolvedValue(mockIngestJob); // Refetch after init + re-read after startStage
 
       // No getFileRowCount call when dedup is enabled
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
@@ -887,7 +887,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob);
+        .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("uid-1");
@@ -923,7 +923,7 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
         .mockResolvedValueOnce(mockIngestJob)
         .mockResolvedValueOnce(mockDataset)
         .mockResolvedValueOnce(mockIngestFile)
-        .mockResolvedValueOnce(mockIngestJob);
+        .mockResolvedValue(mockIngestJob);
 
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([[{ id: "1" }]]));
       mocks.generateUniqueId.mockReturnValueOnce("uid-1");
