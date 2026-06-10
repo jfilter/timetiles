@@ -244,16 +244,15 @@ export class ProgressTrackingService {
       }
     }
 
-    // Calculate processing rate. Raw instantaneous rate (rowsProcessed /
-    // elapsed) is very jumpy across non-uniform stages (e.g. geocoding with
-    // API throttling) — apply an EMA against the previous stored value so
-    // the ETA the frontend shows doesn't spike every batch.
-    const EMA_ALPHA = 0.2;
+    // Processing rate = rows-since-stage-start / elapsed, i.e. the cumulative
+    // average over the stage. Because `rowsProcessed` is cumulative this is
+    // already smooth (it does not spike per batch). An EMA was attempted here
+    // previously but never took effect — the previous-rate term read from the
+    // passed job, whose in-memory `rowsPerSecond` was never carried forward
+    // between calls, so it was always null. Use the plain cumulative rate,
+    // consistent with updateAndCompleteBatch.
     const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
-    const rawRate = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
-    const previousRate = stageData.rowsPerSecond ?? null;
-    const rowsPerSecond =
-      rawRate !== null && previousRate !== null ? EMA_ALPHA * rawRate + (1 - EMA_ALPHA) * previousRate : rawRate;
+    const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
 
     const rowsRemaining = stageData.rowsTotal - rowsProcessed;
     const estimatedSecondsRemaining =

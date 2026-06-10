@@ -33,7 +33,13 @@ export const useClusterState = (clusters: ClusterFeature[]) => {
   const h3Animated = useH3Transition(algorithm === "h3" ? clusters : DEFAULT_CLUSTERS);
   const genericAnimated = useClusterTransition(algorithm !== "h3" ? clusters : DEFAULT_CLUSTERS);
   const animatedClusters = algorithm === "h3" ? h3Animated : genericAnimated;
-  const geojsonData = { type: "FeatureCollection" as const, features: animatedClusters };
+  // Memoize so the GeoJSON object identity is stable while the features are
+  // unchanged — consumers (MapLibre source `data`, downstream memos) otherwise
+  // see a new reference every render.
+  const geojsonData = useMemo(
+    () => ({ type: "FeatureCollection" as const, features: animatedClusters }),
+    [animatedClusters]
+  );
   const maxCount = useMemo(
     () => animatedClusters.reduce((max, f) => Math.max(max, f.properties.count ?? 1), 1),
     [animatedClusters]

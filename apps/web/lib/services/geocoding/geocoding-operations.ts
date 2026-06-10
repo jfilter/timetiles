@@ -15,7 +15,7 @@
  */
 import type { Entry } from "node-geocoder";
 
-import { createLogger, logError, logPerformance } from "@/lib/logger";
+import { createLogger, logPerformance } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
 
 import type { CacheManager } from "./cache-manager";
@@ -108,7 +108,9 @@ export class GeocodingOperations {
       logger.debug("Primary provider failed, trying fallbacks", {
         provider: primary.name,
         error: errorMessage,
-        address,
+        // Addresses are PII; log a correlation hash instead of the raw value
+        // (matches the rest of this service and geocode-batch-job).
+        addressHash: hashForLog(address),
       });
     }
 
@@ -508,14 +510,6 @@ export class GeocodingOperations {
     }
 
     return Math.min(Math.max(confidence, 0), 1);
-  }
-
-  private handleGeocodingError(error: unknown, address: string): never {
-    if (error instanceof GeocodingError) {
-      throw error;
-    }
-    logError(error, "Unexpected geocoding error", { address });
-    throw new GeocodingError("Geocoding failed", "GEOCODING_FAILED", false);
   }
 
   private isResultAcceptable(result: GeocodingResult): boolean {

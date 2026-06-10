@@ -154,6 +154,11 @@ export const useUIStore = create<UIStore>()(
           ...(mode !== "expert"
             ? {
                 clusterDensity: {
+                  // Preserve the user's expert toggles (mergeOverlapping,
+                  // useHexCenter, …); a preset only owns the density target, so
+                  // switching presets must not silently wipe orthogonal display
+                  // preferences.
+                  ...state.ui.clusterDensity,
                   ...CLUSTER_DENSITY_PRESETS[mode],
                   clusterAlgorithm: state.ui.clusterDensity.clusterAlgorithm ?? DEFAULT_CLUSTER_ALGORITHM,
                 },
