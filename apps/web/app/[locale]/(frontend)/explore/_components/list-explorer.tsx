@@ -81,7 +81,8 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   const isDesktop = useMediaQuery(BREAKPOINT_MD);
 
   // Helper functions for filter labels using shared helpers
-  const getDatasetNames = (): string[] => filters.datasets.map((id) => getDatasetName(datasets, id));
+  const getDatasetNames = (): string[] =>
+    filters.datasets.map((id) => getDatasetName(datasets, id, t("unknownDataset")));
   const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate, locale);
   const filterLabels = getFilterLabels(filters, catalogs, datasets, locale);
 

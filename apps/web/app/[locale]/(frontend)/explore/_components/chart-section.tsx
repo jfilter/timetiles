@@ -22,7 +22,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import { X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { parseAsBoolean, parseAsInteger, parseAsString, parseAsStringEnum, useQueryState } from "nuqs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -91,6 +91,8 @@ export const ChartSection = ({
   collapsible = true,
 }: Readonly<ChartSectionProps>) => {
   const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const getChartMeta = useChartMeta();
   const chartTypeLabels = useChartTypeLabels();
   const [selectedChartType, setSelectedChartType] = useQueryState(
@@ -281,7 +283,7 @@ export const ChartSection = ({
                 />
               )}
               <DialogClose asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Close">
+                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={tCommon("close")}>
                   <X className="h-4 w-4" />
                 </Button>
               </DialogClose>
@@ -291,10 +293,10 @@ export const ChartSection = ({
           {chartType === "histogram" && (filters.startDate != null || filters.endDate != null) && (
             <div className="flex items-center justify-between px-6 pt-1 pb-0">
               <span className="text-muted-foreground font-mono text-xs">
-                {filters.startDate ? formatMonthYear(parseISODate(filters.startDate)) : ""}
+                {filters.startDate ? formatMonthYear(parseISODate(filters.startDate), locale) : ""}
               </span>
               <span className="text-muted-foreground font-mono text-xs">
-                {filters.endDate ? formatMonthYear(parseISODate(filters.endDate)) : ""}
+                {filters.endDate ? formatMonthYear(parseISODate(filters.endDate), locale) : ""}
               </span>
             </div>
           )}

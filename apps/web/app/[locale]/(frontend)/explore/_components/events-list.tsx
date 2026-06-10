@@ -29,12 +29,15 @@ import { EventsListSkeleton } from "./events-list-skeleton";
 
 /** Render tag chips from array values in event data, skipping URL-heavy arrays. */
 const TagChips = ({ eventData }: { eventData: Record<string, unknown> }) => {
-  const tags = Object.values(eventData).flatMap((v) => {
+  const allTags = Object.values(eventData).flatMap((v) => {
     if (!Array.isArray(v)) return [];
     const strings = v.filter((t): t is string => typeof t === "string" && t !== "");
     const urlCount = strings.filter((s) => /^https?:\/\//i.test(s)).length;
     return urlCount > strings.length * 0.5 ? [] : strings;
   });
+  // Dedupe so repeated tag values (possible when flattening several array
+  // fields) don't collide on their React key.
+  const tags = [...new Set(allTags)];
   if (tags.length === 0) return null;
   return (
     <div className="mt-2 flex flex-wrap gap-1">
@@ -79,6 +82,7 @@ interface EventItemProps {
 
 const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: EventItemProps) => {
   const locale = useLocale();
+  const t = useTranslations("Explore");
   const eventData = getEventData(event);
   const { title, description: rawDescription } = extractEventFields(eventData);
   const description = rawDescription ?? "";
@@ -113,7 +117,7 @@ const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: Even
         onKeyDown: handleKeyDown,
         role: "button" as const,
         tabIndex: 0,
-        "aria-label": `View details for ${title}`,
+        "aria-label": t("viewDetailsAria", { title }),
       }
     : {};
 

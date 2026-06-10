@@ -28,16 +28,14 @@ export const simplifyBounds = (mapBounds: MapBounds | null): MapBounds | null =>
   return { north: mapBounds.north, south: mapBounds.south, east: mapBounds.east, west: mapBounds.west };
 };
 
-/** Get catalog name by ID */
-export const getCatalogName = (catalogs: DataSourceCatalog[], catalogId: string): string => {
-  const catalog = catalogs.find((c) => String(c.id) === catalogId);
-  return catalog?.name ?? "Unknown Catalog";
-};
-
-/** Get dataset name by ID */
-export const getDatasetName = (datasets: DataSourceDataset[], datasetId: string): string => {
+/** Get dataset name by ID, falling back to a caller-supplied (localized) label. */
+export const getDatasetName = (
+  datasets: DataSourceDataset[],
+  datasetId: string,
+  fallback = "Unknown Dataset"
+): string => {
   const dataset = datasets.find((d) => String(d.id) === datasetId);
-  return dataset?.name ?? "Unknown Dataset";
+  return dataset?.name ?? fallback;
 };
 
 /** Format date range for display -- delegates to shared utility */

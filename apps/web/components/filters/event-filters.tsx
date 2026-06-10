@@ -164,7 +164,7 @@ export const EventFilters = () => {
             filters={filters}
             onStartDateChange={setStartDate}
             onEndDateChange={setEndDate}
-            bounds={mapBounds}
+            bounds={debouncedMapBounds}
           />
 
           {(filters.startDate != null || filters.endDate != null) && (

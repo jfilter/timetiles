@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
@@ -62,6 +62,10 @@ export const TimeRangeSlider = ({
 }: Readonly<TimeRangeSliderProps>) => {
   const t = useTranslations("Explore");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
+  // Localize month/year labels (e.g. German month abbreviations) using the
+  // active locale instead of the runtime default.
+  const monthYear = (ts: string | number): string => formatMonthYear(ts, locale);
 
   const {
     trackRef,
@@ -140,7 +144,7 @@ export const TimeRangeSlider = ({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(startPosition * 100)}
-          aria-valuetext={formatMonthYear(startDate ?? formatISODate(minTimestamp))}
+          aria-valuetext={monthYear(startDate ?? formatISODate(minTimestamp))}
           aria-orientation="horizontal"
         />
 
@@ -156,7 +160,7 @@ export const TimeRangeSlider = ({
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={Math.round(endPosition * 100)}
-          aria-valuetext={formatMonthYear(endDate ?? formatISODate(maxTimestamp))}
+          aria-valuetext={monthYear(endDate ?? formatISODate(maxTimestamp))}
           aria-orientation="horizontal"
         />
       </div>
@@ -180,7 +184,7 @@ export const TimeRangeSlider = ({
                 isBarInRange(bar.date, bar.dateEnd) ? "bg-ring dark:bg-ring/80" : "bg-primary/20 dark:bg-foreground/20"
               }`}
               style={{ height: `${Math.max(4, bar.normalizedHeight * 100)}%` }}
-              title={t("histogramBarTitle", { date: formatMonthYear(bar.date), count: bar.count })}
+              title={t("histogramBarTitle", { date: monthYear(bar.date), count: bar.count })}
             />
           ))}
         </div>
@@ -189,10 +193,10 @@ export const TimeRangeSlider = ({
       {/* Total date range labels */}
       <div className="-mx-2 flex items-center justify-between">
         <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatMonthYear(minTimestamp)}
+          {monthYear(minTimestamp)}
         </span>
         <span className="text-muted-foreground dark:text-foreground/60 font-mono text-xs">
-          {formatMonthYear(maxTimestamp)}
+          {monthYear(maxTimestamp)}
         </span>
       </div>
 
@@ -234,9 +238,9 @@ export const TimeRangeSlider = ({
             className="hover:bg-primary/5 dark:hover:bg-foreground/5 w-full rounded py-1 text-center transition-colors"
           >
             <span className="text-foreground dark:text-foreground font-mono text-xs">
-              {startDate == null ? formatMonthYear(minTimestamp) : formatMonthYear(parseISODate(startDate))}
+              {startDate == null ? monthYear(minTimestamp) : monthYear(parseISODate(startDate))}
               {" → "}
-              {endDate == null ? formatMonthYear(maxTimestamp) : formatMonthYear(parseISODate(endDate))}
+              {endDate == null ? monthYear(maxTimestamp) : monthYear(parseISODate(endDate))}
             </span>
           </button>
         )}

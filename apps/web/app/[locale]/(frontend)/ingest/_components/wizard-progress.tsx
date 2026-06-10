@@ -38,7 +38,10 @@ export const WizardHeader = () => {
   const progressPercent = ((currentIndex + 1) / totalSteps) * 100;
 
   const canGoBack = currentStep > (skipAuthStep ? 2 : 1) && currentStep !== 7;
-  const currentLabel = visibleSteps[currentIndex]?.label ?? "";
+  const currentStepDef = currentIndex >= 0 ? visibleSteps[currentIndex] : undefined;
+  // Step labels are localized via the Ingest namespace (stepLabel1..7); the
+  // English strings in WIZARD_STEPS remain only as a structural fallback.
+  const currentLabel = currentStepDef ? t(`stepLabel${currentStepDef.step}`) : "";
 
   const handleClose = () => {
     if (editMode) {
