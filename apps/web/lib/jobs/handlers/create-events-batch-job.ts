@@ -25,7 +25,13 @@ import type { IngestFile, IngestJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
-import { cleanupSidecarsForJob, createStandardOnFail, loadJobResources, setJobStage } from "../utils/resource-loading";
+import {
+  cleanupSidecarsForJob,
+  createStandardOnFail,
+  loadIngestJob,
+  loadJobResources,
+  setJobStage,
+} from "../utils/resource-loading";
 import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
@@ -180,6 +186,13 @@ export const createEventsBatchJob = {
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS, totalFileRows);
 
+      // Re-read the job AFTER startStage so the in-memory snapshot carries the
+      // persisted CREATE_EVENTS `startedAt`/`in_progress` status. The job from
+      // loadJobResources predates startStage; passing it to the per-batch
+      // progress writers would rewrite the stage back to pending/startedAt=null
+      // every batch, freezing the progress bar and ETA for the whole stage.
+      const progressJob = await loadIngestJob(payload, ingestJobId);
+
       // Check EVENTS_PER_IMPORT quota before processing
       reservedEventQuota = await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
 
@@ -225,7 +238,7 @@ export const createEventsBatchJob = {
         if (batchNumber % PROGRESS_WRITE_INTERVAL === 0) {
           await ProgressTrackingService.updateAndCompleteBatch(
             payload,
-            job,
+            progressJob,
             PROCESSING_STAGE.CREATE_EVENTS,
             totalRowsProcessed,
             batchNumber
@@ -234,7 +247,7 @@ export const createEventsBatchJob = {
       }
 
       // Final progress write for any remaining batches since the last interval
-      await writeFinalProgressIfNeeded(payload, job, batchNumber, totalRowsProcessed);
+      await writeFinalProgressIfNeeded(payload, progressJob, batchNumber, totalRowsProcessed);
 
       // Write all accumulated errors in a single DB operation
       await updateJobErrors(payload, ingestJobId, 0, allErrors);
@@ -256,6 +269,7 @@ export const createEventsBatchJob = {
         totalEventsCreated,
         totalErrors,
         storedErrorCount: allErrors.length,
+        sheetIndex,
       });
 
       cleanupSidecarFiles(filePath, sheetIndex);

@@ -11,7 +11,7 @@
 import { flattenGeoJsonFeature, isGeoJson } from "@/lib/ingest/geojson-to-csv";
 import { extractRecordsFromHtml, type HtmlExtractionConfig } from "@/lib/ingest/html-to-records";
 import { extractRecordsFromJson } from "@/lib/ingest/json-to-csv";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
@@ -84,8 +84,12 @@ export interface PaginatedFetchResult {
 const resolveDynamicDates = (template: string): string =>
   template
     .replace(/\{\{days_ago_(\d+)\}\}/g, (_, days) => {
+      // Use UTC throughout: `toISOString()` below renders in UTC, so the
+      // subtraction must also be UTC-based (`setUTCDate`/`getUTCDate`). Mixing
+      // local-time `setDate` with a UTC render shifted the resolved date by a
+      // day near midnight in non-UTC timezones.
       const d = new Date();
-      d.setDate(d.getDate() - Number(days));
+      d.setUTCDate(d.getUTCDate() - Number(days));
       return d.toISOString().split("T")[0] + "T00:00:00";
     })
     .replace(/\{\{today\}\}/g, new Date().toISOString().split("T")[0] + "T00:00:00");
@@ -198,7 +202,8 @@ const hasMorePages = (
 
 /**
  * Extract records from a single page response, handling HTML-in-JSON, GeoJSON,
- * and standard JSON formats. Returns an empty array if extraction fails.
+ * and standard JSON formats. Throws if extraction fails so the failure surfaces
+ * rather than silently truncating the import.
  */
 const extractPageRecords = (
   json: unknown,
@@ -214,8 +219,13 @@ const extractPageRecords = (
       return features.map((f) => flattenGeoJsonFeature(f as never));
     }
     return extractRecordsFromJson(json, recordsPath).records;
-  } catch {
-    return [];
+  } catch (error) {
+    // Do NOT swallow extraction errors: returning [] here made `hasMorePages`
+    // treat the page as "0 records" and stop pagination, turning a parser error
+    // on page N into a silent, truncated import reported as success. Surface it
+    // so the scheduled-ingest run fails loudly (and is retried) instead.
+    logError(error, "Failed to extract records from paginated response page");
+    throw error;
   }
 };
 

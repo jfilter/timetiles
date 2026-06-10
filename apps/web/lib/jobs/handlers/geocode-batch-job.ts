@@ -466,8 +466,19 @@ export const geocodeBatchJob = {
         failureCount,
       });
 
-      // Review check: geocoding partial failure (>50% failed)
-      const review = await checkGeocodingReview(payload, ingestJobId, ingestFile, successCount, failureCount);
+      // Review check: geocoding partial failure (>50% failed). Pass the sheet
+      // index so a per-sheet approval (perSheet[idx].skipGeocodingCheck, written
+      // by setApprovalSkipFlag when the user approves the review) is actually
+      // read back — otherwise an already-approved geocoding review re-fires on
+      // every retry and the import stalls again.
+      const review = await checkGeocodingReview(
+        payload,
+        ingestJobId,
+        ingestFile,
+        successCount,
+        failureCount,
+        freshJob.sheetIndex
+      );
       if (review.needsReview) {
         return { output: { needsReview: true, geocoded: successCount, failed: failureCount } };
       }

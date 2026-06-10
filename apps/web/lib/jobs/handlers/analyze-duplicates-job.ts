@@ -36,6 +36,7 @@ import {
   cleanupSidecarsForJob,
   createStandardOnFail,
   getDuplicateRatesForReview,
+  loadIngestJob,
   loadJobResources,
 } from "../utils/resource-loading";
 import {
@@ -213,7 +214,6 @@ const performDuplicateAnalysis = async (
   ingestJobId: number | string,
   filePath: string,
   dataset: Dataset,
-  job: IngestJob,
   fileTotalRows: number
 ): Promise<{
   internalDuplicates: DuplicateAnalysisResult["internalDuplicates"];
@@ -223,11 +223,18 @@ const performDuplicateAnalysis = async (
 }> => {
   await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.ANALYZE_DUPLICATES, fileTotalRows);
 
+  // Re-read the job AFTER startStage so the snapshot passed to the per-batch
+  // progress writes carries the persisted startedAt/in_progress status (same fix
+  // as create-events/geocode). The `job` from loadJobResources predates
+  // startStage, so passing it would rewrite the stage back to
+  // pending/startedAt=null every batch — freezing the bar and ETA.
+  const progressJob = await loadIngestJob(payload, ingestJobId);
+
   const { internalDuplicates, uniqueIdMap, totalRows } = await analyzeInternalDuplicates(
     payload,
     filePath,
     dataset,
-    job
+    progressJob
   );
 
   const externalDuplicates = await analyzeExternalDuplicates(payload, dataset, uniqueIdMap);
@@ -370,7 +377,7 @@ export const analyzeDuplicatesJob = {
       await initializeProgressIfNeeded(payload, ingestJobId, job, 0);
 
       // Perform duplicate analysis — totalRows derived from streaming, no pre-scan needed
-      const results = await performDuplicateAnalysis(payload, ingestJobId, filePath, dataset, job, 0);
+      const results = await performDuplicateAnalysis(payload, ingestJobId, filePath, dataset, 0);
 
       // Update job with results
       await updateJobWithDuplicates(payload, ingestJobId, dataset, results);

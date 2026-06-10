@@ -7,7 +7,7 @@
  * @module
  * @category Jobs
  */
-import { eq, inArray } from "@payloadcms/db-postgres/drizzle";
+import { and, eq, gte, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
@@ -222,6 +222,28 @@ export const cleanupPriorAttempt = async (
   const DELETE_CHUNK_SIZE = 5000;
   const db = payload.db.drizzle;
 
+  // Only delete events this job actually CREATED in a prior attempt — never the
+  // pre-existing events it updated in place. Under `duplicateStrategy: "update"`,
+  // `tryUpdateExistingEvent` reassigns an existing event's `ingestJob` to this
+  // job (so the completion count includes updates), which means a bare
+  // `ingestJob = thisJob` delete would wipe real, previously-imported data when
+  // a mid-stream failure triggers a retry. Fresh inserts are stamped with
+  // `createdAt = now` during create-events (several stages after the job row is
+  // created), whereas in-place updates leave `created_at` untouched (Payload
+  // only bumps `updated_at`). So `created_at >= job.createdAt` keeps the updated
+  // originals and removes only this attempt's inserts.
+  const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
+  const jobCreatedAt = typeof job?.createdAt === "string" ? job.createdAt : null;
+  if (!jobCreatedAt) {
+    // createdAt is always set on a persisted job; if it is somehow missing we
+    // cannot safely scope the delete, so skip cleanup rather than risk deleting
+    // updated originals. A duplicate-key error on retry is recoverable; data
+    // loss is not.
+    log.warn("Skipping prior-attempt cleanup: job has no createdAt", { ingestJobId });
+    return;
+  }
+  const ingestJobMatch = and(eq(eventsTable.ingestJob, Number(ingestJobId)), gte(eventsTable.createdAt, jobCreatedAt));
+
   // Gather IDs of events to delete, then remove versions + events in chunks
   let deletedTotal = 0;
   let idsToDelete: number[];
@@ -229,7 +251,7 @@ export const cleanupPriorAttempt = async (
     const rows = await db
       .select({ id: eventsTable.id })
       .from(eventsTable)
-      .where(eq(eventsTable.ingestJob, Number(ingestJobId)))
+      .where(ingestJobMatch)
       .limit(DELETE_CHUNK_SIZE);
     idsToDelete = rows.map((r) => r.id);
 
