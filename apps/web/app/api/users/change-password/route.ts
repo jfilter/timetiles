@@ -10,7 +10,7 @@
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
+import { revokeOtherSessions, verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { logger } from "@/lib/logger";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
@@ -50,6 +50,12 @@ export const POST = apiRoute({
 
       // Update the password
       await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
+
+      // Invalidate every other session so a stolen or older session cannot
+      // survive the password change (the current device's session is kept).
+      const cookiePrefix = payload.config.cookiePrefix ?? "payload";
+      const currentToken = req.cookies.get(`${cookiePrefix}-token`)?.value;
+      await revokeOtherSessions(payload, user, currentToken);
 
       await auditLog(payload, {
         action: AUDIT_ACTIONS.PASSWORD_CHANGED,

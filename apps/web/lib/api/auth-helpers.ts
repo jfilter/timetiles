@@ -131,6 +131,34 @@ const revokeVerificationSession = async (payload: Payload, user: User, token: st
 };
 
 /**
+ * Revoke every session except the one that issued the current request.
+ *
+ * Called after a password change so a stolen or older session cannot outlive the
+ * reset — the whole point of changing a password to lock out an attacker. The
+ * session that made this request (identified by the `sid` in its token) is kept
+ * so the legitimate user stays logged in on this device. If the current session
+ * id cannot be determined we drop ALL sessions (fail closed — the user simply
+ * re-authenticates). Best-effort: the password change has already committed, so
+ * a failure here is logged rather than surfaced.
+ */
+export const revokeOtherSessions = async (
+  payload: Payload,
+  user: User,
+  currentToken: string | undefined
+): Promise<void> => {
+  const currentSid = decodeSessionIdFromToken(currentToken);
+  try {
+    const current = await payload.findByID({ collection: "users", id: user.id, depth: 0, overrideAccess: true });
+    const sessions = current.sessions ?? [];
+    const remaining = currentSid ? sessions.filter((session) => session.id === currentSid) : [];
+    if (remaining.length === sessions.length) return;
+    await payload.update({ collection: "users", id: user.id, data: { sessions: remaining }, overrideAccess: true });
+  } catch (error) {
+    logger.warn({ userId: user.id, error }, "Failed to revoke other sessions after password change");
+  }
+};
+
+/**
  * Verify a user's password by attempting a login.
  * Throws an error with a descriptive message on failure.
  *

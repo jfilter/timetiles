@@ -13,11 +13,12 @@
  * @category Collections
  */
 
-import type { Field, FieldHook } from "payload";
+import type { Field, FieldAccess, FieldHook } from "payload";
 
 import { getEnv } from "@/lib/config/env";
 import { validateCustomHeaders } from "@/lib/ingest/validate-custom-headers";
 import { decryptField, encryptField, isEncrypted } from "@/lib/security/encryption";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 // ---------------------------------------------------------------------------
 // Schema configuration fields
@@ -77,6 +78,28 @@ const decryptAfterRead: FieldHook = ({ value }) => {
 
 const credentialHooks = { beforeChange: [encryptBeforeChange], afterRead: [decryptAfterRead] };
 
+/**
+ * Field-level read guard for decrypted credentials.
+ *
+ * The collection's read access lets privileged users (editors + admins) read
+ * EVERY schedule, and `decryptAfterRead` decrypts these fields for whoever reads
+ * them — so without this guard an editor could read every other user's plaintext
+ * API key / bearer token / password. Restrict the decrypted value to the
+ * schedule owner (`createdBy`) and admins. The ingest pipeline reads via
+ * `asSystem`/`overrideAccess`, which bypasses field-level access, so runtime
+ * credential fetching is unaffected.
+ */
+const canReadCredential: FieldAccess = ({ req: { user }, doc }) => {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  const ownerId = extractRelationId(
+    (doc as { createdBy?: { id: string | number } | string | number } | undefined)?.createdBy
+  );
+  return ownerId != null && String(ownerId) === String(user.id);
+};
+
+const credentialAccess = { read: canReadCredential };
+
 const authFields: Field[] = [
   {
     name: "authConfig",
@@ -103,6 +126,7 @@ const authFields: Field[] = [
           description: "API key to include in request header",
         },
         hooks: credentialHooks,
+        access: credentialAccess,
       },
       {
         name: "apiKeyHeader",
@@ -121,6 +145,7 @@ const authFields: Field[] = [
           description: "Bearer token for Authorization header",
         },
         hooks: credentialHooks,
+        access: credentialAccess,
       },
       {
         name: "tokenUrl",
@@ -152,6 +177,7 @@ const authFields: Field[] = [
           description: "Password for authentication",
         },
         hooks: credentialHooks,
+        access: credentialAccess,
       },
       {
         name: "customHeaders",
