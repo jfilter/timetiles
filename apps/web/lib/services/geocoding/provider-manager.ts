@@ -119,8 +119,12 @@ export class ProviderManager {
       const response = await fetch(url, { ...init, headers });
 
       if (response.status === 429) {
+        // Retry-After may be an HTTP-date (RFC 9110) — parseInt yields NaN
+        // then, which would poison the backoff state (NaN backoffUntil
+        // disables the provider until restart). Only accept finite seconds.
         const retryAfter = response.headers.get("Retry-After");
-        const retryAfterMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : undefined;
+        const retryAfterSecs = retryAfter == null ? Number.NaN : Number.parseInt(retryAfter, 10);
+        const retryAfterMs = Number.isFinite(retryAfterSecs) ? retryAfterSecs * 1000 : undefined;
         throw new GeocodingError("Rate limited", GEOCODING_ERROR_CODES.RATE_LIMITED, true, 429, retryAfterMs);
       }
       if (response.status === 503) {
@@ -154,6 +158,7 @@ export class ProviderManager {
   ): ProviderConfig {
     return {
       name: doc.name ?? doc.type,
+      type: doc.type,
       geocoder,
       priority: doc.priority ?? defaultPriority,
       enabled: doc.enabled ?? false,

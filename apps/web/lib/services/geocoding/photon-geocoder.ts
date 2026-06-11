@@ -85,8 +85,11 @@ const buildPhotonParams = (address: string, config: PhotonConfig): URLSearchPara
 /** Classify a non-OK Photon HTTP response into a typed GeocodingError. */
 const classifyPhotonError = (response: Response): GeocodingError => {
   if (response.status === 429) {
+    // Retry-After may be an HTTP-date — only accept finite seconds (NaN would
+    // poison the rate-limiter backoff and disable the provider until restart).
     const retryAfter = response.headers.get("Retry-After");
-    const retryAfterMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : undefined;
+    const retryAfterSecs = retryAfter == null ? Number.NaN : Number.parseInt(retryAfter, 10);
+    const retryAfterMs = Number.isFinite(retryAfterSecs) ? retryAfterSecs * 1000 : undefined;
     return new GeocodingError(
       `Photon rate limited: ${response.status}`,
       GEOCODING_ERROR_CODES.RATE_LIMITED,

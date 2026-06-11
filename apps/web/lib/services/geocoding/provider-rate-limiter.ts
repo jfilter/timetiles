@@ -111,8 +111,10 @@ export class ProviderRateLimiter {
     const state = this.getOrCreateState(providerName);
     state.consecutiveThrottles++;
 
-    // Use Retry-After if provided, otherwise exponential backoff
-    const backoffMs = retryAfterMs ?? state.currentBackoffMs;
+    // Use Retry-After if provided AND finite, otherwise exponential backoff.
+    // A NaN here would set backoffUntil=NaN and disable the provider forever
+    // (isAvailable's `now >= NaN` is always false).
+    const backoffMs = retryAfterMs != null && Number.isFinite(retryAfterMs) ? retryAfterMs : state.currentBackoffMs;
     state.backoffUntil = Date.now() + backoffMs;
     state.currentBackoffMs = Math.min(state.currentBackoffMs * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
 

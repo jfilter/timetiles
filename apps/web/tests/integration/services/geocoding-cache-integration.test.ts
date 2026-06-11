@@ -82,6 +82,7 @@ describe.sequential("Geocoding Cache Integration", () => {
     const mockProviders = [
       {
         name: "Google Maps Test Provider",
+        type: "google",
         geocoder: { geocode: mockGoogleGeocode } as any,
         priority: 1,
         enabled: true,
@@ -89,6 +90,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       },
       {
         name: "Nominatim",
+        type: "nominatim",
         geocoder: { geocode: mockNominatimGeocode } as any,
         priority: 10,
         enabled: true,
@@ -145,6 +147,7 @@ describe.sequential("Geocoding Cache Integration", () => {
     const mockProviders = [
       {
         name: "Google Maps Test Provider",
+        type: "google",
         geocoder: { geocode: mockGoogleGeocode } as any,
         priority: 1,
         enabled: true,
@@ -152,6 +155,7 @@ describe.sequential("Geocoding Cache Integration", () => {
       },
       {
         name: "Nominatim",
+        type: "nominatim",
         geocoder: { geocode: mockNominatimGeocode } as any,
         priority: 10,
         enabled: true,

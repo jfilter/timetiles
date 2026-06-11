@@ -69,7 +69,11 @@ export const isTransientError = (error: unknown): boolean => {
 };
 
 export interface ProviderConfig {
+  /** User-defined display name (free text, e.g. "Photon (VersaTiles)"). */
   name: string;
+  /** Provider type literal ("google" | "nominatim" | ...) — use this for any
+   *  per-provider behavior (confidence scoring, query format), NEVER `name`. */
+  type: string;
   geocoder: NodeGeocoder.Geocoder;
   priority: number;
   enabled: boolean;

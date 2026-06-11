@@ -195,7 +195,16 @@ export class GeocodingOperations {
       try {
         const result = await this.tryProviderWithRetry(provider, address, bias);
         if (result != null) {
-          return result;
+          // Validate per provider so an unacceptable result (low confidence,
+          // bogus coordinates) falls through to the next provider instead of
+          // failing the whole lookup — matches tryFallbackProviders.
+          if (this.isResultAcceptable(result)) {
+            return result;
+          }
+          logger.debug("Provider result failed validation, trying next provider", {
+            provider: provider.name,
+            addressHash: hashForLog(address),
+          });
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -272,6 +281,14 @@ export class GeocodingOperations {
     return providers[0]!;
   }
 
+  /** Only Nominatim-protocol geocoders accept extra params spread into an
+   *  object query ({ q, countrycodes, viewbox, ... }). Photon/Google/OpenCage
+   *  are string-only — node-geocoder/our wrapper would coerce the object to
+   *  the literal query "[object Object]". */
+  private supportsObjectQuery(provider: ProviderConfig): boolean {
+    return provider.type === "nominatim" || provider.type === "locationiq";
+  }
+
   private async tryProvider(
     provider: ProviderConfig,
     address: string,
@@ -281,7 +298,7 @@ export class GeocodingOperations {
     await rateLimiter.waitForSlot(provider.name);
 
     // Use object form if provider has extra geocode params (bbox, country codes, etc.)
-    const geocodeParams = this.buildGeocodeParams(provider, bias);
+    const geocodeParams = this.supportsObjectQuery(provider) ? this.buildGeocodeParams(provider, bias) : {};
     const query: string | Record<string, string | number> =
       Object.keys(geocodeParams).length > 0 ? { q: address, ...geocodeParams } : address;
 
@@ -289,7 +306,7 @@ export class GeocodingOperations {
     if (this.hasValidResults(results)) {
       const firstResult = results[0];
       if (firstResult) {
-        return this.convertNodeGeocoderResult(firstResult, provider.name);
+        return this.convertNodeGeocoderResult(firstResult, provider);
       }
     }
     return null;
@@ -376,7 +393,7 @@ export class GeocodingOperations {
         if (this.hasValidResults(providerResults)) {
           const firstResult = providerResults[0];
           if (firstResult) {
-            const geocodingResult = this.convertNodeGeocoderResult(firstResult, provider.name);
+            const geocodingResult = this.convertNodeGeocoderResult(firstResult, provider);
             results[provider.name] = { success: true, result: geocodingResult };
           } else {
             results[provider.name] = { success: false, error: "No valid results", latency: 0 };
@@ -418,14 +435,14 @@ export class GeocodingOperations {
     return this.settings?.fallbackEnabled === true;
   }
 
-  private convertNodeGeocoderResult(result: Entry, providerName: string): GeocodingResult {
-    const confidence = this.calculateConfidence(result, providerName);
+  private convertNodeGeocoderResult(result: Entry, provider: Pick<ProviderConfig, "name" | "type">): GeocodingResult {
+    const confidence = this.calculateConfidence(result, provider.type);
 
     return {
       latitude: result.latitude!,
       longitude: result.longitude!,
       confidence,
-      provider: providerName,
+      provider: provider.name,
       normalizedAddress: result.formattedAddress ?? `${result.latitude}, ${result.longitude}`,
       components: {
         streetNumber: result.streetNumber ?? null,
@@ -485,10 +502,13 @@ export class GeocodingOperations {
     return (result.extra as { confidence?: number })?.confidence ?? 0.6;
   }
 
-  private calculateConfidence(result: Entry, providerName: string): number {
+  // Switches on the provider TYPE literal — `name` is the free-text display
+  // name ("Photon (VersaTiles)") and would always fall into the default,
+  // flattening every provider's confidence to 0.7.
+  private calculateConfidence(result: Entry, providerType: string): number {
     let confidence: number;
 
-    switch (providerName) {
+    switch (providerType) {
       case "google":
         confidence = this.calculateGoogleConfidence(result);
         break;

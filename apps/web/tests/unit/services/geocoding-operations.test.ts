@@ -62,6 +62,7 @@ const createProvider = (
 ): ProviderConfig => {
   return {
     name,
+    type: "nominatim",
     geocoder: (geocoder ?? createMockGeocoder()) as unknown as ProviderConfig["geocoder"],
     priority: 1,
     enabled: true,
