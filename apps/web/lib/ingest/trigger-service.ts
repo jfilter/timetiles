@@ -99,11 +99,12 @@ export const triggerScheduledIngest = async (
   } else {
     const claimResult = await payload.db.drizzle
       .update(scheduled_ingests)
-      .set(
-        options.nextRun != null
-          ? { lastStatus: "running", lastRun: currentTime.toISOString(), nextRun: options.nextRun }
-          : { lastStatus: "running", lastRun: currentTime.toISOString() }
-      )
+      .set({
+        lastStatus: "running",
+        lastRun: currentTime.toISOString(),
+        ...(shouldResetRetries ? { currentRetries: 0 } : {}),
+        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
+      })
       .where(
         and(
           eq(scheduled_ingests.id, scheduledIngest.id),
