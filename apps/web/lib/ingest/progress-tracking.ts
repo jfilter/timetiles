@@ -254,7 +254,10 @@ export class ProgressTrackingService {
     const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
     const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
 
-    const rowsRemaining = stageData.rowsTotal - rowsProcessed;
+    // Clamp: stages with an unknown total start at rowsTotal=0 (e.g.
+    // analyze-duplicates streams without a pre-scan), which would otherwise
+    // produce a negative remaining count and a garbage ETA.
+    const rowsRemaining = Math.max(0, stageData.rowsTotal - rowsProcessed);
     const estimatedSecondsRemaining =
       rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
@@ -311,8 +314,9 @@ export class ProgressTrackingService {
     const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
     const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
 
-    // Estimate time remaining
-    const rowsRemaining = stageData.rowsTotal - rowsProcessed;
+    // Estimate time remaining (clamped — rowsTotal may be 0 for stages that
+    // stream without a pre-scan, see updateStageProgress)
+    const rowsRemaining = Math.max(0, stageData.rowsTotal - rowsProcessed);
     const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
     // Merge both updates: progress fields + batch completion fields
@@ -407,11 +411,16 @@ export class ProgressTrackingService {
       throw new Error(`Stage ${stage} not initialized`);
     }
 
+    // Snap rowsProcessed to the total — but never DOWN: stages with an
+    // unknown total carry rowsTotal=0, and snapping would erase the real
+    // count. Backfill rowsTotal from the processed count in that case.
+    const finalRows = Math.max(stageData.rowsTotal, stageData.rowsProcessed);
     stages[stage] = {
       ...stageData,
       status: "completed",
       completedAt: new Date(),
-      rowsProcessed: stageData.rowsTotal,
+      rowsTotal: finalRows,
+      rowsProcessed: finalRows,
       estimatedSecondsRemaining: 0,
     };
 

@@ -32,6 +32,7 @@ import {
   createStandardOnFail,
   getInternalDuplicateSkipSet,
   loadEffectiveDatasetForJob,
+  loadIngestJob,
   loadJobAndFilePath,
   setJobStage,
 } from "../utils/resource-loading";
@@ -257,6 +258,13 @@ export const schemaDetectionJob = {
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
       await ProgressTrackingService.startStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA, totalFileRows);
 
+      // Re-read the job AFTER startStage so the snapshot used by the per-batch
+      // progress writes carries the persisted startedAt/in_progress status
+      // (same fix as analyze-duplicates/create-events/geocode). Passing the
+      // pre-startStage `job` would rewrite the stage back to
+      // pending/startedAt=null on every batch — freezing the bar and ETA.
+      const progressJob = await loadIngestJob(payload, ingestJobId);
+
       // Load dataset and extract active transforms
       const { dataset, transforms } = await loadDatasetAndTransforms(payload, job, logger);
       // Schema detection should only skip *internal* duplicates (same row appearing
@@ -271,7 +279,7 @@ export const schemaDetectionJob = {
       const { batchNumber, totalRowsProcessed, lastSchemaBuilder, emptyRowCount } = await runSchemaDetectionBatches({
         payload,
         ingestJobId,
-        job,
+        job: progressJob,
         filePath,
         dataset,
         duplicateRows,

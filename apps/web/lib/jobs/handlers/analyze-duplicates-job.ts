@@ -159,16 +159,17 @@ const analyzeInternalDuplicates = async (
       );
     }
 
-    // Update progress after each batch
-    await ProgressTrackingService.updateStageProgress(
+    // Update progress after each batch. Must be the merged single-write
+    // variant: a separate completeBatch() call rebuilds the stage from the
+    // same in-memory snapshot and reverts rowsProcessed/rate/ETA to their
+    // pre-loop values on every batch.
+    await ProgressTrackingService.updateAndCompleteBatch(
       payload,
       job,
       PROCESSING_STAGE.ANALYZE_DUPLICATES,
       totalRows,
-      rows.length
+      batchNumber
     );
-
-    await ProgressTrackingService.completeBatch(payload, job, PROCESSING_STAGE.ANALYZE_DUPLICATES, batchNumber);
   }
 
   return { internalDuplicates, uniqueIdMap, totalRows };

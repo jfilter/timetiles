@@ -29,6 +29,7 @@ vi.mock("@/lib/ingest/progress-tracking", () => ({
   ProgressTrackingService: {
     initializeStageProgress: vi.fn().mockResolvedValue(undefined),
     updateStageProgress: vi.fn().mockResolvedValue(undefined),
+    updateAndCompleteBatch: vi.fn().mockResolvedValue(undefined),
     completeBatch: vi.fn().mockResolvedValue(undefined),
     startStage: vi.fn().mockResolvedValue(undefined),
     completeStage: vi.fn().mockResolvedValue(undefined),
