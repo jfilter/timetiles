@@ -77,12 +77,12 @@ const calculateGlobalStats = async (payload: Payload, filters: CanonicalEventFil
       FROM sorted_counts
     )
     SELECT
-      COALESCE(CEIL(p20), 2) as p20,
-      COALESCE(CEIL(p40), 5) as p40,
-      COALESCE(CEIL(p60), 10) as p60,
-      COALESCE(CEIL(p80), 20) as p80,
-      COALESCE(CEIL(p100), 50) as p100,
-      COALESCE(total_clusters, 0) as total_clusters
+      CEIL(p20) as p20,
+      CEIL(p40) as p40,
+      CEIL(p60) as p60,
+      CEIL(p80) as p80,
+      CEIL(p100) as p100,
+      total_clusters
     FROM stats
   `)) as { rows: Array<Record<string, unknown>> };
 
