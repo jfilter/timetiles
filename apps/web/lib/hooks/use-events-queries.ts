@@ -180,12 +180,17 @@ const fetchTemporalClusters = async (
   bounds: BoundsType,
   signal?: AbortSignal,
   scope?: ViewScope,
-  options?: TemporalClusterOptions
+  options?: TemporalClusterOptions,
+  clusterFilter?: ClusterFilter
 ): Promise<TemporalClustersResponse> => {
   const extra: Record<string, string> = {};
   if (options?.individualThreshold != null) extra.individualThreshold = options.individualThreshold.toString();
   if (options?.targetBuckets != null) extra.targetBuckets = options.targetBuckets.toString();
   if (options?.groupBy) extra.groupBy = options.groupBy;
+  if (clusterFilter) {
+    extra.clusterCells = clusterFilter.cells.join(",");
+    extra.h3Resolution = clusterFilter.h3Resolution.toString();
+  }
   const params = buildEventParams(filters, bounds, extra, scope);
 
   logger.debug("Fetching temporal clusters", { filters, bounds, options });
@@ -247,8 +252,13 @@ export const eventsQueryKeys = {
   boundsFiltered: (filters: FilterState, scope?: ViewScope) =>
     [...eventsQueryKeys.bounds(), { filters, scope }] as const,
   temporalClusters: () => [...eventsQueryKeys.all, "temporal-clusters"] as const,
-  temporalCluster: (filters: FilterState, bounds: BoundsType, scope?: ViewScope, options?: TemporalClusterOptions) =>
-    [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope, options }] as const,
+  temporalCluster: (
+    filters: FilterState,
+    bounds: BoundsType,
+    scope?: ViewScope,
+    options?: TemporalClusterOptions,
+    clusterFilter?: ClusterFilter
+  ) => [...eventsQueryKeys.temporalClusters(), { filters, bounds, scope, options, clusterFilter }] as const,
   clusterChildren: () => [...eventsQueryKeys.all, "cluster-children"] as const,
   clusterChild: (
     filters: FilterState,
@@ -455,11 +465,12 @@ export const useTemporalClustersQuery = (
   bounds: BoundsType,
   enabled: boolean = true,
   scope?: ViewScope,
-  options?: TemporalClusterOptions
+  options?: TemporalClusterOptions,
+  clusterFilter?: ClusterFilter
 ): ChartQueryResult<TemporalClustersResponse> => {
   const query = useQuery({
-    queryKey: eventsQueryKeys.temporalCluster(filters, bounds, scope, options),
-    queryFn: ({ signal }) => fetchTemporalClusters(filters, bounds, signal, scope, options),
+    queryKey: eventsQueryKeys.temporalCluster(filters, bounds, scope, options, clusterFilter),
+    queryFn: ({ signal }) => fetchTemporalClusters(filters, bounds, signal, scope, options, clusterFilter),
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.expensive,
 

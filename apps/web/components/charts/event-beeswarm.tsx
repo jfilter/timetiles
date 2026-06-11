@@ -17,6 +17,7 @@ import { Settings2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
+import { parseH3ClusterFilter } from "@/lib/geospatial";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useDatasetEnumFieldsQuery } from "@/lib/hooks/use-dataset-enum-fields";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -25,6 +26,7 @@ import { useTemporalClustersQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import type { TemporalClusterItem } from "@/lib/schemas/events";
+import { useUIStore } from "@/lib/store";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 interface EventBeeswarmProps {
@@ -307,6 +309,10 @@ export const EventBeeswarm = ({
   const t = useTranslations("Explore");
   const { filters } = useFilters();
   const scope = useViewScope();
+  const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
+  // Mirror the map/list/histogram: an active H3 cluster filter must also
+  // constrain this chart, not just the ungrouped views.
+  const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
   const defaults = DEFAULTS[variant];
   const [threshold, setThreshold] = useState<number>(defaults.individualThreshold);
@@ -330,7 +336,8 @@ export const EventBeeswarm = ({
     bounds ?? null,
     true,
     scope,
-    clusterOptions
+    clusterOptions,
+    clusterFilter
   );
 
   const total = data?.metadata.total ?? 0;

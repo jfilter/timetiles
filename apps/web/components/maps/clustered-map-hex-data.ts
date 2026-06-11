@@ -59,7 +59,7 @@ export const buildHoverFetchParams = (
   scope?: ViewScope
 ): URLSearchParams => {
   const params = new URLSearchParams();
-  for (const key of ["catalog", "datasets", "startDate", "endDate", "ff"]) {
+  for (const key of ["catalog", "datasets", "startDate", "endDate", "ff", "rf"]) {
     const val = pageParams.get(key);
     if (val) params.set(key, val);
   }

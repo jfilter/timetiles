@@ -13,8 +13,9 @@ import { buildHoverFetchParams, resolveParentCells } from "@/components/maps/clu
 
 describe("buildHoverFetchParams", () => {
   it("copies supported filter params and hover metadata", () => {
+    const rf = JSON.stringify({ score: { min: 1, max: 10 } });
     const pageParams = new URLSearchParams(
-      "catalog=7&datasets=10,11&startDate=2024-01-01&endDate=2024-12-31&ff=preview&ignored=value"
+      `catalog=7&datasets=10,11&startDate=2024-01-01&endDate=2024-12-31&ff=preview&rf=${encodeURIComponent(rf)}&ignored=value`
     );
     const parentCells = ["8928308280fffff", "8928308280bffff"];
     const bounds = { getNorth: () => 52.5, getSouth: () => 52.1, getEast: () => 13.7, getWest: () => 13.2 };
@@ -27,6 +28,7 @@ describe("buildHoverFetchParams", () => {
     expect(params.get("startDate")).toBe("2024-01-01");
     expect(params.get("endDate")).toBe("2024-12-31");
     expect(params.get("ff")).toBe("preview");
+    expect(params.get("rf")).toBe(rf);
     expect(params.get("scopeCatalogs")).toBe("3,4");
     expect(params.get("scopeDatasets")).toBe("21,22");
     expect(params.has("ignored")).toBe(false);

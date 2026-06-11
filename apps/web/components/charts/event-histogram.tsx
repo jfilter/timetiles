@@ -117,7 +117,8 @@ export const EventHistogram = ({
     boundsOrNull,
     isGrouped,
     scope,
-    isGrouped ? { individualThreshold: 0, targetBuckets: 40, groupBy } : undefined
+    isGrouped ? { individualThreshold: 0, targetBuckets: 40, groupBy } : undefined,
+    clusterFilter
   );
 
   const histogram = histogramQuery.data?.histogram ?? EMPTY_ARRAY;
