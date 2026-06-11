@@ -141,10 +141,14 @@ export const formatLongDate = (
 
 /**
  * Format a timestamp to a month-year string (e.g., "Jan 2024").
+ *
+ * Formats in UTC: callers pass UTC histogram bucket timestamps or parsed
+ * date-only filter strings (UTC midnight), which would shift to the previous
+ * month for users west of UTC if formatted in the local zone.
  */
 export const formatMonthYear = (timestamp: string | number, locale?: string): string => {
   const date = new Date(timestamp);
-  return date.toLocaleDateString(locale, { month: "short", year: "numeric" });
+  return date.toLocaleDateString(locale, { month: "short", year: "numeric", timeZone: "UTC" });
 };
 
 /**
@@ -214,7 +218,9 @@ export const formatDateRangeLabel = (
     return undefined;
   }
 
-  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
+  // Filter dates are UTC calendar days ("YYYY-MM-DD" → UTC midnight); format
+  // in UTC so users west of UTC don't see the previous day in the label.
+  const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
   const start = hasStartDate ? new Date(startDate) : null;
   const end = hasEndDate ? new Date(endDate) : null;
 
