@@ -88,7 +88,8 @@ const calculateGlobalStats = async (payload: Payload, filters: CanonicalEventFil
 
   const row = result.rows[0];
 
-  if (!row || row.total_clusters === 0) {
+  // COUNT(*) is a bigint, which node-postgres returns as a string — compare numerically.
+  if (!row || Number(row.total_clusters) === 0) {
     logger.debug("No clusters found, returning default stats");
     return DEFAULT_CLUSTER_STATS;
   }
