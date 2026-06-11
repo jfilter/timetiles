@@ -75,8 +75,13 @@ export const loginRequest = async (input: LoginInput): Promise<LoginResponse> =>
     return await postJson<LoginResponse>("/api/auth/login", input);
   } catch (error) {
     if (error instanceof HttpError) {
-      const body = error.body as LoginResponse | undefined;
-      throw new Error(body?.errors?.[0]?.message ?? body?.message ?? "Invalid email or password");
+      // The wrapper route serializes errors as { error } (already extracted
+      // into error.message by fetchJson) — NOT Payload's legacy { errors: [] }
+      // shape. Keep the server's message so "verify your email", "account
+      // locked", and "too many requests" aren't flattened into a wrong
+      // "invalid password" hint.
+      const body = error.body as { error?: string } | undefined;
+      throw new Error(body?.error ?? error.message ?? "Invalid email or password");
     }
     throw error;
   }
@@ -102,18 +107,17 @@ export const registerRequest = async (input: RegisterInput): Promise<RegisterRes
 /**
  * Request a password-reset email via `/api/auth/forgot-password`.
  *
- * Always succeeds from the caller's perspective to prevent email enumeration.
+ * Anti-enumeration lives SERVER-side (the route returns identical success for
+ * existing and unknown emails, with a timing pad) — so transport failures
+ * (429 rate limit, validation, 5xx) must propagate. Swallowing them showed a
+ * false "email sent" success for a request that never went through.
  */
 export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise<void> => {
-  try {
-    await fetchJson<void>("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-  } catch {
-    // Intentionally swallow — prevent email enumeration
-  }
+  await fetchJson<void>("/api/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 };
 
 /**
