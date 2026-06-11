@@ -191,6 +191,20 @@ describe.sequential("beforeChangeHooks", () => {
         expect.objectContaining({ approved: true, approvedBy: 42, approvedAt: expect.any(String) })
       );
     });
+
+    it("should stamp approval metadata when the patch omits stage (approve route payload)", async () => {
+      // The /api/ingest-jobs/[id]/approve route PATCHes only schemaValidation —
+      // the stage must be resolved from originalDoc, not the partial data.
+      const data = { schemaValidation: { approved: true } } as { stage?: string; schemaValidation: object };
+      const originalDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
+      const req = { user: { id: 42, role: "user" } };
+
+      await hook({ data, operation: "update", req, originalDoc, collection: {} as never, context: {} as never } as any);
+
+      expect(data.schemaValidation).toEqual(
+        expect.objectContaining({ approved: true, approvedBy: 42, approvedAt: expect.any(String) })
+      );
+    });
   });
 
   describe("validateCreateOwnership", () => {

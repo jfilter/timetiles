@@ -78,7 +78,10 @@ const handleSchemaApproval = (
   req: PayloadRequest,
   originalDoc?: IngestJob
 ): void => {
-  if (isSchemaApproval(operation, data, data, originalDoc) && data.schemaValidation) {
+  // Updates are partial PATCHes: the approve route only sends `schemaValidation`,
+  // so fall back to the stored stage when the patch doesn't include one.
+  const stageSource = { stage: data.stage ?? originalDoc?.stage };
+  if (isSchemaApproval(operation, stageSource, data, originalDoc) && data.schemaValidation) {
     if (!req.user) {
       throw new Error("Authentication required to approve schema changes");
     }
