@@ -41,7 +41,10 @@ export const MapPreferencesControl = () => {
 
   const handleLocaleChange = useCallback(
     (newLocale: Locale) => {
-      router.replace(pathname, { locale: newLocale });
+      // Keep the query string (filters, selected event, map position live in
+      // nuqs URL state) — `usePathname` strips it, so read it at click time.
+      const { search, hash } = globalThis.location;
+      router.replace(`${pathname}${search}${hash}`, { locale: newLocale });
     },
     [router, pathname]
   );

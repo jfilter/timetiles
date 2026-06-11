@@ -24,7 +24,10 @@ export const LocaleSwitcher = () => {
   const nextLocale = SUPPORTED_LOCALES.find((l) => l !== locale) ?? SUPPORTED_LOCALES[0];
 
   const handleSwitch = useCallback(() => {
-    router.replace(pathname, { locale: nextLocale });
+    // Keep the query string (filters, selected event, map position live in
+    // nuqs URL state) — `usePathname` strips it, so read it at click time.
+    const { search, hash } = globalThis.location;
+    router.replace(`${pathname}${search}${hash}`, { locale: nextLocale });
   }, [router, pathname, nextLocale]);
 
   return (

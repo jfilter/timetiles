@@ -59,4 +59,30 @@ describe("LocaleSwitcher", () => {
 
     expect(mockReplace).toHaveBeenCalledWith("/explore", { locale: "de" });
   });
+
+  it("preserves the current query string when switching locale", () => {
+    const mockReplace = vi.fn();
+    vi.mocked(useLocale).mockReturnValue("en");
+    vi.mocked(usePathname).mockReturnValue("/explore");
+    vi.mocked(useRouter).mockReturnValue({
+      push: vi.fn(),
+      replace: mockReplace,
+      back: vi.fn(),
+      forward: vi.fn(),
+      refresh: vi.fn(),
+      prefetch: vi.fn(),
+    });
+
+    // Filters, selected event, and map position live in the URL (nuqs);
+    // switching language must not wipe them.
+    window.history.replaceState({}, "", "/explore?datasets=10&event=42");
+
+    const { container } = renderWithProviders(<LocaleSwitcher />);
+    const button = container.querySelector<HTMLButtonElement>('button[aria-label="Switch to German"]')!;
+    fireEvent.click(button);
+
+    expect(mockReplace).toHaveBeenCalledWith("/explore?datasets=10&event=42", { locale: "de" });
+
+    window.history.replaceState({}, "", "/");
+  });
 });
