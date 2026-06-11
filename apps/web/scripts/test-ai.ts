@@ -183,13 +183,14 @@ try {
     `${status} ${results.numPassedTests} passed, ${results.numFailedTests} failed${skippedStr}${durationStr}`
   );
 
+  // A suite can fail without any individual test failing (compile error, bad
+  // import, collection error) — numFailedTests stays 0 in that case, so the
+  // suite status must be checked independently.
+  const failedSuites = results.testResults.filter((suite) => suite.status === "failed");
+
   // List failed test files if any
-  if (results.numFailedTests > 0) {
-    const failedFiles = results.testResults
-      .filter((suite) => suite.status === "failed")
-      .map((suite) => suite.name)
-      .join(", ");
-    console.log(`Failed: ${failedFiles}`);
+  if (results.numFailedTests > 0 || failedSuites.length > 0) {
+    console.log(`Failed: ${failedSuites.map((suite) => suite.name).join(", ")}`);
   }
 
   // JSON location
@@ -205,10 +206,12 @@ try {
   }
 
   // Exit with appropriate code.
-  // Use numFailedTests instead of `success` flag — vitest may mark success:false
-  // due to worker segfaults during teardown (node-postgres pool cleanup) even
-  // when all tests pass. The test count is the source of truth.
-  const hasFailed = results.numFailedTests > 0;
+  // Use numFailedTests + failed suites instead of the `success` flag — vitest
+  // may mark success:false due to worker segfaults during teardown
+  // (node-postgres pool cleanup) even when all tests pass. In that case all
+  // suites report "passed", so the suite check keeps the workaround intact
+  // while still failing on suites that never loaded.
+  const hasFailed = results.numFailedTests > 0 || failedSuites.length > 0;
   process.exit(hasFailed ? 1 : 0);
 } catch {
   // JSON wasn't written — vitest worker likely segfaulted during teardown.
