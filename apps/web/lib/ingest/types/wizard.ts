@@ -142,6 +142,8 @@ export interface JsonApiScheduleConfig {
     bodyTemplate?: string;
     /** Body template used only on the first successful run. Falls back to bodyTemplate if absent. */
     initialBodyTemplate?: string;
+    /** JSON path to the total page count in the response. */
+    maxPagesPath?: string;
   };
 }
 

@@ -30,6 +30,10 @@ const mapJsonApiConfig = (opts: ScheduledIngest["advancedOptions"]): JsonApiConf
   const cfg = opts?.jsonApiConfig;
   if (!cfg) return null;
   const p = cfg.pagination;
+  // Carry EVERY pagination field through: the update route replaces the
+  // stored config wholesale, so any field dropped here (cursor/POST-body
+  // settings configured via the dashboard) would be silently destroyed by
+  // saving the schedule through the wizard.
   return {
     recordsPath: cfg.recordsPath ?? undefined,
     pagination: p?.enabled
@@ -39,9 +43,15 @@ const mapJsonApiConfig = (opts: ScheduledIngest["advancedOptions"]): JsonApiConf
           pageParam: p.pageParam ?? undefined,
           limitParam: p.limitParam ?? undefined,
           limitValue: p.limitValue ?? undefined,
+          cursorParam: p.cursorParam ?? undefined,
           maxPages: p.maxPages ?? undefined,
+          maxRecords: p.maxRecords ?? undefined,
+          maxPagesPath: p.maxPagesPath ?? undefined,
           totalPath: p.totalPath ?? undefined,
           nextCursorPath: p.nextCursorPath ?? undefined,
+          method: p.method ?? undefined,
+          bodyTemplate: p.bodyTemplate ?? undefined,
+          initialBodyTemplate: p.initialBodyTemplate ?? undefined,
         }
       : undefined,
   };
