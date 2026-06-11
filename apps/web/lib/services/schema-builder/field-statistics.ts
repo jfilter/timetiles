@@ -291,7 +291,7 @@ export const mergeFieldStats = (existing: FieldStatistics, incoming: FieldStatis
   merged.enumValues = mergeEnumValues(existing.enumValues, incoming.enumValues, merged.occurrences);
 
   // Merge per-value frequencies (see trackUniqueSamples)
-  if (existing.valueCounts || incoming.valueCounts) {
+  if (existing.valueCounts ?? incoming.valueCounts) {
     const valueCounts: Record<string, number> = { ...existing.valueCounts };
     for (const [key, count] of Object.entries(incoming.valueCounts ?? {})) {
       valueCounts[key] = (valueCounts[key] ?? 0) + count;

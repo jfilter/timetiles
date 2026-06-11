@@ -116,9 +116,7 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
   const eventCount =
-    mapStats != null && mapStats.totalEvents != null
-      ? formatEventCount(mapStats.visibleEvents, mapStats.totalEvents, locale)
-      : null;
+    mapStats?.totalEvents != null ? formatEventCount(mapStats.visibleEvents, mapStats.totalEvents, locale) : null;
 
   return (
     <div className="-mx-8 flex flex-1 items-center">

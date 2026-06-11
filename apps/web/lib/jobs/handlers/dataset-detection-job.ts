@@ -180,6 +180,30 @@ const handleMultipleSheets = async (
   return createdJobs;
 };
 
+/** Dispatch job creation: one job per detected sheet (single or multi). */
+const createJobsForSheets = async (
+  payload: Payload,
+  ingestFile: { id: string | number; originalName?: string | null; metadata?: unknown },
+  sheets: SheetInfo[],
+  catalogId: string | number | undefined,
+  options: {
+    datasetMapping?: { mappingType: string; singleDataset?: unknown; sheetMappings?: unknown[] };
+    userId?: number;
+  }
+) =>
+  sheets.length === 1
+    ? [
+        await handleSingleSheet(
+          payload,
+          ingestFile,
+          sheets[0]?.index ?? 0,
+          catalogId,
+          options.datasetMapping,
+          options.userId
+        ),
+      ]
+    : handleMultipleSheets(payload, ingestFile, sheets, catalogId, options.datasetMapping, options.userId);
+
 const processSheetWithMapping = async (
   payload: Payload,
   ingestFile: { id: string | number },
@@ -356,19 +380,10 @@ export const datasetDetectionJob = {
       // Extract userId from import file for setting createdBy on auto-created catalogs/datasets
       const userId = extractRelationId(ingestFile.user) as number;
 
-      const createdJobs =
-        sheets.length === 1
-          ? [
-              await handleSingleSheet(
-                payload,
-                ingestFile,
-                sheets[0]?.index ?? 0,
-                resolvedCatalogId,
-                datasetMapping,
-                userId
-              ),
-            ]
-          : await handleMultipleSheets(payload, ingestFile, sheets, resolvedCatalogId, datasetMapping, userId);
+      const createdJobs = await createJobsForSheets(payload, ingestFile, sheets, resolvedCatalogId, {
+        datasetMapping,
+        userId,
+      });
 
       logger.info("[dataset-detection] created import jobs", {
         ingestFileId,

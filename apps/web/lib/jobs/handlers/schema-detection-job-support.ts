@@ -20,8 +20,8 @@ import type { SchemaDetectionService } from "@/lib/services/schema-detection/ser
 import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { checkDateOrder } from "@/lib/services/schema-detection/utilities/date-order";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
-import { buildEnumValuesFromStats } from "@/lib/services/schema-detection/utilities/geo";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
+import { buildEnumValuesFromStats } from "@/lib/services/schema-detection/utilities/geo";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import { asSystem } from "@/lib/services/system-payload";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
