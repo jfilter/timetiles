@@ -97,7 +97,9 @@ export const parseDMSFormat = (str: string): number | null => {
     return applyDirectionToValue(absoluteValue, direction);
   }
 
-  return degrees < 0 ? -absoluteValue : absoluteValue;
+  // Check the matched string for the sign: `-0°…` parses to -0, and `-0 < 0`
+  // is false, which would silently flip the hemisphere.
+  return dmsMatch[1].startsWith("-") ? -absoluteValue : absoluteValue;
 };
 
 /**
@@ -131,7 +133,8 @@ export const parseDegreesMinutesFormat = (str: string): number | null => {
     return applyDirectionToValue(absoluteValue, direction);
   }
 
-  return degrees < 0 ? -absoluteValue : absoluteValue;
+  // Sign from the matched string, not the parsed number — see parseDMSFormat.
+  return dmMatch[1].startsWith("-") ? -absoluteValue : absoluteValue;
 };
 
 /**

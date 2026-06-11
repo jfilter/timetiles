@@ -94,6 +94,13 @@ describe("Coordinate Parser Utilities", () => {
       expect(result).toBeCloseTo(-40.446111, 5);
     });
 
+    it("should keep the sign for negative zero degrees (-0°…)", () => {
+      // Number.parseFloat("-0") is -0 and `-0 < 0` is false — the sign must
+      // come from the matched string or the hemisphere silently flips.
+      const result = parseDMSFormat("-0°26'46\"");
+      expect(result).toBeCloseTo(-0.446111, 5);
+    });
+
     it("should return null for invalid format", () => {
       expect(parseDMSFormat("invalid")).toBeNull();
       expect(parseDMSFormat("40-26-46")).toBeNull();
@@ -171,6 +178,11 @@ describe("Coordinate Parser Utilities", () => {
     it("should parse degrees and decimal minutes with west direction", () => {
       const result = parseDegreesMinutesFormat("74°0.36'W");
       expect(result).toBeCloseTo(-74.006, 5);
+    });
+
+    it("should keep the sign for negative zero degrees (-0°…)", () => {
+      const result = parseDegreesMinutesFormat("-0°7.65'");
+      expect(result).toBeCloseTo(-0.1275, 5);
     });
   });
 
