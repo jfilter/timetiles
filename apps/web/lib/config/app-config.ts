@@ -5,8 +5,9 @@
  * and cache configuration. Falls back to hardcoded defaults when the YAML
  * file is absent — existing deployments work unchanged.
  *
- * Resolution order for batch sizes: env var > YAML > default.
- * Resolution order for everything else: YAML > default.
+ * Resolution order for all settings: YAML > default. There are no env-var
+ * overrides for individual settings (env vars cover secrets/infrastructure
+ * via getEnv(), not tunables).
  *
  * @module
  * @category Config
