@@ -22,7 +22,15 @@ export const usersFields: Field[] = [
     access: { update: ({ req: { user } }) => user?.role === "admin" },
     admin: { position: "sidebar" },
   },
-  { name: "isActive", type: "checkbox", defaultValue: true, admin: { position: "sidebar" } },
+  {
+    name: "isActive",
+    type: "checkbox",
+    defaultValue: true,
+    // Deactivation is an admin action; without this, users could PATCH their
+    // own isActive (it's the only sensitive user field, see role/trustLevel).
+    access: { update: ({ req: { user } }) => user?.role === "admin" },
+    admin: { position: "sidebar" },
+  },
   {
     name: "lastLoginAt",
     type: "date",

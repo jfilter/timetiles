@@ -21,7 +21,13 @@ import { getBaseUrl } from "@/lib/utils/base-url";
 
 import { createCommonConfig } from "../shared-fields";
 import { usersFields } from "./fields";
-import { usersAfterChangeHook, usersAfterErrorHook, usersAfterLoginHook, usersBeforeChangeHook } from "./hooks";
+import {
+  usersAfterChangeHook,
+  usersAfterErrorHook,
+  usersAfterLoginHook,
+  usersBeforeChangeHook,
+  usersBeforeLoginHook,
+} from "./hooks";
 
 const Users: CollectionConfig = {
   slug: "users",
@@ -117,6 +123,7 @@ const Users: CollectionConfig = {
   },
   fields: usersFields,
   hooks: {
+    beforeLogin: usersBeforeLoginHook,
     beforeChange: usersBeforeChangeHook,
     // Note: User-usage records are created lazily via QuotaService.getOrCreateUsageRecord()
     // on first quota check. This avoids FK constraint issues that occur when trying to

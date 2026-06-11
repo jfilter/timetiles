@@ -8,9 +8,10 @@ import type {
   CollectionAfterErrorHook,
   CollectionAfterLoginHook,
   CollectionBeforeChangeHook,
+  CollectionBeforeLoginHook,
   PayloadRequest,
 } from "payload";
-import { AuthenticationError } from "payload";
+import { APIError, AuthenticationError } from "payload";
 
 import { DEFAULT_QUOTAS, normalizeTrustLevel, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { validatePassword } from "@/lib/security/password-policy";
@@ -98,15 +99,31 @@ export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
     }
 
     // SECURITY: Stamp a 24h expiry whenever a verification token is set.
-    // Covers new-user creation (Payload auto-generates `_verificationToken`)
-    // and re-send-verification flows that explicitly rotate the token.
-    // The companion check lives in /api/users/verify/[token].
+    // On create, Payload generates `_verificationToken` AFTER collection
+    // beforeChange hooks run (it is never visible in `data` here), so stamp
+    // unconditionally — the token is always generated when `auth.verify` is on.
+    // On update, stamp only when a flow explicitly rotates the token (e.g.
+    // change-email). The companion check lives in /api/users/verify/[token].
     const dataWithToken = data;
-    if (typeof dataWithToken._verificationToken === "string" && dataWithToken._verificationToken.length > 0) {
+    const rotatesToken =
+      typeof dataWithToken._verificationToken === "string" && dataWithToken._verificationToken.length > 0;
+    if (operation === "create" || rotatesToken) {
       dataWithToken._verificationTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     }
 
     return data;
+  },
+];
+
+export const usersBeforeLoginHook: CollectionBeforeLoginHook[] = [
+  ({ user }) => {
+    // Enforce account deactivation. `isActive: false` is set by admins and by
+    // the account-deletion flow ("Cannot login") — without this hook nothing
+    // actually blocks the login.
+    if (user.isActive === false) {
+      throw new APIError("This account has been deactivated.", 403);
+    }
+    return user;
   },
 ];
 
