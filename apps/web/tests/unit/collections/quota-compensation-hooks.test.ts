@@ -21,7 +21,7 @@ import {
   catalogAfterErrorHook,
   catalogBeforeChangeHooks,
 } from "@/lib/collections/catalogs/hooks";
-import { eventsAfterErrorHook, eventsBeforeChangeHook } from "@/lib/collections/events/hooks";
+import { eventsAfterChangeHook, eventsAfterErrorHook, eventsBeforeChangeHook } from "@/lib/collections/events/hooks";
 import { beforeValidateHooks as ingestFileBeforeValidateHooks } from "@/lib/collections/ingest-files/hooks";
 import ScraperRepos from "@/lib/collections/scraper-repos";
 
@@ -96,6 +96,16 @@ describe.sequential("quota compensation hooks", () => {
     await eventsAfterErrorHook({ req } as never);
 
     expect(quotaMocks.decrementUsage).toHaveBeenCalledWith(12, "TOTAL_EVENTS", 1, req);
+  });
+
+  it("does not compensate event quota after a successful create (claim cleared)", async () => {
+    const req = createReq(14);
+
+    await eventsBeforeChangeHook({ data: {}, operation: "create", req } as never);
+    eventsAfterChangeHook({ doc: { id: 1 }, operation: "create", req } as never);
+    await eventsAfterErrorHook({ req } as never);
+
+    expect(quotaMocks.decrementUsage).not.toHaveBeenCalled();
   });
 
   it("compensates scraper repo quota when create fails after the quota claim", async () => {

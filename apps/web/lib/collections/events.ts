@@ -23,7 +23,7 @@ import type { CollectionConfig, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 
-import { eventsAfterErrorHook, eventsBeforeChangeHook } from "./events/hooks";
+import { eventsAfterChangeHook, eventsAfterErrorHook, eventsBeforeChangeHook } from "./events/hooks";
 import { createCommonConfig, isEditorOrAdmin, isPrivileged } from "./shared-fields";
 
 const Events: CollectionConfig = {
@@ -302,9 +302,11 @@ const Events: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [eventsBeforeChangeHook],
+    // afterChange only clears the request-local quota claim — dataset-stats
+    // afterChange/afterDelete hooks were removed for performance (stats are
+    // computed on-demand or via scheduled job).
+    afterChange: [eventsAfterChangeHook],
     afterError: [eventsAfterErrorHook],
-    // Note: afterChange and afterDelete hooks for dataset stats were removed
-    // for performance. Stats are computed on-demand or via scheduled job.
   },
   indexes: [
     { fields: ["dataset", "eventTimestamp"] },

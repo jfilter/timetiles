@@ -8,7 +8,12 @@
  * @module
  * @category Collections
  */
-import type { CollectionAfterErrorHook, CollectionBeforeChangeHook, PayloadRequest } from "payload";
+import type {
+  CollectionAfterChangeHook,
+  CollectionAfterErrorHook,
+  CollectionBeforeChangeHook,
+  PayloadRequest,
+} from "payload";
 
 import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import { logError } from "@/lib/logger";
@@ -25,6 +30,10 @@ const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
   const quotaService = createQuotaService(req.payload);
   await quotaService.checkAndIncrementUsage(req.user, "TOTAL_EVENTS", 1, req);
   (req as EventQuotaRequest).eventQuotaClaimedForUser = req.user.id;
+};
+
+const clearEventQuotaClaim = (req: PayloadRequest): void => {
+  (req as EventQuotaRequest).eventQuotaClaimedForUser = undefined;
 };
 
 const compensateEventQuotaOnError = async (req: PayloadRequest): Promise<void> => {
@@ -71,6 +80,18 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   }
 
   return data;
+};
+
+/**
+ * Clear the quota claim once the create succeeded, mirroring catalogs and
+ * scraper-repos. Without this, a later unrelated error on the same request
+ * would wrongly decrement TOTAL_EVENTS via the afterError compensation.
+ */
+export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = ({ doc, operation, req }) => {
+  if (operation === "create") {
+    clearEventQuotaClaim(req);
+  }
+  return doc;
 };
 
 export const eventsAfterErrorHook: CollectionAfterErrorHook = async ({ req }) => {
