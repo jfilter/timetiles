@@ -36,12 +36,25 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
   return and.length > 0 ? { and } : {};
 };
 
+// Mirrors buildEventAccessCondition in to-sql-conditions.ts: public events are
+// included unless includePublic is explicitly false, the owner always sees
+// their own events, and no grant at all matches nothing (SQL returns FALSE).
 const buildAccessWhere = (filters: CanonicalEventFilters): Where => {
-  if (filters.ownerId != null) {
-    return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: filters.ownerId } }] };
+  const grants: Where[] = [];
+
+  if (filters.includePublic !== false) {
+    grants.push({ datasetIsPublic: { equals: true } });
   }
 
-  return { datasetIsPublic: { equals: true } };
+  if (filters.ownerId != null) {
+    grants.push({ catalogOwnerId: { equals: filters.ownerId } });
+  }
+
+  if (grants.length === 0) {
+    return { id: { equals: -1 } };
+  }
+
+  return grants.length === 1 ? grants[0]! : { or: grants };
 };
 
 const buildCatalogWhere = (filters: CanonicalEventFilters): Where[] => {
