@@ -20,7 +20,13 @@ export const Pages: CollectionConfig = {
   ...createCommonConfig(),
   admin: { useAsTitle: "title", defaultColumns: ["title", "slug", "site", "updatedAt"], group: "Content" },
   access: {
-    read: () => true,
+    // Drafts are only readable by editors/admins — pages have autosave drafts,
+    // and a blanket `true` exposed unpublished content through the REST API.
+    // eslint-disable-next-line sonarjs/function-return-type
+    read: ({ req: { user } }): boolean | { _status: { equals: string } } => {
+      if (user?.role === "admin" || user?.role === "editor") return true;
+      return { _status: { equals: "published" } };
+    },
     create: isEditorOrAdmin,
     update: isEditorOrAdmin,
     delete: isEditorOrAdmin,

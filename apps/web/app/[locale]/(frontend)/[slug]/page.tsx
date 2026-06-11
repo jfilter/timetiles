@@ -6,7 +6,7 @@
  *
  * @module
  */
-import { headers } from "next/headers";
+import { draftMode, headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { getPayload } from "payload";
@@ -25,15 +25,24 @@ interface PageProps {
 export default async function Page({ params }: Readonly<PageProps>) {
   const { slug } = await params;
   const [payload, locale] = await Promise.all([getPayload({ config }), getLocale() as Promise<Locale>]);
+  const { isEnabled: isDraftMode } = await draftMode();
 
   // Resolve site from request host
   const headersList = await headers();
   const host = headersList.get("host");
   const site = await resolveSite(payload, host);
 
+  // Drafts are only served in Next Draft Mode (entered via /api/preview, which
+  // requires auth) — without the _status filter, autosaved drafts of public
+  // pages would render for anonymous visitors.
   const pages = await payload.find({
     collection: "pages",
-    where: { slug: { equals: slug }, ...(site != null && { site: { equals: site.id } }) },
+    where: {
+      slug: { equals: slug },
+      ...(site != null && { site: { equals: site.id } }),
+      ...(isDraftMode ? {} : { _status: { equals: "published" } }),
+    },
+    draft: isDraftMode,
     depth: 2,
     locale,
   });

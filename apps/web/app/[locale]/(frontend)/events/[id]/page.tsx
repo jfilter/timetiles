@@ -28,9 +28,10 @@ export const generateMetadata = async ({ params }: PageProps): Promise<Metadata>
   const { id } = await params;
   const payload = await getPayload({ config: configPromise });
 
+  // Metadata never runs in draft mode — only published events get meta tags.
   const result = await payload.find({
     collection: "events",
-    where: { id: { equals: id } },
+    where: { id: { equals: id }, _status: { equals: "published" } },
     overrideAccess: false,
     depth: 1,
     limit: 1,
@@ -85,10 +86,12 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   const payload = await getPayload({ config: configPromise });
   const t = await getTranslations("Events");
 
-  // Fetch the event with draft mode support
+  // Fetch the event with draft mode support. Outside draft mode, unpublished
+  // (draft-only) events must 404 — access control filters by dataset
+  // visibility, not _status, so the filter is needed here.
   const result = await payload.find({
     collection: "events",
-    where: { id: { equals: id } },
+    where: { id: { equals: id }, ...(isDraftMode ? {} : { _status: { equals: "published" } }) },
     depth: 2, // Include related data like dataset
     draft: isDraftMode,
     overrideAccess: false, // Never bypass access control on public pages
