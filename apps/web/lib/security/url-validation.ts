@@ -29,18 +29,23 @@ const PRIVATE_HOSTNAMES = new Set(["localhost", "localhost.localdomain", "ip6-lo
 /** Hostname suffixes that indicate private/internal networks. */
 const PRIVATE_HOSTNAME_SUFFIXES = [".local"];
 
-/** IPv6 loopback and private patterns. */
+/**
+ * IPv6 loopback and private patterns.
+ *
+ * These are matched against hostnames too, so ULA patterns must require a `:`
+ * (never present in DNS names): a bare `/^fd/` prefix blocked every public
+ * domain starting with "fd" (fda.gov, fdic.gov, ...). The `f[cd]` form also
+ * covers the full fc00::/7 ULA range, not just the literal fc00:/fd00: hextets.
+ */
 const PRIVATE_IPV6_PATTERNS = [
   /^::1$/, // Loopback
   /^::$/, // Unspecified
   /^fe80:/i, // Link-local
-  /^fc00:/i, // Unique local (ULA)
-  /^fd/i, // Unique local (ULA)
+  /^f[cd][0-9a-f]{0,2}:/i, // Unique local (ULA, fc00::/7)
   /^\[::1\]$/, // Bracketed loopback
   /^\[::?\]$/, // Bracketed unspecified
   /^\[fe80:/i, // Bracketed link-local
-  /^\[fc00:/i, // Bracketed ULA
-  /^\[fd/i, // Bracketed ULA
+  /^\[f[cd][0-9a-f]{0,2}:/i, // Bracketed ULA (fc00::/7)
 ];
 
 /**

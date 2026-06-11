@@ -139,6 +139,18 @@ describe("isPrivateUrl", () => {
     it("blocks fd:: (unique local)", () => {
       expect(isPrivateUrl("http://[fd12::1]/data.csv")).toBe(true);
     });
+
+    it("blocks the full fc00::/7 ULA range, not just fc00:/fd00:", () => {
+      expect(isPrivateUrl("http://[fc01::1]/data.csv")).toBe(true);
+      expect(isPrivateUrl("http://[fdff::1]/data.csv")).toBe(true);
+    });
+
+    it("does NOT block public domains starting with 'fd' or 'fc'", () => {
+      // ULA patterns must require a ':' — DNS hostnames never contain one.
+      expect(isPrivateUrl("https://fda.gov/data.csv")).toBe(false);
+      expect(isPrivateUrl("https://fdic.gov/data.csv")).toBe(false);
+      expect(isPrivateUrl("https://fcc.gov/data.csv")).toBe(false);
+    });
   });
 
   describe("handles edge cases (fail-closed)", () => {
