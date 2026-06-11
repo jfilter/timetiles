@@ -277,6 +277,9 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       };
     }
 
+    // Count non-timeout failures (clone errors, unexpected throws) so
+    // /metrics stays consistent: total = success + failed + timeout.
+    totalFailed++;
     logError("Scraper run failed", error, { runId });
     throw error;
   } finally {

@@ -104,7 +104,14 @@ runRoutes.get("/status/:runId", (c) => {
 runRoutes.get("/output/:runId/:filename", async (c) => {
   const { runId, filename } = c.req.param();
 
-  if (!runId || !filename || filename.includes("..") || filename.includes("/")) {
+  if (
+    !runId ||
+    runId.includes("..") ||
+    runId.includes("/") ||
+    !filename ||
+    filename.includes("..") ||
+    filename.includes("/")
+  ) {
     return c.json({ error: "Invalid parameters" }, 400);
   }
 
