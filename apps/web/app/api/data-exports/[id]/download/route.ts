@@ -66,8 +66,10 @@ const streamExportFile = async (
 
   // Atomically increment download count to avoid race conditions
   // when multiple concurrent downloads hit this endpoint.
+  // Payload tables live in the "payload" schema and search_path does not
+  // include it — an unqualified name throws "relation does not exist".
   await payload.db.drizzle.execute(sql`
-    UPDATE data_exports
+    UPDATE payload.data_exports
     SET download_count = COALESCE(download_count, 0) + 1,
         updated_at = NOW()
     WHERE id = ${normalizedExportId}
