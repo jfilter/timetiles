@@ -11,22 +11,32 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { AuthTabs } from "@/components/auth";
+import { DEFAULT_LOCALE } from "@/i18n/config";
 import { getSafeLocalRedirectPath } from "@/lib/utils/local-redirect";
 
 const LoginContent = () => {
   const searchParams = useSearchParams();
   const t = useTranslations("Auth");
+  const locale = useLocale();
 
   const redirectTo = getSafeLocalRedirectPath(searchParams.get("redirect"));
+
+  // The redirect param carries an unlocalized path ("/account/imports") —
+  // prefix it with the active locale (localePrefix "as-needed": the default
+  // locale stays unprefixed) so login doesn't switch the user's language.
+  const localizedRedirect =
+    locale === DEFAULT_LOCALE || redirectTo.startsWith(`/${locale}/`) || redirectTo === `/${locale}`
+      ? redirectTo
+      : `/${locale}${redirectTo}`;
 
   const handleSuccess = () => {
     // Use full page navigation to ensure server components re-render with new auth state
     // router.refresh() + router.push() has race condition where navigation happens before refresh
-    globalThis.location.href = redirectTo;
+    globalThis.location.href = localizedRedirect;
   };
 
   return (

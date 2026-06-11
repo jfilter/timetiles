@@ -8,6 +8,7 @@
  * @category Components
  */
 
+import { Slot } from "@radix-ui/react-slot";
 import * as React from "react";
 
 import { cn } from "../lib/utils";
@@ -51,6 +52,11 @@ export interface HeaderNavItemProps extends React.AnchorHTMLAttributes<HTMLAncho
    * Whether this is the active/current page
    */
   active?: boolean;
+  /**
+   * Render the child element instead of an `<a>` (e.g. a locale-aware
+   * Next.js Link), keeping the item styling.
+   */
+  asChild?: boolean;
 }
 
 /**
@@ -64,9 +70,10 @@ export interface HeaderNavItemProps extends React.AnchorHTMLAttributes<HTMLAncho
  * ```
  */
 const HeaderNavItem = React.forwardRef<HTMLAnchorElement, HeaderNavItemProps>(
-  ({ className, active, children, ...props }, ref) => {
+  ({ className, active, asChild, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : "a";
     return (
-      <a
+      <Comp
         ref={ref}
         className={cn(
           "relative font-sans text-sm tracking-wide transition-colors duration-200",
@@ -80,7 +87,7 @@ const HeaderNavItem = React.forwardRef<HTMLAnchorElement, HeaderNavItemProps>(
         {...props}
       >
         {children}
-      </a>
+      </Comp>
     );
   }
 );

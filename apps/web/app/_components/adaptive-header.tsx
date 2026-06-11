@@ -57,8 +57,11 @@ interface AdaptiveHeaderProps {
 const MarketingNavigation = ({ mainMenu }: { mainMenu: MainMenu }) => (
   <>
     {mainMenu.navItems?.map((item) => (
-      <HeaderNavItem key={`${item.url}-${item.label}`} href={item.url}>
-        {item.label}
+      // asChild + locale-aware Link: a plain <a href="/explore"> would drop
+      // the /de prefix and silently switch the user back to English (the
+      // mobile drawer below already does this correctly).
+      <HeaderNavItem key={`${item.url}-${item.label}`} asChild>
+        <Link href={item.url}>{item.label}</Link>
       </HeaderNavItem>
     ))}
   </>
