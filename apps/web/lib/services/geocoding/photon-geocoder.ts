@@ -175,13 +175,11 @@ const formatPhotonFeature = (feature: PhotonFeature): Entry => {
   const [longitude, latitude] = feature.geometry.coordinates;
   const props = feature.properties;
 
-  const parts = [
-    props.name,
-    props.housenumber ? `${props.street} ${props.housenumber}` : props.street,
-    props.city,
-    props.state,
-    props.country,
-  ].filter(Boolean);
+  // Photon can return a house number without a street; join only what exists
+  // so the literal string "undefined" never ends up in stored addresses.
+  const streetLine = [props.street, props.housenumber].filter(Boolean).join(" ");
+
+  const parts = [props.name, streetLine, props.city, props.state, props.country].filter(Boolean);
 
   return {
     latitude,
