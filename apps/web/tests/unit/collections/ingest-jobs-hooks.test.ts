@@ -14,9 +14,14 @@ const mocks = vi.hoisted(() => ({
   extractRelationId: vi.fn((v: any) => (typeof v === "object" && v !== null ? v?.id : v)),
   requireRelationId: vi.fn((v: any) => (typeof v === "object" && v !== null ? v?.id : v)),
   getResumePointForReason: vi.fn(() => "create-schema-version"),
+  updateIngestFileStatusForJob: vi.fn(),
 }));
 
 vi.mock("@/lib/ingest/file-readers", () => ({ cleanupSidecarFiles: mocks.cleanupSidecarFiles }));
+
+vi.mock("@/lib/ingest/ingest-file-status", () => ({
+  updateIngestFileStatusForJob: mocks.updateIngestFileStatusForJob,
+}));
 
 vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
@@ -378,7 +383,29 @@ describe.sequential("afterChangeHooks", () => {
 
       expect(mockUpdate).toHaveBeenCalledWith({ collection: "ingest-jobs", id: 1, data: { stage: "completed" }, req });
       expect(req.payload.jobs.queue).not.toHaveBeenCalled();
+      // No workflow runs on this path, so the hook itself must derive the
+      // ingest-file status (in the same transaction) — otherwise the file
+      // stays "processing" forever.
+      expect(mocks.updateIngestFileStatusForJob).toHaveBeenCalledWith(req.payload, 1, req);
       expect(result).toEqual(doc);
+    });
+  });
+
+  describe("schema approval - file-too-large", () => {
+    it("should reject approval (no valid resume — dedup and quota state are missing)", async () => {
+      const doc = {
+        id: 1,
+        stage: "needs-review",
+        reviewReason: "file-too-large",
+        schemaValidation: { approved: true },
+      };
+      const previousDoc = { id: 1, stage: "needs-review", schemaValidation: { approved: false } };
+      const req = { user: { id: 2, role: "admin" }, payload: { jobs: { queue: vi.fn() } } };
+
+      await expect(
+        hook({ doc, previousDoc, req, operation: "update", collection: {} as never, context: {} as never } as any)
+      ).rejects.toThrow("cannot be resumed");
+      expect(req.payload.jobs.queue).not.toHaveBeenCalled();
     });
   });
 

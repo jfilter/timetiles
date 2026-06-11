@@ -16,6 +16,7 @@ import { validateRelationOwnership } from "@/lib/collections/shared-hooks";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getResumePointForReason, PER_SHEET_REVIEW_CHECKS_KEY, REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { cleanupSidecarFiles } from "@/lib/ingest/file-readers";
+import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -292,6 +293,16 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
         throw new Error("Only admins can approve quota-exceeded imports. Please contact us to increase your limit.");
       }
 
+      // FILE_TOO_LARGE aborts duplicate analysis mid-stream, so the job has no
+      // duplicates summary: a resume would skip dedup entirely and check the
+      // EVENTS_PER_IMPORT quota against 0 unique rows. There is no valid
+      // resume — the file must be split and re-uploaded.
+      if (doc.reviewReason === REVIEW_REASONS.FILE_TOO_LARGE) {
+        throw new Error(
+          "Imports that exceeded the unique-row limit cannot be resumed. Split the file into smaller parts and upload again."
+        );
+      }
+
       // high-row-errors: events already exist — just mark completed, no re-run needed
       if (doc.reviewReason === REVIEW_REASONS.HIGH_ROW_ERROR_RATE) {
         await req.payload.update({
@@ -300,6 +311,10 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
           data: { stage: PROCESSING_STAGE.COMPLETED },
           req, // Stay in same transaction
         });
+        // No workflow is queued on this path, so derive the ingest-file status
+        // here (in the same transaction) — otherwise the file stays
+        // "processing" forever and duplicate-content detection never sees it.
+        await updateIngestFileStatusForJob(req.payload, doc.id, req);
         return doc;
       }
 

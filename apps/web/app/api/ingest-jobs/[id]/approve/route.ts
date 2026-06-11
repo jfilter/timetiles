@@ -258,6 +258,14 @@ export const POST = apiRoute({
       );
     }
 
+    // FILE_TOO_LARGE has no valid resume: duplicate analysis was aborted
+    // mid-stream, so resuming would skip dedup and the per-import quota check.
+    if (ingestJob.reviewReason === REVIEW_REASONS.FILE_TOO_LARGE) {
+      throw new ValidationError(
+        "This import exceeded the unique-row limit and cannot be resumed. Split the file into smaller parts and upload again."
+      );
+    }
+
     // If user provided field mapping overrides (column picker), set them on the dataset
     const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, id);
 
