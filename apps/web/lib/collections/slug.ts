@@ -81,7 +81,10 @@ const checkSlugUniqueness = async <T extends keyof Config["collections"]>(
 ): Promise<boolean> => {
   const where = { slug: { equals: slug }, ...(currentId != null && { id: { not_equals: currentId } }) };
 
-  const result = await req.payload.find({ collection, where, limit: 1 });
+  // Pass req so the lookup runs inside the current transaction and sees
+  // uncommitted siblings (e.g. batch creates); otherwise the unique-suffix
+  // retry loop is blind to them and the create dies on the DB constraint.
+  const result = await req.payload.find({ collection, where, limit: 1, req });
 
   return result.docs.length === 0;
 };
