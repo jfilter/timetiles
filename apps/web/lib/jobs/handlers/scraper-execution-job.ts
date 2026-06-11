@@ -88,29 +88,38 @@ export const scraperExecutionJob = {
 
     log.info({ jobId, scraperId, triggeredBy }, "Starting scraper execution job");
 
-    // Feature flag check
-    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
-    if (!(await getFeatureFlagService(payload).isEnabled("enableScrapers"))) {
-      log.info({ jobId }, "Scraper execution skipped - feature disabled");
-      throw new Error("Feature flag enableScrapers is disabled");
-    }
-
-    const { scraper, repo } = await loadScraperWithRepo(payload, scraperId);
-
-    // Quota check: daily scraper runs
-    const repoOwnerId = extractRelationId(repo.createdBy);
-    if (repoOwnerId) {
-      const { createQuotaService } = await import("@/lib/services/quota-service");
-      const quotaService = createQuotaService(payload);
-      const owner = await asSystem(payload).findByID({ collection: "users", id: repoOwnerId });
-      if (owner) {
-        await quotaService.checkAndIncrementUsage(owner, "SCRAPER_RUNS_PER_DAY", 1);
-      }
-    }
-
+    // All trigger paths claim `lastRunStatus: "running"` before queueing this job,
+    // so every failure path below must reset it — including failures that happen
+    // before the run record exists (feature flag off, load error, daily quota hit).
     let run: { id: number } | undefined;
+    let scraper: ScraperWithRepo | undefined;
+    let repoOwnerId: number | undefined | null;
+    let quotaClaimed = false;
 
     try {
+      // Feature flag check
+      const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+      if (!(await getFeatureFlagService(payload).isEnabled("enableScrapers"))) {
+        log.info({ jobId }, "Scraper execution skipped - feature disabled");
+        throw new Error("Feature flag enableScrapers is disabled");
+      }
+
+      const loaded = await loadScraperWithRepo(payload, scraperId);
+      scraper = loaded.scraper;
+      const repo = loaded.repo;
+
+      // Quota check: daily scraper runs
+      repoOwnerId = extractRelationId(repo.createdBy);
+      if (repoOwnerId) {
+        const { createQuotaService } = await import("@/lib/services/quota-service");
+        const quotaService = createQuotaService(payload);
+        const owner = await asSystem(payload).findByID({ collection: "users", id: repoOwnerId });
+        if (owner) {
+          await quotaService.checkAndIncrementUsage(owner, "SCRAPER_RUNS_PER_DAY", 1);
+          quotaClaimed = true;
+        }
+      }
+
       run = await createRunRecord(payload, scraperId, repo, triggeredBy);
 
       const runUuid = uuidv4();
@@ -131,12 +140,20 @@ export const scraperExecutionJob = {
         },
       };
     } catch (error) {
-      if (run) {
+      if (run && scraper) {
         await handleRunFailure(payload, scraper, run.id, error);
+      } else {
+        // Failure before the run record existed: release the "running" claim so
+        // the scraper isn't wedged until the stuck-scraper cleanup job fires.
+        try {
+          await asSystem(payload).update({ collection: "scrapers", id: scraperId, data: { lastRunStatus: "failed" } });
+        } catch (resetError) {
+          logError(resetError, "Failed to reset scraper status after pre-run failure", { scraperId });
+        }
       }
 
       // Rollback quota on failure (best-effort)
-      if (repoOwnerId) {
+      if (quotaClaimed && repoOwnerId) {
         try {
           const { createQuotaService } = await import("@/lib/services/quota-service");
           const quotaService = createQuotaService(payload);

@@ -153,6 +153,32 @@ describe.sequential("scraperExecutionJob", () => {
     // Should not load the scraper or call the runner
     expect(mockPayload.findByID).not.toHaveBeenCalled();
     expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    // Trigger paths claimed lastRunStatus="running" before queueing this job —
+    // a pre-run failure must release that claim or the scraper stays wedged.
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 10, data: { lastRunStatus: "failed" } })
+    );
+  });
+
+  it("should reset lastRunStatus when the daily quota check rejects before a run record exists", async () => {
+    mockQuotaService.checkAndIncrementUsage.mockRejectedValue(new Error("Quota exceeded: SCRAPER_RUNS_PER_DAY"));
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "schedule" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Quota exceeded");
+
+    // No run record, no runner call
+    expect(mockPayload.create).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    // The "running" claim is released so subsequent triggers aren't rejected for hours
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 10, data: { lastRunStatus: "failed" } })
+    );
+
+    // Quota was never claimed, so it must not be rolled back either
+    expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
   });
 
   it("should load scraper with depth:1 to populate repo", async () => {

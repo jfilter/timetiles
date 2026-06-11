@@ -71,31 +71,38 @@ const cloneRepo = async (gitUrl: string, branch: string): Promise<string> => {
 
   logger.info("Cloning scraper repo", { gitUrl: sanitizeUrlForLogging(parsedGitUrl.toString()), branch, tempDir });
 
-  // Disable Git HTTP redirects so the clone target cannot bounce to an
-  // internal host after we validate the original URL.
-  await execFileAsync(
-    "git",
-    [
-      "-c",
-      "http.followRedirects=false",
-      "clone",
-      "--depth",
-      "1",
-      "--branch",
-      branch,
-      "--single-branch",
-      parsedGitUrl.toString(),
-      tempDir,
-    ],
-    {
-      timeout: 60_000, // 60 seconds
-      env: {
-        ...process.env,
-        // Disable interactive prompts (password, SSH key, etc.)
-        GIT_TERMINAL_PROMPT: "0",
-      },
-    }
-  );
+  try {
+    // Disable Git HTTP redirects so the clone target cannot bounce to an
+    // internal host after we validate the original URL.
+    await execFileAsync(
+      "git",
+      [
+        "-c",
+        "http.followRedirects=false",
+        "clone",
+        "--depth",
+        "1",
+        "--branch",
+        branch,
+        "--single-branch",
+        parsedGitUrl.toString(),
+        tempDir,
+      ],
+      {
+        timeout: 60_000, // 60 seconds
+        env: {
+          ...process.env,
+          // Disable interactive prompts (password, SSH key, etc.)
+          GIT_TERMINAL_PROMPT: "0",
+        },
+      }
+    );
+  } catch (error) {
+    // The caller only sees the temp dir once the clone succeeds, so clean it
+    // up here — otherwise every failed sync (bad URL/branch/auth) leaks a dir.
+    await rm(tempDir, { recursive: true, force: true });
+    throw error;
+  }
 
   return tempDir;
 };
