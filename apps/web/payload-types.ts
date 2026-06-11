@@ -5990,6 +5990,7 @@ export interface TaskAnalyzeDuplicates {
     internalDuplicates?: number | null;
     externalDuplicates?: number | null;
     needsReview?: boolean | null;
+    failed?: boolean | null;
     skipped?: boolean | null;
     reason?: string | null;
   };
