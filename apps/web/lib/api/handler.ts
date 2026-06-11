@@ -121,9 +121,17 @@ const parseRequestBody = async <TBody>(req: NextRequest, bodySchema?: z.ZodType<
     return undefined as TBody;
   }
 
+  // An absent/empty body is not malformed JSON — hand `undefined` to the
+  // schema so routes with an `.optional()` body accept it (and required
+  // bodies fail schema validation with a clear message instead of a 400).
+  const text = await req.text();
+  if (text.trim() === "") {
+    return bodySchema.parse(undefined);
+  }
+
   let rawBody: unknown;
   try {
-    rawBody = await req.json();
+    rawBody = JSON.parse(text);
   } catch {
     throw new ValidationError("Invalid JSON in request body");
   }

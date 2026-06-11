@@ -148,6 +148,7 @@ const createRequest = (body: Record<string, unknown>, user: Record<string, unkno
     headers: new Headers({ host: "localhost" }),
     url: "http://localhost/api/ingest/configure",
     json: vi.fn().mockResolvedValue(body),
+    text: vi.fn().mockResolvedValue(JSON.stringify(body)),
   } as unknown as AuthenticatedRequest;
 };
 

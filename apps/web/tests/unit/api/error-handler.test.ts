@@ -26,6 +26,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn(() => Prom
 
 // 4. Vitest imports and source code AFTER mocks
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 import { apiRoute, handleError, ValidationError } from "@/lib/api";
 import { mockLogger } from "@/tests/mocks/services/logger";
@@ -188,5 +189,55 @@ describe.sequential("apiRoute integration: error context is forwarded to handleE
     const metaArg = mockLogger.logError.mock.calls.at(-1)?.[2] as Record<string, unknown>;
     expect(metaArg).toBeDefined();
     expect("userId" in metaArg).toBe(false);
+  });
+});
+
+describe.sequential("apiRoute body parsing", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.mockGetPayload.mockResolvedValue(mocks.mockPayload);
+    mocks.mockPayload.auth.mockResolvedValue({ user: { id: 7, email: "u@example.com", role: "user" } });
+  });
+
+  const makeReq = (rawBody: string) =>
+    ({
+      url: "http://localhost/api/body-route",
+      method: "POST",
+      headers: new Headers({ host: "localhost" }),
+      text: vi.fn().mockResolvedValue(rawBody),
+    }) as never;
+
+  it("accepts an empty body when the schema is optional", async () => {
+    const route = apiRoute({
+      auth: "required",
+      body: z.object({ note: z.string() }).optional(),
+      handler: ({ body }) => ({ received: body ?? null }),
+    });
+
+    const response = await route(makeReq(""), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ received: null });
+  });
+
+  it("rejects an empty body via schema validation (422) when the body is required", async () => {
+    const route = apiRoute({ auth: "required", body: z.object({ note: z.string() }), handler: () => ({ ok: true }) });
+
+    const response = await route(makeReq(""), routeContext);
+
+    expect(response.status).toBe(422);
+  });
+
+  it("still rejects malformed JSON with 400", async () => {
+    const route = apiRoute({
+      auth: "required",
+      body: z.object({ note: z.string() }).optional(),
+      handler: () => ({ ok: true }),
+    });
+
+    const response = await route(makeReq("{not json"), routeContext);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual(expect.objectContaining({ error: "Invalid JSON in request body" }));
   });
 });

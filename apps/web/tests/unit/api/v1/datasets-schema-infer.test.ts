@@ -32,7 +32,11 @@ import { POST } from "@/app/api/v1/datasets/[id]/schema/infer/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 const createRequest = (user: unknown) =>
-  ({ user, json: vi.fn().mockResolvedValue({}) }) as unknown as AuthenticatedRequest;
+  ({
+    user,
+    json: vi.fn().mockResolvedValue({}),
+    text: vi.fn().mockResolvedValue("{}"),
+  }) as unknown as AuthenticatedRequest;
 
 const createContext = (id: string) => ({ params: { id } as unknown as Promise<{ id: string }> });
 
