@@ -469,12 +469,17 @@ export const deactivateDataPackage = async (
   const result = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
     where,
-    limit: 1,
     depth: 0,
     overrideAccess: true,
   });
 
-  const scheduledIngest = result.docs[0];
+  // Payload's `like` is a contains match (unescaped ILIKE %value%), so the
+  // prefix query can also return foreign activations whose key merely contains
+  // "<slug>:" (e.g. "city-demo:..." matches slug "demo"). Filter exactly in JS
+  // before acting — otherwise deactivation can disable the wrong package.
+  const scheduledIngest = result.docs.find(
+    (doc) => doc.dataPackageSlug === slug || doc.dataPackageSlug?.startsWith(`${slug}:`) === true
+  );
   if (!scheduledIngest) {
     throw new Error(`Data package "${slug}" is not activated`);
   }
@@ -524,10 +529,15 @@ export const getActivationStatus = async (
     overrideAccess: true,
   });
 
+  // `like` is a contains match (see deactivateDataPackage) — drop any doc
+  // whose recovered bare slug wasn't actually requested.
+  const requestedSlugs = new Set(slugs);
+
   const statusMap = new Map<string, DataPackageActivation>();
   for (const doc of result.docs) {
     if (!doc.dataPackageSlug) continue;
     const bareSlug = bareSlugFromActivationKey(doc.dataPackageSlug);
+    if (!requestedSlugs.has(bareSlug)) continue;
     const activation: DataPackageActivation = {
       scheduledIngestId: doc.id,
       catalogId: extractRelationId(doc.catalog) as number,
