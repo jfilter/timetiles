@@ -29,6 +29,12 @@ const SECURITY_HEADERS = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // i18n/config.ts reads DEFAULT_LOCALE in client components too. Only
+  // NEXT_PUBLIC_* vars are auto-inlined into the client bundle, so without
+  // this passthrough a DEFAULT_LOCALE=de deployment has the server treating
+  // `de` as the prefixless default while the client assumes `en` — every nav
+  // link hydrates to a different href and triggers a redirect.
+  env: { DEFAULT_LOCALE: process.env.DEFAULT_LOCALE ?? "en" },
   transpilePackages: ["@timetiles/ui", "@timetiles/assets"],
   poweredByHeader: false,
   headers: async () => [{ source: "/:path*", headers: SECURITY_HEADERS }],
