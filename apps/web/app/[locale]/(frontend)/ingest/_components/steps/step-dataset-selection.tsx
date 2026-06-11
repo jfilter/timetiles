@@ -109,6 +109,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     selectCatalog,
     setDatasetTarget,
     applyDatasetSelectionSuggestion,
+    applyFieldMappingSuggestion,
   } = useWizardDatasetSelectionStepState();
   const canProceed = useWizardCanProceed();
 
@@ -190,6 +191,12 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
     } else {
       selectCatalog(value ? Number(value) : null);
     }
+    // Same reason as handleResetSuggestion: a dataset chosen under the
+    // previous catalog must not survive the switch — the import would write
+    // into a dataset of a catalog the user navigated away from.
+    for (const m of sheetMappings) {
+      setDatasetTarget(m.sheetIndex, { datasetId: "new", similarityScore: null });
+    }
   };
 
   const handleNewCatalogNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -212,11 +219,14 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
   const selectedCatalog = catalogs.find((c) => c.id === selectedCatalogId);
   const noCatalogSelected = selectedCatalogId === null;
 
-  // Sibling datasets for the "copy config from" dropdown (only for existing catalogs with datasets)
+  // Sibling datasets for the "copy config from" dropdown (only for existing
+  // catalogs, and only datasets we actually have a config suggestion for —
+  // listing the rest would make picking them a silent no-op).
   const siblingDatasets = useMemo(() => {
     if (selectedCatalogId === "new" || selectedCatalogId === null) return [];
-    return selectedCatalog?.datasets ?? [];
-  }, [selectedCatalogId, selectedCatalog]);
+    const suggestionIds = new Set(configSuggestions.map((s) => s.datasetId));
+    return (selectedCatalog?.datasets ?? []).filter((ds) => suggestionIds.has(ds.id));
+  }, [selectedCatalogId, selectedCatalog, configSuggestions]);
 
   // Status message for the sticky footer
   const pendingStatusKey = noCatalogSelected ? "selectCatalogToContinue" : "configureDatasetToContinue";
@@ -379,6 +389,9 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                         if (value) {
                           const suggestion = configSuggestions.find((s) => s.datasetId === Number(value));
                           if (suggestion) {
+                            // Actually copy the config — recording only the
+                            // similarity score made this control a no-op.
+                            applyFieldMappingSuggestion(0, suggestion.config);
                             setDatasetTarget(0, { similarityScore: suggestion.score / 100 });
                           }
                         }

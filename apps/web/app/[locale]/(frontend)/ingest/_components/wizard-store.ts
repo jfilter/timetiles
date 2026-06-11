@@ -258,7 +258,14 @@ export const useWizardStore = create<WizardStore>()(
         initialize: (auth) => {
           if (get()._initialized) return;
           const wasAuthenticated = auth.isAuthenticated && auth.isEmailVerified;
-          set({ _initialized: true, startedAuthenticated: wasAuthenticated, currentStep: wasAuthenticated ? 2 : 1 });
+          // Keep a persisted step from a reload (localStorage rehydrates
+          // before this runs) — clobbering it dumped users back to step 2
+          // with all their later-step data intact but unreachable without
+          // re-clicking through. Authenticated users never land below step 2;
+          // unauthenticated users always start at the auth step.
+          const restoredStep = get().currentStep;
+          const currentStep = (wasAuthenticated ? Math.max(restoredStep, 2) : 1) as WizardStep;
+          set({ _initialized: true, startedAuthenticated: wasAuthenticated, currentStep });
         },
 
         initializeForEdit: (scheduleId, data) => {
@@ -330,7 +337,10 @@ export const useWizardStore = create<WizardStore>()(
         },
 
         setSourceUrlInput: (sourceUrl, authConfig) =>
-          set((s) => ({ sourceUrl, authConfig: authConfig ?? s.authConfig })),
+          // `null` is an explicit "clear the credentials" (auth type "none") —
+          // only an omitted argument keeps the previous value. `??` would
+          // silently resurrect removed credentials into a created schedule.
+          set((s) => ({ sourceUrl, authConfig: authConfig === undefined ? s.authConfig : authConfig })),
 
         setUrlAuth: (authConfig) => set({ authConfig }),
 
@@ -522,6 +532,7 @@ export const useWizardDatasetSelectionStepState = () =>
     selectCatalog: state.selectCatalog,
     setDatasetTarget: state.setDatasetTarget,
     applyDatasetSelectionSuggestion: state.applyDatasetSelectionSuggestion,
+    applyFieldMappingSuggestion: state.applyFieldMappingSuggestion,
   }));
 
 export const useWizardFieldMappingStepState = () =>

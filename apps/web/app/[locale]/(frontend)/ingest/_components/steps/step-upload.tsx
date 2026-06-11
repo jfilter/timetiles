@@ -134,7 +134,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
     inputMode: sourceUrl != null || editMode ? "url" : "file",
     isDragging: false,
     error: null,
-    jsonDetected: false,
+    // Step components unmount on navigation: a persisted jsonApiConfig means a
+    // JSON API URL was already fetched — without this the config panel
+    // vanished after back-navigation/reload while still being submitted.
+    jsonDetected: jsonApiConfig != null,
     urlInput: sourceUrl ?? "",
     authConfig: storeAuthConfig ?? DEFAULT_AUTH_CONFIG,
   });
@@ -174,6 +177,10 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
+    // Clear the input so re-selecting the SAME file fires a change event
+    // again — after a failed upload the input stays mounted with its value
+    // set, and retrying with the same file would otherwise do nothing.
+    e.target.value = "";
     if (selectedFile) {
       void processFile(selectedFile);
     }
