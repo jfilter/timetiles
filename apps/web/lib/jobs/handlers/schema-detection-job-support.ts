@@ -20,6 +20,7 @@ import type { SchemaDetectionService } from "@/lib/services/schema-detection/ser
 import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { checkDateOrder } from "@/lib/services/schema-detection/utilities/date-order";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
+import { buildEnumValuesFromStats } from "@/lib/services/schema-detection/utilities/geo";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import { asSystem } from "@/lib/services/system-payload";
@@ -115,15 +116,7 @@ const detectFieldMappingsWithService = async (
     const stats = finalState.fieldStats[fieldPath];
     if (!stats?.uniqueSamples) continue;
     stats.isEnumCandidate = true;
-    const valueCounts = new Map<unknown, number>();
-    for (const sample of stats.uniqueSamples) {
-      valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
-    }
-    stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
-      value,
-      count,
-      percent: (count / stats.occurrences) * 100,
-    }));
+    stats.enumValues = buildEnumValuesFromStats(stats);
   }
 
   schemaBuilder.detectEnumFields();

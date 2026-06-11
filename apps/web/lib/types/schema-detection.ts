@@ -44,6 +44,10 @@ export interface FieldStatistics {
   // Enum detection
   isEnumCandidate: boolean;
   enumValues?: Array<{ value: unknown; count: number; percent: number }>;
+  // Real per-value frequencies for tracked scalar samples, keyed by
+  // JSON.stringify(value). Bounded by the unique-sample cap; needed because
+  // `uniqueSamples` is deduplicated (counting over it always yields 1).
+  valueCounts?: Record<string, number>;
 
   // Tag/multi-value detection (arrays stored in transformedData)
   isTagField?: boolean;

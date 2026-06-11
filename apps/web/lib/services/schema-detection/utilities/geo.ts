@@ -167,6 +167,19 @@ const enrichTagField = (stats: FieldStatistics, _enumThreshold: number): void =>
   }
 };
 
+/**
+ * Build enum value entries with real frequencies.
+ *
+ * `uniqueSamples` is deduplicated by construction, so counting over it always
+ * yields 1 per value — the real per-value counts live in `stats.valueCounts`
+ * (tracked during streaming stats collection, keyed by JSON.stringify).
+ */
+export const buildEnumValuesFromStats = (stats: FieldStatistics): FieldStatistics["enumValues"] =>
+  stats.uniqueSamples.map((value) => {
+    const count = stats.valueCounts?.[JSON.stringify(value)] ?? 1;
+    return { value, count, percent: (count / stats.occurrences) * 100 };
+  });
+
 /** Detect scalar enum fields (low-cardinality strings). */
 const enrichScalarEnumField = (
   stats: FieldStatistics,
@@ -181,15 +194,7 @@ const enrichScalarEnumField = (
 
   if (shouldBeEnum && stats.uniqueValues > 1 && stats.uniqueValues < stats.occurrences) {
     stats.isEnumCandidate = true;
-    const valueCounts = new Map<unknown, number>();
-    for (const sample of stats.uniqueSamples) {
-      valueCounts.set(sample, (valueCounts.get(sample) ?? 0) + 1);
-    }
-    stats.enumValues = Array.from(valueCounts.entries()).map(([value, count]) => ({
-      value,
-      count,
-      percent: (count / stats.occurrences) * 100,
-    }));
+    stats.enumValues = buildEnumValuesFromStats(stats);
   }
 };
 

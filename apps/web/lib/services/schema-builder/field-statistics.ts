@@ -36,15 +36,14 @@ const updateNumericStats = (stats: FieldStatistics, value: number): void => {
 };
 
 const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueValues: number): void => {
-  if (stats.uniqueSamples.length >= maxUniqueValues) {
-    return;
-  }
-
   // Convert value to storable type (Date -> ISO string, arrays kept as-is)
   let sampleValue: string | number | boolean | null | Record<string, unknown> | undefined;
   if (value instanceof Date) {
     sampleValue = value.toISOString();
   } else if (Array.isArray(value)) {
+    if (stats.uniqueSamples.length >= maxUniqueValues) {
+      return;
+    }
     // Store array samples for tag field detection (serialized for dedup)
     const key = JSON.stringify(value);
     if (!stats.uniqueSamples.some((s) => JSON.stringify(s) === key)) {
@@ -56,9 +55,24 @@ const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueVal
     sampleValue = value;
   }
 
-  if (sampleValue !== undefined && !stats.uniqueSamples.includes(sampleValue)) {
+  if (sampleValue === undefined) {
+    return;
+  }
+
+  const isTracked = stats.uniqueSamples.includes(sampleValue);
+  if (!isTracked) {
+    if (stats.uniqueSamples.length >= maxUniqueValues) {
+      return;
+    }
     stats.uniqueSamples.push(sampleValue);
   }
+
+  // Count real frequencies for tracked scalars — `uniqueSamples` is deduped,
+  // so enum detection needs this map for accurate counts. Repeats of already-
+  // tracked values are counted even after the sample cap is reached.
+  stats.valueCounts ??= {};
+  const countKey = JSON.stringify(sampleValue);
+  stats.valueCounts[countKey] = (stats.valueCounts[countKey] ?? 0) + 1;
 };
 
 const detectEmailFormat = (value: string, stats: FieldStatistics): void => {
@@ -275,6 +289,15 @@ export const mergeFieldStats = (existing: FieldStatistics, incoming: FieldStatis
 
   // Merge enum values
   merged.enumValues = mergeEnumValues(existing.enumValues, incoming.enumValues, merged.occurrences);
+
+  // Merge per-value frequencies (see trackUniqueSamples)
+  if (existing.valueCounts || incoming.valueCounts) {
+    const valueCounts: Record<string, number> = { ...existing.valueCounts };
+    for (const [key, count] of Object.entries(incoming.valueCounts ?? {})) {
+      valueCounts[key] = (valueCounts[key] ?? 0) + count;
+    }
+    merged.valueCounts = valueCounts;
+  }
 
   return merged;
 };
