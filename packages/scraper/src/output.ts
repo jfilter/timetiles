@@ -14,6 +14,18 @@ import { join } from "node:path";
 export type OutputRow = Record<string, string | number>;
 
 /**
+ * RFC 4180 field escaping: quote when the value contains a delimiter, quote,
+ * or any line break (including bare `\r`), doubling embedded quotes. Applied
+ * to header cells too — an unescaped comma in a column key shifts every column.
+ */
+const escapeCsvField = (str: string): string => {
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
+
+/**
  * CSV output writer with optional generic type parameter for row schema.
  *
  * @example
@@ -71,39 +83,25 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
     const outputPath = join(this.#outputDir, this.#filename);
 
     if (!this.#rows.length) {
-      const headerLine = this.#headers ? this.#headers.join(",") + "\n" : "";
+      const headerLine = this.#headers ? this.#headers.map(escapeCsvField).join(",") + "\n" : "";
       writeFileSync(outputPath, headerLine, "utf-8");
       return outputPath;
     }
 
-    if (!this.#headers) {
-      this.#headers = Object.keys(this.#rows[0]!);
-    }
-
-    const lines = [this.#headers.join(",")];
-    for (const row of this.#rows) {
-      const values = this.#headers.map((h) => {
-        const val = row[h] ?? "";
-        const str = String(val);
-        if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      });
-      lines.push(values.join(","));
-    }
-
-    writeFileSync(outputPath, lines.join("\n") + "\n", "utf-8");
+    writeFileSync(outputPath, this.toCsvString(), "utf-8");
     return outputPath;
   }
 
-  /** Return collected rows as a CSV string (for debugging / testing). */
+  /** Return collected rows as a CSV string (identical to what save() writes). */
   toCsvString(): string {
-    if (!this.#rows.length || !this.#headers) return "";
-    const lines = [this.#headers.join(",")];
+    if (!this.#rows.length) return "";
+    if (!this.#headers) {
+      this.#headers = Object.keys(this.#rows[0]!);
+    }
+    const headers = this.#headers;
+    const lines = [headers.map(escapeCsvField).join(",")];
     for (const row of this.#rows) {
-      const values = this.#headers.map((h) => String(row[h] ?? ""));
-      lines.push(values.join(","));
+      lines.push(headers.map((h) => escapeCsvField(String(row[h] ?? ""))).join(","));
     }
     return lines.join("\n") + "\n";
   }
