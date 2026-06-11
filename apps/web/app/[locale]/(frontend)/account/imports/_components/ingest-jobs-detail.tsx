@@ -30,7 +30,13 @@ const STAGE_VARIANT_MAP: Record<string, StatusVariant> = {
 
 const getStageVariant = (stage: IngestJob["stage"]): StatusVariant => STAGE_VARIANT_MAP[stage] ?? "info";
 
-const getDatasetLabel = (dataset: number | Dataset): string => {
+// The relation is ON DELETE SET NULL and nothing cleans up old jobs when a
+// dataset is deleted, so `dataset` can be null at runtime (the generated type
+// is wrong about this) — and `typeof null === "object"` would crash on .name.
+const getDatasetLabel = (dataset: number | Dataset | null | undefined): string => {
+  if (dataset == null) {
+    return "—";
+  }
   if (typeof dataset === "object") {
     return dataset.name;
   }
