@@ -39,7 +39,7 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
 
   // Data fetching
   const queries = useExplorerQueries(filters, debouncedSimpleBounds, mapZoom, scope);
-  const { boundsData, boundsLoading, eventsData } = queries;
+  const { boundsData, boundsLoading, eventsData, totalEventsData } = queries;
 
   // Zustand UI state
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
@@ -50,14 +50,18 @@ export const useExplorerState = (options?: UseExplorerStateOptions) => {
   // (unstable) viewport object as an effect dependency.
   const { setBoundsState } = viewport;
 
-  // Push visible event count to Zustand so the header (outside explore tree) can display it.
+  // Push event counts to Zustand so the header (outside explore tree) can display them.
   // Use eventsData.total (from API pagination) instead of events.length, because the events
   // array is capped at 1000 items while total reflects the true count matching the viewport+filters.
+  // totalEvents comes from the SCOPED total query — the header cannot read the
+  // view scope itself (it renders outside ViewProvider).
   useEffect(() => {
     if (eventsData != null) {
-      useUIStore.getState().setMapStats({ visibleEvents: eventsData.total });
+      useUIStore
+        .getState()
+        .setMapStats({ visibleEvents: eventsData.total, totalEvents: totalEventsData?.total ?? null });
     }
-  }, [eventsData]);
+  }, [eventsData, totalEventsData]);
 
   // Clear stale mapStats when the explorer unmounts (e.g. route transition away from /explore).
   // Without this, the header would briefly show the previous count until new data loads.

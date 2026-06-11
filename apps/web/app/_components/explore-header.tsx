@@ -13,7 +13,6 @@ import React, { useEffect, useState } from "react";
 import { ViewToggle } from "@/app/[locale]/(frontend)/explore/_components/view-toggle";
 import { Link } from "@/i18n/navigation";
 import { formatCenterCoordinates, formatEventCount } from "@/lib/geospatial/formatting";
-import { useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import { useFilters } from "@/lib/hooks/use-filters";
 import { useUIStore } from "@/lib/store";
 import type { Catalog, Dataset } from "@/payload-types";
@@ -37,13 +36,13 @@ const ExploreMobileHeader = ({ catalogs, datasets }: Omit<ExploreNavigationProps
   const { filters } = useFilters();
 
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
+  // Both counts come from the explorer via the store: the header renders
+  // outside ViewProvider, so it cannot issue the scoped total query itself.
   const mapStats = useUIStore((state) => state.ui.mapStats);
-  const { data: totalEventsData } = useEventsTotalQuery(filters);
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
 
-  const totalEvents = totalEventsData?.total;
-  const count = formatEventCount(mapStats?.visibleEvents, totalEvents, locale);
+  const count = formatEventCount(mapStats?.visibleEvents, mapStats?.totalEvents ?? undefined, locale);
   const eventCount = count != null ? `(${count})` : null;
 
   return (
@@ -94,10 +93,10 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   const { filters } = useFilters();
 
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
+  // Scoped counts pushed from the explorer (see ExploreMobileHeader).
   const mapStats = useUIStore((state) => state.ui.mapStats);
   const isFilterDrawerOpen = useUIStore((state) => state.ui.isFilterDrawerOpen);
   const toggleFilterDrawer = useUIStore((state) => state.toggleFilterDrawer);
-  const { data: totalEventsData } = useEventsTotalQuery(filters);
 
   // Delay showing the filter icon until the filter drawer closing animation completes.
   // Must stay in sync with the CSS `duration-500` on the filter area div below.
@@ -116,9 +115,10 @@ const ExploreDesktopHeader = ({ catalogs, datasets, currentView }: ExploreNaviga
   }, [isFilterDrawerOpen]);
 
   const { title } = buildDynamicTitle(filters, catalogs, datasets, tExplore);
-  const totalEvents = totalEventsData?.total;
   const eventCount =
-    mapStats != null && totalEvents != null ? formatEventCount(mapStats.visibleEvents, totalEvents, locale) : null;
+    mapStats != null && mapStats.totalEvents != null
+      ? formatEventCount(mapStats.visibleEvents, mapStats.totalEvents, locale)
+      : null;
 
   return (
     <div className="-mx-8 flex flex-1 items-center">

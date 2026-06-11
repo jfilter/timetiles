@@ -58,12 +58,13 @@ interface UIState {
   isFilterDrawerOpen: boolean;
   mapBounds: MapBounds | null;
   /**
-   * Visible event count pushed from `useExplorerState` so the header can display it.
+   * Event counts pushed from `useExplorerState` so the header (mounted outside
+   * the explorer tree, where `useViewScope()` is unavailable) can display them.
    *
-   * Only `visibleEvents` is stored here (viewport-dependent). The header reads
-   * `totalEvents` directly from React Query via `useEventsTotalQuery`.
+   * `totalEvents` must come from here, not from an unscoped query in the
+   * header — otherwise scoped views show an inflated denominator.
    */
-  mapStats: { visibleEvents: number } | null;
+  mapStats: { visibleEvents: number; totalEvents: number | null } | null;
   clusterDensityMode: ClusterDensityMode;
   /**
    * Cluster density settings sent to the clusters API. Owns `clusterAlgorithm`
