@@ -25,11 +25,13 @@ NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com
 ```bash
 NODE_ENV=production              # development, production, test
 NEXT_PUBLIC_SITE_URL=https://...  # If different from NEXT_PUBLIC_PAYLOAD_URL
-DEFAULT_LOCALE=en                # en or de
+DEFAULT_LOCALE=en                # en or de — BUILD-time only, see below
 RATE_LIMIT_BACKEND=memory        # memory or pg
 ```
 
 Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as `memory` for local development, tests, and explicitly single-process deployments.
+
+`DEFAULT_LOCALE` is inlined into the server and client bundles when the app is built (it drives locale-prefix routing on both sides, so it cannot vary at runtime). Set it before running `next build`, or pass it as a Docker build arg (`--build-arg DEFAULT_LOCALE=de`); the published images are built with `en` unless the repository's `DEFAULT_LOCALE` Actions variable is set. Setting it at container runtime has no effect.
 
 ### File Paths
 

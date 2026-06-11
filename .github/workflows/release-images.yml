@@ -33,6 +33,9 @@ jobs:
       scope: main
       timeout-minutes: 30
       lfs: true
+      # DEFAULT_LOCALE is inlined at build time (next.config env passthrough);
+      # set the repo variable to bake a non-English default into the images.
+      build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
     secrets: inherit
 
   build-allinone:
@@ -43,6 +46,7 @@ jobs:
       scope: allinone
       timeout-minutes: 30
       lfs: true
+      build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
     secrets: inherit
 
   build-timescrape:

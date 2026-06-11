@@ -35,6 +35,9 @@ COPY --from=deps /app/ .
 ARG DATABASE_URL
 ARG PAYLOAD_SECRET
 ARG NEXT_PUBLIC_PAYLOAD_URL
+# DEFAULT_LOCALE is inlined into both bundles at build time (next.config env
+# passthrough) — it CANNOT be changed at container runtime.
+ARG DEFAULT_LOCALE
 
 # Set build environment
 ENV NODE_ENV=production
@@ -43,6 +46,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL=${DATABASE_URL:-postgresql://user:pass@postgres:5432/db}
 ENV PAYLOAD_SECRET=${PAYLOAD_SECRET:-dummy_secret_for_build_only}
 ENV NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+ENV DEFAULT_LOCALE=${DEFAULT_LOCALE:-en}
 
 # Build UI package (must be built before web app can resolve @timetiles/ui)
 WORKDIR /app/packages/ui
