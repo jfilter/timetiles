@@ -31,6 +31,8 @@ export interface DatasetDetectionOutput {
 /** Output from `analyze-duplicates` task. */
 export interface AnalyzeDuplicatesOutput {
   needsReview?: boolean;
+  /** Job was marked FAILED inside the handler (hard limit, no review/resume) — stop the pipeline. */
+  failed?: boolean;
   totalRows?: number;
   uniqueRows?: number;
   internalDuplicates?: number;

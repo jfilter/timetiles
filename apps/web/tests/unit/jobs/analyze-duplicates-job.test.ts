@@ -53,6 +53,13 @@ vi.mock("@/lib/jobs/utils/resource-loading", async (importOriginal) => {
   return { ...actual, cleanupSidecarsForJob: mocks.cleanupSidecarsForJob };
 });
 
+// Lower the unique-row heap-guard cap so the FILE_TOO_LARGE path is testable
+// (kept comfortably above every other test's row count)
+vi.mock("@/lib/constants/ingest-constants", async (importOriginal) => {
+  const actual: Record<string, unknown> = await importOriginal();
+  return { ...actual, MAX_UNIQUE_ROWS_PER_SHEET: 50 };
+});
+
 vi.mock("@/lib/ingest/upload-path", () => ({
   getIngestFilePath: vi.fn((filename: string) => `/mock/ingest-files/${filename}`),
 }));
@@ -934,6 +941,61 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const result = await analyzeDuplicatesJob.handler(mockContext);
 
       expect(result.output).toEqual(expect.objectContaining({ needsReview: true }));
+    });
+
+    it("should FAIL (not pause for review) when the unique-row cap is exceeded", async () => {
+      // The cap is mocked to 50 (see vi.mock of ingest-constants above). A
+      // FILE_TOO_LARGE job has no duplicates summary, so an approval/resume
+      // would skip dedup and check quotas against 0 rows — it must be
+      // terminal, not stuck in needs-review with no valid resume.
+      const { setNeedsReview } = await import("@/lib/jobs/workflows/review-checks");
+
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+      };
+
+      const mockDataset = {
+        id: "dataset-456",
+        deduplicationConfig: { enabled: true },
+        idStrategy: { type: "external", externalIdPath: "id" },
+      };
+
+      const mockIngestFile = createMockIngestFile();
+
+      mockPayload.findByID
+        .mockResolvedValueOnce(mockIngestJob)
+        .mockResolvedValueOnce(mockDataset)
+        .mockResolvedValueOnce(mockIngestFile)
+        .mockResolvedValue(mockIngestJob);
+
+      // 51 unique rows > cap of 50
+      const rows = Array.from({ length: 51 }, (_, i) => ({ id: String(i) }));
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([rows]));
+      mocks.generateUniqueId.mockImplementation((row: { id: string }) => `uid-${row.id}`);
+      mockPayload.update.mockResolvedValue({});
+
+      const result = await analyzeDuplicatesJob.handler(mockContext);
+
+      expect(result.output).toEqual(expect.objectContaining({ failed: true, reason: "file-too-large" }));
+      expect(setNeedsReview).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "ingest-jobs",
+          id: "import-123",
+          data: expect.objectContaining({
+            stage: "failed",
+            errorLog: expect.objectContaining({ lastError: expect.stringContaining("Split the file") }),
+          }),
+        })
+      );
+      expect(mocks.cleanupSidecarsForJob).toHaveBeenCalled();
+
+      // mockImplementation survives clearAllMocks — drop it so it can't leak
+      mocks.generateUniqueId.mockReset();
     });
   });
 });

@@ -87,6 +87,12 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   const analyze = await runStep<AnalyzeDuplicatesOutput>("analyze-duplicates", "analyze-duplicates", {
     ingestJobId: id,
   });
+  if (analyze.failed) {
+    // Hard limit (e.g. unique-row cap): the handler already marked the job
+    // FAILED with a user-facing message — stop without running later stages.
+    logger.info(`[sheet-${s}] failed during analyze-duplicates`, { ...sheetCtx, reason: analyze.reason });
+    return;
+  }
   if (analyze.needsReview) {
     logger.info(`[sheet-${s}] needs review after analyze-duplicates`, sheetCtx);
     return;

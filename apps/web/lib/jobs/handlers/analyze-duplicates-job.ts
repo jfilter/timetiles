@@ -31,6 +31,7 @@ import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
 
 import type { AnalyzeDuplicatesJobInput } from "../types/job-inputs";
+import type { AnalyzeDuplicatesOutput } from "../types/task-outputs";
 import type { JobHandlerContext } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
@@ -341,6 +342,49 @@ const handleDisabledDedup = async (
   return null;
 };
 
+/**
+ * Handle an expected AnalyzeDuplicatesReviewError; returns the task output or
+ * null when the error is not a review error (caller rethrows).
+ *
+ * FILE_TOO_LARGE is a hard limit, not an approvable review: the analysis
+ * aborted mid-stream, so no duplicates summary exists and a resume would skip
+ * dedup and check the per-import quota against 0 rows. Mark the job FAILED
+ * with a clear message (terminal — the ingest file resolves to "failed")
+ * instead of stranding it in needs-review. Other reasons pause for review.
+ */
+const handleAnalyzeReviewError = async (
+  payload: Payload,
+  ingestJobId: number | string,
+  error: unknown,
+  log: ReturnType<typeof createJobLogger>
+): Promise<AnalyzeDuplicatesOutput | null> => {
+  if (!(error instanceof AnalyzeDuplicatesReviewError)) return null;
+
+  if (error.reason === REVIEW_REASONS.FILE_TOO_LARGE) {
+    log.warn("Duplicate analysis aborted — file exceeds unique-row limit", { ingestJobId, details: error.details });
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: ingestJobId,
+      data: {
+        stage: PROCESSING_STAGE.FAILED,
+        errorLog: {
+          lastError: `${error.message}. Split the file into smaller parts and upload again.`,
+          context: "analyze-duplicates",
+          timestamp: new Date().toISOString(),
+        },
+      },
+    });
+    await cleanupSidecarsForJob(payload, ingestJobId);
+    return { failed: true, reason: error.reason };
+  }
+
+  // Review errors are expected user-facing outcomes. Surface via setNeedsReview
+  // rather than retrying — this produces a clean UI message instead of a 500.
+  log.warn("Duplicate analysis stopped for review", { ingestJobId, reason: error.reason, details: error.details });
+  await setNeedsReview(payload, ingestJobId, error.reason, error.details);
+  return { needsReview: true, reason: error.reason };
+};
+
 export const analyzeDuplicatesJob = {
   slug: JOB_TYPES.ANALYZE_DUPLICATES,
   retries: 1,
@@ -350,6 +394,7 @@ export const analyzeDuplicatesJob = {
     { name: "internalDuplicates", type: "number" as const },
     { name: "externalDuplicates", type: "number" as const },
     { name: "needsReview", type: "checkbox" as const },
+    { name: "failed", type: "checkbox" as const },
     { name: "skipped", type: "checkbox" as const },
     { name: "reason", type: "text" as const },
   ],
@@ -468,17 +513,9 @@ export const analyzeDuplicatesJob = {
         },
       };
     } catch (error) {
-      // Review errors are expected user-facing outcomes (e.g. file exceeds the
-      // unique-row cap). Surface via setNeedsReview rather than retrying —
-      // this produces a clean UI message instead of a 500.
-      if (error instanceof AnalyzeDuplicatesReviewError) {
-        logger.warn("Duplicate analysis stopped for review", {
-          ingestJobId,
-          reason: error.reason,
-          details: error.details,
-        });
-        await setNeedsReview(payload, ingestJobId, error.reason, error.details);
-        return { output: { needsReview: true, reason: error.reason } };
+      const reviewOutput = await handleAnalyzeReviewError(payload, ingestJobId, error, logger);
+      if (reviewOutput) {
+        return { output: reviewOutput };
       }
 
       logError(error, "Duplicate analysis failed", { ingestJobId });
