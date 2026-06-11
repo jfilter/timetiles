@@ -371,7 +371,10 @@ export class QuotaService {
       if (desc.daily) {
         // For daily types, atomically reset stale counters and increment the target.
         // All daily columns are reset in a single UPDATE to prevent stale data.
-        const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
+        // Day boundaries are pinned to UTC — `::date < CURRENT_DATE` would use the
+        // DB session timezone and disagree with the UTC-based JS checks
+        // (shouldResetDailyUsage/getNextResetTime) for 1-2h around midnight.
+        const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
 
         const setClauses: Record<string, unknown> = {};
         for (const field of DAILY_USAGE_FIELDS) {
@@ -585,8 +588,8 @@ export class QuotaService {
     if (desc.daily) {
       // For daily quotas, reset stale counters before checking the limit.
       // Uses the same CASE WHEN pattern as incrementUsage to handle the window
-      // between midnight UTC and the quota-reset job.
-      const needsReset = sql`${user_usage.lastResetDate} IS NULL OR ${user_usage.lastResetDate}::date < CURRENT_DATE`;
+      // between midnight UTC and the quota-reset job. UTC-pinned like above.
+      const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
       const effectiveValue = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END`;
 
       const setClauses: Record<string, unknown> = {};
