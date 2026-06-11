@@ -538,6 +538,43 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("No valid sheets found in file");
     });
 
+    it("should keep the original workbook index when the only data sheet is not sheet 0", async () => {
+      // Empty Sheet0 + data in Sheet1: detection skips the empty sheet but the
+      // surviving sheet keeps workbook index 1 — the created job must stream
+      // THAT sheet, not a hardcoded 0 (which silently imports the empty sheet).
+      const XLSX = await import("xlsx");
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([]), "Cover");
+      const dataSheet = XLSX.utils.aoa_to_sheet([
+        ["id", "title", "date"],
+        ["1", "Event 1", "2024-01-01"],
+      ]);
+      XLSX.utils.book_append_sheet(workbook, dataSheet, "Data");
+      const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+      mocks.fs.readFileSync.mockReturnValue(buffer);
+
+      const mockIngestFile = {
+        id: 123,
+        filename: "cover-then-data.xlsx",
+        filePath: "/tmp/cover-then-data.xlsx",
+        catalog: 456,
+        originalName: "cover-then-data.xlsx",
+      };
+      const mockCatalog = { id: 456, name: "Test Catalog" };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
+
+      await datasetDetectionJob.handler(mockContext);
+
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        data: expect.objectContaining({ sheetIndex: 1, stage: "analyze-duplicates" }),
+      });
+    });
+
     it("should handle unsupported file formats", async () => {
       const mockIngestFile = {
         id: 123,

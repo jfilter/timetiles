@@ -116,6 +116,10 @@ const normalizeIngestFileRelationId = (ingestFileId: string | number): number =>
 const handleSingleSheet = async (
   payload: Payload,
   ingestFile: { id: string | number; originalName?: string | null; metadata?: unknown },
+  // Excel detection skips empty worksheets but keeps the ORIGINAL workbook
+  // index — a workbook whose only data sheet is not sheet 0 must stream that
+  // sheet, not a hardcoded 0 (which silently imports the empty sheet).
+  sheetIndex: number,
   catalogId?: string | number,
   datasetMapping?: { mappingType: string; singleDataset?: unknown },
   userId?: number
@@ -146,7 +150,7 @@ const handleSingleSheet = async (
     data: {
       ingestFile: normalizeIngestFileRelationId(ingestFile.id),
       dataset: dataset.id,
-      sheetIndex: 0,
+      sheetIndex,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
       progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
       configSnapshot: buildConfigSnapshot(dataset),
@@ -354,7 +358,16 @@ export const datasetDetectionJob = {
 
       const createdJobs =
         sheets.length === 1
-          ? [await handleSingleSheet(payload, ingestFile, resolvedCatalogId, datasetMapping, userId)]
+          ? [
+              await handleSingleSheet(
+                payload,
+                ingestFile,
+                sheets[0]?.index ?? 0,
+                resolvedCatalogId,
+                datasetMapping,
+                userId
+              ),
+            ]
           : await handleMultipleSheets(payload, ingestFile, sheets, resolvedCatalogId, datasetMapping, userId);
 
       logger.info("[dataset-detection] created import jobs", {
