@@ -68,9 +68,15 @@ interface ViewProviderProps {
 export const ViewProvider = ({ view, children }: ViewProviderProps): React.ReactElement => {
   // oxlint-disable-next-line complexity -- builds the full view context value; extracting per-field helpers would increase indirection more than it would reduce branching
   const value = useMemo((): ViewContextValue => {
-    // Extract catalog/dataset IDs from relationships
-    const catalogIds = view?.dataScope?.catalogs?.map((c) => (typeof c === "number" ? c : c.id));
-    const datasetIds = view?.dataScope?.datasets?.map((d) => (typeof d === "number" ? d : d.id));
+    // Extract catalog/dataset IDs from relationships — but ONLY for the active
+    // mode. The dashboard's admin.condition merely hides the other relation
+    // field; its persisted rows survive a mode switch, so applying both (or
+    // applying them under mode "all") silently scopes the view to stale data.
+    const mode = view?.dataScope?.mode ?? "all";
+    const catalogIds =
+      mode === "catalogs" ? view?.dataScope?.catalogs?.map((c) => (typeof c === "number" ? c : c.id)) : undefined;
+    const datasetIds =
+      mode === "datasets" ? view?.dataScope?.datasets?.map((d) => (typeof d === "number" ? d : d.id)) : undefined;
 
     const defaultFilters = view?.filterConfig?.defaultFilters
       ? (view.filterConfig.defaultFilters as Record<string, string[]>)
@@ -90,7 +96,7 @@ export const ViewProvider = ({ view, children }: ViewProviderProps): React.React
       hasView: view != null,
 
       dataScope: {
-        mode: view?.dataScope?.mode ?? "all",
+        mode,
         catalogIds: catalogIds?.length ? catalogIds : undefined,
         datasetIds: datasetIds?.length ? datasetIds : undefined,
       },
