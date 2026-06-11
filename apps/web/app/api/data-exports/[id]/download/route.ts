@@ -106,6 +106,7 @@ export const GET = apiRoute({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,
       overrideAccess: true,
+      disableErrors: true,
     });
 
     if (!exportRecord) {

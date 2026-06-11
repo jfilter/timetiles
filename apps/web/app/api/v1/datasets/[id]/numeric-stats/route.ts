@@ -86,6 +86,7 @@ export const GET = apiRoute({
       depth: 0,
       user,
       overrideAccess: false,
+      disableErrors: true,
     });
 
     if (!dataset) throw new NotFoundError("Dataset not found");

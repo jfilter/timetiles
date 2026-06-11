@@ -55,7 +55,13 @@ export const PATCH = apiRoute({
   // eslint-disable-next-line sonarjs/max-lines-per-function, sonarjs/cognitive-complexity, complexity -- orchestration handler with sequential steps
   handler: async ({ body, req, user, payload }) => {
     // Verify the scheduled ingest exists and belongs to the user
-    const existing = await payload.findByID({ collection: COLLECTION, id: body.scheduledIngestId, depth: 0, req });
+    const existing = await payload.findByID({
+      collection: COLLECTION,
+      id: body.scheduledIngestId,
+      depth: 0,
+      req,
+      disableErrors: true,
+    });
 
     if (!existing) {
       throw new NotFoundError("scheduled ingest not found");

@@ -126,7 +126,36 @@ const buildErrorMetadata = (req?: ErrorRequestContext): Record<string, unknown> 
  * deliberately kept generic to avoid leaking stack traces or implementation
  * details to clients.
  */
+/**
+ * Next.js control-flow "errors" thrown by `redirect()` / `notFound()`. They must
+ * propagate out of the route handler so the framework can turn them into the
+ * proper HTTP response instead of a 500. Detected via digest (like Next's own
+ * `unstable_rethrow`) so the check works when tests mock `next/navigation`.
+ */
+const isNextControlFlowError = (err: unknown): boolean => {
+  if (err == null || typeof err !== "object") return false;
+  const digest = (err as { digest?: unknown }).digest;
+  if (typeof digest !== "string") return false;
+  return (
+    digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_HTTP_ERROR_FALLBACK") || digest === "NEXT_NOT_FOUND"
+  );
+};
+
+/**
+ * Payload's `APIError` (and subclasses like `AuthenticationError`, `NotFound`)
+ * carry a meaningful HTTP status. Detected by shape — mirroring
+ * `isAuthRejection` in handler.ts — so the check survives mocked `payload`
+ * modules in unit tests.
+ */
+const getPayloadErrorStatus = (err: unknown): number | undefined => {
+  if (!(err instanceof Error) || !("isPublic" in err)) return undefined;
+  const status = (err as { status?: unknown }).status;
+  return typeof status === "number" && status >= 400 && status <= 599 ? status : undefined;
+};
+
 export const handleError = (err: unknown, req?: ErrorRequestContext): Response => {
+  if (isNextControlFlowError(err)) throw err;
+
   if (err instanceof AppError) {
     const body: Record<string, unknown> = { error: err.message };
     if (err.code) body.code = err.code;
@@ -139,6 +168,18 @@ export const handleError = (err: unknown, req?: ErrorRequestContext): Response =
       { error: "Validation failed", code: "VALIDATION_ERROR", details: err.issues },
       { status: 422 }
     );
+  }
+
+  // Surface Payload client errors (401 invalid credentials, 404 not found, ...)
+  // with their message and status; keep 5xx responses generic so internals
+  // don't leak.
+  const payloadStatus = getPayloadErrorStatus(err);
+  if (payloadStatus != null) {
+    if (payloadStatus < 500) {
+      return Response.json({ error: (err as Error).message }, { status: payloadStatus });
+    }
+    logError(err, "Unhandled Payload error in API route", buildErrorMetadata(req));
+    return Response.json({ error: "Internal server error", code: "INTERNAL_ERROR" }, { status: payloadStatus });
   }
 
   logError(err, "Unhandled error in API route", buildErrorMetadata(req));

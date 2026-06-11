@@ -94,6 +94,36 @@ describe.sequential("handleError", () => {
     // Domain errors don't get the unhandled-error log — they're expected outcomes.
     expect(mockLogger.logError).not.toHaveBeenCalled();
   });
+
+  it("rethrows Next.js control-flow errors (redirect/notFound) instead of returning 500", () => {
+    const redirectErr = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/events/foo;307;" });
+
+    expect(() => handleError(redirectErr)).toThrow(redirectErr);
+    expect(mockLogger.logError).not.toHaveBeenCalled();
+  });
+
+  // Mirrors Payload's APIError shape (message + status + isPublic). Built by
+  // hand because this file mocks the `payload` module.
+  const makePayloadError = (message: string, status: number) =>
+    Object.assign(new Error(message), { status, isPublic: false, data: null });
+
+  it("surfaces Payload client errors (e.g. 401 invalid credentials) with their status and message", async () => {
+    const err = makePayloadError("The email or password provided is incorrect.", 401);
+    const response = handleError(err);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: "The email or password provided is incorrect." });
+    expect(mockLogger.logError).not.toHaveBeenCalled();
+  });
+
+  it("keeps Payload 5xx errors generic (no message leak) but preserves the status", async () => {
+    const err = makePayloadError("internal connection string leaked", 503);
+    const response = handleError(err);
+
+    expect(response.status).toBe(503);
+    expect(await response.json()).toEqual({ error: "Internal server error", code: "INTERNAL_ERROR" });
+    expect(mockLogger.logError).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe.sequential("apiRoute integration: error context is forwarded to handleError", () => {
