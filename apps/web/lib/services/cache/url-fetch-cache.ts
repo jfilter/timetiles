@@ -337,6 +337,14 @@ export class UrlFetchCache {
         return this.buildCacheResponse(updatedCached, "REVALIDATED");
       }
 
+      // An error status on revalidation must never overwrite the valid cached
+      // body — treat it like a failed revalidation and serve the stale entry
+      // (safeFetch does not throw on non-2xx, so this needs an explicit check).
+      if (!response.ok) {
+        logger.warn("Revalidation returned error status, returning stale cache", { url, status: response.status });
+        return this.buildCacheResponse(cached, "STALE");
+      }
+
       // Got new content, cache and return it
       return await this.fetchAndCache(url, cacheKey, response, maxSize);
     } catch (error) {
@@ -357,7 +365,11 @@ export class UrlFetchCache {
   ): Promise<CachedResponse> {
     const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
-    await this.cacheResponse(cacheKey, data, respHeaders, response.status);
+    // Same guard as fetchFresh: only cache OK, cacheable responses (the
+    // revalidation path was previously caching error bodies unconditionally).
+    if (response.ok && this.isCacheable(response.status, respHeaders)) {
+      await this.cacheResponse(cacheKey, data, respHeaders, response.status);
+    }
 
     return { data, headers: { ...respHeaders, "X-Cache": "MISS" }, status: response.status };
   }
