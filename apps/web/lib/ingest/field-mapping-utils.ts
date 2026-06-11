@@ -26,7 +26,7 @@ export const createEmptyFieldMapping = (sheetIndex: number): FieldMapping => ({
 });
 
 /** All FieldMapping keys that hold `string | null` column names. */
-const FIELD_MAPPING_STRING_KEYS: readonly FieldMappingStringField[] = [
+export const FIELD_MAPPING_STRING_KEYS: readonly FieldMappingStringField[] = [
   "titleField",
   "descriptionField",
   "locationNameField",

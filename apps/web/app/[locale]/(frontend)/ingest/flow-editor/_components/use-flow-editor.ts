@@ -13,7 +13,7 @@ import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodes
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-ingest-wizard-queries";
-import { createEmptyFieldMapping, setMappingField } from "@/lib/ingest/field-mapping-utils";
+import { createEmptyFieldMapping, FIELD_MAPPING_STRING_KEYS, setMappingField } from "@/lib/ingest/field-mapping-utils";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/ingest/types/flow-mapping";
 import { createSourceNodes, createTargetNodes } from "@/lib/ingest/types/flow-mapping";
 import {
@@ -57,10 +57,12 @@ const collectTransformChains = (nodes: FlowNode[], edges: FlowEdge[], mapping: F
       ? nodes.find((n) => n.id === outgoingEdge.target && n.type === NODE_TYPE_TARGET)
       : null;
 
-    if (!srcNode || !tgtNode) continue;
+    // A transform only needs a SOURCE to be meaningful (e.g. a rename or
+    // string-op on a column imported as-is) — dropping target-less chains
+    // silently deleted such transforms on every save.
+    if (!srcNode) continue;
 
     const sourceData = srcNode.data as SourceColumnNodeData;
-    const targetData = tgtNode.data as TargetFieldNodeData;
 
     const transform = { ...transformData.transform };
     if ("from" in transform && !transform.from) {
@@ -70,8 +72,11 @@ const collectTransformChains = (nodes: FlowNode[], edges: FlowEdge[], mapping: F
     if (!isTransformValid(transform)) continue;
 
     transforms.push(transform);
-    const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
-    setMappingField(mapping, targetData.fieldKey, mappedColumn);
+    if (tgtNode) {
+      const targetData = tgtNode.data as TargetFieldNodeData;
+      const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
+      setMappingField(mapping, targetData.fieldKey, mappedColumn);
+    }
   }
 
   return transforms;
@@ -142,6 +147,28 @@ const createInitialEdges = (mappingPairs: MappingPair[], sheetIndex: number): Fl
         data: { isValid: true, confidence: mapping.confidence },
       });
     }
+  }
+  return edges;
+};
+
+/**
+ * Create initial edges from the wizard's CURRENT field mapping. This is the
+ * authoritative source when present — initializing from auto-suggestions
+ * instead silently reverted the user's step-4 edits on "Apply & Return".
+ */
+const createEdgesFromFieldMapping = (
+  fm: FieldMapping,
+  sheetIndex: number,
+  sourceNodeIds: ReadonlySet<string>
+): FlowEdge[] => {
+  const edges: FlowEdge[] = [];
+  for (const key of FIELD_MAPPING_STRING_KEYS) {
+    const source = fm[key];
+    if (!source) continue;
+    const sourceNodeId = `source-${sheetIndex}-${source}`;
+    // Skip stale refs to columns that no longer exist in the sheet
+    if (!sourceNodeIds.has(sourceNodeId)) continue;
+    edges.push({ id: `edge-${source}-${key}`, source: sourceNodeId, target: `target-${key}`, data: { isValid: true } });
   }
   return edges;
 };
@@ -256,7 +283,11 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     const allInitNodes: FlowNode[] = [...sourceNodes, ...targetNodes];
     const allInitEdges: FlowEdge[] = [];
 
-    if (sheet.suggestedMappings?.mappings) {
+    if (wizardFieldMapping) {
+      const sourceNodeIds = new Set(sourceNodes.map((n) => n.id));
+      allInitEdges.push(...createEdgesFromFieldMapping(wizardFieldMapping, sheetIndex, sourceNodeIds));
+    } else if (sheet.suggestedMappings?.mappings) {
+      // No wizard state (direct flow-editor access) — fall back to suggestions
       const mappingPairs = buildMappingPairs(sheet.suggestedMappings.mappings);
       const suggestedEdges = createInitialEdges(mappingPairs, sheetIndex);
       allInitEdges.push(...suggestedEdges);
@@ -427,7 +458,13 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
   // Convert flow state to FieldMapping + IngestTransforms
   const serializeFlowState = useCallback((): FlowEditorResult => {
-    const mapping: FieldMapping = createEmptyFieldMapping(sheetIndex);
+    // idStrategy/idField have no graph representation — preserve the wizard's
+    // values instead of resetting an "external ID" config to content-hash.
+    const mapping: FieldMapping = {
+      ...createEmptyFieldMapping(sheetIndex),
+      idStrategy: wizardFieldMapping?.idStrategy ?? "content-hash",
+      idField: wizardFieldMapping?.idField ?? null,
+    };
 
     // Process direct source→target edges
     for (const edge of edges) {
@@ -445,7 +482,7 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
     const transforms = collectTransformChains(nodes, edges, mapping);
 
     return { fieldMapping: mapping, transforms };
-  }, [nodes, edges, sheetIndex]);
+  }, [nodes, edges, sheetIndex, wizardFieldMapping]);
 
   return {
     nodes,
