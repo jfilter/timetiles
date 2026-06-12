@@ -36,6 +36,9 @@ export class GeocodingOperations {
   /** Counter for weighted distribution of requests across providers */
   private distributionCounter = 0;
 
+  /** Providers we already warned about dropping a geocoding bias for (once per process). */
+  private readonly biasWarnedProviders = new Set<string>();
+
   constructor(
     private readonly providerManager: ProviderManager,
     private readonly cacheManager: CacheManager,
@@ -298,7 +301,16 @@ export class GeocodingOperations {
     await rateLimiter.waitForSlot(provider.name);
 
     // Use object form if provider has extra geocode params (bbox, country codes, etc.)
-    const geocodeParams = this.supportsObjectQuery(provider) ? this.buildGeocodeParams(provider, bias) : {};
+    const supportsParams = this.supportsObjectQuery(provider);
+    const hasBias = (bias?.countryCodes?.length ?? 0) > 0 || bias?.viewBox != null;
+    if (hasBias && !supportsParams && !this.biasWarnedProviders.has(provider.name)) {
+      this.biasWarnedProviders.add(provider.name);
+      logger.warn("Geocoding bias ignored: provider only accepts plain string queries", {
+        provider: provider.name,
+        providerType: provider.type,
+      });
+    }
+    const geocodeParams = supportsParams ? this.buildGeocodeParams(provider, bias) : {};
     const query: string | Record<string, string | number> =
       Object.keys(geocodeParams).length > 0 ? { q: address, ...geocodeParams } : address;
 
@@ -464,22 +476,20 @@ export class GeocodingOperations {
 
   // Helper methods to reduce complexity in calculateConfidence
   private calculateGoogleConfidence(result: Entry): number {
-    const googleConfidence = (result.extra as { confidence?: string })?.confidence;
-
-    switch (googleConfidence) {
-      case "exact_match":
-        return 0.95;
-      case "high":
-        return 0.85;
-      case "medium":
-        return 0.7;
-      default:
-        return 0.6;
-    }
+    // node-geocoder maps Google's location_type to a 0-1 number
+    // (ROOFTOP:1, RANGE_INTERPOLATED:0.9, GEOMETRIC_CENTER:0.7,
+    // APPROXIMATE:0.5, unknown:0) — 0 means "unknown grade", not "bad".
+    const googleConfidence = (result.extra as { confidence?: number })?.confidence;
+    return typeof googleConfidence === "number" && googleConfidence > 0 ? googleConfidence : 0.6;
   }
 
   private calculateOpenCageConfidence(result: Entry): number {
-    return (result.extra as { confidence?: number })?.confidence ?? 0.7;
+    // OpenCage confidence is 0-10 (10 = <0.25km error, 1 = coarse,
+    // 0 = "unable to determine error") — normalize to 0-1; treat the
+    // unknown grade like other providers' default.
+    const openCageConfidence = (result.extra as { confidence?: number })?.confidence;
+    if (typeof openCageConfidence !== "number" || openCageConfidence === 0) return 0.6;
+    return Math.min(openCageConfidence / 10, 1);
   }
 
   private calculateNominatimConfidence(result: Entry): number {
