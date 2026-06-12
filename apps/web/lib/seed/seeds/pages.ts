@@ -468,6 +468,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Home",
     slug: "home",
+    _status: "published",
     site: "default", // Resolved by relationship resolver via site slug
     pageBuilder: [
       {
@@ -541,6 +542,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "About",
     slug: "about",
+    _status: "published",
     site: "default",
     pageBuilder: [
       {
@@ -688,6 +690,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Contact",
     slug: "contact",
+    _status: "published",
     site: "default",
     pageBuilder: [
       {
@@ -767,6 +770,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Terms of Service",
     slug: "terms",
+    _status: "published",
     site: "default",
     pageBuilder: [
       {
@@ -843,6 +847,7 @@ export const pagesSeed: PageSeed[] = [
   {
     title: "Privacy Policy",
     slug: "privacy",
+    _status: "published",
     site: "default",
     pageBuilder: [
       {
