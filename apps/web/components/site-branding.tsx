@@ -2,8 +2,9 @@
  * Injects site-specific CSS custom properties for branding.
  *
  * Reads the active site's branding colors, typography, and style settings
- * and sets CSS variables on a wrapper div, making them available to all
- * descendant components. Also injects sanitized custom CSS if configured.
+ * and emits them as a CSS rule scoped to the layout's `data-site` body
+ * attribute, making them available to the whole page. Also injects
+ * sanitized custom CSS if configured.
  *
  * @module
  * @category Components
@@ -39,7 +40,12 @@ const BORDER_RADIUS_MAP: Record<string, string> = { sharp: "0rem", rounded: "0.2
 
 /**
  * Client component that injects site branding CSS custom properties.
- * Renders nothing visible — only sets CSS variables via inline style.
+ * Renders nothing visible — only emits `<style>` tags.
+ *
+ * The variables MUST go through a stylesheet rule on the `data-site` body
+ * attribute (set by the layouts): this component renders as a SIBLING of the
+ * page content, so inline style on its own childless div cascades to nothing
+ * — exactly the bug that made every branding setting a silent no-op.
  */
 export const SiteBranding = () => {
   const siteContext = useSite();
@@ -47,17 +53,15 @@ export const SiteBranding = () => {
   const customCode = siteContext.customCode;
   const siteSlug = siteContext.site?.slug;
 
-  const inlineStyle = useMemo((): (React.CSSProperties & Record<string, string>) | undefined => {
-    const s: React.CSSProperties & Record<string, string> = {};
-    let hasValue = false;
+  const brandingCSS = useMemo((): string | null => {
+    const declarations: string[] = [];
 
     // Inject semantic color tokens
     if (colors) {
       for (const [key, cssVar] of Object.entries(COLOR_TOKEN_MAP)) {
         const value = colors[key as keyof SiteBrandingColors];
         if (value) {
-          s[cssVar] = value;
-          hasValue = true;
+          declarations.push(`${cssVar}: ${value};`);
         }
       }
     }
@@ -66,25 +70,30 @@ export const SiteBranding = () => {
     if (brandingStyle?.borderRadius) {
       const radius = BORDER_RADIUS_MAP[brandingStyle.borderRadius];
       if (radius) {
-        s["--radius"] = radius;
-        hasValue = true;
+        declarations.push(`--radius: ${radius};`);
       }
     }
 
     // Inject font pairing
     if (typography?.fontPairing) {
-      s["--site-font-pairing"] = typography.fontPairing;
-      hasValue = true;
+      declarations.push(`--site-font-pairing: ${typography.fontPairing};`);
     }
 
     // Inject density
     if (brandingStyle?.density) {
-      s["--site-density"] = brandingStyle.density;
-      hasValue = true;
+      declarations.push(`--site-density: ${brandingStyle.density};`);
     }
 
-    return hasValue ? s : undefined;
-  }, [colors, typography, brandingStyle]);
+    if (declarations.length === 0) return null;
+
+    // Values are admin-entered — run them through the same sanitizer as
+    // customCSS before they reach a style tag.
+    const sanitized = sanitizeCSS(declarations.join(" "));
+    if (!sanitized) return null;
+
+    const scope = siteSlug ? `[data-site="${siteSlug}"]` : ":root";
+    return `${scope} { ${sanitized} }`;
+  }, [colors, typography, brandingStyle, siteSlug]);
 
   const sanitizedCSS = useMemo(() => {
     if (!customCode?.customCSS) return null;
@@ -93,16 +102,12 @@ export const SiteBranding = () => {
       : sanitizeCSS(customCode.customCSS);
   }, [customCode?.customCSS, siteSlug]);
 
-  const cssContent = sanitizedCSS ? { __html: sanitizedCSS } : undefined;
+  const combinedCSS = [brandingCSS, sanitizedCSS].filter(Boolean).join("\n");
 
-  if (!inlineStyle && !cssContent) {
+  if (!combinedCSS) {
     return null;
   }
 
-  return (
-    <>
-      {inlineStyle && <div data-site-branding="" style={inlineStyle} className="contents" />}
-      {cssContent && <style dangerouslySetInnerHTML={cssContent} />}
-    </>
-  );
+  // eslint-disable-next-line react/no-danger -- sanitized via sanitizeCSS above
+  return <style dangerouslySetInnerHTML={{ __html: combinedCSS }} />;
 };
