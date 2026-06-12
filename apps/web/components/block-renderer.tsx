@@ -44,10 +44,12 @@ import {
   TimelineItem,
   TimelineTitle,
 } from "@timetiles/ui";
+import type { NewsletterButtonLabels, NewsletterMessages } from "@timetiles/ui";
+import { useTranslations } from "next-intl";
 import React from "react";
 
 import { NewsletterCTAClient, NewsletterFormClient } from "@/components/newsletter-form-client";
-import { NEWSLETTER_MESSAGES } from "@/lib/blocks/newsletter";
+
 import type {
   Block,
   BlockRendererProps,
@@ -300,18 +302,24 @@ const renderCTA = (block: CTABlock, key: string) => (
   </div>
 );
 
-const renderNewsletterForm = (block: NewsletterFormBlock, key: string) => (
+interface NewsletterLabels {
+  messages: NewsletterMessages;
+  buttonLabels: NewsletterButtonLabels;
+}
+
+const renderNewsletterForm = (block: NewsletterFormBlock, key: string, newsletter: NewsletterLabels) => (
   <div key={key} className="container mx-auto max-w-xl px-6 py-8">
     <NewsletterFormClient
       headline={block.headline ?? undefined}
       placeholder={block.placeholder ?? undefined}
       buttonText={block.buttonText ?? undefined}
-      messages={NEWSLETTER_MESSAGES}
+      messages={newsletter.messages}
+      buttonLabels={newsletter.buttonLabels}
     />
   </div>
 );
 
-const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
+const renderNewsletterCTA = (block: NewsletterCTABlock, key: string, newsletter: NewsletterLabels) => (
   <NewsletterCTAClient
     key={key}
     headline={block.headline ?? undefined}
@@ -320,12 +328,13 @@ const renderNewsletterCTA = (block: NewsletterCTABlock, key: string) => (
     buttonText={block.buttonText ?? undefined}
     variant={block.variant ?? undefined}
     size={block.size ?? undefined}
-    messages={NEWSLETTER_MESSAGES}
+    messages={newsletter.messages}
+    buttonLabels={newsletter.buttonLabels}
   />
 );
 
 /** Render a single block using discriminated union narrowing (no unsafe casts). */
-const renderBlock = (block: Block, key: string): React.ReactElement | null => {
+const renderBlock = (block: Block, key: string, newsletter: NewsletterLabels): React.ReactElement | null => {
   switch (block.blockType) {
     case "hero":
       return renderHero(block, key);
@@ -344,25 +353,37 @@ const renderBlock = (block: Block, key: string): React.ReactElement | null => {
     case "cta":
       return renderCTA(block, key);
     case "newsletterForm":
-      return renderNewsletterForm(block, key);
+      return renderNewsletterForm(block, key, newsletter);
     case "newsletterCTA":
-      return renderNewsletterCTA(block, key);
+      return renderNewsletterCTA(block, key, newsletter);
     default:
       return null;
   }
 };
 
-export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => (
-  <>
-    {(blocks ?? []).map((block, index) => {
-      const key = block.id ?? `${block.blockType}-${index}`;
-      const rendered = renderBlock(block, key);
-      if (!rendered) return null;
-      return (
-        <BlockStyleWrapper key={key} block={block}>
-          {rendered}
-        </BlockStyleWrapper>
-      );
-    })}
-  </>
-);
+export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
+  // Newsletter status/button copy comes from the locale messages — the
+  // hardcoded English constant previously leaked into German pages even
+  // though the Newsletter keys exist in both locales (the footer already
+  // rendered them translated).
+  const t = useTranslations("Newsletter");
+  const newsletter: NewsletterLabels = {
+    messages: { success: t("success"), error: t("error"), networkError: t("networkError") },
+    buttonLabels: { submitting: t("subscribing"), submitted: t("subscribed") },
+  };
+
+  return (
+    <>
+      {(blocks ?? []).map((block, index) => {
+        const key = block.id ?? `${block.blockType}-${index}`;
+        const rendered = renderBlock(block, key, newsletter);
+        if (!rendered) return null;
+        return (
+          <BlockStyleWrapper key={key} block={block}>
+            {rendered}
+          </BlockStyleWrapper>
+        );
+      })}
+    </>
+  );
+};
