@@ -394,13 +394,13 @@ scrapers:
   - name: "Berlin Events"
     slug: berlin-events
     entrypoint: scrapers/berlin.py
-    output: output/berlin.csv
+    output: berlin.csv
     schedule: "0 6 * * *"
 
   - name: "Munich Events"
     slug: munich-events
     entrypoint: scrapers/munich.py
-    output: output/munich.csv
+    output: munich.csv
     schedule: "0 7 * * *"
 
 defaults:
@@ -462,7 +462,7 @@ scrapers:
     entrypoint:
       path/to/script.py # required, relative to repo root
       # must not contain ".."
-    output: output/filename.csv # optional, defaults to "data.csv"
+    output: filename.csv # optional, defaults to "data.csv"; plain filename, no directories
     schedule:
       "0 6 * * *" # optional, cron expression
       # omit for manual-only execution

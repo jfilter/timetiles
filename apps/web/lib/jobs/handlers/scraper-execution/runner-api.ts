@@ -120,7 +120,9 @@ export const buildRunnerRequest = (scraper: Scraper, repo: ScraperRepo, runUuid:
     run_id: runUuid,
     runtime: scraper.runtime,
     entrypoint: scraper.entrypoint,
-    output_file: scraper.outputFile ?? "data.csv",
+    // `||`, not `??`: an outputFile cleared to "" must fall back too — the
+    // runner rejects empty filenames with a 400.
+    output_file: scraper.outputFile || "data.csv",
     env: parseEnvVars(scraper.envVars),
     limits: { timeout_secs: scraper.timeoutSecs ?? 300, memory_mb: scraper.memoryMb ?? 512 },
   };

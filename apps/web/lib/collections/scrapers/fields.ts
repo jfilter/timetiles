@@ -45,7 +45,21 @@ export const scraperFields: Field[] = [
     validate: validateEntrypoint,
     admin: { description: "Script path relative to repo root (e.g., scraper.py)" },
   },
-  { name: "outputFile", type: "text", defaultValue: "data.csv", admin: { description: "Output CSV filename" } },
+  {
+    name: "outputFile",
+    type: "text",
+    defaultValue: "data.csv",
+    admin: { description: "Output CSV filename" },
+    // Mirror the runner's rule — anything else fails every run with an
+    // opaque "Runner API returned 400" instead of failing at save time.
+    validate: (value: null | string | undefined) => {
+      if (value == null || value === "") return true;
+      if (value.includes("..") || value.includes("/") || value.startsWith(".")) {
+        return "Output file must be a plain filename without path separators";
+      }
+      return true;
+    },
+  },
   // Scheduling
   {
     name: "schedule",

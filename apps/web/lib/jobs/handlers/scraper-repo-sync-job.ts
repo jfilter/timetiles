@@ -65,7 +65,7 @@ const validateGitCloneUrl = async (gitUrl: string): Promise<URL> => {
   return parsed;
 };
 
-const cloneRepo = async (gitUrl: string, branch: string): Promise<string> => {
+const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<string> => {
   const parsedGitUrl = await validateGitCloneUrl(gitUrl);
   const tempDir = await mkdtemp(path.join(tmpdir(), "scraper-repo-"));
 
@@ -82,8 +82,10 @@ const cloneRepo = async (gitUrl: string, branch: string): Promise<string> => {
         "clone",
         "--depth",
         "1",
-        "--branch",
-        branch,
+        // Empty/absent branch means "repository default branch" (matches the
+        // runner and the field's documented fallback) — `--branch ""` makes
+        // git fail with "Remote branch  not found", permanently breaking sync.
+        ...(branch ? ["--branch", branch] : []),
         "--single-branch",
         parsedGitUrl.toString(),
         tempDir,
@@ -189,9 +191,17 @@ const syncScrapers = async (
     };
 
     if (existingDoc) {
-      await asSystem(payload).update({ collection: "scrapers", id: existingDoc.id, data });
+      // A changed cron must take effect now: nextRunAt (once set) gates
+      // shouldScraperRunNow with absolute precedence, so a stale value from
+      // the OLD schedule would defer the new cadence until the old fire time.
+      const scheduleChanged = (existingDoc.schedule ?? null) !== (scraper.schedule ?? null);
+      await asSystem(payload).update({
+        collection: "scrapers",
+        id: existingDoc.id,
+        data: scheduleChanged ? { ...data, nextRunAt: null } : data,
+      });
       result.updated++;
-      logger.info("Updated scraper", { slug: scraper.slug, id: existingDoc.id });
+      logger.info("Updated scraper", { slug: scraper.slug, id: existingDoc.id, scheduleChanged });
     } else {
       await asSystem(payload).create({ collection: "scrapers", data: { ...data, enabled: true } });
       result.created++;
@@ -219,6 +229,11 @@ const syncScrapers = async (
 export const scraperRepoSyncJob = {
   slug: "scraper-repo-sync",
   retries: 2,
+  // Serialize per repo: the slug upsert is find-then-create, so two parallel
+  // syncs (afterChange auto-sync + manual force-sync) could both miss the
+  // existing slug and create duplicate scrapers that no later sync ever
+  // reconciles (the slug map keeps only one entry per slug).
+  concurrency: ({ input }: { input: { scraperRepoId: number } }) => `scraper-repo-sync:${input.scraperRepoId}`,
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as { scraperRepoId: number };
@@ -244,7 +259,7 @@ export const scraperRepoSyncJob = {
           throw new Error("Git URL is required for git source type");
         }
 
-        const branch = repo.gitBranch ?? "main";
+        const branch = repo.gitBranch || undefined;
         tempDir = await cloneRepo(repo.gitUrl, branch);
         yamlContent = await readManifestFromDisk(tempDir);
       } else {

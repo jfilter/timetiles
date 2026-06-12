@@ -54,7 +54,12 @@ const scraperEntrySchema = z.object({
   output: z
     .string()
     .min(1)
-    .refine((v) => !v.includes("..") && !v.startsWith("/"), "Output path must not contain traversal")
+    // Mirror the runner's rule exactly (timescrape rejects anything else with
+    // an opaque 400 at RUN time): a plain filename, no separators, no dotfile.
+    .refine(
+      (v) => !v.includes("..") && !v.includes("/") && !v.startsWith("."),
+      "Output must be a plain filename without path separators"
+    )
     .optional(),
   schedule: z
     .string()

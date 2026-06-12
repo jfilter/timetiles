@@ -22,7 +22,7 @@ scrapers:
     slug: city-events
     runtime: python
     entrypoint: scrapers/city_events.py
-    output: output/city_events.csv
+    output: city_events.csv
     schedule: "0 6 * * *"
     limits:
       timeout: 120
@@ -38,7 +38,7 @@ scrapers:
         slug: "city-events",
         runtime: "python",
         entrypoint: "scrapers/city_events.py",
-        output: "output/city_events.csv",
+        output: "city_events.csv",
         schedule: "0 6 * * *",
         limits: { timeout: 120, memory: 512 },
       });
@@ -51,12 +51,12 @@ scrapers:
     slug: city-events
     runtime: python
     entrypoint: scrapers/city_events.py
-    output: output/city_events.csv
+    output: city_events.csv
   - name: County Calendar
     slug: county-calendar
     runtime: node
     entrypoint: scrapers/county_calendar.js
-    output: output/county_calendar.csv
+    output: county_calendar.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseResult;
@@ -106,7 +106,7 @@ scrapers:
     slug: city-events
     runtime: node
     entrypoint: scrapers/city_events.js
-    output: output/city.csv
+    output: city.csv
     limits:
       timeout: 300
       memory: 1024
@@ -116,7 +116,7 @@ scrapers:
 
       expect(result.success).toBe(true);
       expect(result.scrapers[0]).toEqual(
-        expect.objectContaining({ runtime: "node", output: "output/city.csv", limits: { timeout: 300, memory: 1024 } })
+        expect.objectContaining({ runtime: "node", output: "city.csv", limits: { timeout: 300, memory: 1024 } })
       );
     });
 
@@ -128,7 +128,7 @@ scrapers:
   - name: My Scraper
     slug: my-scraper
     entrypoint: scrapers/index.js
-    output: output/data.csv
+    output: data.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseResult;
@@ -146,7 +146,7 @@ scrapers:
     slug: minimal-scraper
     runtime: python
     entrypoint: scrapers/minimal.py
-    output: output/minimal.csv
+    output: minimal.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseResult;
@@ -158,7 +158,7 @@ scrapers:
           slug: "minimal-scraper",
           runtime: "python",
           entrypoint: "scrapers/minimal.py",
-          output: "output/minimal.csv",
+          output: "minimal.csv",
           schedule: null,
         })
       );
@@ -174,7 +174,7 @@ scrapers:
   - slug: no-name
     runtime: python
     entrypoint: scrapers/no_name.py
-    output: output/no_name.csv
+    output: no_name.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;
@@ -188,7 +188,7 @@ scrapers:
   - name: No Entrypoint
     slug: no-entrypoint
     runtime: python
-    output: output/no_entrypoint.csv
+    output: no_entrypoint.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;
@@ -203,7 +203,7 @@ scrapers:
     slug: bad-runtime
     runtime: ruby
     entrypoint: scrapers/bad.rb
-    output: output/bad.csv
+    output: bad.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;
@@ -218,7 +218,7 @@ scrapers:
     slug: bad slug here
     runtime: python
     entrypoint: scrapers/bad.py
-    output: output/bad.csv
+    output: bad.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;
@@ -233,7 +233,7 @@ scrapers:
     slug: bad@slug!
     runtime: python
     entrypoint: scrapers/bad.py
-    output: output/bad.csv
+    output: bad.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;
@@ -248,7 +248,7 @@ scrapers:
     slug: path-traversal
     runtime: python
     entrypoint: scrapers/../../etc/passwd
-    output: output/traversal.csv
+    output: traversal.csv
 `;
 
       const result = parseManifest(yaml) as ManifestParseError;

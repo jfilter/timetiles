@@ -125,8 +125,15 @@ const runPodmanContainer = async (
     if (error && typeof error === "object" && "killed" in error && error.killed) {
       throw new TimeoutError(timeoutSecs);
     }
-    const execError = error as { stdout?: string; stderr?: string; code?: number };
-    return { stdout: execError.stdout ?? "", stderr: execError.stderr ?? "", exitCode: execError.code ?? 1 };
+    // `code` is typed number but Node sets STRING codes for non-exit failures
+    // ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER" when stdout exceeds maxBuffer,
+    // "ENOENT" when podman is missing) — those must not leak into the numeric
+    // exit_code contract, where they fail the web side's run-record validation
+    // and discard the run's logs. Surface them in stderr instead.
+    const execError = error as { stdout?: string; stderr?: string; code?: number | string };
+    const exitCode = typeof execError.code === "number" ? execError.code : 1;
+    const codeNote = typeof execError.code === "string" ? `\n[runner] process error: ${execError.code}` : "";
+    return { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${codeNote}`, exitCode };
   }
 };
 
