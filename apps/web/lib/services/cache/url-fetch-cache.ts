@@ -342,6 +342,12 @@ export class UrlFetchCache {
       // (safeFetch does not throw on non-2xx, so this needs an explicit check).
       if (!response.ok) {
         logger.warn("Revalidation returned error status, returning stale cache", { url, status: response.status });
+        // Release the connection — an unconsumed body keeps the socket reserved.
+        try {
+          await response.body?.cancel();
+        } catch {
+          // Ignore: cancellation is best-effort; the stale entry is returned regardless.
+        }
         return this.buildCacheResponse(cached, "STALE");
       }
 
