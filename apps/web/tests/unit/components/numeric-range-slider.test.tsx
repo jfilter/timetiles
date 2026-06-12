@@ -99,6 +99,47 @@ describe("NumericRangeSlider", () => {
     expect(onChange).toHaveBeenCalledWith(25, null);
   });
 
+  it("clamps a typed min above the current max instead of inverting the range", () => {
+    // Regression: committing min > max sent an inverted range that failed the
+    // server-side Zod refine — every events/stats/chart request 422ed until
+    // the user fixed the digits.
+    const onChange = vi.fn();
+    const { container } = renderWithProviders(
+      <NumericRangeSlider
+        label="Price"
+        min={0}
+        max={100}
+        isInteger={false}
+        value={{ min: null, max: 50 }}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "0 → 50" }));
+    const minInput = within(container).getAllByRole("spinbutton")[0]!;
+    fireEvent.change(minInput, { target: { value: "60" } });
+    expect(onChange).toHaveBeenCalledWith(50, 50);
+  });
+
+  it("clamps a typed max below the current min instead of inverting the range", () => {
+    const onChange = vi.fn();
+    const { container } = renderWithProviders(
+      <NumericRangeSlider
+        label="Price"
+        min={0}
+        max={100}
+        isInteger={false}
+        value={{ min: 40, max: null }}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(within(container).getByRole("button", { name: "40 → 100" }));
+    const maxInput = within(container).getAllByRole("spinbutton")[1]!;
+    fireEvent.change(maxInput, { target: { value: "10" } });
+    expect(onChange).toHaveBeenCalledWith(40, 40);
+  });
+
   it("collapses a typed min at the domain edge to null (open end)", () => {
     const onChange = vi.fn();
     const { container } = renderWithProviders(
