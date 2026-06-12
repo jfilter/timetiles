@@ -10,7 +10,7 @@
 "use client";
 
 import type { LngLatBounds } from "maplibre-gl";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ClusteredMapHandle } from "@/components/maps/clustered-map";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -41,8 +41,11 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
   const mapBounds = useUIStore((state) => state.ui.mapBounds);
   const setMapBounds = useUIStore((state) => state.setMapBounds);
 
-  // Bounds
-  const simpleBounds = simplifyBounds(mapBounds);
+  // Bounds. simpleBounds MUST be identity-stable across renders: useDebounce
+  // keys its effect on reference identity, so a fresh object literal every
+  // render re-arms the 300 ms timer whose setState produces another fresh
+  // reference — a self-sustaining re-render loop for the whole explorer tree.
+  const simpleBounds = useMemo(() => simplifyBounds(mapBounds), [mapBounds]);
   const debouncedSimpleBounds = useDebounce(simpleBounds, 300);
 
   // Reset user panning state when filters change
