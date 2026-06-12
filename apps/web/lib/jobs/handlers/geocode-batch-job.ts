@@ -351,6 +351,18 @@ const prepareGeocodingLocations = async (
   // Only initialize geocoding service when we actually need to geocode
   const geocodingService = createGeocodingService(payload);
 
+  // Global admin switch (Settings → Geocoding → "Enable Geocoding"): when off,
+  // imports proceed without geocoding instead of silently calling external
+  // providers (quota/billing/PII egress) despite the explicit admin control.
+  if (!(await geocodingService.isEnabled())) {
+    logger.info("Geocoding disabled globally in Settings, skipping geocoding stage", {
+      totalRows,
+      uniqueLocations: uniqueLocations.size,
+    });
+    await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.GEOCODE_BATCH);
+    return { skipped: true, skippedWithCoords };
+  }
+
   return { skipped: false, geocodingService, job, ingestFile, uniqueLocations, totalRows, skippedWithCoords };
 };
 

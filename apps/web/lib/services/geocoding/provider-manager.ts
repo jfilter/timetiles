@@ -203,9 +203,8 @@ export class ProviderManager {
         return geocoder ? this.createProviderEntry(doc, geocoder, 5, 2, this.buildGeocodeParams(doc)) : null;
       }
       case "opencage": {
-        const result = this.createOpenCageGeocoder(doc);
-        if (!result) return null;
-        return this.createProviderEntry(doc, result.geocoder, 5, 10, result.geocodeParams);
+        const geocoder = this.createOpenCageGeocoder(doc);
+        return geocoder ? this.createProviderEntry(doc, geocoder, 5, 10) : null;
       }
       case "nominatim": {
         const geocoder = this.createNominatimGeocoder(doc);
@@ -299,19 +298,25 @@ export class ProviderManager {
     } as unknown as Options);
   }
 
-  private createOpenCageGeocoder(
-    doc: GeocodingProvider
-  ): { geocoder: NodeGeocoder.Geocoder; geocodeParams?: Record<string, string | number> } | null {
+  private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
     if (!this.hasApiKey(doc)) {
       logger.warn(`OpenCage provider ${doc.name} has no API key configured`);
       return null;
     }
 
+    // node-geocoder's OpenCage wrapper has no proximity passthrough (its
+    // object-query shape is {address, bounds, countryCode, ...}), so a
+    // configured lat/lon bias cannot be sent. Warn instead of silently
+    // dropping the admin's setting; bounding box + country bias DO apply via
+    // the constructor options below.
     const bias = doc.locationBias;
-    const geocodeParams =
-      bias?.enabled && bias.lat != null && bias.lon != null ? { proximity: `${bias.lat},${bias.lon}` } : undefined;
+    if (bias?.enabled && bias.lat != null && bias.lon != null) {
+      logger.warn("OpenCage does not support lat/lon location bias; configure a bounding box instead", {
+        provider: doc.name,
+      });
+    }
 
-    const geocoder = NodeGeocoder({
+    return NodeGeocoder({
       provider: "opencage",
       apiKey: doc.apiKey,
       language: doc.language ?? undefined,
@@ -320,8 +325,6 @@ export class ProviderManager {
       formatter: null,
       fetch: this.createStatusCheckingFetch(doc.userAgent ?? undefined),
     } as unknown as Options);
-
-    return { geocoder, geocodeParams };
   }
 
   private createLocationIQGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {

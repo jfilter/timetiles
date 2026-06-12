@@ -42,6 +42,23 @@ describe("ProviderRateLimiter", () => {
 
       expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(0);
     });
+
+    it("should preserve an active backoff when reconfigured", () => {
+      // Regression: the limiter is a process-wide singleton and every
+      // GeocodingService init calls configure(); replacing the state wiped an
+      // active 429 backoff and forked the serialization chain, bursting a
+      // provider that had just throttled us (multi-sheet imports init one
+      // service per sheet in parallel).
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 1);
+      rateLimiter.reportThrottle("test-provider", 10_000);
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+
+      rateLimiter.configure("test-provider", 1);
+
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBeGreaterThan(0);
+    });
   });
 
   describe("waitForSlot", () => {

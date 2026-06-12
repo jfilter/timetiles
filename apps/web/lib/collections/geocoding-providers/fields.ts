@@ -88,7 +88,7 @@ export const geocodingProviderFields: Field[] = [
     name: "locationBias",
     type: "group",
     label: "Location Bias",
-    admin: { description: "Bias results towards a specific location. Supported by Photon and Google Maps." },
+    admin: { description: "Bias results towards a specific location. Supported by Photon only." },
     fields: [
       { name: "enabled", type: "checkbox", label: "Enable Location Bias", defaultValue: false },
       {

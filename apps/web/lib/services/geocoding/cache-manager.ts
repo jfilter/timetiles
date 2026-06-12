@@ -32,13 +32,20 @@ const logger = createLogger("geocoding-cache-manager");
  * Lowercases, trims, collapses whitespace, and strips special characters
  * so that variants like "123 Main St", "  123 main st  ", and "123 MAIN ST"
  * map to the same cache key.
+ *
+ * The strip class is Unicode-aware (\p{L}/\p{N}, not ASCII \w): the
+ * normalized string is also what gets SENT to the geocoding providers, so an
+ * ASCII-only class mangled every non-ASCII address ("Müllerstraße 12, Köln"
+ * → "mllerstrae 12, kln"), emptied fully non-Latin addresses out of the
+ * geocode set entirely, and collided cache keys for addresses differing only
+ * in non-ASCII letters.
  */
 export const normalizeGeocodingAddress = (address: string): string =>
   address
     .toLowerCase()
     .trim()
     .replaceAll(/\s+/g, " ")
-    .replaceAll(/[^\w\s,.-]/g, "")
+    .replaceAll(/[^\p{L}\p{N}_\s,.-]/gu, "")
     .replaceAll(/,{2,}/g, ",")
     .replace(/^[\s,]+/, "")
     .trimEnd()

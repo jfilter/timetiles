@@ -75,6 +75,18 @@ export class GeocodingService {
     return this.geocodingOperations!.batchGeocode(addresses, batchSize, bias);
   }
 
+  /**
+   * Whether geocoding is globally enabled for event imports
+   * (Settings → Geocoding → "Enable Geocoding").
+   *
+   * Import jobs must consult this before geocoding; the admin test endpoint
+   * intentionally does not, so providers stay testable while disabled.
+   */
+  async isEnabled(): Promise<boolean> {
+    await this.initialize();
+    return this.settings?.enabled !== false;
+  }
+
   async testConfiguration(testAddress?: string): Promise<Record<string, unknown>> {
     await this.initialize();
     return this.geocodingOperations!.testConfiguration(testAddress);

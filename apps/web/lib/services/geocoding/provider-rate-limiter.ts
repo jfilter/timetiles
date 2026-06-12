@@ -39,16 +39,29 @@ export class ProviderRateLimiter {
   /**
    * Configure rate limit for a provider.
    * Should be called when providers are loaded.
+   *
+   * The limiter is a process-wide singleton and every GeocodingService
+   * initialization calls this (multi-sheet imports run several in parallel),
+   * so an existing entry only gets its limit updated — replacing the state
+   * would fork the serialization chain (transiently exceeding the rate) and
+   * wipe an active 429 backoff, bursting a provider that just throttled us.
    */
   configure(providerName: string, requestsPerSecond: number): void {
+    const limit = Math.max(1, requestsPerSecond);
+    const existing = this.state.get(providerName);
+    if (existing) {
+      existing.requestsPerSecond = limit;
+      logger.debug("Updated rate limit", { providerName, requestsPerSecond: limit });
+      return;
+    }
     this.state.set(providerName, {
-      requestsPerSecond: Math.max(1, requestsPerSecond),
+      requestsPerSecond: limit,
       lastSlotPromise: Promise.resolve(),
       backoffUntil: 0,
       currentBackoffMs: INITIAL_BACKOFF_MS,
       consecutiveThrottles: 0,
     });
-    logger.debug("Configured rate limit", { providerName, requestsPerSecond });
+    logger.debug("Configured rate limit", { providerName, requestsPerSecond: limit });
   }
 
   /**
