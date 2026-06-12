@@ -39,7 +39,15 @@ const parseStrictCronNumber = (value: string): number | null => {
 };
 
 const validateRange = (field: string, min: number, max: number, name: string): string | true => {
-  const parts = field.split("-");
+  // Ranges may carry a step (A-B/N) — validate it, then the bare range.
+  const [rangePart, stepPart] = field.split("/");
+  if (stepPart !== undefined) {
+    const step = parseStrictCronNumber(stepPart);
+    if (step == null || step <= 0) {
+      return `Invalid ${name} step value in cron expression`;
+    }
+  }
+  const parts = (rangePart ?? "").split("-");
   if (parts.length !== 2) {
     return `Invalid ${name} range in cron expression`;
   }

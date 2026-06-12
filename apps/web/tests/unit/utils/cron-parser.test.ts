@@ -322,6 +322,34 @@ describe("Cron Parser Utilities", () => {
       expect(matchesCronField("a-5", 3)).toBe(false);
       expect(matchesCronField("1-b", 3)).toBe(false);
     });
+
+    it("should count steps from the field minimum for 1-based fields", () => {
+      // Standard cron: */2 in day-of-month expands to 1,3,5,…,31 — NOT even days
+      expect(matchesCronField("*/2", 1, 1)).toBe(true);
+      expect(matchesCronField("*/2", 2, 1)).toBe(false);
+      expect(matchesCronField("*/2", 31, 1)).toBe(true);
+      // 0-based fields (minute/hour/dow) keep counting from 0
+      expect(matchesCronField("*/2", 0)).toBe(true);
+      expect(matchesCronField("*/2", 1)).toBe(false);
+    });
+
+    it("should match ranges with steps", () => {
+      // 1-30/2 → 1,3,5,…,29
+      expect(matchesCronField("1-30/2", 1)).toBe(true);
+      expect(matchesCronField("1-30/2", 2)).toBe(false);
+      expect(matchesCronField("1-30/2", 29)).toBe(true);
+      expect(matchesCronField("1-30/2", 30)).toBe(false);
+      expect(matchesCronField("1-30/2", 31)).toBe(false);
+      // Step counts from the range start, not the field minimum
+      expect(matchesCronField("2-10/3", 2)).toBe(true);
+      expect(matchesCronField("2-10/3", 5)).toBe(true);
+      expect(matchesCronField("2-10/3", 3)).toBe(false);
+    });
+
+    it("should reject invalid range steps", () => {
+      expect(matchesCronField("1-30/0", 1)).toBe(false);
+      expect(matchesCronField("1-30/abc", 1)).toBe(false);
+    });
   });
 
   describe("matchesCronDate", () => {
@@ -428,6 +456,22 @@ describe("Cron Parser Utilities", () => {
       const next = calculateNextCronRun("*/5 * * * *", from);
       expect(next).not.toBeNull();
       expect(next!.getUTCMinutes() % 5).toBe(0);
+    });
+
+    it("should run day-of-month steps on odd days (standard cron)", () => {
+      // From the 15th, "0 0 */2 * *" must next fire on the 17th — not the 16th
+      const from = new Date("2026-03-15T10:00:00Z");
+      const next = calculateNextCronRun("0 0 */2 * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCDate()).toBe(17);
+    });
+
+    it("should support range-with-step expressions", () => {
+      // "0 0 1-30/2 * *" fires on odd days within 1-30
+      const from = new Date("2026-03-15T10:00:00Z");
+      const next = calculateNextCronRun("0 0 1-30/2 * *", from);
+      expect(next).not.toBeNull();
+      expect(next!.getUTCDate()).toBe(17);
     });
 
     it("should return null for impossible expressions", () => {

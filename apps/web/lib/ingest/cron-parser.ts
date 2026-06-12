@@ -166,21 +166,30 @@ const strictParseInt = (value: string): number | null => {
 
 /**
  * Test if a cron field matches a specific value.
- * Supports wildcards (*), steps (asterisk/N), ranges (A-B), and lists (A,B,C).
+ * Supports wildcards (*), steps (asterisk/N and A-B/N), ranges (A-B), and lists (A,B,C).
+ *
+ * `fieldMin` is the field's lowest valid value (0 for minute/hour/day-of-week,
+ * 1 for day-of-month/month): standard cron counts `*\/N` steps from the
+ * field's minimum, so `*\/2` in day-of-month means 1,3,5,… — not even days.
  */
-export const matchesCronField = (field: string, value: number): boolean => {
+export const matchesCronField = (field: string, value: number, fieldMin = 0): boolean => {
   if (field === "*") return true;
 
   return field.split(",").some((part) => {
     if (part.startsWith("*/")) {
       const step = strictParseInt(part.slice(2));
-      return step != null && step > 0 && value % step === 0;
+      return step != null && step > 0 && (value - fieldMin) % step === 0;
     }
     if (part.includes("-")) {
-      const [startRaw, endRaw] = part.split("-");
+      const [rangeRaw, stepRaw] = part.split("/");
+      const [startRaw, endRaw] = (rangeRaw ?? "").split("-");
       const start = strictParseInt(startRaw ?? "");
       const end = strictParseInt(endRaw ?? "");
-      return start != null && end != null && value >= start && value <= end;
+      if (start == null || end == null) return false;
+      const step = stepRaw === undefined ? 1 : strictParseInt(stepRaw);
+      if (step == null || step <= 0) return false;
+      // Ranges with steps count from the range start: 1-30/2 → 1,3,…,29.
+      return value >= start && value <= end && (value - start) % step === 0;
     }
     const parsed = strictParseInt(part);
     return parsed != null && parsed === value;
@@ -220,9 +229,9 @@ export const matchesCronDate = (date: Date, parts: CronParts, tzFormatter?: Intl
 
   if (!matchesCronField(parts.minute, minute)) return false;
   if (!matchesCronField(parts.hour, hour)) return false;
-  if (!matchesCronField(parts.month, month)) return false;
+  if (!matchesCronField(parts.month, month, 1)) return false;
 
-  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, dayOfMonthValue);
+  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, dayOfMonthValue, 1);
   const dayOfWeekMatches =
     parts.dayOfWeek === "*" ||
     matchesCronField(parts.dayOfWeek, dayOfWeek) ||
