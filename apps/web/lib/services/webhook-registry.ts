@@ -73,8 +73,12 @@ export const handleWebhookTokenLifecycle = (
 ): void => {
   // Re-enabling after a previous disable → rotate for security.
   const reEnabling = Boolean(data.webhookEnabled) && !originalDoc?.webhookEnabled;
-  // First enable (no stored token yet).
-  const firstEnable = Boolean(data.webhookEnabled) && data.webhookToken == null;
+  // First enable: no token stored yet AND none arriving with the update.
+  // The STORED doc must be consulted — clients can never echo the hash back
+  // for collections whose webhookToken field denies read access (scrapers),
+  // so "data.webhookToken == null" alone would silently rotate the credential
+  // on every unrelated edit that carries webhookEnabled: true.
+  const firstEnable = Boolean(data.webhookEnabled) && data.webhookToken == null && originalDoc?.webhookToken == null;
   const needsNewToken = firstEnable || reEnabling;
 
   if (needsNewToken) {

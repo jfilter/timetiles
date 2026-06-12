@@ -127,6 +127,34 @@ describe("handleWebhookTokenLifecycle", () => {
     expect(readWebhookTokenPlaintext(req)).toBeNull();
   });
 
+  it("does not rotate when the update omits the token but one is stored", () => {
+    // Regression: scrapers deny read access on webhookToken, so NO client can
+    // ever echo the hash back — every unrelated edit carrying
+    // webhookEnabled: true silently rotated the credential and broke the
+    // external caller's URL. The stored doc decides whether a token exists.
+    const existingHash = hashWebhookToken("previously-generated-plaintext");
+    const originalDoc: Record<string, unknown> = { webhookEnabled: true, webhookToken: existingHash };
+    const data: Record<string, unknown> = { webhookEnabled: true, timeout: 300 };
+    const req: { context?: Record<string, unknown> } = {};
+
+    handleWebhookTokenLifecycle(data, originalDoc, req);
+
+    expect(data.webhookToken).toBeUndefined();
+    expect(readWebhookTokenPlaintext(req)).toBeNull();
+  });
+
+  it("generates on first enable when neither data nor stored doc has a token", () => {
+    const originalDoc: Record<string, unknown> = { webhookEnabled: false, webhookToken: null };
+    const data: Record<string, unknown> = { webhookEnabled: true };
+    const req: { context?: Record<string, unknown> } = {};
+
+    handleWebhookTokenLifecycle(data, originalDoc, req);
+
+    const plaintext = readWebhookTokenPlaintext(req);
+    expect(plaintext).toMatch(HEX_64);
+    expect(data.webhookToken).toBe(hashWebhookToken(plaintext!));
+  });
+
   it("does nothing when webhook stays disabled", () => {
     const originalDoc: Record<string, unknown> = { webhookEnabled: false };
     const data: Record<string, unknown> = { webhookEnabled: false };
