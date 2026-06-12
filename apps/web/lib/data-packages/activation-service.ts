@@ -470,6 +470,9 @@ export const deactivateDataPackage = async (
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
     where,
     depth: 0,
+    // The contains-match can return many foreign rows — without this the true
+    // match may sit past the default 10-doc page and never reach the filter.
+    pagination: false,
     overrideAccess: true,
   });
 
