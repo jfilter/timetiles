@@ -408,6 +408,7 @@ export interface User {
    */
   deletionScheduledAt?: string | null;
   _verificationTokenExpiresAt?: string | null;
+  pendingEmail?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -2493,7 +2494,7 @@ export interface GeocodingProvider {
    */
   countryCodes?: string | null;
   /**
-   * Bias results towards a specific location. Supported by Photon and Google Maps.
+   * Bias results towards a specific location. Supported by Photon only.
    */
   locationBias?: {
     enabled?: boolean | null;
@@ -4767,6 +4768,7 @@ export interface UsersSelect<T extends boolean = true> {
   deletionRequestedAt?: T;
   deletionScheduledAt?: T;
   _verificationTokenExpiresAt?: T;
+  pendingEmail?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;

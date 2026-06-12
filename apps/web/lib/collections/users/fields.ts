@@ -199,4 +199,15 @@ export const usersFields: Field[] = [
     admin: { hidden: true },
     access: { read: () => false, update: () => false, create: () => false },
   },
+  // Email-change staging: the requested new address lives here until its
+  // verification link is confirmed, at which point the verify route swaps it
+  // into `email`. The CURRENT (verified) address stays the login credential
+  // throughout — overwriting `email` up front locked the account out
+  // whenever the new address was mistyped or undeliverable.
+  {
+    name: "pendingEmail",
+    type: "text",
+    admin: { hidden: true },
+    access: { read: () => false, update: () => false, create: () => false },
+  },
 ];

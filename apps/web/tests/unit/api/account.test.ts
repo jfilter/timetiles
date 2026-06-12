@@ -257,7 +257,9 @@ describe.sequential("POST /api/users/change-email", () => {
         collection: "users",
         id: mockUser.id,
         overrideAccess: true,
-        data: expect.objectContaining({ email: "new@example.com", _verified: false }),
+        // The new address is STAGED — overwriting email/_verified up front
+        // locked the account out when the new address was undeliverable.
+        data: expect.objectContaining({ pendingEmail: "new@example.com" }),
       })
     );
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith(
@@ -285,7 +287,7 @@ describe.sequential("POST /api/users/change-email", () => {
         newEmail: maskEmail("new@example.com"),
         clientId: "test-client",
       },
-      "Email changed, verification required"
+      "Email change staged, verification required"
     );
   });
 

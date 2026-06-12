@@ -18,6 +18,7 @@ import { hashOpaqueValue } from "@/lib/security/hash";
 interface UserWithVerificationToken {
   id: number | string;
   _verificationTokenExpiresAt?: string | Date | null;
+  pendingEmail?: string | null;
 }
 
 export const POST = apiRoute({
@@ -54,6 +55,33 @@ export const POST = apiRoute({
     if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) {
       logger.info({ userId: user.id, tokenHash: hashOpaqueValue(token) }, "Email verification failed — token expired");
       throw new AppError(400, "Token expired. Please request a new verification email.", "VERIFICATION_TOKEN_EXPIRED");
+    }
+
+    // Email-change confirmation: the change-email route stages the new
+    // address in `pendingEmail` (the verified current email keeps working as
+    // the login credential until the new one proves reachable). Apply the
+    // swap here instead of delegating to verifyEmail.
+    if (user.pendingEmail) {
+      try {
+        await payload.update({
+          collection: "users",
+          id: user.id,
+          overrideAccess: true,
+          data: { email: user.pendingEmail, pendingEmail: null, _verificationToken: null, _verified: true },
+        });
+      } catch {
+        // Uniqueness is re-checked by the DB at swap time: another account
+        // may have claimed the address since the change was requested.
+        logger.info({ userId: user.id }, "Email change confirmation failed — address no longer available");
+        throw new AppError(
+          409,
+          "This email address is no longer available. Please request the change again.",
+          "EMAIL_NO_LONGER_AVAILABLE"
+        );
+      }
+
+      logger.info({ userId: user.id }, "Email change confirmed");
+      return { success: true };
     }
 
     // Delegate to Payload's built-in verification. This flips `_verified` to

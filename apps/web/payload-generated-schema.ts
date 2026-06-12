@@ -4067,6 +4067,7 @@ export const users = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
+    pendingEmail: varchar("pending_email"),
     updatedAt: timestamp("updated_at", {
       mode: "string",
       withTimezone: true,

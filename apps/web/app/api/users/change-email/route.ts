@@ -30,7 +30,7 @@ import { getBaseUrl } from "@/lib/utils/base-url";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Update email, send verification to new address, notify old address, and audit. */
+/** Stage the new email, send verification to it, notify the old address, and audit. */
 const updateEmailAndNotify = async (
   payload: Payload,
   user: { id: number; email: string; firstName?: string | null; locale?: string | null },
@@ -39,42 +39,19 @@ const updateEmailAndNotify = async (
 ): Promise<void> => {
   const verificationToken = randomBytes(20).toString("hex");
 
-  try {
-    await payload.update({
-      collection: "users",
-      id: user.id,
-      overrideAccess: true,
-      data: { email: newEmail, _verified: false, _verificationToken: verificationToken },
-    });
-  } catch (updateError) {
-    // TOCTOU: another account may have claimed `newEmail` between the
-    // pre-flight find in the handler and this update, in which case Payload's
-    // drizzle adapter rethrows the PG unique violation as a generic
-    // ValidationError ("The following field is invalid: Email") that contains
-    // neither "unique" nor "duplicate". As in the register route, we cannot
-    // reliably detect that from the error — so re-query structurally: if the
-    // email is now owned by a different account, treat it as the same
-    // anti-enumeration "email already in use" path (log, send no emails,
-    // return so the handler still resolves to the generic success response).
-    const raceUser = await payload.find({
-      collection: "users",
-      where: { email: { equals: newEmail } },
-      limit: 1,
-      overrideAccess: true,
-    });
-
-    if (raceUser.docs.length > 0 && raceUser.docs[0]?.id !== user.id) {
-      logger.info(
-        { userId: user.id, attemptedEmailHash: hashEmail(newEmail) },
-        "Email change blocked - race-claimed email"
-      );
-      return;
-    }
-
-    // The email isn't owned by another account, so this was a genuine failure
-    // unrelated to a duplicate claim.
-    throw updateError;
-  }
+  // Stage the change instead of overwriting `email`: the current (verified)
+  // address must stay the working login credential until the NEW address
+  // proves reachable. Overwriting up front meant a typo'd or undeliverable
+  // address instantly logged the user out everywhere with no way back in
+  // (login demands _verified, the old email no longer existed, and password
+  // reset does not re-verify). The verify route applies the swap — and
+  // re-checks uniqueness there, so no TOCTOU handling is needed here.
+  await payload.update({
+    collection: "users",
+    id: user.id,
+    overrideAccess: true,
+    data: { pendingEmail: newEmail, _verificationToken: verificationToken },
+  });
 
   const baseUrl = getBaseUrl();
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
@@ -111,7 +88,7 @@ const updateEmailAndNotify = async (
 
   logger.info(
     { userId: user.id, oldEmail: maskEmail(user.email), newEmail: maskEmail(newEmail), clientId },
-    "Email changed, verification required"
+    "Email change staged, verification required"
   );
 };
 
