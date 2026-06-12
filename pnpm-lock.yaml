@@ -203,8 +203,8 @@ importers:
         specifier: ^3.36.0
         version: 3.36.0
       zod:
-        specifier: ^3.24.2
-        version: 3.25.76
+        specifier: 'catalog:'
+        version: 4.3.6
     devDependencies:
       '@timetiles/eslint-config':
         specifier: workspace:*
@@ -16172,7 +16172,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.0.18(@types/node@25.9.2)(@vitest/ui@4.0.18)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@25.9.2)(typescript@5.9.3))(sass@1.77.4)(tsx@4.22.3)(yaml@2.9.0)
+      vitest: 4.0.18(@types/node@25.9.2)(@vitest/ui@4.0.18)(happy-dom@20.9.0)(jiti@2.7.0)(jsdom@28.1.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@25.9.2)(typescript@5.9.3))(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -17830,8 +17830,8 @@ snapshots:
       '@babel/parser': 7.29.7
       eslint: 9.39.2(jiti@2.7.0)
       hermes-parser: 0.25.1
-      zod: 3.25.76
-      zod-validation-error: 4.0.2(zod@3.25.76)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -23270,9 +23270,9 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  zod-validation-error@4.0.2(zod@3.25.76):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 3.25.76
+      zod: 4.4.3
 
   zod@3.25.76: {}
 

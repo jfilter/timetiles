@@ -23,7 +23,7 @@ import { logError } from "../lib/logger.js";
 import { executeRun, getActiveRunCount, getMetrics, isRunActive, stopRun } from "../services/runner.js";
 
 const runRequestSchema = z.object({
-  run_id: z.string().uuid(),
+  run_id: z.uuid(),
   runtime: z.enum(["python", "node"]),
   entrypoint: z
     .string()
@@ -38,12 +38,12 @@ const runRequestSchema = z.object({
     )
     .optional(),
   code_url: z
-    .string()
     .url()
     .refine((v) => v.startsWith("https://"), "Only HTTPS URLs are allowed")
     .optional(),
-  code: z.record(z.string()).optional(),
-  env: z.record(z.string()).optional(),
+  // zod 4 requires an explicit key schema: z.record(keySchema, valueSchema).
+  code: z.record(z.string(), z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
   limits: z
     .object({
       timeout_secs: z.number().int().min(1).max(3600).optional(),
@@ -64,7 +64,7 @@ runRoutes.post("/run", async (c) => {
   const parsed = runRequestSchema.safeParse(body);
 
   if (!parsed.success) {
-    return c.json({ error: "Invalid request", details: parsed.error.flatten() }, 400);
+    return c.json({ error: "Invalid request", details: z.flattenError(parsed.error) }, 400);
   }
 
   const request = parsed.data;
