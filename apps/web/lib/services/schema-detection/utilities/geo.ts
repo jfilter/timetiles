@@ -79,7 +79,9 @@ export const detectEnumFields = (
   for (const [fieldPath, stats] of Object.entries(fieldStats)) {
     const hasStringType = (stats.typeDistribution["string"] ?? 0) > 0;
 
-    if (hasStringType && stats.uniqueSamples) {
+    // A saturated sample cap means uniqueValues is only a lower bound — a
+    // fully-unique 10k-row column would otherwise look like a 100-value enum.
+    if (hasStringType && stats.uniqueSamples && stats.uniqueSamplesOverflow !== true) {
       const shouldBeEnum =
         enumMode === "count"
           ? stats.uniqueValues <= enumThreshold
@@ -185,7 +187,8 @@ const enrichScalarEnumField = (
   stats: FieldStatistics,
   config: { enumThreshold: number; enumMode: "count" | "percentage" }
 ): void => {
-  if (!stats.uniqueSamples) return;
+  // Saturated cap → uniqueValues is a lower bound, not the real cardinality.
+  if (!stats.uniqueSamples || stats.uniqueSamplesOverflow === true) return;
 
   const shouldBeEnum =
     config.enumMode === "count"

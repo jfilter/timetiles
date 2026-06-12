@@ -41,12 +41,13 @@ const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueVal
   if (value instanceof Date) {
     sampleValue = value.toISOString();
   } else if (Array.isArray(value)) {
-    if (stats.uniqueSamples.length >= maxUniqueValues) {
-      return;
-    }
     // Store array samples for tag field detection (serialized for dedup)
     const key = JSON.stringify(value);
     if (!stats.uniqueSamples.some((s) => JSON.stringify(s) === key)) {
+      if (stats.uniqueSamples.length >= maxUniqueValues) {
+        stats.uniqueSamplesOverflow = true;
+        return;
+      }
       stats.uniqueSamples.push(value as unknown as Record<string, unknown>);
       stats.uniqueValues = stats.uniqueSamples.length;
     }
@@ -62,6 +63,7 @@ const trackUniqueSamples = (stats: FieldStatistics, value: unknown, maxUniqueVal
   const isTracked = stats.uniqueSamples.includes(sampleValue);
   if (!isTracked) {
     if (stats.uniqueSamples.length >= maxUniqueValues) {
+      stats.uniqueSamplesOverflow = true;
       return;
     }
     stats.uniqueSamples.push(sampleValue);
@@ -286,6 +288,9 @@ export const mergeFieldStats = (existing: FieldStatistics, incoming: FieldStatis
   const uniqueSamplesSet = new Set(allSamples);
   merged.uniqueSamples = Array.from(uniqueSamplesSet).slice(0, 100); // Keep max 100 samples
   merged.uniqueValues = uniqueSamplesSet.size;
+  const overflowed =
+    existing.uniqueSamplesOverflow === true || incoming.uniqueSamplesOverflow === true || uniqueSamplesSet.size > 100;
+  if (overflowed) merged.uniqueSamplesOverflow = true;
 
   // Merge enum values
   merged.enumValues = mergeEnumValues(existing.enumValues, incoming.enumValues, merged.occurrences);

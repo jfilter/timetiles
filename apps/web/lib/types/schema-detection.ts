@@ -48,6 +48,10 @@ export interface FieldStatistics {
   // JSON.stringify(value). Bounded by the unique-sample cap; needed because
   // `uniqueSamples` is deduplicated (counting over it always yields 1).
   valueCounts?: Record<string, number>;
+  // True once the unique-sample cap was hit: `uniqueValues` is then a LOWER
+  // BOUND on the true cardinality, not an estimate — enum detection must
+  // disqualify such fields instead of treating a saturated count as small.
+  uniqueSamplesOverflow?: boolean;
 
   // Tag/multi-value detection (arrays stored in transformedData)
   isTagField?: boolean;
