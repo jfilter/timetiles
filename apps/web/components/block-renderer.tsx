@@ -11,6 +11,7 @@
  */
 "use client";
 
+import type { NewsletterButtonLabels, NewsletterMessages } from "@timetiles/ui";
 import {
   Button,
   DetailsGrid,
@@ -44,12 +45,10 @@ import {
   TimelineItem,
   TimelineTitle,
 } from "@timetiles/ui";
-import type { NewsletterButtonLabels, NewsletterMessages } from "@timetiles/ui";
 import { useTranslations } from "next-intl";
 import React from "react";
 
 import { NewsletterCTAClient, NewsletterFormClient } from "@/components/newsletter-form-client";
-
 import type {
   Block,
   BlockRendererProps,

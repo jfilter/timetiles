@@ -8,12 +8,12 @@
  * @category Components
  */
 import { headers } from "next/headers";
-import { getTranslations } from "next-intl/server";
-import { getPayload } from "payload";
-
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { getPayload } from "payload";
+
 import { ViewProvider } from "@/lib/context/view-context";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import { resolveView } from "@/lib/services/resolution/view-resolver";

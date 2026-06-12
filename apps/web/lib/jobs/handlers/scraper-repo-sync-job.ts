@@ -259,6 +259,7 @@ export const scraperRepoSyncJob = {
           throw new Error("Git URL is required for git source type");
         }
 
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty branch string must coerce to undefined (clone default branch)
         const branch = repo.gitBranch || undefined;
         tempDir = await cloneRepo(repo.gitUrl, branch);
         yamlContent = await readManifestFromDisk(tempDir);

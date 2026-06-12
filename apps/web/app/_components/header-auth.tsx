@@ -20,9 +20,8 @@ import {
   DropdownMenuTrigger,
 } from "@timetiles/ui";
 import { Activity, LogOut, Package, Settings, Upload, User as UserIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
-
 import NextLink from "next/link";
+import { useTranslations } from "next-intl";
 
 import { Link } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";

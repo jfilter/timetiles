@@ -8,8 +8,8 @@
  * @category API
  */
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
-import { getAppConfig } from "@/lib/config/app-config";
 import { apiRoute } from "@/lib/api";
+import { getAppConfig } from "@/lib/config/app-config";
 import { logger } from "@/lib/logger";
 
 export const GET = apiRoute({

@@ -122,6 +122,7 @@ export const buildRunnerRequest = (scraper: Scraper, repo: ScraperRepo, runUuid:
     entrypoint: scraper.entrypoint,
     // `||`, not `??`: an outputFile cleared to "" must fall back too — the
     // runner rejects empty filenames with a 400.
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string must fall back, not just null/undefined
     output_file: scraper.outputFile || "data.csv",
     env: parseEnvVars(scraper.envVars),
     limits: { timeout_secs: scraper.timeoutSecs ?? 300, memory_mb: scraper.memoryMb ?? 512 },

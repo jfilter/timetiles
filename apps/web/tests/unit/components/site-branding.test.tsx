@@ -62,7 +62,7 @@ describe("SiteBranding", () => {
   it("strips dangerous values via the CSS sanitizer", () => {
     const site = makeSite({
       branding: { colors: { primary: "url(javascript:alert(1))" }, style: { borderRadius: "pill" } },
-    } as Partial<Site>);
+    });
 
     const { container } = render(
       <SiteProvider site={site}>

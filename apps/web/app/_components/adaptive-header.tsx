@@ -24,12 +24,11 @@ import {
   MobileNavDrawerTrigger,
 } from "@timetiles/ui";
 import Image from "next/image";
+import NextLink from "next/link";
 import { useTranslations } from "next-intl";
 import React from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
-import NextLink from "next/link";
-
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
 import { useCurrentUserQuery } from "@/lib/hooks/use-auth-queries";
