@@ -12,10 +12,12 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BREAKPOINT_MD } from "@/lib/constants/breakpoints";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { useUIStore } from "@/lib/store";
+import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { ChartSection } from "./chart-section";
 import { EventsListPaginated } from "./events-list-paginated";
@@ -79,6 +81,31 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
 
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileTab>("list");
   const isDesktop = useMediaQuery(BREAKPOINT_MD);
+
+  // On mobile only the active tab is mounted, so the map — the sole writer of
+  // the store's mapBounds — may never mount. Every bounds-gated query then
+  // stays disabled and the list/chart tabs are dead ("No events found",
+  // endless skeleton). Seed mapBounds from the data bounds until the map
+  // mounts and reports a real viewport.
+  const mapBounds = useUIStore((s) => s.ui.mapBounds);
+  const setMapBounds = useUIStore((s) => s.setMapBounds);
+  const seededBoundsRef = useRef<SimpleBounds | null>(null);
+  useEffect(() => {
+    if (mobileActiveTab === "map") {
+      // The map takes over as the source of truth for bounds.
+      seededBoundsRef.current = null;
+    }
+  }, [mobileActiveTab]);
+  useEffect(() => {
+    if (isDesktop !== false || mobileActiveTab === "map") return;
+    const dataBounds = boundsData?.bounds;
+    if (dataBounds == null) return;
+    // Don't clobber a real viewport the map reported earlier.
+    const mapOwnsBounds = mapBounds != null && seededBoundsRef.current == null;
+    if (mapOwnsBounds || seededBoundsRef.current === dataBounds) return;
+    seededBoundsRef.current = dataBounds;
+    setMapBounds(dataBounds);
+  }, [isDesktop, mobileActiveTab, mapBounds, boundsData?.bounds, setMapBounds]);
 
   // Helper functions for filter labels using shared helpers
   const getDatasetNames = (): string[] =>
