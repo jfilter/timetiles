@@ -46,6 +46,8 @@ export interface DeletionSummaryResponse {
   summary: DeletionSummary;
   canDelete: boolean;
   reason?: string;
+  /** Configured deletion grace period (days), for UI copy interpolation. */
+  gracePeriodDays: number;
   deletionStatus?: string;
   deletionScheduledAt?: string;
 }

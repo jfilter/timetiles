@@ -54,6 +54,9 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
   // Derive summary and error from query data
   const summary = summaryData?.canDelete ? summaryData.summary : null;
+  // Configured grace period for copy interpolation; 30 matches the server
+  // default until the summary response arrives.
+  const gracePeriodDays = summaryData?.gracePeriodDays ?? 30;
 
   const getSummaryDisplayError = (): string | null => {
     if (summaryError) {
@@ -215,7 +218,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
                 <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   <p className="text-sm">
                     <strong>{t("gracePeriod")}</strong>
-                    {t("gracePeriodDescription")}
+                    {t("gracePeriodDescription", { days: gracePeriodDays })}
                   </p>
                 </div>
               </>
@@ -251,7 +254,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
             <div className="bg-destructive/10 rounded-md p-4">
               <p className="text-destructive text-sm">{t("deleteConfirmation")}</p>
               <ul className="text-destructive mt-2 list-inside list-disc text-sm">
-                <li>{t("deletePoint1")}</li>
+                <li>{t("deletePoint1", { days: gracePeriodDays })}</li>
                 <li>{t("deletePoint2")}</li>
                 <li>{t("deletePoint3")}</li>
               </ul>

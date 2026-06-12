@@ -8,6 +8,7 @@
  * @category API
  */
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
+import { getAppConfig } from "@/lib/config/app-config";
 import { apiRoute } from "@/lib/api";
 import { logger } from "@/lib/logger";
 
@@ -26,6 +27,9 @@ export const GET = apiRoute({
       summary,
       canDelete: canDelete.allowed,
       reason: canDelete.reason,
+      // The UI interpolates this into the grace-period copy — hardcoded "7
+      // days" strings previously contradicted the configured 30-day default.
+      gracePeriodDays: getAppConfig().account.deletionGracePeriodDays,
       // Include current deletion status if pending
       deletionStatus: user.deletionStatus,
       deletionScheduledAt: user.deletionScheduledAt,
