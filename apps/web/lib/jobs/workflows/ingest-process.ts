@@ -48,6 +48,12 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
         const analyze = (await tasks["analyze-duplicates"]("analyze", {
           input: { ingestJobId: id },
         })) as AnalyzeDuplicatesOutput;
+        if (analyze.failed) {
+          // Hard limit (e.g. unique-row cap): the handler already marked the job
+          // FAILED with a user-facing message — stop without running later stages.
+          logger.info("ingest-process: failed during analyze-duplicates", { ingestJobId: id, reason: analyze.reason });
+          return;
+        }
         if (analyze.needsReview) {
           logger.info("ingest-process: analyze-duplicates requires review", { ingestJobId: id });
           return;
