@@ -100,7 +100,7 @@ describe.sequential("Geocode Batch Job - Failure Handling", () => {
     // createGeocodingService, which references the class via a module-internal binding
     // that vi.spyOn on the class export cannot intercept.
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      isEnabled: async () => true,
+      isEnabled: () => Promise.resolve(true),
       batchGeocode: createAllFailBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 
@@ -189,7 +189,7 @@ Event 3,2024-01-03,Hamburg Germany
   it("should continue if some geocoding succeeds", async () => {
     // Override beforeEach all-reject mock with partial success
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      isEnabled: async () => true,
+      isEnabled: () => Promise.resolve(true),
       batchGeocode: createPartialSuccessBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

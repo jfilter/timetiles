@@ -19,6 +19,7 @@ import {
   updateScheduledIngestSuccess,
 } from "../handlers/url-fetch-job/scheduled-ingest-utils";
 import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
+import { taskErrorWillRetry } from "../utils/task-retry";
 import { updateIngestFileStatus } from "./completion";
 import { processSheets } from "./process-sheets";
 
@@ -170,14 +171,22 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
 
       logger.info("scheduled-ingest workflow completed", { scheduledIngestId, ingestFileId });
     } catch (error) {
-      const scheduledIngest = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
-      if (scheduledIngest) {
-        await updateScheduledIngestFailure(
-          req.payload,
-          scheduledIngest,
-          error instanceof Error ? error : new Error(String(error)),
-          req
-        );
+      // A TaskError with attempts remaining means Payload requeues the job and
+      // re-runs this workflow from the top — this catch fires on EVERY attempt.
+      // Only the FINAL failure may touch the app-level lifecycle
+      // (currentRetries / executionHistory / auto-disable); otherwise one
+      // transient outage burns the entire retry budget within a single run and
+      // records N failed runs for what the owner perceives as one.
+      if (!taskErrorWillRetry(error)) {
+        const scheduledIngest = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
+        if (scheduledIngest) {
+          await updateScheduledIngestFailure(
+            req.payload,
+            scheduledIngest,
+            error instanceof Error ? error : new Error(String(error)),
+            req
+          );
+        }
       }
       throw error;
     }

@@ -78,7 +78,7 @@ describe.sequential("Geocode Fallback to Location Name", () => {
 
   beforeEach(async () => {
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
-      isEnabled: async () => true,
+      isEnabled: () => Promise.resolve(true),
       batchGeocode: createVenueGeocodeBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 

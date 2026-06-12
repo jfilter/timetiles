@@ -214,6 +214,7 @@ const buildCacheOptions = (
 ): RequestInit & {
   bypassCache?: boolean;
   forceRevalidate?: boolean;
+  respectCacheControl?: boolean;
   userId?: string;
   timeout?: number;
   maxSize?: number;
@@ -232,6 +233,9 @@ const buildCacheOptions = (
     body: fetchOptions.body,
     bypassCache: !useCache,
     forceRevalidate: cacheOptions?.forceRevalidate,
+    // Per-schedule override of the global respectCacheControl config —
+    // dropping it here previously made the admin-exposed checkbox a no-op.
+    respectCacheControl: cacheOptions?.respectCacheControl,
     userId,
     timeout: fetchOptions.timeout,
     // Enforce the size limit during streaming so the cache layer never buffers

@@ -41,7 +41,7 @@ vi.mock("@/lib/services/geocoding", () => ({
   },
   createGeocodingService: () => ({
     geocode: mocks.geocode,
-    isEnabled: async () => true,
+    isEnabled: () => Promise.resolve(true),
     /**
      * Mock batchGeocode that delegates to the mocked geocode function,
      * mirroring the real GeocodingOperations.batchGeocode behavior.

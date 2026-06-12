@@ -18,7 +18,9 @@ vi.mock("@/lib/ingest/url-fetch/fetch-utils", () => ({ fetchWithRetry: mocks.fet
 
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 
-describe("fetchPaginated", () => {
+// sequential: both tests reconfigure the single hoisted fetchWithRetry mock —
+// the config-wide `sequence.concurrent` would interleave their implementations.
+describe.sequential("fetchPaginated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -50,5 +52,31 @@ describe("fetchPaginated", () => {
     ).rejects.toThrow("Paginated fetch exceeded overall timeout of 1000ms");
 
     expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(1);
+  });
+
+  // Regression: page fetches silently dropped cacheOptions, so disabling the
+  // cache (feature flag, useHttpCache: false, bypassCacheOnManual) had no
+  // effect on paginated sources — manual runs served up to an hour of stale
+  // page data.
+  it("forwards cacheOptions to every page fetch", async () => {
+    mocks.fetchWithRetry.mockImplementation(() => ({
+      data: Buffer.from(JSON.stringify({ items: [] })),
+      contentType: "application/json",
+      attempts: 1,
+    }));
+
+    await fetchPaginated(
+      "https://example.test/events",
+      { enabled: true, type: "page", limitParam: "limit", limitValue: 2, pageParam: "page", maxPages: 2 },
+      "items",
+      { cacheOptions: { useCache: false, bypassCache: true, respectCacheControl: false } }
+    );
+
+    expect(mocks.fetchWithRetry).toHaveBeenCalled();
+    for (const call of mocks.fetchWithRetry.mock.calls) {
+      expect(call[1]).toMatchObject({
+        cacheOptions: { useCache: false, bypassCache: true, respectCacheControl: false },
+      });
+    }
   });
 });

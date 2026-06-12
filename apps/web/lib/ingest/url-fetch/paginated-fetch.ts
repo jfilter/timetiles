@@ -62,7 +62,7 @@ export interface PaginatedFetchOptions {
   authHeaders?: Record<string, string>;
   timeout?: number;
   maxRetries?: number;
-  cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl: boolean };
+  cacheOptions?: { useCache: boolean; bypassCache: boolean; respectCacheControl?: boolean };
   /** When set, extract records from HTML embedded in the JSON response instead of treating JSON as structured data. */
   htmlExtractConfig?: HtmlExtractionConfig;
   /** True when this is the first successful import (no prior successful runs). */
@@ -268,7 +268,11 @@ const fetchOnePage = async (
   logger.info("Fetching page", { page: state.page, url: sanitizeUrlForLogging(pageUrl) });
 
   const cacheOptions = options.cacheOptions
-    ? { useCache: options.cacheOptions.useCache, bypassCache: options.cacheOptions.bypassCache }
+    ? {
+        useCache: options.cacheOptions.useCache,
+        bypassCache: options.cacheOptions.bypassCache,
+        respectCacheControl: options.cacheOptions.respectCacheControl,
+      }
     : undefined;
 
   const fetchResult = await fetchWithRetry(pageUrl, {

@@ -81,8 +81,8 @@ export class UrlFetchCache {
   /**
    * Calculate TTL from response headers
    */
-  private calculateTTL(headers: Record<string, string>): number {
-    if (!this.respectCacheControl) {
+  private calculateTTL(headers: Record<string, string>, respectCacheControl?: boolean): number {
+    if (!(respectCacheControl ?? this.respectCacheControl)) {
       return Math.min(this.defaultTTL, this.maxTTL);
     }
 
@@ -116,8 +116,8 @@ export class UrlFetchCache {
   /**
    * Check if cached entry is stale
    */
-  private isStale(entry: CachedEntry): boolean {
-    if (!this.respectCacheControl) return false;
+  private isStale(entry: CachedEntry, respectCacheControl?: boolean): boolean {
+    if (!(respectCacheControl ?? this.respectCacheControl)) return false;
 
     const metadata = entry.metadata;
 
@@ -265,10 +265,15 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
+    options?: RequestInit & {
+      bypassCache?: boolean;
+      forceRevalidate?: boolean;
+      respectCacheControl?: boolean;
+      maxSize?: number;
+    }
   ): Promise<CachedResponse> {
     const normalizedCached = this.normalizeCachedEntry(cached);
-    const isStale = this.isStale(normalizedCached);
+    const isStale = this.isStale(normalizedCached, options?.respectCacheControl);
 
     // If not stale and not forced revalidation, return cached
     if (!isStale && !options?.forceRevalidate) {
@@ -292,7 +297,12 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
+    options?: RequestInit & {
+      bypassCache?: boolean;
+      forceRevalidate?: boolean;
+      respectCacheControl?: boolean;
+      maxSize?: number;
+    }
   ): Promise<CachedResponse> {
     logger.debug("HTTP cache stale, attempting revalidation", { url });
     const headers = new Headers(options?.headers);
@@ -305,7 +315,13 @@ export class UrlFetchCache {
     }
 
     try {
-      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, maxSize, ...fetchOptions } = options ?? {};
+      const {
+        bypassCache: _bypassCache,
+        forceRevalidate: _forceRevalidate,
+        respectCacheControl,
+        maxSize,
+        ...fetchOptions
+      } = options ?? {};
       const response = await safeFetch(url, { ...fetchOptions, headers });
 
       // Handle 304 Not Modified
@@ -333,7 +349,9 @@ export class UrlFetchCache {
             fetchedAt: new Date(),
           },
         };
-        await this.cache.set(cacheKey, updatedCached, { ttl: this.calculateTTL(updatedCached.headers) });
+        await this.cache.set(cacheKey, updatedCached, {
+          ttl: this.calculateTTL(updatedCached.headers, respectCacheControl),
+        });
         return this.buildCacheResponse(updatedCached, "REVALIDATED");
       }
 
@@ -352,7 +370,7 @@ export class UrlFetchCache {
       }
 
       // Got new content, cache and return it
-      return await this.fetchAndCache(url, cacheKey, response, maxSize);
+      return await this.fetchAndCache(url, cacheKey, response, maxSize, respectCacheControl);
     } catch (error) {
       // On error during revalidation, return stale cache
       logger.warn("Revalidation failed, returning stale cache", { url, error });
@@ -367,14 +385,15 @@ export class UrlFetchCache {
     _url: string,
     cacheKey: string,
     response: Response,
-    maxSize?: number
+    maxSize?: number,
+    respectCacheControl?: boolean
   ): Promise<CachedResponse> {
     const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
     // Same guard as fetchFresh: only cache OK, cacheable responses (the
     // revalidation path was previously caching error bodies unconditionally).
     if (response.ok && this.isCacheable(response.status, respHeaders)) {
-      await this.cacheResponse(cacheKey, data, respHeaders, response.status);
+      await this.cacheResponse(cacheKey, data, respHeaders, response.status, respectCacheControl);
     }
 
     return { data, headers: { ...respHeaders, "X-Cache": "MISS" }, status: response.status };
@@ -386,16 +405,27 @@ export class UrlFetchCache {
   private async fetchFresh(
     url: string,
     cacheKey: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; maxSize?: number }
+    options?: RequestInit & {
+      bypassCache?: boolean;
+      forceRevalidate?: boolean;
+      respectCacheControl?: boolean;
+      maxSize?: number;
+    }
   ): Promise<CachedResponse> {
-    const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, maxSize, ...fetchOptions } = options ?? {};
+    const {
+      bypassCache: _bypassCache,
+      forceRevalidate: _forceRevalidate,
+      respectCacheControl,
+      maxSize,
+      ...fetchOptions
+    } = options ?? {};
     const response = await safeFetch(url, fetchOptions);
 
     const { data, headers } = await this.readResponseBody(response, maxSize);
 
     // Cache successful GET responses
     if (response.ok && this.isCacheable(response.status, headers)) {
-      await this.cacheResponse(cacheKey, data, headers, response.status);
+      await this.cacheResponse(cacheKey, data, headers, response.status, respectCacheControl);
     }
 
     return { data, headers: { ...headers, "X-Cache": "MISS" }, status: response.status };
@@ -413,6 +443,8 @@ export class UrlFetchCache {
     options?: RequestInit & {
       bypassCache?: boolean;
       forceRevalidate?: boolean;
+      /** Per-request override of the global cache.urlFetch.respectCacheControl config. */
+      respectCacheControl?: boolean;
       userId?: string;
       timeout?: number;
       maxSize?: number;
@@ -449,7 +481,13 @@ export class UrlFetchCache {
    */
   private async fetchInner(
     url: string,
-    options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; maxSize?: number }
+    options?: RequestInit & {
+      bypassCache?: boolean;
+      forceRevalidate?: boolean;
+      respectCacheControl?: boolean;
+      userId?: string;
+      maxSize?: number;
+    }
   ): Promise<CachedResponse> {
     const method = options?.method ?? "GET";
     const userId = options?.userId;
@@ -458,7 +496,12 @@ export class UrlFetchCache {
     // Only cache GET requests
     if (method !== "GET") {
       logger.debug("Bypassing cache for non-GET request", { url, method });
-      const { bypassCache: _bypassCache, forceRevalidate: _forceRevalidate, ...fetchOptions } = options ?? {};
+      const {
+        bypassCache: _bypassCache,
+        forceRevalidate: _forceRevalidate,
+        respectCacheControl: _respectCacheControl,
+        ...fetchOptions
+      } = options ?? {};
       return this.fetchWithoutCache(url, fetchOptions);
     }
 
@@ -481,9 +524,10 @@ export class UrlFetchCache {
     cacheKey: string,
     data: Buffer,
     headers: Record<string, string>,
-    status: number
+    status: number,
+    respectCacheControl?: boolean
   ): Promise<void> {
-    const ttl = this.calculateTTL(headers);
+    const ttl = this.calculateTTL(headers, respectCacheControl);
 
     // Don't cache if TTL is 0
     if (ttl === 0) {

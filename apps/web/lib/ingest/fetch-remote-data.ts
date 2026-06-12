@@ -138,6 +138,9 @@ const convertHtmlInJson = async (
       authHeaders,
       timeout,
       maxRetries: options.maxRetries ?? 0,
+      // Without this the page fetches default to cache-on, ignoring the
+      // feature flag, useHttpCache, and bypassCacheOnManual entirely.
+      cacheOptions: options.cacheOptions,
       htmlExtractConfig,
     });
     records = result.allRecords;
@@ -179,6 +182,7 @@ const convertFetchedJson = async (
       authHeaders,
       timeout,
       maxRetries: options.maxRetries ?? 0,
+      cacheOptions: options.cacheOptions,
       isFirstRun: options.isFirstRun,
     });
     let records = result.allRecords;
@@ -216,6 +220,7 @@ const fetchPostPaginated = async (
     authHeaders,
     timeout,
     maxRetries: options.maxRetries ?? 0,
+    cacheOptions: options.cacheOptions,
     isFirstRun: options.isFirstRun,
   });
 
