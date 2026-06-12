@@ -51,7 +51,12 @@ vi.mock("@/lib/constants/ingest-constants", () => ({
     GEOCODE_BATCH: "geocode-batch",
     FAILED: "failed",
   },
-  COLLECTION_NAMES: { INGEST_JOBS: "ingest-jobs", SCHEMA_VERSIONS: "schema-versions", DATASETS: "datasets" },
+  COLLECTION_NAMES: {
+    INGEST_JOBS: "ingest-jobs",
+    SCHEMA_VERSIONS: "schema-versions",
+    DATASETS: "datasets",
+    DATASET_SCHEMAS: "dataset-schemas",
+  },
   BATCH_SIZES: { DUPLICATE_ANALYSIS: 5000, SCHEMA_DETECTION: 10000, EVENT_CREATION: 1000, DATABASE_CHUNK: 1000 },
 }));
 
@@ -63,8 +68,9 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     // Reset all mocks
     vi.clearAllMocks();
 
-    // Mock payload
-    mockPayload = { findByID: vi.fn(), update: vi.fn() };
+    // Mock payload — `find` resolves empty by default (no prior schema
+    // version), so the handler takes the create path unless a test overrides it.
+    mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn().mockResolvedValue({ docs: [] }) };
 
     // Mock context
     mockContext = {
@@ -171,6 +177,39 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         data: { fieldMetadata: mockFieldStats, fieldTypes: expect.any(Object) },
         overrideAccess: true,
       });
+    });
+
+    it("should reuse the latest version when the schema is unchanged", async () => {
+      // Stable scheduled feeds previously appended an identical
+      // dataset-schemas row on EVERY successful import.
+      const schema = { title: { type: "string" }, date: { type: "date" } };
+      const mockIngestJob = {
+        id: "import-123",
+        dataset: "dataset-456",
+        schemaValidation: { requiresApproval: false },
+        schema,
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        duplicates: { summary: { uniqueRows: 100 } },
+      };
+      const mockDataset = createMockDataset();
+
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockDataset);
+      mockPayload.update.mockResolvedValue({});
+      // Latest stored version has the identical schema
+      mockPayload.find.mockResolvedValue({ docs: [{ id: 55, versionNumber: 3, schema }] });
+      mocks.getFieldStats.mockReturnValue({});
+
+      const result = await createSchemaVersionJob.handler(mockContext);
+
+      expect(result).toEqual({ output: { versionNumber: 3, schemaVersionId: 55 } });
+      // No new version row — the job links to the existing one instead
+      expect(mocks.createSchemaVersion).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-jobs",
+        id: "import-123",
+        data: { datasetSchemaVersion: 55 },
+      });
+      expect(mocks.completeStage).toHaveBeenCalled();
     });
 
     it("should skip when schema version already exists", async () => {

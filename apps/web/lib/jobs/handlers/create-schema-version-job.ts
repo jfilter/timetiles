@@ -6,7 +6,7 @@
  *
  * @module
  */
-import type { PayloadRequest } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
@@ -14,6 +14,7 @@ import { planToSchemaFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
+import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
 import { asSystem } from "@/lib/services/system-payload";
 import { getFieldStats } from "@/lib/types/schema-detection";
 
@@ -44,6 +45,35 @@ const shouldSkipSchemaVersionCreation = (job: {
   }
 
   return result;
+};
+
+/** Normalize a stored/detected schema to a plain object for comparison. */
+const asSchemaObject = (raw: unknown): Record<string, unknown> =>
+  typeof raw === "object" && raw !== null && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+
+/**
+ * Return the dataset's latest schema version when the job's detected schema is
+ * identical to it (per the same comparison validate-schema uses), or null when
+ * a new version genuinely needs to be created.
+ */
+const findReusableSchemaVersion = async (
+  payload: Payload,
+  datasetId: number | string,
+  jobSchema: unknown
+): Promise<{ id: number; versionNumber: number } | null> => {
+  const latest = await payload.find({
+    collection: COLLECTION_NAMES.DATASET_SCHEMAS,
+    where: { dataset: { equals: datasetId } },
+    sort: "-versionNumber",
+    limit: 1,
+    overrideAccess: true,
+  });
+
+  const latestVersion = latest.docs[0];
+  if (!latestVersion || typeof latestVersion.versionNumber !== "number") return null;
+
+  const comparison = compareSchemas(asSchemaObject(latestVersion.schema), asSchemaObject(jobSchema));
+  return comparison.changes.length === 0 ? { id: latestVersion.id, versionNumber: latestVersion.versionNumber } : null;
 };
 
 // Helper to extract approvedBy user ID
@@ -107,23 +137,37 @@ export const createSchemaVersionJob = {
       const dataset = await loadDataset(payload, job.dataset);
       const fieldStats = getFieldStats(job);
 
-      // Determine if this is auto-approved or manual-approved
-      const isAutoApproved = !job.schemaValidation?.requiresApproval;
-      const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
+      // Reuse the latest version when the schema is unchanged — otherwise
+      // every successful import of a stable feed (e.g. an hourly scheduled
+      // URL) appends an identical dataset-schemas row, growing version
+      // history unboundedly and making it useless.
+      const existingVersion = await findReusableSchemaVersion(payload, dataset.id, job.schema);
+      let schemaVersion: { id: number; versionNumber: number };
+      if (existingVersion) {
+        logger.info("Schema unchanged — linking existing schema version", {
+          ingestJobId,
+          schemaVersionId: existingVersion.id,
+          versionNumber: existingVersion.versionNumber,
+        });
+        schemaVersion = existingVersion;
+      } else {
+        // Determine if this is auto-approved or manual-approved
+        const isAutoApproved = !job.schemaValidation?.requiresApproval;
+        const approvedById = isAutoApproved ? null : getApprovedById(job.schemaValidation?.approvedBy);
 
-      logger.info("Creating schema version", { ingestJobId, datasetId: dataset.id, isAutoApproved, approvedById });
+        logger.info("Creating schema version", { ingestJobId, datasetId: dataset.id, isAutoApproved, approvedById });
 
-      // Create schema version
-      const schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
-        dataset: dataset.id,
-        schema: job.schema,
-        fieldMetadata: fieldStats || {},
-        fieldMappings: planToSchemaFieldMappings(readInterpretationPlan(job)),
-        autoApproved: isAutoApproved,
-        approvedBy: approvedById,
-        ingestSources: [],
-        req: context.req as PayloadRequest | undefined,
-      });
+        schemaVersion = await SchemaVersioningService.createSchemaVersion(payload, {
+          dataset: dataset.id,
+          schema: job.schema,
+          fieldMetadata: fieldStats || {},
+          fieldMappings: planToSchemaFieldMappings(readInterpretationPlan(job)),
+          autoApproved: isAutoApproved,
+          approvedBy: approvedById,
+          ingestSources: [],
+          req: context.req as PayloadRequest | undefined,
+        });
+      }
 
       // Update job with schema version
       await payload.update({
@@ -132,7 +176,7 @@ export const createSchemaVersionJob = {
         data: { datasetSchemaVersion: schemaVersion.id },
       });
 
-      logger.info("Schema version created successfully", { ingestJobId, schemaVersionId: schemaVersion.id });
+      logger.info("Schema version resolved", { ingestJobId, schemaVersionId: schemaVersion.id });
 
       // Sync fieldMetadata to dataset so categorical filter UI can read it.
       // Without this, dataset.fieldMetadata stays null and enum filters never appear.
