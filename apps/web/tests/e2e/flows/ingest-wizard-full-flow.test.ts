@@ -283,18 +283,17 @@ test.describe("Import Wizard - Full Flow", () => {
       // Create a new catalog (handles both fresh DB and existing catalogs)
       await importPage.createNewCatalog("Persistence Test Catalog");
 
-      // Refresh the page
+      // Refresh the page. The wizard restores the persisted step on reload
+      // (it must NOT clobber back to the upload step), so don't use
+      // waitForWizardLoad() here — it asserts the auth/upload step specifically.
       await page.reload();
-      await importPage.waitForWizardLoad();
+      await page.waitForLoadState("domcontentloaded");
 
-      // Verify state was restored - should still be on step 3 or have file info
-      const restoredContent = await page.content();
-      const hasRestoredState =
-        restoredContent.toLowerCase().includes("valid-events.csv") ||
-        restoredContent.toLowerCase().includes("catalog") ||
-        restoredContent.toLowerCase().includes("persistence test catalog");
-
-      expect(hasRestoredState).toBe(true);
+      // Verify state was restored — the destination step comes back with the
+      // entered catalog still present (in the catalog-name input's value).
+      const destinationHeading = page.getByRole("heading", { name: /select destination/i });
+      await expect(destinationHeading).toBeVisible({ timeout: 15000 });
+      await expect(page.getByLabel(/catalog name/i)).toHaveValue(/persistence test catalog/i);
     });
   });
 });
