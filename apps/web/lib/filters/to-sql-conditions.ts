@@ -162,10 +162,11 @@ export const buildFieldFilterConditions = (
 
     if (tagFields?.has(fieldKey)) {
       // Tag/array fields: match events whose array contains ANY of the selected values.
-      // Uses @> (contains) with OR for each value: (arr @> '["v1"]' OR arr @> '["v2"]')
+      // Uses @> (contains) with OR for each value: (arr @> '["v1"]' OR arr @> '["v2"]').
+      // #> resolves dot-paths the same way the scalar branch and enum-stats do.
       const containsClauses = values.map((value) => {
         const jsonbLiteral = JSON.stringify([value]);
-        return sql`e.transformed_data -> ${fieldKey} @> ${jsonbLiteral}::jsonb`;
+        return sql`e.transformed_data #> string_to_array(${fieldKey}, '.') @> ${jsonbLiteral}::jsonb`;
       });
       const combined = sql.join(containsClauses, sql` OR `);
       conditions.push(sql`(${combined})`);

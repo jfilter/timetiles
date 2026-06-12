@@ -59,6 +59,7 @@ import * as migration_20260602_000000_add_range_filter_to_event_functions from '
 import * as migration_20260612_130000_fix_h3_branch_access_clause from './20260612_130000_fix_h3_branch_access_clause';
 import * as migration_20260612_140000_fix_histogram_filter_gaps from './20260612_140000_fix_histogram_filter_gaps';
 import * as migration_20260612_150000_fix_group_by_nested_paths from './20260612_150000_fix_group_by_nested_paths';
+import * as migration_20260612_160000_tag_field_filters from './20260612_160000_tag_field_filters';
 
 export const migrations = [
   {
@@ -365,5 +366,10 @@ export const migrations = [
     up: migration_20260612_150000_fix_group_by_nested_paths.up,
     down: migration_20260612_150000_fix_group_by_nested_paths.down,
     name: '20260612_150000_fix_group_by_nested_paths',
+  },
+  {
+    up: migration_20260612_160000_tag_field_filters.up,
+    down: migration_20260612_160000_tag_field_filters.down,
+    name: '20260612_160000_tag_field_filters',
   },
 ];

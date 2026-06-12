@@ -20,6 +20,7 @@ import type { TestEnvironment } from "../../setup/integration/environment";
 describe.sequential("/api/v1/events - field filter logic", () => {
   let payload: Payload;
   let testDatasetId: number;
+  let tagDatasetId: number;
   let testEnv: TestEnvironment;
 
   beforeAll(async () => {
@@ -84,6 +85,34 @@ describe.sequential("/api/v1/events - field filter logic", () => {
           sourceData: eventData,
           transformedData: eventData,
           location: { latitude: 40.7128 + i * 0.01, longitude: -74.006 + i * 0.01 },
+          eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
+        },
+      });
+    }
+
+    // Separate dataset with a multi-value tag column (FieldStatistics.isTagField)
+    // for the tag-containment tests; kept apart so the matrix above is unchanged.
+    const { dataset: tagDataset } = await withDataset(testEnv, catalog.id, {
+      name: "Tag Filter Test Dataset",
+      isPublic: true,
+    });
+    tagDatasetId = tagDataset.id;
+    await payload.update({
+      collection: "datasets",
+      id: tagDatasetId,
+      data: { fieldMetadata: { tags: { path: "tags", isTagField: true, isEnumCandidate: true } } },
+    });
+
+    const tagEvents = [["music", "art"], ["music"], ["sport"], ["art", "sport"]];
+    for (let i = 0; i < tagEvents.length; i++) {
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `tag-filter-${i + 1}`,
+          dataset: tagDatasetId,
+          sourceData: { tags: tagEvents[i] },
+          transformedData: { tags: tagEvents[i] },
+          location: { latitude: 41.7128 + i * 0.01, longitude: -73.006 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 15 + i).toISOString(),
         },
       });
@@ -327,5 +356,47 @@ describe.sequential("/api/v1/events - field filter logic", () => {
     // With the bug, the null-status events would be over-included (> 4).
     expect(tcData.metadata.total).toBe(4);
     expect(tcData.metadata.total).toBe(eventsData.events.length);
+  });
+
+  // Regression: nothing ever populated filters.tagFields, so a tag-field
+  // filter compiled to a scalar IN against the array's JSON text and matched
+  // ZERO events on every endpoint (list, map, charts). The producer now
+  // resolves isTagField from the dataset's fieldMetadata and the SQL paths
+  // match via jsonb containment.
+  it("matches tag/array fields via containment on the events list", async () => {
+    const fieldFilters = JSON.stringify({ tags: ["music"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${tagDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.events).toHaveLength(2); // ["music","art"] and ["music"]
+  });
+
+  it("uses OR semantics across selected tag values", async () => {
+    const fieldFilters = JSON.stringify({ tags: ["music", "sport"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events?datasets=${tagDatasetId}&ff=${encodeURIComponent(fieldFilters)}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.events).toHaveLength(4); // every event carries music or sport
+  });
+
+  it("applies tag filters in the temporal PG function path", async () => {
+    const fieldFilters = JSON.stringify({ tags: ["music"] });
+    const request = new NextRequest(
+      `http://localhost:3000/api/v1/events/temporal-clusters?datasets=${tagDatasetId}&ff=${encodeURIComponent(fieldFilters)}&individualThreshold=2000`
+    );
+    const response = await temporalClustersGET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.metadata.mode).toBe("individual");
+    expect(data.metadata.total).toBe(2);
   });
 });

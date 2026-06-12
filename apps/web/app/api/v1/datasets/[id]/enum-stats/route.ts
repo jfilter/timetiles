@@ -77,6 +77,13 @@ export const GET = apiRoute({
 
       if (filters.denyResults) continue;
 
+      // Cross-filter tag fields with containment, not scalar IN — otherwise an
+      // active tag filter zeroes out every other field's counts.
+      const tagKeys = Object.keys(otherFieldFilters).filter((key) => fm[key]?.isTagField === true);
+      if (tagKeys.length > 0) {
+        filters.tagFields = new Set(tagKeys);
+      }
+
       const whereClause = toSqlWhereClause(filters);
       const isTag = field.isTagField === true;
       const arrayValue = sql`e.transformed_data #> string_to_array(${fieldPath}, '.')`;

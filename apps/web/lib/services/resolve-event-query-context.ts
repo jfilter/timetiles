@@ -15,6 +15,7 @@ import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filter
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 import { canAccessCatalog } from "@/lib/services/access-control";
+import type { FieldStatistics } from "@/lib/types/schema-detection";
 import type { User } from "@/payload-types";
 
 interface ResolveOptions {
@@ -59,32 +60,40 @@ export const resolveEventQueryContext = async ({
     return { denied: true };
   }
 
-  await resolveRangeFilterFormats(filters, payload, user);
+  await resolveDatasetFieldContext(filters, payload, user);
 
   return { denied: false, filters };
 };
 
 /**
- * Resolve the per-field {@link NumberFormat} for active range filters.
+ * Resolve dataset-level field semantics for active field/range filters.
  *
- * Range filters are SINGLE-DATASET only (confirmed decision): with exactly one
- * dataset selected there is exactly one interpretation plan, hence one number
- * format per numeric field — no cross-dataset separator conflict. We load that
- * dataset's plan ONCE and project each range key's number-kind column policy to
- * a {@link NumberFormat}. A range key with no number column policy is dropped:
- * without a known format we cannot safely normalize stored text to `::numeric`.
- * With anything other than exactly one dataset, all range filters are dropped.
+ * Both resolutions are SINGLE-DATASET only (confirmed decision — the explore
+ * UI offers categorical and range filters only with exactly one dataset
+ * selected), so the dataset document is loaded ONCE for both:
+ *
+ * - Tag fields: field-filter keys whose {@link FieldStatistics.isTagField} is
+ *   set are collected into `filters.tagFields`, switching the SQL builders and
+ *   PG functions to array-containment matching. Without this, a scalar `IN`
+ *   compare against the array's JSON text matches nothing.
+ * - Range formats: each range key's number-kind column policy is projected to
+ *   a {@link NumberFormat}. A range key with no number column policy is
+ *   dropped: without a known format we cannot safely normalize stored text to
+ *   `::numeric`. With anything other than exactly one dataset, all range
+ *   filters are dropped.
  */
-const resolveRangeFilterFormats = async (
+const resolveDatasetFieldContext = async (
   filters: CanonicalEventFilters,
   payload: Payload,
   user?: User | null
 ): Promise<void> => {
-  if (filters.rangeFilters == null || Object.keys(filters.rangeFilters).length === 0) return;
+  const hasRangeFilters = filters.rangeFilters != null && Object.keys(filters.rangeFilters).length > 0;
+  const hasFieldFilters = filters.fieldFilters != null && Object.keys(filters.fieldFilters).length > 0;
+  if (!hasRangeFilters && !hasFieldFilters) return;
 
-  // Cross-dataset gate: range filters require exactly one dataset.
+  // Cross-dataset gate: both resolutions require exactly one dataset.
   if (filters.datasets?.length !== 1) {
-    delete filters.rangeFilters;
+    if (hasRangeFilters) delete filters.rangeFilters;
     return;
   }
 
@@ -95,21 +104,31 @@ const resolveRangeFilterFormats = async (
     collection: "datasets",
     id: datasetId,
     depth: 0,
-    select: { interpretationPlan: true },
+    select: { interpretationPlan: true, fieldMetadata: true },
     user,
     overrideAccess: false,
     disableErrors: true,
   });
 
+  if (hasFieldFilters) {
+    const fieldMetadata = (dataset?.fieldMetadata ?? null) as Record<string, FieldStatistics> | null;
+    const tagKeys = Object.keys(filters.fieldFilters!).filter((key) => fieldMetadata?.[key]?.isTagField === true);
+    if (tagKeys.length > 0) {
+      filters.tagFields = new Set(tagKeys);
+    }
+  }
+
+  if (!hasRangeFilters) return;
+
   // Project each requested range key to its resolved NumberFormat. Keys whose
   // column has no number policy are omitted by the projector; drop those from
   // the range filter (cannot ::numeric-normalize without a known format).
-  const numberFormats = projectNumberFormats(dataset?.interpretationPlan, Object.keys(filters.rangeFilters));
-  for (const key of Object.keys(filters.rangeFilters)) {
-    if (!(key in numberFormats)) delete filters.rangeFilters[key];
+  const numberFormats = projectNumberFormats(dataset?.interpretationPlan, Object.keys(filters.rangeFilters!));
+  for (const key of Object.keys(filters.rangeFilters!)) {
+    if (!(key in numberFormats)) delete filters.rangeFilters![key];
   }
 
-  if (Object.keys(filters.rangeFilters).length === 0) {
+  if (Object.keys(filters.rangeFilters!).length === 0) {
     delete filters.rangeFilters;
     return;
   }
