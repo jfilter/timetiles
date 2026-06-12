@@ -56,6 +56,7 @@ import * as migration_20260601_090406_add_coordinate_format_override from './202
 import * as migration_20260601_145541_add_date_order_mappings from './20260601_145541_add_date_order_mappings';
 import * as migration_20260601_171009_add_interpretation_plan_drop_legacy_groups from './20260601_171009_add_interpretation_plan_drop_legacy_groups';
 import * as migration_20260602_000000_add_range_filter_to_event_functions from './20260602_000000_add_range_filter_to_event_functions';
+import * as migration_20260612_130000_fix_h3_branch_access_clause from './20260612_130000_fix_h3_branch_access_clause';
 
 export const migrations = [
   {
@@ -347,5 +348,10 @@ export const migrations = [
     up: migration_20260602_000000_add_range_filter_to_event_functions.up,
     down: migration_20260602_000000_add_range_filter_to_event_functions.down,
     name: '20260602_000000_add_range_filter_to_event_functions',
+  },
+  {
+    up: migration_20260612_130000_fix_h3_branch_access_clause.up,
+    down: migration_20260612_130000_fix_h3_branch_access_clause.down,
+    name: '20260612_130000_fix_h3_branch_access_clause',
   },
 ];
