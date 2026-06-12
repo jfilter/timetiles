@@ -27,7 +27,12 @@ type MapEventTarget = {
 interface UseMapBoundsProps {
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
-  onBoundsChange?: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
+  onBoundsChange?: (
+    bounds: LngLatBounds,
+    zoom: number,
+    center?: { lng: number; lat: number },
+    isUserMove?: boolean
+  ) => void;
   mapRef: React.RefObject<MapRef | null>;
   setCurrentZoom: (zoom: number) => void;
 }
@@ -81,15 +86,18 @@ export const useMapBounds = ({
     setIsMapPositioned(true);
     const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
     const center = map.getCenter();
-    onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
+    onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat }, false);
   };
 
-  const handleMoveEnd = (evt: { target: MapEventTarget }) => {
+  const handleMoveEnd = (evt: { target: MapEventTarget; originalEvent?: unknown }) => {
     const map = evt.target as MapRef;
     const { bounds, zoom } = logMapViewportChanged(map);
     setCurrentZoom(zoom);
     const center = map.getCenter();
-    onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat });
+    // MapLibre only sets originalEvent for moves driven by real input
+    // (drag/wheel/keyboard) — programmatic fitBounds/flyTo moves have none.
+    // Callers use this to tell user pans from auto-fits.
+    onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat }, evt.originalEvent != null);
   };
 
   return { isMapPositioned, handleLoad, handleMoveEnd };

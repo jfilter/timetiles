@@ -56,7 +56,12 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
     }
   }, [filterKey]);
 
-  const handleBoundsChange = (newBounds: LngLatBounds | null, zoom?: number, center?: { lng: number; lat: number }) => {
+  const handleBoundsChange = (
+    newBounds: LngLatBounds | null,
+    zoom?: number,
+    center?: { lng: number; lat: number },
+    isUserMove?: boolean
+  ) => {
     if (newBounds) {
       setMapBounds({
         north: newBounds.getNorth(),
@@ -75,7 +80,10 @@ export const useExplorerViewport = (options?: UseExplorerViewportOptions) => {
 
       if (boundsState === "initial") {
         setBoundsState("bounds-applied");
-      } else if (boundsState === "bounds-applied") {
+      } else if (boundsState === "bounds-applied" && isUserMove === true) {
+        // Only real input flips to user-panned — programmatic fits (auto-fit
+        // on load, the "Zoom to data" button itself) also fire moveend, and
+        // counting them made the button appear immediately and never go away.
         setBoundsState("user-panned");
       }
     } else {

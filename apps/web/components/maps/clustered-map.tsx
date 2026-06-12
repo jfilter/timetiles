@@ -63,7 +63,13 @@ export interface MapViewState {
 }
 
 interface ClusteredMapProps {
-  onBoundsChange?: (bounds: LngLatBounds, zoom: number, center?: { lng: number; lat: number }) => void;
+  onBoundsChange?: (
+    bounds: LngLatBounds,
+    zoom: number,
+    center?: { lng: number; lat: number },
+    /** True when the move came from real user input, false for programmatic fits. */
+    isUserMove?: boolean
+  ) => void;
   onEventClick?: (eventId: number) => void;
   clusters?: ClusterFeature[];
   clusterChildren?: ClusterFeature[] | null;
