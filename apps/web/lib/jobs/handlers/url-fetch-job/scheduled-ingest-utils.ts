@@ -8,7 +8,7 @@
  * @category Jobs/UrlFetch
  */
 
-import type { Payload } from "payload";
+import type { Payload, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { sendScheduledIngestRetriesExhaustedEmail } from "@/lib/ingest/scheduled-ingest-emails";
@@ -254,25 +254,39 @@ export const updateScheduledIngestFailure = async (
 
 /**
  * Checks for duplicate content based on hash.
+ *
+ * The match must be scoped to where the data actually lands: a bare
+ * (catalog, hash) match would skip the import when a DIFFERENT schedule in the
+ * same catalog already imported the same content into ANOTHER dataset, or when
+ * the schedule was re-pointed at a new dataset — leaving the new target empty
+ * while reporting success.
  */
 export const checkForDuplicateContent = async (
   payload: Payload,
   catalogId: string | number | undefined,
   dataHash: string,
-  skipDuplicateChecking: boolean
+  skipDuplicateChecking: boolean,
+  scope?: { scheduledIngestId?: number; targetDatasetId?: number | null }
 ): Promise<{ isDuplicate: boolean; existingFile?: { id: string; filename: string } }> => {
   if (!catalogId || skipDuplicateChecking) {
     return { isDuplicate: false };
   }
 
   try {
+    const where: Where = {
+      catalog: { equals: catalogId },
+      "metadata.urlFetch.contentHash": { equals: dataHash },
+      status: { equals: "completed" },
+    };
+    if (scope?.targetDatasetId != null) {
+      where.targetDataset = { equals: scope.targetDatasetId };
+    } else if (scope?.scheduledIngestId != null) {
+      where.scheduledIngest = { equals: scope.scheduledIngestId };
+    }
+
     const recentFiles = await payload.find({
       collection: COLLECTION_NAMES.INGEST_FILES,
-      where: {
-        catalog: { equals: catalogId },
-        "metadata.urlFetch.contentHash": { equals: dataHash },
-        status: { equals: "completed" },
-      },
+      where,
       sort: "-createdAt",
       limit: 1,
     });

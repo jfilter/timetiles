@@ -78,7 +78,11 @@ const handleDuplicateCheck = async (
     payload,
     context.catalogId,
     dataHash,
-    context.advancedConfig?.skipDuplicateChecking ?? false
+    context.advancedConfig?.skipDuplicateChecking ?? false,
+    {
+      scheduledIngestId: context.scheduledIngestId,
+      targetDatasetId: extractRelationId(context.scheduledIngest?.dataset),
+    }
   );
 
   if (!isDuplicate || !existingFile) {
