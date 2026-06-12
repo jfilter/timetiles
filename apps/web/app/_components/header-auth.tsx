@@ -22,6 +22,8 @@ import {
 import { Activity, LogOut, Package, Settings, Upload, User as UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import NextLink from "next/link";
+
 import { Link } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
@@ -124,10 +126,12 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
-          <Link href="/dashboard" className="cursor-pointer">
+          {/* Payload dashboard lives outside the [locale] tree — the i18n Link
+              would prefix /de/dashboard and 404. */}
+          <NextLink href="/dashboard" className="cursor-pointer">
             <Settings className="mr-2 h-4 w-4" />
             {t("dashboard")}
-          </Link>
+          </NextLink>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

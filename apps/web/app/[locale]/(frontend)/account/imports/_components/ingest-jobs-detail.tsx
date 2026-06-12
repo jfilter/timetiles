@@ -13,7 +13,9 @@ import { ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
-import { Link } from "@/i18n/navigation";
+// The Payload dashboard lives outside the [locale] tree — the i18n-aware
+// Link would prefix /de/dashboard/... and 404.
+import Link from "next/link";
 import { useIngestJobsByFileQuery } from "@/lib/hooks/use-ingest-jobs-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { Dataset, IngestJob } from "@/payload-types";

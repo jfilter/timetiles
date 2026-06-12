@@ -12,7 +12,9 @@
 import { ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { Link } from "@/i18n/navigation";
+// The Payload dashboard lives outside the [locale] tree — the i18n-aware
+// Link would prefix /de/dashboard/... and 404.
+import Link from "next/link";
 import { formatDateLocale, formatDuration } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 

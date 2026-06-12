@@ -28,6 +28,8 @@ import { useTranslations } from "next-intl";
 import React from "react";
 
 import { LocaleSwitcher } from "@/components/locale-switcher";
+import NextLink from "next/link";
+
 import { Link, usePathname } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
 import { useCurrentUserQuery } from "@/lib/hooks/use-auth-queries";
@@ -155,7 +157,13 @@ export const AdaptiveHeader = ({
 
             {/* Auth link for mobile */}
             <MobileNavDrawerLink active={pathname === "/login"} asChild>
-              <Link href={resolvedUser ? "/dashboard" : "/login"}>{resolvedUser ? t("dashboard") : t("signIn")}</Link>
+              {/* Payload dashboard lives outside the [locale] tree — it must
+                  use a plain link, while /login stays locale-aware. */}
+              {resolvedUser ? (
+                <NextLink href="/dashboard">{t("dashboard")}</NextLink>
+              ) : (
+                <Link href="/login">{t("signIn")}</Link>
+              )}
             </MobileNavDrawerLink>
 
             {/* Theme toggle in drawer */}
