@@ -19,6 +19,7 @@ import { parseCoordinate } from "@/lib/geospatial/parsing";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { interpretRows, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
+import { planToFieldMappings } from "@/lib/ingest/plan-builder";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { IngestGeocodingResultsMap } from "@/lib/ingest/types/geocoding";
 import { getIngestGeocodingCandidate } from "@/lib/ingest/types/geocoding";
@@ -33,6 +34,7 @@ import { getByPathOrKey } from "@/lib/utils/object-path";
 import type { IngestJob } from "@/payload-types";
 
 import type { GeocodingBatchJobInput } from "../types/job-inputs";
+import { extractCombinedCoordinates } from "../utils/event-creation-helpers";
 import type { JobHandlerContext } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
@@ -48,15 +50,31 @@ import {
   shouldReviewGeocodingPartial,
 } from "../workflows/review-checks";
 
+/** Coordinate source columns a row may carry instead of needing geocoding. */
+interface CoordinateFields {
+  latitudeField?: string;
+  longitudeField?: string;
+  /** Single combined "lat,lng" column (plan coordinate role). */
+  coordinateField?: string;
+  /** Decided axis order for the combined column ("lat,lng"/"lng,lat"). */
+  coordinateFormat?: string | null;
+}
+
 /** Returns true and increments skippedWithCoords if the row has valid source coordinates. */
-const rowHasValidCoords = (
-  row: Record<string, unknown>,
-  coordinateFields: { latitudeField?: string; longitudeField?: string }
-): boolean => {
-  if (!coordinateFields.latitudeField || !coordinateFields.longitudeField) return false;
-  const lat = parseCoordinate(getByPathOrKey(row, coordinateFields.latitudeField));
-  const lng = parseCoordinate(getByPathOrKey(row, coordinateFields.longitudeField));
-  return isValidCoordinate(lat, lng);
+const rowHasValidCoords = (row: Record<string, unknown>, coordinateFields: CoordinateFields): boolean => {
+  const { latitudeField, longitudeField, coordinateField, coordinateFormat } = coordinateFields;
+  if (latitudeField && longitudeField) {
+    const lat = parseCoordinate(getByPathOrKey(row, latitudeField));
+    const lng = parseCoordinate(getByPathOrKey(row, longitudeField));
+    if (isValidCoordinate(lat, lng)) return true;
+  }
+  // Mirror event creation: a parseable combined-coordinate cell with an
+  // explicitly decided order wins over geocoding — geocoding such rows would
+  // burn provider quota on results that get discarded anyway.
+  if (coordinateField) {
+    return extractCombinedCoordinates(getByPathOrKey(row, coordinateField), coordinateFormat) != null;
+  }
+  return false;
 };
 
 /** Add the normalized form of a string field value to the set. Returns true if added. */
@@ -73,7 +91,7 @@ const processRowForLocation = (
   row: Record<string, unknown>,
   locationField: string | undefined,
   locationNameField: string | undefined,
-  coordinateFields: { latitudeField?: string; longitudeField?: string },
+  coordinateFields: CoordinateFields,
   uniqueLocations: Set<string>
 ): { skipped: boolean } => {
   if (rowHasValidCoords(row, coordinateFields)) {
@@ -98,7 +116,7 @@ const extractUniqueLocations = async (
   sheetIndex: number,
   locationField: string | undefined,
   locationNameField: string | undefined,
-  coordinateFields: { latitudeField?: string; longitudeField?: string },
+  coordinateFields: CoordinateFields,
   plan: DatasetInterpretationPlan,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
@@ -293,11 +311,18 @@ const prepareGeocodingLocations = async (
     return { skipped: true };
   }
 
-  // Resolve coordinate fields: use the geocoding candidate, falling back to the
-  // job plan roles, then dataset geoFieldDetection.
-  const coordinateFields = resolveCoordinateFields(geocodingCandidate, job, dataset);
   // Use the detection-resolved JOB plan so the ops match event-creation.
   const plan = readInterpretationPlan(job) ?? planFromOps([]);
+
+  // Resolve coordinate fields: use the geocoding candidate, falling back to the
+  // job plan roles, then dataset geoFieldDetection. Also carry the plan's
+  // combined-coordinate column so rows it covers aren't geocoded.
+  const planMappings = planToFieldMappings(plan);
+  const coordinateFields: CoordinateFields = {
+    ...resolveCoordinateFields(geocodingCandidate, job, dataset),
+    coordinateField: planMappings.coordinatePath ?? undefined,
+    coordinateFormat: planMappings.coordinateFormat,
+  };
 
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;

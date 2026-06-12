@@ -54,7 +54,7 @@ const validatedLocation = (latitude: number, longitude: number): CombinedCoordin
  * Returns null when the cell is missing, malformed, the order is undecided, or
  * the values fail validation, so the caller can fall through to geocoding.
  */
-const extractCombinedCoordinates = (
+export const extractCombinedCoordinates = (
   cellValue: unknown,
   coordinateFormat: string | null | undefined
 ): CombinedCoordinateResult | null => {
