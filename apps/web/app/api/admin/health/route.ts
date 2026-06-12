@@ -15,16 +15,17 @@ import { createLogger, logError } from "@/lib/logger";
 const logger = createLogger("admin-health-api");
 
 const determineHealthStatus = (results: Record<string, { status: string }>) => {
+  // HealthCheckResult.status is "healthy" | "degraded" | "error" — earlier
+  // comparisons against "pending"/"not found"/"warning" never matched, so
+  // degraded results (e.g. pending migrations) logged "passed successfully".
   const hasError = Object.values(results).some((r) => r.status === "error");
-  const hasPending = results.migrations?.status === "pending";
-  const postgisNotFound = results.postgis?.status === "not found";
-  const hasWarning = Object.values(results).some((r) => r.status === "warning");
+  const hasDegraded = Object.values(results).some((r) => r.status === "degraded");
 
-  if (hasError || postgisNotFound) {
-    logger.warn({ hasError, postgisNotFound, results }, "Admin health check returning 503 due to errors");
+  if (hasError) {
+    logger.warn({ results }, "Admin health check returning 503 due to errors");
     return 503;
-  } else if (hasPending || hasWarning) {
-    logger.info({ hasPending, hasWarning }, "Admin health check has warnings but returning 200");
+  } else if (hasDegraded) {
+    logger.info({ results }, "Admin health check has degraded components but returning 200");
     return 200;
   } else {
     logger.info("Admin health check passed successfully");

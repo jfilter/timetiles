@@ -321,8 +321,11 @@ const checkDatabaseSize = async (): Promise<HealthCheckResult> => {
     const payload = await getPayload({ config });
 
     logger.debug("Querying database size");
+    // current_database(), not a hardcoded name — any deployment whose DB is
+    // not literally named "timetiles" otherwise errors here and turns
+    // /api/admin/health into a permanent 503.
     const sizeCheck = (await payload.db.drizzle.execute(sql`
-      SELECT pg_size_pretty(pg_database_size('timetiles')) as size
+      SELECT pg_size_pretty(pg_database_size(current_database())) as size
     `)) as { rows: Array<{ size: string }> };
 
     const size = sizeCheck.rows[0]?.size ?? "Unknown";
