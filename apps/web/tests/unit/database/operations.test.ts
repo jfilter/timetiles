@@ -540,7 +540,7 @@ describe.sequential("database operations", () => {
           .mockResolvedValueOnce({
             rows: [{ table_name: "events" }, { table_name: "users" }, { table_name: "datasets" }],
           })
-          .mockResolvedValueOnce(undefined) // SET LOCAL lock_timeout
+          .mockResolvedValueOnce(undefined) // SET lock_timeout
           .mockResolvedValueOnce(undefined); // TRUNCATE
         return c;
       });
@@ -556,7 +556,9 @@ describe.sequential("database operations", () => {
       expect(listCall[0]).toContain("table_name NOT LIKE $2");
       expect(listCall[1]).toEqual(["payload", "payload_migrations%"]);
 
-      expect(client.query).toHaveBeenCalledWith("SET LOCAL lock_timeout = '10s'");
+      // Session-level SET: outside a transaction block SET LOCAL is a no-op,
+      // so the fail-fast lock timeout never actually applied.
+      expect(client.query).toHaveBeenCalledWith("SET lock_timeout = '10s'");
 
       const truncateCall = client.query.mock.calls[2]!;
       expect(truncateCall[0]).toContain("TRUNCATE TABLE");

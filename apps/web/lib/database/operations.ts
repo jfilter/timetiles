@@ -401,8 +401,10 @@ export const truncateTables = async (
       // Safe: table names are fetched from the database and properly escaped with double quotes
       const tableList = tableNames.map((name) => `${schema}."${name}"`).join(", ");
       // Set lock_timeout to fail fast instead of deadlocking with
-      // idle-in-transaction connections from Payload's pool
-      await client.query(`SET LOCAL lock_timeout = '10s'`);
+      // idle-in-transaction connections from Payload's pool. Session-level
+      // (not SET LOCAL): outside a transaction block SET LOCAL is a no-op,
+      // and this dedicated connection is closed right after.
+      await client.query(`SET lock_timeout = '10s'`);
       await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
     }
 
