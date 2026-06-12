@@ -75,8 +75,13 @@ export const BarChart = ({
   onRetry,
   onBarClick,
 }: BarChartProps) => {
-  // Sort descending by value
-  const sorted = [...data].sort((a, b) => b.value - a.value);
+  // Sort descending by value, carrying each item's original index — labels
+  // are NOT unique (datasets in different catalogs may share a name), so the
+  // click handler must map back by index, never by label.
+  const sortedEntries = data
+    .map((item, originalIndex) => ({ item, originalIndex }))
+    .sort((a, b) => b.item.value - a.item.value);
+  const sorted = sortedEntries.map((entry) => entry.item);
   const labels = sorted.map((item) => item.label);
   const values = sorted.map((item) => item.value);
 
@@ -161,12 +166,10 @@ export const BarChart = ({
         click: (params: unknown) => {
           if (!isValidClickParams(params)) return;
           const dataIndex = params.dataIndex;
-          if (typeof dataIndex !== "number" || dataIndex < 0 || dataIndex >= sorted.length) return;
-          const item = sorted[dataIndex];
-          if (item) {
-            // Find original index in unsorted data
-            const originalIndex = data.findIndex((d) => d.label === item.label);
-            onBarClick(item, originalIndex >= 0 ? originalIndex : dataIndex);
+          if (typeof dataIndex !== "number" || dataIndex < 0 || dataIndex >= sortedEntries.length) return;
+          const entry = sortedEntries[dataIndex];
+          if (entry) {
+            onBarClick(entry.item, entry.originalIndex);
           }
         },
       }
