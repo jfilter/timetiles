@@ -188,14 +188,17 @@ const fetchCategoryFacets = async (
   const categories: ClusterSummaryResponse["categories"] = [];
 
   for (const field of fields) {
+    // Enum field paths can be nested dot-paths (meta.category) — resolve them
+    // the same way enum-stats and the filter builders do, via #>>; ->> would
+    // look up the literal key and return NULL for every nested field.
     const result = (await payload.db.drizzle.execute(sql`
-      SELECT (e.transformed_data ->> ${field})::text as value, COUNT(*)::integer as count
+      SELECT (e.transformed_data #>> string_to_array(${field}, '.'))::text as value, COUNT(*)::integer as count
       FROM payload.events e
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${whereClause}
         AND e.location_longitude IS NOT NULL
         AND ${cellCondition}
-        AND e.transformed_data ->> ${field} IS NOT NULL
+        AND e.transformed_data #>> string_to_array(${field}, '.') IS NOT NULL
       GROUP BY value
       ORDER BY count DESC
       LIMIT 5

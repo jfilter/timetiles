@@ -270,4 +270,67 @@ describe.sequential("/api/v1/events/temporal", () => {
     expect(data).toHaveProperty("histogram");
     expect(data).toHaveProperty("metadata");
   });
+
+  // Regression: calculate_event_histogram had no clusterCells clause, so the
+  // histogram aggregated the whole viewport while the list/beeswarm honored
+  // the H3 cluster-focus filter (fixed in 20260612_140000).
+  it("should filter histogram by H3 cluster cells", async () => {
+    const { sql } = await import("@payloadcms/db-postgres");
+    const cellResult = (await payload.db.drizzle.execute(
+      sql`SELECT e.h3_r7 AS cell, COUNT(*)::int AS count
+          FROM payload.events e
+          WHERE e.dataset_id = ${Number(testDatasetId)} AND e.h3_r7 IS NOT NULL
+          GROUP BY 1 ORDER BY count DESC, cell LIMIT 1`
+    )) as { rows: Array<{ cell: string; count: number }> };
+    const topCell = cellResult.rows[0]!;
+    expect(topCell.cell).toBeTruthy();
+    // The 11 test events are ~1.1 km apart, so resolution 7 splits them.
+    expect(topCell.count).toBeLessThan(11);
+
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}&clusterCells=${topCell.cell}&h3Resolution=7`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBe(topCell.count);
+  });
+
+  // Regression: the single-timestamp branch of calculate_event_histogram
+  // re-filtered by catalog/datasets/field filters but dropped the bounds
+  // block, counting same-timestamp events globally (fixed in 20260612_140000).
+  it("should apply bounds when all filtered events share one timestamp", async () => {
+    const sharedTimestamp = new Date(2025, 6, 1, 12).toISOString();
+    const locations = [
+      { latitude: 10, longitude: 10 },
+      { latitude: -10, longitude: -50 },
+    ];
+    for (const [i, location] of locations.entries()) {
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `histogram-single-ts-${i}`,
+          dataset: Number.parseInt(testDatasetId),
+          sourceData: { title: `Single TS ${i}` },
+          transformedData: { title: `Single TS ${i}` },
+          location,
+          eventTimestamp: sharedTimestamp,
+        },
+      });
+    }
+
+    // Date-range to exactly these two events; bounds covering only the first.
+    const bounds = { north: 11, south: 9, east: 11, west: 9 };
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}&startDate=2025-06-30&endDate=2025-07-02&bounds=${encodeURIComponent(JSON.stringify(bounds))}`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBe(1);
+  });
 });

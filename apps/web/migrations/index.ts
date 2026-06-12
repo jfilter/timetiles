@@ -57,6 +57,8 @@ import * as migration_20260601_145541_add_date_order_mappings from './20260601_1
 import * as migration_20260601_171009_add_interpretation_plan_drop_legacy_groups from './20260601_171009_add_interpretation_plan_drop_legacy_groups';
 import * as migration_20260602_000000_add_range_filter_to_event_functions from './20260602_000000_add_range_filter_to_event_functions';
 import * as migration_20260612_130000_fix_h3_branch_access_clause from './20260612_130000_fix_h3_branch_access_clause';
+import * as migration_20260612_140000_fix_histogram_filter_gaps from './20260612_140000_fix_histogram_filter_gaps';
+import * as migration_20260612_150000_fix_group_by_nested_paths from './20260612_150000_fix_group_by_nested_paths';
 
 export const migrations = [
   {
@@ -353,5 +355,15 @@ export const migrations = [
     up: migration_20260612_130000_fix_h3_branch_access_clause.up,
     down: migration_20260612_130000_fix_h3_branch_access_clause.down,
     name: '20260612_130000_fix_h3_branch_access_clause',
+  },
+  {
+    up: migration_20260612_140000_fix_histogram_filter_gaps.up,
+    down: migration_20260612_140000_fix_histogram_filter_gaps.down,
+    name: '20260612_140000_fix_histogram_filter_gaps',
+  },
+  {
+    up: migration_20260612_150000_fix_group_by_nested_paths.up,
+    down: migration_20260612_150000_fix_group_by_nested_paths.down,
+    name: '20260612_150000_fix_group_by_nested_paths',
   },
 ];
