@@ -15,6 +15,15 @@ import { safeFetch } from "@/lib/security/safe-fetch";
 // Mock dns.promises.lookup
 vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
 
+// Pinned-dispatcher requests go through the npm undici package's fetch (not
+// global fetch); route it to the same per-test mock so both paths share one
+// queue. The real pairing is covered by safe-fetch-pinned.test.ts.
+const { mockUndiciFetch } = vi.hoisted(() => ({ mockUndiciFetch: vi.fn() }));
+vi.mock("undici", async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return { ...actual, fetch: mockUndiciFetch };
+});
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- referenced inside describe blocks
 const mockDnsLookup = dns.promises.lookup as unknown as ReturnType<typeof vi.fn>;
 
@@ -30,6 +39,10 @@ describe.sequential("safeFetch", () => {
     originalFetch = global.fetch;
     mockFetch = vi.fn();
     global.fetch = mockFetch as unknown as typeof fetch;
+    mockUndiciFetch.mockReset();
+    mockUndiciFetch.mockImplementation((...args: unknown[]) =>
+      (mockFetch as (...fetchArgs: unknown[]) => unknown)(...args)
+    );
     (dns.promises.lookup as ReturnType<typeof vi.fn>).mockReset();
     vi.stubEnv("NODE_ENV", "test");
     vi.stubEnv("E2E_MODE", "");

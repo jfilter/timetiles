@@ -13,7 +13,7 @@
  */
 import type { LookupFunction } from "node:net";
 
-import { Agent } from "undici";
+import { Agent, fetch as undiciFetch } from "undici";
 
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
@@ -58,11 +58,11 @@ const buildPinnedDispatcher = (resolved: Array<{ address: string; family: 4 | 6 
   // Prefer IPv4 if available; undici's connect expects a single address.
   const preferred = resolved.find((r) => r.family === 4) ?? resolved[0]!;
 
-  // undici 7 calls the lookup hook with `{ all: true }` and expects the
-  // array-of-records callback shape. The legacy `(err, address, family)`
-  // form makes connect read `address` as undefined and throw
-  // ERR_INVALID_IP_ADDRESS on every request — masked by Node's generic
-  // "fetch failed" error. Always emit the array form.
+  // undici calls the lookup hook with `{ all: true }` and expects the
+  // array-of-records callback shape (verified on undici 7 and 8). The legacy
+  // `(err, address, family)` form makes connect read `address` as undefined
+  // and throw ERR_INVALID_IP_ADDRESS on every request — masked by Node's
+  // generic "fetch failed" error. Always emit the array form.
   // oxlint-disable-next-line no-explicit-any -- LookupFunction's type is the legacy 3-arg shape
   const pinnedLookup: LookupFunction = (_host, _opts, cb: any) => {
     cb(null, [{ address: preferred.address, family: preferred.family }]);
@@ -115,15 +115,29 @@ const closeSilently = async (agent: Agent): Promise<void> => {
   }
 };
 
-/** Perform a single fetch with the (optionally pinned) dispatcher. */
-const fetchWithDispatcher = async (
+/**
+ * Perform a single fetch with the (optionally pinned) dispatcher.
+ *
+ * Pinned requests must go through the npm `undici` package's own `fetch`:
+ * Node's global fetch ships its *bundled* undici, whose internal handler
+ * shape is not accepted by the npm package's Agent (undici 8 rejects it with
+ * `InvalidArgumentError: invalid onRequestStart method` before any byte hits
+ * the network). Agent and fetch have to come from the same undici copy.
+ *
+ * Exported for tests so the dispatcher/fetch pairing can be exercised against
+ * a real server without bypassing the SSRF validation seams.
+ */
+export const fetchWithDispatcher = async (
   url: string,
   fetchOptions: Omit<SafeFetchOptions, "maxRedirects" | "dnsCheck">,
   dispatcher: Agent | undefined
 ): Promise<Response> => {
   const fetchInit = { ...fetchOptions, redirect: "manual" as const };
-  const withDispatcher = dispatcher ? ({ ...fetchInit, dispatcher } as RequestInit & { dispatcher: Agent }) : fetchInit;
-  return fetch(url, withDispatcher);
+  if (dispatcher) {
+    const withDispatcher = { ...fetchInit, dispatcher } as Parameters<typeof undiciFetch>[1];
+    return (await undiciFetch(url, withDispatcher)) as unknown as Response;
+  }
+  return fetch(url, fetchInit);
 };
 
 /** Determine the next redirect target URL, or null when no further redirect. */
