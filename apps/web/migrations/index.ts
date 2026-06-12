@@ -58,6 +58,7 @@ import * as migration_20260601_171009_add_interpretation_plan_drop_legacy_groups
 import * as migration_20260602_000000_add_range_filter_to_event_functions from './20260602_000000_add_range_filter_to_event_functions';
 import * as migration_20260612_130000_fix_h3_branch_access_clause from './20260612_130000_fix_h3_branch_access_clause';
 import * as migration_20260612_140000_fix_histogram_filter_gaps from './20260612_140000_fix_histogram_filter_gaps';
+import * as migration_20260612_143159_drop_scraper_trash_columns from './20260612_143159_drop_scraper_trash_columns';
 import * as migration_20260612_150000_fix_group_by_nested_paths from './20260612_150000_fix_group_by_nested_paths';
 import * as migration_20260612_160000_tag_field_filters from './20260612_160000_tag_field_filters';
 
@@ -345,7 +346,7 @@ export const migrations = [
   {
     up: migration_20260601_171009_add_interpretation_plan_drop_legacy_groups.up,
     down: migration_20260601_171009_add_interpretation_plan_drop_legacy_groups.down,
-    name: '20260601_171009_add_interpretation_plan_drop_legacy_groups'
+    name: '20260601_171009_add_interpretation_plan_drop_legacy_groups',
   },
   {
     up: migration_20260602_000000_add_range_filter_to_event_functions.up,
@@ -363,6 +364,11 @@ export const migrations = [
     name: '20260612_140000_fix_histogram_filter_gaps',
   },
   {
+    up: migration_20260612_143159_drop_scraper_trash_columns.up,
+    down: migration_20260612_143159_drop_scraper_trash_columns.down,
+    name: '20260612_143159_drop_scraper_trash_columns',
+  },
+  {
     up: migration_20260612_150000_fix_group_by_nested_paths.up,
     down: migration_20260612_150000_fix_group_by_nested_paths.down,
     name: '20260612_150000_fix_group_by_nested_paths',
@@ -370,6 +376,6 @@ export const migrations = [
   {
     up: migration_20260612_160000_tag_field_filters.up,
     down: migration_20260612_160000_tag_field_filters.down,
-    name: '20260612_160000_tag_field_filters',
+    name: '20260612_160000_tag_field_filters'
   },
 ];

@@ -101,7 +101,11 @@ import {
 
 const ScraperRepos: CollectionConfig = {
   slug: COLLECTION_SLUG,
-  ...createCommonConfig({ versions: false, drafts: false }),
+  // trash: false — a soft-deleted repo would leave its scrapers enabled and
+  // scheduled (running code from a "deleted" repo) and fires no delete hooks,
+  // so the quota slot would never be released. Deletes are real deletes and
+  // cascade scrapers (which cascade their runs) via beforeDelete.
+  ...createCommonConfig({ versions: false, drafts: false, trash: false }),
   admin: { useAsTitle: "name", defaultColumns: ["name", "sourceType", "createdBy", "updatedAt"], group: "Scrapers" },
   access: {
     // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
@@ -239,6 +243,19 @@ const ScraperRepos: CollectionConfig = {
         }
 
         return doc;
+      },
+    ],
+    beforeDelete: [
+      // scrapers.repo_id is NOT NULL, so a repo delete with surviving
+      // scrapers always fails at the FK. Cascade them (each scraper's
+      // beforeDelete cascades its runs) before the repo row goes away.
+      async ({ req, id }) => {
+        await req.payload.delete({
+          collection: "scrapers",
+          where: { repo: { equals: id } },
+          overrideAccess: true,
+          req,
+        });
       },
     ],
     afterDelete: [

@@ -13,11 +13,15 @@ import type { CollectionConfig } from "payload";
 import { createCommonConfig } from "../shared-fields";
 import { scrapersAccess } from "./access";
 import { scraperFields } from "./fields";
-import { beforeChangeHooks } from "./hooks";
+import { beforeChangeHooks, deleteScraperRunsBeforeDelete } from "./hooks";
 
 const Scrapers: CollectionConfig = {
   slug: "scrapers",
-  ...createCommonConfig({ versions: false, drafts: false }),
+  // trash: false — soft-deleted scrapers would keep their schedules and
+  // webhook tokens live, and the required repo relationship makes a later
+  // hard delete fail on the FK anyway. Deletes are real deletes (mirrors
+  // scraper-runs) and cascade their runs via beforeDelete.
+  ...createCommonConfig({ versions: false, drafts: false, trash: false }),
   admin: {
     useAsTitle: "name",
     defaultColumns: ["name", "runtime", "enabled", "lastRunStatus", "updatedAt"],
@@ -25,7 +29,7 @@ const Scrapers: CollectionConfig = {
   },
   access: scrapersAccess,
   fields: scraperFields,
-  hooks: { beforeChange: beforeChangeHooks },
+  hooks: { beforeChange: beforeChangeHooks, beforeDelete: [deleteScraperRunsBeforeDelete] },
 };
 
 export default Scrapers;

@@ -333,6 +333,57 @@ describe.sequential("Account Deletion Service", () => {
       expect(deletedDataset).toBeNull();
     });
 
+    it("should delete the user's scraper repos, scrapers, and runs", async () => {
+      // Regression: account deletion never touched the scraper domain — a
+      // deleted user's code kept executing on schedule and their webhook
+      // tokens stayed live with no owner able to see or stop them.
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user", trustLevel: "3" } });
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: {
+          name: "Deletion Repo",
+          sourceType: "upload",
+          code: { "scraper.py": "pass" },
+          createdBy: users.testUser.id,
+        },
+        overrideAccess: true,
+      });
+      const scraper = await payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Deletion Scraper",
+          slug: "deletion-scraper",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          repoCreatedBy: users.testUser.id,
+          webhookEnabled: true,
+        },
+        overrideAccess: true,
+      });
+      await payload.create({
+        collection: "scraper-runs",
+        data: { scraper: scraper.id, scraperOwner: users.testUser.id, status: "success", triggeredBy: "schedule" },
+        overrideAccess: true,
+      });
+
+      const result = await deletionService.executeDeletion(users.testUser.id);
+
+      expect(result.success).toBe(true);
+      expect(result.dataDeleted.scraperRepos).toBe(1);
+
+      const [repos, scrapers, runs] = await Promise.all([
+        payload.find({ collection: "scraper-repos", where: { id: { equals: repo.id } }, overrideAccess: true }),
+        payload.find({ collection: "scrapers", where: { id: { equals: scraper.id } }, overrideAccess: true }),
+        payload.find({ collection: "scraper-runs", where: { scraper: { equals: scraper.id } }, overrideAccess: true }),
+      ]);
+      expect(repos.docs).toHaveLength(0);
+      expect(scrapers.docs).toHaveLength(0);
+      expect(runs.docs).toHaveLength(0);
+    });
+
     it("should anonymize user and mark as deleted", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });

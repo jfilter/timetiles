@@ -162,12 +162,13 @@ export class AccountDeletionService {
     }
 
     // Count other entities
-    const [scheduledIngests, importFiles, media, views, dataExports] = await Promise.all([
+    const [scheduledIngests, importFiles, media, views, dataExports, scraperRepos] = await Promise.all([
       countUserDocs(this.payload, "scheduled-ingests", userId),
       countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
       countUserDocs(this.payload, "media", userId),
       countUserDocs(this.payload, "views", userId),
       countUserDocs(this.payload, "data-exports", userId, { userField: "user" }),
+      countUserDocs(this.payload, "scraper-repos", userId),
     ]);
 
     return {
@@ -179,6 +180,7 @@ export class AccountDeletionService {
       media,
       views,
       dataExports,
+      scraperRepos,
     };
   }
 
@@ -298,7 +300,7 @@ export class AccountDeletionService {
       deletedUserId: userId,
       transferredToUserId: systemUser.id,
       dataTransferred: { catalogs: 0, datasets: 0 },
-      dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledIngests: 0, importFiles: 0 },
+      dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledIngests: 0, importFiles: 0, scraperRepos: 0 },
     };
 
     // Create a minimal req object for Payload's transaction utilities.
@@ -458,7 +460,7 @@ export class AccountDeletionService {
   }
 
   /**
-   * Delete scheduled ingests and import files.
+   * Delete scheduled ingests, import files, scrapers, views, and data exports.
    */
   private async deleteUserResources(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
     // Delete scheduled ingests
@@ -467,6 +469,16 @@ export class AccountDeletionService {
     for (const schedule of scheduledIngests) {
       await this.payload.delete({ collection: "scheduled-ingests", id: schedule.id, overrideAccess: true, req });
       result.dataDeleted.scheduledIngests++;
+    }
+
+    // Delete scraper repos. Each repo's beforeDelete cascades its scrapers
+    // (and their runs and webhook tokens) — without this, a deleted user's
+    // code kept executing on schedule and their webhook URLs stayed live.
+    const scraperRepos = await findUserDocs(this.payload, "scraper-repos", userId);
+
+    for (const repo of scraperRepos) {
+      await this.payload.delete({ collection: "scraper-repos", id: repo.id, overrideAccess: true, req });
+      result.dataDeleted.scraperRepos++;
     }
 
     // Delete import files

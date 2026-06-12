@@ -597,4 +597,49 @@ describe.sequential("Scraper Collections Access Control", () => {
 
     expect(pendingJobs.docs).toHaveLength(1);
   });
+
+  it("should cascade-delete scrapers and runs when deleting a scraper-repo", async () => {
+    // Regression: scrapers.repo_id is NOT NULL, so a repo delete with
+    // surviving scrapers always failed at the FK (23502) — repos could never
+    // be deleted and their scrapers stayed scheduled forever.
+    await enableScrapers();
+
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Cascade Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "Cascade Scraper",
+        slug: "cascade-scraper",
+        repo: repo.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+      },
+      user: trustedUser,
+      overrideAccess: false,
+    });
+
+    await payload.create({
+      collection: "scraper-runs",
+      data: { scraper: scraper.id, scraperOwner: trustedUser.id, status: "success", triggeredBy: "manual" },
+      overrideAccess: true,
+    });
+
+    await payload.delete({ collection: "scraper-repos", id: repo.id, overrideAccess: true });
+
+    const [repos, scrapers, runs] = await Promise.all([
+      payload.find({ collection: "scraper-repos", where: { id: { equals: repo.id } }, overrideAccess: true }),
+      payload.find({ collection: "scrapers", where: { repo: { equals: repo.id } }, overrideAccess: true }),
+      payload.find({ collection: "scraper-runs", where: { scraper: { equals: scraper.id } }, overrideAccess: true }),
+    ]);
+
+    expect(repos.docs).toHaveLength(0);
+    expect(scrapers.docs).toHaveLength(0);
+    expect(runs.docs).toHaveLength(0);
+  });
 });

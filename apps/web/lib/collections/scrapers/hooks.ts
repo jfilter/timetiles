@@ -3,7 +3,7 @@
  *
  * @module
  */
-import type { CollectionBeforeChangeHook } from "payload";
+import type { CollectionBeforeChangeHook, CollectionBeforeDeleteHook } from "payload";
 
 import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -80,3 +80,20 @@ export const webhookTokenLifecycleHook: CollectionBeforeChangeHook = ({ data, or
 };
 
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [validateAndSetRepoOwnership, webhookTokenLifecycleHook];
+
+/**
+ * beforeDelete hook that removes the scraper's runs first.
+ *
+ * scraper_runs.scraper_id is NOT NULL, so deleting a scraper with surviving
+ * runs fails at the FK. Cascading here keeps every delete path (admin UI,
+ * REST, repo cascade, account deletion) consistent with what the repo-sync
+ * job already does manually.
+ */
+export const deleteScraperRunsBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id }) => {
+  await req.payload.delete({
+    collection: "scraper-runs",
+    where: { scraper: { equals: id } },
+    overrideAccess: true,
+    req,
+  });
+};

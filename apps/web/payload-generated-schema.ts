@@ -3472,11 +3472,6 @@ export const scraper_repos = db_schema.table(
     })
       .defaultNow()
       .notNull(),
-    deletedAt: timestamp("deleted_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
   },
   (columns) => [
     uniqueIndex("scraper_repos_slug_idx").on(columns.slug),
@@ -3484,7 +3479,6 @@ export const scraper_repos = db_schema.table(
     index("scraper_repos_catalog_idx").on(columns.catalog),
     index("scraper_repos_updated_at_idx").on(columns.updatedAt),
     index("scraper_repos_created_at_idx").on(columns.createdAt),
-    index("scraper_repos_deleted_at_idx").on(columns.deletedAt),
   ],
 );
 
@@ -3577,11 +3571,6 @@ export const scrapers = db_schema.table(
     })
       .defaultNow()
       .notNull(),
-    deletedAt: timestamp("deleted_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
   },
   (columns) => [
     index("scrapers_slug_idx").on(columns.slug),
@@ -3591,7 +3580,6 @@ export const scrapers = db_schema.table(
     index("scrapers_webhook_token_idx").on(columns.webhookToken),
     index("scrapers_updated_at_idx").on(columns.updatedAt),
     index("scrapers_created_at_idx").on(columns.createdAt),
-    index("scrapers_deleted_at_idx").on(columns.deletedAt),
   ],
 );
 

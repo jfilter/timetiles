@@ -1921,7 +1921,6 @@ export interface ScraperRepo {
   lastSyncError?: string | null;
   updatedAt: string;
   createdAt: string;
-  deletedAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -2050,7 +2049,6 @@ export interface Scraper {
   webhookUrl?: string | null;
   updatedAt: string;
   createdAt: string;
-  deletedAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -4612,7 +4610,6 @@ export interface ScraperReposSelect<T extends boolean = true> {
   lastSyncError?: T;
   updatedAt?: T;
   createdAt?: T;
-  deletedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -4657,7 +4654,6 @@ export interface ScrapersSelect<T extends boolean = true> {
   webhookUrl?: T;
   updatedAt?: T;
   createdAt?: T;
-  deletedAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
