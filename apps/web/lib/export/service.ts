@@ -544,6 +544,10 @@ export class DataExportService {
       });
 
       archive.on("error", (err: Error) => reject(err));
+      // Without this a disk-full/permission error on the write stream is an
+      // unhandled 'error' event — crashing the worker or leaving the export
+      // record stuck in "processing" forever.
+      output.on("error", (err: Error) => reject(err));
       archive.pipe(output);
 
       // Add manifest
