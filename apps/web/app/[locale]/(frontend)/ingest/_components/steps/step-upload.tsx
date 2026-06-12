@@ -229,6 +229,11 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       dispatch({ type: "SET_JSON_DETECTED", detected: !!data.wasConverted });
       if (data.wasConverted && !jsonApiConfig) {
         setJsonApiInput({ wasAutoDetected: true });
+      } else if (!data.wasConverted && jsonApiConfig) {
+        // The source is no longer JSON (e.g. URL swapped to a CSV) — clear the
+        // persisted config so the JSON panel doesn't resurrect on remount and
+        // stale recordsPath/pagination settings don't get saved for a CSV.
+        setJsonApiInput(null);
       }
 
       loadFile({
