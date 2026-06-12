@@ -180,11 +180,30 @@ describe("mapScheduleToEditData", () => {
       });
     });
 
-    it("skips pagination when not enabled", () => {
+    it("preserves a configured but disabled pagination block", () => {
+      // Dropping disabled pagination destroyed the stored settings on save:
+      // the update route replaces jsonApiConfig wholesale, so a temporarily
+      // disabled cursor/POST-body config was wiped by editing the schedule.
       const schedule = {
         ...baseSchedule,
-        advancedOptions: { jsonApiConfig: { recordsPath: "data", pagination: { enabled: false } } },
+        advancedOptions: {
+          jsonApiConfig: {
+            recordsPath: "data",
+            pagination: { enabled: false, type: "cursor" as const, cursorParam: "after", nextCursorPath: "meta.next" },
+          },
+        },
       };
+      const result = mapScheduleToEditData(schedule);
+      expect(result.jsonApiConfig?.pagination).toMatchObject({
+        enabled: false,
+        type: "cursor",
+        cursorParam: "after",
+        nextCursorPath: "meta.next",
+      });
+    });
+
+    it("omits pagination entirely when none is stored", () => {
+      const schedule = { ...baseSchedule, advancedOptions: { jsonApiConfig: { recordsPath: "data" } } };
       const result = mapScheduleToEditData(schedule);
       expect(result.jsonApiConfig?.pagination).toBeUndefined();
     });
