@@ -5,7 +5,10 @@
  * @category Lib
  */
 
-import { pino } from "pino";
+// Default import (not named): pino 10's named `{ pino }` export no longer
+// carries the namespace types (LoggerOptions/Logger) or statics
+// (multistream/destination). The default export does.
+import pino from "pino";
 
 const baseConfig: pino.LoggerOptions = {
   name: "timescrape",

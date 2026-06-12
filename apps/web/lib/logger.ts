@@ -12,6 +12,22 @@
  */
 import pino from "pino";
 
+// pino 10 retyped `LogFn` via `ParseLogFnArgs<TMsg>`: a message string with no
+// printf placeholders (`%s`/`%o`/…) now rejects any extra positional args. The
+// entire codebase logs as `logger.info("message", { context })` (message-first),
+// which pino 10 flags even though the RUNTIME behaviour is unchanged from pino 9.
+// Restore pino 9's permissive call signature here (one place) rather than
+// rewriting hundreds of call sites or changing log output during a dep bump.
+interface PermissiveLogFn {
+  (obj: object, msg?: string, ...args: unknown[]): void;
+  (msg: string, ...args: unknown[]): void;
+}
+type LoggerLevel = "fatal" | "error" | "warn" | "info" | "debug" | "trace" | "silent";
+type AppLogger = Omit<pino.Logger, LoggerLevel | "child"> &
+  Record<LoggerLevel, PermissiveLogFn> & {
+    child: (bindings: pino.Bindings, options?: pino.ChildLoggerOptions) => AppLogger;
+  };
+
 // Logger reads process.env directly (not getEnv()) because it initializes at
 // module load time — before dotenv runs in test setups. Using getEnv() here
 // would cache an incomplete environment and break database connections.
@@ -84,7 +100,7 @@ const createDevLogger = (): pino.Logger => {
   return pino(developmentConfig);
 };
 
-export const logger = isDevelopment && !isTest ? createDevLogger() : createProductionLogger();
+export const logger = (isDevelopment && !isTest ? createDevLogger() : createProductionLogger()) as unknown as AppLogger;
 
 // Create child loggers for different modules
 export const createLogger = (module: string) => {

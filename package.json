@@ -44,7 +44,7 @@
   "packageManager": "pnpm@10.12.4",
   "pnpm": {
     "overrides": {
-      "pino": "9.7.0",
+      "pino": "^10.3.1",
       "@headlessui/react": "^2.2.6",
       "@theguild/remark-mermaid": "^0.0.7",
       "next-mdx-remote": "^5.0.0",
