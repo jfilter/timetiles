@@ -58,6 +58,8 @@ export interface BeeswarmChartProps {
   clusterMinSize?: number;
   /** Max cluster circle size (pixels). @default 40 */
   clusterMaxSize?: number;
+  /** BCP 47 locale for tooltip date formatting (defaults to the browser locale) */
+  locale?: string;
 }
 
 /** Y-axis config produced by the merged-layout builder. */

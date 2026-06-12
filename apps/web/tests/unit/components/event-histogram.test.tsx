@@ -125,10 +125,12 @@ describe.sequential("EventHistogram", () => {
   });
 
   it("renders chart when data is available", async () => {
-    // API now returns timestamps with dateEnd (flexible bucketing)
+    // The temporal API returns ISO date STRINGS (HistogramBucketSchema.date is
+    // z.string()) — the fixture must match, or string-handling regressions in
+    // the chart (tooltip/click guards) slip past this test.
     const mockHistogramData = [
-      { date: new Date("2024-01-01").getTime(), dateEnd: new Date("2024-01-02").getTime(), count: 5 },
-      { date: new Date("2024-01-02").getTime(), dateEnd: new Date("2024-01-03").getTime(), count: 10 },
+      { date: "2024-01-01T00:00:00.000Z", dateEnd: "2024-01-02T00:00:00.000Z", count: 5 },
+      { date: "2024-01-02T00:00:00.000Z", dateEnd: "2024-01-03T00:00:00.000Z", count: 10 },
     ];
 
     // Mock the query with data including metadata
@@ -157,10 +159,8 @@ describe.sequential("EventHistogram", () => {
     await waitFor(() => {
       const chartElement = screen.getByTestId("echarts-mock");
       // Verify timestamps are in the chart data
-      const timestamp1 = new Date("2024-01-01").getTime().toString();
-      const timestamp2 = new Date("2024-01-02").getTime().toString();
-      expect(chartElement.textContent).toContain(timestamp1);
-      expect(chartElement.textContent).toContain(timestamp2);
+      expect(chartElement.textContent).toContain("2024-01-01T00:00:00.000Z");
+      expect(chartElement.textContent).toContain("2024-01-02T00:00:00.000Z");
       expect(chartElement.textContent).toContain("5");
       expect(chartElement.textContent).toContain("10");
     });

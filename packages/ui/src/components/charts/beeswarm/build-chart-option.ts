@@ -14,14 +14,14 @@ interface LayoutSeries extends BeeswarmSeries {
   layoutData: Array<unknown[]>;
 }
 
-const formatTooltipDate = (timestamp: number): string =>
-  new Date(timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+const formatTooltipDate = (timestamp: number, locale?: string): string =>
+  new Date(timestamp).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 
-const renderTooltip = (params: unknown): string => {
+const renderTooltip = (params: unknown, locale?: string): string => {
   const p = params as { data?: unknown; seriesName?: string };
   if (!p.data || !Array.isArray(p.data) || p.data.length < 4) return "";
   const [, , , item] = p.data as [number, number, number, BeeswarmDataItem];
-  const dateStr = formatTooltipDate(item.x);
+  const dateStr = formatTooltipDate(item.x, locale);
   if (item.count) {
     const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${p.seriesName}</div>` : "";
     return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div>${datasetLine}</div>`;
@@ -47,6 +47,7 @@ export interface BuildChartOptionArgs {
   maxClusterCount: number;
   clusterMinSize: number;
   clusterMaxSize: number;
+  locale?: string;
 }
 
 export const buildChartOption = ({
@@ -61,6 +62,7 @@ export const buildChartOption = ({
   maxClusterCount,
   clusterMinSize,
   clusterMaxSize,
+  locale,
 }: BuildChartOptionArgs): EChartsOption => ({
   backgroundColor: "transparent",
   textStyle: { color: effectiveTheme.textColor },
@@ -81,7 +83,7 @@ export const buildChartOption = ({
     backgroundColor: effectiveTheme.tooltipBackground,
     borderColor: effectiveTheme.axisLineColor,
     textStyle: { color: effectiveTheme.tooltipForeground },
-    formatter: renderTooltip,
+    formatter: (params: unknown) => renderTooltip(params, locale),
   },
   legend: showLegend
     ? { show: true, top: 0, textStyle: { color: effectiveTheme.textColor, fontSize: 11 } }

@@ -64,6 +64,8 @@ export interface TimeHistogramProps {
   dataZoomEnd?: number;
   /** Callback when DataZoom range changes */
   onDataZoomChange?: (start: number, end: number) => void;
+  /** BCP 47 locale for tooltip date formatting (defaults to the browser locale) */
+  locale?: string;
 }
 
 /**
@@ -88,14 +90,29 @@ export const DAY_SECONDS = 86400;
 export const MONTH_SECONDS = 30 * DAY_SECONDS;
 export const YEAR_SECONDS = 365 * DAY_SECONDS;
 
+/** Raw time-axis values as they appear in series data: ISO strings from the
+ *  API, Date objects from fixtures/stories, or epoch milliseconds. */
+type TimeAxisValue = string | number | Date;
+
+const isTimeAxisValue = (value: unknown): value is TimeAxisValue =>
+  typeof value === "string" || typeof value === "number" || value instanceof Date;
+
+/** Parse a raw time-axis value into a Date, or null if unparseable. */
+const parseTimeAxisValue = (value: unknown): Date | null => {
+  if (!isTimeAxisValue(value)) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 /**
  * Format time portion of a date.
  * @param date - The date to format
  * @param includeSeconds - Whether to include seconds in the output
+ * @param locale - BCP 47 locale (defaults to the browser locale)
  * @returns Formatted time string (e.g., "10:30" or "10:30:45")
  */
-export const formatTime = (date: Date, includeSeconds: boolean): string => {
-  return date.toLocaleTimeString(undefined, {
+export const formatTime = (date: Date, includeSeconds: boolean, locale?: string): string => {
+  return date.toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     ...(includeSeconds ? { second: "2-digit" } : {}),
@@ -106,11 +123,12 @@ export const formatTime = (date: Date, includeSeconds: boolean): string => {
  * Format date with time portion.
  * @param date - The date to format
  * @param includeSeconds - Whether to include seconds in the time portion
+ * @param locale - BCP 47 locale (defaults to the browser locale)
  * @returns Formatted datetime string (e.g., "Nov 25, 2025 10:30")
  */
-export const formatDateTime = (date: Date, includeSeconds: boolean): string => {
-  const datePart = date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-  return `${datePart} ${formatTime(date, includeSeconds)}`;
+export const formatDateTime = (date: Date, includeSeconds: boolean, locale?: string): string => {
+  const datePart = date.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+  return `${datePart} ${formatTime(date, includeSeconds, locale)}`;
 };
 
 /**
@@ -130,18 +148,24 @@ export const formatDateTime = (date: Date, includeSeconds: boolean): string => {
  * @param bucketSeconds - Size of the bucket in seconds (null for default daily format)
  * @returns Formatted date range string
  */
-export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: number | null | undefined): string => {
+export const formatDateRange = (
+  startDate: Date,
+  endDate: Date,
+  bucketSeconds: number | null | undefined,
+  locale?: string
+): string => {
   // For sub-minute buckets (seconds), show full datetime with seconds
   if (bucketSeconds && bucketSeconds < MINUTE_SECONDS) {
-    return formatDateTime(startDate, true);
+    return formatDateTime(startDate, true, locale);
   }
 
   // For sub-hour buckets (minutes), show datetime with minutes
   if (bucketSeconds && bucketSeconds < HOUR_SECONDS) {
-    return formatDateTime(startDate, false);
+    return formatDateTime(startDate, false, locale);
   }
 
-  // For sub-day buckets (hours), show date and hour range
+  // For sub-day buckets (hours), show date and hour range — these are real
+  // instants, so the viewer's local time is correct.
   if (bucketSeconds && bucketSeconds < DAY_SECONDS) {
     const sameDay =
       startDate.getDate() === endDate.getDate() &&
@@ -150,41 +174,46 @@ export const formatDateRange = (startDate: Date, endDate: Date, bucketSeconds: n
 
     if (sameDay) {
       // Same day: "Nov 25, 2025 10:00 - 11:00"
-      const datePart = startDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-      return `${datePart} ${formatTime(startDate, false)} - ${formatTime(endDate, false)}`;
+      const datePart = startDate.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+      return `${datePart} ${formatTime(startDate, false, locale)} - ${formatTime(endDate, false, locale)}`;
     }
     // Different days: show full range
-    return `${formatDateTime(startDate, false)} - ${formatDateTime(endDate, false)}`;
+    return `${formatDateTime(startDate, false, locale)} - ${formatDateTime(endDate, false, locale)}`;
   }
+
+  // Day-and-coarser buckets are UTC calendar units (the server buckets by UTC
+  // day/month/year) — formatting them in the viewer's zone shifts the label a
+  // day/month/year west of UTC. Render these in UTC.
+  const utc = { timeZone: "UTC" } as const;
 
   // If no bucket size or single day bucket, show single date
   if (!bucketSeconds || bucketSeconds <= DAY_SECONDS) {
-    return startDate.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return startDate.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric", ...utc });
   }
 
   // For yearly buckets, show just the year
   if (bucketSeconds >= YEAR_SECONDS) {
-    return startDate.getFullYear().toString();
+    return startDate.getUTCFullYear().toString();
   }
 
   // For monthly buckets, show month and year
   if (bucketSeconds >= MONTH_SECONDS) {
-    return startDate.toLocaleDateString(undefined, { year: "numeric", month: "long" });
+    return startDate.toLocaleDateString(locale, { year: "numeric", month: "long", ...utc });
   }
 
   // For weekly or multi-day buckets, show date range
-  const sameMonth = startDate.getMonth() === endDate.getMonth();
-  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const sameMonth = startDate.getUTCMonth() === endDate.getUTCMonth();
+  const sameYear = startDate.getUTCFullYear() === endDate.getUTCFullYear();
 
   if (sameMonth && sameYear) {
     // Same month: "Jan 1 - 7, 2024"
-    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${endDate.getDate()}, ${startDate.getFullYear()}`;
+    return `${startDate.toLocaleDateString(locale, { month: "short", day: "numeric", ...utc })} - ${endDate.getUTCDate()}, ${startDate.getUTCFullYear()}`;
   } else if (sameYear) {
     // Same year, different months: "Jan 1 - Feb 7, 2024"
-    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${endDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${startDate.getFullYear()}`;
+    return `${startDate.toLocaleDateString(locale, { month: "short", day: "numeric", ...utc })} - ${endDate.toLocaleDateString(locale, { month: "short", day: "numeric", ...utc })}, ${startDate.getUTCFullYear()}`;
   } else {
     // Different years: "Dec 25, 2023 - Jan 1, 2024"
-    return `${startDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })} - ${endDate.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+    return `${startDate.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric", ...utc })} - ${endDate.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric", ...utc })}`;
   }
 };
 
@@ -210,9 +239,13 @@ const getAxisConfig = (chartTheme: ChartTheme): Pick<EChartsOption, "xAxis" | "y
 interface HistogramTooltipEntry {
   marker: string;
   seriesName: string;
-  data: [number, number, number];
+  data: [TimeAxisValue, number, TimeAxisValue];
 }
 
+// ECharts hands the formatter the RAW data item — the time values are
+// whatever the series was built from (ISO strings from the API, Dates in
+// stories), NOT normalized timestamps. Requiring numbers here rejected
+// every real entry and rendered an empty tooltip.
 const isHistogramTooltipEntry = (entry: unknown): entry is HistogramTooltipEntry =>
   typeof entry === "object" &&
   entry !== null &&
@@ -220,9 +253,9 @@ const isHistogramTooltipEntry = (entry: unknown): entry is HistogramTooltipEntry
   "marker" in entry &&
   "seriesName" in entry &&
   Array.isArray(entry.data) &&
-  typeof entry.data[0] === "number" &&
+  isTimeAxisValue(entry.data[0]) &&
   typeof entry.data[1] === "number" &&
-  typeof entry.data[2] === "number" &&
+  isTimeAxisValue(entry.data[2]) &&
   typeof entry.marker === "string" &&
   typeof entry.seriesName === "string";
 
@@ -230,7 +263,8 @@ const getTooltipConfig = (
   chartTheme: ChartTheme,
   _darkMode: boolean,
   bucketSeconds: number | null | undefined,
-  isStacked: boolean
+  isStacked: boolean,
+  locale?: string
 ): NonNullable<EChartsOption["tooltip"]> => ({
   trigger: "axis" as const,
   backgroundColor: chartTheme.tooltipBackground,
@@ -252,12 +286,15 @@ const getTooltipConfig = (
       return "";
     }
 
-    const startDate = new Date(point.data[0]);
-    const endDate = new Date(point.data[2]);
+    const startDate = parseTimeAxisValue(point.data[0]);
+    const endDate = parseTimeAxisValue(point.data[2]);
+    if (!startDate || !endDate) {
+      return "";
+    }
     const pointCount = typeof point.data[1] === "number" ? point.data[1] : 0;
 
     if (!isStacked) {
-      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div>Events: ${pointCount.toLocaleString()}</div></div>`;
+      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div>Events: ${pointCount.toLocaleString()}</div></div>`;
     }
 
     // Stacked: show each group's count
@@ -267,7 +304,7 @@ const getTooltipConfig = (
       .sort((a, b) => b.data[1] - a.data[1])
       .map((entry) => `<div>${entry.marker} ${entry.seriesName}: ${entry.data[1].toLocaleString()}</div>`)
       .join("");
-    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
+    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
   },
 });
 
@@ -339,6 +376,7 @@ const buildHistogramChartOption = ({
   showDataZoom,
   dataZoomStart,
   dataZoomEnd,
+  locale,
 }: {
   data: TimeHistogramDataItem[];
   groupedData: TimeHistogramSeries[] | undefined;
@@ -348,6 +386,7 @@ const buildHistogramChartOption = ({
   showDataZoom: boolean;
   dataZoomStart: number | undefined;
   dataZoomEnd: number | undefined;
+  locale: string | undefined;
 }): EChartsOption => {
   const axisConfig = getAxisConfig(effectiveTheme);
   const hasGroupedLegend = Boolean(groupedData && groupedData.length > 1);
@@ -363,7 +402,7 @@ const buildHistogramChartOption = ({
       containLabel: true,
     },
     ...axisConfig,
-    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, Boolean(groupedData)),
+    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, Boolean(groupedData), locale),
     series: groupedData ? getStackedSeriesConfig(groupedData, effectiveTheme) : getSeriesConfig(effectiveTheme, data),
     ...(hasGroupedLegend
       ? {
@@ -378,16 +417,13 @@ const buildHistogramChartOption = ({
 };
 
 const getClickedBarDate = (params: EChartsEventParams): Date | null => {
-  if (
-    params.data == null ||
-    !Array.isArray(params.data) ||
-    params.data.length < 2 ||
-    typeof params.data[0] !== "number"
-  ) {
+  if (params.data == null || !Array.isArray(params.data) || params.data.length < 2) {
     return null;
   }
 
-  return new Date(params.data[0]);
+  // Click params carry the raw data item — same string/Date/number forms as
+  // the tooltip. A number-only check made bar clicks dead for ISO-string data.
+  return parseTimeAxisValue(params.data[0]);
 };
 
 const getDataZoomRange = (params: EChartsEventParams): { start: number; end: number } => {
@@ -423,6 +459,7 @@ export const TimeHistogram = ({
   dataZoomStart,
   dataZoomEnd,
   onDataZoomChange,
+  locale,
 }: TimeHistogramProps) => {
   const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
   const chartOption = buildHistogramChartOption({
@@ -434,6 +471,7 @@ export const TimeHistogram = ({
     showDataZoom,
     dataZoomStart,
     dataZoomEnd,
+    locale,
   });
 
   const handleChartClick = (params: EChartsEventParams) => {

@@ -76,6 +76,7 @@ export const BeeswarmChart = ({
   dotSizeOverride,
   clusterMinSize = 10,
   clusterMaxSize = 40,
+  locale,
 }: BeeswarmChartProps) => {
   const effectiveTheme = resolveBeeswarmTheme(theme);
 
@@ -123,6 +124,7 @@ export const BeeswarmChart = ({
         maxClusterCount,
         clusterMinSize,
         clusterMaxSize,
+        locale,
       }),
     [
       effectiveTheme,
@@ -136,6 +138,7 @@ export const BeeswarmChart = ({
       maxClusterCount,
       clusterMinSize,
       clusterMaxSize,
+      locale,
     ]
   );
 

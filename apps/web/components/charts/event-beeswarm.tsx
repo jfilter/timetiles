@@ -14,7 +14,7 @@ import type { BeeswarmDataItem, BeeswarmSeries } from "@timetiles/ui/charts";
 import { BeeswarmChart, DATASET_COLORS, useChartTheme } from "@timetiles/ui/charts";
 import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
 import { Settings2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 import { parseH3ClusterFilter } from "@/lib/geospatial";
@@ -307,6 +307,7 @@ export const EventBeeswarm = ({
 }: Readonly<EventBeeswarmProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
+  const locale = useLocale();
   const { filters } = useFilters();
   const scope = useViewScope();
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
@@ -380,6 +381,7 @@ export const EventBeeswarm = ({
         maxClusterCount={maxClusterCount}
         clusterMinSize={clusterMin}
         clusterMaxSize={clusterMax}
+        locale={locale}
       />
 
       {variant === "fullscreen" && total > 0 && !isInitialLoad && (
