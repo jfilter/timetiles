@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { getResolution, isValidCell } from "h3-js";
 import type { MapLayerMouseEvent } from "maplibre-gl";
 import { useCallback, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
@@ -60,7 +61,15 @@ export const useMapInteractions = ({
       const resolvedSourceCells = resolveParentCells(rawSourceCells, clusterId);
       const sourceCells = resolvedSourceCells.length > 0 ? resolvedSourceCells : null;
 
-      const h3Resolution = Math.min(15, Math.max(2, Math.round(zoom * h3ResolutionScale)));
+      // Derive the resolution from the clicked feature's own cells — the
+      // zoom formula uses JS half-up rounding while the SQL function uses
+      // PG's half-even ROUND(), so exact .5 ties (scale 0.5/0.75) produced a
+      // resolution one off from the returned cells and the focus summary
+      // matched zero rows.
+      const cellForResolution = [clusterId, ...resolvedSourceCells].find((c) => c !== "" && isValidCell(c));
+      const h3Resolution = cellForResolution
+        ? getResolution(cellForResolution)
+        : Math.min(15, Math.max(2, Math.round(zoom * h3ResolutionScale)));
 
       // Toggle: clicking same cluster clears focus, different cluster switches focus
       if (focusedCluster?.clusterId === clusterId) {

@@ -15,6 +15,7 @@
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
+import { getResolution, isValidCell } from "h3-js";
 import type { Payload } from "payload";
 
 import { apiRoute, ValidationError } from "@/lib/api";
@@ -63,7 +64,16 @@ export const GET = apiRoute({
     let hexRadiusPx: number | undefined;
     let h3Res: number | undefined;
     if (algorithm === "h3") {
-      h3Res = Math.min(15, Math.max(2, Math.round(query.zoom * h3Scale)));
+      // Derive the EFFECTIVE resolution from the returned cells rather than
+      // re-deriving from zoom: the SQL function refines parentCells
+      // drill-downs by +2 resolutions, and PG's ROUND() rounds half-even
+      // while Math.round rounds half-up (exact .5 ties occur at scale
+      // 0.5/0.75) — both made hexRadius sizing and the location-vs-cluster
+      // feature shape disagree with the cells actually returned.
+      const cellFromRows = result.rows
+        .flatMap((r) => [typeof r.cluster_id === "string" ? r.cluster_id : "", ...(r.source_cells ?? [])])
+        .find((c) => c !== "" && isValidCell(c));
+      h3Res = cellFromRows ? getResolution(cellFromRows) : Math.min(15, Math.max(2, Math.round(query.zoom * h3Scale)));
       const edgeMeters: Record<number, number> = {
         2: 183000,
         3: 69000,
