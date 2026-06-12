@@ -289,6 +289,16 @@ export class AccountDeletionService {
       throw new Error(USER_NOT_FOUND);
     }
 
+    // Re-validate eligibility at execution time: the 30-day grace window can
+    // invalidate the schedule-time check (the other admin got demoted, new
+    // imports are in flight) — executing on the stale check could erase the
+    // last admin or delete datasets with running jobs. The deletion stays
+    // pending and the maintenance job retries on its next run.
+    const canDelete = await this.canDeleteUser(userId);
+    if (!canDelete.allowed) {
+      throw new Error(`Deletion aborted: ${canDelete.reason}`);
+    }
+
     // Get system user for public data transfer (outside transaction — read-only)
     const systemUserService = createSystemUserService(this.payload);
     const systemUser = await systemUserService.getOrCreateSystemUser();

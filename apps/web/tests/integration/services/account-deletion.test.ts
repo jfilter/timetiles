@@ -333,6 +333,29 @@ describe.sequential("Account Deletion Service", () => {
       expect(deletedDataset).toBeNull();
     });
 
+    it("re-checks eligibility at execution time (last-admin demoted mid-grace)", async () => {
+      // Regression: invariants were only enforced at schedule time — the
+      // 30-day window could invalidate them (e.g. the OTHER admin gets
+      // demoted), and the executor erased the last admin anyway.
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { adminA: { role: "admin" }, adminB: { role: "admin" } });
+
+      // Scheduling A passes — B is still an admin.
+      await deletionService.scheduleDeletion(users.adminA.id);
+
+      // During the grace period, B gets demoted; A becomes the last admin.
+      await payload.update({ collection: "users", id: users.adminB.id, data: { role: "user" }, overrideAccess: true });
+
+      await expect(deletionService.executeDeletion(users.adminA.id)).rejects.toThrow(
+        "Cannot delete the last admin user"
+      );
+
+      // A is untouched and still pending — the maintenance job retries later.
+      const adminA = await payload.findByID({ collection: "users", id: users.adminA.id, overrideAccess: true });
+      expect(adminA.deletionStatus).toBe("pending_deletion");
+      expect(adminA.role).toBe("admin");
+    });
+
     it("should delete the user's scraper repos, scrapers, and runs", async () => {
       // Regression: account deletion never touched the scraper domain — a
       // deleted user's code kept executing on schedule and their webhook
