@@ -21,7 +21,6 @@ import type { DetectionContext } from "@/lib/services/schema-detection/types";
 import { checkDateOrder } from "@/lib/services/schema-detection/utilities/date-order";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
 import { detectFlatFieldMappings, toFlatMappings } from "@/lib/services/schema-detection/utilities/flat-mappings";
-import { buildEnumValuesFromStats } from "@/lib/services/schema-detection/utilities/geo";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import { asSystem } from "@/lib/services/system-payload";
 import type { FieldStatistics, SchemaBuilderState } from "@/lib/types/schema-detection";
@@ -112,13 +111,10 @@ const detectFieldMappingsWithService = async (
 
   const result = await service.detect(null, context);
 
-  for (const fieldPath of result.patterns.enumFields) {
-    const stats = finalState.fieldStats[fieldPath];
-    if (!stats?.uniqueSamples) continue;
-    stats.isEnumCandidate = true;
-    stats.enumValues = buildEnumValuesFromStats(stats);
-  }
-
+  // Enum candidacy is decided ONLY by the schema builder, whose config carries
+  // the dataset's enumThreshold/enumMode. The service's pattern detection runs
+  // with hardcoded defaults ({50, count}) — pre-marking candidates from it
+  // silently overrode the dataset's enum configuration.
   schemaBuilder.detectEnumFields();
 
   const detectedMappings = toFlatMappings(result.fieldMappings);

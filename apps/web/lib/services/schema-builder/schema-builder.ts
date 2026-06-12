@@ -44,7 +44,15 @@ export class ProgressiveSchemaBuilder {
   };
 
   constructor(initialState?: SchemaBuilderState, config?: Partial<ProgressiveSchemaBuilder["config"]>) {
-    this.config = { maxSamples: 100, maxUniqueValues: 100, ...DEFAULT_ENUM_CONFIG, maxDepth: 3, ...config };
+    // Callers pass `{ enumThreshold: dataset?.… ?? undefined }` — spreading
+    // explicitly-undefined keys would clobber the defaults with undefined and
+    // turn the enum threshold comparisons into always-false NaN checks.
+    const overrides = Object.fromEntries(
+      // Cast through unknown: Object.entries types the values as non-undefined
+      // even though the runtime values of a Partial<> regularly are.
+      Object.entries((config ?? {}) as Record<string, unknown>).filter(([, value]) => value !== undefined)
+    ) as Partial<ProgressiveSchemaBuilder["config"]>;
+    this.config = { maxSamples: 100, maxUniqueValues: 100, ...DEFAULT_ENUM_CONFIG, maxDepth: 3, ...overrides };
 
     this.state = initialState ?? {
       version: 0,
