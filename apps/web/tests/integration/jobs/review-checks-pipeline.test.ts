@@ -101,6 +101,7 @@ describe.sequential("Review Checks Pipeline", () => {
     };
 
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      isEnabled: () => Promise.resolve(true),
       geocode: vi.fn().mockResolvedValue(mockGeocodingResult),
       batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
         const results = new Map();

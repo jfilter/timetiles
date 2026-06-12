@@ -137,6 +137,7 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     };
 
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      isEnabled: () => Promise.resolve(true),
       geocode: vi.fn().mockResolvedValue(mockGeocodingResult),
       batchGeocode: vi.fn().mockImplementation((addresses: string[]) => {
         const results = new Map();

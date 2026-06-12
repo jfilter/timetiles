@@ -60,6 +60,7 @@ describe.sequential("Tag Field Detection", () => {
 
   beforeEach(async () => {
     vi.spyOn(geocodingModule, "createGeocodingService").mockReturnValue({
+      isEnabled: () => Promise.resolve(true),
       batchGeocode: createSuccessBatchGeocode(),
     } as unknown as geocodingModule.GeocodingService);
 
