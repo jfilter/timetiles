@@ -187,20 +187,14 @@ const createTransformNodesFromWizard = (
   const replacedTargets = new Set<string>();
   const transformX = sourceX + (targetX - sourceX) / 2;
 
-  // Build reverse map: source column → target fieldKey
+  // Build reverse map: mapped column → target fieldKey. The map is keyed by
+  // the value the serializer wrote into the field mapping — for a rename
+  // chain that is the rename's `to`, not the source column.
   const columnToTargetField = new Map<string, string>();
   const fm = wizardState.fieldMapping;
-  const fieldKeys: Array<{ key: string; value: string | null }> = [
-    { key: "titleField", value: fm.titleField },
-    { key: "dateField", value: fm.dateField },
-    { key: "descriptionField", value: fm.descriptionField },
-    { key: "locationField", value: fm.locationField },
-    { key: "locationNameField", value: fm.locationNameField },
-    { key: "latitudeField", value: fm.latitudeField },
-    { key: "longitudeField", value: fm.longitudeField },
-  ];
-  for (const entry of fieldKeys) {
-    if (entry.value) columnToTargetField.set(entry.value, entry.key);
+  for (const fieldKey of FIELD_MAPPING_STRING_KEYS) {
+    const mappedColumn = fm[fieldKey];
+    if (mappedColumn) columnToTargetField.set(mappedColumn, fieldKey);
   }
 
   for (let i = 0; i < wizardState.transforms.length; i++) {
@@ -222,7 +216,10 @@ const createTransformNodesFromWizard = (
     const sourceNodeId = `source-${sheetIndex}-${sourceColumn}`;
     edges.push({ id: `edge-${sourceNodeId}-${nodeId}`, source: sourceNodeId, target: nodeId, data: { isValid: true } });
 
-    const targetFieldKey = columnToTargetField.get(sourceColumn);
+    // Mirror the serializer: a rename maps its `to` column into the field
+    // mapping, every other transform maps the source column.
+    const mappedColumn = transform.type === "rename" && transform.to ? transform.to : sourceColumn;
+    const targetFieldKey = columnToTargetField.get(mappedColumn);
     if (targetFieldKey) {
       const targetNodeId = `target-${targetFieldKey}`;
       replacedTargets.add(targetNodeId);
