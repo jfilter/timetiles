@@ -143,8 +143,13 @@ export const NumericRangeSlider = ({
     [positionFromClientX, min, max, isInteger, commit, highValue, lowValue]
   );
 
-  const handlePointerDown = (handle: "min" | "max") => () => {
+  // Capture the pointer on the handle (same pattern as use-time-range-slider):
+  // without it the drag dies as soon as the cursor leaves the 24px track, since
+  // move events stop reaching the track and onPointerLeave ends the drag.
+  const handlePointerDown = (handle: "min" | "max") => (e: React.PointerEvent) => {
+    e.preventDefault();
     draggingRef.current = handle;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
   };
   const handlePointerUp = () => {
     draggingRef.current = null;
