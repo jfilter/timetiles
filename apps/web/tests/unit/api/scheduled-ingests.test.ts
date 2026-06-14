@@ -130,6 +130,20 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     expect(data.error).toBe("Import is already running");
   });
 
+  it("should return 409 when the schedule is disabled (enable toggle holds for manual triggers)", async () => {
+    const mockPayload = createMockPayload();
+    mockPayload.findByID.mockResolvedValue({ ...mockSchedule, enabled: false });
+    mocks.mockGetPayload.mockResolvedValue(mockPayload);
+
+    const response = await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });
+    expect(response.status).toBe(409);
+
+    const data = await response.json();
+    expect(data.error).toBe("Import is disabled");
+    // Never claims "running" or queues a job for a disabled schedule.
+    expect(mocks.mockTriggerScheduledIngest).not.toHaveBeenCalled();
+  });
+
   it("should trigger import when not already running (atomic claim succeeds)", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue(mockSchedule);

@@ -121,6 +121,19 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 
+  it("returns 409 when the scraper is disabled (enable toggle holds for manual runs)", async () => {
+    mockPayload.findByID.mockResolvedValue({ ...mockScraper, enabled: false });
+
+    const response = await POST(createRequest(), createParams("10"));
+
+    expect(response.status).toBe(409);
+    const data = await response.json();
+    expect(data.error).toBe("Scraper is disabled");
+    // Never claims "running" or queues a job for a disabled scraper.
+    expect(mocks.mockClaimScraperRunning).not.toHaveBeenCalled();
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+  });
+
   it("queues scraper-execution job with correct input on success", async () => {
     const response = await POST(createRequest(), createParams("10"));
 

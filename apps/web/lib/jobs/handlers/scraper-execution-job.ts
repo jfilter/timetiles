@@ -108,6 +108,16 @@ export const scraperExecutionJob = {
       scraper = loaded.scraper;
       const repo = loaded.repo;
 
+      // Per-scraper enable toggle. The cron scheduler filters on `enabled`, but
+      // the manual-run and webhook trigger paths do not — this job is the single
+      // chokepoint every path funnels through, mirroring loadScheduledIngestConfig's
+      // enabled gate for scheduled ingests. Checked before the quota claim so a
+      // disabled scraper never consumes a daily run.
+      if (scraper.enabled === false) {
+        log.info({ jobId, scraperId }, "Scraper execution skipped - scraper disabled");
+        throw new Error("Scraper is disabled");
+      }
+
       // Quota check: daily scraper runs
       repoOwnerId = extractRelationId(repo.createdBy);
       if (repoOwnerId) {

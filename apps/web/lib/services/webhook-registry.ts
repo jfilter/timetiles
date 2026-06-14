@@ -151,6 +151,13 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
       logger.warn({ id: siDoc.id }, "Webhook disabled on scheduled ingest");
       return null;
     }
+    // A disabled scheduled ingest must not fire on any trigger path. The
+    // url-fetch job also re-checks this, but rejecting here avoids queueing a
+    // doomed job and leaving the record transiently stuck as "running".
+    if (siDoc.enabled === false) {
+      logger.warn({ id: siDoc.id }, "Scheduled ingest is disabled");
+      return null;
+    }
     return {
       type: "scheduled-ingest",
       id: siDoc.id,
@@ -171,6 +178,12 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
   if (scraperDoc) {
     if (!scraperDoc.webhookEnabled) {
       logger.warn({ id: scraperDoc.id }, "Webhook disabled on scraper");
+      return null;
+    }
+    // A disabled scraper must not run on any trigger path. The execution job
+    // enforces this centrally too, but rejecting here avoids a doomed job.
+    if (scraperDoc.enabled === false) {
+      logger.warn({ id: scraperDoc.id }, "Scraper is disabled");
       return null;
     }
     return {

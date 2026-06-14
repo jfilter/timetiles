@@ -24,6 +24,14 @@ export const POST = apiRoute({
   handler: async ({ req, user, payload, params }) => {
     const scraper = await loadManageableScraper(payload, user, params.id);
 
+    // Reject disabled scrapers up-front: the disable toggle must hold for manual
+    // runs too, not just the cron scheduler. The execution job enforces this
+    // centrally as well, but rejecting here gives immediate feedback and avoids
+    // queueing a job that would only fail.
+    if (scraper.enabled === false) {
+      throw new ConflictError("Scraper is disabled");
+    }
+
     // Report "already running" (409) ahead of the rate limit (429): 409 is the
     // more specific, actionable response, and the atomic claim below — not the
     // rate limit — is what actually prevents duplicate concurrent runs. The

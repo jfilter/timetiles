@@ -21,6 +21,14 @@ export const POST = apiRoute({
   params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
   handler: async ({ payload, user, params }) => {
     const schedule = await safeFindByID(payload, { collection: "scheduled-ingests", id: params.id, depth: 1, user });
+
+    // Reject disabled schedules before claiming "running": the enable toggle must
+    // hold for manual triggers too, not just the cron scheduler. The url-fetch
+    // job also re-checks, but rejecting here avoids a doomed job and status churn.
+    if (schedule.enabled === false) {
+      throw new ConflictError("Import is disabled");
+    }
+
     // Capture the pre-claim status so we can revert if the queue step fails
     // after the atomic claim has already set lastStatus to "running".
     const previousStatus = schedule.lastStatus ?? null;

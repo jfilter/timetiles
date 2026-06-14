@@ -181,6 +181,34 @@ describe.sequential("scraperExecutionJob", () => {
     expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
   });
 
+  it("should abort and reset status when the scraper is disabled (central enable gate)", async () => {
+    mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+      if (collection === "scrapers") {
+        return Promise.resolve(createMockScraper({ enabled: false }));
+      }
+      if (collection === "users") {
+        return Promise.resolve({ id: 200, email: "owner@example.com" });
+      }
+      return Promise.resolve(null);
+    });
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "webhook" });
+
+    await expect(scraperExecutionJob.handler(context as any)).rejects.toThrow("Scraper is disabled");
+
+    // No quota claim, no run record, no runner call for a disabled scraper.
+    expect(mockQuotaService.checkAndIncrementUsage).not.toHaveBeenCalled();
+    expect(mockPayload.create).not.toHaveBeenCalled();
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    // The "running" claim made by the trigger path is released.
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 10, data: { lastRunStatus: "failed" } })
+    );
+    // Nothing to roll back since quota was never claimed.
+    expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
+  });
+
   it("should load scraper with depth:1 to populate repo", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
     await scraperExecutionJob.handler(context);

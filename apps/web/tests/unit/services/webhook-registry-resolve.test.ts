@@ -113,6 +113,30 @@ describe.sequential("resolveWebhookToken", () => {
     expect(mockPayload.find).toHaveBeenCalledTimes(1);
   });
 
+  it("returns null when matched scheduled-ingest is disabled (enabled=false) even if webhook is enabled", async () => {
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 8, name: "Off Import", webhookEnabled: true, enabled: false, webhookToken: "tok-si-off" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-si-off");
+
+    expect(result).toBeNull();
+    // Matched the scheduled-ingest (just disabled), so scrapers are never checked.
+    expect(mockPayload.find).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns null when matched scraper is disabled (enabled=false) even if webhook is enabled", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [] });
+    mockPayload.find.mockResolvedValueOnce({
+      docs: [{ id: 11, name: "Off Scraper", webhookEnabled: true, enabled: false, webhookToken: "tok-scr-off" }],
+    });
+
+    const result = await resolveWebhookToken(mockPayload as any, "tok-scr-off");
+
+    expect(result).toBeNull();
+    expect(mockPayload.find).toHaveBeenCalledTimes(2);
+  });
+
   it("returns null when matched scraper has webhookEnabled=false", async () => {
     mockPayload.find.mockResolvedValueOnce({ docs: [] });
     mockPayload.find.mockResolvedValueOnce({
