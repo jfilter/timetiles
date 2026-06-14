@@ -23,6 +23,35 @@ describe("buildCanonicalFilters", () => {
     expect(filters.datasets).toEqual([10, 20]);
   });
 
+  it("keeps a valid in-order date range", () => {
+    const filters = buildCanonicalFilters({
+      parameters: { startDate: "2024-01-01", endDate: "2024-03-31", ff: {}, rf: {} },
+    });
+
+    expect(filters.startDate).toBe("2024-01-01");
+    expect(filters.endDate).toBe("2024-03-31T23:59:59.999Z");
+  });
+
+  it("drops an inverted date range (start after end) instead of emitting an empty window", () => {
+    const filters = buildCanonicalFilters({
+      parameters: { startDate: "2024-06-01", endDate: "2024-01-01", ff: {}, rf: {} },
+    });
+
+    // Mirrors sanitizeRangeFilters dropping a numeric min>max entry.
+    expect(filters.startDate).toBeUndefined();
+    expect(filters.endDate).toBeUndefined();
+  });
+
+  it("keeps an equal-day range (start == end)", () => {
+    const filters = buildCanonicalFilters({
+      parameters: { startDate: "2024-05-01", endDate: "2024-05-01", ff: {}, rf: {} },
+    });
+
+    // start is midnight, end is normalized to end-of-day → not inverted.
+    expect(filters.startDate).toBe("2024-05-01");
+    expect(filters.endDate).toBe("2024-05-01T23:59:59.999Z");
+  });
+
   it("treats undefined catalog as no catalog filter", () => {
     const filters = buildCanonicalFilters({ parameters: { ff: {}, rf: {} } });
 

@@ -67,14 +67,8 @@ export const buildCanonicalFilters = ({
     filters.datasets = parameters.datasets;
   }
 
-  // Dates (normalize end date to include full day)
-  if (parameters.startDate != null) {
-    filters.startDate = parameters.startDate;
-  }
-  const normalizedEnd = normalizeEndDate(parameters.endDate ?? null);
-  if (normalizedEnd != null) {
-    filters.endDate = normalizedEnd;
-  }
+  // Dates (normalize end date; drop an inverted pair — see applyDateRange)
+  applyDateRange(filters, parameters);
 
   // Bounds
   if (parameters.bounds != null) {
@@ -124,6 +118,30 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
     if (Object.keys(sanitizedRanges).length > 0) {
       filters.rangeFilters = sanitizedRanges;
     }
+  }
+};
+
+/**
+ * Apply the start/end date range, normalizing the end to the full day.
+ *
+ * Drops an inverted pair (start after end) instead of emitting an always-empty
+ * SQL window — mirrors sanitizeRangeFilters' min>max handling for numeric
+ * ranges, so both range kinds are defended symmetrically against an inverted
+ * filter slipping past.
+ */
+const applyDateRange = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  const normalizedEnd = normalizeEndDate(parameters.endDate ?? null);
+  const startTs = parameters.startDate != null ? Date.parse(parameters.startDate) : null;
+  const endTs = normalizedEnd != null ? Date.parse(normalizedEnd) : null;
+  const inverted =
+    startTs != null && endTs != null && Number.isFinite(startTs) && Number.isFinite(endTs) && startTs > endTs;
+  if (inverted) return;
+
+  if (parameters.startDate != null) {
+    filters.startDate = parameters.startDate;
+  }
+  if (normalizedEnd != null) {
+    filters.endDate = normalizedEnd;
   }
 };
 
