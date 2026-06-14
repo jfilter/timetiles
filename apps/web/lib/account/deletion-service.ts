@@ -233,7 +233,7 @@ export class AccountDeletionService {
       logError(error, "Failed to send deletion scheduled email", { userId });
     }
 
-    return { success: true, deletionScheduledAt: deletionDate.toISOString(), summary };
+    return { success: true, deletionScheduledAt: deletionDate.toISOString(), gracePeriodDays, summary };
   }
 
   /**

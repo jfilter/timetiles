@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 
-import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
@@ -85,7 +85,7 @@ export const POST = apiRoute({
       );
 
       return {
-        message: `Your account will be deleted in ${DELETION_GRACE_PERIOD_DAYS} days. You can cancel anytime before then.`,
+        message: `Your account will be deleted in ${result.gracePeriodDays} days. You can cancel anytime before then.`,
         deletionScheduledAt: result.deletionScheduledAt,
         summary: result.summary,
       };

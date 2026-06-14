@@ -22,6 +22,8 @@ export interface DeletionSummary {
 export interface ScheduleDeletionResult {
   success: boolean;
   deletionScheduledAt: string;
+  /** Configured grace period (days) actually applied — for accurate messaging. */
+  gracePeriodDays: number;
   summary: DeletionSummary;
 }
 

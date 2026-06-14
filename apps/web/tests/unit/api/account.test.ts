@@ -416,6 +416,9 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
     const scheduledAt = new Date().toISOString();
     mockScheduleDeletion.mockResolvedValue({
       deletionScheduledAt: scheduledAt,
+      // The route now derives the message from the configured grace period the
+      // service applied (not a static constant), so the stub must surface it.
+      gracePeriodDays: 7,
       summary: { catalogs: 1, datasets: 2, events: 10 },
     });
 
