@@ -62,21 +62,21 @@ export class AccountDeletionService {
     try {
       user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
     } catch {
-      return { allowed: false, reason: USER_NOT_FOUND };
+      return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
     }
 
     if (!user) {
-      return { allowed: false, reason: USER_NOT_FOUND };
+      return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
     }
 
     // Cannot delete system user
     if (user.email === SYSTEM_USER_EMAIL) {
-      return { allowed: false, reason: "System user cannot be deleted" };
+      return { allowed: false, reason: "System user cannot be deleted", reasonCode: "systemUser" };
     }
 
     // Cannot delete if already deleted
     if (user.deletionStatus === "deleted") {
-      return { allowed: false, reason: "User is already deleted" };
+      return { allowed: false, reason: "User is already deleted", reasonCode: "alreadyDeleted" };
     }
 
     // Cannot delete the last admin
@@ -94,7 +94,7 @@ export class AccountDeletionService {
       });
 
       if (adminCount.totalDocs === 0) {
-        return { allowed: false, reason: "Cannot delete the last admin user" };
+        return { allowed: false, reason: "Cannot delete the last admin user", reasonCode: "lastAdmin" };
       }
     }
 
@@ -112,7 +112,11 @@ export class AccountDeletionService {
     });
 
     if (activeJobs.docs.length > 0) {
-      return { allowed: false, reason: "User has active import jobs. Please wait for them to complete." };
+      return {
+        allowed: false,
+        reason: "User has active import jobs. Please wait for them to complete.",
+        reasonCode: "activeImportJobs",
+      };
     }
 
     return { allowed: true };

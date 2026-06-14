@@ -95,6 +95,7 @@ describe.sequential("Account Deletion Service", () => {
       const result = await deletionService.canDeleteUser(systemUser.id);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("System user");
+      expect(result.reasonCode).toBe("systemUser");
     });
 
     it("should prevent deleting the last admin", async () => {
@@ -115,6 +116,7 @@ describe.sequential("Account Deletion Service", () => {
       const result = await deletionService.canDeleteUser(users.admin.id);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("last admin");
+      expect(result.reasonCode).toBe("lastAdmin");
 
       // Restore demoted admins
       for (const admin of allAdmins.docs) {
@@ -134,6 +136,7 @@ describe.sequential("Account Deletion Service", () => {
       const result = await deletionService.canDeleteUser(99999);
       expect(result.allowed).toBe(false);
       expect(result.reason).toContain("not found");
+      expect(result.reasonCode).toBe("userNotFound");
     });
   });
 

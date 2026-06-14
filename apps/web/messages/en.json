@@ -349,7 +349,7 @@
     "publicDataTransferDescription": "{catalogs} public catalogs and {datasets} public datasets will be transferred to the system.",
     "privateDataDelete": "Private data (will be deleted)",
     "privateDataDeleteDescription": "{catalogs} private catalogs, {datasets} private datasets, and {events} events will be permanently deleted.",
-    "gracePeriod": "7-day grace period: ",
+    "gracePeriod": "{days}-day grace period: ",
     "gracePeriodDescription": "You can cancel the deletion anytime within {days} days. After that, this action cannot be undone.",
     "passwordRequired": "Password is required",
     "enterPassword": "Enter your password",
@@ -366,6 +366,11 @@
     "cancelDeletion": "Cancel Deletion",
     "failedToLoad": "Failed to load data",
     "cannotDelete": "Cannot delete account",
+    "cannotDeleteUserNotFound": "Account not found.",
+    "cannotDeleteSystemUser": "System accounts cannot be deleted.",
+    "cannotDeleteAlreadyDeleted": "This account is already deleted.",
+    "cannotDeleteLastAdmin": "You are the last administrator and cannot delete your account. Assign another admin first.",
+    "cannotDeleteActiveJobs": "You have active imports running. Please wait for them to finish before deleting your account.",
     "failedToScheduleDeletion": "Failed to schedule deletion"
   },
   "DataExport": {

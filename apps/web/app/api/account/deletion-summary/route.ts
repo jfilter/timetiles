@@ -27,6 +27,9 @@ export const GET = apiRoute({
       summary,
       canDelete: canDelete.allowed,
       reason: canDelete.reason,
+      // Locale-independent code so the client can translate the block reason;
+      // `reason` alone would render untranslated English in the modal.
+      reasonCode: canDelete.reasonCode,
       // The UI interpolates this into the grace-period copy — hardcoded "7
       // days" strings previously contradicted the configured 30-day default.
       gracePeriodDays: getAppConfig().account.deletionGracePeriodDays,

@@ -11,7 +11,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { DeletionSummary } from "../account/deletion-types";
+import type { CannotDeleteReasonCode, DeletionSummary } from "../account/deletion-types";
 import { fetchJson, postJson } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
@@ -46,6 +46,8 @@ export interface DeletionSummaryResponse {
   summary: DeletionSummary;
   canDelete: boolean;
   reason?: string;
+  /** Locale-independent code for the block reason, translated client-side. */
+  reasonCode?: CannotDeleteReasonCode;
   /** Configured deletion grace period (days), for UI copy interpolation. */
   gracePeriodDays: number;
   deletionStatus?: string;

@@ -537,6 +537,23 @@ describe.sequential("GET /api/account/deletion-summary", () => {
     expect(mockGetDeletionSummary).toHaveBeenCalledWith(mockUser.id);
     expect(mockCanDeleteUser).toHaveBeenCalledWith(mockUser.id);
   });
+
+  it("surfaces the locale-independent reasonCode when deletion is blocked", async () => {
+    mockGetDeletionSummary.mockResolvedValue({ catalogs: { public: 0, private: 0 } });
+    mockCanDeleteUser.mockResolvedValue({
+      allowed: false,
+      reason: "Cannot delete the last admin user",
+      reasonCode: "lastAdmin",
+    });
+
+    const request = createGetRequest("http://localhost/api/account/deletion-summary");
+    const response = await getDeletionSummary(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.canDelete).toBe(false);
+    expect(data.reasonCode).toBe("lastAdmin");
+  });
 });
 
 describe.sequential("GET /api/data-exports/:id/download", () => {

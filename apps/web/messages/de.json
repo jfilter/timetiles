@@ -349,7 +349,7 @@
     "publicDataTransferDescription": "{catalogs} öffentliche Kataloge und {datasets} öffentliche Datensätze werden an das System übertragen.",
     "privateDataDelete": "Private Daten (werden gelöscht)",
     "privateDataDeleteDescription": "{catalogs} private Kataloge, {datasets} private Datensätze und {events} Ereignisse werden unwiderruflich gelöscht.",
-    "gracePeriod": "7-Tage-Frist: ",
+    "gracePeriod": "{days}-Tage-Frist: ",
     "gracePeriodDescription": "Sie können die Löschung innerhalb von {days} Tagen jederzeit abbrechen. Danach ist diese Aktion unwiderruflich.",
     "passwordRequired": "Passwort ist erforderlich",
     "enterPassword": "Passwort eingeben",
@@ -366,6 +366,11 @@
     "cancelDeletion": "Löschung abbrechen",
     "failedToLoad": "Daten konnten nicht geladen werden",
     "cannotDelete": "Konto kann nicht gelöscht werden",
+    "cannotDeleteUserNotFound": "Konto nicht gefunden.",
+    "cannotDeleteSystemUser": "Systemkonten können nicht gelöscht werden.",
+    "cannotDeleteAlreadyDeleted": "Dieses Konto ist bereits gelöscht.",
+    "cannotDeleteLastAdmin": "Sie sind der letzte Administrator und können Ihr Konto nicht löschen. Bestimmen Sie zuerst einen anderen Administrator.",
+    "cannotDeleteActiveJobs": "Es laufen noch aktive Importe. Bitte warten Sie, bis diese abgeschlossen sind, bevor Sie Ihr Konto löschen.",
     "failedToScheduleDeletion": "Löschung konnte nicht geplant werden"
   },
   "DataExport": {

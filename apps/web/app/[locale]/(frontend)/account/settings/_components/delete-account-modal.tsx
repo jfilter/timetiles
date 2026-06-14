@@ -23,6 +23,7 @@ import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import type { CannotDeleteReasonCode } from "@/lib/account/deletion-types";
 import { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
@@ -58,12 +59,31 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   // default until the summary response arrives.
   const gracePeriodDays = summaryData?.gracePeriodDays ?? 30;
 
+  // Translate a server block reason via literal keys (next-intl's `t` requires
+  // statically-known keys, so a code→key map indexed dynamically won't type).
+  const translateBlockReason = (code: CannotDeleteReasonCode): string => {
+    switch (code) {
+      case "systemUser":
+        return t("cannotDeleteSystemUser");
+      case "alreadyDeleted":
+        return t("cannotDeleteAlreadyDeleted");
+      case "lastAdmin":
+        return t("cannotDeleteLastAdmin");
+      case "activeImportJobs":
+        return t("cannotDeleteActiveJobs");
+      case "userNotFound":
+        return t("cannotDeleteUserNotFound");
+    }
+  };
+
   const getSummaryDisplayError = (): string | null => {
     if (summaryError) {
       return summaryError instanceof Error ? summaryError.message : t("failedToLoad");
     }
     if (summaryData && !summaryData.canDelete) {
-      return summaryData.reason ?? t("cannotDelete");
+      return summaryData.reasonCode
+        ? translateBlockReason(summaryData.reasonCode)
+        : (summaryData.reason ?? t("cannotDelete"));
     }
     return null;
   };
@@ -217,7 +237,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
 
                 <div className="rounded-md bg-amber-50 p-4 text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
                   <p className="text-sm">
-                    <strong>{t("gracePeriod")}</strong>
+                    <strong>{t("gracePeriod", { days: gracePeriodDays })}</strong>
                     {t("gracePeriodDescription", { days: gracePeriodDays })}
                   </p>
                 </div>
