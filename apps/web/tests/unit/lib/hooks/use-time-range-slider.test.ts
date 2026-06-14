@@ -318,6 +318,56 @@ describe("useTimeRangeSlider", () => {
 
       expect(props.onEndDateChange).toHaveBeenCalledWith(null);
     });
+
+    it("clamps a typed start date later than the end down to the end (no inverted range)", () => {
+      mockHistogramQuery.mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-01-01", endDate: "2024-06-01" } };
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+
+      act(() => {
+        result.current.handleStartDateInputChange({ target: { value: "2024-09-01" } } as ChangeEvent<HTMLInputElement>);
+      });
+
+      // Typed start (Sep) is after end (Jun) → snaps to the end bound instead.
+      expect(props.onStartDateChange).toHaveBeenCalledWith("2024-06-01");
+    });
+
+    it("clamps a typed end date earlier than the start up to the start (no inverted range)", () => {
+      mockHistogramQuery.mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-06-01", endDate: "2024-12-01" } };
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+
+      act(() => {
+        result.current.handleEndDateInputChange({ target: { value: "2024-01-01" } } as ChangeEvent<HTMLInputElement>);
+      });
+
+      // Typed end (Jan) is before start (Jun) → snaps to the start bound instead.
+      expect(props.onEndDateChange).toHaveBeenCalledWith("2024-06-01");
+    });
+
+    it("passes a valid in-order typed start date through unchanged", () => {
+      mockHistogramQuery.mockReturnValue({ data: undefined, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const base = defaultProps();
+      const props = { ...base, filters: { ...base.filters, startDate: "2024-01-01", endDate: "2024-12-01" } };
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+
+      act(() => {
+        result.current.handleStartDateInputChange({ target: { value: "2024-03-01" } } as ChangeEvent<HTMLInputElement>);
+      });
+
+      expect(props.onStartDateChange).toHaveBeenCalledWith("2024-03-01");
+    });
   });
 
   describe("edit mode", () => {

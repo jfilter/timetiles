@@ -250,13 +250,36 @@ export const useTimeRangeSlider = ({
     return barEnd >= rangeStart && barStart <= rangeEnd;
   };
 
-  // Date input handlers
+  // Date input handlers. The drag and keyboard paths clamp each handle against
+  // the other through commitHandleTimestamp; the typed inputs bypassed it, so a
+  // start typed after the end (or an end before the start) committed an inverted
+  // range that silently returns zero events. Clamp each side against the other
+  // here too — snapping to the opposing bound, mirroring numeric-range-slider —
+  // while leaving the open-ended and empty-input cases untouched.
   const handleStartDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onStartDateChange(e.target.value || null);
+    const value = e.target.value;
+    if (!value) {
+      onStartDateChange(null);
+      return;
+    }
+    if (endDate != null && parseISODate(value) > parseISODate(endDate)) {
+      onStartDateChange(endDate);
+      return;
+    }
+    onStartDateChange(value);
   };
 
   const handleEndDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onEndDateChange(e.target.value || null);
+    const value = e.target.value;
+    if (!value) {
+      onEndDateChange(null);
+      return;
+    }
+    if (startDate != null && parseISODate(value) < parseISODate(startDate)) {
+      onEndDateChange(startDate);
+      return;
+    }
+    onEndDateChange(value);
   };
 
   const handleOpenEditMode = () => {
