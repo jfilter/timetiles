@@ -191,6 +191,84 @@ describe("scheduled-ingests beforeChange hook", () => {
     });
   });
 
+  describe("schedule change resets stale nextRun", () => {
+    it("recomputes nextRun when the cron expression changes on an enabled update", () => {
+      const staleNextRun = "2099-01-01T00:00:00.000Z";
+      const data: Record<string, unknown> = {
+        scheduleType: "cron",
+        cronExpression: "0 6 * * *", // changed to 06:00 UTC
+        enabled: true,
+        nextRun: staleNextRun, // left over from the OLD schedule
+      };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: { scheduleType: "cron", cronExpression: "0 12 * * *", frequency: null, enabled: true } as never,
+        req: {} as never,
+        context: {},
+        collection: {} as never,
+      });
+
+      // The stale value is dropped and recomputed against the new cron.
+      expect(result.nextRun).not.toBe(staleNextRun);
+      const nextRun = new Date(result.nextRun as string);
+      expect(nextRun.getUTCHours()).toBe(6);
+      expect(nextRun.getUTCMinutes()).toBe(0);
+    });
+
+    it("recomputes nextRun when only the timezone changes", () => {
+      const staleNextRun = "2099-01-01T00:00:00.000Z";
+      const data: Record<string, unknown> = {
+        scheduleType: "cron",
+        cronExpression: "0 6 * * *",
+        timezone: "Europe/Berlin", // changed from UTC
+        enabled: true,
+        nextRun: staleNextRun,
+      };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: {
+          scheduleType: "cron",
+          cronExpression: "0 6 * * *",
+          frequency: null,
+          timezone: "UTC",
+          enabled: true,
+        } as never,
+        req: {} as never,
+        context: {},
+        collection: {} as never,
+      });
+
+      expect(result.nextRun).not.toBe(staleNextRun);
+      expect(result.nextRun).toBeDefined();
+    });
+
+    it("preserves nextRun when the schedule definition is unchanged", () => {
+      const existingNextRun = "2099-01-01T00:00:00.000Z";
+      const data: Record<string, unknown> = {
+        scheduleType: "cron",
+        cronExpression: "0 12 * * *", // same as original
+        enabled: true,
+        name: "Renamed import", // unrelated edit
+        nextRun: existingNextRun,
+      };
+
+      const result = beforeChangeHook({
+        data,
+        operation: "update",
+        originalDoc: { scheduleType: "cron", cronExpression: "0 12 * * *", frequency: null, enabled: true } as never,
+        req: {} as never,
+        context: {},
+        collection: {} as never,
+      });
+
+      expect(result.nextRun).toBe(existingNextRun);
+    });
+  });
+
   describe("webhook token management", () => {
     it("should generate a 64-char hex token on first enable", () => {
       const data: Record<string, unknown> = { webhookEnabled: true };

@@ -20,11 +20,38 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { validateHtmlExtractConfig } from "./validation";
 
 /**
+ * Detect whether the schedule definition (cron / frequency / timezone) changed
+ * on an update. A field counts as changed only when it is present in the
+ * incoming `data` and differs from `originalDoc`, so a partial update that omits
+ * a field is not mistaken for clearing it.
+ */
+const scheduleDefinitionChanged = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>): boolean => {
+  if (!originalDoc) return false;
+  const fieldChanged = (field: string): boolean =>
+    data[field] !== undefined && (data[field] ?? null) !== (originalDoc[field] ?? null);
+  return fieldChanged("cronExpression") || fieldChanged("frequency") || fieldChanged("timezone");
+};
+
+/**
  * Handle schedule initialization and statistics.
  *
  * Uses the timezone field (defaulting to UTC) for both frequency and cron calculations.
  */
-const handleScheduleInitialization = (data: Record<string, unknown>, operation: string): void => {
+const handleScheduleInitialization = (
+  data: Record<string, unknown>,
+  operation: string,
+  originalDoc?: Record<string, unknown>
+): void => {
+  // A changed schedule definition must take effect immediately. shouldRunNow
+  // gives an existing nextRun absolute precedence, so a stale value from the OLD
+  // schedule would defer the new cadence until the previous fire time passes.
+  // Clear it so the block below (or shouldRunNow's lastRun fallback) recomputes
+  // against the new schedule — mirrors the nextRunAt reset on schedule change in
+  // scraper-repo-sync-job.
+  if (operation === "update" && scheduleDefinitionChanged(data, originalDoc)) {
+    data.nextRun = null;
+  }
+
   if ((operation === "create" || (operation === "update" && data.enabled)) && (data.cronExpression ?? data.frequency)) {
     const timezone = (data.timezone as string | undefined) ?? "UTC";
 
@@ -88,7 +115,7 @@ export const beforeChangeHook: CollectionBeforeChangeHook = ({ data, operation, 
   clearScheduleTypeFields(data);
 
   // Calculate next run time when creating or enabling a schedule
-  handleScheduleInitialization(data, operation);
+  handleScheduleInitialization(data, operation, originalDoc as Record<string, unknown> | undefined);
 
   return data;
 };
