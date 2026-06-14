@@ -171,12 +171,15 @@ const handleScraperTrigger = async (
     logger.info({ scraperId: target.id, jobId: job.id }, "Scraper triggered via webhook");
     return { message: "Scraper triggered successfully", status: "triggered", jobId: String(job.id) };
   } catch {
-    // Reset status so scraper isn't permanently stuck as "running"
+    // Reset status so scraper isn't permanently stuck as "running". Use
+    // "failed" (not null) to match the manual-run path's rollback — the run
+    // attempt did fail, and surfacing that consistently across trigger paths
+    // avoids a webhook failure silently masquerading as "never run".
     try {
       await payload.update({
         collection: "scrapers",
         id: target.id,
-        data: { lastRunStatus: null },
+        data: { lastRunStatus: "failed" },
         overrideAccess: true,
       });
     } catch {

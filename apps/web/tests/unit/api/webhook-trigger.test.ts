@@ -123,6 +123,33 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     );
   });
 
+  it("resets scraper status to 'failed' (not null) when the queue fails, matching the manual path", async () => {
+    // Resolve the token to a scraper, not a scheduled ingest.
+    mockPayload.find.mockImplementation((args: { collection: string }) => {
+      if (args.collection === "scrapers") {
+        return Promise.resolve({
+          docs: [{ id: 7, name: "Test Scraper", webhookEnabled: true, enabled: true, repoCreatedBy: { id: 1 } }],
+        });
+      }
+      return Promise.resolve({ docs: [] });
+    });
+    // Atomic claim succeeds (scraper was idle), then the job queue fails.
+    mockDrizzleUpdate.mockImplementation(() => createUpdateBuilder([{ id: 7 }]));
+    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue down"));
+
+    const response = await POST(createRequest() as never, createContext("test-token-abc"));
+
+    expect(response.status).toBe(500);
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scrapers",
+        id: 7,
+        data: { lastRunStatus: "failed" },
+        overrideAccess: true,
+      })
+    );
+  });
+
   it("should not record premature success in execution history (Bug 23)", async () => {
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
