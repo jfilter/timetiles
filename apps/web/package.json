@@ -90,7 +90,7 @@
     "sharp": "^0.34.5",
     "tsx": "catalog:",
     "undici": "^8.3.0",
-    "uuid": "^13.0.0",
+    "uuid": "^14.0.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "yaml": "^2.9.0",
     "zod": "catalog:",
