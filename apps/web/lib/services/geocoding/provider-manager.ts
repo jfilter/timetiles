@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { createLogger } from "@/lib/logger";
+import { defaultIfEmpty } from "@/lib/utils/strings";
 import type { GeocodingProvider } from "@/payload-types";
 
 import { createPhotonGeocoder } from "./photon-geocoder";
@@ -280,8 +281,12 @@ export class ProviderManager {
   }
 
   private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
-    const baseUrl = doc.baseUrl ?? NOMINATIM_BASE_URL;
-    const userAgent = doc.userAgent ?? TIMETILES_USER_AGENT;
+    // These fields have defaults but an admin can clear them to "", which `??`
+    // would keep — an empty osmServer breaks every request and an empty
+    // User-Agent gets the provider blocked (Nominatim/Photon require one).
+    // defaultIfEmpty falls back on "" too.
+    const baseUrl = defaultIfEmpty(doc.baseUrl, NOMINATIM_BASE_URL);
+    const userAgent = defaultIfEmpty(doc.userAgent, TIMETILES_USER_AGENT);
 
     logger.debug("Creating Nominatim geocoder", { baseUrl, userAgent });
 
@@ -360,7 +365,7 @@ export class ProviderManager {
   }
 
   private createPhotonGeocoderInstance(doc: GeocodingProvider): NodeGeocoder.Geocoder {
-    const baseUrl = doc.baseUrl ?? "https://photon.komoot.io";
+    const baseUrl = defaultIfEmpty(doc.baseUrl, "https://photon.komoot.io");
 
     logger.debug("Creating Photon geocoder", { baseUrl });
 
