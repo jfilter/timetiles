@@ -133,7 +133,7 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
         type="password"
         value={password}
         onChange={handlePasswordChange}
-        placeholder={t("registerPasswordPlaceholder")}
+        placeholder={t("registerPasswordPlaceholder", { length: PASSWORD_MIN_LENGTH })}
         disabled={isPending}
         required
         autoComplete="new-password"

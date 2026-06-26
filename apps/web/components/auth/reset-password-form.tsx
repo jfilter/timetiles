@@ -67,7 +67,7 @@ export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Read
         type="password"
         value={password}
         onChange={handlePasswordChange}
-        placeholder={t("newPasswordPlaceholder")}
+        placeholder={t("newPasswordPlaceholder", { length: PASSWORD_MIN_LENGTH })}
         disabled={isPending}
         required
         autoComplete="new-password"
