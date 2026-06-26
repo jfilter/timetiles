@@ -12,13 +12,22 @@ import path from "node:path";
 import { getEnv } from "@/lib/config/env";
 
 /**
+ * Return the absolute path to the ingest-files upload directory.
+ *
+ * This is the `staticDir` Payload writes ingest uploads to: the `UPLOAD_DIR`
+ * environment variable (defaulting to `"uploads"`) plus the `ingest-files`
+ * subdirectory, resolved relative to `process.cwd()`.
+ */
+export const getIngestFilesDir = (): string => path.resolve(process.cwd(), `${getEnv().UPLOAD_DIR}/ingest-files`);
+
+/**
  * Return the absolute path to an import file given its filename.
  *
  * Uses the `UPLOAD_DIR` environment variable (defaulting to `"uploads"`)
  * and resolves relative to `process.cwd()`.
  */
 export const getIngestFilePath = (filename: string): string => {
-  const uploadDir = path.resolve(process.cwd(), `${getEnv().UPLOAD_DIR}/ingest-files`);
+  const uploadDir = getIngestFilesDir();
   const resolved = path.resolve(uploadDir, filename);
   if (!resolved.startsWith(uploadDir + path.sep)) {
     throw new Error("Invalid filename: path traversal detected");

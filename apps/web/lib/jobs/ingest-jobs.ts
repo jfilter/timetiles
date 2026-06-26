@@ -32,6 +32,9 @@ export { cacheCleanupJob } from "./handlers/cache-cleanup-job";
 // Preview cleanup job handler
 export { previewCleanupJob } from "./handlers/preview-cleanup-job";
 
+// Ingest-file cleanup job handler
+export { ingestFilesCleanupJob } from "./handlers/ingest-files-cleanup-job";
+
 // Schema maintenance job handlers
 export { schemaMaintenanceJob } from "./handlers/schema-maintenance-job";
 

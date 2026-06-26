@@ -56,6 +56,16 @@ const baseSchema = {
   UPLOAD_TEMP_DIR: z.string().default("/tmp"),
   DATA_EXPORT_DIR: z.string().default(".exports"),
 
+  // === Ingest-file cleanup ===
+  // Hours to keep the raw CSV on disk after an ingest reaches a terminal status
+  // (completed/failed). The DB record is kept (dedup/audit); only the physical
+  // file is unlinked once past this window. Tunable per host.
+  INGEST_FILE_RETENTION_HOURS: z.coerce.number().int().positive().default(24),
+  // Minimum age before an UNREFERENCED file (no ingest-files row) is swept as an
+  // orphan. Only guards the brief download-before-record-commit race, so a wide
+  // margin is safe.
+  INGEST_FILE_ORPHAN_GRACE_HOURS: z.coerce.number().int().positive().default(12),
+
   // === Email ===
   EMAIL_SMTP_HOST: z.string().optional(),
   EMAIL_SMTP_PORT: z.coerce.number().default(587),
