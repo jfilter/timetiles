@@ -12,7 +12,6 @@
 import { z } from "zod";
 
 import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
-import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { getOrCreateCatalog, processSheetMappings, translateSchemaMode } from "@/lib/ingest/configure-service";
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
@@ -24,8 +23,9 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
+import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-import { createLogger } from "@/lib/logger";
+import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 const logger = createLogger("api-update-schedule");
@@ -159,7 +159,16 @@ export const PATCH = apiRoute({
       "Updated scheduled ingest from wizard"
     );
 
-    // Optionally trigger a run using the same atomic claim pattern as the trigger endpoint
+    // Optionally trigger a run. Route through triggerScheduledIngest — the same
+    // path manual triggers, webhooks, and the scheduler use — so the FULL
+    // scheduled-ingest WORKFLOW runs (url-fetch → dataset-detection → per-sheet
+    // pipeline). Queueing the raw `url-fetch` task alone created the ingest file
+    // but never ran detection (url-fetch sets skipIngestFileHooks; only the
+    // workflow chains the next stages), so no events were produced even though the
+    // schedule got marked "success"; with deferLifecycleUpdates unset it also
+    // recorded a failure on every one of url-fetch's retries, burning the retry
+    // budget. Best-effort: the schedule update already succeeded, so a failed or
+    // already-running trigger must not fail the request.
     if (body.triggerRun) {
       const updatedSchedule = await payload.findByID({
         collection: COLLECTION,
@@ -167,41 +176,25 @@ export const PATCH = apiRoute({
         depth: 0,
         req,
       });
-      const claimResult = await payload.update({
-        collection: COLLECTION,
-        where: { id: { equals: body.scheduledIngestId }, lastStatus: { not_equals: "running" } },
-        data: { lastRun: new Date().toISOString(), lastStatus: "running" },
-        overrideAccess: true,
-      });
-
-      if (claimResult.docs.length > 0) {
-        try {
-          await queueJobWithRollback(
-            payload,
-            {
-              task: "url-fetch",
-              input: {
-                scheduledIngestId: body.scheduledIngestId,
-                sourceUrl: updatedSchedule.sourceUrl,
-                authConfig: updatedSchedule.authConfig,
-                originalName: updatedSchedule.name,
-                triggeredBy: "manual",
-              },
-            },
-            {
-              collection: COLLECTION,
-              where: { id: { equals: body.scheduledIngestId } },
-              data: { lastStatus: "failed", lastError: "Failed to queue import job" },
-            },
-            "Failed to queue job after schedule update"
-          );
-          logger.info({ scheduledIngestId: body.scheduledIngestId }, "Triggered run after schedule update");
-        } catch {
-          // Swallow — queueJobWithRollback already logged and reverted status.
-          // The schedule update itself succeeded, so we return success.
+      const previousStatus = updatedSchedule.lastStatus ?? null;
+      try {
+        await triggerScheduledIngest(payload, updatedSchedule, new Date(), { triggeredBy: "manual" });
+        logger.info({ scheduledIngestId: body.scheduledIngestId }, "Triggered run after schedule update");
+      } catch (error) {
+        if (error instanceof Error && error.message.includes("already running")) {
+          logger.info({ scheduledIngestId: body.scheduledIngestId }, "Schedule already running, skipping trigger");
+        } else {
+          // The atomic claim succeeded but queueing failed, leaving the record
+          // stuck as "running" — revert so future triggers aren't blocked. The
+          // schedule update itself succeeded, so we still return success.
+          logError(error, "Failed to trigger run after schedule update", { scheduledIngestId: body.scheduledIngestId });
+          await payload.update({
+            collection: COLLECTION,
+            id: body.scheduledIngestId,
+            data: { lastStatus: previousStatus },
+            overrideAccess: true,
+          });
         }
-      } else {
-        logger.info({ scheduledIngestId: body.scheduledIngestId }, "Schedule already running, skipping trigger");
       }
     }
 
