@@ -99,8 +99,10 @@ export const GET = apiRoute({
     // valid metadata paths and sanitized like enum-stats.
     const numberPaths = readNumberFieldTypes(dataset.fieldTypes).filter((path) => {
       if (!validPaths.has(path)) return false;
-      const cleaned = path.replaceAll(/[^a-zA-Z0-9_.]/g, "");
-      return cleaned === path && cleaned.length > 0 && cleaned.length <= 100 && isValidFieldKey(path);
+      // Unicode-aware validation (isValidFieldKey) — the prior ASCII strip-and-
+      // compare skipped every non-ASCII-named numeric field. The path reaches SQL
+      // only as a bound parameter, so no ASCII restriction is needed for safety.
+      return isValidFieldKey(path);
     });
     if (numberPaths.length === 0) return { fields: [] };
 

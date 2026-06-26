@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
+import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
@@ -61,8 +62,11 @@ export const GET = apiRoute({
     for (const field of candidates) {
       if (!validPaths.has(field.path)) continue;
 
-      const fieldPath = field.path.replaceAll(/[^a-zA-Z0-9_.]/g, "");
-      if (fieldPath !== field.path || fieldPath.length === 0 || fieldPath.length > 100) continue;
+      // Validate the key (Unicode-aware) instead of an ASCII strip-and-compare,
+      // which skipped every non-ASCII-named field entirely. isValidFieldKey bounds
+      // length/depth and the path is passed to SQL only as a bound parameter.
+      if (!isValidFieldKey(field.path)) continue;
+      const fieldPath = field.path;
 
       // Cross-filter: remove this field from field filters so its own
       // selection doesn't hide other values in the dropdown
