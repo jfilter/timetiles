@@ -8,6 +8,7 @@
  *
  * @module
  */
+import { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
 import type { Page } from "@/payload-types";
 
 /** Seed data type for Pages. Allows string slugs for relationship fields (resolved at seed time). */
@@ -360,7 +361,7 @@ export const pagesSeedDe: Record<string, Partial<PageSeed>> = {
                 children: [
                   {
                     type: "text",
-                    text: "Sie können jederzeit die Löschung Ihres Kontos und aller zugehörigen Daten beantragen. Nach einer 7-tägigen Frist werden Kontodaten dauerhaft gelöscht. IP-Adressen in Protokollen werden nach 30 Tagen anonymisiert.",
+                    text: `Sie können jederzeit die Löschung Ihres Kontos und aller zugehörigen Daten beantragen. Nach einer ${DELETION_GRACE_PERIOD_DAYS}-tägigen Frist werden Kontodaten dauerhaft gelöscht. IP-Adressen in Protokollen werden nach 30 Tagen anonymisiert.`,
                   },
                 ],
               },
@@ -896,7 +897,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: "You can request deletion of your account and all associated data at any time. After a 7-day grace period, account data is permanently deleted. IP addresses in audit logs are anonymized after 30 days.",
+                    text: `You can request deletion of your account and all associated data at any time. After a ${DELETION_GRACE_PERIOD_DAYS}-day grace period, account data is permanently deleted. IP addresses in audit logs are anonymized after 30 days.`,
                   },
                 ],
               },
