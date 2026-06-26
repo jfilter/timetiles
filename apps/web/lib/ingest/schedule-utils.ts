@@ -9,6 +9,7 @@
  * @category Utilities
  */
 
+import { defaultIfEmpty } from "@/lib/utils/strings";
 import { getDatePartsInTimezone, wallClockToUtc } from "@/lib/utils/timezone";
 
 /**
@@ -65,7 +66,13 @@ const getNextFrequencyInTimezone = (frequency: string, now: Date, timezone: stri
  */
 export const getNextFrequencyExecution = (frequency: string, fromDate?: Date, timezone?: string): Date => {
   const now = fromDate ?? new Date();
-  const tz = timezone ?? "UTC";
+  // An empty-string timezone is not a valid IANA zone (the field's validate
+  // accepts "" and a data-package manifest can supply ""), and `?? "UTC"` would
+  // keep "" — which `tz !== "UTC"` then routes into
+  // Intl.DateTimeFormat({ timeZone: "" }) → RangeError, crashing schedule
+  // create/activate. defaultIfEmpty falls back on "" too, matching the cron
+  // sibling (calculateNextCronRun) which treats a falsy timezone as UTC.
+  const tz = defaultIfEmpty(timezone, "UTC");
 
   if (tz !== "UTC") {
     return getNextFrequencyInTimezone(frequency, now, tz);
