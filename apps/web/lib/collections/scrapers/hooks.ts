@@ -79,7 +79,39 @@ export const webhookTokenLifecycleHook: CollectionBeforeChangeHook = ({ data, or
   return data;
 };
 
-export const beforeChangeHooks: CollectionBeforeChangeHook[] = [validateAndSetRepoOwnership, webhookTokenLifecycleHook];
+/**
+ * beforeChange hook that clears nextRunAt when the cron schedule changes.
+ *
+ * shouldScraperRunNow gives nextRunAt absolute precedence, so a stale value from
+ * the OLD schedule defers the new cadence until the previous fire time passes
+ * (e.g. switching daily→hourly waits up to a day; a far-future value defers
+ * indefinitely). The manifest-sync path (scraper-repo-sync-job) already resets
+ * nextRunAt on a schedule change and scheduled-ingests does the same in its
+ * collection hook — but a direct admin/REST edit of `schedule` had no equivalent
+ * guard. Clearing it forces a recompute from the new schedule (the scheduler's
+ * lastRunAt fallback, or "run now" on first match).
+ */
+export const resetNextRunOnScheduleChange: CollectionBeforeChangeHook = ({ data, originalDoc, operation }) => {
+  if (!data) return data;
+  // A field counts as changed only when present in the incoming `data` and
+  // differing from originalDoc, so a partial update that omits `schedule` is not
+  // mistaken for clearing it (mirrors scheduled-ingests' scheduleDefinitionChanged).
+  if (
+    operation === "update" &&
+    originalDoc &&
+    data.schedule !== undefined &&
+    (data.schedule ?? null) !== (originalDoc.schedule ?? null)
+  ) {
+    return { ...data, nextRunAt: null };
+  }
+  return data;
+};
+
+export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
+  validateAndSetRepoOwnership,
+  webhookTokenLifecycleHook,
+  resetNextRunOnScheduleChange,
+];
 
 /**
  * beforeDelete hook that removes the scraper's runs first.
