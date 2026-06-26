@@ -54,6 +54,29 @@ describe("applyTransforms", () => {
     expect(result).toEqual({ date: "2024-01-15", name: "Event" });
   });
 
+  it("split-to-array falls back to comma when the delimiter is empty (no char explosion)", () => {
+    // Regression: an empty delimiter passed the validity check (which only
+    // requires `from`), and `?? ","` kept "" so `"...".split("")` exploded the
+    // value into single characters. `|| ","` restores the intended default.
+    const data = { tags: "Car, Foot, Bike" };
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "split-to-array", from: "tags", delimiter: "", active: true, autoDetected: false },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.tags).toEqual(["Car", "Foot", "Bike"]);
+  });
+
+  it("split-to-array honors a configured non-comma delimiter", () => {
+    const data = { tags: "Car|Foot|Bike" };
+    const transforms: IngestTransform[] = [
+      { id: "1", type: "split-to-array", from: "tags", delimiter: "|", active: true, autoDetected: false },
+    ];
+
+    const result = applyTransforms(data, transforms);
+    expect(result.tags).toEqual(["Car", "Foot", "Bike"]);
+  });
+
   it("should skip transforms for non-existent fields", () => {
     const data = { name: "Event" };
     const transforms: IngestTransform[] = [

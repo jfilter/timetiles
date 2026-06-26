@@ -29,6 +29,7 @@ import type {
 } from "@/lib/ingest/types/transforms";
 import { parseImportDate, parseImportDateWithFormat } from "@/lib/utils/date-parsing";
 import { deleteByPathOrKey, getByPathOrKey, setByPathOrKey } from "@/lib/utils/object-path";
+import { defaultIfEmpty } from "@/lib/utils/strings";
 
 const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -336,7 +337,11 @@ const applySplitToArrayTransform = (data: Record<string, unknown>, transform: Sp
   const trimmed = value.trim();
   if (trimmed === "") return;
 
-  const delimiter = transform.delimiter ?? ",";
+  // An empty-string delimiter must fall back to ",". The split-to-array validity
+  // check only requires `from`, so a blank delimiter passes through, and
+  // `"".split("")` would explode the value into single characters (silent data
+  // corruption). defaultIfEmpty falls back on "" too (which `?? ","` would not).
+  const delimiter = defaultIfEmpty(transform.delimiter, ",");
   const parts = trimmed
     .split(delimiter)
     .map((s) => s.trim())
