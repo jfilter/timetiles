@@ -141,6 +141,10 @@ const convertHtmlInJson = async (
       // Without this the page fetches default to cache-on, ignoring the
       // feature flag, useHttpCache, and bypassCacheOnManual entirely.
       cacheOptions: options.cacheOptions,
+      // Mirror the JSON paginated branches: without isFirstRun, fetchPaginated
+      // never selects the configured initialBodyTemplate, so a POST-paginated
+      // html-in-json source silently sends the regular body on its first page.
+      isFirstRun: options.isFirstRun,
       htmlExtractConfig,
     });
     records = result.allRecords;
