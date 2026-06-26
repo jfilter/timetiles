@@ -66,7 +66,21 @@ describe("id-generation", () => {
       });
 
       it("accepts valid ID formats", () => {
-        const validCases = ["valid-id_123", "id.with.dots", "id:with:colons", "ABC123", "a", "a".repeat(255)];
+        const validCases = [
+          "valid-id_123",
+          "id.with.dots",
+          "id:with:colons",
+          "ABC123",
+          "a",
+          "a".repeat(255),
+          // Non-ASCII (Unicode) external IDs from international datasets are valid —
+          // they are stored as plain text and must not be rejected or non-deterministically
+          // re-keyed (which would defeat deduplication).
+          "café-über",
+          "Veranstaltung-Köln-2024",
+          "категория-7",
+          "東京",
+        ];
 
         for (const id of validCases) {
           const data = { id };
@@ -86,7 +100,6 @@ describe("id-generation", () => {
           { id: "id with spaces", error: "Invalid ID format" },
           { id: "id@with#special$chars", error: "Invalid ID format" },
           { id: "id\twith\ttabs", error: "Invalid ID format" },
-          { id: "café-über", error: "Invalid ID format" },
           { id: "id<script>alert(1)</script>", error: "Invalid ID format" },
           { id: "'; DROP TABLE events;--", error: "Invalid ID format" },
         ];

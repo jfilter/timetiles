@@ -55,6 +55,20 @@ describe("event-id utilities", () => {
       expect(() => sanitizeId("hello world")).toThrow("Invalid ID format");
       expect(() => sanitizeId("id@123")).toThrow("Invalid ID format");
     });
+
+    it("accepts non-ASCII (Unicode) letters and digits", () => {
+      // International datasets supply non-ASCII external IDs; an ASCII \w class
+      // threw on these, failing the row or producing a non-deterministic key
+      // that defeats dedup. The key is stored as plain Postgres text.
+      expect(sanitizeId("Veranstaltung-Köln-2024")).toBe("Veranstaltung-Köln-2024");
+      expect(sanitizeId("категория-7")).toBe("категория-7");
+      expect(sanitizeId("東京:2024.01")).toBe("東京:2024.01");
+    });
+
+    it("still rejects whitespace and punctuation after Unicode widening", () => {
+      expect(() => sanitizeId("Köln Stadt")).toThrow("Invalid ID format");
+      expect(() => sanitizeId("id#München")).toThrow("Invalid ID format");
+    });
   });
 
   describe("extractExternalIdValue", () => {

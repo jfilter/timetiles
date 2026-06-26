@@ -37,7 +37,12 @@ export const sanitizeId = (id: unknown): string => {
   if (str.length === 0 || str.length > 255) {
     throw new Error(`Invalid ID length: ${str.length} (must be 1-255 characters)`);
   }
-  if (!/^[\w\-.:]+$/.test(str)) {
+  // Unicode-aware (\p{L}/\p{N}, not ASCII \w): external IDs come from source
+  // data, so international datasets use non-ASCII IDs ("Veranstaltung-Köln-2024").
+  // An ASCII class threw on those, failing the row or producing a timestamped
+  // non-deterministic key that defeats dedup (re-imports duplicate every row).
+  // The key is stored as plain Postgres text, so there is no ASCII requirement.
+  if (!/^[\p{L}\p{N}_\-.:]+$/u.test(str)) {
     throw new Error(`Invalid ID format: ${str} (only alphanumeric, -, _, :, . allowed)`);
   }
   return str;
