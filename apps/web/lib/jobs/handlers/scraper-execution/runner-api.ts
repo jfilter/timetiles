@@ -109,7 +109,17 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
     throw new Error(`Runner API returned ${response.status}: ${body}`);
   }
 
-  return (await response.json()) as RunnerResponse;
+  // Coerce the numeric fields before they reach the scraper-runs number columns.
+  // An alternate or older runner can send a non-numeric exit_code (e.g. a string
+  // error code) which would make the Payload update throw and discard the entire
+  // run record — status and logs included. Fall back to sentinels (exit 1 so a
+  // bad response reads as a failure, duration 0).
+  const parsed = (await response.json()) as RunnerResponse;
+  const toFinite = (value: unknown, fallback: number): number => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return { ...parsed, exit_code: toFinite(parsed.exit_code, 1), duration_ms: toFinite(parsed.duration_ms, 0) };
 };
 
 /**
