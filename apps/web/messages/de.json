@@ -957,7 +957,11 @@
     "noOutputCaptured": "Keine Ausgabe erfasst.",
     "schedule": "Zeitplan: {schedule}",
     "lastRunAt": "Letzter Lauf: {date}",
-    "runsStats": "{total} Läufe ({success} ok, {failed} fehlgeschlagen)"
+    "runsStats": "{total} Läufe ({success} ok, {failed} fehlgeschlagen)",
+    "errorLabel": "Fehler",
+    "triggeredVia": "über {trigger}",
+    "outputRows": "{count} Zeilen",
+    "queued": "In Warteschlange"
   },
   "Header": {
     "importData": "Daten importieren",

@@ -957,7 +957,11 @@
     "noOutputCaptured": "No output captured.",
     "schedule": "Schedule: {schedule}",
     "lastRunAt": "Last run: {date}",
-    "runsStats": "{total} runs ({success} ok, {failed} failed)"
+    "runsStats": "{total} runs ({success} ok, {failed} failed)",
+    "errorLabel": "Error",
+    "triggeredVia": "via {trigger}",
+    "outputRows": "{count} rows",
+    "queued": "Queued"
   },
   "Header": {
     "importData": "Import Data",
