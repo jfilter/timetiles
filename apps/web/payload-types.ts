@@ -167,6 +167,7 @@ export interface Config {
       'rate-limit-cleanup': TaskRateLimitCleanup;
       'cache-cleanup': TaskCacheCleanup;
       'preview-cleanup': TaskPreviewCleanup;
+      'ingest-files-cleanup': TaskIngestFilesCleanup;
       'schema-maintenance': TaskSchemaMaintenance;
       'data-export': TaskDataExport;
       'data-export-cleanup': TaskDataExportCleanup;
@@ -3858,6 +3859,7 @@ export interface PayloadJob {
           | 'rate-limit-cleanup'
           | 'cache-cleanup'
           | 'preview-cleanup'
+          | 'ingest-files-cleanup'
           | 'schema-maintenance'
           | 'data-export'
           | 'data-export-cleanup'
@@ -3918,6 +3920,7 @@ export interface PayloadJob {
         | 'rate-limit-cleanup'
         | 'cache-cleanup'
         | 'preview-cleanup'
+        | 'ingest-files-cleanup'
         | 'schema-maintenance'
         | 'data-export'
         | 'data-export-cleanup'
@@ -6111,6 +6114,14 @@ export interface TaskCacheCleanup {
  * via the `definition` "TaskPreview-cleanup".
  */
 export interface TaskPreviewCleanup {
+  input?: unknown;
+  output?: unknown;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskIngest-files-cleanup".
+ */
+export interface TaskIngestFilesCleanup {
   input?: unknown;
   output?: unknown;
 }
