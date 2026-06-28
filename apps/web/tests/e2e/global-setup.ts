@@ -27,7 +27,7 @@ import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 import { createSeedManager } from "@/lib/seed/index";
 
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
-import { assertPortAvailable } from "./utils/runtime-guards";
+import { findAvailablePort } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
 
 // Store processes globally for teardown
@@ -126,7 +126,10 @@ export default async function globalSetup(): Promise<void> {
 
   const dbPrefix = getWorktreeDatabasePrefix();
   const databaseName = `${dbPrefix}_${process.pid}`;
-  const serverPort = getWorktreeBasePort();
+  // Prefer the worktree's deterministic base port, but fall back to the next
+  // free port in its lane if something else holds it (e.g. another project's
+  // container) — assertPortAvailable used to hard-fail the whole run here.
+  const serverPort = await findAvailablePort(getWorktreeBasePort(), "E2E server");
   const baseURL = `http://localhost:${serverPort}`;
 
   // Build database URL
@@ -149,7 +152,6 @@ export default async function globalSetup(): Promise<void> {
 
   console.log(`📦 Creating test database: ${databaseName}`);
   await cleanupStaleE2EDatabases(dbPrefix, databaseName);
-  await assertPortAvailable(serverPort, "E2E server");
 
   // Create database with migrations
   await setupDatabase({

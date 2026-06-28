@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   assertPortAvailable,
+  findAvailablePort,
   isPortInUse,
   isProcessRunning,
   terminateProcess,
@@ -60,7 +61,10 @@ afterEach(async () => {
   }
 });
 
-describe("runtime guards", () => {
+// Sequential: tests share `openServers` and an afterEach that closes all of
+// them, so concurrent execution would let one test's teardown close another
+// test's listener mid-probe (making an occupied port look free).
+describe.sequential("runtime guards", () => {
   it("detects ports that are already in use", async () => {
     const { port } = await startServer();
 
@@ -99,5 +103,24 @@ describe("runtime guards", () => {
 
     childPids.splice(childPids.indexOf(child.pid), 1);
     await expect(waitForProcessExit(child.pid, 200, 25)).resolves.toBe(true);
+  });
+
+  it("returns the base port when it is free", async () => {
+    const { port, server } = await startServer();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    await expect(findAvailablePort(port, "E2E server")).resolves.toBe(port);
+  });
+
+  it("skips an occupied base port and returns the next free one in the lane", async () => {
+    const { port } = await startServer();
+    const found = await findAvailablePort(port, "E2E server");
+    expect(found).toBeGreaterThan(port);
+    expect(found).toBeLessThan(port + 50);
+    await expect(isPortInUse(found)).resolves.toBe(false);
+  });
+
+  it("throws when no free port is available within maxAttempts", async () => {
+    const { port } = await startServer();
+    await expect(findAvailablePort(port, "E2E server", 1)).rejects.toThrow(/no free port/);
   });
 });
