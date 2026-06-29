@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 import { ListExplorer } from "@/app/[locale]/(frontend)/explore/_components/list-explorer";
@@ -16,10 +17,11 @@ interface ExploreListPageProps {
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default function ExploreListPage({ searchParams }: Readonly<ExploreListPageProps>) {
+export default async function ExploreListPage({ searchParams }: Readonly<ExploreListPageProps>) {
+  const t = await getTranslations("Common");
   return (
     <ExploreViewResolver searchParams={searchParams}>
-      <Suspense fallback={<div>Loading...</div>}>
+      <Suspense fallback={<div>{t("loading")}</div>}>
         <ListExplorer />
       </Suspense>
     </ExploreViewResolver>

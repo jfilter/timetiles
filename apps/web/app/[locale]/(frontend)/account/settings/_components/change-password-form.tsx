@@ -23,7 +23,10 @@ export const ChangePasswordForm = () => {
   const t = useTranslations("Account");
   const { status, error, isPending, mutate, reset } = useMutation({
     mutationFn: async (input: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
-      validatePasswords(input.newPassword, input.confirmPassword);
+      validatePasswords(input.newPassword, input.confirmPassword, {
+        tooShort: t("passwordTooShort", { length: PASSWORD_MIN_LENGTH }),
+        mismatch: t("passwordsDoNotMatch"),
+      });
 
       return changePasswordRequest({ currentPassword: input.currentPassword, newPassword: input.newPassword });
     },

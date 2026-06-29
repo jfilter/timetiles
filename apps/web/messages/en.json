@@ -64,6 +64,8 @@
     "verificationSent": "We've sent a verification link to <strong>{email}</strong>. Please click the link to verify your account before signing in.",
     "registerEmailPlaceholder": "you@example.com",
     "registerPasswordPlaceholder": "At least {length} characters",
+    "passwordTooShort": "Password must be at least {length} characters",
+    "passwordsDoNotMatch": "Passwords do not match",
     "confirmPasswordLabel": "Confirm Password",
     "confirmPasswordPlaceholder": "Repeat your password",
     "creatingAccount": "Creating account...",
@@ -328,6 +330,9 @@
     "newPassword": "New Password",
     "newPasswordPlaceholder": "Enter new password",
     "passwordMinLength": "Must be at least {length} characters",
+    "passwordTooShort": "Password must be at least {length} characters",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "emailMustDiffer": "New email must be different from current email",
     "confirmNewPassword": "Confirm New Password",
     "confirmPasswordPlaceholder": "Confirm new password",
     "passwordChangedSuccess": "Password changed successfully",
@@ -398,6 +403,7 @@
     "requestError": "Failed to request export. Please try again."
   },
   "Ingest": {
+    "loadingFlowEditor": "Loading flow editor...",
     "errorTitle": "Something went wrong",
     "errorDescription": "The import wizard encountered an error. Your uploaded data is safe -- try again or start over.",
     "importData": "Import Data",

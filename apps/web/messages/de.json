@@ -64,6 +64,8 @@
     "verificationSent": "Wir haben einen Bestätigungslink an <strong>{email}</strong> gesendet. Bitte klicken Sie auf den Link, um Ihr Konto zu verifizieren, bevor Sie sich anmelden.",
     "registerEmailPlaceholder": "name@beispiel.de",
     "registerPasswordPlaceholder": "Mindestens {length} Zeichen",
+    "passwordTooShort": "Das Passwort muss mindestens {length} Zeichen lang sein",
+    "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
     "confirmPasswordLabel": "Passwort bestätigen",
     "confirmPasswordPlaceholder": "Passwort wiederholen",
     "creatingAccount": "Konto wird erstellt...",
@@ -328,6 +330,9 @@
     "newPassword": "Neues Passwort",
     "newPasswordPlaceholder": "Neues Passwort eingeben",
     "passwordMinLength": "Mindestens {length} Zeichen",
+    "passwordTooShort": "Das Passwort muss mindestens {length} Zeichen lang sein",
+    "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+    "emailMustDiffer": "Die neue E-Mail-Adresse muss sich von der aktuellen unterscheiden",
     "confirmNewPassword": "Neues Passwort bestätigen",
     "confirmPasswordPlaceholder": "Neues Passwort bestätigen",
     "passwordChangedSuccess": "Passwort erfolgreich geändert",
@@ -398,6 +403,7 @@
     "requestError": "Export konnte nicht angefordert werden. Bitte versuchen Sie es erneut."
   },
   "Ingest": {
+    "loadingFlowEditor": "Flow-Editor wird geladen...",
     "errorTitle": "Etwas ist schiefgelaufen",
     "errorDescription": "Der Import-Assistent hat einen Fehler festgestellt. Ihre hochgeladenen Daten sind sicher -- versuchen Sie es erneut oder beginnen Sie von vorne.",
     "importData": "Daten importieren",

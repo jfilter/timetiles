@@ -49,7 +49,10 @@ export const RegisterForm = ({ onSuccess, onError, className }: Readonly<Registe
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { email: string; password: string; confirmPassword: string }) => {
-      validatePasswords(input.password, input.confirmPassword);
+      validatePasswords(input.password, input.confirmPassword, {
+        tooShort: t("passwordTooShort", { length: PASSWORD_MIN_LENGTH }),
+        mismatch: t("passwordsDoNotMatch"),
+      });
 
       return registerRequest({ email: input.email, password: input.password });
     },

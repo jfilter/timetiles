@@ -28,7 +28,7 @@ export const ChangeEmailForm = ({ currentEmail, onSuccess }: ChangeEmailFormProp
     mutationFn: async (input: { newEmail: string; password: string; currentEmail: string }) => {
       const emailLower = input.newEmail.trim().toLowerCase();
       if (emailLower === input.currentEmail.toLowerCase()) {
-        throw new Error("New email must be different from current email");
+        throw new Error(t("emailMustDiffer"));
       }
 
       return changeEmailRequest({ newEmail: emailLower, password: input.password });

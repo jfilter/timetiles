@@ -39,7 +39,10 @@ export const ResetPasswordForm = ({ token, onSuccess, onError, className }: Read
   const [confirmPassword, handleConfirmPasswordChange] = useInputState();
   const { status, error, isPending, mutate } = useMutation({
     mutationFn: async (input: { token: string; password: string; confirmPassword: string }) => {
-      validatePasswords(input.password, input.confirmPassword);
+      validatePasswords(input.password, input.confirmPassword, {
+        tooShort: t("passwordTooShort", { length: PASSWORD_MIN_LENGTH }),
+        mismatch: t("passwordsDoNotMatch"),
+      });
 
       return resetPasswordRequest({ token: input.token, password: input.password });
     },

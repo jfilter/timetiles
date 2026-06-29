@@ -56,7 +56,7 @@ interface FormattedStage {
 interface ImportProgress {
   status: IngestFileStatus;
   progress: number;
-  currentStage: string;
+  currentStage: string | null;
   eventsCreated: number;
   eventsTotal: number;
   error?: string;
@@ -90,7 +90,11 @@ const formatTimeRemaining = (seconds: number | null): string | null => {
 const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
   const totalEventsCreated = data.jobs.reduce((sum, job) => sum + (job.results?.totalEvents ?? 0), 0);
   const currentJob = data.jobs.find((job) => job.overallProgress < 100);
-  const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? "Processing";
+  // Null (not the literal "Processing") when no stage is known: the render maps
+  // known stages through STAGE_I18N_KEYS and falls back to the translated
+  // t("processingLabel") on a nullish value — a literal here would leak raw
+  // English past that mapping.
+  const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? null;
 
   const datasets = data.jobs.map((job) => ({
     id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
