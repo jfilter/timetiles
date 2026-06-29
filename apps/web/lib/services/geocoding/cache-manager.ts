@@ -86,13 +86,10 @@ export class CacheManager {
         return null;
       }
 
-      // Update hit count and last used timestamp
-      await this.payload.update({
-        collection: LOCATION_CACHE_COLLECTION,
-        overrideAccess: true,
-        id: cached.id,
-        data: { hitCount: (cached.hitCount ?? 0) + 1, lastUsed: new Date().toISOString() },
-      });
+      // Atomic increment (COALESCE(hitCount,0)+1) so two concurrent lookups of
+      // the same cached address don't clobber each other via a read-modify-write
+      // (both reading 5, both writing 6). Reuses the same SQL the batch path uses.
+      await this.batchUpdateHitCounts([cached.id]);
 
       return this.convertCachedResult(cached);
     } catch (error) {
