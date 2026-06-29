@@ -175,7 +175,13 @@ const dataPackageFields: Field[] = [
   {
     name: "dataPackageSlug",
     type: "text",
-    index: true,
+    // Unique (not just indexed): one activation record per activation key.
+    // activateDataPackage does an optimistic find-then-create on this value, so
+    // two concurrent activations of the same package can both pass the existence
+    // check and create duplicate scheduled ingests. The DB constraint is the
+    // keystone that makes the loser fail; Postgres allows multiple NULLs, so the
+    // vast majority of scheduled ingests (no data package) are unaffected.
+    unique: true,
     admin: {
       readOnly: true,
       description: "Data package slug (set automatically when activated via data packages)",

@@ -11,6 +11,7 @@ import type { Payload, Where } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { DataPackageActivation, DataPackageManifest, DataPackageTransform } from "@/lib/data-packages/types";
+import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
 import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
 import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
@@ -337,6 +338,48 @@ const createDatasetFromManifest = async (
   });
 };
 
+/** Best-effort delete of a dataset orphaned by a lost activation race. */
+const deleteOrphanDataset = async (payload: Payload, datasetId: number): Promise<void> => {
+  try {
+    await payload.delete({ collection: COLLECTION_NAMES.DATASETS, id: datasetId, overrideAccess: true });
+    logger.info({ datasetId }, "Rolled back orphan dataset after lost activation race");
+  } catch (cleanupError) {
+    logger.warn({ datasetId, cleanupError }, "Failed to roll back orphan dataset after lost activation race");
+  }
+};
+
+/**
+ * Create the activation's scheduled ingest. On a lost-race unique violation,
+ * roll back the orphan dataset this activation already created (the winner made
+ * its own, so ours is referenced by nothing) and surface the same "already
+ * activated" signal the optimistic existence check raises.
+ */
+const createActivationScheduledIngest = async (
+  payload: Payload,
+  ingestData: ReturnType<typeof buildScheduledIngestData>,
+  activationKey: string,
+  orphanDatasetId: number,
+  req?: AuthenticatedRequest
+) => {
+  try {
+    return await payload.create({
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      data: { ...ingestData, _status: "published" },
+      overrideAccess: true,
+      // Threading `req` (with the acting user) makes the maxActiveSchedules quota
+      // hook increment usage for this owner. Without it the hook skips on
+      // `!req.user` and the quota is silently bypassed.
+      req,
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      await deleteOrphanDataset(payload, orphanDatasetId);
+      throw new Error(`Data package "${activationKey}" is already activated`);
+    }
+    throw error;
+  }
+};
+
 /** Activate a data package: create catalog, dataset, and scheduled ingest. */
 export const activateDataPackage = async (
   payload: Payload,
@@ -379,23 +422,28 @@ export const activateDataPackage = async (
     reused ? "Reusing existing catalog" : "Created catalog for data package"
   );
 
-  // Create dataset
-  const dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
+  // Create dataset. A concurrent activation reusing the same catalog can lose
+  // the datasets_catalog_name_unique race here; translate it to the same
+  // "already activated" signal (nothing to roll back — our create is what failed).
+  let dataset: Dataset;
+  try {
+    dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new Error(`Data package "${activationKey}" is already activated`);
+    }
+    throw error;
+  }
 
   logger.info({ datasetId: dataset.id, name: resolved.dataset.name }, "Created dataset for data package");
 
-  // Create scheduled ingest (use resolved manifest for URL/name, activationKey for tracking)
+  // Create scheduled ingest (use resolved manifest for URL/name, activationKey for tracking).
+  // The data_package_slug unique index is the keystone that makes a concurrent
+  // activation fail here; createActivationScheduledIngest rolls back our orphan
+  // dataset and surfaces "already activated" on that lost race.
   const ingestData = buildScheduledIngestData(resolved, catalog.id, dataset.id, user.id);
   ingestData.dataPackageSlug = activationKey;
-  const scheduledIngest = await payload.create({
-    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    data: { ...ingestData, _status: "published" },
-    overrideAccess: true,
-    // Threading `req` (with the acting user) makes the maxActiveSchedules quota
-    // hook increment usage for this owner. Without it the hook skips on
-    // `!req.user` and the quota is silently bypassed.
-    req,
-  });
+  const scheduledIngest = await createActivationScheduledIngest(payload, ingestData, activationKey, dataset.id, req);
 
   logger.info(
     { scheduledIngestId: scheduledIngest.id, slug: activationKey },
