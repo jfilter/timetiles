@@ -62,6 +62,7 @@ import * as migration_20260612_143159_drop_scraper_trash_columns from './2026061
 import * as migration_20260612_150000_fix_group_by_nested_paths from './20260612_150000_fix_group_by_nested_paths';
 import * as migration_20260612_152724_add_pending_email from './20260612_152724_add_pending_email';
 import * as migration_20260612_160000_tag_field_filters from './20260612_160000_tag_field_filters';
+import * as migration_20260629_193946_add_ingest_files_cleanup_task_slug from './20260629_193946_add_ingest_files_cleanup_task_slug';
 
 export const migrations = [
   {
@@ -382,6 +383,11 @@ export const migrations = [
   {
     up: migration_20260612_160000_tag_field_filters.up,
     down: migration_20260612_160000_tag_field_filters.down,
-    name: '20260612_160000_tag_field_filters'
+    name: '20260612_160000_tag_field_filters',
+  },
+  {
+    up: migration_20260629_193946_add_ingest_files_cleanup_task_slug.up,
+    down: migration_20260629_193946_add_ingest_files_cleanup_task_slug.down,
+    name: '20260629_193946_add_ingest_files_cleanup_task_slug',
   },
 ];
