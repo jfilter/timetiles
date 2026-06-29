@@ -10,6 +10,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
 import { parseStrictInteger } from "@/lib/utils/event-params";
@@ -139,44 +140,65 @@ export const findOrCreateDataset = async (
     return existingDatasets.docs[0];
   }
 
-  // Create new dataset if not found
-  const newDataset = await payload.create({
-    collection: COLLECTION_NAMES.DATASETS,
-    data: {
-      name: datasetName,
-      catalog: catalogId,
-      description: {
-        root: {
-          type: "root",
-          children: [
-            {
-              type: "paragraph",
-              version: 1,
-              children: [{ type: "text", version: 1, text: `Auto-created dataset for ${datasetName}` }],
-            },
-          ],
-          direction: "ltr",
-          format: "",
-          indent: 0,
-          version: 1,
+  // Create new dataset if not found. Two imports that both miss the find above
+  // can race here (manual-ingest serializes per ingest-file, so two different
+  // files are not ordered); the datasets_catalog_name_unique index makes the
+  // loser throw PG 23505. Catch it and re-read the dataset the winner just
+  // committed instead of failing the import — mirrors the register-route and
+  // schema-versioning recoveries.
+  try {
+    const newDataset = await payload.create({
+      collection: COLLECTION_NAMES.DATASETS,
+      data: {
+        name: datasetName,
+        catalog: catalogId,
+        description: {
+          root: {
+            type: "root",
+            children: [
+              {
+                type: "paragraph",
+                version: 1,
+                children: [{ type: "text", version: 1, text: `Auto-created dataset for ${datasetName}` }],
+              },
+            ],
+            direction: "ltr",
+            format: "",
+            indent: 0,
+            version: 1,
+          },
         },
+        language: "eng",
+        // Use default configurations
+        deduplicationConfig: { enabled: true },
+        schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
+        idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
+        // Empty authored plan. "strict" is the default (ADR 0040): an ambiguous
+        // order pauses for review rather than guessing per row. Unattended sources
+        // (scraper/url-fetch/data-package) suppress that gate via their own
+        // skipAmbiguous* review-check flags, so strict here does not stall them.
+        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" },
+        _status: "published" as const,
+        ...(userId ? { createdBy: userId } : {}),
       },
-      language: "eng",
-      // Use default configurations
-      deduplicationConfig: { enabled: true },
-      schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
-      idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
-      // Empty authored plan. "strict" is the default (ADR 0040): an ambiguous
-      // order pauses for review rather than guessing per row. Unattended sources
-      // (scraper/url-fetch/data-package) suppress that gate via their own
-      // skipAmbiguous* review-check flags, so strict here does not stall them.
-      interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" },
-      _status: "published" as const,
-      ...(userId ? { createdBy: userId } : {}),
-    },
-  });
-
-  logger.info("Created new dataset", { datasetId: newDataset.id, name: datasetName, catalogId });
-
-  return newDataset;
+    });
+    logger.info("Created new dataset", { datasetId: newDataset.id, name: datasetName, catalogId });
+    return newDataset;
+  } catch (error) {
+    if (!isUniqueViolation(error, "datasets_catalog_name_unique")) throw error;
+    const raced = await payload.find({
+      collection: COLLECTION_NAMES.DATASETS,
+      where: { catalog: { equals: catalogId }, name: { equals: datasetName } },
+      limit: 1,
+    });
+    if (raced.docs[0]) {
+      logger.info("Reused dataset created by a concurrent import", {
+        datasetId: raced.docs[0].id,
+        name: datasetName,
+        catalogId,
+      });
+      return raced.docs[0];
+    }
+    throw error;
+  }
 };
