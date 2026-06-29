@@ -305,6 +305,38 @@ describe.sequential("scraperExecutionJob", () => {
     );
   });
 
+  it("coerces non-numeric runner output rows/bytes so the success record still saves", async () => {
+    // A misbehaving/older runner can return non-numeric output fields; without
+    // coercion the scraper-runs number columns reject the write and the whole
+    // run record (status + logs) is discarded.
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi
+          .fn()
+          .mockResolvedValue(
+            createMockRunnerResponse({
+              output: { rows: "N/A", bytes: null, download_url: "/output/test-uuid-1234/data.csv" },
+            })
+          ),
+        text: vi.fn().mockResolvedValue(""),
+      });
+
+    const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
+    await scraperExecutionJob.handler(context);
+
+    const runUpdateCalls = mockPayload.update.mock.calls.filter((call: unknown[]) => {
+      const arg = call[0] as { collection: string; data?: { status?: string } };
+      return arg.collection === "scraper-runs" && arg.data?.status === "success";
+    });
+    expect(runUpdateCalls).toHaveLength(1);
+    const data = (runUpdateCalls[0][0] as { data: Record<string, unknown> }).data;
+    expect(data.outputRows).toBe(0);
+    expect(data.outputBytes).toBe(0);
+  });
+
   it("should update scraper statistics on successful run", async () => {
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
     await scraperExecutionJob.handler(context);
