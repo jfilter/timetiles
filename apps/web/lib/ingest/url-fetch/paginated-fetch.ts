@@ -83,13 +83,18 @@ export interface PaginatedFetchResult {
  */
 const resolveDynamicDates = (template: string): string =>
   template
-    .replace(/\{\{days_ago_(\d+)\}\}/g, (_, days) => {
+    .replace(/\{\{days_ago_(\d+)\}\}/g, (match, days) => {
       // Use UTC throughout: `toISOString()` below renders in UTC, so the
       // subtraction must also be UTC-based (`setUTCDate`/`getUTCDate`). Mixing
       // local-time `setDate` with a UTC render shifted the resolved date by a
       // day near midnight in non-UTC timezones.
       const d = new Date();
       d.setUTCDate(d.getUTCDate() - Number(days));
+      // An absurd N (e.g. {{days_ago_99999999999}}) overflows the Date range →
+      // Invalid Date, and toISOString() would THROW and abort the whole fetch.
+      // Leave the token unresolved so a misconfigured template surfaces at the
+      // request layer instead of crashing the job.
+      if (Number.isNaN(d.getTime())) return match;
       return d.toISOString().split("T")[0] + "T00:00:00";
     })
     .replace(/\{\{today\}\}/g, new Date().toISOString().split("T")[0] + "T00:00:00");
