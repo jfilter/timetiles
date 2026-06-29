@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { formatDate, formatDateShort, formatLocalISODate } from "../../../lib/utils/date";
+import { formatDate, formatDateRangeLabel, formatDateShort, formatLocalISODate } from "../../../lib/utils/date";
 
 describe("Date Formatting Utilities", () => {
   describe("formatDate", () => {
@@ -210,6 +210,38 @@ describe("Date Formatting Utilities", () => {
 
     it("should return an empty string for invalid dates", () => {
       expect(formatLocalISODate(new Date("invalid"))).toBe("");
+    });
+  });
+
+  describe("formatDateRangeLabel", () => {
+    it("returns undefined when both dates are empty", () => {
+      expect(formatDateRangeLabel(null, null)).toBeUndefined();
+      expect(formatDateRangeLabel("", "")).toBeUndefined();
+    });
+
+    it("labels a closed range", () => {
+      const result = formatDateRangeLabel("2024-01-15", "2024-01-20");
+      expect(result?.type).toBe("range");
+    });
+
+    it("labels an open start as 'since'", () => {
+      const result = formatDateRangeLabel("2024-01-15", null);
+      expect(result?.type).toBe("since");
+    });
+
+    it("labels an open end as 'until'", () => {
+      const result = formatDateRangeLabel(null, "2024-01-20");
+      expect(result?.type).toBe("until");
+    });
+
+    // Regression: a malformed date param (e.g. ?startDate=garbage) reaches this
+    // straight from the URL. Intl.format/formatRange throw on Invalid Date, so an
+    // unparseable value must be treated as absent rather than crashing the page.
+    it("does not throw on an unparseable date and treats it as absent", () => {
+      expect(() => formatDateRangeLabel("garbage", null)).not.toThrow();
+      expect(formatDateRangeLabel("garbage", null)).toBeUndefined();
+      expect(formatDateRangeLabel("garbage", "2024-01-20")?.type).toBe("until");
+      expect(formatDateRangeLabel("2024-01-15", "garbage")?.type).toBe("since");
     });
   });
 });

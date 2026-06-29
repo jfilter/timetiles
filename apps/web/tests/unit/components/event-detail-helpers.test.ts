@@ -239,6 +239,22 @@ describe("formatDateRange", () => {
     expect(result).toContain("23.03.2024");
     expect(result).toContain("\u2013");
   });
+
+  // Regression: Intl.format/formatRange THROW on an Invalid Date (unlike
+  // toLocaleDateString). A malformed date string must be treated as absent
+  // rather than crashing the caller (e.g. ?startDate=garbage on Explore).
+  it("should not throw on an unparseable start date and ignore it", () => {
+    expect(() => formatDateRange("garbage", "2024-01-20")).not.toThrow();
+    expect(formatDateRange("garbage", "2024-01-20")).toBe("Jan 20, 2024");
+  });
+
+  it("should not throw on an unparseable end date and ignore it", () => {
+    expect(formatDateRange("2024-01-15", "not-a-date")).toBe("Jan 15, 2024");
+  });
+
+  it("should return null when both dates are unparseable", () => {
+    expect(formatDateRange("garbage", "2026-99-99")).toBeNull();
+  });
 });
 
 describe("getLocationDisplay", () => {

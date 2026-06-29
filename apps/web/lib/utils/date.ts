@@ -190,10 +190,18 @@ export const formatDateRange = (startDate: unknown, endDate: unknown, locale: st
   if (!hasStart && !hasEnd) return null;
 
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const start = hasStart ? new Date(valueToString(startDate)) : null;
-  const end = hasEnd ? new Date(valueToString(endDate)) : null;
+  const startStr = hasStart ? valueToString(startDate) : null;
+  const endStr = hasEnd ? valueToString(endDate) : null;
+  // An unparseable value (e.g. a malformed query param) yields an Invalid Date,
+  // and Intl.format/formatRange THROW on those — treat it as absent.
+  const startParsed = startStr != null ? new Date(startStr) : null;
+  const endParsed = endStr != null ? new Date(endStr) : null;
+  const start = startParsed != null && isValidDate(startParsed) ? startParsed : null;
+  const end = endParsed != null && isValidDate(endParsed) ? endParsed : null;
 
-  if (start && end && valueToString(startDate) !== valueToString(endDate)) {
+  if (!start && !end) return null;
+
+  if (start && end && startStr !== endStr) {
     return fmt.formatRange(start, end);
   }
 
@@ -221,8 +229,18 @@ export const formatDateRangeLabel = (
   // Filter dates are UTC calendar days ("YYYY-MM-DD" → UTC midnight); format
   // in UTC so users west of UTC don't see the previous day in the label.
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
-  const start = hasStartDate ? new Date(startDate) : null;
-  const end = hasEndDate ? new Date(endDate) : null;
+  // A malformed date param (e.g. ?startDate=garbage reaches here straight from
+  // the URL) parses to an Invalid Date, and Intl.format/formatRange THROW on
+  // those (unlike toLocaleDateString, which degrades to "Invalid Date"). Treat
+  // an unparseable value as absent so a bad/shared URL can't crash the page.
+  const startParsed = hasStartDate ? new Date(startDate) : null;
+  const endParsed = hasEndDate ? new Date(endDate) : null;
+  const start = startParsed != null && isValidDate(startParsed) ? startParsed : null;
+  const end = endParsed != null && isValidDate(endParsed) ? endParsed : null;
+
+  if (!start && !end) {
+    return undefined;
+  }
 
   if (start && end) {
     return { type: "range", formatted: fmt.formatRange(start, end) };
