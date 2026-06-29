@@ -127,6 +127,26 @@ const releaseEventQuotaOnFailure = async ({
   }
 };
 
+/**
+ * Finalize the terminal COMPLETED stage from inside the retryable handler.
+ *
+ * The onSuccess task callback (which swallows its errors) used to be the ONLY
+ * writer of COMPLETED — a transient failure there stranded a fully-imported job
+ * at create-events forever, and there is no stuck-stage recovery for ingest
+ * jobs. Calling this in the handler body lets a failure throw → Payload retry
+ * (idempotent via cleanupPriorAttempt). reviewHighRowErrors already set
+ * NEEDS_REVIEW when it returned true, so only mark COMPLETED otherwise.
+ */
+const finalizeCompletedStage = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  needsReview: boolean
+): Promise<void> => {
+  if (!needsReview) {
+    await setJobStage(payload, ingestJobId, PROCESSING_STAGE.COMPLETED);
+  }
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   retries: 1,
@@ -142,6 +162,10 @@ export const createEventsBatchJob = {
       await cleanupPriorAttempt(payload, ingestJobId, failLogger);
     },
   }),
+  // Belt-and-suspenders: the handler now writes COMPLETED itself (inside its
+  // retryable body). This callback re-asserts it in case the handler returned
+  // success without reaching that write, and is intentionally non-throwing —
+  // the handler's write is the load-bearing one.
   onSuccess: async (args: TaskCallbackArgs) => {
     const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
     if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return;
@@ -271,6 +295,10 @@ export const createEventsBatchJob = {
         storedErrorCount: allErrors.length,
         sheetIndex,
       });
+
+      // Finalize the terminal stage inside the retryable handler (see
+      // finalizeCompletedStage) rather than the swallow-on-error onSuccess callback.
+      await finalizeCompletedStage(payload, ingestJobId, needsReview);
 
       cleanupSidecarFiles(filePath, sheetIndex);
       eventQuotaFinalized = true;
