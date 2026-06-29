@@ -7,12 +7,10 @@
  * @module
  * @category Jobs
  */
+import { IP_RETENTION_DAYS } from "@/lib/constants/account-constants";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
-
-/** Number of days to retain raw IP addresses before clearing. */
-const IP_RETENTION_DAYS = 30;
 
 export const auditLogIpCleanupJob = {
   slug: "audit-log-ip-cleanup",

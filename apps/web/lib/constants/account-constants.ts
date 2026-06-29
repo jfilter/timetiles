@@ -14,3 +14,10 @@
 
 /** Grace period in days before account is permanently deleted (display default). */
 export const DELETION_GRACE_PERIOD_DAYS = 30;
+
+/**
+ * Days after which raw IP addresses in audit logs are anonymized by the
+ * `audit-log-ip-cleanup` job. Single source of truth for both the job and the
+ * privacy-policy copy so the two never drift.
+ */
+export const IP_RETENTION_DAYS = 30;
