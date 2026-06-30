@@ -9,9 +9,10 @@
  */
 "use client";
 
-import { Button } from "@timetiles/ui";
+import { Button, Input, Label } from "@timetiles/ui";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { useCancelDeletionMutation } from "@/lib/hooks/use-account-mutations";
@@ -22,11 +23,16 @@ interface PendingDeletionBannerProps {
 
 export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBannerProps) => {
   const t = useTranslations("Account");
+  const tCommon = useTranslations("Common");
   const router = useRouter();
   const cancelMutation = useCancelDeletionMutation();
+  const [password, setPassword] = useState("");
 
+  // The route requires the current password (matching schedule-deletion), so the
+  // banner must collect it; without it the request always failed with 422.
   const handleCancel = () => {
-    cancelMutation.mutate(undefined, { onSuccess: () => router.refresh() });
+    if (!password) return;
+    cancelMutation.mutate(password, { onSuccess: () => router.refresh() });
   };
 
   const loading = cancelMutation.isPending;
@@ -53,11 +59,22 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
             </p>
           </div>
           {error && <p className="text-destructive text-sm font-medium">{error}</p>}
+          <div className="max-w-xs space-y-1">
+            <Label htmlFor="cancel-deletion-password">{tCommon("password")}</Label>
+            <Input
+              id="cancel-deletion-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={loading}
+            />
+          </div>
           <Button
             variant="outline"
             size="sm"
             onClick={handleCancel}
-            disabled={loading}
+            disabled={loading || !password}
             className="border-destructive text-destructive hover:bg-destructive/10"
           >
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

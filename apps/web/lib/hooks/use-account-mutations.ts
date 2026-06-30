@@ -110,12 +110,16 @@ export const changePasswordRequest = (input: ChangePasswordInput): Promise<Chang
 
 /**
  * Cancel a pending account deletion via `/api/users/cancel-deletion`.
+ *
+ * The route requires the current password (matching schedule-deletion), so the
+ * caller must pass it — a bodyless POST here previously always failed with 422,
+ * making cancellation impossible from the UI.
  */
 export const useCancelDeletionMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => fetchJson<void>("/api/users/cancel-deletion", { method: "POST", credentials: "include" }),
+    mutationFn: (password: string) => postJson<{ message: string }>("/api/users/cancel-deletion", { password }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: accountKeys.deletionSummary() });
     },
