@@ -8,6 +8,67 @@ See the [release process](/development/contributing/release-process) for how new
 
 Changes landed on `main` since the last tagged release.
 
+## [0.1.0-alpha.9] - 2026-06-30
+
+A large stabilization release. Five multi-agent bug sweeps across correctness, security, privacy, internationalization, and ingest/scraper robustness, plus ICU pluralization and localization of the remaining hardcoded copy. Closes the interpretation follow-ups from alpha.7 and hardens the production image build.
+
+### Added
+
+- Background job that reclaims and sweeps orphaned ingest CSV files
+- `timetiles check` verifies cron and systemd path references
+
+### Changed
+
+- Count strings use ICU plurals; page metadata, account-deletion copy, and remaining hardcoded strings localized (EN/DE)
+- Draft preview restricted to content roles (admin/editor); draft content is no longer served to anonymous visitors
+
+### Fixed
+
+- Security and privacy: drop all credential headers on cross-origin redirect; isolate the URL-fetch cache by auth identity; cap quota-remaining to block privileged-account enumeration; close a private-event leak in the H3 cluster branches; pair the pinned SSRF dispatcher with undici fetch (and stop it blocking public `fd*`/`fc*` domains); add `X-Frame-Options` and `frame-ancestors` CSP; restrict credential reads and rotate sessions on change
+- Accounts and auth: allow cancelling a scheduled deletion; defer email swap to verification time to prevent lockout; re-validate deletion eligibility at execution; unbreak email verification and enforce `isActive`; stop faking reset-email success
+- Ingest and schema: make dataset-detection idempotent and `findOrCreateDataset` concurrency-safe; prevent duplicate data-package activations under concurrency; reuse the latest schema version when unchanged and persist real enum frequencies; fail oversized imports terminally instead of stranding them; fix re-import data loss and progress/review stalls; numerous import-wizard and edit-schedule state fixes
+- Scrapers: recover stuck and orphaned runs; coerce off-contract runner output; RFC 4180 CSV escaping in the SDK writer; handle webhook-queue failures; make scraper deletion (and account-deletion coverage) work
+- Maps, charts, and explore: derive H3 resolution from returned cells; fix histogram tooltip dates, bar clicks, and locale; clamp range-slider bounds and keep drags alive with pointer capture; validate explore URL filter params to prevent crashes; apply range and cluster filters consistently across views
+- Quota and events: stop double-releasing event quota; pin the daily reset to a UTC boundary; clear the quota claim after a successful create
+- Geocoding: apply provider confidence grades correctly; preserve hemisphere for `-0°` DMS coordinates; score by result type and gate bias params
+- Deploy and build: pin timescrape's `zod` so the production image builds; thread `DEFAULT_LOCALE` into image builds; ship `health-check.sh` and `alert.sh` as tracked files
+
+## [0.1.0-alpha.8] - 2026-06-04
+
+A same-day follow-up to alpha.7: data-package auto-activation in deployed environments and map-rendering fixes.
+
+### Added
+
+- Auto-activate the three bundled data packages on staging and production
+
+### Fixed
+
+- Preserve antimeridian-crossing map bounds and accept wrapped world-view bounds; use map glyphs that exist
+- Unbreak the map CSP (allow the worker `blob:` source and the bare VersaTiles host)
+
+## [0.1.0-alpha.7] - 2026-06-03
+
+Introduces a unified row-interpretation pipeline (ADR 0040) that fixes silent data misreads — day/month date order, single-column combined coordinates, and locale-aware numbers — plus numeric range filtering on event fields. Includes two large multi-agent bug sweeps.
+
+### Added
+
+- Numeric range filtering on event fields, with EU-aware decimal and thousands parsing
+- Single-column combined coordinates (e.g. `"52.5, 13.4"` in one field), with a review gate for ambiguous axis order
+- Per-column date day/month order detection with a review gate, fixing a silent DD/MM vs MM/DD misread
+- Locale-aware number parsing during record merge
+- Best-effort opt-in for ambiguous interpretations (ADR 0040)
+
+### Changed
+
+- Row interpretation unified into a single persisted interpretation plan — coordinate, date, and number handling now flow through one path (ADR 0040, Phases 0–4)
+- Layered-architecture ESLint boundaries now actually enforce the `lib/` layering
+
+### Fixed
+
+- Two multi-agent bug sweeps (a 28-bug sweep and a backend correctness/security/rate-limit sweep): event quota charged only for newly-created events, locale-independent sort keys for dedup and cache, committed sub-batches retained on partial bulk-insert failure, import config validation (ID-strategy and mapping vs transforms), and map labels/antimeridian/single-day timezone/virtualization
+- Salvage swapped axis order for ambiguous combined coordinates
+- Deploy: writable tmpfs for the Next.js `.next/cache`; scraper returns 409 before 429 on an in-progress run
+
 ## [0.1.0-alpha.6] - 2026-05-12
 
 Tightens the authenticated surface: data-packages moved behind the account section, optional public contact email on the disabled-registration screen, and the Payload migration history is reconsolidated so `migrate:create` stops rediscovering historical changes.
