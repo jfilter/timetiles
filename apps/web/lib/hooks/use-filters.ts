@@ -29,11 +29,27 @@ const parseAsArrayOfStrings = parseAsArrayOf(parseAsString).withDefault([]);
 /** Serialize field filters to a JSON string (empty string if none). */
 const serializeFieldFilters = (ff: Record<string, string[]>) => (Object.keys(ff).length > 0 ? JSON.stringify(ff) : "");
 
-/** Parse field filters from a JSON string. */
-const parseFieldFilters = (raw: string | null): Record<string, string[]> => {
+/**
+ * Parse field filters from a JSON string, keeping only well-formed
+ * `key -> string[]` entries. The value comes straight from a URL param (nuqs,
+ * no schema), so a shared/edited URL like `?ff={"x":null}` is valid JSON of the
+ * wrong shape; returning it unchecked makes the eager getActiveFilterCount /
+ * hasActiveFilters calls throw during render and crash the explore page.
+ *
+ * Exported for testing.
+ */
+export const parseFieldFilters = (raw: string | null): Record<string, string[]> => {
   if (!raw) return {};
   try {
-    return JSON.parse(raw) as Record<string, string[]>;
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (Array.isArray(value) && value.every((v) => typeof v === "string")) {
+        result[key] = value;
+      }
+    }
+    return result;
   } catch {
     return {};
   }
@@ -46,11 +62,24 @@ type RangeBound = { min: number | null; max: number | null };
 const serializeRangeFilters = (rf: Record<string, RangeBound>) =>
   Object.keys(rf).length > 0 ? JSON.stringify(rf) : "";
 
-/** Parse numeric range filters from a JSON string. */
-const parseRangeFilters = (raw: string | null): Record<string, RangeBound> => {
+/** Parse numeric range filters from a JSON string, keeping only well-formed
+ * `key -> {min?,max?}` entries (see {@link parseFieldFilters} — same URL-param
+ * crash class: `?rf={"x":null}` would otherwise throw on `r.min` during render).
+ * Exported for testing. */
+export const parseRangeFilters = (raw: string | null): Record<string, RangeBound> => {
   if (!raw) return {};
   try {
-    return JSON.parse(raw) as Record<string, RangeBound>;
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    const result: Record<string, RangeBound> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+      if (value == null || typeof value !== "object" || Array.isArray(value)) continue;
+      const bound = value as Record<string, unknown>;
+      const min = typeof bound.min === "number" ? bound.min : null;
+      const max = typeof bound.max === "number" ? bound.max : null;
+      if (min !== null || max !== null) result[key] = { min, max };
+    }
+    return result;
   } catch {
     return {};
   }
