@@ -841,6 +841,7 @@ export const enum_payload_jobs_log_task_slug = db_schema.enum(
     "rate-limit-cleanup",
     "cache-cleanup",
     "preview-cleanup",
+    "ingest-files-cleanup",
     "schema-maintenance",
     "data-export",
     "data-export-cleanup",
@@ -879,6 +880,7 @@ export const enum_payload_jobs_task_slug = db_schema.enum(
     "rate-limit-cleanup",
     "cache-cleanup",
     "preview-cleanup",
+    "ingest-files-cleanup",
     "schema-maintenance",
     "data-export",
     "data-export-cleanup",
@@ -3022,7 +3024,7 @@ export const scheduled_ingests = db_schema.table(
     index("scheduled_ingests_created_by_idx").on(columns.createdBy),
     index("scheduled_ingests_catalog_idx").on(columns.catalog),
     index("scheduled_ingests_dataset_idx").on(columns.dataset),
-    index("scheduled_ingests_data_package_slug_idx").on(
+    uniqueIndex("scheduled_ingests_data_package_slug_idx").on(
       columns.dataPackageSlug,
     ),
     index("scheduled_ingests_source_ingest_file_idx").on(
