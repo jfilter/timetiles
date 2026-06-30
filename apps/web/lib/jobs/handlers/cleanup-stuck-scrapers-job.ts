@@ -77,6 +77,41 @@ const cancelOrphanedWorkflowJobs = async (
   }
 };
 
+/**
+ * Mark any scraper-runs still "running" for this scraper as failed.
+ *
+ * The only writers of a terminal scraper-runs.status are the run-success/failure
+ * handlers, so a worker that dies mid-scrape leaves its run record "running"
+ * forever — skewing run stats and the run-log UI even after the scraper itself
+ * is reset. Mirror the scheduled-ingest cleanup, which records the stuck run as
+ * failed.
+ */
+const failStuckScraperRuns = async (payload: Payload, scraperId: number, finishedAt: string): Promise<number> => {
+  try {
+    const stuck = await asSystem(payload).find({
+      collection: "scraper-runs",
+      where: { scraper: { equals: scraperId }, status: { equals: "running" } },
+      limit: 50,
+      pagination: false,
+    });
+    for (const run of stuck.docs) {
+      await asSystem(payload).update({
+        collection: "scraper-runs",
+        id: run.id,
+        data: {
+          status: "failed",
+          finishedAt,
+          error: "Run auto-reset by cleanup: worker stopped before reporting a result.",
+        },
+      });
+    }
+    return stuck.docs.length;
+  } catch (error) {
+    logError(error, "Failed to fail stuck scraper runs", { scraperId });
+    return 0;
+  }
+};
+
 const resetStuckScraper = async (
   payload: Payload,
   scraper: Scraper,
@@ -96,12 +131,14 @@ const resetStuckScraper = async (
   });
 
   const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
+  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
 
   logger.info("Reset stuck scraper", {
     scraperId: scraper.id,
     name: scraper.name,
     stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
     cancelledJobs,
+    failedRuns,
   });
 };
 
