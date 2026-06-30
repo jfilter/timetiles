@@ -7,10 +7,8 @@
  * @module
  * @category Import
  */
-import Papa from "papaparse";
-
 import { logger } from "@/lib/logger";
-import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
+import { escapeRowsFormulas, unparseRowsToCsv } from "@/lib/utils/csv-escape";
 import { deleteByPathOrKey, getByPath } from "@/lib/utils/object-path";
 
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
@@ -183,7 +181,7 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
   // Escape cells that would otherwise be interpreted as spreadsheet formulas
   // if this CSV is ever re-exported to users (CWE-1236, defense in depth).
   const flattened = escapeRowsFormulas(records.map((record) => flattenObject(record)));
-  const csvString = Papa.unparse(flattened);
+  const csvString = unparseRowsToCsv(flattened);
   const csv = Buffer.from(csvString, "utf-8");
 
   return { csv, recordCount: records.length, detectedPath };
@@ -198,6 +196,6 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
 export const recordsToCsv = (records: Record<string, unknown>[]): Buffer => {
   // Escape formula-like cells before CSV serialization (CWE-1236).
   const flattened = escapeRowsFormulas(records.map((record) => flattenObject(record)));
-  const csvString = Papa.unparse(flattened);
+  const csvString = unparseRowsToCsv(flattened);
   return Buffer.from(csvString, "utf-8");
 };

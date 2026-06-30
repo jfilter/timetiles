@@ -248,6 +248,33 @@ describe("convertGeoJsonToCsv", () => {
     expect(headers).not.toContain("longitude");
   });
 
+  it("keeps latitude/longitude when only a later feature has geometry (no first-row column loss)", () => {
+    const geojson = makeFeatureCollection([
+      { type: "Feature", geometry: null, properties: { name: "NoGeo" } },
+      makePointFeature(13.4, 52.5, { name: "Berlin" }),
+    ]);
+
+    const result = convertGeoJsonToCsv(toBuffer(geojson));
+    const { headers, rows } = parseCsv(result.csv);
+
+    // Papa.unparse(rows) alone derives columns from the FIRST feature (which has
+    // no geometry), dropping latitude/longitude for every row. unparseRowsToCsv
+    // unions all keys so the later feature's coordinates survive.
+    expect(headers).toContain("latitude");
+    expect(headers).toContain("longitude");
+    expect(parseFloat(rows[1]!.latitude!)).toBe(52.5);
+  });
+
+  it("keeps properties unique to later features (heterogeneous properties)", () => {
+    const geojson = makeFeatureCollection([
+      makePointFeature(13.4, 52.5, { name: "Berlin" }),
+      makePointFeature(9.99, 53.55, { name: "Hamburg", region: "North" }),
+    ]);
+
+    const { headers } = parseCsv(convertGeoJsonToCsv(toBuffer(geojson)).csv);
+    expect(headers).toContain("region");
+  });
+
   it("handles mixed geometry types", () => {
     const geojson = makeFeatureCollection([
       makePointFeature(13.4, 52.5, { name: "Point" }),

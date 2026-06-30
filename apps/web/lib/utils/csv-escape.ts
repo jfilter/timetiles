@@ -22,6 +22,8 @@
  * @category Utils
  */
 
+import Papa from "papaparse";
+
 const FORMULA_PREFIXES = /^[=+\-@\t\r]/;
 
 /**
@@ -62,3 +64,31 @@ export const escapeRowFormulas = (row: Record<string, unknown>): Record<string, 
  */
 export const escapeRowsFormulas = (rows: readonly Record<string, unknown>[]): Record<string, unknown>[] =>
   rows.map((row) => escapeRowFormulas(row));
+
+/**
+ * Serialize rows to a CSV string with EVERY field as a column.
+ *
+ * `Papa.unparse(rows)` without an explicit `columns` derives the header from the
+ * keys of the FIRST row only, silently dropping fields that appear solely in
+ * later rows. Heterogeneous records — optional JSON-API fields, GeoJSON feature
+ * properties, or a first feature missing geometry (which would drop lat/lng for
+ * every row) — therefore lose columns and data. Compute the union of keys across
+ * all rows, preserving first-seen order, so nothing is dropped. Pass rows that
+ * have already been formula-escaped (see {@link escapeRowsFormulas}).
+ */
+export const unparseRowsToCsv = (rows: readonly Record<string, unknown>[]): string => {
+  const columns: string[] = [];
+  const seen = new Set<string>();
+  for (const row of rows) {
+    for (const key of Object.keys(row)) {
+      if (!seen.has(key)) {
+        seen.add(key);
+        columns.push(key);
+      }
+    }
+  }
+  // Papa.unparse rejects an empty `columns` option ("Option columns is empty"),
+  // so short-circuit the no-rows / no-keys case to an empty string.
+  if (columns.length === 0) return "";
+  return Papa.unparse(rows as Record<string, unknown>[], { columns });
+};

@@ -82,6 +82,21 @@ describe("convertJsonToCsv", () => {
       expect(csv).toContain("NYC");
     });
 
+    it("keeps fields that appear only in later records (no first-row column loss)", () => {
+      const json = [
+        { id: "1", name: "A" },
+        { id: "2", name: "B", optional: "kept" },
+      ];
+
+      const result = convertJsonToCsv(toBuffer(json));
+
+      // Papa.unparse(rows) alone derives columns from the FIRST record's keys,
+      // silently dropping `optional`. unparseRowsToCsv unions all keys.
+      const csv = csvString(result.csv);
+      expect(csv).toContain("optional");
+      expect(csv).toContain("kept");
+    });
+
     it("should remove nested excluded fields before flattening", () => {
       const json = [{ id: "1", user: { name: "John", email: "john@example.test" }, internalNote: "private" }];
 
