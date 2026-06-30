@@ -427,7 +427,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
                   <div key={dataset.id} className="bg-card/50 flex items-center justify-between rounded-sm px-4 py-2">
                     <span className="text-foreground text-sm">{dataset.name}</span>
                     <span className="text-muted-foreground font-mono text-sm">
-                      {t("eventsCount", { count: dataset.eventsCount.toLocaleString() })}
+                      {t("eventsCount", { count: dataset.eventsCount })}
                     </span>
                   </div>
                 ))}

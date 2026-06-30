@@ -80,7 +80,7 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
           <div className="text-muted-foreground mt-3 flex items-center gap-4 text-xs">
             {pkg.estimatedRecords && (
               <span>
-                {formatNumber(pkg.estimatedRecords)} {t("records")}
+                {formatNumber(pkg.estimatedRecords)} {t("records", { count: pkg.estimatedRecords })}
               </span>
             )}
             {pkg.license && <span>{pkg.license}</span>}

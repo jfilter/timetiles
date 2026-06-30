@@ -367,7 +367,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                   </>
                 )}
                 {sheets.length === 1 ? (
-                  <span>{t("rowCount", { count: sheets[0]?.rowCount.toLocaleString() ?? "0" })}</span>
+                  <span>{t("rowCount", { count: sheets[0]?.rowCount ?? 0 })}</span>
                 ) : (
                   <span>{t("sheetCount", { count: sheets.length })}</span>
                 )}
@@ -397,7 +397,7 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
                 <li key={sheet.index} className="bg-card/50 flex items-center justify-between rounded-sm px-3 py-2">
                   <span className="text-foreground text-sm">{sheet.name}</span>
                   <span className="text-muted-foreground font-mono text-xs">
-                    {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
+                    {t("rowCount", { count: sheet.rowCount })}
                   </span>
                 </li>
               ))}

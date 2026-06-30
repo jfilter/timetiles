@@ -372,7 +372,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                   />
                   {sheets[0] && (
                     <p className="text-muted-foreground font-mono text-xs">
-                      {t("rowsWillBeImported", { count: sheets[0].rowCount.toLocaleString() })}
+                      {t("rowsWillBeImported", { count: sheets[0].rowCount })}
                     </p>
                   )}
                 </div>
@@ -427,7 +427,7 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
                         <FileSpreadsheetIcon className="text-muted-foreground h-4 w-4" />
                         <span className="text-foreground font-medium">{sheet.name}</span>
                         <span className="text-muted-foreground font-mono text-xs">
-                          {t("rowCount", { count: sheet.rowCount.toLocaleString() })}
+                          {t("rowCount", { count: sheet.rowCount })}
                         </span>
                       </div>
 

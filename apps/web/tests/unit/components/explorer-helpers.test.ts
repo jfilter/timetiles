@@ -30,7 +30,9 @@ const mockT: TranslateFn = (key, values) => {
   let result = translations[key] ?? key;
   if (values) {
     for (const [k, v] of Object.entries(values)) {
-      result = result.replace(`{${k}}`, String(v));
+      // Mirror next-intl: numeric ICU args (count/visible/total) are locale-formatted
+      // with grouping (e.g. 8135 -> "8,135"), so the count args are now passed raw.
+      result = result.replace(`{${k}}`, typeof v === "number" ? v.toLocaleString("en-US") : String(v));
     }
   }
   return result;

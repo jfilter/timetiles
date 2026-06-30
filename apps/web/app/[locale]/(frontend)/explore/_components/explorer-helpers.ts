@@ -97,11 +97,11 @@ export const buildEventsDescription = (
   // Build the base sentence
   let sentence: string;
   if (isMapLimiting) {
-    sentence = t("descShowingOfTotal", { visible: visibleCount.toLocaleString(), total: globalTotal.toLocaleString() });
+    sentence = t("descShowingOfTotal", { visible: visibleCount, total: globalTotal });
   } else if (globalTotal == null) {
     sentence = t("descShowingEvents", { count: visibleCount });
   } else {
-    sentence = t("descShowingAll", { count: visibleCount.toLocaleString() });
+    sentence = t("descShowingAll", { count: visibleCount });
   }
 
   // Add dataset filter

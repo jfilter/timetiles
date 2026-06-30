@@ -197,7 +197,7 @@ export const StepFieldMapping = ({ className }: Readonly<StepFieldMappingProps>)
                 {sheetMappings.find((m) => m.sheetIndex === activeSheetIndex)?.newDatasetName ?? activeSheet.name}
               </span>
               <span className="text-muted-foreground text-sm">
-                {t("rowCount", { count: (activeSheet.rowCount ?? 0).toLocaleString() })}
+                {t("rowCount", { count: activeSheet.rowCount ?? 0 })}
               </span>
             </div>
           )}

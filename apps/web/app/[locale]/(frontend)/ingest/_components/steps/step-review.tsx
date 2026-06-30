@@ -216,7 +216,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                 <p className="text-muted-foreground mt-1 font-mono text-sm">
                   {file ? formatFileSize(file.size) : "-"}
                   <span className="text-primary/30 mx-2">•</span>
-                  {t("rowCount", { count: totalRows.toLocaleString() })}
+                  {t("rowCount", { count: totalRows })}
                 </p>
               </div>
             </div>
