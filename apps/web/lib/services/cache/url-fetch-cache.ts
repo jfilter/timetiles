@@ -446,6 +446,8 @@ export class UrlFetchCache {
       /** Per-request override of the global cache.urlFetch.respectCacheControl config. */
       respectCacheControl?: boolean;
       userId?: string;
+      /** Fingerprint of credential-bearing request headers; isolates cached responses per auth identity. */
+      authFingerprint?: string;
       timeout?: number;
       maxSize?: number;
     }
@@ -486,12 +488,13 @@ export class UrlFetchCache {
       forceRevalidate?: boolean;
       respectCacheControl?: boolean;
       userId?: string;
+      authFingerprint?: string;
       maxSize?: number;
     }
   ): Promise<CachedResponse> {
     const method = options?.method ?? "GET";
     const userId = options?.userId;
-    const cacheKey = this.getCacheKey(url, method, userId);
+    const cacheKey = this.getCacheKey(url, method, userId, options?.authFingerprint);
 
     // Only cache GET requests
     if (method !== "GET") {
@@ -604,10 +607,15 @@ export class UrlFetchCache {
     }
   }
 
-  private getCacheKey(url: string, method: string, userId?: string): string {
+  private getCacheKey(url: string, method: string, userId?: string, authFingerprint?: string): string {
     const normalizedUrl = this.normalizeUrl(url);
     const userSegment = userId ? `:user:${userId}` : ":anonymous";
-    return `${method}:${normalizedUrl}${userSegment}`;
+    // Auth identity is part of the key: without it, two callers fetching the same
+    // URL with DIFFERENT credentials (e.g. two scheduled ingests owned by
+    // different users) would share one cache entry and leak each other's
+    // authenticated responses. No-auth requests share a single bucket (correct).
+    const authSegment = authFingerprint ? `:auth:${authFingerprint}` : "";
+    return `${method}:${normalizedUrl}${userSegment}${authSegment}`;
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {

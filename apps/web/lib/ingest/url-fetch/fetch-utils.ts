@@ -13,7 +13,9 @@ import path from "node:path";
 
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
+import { hashOpaqueValue } from "@/lib/security/hash";
 import { getUrlFetchCache, type UrlFetchCache, type UrlFetchCacheOptions } from "@/lib/services/cache";
+import { compareCodeUnits } from "@/lib/utils/compare";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
 export interface FetchResult {
@@ -216,6 +218,7 @@ const buildCacheOptions = (
   forceRevalidate?: boolean;
   respectCacheControl?: boolean;
   userId?: string;
+  authFingerprint?: string;
   timeout?: number;
   maxSize?: number;
 } => {
@@ -227,6 +230,23 @@ const buildCacheOptions = (
     headers["Content-Type"] = "application/json";
   }
 
+  // Fingerprint the credential-bearing headers so the cache isolates responses
+  // per auth identity. Without this, callers omit userId and every auth'd fetch
+  // shares the ":anonymous" bucket keyed by URL alone — leaking one tenant's
+  // authenticated response to another. No auth headers → no segment (public
+  // responses for the same URL are still shared, which is correct).
+  const authFingerprint =
+    Object.keys(authHeaders).length > 0
+      ? hashOpaqueValue(
+          // compareCodeUnits (not localeCompare) keeps the fingerprint identical
+          // across machines, so the cache key is stable regardless of runtime locale.
+          Object.keys(authHeaders)
+            .sort(compareCodeUnits)
+            .map((key) => `${key}:${authHeaders[key]}`)
+            .join("\n")
+        ).slice(0, 16)
+      : undefined;
+
   return {
     method,
     headers,
@@ -237,6 +257,7 @@ const buildCacheOptions = (
     // dropping it here previously made the admin-exposed checkbox a no-op.
     respectCacheControl: cacheOptions?.respectCacheControl,
     userId,
+    authFingerprint,
     timeout: fetchOptions.timeout,
     // Enforce the size limit during streaming so the cache layer never buffers
     // an unbounded body into memory (validateResponse double-checks after).
