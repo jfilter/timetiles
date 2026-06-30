@@ -149,21 +149,40 @@ const nextRedirectUrl = (response: Response, currentUrl: string): string | null 
 };
 
 /**
- * Strip credential-bearing headers from a fetch init.
+ * Headers that are safe to forward across an origin boundary on a redirect.
+ * Everything else is dropped — including not just `authorization`/`cookie` but
+ * arbitrary user-configured credential headers (a custom `X-API-Key`, OAuth
+ * bearer under a non-standard name, `authConfig.customHeaders`), which an
+ * allowlist catches but a deny-list of three names does not.
+ */
+const CROSS_ORIGIN_SAFE_HEADERS = new Set([
+  "accept",
+  "accept-charset",
+  "accept-encoding",
+  "accept-language",
+  "user-agent",
+]);
+
+/**
+ * Strip credential-bearing headers from a fetch init for a cross-origin hop.
  *
- * Mirrors the behavior browsers/undici apply to automatic cross-origin
- * redirects: because we use `redirect: 'manual'` and re-issue each hop
- * ourselves, undici's built-in stripping is disabled and we must drop
- * sensitive headers on cross-origin redirects to avoid leaking credentials
- * to the redirect target. Normalizes `headers` to a `Headers` instance so it
- * works whether the caller passed a plain object or a `Headers`.
+ * Because we use `redirect: 'manual'` and re-issue each hop ourselves, undici's
+ * built-in cross-origin credential stripping is disabled, so we must do it. A
+ * deny-list of `authorization`/`cookie`/`proxy-authorization` missed
+ * caller-supplied API-key/custom auth headers, leaking them to the redirect
+ * target; keep only a content-negotiation allowlist instead. Normalizes
+ * `headers` to a `Headers` instance regardless of the caller's input shape.
  */
 const stripSensitiveHeaders = <T extends { headers?: HeadersInit }>(init: T): T => {
-  const headers = new Headers(init.headers);
-  headers.delete("authorization");
-  headers.delete("cookie");
-  headers.delete("proxy-authorization");
-  return { ...init, headers };
+  // Build a fresh Headers with only the allowlisted entries rather than deleting
+  // from a copy while iterating it (which would need a snapshot of the keys).
+  const safe = new Headers();
+  new Headers(init.headers).forEach((value, name) => {
+    if (CROSS_ORIGIN_SAFE_HEADERS.has(name.toLowerCase())) {
+      safe.set(name, value);
+    }
+  });
+  return { ...init, headers: safe };
 };
 
 export const safeFetch = async (url: string, options?: SafeFetchOptions): Promise<Response> => {
