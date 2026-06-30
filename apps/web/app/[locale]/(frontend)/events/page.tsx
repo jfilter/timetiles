@@ -16,6 +16,9 @@ import { formatDateShort } from "@/lib/utils/date";
 
 export const revalidate = 120;
 
+/** How many recent events the list shows — single source for the query and the copy. */
+const RECENT_EVENTS_LIMIT = 50;
+
 export default async function EventsListPage() {
   const payload = await getPayload({ config: configPromise });
 
@@ -23,7 +26,7 @@ export default async function EventsListPage() {
   const { docs: events } = await payload.find({
     collection: "events",
     overrideAccess: false,
-    limit: 50,
+    limit: RECENT_EVENTS_LIMIT,
     sort: "-eventTimestamp",
     where: { _status: { equals: "published" } },
     depth: 1, // Include dataset info
@@ -91,7 +94,7 @@ export default async function EventsListPage() {
       )}
 
       <div className="mt-8 text-sm text-gray-500">
-        <p>{t("showingRecentEvents")}</p>
+        <p>{t("showingRecentEvents", { limit: RECENT_EVENTS_LIMIT })}</p>
       </div>
     </div>
   );

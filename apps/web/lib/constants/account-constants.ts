@@ -21,3 +21,9 @@ export const DELETION_GRACE_PERIOD_DAYS = 30;
  * privacy-policy copy so the two never drift.
  */
 export const IP_RETENTION_DAYS = 30;
+
+/**
+ * Days a generated data-export download link stays valid. Single source of
+ * truth for the data-export job's expiry math and the settings-card copy.
+ */
+export const EXPORT_EXPIRY_DAYS = 7;

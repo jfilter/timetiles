@@ -10,6 +10,7 @@
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
 import { createDataExportService } from "@/lib/export/service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -18,8 +19,8 @@ import { asSystem } from "@/lib/services/system-payload";
 import { getBaseUrl } from "@/lib/utils/base-url";
 import { requireRelationId } from "@/lib/utils/relation-id";
 
-/** Expiry time in milliseconds (7 days) */
-const EXPORT_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
+/** Expiry time in milliseconds, derived from the shared EXPORT_EXPIRY_DAYS constant. */
+const EXPORT_EXPIRY_MS = EXPORT_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
 
 /** Collection slug for data exports */
 const DATA_EXPORTS_COLLECTION = "data-exports";

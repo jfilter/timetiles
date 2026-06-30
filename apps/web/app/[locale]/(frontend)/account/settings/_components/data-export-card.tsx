@@ -12,6 +12,7 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } fro
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
 import { formatExportDate, getExportDownloadUrl, getTimeUntilExpiry } from "@/lib/export/formatting";
 import type { DataExport } from "@/lib/hooks/use-data-export";
 import { useLatestExportQuery, useRequestDataExportMutation } from "@/lib/hooks/use-data-export";
@@ -217,7 +218,9 @@ export const DataExportCard = () => {
 
         {showInfoBox && <p className="text-muted-foreground text-xs">{t("processingTime")}</p>}
 
-        {status.isReady && <p className="text-muted-foreground text-xs">{t("downloadExpiry")}</p>}
+        {status.isReady && (
+          <p className="text-muted-foreground text-xs">{t("downloadExpiry", { days: EXPORT_EXPIRY_DAYS })}</p>
+        )}
 
         {requestExport.isError && (
           <p className="text-destructive text-sm">

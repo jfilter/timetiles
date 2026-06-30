@@ -306,7 +306,7 @@
     "dataset": "Dataset",
     "location": "Location",
     "noEventsFound": "No events found",
-    "showingRecentEvents": "Showing up to 50 most recent events",
+    "showingRecentEvents": "Showing up to {limit} most recent events",
     "statusUnknown": "unknown"
   },
   "Account": {
@@ -399,7 +399,7 @@
     "exportInProgress": "Export in Progress...",
     "requestDataExport": "Request Data Export",
     "processingTime": "Processing may take a few minutes. You'll receive an email when your export is ready.",
-    "downloadExpiry": "Download links are available for 7 days after generation.",
+    "downloadExpiry": "Download links are available for {days} days after generation.",
     "requestError": "Failed to request export. Please try again."
   },
   "Ingest": {

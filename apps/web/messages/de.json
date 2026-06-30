@@ -306,7 +306,7 @@
     "dataset": "Datensatz",
     "location": "Standort",
     "noEventsFound": "Keine Ereignisse gefunden",
-    "showingRecentEvents": "Bis zu 50 der neuesten Ereignisse werden angezeigt",
+    "showingRecentEvents": "Bis zu {limit} der neuesten Ereignisse werden angezeigt",
     "statusUnknown": "unbekannt"
   },
   "Account": {
@@ -399,7 +399,7 @@
     "exportInProgress": "Export wird erstellt...",
     "requestDataExport": "Datenexport anfordern",
     "processingTime": "Die Verarbeitung kann einige Minuten dauern. Sie erhalten eine E-Mail, wenn Ihr Export fertig ist.",
-    "downloadExpiry": "Download-Links sind 7 Tage nach der Erstellung verfügbar.",
+    "downloadExpiry": "Download-Links sind {days} Tage nach der Erstellung verfügbar.",
     "requestError": "Export konnte nicht angefordert werden. Bitte versuchen Sie es erneut."
   },
   "Ingest": {
