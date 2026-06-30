@@ -7,6 +7,7 @@
  * @module
  * @category Pages
  */
+import type { Metadata } from "next";
 import { headers as nextHeaders } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
@@ -17,9 +18,9 @@ import config from "@/payload.config";
 import { AccountPageShell } from "../_components/account-page-shell";
 import { AccountSettingsClient } from "./_components/account-settings-client";
 
-export const metadata = {
-  title: "Account Settings | TimeTiles",
-  description: "Manage your TimeTiles account settings",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getTranslations("Account");
+  return { title: `${t("settings")} | TimeTiles`, description: t("settingsDescription") };
 };
 
 export default async function AccountSettingsPage() {

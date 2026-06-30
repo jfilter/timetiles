@@ -9,15 +9,16 @@
  */
 
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { createElement } from "react";
 
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { FlowEditorWrapper } from "./_components/flow-editor-wrapper";
 
-export const metadata: Metadata = {
-  title: "Visual Field Mapping | TimeTiles",
-  description: "Visually map fields from your import file to event properties",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getTranslations("Ingest");
+  return { title: `${t("flowEditorTitle")} | TimeTiles`, description: t("flowEditorMetaDescription") };
 };
 
 interface FlowEditorPageProps {

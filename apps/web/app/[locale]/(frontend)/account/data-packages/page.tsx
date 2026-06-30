@@ -6,6 +6,7 @@
  *
  * @module
  */
+import type { Metadata } from "next";
 import { headers as nextHeaders } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
@@ -16,9 +17,9 @@ import config from "@/payload.config";
 import { AccountPageShell } from "../_components/account-page-shell";
 import { DataPackagesList } from "./_components/data-packages-list";
 
-export const metadata = {
-  title: "Data Packages | TimeTiles",
-  description: "Activate curated data sources with one click",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getTranslations("DataPackages");
+  return { title: `${t("title")} | TimeTiles`, description: t("metaDescription") };
 };
 
 export default async function DataPackagesPage() {

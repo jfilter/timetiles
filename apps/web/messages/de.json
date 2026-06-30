@@ -404,6 +404,8 @@
   },
   "Ingest": {
     "loadingFlowEditor": "Flow-Editor wird geladen...",
+    "flowEditorTitle": "Visuelle Feldzuordnung",
+    "flowEditorMetaDescription": "Ordnen Sie Felder aus Ihrer Importdatei visuell den Ereigniseigenschaften zu",
     "errorTitle": "Etwas ist schiefgelaufen",
     "errorDescription": "Der Import-Assistent hat einen Fehler festgestellt. Ihre hochgeladenen Daten sind sicher -- versuchen Sie es erneut oder beginnen Sie von vorne.",
     "importData": "Daten importieren",
@@ -1023,6 +1025,7 @@
   },
   "DataPackages": {
     "title": "Datenpakete",
+    "metaDescription": "Aktivieren Sie kuratierte Datenquellen mit einem Klick",
     "subtitle": "Kuratierte Datenquellen zum Aktivieren mit einem Klick",
     "activate": "Aktivieren",
     "deactivate": "Deaktivieren",

@@ -6,6 +6,7 @@
  * @module
  * @category Pages
  */
+import type { Metadata } from "next";
 import { headers as nextHeaders } from "next/headers";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
@@ -18,9 +19,9 @@ import config from "@/payload.config";
 import { AccountPageShell } from "../_components/account-page-shell";
 import { ImportActivityDashboard } from "./_components/import-activity-dashboard";
 
-export const metadata = {
-  title: "Import Activity | TimeTiles",
-  description: "Monitor and manage all your data imports",
+export const generateMetadata = async (): Promise<Metadata> => {
+  const t = await getTranslations("ImportActivity");
+  return { title: `${t("title")} | TimeTiles`, description: t("description") };
 };
 
 export default async function ImportsPage() {

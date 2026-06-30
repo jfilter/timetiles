@@ -404,6 +404,8 @@
   },
   "Ingest": {
     "loadingFlowEditor": "Loading flow editor...",
+    "flowEditorTitle": "Visual Field Mapping",
+    "flowEditorMetaDescription": "Visually map fields from your import file to event properties",
     "errorTitle": "Something went wrong",
     "errorDescription": "The import wizard encountered an error. Your uploaded data is safe -- try again or start over.",
     "importData": "Import Data",
@@ -1023,6 +1025,7 @@
   },
   "DataPackages": {
     "title": "Data Packages",
+    "metaDescription": "Activate curated data sources with one click",
     "subtitle": "Curated data sources ready to activate with one click",
     "activate": "Activate",
     "deactivate": "Deactivate",
