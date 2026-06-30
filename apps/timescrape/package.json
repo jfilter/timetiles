@@ -18,7 +18,7 @@
     "hono": "^4.12.23",
     "pino": "^10.3.1",
     "simple-git": "^3.36.0",
-    "zod": "catalog:"
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@timetiles/eslint-config": "workspace:*",
