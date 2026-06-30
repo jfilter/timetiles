@@ -119,8 +119,15 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
   };
+  // `status` is written to a required scraper-runs select; an out-of-contract
+  // value (older/alternate runner sending e.g. "error"/"killed") would make the
+  // success-path Payload update throw and discard the whole run record. Coerce
+  // anything off-contract to "failed" so the run is still recorded.
+  const VALID_STATUSES = new Set<RunnerResponse["status"]>(["success", "failed", "timeout"]);
+  const status = VALID_STATUSES.has(parsed.status) ? parsed.status : "failed";
   return {
     ...parsed,
+    status,
     exit_code: toFinite(parsed.exit_code, 1),
     duration_ms: toFinite(parsed.duration_ms, 0),
     output: parsed.output
