@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { NotFoundError } from "@/lib/api/errors";
+import { ForbiddenError, NotFoundError } from "@/lib/api/errors";
 import { logger } from "@/lib/logger";
 import { isSafeLocalRedirectPath } from "@/lib/utils/local-redirect";
 
@@ -30,6 +30,14 @@ export const GET = apiRoute({
   }),
   handler: async ({ user, query }) => {
     const { slug, collection } = query;
+
+    // Draft/preview reveals unpublished CMS content, so restrict it to the
+    // content roles (admin/editor). `auth: "required"` alone let any registered
+    // user enable draft mode and read drafts; `auth: "admin"` would wrongly
+    // exclude editors, so gate by role here.
+    if (user.role !== "admin" && user.role !== "editor") {
+      throw new ForbiddenError("Preview is restricted to content editors");
+    }
 
     // Enable draft mode
     const draft = await draftMode();
