@@ -49,4 +49,11 @@ export const useScraperRunsQuery = (scraperId?: number) =>
     },
     enabled: scraperId != null,
     ...QUERY_PRESETS.frequent,
+    // Poll while any run is still in flight so the expanded run log advances to
+    // its terminal status/duration instead of showing a stale "running"/"queued"
+    // until the panel is re-opened (the summary card polls via useScrapersQuery).
+    refetchInterval: createActivePollingInterval<ScraperRun>(
+      (r) => r.status === "running" || r.status === "queued",
+      POLL_INTERVAL
+    ),
   });
