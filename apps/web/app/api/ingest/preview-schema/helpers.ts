@@ -241,7 +241,12 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) return;
 
-    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null });
+    // `raw: false` returns each cell's FORMATTED text (the same `w` text that
+    // the import path's `sheet_to_csv` emits). Without it sheet_to_json defaults
+    // to raw values (date serials like 45000, raw numbers), so the wizard
+    // preview's value-based schema/date detection diverged from what the import
+    // actually produced from the formatted CSV.
+    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null, raw: false });
 
     if (jsonData.length === 0) {
       sheets.push({
