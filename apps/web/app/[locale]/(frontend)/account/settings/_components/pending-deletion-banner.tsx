@@ -16,6 +16,7 @@ import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
 import { useCancelDeletionMutation } from "@/lib/hooks/use-account-mutations";
+import { useMounted } from "@/lib/hooks/use-theme";
 
 interface PendingDeletionBannerProps {
   deletionScheduledAt: string;
@@ -38,8 +39,17 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
   const loading = cancelMutation.isPending;
   const error = cancelMutation.error?.message ?? null;
 
+  // Date.now() and toLocaleDateString() depend on the runtime clock + timezone,
+  // which differ between the SSR render and client hydration and would cause a
+  // hydration mismatch (the banner is server-rendered from the user prop).
+  // Compute the time-derived display only after mount; SSR and the first client
+  // render show neutral values, then the real local values fill in.
+  const mounted = useMounted();
   const deletionDate = new Date(deletionScheduledAt);
-  const daysRemaining = Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+  const formattedDate = mounted ? deletionDate.toLocaleDateString() : "";
+  const daysRemaining = mounted
+    ? Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   const remaining = daysRemaining > 0 ? t("daysRemaining", { count: daysRemaining }) : "";
 
@@ -52,7 +62,7 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
             <h4 className="text-destructive font-medium">{t("pendingDeletion")}</h4>
             <p className="text-muted-foreground mt-1 text-sm">
               {t.rich("pendingDeletionMessage", {
-                date: deletionDate.toLocaleDateString(),
+                date: formattedDate,
                 remaining,
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
