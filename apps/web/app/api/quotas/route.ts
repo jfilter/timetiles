@@ -52,38 +52,44 @@ export const GET = apiRoute({
       return limit;
     };
 
+    // Derive `remaining` from the DISPLAYED (capped) limit rather than echoing the
+    // raw value. An unlimited/privileged account's real `remaining` is huge or -1,
+    // which would defeat the limit cap above and re-identify the account.
+    const normalizeRemaining = (quota: { limit: number | null; current: number }): number =>
+      Math.max(0, normalizeLimit(quota.limit) - quota.current);
+
     // Return only necessary information - don't expose role, trustLevel, or system architecture details
     const response = {
       quotas: {
         fileUploadsPerDay: {
           used: fileUploads.current,
           limit: normalizeLimit(fileUploads.limit),
-          remaining: fileUploads.remaining,
+          remaining: normalizeRemaining(fileUploads),
         },
         urlFetchesPerDay: {
           used: urlFetches.current,
           limit: normalizeLimit(urlFetches.limit),
-          remaining: urlFetches.remaining,
+          remaining: normalizeRemaining(urlFetches),
         },
         importJobsPerDay: {
           used: importJobs.current,
           limit: normalizeLimit(importJobs.limit),
-          remaining: importJobs.remaining,
+          remaining: normalizeRemaining(importJobs),
         },
         activeSchedules: {
           used: activeSchedules.current,
           limit: normalizeLimit(activeSchedules.limit),
-          remaining: activeSchedules.remaining,
+          remaining: normalizeRemaining(activeSchedules),
         },
         totalEvents: {
           used: totalEvents.current,
           limit: normalizeLimit(totalEvents.limit),
-          remaining: totalEvents.remaining,
+          remaining: normalizeRemaining(totalEvents),
         },
         eventsPerImport: {
           used: eventsPerImport.current,
           limit: normalizeLimit(eventsPerImport.limit),
-          remaining: eventsPerImport.remaining,
+          remaining: normalizeRemaining(eventsPerImport),
         },
         maxFileSizeMB: {
           limit: Math.min(effectiveQuotas.maxFileSizeMB, 100), // Cap at 100MB displayed
