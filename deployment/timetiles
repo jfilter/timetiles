@@ -1374,12 +1374,20 @@ EOF
 
         # Reclaim disk from images this update orphaned. Services were just
         # recreated, so their new images are in use and survive the prune; only
-        # superseded versions are removed, and volumes are never touched.
+        # superseded versions are removed, and named volumes are never touched.
         # Registry images can be re-pulled if you roll back. Without this, each
         # version bump leaves the previous image behind and the disk creeps up
         # (a 48G staging host reached 85% from ~21 stale images).
         echo -e "${YELLOW}Pruning images orphaned by this update...${NC}"
         docker image prune -af >/dev/null 2>&1 || true
+        # Reclaim orphaned ANONYMOUS volumes too. A container started from an
+        # image with an image-level VOLUME (e.g. the all-in-one's /data) strands
+        # one anonymous volume per recreate; a health-check restart loop on an
+        # unhealthy app once stranded ~1150 empty ones on a staging host.
+        # `volume prune` (no --all) removes only anonymous volumes not attached
+        # to any container, so the named data volumes in use after `up -d` above
+        # (postgres, certbot, letsencrypt) are kept.
+        docker volume prune -f >/dev/null 2>&1 || true
         # Scraper base images live in podman (deploy user). Dangling-only is the
         # safe form: re-tagging on update orphans the old layer (reclaimed here)
         # without removing a tag a running scrape still needs.

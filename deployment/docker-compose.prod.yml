@@ -314,6 +314,12 @@ services:
     restart: unless-stopped
     volumes:
       - letsencrypt:/etc/letsencrypt
+      # Pin /var/lib/letsencrypt to a named volume. The certbot image declares
+      # it as an image-level VOLUME; left unmapped, Docker spawns a fresh
+      # ANONYMOUS volume on every container recreate (a health-check restart
+      # loop once stranded ~1150 empty ones on a staging host). Naming it also
+      # lets certbot keep its work/archive state across recreates.
+      - letsencrypt-lib:/var/lib/letsencrypt
       - certbot-webroot:/var/www/certbot
     entrypoint: '/bin/sh -c ''trap exit TERM; while :; do certbot renew --deploy-hook "touch /etc/letsencrypt/.renewed"; sleep 12h & wait $${!}; done;'''
     depends_on:
@@ -323,6 +329,8 @@ volumes:
   postgres_data:
     driver: local
   letsencrypt:
+    driver: local
+  letsencrypt-lib:
     driver: local
   certbot-webroot:
     driver: local
