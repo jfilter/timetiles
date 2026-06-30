@@ -220,7 +220,13 @@ const extractPageRecords = (
       return extractRecordsFromHtml(json, options.htmlExtractConfig);
     }
     if (isGeoJson(json)) {
-      const features = (json as { features: Array<Record<string, unknown>> }).features;
+      // isGeoJson() also accepts a bare Feature (no `features` array), so normalize
+      // it to a single-element list — otherwise `.map` on undefined throws and
+      // fails the whole paginated run (matches convertGeoJsonToCsv's wrapping).
+      const obj = json as { type?: string; features?: Array<Record<string, unknown>> };
+      let features: Array<Record<string, unknown>> = [];
+      if (Array.isArray(obj.features)) features = obj.features;
+      else if (obj.type === "Feature") features = [obj];
       return features.map((f) => flattenGeoJsonFeature(f as never));
     }
     return extractRecordsFromJson(json, recordsPath).records;

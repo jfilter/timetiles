@@ -57,6 +57,15 @@ interface GeoJsonFeatureCollection {
  *
  * @returns `{ latitude, longitude }` or `null` if geometry is missing/invalid.
  */
+/**
+ * Coerce a geometry `coordinates` value to an array. A typed geometry with
+ * null/absent coordinates (real in WFS/GIS exports) would otherwise throw on
+ * `.flat()`/`.flatMap()` and abort the whole conversion. Keeping the guard in a
+ * helper (rather than an inline branch per case) keeps extractCentroid's
+ * cyclomatic complexity within bounds.
+ */
+const coordArray = (value: unknown): unknown[] => (Array.isArray(value) ? value : []);
+
 export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: number; longitude: number } | null => {
   if (!geometry?.type) return null;
 
@@ -83,7 +92,7 @@ export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: n
     }
 
     case "MultiLineString": {
-      const lines = geometry.coordinates as [number, number][][];
+      const lines = coordArray(geometry.coordinates) as [number, number][][];
       return bboxCentroid(lines.flat());
     }
 
@@ -95,7 +104,7 @@ export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: n
     }
 
     case "MultiPolygon": {
-      const polygons = geometry.coordinates as [number, number][][][];
+      const polygons = coordArray(geometry.coordinates) as [number, number][][][];
       const allCoords = polygons.flatMap((poly) => poly[0] ?? []);
       return bboxCentroid(allCoords);
     }

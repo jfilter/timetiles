@@ -135,6 +135,17 @@ describe("extractCentroid", () => {
     expect(result).toEqual({ latitude: 52, longitude: 12 });
   });
 
+  // Regression: a typed geometry with null/absent coordinates (real in WFS/GIS
+  // exports) must return null, not throw on .flat()/.flatMap() and abort the
+  // whole feature conversion.
+  it("returns null for MultiLineString with null coordinates", () => {
+    expect(extractCentroid({ type: "MultiLineString", coordinates: null })).toBeNull();
+  });
+
+  it("returns null for MultiPolygon with missing coordinates", () => {
+    expect(extractCentroid({ type: "MultiPolygon" })).toBeNull();
+  });
+
   it("handles GeometryCollection using first geometry", () => {
     const result = extractCentroid({
       type: "GeometryCollection",
