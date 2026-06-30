@@ -27,6 +27,7 @@ import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
+import { resolveDatasetFieldContext } from "@/lib/services/resolve-event-query-context";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import type { NumberFormat } from "@/lib/utils/number-parsing";
 
@@ -119,6 +120,11 @@ export const GET = apiRoute({
     // rather than per field.
     const filters = buildCanonicalFilters({ parameters: baseQuery, includePublic: true, ownerId: user?.id ?? null });
     if (filters.denyResults) return { fields: [] };
+    // Resolve tag-field containment + range-filter number formats (same as the
+    // main event endpoints). Without it an active tag filter takes the scalar SQL
+    // branch and matches no rows — zeroing every numeric bound — and range
+    // filters are silently dropped from the WHERE clause.
+    await resolveDatasetFieldContext(filters, payload, user);
     const whereClause = toSqlWhereClause(filters);
 
     // Run the per-field MIN/MAX bounds queries concurrently instead of N

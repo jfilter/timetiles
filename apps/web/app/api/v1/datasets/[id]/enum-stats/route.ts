@@ -17,6 +17,7 @@ import { z } from "zod";
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
+import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
@@ -86,6 +87,13 @@ export const GET = apiRoute({
       const tagKeys = Object.keys(otherFieldFilters).filter((key) => fm[key]?.isTagField === true);
       if (tagKeys.length > 0) {
         filters.tagFields = new Set(tagKeys);
+      }
+
+      // Resolve number formats for active range filters — without them
+      // buildRangeFilterConditions silently drops every range filter, so the enum
+      // counts would ignore an active numeric range and read too high.
+      if (filters.rangeFilters && Object.keys(filters.rangeFilters).length > 0) {
+        filters.numberFormats = projectNumberFormats(dataset.interpretationPlan, Object.keys(filters.rangeFilters));
       }
 
       const whereClause = toSqlWhereClause(filters);

@@ -82,7 +82,14 @@ export const resolveEventQueryContext = async ({
  *   `::numeric`. With anything other than exactly one dataset, all range
  *   filters are dropped.
  */
-const resolveDatasetFieldContext = async (
+/**
+ * Resolve dataset-scoped filter context (tag-field containment + number formats
+ * for range filters) onto `filters`. Exported so the per-dataset stats routes
+ * (enum-stats / numeric-stats) apply the SAME resolution as the main event
+ * endpoints; without it a tag filter takes the scalar SQL branch (zeroing rows)
+ * and range filters are silently dropped.
+ */
+export const resolveDatasetFieldContext = async (
   filters: CanonicalEventFilters,
   payload: Payload,
   user?: User | null
