@@ -117,7 +117,11 @@ const releaseEventQuotaOnFailure = async ({
   trackedEventQuota: number;
   eventQuotaFinalized: boolean;
 }): Promise<void> => {
-  const quotaToRelease = trackedEventQuota > 0 ? trackedEventQuota : reservedEventQuota;
+  // trackedEventQuota is -1 until markJobCompleted reconciles the reservation to
+  // the actual count. Once reconciled (>= 0), release exactly that — 0 when a
+  // completed job created no new events — not the original reservation again
+  // (the previous `trackedEventQuota > 0` proxy double-released in that case).
+  const quotaToRelease = trackedEventQuota >= 0 ? trackedEventQuota : reservedEventQuota;
   if (quotaToRelease <= 0 || eventQuotaFinalized) return;
 
   try {
@@ -192,7 +196,10 @@ export const createEventsBatchJob = {
     let filePath = "";
     let sheetIndex = 0;
     let reservedEventQuota = 0;
-    let trackedEventQuota = 0;
+    // -1 until markJobCompleted reconciles the reservation; distinguishes "not yet
+    // completed" (release the full reservation on failure) from "completed with 0
+    // new events" (already reconciled — release 0, not the reservation again).
+    let trackedEventQuota = -1;
     let eventQuotaFinalized = false;
 
     try {
@@ -273,15 +280,10 @@ export const createEventsBatchJob = {
       // Final progress write for any remaining batches since the last interval
       await writeFinalProgressIfNeeded(payload, progressJob, batchNumber, totalRowsProcessed);
 
-      // Write all accumulated errors in a single DB operation
       await updateJobErrors(payload, ingestJobId, 0, allErrors);
-
-      // Complete the stage
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
-      // Mark job completed (saves results and reconciles quota). Returns the
-      // count of newly-created events the TOTAL_EVENTS quota was reconciled to,
-      // so the failure-compensation path releases the right amount.
+      // Mark job completed: saves results and reconciles the reservation to the actual count.
       trackedEventQuota = await markJobCompleted(payload, ingestJobId, reservedEventQuota, totalEventsUpdated);
 
       // Review check: high row error rate — pause after completion so results are saved.
