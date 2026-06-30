@@ -113,6 +113,29 @@ const normalizeIngestFileRelationId = (ingestFileId: string | number): number =>
   return normalizedIngestFileId;
 };
 
+/**
+ * Look up an existing ingest job for a (ingestFile, sheetIndex).
+ *
+ * dataset-detection runs with `retries: 1` and each per-sheet create
+ * auto-commits (the handler shares no transaction), so a failure partway through
+ * a multi-sheet loop re-runs the whole handler and would otherwise create
+ * duplicate orphan jobs. Duplicates never advance past ANALYZE_DUPLICATES, and
+ * the ingest file only completes once ALL its jobs are terminal — so they strand
+ * it in "processing" forever (and re-charge the import-jobs quota). Reusing makes
+ * per-sheet job creation idempotent across retries. A clean-slate delete is not
+ * an option here: the ingest-jobs afterDelete hook removes the sheet's sidecar
+ * CSVs, which the recreated jobs still need.
+ */
+const findExistingSheetJob = async (payload: Payload, ingestFileId: string | number, sheetIndex: number) => {
+  const existing = await payload.find({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    where: { ingestFile: { equals: ingestFileId }, sheetIndex: { equals: sheetIndex } },
+    limit: 1,
+    overrideAccess: true,
+  });
+  return existing.docs[0] ?? null;
+};
+
 const handleSingleSheet = async (
   payload: Payload,
   ingestFile: { id: string | number; originalName?: string | null; metadata?: unknown },
@@ -143,6 +166,15 @@ const handleSingleSheet = async (
   } else {
     const resolvedCatalogId = await getOrCreateCatalog(payload, catalogId, userId);
     dataset = await findOrCreateDataset(payload, resolvedCatalogId, ingestFile.originalName ?? "Imported Data", userId);
+  }
+
+  const existingJob = await findExistingSheetJob(payload, ingestFile.id, sheetIndex);
+  if (existingJob) {
+    logger.info("Reusing existing ingest job (idempotent dataset-detection retry)", {
+      ingestJobId: existingJob.id,
+      sheetIndex,
+    });
+    return existingJob;
   }
 
   return payload.create({
@@ -251,6 +283,15 @@ const processSheetWithMapping = async (
 
   if (skipSheet || !dataset) {
     return null;
+  }
+
+  const existingJob = await findExistingSheetJob(payload, ingestFile.id, sheet.index);
+  if (existingJob) {
+    logger.info("Reusing existing ingest job (idempotent dataset-detection retry)", {
+      ingestJobId: existingJob.id,
+      sheetIndex: sheet.index,
+    });
+    return existingJob;
   }
 
   return payload.create({

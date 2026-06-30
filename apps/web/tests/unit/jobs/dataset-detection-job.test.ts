@@ -287,7 +287,11 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(mockCatalog);
 
-      mockPayload.find.mockResolvedValue({ docs: [existingDataset] });
+      // Existing dataset for the dataset lookup; no existing job for the
+      // (file, sheet) idempotency lookup (else the job create would be skipped).
+      mockPayload.find.mockImplementation(({ collection }: { collection: string }) =>
+        Promise.resolve({ docs: collection === "datasets" ? [existingDataset] : [] })
+      );
       mockPayload.create.mockResolvedValueOnce({ id: "import-job-101" });
 
       await datasetDetectionJob.handler(mockContext);
@@ -652,6 +656,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         .mockResolvedValueOnce(mockIngestFile) // ingestFile lookup
         .mockResolvedValueOnce(mockDataset); // dataset lookup in handleSingleSheet
 
+      mockPayload.find.mockResolvedValue({ docs: [] }); // no existing ingest job for this (file, sheet)
       mockPayload.create.mockResolvedValueOnce({ id: "import-job-1" });
 
       await datasetDetectionJob.handler(mockContext);
@@ -706,6 +711,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         .mockResolvedValueOnce(mockDataset1) // dataset lookup for sheet 0
         .mockResolvedValueOnce(mockDataset2); // dataset lookup for sheet 1
 
+      mockPayload.find.mockResolvedValue({ docs: [] }); // no existing ingest jobs for these (file, sheet)
       mockPayload.create.mockResolvedValueOnce({ id: "job-1" }).mockResolvedValueOnce({ id: "job-2" });
 
       await datasetDetectionJob.handler(mockContext);
