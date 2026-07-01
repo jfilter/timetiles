@@ -39,7 +39,7 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'dependencies' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           lfs: true
           fetch-depth: 0
@@ -110,7 +110,7 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'docker' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           lfs: true
           fetch-depth: 0
@@ -249,7 +249,7 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'config' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           lfs: true
           fetch-depth: 0
@@ -329,7 +329,7 @@ jobs:
     if: ${{ github.event.inputs.scan_type == 'all' || github.event.inputs.scan_type == 'filesystem' || github.event.inputs.scan_type == '' }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           lfs: true
           fetch-depth: 0
