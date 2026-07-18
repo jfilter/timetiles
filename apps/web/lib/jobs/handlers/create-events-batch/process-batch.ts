@@ -26,6 +26,7 @@ import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
 import { getEventCreationDuplicates, readDuplicateStrategy } from "../../utils/resource-loading";
+import type { EventSnapshotStore } from "./event-snapshots";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 
@@ -178,6 +179,12 @@ export interface ProcessBatchContext {
   ingestJobId: string | number;
   accessFields: AccessFields;
   logger: ReturnType<typeof createJobLogger>;
+  /**
+   * Records each existing event's prior state before an in-place update, so a
+   * permanently-failed update-strategy import can be rolled back. Only set under
+   * the "update" strategy; absent means updates are not snapshotted.
+   */
+  snapshotStore?: EventSnapshotStore;
 }
 
 /** Apply the plan's structural rewrites to a row and build the corresponding BulkEventData. */
@@ -248,12 +255,17 @@ const tryUpdateExistingEvent = async (
   existingEventId: string | number,
   updateIdsInDataset: Set<number>,
   datasetId: number,
-  log: ReturnType<typeof createJobLogger>
+  log: ReturnType<typeof createJobLogger>,
+  snapshotStore?: EventSnapshotStore
 ): Promise<{ updated: boolean; blocked: boolean }> => {
   if (!updateIdsInDataset.has(Number(existingEventId))) {
     log.warn("Refusing cross-dataset event update", { existingEventId, datasetId });
     return { updated: false, blocked: true };
   }
+  // Snapshot the original BEFORE overwriting so a permanently-failed import can
+  // be rolled back. Capture is deduped per run, so re-updates and retries never
+  // clobber the true original.
+  await snapshotStore?.capture(payload, existingEventId);
   await asSystem(payload).update({
     collection: "events",
     id: existingEventId,
@@ -340,7 +352,8 @@ const reconcileInsertConflicts = async (
   payload: Payload,
   datasetId: number,
   conflicts: InsertConflict[],
-  log: ReturnType<typeof createJobLogger>
+  log: ReturnType<typeof createJobLogger>,
+  snapshotStore?: EventSnapshotStore
 ): Promise<{ updated: number; errors: Array<{ row: number; error: string }> }> => {
   if (conflicts.length === 0) return { updated: 0, errors: [] };
 
@@ -362,7 +375,15 @@ const reconcileInsertConflicts = async (
     const existingId = idByUniqueId.get(eventData.uniqueId);
     if (existingId == null) continue; // event vanished between insert and lookup — nothing to update
     try {
-      const result = await tryUpdateExistingEvent(payload, eventData, existingId, inDataset, datasetId, log);
+      const result = await tryUpdateExistingEvent(
+        payload,
+        eventData,
+        existingId,
+        inDataset,
+        datasetId,
+        log,
+        snapshotStore
+      );
       if (result.updated) updated++;
     } catch (error) {
       errors.push({
@@ -419,7 +440,8 @@ export const processEventBatch = async (
           existingEventId,
           updateIdsInDataset,
           dataset.id,
-          log
+          log,
+          ctx.snapshotStore
         );
         if (result.blocked) {
           errors.push({
@@ -458,7 +480,7 @@ export const processEventBatch = async (
   // concurrent import cannot silently discard this run's newer data.
   let reconciledUpdates = 0;
   if (conflicts.length > 0 && readDuplicateStrategy(job) === "update") {
-    const reconciled = await reconcileInsertConflicts(payload, dataset.id, conflicts, log);
+    const reconciled = await reconcileInsertConflicts(payload, dataset.id, conflicts, log, ctx.snapshotStore);
     reconciledUpdates = reconciled.updated;
     errors.push(...reconciled.errors);
   }

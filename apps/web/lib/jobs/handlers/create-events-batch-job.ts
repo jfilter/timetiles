@@ -30,6 +30,7 @@ import {
   createStandardOnFail,
   loadIngestJob,
   loadJobResources,
+  readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
 import {
@@ -45,6 +46,7 @@ import {
   releaseReservedEventQuota,
   updateJobErrors,
 } from "./create-events-batch/job-completion";
+import { EventSnapshotStore } from "./create-events-batch/event-snapshots";
 import type { ProcessBatchContext } from "./create-events-batch/process-batch";
 import { processEventBatch } from "./create-events-batch/process-batch";
 
@@ -227,6 +229,12 @@ export const createEventsBatchJob = {
       // Check EVENTS_PER_IMPORT quota before processing
       reservedEventQuota = await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
 
+      // Under the "update" strategy, existing events are overwritten in place.
+      // Snapshot their originals so a permanent failure can be rolled back
+      // (all-or-nothing); cleanupPriorAttempt / onFail restore from it.
+      const snapshotStore =
+        readDuplicateStrategy(job) === "update" ? new EventSnapshotStore(ingestJobId, logger) : undefined;
+
       const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
 
       let batchNumber = 0;
@@ -247,7 +255,15 @@ export const createEventsBatchJob = {
         const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
         const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
 
-        const batchCtx: ProcessBatchContext = { payload, job, dataset, ingestJobId, accessFields, logger };
+        const batchCtx: ProcessBatchContext = {
+          payload,
+          job,
+          dataset,
+          ingestJobId,
+          accessFields,
+          logger,
+          snapshotStore,
+        };
         const { eventsCreated, eventsSkipped, eventsUpdated, errors } = await processEventBatch(
           batchCtx,
           rows,
@@ -301,6 +317,11 @@ export const createEventsBatchJob = {
       // Finalize the terminal stage inside the retryable handler (see
       // finalizeCompletedStage) rather than the swallow-on-error onSuccess callback.
       await finalizeCompletedStage(payload, ingestJobId, needsReview);
+
+      // The import succeeded, so the in-place updates are final — drop the
+      // rollback snapshots. On failure we intentionally leave them for
+      // cleanupPriorAttempt / onFail to restore.
+      await snapshotStore?.discard();
 
       cleanupSidecarFiles(filePath, sheetIndex);
       eventQuotaFinalized = true;

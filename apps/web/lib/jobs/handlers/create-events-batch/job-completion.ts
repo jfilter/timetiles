@@ -19,6 +19,7 @@ import { _events_v, events as eventsTable } from "@/payload-generated-schema";
 import type { IngestFile, IngestJob, User } from "@/payload-types";
 
 import { getDuplicateSummary, getNewEventCountForQuota, getUniqueRowsForQuota } from "../../utils/resource-loading";
+import { EventSnapshotStore } from "./event-snapshots";
 import { normalizeIngestErrorMessage } from "./process-batch";
 
 /** Maximum number of individual errors stored on an import job. */
@@ -221,6 +222,13 @@ export const cleanupPriorAttempt = async (
 ): Promise<void> => {
   const DELETE_CHUNK_SIZE = 5000;
   const db = payload.db.drizzle;
+
+  // Revert in-place updates from any prior attempt (or this attempt, when called
+  // from onFail) to their captured originals FIRST — `cleanupPriorAttempt` only
+  // deletes fresh inserts, so without this an "update"-strategy import that
+  // failed permanently would leave the pre-existing events it overwrote mutated
+  // and their originals lost. No-op when no snapshot sidecar exists.
+  await EventSnapshotStore.restoreAndClear(payload, ingestJobId, log);
 
   // Only delete events this job actually CREATED in a prior attempt — never the
   // pre-existing events it updated in place. Under `duplicateStrategy: "update"`,
