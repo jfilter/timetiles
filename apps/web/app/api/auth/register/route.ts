@@ -51,13 +51,8 @@ const queueAccountExistsEmail = async (
   logger.info({ email: maskEmail(normalizedEmail) }, "Sent account exists notification");
 };
 
-const createUserAndQueueVerification = async (
-  payload: Payload,
-  req: Request,
-  normalizedEmail: string,
-  password: string
-): Promise<void> => {
-  const createdUser = await payload.create({
+const createSelfRegisteredUser = async (payload: Payload, normalizedEmail: string, password: string) =>
+  payload.create({
     collection: "users",
     data: {
       email: normalizedEmail,
@@ -72,6 +67,12 @@ const createUserAndQueueVerification = async (
     showHiddenFields: true,
   });
 
+const sendVerificationAndAudit = async (
+  payload: Payload,
+  req: Request,
+  createdUser: Awaited<ReturnType<typeof createSelfRegisteredUser>>,
+  normalizedEmail: string
+): Promise<void> => {
   if (createdUser._verificationToken) {
     const baseUrl = getBaseUrl();
     const verifyUrl = `${baseUrl}/verify-email?token=${createdUser._verificationToken}`;
@@ -122,18 +123,19 @@ const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail:
     return;
   }
 
+  let createdUser: Awaited<ReturnType<typeof createSelfRegisteredUser>>;
+  // Race detection guards ONLY the insert. The create may fail for a race where
+  // the user was inserted between our pre-flight find and this create; Payload's
+  // drizzle adapter rethrows the unique violation as a generic ValidationError
+  // ("The following field is invalid: Email") with neither "unique" nor
+  // "duplicate", so we re-query structurally: if a row now exists, treat it as
+  // the account-exists path. This must NOT wrap the post-create verification
+  // email + audit — a queue failure there would be misread as a race, sending a
+  // misleading "account exists" email and reporting success while leaving a
+  // fresh, unverified account with no verification mail.
   try {
-    await createUserAndQueueVerification(payload, req, normalizedEmail, password);
+    createdUser = await createSelfRegisteredUser(payload, normalizedEmail, password);
   } catch (createError) {
-    // The create may fail for several reasons; the security-relevant one is a
-    // race where the user was inserted between our pre-flight find and this
-    // create. We cannot reliably detect that from the error message — Payload's
-    // drizzle adapter rethrows the unique violation as a generic ValidationError
-    // ("The following field is invalid: Email") that contains neither "unique"
-    // nor "duplicate". So instead re-query structurally: if a row now exists,
-    // treat it as the same account-exists path as the sync branch and send the
-    // identical email — otherwise we'd silently skip the email and create a
-    // message-volume enumeration side-channel.
     const raceUser = await payload.find({
       collection: "users",
       where: { email: { equals: normalizedEmail } },
@@ -150,6 +152,11 @@ const registerOrNotify = async (payload: Payload, req: Request, normalizedEmail:
     // No row exists, so this was a genuine failure unrelated to duplication.
     throw createError;
   }
+
+  // The account now exists. Send verification + audit OUTSIDE the race-catch so a
+  // failure here surfaces as a real error instead of a bogus account-exists
+  // response that hides an unverified, mail-less account.
+  await sendVerificationAndAudit(payload, req, createdUser, normalizedEmail);
 };
 
 export const POST = apiRoute({
