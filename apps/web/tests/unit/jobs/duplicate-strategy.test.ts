@@ -319,11 +319,12 @@ describe.sequential("processEventBatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Default: bulkInsertEvents commits every event with no failures
+    // Default: bulkInsertEvents commits every event with no failures/conflicts
     // eslint-disable-next-line @typescript-eslint/require-await
     mocks.bulkInsertEvents.mockImplementation(async (_p: unknown, events: unknown[]) => ({
       created: events.length,
       failures: [],
+      conflicts: [],
     }));
 
     mocks.getIngestGeocodingResults.mockReturnValue({});
@@ -741,7 +742,11 @@ describe.sequential("processEventBatch", () => {
       // and NOT reported as errors. `failures[].index` is relative to the events
       // handed to bulkInsertEvents and must map back to the source row number.
       mocks.bulkInsertEvents.mockImplementationOnce((_p: unknown, _events: unknown[]) =>
-        Promise.resolve({ created: 1, failures: [{ index: 1, error: new Error("second sub-batch failed") }] })
+        Promise.resolve({
+          created: 1,
+          failures: [{ index: 1, error: new Error("second sub-batch failed") }],
+          conflicts: [],
+        })
       );
 
       const job = buildIngestJob({ duplicates: { internal: [{ rowNumber: 0 }], external: [] } });
