@@ -205,8 +205,15 @@ export const scraperFields: Field[] = [
       },
     ],
   },
-  // Runtime stats (updated by jobs, read-only in admin)
-  { name: "lastRunAt", type: "date", admin: { readOnly: true, position: "sidebar" } },
+  // Runtime stats (updated by jobs, read-only in admin).
+  //
+  // `access.update: () => false` is load-bearing, not cosmetic: `admin.readOnly`
+  // only affects the dashboard UI, so without it an owner could PATCH these via
+  // REST. `lastRunStatus` is the atomic concurrency lock — resetting it away from
+  // "running" lets a second trigger queue a parallel run instead of getting a
+  // 409. The internal writers bypass this guard anyway (the claim uses direct
+  // drizzle SQL in webhook-registry; the job uses asSystem/overrideAccess).
+  { name: "lastRunAt", type: "date", admin: { readOnly: true, position: "sidebar" }, access: { update: () => false } },
   {
     name: "lastRunStatus",
     type: "select",
@@ -217,15 +224,17 @@ export const scraperFields: Field[] = [
       { label: "Running", value: "running" },
     ],
     admin: { readOnly: true, position: "sidebar" },
+    access: { update: () => false },
   },
   {
     name: "statistics",
     type: "json",
     defaultValue: { totalRuns: 0, successRuns: 0, failedRuns: 0 },
     admin: { readOnly: true },
+    access: { update: () => false },
   },
-  // Next scheduled run
-  { name: "nextRunAt", type: "date", admin: { readOnly: true, position: "sidebar" } },
+  // Next scheduled run — computed by the scheduler, never user-editable.
+  { name: "nextRunAt", type: "date", admin: { readOnly: true, position: "sidebar" }, access: { update: () => false } },
   // Webhook trigger
   {
     name: "webhookEnabled",
