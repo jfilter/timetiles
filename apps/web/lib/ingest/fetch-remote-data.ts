@@ -14,7 +14,6 @@ import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { logger } from "@/lib/logger";
-import { escapeRowsFormulas } from "@/lib/utils/csv-escape";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -399,10 +398,12 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
       skipEmptyLines: true,
     });
     const strippedRows = stripFields(parsed.data, options.excludeFields);
-    // Escape formula-like cells in case the raw upstream CSV contains
-    // injection payloads (CWE-1236). The ingest pipeline re-reads this as
-    // input and it can flow into user-facing exports later.
-    finalData = Buffer.from(Papa.unparse(escapeRowsFormulas(strippedRows)), "utf-8");
+    // No formula-escaping: this is canonical ingest data the pipeline re-parses
+    // into events, so an apostrophe would corrupt real values. Direct CSV
+    // uploads are already stored verbatim; escaping only this converted subset
+    // was both inconsistent and lossy. Formula-injection escaping (CWE-1236)
+    // belongs at the user-facing export boundary — see lib/utils/csv-escape.ts.
+    finalData = Buffer.from(Papa.unparse(strippedRows), "utf-8");
   }
 
   // Validate file extension

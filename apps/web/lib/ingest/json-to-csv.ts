@@ -8,7 +8,7 @@
  * @category Import
  */
 import { logger } from "@/lib/logger";
-import { escapeRowsFormulas, unparseRowsToCsv } from "@/lib/utils/csv-escape";
+import { unparseRowsToCsv } from "@/lib/utils/csv-escape";
 import { deleteByPathOrKey, getByPath } from "@/lib/utils/object-path";
 
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
@@ -178,9 +178,13 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
 
   logger.info({ recordCount: records.length, detectedPath }, "json-to-csv: found records array");
 
-  // Escape cells that would otherwise be interpreted as spreadsheet formulas
-  // if this CSV is ever re-exported to users (CWE-1236, defense in depth).
-  const flattened = escapeRowsFormulas(records.map((record) => flattenObject(record)));
+  // Do NOT formula-escape here. This CSV is canonical ingest data: the pipeline
+  // re-parses it into events and Papa Parse does not strip a leading apostrophe,
+  // so escaping corrupts real values ("-42" -> "'-42", "@venue", "+1-555…", and
+  // numeric strings stop parsing as numbers). Formula-injection escaping
+  // (CWE-1236) belongs at the user-facing CSV/XLSX *export* boundary — see
+  // escapeCsvFormula in lib/utils/csv-escape.ts — not at ingest.
+  const flattened = records.map((record) => flattenObject(record));
   const csvString = unparseRowsToCsv(flattened);
   const csv = Buffer.from(csvString, "utf-8");
 
@@ -194,8 +198,10 @@ export const convertJsonToCsv = (jsonBuffer: Buffer, options?: JsonToCsvOptions)
  * collected across multiple pages and do not need path detection.
  */
 export const recordsToCsv = (records: Record<string, unknown>[]): Buffer => {
-  // Escape formula-like cells before CSV serialization (CWE-1236).
-  const flattened = escapeRowsFormulas(records.map((record) => flattenObject(record)));
+  // No formula-escaping: this is canonical ingest data that the pipeline
+  // re-parses into events. Escaping belongs at the export boundary — see the
+  // note in convertJsonToCsv above.
+  const flattened = records.map((record) => flattenObject(record));
   const csvString = unparseRowsToCsv(flattened);
   return Buffer.from(csvString, "utf-8");
 };
