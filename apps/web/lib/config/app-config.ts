@@ -201,6 +201,16 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 20, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
     ],
   },
+  // Applying a reset token (setting the new password). Kept tight because the
+  // token grants password change without the current password, so cap how fast
+  // the finalize endpoint can be hit per IP even with a valid-looking token.
+  RESET_PASSWORD: {
+    windows: [
+      { limit: 5, windowMs: 60 * 1000, name: "burst" },
+      { limit: 15, windowMs: 60 * 60 * 1000, name: "hourly" },
+      { limit: 30, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
+    ],
+  },
   // Manual scraper run / repo-sync triggers. These queue expensive work
   // (container-based execution, git clone + manifest re-parse), so throttle
   // per-user re-queues for defense in depth (ownership + a concurrency claim
@@ -451,6 +461,7 @@ export type RateLimitName =
   | "REGISTRATION"
   | "LOGIN"
   | "FORGOT_PASSWORD"
+  | "RESET_PASSWORD"
   | "SCRAPER_TRIGGER";
 
 export interface AppConfig {

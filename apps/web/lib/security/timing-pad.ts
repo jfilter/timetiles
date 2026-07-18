@@ -19,6 +19,8 @@ export const TIMING_PAD_MS = {
   EMAIL_CHANGE: 1000,
   /** Password change — verify + update */
   PASSWORD_CHANGE: 1000,
+  /** Password reset — validate token + set new password (hides token-valid vs weak-password) */
+  PASSWORD_RESET: 1000,
   /** Account deletion scheduling — verify + eligibility check */
   ACCOUNT_DELETION: 1000,
 } as const;

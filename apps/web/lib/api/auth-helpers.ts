@@ -159,6 +159,26 @@ export const revokeOtherSessions = async (
 };
 
 /**
+ * Revoke EVERY session for a user.
+ *
+ * Used after a password reset: unlike an in-session password change (which keeps
+ * the current device via {@link revokeOtherSessions}), a reset is finalized from
+ * an unauthenticated request with only an emailed token — there is no "current"
+ * session to preserve, and the reset is precisely the moment to lock out any
+ * pre-existing (possibly attacker) session. Payload's built-in resetPassword
+ * mints a fresh session it never revokes; clearing all of them forces the user
+ * to re-authenticate on every device with the new password. Best-effort: the
+ * password write has already committed, so a failure here is logged, not thrown.
+ */
+export const revokeAllSessions = async (payload: Payload, userId: number | string): Promise<void> => {
+  try {
+    await payload.update({ collection: "users", id: userId, data: { sessions: [] }, overrideAccess: true });
+  } catch (error) {
+    logger.warn({ userId, error }, "Failed to revoke sessions after password reset");
+  }
+};
+
+/**
  * Verify a user's password by attempting a login.
  * Throws an error with a descriptive message on failure.
  *

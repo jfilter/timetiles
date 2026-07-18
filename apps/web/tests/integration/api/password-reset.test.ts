@@ -11,6 +11,7 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { POST as forgotPasswordPOST } from "@/app/api/auth/forgot-password/route";
+import { POST as resetPasswordPOST } from "@/app/api/users/reset-password/route";
 import { EMAIL_CONTEXTS } from "@/lib/email/send";
 
 import { TRUST_LEVELS } from "../../../lib/constants/quota-constants.js";
@@ -176,5 +177,96 @@ describe.sequential("Password Reset Flow", () => {
         overrideAccess: true,
       })
     ).rejects.toThrow();
+  });
+
+  // --- Custom /api/users/reset-password route (shadows Payload's built-in) ---
+
+  const resetViaRoute = (token: string, password: string, ip: string) =>
+    resetPasswordPOST(
+      new NextRequest("http://localhost:3000/api/users/reset-password", {
+        method: "POST",
+        // Distinct IP per call so the RESET_PASSWORD rate-limit bucket does not
+        // couple these tests together.
+        headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+        body: JSON.stringify({ token, password }),
+      }),
+      { params: Promise.resolve({}) }
+    );
+
+  it("route resets the password with a valid token and revokes ALL sessions", async () => {
+    const { payload } = testEnv;
+    const testEmail = `reset-route-sessions-${Date.now()}@test.com`;
+    const oldPassword = TEST_CREDENTIALS.auth.secure;
+    const newPassword = TEST_CREDENTIALS.auth.newSecure;
+
+    const user = await payload.create({
+      collection: "users",
+      data: { email: testEmail, password: oldPassword, trustLevel: `${TRUST_LEVELS.BASIC}`, _verified: true },
+      disableVerificationEmail: true,
+    });
+
+    // Seed two live sessions (as if the account were logged in on two devices).
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const now = new Date().toISOString();
+    await payload.update({
+      collection: "users",
+      id: user.id,
+      overrideAccess: true,
+      data: {
+        sessions: [
+          { id: "sess-a", createdAt: now, expiresAt: future },
+          { id: "sess-b", createdAt: now, expiresAt: future },
+        ],
+      },
+    });
+
+    const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
+
+    const response = await resetViaRoute(token as string, newPassword, "198.51.100.10");
+    expect(response.status).toBe(200);
+
+    // Every pre-existing session (and the one resetPassword mints) is gone.
+    const after = await payload.findByID({ collection: "users", id: user.id, depth: 0, overrideAccess: true });
+    expect(after.sessions ?? []).toHaveLength(0);
+
+    // New password works; old one does not.
+    const login = await payload.login({ collection: "users", data: { email: testEmail, password: newPassword } });
+    expect(login.user?.email).toBe(testEmail);
+    await expect(
+      payload.login({ collection: "users", data: { email: testEmail, password: oldPassword } })
+    ).rejects.toThrow();
+  });
+
+  it("route enforces the password policy Payload's built-in reset skips", async () => {
+    const { payload } = testEnv;
+    const testEmail = `reset-route-weak-${Date.now()}@test.com`;
+    const oldPassword = TEST_CREDENTIALS.auth.secure;
+
+    await payload.create({
+      collection: "users",
+      data: { email: testEmail, password: oldPassword, trustLevel: `${TRUST_LEVELS.BASIC}`, _verified: true },
+      disableVerificationEmail: true,
+    });
+
+    const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
+
+    // A password below the policy minimum is rejected — Payload's built-in
+    // resetPassword would accept it because it never runs the policy gate. The
+    // route rejects it (422 at the Zod length guard, or 400 at validatePassword
+    // for a long-but-compromised password); either way it is not a 200.
+    const response = await resetViaRoute(token as string, TEST_CREDENTIALS.security.short, "198.51.100.20");
+    expect(response.status).not.toBe(200);
+    expect(response.status).toBeGreaterThanOrEqual(400);
+
+    // The old password still works — the weak reset did not go through.
+    const login = await payload.login({ collection: "users", data: { email: testEmail, password: oldPassword } });
+    expect(login.user?.email).toBe(testEmail);
+  });
+
+  it("route rejects an invalid token with a generic 400", async () => {
+    const response = await resetViaRoute("invalid-token-12345", TEST_CREDENTIALS.auth.newSecure, "198.51.100.30");
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(String(data.error ?? data.message ?? "")).toMatch(/invalid or has expired/i);
   });
 });

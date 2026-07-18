@@ -22,6 +22,8 @@ export const AUDIT_ACTIONS = {
   EMAIL_CHANGED: "account.email_changed",
   // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifier
   PASSWORD_CHANGED: "account.password_changed",
+  // eslint-disable-next-line sonarjs/no-hardcoded-passwords -- audit action type identifier
+  PASSWORD_RESET: "account.password_reset",
   DELETION_SCHEDULED: "account.deletion_scheduled",
   DELETION_CANCELLED: "account.deletion_cancelled",
   DELETION_EXECUTED: "account.deletion_executed",
