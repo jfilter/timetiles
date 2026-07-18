@@ -28,7 +28,13 @@ describe("checkRateLimit", () => {
     vi.clearAllMocks();
 
     mocks.getPayload.mockResolvedValue({});
-    mocks.getClientIdentifier.mockReturnValue("203.0.113.1");
+    // Tests in this file run concurrently (vitest sequence.concurrent) and share
+    // this module-level mock, so the client IP must be derived from each call's
+    // own request (via `?ip=`) rather than mutated as shared state — otherwise
+    // one test's IP override races into another. Defaults to a fixed IP.
+    mocks.getClientIdentifier.mockImplementation(
+      (req: Request) => new URL(req.url).searchParams.get("ip") ?? "203.0.113.1"
+    );
     mocks.checkConfiguredRateLimit.mockResolvedValue({ allowed: true });
     mocks.checkTrustLevelRateLimit.mockResolvedValue({ allowed: true });
     mocks.getRateLimitService.mockReturnValue({
@@ -48,5 +54,38 @@ describe("checkRateLimit", () => {
     expect(response).toBeNull();
     expect(mocks.checkTrustLevelRateLimit).toHaveBeenCalledWith("preview-upload:42", user, "FILE_UPLOAD");
     expect(mocks.checkTrustLevelRateLimit).not.toHaveBeenCalledWith("203.0.113.1", user, "FILE_UPLOAD");
+  });
+
+  it("namespaces the default anonymous key by configName so endpoints do not share a bucket", async () => {
+    await checkRateLimit(new Request("http://localhost/api/login?ip=203.0.113.1"), undefined, { configName: "LOGIN" });
+    await checkRateLimit(new Request("http://localhost/api/forgot?ip=203.0.113.1"), undefined, {
+      configName: "FORGOT_PASSWORD",
+    });
+
+    // Same client IP, different endpoints → distinct base keys (no collision).
+    expect(mocks.checkConfiguredRateLimit).toHaveBeenCalledWith("LOGIN:203.0.113.1", expect.anything());
+    expect(mocks.checkConfiguredRateLimit).toHaveBeenCalledWith("FORGOT_PASSWORD:203.0.113.1", expect.anything());
+    // The bare IP (unnamespaced) must never be used as a base key.
+    expect(mocks.checkConfiguredRateLimit).not.toHaveBeenCalledWith("203.0.113.1", expect.anything());
+  });
+
+  it("namespaces the default authenticated key by config so per-user buckets stay per-endpoint", async () => {
+    const user = { id: 7, trustLevel: "regular" };
+
+    await checkRateLimit(new Request("http://localhost/api/quotas"), user as never, { type: "API_GENERAL" });
+
+    expect(mocks.checkTrustLevelRateLimit).toHaveBeenCalledWith("API_GENERAL:user:7", user, "API_GENERAL");
+  });
+
+  it("collapses unresolved production IPs into a per-config bucket, not one global unknown bucket", async () => {
+    await checkRateLimit(new Request("http://localhost/api/login?ip=unknown"), undefined, { configName: "LOGIN" });
+    await checkRateLimit(new Request("http://localhost/api/register?ip=unknown"), undefined, {
+      configName: "REGISTRATION",
+    });
+
+    expect(mocks.checkConfiguredRateLimit).toHaveBeenCalledWith("LOGIN:unknown", expect.anything());
+    expect(mocks.checkConfiguredRateLimit).toHaveBeenCalledWith("REGISTRATION:unknown", expect.anything());
+    // Distinct endpoints keep distinct buckets even when the IP is unresolved.
+    expect(mocks.checkConfiguredRateLimit).not.toHaveBeenCalledWith("unknown", expect.anything());
   });
 });

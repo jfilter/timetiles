@@ -101,6 +101,14 @@ services:
       # Application
       NODE_ENV: ${NODE_ENV:-production}
       DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-production}
+      # Trusted reverse-proxy CIDRs for client-IP extraction. In production the
+      # app ignores X-Forwarded-For unless the sending hop is inside this
+      # allowlist (headers are client-spoofable otherwise). Without it EVERY
+      # client collapses to "unknown" and shares a single rate-limit bucket.
+      # The default covers the Docker bridge network (nginx sits on it, same
+      # range as postgres ALLOW_IP_RANGE); extend it if a CDN/edge LB fronts
+      # nginx so the real client survives the forwarded chain.
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-172.16.0.0/12}
       # Auto-activate data packages on Payload boot (web container only —
       # workers leave this unset to avoid racing on the same idempotency
       # check). See apps/web/lib/data-packages/auto-activator.ts.

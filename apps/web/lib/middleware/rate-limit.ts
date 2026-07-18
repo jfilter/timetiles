@@ -72,15 +72,26 @@ export const checkRateLimit = async (
   // throttle each other. IP-only keys remain the fallback for anonymous
   // traffic and are still honored when the caller supplies an explicit
   // `keyPrefix`.
+  //
+  // The default (non-`keyPrefix`) key MUST be namespaced by the endpoint's
+  // rate-limit config: the storage key is only `${key}:${windowName}`, so two
+  // endpoints that fall back to the same IP/user key and share a window name
+  // (e.g. "burst") would otherwise collide into ONE bucket — login requests
+  // would eat forgot-password's budget, and in production every anonymous
+  // client collapses to the single `unknown:burst` bucket. Explicit `keyPrefix`
+  // callers already own a unique namespace, so leave those untouched (this also
+  // keeps a collection hook that reuses the same explicit prefix, e.g.
+  // `scraper-sync:<id>`, sharing the endpoint's bucket on purpose).
+  const namespace = options.configName ?? options.type ?? "api";
   let key: string;
   if (typeof options.keyPrefix === "function") {
     key = options.keyPrefix(user);
   } else if (typeof options.keyPrefix === "string") {
     key = options.keyPrefix;
   } else if (user?.id != null) {
-    key = `user:${user.id}`;
+    key = `${namespace}:user:${user.id}`;
   } else {
-    key = clientId;
+    key = `${namespace}:${clientId}`;
   }
 
   // Resolve the rate limit config
