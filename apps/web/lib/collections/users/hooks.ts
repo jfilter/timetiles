@@ -64,6 +64,28 @@ export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
     return data;
   },
   ({ data, operation, req, originalDoc }) => {
+    // SECURITY: block direct manipulation of credential/auth fields through the
+    // generic REST collection API. Payload auto-generates `email`, `password`,
+    // `enableAPIKey` and `apiKey` for auth collections with NO field-level access
+    // guard, so an owner PATCH /api/users/:id could take over the account
+    // (swap the login email while `_verified` stays true), reset the password
+    // without knowing the current one, or plant a known API key as a permanent
+    // backdoor — bypassing the current-password check, email verification, rate
+    // limits and audit trail the dedicated routes enforce. Those routes run via
+    // the Local API (`payloadAPI !== "REST"`), so gate only non-admin REST writes.
+    if (operation === "update" && req.payloadAPI === "REST" && req.user?.role !== "admin") {
+      const changesEmail = typeof data.email === "string" && data.email !== originalDoc?.email;
+      const changesPassword = typeof data.password === "string" && data.password.length > 0;
+      const changesApiKey = data.apiKey !== undefined || data.enableAPIKey !== undefined;
+      if (changesEmail || changesPassword || changesApiKey) {
+        throw new AppError(
+          403,
+          "Email, password and API keys can only be changed through their dedicated endpoints.",
+          "auth-field-forbidden"
+        );
+      }
+    }
+
     // SECURITY: Handle self-registration (unauthenticated user creation)
     // Force safe defaults to prevent privilege escalation
     //

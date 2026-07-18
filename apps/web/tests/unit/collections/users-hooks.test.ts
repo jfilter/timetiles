@@ -49,6 +49,73 @@ describe("usersBeforeChangeHook: verification token expiry", () => {
   });
 });
 
+describe("usersBeforeChangeHook: REST auth-field guard", () => {
+  const restUser = { payloadAPI: "REST", user: { id: 1, role: "user" } } as never;
+  const restAdmin = { payloadAPI: "REST", user: { id: 9, role: "admin" } } as never;
+  const original = { id: 1, email: "old@example.com" };
+
+  it("rejects a non-admin REST update that changes the login email", () => {
+    expect(() =>
+      securityHook({
+        data: { email: "new@example.com" },
+        operation: "update",
+        req: restUser,
+        originalDoc: original,
+      } as never)
+    ).toThrow(/dedicated endpoints/);
+  });
+
+  it("rejects a non-admin REST update that sets a password", () => {
+    expect(() =>
+      securityHook({
+        data: { password: "Attacker-Chosen-Password-123!" },
+        operation: "update",
+        req: restUser,
+        originalDoc: original,
+      } as never)
+    ).toThrow(/dedicated endpoints/);
+  });
+
+  it("rejects a non-admin REST update that plants an API key", () => {
+    expect(() =>
+      securityHook({
+        data: { enableAPIKey: true, apiKey: "known-backdoor-key" },
+        operation: "update",
+        req: restUser,
+        originalDoc: original,
+      } as never)
+    ).toThrow(/dedicated endpoints/);
+  });
+
+  it("allows a non-admin REST update of ordinary profile fields", () => {
+    const data: Record<string, unknown> = { firstName: "Ada" };
+    securityHook({ data, operation: "update", req: restUser, originalDoc: original } as never);
+    expect(data.firstName).toBe("Ada");
+  });
+
+  it("does not block Local-API custom routes changing auth fields", () => {
+    expect(() =>
+      securityHook({
+        data: { password: "changed-via-dedicated-route" },
+        operation: "update",
+        req: { payloadAPI: "local", user: { id: 1, role: "user" } },
+        originalDoc: original,
+      } as never)
+    ).not.toThrow();
+  });
+
+  it("allows admins to change auth fields via REST", () => {
+    expect(() =>
+      securityHook({
+        data: { email: "admin-set@example.com" },
+        operation: "update",
+        req: restAdmin,
+        originalDoc: original,
+      } as never)
+    ).not.toThrow();
+  });
+});
+
 describe("usersBeforeLoginHook: isActive enforcement", () => {
   it("rejects logins for deactivated accounts", () => {
     expect(() => beforeLogin({ user: { id: 1, isActive: false } } as never)).toThrow(
