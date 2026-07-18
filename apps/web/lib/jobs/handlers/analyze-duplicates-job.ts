@@ -37,6 +37,7 @@ import {
   cleanupSidecarsForJob,
   createStandardOnFail,
   getDuplicateRatesForReview,
+  getNewEventCountForQuota,
   loadIngestJob,
   loadJobResources,
 } from "../utils/resource-loading";
@@ -489,8 +490,16 @@ export const analyzeDuplicatesJob = {
         };
       }
 
-      // Review check: quota
-      const quotaCheck = await checkQuotaForSheet(payload, ingestJobId, results.uniqueRows);
+      // Review check: quota. Per-import gate uses uniqueRows (processing
+      // volume); the lifetime TOTAL_EVENTS gate uses the new-event count, which
+      // subtracts to-be-updated externals — otherwise an update-strategy
+      // re-import of unchanged rows (0 new events) falsely trips QUOTA_EXCEEDED.
+      const quotaCheck = await checkQuotaForSheet(
+        payload,
+        ingestJobId,
+        results.uniqueRows,
+        getNewEventCountForQuota(jobWithFreshSummary)
+      );
       if (!quotaCheck.allowed) {
         await setNeedsReview(payload, ingestJobId, REVIEW_REASONS.QUOTA_EXCEEDED, quotaCheck);
         return {

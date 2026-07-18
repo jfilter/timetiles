@@ -128,13 +128,23 @@ export const setNeedsReview = async (
 };
 
 /**
- * Check if importing uniqueRows events would exceed the user's quota.
+ * Check if this import would exceed the user's quota.
+ *
+ * `uniqueRows` is the strategy-adjusted processing volume (gates EVENTS_PER_IMPORT);
+ * `newEventCount` is the number of events the import will NEWLY create (gates the
+ * lifetime TOTAL_EVENTS counter). Under the "update" strategy these differ:
+ * re-importing unchanged rows updates existing events (newEventCount = 0) but still
+ * processes `uniqueRows`. Charging updates against TOTAL_EVENTS would falsely trip
+ * QUOTA_EXCEEDED on every scheduled re-import — so the lifetime gate uses
+ * `newEventCount`, matching the phase-3 reservation (getNewEventCountForQuota).
+ *
  * Returns `{ allowed: true }` or `{ allowed: false, ...details }`.
  */
 export const checkQuotaForSheet = async (
   payload: Payload,
   ingestJobId: string | number,
-  uniqueRows: number
+  uniqueRows: number,
+  newEventCount: number
 ): Promise<{ allowed: boolean; current?: number; limit?: number; estimatedNew?: number; reason?: string }> => {
   // Load the ingest job to get the user
   const ingestJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
@@ -168,15 +178,16 @@ export const checkQuotaForSheet = async (
     };
   }
 
-  // Check total events quota
-  const totalCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", uniqueRows);
+  // Check total (lifetime) events quota against NEWLY created events only —
+  // updates of existing events do not increase the total.
+  const totalCheck = await quotaService.checkQuota(user, "TOTAL_EVENTS", newEventCount);
   if (!totalCheck.allowed) {
     return {
       allowed: false,
       current: totalCheck.current ?? 0,
       limit: totalCheck.limit ?? 0,
-      estimatedNew: uniqueRows,
-      reason: `Creating ${uniqueRows} events would exceed your total events limit (${totalCheck.current}/${totalCheck.limit}).`,
+      estimatedNew: newEventCount,
+      reason: `Creating ${newEventCount} events would exceed your total events limit (${totalCheck.current}/${totalCheck.limit}).`,
     };
   }
 
