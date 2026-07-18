@@ -118,8 +118,8 @@ const toVersionRow = (parentId: number, event: BulkEventData, now: string): type
  * version insert would leave orphaned event rows (no version row, `latest`
  * unset) that Payload's standard query path cannot surface or update.
  */
-const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string): Promise<number> => {
-  if (batch.length === 0) return 0;
+const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string): Promise<Set<string>> => {
+  if (batch.length === 0) return new Set();
 
   return payload.db.drizzle.transaction(async (tx: typeof payload.db.drizzle) => {
     // Insert into events, returning generated IDs.
@@ -150,7 +150,11 @@ const insertBatch = async (payload: Payload, batch: BulkEventData[], now: string
       await tx.insert(_events_v).values(versionRows);
     }
 
-    return inserted.length;
+    // The uniqueIds actually inserted. Any batch row whose uniqueId is absent
+    // here lost an ON CONFLICT race (the event already exists) — the caller
+    // surfaces those as conflicts so an update-strategy import can reconcile
+    // them instead of silently dropping its (possibly newer) data.
+    return new Set(inserted.map((row) => row.uniqueId).filter((u): u is string => u != null));
   });
 };
 
@@ -164,6 +168,15 @@ export interface BulkInsertResult {
    * number. All rows in a failed sub-batch share the same `error`.
    */
   failures: Array<{ index: number; error: unknown }>;
+  /**
+   * Rows that committed but did NOT insert because their uniqueId already
+   * existed (ON CONFLICT DO NOTHING) — a concurrent import beat this one to the
+   * row after dedup analysis classified it as new. Each `index` points back into
+   * `allEvents`. Under the "update" strategy the caller reconciles these into
+   * updates so the newer data is not silently lost; under "skip" they are
+   * correctly dropped.
+   */
+  conflicts: Array<{ index: number; uniqueId: string }>;
 }
 
 /**
@@ -183,16 +196,25 @@ export const bulkInsertEvents = async (
   allEvents: BulkEventData[],
   batchSize: number = BATCH_SIZE
 ): Promise<BulkInsertResult> => {
-  if (allEvents.length === 0) return { created: 0, failures: [] };
+  if (allEvents.length === 0) return { created: 0, failures: [], conflicts: [] };
 
   const now = new Date().toISOString();
   let totalInserted = 0;
   const failures: Array<{ index: number; error: unknown }> = [];
+  const conflicts: Array<{ index: number; uniqueId: string }> = [];
 
   for (let i = 0; i < allEvents.length; i += batchSize) {
     const batch = allEvents.slice(i, i + batchSize);
     try {
-      totalInserted += await insertBatch(payload, batch, now);
+      const insertedUniqueIds = await insertBatch(payload, batch, now);
+      totalInserted += insertedUniqueIds.size;
+      // A committed sub-batch may still have dropped rows to ON CONFLICT: any
+      // batch row whose uniqueId did not come back was beaten to the insert.
+      batch.forEach((event, k) => {
+        if (event.uniqueId != null && !insertedUniqueIds.has(event.uniqueId)) {
+          conflicts.push({ index: i + k, uniqueId: event.uniqueId });
+        }
+      });
     } catch (error) {
       logger.error({ err: error, startIndex: i, count: batch.length }, "Bulk insert sub-batch failed");
       for (let j = i; j < i + batch.length; j++) {
@@ -201,7 +223,10 @@ export const bulkInsertEvents = async (
     }
   }
 
-  logger.debug({ totalInserted, totalRequested: allEvents.length, failed: failures.length }, "Bulk insert complete");
+  logger.debug(
+    { totalInserted, totalRequested: allEvents.length, failed: failures.length, conflicts: conflicts.length },
+    "Bulk insert complete"
+  );
 
-  return { created: totalInserted, failures };
+  return { created: totalInserted, failures, conflicts };
 };

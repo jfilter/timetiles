@@ -25,7 +25,7 @@ import type { Dataset, Event, IngestJob } from "@/payload-types";
 import type { BulkEventData } from "../../utils/bulk-event-insert";
 import { bulkInsertEvents } from "../../utils/bulk-event-insert";
 import { createEventData, EventPayloadTooLargeError } from "../../utils/event-creation-helpers";
-import { getEventCreationDuplicates } from "../../utils/resource-loading";
+import { getEventCreationDuplicates, readDuplicateStrategy } from "../../utils/resource-loading";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 
@@ -283,16 +283,28 @@ const tryUpdateExistingEvent = async (
   return { updated: true, blocked: false };
 };
 
+/** A row that lost the insert race, paired with its source row number. */
+interface InsertConflict {
+  rowNumber: number;
+  eventData: BulkEventData;
+}
+
 const bulkInsertNewEvents = async (
   payload: Payload,
   eventsToInsert: BulkEventData[],
   insertRowNumbers: number[],
   log: ReturnType<typeof createJobLogger>
-): Promise<{ created: number; errors: Array<{ row: number; error: string }> }> => {
-  if (eventsToInsert.length === 0) return { created: 0, errors: [] };
+): Promise<{ created: number; errors: Array<{ row: number; error: string }>; conflicts: InsertConflict[] }> => {
+  if (eventsToInsert.length === 0) return { created: 0, errors: [], conflicts: [] };
   try {
-    const { created, failures } = await bulkInsertEvents(payload, eventsToInsert);
-    if (failures.length === 0) return { created, errors: [] };
+    const { created, failures, conflicts: rawConflicts } = await bulkInsertEvents(payload, eventsToInsert);
+    // Map ON CONFLICT drops back to their source row number + event data so the
+    // caller can reconcile them (update strategy) or ignore them (skip strategy).
+    const conflicts: InsertConflict[] = rawConflicts.map(({ index }) => ({
+      rowNumber: insertRowNumbers[index]!,
+      eventData: eventsToInsert[index]!,
+    }));
+    if (failures.length === 0) return { created, errors: [], conflicts };
 
     log.error({ count: failures.length, err: failures[0]?.error }, "Bulk insert failed for some rows");
     // Only rows in failed sub-batches are errors; committed sub-batches stay in
@@ -303,7 +315,7 @@ const bulkInsertNewEvents = async (
       row: insertRowNumbers[index]!,
       error: normalizeIngestErrorMessage(error, "Database bulk insert failed"),
     }));
-    return { created, errors };
+    return { created, errors, conflicts };
   } catch (error) {
     // Defensive: sub-batch failures come back via `failures`, but an unexpected
     // throw around the loop should still mark every row failed rather than
@@ -311,8 +323,55 @@ const bulkInsertNewEvents = async (
     log.error({ count: eventsToInsert.length, err: error }, "Bulk insert failed for batch");
     const msg = normalizeIngestErrorMessage(error, "Database bulk insert failed");
     const errors = insertRowNumbers.map((row) => ({ row, error: msg }));
-    return { created: 0, errors };
+    return { created: 0, errors, conflicts: [] };
   }
+};
+
+/**
+ * Reconcile rows that lost the ON CONFLICT insert race into updates.
+ *
+ * Only used under the "update" strategy. A conflict means the uniqueId already
+ * exists; because uniqueId encodes the dataset id (see generateUniqueId), the
+ * existing event is guaranteed to be in THIS dataset, so we look up its id and
+ * apply our (possibly newer) data as an update instead of dropping it — closing
+ * the concurrent-import data-loss window.
+ */
+const reconcileInsertConflicts = async (
+  payload: Payload,
+  datasetId: number,
+  conflicts: InsertConflict[],
+  log: ReturnType<typeof createJobLogger>
+): Promise<{ updated: number; errors: Array<{ row: number; error: string }> }> => {
+  if (conflicts.length === 0) return { updated: 0, errors: [] };
+
+  const uniqueIds = conflicts.map((c) => c.eventData.uniqueId);
+  const existing = (await payload.db.drizzle
+    .select({ id: eventsTable.id, uniqueId: eventsTable.uniqueId })
+    .from(eventsTable)
+    .where(and(eq(eventsTable.dataset, datasetId), inArray(eventsTable.uniqueId, uniqueIds)))) as Array<{
+    id: number;
+    uniqueId: string;
+  }>;
+  const idByUniqueId = new Map(existing.map((r) => [r.uniqueId, r.id]));
+  // Every id came from a `dataset = datasetId` filter, so all are in-dataset.
+  const inDataset = new Set(existing.map((r) => r.id));
+
+  let updated = 0;
+  const errors: Array<{ row: number; error: string }> = [];
+  for (const { rowNumber, eventData } of conflicts) {
+    const existingId = idByUniqueId.get(eventData.uniqueId);
+    if (existingId == null) continue; // event vanished between insert and lookup — nothing to update
+    try {
+      const result = await tryUpdateExistingEvent(payload, eventData, existingId, inDataset, datasetId, log);
+      if (result.updated) updated++;
+    } catch (error) {
+      errors.push({
+        row: rowNumber,
+        error: normalizeIngestErrorMessage(error, "Conflict reconciliation update failed"),
+      });
+    }
+  }
+  return { updated, errors };
 };
 
 export const processEventBatch = async (
@@ -387,13 +446,27 @@ export const processEventBatch = async (
     }
   }
 
-  const { created: eventsCreated, errors: bulkErrors } = await bulkInsertNewEvents(
-    payload,
-    eventsToInsert,
-    insertRowNumbers,
-    log
-  );
+  const {
+    created: eventsCreated,
+    errors: bulkErrors,
+    conflicts,
+  } = await bulkInsertNewEvents(payload, eventsToInsert, insertRowNumbers, log);
   errors.push(...bulkErrors);
 
-  return { eventsCreated: eventsCreated + eventsUpdated, eventsSkipped, eventsUpdated, errors };
+  // Rows that lost the insert race (ON CONFLICT) are correctly dropped under the
+  // "skip" strategy, but under "update" they must be applied as updates so a
+  // concurrent import cannot silently discard this run's newer data.
+  let reconciledUpdates = 0;
+  if (conflicts.length > 0 && readDuplicateStrategy(job) === "update") {
+    const reconciled = await reconcileInsertConflicts(payload, dataset.id, conflicts, log);
+    reconciledUpdates = reconciled.updated;
+    errors.push(...reconciled.errors);
+  }
+
+  return {
+    eventsCreated: eventsCreated + eventsUpdated + reconciledUpdates,
+    eventsSkipped,
+    eventsUpdated: eventsUpdated + reconciledUpdates,
+    errors,
+  };
 };

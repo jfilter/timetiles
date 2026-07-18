@@ -285,7 +285,7 @@ type DuplicateStrategy = "skip" | "update";
  * stages should ask for what they want (e.g. {@link getEventCreationDuplicates}),
  * not for the strategy directly.
  */
-const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
+export const readDuplicateStrategy = (job: Pick<IngestJob, "configSnapshot">): DuplicateStrategy => {
   const snapshot = readConfigSnapshot(job);
   const value = snapshot?.idStrategy?.duplicateStrategy;
   return value === "update" ? "update" : "skip";

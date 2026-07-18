@@ -100,6 +100,31 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
     expect(new Set(versionRows.map((r) => r.parentId))).toEqual(new Set(eventIds));
   });
 
+  it("surfaces ON CONFLICT drops as conflicts without failing the batch", async () => {
+    const prefix = `bulk-conflict-${crypto.randomUUID().slice(0, 8)}`;
+    const a = `${prefix}-A`;
+    const b = `${prefix}-B`;
+
+    // Seed two events so their uniqueIds already exist.
+    const seed = await bulkInsertEvents(payload, [makeEvent(a, 0), makeEvent(b, 1)]);
+    expect(seed.created).toBe(2);
+    expect(seed.conflicts).toEqual([]);
+
+    // Re-insert a batch mixing the two existing ids with two brand-new ones.
+    const c = `${prefix}-C`;
+    const d = `${prefix}-D`;
+    const batch = [makeEvent(a, 0), makeEvent(c, 2), makeEvent(b, 1), makeEvent(d, 3)];
+    const { created, failures, conflicts } = await bulkInsertEvents(payload, batch);
+
+    // Only the two new ids insert; the two existing ids come back as conflicts
+    // (not failures, not silently dropped) so an update-strategy caller can
+    // reconcile them into updates instead of losing its data.
+    expect(created).toBe(2);
+    expect(failures).toEqual([]);
+    expect(conflicts.map((x) => x.uniqueId).sort()).toEqual([a, b].sort());
+    expect(conflicts.map((x) => x.index).sort((x, y) => x - y)).toEqual([0, 2]);
+  });
+
   it("rolls back events insert when _events_v insert fails", async () => {
     const prefix = `bulk-rollback-${crypto.randomUUID().slice(0, 8)}`;
     const batch = Array.from({ length: 3 }, (_, i) => makeEvent(`${prefix}-${i}`, i));
