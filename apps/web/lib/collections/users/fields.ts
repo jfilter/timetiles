@@ -73,7 +73,12 @@ export const usersFields: Field[] = [
     name: "quotas",
     type: "group",
     admin: { description: "Resource quotas for this user (automatically set based on trust level)" },
-    access: { update: ({ req: { user } }) => user?.role === "admin" },
+    // Admin-only for BOTH create and update: quotas are derived from trustLevel by
+    // the beforeChange hook, never accepted from an inbound create payload.
+    access: {
+      create: ({ req: { user } }) => user?.role === "admin",
+      update: ({ req: { user } }) => user?.role === "admin",
+    },
     fields: [
       {
         name: "maxActiveSchedules",
@@ -143,6 +148,9 @@ export const usersFields: Field[] = [
     },
     access: {
       read: ({ req: { user } }) => user?.role === "admin",
+      // Admin-only for create too — otherwise a create payload could inject
+      // unlimited overrides (e.g. -1) that the quota service honors.
+      create: ({ req: { user } }) => user?.role === "admin",
       update: ({ req: { user } }) => user?.role === "admin",
     },
   },

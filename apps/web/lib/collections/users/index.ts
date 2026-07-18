@@ -97,10 +97,13 @@ const Users: CollectionConfig = {
       return { id: { equals: user.id } };
     },
 
-    // Allow self-registration for unauthenticated users
-    // Security: beforeChange hook forces role='user' and trustLevel='BASIC' for self-registrants
-    // Admins can always create, unauthenticated can self-register, authenticated non-admins cannot
-    create: ({ req: { user } }) => user?.role === "admin" || !user,
+    // Only admins may create users via the generic REST collection API.
+    // Self-registration goes EXCLUSIVELY through /api/auth/register, which uses
+    // the Local API (overrideAccess) and enforces the `enableRegistration` flag
+    // plus the REGISTRATION rate limit. Allowing anonymous REST create (the old
+    // `|| !user`) bypassed both gates and let the caller inject `customQuotas`/
+    // `quotas` (e.g. -1 = unlimited) straight through POST /api/users.
+    create: ({ req: { user } }) => user?.role === "admin",
 
     // Users can update their own profile, admins can update anyone
     // Role changes are prevented via field-level access control on the role field
