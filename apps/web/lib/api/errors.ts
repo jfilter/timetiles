@@ -159,7 +159,14 @@ export const handleError = (err: unknown, req?: ErrorRequestContext): Response =
   if (err instanceof AppError) {
     const body: Record<string, unknown> = { error: err.message };
     if (err.code) body.code = err.code;
-    if (err.details) body.details = err.details;
+    // Never serialize `details` on 5xx: they routinely carry internal specifics
+    // (raw DB/errno messages, absolute file paths — e.g. a failed data-export's
+    // errorLog) that must not reach the client. Log them server-side instead.
+    if (err.statusCode >= 500) {
+      logError(err, "AppError (5xx) in API route", buildErrorMetadata(req));
+    } else if (err.details) {
+      body.details = err.details;
+    }
     return Response.json(body, { status: err.statusCode });
   }
 

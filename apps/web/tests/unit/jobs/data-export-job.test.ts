@@ -208,12 +208,13 @@ describe.sequential("dataExportJob", () => {
       })
     );
 
-    // Failure email sent
+    // Failure email sent with a GENERIC message — the raw error stays in the
+    // admin-only errorLog (asserted above) and must not leak to the user.
     expect(sendExportFailedEmail).toHaveBeenCalledWith(
       mockPayload,
       "test@example.com",
       "Test",
-      "Export generation failed",
+      "The export could not be completed due to an internal error. Please try again later.",
       "en"
     );
   });

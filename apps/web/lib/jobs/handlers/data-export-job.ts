@@ -43,11 +43,15 @@ const handleExportFailure = async (payload: Payload, exportId: number, error: un
       data: { status: "failed", completedAt: new Date().toISOString(), errorLog: errorMessage },
     });
 
-    // Send failure notification
+    // Send failure notification. The raw errorMessage is stored only in the
+    // admin-only `errorLog` field above — never email it to the user, since it
+    // can carry internal specifics (absolute paths, errno strings). Send a
+    // generic, user-safe message instead.
     const user = await asSystem(payload).findByID({ collection: "users", id: userId });
 
     if (user) {
-      await sendExportFailedEmail(payload, user.email, user.firstName, errorMessage, user.locale);
+      const userFacingMessage = "The export could not be completed due to an internal error. Please try again later.";
+      await sendExportFailedEmail(payload, user.email, user.firstName, userFacingMessage, user.locale);
     }
   } catch (updateError) {
     logError(updateError, "Failed to update export status after error", { exportId });
