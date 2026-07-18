@@ -16,7 +16,6 @@ import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { SchemaVersioningService } from "@/lib/ingest/schema-versioning";
 import { createJobLogger, logError } from "@/lib/logger";
 import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
-import { asSystem } from "@/lib/services/system-payload";
 import { getFieldStats } from "@/lib/types/schema-detection";
 import { datasets } from "@/payload-generated-schema";
 

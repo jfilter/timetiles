@@ -21,11 +21,11 @@
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 
+import type { Payload } from "payload";
+
 import { getEnv } from "@/lib/config/env";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
-import type { Event } from "@/payload-types";
-import type { Payload } from "payload";
 
 /** Exact set of event fields {@link tryUpdateExistingEvent} overwrites — captured and restored verbatim. */
 const SNAPSHOT_FIELDS = [
@@ -141,7 +141,7 @@ export class EventSnapshotStore {
         continue;
       }
       try {
-        await asSystem(payload).update({ collection: "events", id: entry.id, data: entry.data as Partial<Event> });
+        await asSystem(payload).update({ collection: "events", id: entry.id, data: entry.data });
         restored++;
       } catch (error) {
         // The event may have been deleted independently; log and continue so one

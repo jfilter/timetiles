@@ -21,7 +21,7 @@ import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-re
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { createJobLogger, logError, logPerformance } from "@/lib/logger";
-import type { IngestFile, IngestJob } from "@/payload-types";
+import type { Dataset, IngestFile, IngestJob } from "@/payload-types";
 
 import type { CreateEventsBatchJobInput } from "../types/job-inputs";
 import type { JobHandlerContext, TaskCallbackArgs } from "../utils/job-context";
@@ -39,6 +39,7 @@ import {
   setNeedsReview,
   shouldReviewHighRowErrors,
 } from "../workflows/review-checks";
+import { EventSnapshotStore } from "./create-events-batch/event-snapshots";
 import {
   checkEventQuotaBeforeProcessing,
   cleanupPriorAttempt,
@@ -46,7 +47,6 @@ import {
   releaseReservedEventQuota,
   updateJobErrors,
 } from "./create-events-batch/job-completion";
-import { EventSnapshotStore } from "./create-events-batch/event-snapshots";
 import type { ProcessBatchContext } from "./create-events-batch/process-batch";
 import { processEventBatch } from "./create-events-batch/process-batch";
 
@@ -153,6 +153,79 @@ const finalizeCompletedStage = async (
   }
 };
 
+interface BatchRunTotals {
+  batchNumber: number;
+  totalRowsProcessed: number;
+  totalEventsCreated: number;
+  totalEventsSkipped: number;
+  totalEventsUpdated: number;
+  totalErrors: number;
+  allErrors: Array<{ row: number; error: string }>;
+}
+
+/** Stream every batch from the file, process it, and accumulate the run totals. */
+const streamAndProcessBatches = async (params: {
+  payload: Payload;
+  job: IngestJob;
+  dataset: Dataset;
+  ingestJobId: string | number;
+  filePath: string;
+  progressJob: IngestJob;
+  logger: ReturnType<typeof createJobLogger>;
+  snapshotStore?: EventSnapshotStore;
+}): Promise<BatchRunTotals> => {
+  const { payload, job, dataset, ingestJobId, filePath, progressJob, logger, snapshotStore } = params;
+  const totals: BatchRunTotals = {
+    batchNumber: 0,
+    totalRowsProcessed: 0,
+    totalEventsCreated: 0,
+    totalEventsSkipped: 0,
+    totalEventsUpdated: 0,
+    totalErrors: 0,
+    allErrors: [],
+  };
+
+  for await (const rows of streamBatchesFromFile(filePath, {
+    sheetIndex: job.sheetIndex ?? undefined,
+    batchSize: BATCH_SIZES.EVENT_CREATION,
+  })) {
+    // Re-fetch denormalized access fields per batch so an ownership / visibility
+    // change mid-import propagates to newly-written rows within one batch's
+    // latency, not on the next import.
+    const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
+    const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
+
+    const batchCtx: ProcessBatchContext = { payload, job, dataset, ingestJobId, accessFields, logger, snapshotStore };
+    const { eventsCreated, eventsSkipped, eventsUpdated, errors } = await processEventBatch(
+      batchCtx,
+      rows,
+      totals.totalRowsProcessed
+    );
+
+    totals.totalRowsProcessed += rows.length;
+    totals.totalEventsCreated += eventsCreated;
+    totals.totalEventsSkipped += eventsSkipped;
+    totals.totalEventsUpdated += eventsUpdated;
+    totals.totalErrors += errors.length;
+    if (errors.length > 0) totals.allErrors.push(...errors);
+
+    totals.batchNumber++;
+
+    // Throttle progress DB writes: only every N batches.
+    if (totals.batchNumber % PROGRESS_WRITE_INTERVAL === 0) {
+      await ProgressTrackingService.updateAndCompleteBatch(
+        payload,
+        progressJob,
+        PROCESSING_STAGE.CREATE_EVENTS,
+        totals.totalRowsProcessed,
+        totals.batchNumber
+      );
+    }
+  }
+
+  return totals;
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   retries: 1,
@@ -235,63 +308,24 @@ export const createEventsBatchJob = {
       const snapshotStore =
         readDuplicateStrategy(job) === "update" ? new EventSnapshotStore(ingestJobId, logger) : undefined;
 
-      const BATCH_SIZE = BATCH_SIZES.EVENT_CREATION;
-
-      let batchNumber = 0;
-      let totalRowsProcessed = 0;
-      let totalEventsCreated = 0;
-      let totalEventsSkipped = 0;
-      let totalEventsUpdated = 0;
-      let totalErrors = 0;
-      const allErrors: Array<{ row: number; error: string }> = [];
-
-      for await (const rows of streamBatchesFromFile(filePath, {
-        sheetIndex: job.sheetIndex ?? undefined,
-        batchSize: BATCH_SIZE,
-      })) {
-        // Re-fetch denormalized access fields per batch so an ownership /
-        // visibility change mid-import propagates to newly-written rows
-        // within one batch's latency, not on the next import.
-        const datasetWithCatalog = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
-        const accessFields = extractDenormalizedAccessFields(datasetWithCatalog);
-
-        const batchCtx: ProcessBatchContext = {
-          payload,
-          job,
-          dataset,
-          ingestJobId,
-          accessFields,
-          logger,
-          snapshotStore,
-        };
-        const { eventsCreated, eventsSkipped, eventsUpdated, errors } = await processEventBatch(
-          batchCtx,
-          rows,
-          totalRowsProcessed
-        );
-
-        totalRowsProcessed += rows.length;
-        totalEventsCreated += eventsCreated;
-        totalEventsSkipped += eventsSkipped;
-        totalEventsUpdated += eventsUpdated;
-        totalErrors += errors.length;
-        if (errors.length > 0) {
-          allErrors.push(...errors);
-        }
-
-        batchNumber++;
-
-        // Throttle progress DB writes: only every N batches
-        if (batchNumber % PROGRESS_WRITE_INTERVAL === 0) {
-          await ProgressTrackingService.updateAndCompleteBatch(
-            payload,
-            progressJob,
-            PROCESSING_STAGE.CREATE_EVENTS,
-            totalRowsProcessed,
-            batchNumber
-          );
-        }
-      }
+      const {
+        batchNumber,
+        totalRowsProcessed,
+        totalEventsCreated,
+        totalEventsSkipped,
+        totalEventsUpdated,
+        totalErrors,
+        allErrors,
+      } = await streamAndProcessBatches({
+        payload,
+        job,
+        dataset,
+        ingestJobId,
+        filePath,
+        progressJob,
+        logger,
+        snapshotStore,
+      });
 
       // Final progress write for any remaining batches since the last interval
       await writeFinalProgressIfNeeded(payload, progressJob, batchNumber, totalRowsProcessed);

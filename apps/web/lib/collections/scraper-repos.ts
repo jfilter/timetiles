@@ -11,10 +11,10 @@
 import type { CollectionConfig, PayloadRequest, Where } from "payload";
 
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
-import { hasPendingPayloadJob } from "@/lib/jobs/utils/stuck-detection";
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { hasPendingPayloadJob } from "@/lib/services/payload-job-queries";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 

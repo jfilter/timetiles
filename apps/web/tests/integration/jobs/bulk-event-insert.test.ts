@@ -121,7 +121,8 @@ describe.sequential("bulkInsertEvents — atomicity", () => {
     // reconcile them into updates instead of losing its data.
     expect(created).toBe(2);
     expect(failures).toEqual([]);
-    expect(conflicts.map((x) => x.uniqueId).sort()).toEqual([a, b].sort());
+    const byString = (x: string, y: string): number => x.localeCompare(y);
+    expect(conflicts.map((x) => x.uniqueId).sort(byString)).toEqual([a, b].sort(byString));
     expect(conflicts.map((x) => x.index).sort((x, y) => x - y)).toEqual([0, 2]);
   });
 

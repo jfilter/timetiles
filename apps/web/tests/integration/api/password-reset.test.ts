@@ -222,7 +222,7 @@ describe.sequential("Password Reset Flow", () => {
 
     const token = await payload.forgotPassword({ collection: "users", data: { email: testEmail }, disableEmail: true });
 
-    const response = await resetViaRoute(token as string, newPassword, "198.51.100.10");
+    const response = await resetViaRoute(token, newPassword, "198.51.100.10");
     expect(response.status).toBe(200);
 
     // Every pre-existing session (and the one resetPassword mints) is gone.
@@ -254,7 +254,7 @@ describe.sequential("Password Reset Flow", () => {
     // resetPassword would accept it because it never runs the policy gate. The
     // route rejects it (422 at the Zod length guard, or 400 at validatePassword
     // for a long-but-compromised password); either way it is not a 200.
-    const response = await resetViaRoute(token as string, TEST_CREDENTIALS.security.short, "198.51.100.20");
+    const response = await resetViaRoute(token, TEST_CREDENTIALS.security.short, "198.51.100.20");
     expect(response.status).not.toBe(200);
     expect(response.status).toBeGreaterThanOrEqual(400);
 
