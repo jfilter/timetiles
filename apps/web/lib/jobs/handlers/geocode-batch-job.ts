@@ -39,6 +39,7 @@ import type { JobHandlerContext } from "../utils/job-context";
 import {
   cleanupSidecarsForJob,
   createStandardOnFail,
+  getEventCreationDuplicates,
   loadIngestJob,
   loadJobResources,
   setJobStage,
@@ -114,19 +115,35 @@ const processRowForLocation = (
 const extractUniqueLocations = async (
   filePath: string,
   sheetIndex: number,
-  locationField: string | undefined,
-  locationNameField: string | undefined,
-  coordinateFields: CoordinateFields,
+  locationFields: {
+    locationField: string | undefined;
+    locationNameField: string | undefined;
+    coordinateFields: CoordinateFields;
+  },
   plan: DatasetInterpretationPlan,
+  skipRows: Set<number>,
   logger: ReturnType<typeof createJobLogger>
 ): Promise<{ uniqueLocations: Set<string>; totalRows: number; skippedWithCoords: number }> => {
+  const { locationField, locationNameField, coordinateFields } = locationFields;
   const uniqueLocations = new Set<string>();
   let totalRows = 0;
   let skippedWithCoords = 0;
 
   for await (const rows of streamBatchesFromFile(filePath, { sheetIndex, batchSize: BATCH_SIZES.DUPLICATE_ANALYSIS })) {
     const transformedRows = interpretRows(rows, plan);
-    for (const row of transformedRows) {
+    // interpretRows is 1:1 (rows.map), so transformedRows[i] is raw row i and the
+    // global row number matches create-events (globalRowOffset + index over raw
+    // rows) and analyze-duplicates (which produced skipRows). Keep the two in
+    // lockstep so we never geocode a row create-events will skip.
+    for (const [index, row] of transformedRows.entries()) {
+      const rowNumber = totalRows + index;
+      // Rows create-events will skip (internal dupes always; external dupes under
+      // the "skip" strategy) never become events — geocoding them wastes provider
+      // quota and, on a pure re-import of unchanged external dupes, can trip the
+      // "all geocoding failed" guard for events that would never be written.
+      // Update-strategy externals stay in updateRows (not skipRows) and ARE
+      // geocoded, since they are written back.
+      if (skipRows.has(rowNumber)) continue;
       const { skipped } = processRowForLocation(
         row,
         locationField,
@@ -327,13 +344,20 @@ const prepareGeocodingLocations = async (
   const filePath = getIngestFilePath(ingestFile.filename ?? "");
   const sheetIndex = typeof job.sheetIndex === "number" ? job.sheetIndex : 0;
 
+  // Rows that create-events will skip must not be geocoded — mirror its dedup
+  // decision (getEventCreationDuplicates) so the two stages stay consistent.
+  const { skipRows } = getEventCreationDuplicates(job);
+
   const { uniqueLocations, totalRows, skippedWithCoords } = await extractUniqueLocations(
     filePath,
     sheetIndex,
-    geocodingCandidate.locationField,
-    geocodingCandidate.locationNameField,
-    coordinateFields,
+    {
+      locationField: geocodingCandidate.locationField,
+      locationNameField: geocodingCandidate.locationNameField,
+      coordinateFields,
+    },
     plan,
+    skipRows,
     logger
   );
 
