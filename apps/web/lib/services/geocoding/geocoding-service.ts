@@ -123,14 +123,15 @@ export class GeocodingService {
 
       logger.debug("Geocoding settings loaded from database", { settings: this.settings });
     } catch (error) {
-      // Fallback to defaults if settings global doesn't exist or has errors
-      logger.warn("Failed to load geocoding settings from database, using defaults", { error });
-      this.settings = {
-        enabled: true,
-        fallbackEnabled: true,
-        providerSelection: { strategy: "priority", requiredTags: [] },
-        caching: { enabled: true, ttlDays: 30 },
-      };
+      // Do NOT fall back to `enabled: true` here. A missing/unconfigured global
+      // does not throw (Payload returns defaults), so this catch only fires on a
+      // real read error (e.g. transient DB failure). Defaulting to enabled would
+      // make the admin "Enable Geocoding" kill-switch fail OPEN — a transient
+      // blip would ship addresses to external providers (quota/billing/PII
+      // egress) even when an admin explicitly disabled geocoding. Rethrow so the
+      // retryable geocode-batch job retries and reads the real setting instead.
+      logger.error("Failed to load geocoding settings from database", { error });
+      throw error;
     }
   }
 }
