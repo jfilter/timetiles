@@ -212,9 +212,14 @@ const findOrCreateCatalog = async (
   resolved: DataPackageManifest,
   user: User
 ): Promise<{ catalog: Catalog; reused: boolean }> => {
+  // Scope the reuse lookup to the activating user's OWN catalogs. A bare
+  // name-only match under overrideAccess is an IDOR: a package named like a
+  // victim's private catalog would reuse it — enriching its metadata and
+  // writing a new dataset into it. Ownership scoping means a same-named foreign
+  // catalog is never touched; we create a fresh one owned by this user instead.
   const existing = await payload.find({
     collection: COLLECTION_NAMES.CATALOGS,
-    where: { name: { equals: resolved.catalog.name } },
+    where: { and: [{ name: { equals: resolved.catalog.name } }, { createdBy: { equals: user.id } }] },
     limit: 1,
     depth: 0,
     overrideAccess: true,
