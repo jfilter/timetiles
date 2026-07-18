@@ -232,92 +232,62 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
     // Skip hook processing for programmatic creation (e.g., url-fetch-job handles its own pipeline)
     if (req.context?.skipIngestFileHooks) return doc;
 
-    // FILE_UPLOADS_PER_DAY was atomically claimed in beforeValidate — no
-    // separate increment here. Clear the compensation flag so afterError
-    // does not undo a quota claim that ultimately succeeded.
-    (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = false;
+    // FILE_UPLOADS_PER_DAY was atomically claimed in beforeValidate. The
+    // afterError hook compensates that claim if the create rolls back; clear its
+    // flag only once this hook has fully succeeded, so a rethrow below still
+    // compensates the claim for a failed upload rather than leaking a slot.
+    const clearQuotaCompensation = () => {
+      (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = false;
+    };
 
     // Skip processing for duplicate imports (they're already marked as completed)
     if (doc.metadata?.urlFetch?.isDuplicate === true) {
+      clearQuotaCompensation();
       return doc;
     }
 
-    // Queue the manual-ingest workflow to process the file through the full pipeline.
+    // Queue the manual-ingest workflow to process the file through the full
+    // pipeline. Every write below runs in the file-create transaction (req is
+    // passed), so the file row, the queued job, and the jobId reconcile commit
+    // atomically: the ingest queue poller never sees a job whose owning file is
+    // not yet committed, and a rollback never strands an orphaned job.
     //
-    // Ordering (status-first, queue-second, reconcile-third):
-    // 1. Flip status to "parsing" before queueing. If this update fails we
-    //    bail out without ever queueing a job, so we cannot leak a running
-    //    workflow whose owning file is still "pending".
-    // 2. Queue the job. If this throws, mark the file "failed" and exit.
-    //    Nothing to reconcile — the job never left our process.
-    // 3. Reconcile the real jobId onto the file. This update is best-effort:
-    //    if it fails, the workflow still runs (operators can find the file
-    //    via workflow.input.ingestFileId), but the sidebar jobId column is
-    //    left blank. We accept that trade-off to avoid cancelling running
-    //    work on a transient DB hiccup.
-    try {
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_FILES,
-        id: String(doc.id),
-        req, // Pass req to stay in same transaction
-        data: { status: "parsing", uploadedAt: new Date().toISOString() },
-        context: { ...req.context, skipIngestFileHooks: true },
-      });
-    } catch (error) {
-      logger.error("Failed to mark import-file as parsing; skipping queue", error);
-      return doc;
-    }
-
-    let queuedJobId: string | undefined;
-    try {
-      // Pass `req` so the queue insert joins the parent create transaction.
-      // Without it, payload.jobs.queue() opens its own transaction that commits
-      // immediately: the ingest queue poller could pick the job up and
-      // findByID(ingestFileId) before the file row commits ("not found" → both
-      // retries burn → the file lands with no running workflow), and a parent
-      // rollback would strand an orphaned job. In-transaction, the job becomes
-      // visible only when the file commits — atomically.
-      const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) }, req });
-      queuedJobId = String(job.id);
-    } catch (error) {
-      logger.error("Failed to queue manual-ingest workflow", error);
-      try {
-        await payload.update({
-          collection: COLLECTION_NAMES.INGEST_FILES,
-          id: String(doc.id),
-          req,
-          data: {
-            status: "failed",
-            errorLog: `Failed to queue processing: ${error instanceof Error ? error.message : "Unknown error"}`,
-          },
-          context: { ...req.context, skipIngestFileHooks: true },
-        });
-      } catch (updateError) {
-        logger.error("Failed to update import-file status after queue failure", updateError);
-      }
-      return doc;
-    }
-
-    // Reconcile jobId onto the file. Best-effort: the job is queued in this same
-    // transaction and becomes runnable when the file commits, so a failure here
-    // just leaves the sidebar jobId blank (operators can still find the file via
-    // workflow.input.ingestFileId) — the workflow itself is unaffected.
+    // Because they share one transaction, a failure in ANY step poisons it —
+    // there is no valid partial state, and no in-transaction recovery is possible
+    // (a "mark failed" write would itself fail on the aborted transaction, and
+    // swallowing the error only masks the rollback while the create still fails at
+    // commit). So we log and rethrow: the upload fails atomically and the client
+    // retries. Only the physical upload file may linger briefly; the afterError
+    // hook still compensates the quota claim because we have not cleared its flag.
     try {
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_FILES,
         id: String(doc.id),
         req,
-        data: { jobId: queuedJobId },
+        data: { status: "parsing", uploadedAt: new Date().toISOString() },
+        context: { ...req.context, skipIngestFileHooks: true },
+      });
+
+      const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) }, req });
+
+      // Reconcile the real jobId onto the file for the sidebar column; in the
+      // same transaction, so it commits together with the file and the job.
+      await payload.update({
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: String(doc.id),
+        req,
+        data: { jobId: String(job.id) },
         context: { ...req.context, skipIngestFileHooks: true },
       });
     } catch (error) {
-      logger.error("Failed to reconcile jobId on import-files record; workflow still running", {
+      logger.error("Failed to start manual-ingest pipeline; failing the upload atomically", {
         ingestFileId: String(doc.id),
-        jobId: queuedJobId,
         error,
       });
+      throw error;
     }
 
+    clearQuotaCompensation();
     return doc;
   },
 ];
