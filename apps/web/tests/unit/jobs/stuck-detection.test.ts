@@ -14,15 +14,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { hasActivePayloadJob, isResourceStuck } from "@/lib/jobs/utils/stuck-detection";
 import { createMockPayload } from "@/tests/setup/factories";
 
+const expectClauseUsesKnownFields = (clause: Record<string, unknown>): void => {
+  for (const field of Object.keys(clause)) {
+    // The resource-id match is an `or` of the numeric + string representations.
+    if (field === "or") {
+      for (const nested of clause.or as Array<Record<string, unknown>>) {
+        expectClauseUsesKnownFields(nested);
+      }
+      continue;
+    }
+    const isKnownField = field.startsWith("input.") || ["processing", "hasError", "completedAt"].includes(field);
+    expect(isKnownField, `Unexpected payload-jobs query field: ${field}`).toBe(true);
+  }
+};
+
 const expectPayloadJobsQueryUsesKnownFields = (query: unknown): void => {
   const args = query as { collection?: string; where?: { and?: Array<Record<string, unknown>> } };
   expect(args.collection).toBe("payload-jobs");
 
   for (const clause of args.where?.and ?? []) {
-    for (const field of Object.keys(clause)) {
-      const isKnownField = field.startsWith("input.") || ["processing", "hasError", "completedAt"].includes(field);
-      expect(isKnownField, `Unexpected payload-jobs query field: ${field}`).toBe(true);
-    }
+    expectClauseUsesKnownFields(clause);
   }
 };
 
@@ -99,7 +110,8 @@ describe.sequential("stuck-detection utilities", () => {
         collection: "payload-jobs",
         where: {
           and: [
-            { "input.scheduledIngestId": { equals: "si-123" } },
+            // Non-numeric id → only the string form is emitted.
+            { or: [{ "input.scheduledIngestId": { equals: "si-123" } }] },
             { processing: { equals: true } },
             { hasError: { equals: false } },
             { completedAt: { exists: false } },
@@ -128,14 +140,20 @@ describe.sequential("stuck-detection utilities", () => {
       expect(result).toBe(true);
     });
 
-    it("should convert numeric resourceId to string for the query", async () => {
+    it("should match a numeric resourceId in both numeric and string form", async () => {
       mockPayload.find.mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
       await hasActivePayloadJob(mockPayload, "input.ingestJobId", 42);
 
+      // Job inputs may store the id as a JSON number OR a string; match either
+      // so the safety check isn't silently defeated by the stored type.
       expect(mockPayload.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({ and: expect.arrayContaining([{ "input.ingestJobId": { equals: "42" } }]) }),
+          where: expect.objectContaining({
+            and: expect.arrayContaining([
+              { or: [{ "input.ingestJobId": { equals: "42" } }, { "input.ingestJobId": { equals: 42 } }] },
+            ]),
+          }),
         })
       );
     });

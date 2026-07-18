@@ -12,6 +12,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { resetRateLimitService } from "@/lib/services/rate-limit-service";
 import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
@@ -641,5 +642,101 @@ describe.sequential("Scraper Collections Access Control", () => {
     expect(repos.docs).toHaveLength(0);
     expect(scrapers.docs).toHaveLength(0);
     expect(runs.docs).toHaveLength(0);
+  });
+
+  describe("auto-sync queueing", () => {
+    // Clear the in-memory SCRAPER_TRIGGER buckets between tests so the rate
+    // limit never masks what these tests actually assert (dedup / re-queue).
+    beforeEach(() => {
+      resetRateLimitService();
+    });
+
+    const countSyncJobs = async (repoId: number | string): Promise<number> => {
+      const jobs = await payload.find({
+        collection: "payload-jobs",
+        where: { taskSlug: { equals: "scraper-repo-sync" } },
+        overrideAccess: true,
+        pagination: false,
+      });
+      return jobs.docs.filter((job) => {
+        const input = job.input as { scraperRepoId?: unknown } | null | undefined;
+        return String(input?.scraperRepoId) === String(repoId);
+      }).length;
+    };
+
+    it("queues exactly one sync on create", async () => {
+      await enableScrapers();
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Sync Create", sourceType: "git", gitUrl: "https://github.com/example/sync-create.git" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      expect(await countSyncJobs(repo.id)).toBe(1);
+    });
+
+    it("does not queue a duplicate sync while one is still pending (dedup)", async () => {
+      await enableScrapers();
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Sync Dedup", sourceType: "git", gitUrl: "https://github.com/example/sync-dedup.git" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+      expect(await countSyncJobs(repo.id)).toBe(1);
+
+      // Changing a source field would normally re-trigger a sync, but the first
+      // one is still queued (no worker runs in-test) → dedup skips it.
+      await payload.update({
+        collection: "scraper-repos",
+        id: repo.id,
+        data: { gitBranch: "develop" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      expect(await countSyncJobs(repo.id)).toBe(1);
+    });
+
+    it("re-queues a sync once the previous one has completed", async () => {
+      await enableScrapers();
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Sync Requeue", sourceType: "git", gitUrl: "https://github.com/example/sync-requeue.git" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      // Mark the queued sync completed so it no longer blocks dedup.
+      const pending = await payload.find({
+        collection: "payload-jobs",
+        where: { taskSlug: { equals: "scraper-repo-sync" } },
+        overrideAccess: true,
+        pagination: false,
+      });
+      for (const job of pending.docs) {
+        await payload.update({
+          collection: "payload-jobs",
+          id: job.id,
+          data: { completedAt: new Date().toISOString() },
+          overrideAccess: true,
+        });
+      }
+
+      await payload.update({
+        collection: "scraper-repos",
+        id: repo.id,
+        data: { gitBranch: "release" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      // One completed + one fresh pending = 2 total for this repo.
+      expect(await countSyncJobs(repo.id)).toBe(2);
+    });
   });
 });
