@@ -21,6 +21,7 @@ import { getEnv } from "@/lib/config/env";
 
 import { createCommonConfig } from "../shared-fields";
 import { ingestFilesAccess } from "./access";
+import { ingestFileDownloadHandler } from "./download-handler";
 import { ingestFileFields } from "./fields";
 import {
   afterChangeHooks,
@@ -36,7 +37,13 @@ import {
 const IngestFiles: CollectionConfig = {
   slug: "ingest-files",
   ...createCommonConfig({ drafts: false }),
-  upload: { staticDir: `${getEnv().UPLOAD_DIR}/ingest-files`, mimeTypes: ALLOWED_MIME_TYPES },
+  upload: {
+    staticDir: `${getEnv().UPLOAD_DIR}/ingest-files`,
+    mimeTypes: ALLOWED_MIME_TYPES,
+    // Formula-escape CSV cells at serve time (see download-handler). Stored data
+    // stays raw for the pipeline; only human downloads are neutralized.
+    handlers: [ingestFileDownloadHandler],
+  },
   admin: {
     useAsTitle: "originalName", // Use original user-friendly filename
     defaultColumns: ["originalName", "catalog", "status", "datasetsCount", "createdAt", "user"],

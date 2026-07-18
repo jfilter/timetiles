@@ -66,6 +66,23 @@ export const escapeRowsFormulas = (rows: readonly Record<string, unknown>[]): Re
   rows.map((row) => escapeRowFormulas(row));
 
 /**
+ * Formula-escape every cell of an already-serialized CSV string.
+ *
+ * Parses the CSV as a raw 2-D grid (no header inference, so structure and column
+ * order survive exactly), applies {@link escapeCsvFormula} to each cell, and
+ * re-serializes. This is the DOWNLOAD-boundary defense: canonical ingest CSVs
+ * are stored raw (the pipeline re-parses them and a leading apostrophe would
+ * corrupt real values), so escaping happens only when a human downloads the
+ * file into a spreadsheet application (CWE-1236). An empty input yields "".
+ */
+export const escapeCsvFormulasInText = (csvText: string): string => {
+  if (csvText === "") return "";
+  const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: false });
+  const escaped = parsed.data.map((row) => (Array.isArray(row) ? row.map((cell) => escapeCsvFormula(cell)) : row));
+  return Papa.unparse(escaped);
+};
+
+/**
  * Serialize rows to a CSV string with EVERY field as a column.
  *
  * `Papa.unparse(rows)` without an explicit `columns` derives the header from the

@@ -9,7 +9,13 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { escapeCsvFormula, escapeRowFormulas, escapeRowsFormulas, unparseRowsToCsv } from "@/lib/utils/csv-escape";
+import {
+  escapeCsvFormula,
+  escapeCsvFormulasInText,
+  escapeRowFormulas,
+  escapeRowsFormulas,
+  unparseRowsToCsv,
+} from "@/lib/utils/csv-escape";
 
 describe("escapeCsvFormula", () => {
   describe("escapes dangerous leading characters", () => {
@@ -210,5 +216,38 @@ describe("unparseRowsToCsv", () => {
   it("handles a single row and empty input", () => {
     expect(headerOf(unparseRowsToCsv([{ x: "1" }]))).toBe("x");
     expect(unparseRowsToCsv([])).toBe("");
+  });
+});
+
+describe("escapeCsvFormulasInText", () => {
+  const rowsOf = (csv: string): string[] => csv.split(/\r?\n/);
+
+  it("prefixes an apostrophe to formula cells while leaving safe cells untouched", () => {
+    const input = 'name,note\nAlice,=HYPERLINK("http://evil")\nBob,hello';
+    const out = escapeCsvFormulasInText(input);
+    // The dangerous cell is neutralized (quoted because it contains a comma/paren).
+    expect(out).toContain("'=HYPERLINK");
+    // Header and benign values are unchanged.
+    expect(rowsOf(out)[0]).toBe("name,note");
+    expect(out).toContain("Bob");
+    expect(out).toContain("hello");
+  });
+
+  it("escapes the classic OWASP formula-trigger characters", () => {
+    const input = "v\n=1+1\n+1\n-1\n@SUM\nplain";
+    const out = escapeCsvFormulasInText(input);
+    expect(out).toContain("'=1+1");
+    expect(out).toContain("'+1");
+    expect(out).toContain("'-1");
+    expect(out).toContain("'@SUM");
+    // A plain value keeps no apostrophe.
+    expect(rowsOf(out).at(-1)).toBe("plain");
+  });
+
+  it("preserves row/column structure and returns '' for empty input", () => {
+    const input = "a,b,c\n1,2,3\n4,5,6";
+    const out = escapeCsvFormulasInText(input);
+    expect(rowsOf(out)).toEqual(["a,b,c", "1,2,3", "4,5,6"]);
+    expect(escapeCsvFormulasInText("")).toBe("");
   });
 });
