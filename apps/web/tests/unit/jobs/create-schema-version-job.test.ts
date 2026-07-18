@@ -63,6 +63,9 @@ vi.mock("@/lib/constants/ingest-constants", () => ({
 describe.sequential("CreateSchemaVersionJob Handler", () => {
   let mockPayload: any;
   let mockContext: JobHandlerContext;
+  // Captures the `.set(...)` args of the atomic jsonb fieldMetadata merge
+  // (payload.db.drizzle.update(datasets).set(...).where(...)).
+  let mockDrizzleSet: any;
 
   beforeEach(() => {
     // Reset all mocks
@@ -70,7 +73,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     // Mock payload — `find` resolves empty by default (no prior schema
     // version), so the handler takes the create path unless a test overrides it.
-    mockPayload = { findByID: vi.fn(), update: vi.fn(), find: vi.fn().mockResolvedValue({ docs: [] }) };
+    mockDrizzleSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+    mockPayload = {
+      findByID: vi.fn(),
+      update: vi.fn(),
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+      db: { drizzle: { update: vi.fn(() => ({ set: mockDrizzleSet })) } },
+    };
 
     // Mock context
     mockContext = {
@@ -170,13 +179,13 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
         data: { datasetSchemaVersion: "schema-version-101" },
       });
 
-      // Verify fieldMetadata and fieldTypes are synced to dataset
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "datasets",
-        id: mockDataset.id,
-        data: { fieldMetadata: mockFieldStats, fieldTypes: expect.any(Object) },
-        overrideAccess: true,
-      });
+      // fieldMetadata + fieldTypes are merged onto the dataset atomically via a
+      // jsonb `||` UPDATE (not a wholesale payload.update), so sibling sheets
+      // sharing the dataset don't clobber each other. Both columns are set.
+      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockDrizzleSet).toHaveBeenCalledWith(
+        expect.objectContaining({ fieldMetadata: expect.anything(), fieldTypes: expect.anything() })
+      );
     });
 
     it("should reuse the latest version when the schema is unchanged", async () => {

@@ -6,6 +6,7 @@
  *
  * @module
  */
+import { eq, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
@@ -17,6 +18,7 @@ import { createJobLogger, logError } from "@/lib/logger";
 import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
 import { asSystem } from "@/lib/services/system-payload";
 import { getFieldStats } from "@/lib/types/schema-detection";
+import { datasets } from "@/payload-generated-schema";
 
 import type { CreateSchemaVersionJobInput } from "../types/job-inputs";
 import { buildFieldTypes } from "../utils/event-creation-helpers";
@@ -178,14 +180,23 @@ export const createSchemaVersionJob = {
 
       logger.info("Schema version resolved", { ingestJobId, schemaVersionId: schemaVersion.id });
 
-      // Sync fieldMetadata to dataset so categorical filter UI can read it.
-      // Without this, dataset.fieldMetadata stays null and enum filters never appear.
+      // Sync this sheet's field metadata onto the dataset so the categorical
+      // filter UI can read it. Multiple sheets can map to the SAME dataset and
+      // run in parallel (see process-sheets), so a wholesale update here is
+      // last-writer-wins: each write replaced the whole object and dropped the
+      // other sheets' fields, so their enum filters vanished. Merge atomically at
+      // the DB level with the jsonb `||` operator instead — a single UPDATE with
+      // no read-modify-write race, preserving the union of field keys. isPublic
+      // and owner are untouched, so the datasets afterChange sync stays a no-op.
       if (fieldStats && Object.keys(fieldStats).length > 0) {
-        await asSystem(payload).update({
-          collection: COLLECTION_NAMES.DATASETS,
-          id: dataset.id,
-          data: { fieldMetadata: fieldStats, fieldTypes: buildFieldTypes(fieldStats) },
-        });
+        const fieldTypes = buildFieldTypes(fieldStats);
+        await payload.db.drizzle
+          .update(datasets)
+          .set({
+            fieldMetadata: sql`coalesce(${datasets.fieldMetadata}, '{}'::jsonb) || ${JSON.stringify(fieldStats)}::jsonb`,
+            fieldTypes: sql`coalesce(${datasets.fieldTypes}, '{}'::jsonb) || ${JSON.stringify(fieldTypes)}::jsonb`,
+          })
+          .where(eq(datasets.id, dataset.id));
       }
 
       // Complete CREATE_SCHEMA_VERSION stage
