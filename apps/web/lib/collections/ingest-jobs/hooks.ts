@@ -323,7 +323,14 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
 
       const resumeFrom = getResumePointForReason(doc.reviewReason);
       const input = { ingestJobId: String(doc.id), resumeFrom };
-      await req.payload.jobs.queue({ workflow: "ingest-process", input });
+      // Pass `req` so the queue insert joins the approval transaction. Without
+      // it, the resume workflow is committed in a separate transaction and the
+      // poller can start it before this update (stage/approved metadata) commits
+      // — the worker would read the pre-approval state (approved=false), skip
+      // create-schema-version, yet still geocode and create events; a parent
+      // rollback would also strand an orphaned job. In-transaction, the resume
+      // becomes visible only once the approval commits.
+      await req.payload.jobs.queue({ workflow: "ingest-process", input, req });
     }
 
     return doc;

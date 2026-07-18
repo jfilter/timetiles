@@ -270,7 +270,14 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
 
     let queuedJobId: string | undefined;
     try {
-      const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) } });
+      // Pass `req` so the queue insert joins the parent create transaction.
+      // Without it, payload.jobs.queue() opens its own transaction that commits
+      // immediately: the ingest queue poller could pick the job up and
+      // findByID(ingestFileId) before the file row commits ("not found" → both
+      // retries burn → the file lands with no running workflow), and a parent
+      // rollback would strand an orphaned job. In-transaction, the job becomes
+      // visible only when the file commits — atomically.
+      const job = await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(doc.id) }, req });
       queuedJobId = String(job.id);
     } catch (error) {
       logger.error("Failed to queue manual-ingest workflow", error);
@@ -291,7 +298,10 @@ export const afterChangeHooks: CollectionAfterChangeHook[] = [
       return doc;
     }
 
-    // Reconcile jobId — workflow is already running at this point.
+    // Reconcile jobId onto the file. Best-effort: the job is queued in this same
+    // transaction and becomes runnable when the file commits, so a failure here
+    // just leaves the sidebar jobId blank (operators can still find the file via
+    // workflow.input.ingestFileId) — the workflow itself is unaffected.
     try {
       await payload.update({
         collection: COLLECTION_NAMES.INGEST_FILES,

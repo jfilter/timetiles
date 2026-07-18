@@ -445,10 +445,11 @@ describe.sequential("afterChangeHooks", () => {
           },
         })
       );
-      // Should queue ingest-process workflow
+      // Should queue ingest-process workflow in the same transaction (req passed)
       expect(mockQueue).toHaveBeenCalledWith({
         workflow: "ingest-process",
         input: { ingestJobId: "1", resumeFrom: "detect-schema" },
+        req,
       });
     });
   });
@@ -476,10 +477,11 @@ describe.sequential("afterChangeHooks", () => {
 
       // findByID should not be called because the skip flag lookup returns undefined early
       expect(mockFindByID).not.toHaveBeenCalled();
-      // Should still queue the workflow
+      // Should still queue the workflow in the same transaction (req passed)
       expect(mockQueue).toHaveBeenCalledWith({
         workflow: "ingest-process",
         input: { ingestJobId: "1", resumeFrom: "create-schema-version" },
+        req,
       });
     });
 
