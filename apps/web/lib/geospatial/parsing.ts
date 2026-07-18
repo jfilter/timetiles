@@ -90,6 +90,14 @@ export const parseDMSFormat = (str: string): number | null => {
   const seconds = Number.parseFloat(dmsMatch[3]);
   const direction = dmsMatch[4];
 
+  // Minutes and seconds are sexagesimal — both must be in [0, 60). Without this
+  // guard, `40°99'99"N` normalizes to 41.6775 (~186 km off) and slips through
+  // because only the derived decimal is range-checked. Reject and let the value
+  // fall through to geocoding instead of trusting a malformed coordinate.
+  if (minutes >= 60 || seconds >= 60) {
+    return null;
+  }
+
   const fractional = minutes / 60 + seconds / 3600;
   const absoluteValue = Math.abs(degrees) + fractional;
 
@@ -127,6 +135,14 @@ export const parseDegreesMinutesFormat = (str: string): number | null => {
   const degrees = Number.parseFloat(dmMatch[1]);
   const minutes = Number.parseFloat(dmMatch[2]);
   const direction = dmMatch[3];
+
+  // Decimal minutes are sexagesimal — must be in [0, 60). The regex allows up to
+  // three digits, so `40°120.5'N` would otherwise normalize to a silently wrong
+  // value that passes the coarse lat/long range check. Reject instead.
+  if (minutes >= 60) {
+    return null;
+  }
+
   const absoluteValue = Math.abs(degrees) + minutes / 60;
 
   if (direction != null && direction !== "") {
