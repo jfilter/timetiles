@@ -5,8 +5,6 @@
  */
 import type { Access } from "payload";
 
-import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
-
 import { isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const ingestJobsAccess = {
@@ -33,36 +31,20 @@ export const ingestJobsAccess = {
     return await getFeatureFlagService(payload).isEnabled("enableImportCreation");
   }) as Access,
 
-  // Only import file owner, editors, or admins can update
-  update: (async ({ req, id }) => {
-    const { user } = req;
-    if (isPrivileged(user)) return true;
-
-    // Security: Check ownership of EXISTING job, not the new data being set
-    if (user && id) {
-      try {
-        const existingJob = await req.payload.findByID({ collection: "ingest-jobs", id, overrideAccess: true });
-
-        if (existingJob?.ingestFile) {
-          const ingestFileId = requireRelationId(existingJob.ingestFile, "ingestJob.ingestFile");
-          const ingestFile = await req.payload.findByID({
-            collection: "ingest-files",
-            id: ingestFileId,
-            overrideAccess: true,
-          });
-
-          if (ingestFile?.user) {
-            const userId = extractRelationId(ingestFile.user);
-            return user.id === userId;
-          }
-        }
-      } catch {
-        return false;
-      }
-    }
-
-    return false;
-  }) as Access,
+  // Only editors and admins can update via the generic REST API.
+  //
+  // Owners must NOT get generic update access: the ingest-job fields (`stage`,
+  // `schemaValidation.approved`, `dataset`, `duplicates.summary.*`, `schema`,
+  // `interpretationPlan`, ...) drive the pipeline and are only `admin.readOnly`
+  // (UI-only) — they carry no field-level write guard. A generic owner PATCH
+  // could therefore flip `stage`→needs-review then `approved`→true to force the
+  // afterChange hook to queue the workflow with a forged duplicates summary
+  // (bypassing the per-import quota check), or reassign `dataset` to an
+  // unauthorized target. Every legitimate owner mutation flows through the
+  // dedicated endpoints (`/approve`, `/reset`, `/retry`), which run via the
+  // Local API with overrideAccess — so this restriction closes the tampering
+  // surface without breaking any real flow. Owners keep read access above.
+  update: isEditorOrAdmin,
 
   // Only admins and editors can delete
   delete: isEditorOrAdmin,

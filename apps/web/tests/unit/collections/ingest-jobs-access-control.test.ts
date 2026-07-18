@@ -49,9 +49,16 @@ describe.sequential("ingestJobsAccess", () => {
     });
   });
 
+  // Update is restricted to editors/admins (isEditorOrAdmin). Owners deliberately
+  // do NOT get generic REST update access: the pipeline fields (stage,
+  // schemaValidation.approved, dataset, duplicates.summary, ...) have no
+  // field-level write guard, so a forged owner PATCH could force-approve an
+  // import (bypassing the quota check) or reassign the dataset. Every legitimate
+  // owner mutation goes through /approve, /reset, /retry (Local API +
+  // overrideAccess). See lib/collections/ingest-jobs/access-control.ts.
   describe("update", () => {
-    it("should allow privileged users", async () => {
-      mocks.isPrivileged.mockReturnValue(true);
+    it("should allow editors and admins", async () => {
+      mocks.isEditorOrAdmin.mockReturnValue(true);
       const req = { user: { id: 1, role: "admin" }, payload: {} };
 
       const result = await ingestJobsAccess.update({ req, id: 1 } as any);
@@ -59,72 +66,20 @@ describe.sequential("ingestJobsAccess", () => {
       expect(result).toBe(true);
     });
 
-    it("should allow owner of ingest file linked to the job", async () => {
-      const mockFindByID = vi
-        .fn()
-        .mockResolvedValueOnce({ ingestFile: { id: 10 } }) // findByID for ingest-job
-        .mockResolvedValueOnce({ user: { id: 42 } }); // findByID for ingest-file
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
-
-      const result = await ingestJobsAccess.update({ req, id: 1 } as any);
-
-      expect(result).toBe(true);
-    });
-
-    it("should deny when job has no ingestFile", async () => {
-      const mockFindByID = vi.fn().mockResolvedValueOnce({ ingestFile: null });
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
+    it("should deny a non-privileged user even when they own the linked ingest file", async () => {
+      mocks.isEditorOrAdmin.mockReturnValue(false);
+      const req = { user: { id: 42, role: "user" }, payload: {} };
 
       const result = await ingestJobsAccess.update({ req, id: 1 } as any);
 
       expect(result).toBe(false);
     });
 
-    it("should deny when ingest file has no user", async () => {
-      const mockFindByID = vi
-        .fn()
-        .mockResolvedValueOnce({ ingestFile: { id: 10 } })
-        .mockResolvedValueOnce({ user: null });
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
-
-      const result = await ingestJobsAccess.update({ req, id: 1 } as any);
-
-      expect(result).toBe(false);
-    });
-
-    it("should deny when findByID throws", async () => {
-      const mockFindByID = vi.fn().mockRejectedValueOnce(new Error("DB error"));
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
-
-      const result = await ingestJobsAccess.update({ req, id: 1 } as any);
-
-      expect(result).toBe(false);
-    });
-
-    it("should deny when no user and no id", async () => {
+    it("should deny anonymous requests", async () => {
+      mocks.isEditorOrAdmin.mockReturnValue(false);
       const req = { user: null, payload: {} };
 
       const result = await ingestJobsAccess.update({ req, id: undefined } as any);
-
-      expect(result).toBe(false);
-    });
-
-    it("should deny when user exists but id is missing", async () => {
-      const req = { user: { id: 42, role: "user" }, payload: {} };
-
-      const result = await ingestJobsAccess.update({ req, id: undefined } as any);
-
-      expect(result).toBe(false);
-    });
-
-    it("should deny when user does not own the ingest file", async () => {
-      const mockFindByID = vi
-        .fn()
-        .mockResolvedValueOnce({ ingestFile: { id: 10 } })
-        .mockResolvedValueOnce({ user: { id: 99 } });
-      const req = { user: { id: 42, role: "user" }, payload: { findByID: mockFindByID } };
-
-      const result = await ingestJobsAccess.update({ req, id: 1 } as any);
 
       expect(result).toBe(false);
     });
