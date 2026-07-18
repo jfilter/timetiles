@@ -11,12 +11,13 @@
 import { z } from "zod";
 
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
-import { apiRoute, ValidationError } from "@/lib/api";
+import { apiRoute, AppError, ValidationError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
+import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
-import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 
 export const POST = apiRoute({
   auth: "required",
@@ -29,6 +30,18 @@ export const POST = apiRoute({
 
     const clientId = getClientIdentifier(req);
     const { password } = body;
+
+    // Rate-limit password attempts per user. verifyPasswordWithAudit resets
+    // Payload's login lockout on each failure, so `maxLoginAttempts` does NOT
+    // bound guessing here — without this gate a stolen session could brute-force
+    // the current password unlimited times. Mirrors schedule-deletion.
+    const passwordCheck = await getRateLimitService(payload).checkConfiguredRateLimit(
+      `delete-password:${user.id}`,
+      RATE_LIMITS.DELETION_PASSWORD_ATTEMPTS
+    );
+    if (!passwordCheck.allowed) {
+      throw new AppError(429, "Too many failed password attempts. Please try again later.");
+    }
 
     // Constant-time response to prevent timing side-channels on password
     // verification. Reuses the same pad as the sibling account endpoints.
