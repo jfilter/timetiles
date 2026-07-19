@@ -32,7 +32,6 @@ import {
   createStandardOnFail,
   loadIngestJob,
   loadJobResources,
-  readDuplicateStrategy,
   setJobStage,
 } from "../utils/resource-loading";
 import {
@@ -47,6 +46,7 @@ import {
   cleanupPriorAttempt,
   markJobCompleted,
   releaseReservedEventQuota,
+  repairAbandonedImports,
   updateJobErrors,
 } from "./create-events-batch/job-completion";
 import type { ProcessBatchContext } from "./create-events-batch/process-batch";
@@ -254,10 +254,10 @@ const acquireDatasetLeaseAndRepair = async (
 ): Promise<DatasetImportLease> => {
   const lease = await acquireDatasetImportLease(payload, datasetId, logger);
   try {
-    const repair = await EventSnapshotStore.repairAbandonedSnapshots(payload, datasetId, ingestJobId, logger);
+    const repair = await repairAbandonedImports(payload, datasetId, ingestJobId, logger);
     if (repair.failures > 0) {
       throw new Error(
-        `Aborting import: ${repair.failures} snapshot(s) from a crashed prior import on dataset ${datasetId} could not be restored`
+        `Aborting import: ${repair.failures} crashed prior import(s) on dataset ${datasetId} could not be rolled back`
       );
     }
   } catch (error) {
@@ -360,7 +360,6 @@ export const createEventsBatchJob = {
       // interleave and a skip insert can't be adopted-then-stranded by a concurrent
       // update; also repair any crashed predecessor first. Different datasets never
       // contend.
-      const isUpdateStrategy = readDuplicateStrategy(job) === "update";
       datasetLease = await acquireDatasetLeaseAndRepair(payload, datasetId, ingestJobId, logger);
       // Now serialized on this dataset, so the catch may safely roll back.
       leaseHeld = true;
@@ -388,10 +387,13 @@ export const createEventsBatchJob = {
       // Check EVENTS_PER_IMPORT quota before processing
       reservedEventQuota = await checkEventQuotaBeforeProcessing(payload, ingestFile, job);
 
-      // Under the "update" strategy, existing events are overwritten in place.
-      // Snapshot their originals so a permanent failure can be rolled back
-      // (all-or-nothing); cleanupPriorAttempt / onFail restore from it.
-      const snapshotStore = isUpdateStrategy ? new EventSnapshotStore(datasetId, ingestJobId, logger) : undefined;
+      // Every import gets a snapshot store: update imports capture the originals they
+      // overwrite (so a permanent failure rolls back all-or-nothing); skip imports
+      // capture nothing but still write an empty marker via markActive so a crash
+      // leaves this import discoverable for the next holder to roll back. Mark active
+      // right before the first mutation.
+      const snapshotStore = new EventSnapshotStore(datasetId, ingestJobId, logger);
+      await snapshotStore.markActive();
 
       const {
         batchNumber,
@@ -440,7 +442,7 @@ export const createEventsBatchJob = {
       // The import succeeded, so the in-place updates are final — drop the
       // rollback snapshots. On failure we intentionally leave them for
       // cleanupPriorAttempt / onFail to restore.
-      await snapshotStore?.discard();
+      await snapshotStore.discard();
 
       cleanupSidecarFiles(filePath, sheetIndex);
       eventQuotaFinalized = true;

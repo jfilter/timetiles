@@ -10,7 +10,7 @@
 import { and, eq, gte, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createJobLogger, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -297,4 +297,69 @@ export const cleanupPriorAttempt = async (
     log.info("Cleaned up events from prior attempt", { ingestJobId, deletedTotal });
   }
   return { restoreFailed: false };
+};
+
+/**
+ * True if `jobId` reached a terminal-SUCCESS stage (completed / needs-review), so a
+ * leftover sidecar is a failed-discard remnant, not a crash to roll back. A missing
+ * job is treated as success (do NOT roll back — we can't confirm it failed, and
+ * reverting a possibly-completed import would corrupt data). A read error propagates
+ * so the caller aborts rather than guessing.
+ */
+const reachedTerminalSuccess = async (payload: Payload, jobId: string): Promise<boolean> => {
+  const result = await payload.find({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    where: { id: { equals: Number(jobId) } },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  });
+  const stage = (result.docs[0] as { stage?: string } | undefined)?.stage;
+  if (stage == null) return true; // job gone / unreadable id → don't restore
+  return stage === PROCESSING_STAGE.COMPLETED || stage === PROCESSING_STAGE.NEEDS_REVIEW;
+};
+
+/**
+ * Repair imports abandoned by OTHER jobs on this dataset before the caller mutates.
+ * A worker that crashes mid-import frees its advisory lock (Postgres drops session
+ * locks on disconnect) while its committed overwrites AND fresh inserts stay live,
+ * and its sidecar marker survives on the shared volume (every import writes one on
+ * acquire — see {@link EventSnapshotStore.markActive}). The next holder of the
+ * dataset lease calls this to fully roll each abandoned predecessor back via
+ * {@link cleanupPriorAttempt} (restore overwrites + delete fresh inserts), so it
+ * never captures a half-applied value or adopts a stranded insert.
+ *
+ * Status-aware: a sidecar from a job that already reached a terminal-SUCCESS stage
+ * (its own discard merely failed) is deleted, NOT replayed — replaying would roll
+ * back a completed import. Safe because the caller holds the dataset lease, so no
+ * other import is mid mutation; each rollback is additionally row-lock guarded.
+ *
+ * @returns the count of abandoned jobs repaired and the count that could not be
+ * fully rolled back; a non-zero `failures` tells the caller to ABORT.
+ */
+export const repairAbandonedImports = async (
+  payload: Payload,
+  datasetId: string | number,
+  currentJobId: string | number,
+  log: ReturnType<typeof createJobLogger>
+): Promise<{ repairedJobs: number; failures: number }> => {
+  const abandoned = await EventSnapshotStore.listAbandonedJobIds(datasetId, currentJobId);
+  let repairedJobs = 0;
+  let failures = 0;
+  for (const jobId of abandoned) {
+    if (await reachedTerminalSuccess(payload, jobId)) {
+      log.warn("Discarding a completed import's leftover sidecar (its own discard had failed)", {
+        datasetId,
+        abandonedJobId: jobId,
+        currentJobId,
+      });
+      await EventSnapshotStore.discard(datasetId, jobId, log);
+      continue;
+    }
+    log.warn("Repairing an abandoned prior import on this dataset", { datasetId, abandonedJobId: jobId, currentJobId });
+    const { restoreFailed } = await cleanupPriorAttempt(payload, datasetId, jobId, log);
+    if (restoreFailed) failures++;
+    else repairedJobs++;
+  }
+  return { repairedJobs, failures };
 };

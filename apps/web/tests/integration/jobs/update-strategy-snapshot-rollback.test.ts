@@ -18,6 +18,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 import { resetEnv } from "@/lib/config/env";
 import { EventSnapshotStore } from "@/lib/jobs/handlers/create-events-batch/event-snapshots";
+import { repairAbandonedImports } from "@/lib/jobs/handlers/create-events-batch/job-completion";
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { createLogger } from "@/lib/logger";
@@ -234,12 +235,7 @@ describe.sequential("update-strategy snapshot rollback", () => {
     // A different import B takes the dataset lease and repairs the abandoned
     // predecessor before it would capture anything — closing the crash fail-open gap.
     const jobB = await buildUpdateJob("crash-id", event.id);
-    const repair = await EventSnapshotStore.repairAbandonedSnapshots(
-      payload,
-      dataset.id,
-      jobB.id,
-      createLogger("snapshot-rollback-test")
-    );
+    const repair = await repairAbandonedImports(payload, dataset.id, jobB.id, createLogger("snapshot-rollback-test"));
 
     expect(repair.repairedJobs).toBe(1);
     expect(repair.failures).toBe(0);
@@ -247,5 +243,52 @@ describe.sequential("update-strategy snapshot rollback", () => {
     expect(await titleOf(event.id)).toBe("Original Title");
     // A's sidecar is cleared, so a re-run cannot replay it.
     await expect(fsPromises.access(sidecarA)).rejects.toThrow();
+  });
+
+  it("repairs a crashed SKIP import's fresh inserts via its empty marker", async () => {
+    // A skip-strategy import captures no overwrites, so its only trace is the empty
+    // marker written on acquire — plus the events it inserted before crashing.
+    const jobS = await payload.create({
+      collection: "ingest-jobs",
+      data: {
+        ingestFile: ingestFile.id,
+        dataset: dataset.id,
+        stage: "create-events",
+        sheetIndex: 0,
+        configSnapshot: { idStrategy: { duplicateStrategy: "skip" } },
+      },
+      overrideAccess: true,
+    });
+    await new EventSnapshotStore(dataset.id, jobS.id, createLogger("snapshot-rollback-test")).markActive();
+    const inserted = await payload.create({
+      collection: "events",
+      data: {
+        dataset: dataset.id,
+        sourceData: { id: "skip-crash-id" },
+        transformedData: { id: "skip-crash-id", title: "Skipped insert" },
+        uniqueId: "skip-crash-id",
+        eventTimestamp: "2026-01-01T00:00:00.000Z",
+        ingestJob: jobS.id,
+      },
+      overrideAccess: true,
+    });
+    const markerS = path.join(tmpDir, "ingest-snapshots", `ds${dataset.id}-job${jobS.id}.jsonl`);
+    await expect(fsPromises.access(markerS)).resolves.toBeUndefined();
+
+    // The next holder repairs: the marker made jobS discoverable, and cleanupPriorAttempt
+    // deletes its fresh inserts (not just overwrites).
+    const jobNext = await buildUpdateJob("other-id", inserted.id);
+    const repair = await repairAbandonedImports(
+      payload,
+      dataset.id,
+      jobNext.id,
+      createLogger("snapshot-rollback-test")
+    );
+
+    expect(repair.repairedJobs).toBe(1);
+    expect(repair.failures).toBe(0);
+    // The stranded insert is gone, and the marker is cleared.
+    await expect(payload.findByID({ collection: "events", id: inserted.id, overrideAccess: true })).rejects.toThrow();
+    await expect(fsPromises.access(markerS)).rejects.toThrow();
   });
 });

@@ -31,30 +31,30 @@
  * case where a skip import inserts an event a concurrent update adopts on conflict.
  *
  * Worker-crash safety: if A's worker dies mid-import, Postgres frees the session
- * lock immediately while A's committed overwrites stay live — the lock alone would
- * be fail-open. The durable marker that closes this is the SNAPSHOT SIDECAR itself:
- * its filename encodes the dataset (see {@link snapshotPath}) and it survives on the
- * shared volume, so the next holder of the dataset lease calls
- * {@link EventSnapshotStore.repairAbandonedSnapshots} to restore any abandoned
- * predecessor BEFORE mutating. The repair is status-aware: a sidecar from a job
- * that already reached a terminal-SUCCESS stage (its own discard merely failed) is
- * deleted, NOT replayed — replaying would roll back a completed import. A crash
- * therefore becomes "next holder repairs first" rather than "B captures a
- * half-applied value".
+ * lock immediately while A's committed overwrites AND fresh inserts stay live — the
+ * lock alone would be fail-open. The durable marker that closes this is the SIDECAR
+ * itself: EVERY import writes one on acquire ({@link markActive}) — even a skip
+ * import that captures no overwrites — and its filename encodes the dataset (see
+ * {@link snapshotPath}), so it survives on the shared volume and is discoverable per
+ * dataset. The next holder of the dataset lease calls `repairAbandonedImports`
+ * (job-completion) to fully roll each abandoned predecessor back via
+ * `cleanupPriorAttempt` (restore overwrites + delete fresh inserts) BEFORE mutating.
+ * The repair is status-aware: a sidecar from a job that already reached a
+ * terminal-SUCCESS stage (its own discard merely failed) is deleted, NOT replayed —
+ * replaying would roll back a completed import. A crash therefore becomes "next
+ * holder repairs first" rather than "B captures a half-applied value or adopts a
+ * stranded insert".
  *
- * Crash-recovery residuals (all narrow; closing them needs a heavier active-import
- * marker and/or filesystem fencing than the sidecar provides):
- * - The sidecar only exists for UPDATE imports, so a crashed pure-SKIP import
- *   leaves fresh inserts with no marker to discover; and repair reverts a crashed
- *   update's overwrites but not its fresh inserts. Both are otherwise cleaned when
- *   that job is retried (attempt-start cleanup deletes its own inserts) — the gap
- *   is only a job that crashes AND is never retried while a concurrent import
- *   adopts its insert.
+ * Residuals (both narrow):
  * - The FS write (append) and the advisory lock share no durability/visibility
  *   boundary: a host/kernel/storage crash with a lost page cache, a network-volume
  *   with delayed directory visibility, or loss of only the lease DB session (no
  *   fencing token) can let a holder miss a just-written marker. Adequate for a
  *   plain process crash on a coherent local volume, which is the realistic case.
+ * - The ownership guard keys on `ingestJob`, so a restore is correct against a
+ *   concurrent import (which replaces `ingestJob`) but would overwrite a third
+ *   party who edits an event's business fields while leaving `ingestJob` untouched
+ *   — outside the "imports own their events" invariant this code assumes.
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
  * restored exactly, and the restore is race-safe (each event is reverted under a
@@ -79,7 +79,6 @@ import { eq } from "@payloadcms/db-postgres/drizzle";
 import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { getEnv } from "@/lib/config/env";
-import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
@@ -176,6 +175,22 @@ export class EventSnapshotStore {
     this.capturedIds.add(id);
   }
 
+  /**
+   * Eagerly create the (empty) sidecar so this import is discoverable as an active
+   * holder of the dataset even BEFORE/without any overwrite capture — a crash then
+   * still leaves a marker for the next holder to repair (covers skip imports and an
+   * update import that inserted rows before its first overwrite). Call AFTER the
+   * attempt-start cleanup (so it is not immediately cleared) and BEFORE mutating.
+   */
+  async markActive(): Promise<void> {
+    if (!this.dirEnsured) {
+      await fsPromises.mkdir(snapshotsDir(), { recursive: true });
+      this.dirEnsured = true;
+    }
+    // Append "" — creates the file if missing, without truncating an existing one.
+    await fsPromises.appendFile(snapshotPath(this.datasetId, this.ingestJobId), "", "utf-8");
+  }
+
   /** Delete the snapshot sidecar — call after a successful import (updates are final). */
   async discard(): Promise<void> {
     await EventSnapshotStore.discard(this.datasetId, this.ingestJobId, this.log);
@@ -258,75 +273,34 @@ export class EventSnapshotStore {
   }
 
   /**
-   * Repair snapshots abandoned by OTHER jobs on this dataset, before the caller
-   * mutates it. A worker that crashes mid-import frees its advisory lock (Postgres
-   * drops session locks on disconnect) while its committed overwrites stay live and
-   * its sidecar survives on the shared volume. The next holder of the dataset lease
-   * calls this to restore those overwrites to their true originals, so it never
-   * captures a crashed predecessor's intermediate value — closing the worker-crash
-   * fail-open gap. It also mops up a sidecar a previous holder kept because ITS own
-   * catch/onFail restore failed (see restoreAndClear's keep-on-failure rule).
+   * List the job ids of sidecars on this dataset that belong to OTHER imports — i.e.
+   * abandoned markers from imports that already released the dataset lease (crashed,
+   * or failed to clean up). Every import writes a sidecar marker on acquire (see
+   * {@link markActive}), so this discovers crashed SKIP imports too, not just ones
+   * that captured overwrites. The caller (holding the lease) repairs each via
+   * `repairAbandonedImports`. Excludes the caller's own sidecar and any stray file.
    *
    * Safe because the caller holds the dataset lease: no other import can be mid
-   * mutation, so any sidecar for this dataset other than the caller's is from a job
-   * that already released the lock (crashed or failed to clean up). Each restore is
-   * additionally row-lock + ownership guarded.
-   *
-   * @returns the count of abandoned jobs repaired and total hard failures; a
-   * non-zero `failures` tells the caller to ABORT rather than mutate a dirty dataset.
+   * mutation, so any sidecar for this dataset other than the caller's is abandoned.
    */
-  static async repairAbandonedSnapshots(
-    payload: Payload,
-    datasetId: string | number,
-    currentJobId: string | number,
-    log: Logger
-  ): Promise<{ repairedJobs: number; failures: number }> {
+  static async listAbandonedJobIds(datasetId: string | number, currentJobId: string | number): Promise<string[]> {
     const prefix = datasetSidecarPrefix(datasetId);
     let entries: Dirent[];
     try {
       entries = await fsPromises.readdir(snapshotsDir(), { withFileTypes: true });
     } catch (error) {
       // No snapshots dir yet → nothing abandoned.
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { repairedJobs: 0, failures: 0 };
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
       throw error;
     }
 
     const currentJobIdStr = String(currentJobId);
-    let repairedJobs = 0;
-    let failures = 0;
+    const jobIds: string[] = [];
     for (const entry of entries) {
-      const abandonedJobId = EventSnapshotStore.parseSidecarJobId(entry, prefix);
-      if (abandonedJobId == null || abandonedJobId === currentJobIdStr) continue;
-
-      // Status-aware: a sidecar left by a job that already SUCCEEDED (its own
-      // discard just failed) must NOT be replayed — restoring would roll back a
-      // completed import. Only jobs that did not reach a terminal-success state get
-      // their overwrites reverted; a completed job's leftover is merely deleted.
-      if (await EventSnapshotStore.reachedTerminalSuccess(payload, abandonedJobId)) {
-        log.warn("Discarding a completed import's leftover sidecar (its discard had failed)", {
-          datasetId,
-          abandonedJobId,
-          currentJobId,
-        });
-        await EventSnapshotStore.discard(datasetId, abandonedJobId, log);
-        continue;
-      }
-
-      log.warn("Repairing snapshots abandoned by a crashed/failed prior import on this dataset", {
-        datasetId,
-        abandonedJobId,
-        currentJobId,
-      });
-      const { failures: jobFailures } = await EventSnapshotStore.restoreAndClear(
-        payload,
-        datasetId,
-        abandonedJobId,
-        log
-      );
-      if (jobFailures > 0) failures += jobFailures;
-      else repairedJobs++;
+      const jobId = EventSnapshotStore.parseSidecarJobId(entry, prefix);
+      if (jobId != null && jobId !== currentJobIdStr) jobIds.push(jobId);
     }
-    return { repairedJobs, failures };
+    return jobIds;
   }
 
   /**
@@ -340,26 +314,6 @@ export class EventSnapshotStore {
     if (!entry.isFile() || !entry.name.startsWith(prefix)) return null;
     const match = /^(\d+)\.jsonl$/.exec(entry.name.slice(prefix.length));
     return match ? match[1]! : null;
-  }
-
-  /**
-   * True if `jobId` reached a terminal-SUCCESS stage (completed / needs-review), so
-   * a leftover sidecar is a failed-discard remnant, not a crash to roll back. A
-   * missing job is treated as success (do NOT roll back — we can't confirm it
-   * failed, and reverting a possibly-completed import would corrupt data). A read
-   * error propagates so the caller aborts rather than guessing.
-   */
-  private static async reachedTerminalSuccess(payload: Payload, jobId: string): Promise<boolean> {
-    const result = await payload.find({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      where: { id: { equals: Number(jobId) } },
-      limit: 1,
-      depth: 0,
-      overrideAccess: true,
-    });
-    const stage = (result.docs[0] as { stage?: string } | undefined)?.stage;
-    if (stage == null) return true; // job gone / unreadable id → don't restore
-    return stage === PROCESSING_STAGE.COMPLETED || stage === PROCESSING_STAGE.NEEDS_REVIEW;
   }
 }
 

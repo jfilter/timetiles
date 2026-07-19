@@ -17,17 +17,9 @@ import { EventSnapshotStore } from "@/lib/jobs/handlers/create-events-batch/even
 
 const log = { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() } as never;
 
-/** Minimal payload mock: `capture`'s findByID plus `find` for ingest-job stage lookups
- * (repairAbandonedSnapshots). `jobStages` maps jobId → stage; an absent id → no docs. */
-const makeMockPayload = (events: Map<number, Record<string, unknown>>, jobStages: Map<number, string> = new Map()) =>
-  ({
-    findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null),
-    find: ({ where }: { where?: { id?: { equals?: number } } }) => {
-      const id = where?.id?.equals;
-      const stage = id == null ? undefined : jobStages.get(Number(id));
-      return Promise.resolve({ docs: stage == null ? [] : [{ id, stage }] });
-    },
-  }) as never;
+/** Minimal payload mock supporting only `capture`'s findByID. */
+const makeMockPayload = (events: Map<number, Record<string, unknown>>) =>
+  ({ findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null) }) as never;
 
 const DATASET_ID = 99;
 
@@ -98,42 +90,30 @@ describe.sequential("EventSnapshotStore (file-level)", () => {
     await expect(fsPromises.access(snapshotFile("55"))).resolves.toBeUndefined();
   });
 
-  it("repairAbandonedSnapshots targets only this dataset's OTHER numeric-job sidecars", async () => {
-    await writeSidecar("88", "not-json\n"); // ds99-job88 — crashed predecessor, unparseable → failure, kept
-    await writeSidecar("42", "not-json\n"); // ds99-job42 — the current job, must be skipped
-    await writeSidecar("5", "not-json\n", 77); // ds77-job5 — different dataset, must be ignored
-    await writeSidecar("backup", "not-json\n"); // ds99-jobbackup — non-numeric, must be ignored (stray file)
-
-    // Job 88 crashed (non-terminal stage) → its overwrites get reverted.
-    const payload = makeMockPayload(new Map(), new Map([[88, "create-events"]]));
-    const result = await EventSnapshotStore.repairAbandonedSnapshots(payload, DATASET_ID, "42", log);
-
-    // Only job 88 was processed (1 unparseable line → 1 failure); it is kept for retry.
-    expect(result.failures).toBe(1);
-    expect(result.repairedJobs).toBe(0);
-    await expect(fsPromises.access(snapshotFile("88"))).resolves.toBeUndefined(); // kept (restore failed)
-    await expect(fsPromises.access(snapshotFile("42"))).resolves.toBeUndefined(); // current job untouched
-    await expect(fsPromises.access(snapshotFile("5", 77))).resolves.toBeUndefined(); // other dataset untouched
-    await expect(fsPromises.access(snapshotFile("backup"))).resolves.toBeUndefined(); // stray file untouched
+  it("markActive creates an empty sidecar marker (discoverable even without overwrites)", async () => {
+    const store = new EventSnapshotStore(DATASET_ID, "77", log);
+    await store.markActive();
+    // Empty file exists → a crashed skip import is still discoverable.
+    expect(await fsPromises.readFile(snapshotFile("77"), "utf-8")).toBe("");
   });
 
-  it("repairAbandonedSnapshots deletes a completed job's leftover sidecar WITHOUT restoring", async () => {
-    // A sidecar from a job that already reached a terminal-success stage (its own
-    // discard failed) must be dropped, not replayed — replaying would roll back a
-    // completed import.
-    await writeSidecar("90", '{"id":1,"data":{}}\n');
-    const payload = makeMockPayload(new Map(), new Map([[90, "completed"]]));
-
-    const result = await EventSnapshotStore.repairAbandonedSnapshots(payload, DATASET_ID, "1", log);
-
-    expect(result).toEqual({ repairedJobs: 0, failures: 0 });
-    // Sidecar deleted (and no restore attempted — the event Map is empty, so a
-    // restore would have been a visible no-op on findByID; the point is deletion).
-    await expect(fsPromises.access(snapshotFile("90"))).rejects.toThrow();
+  it("markActive does not truncate an existing sidecar", async () => {
+    await writeSidecar("78", '{"id":1,"data":{}}\n');
+    const store = new EventSnapshotStore(DATASET_ID, "78", log);
+    await store.markActive();
+    expect(await fsPromises.readFile(snapshotFile("78"), "utf-8")).toBe('{"id":1,"data":{}}\n');
   });
 
-  it("repairAbandonedSnapshots is a no-op when the snapshots dir does not exist", async () => {
-    const result = await EventSnapshotStore.repairAbandonedSnapshots(makeMockPayload(new Map()), DATASET_ID, "1", log);
-    expect(result).toEqual({ repairedJobs: 0, failures: 0 });
+  it("listAbandonedJobIds returns this dataset's OTHER numeric-job sidecars only", async () => {
+    await writeSidecar("88", ""); // ds99-job88 — abandoned marker (e.g. a crashed skip import)
+    await writeSidecar("42", ""); // ds99-job42 — the current job, excluded
+    await writeSidecar("5", "", 77); // ds77-job5 — different dataset, excluded
+    await writeSidecar("backup", ""); // ds99-jobbackup — non-numeric stray file, excluded
+
+    expect(await EventSnapshotStore.listAbandonedJobIds(DATASET_ID, "42")).toEqual(["88"]);
+  });
+
+  it("listAbandonedJobIds is empty when the snapshots dir does not exist", async () => {
+    expect(await EventSnapshotStore.listAbandonedJobIds(DATASET_ID, "1")).toEqual([]);
   });
 });
