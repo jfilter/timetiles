@@ -6,8 +6,8 @@
 
 import type { EChartsReactProps } from "echarts-for-react";
 import ReactEChartsLib from "echarts-for-react";
-import { useEffect, useRef } from "react";
 import * as React from "react";
+import { useEffect, useRef } from "react";
 
 // Type the ReactECharts component properly for strict TypeScript
 // Add ref support to the props

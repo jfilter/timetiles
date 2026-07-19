@@ -65,8 +65,13 @@ export default [
       "react/no-unescaped-entities": "error",
       "react/no-children-prop": "error",
 
-      // @eslint-react rules for modern React patterns (v2)
-      "@eslint-react/no-useless-forward-ref": "error",
+      // @eslint-react rules for modern React patterns (v5)
+      // v5 dropped `no-useless-forward-ref` (which flagged only forwardRef that ignored the ref)
+      // in favour of `no-forward-ref`, which flags EVERY use: React 19 passes ref as a normal prop,
+      // so forwardRef is obsolete. That is a stricter check than the one it replaced and ~44 files
+      // still use forwardRef, so it is a "warn" here — dropping to React-19 refs is a separate
+      // codebase migration, not part of a dependency bump.
+      "@eslint-react/no-forward-ref": "warn",
       "@eslint-react/no-access-state-in-setstate": "error",
       "@eslint-react/no-array-index-key": "warn",
       "@eslint-react/no-children-count": "warn",
@@ -84,11 +89,14 @@ export default [
       "@eslint-react/no-implicit-key": "error",
       "@eslint-react/no-missing-key": "error",
       "@eslint-react/no-nested-component-definitions": "error",
-      "@eslint-react/no-redundant-should-component-update": "error",
+      // Dropped by @eslint-react v5 as a legacy class-component concern; kept via the
+      // equivalent eslint-plugin-react rule so the check is not silently lost.
+      "react/no-redundant-should-component-update": "error",
       "@eslint-react/no-set-state-in-component-did-mount": "warn",
       "@eslint-react/no-set-state-in-component-did-update": "warn",
       "@eslint-react/no-set-state-in-component-will-update": "error",
-      "@eslint-react/no-string-refs": "error",
+      // Same: v5 dropped it (React 19 removed string refs outright); kept via eslint-plugin-react.
+      "react/no-string-refs": "error",
       "@eslint-react/no-unsafe-component-will-mount": "error",
       "@eslint-react/no-unsafe-component-will-receive-props": "error",
       "@eslint-react/no-unsafe-component-will-update": "error",

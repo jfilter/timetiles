@@ -160,6 +160,14 @@ export default [
       // to root-path) so files directly inside a layer folder (e.g. lib/ingest/x.ts)
       // are classified, not just files in sub-folders. The first matching element
       // wins, so more specific layers are listed before the catch-alls.
+      //
+      // DO NOT follow boundaries v7's deprecation hint to replace this with
+      // `partialMatch: false`. It is NOT equivalent: with `partialMatch` the elements stop
+      // being classified, every layer rule finds nothing, and the architecture checks pass
+      // vacuously — no error, no warning, just silently inert. Verified empirically against a
+      // known violation (apps/web/lib/geospatial/patterns.ts), which is reported with
+      // `mode: "full"` and NOT reported with `partialMatch: false`. The deprecation warning is
+      // accepted for now; see https://github.com/jfilter/timetiles/issues/165
       "boundaries/elements": [
         // Composition root — the Payload config assembly wires collections, jobs,
         // globals and migrations together, so it is allowed to import anything.
@@ -300,11 +308,12 @@ export default [
       "import/order": "off",
 
       // Boundaries (Monorepo Architecture + Layered lib/ Architecture)
-      "boundaries/element-types": [
+      "boundaries/dependencies": [
         "error",
         {
           default: "disallow",
-          rules: [
+          // `policies` is the boundaries v7 name for what v6 called `rules`.
+          policies: [
             // Composition root assembles the whole app — it may import anything.
             { from: "web-config", allow: "*" },
             // Apps can use their own modules and packages, but not other apps.
@@ -350,7 +359,7 @@ export default [
           ],
         },
       ],
-      "boundaries/external": ["error", { default: "allow", rules: [] }],
+      "boundaries/external": ["error", { default: "allow", policies: [] }],
 
       // Unicorn
       "unicorn/filename-case": [
