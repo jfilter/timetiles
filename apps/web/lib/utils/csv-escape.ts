@@ -70,8 +70,13 @@ const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
 // A spreadsheet may split the file on any of these depending on locale/config, so
 // a trigger sitting right after one of them (or at a line/file start, or just
 // inside a quote opened at such a start) could become a formula regardless of
-// which delimiter the file "really" uses.
-const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|"]);
+// which delimiter the file "really" uses. Includes:
+// - `,` `;` `\t` `|` — the common locale delimiters.
+// - `\x1e` (RS) `\x1f` (US) — Papa auto-detects these too, so an importer could
+//   read them as delimiters.
+// - U+FEFF (BOM) — a spreadsheet strips a leading BOM, making whatever follows
+//   the logical first cell, so a `<BOM>=formula` must still be escaped.
+const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|", "\x1e", "\x1f", "﻿"]);
 
 const isFieldBoundary = (char: string | undefined): boolean => char === undefined || FIELD_BOUNDARIES.has(char);
 

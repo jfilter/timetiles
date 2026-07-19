@@ -285,6 +285,17 @@ describe("escapeCsvFormulasInText", () => {
     expect(out).toContain(",'=1+1");
   });
 
+  it("escapes a formula that a stripped BOM would expose as the first cell", () => {
+    // A spreadsheet drops the leading BOM, so `<BOM>=1+1` becomes cell A1 = =1+1.
+    expect(escapeCsvFormulasInText("﻿=1+1,x")).toBe("﻿'=1+1,x");
+    expect(escapeCsvFormulasInText('﻿"=1+1",x')).toBe('﻿"\'=1+1",x');
+  });
+
+  it("escapes formulas after RS/US separators that Papa also auto-detects", () => {
+    expect(escapeCsvFormulasInText("name\x1fvalue\nx\x1f=1+1")).toContain("\x1f'=1+1");
+    expect(escapeCsvFormulasInText("a\x1e=b")).toBe("a\x1e'=b");
+  });
+
   it("chains correctly across streamed chunks via the carry", () => {
     // A boundary char at the end of one chunk + a trigger at the start of the
     // next must still be escaped.

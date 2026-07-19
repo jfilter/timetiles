@@ -14,7 +14,13 @@ import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credential
 
 const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockIsEnabled: vi.fn() }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+  // queueScraperRepoSync uses these; stub so it runs without a real transaction.
+  initTransaction: vi.fn().mockResolvedValue(false),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
@@ -36,6 +42,9 @@ const createMockPayload = () => ({
   auth: vi.fn().mockResolvedValue({ user: mockUser }),
   findByID: vi.fn(),
   jobs: { queue: vi.fn().mockResolvedValue({ id: "job-sync-1" }) },
+  // queueScraperRepoSync wraps the enqueue in a transaction; returning no id from
+  // beginTransaction makes initTransaction a no-op (runs without a transaction).
+  db: { beginTransaction: vi.fn().mockResolvedValue(null) },
 });
 
 const createRequest = () =>
@@ -101,7 +110,9 @@ describe.sequential("POST /api/scraper-repos/[id]/sync", () => {
     const data = await response.json();
     expect(data.message).toBe("Repository sync queued");
 
-    expect(mockPayload.jobs.queue).toHaveBeenCalledWith({ task: "scraper-repo-sync", input: { scraperRepoId: 5 } });
+    expect(mockPayload.jobs.queue).toHaveBeenCalledWith(
+      expect.objectContaining({ task: "scraper-repo-sync", input: { scraperRepoId: 5 } })
+    );
   });
 
   it("allows admin to sync any repo regardless of ownership", async () => {

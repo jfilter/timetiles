@@ -255,6 +255,14 @@ const ScraperRepos: CollectionConfig = {
       async ({ doc, previousDoc, operation, req }) => {
         if (req.context?.seed) return doc;
 
+        // Clear the create-quota claim BEFORE the fallible queue: the quota
+        // increment runs in this same transaction, so a queue failure rolls it
+        // back on its own. Leaving the claim set would make afterError decrement
+        // a second time (double-compensation) on top of that rollback.
+        if (operation === "create") {
+          clearScraperRepoQuotaClaim(req);
+        }
+
         // Auto-trigger repo sync on create, or on update when source fields change
         const shouldSync =
           operation === "create" ||
@@ -263,15 +271,8 @@ const ScraperRepos: CollectionConfig = {
               doc.gitBranch !== previousDoc?.gitBranch ||
               JSON.stringify(doc.code) !== JSON.stringify(previousDoc?.code)));
 
-        // Queue the sync BEFORE clearing the create-quota claim: enqueuing can
-        // throw (it now runs in the PATCH transaction), and if it does the claim
-        // must still be set so afterError compensates the reserved quota.
         if (shouldSync) {
           await maybeQueueRepoSync({ repoId: doc.id, operation, req });
-        }
-
-        if (operation === "create") {
-          clearScraperRepoQuotaClaim(req);
         }
 
         return doc;

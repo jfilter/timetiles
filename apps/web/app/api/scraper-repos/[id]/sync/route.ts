@@ -10,7 +10,7 @@
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { loadManageableScraperRepo } from "@/lib/api/scraper-helpers";
+import { loadManageableScraperRepo, queueScraperRepoSync } from "@/lib/api/scraper-helpers";
 
 export const POST = apiRoute({
   auth: "required",
@@ -20,8 +20,9 @@ export const POST = apiRoute({
   handler: async ({ user, payload, params }) => {
     const repo = await loadManageableScraperRepo(payload, user, params.id);
 
-    // Queue sync job
-    await payload.jobs.queue({ task: "scraper-repo-sync", input: { scraperRepoId: repo.id } });
+    // Atomic queue: the sync task supersedes older pending jobs (delete + insert),
+    // so a bare non-transactional enqueue could drop the only pending sync.
+    await queueScraperRepoSync(payload, repo.id);
 
     return { message: "Repository sync queued" };
   },
