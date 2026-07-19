@@ -66,7 +66,9 @@
       "ajv@8": "^8.20.0",
       "uuid@11": "^11.1.1",
       "uuid@13": "^13.0.1",
-      "yaml@2": "^2.8.3"
+      "yaml@2": "^2.8.3",
+      "nextra>zod": "^4.3.6",
+      "nextra-theme-docs>zod": "^4.3.6"
     },
     "onlyBuiltDependencies": [
       "esbuild",
