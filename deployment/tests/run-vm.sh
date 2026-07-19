@@ -143,7 +143,13 @@ fi
 if $SHELL_MODE; then
     if vm_running; then
         print_header "Connecting to VM"
-        limactl shell --workdir "$GUEST_DEPLOY" "$VM_NAME"
+        # Land in the deployment dir when there is one. On a VM that has been
+        # created but never run, nothing has been synced yet and cd would fail.
+        shell_workdir="/"
+        if vm_sudo "test -d $GUEST_DEPLOY" 2>/dev/null; then
+            shell_workdir="$GUEST_DEPLOY"
+        fi
+        limactl shell --workdir "$shell_workdir" "$VM_NAME"
         exit 0
     else
         echo -e "${RED}Error: VM not running. Run without --shell first.${NC}"

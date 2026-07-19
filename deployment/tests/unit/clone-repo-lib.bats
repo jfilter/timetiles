@@ -100,12 +100,34 @@ run_ensure_symlink() {
 # ensure_install_dirs
 # =============================================================================
 
-@test "ensure_install_dirs creates backups inside the symlinked install dir" {
-    skip_if_not_root
+# ensure_dir chowns, so calling it for real would need root — and the suite runs
+# as the timetiles user in the VM and as an unprivileged user on the host, so a
+# root-gated test here would never actually execute anywhere. Stub ensure_dir
+# and assert the contract instead: which directories get created, and how.
+@test "ensure_install_dirs creates backups owned by the app user, mode 750" {
+    local calls=()
+    ensure_dir() { calls+=("$1|$2|$3"); }
 
-    ensure_symlink "$INSTALL_DIR" "$SRC_DIR"
-    ensure_install_dirs "$INSTALL_DIR" "root"
+    ensure_install_dirs "/opt/timetiles" "timetiles"
 
-    # Resolves through the symlink into the real working tree
-    assert_dir_exists "$SRC_DIR/deployment/backups"
+    [ "${#calls[@]}" -eq 1 ]
+    [ "${calls[0]}" = "/opt/timetiles/backups|timetiles:timetiles|750" ]
+}
+
+# Anything created inside the install dir lands in a real git working tree, so
+# it must be covered by deployment/.gitignore or `timetiles update` breaks.
+@test "ensure_install_dirs only creates gitignored paths" {
+    local calls=()
+    ensure_dir() { calls+=("$1"); }
+
+    ensure_install_dirs "/opt/timetiles" "timetiles"
+
+    # Guard against passing vacuously if the loop below has nothing to check
+    [ "${#calls[@]}" -gt 0 ]
+
+    for call in "${calls[@]}"; do
+        local relative="${call#/opt/timetiles/}"
+        grep -qx "${relative}/" "$DEPLOY_DIR/.gitignore" \
+            || { echo "Not gitignored in deployment/.gitignore: $relative"; return 1; }
+    done
 }
