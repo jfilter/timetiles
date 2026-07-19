@@ -12,7 +12,7 @@ import { createWriteStream } from "node:fs";
 import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import archiver from "archiver";
+import { type Archiver, ZipArchive } from "archiver";
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
@@ -530,7 +530,7 @@ export class DataExportService {
 
     return new Promise((resolve, reject) => {
       const output = createWriteStream(outputPath);
-      const archive = archiver("zip", { zlib: { level: 6 } });
+      const archive = new ZipArchive({ zlib: { level: 6 } });
 
       output.on("close", () => {
         void (async () => {
@@ -590,10 +590,7 @@ export class DataExportService {
   /**
    * Add events and media files to archive.
    */
-  private async addEventsAndMediaToArchive(
-    archive: archiver.Archiver,
-    baseData: Omit<ExportData, "events">
-  ): Promise<void> {
+  private async addEventsAndMediaToArchive(archive: Archiver, baseData: Omit<ExportData, "events">): Promise<void> {
     // Get dataset IDs for events
     const datasetIds = baseData.datasets.map((d) => d.id);
 

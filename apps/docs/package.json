@@ -27,7 +27,7 @@
     "@svgr/webpack": "catalog:",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@types/node": "^25.9.5",
+    "@types/node": "^26.1.1",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",

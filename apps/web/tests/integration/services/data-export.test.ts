@@ -12,7 +12,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -214,6 +214,35 @@ describe.sequential("Data Export Service", () => {
 
       expect(data.exportedAt).toBeDefined();
       expect(data.version).toBe("1.0");
+    });
+  });
+
+  describe("createArchive", () => {
+    it("should write a readable ZIP containing the exported collections", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const userId = users.testUser.id;
+
+      const baseData = await exportService.fetchAllUserData(userId);
+      const summary = await exportService.getExportSummary(userId);
+
+      const { filePath, fileSize } = await exportService.createArchive(1, userId, baseData, summary);
+
+      expect(existsSync(filePath)).toBe(true);
+      expect(fileSize).toBeGreaterThan(0);
+
+      const bytes = await readFile(filePath);
+      expect(bytes.byteLength).toBe(fileSize);
+      // ZIP local-file-header and end-of-central-directory signatures. Asserting the real
+      // container format is what catches an archiver API change silently producing garbage.
+      expect(bytes.subarray(0, 4)).toEqual(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+      expect(bytes.includes(Buffer.from([0x50, 0x4b, 0x05, 0x06]))).toBe(true);
+      // Entry names are stored uncompressed in the headers, so they are greppable.
+      for (const entry of ["manifest.json", "profile.json", "catalogs.json", "datasets.json"]) {
+        expect(bytes.includes(Buffer.from(entry))).toBe(true);
+      }
+
+      await rm(filePath, { force: true });
     });
   });
 
