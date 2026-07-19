@@ -283,6 +283,9 @@ test.describe("scheduled ingest - Create, Run, Edit, Run", () => {
     expect(schedule.statistics?.successfulRuns).toBeGreaterThanOrEqual(3);
   });
 
+  // Teardown step, not a test: it only releases the fixture. It cannot move to test.afterAll
+  // because Playwright does not expose the test-scoped `request` fixture to that hook.
+  // eslint-disable-next-line sonarjs/assertions-in-tests -- see above
   test("cleanup: delete scheduled ingest", async ({ request }) => {
     if (scheduledIngestId) {
       await request.delete(`${baseUrl}/api/scheduled-ingests/${scheduledIngestId}`, {

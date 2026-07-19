@@ -11,6 +11,12 @@
  * oxlint already handles, enabling a hybrid linting approach (oxlint for speed + ESLint
  * for specialized plugins).
  *
+ * VERSION LOCKSTEP: eslint-plugin-oxlint declares a `~X.Y.0` peer on oxlint and is
+ * published one minor BEHIND the linter, so the newest oxlint is routinely unusable.
+ * `oxlint` is therefore tilde-pinned in the root package.json to the minor the plugin
+ * supports — do not widen it to `^` or chase oxlint's latest, or install breaks the peer.
+ * Both packages appear in the root package.json AND in this package: bump them together.
+ *
  * @module
  */
 import { dirname, resolve } from "node:path";

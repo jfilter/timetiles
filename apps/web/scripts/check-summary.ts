@@ -226,7 +226,7 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
     const lines = output.split("\n");
 
     // Enhanced pattern to catch both errors and warnings
-    // eslint-disable-next-line sonarjs/slow-regex, regexp/no-super-linear-backtracking
+    // eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex, regexp/no-super-linear-backtracking
     const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
     let currentError: TypeScriptError | null = null;
     let warningCount = 0;

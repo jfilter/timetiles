@@ -39,7 +39,7 @@ export interface UrlFetchJobInput {
   scheduledIngestId?: number;
   // Direct URL fetch parameters
   sourceUrl: string;
-  authConfig?: ScheduledIngest["authConfig"];
+  authConfig?: Exclude<ScheduledIngest["authConfig"], undefined>;
   catalogId?: number | string;
   originalName: string;
   userId?: number | string;

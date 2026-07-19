@@ -2,27 +2,32 @@ packages:
   - "apps/*"
   - "packages/*"
 
+# NOTE: `pnpm update` rewrites this file and strips every comment. After running it,
+# restore this header and the pin rationales below from git before committing.
 catalog:
   # Core framework
-  react: ^19.2.6
-  react-dom: ^19.2.6
+  react: ^19.2.7
+  react-dom: ^19.2.7
   next: ^16.1.6
   next-themes: ^0.4.6
-  zod: ^4.3.6
+  zod: ^4.4.3
   # Type definitions
-  "@types/react": ^19.2.15
+  "@types/react": ^19.2.17
   "@types/react-dom": ^19.2.3
   "@types/node": ^25.9.1
   # Build tooling
   typescript: ^5.9.3
-  eslint: ^9.39.2
-  tsx: ^4.22.3
+  eslint: ^9.39.5
+  tsx: ^4.23.1
   "@svgr/webpack": ^8.1.0
   # Testing
-  # Pinned to 4.0.18 — vitest 4.1.x has test-isolation/fake-timer regressions
+  # Pinned to 4.0.18 — vitest 4.1.x has test-isolation/fake-timer regressions.
   # See PR #121 follow-up: needs investigation before bumping further.
+  # The whole vitest family must hold this pin together: @vitest/ui declares a
+  # strict `vitest@=X` peer, so letting it float to 4.1.x breaks the install.
   vitest: 4.0.18
   "@vitest/coverage-v8": 4.0.18
+  "@vitest/ui": 4.0.18
   # Charting
   echarts: ^6.1.0
   echarts-for-react: ^3.0.6

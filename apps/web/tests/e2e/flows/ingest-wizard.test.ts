@@ -435,7 +435,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Response should have datasets object with 3 entries (keyed by sheet index)
     expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
-    expect(datasetIds.length).toBe(3);
+    expect(datasetIds).toHaveLength(3);
 
     // Step 5: Processing page is shown
     const processingIndicator = page.getByText(/importing your data/i);
@@ -467,7 +467,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     );
     expect(catalogsResponse.ok()).toBe(true);
     const catalogsData = await catalogsResponse.json();
-    expect(catalogsData.docs.length).toBe(1);
+    expect(catalogsData.docs).toHaveLength(1);
 
     const createdCatalogId = catalogsData.docs[0].id;
 
@@ -477,7 +477,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     );
     expect(datasetsResponse.ok()).toBe(true);
     const datasetsData = await datasetsResponse.json();
-    expect(datasetsData.docs.length).toBe(3);
+    expect(datasetsData.docs).toHaveLength(3);
 
     // Verify dataset names match sheet names
     const datasetNames = datasetsData.docs.map((d: { name: string }) => d.name);
@@ -605,7 +605,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     // Response should have datasets object with 3 entries (keyed by sheet index)
     expect(responseBody.datasets).not.toBeNull();
     const datasetIds = Object.values(responseBody.datasets);
-    expect(datasetIds.length).toBe(3);
+    expect(datasetIds).toHaveLength(3);
 
     // Step 5: Processing page is shown
     const processingIndicator = page.getByText(/importing your data/i);
@@ -637,7 +637,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     );
     expect(catalogsResponse.ok()).toBe(true);
     const catalogsData = await catalogsResponse.json();
-    expect(catalogsData.docs.length).toBe(1);
+    expect(catalogsData.docs).toHaveLength(1);
 
     const createdCatalogId = catalogsData.docs[0].id;
 
@@ -647,7 +647,7 @@ test.describe("Import Wizard - Multi-Sheet Excel", () => {
     );
     expect(datasetsResponse.ok()).toBe(true);
     const datasetsData = await datasetsResponse.json();
-    expect(datasetsData.docs.length).toBe(3);
+    expect(datasetsData.docs).toHaveLength(3);
 
     // Verify dataset names match sheet names
     const datasetNames = datasetsData.docs.map((d: { name: string }) => d.name);

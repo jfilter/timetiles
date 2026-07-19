@@ -88,7 +88,7 @@ test.describe("Explore Page - Filtering", () => {
     expect(params.has("datasets")).toBe(true);
     // Only one dataset should be selected
     const ids = params.get("datasets")?.split(",") ?? [];
-    expect(ids.length).toBe(1);
+    expect(ids).toHaveLength(1);
   });
 
   test("should filter by multiple datasets", async () => {
@@ -101,7 +101,7 @@ test.describe("Explore Page - Filtering", () => {
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
     const ids = params.get("datasets")?.split(",") ?? [];
-    expect(ids.length).toBe(2);
+    expect(ids).toHaveLength(2);
   });
 
   test("should filter by date range", async ({ page }) => {
@@ -197,7 +197,7 @@ test.describe("Explore Page - Filtering", () => {
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
     const ids = params.get("datasets")?.split(",") ?? [];
-    expect(ids.length).toBe(1);
+    expect(ids).toHaveLength(1);
     expect(ids).not.toEqual(initialIds);
   });
 

@@ -41,7 +41,7 @@ export const MAX_REGEX_PATTERN_LENGTH = 1000;
  * Runs against patterns already length-capped to MAX_REGEX_PATTERN_LENGTH
  * (1000), so worst-case work is bounded.
  */
-// eslint-disable-next-line sonarjs/slow-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
+// eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
 const NESTED_QUANTIFIER_RE = /\((?:\?:)?[^)]*?(?:[+*]|\{\d+,\d*\})\)[+*?]/;
 
 /**
@@ -54,9 +54,9 @@ const NESTED_QUANTIFIER_RE = /\((?:\?:)?[^)]*?(?:[+*]|\{\d+,\d*\})\)[+*?]/;
  */
 // Both regexes scan inputs already capped at MAX_REGEX_PATTERN_LENGTH, so
 // their worst-case work is bounded. The linter can't reason about the cap.
-// eslint-disable-next-line sonarjs/slow-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
+// eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
 const QUANTIFIED_GROUP_RE = /\((?:\?:)?([^)]*)\)[+*?]/g;
-// eslint-disable-next-line sonarjs/slow-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
+// eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex -- Detector regex; input bounded by MAX_REGEX_PATTERN_LENGTH
 const QUANTIFIED_ALT_INTERIOR_RE = /[+*][^|]*\|[^|]*[+*]/;
 
 const hasAmbiguousAlternation = (pattern: string): boolean => {

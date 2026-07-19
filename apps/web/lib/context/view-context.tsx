@@ -35,7 +35,7 @@ interface ViewContextValue {
   filterConfig: {
     mode: "auto" | "manual" | "disabled";
     maxFilters: number;
-    fields?: NonNullable<View["filterConfig"]>["fields"];
+    fields?: Exclude<NonNullable<View["filterConfig"]>["fields"], undefined>;
     defaultFilters?: Record<string, string[]>;
   };
 

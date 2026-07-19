@@ -32,7 +32,7 @@ const stripFields = (records: Record<string, unknown>[], fields: string[]): Reco
 
 export interface FetchRemoteDataOptions {
   sourceUrl: string;
-  authConfig?: ScheduledIngest["authConfig"];
+  authConfig?: Exclude<ScheduledIngest["authConfig"], undefined>;
   /** Timeout in milliseconds. Default: 60_000 (1 minute). */
   timeout?: number;
   /** Max response size in bytes. */

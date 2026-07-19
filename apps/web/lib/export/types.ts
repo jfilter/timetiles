@@ -95,9 +95,9 @@ export type DatasetExportData = Pick<
  */
 export type EventExportData = Pick<Event, "id" | "eventTimestamp" | "transformedData" | "createdAt" | "updatedAt"> & {
   datasetId: number;
-  location?: Event["location"] | null;
-  geocodingStatus?: NonNullable<Event["geocodingInfo"]>["geocodingStatus"];
-  validationStatus?: Event["validationStatus"];
+  location?: Exclude<Event["location"], undefined> | null;
+  geocodingStatus?: Exclude<NonNullable<Event["geocodingInfo"]>["geocodingStatus"], undefined>;
+  validationStatus?: Exclude<Event["validationStatus"], undefined>;
 };
 
 /**

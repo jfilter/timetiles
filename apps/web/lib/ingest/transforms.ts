@@ -445,7 +445,8 @@ const createSafeParser = (): Parser => {
   // character class and the `>` delimiter are mutually exclusive.
   parser.functions.stripHtml = (v: unknown) =>
     String(v)
-      .replaceAll(/<[^>]+>/g, " ") // eslint-disable-line sonarjs/slow-regex -- No backtracking risk: [^>]+ is anchored by `>`
+      // eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex -- No backtracking risk: [^>]+ is anchored by `>`
+      .replaceAll(/<[^>]+>/g, " ")
       .replaceAll(/\s+/g, " ")
       .trim();
 

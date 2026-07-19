@@ -65,9 +65,9 @@ export const POST = apiRoute({
 Every handler receives a typed context object:
 
 | Field     | Type                   | Description                                       |
-| --------- | ---------------------- | ------------------------------------------------- | ----------------------------------------------- |
+| --------- | ---------------------- | ------------------------------------------------- |
 | `req`     | `AuthenticatedRequest` | The original NextRequest with `user` attached     |
-| `user`    | `User` or `User        | undefined`                                        | Guaranteed present for `"required"` / `"admin"` |
+| `user`    | `User \| undefined`    | Guaranteed present for `"required"` / `"admin"`   |
 | `payload` | `Payload`              | Payload CMS instance                              |
 | `body`    | `TBody`                | Parsed + validated request body (if schema given) |
 | `query`   | `TQuery`               | Parsed + validated query params (if schema given) |

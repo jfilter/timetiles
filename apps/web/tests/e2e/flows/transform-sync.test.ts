@@ -171,6 +171,6 @@ test.describe("Transform Sync: Inline ↔ Flow Editor", () => {
         typeof e.transformedData?.title === "string" &&
         e.transformedData.title === e.transformedData.title.toUpperCase()
     );
-    expect(uppercasedEvents.length).toBe(events.length);
+    expect(uppercasedEvents).toHaveLength(events.length);
   });
 });

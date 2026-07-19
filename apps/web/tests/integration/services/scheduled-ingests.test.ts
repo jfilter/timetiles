@@ -1023,7 +1023,7 @@ describe.sequential("scheduled ingests Integration", () => {
         });
         expect(queueCall).toBeDefined();
 
-        queuedInput = (queueCall![0] as { input?: typeof queuedInput }).input;
+        queuedInput = (queueCall![0] as { input?: Exclude<typeof queuedInput, undefined> }).input;
 
         expect(queuedInput).toMatchObject({
           sourceUrl: scheduledIngest.sourceUrl,

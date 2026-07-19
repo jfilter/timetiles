@@ -301,6 +301,13 @@ export default [
       [NO_HARDCODED_PASSWORDS_RULE]: "off", // Test data may have mock passwords
       "sonarjs/no-duplicate-string": "off", // Test files often repeat strings for clarity
       "sonarjs/no-clear-text-protocols": "off", // Tests often use HTTP for testing failure scenarios
+      // Asserting an exact float IS the assertion: `expect(parseNumber("1.5")).toBe(1.5)` verifies a
+      // parser returns a precise value. The rule targets production code where error accumulates —
+      // every occurrence here is a test, none in lib/. Kept enforced outside tests.
+      "sonarjs/no-floating-point-equality": "off",
+      // Style preference ("replace these N tests with a parameterized one"). Separate, named cases
+      // are often the more readable form; not worth rewriting correct tests over.
+      "sonarjs/parameterized-tests": "off",
       // Enforce kebab-case for test files (override base config exemption)
       "unicorn/filename-case": [
         "error",
