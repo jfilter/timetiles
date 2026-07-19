@@ -1343,9 +1343,9 @@ EOF
 
             if docker pull "$image" 2>/dev/null; then
                 extract_runner "$image"
-            elif [[ -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" ]]; then
+            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" ]]; then
                 echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
-                docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/scraper/Dockerfile" "$SCRIPT_DIR/.."
+                docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" "$SCRIPT_DIR/.."
                 extract_runner timescrape-runner-local
             else
                 echo -e "${RED}Cannot pull or build scraper runner${NC}"
@@ -1358,14 +1358,14 @@ EOF
 
             if as_deploy_user podman pull "$python_image" 2>/dev/null; then
                 as_deploy_user podman tag "$python_image" timescrape-python
-            elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/python/Dockerfile" ]]; then
-                as_deploy_user podman build -t timescrape-python "$SCRIPT_DIR/../apps/scraper/images/python/"
+            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/python/Dockerfile" ]]; then
+                as_deploy_user podman build -t timescrape-python "$SCRIPT_DIR/../apps/timescrape/images/python/"
             fi
 
             if as_deploy_user podman pull "$node_image" 2>/dev/null; then
                 as_deploy_user podman tag "$node_image" timescrape-node
-            elif [[ -f "$SCRIPT_DIR/../apps/scraper/images/node/Dockerfile" ]]; then
-                as_deploy_user podman build -t timescrape-node "$SCRIPT_DIR/../apps/scraper/images/node/"
+            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/node/Dockerfile" ]]; then
+                as_deploy_user podman build -t timescrape-node "$SCRIPT_DIR/../apps/timescrape/images/node/"
             fi
 
             sudo -n /bin/systemctl restart timescrape-runner.service

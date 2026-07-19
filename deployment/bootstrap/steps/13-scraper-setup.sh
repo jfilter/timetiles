@@ -91,7 +91,10 @@ configure_rootless() {
 pull_base_images() {
     local user="$1"
     local version="$2"
-    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
+    # App sources live in the -src working tree, not under the install dir:
+    # $INSTALL_DIR is a symlink to ${INSTALL_DIR}-src/deployment, so
+    # "$INSTALL_DIR/apps" would resolve to deployment/apps, which never exists.
+    local src_dir="${INSTALL_DIR:-/opt/timetiles}-src"
 
     local python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
     local node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
@@ -102,9 +105,9 @@ pull_base_images() {
     if sudo -u "$user" podman pull "$python_image" 2>/dev/null; then
         sudo -u "$user" podman tag "$python_image" timescrape-python
         print_success "Pulled timescrape-python from registry"
-    elif [[ -f "$install_dir/apps/timescrape/images/python/Dockerfile" ]]; then
+    elif [[ -f "$src_dir/apps/timescrape/images/python/Dockerfile" ]]; then
         print_info "Registry pull failed, building timescrape-python locally..."
-        sudo -u "$user" podman build -t timescrape-python "$install_dir/apps/timescrape/images/python/"
+        sudo -u "$user" podman build -t timescrape-python "$src_dir/apps/timescrape/images/python/"
         print_success "Built timescrape-python locally"
     else
         die "Cannot pull or build timescrape-python image"
@@ -113,9 +116,9 @@ pull_base_images() {
     if sudo -u "$user" podman pull "$node_image" 2>/dev/null; then
         sudo -u "$user" podman tag "$node_image" timescrape-node
         print_success "Pulled timescrape-node from registry"
-    elif [[ -f "$install_dir/apps/timescrape/images/node/Dockerfile" ]]; then
+    elif [[ -f "$src_dir/apps/timescrape/images/node/Dockerfile" ]]; then
         print_info "Registry pull failed, building timescrape-node locally..."
-        sudo -u "$user" podman build -t timescrape-node "$install_dir/apps/timescrape/images/node/"
+        sudo -u "$user" podman build -t timescrape-node "$src_dir/apps/timescrape/images/node/"
         print_success "Built timescrape-node locally"
     else
         die "Cannot pull or build timescrape-node image"
@@ -141,6 +144,8 @@ install_runner() {
     local user="$2"
     local version="$3"
     local runner_dir="$install_dir/scraper-runner"
+    # See pull_base_images: app sources live in the -src tree, not under $install_dir.
+    local src_dir="${install_dir}-src"
 
     print_step "Installing scraper runner..."
 
@@ -175,17 +180,12 @@ install_runner() {
         extract_from_image "$image"
     # Strategy 2: Build via Docker and extract (same as strategy 1, but build locally)
     # Needs repo root as context for turbo prune (monorepo workspace resolution)
-    elif [[ -f "$install_dir/apps/timescrape/Dockerfile" ]]; then
+    elif [[ -f "$src_dir/apps/timescrape/Dockerfile" ]]; then
         print_info "Registry pull failed, building runner image locally..."
-        local dockerfile="$install_dir/apps/timescrape/Dockerfile"
-        # Find repo root: prefer /opt/timetiles-src (VM/test), then resolve from Dockerfile path
-        local repo_root
-        if [[ -d "/opt/timetiles-src/apps/timescrape" ]]; then
-            repo_root="/opt/timetiles-src"
-        else
-            repo_root="$(cd "$(dirname "$(readlink -f "$dockerfile")")" && cd ../.. && pwd)"
-        fi
-        if ! docker build -t timescrape-runner-local -f "$dockerfile" "$repo_root"; then
+        # Build context is the repo root, not the app dir: the Dockerfile runs
+        # turbo prune and needs the monorepo workspace to resolve.
+        if ! docker build -t timescrape-runner-local \
+            -f "$src_dir/apps/timescrape/Dockerfile" "$src_dir"; then
             die "Failed to build scraper runner image"
         fi
         extract_from_image timescrape-runner-local
