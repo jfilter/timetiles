@@ -228,7 +228,18 @@ export const cleanupPriorAttempt = async (
   // deletes fresh inserts, so without this an "update"-strategy import that
   // failed permanently would leave the pre-existing events it overwrote mutated
   // and their originals lost. No-op when no snapshot sidecar exists.
-  await EventSnapshotStore.restoreAndClear(payload, ingestJobId, log);
+  const { failures: restoreFailures } = await EventSnapshotStore.restoreAndClear(payload, ingestJobId, log);
+
+  // If any restore failed, the sidecar is kept and some updated event still
+  // carries `ingestJob = thisJob` with `created_at >= job.createdAt` — i.e. it
+  // looks EXACTLY like a fresh insert to the delete filter below. Deleting now
+  // could destroy a concurrently-created foreign event we failed to revert, so
+  // skip the delete entirely and let the next attempt / onFail retry the restore
+  // first. (An orphaned fresh insert is recoverable; deleting real data is not.)
+  if (restoreFailures > 0) {
+    log.warn("Skipping prior-attempt insert cleanup until all snapshots restore", { ingestJobId, restoreFailures });
+    return;
+  }
 
   // Only delete events this job actually CREATED in a prior attempt — never the
   // pre-existing events it updated in place. Under `duplicateStrategy: "update"`,
@@ -239,7 +250,9 @@ export const cleanupPriorAttempt = async (
   // `createdAt = now` during create-events (several stages after the job row is
   // created), whereas in-place updates leave `created_at` untouched (Payload
   // only bumps `updated_at`). So `created_at >= job.createdAt` keeps the updated
-  // originals and removes only this attempt's inserts.
+  // originals and removes only this attempt's inserts. The restore above already
+  // reverted (and un-stamped `ingestJob` on) every updated event, so only true
+  // fresh inserts remain matching.
   const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId });
   const jobCreatedAt = typeof job?.createdAt === "string" ? job.createdAt : null;
   if (!jobCreatedAt) {

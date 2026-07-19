@@ -89,6 +89,20 @@ describe.sequential("ingestFileDownloadHandler", () => {
     expect(body).toContain("'=1+1");
   });
 
+  it("preserves non-UTF-8 (Windows-1252) source bytes verbatim while escaping", async () => {
+    // "José,=1" with é as the single Windows-1252 byte 0xE9.
+    const filePath = path.join(tmpDir, "latin.csv");
+    await fsPromises.writeFile(filePath, Buffer.from([0x4a, 0x6f, 0x73, 0xe9, 0x2c, 0x3d, 0x31]));
+    mocks.getIngestFilePath.mockReturnValue(filePath);
+
+    const res = (await callHandler({ id: 20, mimeType: "text/csv", filename: "latin.csv" }, "latin.csv")) as Response;
+    const out = Buffer.from(await res.arrayBuffer());
+
+    // 0xE9 is preserved (a UTF-8 decode would have replaced it with EF BF BD),
+    // and an apostrophe (0x27) is inserted before the `=` (0x3D).
+    expect([...out]).toEqual([0x4a, 0x6f, 0x73, 0xe9, 0x2c, 0x27, 0x3d, 0x31]);
+  });
+
   it("passes non-CSV files through to Payload's default serving", async () => {
     const res = await callHandler(
       { id: 4, mimeType: "application/vnd.ms-excel", filename: "sheet.xlsx" },

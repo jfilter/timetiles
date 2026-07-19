@@ -16,16 +16,13 @@
  * the retry / onFail (no new collection or migration required).
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
- * restored exactly. Some effects are intentionally NOT undone:
+ * restored exactly, and the restore is race-safe (each event is reverted under a
+ * row lock, only while still owned by this job). Two effects are intentionally
+ * NOT undone:
  * - The restore is a normal Payload update, so it bumps `updatedAt` and leaves
  *   the failed intermediate in the event's version history. Reverting those would
  *   require low-level version-table surgery that risks corrupting Payload's
  *   draft/latest bookkeeping, so it is out of scope here.
- * - The concurrent-write guard (revert only if `ingestJob` still equals this job)
- *   is read-then-write, not a row lock. A concurrent import that commits in the
- *   narrow window between the ownership read and the restore write could still be
- *   overwritten; eliminating that fully needs `SELECT … FOR UPDATE`, which Payload's
- *   id-based update path does not offer. The guard closes the common race.
  * - Orphaned sidecars from a hard-crashed (never retried, never onFail'd) job are
  *   possible; `discard` logs (does not swallow) a failed delete, and the
  *   ownership-guarded restore limits the blast radius if a stale one is replayed.
@@ -36,12 +33,14 @@
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 
-import type { Payload } from "payload";
+import { eq } from "@payloadcms/db-postgres/drizzle";
+import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { events as eventsTable } from "@/payload-generated-schema";
 
 /** Exact set of event fields {@link tryUpdateExistingEvent} overwrites — captured and restored verbatim. */
 const SNAPSHOT_FIELDS = [
@@ -135,24 +134,33 @@ export class EventSnapshotStore {
    * Restore snapshotted events to their captured originals, then delete the
    * sidecar. Idempotent and safe to call when no sidecar exists (no-op). Used at
    * the start of every attempt (revert a prior attempt's updates) and on terminal
-   * failure (revert this attempt's updates). Returns the number restored.
+   * failure (revert this attempt's updates).
    *
    * Two safety rules:
-   * - Conditional restore: an event is reverted only if it is still owned by THIS
-   *   job (`ingestJob` unchanged). If a concurrent import re-wrote it after us, its
-   *   newer data is left intact rather than clobbered by our rollback.
-   * - Keep-on-failure: if any line fails to parse or restore, the sidecar is NOT
-   *   deleted, so the next attempt / onFail can retry from the true originals
-   *   instead of losing the only copy.
+   * - Atomic conditional restore: each event is locked (`SELECT … FOR UPDATE`) and
+   *   reverted ONLY if it is still owned by THIS job (`ingestJob` unchanged),
+   *   within one transaction — so a concurrent import that re-wrote it can neither
+   *   be clobbered nor slip in between the ownership check and the write.
+   * - Keep-on-failure: if ANY line fails to parse or restore, the sidecar is NOT
+   *   deleted, so the next attempt / onFail can retry from the true originals. The
+   *   returned `failures` also tells `cleanupPriorAttempt` NOT to run its
+   *   insert-deletion (a still-owned, not-yet-reverted event would otherwise be
+   *   mistaken for a fresh insert and deleted).
+   *
+   * @returns counts of successfully restored events and hard failures.
    */
-  static async restoreAndClear(payload: Payload, ingestJobId: string | number, log: Logger): Promise<number> {
+  static async restoreAndClear(
+    payload: Payload,
+    ingestJobId: string | number,
+    log: Logger
+  ): Promise<{ restored: number; failures: number }> {
     const file = snapshotPath(ingestJobId);
     let contents: string;
     try {
       contents = await fsPromises.readFile(file, "utf-8");
     } catch (error) {
       // No sidecar (the common case: skip-strategy or first attempt) → nothing to do.
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return 0;
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { restored: 0, failures: 0 };
       throw error;
     }
 
@@ -169,38 +177,9 @@ export class EventSnapshotStore {
         failures++;
         continue;
       }
-      try {
-        // disableErrors: a deleted event returns null instead of throwing NotFound
-        // (Payload 3.85's default), so it is a clean skip, not a restore failure.
-        const current = await asSystem(payload).findByID({
-          collection: "events",
-          id: entry.id,
-          depth: 0,
-          disableErrors: true,
-        });
-        if (!current) continue; // event vanished independently → nothing to revert (not a failure)
-
-        // STRICT ownership: revert only if this event is still stamped with THIS
-        // job. Anything else — a concurrent import claimed it (different id) OR a
-        // concurrent op cleared it (null) — means our rollback must not clobber
-        // whatever is there now. tryUpdateExistingEvent always stamps
-        // `ingestJob = thisJob`, so after our own write the owner IS thisJob.
-        const owner = extractRelationId((current as { ingestJob?: unknown }).ingestJob);
-        if (owner == null || Number(owner) !== thisJobId) {
-          log.info("Skipping snapshot restore; event no longer owned by this import", {
-            ingestJobId,
-            eventId: entry.id,
-            currentOwner: owner,
-          });
-          continue;
-        }
-
-        await asSystem(payload).update({ collection: "events", id: entry.id, data: entry.data });
-        restored++;
-      } catch (error) {
-        log.warn("Failed to restore event snapshot", { ingestJobId, eventId: entry.id, error });
-        failures++;
-      }
+      const outcome = await restoreEventUnderLock(payload, ingestJobId, entry, thisJobId, log);
+      if (outcome === "restored") restored++;
+      else if (outcome === "failed") failures++;
     }
 
     if (failures === 0) {
@@ -213,6 +192,55 @@ export class EventSnapshotStore {
       });
     }
     if (restored > 0) log.info("Restored events from prior-state snapshots", { ingestJobId, restored });
-    return restored;
+    return { restored, failures };
   }
 }
+
+/**
+ * Revert one event to its snapshot iff it is still owned by this job, locking the
+ * row for the check+write so a concurrent update cannot race in between.
+ */
+const restoreEventUnderLock = async (
+  payload: Payload,
+  ingestJobId: string | number,
+  entry: { id: number; data: SnapshotData },
+  thisJobId: number,
+  log: Logger
+): Promise<"restored" | "skipped" | "failed"> => {
+  const req = { payload, transactionID: undefined, context: {} } as Pick<
+    PayloadRequest,
+    "payload" | "transactionID" | "context"
+  >;
+  const ownsTransaction = await initTransaction(req);
+  try {
+    const drizzle = await getTransactionAwareDrizzle(payload, req);
+    const rows = (await drizzle
+      .select({ ingestJob: eventsTable.ingestJob })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, entry.id))
+      .for("update")) as Array<{ ingestJob: number | null }>;
+
+    const current = rows[0];
+    // Event vanished independently, or a concurrent import claimed/cleared it —
+    // either way our rollback must not touch it (not a failure).
+    if (current?.ingestJob == null || Number(current.ingestJob) !== thisJobId) {
+      if (current != null) {
+        log.info("Skipping snapshot restore; event no longer owned by this import", {
+          ingestJobId,
+          eventId: entry.id,
+          currentOwner: current.ingestJob,
+        });
+      }
+      if (ownsTransaction) await commitTransaction(req);
+      return "skipped";
+    }
+
+    await payload.update({ collection: "events", id: entry.id, data: entry.data, overrideAccess: true, req });
+    if (ownsTransaction) await commitTransaction(req);
+    return "restored";
+  } catch (error) {
+    if (ownsTransaction) await killTransaction(req);
+    log.warn("Failed to restore event snapshot", { ingestJobId, eventId: entry.id, error });
+    return "failed";
+  }
+};

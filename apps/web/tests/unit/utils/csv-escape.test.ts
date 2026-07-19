@@ -16,6 +16,7 @@ import {
   escapeRowFormulas,
   escapeRowsFormulas,
   unparseRowsToCsv,
+  UTF8_BOM,
 } from "@/lib/utils/csv-escape";
 
 describe("escapeCsvFormula", () => {
@@ -280,15 +281,20 @@ describe("escapeCsvFormulasInText", () => {
   });
 
   it("preserves a leading UTF-8 BOM at the file start", () => {
-    const out = escapeCsvFormulasInText("﻿name,value\nx,=1+1\n");
-    expect(out.startsWith("﻿name,value")).toBe(true);
+    const out = escapeCsvFormulasInText(`${UTF8_BOM}name,value\nx,=1+1\n`);
+    expect(out.startsWith(`${UTF8_BOM}name,value`)).toBe(true);
     expect(out).toContain(",'=1+1");
   });
 
   it("escapes a formula that a stripped BOM would expose as the first cell", () => {
     // A spreadsheet drops the leading BOM, so `<BOM>=1+1` becomes cell A1 = =1+1.
-    expect(escapeCsvFormulasInText("﻿=1+1,x")).toBe("﻿'=1+1,x");
-    expect(escapeCsvFormulasInText('﻿"=1+1",x')).toBe('﻿"\'=1+1",x');
+    expect(escapeCsvFormulasInText(`${UTF8_BOM}=1+1,x`)).toBe(`${UTF8_BOM}'=1+1,x`);
+    expect(escapeCsvFormulasInText(`${UTF8_BOM}"=1+1",x`)).toBe(`${UTF8_BOM}"'=1+1",x`);
+  });
+
+  it("escapes a formula after an embedded NUL that spreadsheets strip", () => {
+    // Excel/Calc drop embedded NULs, so `x,\0=1+1` becomes a `=1+1` cell.
+    expect(escapeCsvFormulasInText("name,value\nx,\x00=1+1")).toContain(",\x00'=1+1");
   });
 
   it("escapes formulas after RS/US separators that Papa also auto-detects", () => {
@@ -326,7 +332,7 @@ describe("escapeCsvFormulasInText", () => {
     const out = escapeCsvFormulasInText("ID;PSheetJS;N;E\nC;X1;K0;EWEBSERVICE(x)");
     expect(out.startsWith("'ID;")).toBe(true);
     // BOM is kept before the neutralizer.
-    expect(escapeCsvFormulasInText("﻿ID;X").startsWith("﻿'ID;")).toBe(true);
+    expect(escapeCsvFormulasInText(`${UTF8_BOM}ID;X`).startsWith(`${UTF8_BOM}'ID;`)).toBe(true);
     // A normal file NOT starting with ID is untouched.
     expect(escapeCsvFormulasInText("name,id\n1,2").startsWith("'")).toBe(false);
   });

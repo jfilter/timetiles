@@ -74,27 +74,37 @@ const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
 // - `,` `;` `\t` `|` — the common locale delimiters.
 // - `\x1e` (RS) `\x1f` (US) — Papa auto-detects these too, so an importer could
 //   read them as delimiters.
-// - U+FEFF (BOM) — a spreadsheet strips a leading BOM, making whatever follows
-//   the logical first cell, so a `<BOM>=formula` must still be escaped.
-const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|", "\x1e", "\x1f", "﻿"]);
+// - `\0` (NUL) — Excel/Calc strip embedded NULs on import, so a `<...>\0=formula`
+//   cell logically starts with the trigger; treating NUL as a boundary escapes it.
+// A leading BOM is handled by the callers (stripped, then re-prepended) so that a
+// `<BOM>=formula` is scanned as a file-start trigger.
+const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|", "\x1e", "\x1f", "\0"]);
 // Excel/Calc strip a leading text qualifier on import, so a `<boundary>'=x'` or
 // `<boundary>"=x"` cell content still starts with the trigger — both `"` and `'`
 // are valid qualifiers.
 const QUOTE_OPENERS = new Set(['"', "'"]);
 
+/**
+ * The UTF-8 byte-order mark as three latin1 (byte-per-char) characters. This
+ * module scans files as a byte stream (latin1) so arbitrary source encodings are
+ * preserved on download; the BOM therefore appears as its three raw bytes, not as
+ * a single U+FEFF code point.
+ */
+export const UTF8_BOM = "\xef\xbb\xbf";
+
 const isFieldBoundary = (char: string | undefined, extraDelimiter?: string): boolean =>
   char === undefined || FIELD_BOUNDARIES.has(char) || (extraDelimiter !== undefined && char === extraDelimiter);
 
 /**
- * Detect an Excel `sep=<char>` directive on the first line (after an optional
- * BOM). Excel honors it and splits every row on that character, so it must be
- * treated as a field boundary too — otherwise `sep=:` + a `:=formula` cell would
- * slip through. Returns the declared separator, or undefined.
+ * Detect an Excel `sep=<char>` directive on the first line. Excel honors it and
+ * splits every row on that character, so it must be treated as a field boundary
+ * too — otherwise `sep=:` + a `:=formula` cell would slip through. Expects the
+ * BOM to have already been stripped by the caller. Returns the declared
+ * separator, or undefined.
  */
 export const detectSepDirective = (text: string): string | undefined => {
-  const withoutBom = text.startsWith("﻿") ? text.slice(1) : text;
   // LibreOffice Calc accepts both `sep=:` and the quoted `"sep=:"` forms.
-  const match = /^(?:sep=(.)|"sep=(.)")\r?\n/i.exec(withoutBom);
+  const match = /^(?:sep=(.)|"sep=(.)")\r?\n/i.exec(text);
   return match?.[1] ?? match?.[2];
 };
 
@@ -102,15 +112,10 @@ export const detectSepDirective = (text: string): string | undefined => {
  * Neutralize an Excel SYLK misdetection. Excel opens a `.csv` whose content
  * begins with the uppercase magic `ID` as a SYLK document, and SYLK carries
  * formulas the CSV scan never sees. Break the magic with a leading apostrophe
- * (Microsoft's documented workaround) so it parses as CSV instead. Preserves a
- * leading BOM.
+ * (Microsoft's documented workaround) so it parses as CSV instead. Expects the
+ * BOM to have already been stripped by the caller.
  */
-export const neutralizeSylkMagic = (text: string): string => {
-  const hasBom = text.startsWith("﻿");
-  const body = hasBom ? text.slice(1) : text;
-  if (!body.startsWith("ID")) return text;
-  return `${hasBom ? "﻿" : ""}'${body}`;
-};
+export const neutralizeSylkMagic = (text: string): string => (text.startsWith("ID") ? `'${text}` : text);
 
 /**
  * Delimiter-agnostic CSV formula escape.
@@ -167,8 +172,11 @@ export const escapeCsvFormulaBoundaries = (
  * {@link escapeCsvFormulaBoundaries}); an empty input yields "".
  */
 export const escapeCsvFormulasInText = (csvText: string): string => {
-  const extraDelimiter = detectSepDirective(csvText);
-  return escapeCsvFormulaBoundaries(neutralizeSylkMagic(csvText), "", extraDelimiter).output;
+  const hasBom = csvText.startsWith(UTF8_BOM);
+  const body = hasBom ? csvText.slice(UTF8_BOM.length) : csvText;
+  const extraDelimiter = detectSepDirective(body);
+  const escaped = escapeCsvFormulaBoundaries(neutralizeSylkMagic(body), "", extraDelimiter).output;
+  return hasBom ? UTF8_BOM + escaped : escaped;
 };
 
 /**

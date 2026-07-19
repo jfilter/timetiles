@@ -130,10 +130,50 @@ describe.sequential("update-strategy snapshot rollback", () => {
     await expect(fsPromises.access(sidecar)).resolves.toBeUndefined();
 
     // Simulate the terminal-failure path (cleanupPriorAttempt / onFail).
-    const restored = await EventSnapshotStore.restoreAndClear(payload, job.id, createLogger("snapshot-rollback-test"));
+    const { restored } = await EventSnapshotStore.restoreAndClear(
+      payload,
+      job.id,
+      createLogger("snapshot-rollback-test")
+    );
     expect(restored).toBe(1);
     expect(await titleOf(event.id)).toBe("Original Title");
     await expect(fsPromises.access(sidecar)).rejects.toThrow();
+  });
+
+  it("does NOT clobber an event a concurrent import re-claimed (ownership-guarded restore)", async () => {
+    const event = await seedEvent("concurrent-id", "Original Title");
+    const jobA = await buildUpdateJob("concurrent-id", event.id);
+
+    const store = new EventSnapshotStore(jobA.id, createLogger("snapshot-rollback-test"));
+    const ctx: ProcessBatchContext = {
+      payload,
+      job: jobA,
+      dataset,
+      ingestJobId: jobA.id,
+      accessFields: { datasetIsPublic: false, catalogOwnerId: owner.id as number },
+      logger: createLogger("snapshot-rollback-test"),
+      snapshotStore: store,
+    };
+    await processEventBatch(ctx, [{ id: "concurrent-id", title: "A Overwrote" }], 0);
+
+    // A concurrent import B then re-claims + rewrites the same event and succeeds.
+    const jobB = await buildUpdateJob("concurrent-id", event.id);
+    await payload.update({
+      collection: "events",
+      id: event.id,
+      data: { ingestJob: jobB.id, transformedData: { id: "concurrent-id", title: "B Wins" } },
+      overrideAccess: true,
+    });
+
+    // jobA now fails and rolls back — its restore must SKIP the no-longer-owned
+    // event, leaving B's newer data intact.
+    const { restored } = await EventSnapshotStore.restoreAndClear(
+      payload,
+      jobA.id,
+      createLogger("snapshot-rollback-test")
+    );
+    expect(restored).toBe(0);
+    expect(await titleOf(event.id)).toBe("B Wins");
   });
 
   it("keeps the update and drops the snapshot on the success path (discard)", async () => {
@@ -157,7 +197,11 @@ describe.sequential("update-strategy snapshot rollback", () => {
     const sidecar = path.join(tmpDir, "ingest-snapshots", `job-${job.id}.jsonl`);
     await expect(fsPromises.access(sidecar)).rejects.toThrow();
     // A later restore attempt is a no-op; the update stays.
-    const restored = await EventSnapshotStore.restoreAndClear(payload, job.id, createLogger("snapshot-rollback-test"));
+    const { restored } = await EventSnapshotStore.restoreAndClear(
+      payload,
+      job.id,
+      createLogger("snapshot-rollback-test")
+    );
     expect(restored).toBe(0);
     expect(await titleOf(event.id)).toBe("Kept Update");
   });

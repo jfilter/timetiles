@@ -10,9 +10,10 @@
  * This upload handler runs AFTER Payload's file access check and escapes CSV
  * cells at serve time, so the download is spreadsheet-safe while the stored data
  * the pipeline reads remains untouched. Escaping is delimiter-agnostic and runs
- * as a streaming character scan (O(1) memory, independent of file/record size).
- * Non-CSV files (xlsx/ods, size variants) fall through to Payload's default
- * serving.
+ * as a streaming BYTE scan (latin1, so any source encoding — Windows-1252, etc. —
+ * is preserved exactly rather than mangled through a UTF-8 decode; O(1) memory,
+ * independent of file/record size). Non-CSV files (xlsx/ods, size variants) fall
+ * through to Payload's default serving.
  *
  * @module
  * @category Collections
@@ -25,7 +26,7 @@ import type { PayloadRequest, TypeWithID, UploadConfig } from "payload";
 
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
-import { detectSepDirective, escapeCsvFormulaBoundaries, neutralizeSylkMagic } from "@/lib/utils/csv-escape";
+import { detectSepDirective, escapeCsvFormulaBoundaries, neutralizeSylkMagic, UTF8_BOM } from "@/lib/utils/csv-escape";
 
 type IngestFileDoc = TypeWithID & { mimeType?: string | null; filename?: string | null; originalName?: string | null };
 
@@ -62,7 +63,8 @@ const buildContentDisposition = (name: string): string => {
  * cancels the download or an error occurs, so no descriptor leaks.
  */
 const createEscapedCsvStream = (filePath: string): ReadableStream<Uint8Array> => {
-  const source = createReadStream(filePath, "utf-8");
+  // latin1 = byte-per-char, so non-UTF-8 source bytes survive the round-trip.
+  const source = createReadStream(filePath, "latin1");
   let carry = "";
   // An Excel `sep=<char>` directive on the first line declares an arbitrary
   // delimiter; capture it once and treat it as a boundary for the whole file.
@@ -72,14 +74,21 @@ const createEscapedCsvStream = (filePath: string): ReadableStream<Uint8Array> =>
     decodeStrings: false,
     transform: (chunk: unknown, _enc, done) => {
       let text = typeof chunk === "string" ? chunk : String(chunk);
+      let bomPrefix = "";
       if (firstChunk) {
+        // Strip a leading BOM, scan the body (so a `<BOM>=formula` is a
+        // file-start trigger), then re-prepend the BOM bytes unchanged.
+        if (text.startsWith(UTF8_BOM)) {
+          bomPrefix = UTF8_BOM;
+          text = text.slice(UTF8_BOM.length);
+        }
         extraDelimiter = detectSepDirective(text);
         text = neutralizeSylkMagic(text);
         firstChunk = false;
       }
       const result = escapeCsvFormulaBoundaries(text, carry, extraDelimiter);
       carry = result.carry;
-      done(null, Buffer.from(result.output, "utf-8"));
+      done(null, Buffer.from(bomPrefix + result.output, "latin1"));
     },
   });
   pipeline(source, escaper, (error) => {
