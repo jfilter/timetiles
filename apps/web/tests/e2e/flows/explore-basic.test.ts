@@ -131,13 +131,27 @@ test.describe("Explore Page - Basic Functionality", () => {
   });
 
   test("should show loading state while fetching events", async ({ page }) => {
-    // Delay the events-list response so the skeleton is observable.
+    // The skeleton is driven by isInitialLoad in map-explorer.tsx, which stays
+    // true until BOTH the events-list query and the map-cluster query have
+    // data. The cluster query is disabled until MapLibre reports bounds, so
+    // when it even starts depends on WebGL map init — measured at ~16s in a CI
+    // container. Any wall-clock budget here would silently encode how fast the
+    // map happens to be, so this test drives both gates explicitly instead.
+
+    // Hold the events-list response open rather than delaying it by a fixed
+    // amount, so "while fetching" is a state this test controls, not a race.
     // Matches useEventsListQuery exactly, which calls /api/v1/events?<params>.
     // Using a RegExp instead of a glob because Playwright's `?` in globs is a
     // single-char wildcard — "events?**" also matches /events/bounds?…,
     // /events/geo?…, /events/temporal?…, and stalls unrelated queries.
-    await page.route(/\/api\/v1\/events\?[^/]*$/, async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+    const eventsListRoute = /\/api\/v1\/events\?[^/]*$/;
+    let releaseEventsResponse!: () => void;
+    const eventsResponseReleased = new Promise<void>((resolve) => {
+      releaseEventsResponse = resolve;
+    });
+
+    await page.route(eventsListRoute, async (route) => {
+      await eventsResponseReleased;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -145,13 +159,27 @@ test.describe("Explore Page - Basic Functionality", () => {
       });
     });
 
+    // Registered before navigating: waitForResponse only observes responses
+    // that arrive after the call, so subscribing later would miss a fast
+    // cluster response and then wait for a second one that never comes.
+    const clustersLoaded = page.waitForResponse((response) => response.url().includes("/api/v1/events/geo"), {
+      timeout: 60000,
+    });
+
     await page.goto("/explore", { waitUntil: "domcontentloaded" });
 
     const skeleton = page.getByTestId("events-list-skeleton");
 
-    // Skeleton must appear while the API is intentionally slow
-    await expect(skeleton).toBeVisible({ timeout: 3000 });
-    // And disappear once the response resolves
+    // Skeleton must be up while the list request is genuinely in flight
+    await page.waitForRequest(eventsListRoute, { timeout: 60000 });
+    await expect(skeleton).toBeVisible();
+
+    // Clear the second gate before the first, so the assertion below measures
+    // only the skeleton reacting to the release — not map initialization.
+    await clustersLoaded;
+    releaseEventsResponse();
+
+    // And disappear once both queries have data
     await expect(skeleton).toBeHidden({ timeout: 10000 });
   });
 });
