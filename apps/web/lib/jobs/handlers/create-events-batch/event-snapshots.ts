@@ -36,8 +36,25 @@
  * its filename encodes the dataset (see {@link snapshotPath}) and it survives on the
  * shared volume, so the next holder of the dataset lease calls
  * {@link EventSnapshotStore.repairAbandonedSnapshots} to restore any abandoned
- * predecessor BEFORE mutating. A crash therefore becomes "next holder repairs
- * first" rather than "B captures a half-applied value".
+ * predecessor BEFORE mutating. The repair is status-aware: a sidecar from a job
+ * that already reached a terminal-SUCCESS stage (its own discard merely failed) is
+ * deleted, NOT replayed — replaying would roll back a completed import. A crash
+ * therefore becomes "next holder repairs first" rather than "B captures a
+ * half-applied value".
+ *
+ * Crash-recovery residuals (all narrow; closing them needs a heavier active-import
+ * marker and/or filesystem fencing than the sidecar provides):
+ * - The sidecar only exists for UPDATE imports, so a crashed pure-SKIP import
+ *   leaves fresh inserts with no marker to discover; and repair reverts a crashed
+ *   update's overwrites but not its fresh inserts. Both are otherwise cleaned when
+ *   that job is retried (attempt-start cleanup deletes its own inserts) — the gap
+ *   is only a job that crashes AND is never retried while a concurrent import
+ *   adopts its insert.
+ * - The FS write (append) and the advisory lock share no durability/visibility
+ *   boundary: a host/kernel/storage crash with a lost page cache, a network-volume
+ *   with delayed directory visibility, or loss of only the lease DB session (no
+ *   fencing token) can let a holder miss a just-written marker. Adequate for a
+ *   plain process crash on a coherent local volume, which is the realistic case.
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
  * restored exactly, and the restore is race-safe (each event is reverted under a
@@ -54,6 +71,7 @@
  * @module
  * @category Jobs
  */
+import type { Dirent } from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 
@@ -61,6 +79,7 @@ import { eq } from "@payloadcms/db-postgres/drizzle";
 import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
@@ -263,23 +282,37 @@ export class EventSnapshotStore {
     log: Logger
   ): Promise<{ repairedJobs: number; failures: number }> {
     const prefix = datasetSidecarPrefix(datasetId);
-    let entries: string[];
+    let entries: Dirent[];
     try {
-      entries = await fsPromises.readdir(snapshotsDir());
+      entries = await fsPromises.readdir(snapshotsDir(), { withFileTypes: true });
     } catch (error) {
       // No snapshots dir yet → nothing abandoned.
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return { repairedJobs: 0, failures: 0 };
       throw error;
     }
 
-    const currentFile = `${prefix}${String(currentJobId)}${SNAPSHOT_SUFFIX}`;
+    const currentJobIdStr = String(currentJobId);
     let repairedJobs = 0;
     let failures = 0;
-    for (const name of entries) {
-      if (!name.startsWith(prefix) || !name.endsWith(SNAPSHOT_SUFFIX) || name === currentFile) continue;
-      const abandonedJobId = name.slice(prefix.length, -SNAPSHOT_SUFFIX.length);
-      if (abandonedJobId === "") continue;
-      log.warn("Repairing snapshots abandoned by a prior import on this dataset", {
+    for (const entry of entries) {
+      const abandonedJobId = EventSnapshotStore.parseSidecarJobId(entry, prefix);
+      if (abandonedJobId == null || abandonedJobId === currentJobIdStr) continue;
+
+      // Status-aware: a sidecar left by a job that already SUCCEEDED (its own
+      // discard just failed) must NOT be replayed — restoring would roll back a
+      // completed import. Only jobs that did not reach a terminal-success state get
+      // their overwrites reverted; a completed job's leftover is merely deleted.
+      if (await EventSnapshotStore.reachedTerminalSuccess(payload, abandonedJobId)) {
+        log.warn("Discarding a completed import's leftover sidecar (its discard had failed)", {
+          datasetId,
+          abandonedJobId,
+          currentJobId,
+        });
+        await EventSnapshotStore.discard(datasetId, abandonedJobId, log);
+        continue;
+      }
+
+      log.warn("Repairing snapshots abandoned by a crashed/failed prior import on this dataset", {
         datasetId,
         abandonedJobId,
         currentJobId,
@@ -294,6 +327,39 @@ export class EventSnapshotStore {
       else repairedJobs++;
     }
     return { repairedJobs, failures };
+  }
+
+  /**
+   * Extract the job id from a sidecar dirent for this dataset, or null if the entry
+   * is not one of our sidecars. Strict: a real file whose name is exactly
+   * `<prefix><digits>.jsonl` — rejects directories and stray names like
+   * `ds5-jobbackup.jsonl` (which would otherwise be treated as job "backup" and
+   * either deleted or fail-close the dataset).
+   */
+  private static parseSidecarJobId(entry: Dirent, prefix: string): string | null {
+    if (!entry.isFile() || !entry.name.startsWith(prefix)) return null;
+    const match = /^(\d+)\.jsonl$/.exec(entry.name.slice(prefix.length));
+    return match ? match[1]! : null;
+  }
+
+  /**
+   * True if `jobId` reached a terminal-SUCCESS stage (completed / needs-review), so
+   * a leftover sidecar is a failed-discard remnant, not a crash to roll back. A
+   * missing job is treated as success (do NOT roll back — we can't confirm it
+   * failed, and reverting a possibly-completed import would corrupt data). A read
+   * error propagates so the caller aborts rather than guessing.
+   */
+  private static async reachedTerminalSuccess(payload: Payload, jobId: string): Promise<boolean> {
+    const result = await payload.find({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      where: { id: { equals: Number(jobId) } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    });
+    const stage = (result.docs[0] as { stage?: string } | undefined)?.stage;
+    if (stage == null) return true; // job gone / unreadable id → don't restore
+    return stage === PROCESSING_STAGE.COMPLETED || stage === PROCESSING_STAGE.NEEDS_REVIEW;
   }
 }
 

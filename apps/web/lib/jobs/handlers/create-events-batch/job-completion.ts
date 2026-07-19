@@ -220,7 +220,7 @@ export const cleanupPriorAttempt = async (
   datasetId: string | number,
   ingestJobId: string | number,
   log: ReturnType<typeof createJobLogger>
-): Promise<void> => {
+): Promise<{ restoreFailed: boolean }> => {
   const DELETE_CHUNK_SIZE = 5000;
   const db = payload.db.drizzle;
 
@@ -239,7 +239,9 @@ export const cleanupPriorAttempt = async (
   // first. (An orphaned fresh insert is recoverable; deleting real data is not.)
   if (restoreFailures > 0) {
     log.warn("Skipping prior-attempt insert cleanup until all snapshots restore", { ingestJobId, restoreFailures });
-    return;
+    // Signal the caller: the dataset is still partially mutated. The attempt-start
+    // caller must ABORT rather than mutate on top of a half-reverted state.
+    return { restoreFailed: true };
   }
 
   // Only delete events this job actually CREATED in a prior attempt — never the
@@ -262,7 +264,7 @@ export const cleanupPriorAttempt = async (
     // updated originals. A duplicate-key error on retry is recoverable; data
     // loss is not.
     log.warn("Skipping prior-attempt cleanup: job has no createdAt", { ingestJobId });
-    return;
+    return { restoreFailed: false };
   }
   const ingestJobMatch = and(eq(eventsTable.ingestJob, Number(ingestJobId)), gte(eventsTable.createdAt, jobCreatedAt));
 
@@ -294,4 +296,5 @@ export const cleanupPriorAttempt = async (
   if (deletedTotal > 0) {
     log.info("Cleaned up events from prior attempt", { ingestJobId, deletedTotal });
   }
+  return { restoreFailed: false };
 };

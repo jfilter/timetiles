@@ -365,8 +365,14 @@ export const createEventsBatchJob = {
       // Now serialized on this dataset, so the catch may safely roll back.
       leaseHeld = true;
 
-      // Clean slate: delete events from any prior failed attempt of this job.
-      await cleanupPriorAttempt(payload, datasetId, ingestJobId, logger);
+      // Clean slate: revert any prior failed attempt of this job. If its own
+      // snapshots can't all be restored, ABORT rather than mutate on top of a
+      // half-reverted state (which would chain a broken "original" into this
+      // attempt's snapshots) — the kept sidecar lets a later attempt retry.
+      const priorCleanup = await cleanupPriorAttempt(payload, datasetId, ingestJobId, logger);
+      if (priorCleanup.restoreFailed) {
+        throw new Error(`Aborting import: prior attempt's snapshots on dataset ${datasetId} could not be restored`);
+      }
 
       // Start CREATE_EVENTS stage with total file rows (stream iterates all rows, including duplicates)
       const totalFileRows = job.duplicates?.summary?.totalRows ?? 0;
