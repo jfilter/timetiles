@@ -230,12 +230,10 @@ const streamAndProcessBatches = async (params: {
 
 /**
  * Roll back a failed attempt UNDER the per-dataset lease. `cleanupPriorAttempt`
- * restores update-strategy snapshots, which is only race-safe while the dataset
- * lease is held — otherwise a concurrent import can re-own an event and turn the
- * restore into a sidecar-deleting no-op, losing the true original. The handler's
- * own catch already holds the lease; this variant is for `onFail`, which runs as
- * a separate invocation with no lease of its own. Best-effort: logs and returns
- * if the job can't be loaded.
+ * restores update snapshots + deletes fresh inserts, which is only race-safe while
+ * the dataset lease is held. The handler's own catch already holds the lease; this
+ * variant is for `onFail`, which runs as a separate invocation with no lease of its
+ * own. Best-effort: logs and returns if the job can't be loaded.
  */
 const cleanupPriorAttemptUnderLease = async (payload: Payload, ingestJobId: string | number): Promise<void> => {
   const log = createJobLogger(String(ingestJobId), "create-events-batch-onFail");
@@ -244,12 +242,6 @@ const cleanupPriorAttemptUnderLease = async (payload: Payload, ingestJobId: stri
     job = await loadIngestJob(payload, ingestJobId);
   } catch (error) {
     logError(error, "onFail rollback could not load the ingest job", { ingestJobId });
-    return;
-  }
-
-  if (readDuplicateStrategy(job) !== "update") {
-    // Skip strategy never overwrites in place → no snapshot chain → no lease needed.
-    await cleanupPriorAttempt(payload, ingestJobId, log);
     return;
   }
 
@@ -313,11 +305,10 @@ export const createEventsBatchJob = {
     let trackedEventQuota = -1;
     let eventQuotaFinalized = false;
     let datasetLease: DatasetImportLease | undefined;
-    // True once we hold the dataset lease (update strategy) or have confirmed none
-    // is needed (skip strategy). Gates the catch's rollback: restoring snapshots
+    // True once we hold the dataset lease. Gates the catch's rollback: restoring
     // without the lease would race a concurrent import, so if acquisition itself
     // fails we must NOT roll back — nothing was mutated under serialization anyway.
-    let leaseHeldOrSkip = false;
+    let leaseHeld = false;
 
     try {
       // Set stage for UI progress tracking (workflow controls sequencing)
@@ -327,18 +318,15 @@ export const createEventsBatchJob = {
       filePath = getIngestFilePath(ingestFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
 
-      // Under the "update" strategy, existing events are overwritten in place and
-      // snapshotted for rollback. Two such imports on the same dataset running
-      // concurrently would interleave their snapshot chains and a non-LIFO
-      // rollback could lose the true original, so serialize them per dataset for
-      // the whole mutate-then-rollback phase (released in the finally below).
+      // Serialize EVERY import on this dataset (see ADR 0041): imports are processed
+      // one-at-a-time per dataset, so two never overlap. That is the invariant behind
+      // the single-import rollback below — a failed/crashed import reverts its own
+      // changes via its retry, with no concurrent import to interfere. Different
+      // datasets never contend. Released in the finally below.
       const isUpdateStrategy = readDuplicateStrategy(job) === "update";
-      if (isUpdateStrategy) {
-        datasetLease = await acquireDatasetImportLease(payload, Number(dataset.id), logger);
-      }
-      // Past this point every mutation runs under the lease (update) or needs none
-      // (skip), so the catch may safely roll back.
-      leaseHeldOrSkip = true;
+      datasetLease = await acquireDatasetImportLease(payload, Number(dataset.id), logger);
+      // Now serialized on this dataset, so the catch may safely roll back.
+      leaseHeld = true;
 
       // Clean slate: delete events from any prior failed attempt of this job.
       await cleanupPriorAttempt(payload, ingestJobId, logger);
@@ -434,7 +422,7 @@ export const createEventsBatchJob = {
       // Only when the lease is held (or skip strategy): restoring snapshots without
       // it would race a concurrent import; on an acquisition failure nothing was
       // mutated under serialization, so there is nothing to roll back here.
-      if (leaseHeldOrSkip) {
+      if (leaseHeld) {
         try {
           await cleanupPriorAttempt(payload, ingestJobId, logger);
         } catch (cleanupError) {

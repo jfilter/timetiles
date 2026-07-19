@@ -44,6 +44,10 @@ vi.mock("@/lib/services/quota-service", () => ({
 }));
 vi.mock("@/lib/jobs/utils/bulk-event-insert", () => ({ bulkInsertEvents: vi.fn() }));
 vi.mock("@/lib/collections/catalog-ownership", () => ({ extractDenormalizedAccessFields: vi.fn() }));
+// onFail's rollback runs under the per-dataset lease; stub it to a no-op lease.
+vi.mock("@/lib/database/dataset-import-lock", () => ({
+  acquireDatasetImportLease: vi.fn(() => Promise.resolve({ release: vi.fn() })),
+}));
 
 describe.sequential("create-events-batch onFail isolation", () => {
   let mockPayload: { update: ReturnType<typeof vi.fn>; findByID: ReturnType<typeof vi.fn>; db: any };
@@ -88,7 +92,7 @@ describe.sequential("create-events-batch onFail isolation", () => {
     mockPayload = {
       // cleanupPriorAttempt loads the job to scope its delete by createdAt.
       update: vi.fn().mockResolvedValue({}),
-      findByID: vi.fn().mockResolvedValue({ id: "import-onfail-1", createdAt: "2026-01-01T00:00:00.000Z" }),
+      findByID: vi.fn().mockResolvedValue({ id: "import-onfail-1", createdAt: "2026-01-01T00:00:00.000Z", dataset: 1 }),
       db: { drizzle: createDrizzleMock() },
     };
   });

@@ -15,31 +15,17 @@
  * uses, so it survives worker restarts and is visible to whichever worker runs
  * the retry / onFail (no new collection or migration required).
  *
- * Concurrency scope: every per-event mutation (capture+update, restore, delete)
- * is atomic under a row lock, which makes the rollback correct for a single
- * import and for SEQUENTIAL imports to the same dataset. Row locks alone do NOT
- * cover two update-strategy imports mutating the SAME event CONCURRENTLY and both
- * failing: their snapshots form a chain (A snapshots the original, B snapshots
- * A's value), and a non-LIFO rollback (A reverts first — skipped as no longer
- * owned — then B reverts to A's value) would leave the failed intermediate rather
- * than the true original. That cross-import case is handled one level up: the
- * create-events handler holds a per-dataset lease (see
- * `@/lib/database/dataset-import-lock`) across each update import's whole
- * mutate-then-rollback phase — including the rollback in its catch AND in onFail —
- * so under normal operation B cannot begin capturing until A has finished or
- * rolled back, and B therefore snapshots the true original.
- *
- * Two residuals the lease does NOT fully close (both narrow, both would require a
- * durable per-dataset recovery marker rather than just the advisory lock):
- * - Worker crash: if A's worker dies mid-import, Postgres frees the session lock
- *   immediately while A's already-committed overwrites stay live, so a waiting B
- *   can start before A's retry restores. B may then snapshot A's intermediate.
- *   (A's sidecar survives on the shared volume, so A's retry still restores its
- *   own originals; the exposure is B capturing a not-yet-reverted value.)
- * - Mixed strategy: only update imports take the lease, so a concurrent SKIP
- *   import that inserts an event which an update import then adopts on conflict
- *   can leave that insert stranded if both imports fail. Closing this would mean
- *   serializing all strategies per dataset.
+ * Concurrency scope: imports are SERIALIZED per dataset — every import holds a
+ * per-dataset lease (see `@/lib/database/dataset-import-lock`, ADR 0041) across its
+ * whole mutate-then-rollback phase, so two imports never mutate the same dataset at
+ * once. This store therefore only has to be correct for ONE import and its retries,
+ * which it is: each per-event mutation (capture+update, restore, delete) is atomic
+ * under a row lock and ownership-guarded (reverted only while still owned by this
+ * job), and a failed/crashed attempt is reverted by its OWN next retry (or onFail)
+ * from its per-job sidecar. The cross-import hazards a naive design would face — two
+ * update imports chaining snapshots into a non-LIFO rollback, or a skip insert a
+ * concurrent update adopts-then-strands — cannot arise under the serialization
+ * invariant, so no cross-import crash-recovery machinery is needed.
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
  * restored exactly, and the restore is race-safe (each event is reverted under a

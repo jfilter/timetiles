@@ -34,6 +34,12 @@ vi.mock("@/lib/ingest/file-readers", () => ({
   cleanupSidecarFiles: mocks.cleanupSidecarFiles,
 }));
 
+// The handler now serializes every import on the per-dataset lease; stub it to a
+// no-op (its real behavior is covered in tests/integration/database/dataset-import-lock).
+vi.mock("@/lib/database/dataset-import-lock", () => ({
+  acquireDatasetImportLease: vi.fn(() => Promise.resolve({ release: vi.fn() })),
+}));
+
 vi.mock("@/lib/services/id-generation", () => ({ generateUniqueId: mocks.generateUniqueId }));
 
 vi.mock("@/lib/ingest/types/geocoding", () => ({

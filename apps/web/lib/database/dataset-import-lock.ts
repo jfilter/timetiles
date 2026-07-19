@@ -1,12 +1,13 @@
 /**
- * Per-dataset serialization lease for update-strategy event imports.
+ * Per-dataset serialization lease that ENFORCES sequential import processing.
  *
- * Two update-strategy imports overwriting the SAME event concurrently form a
- * snapshot chain that a non-LIFO rollback resolves incorrectly (see
- * `create-events-batch/event-snapshots.ts`). This lease serializes the entire
- * mutate-then-rollback phase per dataset, so a second update import cannot start
- * capturing snapshots until the first has finished or fully rolled back — which
- * guarantees every capture records the true original, not a failed intermediate.
+ * Imports are processed one-at-a-time per dataset (ADR 0041): every create-events
+ * import acquires this lease before mutating and holds it across its whole
+ * mutate-then-rollback phase, so two imports never touch the same dataset at once.
+ * That invariant is what keeps the all-or-nothing rollback simple — a failed or
+ * crashed import reverts its own changes via its retry, with no concurrent import
+ * to interleave (which would otherwise chain snapshots into an unresolvable
+ * non-LIFO rollback). Different datasets never contend.
  *
  * Implementation: a Postgres SESSION-level advisory lock (`pg_advisory_lock`
  * family) keyed by a namespace hash + dataset id — the same two-int convention
