@@ -72,13 +72,17 @@ export const hasActivePayloadJob = async (
 };
 
 /**
- * Check whether a queued OR in-flight Payload job already exists for a resource.
+ * Check whether a pending Payload job already exists for a resource.
  *
  * Unlike {@link hasActivePayloadJob} (which only matches jobs actively being
- * *processed*), this also matches jobs still waiting in the queue — the right
- * predicate for DEDUP: "is a job for this resource already pending, so I must
- * not enqueue a duplicate?". Matches jobs that have neither completed nor
- * (currently) errored, optionally scoped to a specific task slug.
+ * *processed*), this matches jobs that have neither completed nor (currently)
+ * errored — the right predicate for DEDUP. Options:
+ * - `taskSlug`: scope to a specific task.
+ * - `queuedOnly`: match only jobs that have NOT started yet (`processing` unset).
+ *   Use this for COALESCING: a not-yet-started job will read the resource's
+ *   latest state when it runs, so it covers a change we just made; an
+ *   already-running job read the OLD state and does not, so a successor must
+ *   still be enqueued.
  *
  * Fails OPEN (returns `false`) on query error: unlike the cleanup gate above,
  * a transient failure here should not silently suppress a legitimate enqueue —
@@ -89,7 +93,7 @@ export const hasPendingPayloadJob = async (
   payload: Payload,
   resourceFieldPath: string,
   resourceId: string | number,
-  taskSlug?: string
+  options: { taskSlug?: string; queuedOnly?: boolean } = {}
 ): Promise<boolean> => {
   try {
     const conditions: Where[] = [
@@ -99,7 +103,8 @@ export const hasPendingPayloadJob = async (
       // explicitly errored — `equals: false` could miss pending jobs.
       { hasError: { not_equals: true } },
     ];
-    if (taskSlug) conditions.push({ taskSlug: { equals: taskSlug } });
+    if (options.queuedOnly) conditions.push({ processing: { not_equals: true } });
+    if (options.taskSlug) conditions.push({ taskSlug: { equals: options.taskSlug } });
 
     const jobs = await asSystem(payload).find({
       collection: "payload-jobs" as const,

@@ -250,4 +250,25 @@ describe("escapeCsvFormulasInText", () => {
     expect(rowsOf(out)).toEqual(["a,b,c", "1,2,3", "4,5,6"]);
     expect(escapeCsvFormulasInText("")).toBe("");
   });
+
+  it("escapes a formula in a SEMICOLON-delimited file (EU locale) without merging cells", () => {
+    // Papa's default detection would pick ',' here, leaving the second cell's
+    // formula unescaped — the semicolon-locale bypass.
+    const out = escapeCsvFormulasInText("name;value\nx;=1+1\n");
+    expect(out).toContain("x;'=1+1");
+    // Delimiter preserved (not rewritten to comma).
+    expect(out).not.toContain("x,");
+  });
+
+  it("escapes a formula in a TAB-delimited file", () => {
+    const out = escapeCsvFormulasInText("a\tb\nx\t=SUM(A1)\n");
+    expect(out).toContain("\t'=SUM(A1)");
+  });
+
+  it("does not escape a comma inside a quoted cell that is not a formula", () => {
+    // "x,=notformula" is ONE cell starting with 'x' → safe, must stay intact.
+    const out = escapeCsvFormulasInText('a,b\n"x,=notformula",ok\n');
+    expect(out).toContain('"x,=notformula"');
+    expect(out).not.toContain("'=notformula");
+  });
 });

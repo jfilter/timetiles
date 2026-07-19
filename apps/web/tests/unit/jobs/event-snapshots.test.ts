@@ -105,6 +105,48 @@ describe.sequential("EventSnapshotStore", () => {
     expect(restored).toBe(0);
   });
 
+  it("does NOT clobber an event a concurrent import re-wrote after us", async () => {
+    const events = new Map<number, Record<string, unknown>>([
+      [20, { id: 20, transformedData: { v: "ORIG" }, ingestJob: 99 }],
+    ]);
+    const payload = makeMockPayload(events);
+    const store = new EventSnapshotStore("99", log);
+
+    await store.capture(payload, 20);
+    // A concurrent import (job 200) updates + claims the event, then succeeds.
+    events.set(20, { id: 20, transformedData: { v: "FROM_J2" }, ingestJob: 200 });
+
+    const restored = await EventSnapshotStore.restoreAndClear(payload, "99", log);
+
+    // Our rollback must leave J2's newer data intact.
+    expect(restored).toBe(0);
+    expect(events.get(20)?.transformedData).toEqual({ v: "FROM_J2" });
+    expect(events.get(20)?.ingestJob).toBe(200);
+    // No failures → sidecar cleared.
+    await expect(fsPromises.access(snapshotFile("99"))).rejects.toThrow();
+  });
+
+  it("keeps the sidecar when a restore fails so a retry can revert later", async () => {
+    const events = new Map<number, Record<string, unknown>>([
+      [30, { id: 30, transformedData: { v: "ORIG" }, ingestJob: 55 }],
+    ]);
+    // Payload whose update always fails (transient DB error).
+    const payload = {
+      findByID: ({ id }: { id: number }) => Promise.resolve(events.get(Number(id)) ?? null),
+      update: () => Promise.reject(new Error("transient db error")),
+    } as never;
+    const store = new EventSnapshotStore("55", log);
+
+    await store.capture(payload, 30);
+    events.set(30, { id: 30, transformedData: { v: "MODIFIED" }, ingestJob: 55 });
+
+    const restored = await EventSnapshotStore.restoreAndClear(payload, "55", log);
+
+    expect(restored).toBe(0);
+    // Sidecar must survive so the next attempt / onFail can retry the rollback.
+    await expect(fsPromises.access(snapshotFile("55"))).resolves.toBeUndefined();
+  });
+
   it("skips unparseable lines but restores the valid ones", async () => {
     const events = new Map<number, Record<string, unknown>>([[1, { id: 1, transformedData: { v: "NEW" } }]]);
     const payload = makeMockPayload(events);

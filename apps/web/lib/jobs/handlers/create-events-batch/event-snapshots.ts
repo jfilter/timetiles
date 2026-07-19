@@ -15,6 +15,16 @@
  * uses, so it survives worker restarts and is visible to whichever worker runs
  * the retry / onFail (no new collection or migration required).
  *
+ * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
+ * restored exactly. Two metadata effects are intentionally NOT undone — the
+ * restore is a normal Payload update, so it bumps `updatedAt` and leaves the
+ * failed intermediate in the event's version history. Reverting those would
+ * require low-level version-table surgery that risks corrupting Payload's
+ * draft/latest bookkeeping, so it is out of scope here. Orphaned sidecars from a
+ * hard-crashed (never retried, never onFail'd) job are also possible; `discard`
+ * logs (does not swallow) a failed delete, and the ownership-guarded restore
+ * limits the blast radius if a stale sidecar is ever replayed.
+ *
  * @module
  * @category Jobs
  */
@@ -26,6 +36,7 @@ import type { Payload } from "payload";
 import { getEnv } from "@/lib/config/env";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 /** Exact set of event fields {@link tryUpdateExistingEvent} overwrites — captured and restored verbatim. */
 const SNAPSHOT_FIELDS = [
@@ -109,15 +120,25 @@ export class EventSnapshotStore {
     try {
       await fsPromises.rm(snapshotPath(ingestJobId), { force: true });
     } catch (error) {
-      log.warn("Failed to discard event snapshots", { ingestJobId, error });
+      // Not swallowed to a low level: a surviving sidecar could be replayed if
+      // this job id is ever re-run, rolling back data that was already final.
+      log.error("Failed to discard event snapshots; a re-run could replay them", { ingestJobId, error });
     }
   }
 
   /**
-   * Restore every snapshotted event to its captured original, then delete the
+   * Restore snapshotted events to their captured originals, then delete the
    * sidecar. Idempotent and safe to call when no sidecar exists (no-op). Used at
    * the start of every attempt (revert a prior attempt's updates) and on terminal
    * failure (revert this attempt's updates). Returns the number restored.
+   *
+   * Two safety rules:
+   * - Conditional restore: an event is reverted only if it is still owned by THIS
+   *   job (`ingestJob` unchanged). If a concurrent import re-wrote it after us, its
+   *   newer data is left intact rather than clobbered by our rollback.
+   * - Keep-on-failure: if any line fails to parse or restore, the sidecar is NOT
+   *   deleted, so the next attempt / onFail can retry from the true originals
+   *   instead of losing the only copy.
    */
   static async restoreAndClear(payload: Payload, ingestJobId: string | number, log: Logger): Promise<number> {
     const file = snapshotPath(ingestJobId);
@@ -131,6 +152,8 @@ export class EventSnapshotStore {
     }
 
     let restored = 0;
+    let failures = 0;
+    const thisJobId = Number(ingestJobId);
     for (const line of contents.split("\n")) {
       if (line.trim() === "") continue;
       let entry: { id: number; data: SnapshotData };
@@ -138,19 +161,41 @@ export class EventSnapshotStore {
         entry = JSON.parse(line) as { id: number; data: SnapshotData };
       } catch (error) {
         log.warn("Skipping unparseable event snapshot line", { ingestJobId, error });
+        failures++;
         continue;
       }
       try {
+        const current = await asSystem(payload).findByID({ collection: "events", id: entry.id, depth: 0 });
+        if (!current) continue; // event vanished independently → nothing to revert (not a failure)
+
+        const owner = extractRelationId((current as { ingestJob?: unknown }).ingestJob);
+        if (owner != null && Number(owner) !== thisJobId) {
+          // A concurrent import claimed this event after we did; keep its data.
+          log.info("Skipping snapshot restore; event was re-written by another import", {
+            ingestJobId,
+            eventId: entry.id,
+            currentOwner: owner,
+          });
+          continue;
+        }
+
         await asSystem(payload).update({ collection: "events", id: entry.id, data: entry.data });
         restored++;
       } catch (error) {
-        // The event may have been deleted independently; log and continue so one
-        // missing row cannot block reverting the rest.
         log.warn("Failed to restore event snapshot", { ingestJobId, eventId: entry.id, error });
+        failures++;
       }
     }
 
-    await fsPromises.rm(file, { force: true });
+    if (failures === 0) {
+      await fsPromises.rm(file, { force: true });
+    } else {
+      log.error("Kept event-snapshot sidecar after restore failures; will retry on next attempt/onFail", {
+        ingestJobId,
+        restored,
+        failures,
+      });
+    }
     if (restored > 0) log.info("Restored events from prior-state snapshots", { ingestJobId, restored });
     return restored;
   }

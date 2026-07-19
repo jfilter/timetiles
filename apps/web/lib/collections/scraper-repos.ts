@@ -10,13 +10,11 @@
  */
 import type { CollectionConfig, PayloadRequest, Where } from "payload";
 
-import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { hasPendingPayloadJob } from "@/lib/services/payload-job-queries";
 import { createQuotaService } from "@/lib/services/quota-service";
-import { getRateLimitService } from "@/lib/services/rate-limit-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
@@ -34,18 +32,22 @@ const clearScraperRepoQuotaClaim = (req: PayloadRequest): void => {
 const SCRAPER_REPO_SYNC_TASK = "scraper-repo-sync" as const;
 
 /**
- * Queue a manifest sync for a repo, but only when it is neither already pending
- * nor rate-limited.
+ * Queue a manifest sync for a repo, coalescing rapid source changes.
  *
  * A generic `PATCH /api/scraper-repos/:id` that touches `gitUrl` / `gitBranch` /
- * `code` auto-triggers this sync. Without gating, that owner-reachable path
- * bypasses the SCRAPER_TRIGGER limit the dedicated `/sync` route enforces (each
- * sync is an expensive git clone + manifest re-parse) and can pile duplicate
- * jobs onto the queue. Dedup caps it to one pending/running sync per repo; the
- * rate limit (shared bucket with the manual `/sync` route via the same
- * `scraper-sync:<userId>` key) throttles serial re-triggers. Neither rejects the
- * edit — only the side-effect sync is skipped, and the user can still sync
- * manually once the window clears.
+ * `code` auto-triggers this sync. Without gating, that owner-reachable path could
+ * pile duplicate expensive syncs (git clone + manifest re-parse) onto the queue.
+ *
+ * The dedup is deliberately COALESCING, not "at most one job ever": we skip only
+ * when a sync is already QUEUED-but-not-started, because that job will read the
+ * repo's latest state (including this change) when it runs. A sync that is
+ * already RUNNING read the OLD source, so it does NOT cover this change — we must
+ * enqueue a successor, otherwise the record would point at the new source while
+ * the scrapers stayed on the old one. This bounds the queue to at most one
+ * running + one waiting sync per repo while never dropping a real change. The
+ * dedicated `/sync` route keeps its own SCRAPER_TRIGGER rate limit for manual
+ * triggers; we intentionally do NOT rate-limit here (that would silently drop a
+ * committed source change with no later catch-up).
  */
 const maybeQueueRepoSync = async ({
   repoId,
@@ -56,23 +58,15 @@ const maybeQueueRepoSync = async ({
   operation: "create" | "update";
   req: PayloadRequest;
 }): Promise<void> => {
-  // Dedup: a sync already waiting or running for this repo covers the change.
-  if (await hasPendingPayloadJob(req.payload, "input.scraperRepoId", repoId, SCRAPER_REPO_SYNC_TASK)) {
-    logger.info({ repoId, operation }, "Scraper repo sync already pending; skipping duplicate");
+  // A queued-but-not-yet-started sync will pick up this change when it runs.
+  if (
+    await hasPendingPayloadJob(req.payload, "input.scraperRepoId", repoId, {
+      taskSlug: SCRAPER_REPO_SYNC_TASK,
+      queuedOnly: true,
+    })
+  ) {
+    logger.info({ repoId, operation }, "Scraper repo sync already queued; coalescing");
     return;
-  }
-
-  // Throttle re-syncs from generic updates. A create's initial sync always runs
-  // (repo creation is already quota + trust gated and cannot be looped cheaply).
-  if (operation === "update" && req.user) {
-    const check = await getRateLimitService(req.payload).checkConfiguredRateLimit(
-      `scraper-sync:${req.user.id}`,
-      RATE_LIMITS.SCRAPER_TRIGGER
-    );
-    if (!check.allowed) {
-      logger.warn({ repoId, userId: req.user.id }, "Scraper repo sync rate-limited; skipping auto-sync");
-      return;
-    }
   }
 
   try {

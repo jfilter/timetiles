@@ -15,7 +15,7 @@
 import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
-import { revokeAllSessions } from "@/lib/api/auth-helpers";
+import { resetPasswordAndRevokeSessions } from "@/lib/api/auth-helpers";
 import { logger } from "@/lib/logger";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
@@ -43,21 +43,19 @@ export const POST = apiRoute({
     return withTimingPad(TIMING_PAD_MS.PASSWORD_RESET, async () => {
       let resetUser: User | undefined;
       try {
-        const result = await payload.resetPassword({
-          collection: "users",
-          data: { token: body.token, password: body.password },
-          overrideAccess: true,
-        });
-        resetUser = result.user as unknown as User | undefined;
-      } catch {
-        // Invalid or expired token. Keep the message generic — no token oracle.
+        // Reset + full session wipe run in ONE transaction (see helper): a
+        // transient failure can no longer leave the account reset but its old
+        // sessions alive while we return 200.
+        resetUser = await resetPasswordAndRevokeSessions(payload, body.token, body.password);
+      } catch (error) {
+        // Invalid/expired token OR a transaction failure (which rolled the reset
+        // back, leaving the token usable). Keep the response generic — no token
+        // oracle — but log the real cause for operators.
+        logger.warn({ clientId, error }, "Password reset did not complete");
         throw new AppError(400, "This password reset link is invalid or has expired.");
       }
 
       if (resetUser?.id != null) {
-        // Revoke every session, including the one resetPassword just minted; the
-        // frontend redirects to /login for a fresh sign-in with the new password.
-        await revokeAllSessions(payload, resetUser.id);
         await auditLog(payload, {
           action: AUDIT_ACTIONS.PASSWORD_RESET,
           userId: resetUser.id,

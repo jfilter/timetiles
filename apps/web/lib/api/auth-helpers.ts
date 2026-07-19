@@ -4,7 +4,7 @@
  * @module
  * @category API
  */
-import type { Payload } from "payload";
+import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { AppError, ForbiddenError } from "@/lib/api/errors";
 import { isPrivileged } from "@/lib/collections/shared-fields";
@@ -159,22 +159,51 @@ export const revokeOtherSessions = async (
 };
 
 /**
- * Revoke EVERY session for a user.
+ * Reset a user's password AND clear every session, atomically.
  *
- * Used after a password reset: unlike an in-session password change (which keeps
- * the current device via {@link revokeOtherSessions}), a reset is finalized from
- * an unauthenticated request with only an emailed token — there is no "current"
- * session to preserve, and the reset is precisely the moment to lock out any
- * pre-existing (possibly attacker) session. Payload's built-in resetPassword
- * mints a fresh session it never revokes; clearing all of them forces the user
- * to re-authenticate on every device with the new password. Best-effort: the
- * password write has already committed, so a failure here is logged, not thrown.
+ * A password reset is finalized from an unauthenticated request with only an
+ * emailed token, so — unlike an in-session password change (which keeps the
+ * current device via {@link revokeOtherSessions}) — there is no session to
+ * preserve, and the reset is precisely the moment to lock out any pre-existing
+ * (possibly attacker) session. Payload's built-in resetPassword commits the new
+ * password AND mints a fresh session on its own; wiping sessions as a separate,
+ * best-effort write meant a transient failure there left the old + new sessions
+ * alive while the caller still returned success.
+ *
+ * Running both inside ONE transaction fixes that: the password change and the
+ * `sessions: []` wipe commit together or roll back together. A rollback also
+ * un-consumes the reset token (resetPassword's expiry reset is undone), so the
+ * emailed link stays usable for a retry rather than being silently burned.
+ *
+ * @returns the reset user, or undefined if resetPassword returned none.
+ * @throws if the token is invalid/expired or the transaction fails.
  */
-export const revokeAllSessions = async (payload: Payload, userId: number | string): Promise<void> => {
+export const resetPasswordAndRevokeSessions = async (
+  payload: Payload,
+  token: string,
+  password: string
+): Promise<User | undefined> => {
+  const req = { payload, transactionID: undefined, context: {} } as Pick<
+    PayloadRequest,
+    "payload" | "transactionID" | "context"
+  >;
+  const ownsTransaction = await initTransaction(req);
   try {
-    await payload.update({ collection: "users", id: userId, data: { sessions: [] }, overrideAccess: true });
+    const result = await payload.resetPassword({
+      collection: "users",
+      data: { token, password },
+      overrideAccess: true,
+      req,
+    });
+    const user = result.user as unknown as User | undefined;
+    if (user?.id != null) {
+      await payload.update({ collection: "users", id: user.id, data: { sessions: [] }, overrideAccess: true, req });
+    }
+    if (ownsTransaction) await commitTransaction(req);
+    return user;
   } catch (error) {
-    logger.warn({ userId, error }, "Failed to revoke sessions after password reset");
+    if (ownsTransaction) await killTransaction(req);
+    throw error;
   }
 };
 

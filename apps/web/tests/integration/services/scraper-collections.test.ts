@@ -12,7 +12,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
-import { resetRateLimitService } from "@/lib/services/rate-limit-service";
 import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
@@ -645,12 +644,6 @@ describe.sequential("Scraper Collections Access Control", () => {
   });
 
   describe("auto-sync queueing", () => {
-    // Clear the in-memory SCRAPER_TRIGGER buckets between tests so the rate
-    // limit never masks what these tests actually assert (dedup / re-queue).
-    beforeEach(() => {
-      resetRateLimitService();
-    });
-
     const countSyncJobs = async (repoId: number | string): Promise<number> => {
       const jobs = await payload.find({
         collection: "payload-jobs",
@@ -677,7 +670,7 @@ describe.sequential("Scraper Collections Access Control", () => {
       expect(await countSyncJobs(repo.id)).toBe(1);
     });
 
-    it("does not queue a duplicate sync while one is still pending (dedup)", async () => {
+    it("coalesces a change while a sync is still QUEUED (not started)", async () => {
       await enableScrapers();
 
       const repo = await payload.create({
@@ -688,8 +681,8 @@ describe.sequential("Scraper Collections Access Control", () => {
       });
       expect(await countSyncJobs(repo.id)).toBe(1);
 
-      // Changing a source field would normally re-trigger a sync, but the first
-      // one is still queued (no worker runs in-test) → dedup skips it.
+      // The create's sync is still queued (no worker runs in-test); it will read
+      // the latest source when it starts, so a further change coalesces into it.
       await payload.update({
         collection: "scraper-repos",
         id: repo.id,
@@ -699,6 +692,46 @@ describe.sequential("Scraper Collections Access Control", () => {
       });
 
       expect(await countSyncJobs(repo.id)).toBe(1);
+    });
+
+    it("queues a SUCCESSOR when a change arrives while a sync is already RUNNING", async () => {
+      await enableScrapers();
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Sync Running", sourceType: "git", gitUrl: "https://github.com/example/sync-running.git" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      // Mark the create's sync as RUNNING (started, read the OLD source).
+      const pending = await payload.find({
+        collection: "payload-jobs",
+        where: { taskSlug: { equals: "scraper-repo-sync" } },
+        overrideAccess: true,
+        pagination: false,
+      });
+      for (const job of pending.docs) {
+        await payload.update({
+          collection: "payload-jobs",
+          id: job.id,
+          data: { processing: true },
+          overrideAccess: true,
+        });
+      }
+
+      // A source change now must NOT coalesce into the running job (it already
+      // read the old source) — a successor is enqueued so scrapers reflect it.
+      await payload.update({
+        collection: "scraper-repos",
+        id: repo.id,
+        data: { gitBranch: "develop" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+
+      // One running + one fresh queued = 2.
+      expect(await countSyncJobs(repo.id)).toBe(2);
     });
 
     it("re-queues a sync once the previous one has completed", async () => {

@@ -65,21 +65,64 @@ export const escapeRowFormulas = (row: Record<string, unknown>): Record<string, 
 export const escapeRowsFormulas = (rows: readonly Record<string, unknown>[]): Record<string, unknown>[] =>
   rows.map((row) => escapeRowFormulas(row));
 
+/** Delimiters a spreadsheet application might split on, in preference order. */
+const CANDIDATE_DELIMITERS = [",", ";", "\t", "|"] as const;
+
+/**
+ * Pick the delimiter a spreadsheet is most likely to split the file on.
+ *
+ * Papa's own detection defaults to `,` even for a `;`-delimited file (both yield
+ * a "consistent" 1-vs-2 column count), which would leave a `x;=formula` cell
+ * unescaped and dangerous in a semicolon-locale Excel/Calc. Instead, parse a
+ * sample with each candidate and prefer the one that yields the MOST columns
+ * (that is the structure a spreadsheet will actually render), breaking ties
+ * toward consistent column counts. Falls back to `,`.
+ */
+export const detectDelimiter = (csvText: string): string => {
+  const sample = csvText
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "")
+    .slice(0, 20)
+    .join("\n");
+  if (sample === "") return ",";
+
+  let best = ",";
+  let bestScore = -1;
+  for (const delimiter of CANDIDATE_DELIMITERS) {
+    const rows = Papa.parse<string[]>(sample, { delimiter }).data.filter((r): r is string[] => Array.isArray(r));
+    if (rows.length === 0) continue;
+    const columnCounts = rows.map((r) => r.length);
+    const maxColumns = Math.max(...columnCounts);
+    const consistent = columnCounts.every((c) => c === columnCounts[0]);
+    // Only a multi-column split counts as evidence of this delimiter; add a
+    // small bonus for uniform rows so a clean split wins ties.
+    const score = (maxColumns > 1 ? maxColumns : 0) + (consistent ? 0.5 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = delimiter;
+    }
+  }
+  return best;
+};
+
 /**
  * Formula-escape every cell of an already-serialized CSV string.
  *
- * Parses the CSV as a raw 2-D grid (no header inference, so structure and column
+ * Detects the delimiter a spreadsheet would use (see {@link detectDelimiter}),
+ * parses the CSV as a raw 2-D grid (no header inference, so structure and column
  * order survive exactly), applies {@link escapeCsvFormula} to each cell, and
- * re-serializes. This is the DOWNLOAD-boundary defense: canonical ingest CSVs
- * are stored raw (the pipeline re-parses them and a leading apostrophe would
- * corrupt real values), so escaping happens only when a human downloads the
- * file into a spreadsheet application (CWE-1236). An empty input yields "".
+ * re-serializes with the same delimiter and line break. This is the
+ * DOWNLOAD-boundary defense: canonical ingest CSVs are stored raw (the pipeline
+ * re-parses them and a leading apostrophe would corrupt real values), so
+ * escaping happens only when a human downloads the file into a spreadsheet
+ * application (CWE-1236). An empty input yields "".
  */
 export const escapeCsvFormulasInText = (csvText: string): string => {
   if (csvText === "") return "";
-  const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: false });
+  const delimiter = detectDelimiter(csvText);
+  const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: false, delimiter });
   const escaped = parsed.data.map((row) => (Array.isArray(row) ? row.map((cell) => escapeCsvFormula(cell)) : row));
-  return Papa.unparse(escaped);
+  return Papa.unparse(escaped, { delimiter, newline: parsed.meta.linebreak || "\r\n" });
 };
 
 /**
