@@ -19,9 +19,7 @@ const log = { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() } as 
 
 /** Minimal payload mock supporting only `capture`'s findByID. */
 const makeMockPayload = (events: Map<number, Record<string, unknown>>) =>
-  ({
-    findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null),
-  }) as never;
+  ({ findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null) }) as never;
 
 describe.sequential("EventSnapshotStore (file-level)", () => {
   let tmpDir: string;
