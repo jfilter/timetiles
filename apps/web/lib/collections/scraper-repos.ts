@@ -21,6 +21,12 @@ const logger = createLogger(COLLECTION_SLUG);
 type ScraperRepoQuotaRequest = PayloadRequest & { scraperRepoQuotaClaimedForUser?: string | number };
 
 const markScraperRepoQuotaClaimed = (req: PayloadRequest): void => {
+  // Only claim compensation for a NON-transactional increment. When the create
+  // runs in a transaction (always, on Postgres), a failed/aborted create rolls
+  // the increment back on its own — so the afterError decrement would be a SECOND
+  // subtraction, letting a user push their repo count below zero with repeated
+  // deliberately-invalid creates and then exceed the limit.
+  if (req.transactionID) return;
   if (req.user) (req as ScraperRepoQuotaRequest).scraperRepoQuotaClaimedForUser = req.user.id;
 };
 

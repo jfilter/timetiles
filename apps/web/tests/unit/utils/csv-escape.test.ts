@@ -296,6 +296,19 @@ describe("escapeCsvFormulasInText", () => {
     expect(escapeCsvFormulasInText("a\x1e=b")).toBe("a\x1e'=b");
   });
 
+  it("honors an Excel sep= directive declaring an arbitrary delimiter", () => {
+    // sep=: makes ':' the delimiter; the formula after it must be escaped.
+    const out = escapeCsvFormulasInText('sep=:\nname:value\nx:"=HYPERLINK(""http://evil"")"');
+    expect(out).toContain(":\"'=HYPERLINK");
+    // A column named "separator..." must NOT be misread as a sep= directive.
+    expect(escapeCsvFormulasInText("separator,x\n=1,y")).toContain("\n'=1,y");
+  });
+
+  it("escapes a formula opened with an apostrophe text-qualifier", () => {
+    // Excel supports ' as a text qualifier and strips it → cell becomes =1+1.
+    expect(escapeCsvFormulasInText("name,value\nx,'=1+1'")).toContain(",''=1+1");
+  });
+
   it("chains correctly across streamed chunks via the carry", () => {
     // A boundary char at the end of one chunk + a trigger at the start of the
     // next must still be escaped.

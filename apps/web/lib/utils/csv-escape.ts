@@ -77,8 +77,24 @@ const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
 // - U+FEFF (BOM) — a spreadsheet strips a leading BOM, making whatever follows
 //   the logical first cell, so a `<BOM>=formula` must still be escaped.
 const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|", "\x1e", "\x1f", "﻿"]);
+// Excel/Calc strip a leading text qualifier on import, so a `<boundary>'=x'` or
+// `<boundary>"=x"` cell content still starts with the trigger — both `"` and `'`
+// are valid qualifiers.
+const QUOTE_OPENERS = new Set(['"', "'"]);
 
-const isFieldBoundary = (char: string | undefined): boolean => char === undefined || FIELD_BOUNDARIES.has(char);
+const isFieldBoundary = (char: string | undefined, extraDelimiter?: string): boolean =>
+  char === undefined || FIELD_BOUNDARIES.has(char) || (extraDelimiter !== undefined && char === extraDelimiter);
+
+/**
+ * Detect an Excel `sep=<char>` directive on the first line (after an optional
+ * BOM). Excel honors it and splits every row on that character, so it must be
+ * treated as a field boundary too — otherwise `sep=:` + a `:=formula` cell would
+ * slip through. Returns the declared separator, or undefined.
+ */
+export const detectSepDirective = (text: string): string | undefined => {
+  const withoutBom = text.startsWith("﻿") ? text.slice(1) : text;
+  return /^sep=(.)\r?\n/i.exec(withoutBom)?.[1];
+};
 
 /**
  * Delimiter-agnostic CSV formula escape.
@@ -86,18 +102,24 @@ const isFieldBoundary = (char: string | undefined): boolean => char === undefine
  * Rather than guessing the delimiter (unsound — `,` vs `;` are ambiguous, and a
  * spreadsheet's choice depends on the viewer's locale), this inserts a `'` before
  * any `=`/`+`/`-`/`@` that sits at a field boundary under ANY common delimiter
- * (comma, semicolon, tab, pipe), at a line/file start, or just inside a quote
- * opened at such a start. The cell can then never be evaluated no matter how the
- * spreadsheet splits the row. It only ever INSERTS apostrophes, so the file
- * structure (delimiters, quotes, line breaks, a leading BOM) is preserved exactly;
- * the only cost is occasionally over-escaping a `<boundary><trigger>` sequence
- * inside a quoted value, which is cosmetic and safe (matches {@link escapeCsvFormula},
- * which likewise escapes e.g. a leading `-5`).
+ * (comma, semicolon, tab, pipe, RS, US, a `sep=`-declared one), at a line/file
+ * start, or just inside a text qualifier (`"` or `'`) opened at such a start. The
+ * cell can then never be evaluated no matter how the spreadsheet splits the row.
+ * It only ever INSERTS apostrophes, so the file structure (delimiters, quotes,
+ * line breaks, a leading BOM) is preserved exactly; the only cost is occasionally
+ * over-escaping a `<boundary><trigger>` sequence inside a quoted value, which is
+ * cosmetic and safe (matches {@link escapeCsvFormula}, which likewise escapes e.g.
+ * a leading `-5`).
  *
  * Streaming: pass the previous call's returned `carry` (its last two raw chars)
- * back in as the second argument so boundary detection is correct across chunks.
+ * back in as `carry` so boundary detection is correct across chunks, and pass the
+ * file's `sep=` separator (if any) as `extraDelimiter` for every chunk.
  */
-export const escapeCsvFormulaBoundaries = (text: string, carry = ""): { output: string; carry: string } => {
+export const escapeCsvFormulaBoundaries = (
+  text: string,
+  carry = "",
+  extraDelimiter?: string
+): { output: string; carry: string } => {
   const combined = carry + text;
   let output = "";
   for (let i = carry.length; i < combined.length; i++) {
@@ -105,7 +127,10 @@ export const escapeCsvFormulaBoundaries = (text: string, carry = ""): { output: 
     if (FORMULA_TRIGGERS.has(char)) {
       const prev1 = i > 0 ? combined[i - 1] : undefined;
       const prev2 = i > 1 ? combined[i - 2] : undefined;
-      if (isFieldBoundary(prev1) || (prev1 === '"' && isFieldBoundary(prev2))) {
+      const afterBoundary = isFieldBoundary(prev1, extraDelimiter);
+      const afterQuoteAtBoundary =
+        prev1 !== undefined && QUOTE_OPENERS.has(prev1) && isFieldBoundary(prev2, extraDelimiter);
+      if (afterBoundary || afterQuoteAtBoundary) {
         output += "'";
       }
     }
@@ -122,7 +147,8 @@ export const escapeCsvFormulaBoundaries = (text: string, carry = ""): { output: 
  * the file into a spreadsheet application. Delimiter-agnostic (see
  * {@link escapeCsvFormulaBoundaries}); an empty input yields "".
  */
-export const escapeCsvFormulasInText = (csvText: string): string => escapeCsvFormulaBoundaries(csvText).output;
+export const escapeCsvFormulasInText = (csvText: string): string =>
+  escapeCsvFormulaBoundaries(csvText, "", detectSepDirective(csvText)).output;
 
 /**
  * Serialize rows to a CSV string with EVERY field as a column.

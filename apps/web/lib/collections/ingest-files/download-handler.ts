@@ -25,7 +25,7 @@ import type { PayloadRequest, TypeWithID, UploadConfig } from "payload";
 
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
-import { escapeCsvFormulaBoundaries } from "@/lib/utils/csv-escape";
+import { detectSepDirective, escapeCsvFormulaBoundaries } from "@/lib/utils/csv-escape";
 
 type IngestFileDoc = TypeWithID & { mimeType?: string | null; filename?: string | null; originalName?: string | null };
 
@@ -64,11 +64,19 @@ const buildContentDisposition = (name: string): string => {
 const createEscapedCsvStream = (filePath: string): ReadableStream<Uint8Array> => {
   const source = createReadStream(filePath, "utf-8");
   let carry = "";
+  // An Excel `sep=<char>` directive on the first line declares an arbitrary
+  // delimiter; capture it once and treat it as a boundary for the whole file.
+  let extraDelimiter: string | undefined;
+  let firstChunk = true;
   const escaper = new Transform({
     decodeStrings: false,
     transform: (chunk: unknown, _enc, done) => {
       const text = typeof chunk === "string" ? chunk : String(chunk);
-      const result = escapeCsvFormulaBoundaries(text, carry);
+      if (firstChunk) {
+        extraDelimiter = detectSepDirective(text);
+        firstChunk = false;
+      }
+      const result = escapeCsvFormulaBoundaries(text, carry, extraDelimiter);
       carry = result.carry;
       done(null, Buffer.from(result.output, "utf-8"));
     },

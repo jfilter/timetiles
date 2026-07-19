@@ -772,4 +772,37 @@ describe.sequential("Scraper Collections Access Control", () => {
       expect(await countSyncJobs(repo.id)).toBe(2);
     });
   });
+
+  describe("create-quota integrity", () => {
+    it("does not decrement the repo quota when a create fails validation", async () => {
+      await enableScrapers();
+      const { createQuotaService } = await import("@/lib/services/quota-service");
+      const quota = createQuotaService(payload);
+
+      await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Valid Repo", sourceType: "git", gitUrl: "https://github.com/example/quota-valid.git" },
+        user: trustedUser,
+        overrideAccess: false,
+      });
+      expect((await quota.getCurrentUsage(trustedUser.id))?.currentScraperRepos).toBe(1);
+
+      // Repeated invalid creates (non-HTTPS git URL → field validation rejects,
+      // the whole create transaction — including the quota increment — rolls back).
+      for (let i = 0; i < 3; i++) {
+        await expect(
+          payload.create({
+            collection: "scraper-repos",
+            data: { name: "Bad Repo", sourceType: "git", gitUrl: "http://not-https.example/repo.git" },
+            user: trustedUser,
+            overrideAccess: false,
+          })
+        ).rejects.toThrow();
+      }
+
+      // The count must still reflect the ONE real repo — never pushed below it by
+      // afterError double-compensating an already-rolled-back increment.
+      expect((await quota.getCurrentUsage(trustedUser.id))?.currentScraperRepos).toBe(1);
+    });
+  });
 });
