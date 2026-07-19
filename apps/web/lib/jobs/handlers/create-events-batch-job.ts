@@ -371,6 +371,18 @@ export const createEventsBatchJob = {
       return { output: { needsReview, eventCount: totalEventsCreated, duplicatesSkipped: totalEventsSkipped } };
     } catch (error) {
       logError(error, "Event creation failed", { ingestJobId });
+
+      // Roll back this attempt's in-place updates and fresh inserts HERE, not
+      // only in onFail: the process-sheets workflow catches each task's error per
+      // sheet, so onFail — and therefore the snapshot/insert rollback — would
+      // never run for sheet-based imports, leaving a failed import's overwrites
+      // live. Idempotent with the attempt-start cleanup and the onFail backstop.
+      try {
+        await cleanupPriorAttempt(payload, ingestJobId, logger);
+      } catch (cleanupError) {
+        logError(cleanupError, "Rollback after event-creation failure did not fully complete", { ingestJobId });
+      }
+
       await releaseEventQuotaOnFailure({
         payload,
         ingestJobId,
@@ -380,7 +392,7 @@ export const createEventsBatchJob = {
       });
       await cleanupSidecarsForJob(payload, ingestJobId);
 
-      // Re-throw — Payload retries up to `retries` count, then onFail handles failure
+      // Re-throw — Payload retries up to `retries` count, then onFail is a backstop.
       throw error;
     }
   },
