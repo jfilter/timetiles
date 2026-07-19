@@ -10,10 +10,18 @@
  * This upload handler runs AFTER Payload's file access check and escapes CSV
  * cells at serve time, so the download is spreadsheet-safe while the stored data
  * the pipeline reads remains untouched. Escaping is delimiter-agnostic and runs
- * as a streaming BYTE scan (latin1, so any source encoding — Windows-1252, etc. —
- * is preserved exactly rather than mangled through a UTF-8 decode; O(1) memory,
- * independent of file/record size). Non-CSV files (xlsx/ods, size variants) fall
- * through to Payload's default serving.
+ * as a streaming BYTE scan (latin1, so any single-byte source encoding —
+ * Windows-1252, etc. — is preserved exactly rather than mangled through a UTF-8
+ * decode; O(1) memory, independent of file/record size). Non-CSV files (xlsx/ods,
+ * size variants) fall through to Payload's default serving.
+ *
+ * Scope: the scan neutralizes ASCII formula triggers (`= + - @`) at any field
+ * boundary for UTF-8 / ASCII / single-byte-encoded CSVs — the realistic threat.
+ * Two exotic classes are NOT covered and are an accepted residual: a CSV stored
+ * in a WIDE encoding (UTF-16/UTF-32, i.e. carrying a `FF FE` / `FE FF` / 4-byte
+ * BOM) whose formula bytes are multi-byte, and full-width trigger glyphs
+ * (`＝＋－＠`) that only some locales evaluate. Both would require an
+ * encoding-aware (multi-byte) scanner; ingest CSVs are effectively always UTF-8.
  *
  * @module
  * @category Collections

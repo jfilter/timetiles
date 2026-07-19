@@ -8,8 +8,9 @@
  * @category Jobs
  */
 import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
+import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
@@ -262,37 +263,67 @@ const tryUpdateExistingEvent = async (
     log.warn("Refusing cross-dataset event update", { existingEventId, datasetId });
     return { updated: false, blocked: true };
   }
-  // Snapshot the original BEFORE overwriting so a permanently-failed import can
-  // be rolled back. Capture is deduped per run, so re-updates and retries never
-  // clobber the true original.
-  await snapshotStore?.capture(payload, existingEventId);
-  await asSystem(payload).update({
-    collection: "events",
-    id: existingEventId,
-    data: {
-      dataset: eventData.dataset,
-      datasetIsPublic: eventData.datasetIsPublic,
-      catalogOwnerId: eventData.catalogOwnerId,
-      uniqueId: eventData.uniqueId,
-      transformedData: eventData.transformedData,
-      sourceData: eventData.sourceData,
-      location: eventData.location,
-      locationName: eventData.locationName,
-      coordinateSource: {
-        type: eventData.coordinateSource.type as NonNullable<Event["coordinateSource"]>["type"],
-        confidence: eventData.coordinateSource.confidence ?? null,
-        normalizedAddress: eventData.coordinateSource.normalizedAddress ?? null,
-      },
-      eventTimestamp: eventData.eventTimestamp,
-      eventEndTimestamp: eventData.eventEndTimestamp,
-      validationStatus: eventData.validationStatus as Event["validationStatus"],
-      transformations: eventData.transformations as Event["transformations"],
-      schemaVersionNumber: eventData.schemaVersionNumber,
-      contentHash: eventData.contentHash,
-      ingestJob: eventData.ingestJob,
+
+  const updateData = {
+    dataset: eventData.dataset,
+    datasetIsPublic: eventData.datasetIsPublic,
+    catalogOwnerId: eventData.catalogOwnerId,
+    uniqueId: eventData.uniqueId,
+    transformedData: eventData.transformedData,
+    sourceData: eventData.sourceData,
+    location: eventData.location,
+    locationName: eventData.locationName,
+    coordinateSource: {
+      type: eventData.coordinateSource.type as NonNullable<Event["coordinateSource"]>["type"],
+      confidence: eventData.coordinateSource.confidence ?? null,
+      normalizedAddress: eventData.coordinateSource.normalizedAddress ?? null,
     },
-  });
-  return { updated: true, blocked: false };
+    eventTimestamp: eventData.eventTimestamp,
+    eventEndTimestamp: eventData.eventEndTimestamp,
+    validationStatus: eventData.validationStatus as Event["validationStatus"],
+    transformations: eventData.transformations as Event["transformations"],
+    schemaVersionNumber: eventData.schemaVersionNumber,
+    contentHash: eventData.contentHash,
+    ingestJob: eventData.ingestJob,
+  };
+
+  // No snapshotting (defensive — only the "update" strategy reaches here): plain update.
+  if (!snapshotStore) {
+    await asSystem(payload).update({ collection: "events", id: existingEventId, data: updateData });
+    return { updated: true, blocked: false };
+  }
+
+  // Snapshot the exact prior state and overwrite ATOMICALLY: lock the row FOR
+  // UPDATE, capture what we are about to overwrite (deduped per run — re-updates
+  // and retries keep the true original), then update, all in one transaction. The
+  // lock stops a concurrent import from committing between the snapshot and the
+  // write (which would make us capture a stale original / clobber its data).
+  const req = { payload, transactionID: undefined, context: {} } as Pick<
+    PayloadRequest,
+    "payload" | "transactionID" | "context"
+  >;
+  const ownsTransaction = await initTransaction(req);
+  try {
+    const drizzle = await getTransactionAwareDrizzle(payload, req);
+    await drizzle
+      .select({ id: eventsTable.id })
+      .from(eventsTable)
+      .where(eq(eventsTable.id, Number(existingEventId)))
+      .for("update");
+    await snapshotStore.capture(payload, existingEventId, req);
+    await payload.update({
+      collection: "events",
+      id: existingEventId,
+      data: updateData,
+      overrideAccess: true,
+      req: req,
+    });
+    if (ownsTransaction) await commitTransaction(req);
+    return { updated: true, blocked: false };
+  } catch (error) {
+    if (ownsTransaction) await killTransaction(req);
+    throw error;
+  }
 };
 
 /** A row that lost the insert race, paired with its source row number. */

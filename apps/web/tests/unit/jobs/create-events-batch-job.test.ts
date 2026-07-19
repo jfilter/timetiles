@@ -122,7 +122,7 @@ const createDrizzleMock = () => {
   /** Build a sub-chain that is both chainable and thenable. */
   const buildChain = (resolveValue: unknown = []) => {
     const chain: Record<string, any> = {};
-    for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
+    for (const m of ["select", "from", "where", "limit", "for", "insert", "values", "returning", "delete"]) {
       chain[m] = vi.fn().mockReturnValue(chain);
     }
     // oxlint-disable-next-line unicorn/no-thenable, promise/prefer-await-to-then -- intentional thenable for Drizzle mock
@@ -141,6 +141,9 @@ const createDrizzleMock = () => {
     select: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
     delete: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
     insert: vi.fn().mockImplementation(() => buildChain(queuedResults.shift() ?? [])),
+    // cleanupPriorAttempt wraps its chunked delete in one transaction; run the
+    // callback with the same mock so the enqueued select/delete results apply.
+    transaction: vi.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb(mock)),
   };
   return mock;
 };
@@ -183,7 +186,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       delete: vi.fn().mockResolvedValue({ docs: [] }),
       count: vi.fn().mockResolvedValue({ totalDocs: 2 }),
       jobs: { queue: vi.fn().mockResolvedValue({}) },
-      db: { drizzle: drizzleMock },
+      // beginTransaction returns null → initTransaction is a no-op (the atomic
+      // update path runs without a real transaction under the mock).
+      db: { drizzle: drizzleMock, beginTransaction: vi.fn().mockResolvedValue(null) },
     };
 
     // By default, cleanupPriorAttempt finds no events (select returns [])

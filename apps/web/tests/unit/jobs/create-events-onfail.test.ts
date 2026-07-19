@@ -57,7 +57,7 @@ describe.sequential("create-events-batch onFail isolation", () => {
     const buildChain = (resolveValue: unknown = [], rejectWith?: Error) => {
       const promise = rejectWith ? Promise.reject(rejectWith) : Promise.resolve(resolveValue);
       const chain: Record<string, any> = {};
-      for (const m of ["select", "from", "where", "limit", "insert", "values", "returning", "delete"]) {
+      for (const m of ["select", "from", "where", "limit", "for", "insert", "values", "returning", "delete"]) {
         chain[m] = vi.fn().mockReturnValue(chain);
       }
       // Drizzle query builders are thenable — the mock must replicate this
@@ -66,20 +66,20 @@ describe.sequential("create-events-batch onFail isolation", () => {
       return chain;
     };
 
+    const rootMock: Record<string, any> = {};
     if (options.selectError) {
-      return {
-        select: vi.fn().mockImplementation(() => buildChain(undefined, options.selectError)),
-        delete: vi.fn().mockImplementation(() => buildChain()),
-      };
+      rootMock.select = vi.fn().mockImplementation(() => buildChain(undefined, options.selectError));
+      rootMock.delete = vi.fn().mockImplementation(() => buildChain());
+    } else {
+      // Default: first select returns provided rows (or []), subsequent selects return []
+      const results = [options.selectResult ?? [], []];
+      let callIndex = 0;
+      rootMock.select = vi.fn().mockImplementation(() => buildChain(results[callIndex++] ?? []));
+      rootMock.delete = vi.fn().mockImplementation(() => buildChain());
     }
-
-    // Default: first select returns provided rows (or []), subsequent selects return []
-    const results = [options.selectResult ?? [], []];
-    let callIndex = 0;
-    return {
-      select: vi.fn().mockImplementation(() => buildChain(results[callIndex++] ?? [])),
-      delete: vi.fn().mockImplementation(() => buildChain()),
-    };
+    // cleanupPriorAttempt runs its chunked delete inside a transaction.
+    rootMock.transaction = vi.fn().mockImplementation((cb: (tx: unknown) => unknown) => cb(rootMock));
+    return rootMock;
   };
 
   beforeEach(() => {

@@ -265,25 +265,30 @@ export const cleanupPriorAttempt = async (
   }
   const ingestJobMatch = and(eq(eventsTable.ingestJob, Number(ingestJobId)), gte(eventsTable.createdAt, jobCreatedAt));
 
-  // Gather IDs of events to delete, then remove versions + events in chunks
+  // Select + delete each chunk inside ONE transaction with `FOR UPDATE`: without
+  // the lock a concurrent import could re-claim a selected event (`ingestJob = B`)
+  // between the select and the id-based delete, and we'd delete its committed
+  // row. The lock blocks that import until we commit, so every row we delete
+  // still matches the ownership predicate.
   let deletedTotal = 0;
-  let idsToDelete: number[];
+  let deletedThisChunk: number;
   do {
-    const rows = await db
-      .select({ id: eventsTable.id })
-      .from(eventsTable)
-      .where(ingestJobMatch)
-      .limit(DELETE_CHUNK_SIZE);
-    idsToDelete = rows.map((r) => r.id);
-
-    if (idsToDelete.length > 0) {
-      // Delete versions first (FK references events.id)
-      await db.delete(_events_v).where(inArray(_events_v.parent, idsToDelete));
-      // Then events
-      await db.delete(eventsTable).where(inArray(eventsTable.id, idsToDelete));
-      deletedTotal += idsToDelete.length;
-    }
-  } while (idsToDelete.length >= DELETE_CHUNK_SIZE);
+    deletedThisChunk = await db.transaction(async (tx) => {
+      const rows = await tx
+        .select({ id: eventsTable.id })
+        .from(eventsTable)
+        .where(ingestJobMatch)
+        .limit(DELETE_CHUNK_SIZE)
+        .for("update");
+      const ids = rows.map((r) => r.id);
+      if (ids.length === 0) return 0;
+      // Delete versions first (FK references events.id), then the events.
+      await tx.delete(_events_v).where(inArray(_events_v.parent, ids));
+      await tx.delete(eventsTable).where(inArray(eventsTable.id, ids));
+      return ids.length;
+    });
+    deletedTotal += deletedThisChunk;
+  } while (deletedThisChunk >= DELETE_CHUNK_SIZE);
 
   if (deletedTotal > 0) {
     log.info("Cleaned up events from prior attempt", { ingestJobId, deletedTotal });

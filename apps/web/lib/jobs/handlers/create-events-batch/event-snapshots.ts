@@ -95,15 +95,24 @@ export class EventSnapshotStore {
 
   /**
    * Capture the current state of `eventId` before it is overwritten, unless it
-   * was already captured in this run. Best-effort: a snapshot write failure is
-   * logged and rethrown so the caller can abort the update rather than mutate an
-   * event whose original was never recorded.
+   * was already captured in this run. Pass the caller's transaction `req` so the
+   * read sees the row the caller has locked `FOR UPDATE` — that makes the
+   * capture+update atomic w.r.t. a concurrent import, so the snapshot always
+   * reflects the exact state we are about to overwrite. Rethrows on write failure
+   * so the caller aborts the update rather than mutate an event whose original
+   * was never recorded.
    */
-  async capture(payload: Payload, eventId: number | string): Promise<void> {
+  async capture(
+    payload: Payload,
+    eventId: number | string,
+    req?: Pick<PayloadRequest, "payload" | "transactionID" | "context">
+  ): Promise<void> {
     const id = Number(eventId);
     if (this.capturedIds.has(id)) return;
 
-    const prior = await asSystem(payload).findByID({ collection: "events", id, depth: 0 });
+    const prior = req
+      ? await payload.findByID({ collection: "events", id, depth: 0, overrideAccess: true, req })
+      : await asSystem(payload).findByID({ collection: "events", id, depth: 0 });
     if (!prior) return;
 
     const line = `${JSON.stringify({ id, data: extractSnapshot(prior as unknown as Record<string, unknown>) })}\n`;
