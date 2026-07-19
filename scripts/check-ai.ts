@@ -3,8 +3,8 @@
 /**
  * Repository-wide code quality check with AI-friendly output.
  *
- * Runs fast lint (oxlint) and typecheck (tsgo) with JSON output,
- * then collects results and provides a clean summary.
+ * Runs the format check (oxfmt), fast lint (oxlint), and typecheck (tsgo) with
+ * JSON output, then collects results and provides a clean summary.
  *
  * @module
  * @category Scripts
@@ -12,6 +12,8 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
+import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
 
 interface LintResult {
   filePath: string;
@@ -123,6 +125,10 @@ function runCheckWithFreshResults(command: string, cwd: string, resultDir: strin
   };
 }
 
+// Format is checked repo-wide in one pass — oxfmt covers the whole tree in ~2s,
+// and it is the first gate CI runs, so a miss here fails the build before anything else.
+const unformattedFiles = runFormatCheck([], process.cwd());
+
 const runResults = new Map<string, { lint: CheckRunResult | null; typecheck: CheckRunResult | null }>();
 
 // Run checks for each package
@@ -232,9 +238,14 @@ for (const pkg of PACKAGES) {
   }
 }
 
+const totalFormatErrors = unformattedFiles.length;
+if (totalFormatErrors > 0) {
+  allPassed = false;
+}
+
 const totalLintErrors = results.reduce((sum, r) => sum + r.lintErrors, 0);
 const totalTypecheckErrors = results.reduce((sum, r) => sum + r.typecheckErrors, 0);
-const totalErrors = totalLintErrors + totalTypecheckErrors;
+const totalErrors = totalFormatErrors + totalLintErrors + totalTypecheckErrors;
 const totalWarnings = results.reduce((sum, r) => sum + r.lintWarnings, 0);
 const totalRunnerFailures = results.reduce(
   (sum, r) => sum + (r.lintRunnerError ? 1 : 0) + (r.typecheckRunnerError ? 1 : 0),
@@ -249,14 +260,24 @@ if (allPassed && totalWarnings === 0) {
   console.log(`⚠️  ${totalWarnings} warnings (no errors)`);
 } else {
   const runnerFailureSummary = totalRunnerFailures > 0 ? `, ${totalRunnerFailures} runner failures` : "";
+  // Format errors are repo-wide, not package-scoped — call them out separately so the
+  // package count stays accurate (it can legitimately be 0 when only formatting fails).
+  const formatDetail = totalFormatErrors > 0 ? ` (incl. ${totalFormatErrors} unformatted files)` : "";
+  const scopeSummary = failedPackages.length > 0 ? ` across ${failedPackages.length} packages` : "";
   console.log(
-    `❌ ${totalErrors} errors, ${totalWarnings} warnings${runnerFailureSummary} across ${failedPackages.length} packages`
+    `❌ ${totalErrors} errors${formatDetail}, ${totalWarnings} warnings${runnerFailureSummary}${scopeSummary}`
   );
 }
 console.log("=".repeat(70));
 
-// Show sample errors (max 10)
-if (totalErrors > 0) {
+if (totalFormatErrors > 0) {
+  reportFormatSection(unformattedFiles);
+}
+
+// Show sample errors (max 10). Scoped to package errors — format issues are
+// already listed in full by the FORMAT section above.
+const totalPackageErrors = totalLintErrors + totalTypecheckErrors;
+if (totalPackageErrors > 0) {
   console.log("\n📋 Sample errors (first 10):\n");
 
   let errorCount = 0;
@@ -323,8 +344,8 @@ if (totalErrors > 0) {
     }
   }
 
-  if (totalErrors > maxErrors) {
-    console.log(`\n  ... and ${totalErrors - maxErrors} more errors`);
+  if (totalPackageErrors > maxErrors) {
+    console.log(`\n  ... and ${totalPackageErrors - maxErrors} more errors`);
   }
 }
 

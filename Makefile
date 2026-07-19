@@ -261,7 +261,9 @@ test-ai:
 		bash -c 'cd apps/web && pnpm test:ai "$(FILTER)"'; \
 	fi
 
-# Run combined code quality checks with AI-friendly output (lint + typecheck)
+# Run combined code quality checks with AI-friendly output (format + lint + typecheck)
+# The oxfmt format check always runs repo-wide, even for PACKAGE=/FILES= runs: CI checks
+# formatting across the whole tree, so a scoped check would report green while CI fails.
 # Usage:
 #   make check-ai                                       # Check all packages
 #   make check-ai PACKAGE=web                           # Check only apps/web
@@ -289,18 +291,20 @@ check-ai:
 		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $(FILES); \
 	elif [ -z "$(PACKAGE)" ]; then \
 		pnpm exec tsx scripts/check-ai.ts; \
-	elif [ "$(PACKAGE)" = "web" ]; then \
-		cd apps/web && pnpm check:ai; \
-	elif [ "$(PACKAGE)" = "docs" ]; then \
-		pnpm --filter docs lint && pnpm --filter docs typecheck; \
-	elif [ "$(PACKAGE)" = "ui" ]; then \
-		pnpm --filter ui lint && pnpm --filter ui typecheck; \
-	elif [ "$(PACKAGE)" = "timescrape" ]; then \
-		pnpm --filter timescrape lint && pnpm --filter timescrape typecheck; \
 	else \
-		echo "❌ Unknown package: $(PACKAGE)"; \
-		echo "Available packages: web, docs, ui, timescrape"; \
-		exit 1; \
+		case "$(PACKAGE)" in \
+			web|docs|ui|timescrape|scraper) ;; \
+			*) echo "❌ Unknown package: $(PACKAGE)"; \
+			   echo "Available packages: web, docs, ui, timescrape"; \
+			   exit 1 ;; \
+		esac; \
+		pnpm exec tsx scripts/check-format-ai.ts || exit 1; \
+		case "$(PACKAGE)" in \
+			web) cd apps/web && pnpm check:ai ;; \
+			docs) pnpm --filter docs lint && pnpm --filter docs typecheck ;; \
+			ui) pnpm --filter ui lint && pnpm --filter ui typecheck ;; \
+			timescrape|scraper) pnpm --filter timescrape lint && pnpm --filter timescrape typecheck ;; \
+		esac; \
 	fi
 
 # Run tests with coverage report
@@ -549,6 +553,7 @@ help:
 		'  typecheck   - Run tsgo (~15s on the current repo)' \
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
+		'                (oxfmt format check is always repo-wide, matching CI)' \
 		'                Usage: make check-ai [PACKAGE=web|docs|ui|scraper] [FILES="..."]' \
 		'  check-cva   - Check for duplicate/empty CVA variant values' \
 		'  format      - Format code with oxfmt' '' \

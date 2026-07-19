@@ -3,8 +3,8 @@
 /**
  * File-scoped code quality check with AI-friendly output.
  *
- * Runs lint (oxlint) on specified files only, and runs typecheck (tsgo)
- * on the full project but filters output to the specified files.
+ * Runs format (oxfmt) and lint (oxlint) on specified files only, and runs
+ * typecheck (tsgo) on the full project but filters output to the specified files.
  *
  * Usage: tsx scripts/check-ai-files.ts <package> <file1> [file2] ...
  * Example: tsx scripts/check-ai-files.ts apps/web lib/services/foo.ts components/bar.tsx
@@ -15,6 +15,8 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
+import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
 
 const args = process.argv.slice(2);
 if (args.length < 2) {
@@ -47,6 +49,12 @@ const relativeToRoot = resolvedFiles.map((f) => path.relative(process.cwd(), f))
 console.log("=".repeat(70));
 console.log(`FILE-SCOPED CHECK: ${relativeToRoot.join(", ")}`);
 console.log("=".repeat(70));
+
+// --- Format: run oxfmt --check repo-wide ---
+// Deliberately NOT scoped to the checked files: CI runs oxfmt over the whole tree,
+// so scoping here would report green while CI fails on an untouched file.
+// A full pass takes ~2s, which is cheaper than a red CI run.
+const unformattedFiles = runFormatCheck([], process.cwd());
 
 // --- Lint: run oxlint on specified files only ---
 interface OxlintDiagnostic {
@@ -186,7 +194,10 @@ try {
 }
 
 // --- Output ---
-const totalErrors = lintErrors + typecheckErrors;
+const formatErrors = unformattedFiles.length;
+const totalErrors = formatErrors + lintErrors + typecheckErrors;
+
+reportFormatSection(unformattedFiles);
 
 console.log("\n" + "-".repeat(70));
 console.log("LINT:");
@@ -219,7 +230,9 @@ console.log("\n" + "=".repeat(70));
 if (totalErrors === 0) {
   console.log("✅ ALL CHECKS PASSED for specified files");
 } else {
-  console.log(`❌ ${totalErrors} errors found (${lintErrors} lint, ${typecheckErrors} typecheck)`);
+  console.log(
+    `❌ ${totalErrors} errors found (${formatErrors} format, ${lintErrors} lint, ${typecheckErrors} typecheck)`
+  );
 }
 console.log("=".repeat(70));
 
