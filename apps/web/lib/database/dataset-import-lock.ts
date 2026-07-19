@@ -31,7 +31,7 @@ import type { Payload } from "payload";
 import { Pool } from "pg";
 
 import { getEnv } from "@/lib/config/env";
-import type { createJobLogger } from "@/lib/logger";
+import { type createJobLogger, logError } from "@/lib/logger";
 
 type Logger = ReturnType<typeof createJobLogger>;
 
@@ -41,11 +41,15 @@ const DEFAULT_POLL_INTERVAL_MS = 250;
 const DEFAULT_MAX_WAIT_MS = 10 * 60 * 1000; // 10 min, then fail the job (Payload retries).
 const LEASE_POOL_MAX = 10;
 const LEASE_POOL_IDLE_TIMEOUT_MS = 30_000;
+// Bound each connect() so a fully-checked-out pool can't hang a waiter forever;
+// a timed-out connect is retried within the caller's maxWaitMs budget.
+const LEASE_POOL_CONNECT_TIMEOUT_MS = 10_000;
 
 /** Minimal client/pool shapes so the acquire logic is unit-testable with a mock pool. */
 export interface LeasePoolClient {
   query: (text: string, values?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
-  release: () => void;
+  /** Pass an error/true to DESTROY the connection instead of returning it to the pool. */
+  release: (destroy?: boolean | Error) => void;
 }
 export interface LeasePool {
   connect: () => Promise<LeasePoolClient>;
@@ -74,7 +78,16 @@ const getDefaultLeasePool = (payload: Payload): LeasePool => {
   const workPoolConnectionString = (payload.db as unknown as { pool?: { options?: { connectionString?: string } } })
     .pool?.options?.connectionString;
   const connectionString = workPoolConnectionString ?? getEnv().DATABASE_URL;
-  leasePool = new Pool({ connectionString, max: LEASE_POOL_MAX, idleTimeoutMillis: LEASE_POOL_IDLE_TIMEOUT_MS });
+  const pool = new Pool({
+    connectionString,
+    max: LEASE_POOL_MAX,
+    idleTimeoutMillis: LEASE_POOL_IDLE_TIMEOUT_MS,
+    connectionTimeoutMillis: LEASE_POOL_CONNECT_TIMEOUT_MS,
+  });
+  // pg emits idle-client errors as pool events; without a listener they become
+  // uncaught process errors. Log and let pg evict the broken client.
+  pool.on("error", (error) => logError(error, "Dataset import lease pool error (idle client)"));
+  leasePool = pool;
   return leasePool;
 };
 
@@ -95,11 +108,17 @@ const makeLease = (client: LeasePoolClient, datasetId: number, log: Logger): Dat
       released = true;
       try {
         await client.query("SELECT pg_advisory_unlock(hashtext($1)::int, $2::int)", [LOCK_NAMESPACE, datasetId]);
-      } catch (error) {
-        // Releasing the connection drops the session, which frees the lock regardless.
-        log.warn("Failed to explicitly unlock dataset import lease; connection release frees it", { datasetId, error });
-      } finally {
         client.release();
+      } catch (error) {
+        // Unlock failed → the session's lock state is uncertain, and advisory locks
+        // are reentrant (a later reuse could re-take and skew the lock count). DESTROY
+        // the connection (don't return it to the pool) so the backend session ends and
+        // Postgres frees the lock outright.
+        log.warn("Failed to unlock dataset import lease; destroying the connection to free the lock", {
+          datasetId,
+          error,
+        });
+        client.release(error instanceof Error ? error : new Error(String(error)));
       }
     },
   };
@@ -126,7 +145,16 @@ export const acquireDatasetImportLease = async (
   let announcedWait = false;
 
   while (Date.now() - startedAt < maxWaitMs) {
-    const client = await pool.connect();
+    let client: LeasePoolClient;
+    try {
+      client = await pool.connect();
+    } catch (error) {
+      // Pool fully checked out (connect timed out) or transiently unreachable —
+      // retry within the caller's deadline rather than failing the whole import.
+      log.warn("Lease pool connection unavailable; retrying within the wait budget", { datasetId, error });
+      await delay(pollIntervalMs);
+      continue;
+    }
     try {
       const result = await client.query("SELECT pg_try_advisory_lock(hashtext($1)::int, $2::int) AS locked", [
         LOCK_NAMESPACE,
@@ -139,7 +167,9 @@ export const acquireDatasetImportLease = async (
         return makeLease(client, datasetId, log);
       }
     } catch (error) {
-      client.release();
+      // The lock query's outcome is ambiguous from the client's view; destroy the
+      // connection so a possibly-held lock can't linger on a reused pooled session.
+      client.release(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
     // Not acquired — free the connection so waiting never ties up a lease connection.
