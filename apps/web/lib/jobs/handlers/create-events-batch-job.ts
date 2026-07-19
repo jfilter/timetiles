@@ -253,6 +253,29 @@ const cleanupPriorAttemptUnderLease = async (payload: Payload, ingestJobId: stri
   }
 };
 
+/**
+ * Idempotency guard for at-least-once redelivery: if `ingestJobId` already reached
+ * the terminal COMPLETED stage, return its stored output so the caller can no-op
+ * instead of re-processing (which would delete this job's own committed events).
+ * Returns null for any non-terminal stage. NEEDS_REVIEW is intentionally NOT terminal
+ * here — the post-approval ingest-process workflow re-runs create-events on purpose.
+ * Callers must invoke this UNDER the dataset lease so a concurrent double-delivery
+ * serializes (the second holder then observes the first's COMPLETED).
+ */
+const completedRedeliveryOutput = async (
+  payload: Payload,
+  ingestJobId: string | number
+): Promise<{ needsReview: boolean; eventCount: number; duplicatesSkipped: number } | null> => {
+  const persisted = await loadIngestJob(payload, ingestJobId);
+  if (persisted.stage !== PROCESSING_STAGE.COMPLETED) return null;
+  const results = persisted.results as { totalEvents?: number; duplicatesSkipped?: number } | null | undefined;
+  return {
+    needsReview: false,
+    eventCount: results?.totalEvents ?? 0,
+    duplicatesSkipped: results?.duplicatesSkipped ?? 0,
+  };
+};
+
 export const createEventsBatchJob = {
   slug: JOB_TYPES.CREATE_EVENTS,
   retries: 1,
@@ -311,9 +334,6 @@ export const createEventsBatchJob = {
     let leaseHeld = false;
 
     try {
-      // Set stage for UI progress tracking (workflow controls sequencing)
-      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
-
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
       filePath = getIngestFilePath(ingestFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
@@ -327,6 +347,23 @@ export const createEventsBatchJob = {
       datasetLease = await acquireDatasetImportLease(payload, Number(dataset.id), logger);
       // Now serialized on this dataset, so the catch may safely roll back.
       leaseHeld = true;
+
+      // Idempotency guard against at-least-once redelivery: if this job already
+      // COMPLETED (a worker crashed after success but before Payload acked the task,
+      // so Payload redelivers it), re-processing would delete this job's own committed
+      // events via cleanupPriorAttempt and could then fail midway with the originals
+      // already gone. Re-read the stage UNDER the lease so a concurrent double-delivery
+      // serializes — the second holder then sees the first's COMPLETED and no-ops.
+      // (NEEDS_REVIEW is deliberately NOT guarded: the post-approval ingest-process
+      // workflow re-runs create-events on purpose.)
+      const alreadyDone = await completedRedeliveryOutput(payload, ingestJobId);
+      if (alreadyDone) {
+        logger.info("Import already completed; skipping redelivered re-run", { ingestJobId });
+        return { output: alreadyDone };
+      }
+
+      // Set stage for UI progress tracking (workflow controls sequencing)
+      await setJobStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_EVENTS);
 
       // Clean slate: delete events from any prior failed attempt of this job.
       await cleanupPriorAttempt(payload, ingestJobId, logger);

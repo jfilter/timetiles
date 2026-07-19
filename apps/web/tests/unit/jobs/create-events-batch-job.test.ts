@@ -1242,4 +1242,34 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
       );
     });
   });
+
+  describe("Redelivery idempotency", () => {
+    it("no-ops with stored results when the job already COMPLETED, without re-processing", async () => {
+      // At-least-once redelivery of an already-finished import: the handler must NOT
+      // re-run create-events (which would delete this job's own committed events).
+      const mockIngestJob: any = {
+        id: "import-123",
+        dataset: "dataset-456",
+        ingestFile: "file-789",
+        sheetIndex: 0,
+        stage: "completed",
+        results: { totalEvents: 5, duplicatesSkipped: 1 },
+      };
+      const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const mockIngestFile = createMockIngestFile();
+
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
+        if (collection === "datasets") return Promise.resolve(mockDataset);
+        if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        return Promise.resolve(null);
+      });
+
+      const result = await createEventsBatchJob.handler(mockContext);
+
+      // Returns the stored results idempotently, and did NOT re-process the file.
+      expect(result).toEqual({ output: { needsReview: false, eventCount: 5, duplicatesSkipped: 1 } });
+      expect(mocks.streamBatchesFromFile).not.toHaveBeenCalled();
+    });
+  });
 });
