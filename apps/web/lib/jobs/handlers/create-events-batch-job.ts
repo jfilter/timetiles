@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
 import { BATCH_SIZES, COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { acquireDatasetImportLease, type DatasetImportLease } from "@/lib/database/dataset-import-lock";
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
@@ -276,6 +277,7 @@ export const createEventsBatchJob = {
     // new events" (already reconciled — release 0, not the reservation again).
     let trackedEventQuota = -1;
     let eventQuotaFinalized = false;
+    let datasetLease: DatasetImportLease | undefined;
 
     try {
       // Set stage for UI progress tracking (workflow controls sequencing)
@@ -284,6 +286,16 @@ export const createEventsBatchJob = {
       const { job, dataset, ingestFile } = await loadJobResources(payload, ingestJobId);
       filePath = getIngestFilePath(ingestFile.filename ?? "");
       sheetIndex = job.sheetIndex ?? 0;
+
+      // Under the "update" strategy, existing events are overwritten in place and
+      // snapshotted for rollback. Two such imports on the same dataset running
+      // concurrently would interleave their snapshot chains and a non-LIFO
+      // rollback could lose the true original, so serialize them per dataset for
+      // the whole mutate-then-rollback phase (released in the finally below).
+      const isUpdateStrategy = readDuplicateStrategy(job) === "update";
+      if (isUpdateStrategy) {
+        datasetLease = await acquireDatasetImportLease(payload, Number(dataset.id), logger);
+      }
 
       // Clean slate: delete events from any prior failed attempt of this job.
       await cleanupPriorAttempt(payload, ingestJobId, logger);
@@ -305,8 +317,7 @@ export const createEventsBatchJob = {
       // Under the "update" strategy, existing events are overwritten in place.
       // Snapshot their originals so a permanent failure can be rolled back
       // (all-or-nothing); cleanupPriorAttempt / onFail restore from it.
-      const snapshotStore =
-        readDuplicateStrategy(job) === "update" ? new EventSnapshotStore(ingestJobId, logger) : undefined;
+      const snapshotStore = isUpdateStrategy ? new EventSnapshotStore(ingestJobId, logger) : undefined;
 
       const {
         batchNumber,
@@ -394,6 +405,10 @@ export const createEventsBatchJob = {
 
       // Re-throw — Payload retries up to `retries` count, then onFail is a backstop.
       throw error;
+    } finally {
+      // Release the per-dataset lease AFTER the catch's rollback has run, so the
+      // next update import on this dataset always sees fully-reverted originals.
+      await datasetLease?.release();
     }
   },
 };

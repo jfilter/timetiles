@@ -16,16 +16,17 @@
  * the retry / onFail (no new collection or migration required).
  *
  * Concurrency scope: every per-event mutation (capture+update, restore, delete)
- * is atomic under a row lock, so the rollback is correct for a single import and
- * for SEQUENTIAL imports to the same dataset. It does NOT cover two update-strategy
- * imports mutating the SAME event CONCURRENTLY and both failing: their snapshots
- * form a chain (A snapshots the original, B snapshots A's value), and a non-LIFO
- * rollback (A reverts first — skipped as no longer owned — then B reverts to A's
- * value) leaves the failed intermediate rather than the true original. Fully
- * closing this needs a per-dataset lease held across each update import's whole
- * mutate-then-rollback phase (so B cannot start until A has finished or rolled
- * back); it is left as a known limitation — do not run overlapping concurrent
- * update-strategy imports into one dataset.
+ * is atomic under a row lock, which makes the rollback correct for a single
+ * import and for SEQUENTIAL imports to the same dataset. Row locks alone do NOT
+ * cover two update-strategy imports mutating the SAME event CONCURRENTLY and both
+ * failing: their snapshots form a chain (A snapshots the original, B snapshots
+ * A's value), and a non-LIFO rollback (A reverts first — skipped as no longer
+ * owned — then B reverts to A's value) would leave the failed intermediate rather
+ * than the true original. That cross-import case is handled one level up: the
+ * create-events handler holds a per-dataset lease (see
+ * `@/lib/database/dataset-import-lock`) across each update import's whole
+ * mutate-then-rollback phase, so B cannot begin capturing until A has finished or
+ * fully rolled back — B therefore always snapshots the true original.
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
  * restored exactly, and the restore is race-safe (each event is reverted under a

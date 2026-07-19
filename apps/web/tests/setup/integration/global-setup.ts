@@ -26,6 +26,7 @@ dotenv.config({ path: path.resolve(repoRoot, ".env.local"), override: true });
 import { resetAppConfig } from "@/lib/config/app-config";
 import { resetEnv } from "@/lib/config/env";
 import { createDatabaseClient } from "@/lib/database/client";
+import { closeDatasetLeasePool } from "@/lib/database/dataset-import-lock";
 import { cloneDatabase, databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection } from "@/lib/database/setup";
 import { logger } from "@/lib/logger";
@@ -260,7 +261,10 @@ afterEach(async () => {
 });
 
 // Global teardown to clean up
-afterAll(() => {
+afterAll(async () => {
+  // Close the dedicated dataset-import-lease pool so its connections don't linger.
+  await closeDatasetLeasePool();
+
   // Clean up upload directories (clean base upload dir and temp dir)
   const uploadDirs = [process.env.UPLOAD_DIR!, process.env.UPLOAD_TEMP_DIR!];
   uploadDirs.forEach((dir) => {
