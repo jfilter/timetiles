@@ -93,7 +93,23 @@ const isFieldBoundary = (char: string | undefined, extraDelimiter?: string): boo
  */
 export const detectSepDirective = (text: string): string | undefined => {
   const withoutBom = text.startsWith("﻿") ? text.slice(1) : text;
-  return /^sep=(.)\r?\n/i.exec(withoutBom)?.[1];
+  // LibreOffice Calc accepts both `sep=:` and the quoted `"sep=:"` forms.
+  const match = /^(?:sep=(.)|"sep=(.)")\r?\n/i.exec(withoutBom);
+  return match?.[1] ?? match?.[2];
+};
+
+/**
+ * Neutralize an Excel SYLK misdetection. Excel opens a `.csv` whose content
+ * begins with the uppercase magic `ID` as a SYLK document, and SYLK carries
+ * formulas the CSV scan never sees. Break the magic with a leading apostrophe
+ * (Microsoft's documented workaround) so it parses as CSV instead. Preserves a
+ * leading BOM.
+ */
+export const neutralizeSylkMagic = (text: string): string => {
+  const hasBom = text.startsWith("﻿");
+  const body = hasBom ? text.slice(1) : text;
+  if (!body.startsWith("ID")) return text;
+  return `${hasBom ? "﻿" : ""}'${body}`;
 };
 
 /**
@@ -130,7 +146,10 @@ export const escapeCsvFormulaBoundaries = (
       const afterBoundary = isFieldBoundary(prev1, extraDelimiter);
       const afterQuoteAtBoundary =
         prev1 !== undefined && QUOTE_OPENERS.has(prev1) && isFieldBoundary(prev2, extraDelimiter);
-      if (afterBoundary || afterQuoteAtBoundary) {
+      // A trigger that IS the declared `sep=` separator is a structural field
+      // separator, not a cell start (escaping it would corrupt empty fields and
+      // the directive itself). It's only dangerous when it leads a quoted cell.
+      if (afterQuoteAtBoundary || (afterBoundary && char !== extraDelimiter)) {
         output += "'";
       }
     }
@@ -147,8 +166,10 @@ export const escapeCsvFormulaBoundaries = (
  * the file into a spreadsheet application. Delimiter-agnostic (see
  * {@link escapeCsvFormulaBoundaries}); an empty input yields "".
  */
-export const escapeCsvFormulasInText = (csvText: string): string =>
-  escapeCsvFormulaBoundaries(csvText, "", detectSepDirective(csvText)).output;
+export const escapeCsvFormulasInText = (csvText: string): string => {
+  const extraDelimiter = detectSepDirective(csvText);
+  return escapeCsvFormulaBoundaries(neutralizeSylkMagic(csvText), "", extraDelimiter).output;
+};
 
 /**
  * Serialize rows to a CSV string with EVERY field as a column.

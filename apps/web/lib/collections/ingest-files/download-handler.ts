@@ -25,7 +25,7 @@ import type { PayloadRequest, TypeWithID, UploadConfig } from "payload";
 
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logger } from "@/lib/logger";
-import { detectSepDirective, escapeCsvFormulaBoundaries } from "@/lib/utils/csv-escape";
+import { detectSepDirective, escapeCsvFormulaBoundaries, neutralizeSylkMagic } from "@/lib/utils/csv-escape";
 
 type IngestFileDoc = TypeWithID & { mimeType?: string | null; filename?: string | null; originalName?: string | null };
 
@@ -71,9 +71,10 @@ const createEscapedCsvStream = (filePath: string): ReadableStream<Uint8Array> =>
   const escaper = new Transform({
     decodeStrings: false,
     transform: (chunk: unknown, _enc, done) => {
-      const text = typeof chunk === "string" ? chunk : String(chunk);
+      let text = typeof chunk === "string" ? chunk : String(chunk);
       if (firstChunk) {
         extraDelimiter = detectSepDirective(text);
+        text = neutralizeSylkMagic(text);
         firstChunk = false;
       }
       const result = escapeCsvFormulaBoundaries(text, carry, extraDelimiter);

