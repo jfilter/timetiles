@@ -387,7 +387,10 @@ export default [
         },
       ],
       "unicorn/no-instanceof-array": "error",
-      "unicorn/prefer-export-from": ["error", { ignoreUsedVariables: true }],
+      // unicorn 65 renamed `ignoreUsedVariables` to `checkUsedVariables` AND inverted its
+      // polarity, so the value flips too: `checkUsedVariables: false` is what
+      // `ignoreUsedVariables: true` used to mean (skip imports that have other references).
+      "unicorn/prefer-export-from": ["error", { checkUsedVariables: false }],
       "unicorn/prefer-includes": "error",
       "unicorn/prefer-string-starts-ends-with": "error",
       "unicorn/throw-new-error": "error",
