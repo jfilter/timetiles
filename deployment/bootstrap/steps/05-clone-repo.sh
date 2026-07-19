@@ -23,6 +23,7 @@ run_step() {
             print_info "Skipping clone - local files already present"
             ensure_symlink "$install_dir" "$src_dir"
             chown -R "$user:$user" "$src_dir" 2>/dev/null || true
+            ensure_install_dirs "$install_dir" "$user"
             print_success "Repository setup complete (using local files)"
             return 0
         fi
@@ -72,6 +73,8 @@ run_step() {
 
     chown -R "$user:$user" "$src_dir"
 
+    ensure_install_dirs "$install_dir" "$user"
+
     print_success "Deployment files installed"
 
     print_step "Verifying deployment structure..."
@@ -116,4 +119,17 @@ so the bootstrap can take over."
     fi
 
     ln -sfn "$target" "$install_dir"
+}
+
+# Create the runtime directories that live inside the install dir. Must run
+# after ensure_symlink — before it, $install_dir does not exist at all.
+#
+# Only .gitignored directories belong here: $install_dir resolves into a real
+# git working tree, so anything created here that is tracked (or untracked and
+# not ignored) would show up in `git status` and break `timetiles update`.
+ensure_install_dirs() {
+    local install_dir="$1"
+    local user="$2"
+
+    ensure_dir "$install_dir/backups" "$user:$user" 750
 }

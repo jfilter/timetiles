@@ -1,0 +1,37 @@
+# Paths kept out of the VM's copy of the monorepo (see run-vm.sh).
+#
+# The VM syncs from a read-only mount of the host checkout into
+# /opt/timetiles-src, which is what bootstrap installs from and what
+# Dockerfile.prod uses as its build context. Two reasons things are listed
+# here: they are host build artifacts that must not leak into a Linux image
+# (node_modules is darwin/arm64), or they are operator state the VM generates
+# itself and must survive the sync.
+#
+# rsync --delete does not remove excluded paths on the receiver, so anything
+# listed here also persists across runs inside the VM.
+
+# Host build artifacts — the image builds these itself
+.git/
+node_modules/
+.next/
+dist/
+.turbo/
+coverage/
+.worktrees/
+
+# Test output
+test-results/
+playwright-report/
+.test-results/
+
+# Operator state generated inside the VM by bootstrap
+.env.production
+.env.local
+uploads/
+backups/
+
+# Agent tooling — .gemini/ and .opencode/ additionally carry broken symlinks
+.claude/
+.agents/
+.gemini/
+.opencode/

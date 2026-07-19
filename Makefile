@@ -421,7 +421,7 @@ test-deploy-integration:
 test-deploy-ci:
 	@cd deployment/tests && ./run-all.sh
 
-## Run all deployment tests in Multipass VM
+## Run all deployment tests in a Lima VM
 test-deploy:
 	@cd deployment/tests && ./run-vm.sh
 
@@ -576,7 +576,7 @@ help:
 		'  test-deploy-unit        - Run unit tests (fast, no Docker)' \
 		'  test-deploy-integration - Run integration tests (requires Docker)' \
 		'  test-deploy-ci          - Run all tests for CI (no VM)' \
-		'  test-deploy             - Run all tests in Multipass VM' '' \
+		'  test-deploy             - Run all tests in a Lima VM' '' \
 		'🌱 Database:' \
 		'  seed          - Seed database with sample data' \
 		'                  Usage: make seed ARGS='"'"'development users'"'"'' \

@@ -12,10 +12,14 @@ run_step() {
     if id "$user" &>/dev/null; then
         print_info "User $user already exists"
     else
+        # --no-create-home is deliberate: $home is INSTALL_DIR, which step 05
+        # turns into a symlink to ${INSTALL_DIR}-src/deployment. useradd -m
+        # would materialize it as a real directory first, and ensure_symlink
+        # refuses to replace one.
         useradd \
             --system \
             --shell /bin/bash \
-            --create-home \
+            --no-create-home \
             --home-dir "$home" \
             "$user"
         print_success "Created user: $user"
@@ -27,13 +31,11 @@ run_step() {
     print_success "User $user added to docker group"
 
     # Create required directories
+    #
+    # Only directories OUTSIDE the install dir belong here. $home itself and
+    # anything under it are created by step 05, after the symlink exists —
+    # see ensure_install_dirs there.
     print_step "Creating application directories..."
-
-    # Main application directory
-    ensure_dir "$home" "$user:$user" 755
-    ensure_dir "$home/app" "$user:$user" 755
-    ensure_dir "$home/scripts" "$user:$user" 755
-    ensure_dir "$home/backups" "$user:$user" 750
 
     # State directory (for bootstrap state)
     ensure_dir "/var/lib/timetiles" "root:root" 755

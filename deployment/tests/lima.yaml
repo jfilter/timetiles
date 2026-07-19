@@ -1,0 +1,86 @@
+# Lima VM for the deployment test harness — see run-vm.sh.
+#
+# This VM exists to run bootstrap/bootstrap.sh end-to-end against a pristine
+# Ubuntu server. That is the only place such coverage exists: CI runs the bats
+# suites directly on its own runner (see the test-deployment job in
+# .github/workflows/release-images.yml) and never invokes bootstrap.
+#
+# Deliberately NOT `base: template://ubuntu-24.04`:
+#   - that template pulls in _default/mounts, which mounts all of $HOME
+#   - inheriting its image pin couples this harness to whichever Lima version
+#     Homebrew last installed; template:ubuntu-lts has already moved to 26.04
+# The images below are the pin that template:_images/ubuntu-24.04 carried at
+# the time of writing. Bump them deliberately, the way the Vagrantfile this
+# replaced pinned bento/ubuntu-24.04.
+
+minimumLimaVersion: 2.0.0
+
+images:
+  - location: "https://cloud-images.ubuntu.com/releases/noble/release-20260615/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+    digest: "sha256:cafa1a965b591b7c4184b484ffd8e625981a79d48f9b4ae8a4adf7b4c5ade927"
+  - location: "https://cloud-images.ubuntu.com/releases/noble/release-20260615/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+    digest: "sha256:5fa5b05e5ec239858c4531485d6023b0896448c2df7c63b34f8dae6ea6051a44"
+  # Fallback for when the dated release above is pruned upstream.
+  - location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-arm64.img"
+    arch: "aarch64"
+  - location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+    arch: "x86_64"
+
+vmType: vz
+mountType: virtiofs
+
+# Mirrors the sizing the Vagrantfile used (12288 MB / 4 CPUs). The disk needs
+# headroom for the synced monorepo plus local image builds — bootstrap's
+# check_disk_space gate alone wants 10 GB free on /.
+cpus: 4
+memory: "12GiB"
+disk: "60GiB"
+
+# run-vm.sh injects the one mount this harness needs — the repo, read-only —
+# via `limactl create --mount`, because the host path depends on the checkout
+# (worktrees). Leaving this empty also keeps Lima from mounting "~".
+mounts: []
+
+# bootstrap step 02 installs Docker from download.docker.com. Anything
+# preinstalled here would reduce that step to a no-op — it short-circuits on a
+# working `docker compose version` — and delete the coverage this VM is for.
+containerd:
+  system: false
+  user: false
+
+# The guest binds :80 and :443 for nginx. Lima's port forwarder runs
+# unprivileged and cannot claim those on the host, and would contend with
+# Colima besides. Nothing needs host access: the bats suites curl from inside
+# the guest, using --resolve against 127.0.0.1.
+portForwards:
+  - guestIP: "0.0.0.0"
+    guestPortRange: [1, 65535]
+    proto: any
+    ignore: true
+
+# Provisioning re-runs on every boot, so everything here must be idempotent.
+# Only the harness's own prerequisites belong here — the software under test is
+# installed by bootstrap, not by this file.
+provision:
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -eu -o pipefail
+
+      missing=()
+      for pkg in rsync bats; do
+        command -v "$pkg" >/dev/null 2>&1 || missing+=("$pkg")
+      done
+
+      if [ "${#missing[@]}" -gt 0 ]; then
+        # Wait for the dpkg lock rather than failing on it: apt-daily and
+        # unattended-upgrades are typically still running this early in boot.
+        #
+        # Do NOT gate this on `cloud-init status --wait` — Lima runs system
+        # provision scripts as part of cloud-init, so waiting for cloud-init
+        # from in here deadlocks the boot.
+        apt-get -o DPkg::Lock::Timeout=600 update -qq
+        apt-get -o DPkg::Lock::Timeout=600 install -y -qq "${missing[@]}"
+      fi
