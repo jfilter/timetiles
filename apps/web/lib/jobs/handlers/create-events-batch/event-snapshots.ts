@@ -16,14 +16,19 @@
  * the retry / onFail (no new collection or migration required).
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
- * restored exactly. Two metadata effects are intentionally NOT undone — the
- * restore is a normal Payload update, so it bumps `updatedAt` and leaves the
- * failed intermediate in the event's version history. Reverting those would
- * require low-level version-table surgery that risks corrupting Payload's
- * draft/latest bookkeeping, so it is out of scope here. Orphaned sidecars from a
- * hard-crashed (never retried, never onFail'd) job are also possible; `discard`
- * logs (does not swallow) a failed delete, and the ownership-guarded restore
- * limits the blast radius if a stale sidecar is ever replayed.
+ * restored exactly. Some effects are intentionally NOT undone:
+ * - The restore is a normal Payload update, so it bumps `updatedAt` and leaves
+ *   the failed intermediate in the event's version history. Reverting those would
+ *   require low-level version-table surgery that risks corrupting Payload's
+ *   draft/latest bookkeeping, so it is out of scope here.
+ * - The concurrent-write guard (revert only if `ingestJob` still equals this job)
+ *   is read-then-write, not a row lock. A concurrent import that commits in the
+ *   narrow window between the ownership read and the restore write could still be
+ *   overwritten; eliminating that fully needs `SELECT … FOR UPDATE`, which Payload's
+ *   id-based update path does not offer. The guard closes the common race.
+ * - Orphaned sidecars from a hard-crashed (never retried, never onFail'd) job are
+ *   possible; `discard` logs (does not swallow) a failed delete, and the
+ *   ownership-guarded restore limits the blast radius if a stale one is replayed.
  *
  * @module
  * @category Jobs
@@ -165,13 +170,24 @@ export class EventSnapshotStore {
         continue;
       }
       try {
-        const current = await asSystem(payload).findByID({ collection: "events", id: entry.id, depth: 0 });
+        // disableErrors: a deleted event returns null instead of throwing NotFound
+        // (Payload 3.85's default), so it is a clean skip, not a restore failure.
+        const current = await asSystem(payload).findByID({
+          collection: "events",
+          id: entry.id,
+          depth: 0,
+          disableErrors: true,
+        });
         if (!current) continue; // event vanished independently → nothing to revert (not a failure)
 
+        // STRICT ownership: revert only if this event is still stamped with THIS
+        // job. Anything else — a concurrent import claimed it (different id) OR a
+        // concurrent op cleared it (null) — means our rollback must not clobber
+        // whatever is there now. tryUpdateExistingEvent always stamps
+        // `ingestJob = thisJob`, so after our own write the owner IS thisJob.
         const owner = extractRelationId((current as { ingestJob?: unknown }).ingestJob);
-        if (owner != null && Number(owner) !== thisJobId) {
-          // A concurrent import claimed this event after we did; keep its data.
-          log.info("Skipping snapshot restore; event was re-written by another import", {
+        if (owner == null || Number(owner) !== thisJobId) {
+          log.info("Skipping snapshot restore; event no longer owned by this import", {
             ingestJobId,
             eventId: entry.id,
             currentOwner: owner,

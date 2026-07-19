@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   escapeCsvFormula,
+  escapeCsvFormulaBoundaries,
   escapeCsvFormulasInText,
   escapeRowFormulas,
   escapeRowsFormulas,
@@ -251,12 +252,10 @@ describe("escapeCsvFormulasInText", () => {
     expect(escapeCsvFormulasInText("")).toBe("");
   });
 
-  it("escapes a formula in a SEMICOLON-delimited file (EU locale) without merging cells", () => {
-    // Papa's default detection would pick ',' here, leaving the second cell's
-    // formula unescaped — the semicolon-locale bypass.
+  it("escapes a formula in a SEMICOLON-delimited file (EU locale)", () => {
     const out = escapeCsvFormulasInText("name;value\nx;=1+1\n");
     expect(out).toContain("x;'=1+1");
-    // Delimiter preserved (not rewritten to comma).
+    // Structure preserved verbatim (only an apostrophe inserted).
     expect(out).not.toContain("x,");
   });
 
@@ -265,10 +264,32 @@ describe("escapeCsvFormulasInText", () => {
     expect(out).toContain("\t'=SUM(A1)");
   });
 
-  it("does not escape a comma inside a quoted cell that is not a formula", () => {
-    // "x,=notformula" is ONE cell starting with 'x' → safe, must stay intact.
-    const out = escapeCsvFormulasInText('a,b\n"x,=notformula",ok\n');
-    expect(out).toContain('"x,=notformula"');
-    expect(out).not.toContain("'=notformula");
+  it("escapes an ambiguous file that both ',' and ';' could split (delimiter-agnostic)", () => {
+    // Commas in the first field make ',' and ';' equally plausible; a delimiter
+    // heuristic would pick ',' and miss the `;`-cell formula. The boundary scan
+    // escapes the `=` because it follows a `;` regardless.
+    const out = escapeCsvFormulasInText("first,last;formula\nx,y;=1+1\n");
+    expect(out).toContain(";'=1+1");
+  });
+
+  it("escapes a formula that follows a boundary inside a quoted value (safe over-escape)", () => {
+    // "x,=y" is technically one cell starting with 'x', but a semicolon/other
+    // locale could still split it; the boundary scan escapes conservatively.
+    const out = escapeCsvFormulasInText('a,b\n"x,=y",ok\n');
+    expect(out).toContain(",'=y");
+  });
+
+  it("preserves a leading UTF-8 BOM at the file start", () => {
+    const out = escapeCsvFormulasInText("﻿name,value\nx,=1+1\n");
+    expect(out.startsWith("﻿name,value")).toBe(true);
+    expect(out).toContain(",'=1+1");
+  });
+
+  it("chains correctly across streamed chunks via the carry", () => {
+    // A boundary char at the end of one chunk + a trigger at the start of the
+    // next must still be escaped.
+    const first = escapeCsvFormulaBoundaries("a,");
+    const second = escapeCsvFormulaBoundaries("=1+1", first.carry);
+    expect(first.output + second.output).toBe("a,'=1+1");
   });
 });

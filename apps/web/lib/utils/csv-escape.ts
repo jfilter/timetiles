@@ -65,65 +65,59 @@ export const escapeRowFormulas = (row: Record<string, unknown>): Record<string, 
 export const escapeRowsFormulas = (rows: readonly Record<string, unknown>[]): Record<string, unknown>[] =>
   rows.map((row) => escapeRowFormulas(row));
 
-/** Delimiters a spreadsheet application might split on, in preference order. */
-const CANDIDATE_DELIMITERS = [",", ";", "\t", "|"] as const;
+// Characters a spreadsheet evaluates as a formula when they lead a cell.
+const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
+// A spreadsheet may split the file on any of these depending on locale/config, so
+// a trigger sitting right after one of them (or at a line/file start, or just
+// inside a quote opened at such a start) could become a formula regardless of
+// which delimiter the file "really" uses.
+const FIELD_BOUNDARIES = new Set(["\n", "\r", ",", ";", "\t", "|"]);
+
+const isFieldBoundary = (char: string | undefined): boolean => char === undefined || FIELD_BOUNDARIES.has(char);
 
 /**
- * Pick the delimiter a spreadsheet is most likely to split the file on.
+ * Delimiter-agnostic CSV formula escape.
  *
- * Papa's own detection defaults to `,` even for a `;`-delimited file (both yield
- * a "consistent" 1-vs-2 column count), which would leave a `x;=formula` cell
- * unescaped and dangerous in a semicolon-locale Excel/Calc. Instead, parse a
- * sample with each candidate and prefer the one that yields the MOST columns
- * (that is the structure a spreadsheet will actually render), breaking ties
- * toward consistent column counts. Falls back to `,`.
+ * Rather than guessing the delimiter (unsound — `,` vs `;` are ambiguous, and a
+ * spreadsheet's choice depends on the viewer's locale), this inserts a `'` before
+ * any `=`/`+`/`-`/`@` that sits at a field boundary under ANY common delimiter
+ * (comma, semicolon, tab, pipe), at a line/file start, or just inside a quote
+ * opened at such a start. The cell can then never be evaluated no matter how the
+ * spreadsheet splits the row. It only ever INSERTS apostrophes, so the file
+ * structure (delimiters, quotes, line breaks, a leading BOM) is preserved exactly;
+ * the only cost is occasionally over-escaping a `<boundary><trigger>` sequence
+ * inside a quoted value, which is cosmetic and safe (matches {@link escapeCsvFormula},
+ * which likewise escapes e.g. a leading `-5`).
+ *
+ * Streaming: pass the previous call's returned `carry` (its last two raw chars)
+ * back in as the second argument so boundary detection is correct across chunks.
  */
-export const detectDelimiter = (csvText: string): string => {
-  const sample = csvText
-    .split(/\r?\n/)
-    .filter((line) => line.trim() !== "")
-    .slice(0, 20)
-    .join("\n");
-  if (sample === "") return ",";
-
-  let best = ",";
-  let bestScore = -1;
-  for (const delimiter of CANDIDATE_DELIMITERS) {
-    const rows = Papa.parse<string[]>(sample, { delimiter }).data.filter((r): r is string[] => Array.isArray(r));
-    if (rows.length === 0) continue;
-    const columnCounts = rows.map((r) => r.length);
-    const maxColumns = Math.max(...columnCounts);
-    const consistent = columnCounts.every((c) => c === columnCounts[0]);
-    // Only a multi-column split counts as evidence of this delimiter; add a
-    // small bonus for uniform rows so a clean split wins ties.
-    const score = (maxColumns > 1 ? maxColumns : 0) + (consistent ? 0.5 : 0);
-    if (score > bestScore) {
-      bestScore = score;
-      best = delimiter;
+export const escapeCsvFormulaBoundaries = (text: string, carry = ""): { output: string; carry: string } => {
+  const combined = carry + text;
+  let output = "";
+  for (let i = carry.length; i < combined.length; i++) {
+    const char = combined[i]!;
+    if (FORMULA_TRIGGERS.has(char)) {
+      const prev1 = i > 0 ? combined[i - 1] : undefined;
+      const prev2 = i > 1 ? combined[i - 2] : undefined;
+      if (isFieldBoundary(prev1) || (prev1 === '"' && isFieldBoundary(prev2))) {
+        output += "'";
+      }
     }
+    output += char;
   }
-  return best;
+  return { output, carry: combined.slice(-2) };
 };
 
 /**
- * Formula-escape every cell of an already-serialized CSV string.
+ * Formula-escape a whole CSV string at the DOWNLOAD boundary (CWE-1236).
  *
- * Detects the delimiter a spreadsheet would use (see {@link detectDelimiter}),
- * parses the CSV as a raw 2-D grid (no header inference, so structure and column
- * order survive exactly), applies {@link escapeCsvFormula} to each cell, and
- * re-serializes with the same delimiter and line break. This is the
- * DOWNLOAD-boundary defense: canonical ingest CSVs are stored raw (the pipeline
- * re-parses them and a leading apostrophe would corrupt real values), so
- * escaping happens only when a human downloads the file into a spreadsheet
- * application (CWE-1236). An empty input yields "".
+ * Canonical ingest CSVs are stored raw (the pipeline re-parses them and a leading
+ * apostrophe would corrupt real values), so this runs only when a human downloads
+ * the file into a spreadsheet application. Delimiter-agnostic (see
+ * {@link escapeCsvFormulaBoundaries}); an empty input yields "".
  */
-export const escapeCsvFormulasInText = (csvText: string): string => {
-  if (csvText === "") return "";
-  const delimiter = detectDelimiter(csvText);
-  const parsed = Papa.parse<string[]>(csvText, { skipEmptyLines: false, delimiter });
-  const escaped = parsed.data.map((row) => (Array.isArray(row) ? row.map((cell) => escapeCsvFormula(cell)) : row));
-  return Papa.unparse(escaped, { delimiter, newline: parsed.meta.linebreak || "\r\n" });
-};
+export const escapeCsvFormulasInText = (csvText: string): string => escapeCsvFormulaBoundaries(csvText).output;
 
 /**
  * Serialize rows to a CSV string with EVERY field as a column.

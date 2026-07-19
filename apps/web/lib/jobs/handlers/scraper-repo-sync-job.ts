@@ -229,11 +229,18 @@ const syncScrapers = async (
 export const scraperRepoSyncJob = {
   slug: "scraper-repo-sync",
   retries: 2,
-  // Serialize per repo: the slug upsert is find-then-create, so two parallel
-  // syncs (afterChange auto-sync + manual force-sync) could both miss the
-  // existing slug and create duplicate scrapers that no later sync ever
-  // reconciles (the slug map keeps only one entry per slug).
-  concurrency: ({ input }: { input: { scraperRepoId: number } }) => `scraper-repo-sync:${input.scraperRepoId}`,
+  // Serialize per repo AND coalesce rapid re-triggers. `exclusive` (default):
+  // the slug upsert is find-then-create, so two parallel syncs (afterChange
+  // auto-sync + manual force-sync) could both miss the existing slug and create
+  // duplicate scrapers. `supersedes`: when a new sync is queued, Payload deletes
+  // any older PENDING (not-yet-running) sync for the same repo — so a burst of
+  // source edits collapses to a single follow-up that reads the LATEST state,
+  // without a manual dedup check (which had a check-then-queue race). The
+  // running sync is untouched; the superseding one runs after it.
+  concurrency: {
+    key: ({ input }: { input: { scraperRepoId: number } }) => `scraper-repo-sync:${input.scraperRepoId}`,
+    supersedes: true,
+  },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;
     const input = (context.input ?? context.job?.input) as { scraperRepoId: number };

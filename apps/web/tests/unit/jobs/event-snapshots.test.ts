@@ -66,14 +66,16 @@ describe.sequential("EventSnapshotStore", () => {
   });
 
   it("captures each event's original only once (idempotent across retouches)", async () => {
-    const events = new Map<number, Record<string, unknown>>([[7, { id: 7, transformedData: { v: "ORIG" } }]]);
+    const events = new Map<number, Record<string, unknown>>([
+      [7, { id: 7, transformedData: { v: "ORIG" }, ingestJob: 42 }],
+    ]);
     const payload = makeMockPayload(events);
     const store = new EventSnapshotStore("42", log);
 
     await store.capture(payload, 7);
     // A second update of the same event within the run must NOT re-snapshot the
-    // already-modified state.
-    events.set(7, { id: 7, transformedData: { v: "MODIFIED" } });
+    // already-modified state (tryUpdateExistingEvent stamps ingestJob = this job).
+    events.set(7, { id: 7, transformedData: { v: "MODIFIED" }, ingestJob: 42 });
     await store.capture(payload, 7);
 
     const contents = await fsPromises.readFile(snapshotFile("42"), "utf-8");
@@ -126,6 +128,23 @@ describe.sequential("EventSnapshotStore", () => {
     await expect(fsPromises.access(snapshotFile("99"))).rejects.toThrow();
   });
 
+  it("does NOT restore when the event's ingestJob was cleared (strict ownership)", async () => {
+    const events = new Map<number, Record<string, unknown>>([
+      [21, { id: 21, transformedData: { v: "ORIG" }, ingestJob: 99 }],
+    ]);
+    const payload = makeMockPayload(events);
+    const store = new EventSnapshotStore("99", log);
+
+    await store.capture(payload, 21);
+    // A concurrent op cleared ownership — our rollback must not reclaim it.
+    events.set(21, { id: 21, transformedData: { v: "OTHER" }, ingestJob: null });
+
+    const restored = await EventSnapshotStore.restoreAndClear(payload, "99", log);
+
+    expect(restored).toBe(0);
+    expect(events.get(21)?.transformedData).toEqual({ v: "OTHER" });
+  });
+
   it("keeps the sidecar when a restore fails so a retry can revert later", async () => {
     const events = new Map<number, Record<string, unknown>>([
       [30, { id: 30, transformedData: { v: "ORIG" }, ingestJob: 55 }],
@@ -148,17 +167,19 @@ describe.sequential("EventSnapshotStore", () => {
   });
 
   it("skips unparseable lines but restores the valid ones", async () => {
-    const events = new Map<number, Record<string, unknown>>([[1, { id: 1, transformedData: { v: "NEW" } }]]);
+    const events = new Map<number, Record<string, unknown>>([
+      [1, { id: 1, transformedData: { v: "NEW" }, ingestJob: 77 }],
+    ]);
     const payload = makeMockPayload(events);
     const dir = path.join(tmpDir, "ingest-snapshots");
     await fsPromises.mkdir(dir, { recursive: true });
     await fsPromises.writeFile(
-      path.join(dir, "job-bad.jsonl"),
-      `not-json\n${JSON.stringify({ id: 1, data: { transformedData: { v: "ORIG" } } })}\n`,
+      path.join(dir, "job-77.jsonl"),
+      `not-json\n${JSON.stringify({ id: 1, data: { transformedData: { v: "ORIG" }, ingestJob: 77 } })}\n`,
       "utf-8"
     );
 
-    const restored = await EventSnapshotStore.restoreAndClear(payload, "bad", log);
+    const restored = await EventSnapshotStore.restoreAndClear(payload, "77", log);
 
     expect(restored).toBe(1);
     expect(events.get(1)?.transformedData).toEqual({ v: "ORIG" });

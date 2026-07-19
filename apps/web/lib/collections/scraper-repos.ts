@@ -13,7 +13,6 @@ import type { CollectionConfig, PayloadRequest, Where } from "payload";
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
-import { hasPendingPayloadJob } from "@/lib/services/payload-job-queries";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
@@ -32,22 +31,21 @@ const clearScraperRepoQuotaClaim = (req: PayloadRequest): void => {
 const SCRAPER_REPO_SYNC_TASK = "scraper-repo-sync" as const;
 
 /**
- * Queue a manifest sync for a repo, coalescing rapid source changes.
+ * Queue a manifest sync for a repo after a source change.
  *
- * A generic `PATCH /api/scraper-repos/:id` that touches `gitUrl` / `gitBranch` /
- * `code` auto-triggers this sync. Without gating, that owner-reachable path could
- * pile duplicate expensive syncs (git clone + manifest re-parse) onto the queue.
+ * A generic `PATCH /api/scraper-repos/:id` touching `gitUrl` / `gitBranch` /
+ * `code` auto-triggers this. Rapid edits are coalesced by the job's own
+ * `supersedes` concurrency (see scraper-repo-sync-job): a newly queued sync
+ * atomically deletes any older PENDING sync for the same repo, and the running
+ * sync is followed by a successor that reads the LATEST state — so a burst of
+ * edits collapses to one follow-up, with no lost update and no manual
+ * check-then-queue race.
  *
- * The dedup is deliberately COALESCING, not "at most one job ever": we skip only
- * when a sync is already QUEUED-but-not-started, because that job will read the
- * repo's latest state (including this change) when it runs. A sync that is
- * already RUNNING read the OLD source, so it does NOT cover this change — we must
- * enqueue a successor, otherwise the record would point at the new source while
- * the scrapers stayed on the old one. This bounds the queue to at most one
- * running + one waiting sync per repo while never dropping a real change. The
- * dedicated `/sync` route keeps its own SCRAPER_TRIGGER rate limit for manual
- * triggers; we intentionally do NOT rate-limit here (that would silently drop a
- * committed source change with no later catch-up).
+ * Queued WITH `req`: the job insert joins the PATCH transaction, so the worker
+ * cannot see (and start on) the job until the source change has committed — it
+ * always reads the new state — and if enqueuing fails the whole edit rolls back
+ * rather than committing a source change with no sync. The error propagates for
+ * exactly that reason.
  */
 const maybeQueueRepoSync = async ({
   repoId,
@@ -58,23 +56,8 @@ const maybeQueueRepoSync = async ({
   operation: "create" | "update";
   req: PayloadRequest;
 }): Promise<void> => {
-  // A queued-but-not-yet-started sync will pick up this change when it runs.
-  if (
-    await hasPendingPayloadJob(req.payload, "input.scraperRepoId", repoId, {
-      taskSlug: SCRAPER_REPO_SYNC_TASK,
-      queuedOnly: true,
-    })
-  ) {
-    logger.info({ repoId, operation }, "Scraper repo sync already queued; coalescing");
-    return;
-  }
-
-  try {
-    await req.payload.jobs.queue({ task: SCRAPER_REPO_SYNC_TASK, input: { scraperRepoId: repoId } });
-    logger.info({ repoId, operation }, "Queued scraper repo sync");
-  } catch (error) {
-    logger.error({ repoId, error }, "Failed to queue scraper repo sync");
-  }
+  await req.payload.jobs.queue({ task: SCRAPER_REPO_SYNC_TASK, input: { scraperRepoId: repoId }, req });
+  logger.info({ repoId, operation }, "Queued scraper repo sync");
 };
 
 const compensateScraperRepoQuotaOnError = async (req: PayloadRequest): Promise<void> => {
@@ -271,9 +254,7 @@ const ScraperRepos: CollectionConfig = {
     afterChange: [
       async ({ doc, previousDoc, operation, req }) => {
         if (req.context?.seed) return doc;
-        if (operation === "create") {
-          clearScraperRepoQuotaClaim(req);
-        }
+
         // Auto-trigger repo sync on create, or on update when source fields change
         const shouldSync =
           operation === "create" ||
@@ -282,8 +263,15 @@ const ScraperRepos: CollectionConfig = {
               doc.gitBranch !== previousDoc?.gitBranch ||
               JSON.stringify(doc.code) !== JSON.stringify(previousDoc?.code)));
 
+        // Queue the sync BEFORE clearing the create-quota claim: enqueuing can
+        // throw (it now runs in the PATCH transaction), and if it does the claim
+        // must still be set so afterError compensates the reserved quota.
         if (shouldSync) {
           await maybeQueueRepoSync({ repoId: doc.id, operation, req });
+        }
+
+        if (operation === "create") {
+          clearScraperRepoQuotaClaim(req);
         }
 
         return doc;
