@@ -106,7 +106,6 @@ AGENTS.md
 .playwright-mcp
 .agents
 .worktrees/
-.vagrant/
 
 # Agent skills (installed by skills CLI)
 .agent/
