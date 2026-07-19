@@ -110,7 +110,7 @@ describe.sequential("update-strategy snapshot rollback", () => {
     const event = await seedEvent("rollback-id", "Original Title");
     const job = await buildUpdateJob("rollback-id", event.id);
 
-    const store = new EventSnapshotStore(job.id, createLogger("snapshot-rollback-test"));
+    const store = new EventSnapshotStore(dataset.id, job.id, createLogger("snapshot-rollback-test"));
     const ctx: ProcessBatchContext = {
       payload,
       job,
@@ -126,12 +126,13 @@ describe.sequential("update-strategy snapshot rollback", () => {
     // The in-place update landed.
     expect(await titleOf(event.id)).toBe("Overwritten Title");
     // A snapshot sidecar was written.
-    const sidecar = path.join(tmpDir, "ingest-snapshots", `job-${job.id}.jsonl`);
+    const sidecar = path.join(tmpDir, "ingest-snapshots", `ds${dataset.id}-job${job.id}.jsonl`);
     await expect(fsPromises.access(sidecar)).resolves.toBeUndefined();
 
     // Simulate the terminal-failure path (cleanupPriorAttempt / onFail).
     const { restored } = await EventSnapshotStore.restoreAndClear(
       payload,
+      dataset.id,
       job.id,
       createLogger("snapshot-rollback-test")
     );
@@ -144,7 +145,7 @@ describe.sequential("update-strategy snapshot rollback", () => {
     const event = await seedEvent("concurrent-id", "Original Title");
     const jobA = await buildUpdateJob("concurrent-id", event.id);
 
-    const store = new EventSnapshotStore(jobA.id, createLogger("snapshot-rollback-test"));
+    const store = new EventSnapshotStore(dataset.id, jobA.id, createLogger("snapshot-rollback-test"));
     const ctx: ProcessBatchContext = {
       payload,
       job: jobA,
@@ -169,6 +170,7 @@ describe.sequential("update-strategy snapshot rollback", () => {
     // event, leaving B's newer data intact.
     const { restored } = await EventSnapshotStore.restoreAndClear(
       payload,
+      dataset.id,
       jobA.id,
       createLogger("snapshot-rollback-test")
     );
@@ -180,7 +182,7 @@ describe.sequential("update-strategy snapshot rollback", () => {
     const event = await seedEvent("keep-id", "Keep Original");
     const job = await buildUpdateJob("keep-id", event.id);
 
-    const store = new EventSnapshotStore(job.id, createLogger("snapshot-rollback-test"));
+    const store = new EventSnapshotStore(dataset.id, job.id, createLogger("snapshot-rollback-test"));
     const ctx: ProcessBatchContext = {
       payload,
       job,
@@ -194,15 +196,56 @@ describe.sequential("update-strategy snapshot rollback", () => {
     await processEventBatch(ctx, [{ id: "keep-id", title: "Kept Update" }], 0);
     await store.discard();
 
-    const sidecar = path.join(tmpDir, "ingest-snapshots", `job-${job.id}.jsonl`);
+    const sidecar = path.join(tmpDir, "ingest-snapshots", `ds${dataset.id}-job${job.id}.jsonl`);
     await expect(fsPromises.access(sidecar)).rejects.toThrow();
     // A later restore attempt is a no-op; the update stays.
     const { restored } = await EventSnapshotStore.restoreAndClear(
       payload,
+      dataset.id,
       job.id,
       createLogger("snapshot-rollback-test")
     );
     expect(restored).toBe(0);
     expect(await titleOf(event.id)).toBe("Kept Update");
+  });
+
+  it("repairs a crashed predecessor's overwrites before the next holder mutates", async () => {
+    const event = await seedEvent("crash-id", "Original Title");
+    const jobA = await buildUpdateJob("crash-id", event.id);
+
+    // Simulate import A overwriting the event AND leaving its sidecar behind — i.e.
+    // A committed its overwrite, then its worker crashed before cleaning up (the
+    // advisory lock was freed on disconnect but the mutation stayed live).
+    const storeA = new EventSnapshotStore(dataset.id, jobA.id, createLogger("snapshot-rollback-test"));
+    const ctxA: ProcessBatchContext = {
+      payload,
+      job: jobA,
+      dataset,
+      ingestJobId: jobA.id,
+      accessFields: { datasetIsPublic: false, catalogOwnerId: owner.id as number },
+      logger: createLogger("snapshot-rollback-test"),
+      snapshotStore: storeA,
+    };
+    await processEventBatch(ctxA, [{ id: "crash-id", title: "A Overwrote (crashed)" }], 0);
+    expect(await titleOf(event.id)).toBe("A Overwrote (crashed)");
+    const sidecarA = path.join(tmpDir, "ingest-snapshots", `ds${dataset.id}-job${jobA.id}.jsonl`);
+    await expect(fsPromises.access(sidecarA)).resolves.toBeUndefined();
+
+    // A different import B takes the dataset lease and repairs the abandoned
+    // predecessor before it would capture anything — closing the crash fail-open gap.
+    const jobB = await buildUpdateJob("crash-id", event.id);
+    const repair = await EventSnapshotStore.repairAbandonedSnapshots(
+      payload,
+      dataset.id,
+      jobB.id,
+      createLogger("snapshot-rollback-test")
+    );
+
+    expect(repair.repairedJobs).toBe(1);
+    expect(repair.failures).toBe(0);
+    // The crashed predecessor's overwrite is rolled back to the true original.
+    expect(await titleOf(event.id)).toBe("Original Title");
+    // A's sidecar is cleared, so a re-run cannot replay it.
+    await expect(fsPromises.access(sidecarA)).rejects.toThrow();
   });
 });

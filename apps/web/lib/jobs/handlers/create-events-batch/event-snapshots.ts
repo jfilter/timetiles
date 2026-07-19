@@ -23,23 +23,21 @@
  * A's value), and a non-LIFO rollback (A reverts first — skipped as no longer
  * owned — then B reverts to A's value) would leave the failed intermediate rather
  * than the true original. That cross-import case is handled one level up: the
- * create-events handler holds a per-dataset lease (see
- * `@/lib/database/dataset-import-lock`) across each update import's whole
- * mutate-then-rollback phase — including the rollback in its catch AND in onFail —
- * so under normal operation B cannot begin capturing until A has finished or
- * rolled back, and B therefore snapshots the true original.
+ * create-events handler serializes EVERY import on a per-dataset lease (see
+ * `@/lib/database/dataset-import-lock`) across its whole mutate-then-rollback
+ * phase — including the rollback in its catch AND in onFail — so B cannot begin
+ * capturing until A has finished or rolled back, and B always snapshots the true
+ * original. Serializing all strategies (not just update) also closes the mixed
+ * case where a skip import inserts an event a concurrent update adopts on conflict.
  *
- * Two residuals the lease does NOT fully close (both narrow, both would require a
- * durable per-dataset recovery marker rather than just the advisory lock):
- * - Worker crash: if A's worker dies mid-import, Postgres frees the session lock
- *   immediately while A's already-committed overwrites stay live, so a waiting B
- *   can start before A's retry restores. B may then snapshot A's intermediate.
- *   (A's sidecar survives on the shared volume, so A's retry still restores its
- *   own originals; the exposure is B capturing a not-yet-reverted value.)
- * - Mixed strategy: only update imports take the lease, so a concurrent SKIP
- *   import that inserts an event which an update import then adopts on conflict
- *   can leave that insert stranded if both imports fail. Closing this would mean
- *   serializing all strategies per dataset.
+ * Worker-crash safety: if A's worker dies mid-import, Postgres frees the session
+ * lock immediately while A's committed overwrites stay live — the lock alone would
+ * be fail-open. The durable marker that closes this is the SNAPSHOT SIDECAR itself:
+ * its filename encodes the dataset (see {@link snapshotPath}) and it survives on the
+ * shared volume, so the next holder of the dataset lease calls
+ * {@link EventSnapshotStore.repairAbandonedSnapshots} to restore any abandoned
+ * predecessor BEFORE mutating. A crash therefore becomes "next holder repairs
+ * first" rather than "B captures a half-applied value".
  *
  * Scope of the guarantee: the BUSINESS fields (see {@link SNAPSHOT_FIELDS}) are
  * restored exactly, and the restore is race-safe (each event is reverted under a
@@ -93,8 +91,16 @@ type Logger = ReturnType<typeof createJobLogger>;
 
 const snapshotsDir = (): string => path.resolve(process.cwd(), getEnv().UPLOAD_DIR, "ingest-snapshots");
 
-const snapshotPath = (ingestJobId: string | number): string =>
-  path.join(snapshotsDir(), `job-${String(ingestJobId)}.jsonl`);
+// Sidecar filename = `<dataset-prefix><jobId>.jsonl`. Encoding the dataset makes a
+// crashed import's sidecar discoverable by the NEXT holder of that dataset's lease,
+// which is what lets it repair an abandoned predecessor before mutating (closing the
+// worker-crash fail-open gap). The `-job` delimiter keeps `ds5-job*` from matching
+// `ds55-job*`. See {@link EventSnapshotStore.repairAbandonedSnapshots}.
+const datasetSidecarPrefix = (datasetId: string | number): string => `ds${String(datasetId)}-job`;
+const SNAPSHOT_SUFFIX = ".jsonl";
+
+const snapshotPath = (datasetId: string | number, ingestJobId: string | number): string =>
+  path.join(snapshotsDir(), `${datasetSidecarPrefix(datasetId)}${String(ingestJobId)}${SNAPSHOT_SUFFIX}`);
 
 /** Pick only the overwrite-affected fields from a full event doc. */
 const extractSnapshot = (doc: Record<string, unknown>): SnapshotData => {
@@ -115,6 +121,7 @@ export class EventSnapshotStore {
   private dirEnsured = false;
 
   constructor(
+    private readonly datasetId: string | number,
     private readonly ingestJobId: string | number,
     private readonly log: Logger
   ) {}
@@ -146,18 +153,18 @@ export class EventSnapshotStore {
       await fsPromises.mkdir(snapshotsDir(), { recursive: true });
       this.dirEnsured = true;
     }
-    await fsPromises.appendFile(snapshotPath(this.ingestJobId), line, "utf-8");
+    await fsPromises.appendFile(snapshotPath(this.datasetId, this.ingestJobId), line, "utf-8");
     this.capturedIds.add(id);
   }
 
   /** Delete the snapshot sidecar — call after a successful import (updates are final). */
   async discard(): Promise<void> {
-    await EventSnapshotStore.discard(this.ingestJobId, this.log);
+    await EventSnapshotStore.discard(this.datasetId, this.ingestJobId, this.log);
   }
 
-  static async discard(ingestJobId: string | number, log: Logger): Promise<void> {
+  static async discard(datasetId: string | number, ingestJobId: string | number, log: Logger): Promise<void> {
     try {
-      await fsPromises.rm(snapshotPath(ingestJobId), { force: true });
+      await fsPromises.rm(snapshotPath(datasetId, ingestJobId), { force: true });
     } catch (error) {
       // Not swallowed to a low level: a surviving sidecar could be replayed if
       // this job id is ever re-run, rolling back data that was already final.
@@ -186,10 +193,11 @@ export class EventSnapshotStore {
    */
   static async restoreAndClear(
     payload: Payload,
+    datasetId: string | number,
     ingestJobId: string | number,
     log: Logger
   ): Promise<{ restored: number; failures: number }> {
-    const file = snapshotPath(ingestJobId);
+    const file = snapshotPath(datasetId, ingestJobId);
     let contents: string;
     try {
       contents = await fsPromises.readFile(file, "utf-8");
@@ -228,6 +236,64 @@ export class EventSnapshotStore {
     }
     if (restored > 0) log.info("Restored events from prior-state snapshots", { ingestJobId, restored });
     return { restored, failures };
+  }
+
+  /**
+   * Repair snapshots abandoned by OTHER jobs on this dataset, before the caller
+   * mutates it. A worker that crashes mid-import frees its advisory lock (Postgres
+   * drops session locks on disconnect) while its committed overwrites stay live and
+   * its sidecar survives on the shared volume. The next holder of the dataset lease
+   * calls this to restore those overwrites to their true originals, so it never
+   * captures a crashed predecessor's intermediate value — closing the worker-crash
+   * fail-open gap. It also mops up a sidecar a previous holder kept because ITS own
+   * catch/onFail restore failed (see restoreAndClear's keep-on-failure rule).
+   *
+   * Safe because the caller holds the dataset lease: no other import can be mid
+   * mutation, so any sidecar for this dataset other than the caller's is from a job
+   * that already released the lock (crashed or failed to clean up). Each restore is
+   * additionally row-lock + ownership guarded.
+   *
+   * @returns the count of abandoned jobs repaired and total hard failures; a
+   * non-zero `failures` tells the caller to ABORT rather than mutate a dirty dataset.
+   */
+  static async repairAbandonedSnapshots(
+    payload: Payload,
+    datasetId: string | number,
+    currentJobId: string | number,
+    log: Logger
+  ): Promise<{ repairedJobs: number; failures: number }> {
+    const prefix = datasetSidecarPrefix(datasetId);
+    let entries: string[];
+    try {
+      entries = await fsPromises.readdir(snapshotsDir());
+    } catch (error) {
+      // No snapshots dir yet → nothing abandoned.
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { repairedJobs: 0, failures: 0 };
+      throw error;
+    }
+
+    const currentFile = `${prefix}${String(currentJobId)}${SNAPSHOT_SUFFIX}`;
+    let repairedJobs = 0;
+    let failures = 0;
+    for (const name of entries) {
+      if (!name.startsWith(prefix) || !name.endsWith(SNAPSHOT_SUFFIX) || name === currentFile) continue;
+      const abandonedJobId = name.slice(prefix.length, -SNAPSHOT_SUFFIX.length);
+      if (abandonedJobId === "") continue;
+      log.warn("Repairing snapshots abandoned by a prior import on this dataset", {
+        datasetId,
+        abandonedJobId,
+        currentJobId,
+      });
+      const { failures: jobFailures } = await EventSnapshotStore.restoreAndClear(
+        payload,
+        datasetId,
+        abandonedJobId,
+        log
+      );
+      if (jobFailures > 0) failures += jobFailures;
+      else repairedJobs++;
+    }
+    return { repairedJobs, failures };
   }
 }
 

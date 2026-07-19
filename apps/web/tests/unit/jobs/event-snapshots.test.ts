@@ -19,9 +19,9 @@ const log = { info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() } as 
 
 /** Minimal payload mock supporting only `capture`'s findByID. */
 const makeMockPayload = (events: Map<number, Record<string, unknown>>) =>
-  ({
-    findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null),
-  }) as never;
+  ({ findByID: ({ id }: { id: number | string }) => Promise.resolve(events.get(Number(id)) ?? null) }) as never;
+
+const DATASET_ID = 99;
 
 describe.sequential("EventSnapshotStore (file-level)", () => {
   let tmpDir: string;
@@ -38,11 +38,12 @@ describe.sequential("EventSnapshotStore (file-level)", () => {
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
-  const snapshotFile = (jobId: string | number) => path.join(tmpDir, "ingest-snapshots", `job-${jobId}.jsonl`);
-  const writeSidecar = async (jobId: string, body: string) => {
+  const snapshotFile = (jobId: string | number, datasetId: string | number = DATASET_ID) =>
+    path.join(tmpDir, "ingest-snapshots", `ds${datasetId}-job${jobId}.jsonl`);
+  const writeSidecar = async (jobId: string, body: string, datasetId: string | number = DATASET_ID) => {
     const dir = path.join(tmpDir, "ingest-snapshots");
     await fsPromises.mkdir(dir, { recursive: true });
-    await fsPromises.writeFile(path.join(dir, `job-${jobId}.jsonl`), body, "utf-8");
+    await fsPromises.writeFile(path.join(dir, `ds${datasetId}-job${jobId}.jsonl`), body, "utf-8");
   };
 
   it("captures each event's original only once (idempotent across retouches)", async () => {
@@ -50,7 +51,7 @@ describe.sequential("EventSnapshotStore (file-level)", () => {
       [7, { id: 7, transformedData: { v: "ORIG" }, ingestJob: 42 }],
     ]);
     const payload = makeMockPayload(events);
-    const store = new EventSnapshotStore("42", log);
+    const store = new EventSnapshotStore(DATASET_ID, "42", log);
 
     await store.capture(payload, 7);
     // A re-touch within the run must NOT re-snapshot the already-modified state.
@@ -65,7 +66,7 @@ describe.sequential("EventSnapshotStore (file-level)", () => {
   });
 
   it("discard removes the sidecar", async () => {
-    const store = new EventSnapshotStore("5", log);
+    const store = new EventSnapshotStore(DATASET_ID, "5", log);
     await store.capture(makeMockPayload(new Map([[3, { id: 3, transformedData: { v: "ORIG" } }]])), 3);
 
     await store.discard();
@@ -74,18 +75,40 @@ describe.sequential("EventSnapshotStore (file-level)", () => {
   });
 
   it("restoreAndClear is a no-op (0/0) when no sidecar exists", async () => {
-    const result = await EventSnapshotStore.restoreAndClear(makeMockPayload(new Map()), "no-file", log);
+    const result = await EventSnapshotStore.restoreAndClear(makeMockPayload(new Map()), DATASET_ID, "no-file", log);
     expect(result).toEqual({ restored: 0, failures: 0 });
   });
 
   it("keeps the sidecar and reports failures when a line cannot be parsed", async () => {
     await writeSidecar("55", "not-json\nalso-not-json\n");
 
-    const result = await EventSnapshotStore.restoreAndClear(makeMockPayload(new Map()), "55", log);
+    const result = await EventSnapshotStore.restoreAndClear(makeMockPayload(new Map()), DATASET_ID, "55", log);
 
     expect(result.restored).toBe(0);
     expect(result.failures).toBe(2);
     // Sidecar survives so a later attempt can retry.
     await expect(fsPromises.access(snapshotFile("55"))).resolves.toBeUndefined();
+  });
+
+  it("repairAbandonedSnapshots targets only this dataset's OTHER jobs", async () => {
+    // A crashed predecessor (job 88) on our dataset, our own in-progress sidecar
+    // (job 42), and an unrelated dataset's sidecar (dataset 77, job 5).
+    await writeSidecar("88", "not-json\n"); // ds99-job88 — predecessor, unparseable → failure, kept
+    await writeSidecar("42", "not-json\n"); // ds99-job42 — the current job, must be skipped
+    await writeSidecar("5", "not-json\n", 77); // ds77-job5 — different dataset, must be ignored
+
+    const result = await EventSnapshotStore.repairAbandonedSnapshots(makeMockPayload(new Map()), DATASET_ID, "42", log);
+
+    // Only job 88 was touched (1 unparseable line → 1 failure); 42 and the ds77 file untouched.
+    expect(result.failures).toBe(1);
+    expect(result.repairedJobs).toBe(0);
+    await expect(fsPromises.access(snapshotFile("88"))).resolves.toBeUndefined(); // kept (repair failed)
+    await expect(fsPromises.access(snapshotFile("42"))).resolves.toBeUndefined(); // current job untouched
+    await expect(fsPromises.access(snapshotFile("5", 77))).resolves.toBeUndefined(); // other dataset untouched
+  });
+
+  it("repairAbandonedSnapshots is a no-op when the snapshots dir does not exist", async () => {
+    const result = await EventSnapshotStore.repairAbandonedSnapshots(makeMockPayload(new Map()), DATASET_ID, "1", log);
+    expect(result).toEqual({ repairedJobs: 0, failures: 0 });
   });
 });

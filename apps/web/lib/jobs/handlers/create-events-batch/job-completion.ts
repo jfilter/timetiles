@@ -217,6 +217,7 @@ export const checkEventQuotaBeforeProcessing = async (
 /** Delete events and their versions left by a prior failed attempt, in small chunks to avoid table locks. */
 export const cleanupPriorAttempt = async (
   payload: Payload,
+  datasetId: string | number,
   ingestJobId: string | number,
   log: ReturnType<typeof createJobLogger>
 ): Promise<void> => {
@@ -228,7 +229,7 @@ export const cleanupPriorAttempt = async (
   // deletes fresh inserts, so without this an "update"-strategy import that
   // failed permanently would leave the pre-existing events it overwrote mutated
   // and their originals lost. No-op when no snapshot sidecar exists.
-  const { failures: restoreFailures } = await EventSnapshotStore.restoreAndClear(payload, ingestJobId, log);
+  const { failures: restoreFailures } = await EventSnapshotStore.restoreAndClear(payload, datasetId, ingestJobId, log);
 
   // If any restore failed, the sidecar is kept and some updated event still
   // carries `ingestJob = thisJob` with `created_at >= job.createdAt` — i.e. it

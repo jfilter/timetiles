@@ -70,6 +70,12 @@ vi.mock("@/lib/collections/catalog-ownership", () => ({
   extractDenormalizedAccessFields: mocks.extractDenormalizedAccessFields,
 }));
 
+// The handler now serializes every import on the per-dataset lease; stub it to a
+// no-op (its real behavior is covered in tests/integration/database/dataset-import-lock).
+vi.mock("@/lib/database/dataset-import-lock", () => ({
+  acquireDatasetImportLease: vi.fn(() => Promise.resolve({ release: vi.fn() })),
+}));
+
 // Mock review checks — default: no review needed
 vi.mock("@/lib/jobs/workflows/review-checks", () => ({
   REVIEW_REASONS: {
