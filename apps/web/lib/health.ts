@@ -19,6 +19,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { sql } from "@payloadcms/db-postgres";
+import type { Payload } from "payload";
 import { getPayload } from "payload";
 
 import config from "../payload.config";
@@ -105,6 +106,114 @@ const checkUploadsDirectory = async (): Promise<HealthCheckResult> => {
   }
 };
 
+/**
+ * Stable, unambiguous landmark. Any provider that works at all resolves it, so
+ * a failure points at the provider rather than at the query.
+ */
+const GEOCODING_PROBE_ADDRESS = "1600 Amphitheatre Parkway, Mountain View, CA";
+
+/**
+ * A health endpoint gets polled; a live probe on every call would hammer a
+ * third-party geocoder (and burn its quota). Probe at most once per window and
+ * replay the verdict in between.
+ */
+const GEOCODING_PROBE_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Hard ceiling so /api/admin/health cannot hang behind a stalled provider.
+ * testConfiguration bounds each provider individually but walks them
+ * sequentially, so several slow providers would otherwise add up.
+ */
+const GEOCODING_PROBE_TIMEOUT_MS = 5000;
+
+let geocodingProbeCache: { at: number; result: HealthCheckResult } | null = null;
+
+/** Test seam: drop the memoised probe so each test observes its own fixture. */
+export const resetGeocodingProbeCache = (): void => {
+  geocodingProbeCache = null;
+};
+
+const describeProbeError = (outcome: unknown): string => {
+  const error = (outcome as { error?: unknown } | null)?.error;
+  if (typeof error === "string" && error !== "") return error;
+  if (error instanceof Error) return error.message;
+  return "unknown error";
+};
+
+const summarizeGeocodingProbe = (probe: Record<string, unknown>, enabledCount: number): HealthCheckResult => {
+  const entries = Object.entries(probe);
+
+  // testConfiguration only walks providers it managed to construct. Rows say
+  // enabled but nothing was probed => the configuration is unusable.
+  if (entries.length === 0) {
+    return {
+      status: "error",
+      message: `${enabledCount} enabled geocoding provider(s) configured, but none could be probed`,
+    };
+  }
+
+  const working = entries.filter(([, outcome]) => (outcome as { success?: boolean } | null)?.success === true);
+  const failed = entries.filter(([, outcome]) => (outcome as { success?: boolean } | null)?.success !== true);
+
+  if (failed.length === 0) {
+    return {
+      status: "healthy",
+      message: `${working.length} geocoding provider(s) answered a live test geocode: ${working
+        .map(([name]) => name)
+        .join(", ")}`,
+    };
+  }
+
+  const detail = failed.map(([name, outcome]) => `${name}: ${describeProbeError(outcome)}`).join("; ");
+
+  // Every provider failing is the state this check exists to catch: an expired
+  // key or upstream outage fails every geocode-batch job, and the old row-count
+  // check stayed green throughout.
+  if (working.length === 0) {
+    return {
+      status: "error",
+      message: `Every enabled geocoding provider failed a live test geocode - geocode-batch jobs will fail (${detail})`,
+    };
+  }
+
+  return {
+    status: "degraded",
+    message: `Some geocoding providers failed a live test geocode (working: ${working
+      .map(([name]) => name)
+      .join(", ")}; failing: ${detail})`,
+  };
+};
+
+const runGeocodingProbe = async (payload: Payload, enabledCount: number): Promise<HealthCheckResult> => {
+  const { createGeocodingService } = await import("./services/geocoding");
+  const service = createGeocodingService(payload);
+
+  const TIMED_OUT = Symbol("geocoding-probe-timeout");
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<typeof TIMED_OUT>((resolve) => {
+    timeoutId = setTimeout(() => resolve(TIMED_OUT), GEOCODING_PROBE_TIMEOUT_MS);
+  });
+
+  try {
+    const outcome = await Promise.race([service.testConfiguration(GEOCODING_PROBE_ADDRESS), timeoutPromise]);
+
+    if (outcome === TIMED_OUT) {
+      // Inconclusive, not proven broken: the per-provider timeout is the same
+      // length, so we may have cut in just before a provider was marked failed.
+      // Claiming "error" here would 503 the whole endpoint on a guess.
+      logger.warn("Geocoding probe timed out", { timeoutMs: GEOCODING_PROBE_TIMEOUT_MS });
+      return {
+        status: "degraded",
+        message: `Geocoding probe inconclusive - no provider answered within ${GEOCODING_PROBE_TIMEOUT_MS}ms`,
+      };
+    }
+
+    return summarizeGeocodingProbe(outcome, enabledCount);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 const checkGeocodingService = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking geocoding service");
 
@@ -119,24 +228,23 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
       limit: 1,
     });
 
-    const status = providers.totalDocs > 0 ? "ok" : "warning";
-    const message =
-      providers.totalDocs > 0
-        ? `${providers.totalDocs} enabled provider(s) found`
-        : "No enabled geocoding providers found in the database";
-
-    logger.debug("Geocoding service check complete", { status, totalProviders: providers.totalDocs });
-
-    let healthStatus: "healthy" | "degraded" | "error";
-    if (status === "ok") {
-      healthStatus = "healthy";
-    } else if (status === "warning") {
-      healthStatus = "degraded";
-    } else {
-      healthStatus = "error";
+    if (providers.totalDocs === 0) {
+      logger.debug("Geocoding service check complete", { totalProviders: 0 });
+      return { status: "degraded", message: "No enabled geocoding providers found in the database" };
     }
 
-    return { status: healthStatus, message };
+    const cached = geocodingProbeCache;
+    if (cached != null && Date.now() - cached.at < GEOCODING_PROBE_TTL_MS) {
+      logger.debug("Reusing memoised geocoding probe", { ageMs: Date.now() - cached.at });
+      return cached.result;
+    }
+
+    const result = await runGeocodingProbe(payload, providers.totalDocs);
+    geocodingProbeCache = { at: Date.now(), result };
+
+    logger.debug("Geocoding service check complete", { status: result.status, totalProviders: providers.totalDocs });
+
+    return result;
   } catch (error) {
     logger.error("Geocoding service check failed", { error: (error as Error).message, stack: (error as Error).stack });
     return { status: "error", message: (error as Error).message };
@@ -334,11 +442,32 @@ const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   }
 
   if (hasSmtpHost) {
-    const hasAuth = Boolean(env.EMAIL_SMTP_USER);
-    logger.debug("SMTP configured", { hasAuth });
+    const hasSmtpUser = Boolean(env.EMAIL_SMTP_USER);
+    const hasSmtpPass = Boolean(env.EMAIL_SMTP_PASS);
+
+    // Half-filled credentials are the same trap as the placeholder host: the
+    // app believes it can authenticate, so every send fails with EAUTH (535).
+    // send-email-job classifies auth failures as terminal, so the job is
+    // cancelled instead of retried and the mail is dropped silently — including
+    // account verification and password resets. docker-compose.prod.yml
+    // defaults both variables to empty, so setting only the user is easy to do.
+    if (hasSmtpUser !== hasSmtpPass) {
+      const setVar = hasSmtpUser ? "EMAIL_SMTP_USER" : "EMAIL_SMTP_PASS";
+      const missingVar = hasSmtpUser ? "EMAIL_SMTP_PASS" : "EMAIL_SMTP_USER";
+      logger.warn("SMTP credentials are incomplete", { setVar, missingVar });
+      return {
+        status: "error",
+        message:
+          `SMTP credentials incomplete: ${setVar} is set but ${missingVar} is empty - ` +
+          "every send fails with an auth error, and send-email-job treats that as terminal, " +
+          `so mail is dropped without retry. Set both, or neither for an unauthenticated relay.`,
+      };
+    }
+
+    logger.debug("SMTP configured", { hasAuth: hasSmtpUser });
     return {
       status: "healthy",
-      message: `SMTP configured (${env.EMAIL_SMTP_HOST})${hasAuth ? " with authentication" : ""}`,
+      message: `SMTP configured (${env.EMAIL_SMTP_HOST})${hasSmtpUser ? " with authentication" : ""}`,
     };
   }
 

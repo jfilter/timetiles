@@ -60,12 +60,31 @@ export const buildSendEmailJobMeta = (to: string, context: EmailContext): SendEm
 });
 
 /**
- * Queue an email via Payload jobs, logging and swallowing any queue error.
+ * Outcome of an enqueue attempt.
  *
- * Use this for non-critical notifications where a delivery failure should
- * not abort the calling operation (e.g. "email changed" notifications).
+ * A failure here means no job row exists, so there is nothing to retry and the
+ * mail will never be sent — callers that promised the user an email must be
+ * able to tell that apart from success.
  */
-export const queueEmail = async (payload: Payload, options: SendEmailOptions, context: EmailContext): Promise<void> => {
+export type QueueEmailResult = { queued: true; jobId: string | number } | { queued: false; error: unknown };
+
+/**
+ * Queue an email via Payload jobs. Never throws: the queue error is logged and
+ * returned as `{ queued: false }`.
+ *
+ * Fire-and-forget is fine for advisory notifications ("your email was
+ * changed"), where a lost message is an annoyance. It is not fine when the
+ * email *is* the flow: ACCOUNT_VERIFICATION (register), PASSWORD_RESET
+ * (forgot-password) and EMAIL_CHANGE_VERIFICATION (change-email) all leave the
+ * user stranded — told to check an inbox that will never receive anything, with
+ * no job queued to retry. Those callers should inspect the result and surface
+ * the failure rather than returning success.
+ */
+export const queueEmail = async (
+  payload: Payload,
+  options: SendEmailOptions,
+  context: EmailContext
+): Promise<QueueEmailResult> => {
   const meta = buildSendEmailJobMeta(options.to, context);
   const jobToQueue = {
     task: EMAIL_TASK_SLUG,
@@ -78,7 +97,9 @@ export const queueEmail = async (payload: Payload, options: SendEmailOptions, co
     const job = await payload.jobs.queue(jobToQueue);
 
     logger.info({ ...meta, jobId: job.id }, "Email queued");
+    return { queued: true, jobId: job.id };
   } catch (error) {
     logError(error, context, meta);
+    return { queued: false, error };
   }
 };
