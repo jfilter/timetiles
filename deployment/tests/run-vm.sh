@@ -103,7 +103,9 @@ run_in_vm() {
         echo '{'
         echo "$cmd"
         echo "echo \$? > $exitfile"
-        echo '} 2>&1 | awk '"'"'{ printf "%s %s\n", strftime("%H:%M:%S"), $0; fflush() }'"'"
+        # printf, not echo: the awk program contains a literal \n that must reach
+        # awk unexpanded. bash's echo leaves it alone, but sh's does not (SC2028).
+        printf '%s\n' '} 2>&1 | awk '"'"'{ printf "%s %s\n", strftime("%H:%M:%S"), $0; fflush() }'"'"
     } | limactl shell -y --workdir / "$VM_NAME" sudo tee "$script" >/dev/null
 
     vm_sudo "nohup bash $script > $log 2>&1 &"
