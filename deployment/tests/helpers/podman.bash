@@ -34,6 +34,21 @@ skip_if_no_podman() {
     fi
 }
 
+# Skip when the scraper was never deployed on this host.
+#
+# The suite also runs in CI on a bare runner that never went through bootstrap:
+# Podman is installed there, but no sandbox network and no runner unit exist, so
+# checks for them would fail for a reason that says nothing about the code.
+#
+# The unit file is the discriminator. Bootstrap step 13 installs it, so its
+# absence means the feature was never set up -- while a unit that exists but is
+# not active is a genuine fault and must still fail.
+skip_if_no_scraper_deployment() {
+    if ! systemctl cat timescrape-runner.service &>/dev/null; then
+        skip "Scraper runner not deployed on this host"
+    fi
+}
+
 # Require an image, distinguishing "absent" from "Podman is wedged".
 #
 # Skipping on a timeout would hide exactly the fault these tests were written

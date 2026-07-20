@@ -56,6 +56,7 @@ setup() {
 
 @test "scraper sandbox network exists and is internal" {
     skip_if_no_podman
+    skip_if_no_scraper_deployment
 
     run podman_bounded network inspect scraper-sandbox --format '{{.Internal}}'
     [ "$status" -eq 0 ]
@@ -66,6 +67,7 @@ setup() {
 
 @test "a container runs attached to the sandbox network" {
     skip_if_no_podman
+    skip_if_no_scraper_deployment
     require_scraper_image timescrape-python
 
     run podman_bounded run --rm --network scraper-sandbox \
@@ -120,6 +122,7 @@ setup() {
 
 @test "scraper runner service is active" {
     skip_if_no_podman
+    skip_if_no_scraper_deployment
 
     run systemctl is-active timescrape-runner
     [ "$status" -eq 0 ]
