@@ -89,11 +89,17 @@ cp config/timetiles.example.yml config/timetiles.yml
 
 The file is **optional**. If absent, all defaults apply. Changes require a server restart.
 
-In Docker, the config directory is mounted read-only into all containers via `CONFIG_DIR` in your `.env.production`:
+In Docker, the config directory is mounted read-only into all containers via `CONFIG_DIR` in your `.env.production`. Which value is right depends on how you installed:
 
 ```bash
+# Standalone deployment/ checkout
 CONFIG_DIR=./config
+
+# Bootstrapped host — this is what the bootstrap script sets
+CONFIG_DIR=../apps/web/config
 ```
+
+The bootstrap value is not interchangeable: the same mount also carries the bundled data-package manifests, which exist only under `apps/web/config`. Pointing a bootstrapped host at `./config` silently removes all of them. Put your `timetiles.yml` in whichever directory `CONFIG_DIR` names, and copy the template from that same directory — both copies of `timetiles.example.yml` are kept identical.
 
 ### Rate Limits
 

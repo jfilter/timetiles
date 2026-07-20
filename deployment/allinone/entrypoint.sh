@@ -125,8 +125,13 @@ DB_NAME="${DB_NAME:-${POSTGRES_DB:-timetiles}}"
 export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}"
 export UPLOAD_DIR="/data/uploads"
 
-# Write environment to file for the Next.js wrapper script
-# Restrict permissions - only root can read (wrapper runs as nextjs via supervisord)
+# Write environment to file for the Next.js wrapper script.
+# The wrappers run as nextjs (uid 1001) via supervisord, so the file must be
+# readable by that user. It used to be written root-owned 0600, which made every
+# `source /etc/timetiles.env` fail with "Permission denied" — silently, because
+# the wrappers had no `set -e`. Nothing broke only because the same values also
+# reached the process via supervisord's inherited environment; the next variable
+# added here would have had no effect at all.
 umask 077
 cat > /etc/timetiles.env << EOF
 DATABASE_URL=${DATABASE_URL}
@@ -138,13 +143,23 @@ PORT=3000
 HOSTNAME=0.0.0.0
 NEXT_TELEMETRY_DISABLED=1
 EOF
-chmod 600 /etc/timetiles.env
+# root:nodejs 0640 — readable by the nextjs user (member of nodejs) and by no
+# one else. Still keeps DATABASE_URL/PAYLOAD_SECRET off world-readable paths.
+chown root:nodejs /etc/timetiles.env
+chmod 640 /etc/timetiles.env
 
 # Create wrapper script that loads environment and starts Next.js
 # This replaces fragile sed-based env injection into supervisord.conf — the wrapper
 # sources /etc/timetiles.env so any value (including special chars) is handled safely.
 cat > /app/start-nextjs.sh << 'WRAPPER'
 #!/bin/bash
+# set -e so an unreadable/broken /etc/timetiles.env aborts the process instead of
+# starting Next.js with the environment silently missing.
+set -eo pipefail
+if [ ! -r /etc/timetiles.env ]; then
+    echo "FATAL: /etc/timetiles.env is not readable by $(id -un) — refusing to start Next.js without its environment." >&2
+    exit 1
+fi
 set -a
 source /etc/timetiles.env
 set +a
@@ -152,6 +167,28 @@ cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/next/dist/bi
 WRAPPER
 chmod +x /app/start-nextjs.sh
 chown nextjs:nodejs /app/start-nextjs.sh
+
+# Same wrapper approach for the job worker, which needs the identical
+# environment. --all-queues rather than a queue list: Payload matches --queue
+# with `equals`, so a comma-separated value matches nothing and the jobs sit
+# untouched without raising anything.
+cat > /app/start-worker.sh << 'WRAPPER'
+#!/bin/bash
+# set -e so an unreadable/broken /etc/timetiles.env aborts the process instead of
+# starting the worker with the environment silently missing.
+set -eo pipefail
+if [ ! -r /etc/timetiles.env ]; then
+    echo "FATAL: /etc/timetiles.env is not readable by $(id -un) — refusing to start the job worker without its environment." >&2
+    exit 1
+fi
+set -a
+source /etc/timetiles.env
+set +a
+cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/payload/bin.js \
+  jobs:run --cron '*/10 * * * * *' --all-queues --limit 10 --handle-schedules
+WRAPPER
+chmod +x /app/start-worker.sh
+chown nextjs:nodejs /app/start-worker.sh
 
 echo "=== Starting Supervisord ==="
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

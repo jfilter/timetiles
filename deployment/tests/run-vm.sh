@@ -184,14 +184,29 @@ if $FRESH_MODE && vm_exists; then
     limactl delete -f "$VM_NAME"
 fi
 
+# Start Lima with INT/TERM/HUP ignored.
+#
+# The hostagent that keeps the VM alive is a child of whatever starts it and
+# inherits that process group. Anything that interrupts this script -- a
+# timeout, a cancelled command, an editor closing the terminal -- delivers the
+# signal to the whole group and takes the VM down with it, usually mid-run,
+# where it looks like a test failure rather than a killed VM.
+#
+# Ignored signal dispositions survive fork and exec, so a subshell that ignores
+# them hands the hostagent the same immunity. This does not detach the process
+# group (macOS has no setsid), it makes the processes indifferent to it.
+lima_detached() {
+    ( trap '' INT TERM HUP; "$@" )
+}
+
 if ! vm_exists; then
     print_info "Creating VM (first run downloads ~600MB image)..."
-    limactl create -y --name="$VM_NAME" --mount "$PROJECT_ROOT" "$SCRIPT_DIR/lima.yaml"
+    lima_detached limactl create -y --name="$VM_NAME" --mount "$PROJECT_ROOT" "$SCRIPT_DIR/lima.yaml"
 fi
 
 if ! vm_running; then
     print_info "Starting VM..."
-    limactl start -y --timeout 15m "$VM_NAME"
+    lima_detached limactl start -y --timeout 15m "$VM_NAME"
 fi
 
 # Let the boot settle before bootstrap starts its own apt work, otherwise
@@ -272,13 +287,31 @@ echo -e "${GREEN}✓ Codebase synced${NC}"
 # Lima provision block, which only runs per boot.
 if [[ "$LOCAL_BUILD" == "true" ]]; then
     print_info "Configuring local build mode..."
+    # A local image name and pull_policy: never are what actually make this
+    # local. Without them the build is tagged with the same GHCR reference the
+    # base file names, and `up` is free to replace it with the pulled image --
+    # so the VM silently tested the published build instead of the working
+    # tree, and `docker compose ps` could not show the difference because it
+    # prints the tag, not the image ID. docker-compose.override.yml.example
+    # has always set a local tag for exactly this reason; the harness did not.
+    #
+    # All three app services need it: they only share an image name, there is
+    # no inheritance from web, so naming the tag once is not enough.
     vm_sudo "cat > $GUEST_DEPLOY/docker-compose.override.yml <<'OVERRIDE'
 services:
   web:
+    image: timetiles-vm:local
+    pull_policy: never
     build:
       context: $GUEST_SRC
       dockerfile: deployment/Dockerfile.prod
       network: host
+  worker-ingest:
+    image: timetiles-vm:local
+    pull_policy: never
+  worker-general:
+    image: timetiles-vm:local
+    pull_policy: never
 OVERRIDE"
 else
     print_info "Configuring GHCR pull mode..."
@@ -295,6 +328,16 @@ run_in_vm "Running bootstrap" \
 print_info "Post-bootstrap setup..."
 vm_sudo "
     chown -R timetiles:timetiles $GUEST_SRC 2>/dev/null || true
+
+    # Undo what that sweep just broke. The web and worker images run as uid
+    # 1001, and step 07 deliberately hands them the log and upload dirs; the
+    # recursive chown above takes both back for the app user, so every
+    # container restarted for the test phase dies on its first log write with
+    # EACCES. That failure is silent in the harness output and surfaces much
+    # later as an unrelated-looking API error, because Payload's onInit seed
+    # dies with it -- which is exactly how it was found.
+    chown -R 1001:1001 $GUEST_DEPLOY/logs $GUEST_DEPLOY/uploads 2>/dev/null || true
+
     cd /opt/timetiles
     docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true
 "

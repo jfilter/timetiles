@@ -72,7 +72,11 @@ export class RateLimitService {
         throw new Error(
           `Refusing to start: RATE_LIMIT_BACKEND=memory with ${workerHint} workers. ` +
             "Per-process counters cannot enforce shared limits. " +
-            "Set RATE_LIMIT_BACKEND=postgresql, or run a single worker."
+            // "pg", not "postgresql": factory.ts accepts only "memory" and "pg",
+            // and warns-then-falls-back-to-memory on anything else -- so an
+            // operator following this message word for word ended up exactly
+            // where the error told them not to be.
+            "Set RATE_LIMIT_BACKEND=pg, or run a single worker."
         );
       }
     }

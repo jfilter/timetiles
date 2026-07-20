@@ -118,6 +118,16 @@ services:
       # Logging (all containers write to /var/log/timetiles/ via shared volume)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/web.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
+      # Absolute and shared, because the pieces live in different containers:
+      # a worker writes the file, web stat()s the stored absolute path to serve
+      # the download, and the maintenance worker deletes it on expiry. The
+      # default is the relative ".exports", which resolves inside each
+      # container's read-only rootfs and fails with EROFS.
+      DATA_EXPORT_DIR: /app/apps/web/exports
 
       # File uploads
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
@@ -141,6 +151,7 @@ services:
     volumes:
       # Persist uploaded files on host for easy backup/restore
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${EXPORT_HOST_DIR:-./exports}:/app/apps/web/exports
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
       # Application config (optional — all values have defaults)
       - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
@@ -166,6 +177,13 @@ services:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-ingest
     working_dir: /app/apps/web
+    # The scraper runner is a host-native service, and scraper-execution runs
+    # on the ingest queue -- so this container makes the call, not web. Without
+    # the host mapping every scraper run fails on DNS here, while the health
+    # check probes the same URL from web, which can resolve it, and reports the
+    # runner reachable.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
     logging:
       driver: "json-file"
@@ -198,6 +216,23 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-ingest.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
+      # Transactional mail is queued as a job and therefore SENT BY A WORKER,
+      # not by web. Without these the worker falls through to the no-op
+      # jsonTransport in payload-config-factory.ts and marks every send
+      # successful, so account verification and password reset die silently
+      # while the web container's health check reports email healthy.
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
@@ -234,15 +269,25 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
+    command: [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
         "--cron",
         "*/1 * * * *",
+        # --all-queues, not a comma-separated list: Payload passes --queue
+        # through unchanged and matches it with `equals`, so "default,maintenance"
+        # matched no job at all. Both queues silently accumulated work that was
+        # never tried -- no error, no log line, total_tried stayed 0 -- which hid
+        # scheduled imports, stuck-run cleanup, account deletion and the 30-day
+        # audit-log IP purge.
+        #
+        # This also picks up ingest jobs, which worker-ingest normally claims
+        # first on its 10s cron; Payload locks jobs, so the overlap is safe. The
+        # alternative, one worker per queue, keeps the separation cleaner but
+        # costs a third container for cleanup work that tolerates delay.
         "--queue",
-        "default,maintenance",
+        "default",
         "--limit",
         "20",
         "--handle-schedules",
@@ -254,6 +299,29 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-general.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
+      # Absolute and shared, because the pieces live in different containers:
+      # a worker writes the file, web stat()s the stored absolute path to serve
+      # the download, and the maintenance worker deletes it on expiry. The
+      # default is the relative ".exports", which resolves inside each
+      # container's read-only rootfs and fails with EROFS.
+      DATA_EXPORT_DIR: /app/apps/web/exports
+      # Transactional mail is queued as a job and therefore SENT BY A WORKER,
+      # not by web. Without these the worker falls through to the no-op
+      # jsonTransport in payload-config-factory.ts and marks every send
+      # successful, so account verification and password reset die silently
+      # while the web container's health check reports email healthy.
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
@@ -262,6 +330,104 @@ services:
         condition: service_healthy
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${EXPORT_HOST_DIR:-./exports}:/app/apps/web/exports
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
+    networks:
+      - timetiles-network
+    # See worker-ingest above.
+    healthcheck:
+      disable: true
+
+  # Nginx reverse proxy with SSL support
+
+  # Maintenance worker — cleanup and retention jobs
+  #
+  # Separate from worker-general because --queue takes exactly one value:
+  # Payload matches it with `equals`, so "default,maintenance" matched no
+  # job at all and both queues sat idle. --all-queues would cover them, but
+  # it would also let this worker race worker-ingest for ingest jobs, and
+  # Payload's concurrency-key guard reads before it locks -- two workers
+  # polling the same instant can admit two different jobs sharing one key,
+  # which for a double-clicked ingest retry means duplicate events.
+  worker-maintenance:
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
+    working_dir: /app/apps/web
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    command: [
+        "node",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
+        "jobs:run",
+        "--cron",
+        "*/1 * * * *",
+        # --all-queues, not a comma-separated list: Payload passes --queue
+        # through unchanged and matches it with `equals`, so "default,maintenance"
+        # matched no job at all. Both queues silently accumulated work that was
+        # never tried -- no error, no log line, total_tried stayed 0 -- which hid
+        # scheduled imports, stuck-run cleanup, account deletion and the 30-day
+        # audit-log IP purge.
+        #
+        # This also picks up ingest jobs, which worker-ingest normally claims
+        # first on its 10s cron; Payload locks jobs, so the overlap is safe. The
+        # alternative, one worker per queue, keeps the separation cleaner but
+        # costs a third container for cleanup work that tolerates delay.
+        "--queue",
+        "maintenance",
+        "--limit",
+        "20",
+      ]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /var/log/timetiles/worker-maintenance.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
+      # Absolute and shared, because the pieces live in different containers:
+      # a worker writes the file, web stat()s the stored absolute path to serve
+      # the download, and the maintenance worker deletes it on expiry. The
+      # default is the relative ".exports", which resolves inside each
+      # container's read-only rootfs and fails with EROFS.
+      DATA_EXPORT_DIR: /app/apps/web/exports
+      # Transactional mail is queued as a job and therefore SENT BY A WORKER,
+      # not by web. Without these the worker falls through to the no-op
+      # jsonTransport in payload-config-factory.ts and marks every send
+      # successful, so account verification and password reset die silently
+      # while the web container's health check reports email healthy.
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_TLS_SERVERNAME: ${EMAIL_SMTP_TLS_SERVERNAME:-}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-${EMAIL_FROM}}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-TimeTiles}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${EXPORT_HOST_DIR:-./exports}:/app/apps/web/exports
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
       - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
     networks:
