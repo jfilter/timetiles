@@ -92,15 +92,23 @@ run_in_vm() {
 
     print_info "$desc"
 
+    # Every log line is timestamped so per-step durations can be read off the
+    # log afterwards; without that, "which step got slower" is unanswerable.
+    # The exit code is captured inside the group, so $? is still the command's
+    # and not the timestamper's, and it reaches $exitfile by redirect rather
+    # than through the pipe.
     {
         echo '#!/bin/bash'
         echo "rm -f $exitfile"
+        echo '{'
         echo "$cmd"
         echo "echo \$? > $exitfile"
+        echo '} 2>&1 | awk '"'"'{ printf "%s %s\n", strftime("%H:%M:%S"), $0; fflush() }'"'"
     } | limactl shell -y --workdir / "$VM_NAME" sudo tee "$script" >/dev/null
 
     vm_sudo "nohup bash $script > $log 2>&1 &"
 
+    local started=$SECONDS
     local deadline=$((SECONDS + VM_CMD_TIMEOUT))
     while ! vm_sudo "test -f $exitfile" 2>/dev/null; do
         if (( SECONDS > deadline )); then
@@ -128,7 +136,7 @@ run_in_vm() {
         return 1
     fi
 
-    echo -e "${GREEN}✓ $desc${NC}"
+    echo -e "${GREEN}✓ $desc ($(( (SECONDS - started) / 60 ))m $(( (SECONDS - started) % 60 ))s)${NC}"
 }
 
 # Handle --destroy
@@ -190,6 +198,34 @@ fi
 # provision scripts as part of cloud-init, so waiting from in there deadlocks.
 vm_sudo "cloud-init status --wait >/dev/null 2>&1 || true"
 echo -e "${GREEN}✓ VM ready${NC}"
+
+# Work around a boot race in this VM, not a TimeTiles bug: on vz, systemd-logind
+# can come up spinning at 100% CPU in userspace and then answers no DBus call at
+# all. Everything needing a logind round-trip blocks forever -- `loginctl
+# enable-linger` and, because its default cgroup manager is systemd, every
+# rootless Podman call in bootstrap step 13. Podman as root stays fine, which is
+# what pins the cause on logind rather than on Podman.
+#
+# Restarting clears it (the race is at boot; the restarted process idles at
+# ~0%), so probe and restart rather than restarting unconditionally -- that
+# keeps the healthy path untouched and makes a recurrence visible.
+print_info "Checking systemd-logind responsiveness..."
+if vm_sudo "timeout 10 busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+        org.freedesktop.DBus.Peer Ping >/dev/null 2>&1"; then
+    echo -e "${GREEN}✓ logind responsive${NC}"
+else
+    print_info "logind unresponsive (known vz boot race), restarting..."
+    vm_sudo "systemctl restart systemd-logind"
+    # Verify rather than assume: if the restart does not help, rootless Podman
+    # cannot work and step 13 would burn its full timeouts before degrading.
+    if vm_sudo "sleep 3; timeout 10 busctl call org.freedesktop.login1 /org/freedesktop/login1 \
+            org.freedesktop.DBus.Peer Ping >/dev/null 2>&1"; then
+        echo -e "${GREEN}✓ logind responsive after restart${NC}"
+    else
+        echo -e "${RED}logind still unresponsive -- rootless Podman will not work${NC}" >&2
+        exit 1
+    fi
+fi
 
 # Tear down any previous deployment before the sync below deletes the configs
 # it depends on.
