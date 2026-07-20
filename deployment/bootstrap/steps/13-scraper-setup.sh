@@ -258,10 +258,26 @@ enable_scraper_url() {
         echo "SCRAPER_RUNNER_URL=http://host.docker.internal:4000" >> "$env_file"
     fi
 
-    # Restart the web container so it picks up the new env var
-    if command -v docker &>/dev/null; then
-        print_info "Restarting web container to pick up SCRAPER_RUNNER_URL..."
-        sudo -u "$user" sg docker -c "cd $install_dir && ./timetiles restart" 2>/dev/null || true
+    # Restart the web container so it picks up the new env var.
+    #
+    # Writing the file is not the same as applying it: the running container
+    # keeps the environment it started with. If the restart fails, the app never
+    # learns the runner exists and every scraper run reports "not configured" —
+    # while the runner itself starts fine and its health check passes, so
+    # nothing downstream contradicts a success message here. Fail loudly and
+    # keep the restart output, which is the only place the reason appears.
+    if ! command -v docker &>/dev/null; then
+        die "docker not found — cannot apply SCRAPER_RUNNER_URL to the running web container"
+    fi
+
+    print_info "Restarting web container to pick up SCRAPER_RUNNER_URL..."
+    local restart_output
+    if ! restart_output=$(sudo -u "$user" sg docker -c "cd $install_dir && ./timetiles restart" 2>&1); then
+        print_error "Failed to restart the web container"
+        echo "$restart_output" >&2
+        print_info "SCRAPER_RUNNER_URL is set in $env_file but the running app has not picked it up"
+        print_info "Fix the stack, then run: cd $install_dir && ./timetiles restart"
+        die "Could not apply SCRAPER_RUNNER_URL to the web container"
     fi
 
     print_success "SCRAPER_RUNNER_URL enabled"

@@ -767,6 +767,13 @@ EOF
             exit 1
         fi
 
+        # Track what actually landed. Both steps below are conditional, and the
+        # uploads path is reconstructed from the CURRENT config while restic stored
+        # the ORIGINAL host path — so restoring onto a rebuilt host with a different
+        # install dir (the main disaster-recovery case) matches nothing at all.
+        # Without this, that ended in a green "Restore complete!" and no data.
+        RESTORED_WHAT=""
+
         # Check what was restored
         if [[ -f "$RESTORE_DIR/database.sql" ]]; then
             echo -e "${YELLOW}Restoring database...${NC}"
@@ -778,6 +785,7 @@ EOF
                 exit 1
             fi
             echo -e "${GREEN}Database restored${NC}"
+            RESTORED_WHAT="database"
         fi
 
         # Check for uploads in the restored snapshot
@@ -799,9 +807,20 @@ EOF
                 exit 1
             fi
             echo -e "${GREEN}Uploads restored${NC}"
+            RESTORED_WHAT="${RESTORED_WHAT:+$RESTORED_WHAT, }uploads"
         fi
 
-        echo -e "${GREEN}Restore complete!${NC}"
+        if [[ -z "$RESTORED_WHAT" ]]; then
+            echo -e "${RED}Restore failed: snapshot $SNAPSHOT contained neither database.sql nor uploads${NC}"
+            echo -e "${YELLOW}Looked for uploads at: $RESTORED_UPLOADS${NC}"
+            echo -e "${YELLOW}Snapshots keep the original host paths. If this host uses a different${NC}"
+            echo -e "${YELLOW}install directory, set UPLOAD_HOST_DIR to the path stored in the${NC}"
+            echo -e "${YELLOW}snapshot and retry.${NC}"
+            send_alert "Restore Failed" "Snapshot $SNAPSHOT restored nothing at $(date)"
+            exit 1
+        fi
+
+        echo -e "${GREEN}Restore complete! Restored: $RESTORED_WHAT${NC}"
         ;;
         
     status)
@@ -1351,8 +1370,22 @@ EOF
                 local img="$1"
                 docker rm -f tt-scraper-extract 2>/dev/null || true
                 docker create --name tt-scraper-extract "$img"
-                docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json
+                # dist/, node_modules/ and package.json were already wiped above, so a
+                # half-finished extraction leaves a gutted runner. systemctl restart
+                # still exits 0 for a Type=simple unit that starts and immediately
+                # dies, so without these checks the update reports success and the
+                # runner is dead. Mirrors bootstrap/steps/13-scraper-setup.sh:209-218.
+                if ! docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json; then
+                    docker rm -f tt-scraper-extract 2>/dev/null || true
+                    echo -e "${RED}Failed to extract runner from image $img${NC}"
+                    exit 1
+                fi
                 docker rm tt-scraper-extract
+
+                if [[ ! -f "$runner_dir/dist/index.js" ]]; then
+                    echo -e "${RED}Runner extraction failed — dist/index.js not found${NC}"
+                    exit 1
+                fi
             }
 
             if docker pull "$image" 2>/dev/null; then
@@ -1362,7 +1395,11 @@ EOF
                 docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" "$SCRIPT_DIR/.."
                 extract_runner timescrape-runner-local
             else
+                # The rm -rf above already emptied runner_dir, so continuing here
+                # restarts the service against no runner at all and still reports
+                # success. Same failure as a partial extraction — fail loudly.
                 echo -e "${RED}Cannot pull or build scraper runner${NC}"
+                exit 1
             fi
             chown -R "$DEPLOY_USER:$DEPLOY_USER" "$runner_dir"
 
@@ -1370,16 +1407,29 @@ EOF
             python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
             node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
+            # Neither branch matches when the registry pull fails (rate limit,
+            # transient network, bad tag) and no local sources exist — the sparse
+            # checkout only includes apps/timescrape/ when SKIP_SCRAPER != true.
+            # Falling through silently left timescrape-python/node on the old
+            # version while "Scraper runner updated!" printed, so scrapes ran on an
+            # image that did not match the deployed release. Bootstrap dies here
+            # too — see bootstrap/steps/13-scraper-setup.sh:156 and :167.
             if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
                 podman_as_deploy_user 60 tag "$python_image" timescrape-python
             elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/python/Dockerfile" ]]; then
                 podman_as_deploy_user 1800 build -t timescrape-python "$SCRIPT_DIR/../apps/timescrape/images/python/"
+            else
+                echo -e "${RED}Cannot pull or build timescrape-python image${NC}"
+                exit 1
             fi
 
             if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
                 podman_as_deploy_user 60 tag "$node_image" timescrape-node
             elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/node/Dockerfile" ]]; then
                 podman_as_deploy_user 1800 build -t timescrape-node "$SCRIPT_DIR/../apps/timescrape/images/node/"
+            else
+                echo -e "${RED}Cannot pull or build timescrape-node image${NC}"
+                exit 1
             fi
 
             sudo -n /bin/systemctl restart timescrape-runner.service

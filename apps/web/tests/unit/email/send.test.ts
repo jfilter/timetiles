@@ -30,12 +30,13 @@ describe.sequential("queueEmail", () => {
     const payload = createPayloadMock();
     const { EMAIL_CONTEXTS, EMAIL_JOB_QUEUE, EMAIL_TASK_SLUG, queueEmail } = await import("@/lib/email/send");
 
-    await queueEmail(
+    const result = await queueEmail(
       payload as never,
       { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
       EMAIL_CONTEXTS.ACCOUNT_EXISTS
     );
 
+    expect(result).toEqual({ queued: true, jobId: "email-job-1" });
     expect(payload.jobs.queue).toHaveBeenCalledWith({
       task: EMAIL_TASK_SLUG,
       queue: EMAIL_JOB_QUEUE,
@@ -59,22 +60,42 @@ describe.sequential("queueEmail", () => {
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  it("logs and swallows queue failures", async () => {
+  // Still non-throwing, so an advisory notification cannot abort its caller,
+  // but the failure is now reported back. Without this, register /
+  // forgot-password / change-email returned success and told the user to check
+  // an inbox that would never receive anything -- and since no job row was
+  // created, nothing retried it either.
+  it("reports queue failures to the caller instead of only logging them", async () => {
     const payload = createPayloadMock();
     const error = new Error("queue unavailable");
     payload.jobs.queue.mockRejectedValueOnce(error);
     const { EMAIL_CONTEXTS, queueEmail } = await import("@/lib/email/send");
 
-    await queueEmail(
+    const result = await queueEmail(
       payload as never,
       { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
       EMAIL_CONTEXTS.ACCOUNT_EXISTS
     );
 
+    expect(result).toEqual({ queued: false, error });
     expect(mocks.logError).toHaveBeenCalledWith(error, EMAIL_CONTEXTS.ACCOUNT_EXISTS, {
       channel: "email",
       context: EMAIL_CONTEXTS.ACCOUNT_EXISTS,
       maskedTo: maskEmail("user@example.com"),
     });
+  });
+
+  it("does not throw when the queue fails, so advisory callers are unaffected", async () => {
+    const payload = createPayloadMock();
+    payload.jobs.queue.mockRejectedValueOnce(new Error("queue unavailable"));
+    const { EMAIL_CONTEXTS, queueEmail } = await import("@/lib/email/send");
+
+    await expect(
+      queueEmail(
+        payload as never,
+        { to: "user@example.com", subject: "Welcome", html: "<p>Hello</p>" },
+        EMAIL_CONTEXTS.EMAIL_CHANGE_OLD_ADDRESS
+      )
+    ).resolves.toMatchObject({ queued: false });
   });
 });
