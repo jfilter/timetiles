@@ -40,6 +40,9 @@ export default buildConfigWithDefaults({
   // During build phase, use minimal pool to avoid connections
   poolConfig: isBuildPhase ? { max: 0 } : undefined,
 
-  // Always run migrations in production, skip in build phase
-  runMigrations: env.NODE_ENV === "production" && !isBuildPhase,
+  // Run migrations in production, skip in build phase — and only where
+  // RUN_MIGRATIONS is set, because Payload applies them without taking a lock
+  // and every container that initializes Payload would otherwise migrate the
+  // same database concurrently.
+  runMigrations: env.NODE_ENV === "production" && !isBuildPhase && env.RUN_MIGRATIONS,
 });

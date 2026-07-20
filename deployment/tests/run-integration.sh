@@ -31,8 +31,24 @@ fi
 
 cd "$SCRIPT_DIR"
 
+# A hard ceiling on the whole suite. The individual helpers bound their own
+# calls, but a run can also hang *between* tests: a daemon that inherits BATS's
+# stdin pipe keeps the runner waiting for an EOF long after the last assertion
+# has been reported. Without this the harness stalls until someone notices,
+# which cost 52 minutes once. Generous enough for a cold VM, short enough to
+# fail as a test failure rather than an unattended wait.
+INTEGRATION_TIMEOUT="${INTEGRATION_TIMEOUT:-900}"
+
 if [[ -d "integration" ]] && ls integration/*.bats &>/dev/null; then
-    bats integration/*.bats
+    rc=0
+    timeout "$INTEGRATION_TIMEOUT" bats integration/*.bats </dev/null || rc=$?
+    if [[ $rc -eq 124 ]]; then
+        echo ""
+        print_fail "Integration tests exceeded ${INTEGRATION_TIMEOUT}s and were killed"
+        echo "A test hung, or a spawned daemon is holding the runner's pipe open."
+        exit 1
+    fi
+    [[ $rc -eq 0 ]] || exit $rc
     echo ""
     print_pass "Integration tests passed!"
 else

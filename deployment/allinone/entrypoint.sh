@@ -169,25 +169,36 @@ export UPLOAD_DIR="/data/uploads"
 #   Docker log driver handles rotation. A file would need a logrotate install to
 #   stay bounded and pino would write every line twice.
 #
-# The operator-supplied values are single-quoted in the file: the wrappers
-# re-expand it with source, where an unquoted space would split the line into a
-# bogus command and a dollar sign would interpolate.
+# Every value is written single-quoted, with any embedded single quote escaped.
+# The wrappers read this file back with `source`, so the file is shell code, not
+# data: an unquoted space splits the line into a bogus command, a dollar sign
+# interpolates, and a backtick executes. This used to quote only some of the
+# values and left DATABASE_URL and PAYLOAD_SECRET bare -- the two that carry
+# operator-chosen secrets and are therefore the most likely to contain a
+# character that matters. A password with a space in it broke the boot; one with
+# a backtick in it would have run whatever it enclosed, as root, at startup.
+env_line() {
+    local name="$1" value="$2"
+    # '\'' closes the quote, emits a literal quote, and reopens it -- the only
+    # way to get a single quote through a single-quoted shell string.
+    printf "%s='%s'\n" "$name" "${value//\'/\'\\\'\'}"
+}
 umask 077
-cat > /etc/timetiles.env << EOF
-DATABASE_URL=${DATABASE_URL}
-UPLOAD_DIR=${UPLOAD_DIR}
-PAYLOAD_SECRET=${PAYLOAD_SECRET}
-NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}
-NODE_ENV=production
-DEPLOYMENT_ENVIRONMENT='${DEPLOYMENT_ENVIRONMENT:-production}'
-PORT=3000
-HOSTNAME=0.0.0.0
-NEXT_TELEMETRY_DISABLED=1
-DATA_EXPORT_DIR='${DATA_EXPORT_DIR}'
-TRUSTED_PROXY_CIDRS='${TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128}'
-RUN_AUTO_ACTIVATIONS='${RUN_AUTO_ACTIVATIONS:-true}'
-LOG_LEVEL='${LOG_LEVEL:-info}'
-EOF
+{
+    env_line DATABASE_URL "${DATABASE_URL}"
+    env_line UPLOAD_DIR "${UPLOAD_DIR}"
+    env_line PAYLOAD_SECRET "${PAYLOAD_SECRET}"
+    env_line NEXT_PUBLIC_PAYLOAD_URL "${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}"
+    env_line NODE_ENV production
+    env_line DEPLOYMENT_ENVIRONMENT "${DEPLOYMENT_ENVIRONMENT:-production}"
+    env_line PORT 3000
+    env_line HOSTNAME 0.0.0.0
+    env_line NEXT_TELEMETRY_DISABLED 1
+    env_line DATA_EXPORT_DIR "${DATA_EXPORT_DIR}"
+    env_line TRUSTED_PROXY_CIDRS "${TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128}"
+    env_line RUN_AUTO_ACTIVATIONS "${RUN_AUTO_ACTIVATIONS:-true}"
+    env_line LOG_LEVEL "${LOG_LEVEL:-info}"
+} > /etc/timetiles.env
 # root:nodejs 0640 — readable by the nextjs user (member of nodejs) and by no
 # one else. Still keeps DATABASE_URL/PAYLOAD_SECRET off world-readable paths.
 chown root:nodejs /etc/timetiles.env
@@ -233,6 +244,13 @@ set +a
 # data-package auto-activator: two concurrent onInits would race the same
 # idempotency check. Web keeps it; the worker drops it (the app defaults to off).
 unset RUN_AUTO_ACTIVATIONS
+# Same reasoning, higher stakes: Payload applies prodMigrations during init
+# without taking a lock, so a worker that migrates would run the same DDL as
+# Next.js against the same database. Supervisord's priority only orders the
+# *starts* -- it moves on after startsecs, which is ten seconds, while a
+# migration can take much longer -- so ordering alone guarantees nothing.
+# Next.js owns migrations; the worker never applies them.
+export RUN_MIGRATIONS=false
 cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/payload/bin.js \
   jobs:run --cron '*/10 * * * * *' --all-queues --limit 10 --handle-schedules
 WRAPPER

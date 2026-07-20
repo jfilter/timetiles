@@ -487,3 +487,39 @@ verify_alerting() {
         return 1
     fi
 }
+
+# Closing report for a completed bootstrap.
+#
+# Lives here rather than in a step file because it describes the whole run, and
+# because a step file only defines it once that step is sourced. It spent time
+# defined in step 09 and called from nowhere, so operators finished a bootstrap
+# with a bare "completed successfully" and no pointer to the admin account they
+# still had to create.
+print_final_summary() {
+    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
+
+    print_header "Bootstrap Complete!"
+
+    echo -e "${GREEN}TimeTiles has been successfully deployed!${NC}"
+    echo ""
+    echo "Access your application:"
+    echo "  - Website: https://$DOMAIN_NAME"
+    echo "  - Admin Panel: https://$DOMAIN_NAME/dashboard"
+    echo ""
+    echo "Useful commands:"
+    echo "  - View logs: timetiles logs"
+    echo "  - Check status: timetiles status"
+    echo "  - Create backup: timetiles backup"
+    echo "  - Update app: timetiles update"
+    echo "  - Full health check: timetiles check"
+    echo ""
+    echo "Credentials saved to: $install_dir/credentials.txt"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Create your admin account: timetiles create-admin"
+    echo "     (the dashboard's first-user form also works, but it emails a"
+    echo "      verification message and needs SMTP configured to complete)"
+    echo "  2. Sign in at https://$DOMAIN_NAME/dashboard"
+    echo "  3. Configure your datasets and start importing events"
+    echo ""
+}

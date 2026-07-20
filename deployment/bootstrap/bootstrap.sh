@@ -257,6 +257,12 @@ main() {
     release_lock
 
     print_success "Bootstrap completed successfully!"
+
+    # Only after a full run: the summary describes a finished deployment, which
+    # a single step or a --from resume has not necessarily produced.
+    if [[ -z "$SINGLE_STEP" && -z "$START_FROM" ]]; then
+        print_final_summary
+    fi
 }
 
 # Run main function with all arguments

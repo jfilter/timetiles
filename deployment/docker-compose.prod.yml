@@ -216,6 +216,12 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-ingest.log
+      # Only the web container migrates. Payload applies prodMigrations during
+      # init without taking a lock, so leaving this on would have all four app
+      # containers run the same DDL against one database the moment the stack
+      # comes up. depends_on below keeps this container from starting until web
+      # reports healthy, which it only does after its migrations finished.
+      RUN_MIGRATIONS: "false"
       # Without this the value in .env.production never reaches the container:
       # compose has no env_file, so the app always used the in-memory store --
       # per-process counters and an empty pg table, with nothing logged.
@@ -234,10 +240,15 @@ services:
       EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
       EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+      # This is the only worker that reaches the scraper runner: both the manual
+      # trigger and the schedule queue the `scraper-ingest` workflow, which
+      # declares queue "ingest". The other workers never call it.
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
     depends_on:
       postgres:
+        condition: service_healthy
+      web:
         condition: service_healthy
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
@@ -291,6 +302,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-general.log
+      # See worker-ingest: only web migrates, and this container waits for it.
+      RUN_MIGRATIONS: "false"
       # Without this the value in .env.production never reaches the container:
       # compose has no env_file, so the app always used the in-memory store --
       # per-process counters and an empty pg table, with nothing logged.
@@ -315,10 +328,14 @@ services:
       EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
       EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
-      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
-      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+      # No SCRAPER_* here on purpose: the scraper runs as the `scraper-ingest`
+      # workflow on the "ingest" queue, so only worker-ingest ever calls the
+      # runner. Passing the URL and key to a worker that cannot use them just
+      # spreads the credential further than it needs to go.
     depends_on:
       postgres:
+        condition: service_healthy
+      web:
         condition: service_healthy
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
@@ -387,6 +404,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-maintenance.log
+      # See worker-ingest: only web migrates, and this container waits for it.
+      RUN_MIGRATIONS: "false"
       # Without this the value in .env.production never reaches the container:
       # compose has no env_file, so the app always used the in-memory store --
       # per-process counters and an empty pg table, with nothing logged.
@@ -411,10 +430,14 @@ services:
       EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
       EMAIL_SMTP_PASS: ${EMAIL_SMTP_PASS:-}
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
-      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
-      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+      # No SCRAPER_* here on purpose: the scraper runs as the `scraper-ingest`
+      # workflow on the "ingest" queue, so only worker-ingest ever calls the
+      # runner. Passing the URL and key to a worker that cannot use them just
+      # spreads the credential further than it needs to go.
     depends_on:
       postgres:
+        condition: service_healthy
+      web:
         condition: service_healthy
     volumes:
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads

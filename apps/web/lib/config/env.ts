@@ -46,6 +46,18 @@ const baseSchema = {
     .string()
     .default("false")
     .transform((v) => v === "true"),
+  // Apply pending database migrations on Payload init. Exactly one process per
+  // deployment may do this. Payload's prodMigrations takes no lock, so when the
+  // compose stack comes up all four app containers reach init at the same
+  // moment and race the same DDL against one database.
+  //
+  // Defaults to true so a single-container deployment still migrates itself
+  // without configuration; the worker containers turn it off explicitly and
+  // wait for the web container to report healthy before they start.
+  RUN_MIGRATIONS: z
+    .string()
+    .default("true")
+    .transform((v) => v === "true"),
 
   // === Logging ===
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error", "fatal", "silent"]).optional(),

@@ -23,8 +23,21 @@ init_podman() {
 }
 
 # Run podman with a bounded timeout. Exit status 124 means it hung.
+#
+# stdin comes from /dev/null, and that redirect is load-bearing. Podman starts
+# long-lived helper daemons -- aardvark-dns the moment a container joins a
+# DNS-enabled network -- and those daemons inherit the file descriptors of the
+# CLI that spawned them. Under BATS, stdin is a pipe the runner reads to decide
+# when the suite is done, so the daemon ends up holding that pipe's write end
+# open after every test has finished. BATS then waits for an EOF that cannot
+# arrive and the whole run hangs indefinitely: observed once as a 52-minute
+# stall with all tests already reported and no process left doing any work.
+#
+# The timeout above does not save us here, because nothing has timed out --
+# podman exited cleanly long ago and only its orphaned daemon still holds the
+# descriptor.
 podman_bounded() {
-    timeout "$PODMAN_TIMEOUT" podman "$@"
+    timeout "$PODMAN_TIMEOUT" podman "$@" </dev/null
 }
 
 # Skip when the scraper feature was never installed (SKIP_SCRAPER=true).

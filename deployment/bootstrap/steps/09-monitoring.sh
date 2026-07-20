@@ -190,28 +190,3 @@ create_cli_symlink() {
     print_info "  You can now run 'timetiles' from anywhere"
 }
 
-print_final_summary() {
-    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
-
-    print_header "Bootstrap Complete!"
-
-    echo -e "${GREEN}TimeTiles has been successfully deployed!${NC}"
-    echo ""
-    echo "Access your application:"
-    echo "  - Website: https://$DOMAIN_NAME"
-    echo "  - Admin Panel: https://$DOMAIN_NAME/dashboard"
-    echo ""
-    echo "Useful commands:"
-    echo "  - View logs: timetiles logs"
-    echo "  - Check status: timetiles status"
-    echo "  - Create backup: timetiles backup"
-    echo "  - Update app: timetiles update"
-    echo "  - Full health check: timetiles check"
-    echo ""
-    echo "Credentials saved to: $install_dir/credentials.txt"
-    echo ""
-    echo "Next steps:"
-    echo "  1. Visit https://$DOMAIN_NAME/dashboard to create your first admin user"
-    echo "  2. Configure your datasets and start importing events"
-    echo ""
-}
