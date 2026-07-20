@@ -159,7 +159,14 @@ WorkingDirectory=$install_dir
 ExecStart=$install_dir/timetiles up
 ExecStop=$install_dir/timetiles down
 ExecReload=$install_dir/timetiles restart
-TimeoutStartSec=300
+# `timetiles up` no longer returns as soon as the containers are created: the
+# workers declare depends_on web with condition service_healthy, so compose
+# blocks until web answers /api/health, and web only does that once it has
+# applied any pending migrations. That start is bounded by web's own 180s
+# start_period plus however long the migration takes, which 300s does not
+# reliably cover on a first boot after a schema change. A timeout here kills
+# the whole stack's startup, so give it room.
+TimeoutStartSec=900
 TimeoutStopSec=120
 StandardOutput=journal
 StandardError=journal
