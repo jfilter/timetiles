@@ -277,7 +277,21 @@ install_runner() {
         fi
     }
 
-    if docker pull "$image" 2>/dev/null; then
+    # SCRAPER_LOCAL_BUILD forces strategy 2. Without it the registry pull always
+    # wins, so a checkout's runner source is never what gets installed -- which
+    # made the VM harness verify published runner code against working-tree
+    # deployment code, and let a packaging bug in this app's Dockerfile survive a
+    # green run. Strategy 1 stays the default: a normal host has no reason to
+    # spend a monorepo build on something it can pull.
+    if [[ "${SCRAPER_LOCAL_BUILD:-false}" == "true" ]] && [[ -f "$src_dir/apps/timescrape/Dockerfile" ]]; then
+        print_info "SCRAPER_LOCAL_BUILD set — building runner from $src_dir"
+        if ! docker build -t timescrape-runner-local \
+            -f "$src_dir/apps/timescrape/Dockerfile" "$src_dir"; then
+            die "Failed to build scraper runner image from source"
+        fi
+        extract_from_image timescrape-runner-local
+        print_success "Built runner from source"
+    elif docker pull "$image" 2>/dev/null; then
         print_info "Extracting runner from image: $image"
         extract_from_image "$image"
     # Strategy 2: Build via Docker and extract (same as strategy 1, but build locally)

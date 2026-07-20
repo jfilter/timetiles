@@ -322,6 +322,15 @@ else
     vm_sudo "rm -f $GUEST_DEPLOY/docker-compose.override.yml"
 fi
 
+# The scraper runner is installed by bootstrap step 13, which has its own source
+# for the binary and does not look at the compose override above. Left alone it
+# always pulls from GHCR, so --local tested published runner code against
+# working-tree deployment code -- and a packaging bug in the runner's Dockerfile
+# survived a full green run because the image under test predated the fix.
+# Written into the config after the sync, since --delete would remove it.
+vm_sudo "sed -i '/^SCRAPER_LOCAL_BUILD=/d' $GUEST_DEPLOY/tests/bootstrap.test.conf
+    echo 'SCRAPER_LOCAL_BUILD=\"$LOCAL_BUILD\"' >> $GUEST_DEPLOY/tests/bootstrap.test.conf"
+
 # Run bootstrap. It creates the /opt/timetiles -> $GUEST_DEPLOY symlink itself;
 # nothing here may pre-create that path as a real directory.
 print_header "Bootstrap"
