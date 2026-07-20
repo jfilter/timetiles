@@ -43,7 +43,7 @@ setup_file() {
     _api_curl -f "$API_BASE/api/health" >/dev/null 2>&1 \
         || { _fixture_skip "Web app is not reachable at $API_BASE"; return 0; }
 
-    api_login || { _fixture_fail "could not obtain an admin session"; return 0; }
+    api_login || { _fixture_fail "could not obtain an admin session: ${API_LOGIN_ERROR:-no detail}"; return 0; }
 
     # Enable the scrapers feature flag, preserving the rest of the global.
     local settings

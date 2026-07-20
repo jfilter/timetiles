@@ -41,14 +41,17 @@ skip_if_no_api() {
 # Create the first admin if the deployment has none, then log in.
 # Sets API_TOKEN. Returns non-zero when no session could be established.
 api_login() {
-    # first-register is a no-op once any user exists; ignore its outcome and let
-    # the login below be the real check.
-    _api_curl -X POST "$API_BASE/api/users/first-register" \
-        -H "Content-Type: application/json" \
-        -d "$(jq -nc --arg e "$API_TEST_EMAIL" --arg p "$API_TEST_PASSWORD" \
-            '{email: $e, password: $p, role: "admin"}')" >/dev/null 2>&1 || true
+    local body register_body
 
-    local body
+    # Create the admin the same way an operator does. Payload's first-register
+    # endpoint is not usable here: the users collection forces `role: "user"` on
+    # unauthenticated REST creates, so it can only ever produce a non-admin --
+    # and this fixture needs admin rights for the settings global and the
+    # scraper-repos. Going through the CLI also means this test covers the
+    # command operators depend on, instead of a test-only back door.
+    register_body=$(TIMETILES_ADMIN_PASSWORD="$API_TEST_PASSWORD" \
+        "$DEPLOY_DIR/timetiles" create-admin "$API_TEST_EMAIL" 2>&1 || true)
+
     body=$(_api_curl -X POST "$API_BASE/api/users/login" \
         -H "Content-Type: application/json" \
         -d "$(jq -nc --arg e "$API_TEST_EMAIL" --arg p "$API_TEST_PASSWORD" \
@@ -56,7 +59,12 @@ api_login() {
 
     API_TOKEN=$(jq -r '.token // empty' <<<"$body")
     [[ -n "$API_TOKEN" ]] || {
-        echo "login failed: $body" >&2
+        # Surface the server's own words. Diagnosing this after the fact is
+        # unreliable: the harness tears the stack down once the suite ends, so
+        # probing later reports the torn-down state rather than what the test
+        # actually hit.
+        API_LOGIN_ERROR="register=${register_body:0:300} login=${body:0:300}"
+        echo "login failed: $API_LOGIN_ERROR" >&2
         return 1
     }
 }
