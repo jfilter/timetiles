@@ -169,28 +169,23 @@ test.describe("Scraper Flow - API", () => {
     scraperId = scraper.id;
   });
 
-  test("should trigger a manual scraper run via API", async ({ request }) => {
-    // POST /api/scrapers/:id/run triggers a scraper-execution job.
-    // In CI there is no scraper runner, so the job will likely fail,
-    // but the API should accept the request (200) or return 409 if already running.
-    const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
-      headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
-      timeout: 10000,
-    });
+  // The 409 case runs before the successful trigger, and both set their own
+  // precondition. Neither is negotiable:
+  //
+  // - Deriving "running" from a preceding trigger raced the job worker. With no
+  //   SCRAPER_RUNNER_URL in CI the execution job fails within milliseconds and
+  //   writes "failed", so the second trigger saw an idle scraper, skipped the
+  //   409 branch and fell through to the rate limit — a 429, and the original
+  //   flake.
+  // - Ordering 409 first keeps any queued job out of the way. A preceding
+  //   successful trigger queues an execution job that writes "failed" at an
+  //   arbitrary moment, which can land on top of the status this test sets.
+  test("should return 409 when triggering a run for an already-running scraper", async ({
+    request,
+    setScraperRunStatus,
+  }) => {
+    await setScraperRunStatus(scraperId, "running");
 
-    // 200 = run queued successfully, 409 = already running (both acceptable)
-    expect([200, 409]).toContain(runResponse.status());
-
-    const body = await runResponse.json();
-
-    if (runResponse.status() === 200) {
-      expect(body.message).toBe("Scraper run queued");
-    }
-  });
-
-  test("should return 409 when triggering a run for an already-running scraper", async ({ request }) => {
-    // The previous test set the scraper's lastRunStatus to "running" via claimScraperRunning.
-    // A second trigger should be rejected with 409.
     const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
       headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
       timeout: 10000,
@@ -202,7 +197,38 @@ test.describe("Scraper Flow - API", () => {
     expect(body.error).toBe("Scraper is already running");
   });
 
+  test("should trigger a manual scraper run via API", async ({ request, setScraperRunStatus }) => {
+    // An idle scraper must be accepted outright. The previous [200, 409]
+    // assertion passed either way and so could not distinguish "queued" from
+    // "refused" — it would have gone green on the very bug above.
+    await setScraperRunStatus(scraperId, "failed");
+
+    const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
+      headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
+      timeout: 10000,
+    });
+
+    expect(runResponse.status()).toBe(200);
+
+    const body = await runResponse.json();
+    expect(body.message).toBe("Scraper run queued");
+  });
+
   test("should clean up: delete scrapers and the scraper-repo", async ({ request }) => {
+    // Let the execution job queued above settle first. Deleting mid-run races
+    // the beforeDelete cascade: it clears scraper_runs, and a job still in
+    // flight then inserts a run row referencing a scraper that is about to
+    // disappear, which surfaces as a 500 from the FK.
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const statusResponse = await request.get(`${baseUrl}/api/scrapers/${scraperId}`, {
+        headers: { Authorization: `JWT ${token}` },
+        timeout: 10000,
+      });
+      expect(statusResponse.status()).toBe(200);
+      if ((await statusResponse.json()).lastRunStatus !== "running") break;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+
     // First delete the associated scraper to avoid foreign key / hook errors
     const deleteScraperResponse = await request.delete(`${baseUrl}/api/scrapers/${scraperId}`, {
       headers: { Authorization: `JWT ${token}` },

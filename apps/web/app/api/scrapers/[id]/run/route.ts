@@ -40,8 +40,11 @@ export const POST = apiRoute({
       throw new ConflictError("Scraper is already running");
     }
 
-    // Defense-in-depth rate limit on re-triggers, checked only after the
-    // running check so it can never mask the 409.
+    // Defense-in-depth rate limit on re-triggers, checked after the running
+    // check so a *stored* "running" status always wins over the limit. It does
+    // not order the two absolutely: two concurrent triggers can both read the
+    // scraper as idle, and the loser can then hit the limit here and get a 429
+    // rather than the 409 the atomic claim below would have produced.
     const rateLimited = await checkRateLimit(req, user, {
       configName: "SCRAPER_TRIGGER",
       keyPrefix: (u) => `scraper-run:${u!.id}`,

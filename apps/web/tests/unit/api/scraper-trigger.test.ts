@@ -12,12 +12,17 @@ import "@/tests/mocks/services/site-resolver";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 
-const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockIsEnabled: vi.fn(), mockClaimScraperRunning: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  mockGetPayload: vi.fn(),
+  mockIsEnabled: vi.fn(),
+  mockClaimScraperRunning: vi.fn(),
+  mockCheckRateLimit: vi.fn(),
+}));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
-vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
+vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: mocks.mockCheckRateLimit }));
 vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mocks.mockIsEnabled }),
 }));
@@ -61,6 +66,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     mocks.mockIsEnabled.mockResolvedValue(true);
     mocks.mockClaimScraperRunning.mockResolvedValue(true);
+    mocks.mockCheckRateLimit.mockResolvedValue(null);
     mockPayload.findByID.mockResolvedValue(mockScraper);
   });
 
@@ -108,6 +114,38 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.message).toBe("Scraper run queued");
+  });
+
+  it("returns 409 for a stored running status without consulting the rate limit", async () => {
+    // Regression guard for the ordering in the route: a scraper already marked
+    // "running" must short-circuit before checkRateLimit, so a throttled user
+    // still gets the specific 409 rather than a 429. Asserting the status alone
+    // would pass with the checks in either order, hence the not-called check.
+    mockPayload.findByID.mockResolvedValue({ ...mockScraper, lastRunStatus: "running" });
+    mocks.mockCheckRateLimit.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 })
+    );
+
+    const response = await POST(createRequest(), createParams("10"));
+
+    expect(response.status).toBe(409);
+    const data = await response.json();
+    expect(data.error).toBe("Scraper is already running");
+    expect(mocks.mockCheckRateLimit).not.toHaveBeenCalled();
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+  });
+
+  it("returns the rate limit response when an idle scraper is re-triggered too fast", async () => {
+    mockPayload.findByID.mockResolvedValue({ ...mockScraper, lastRunStatus: "failed" });
+    mocks.mockCheckRateLimit.mockResolvedValue(
+      new Response(JSON.stringify({ error: "Too many requests" }), { status: 429 })
+    );
+
+    const response = await POST(createRequest(), createParams("10"));
+
+    expect(response.status).toBe(429);
+    expect(mocks.mockClaimScraperRunning).not.toHaveBeenCalled();
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 
   it("returns 409 when claimScraperRunning returns false", async () => {
