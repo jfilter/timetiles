@@ -258,26 +258,32 @@ enable_scraper_url() {
         echo "SCRAPER_RUNNER_URL=http://host.docker.internal:4000" >> "$env_file"
     fi
 
-    # Restart the web container so it picks up the new env var.
+    # Restart the whole stack so the new env var reaches every service.
     #
-    # Writing the file is not the same as applying it: the running container
-    # keeps the environment it started with. If the restart fails, the app never
+    # Not just web, despite what this used to say: worker-ingest is the process
+    # that actually calls the runner (the scraper runs as the `scraper-ingest`
+    # workflow on the "ingest" queue), and web only reads the value to report
+    # runner health. Naming one container here sent anyone debugging a failed
+    # scraper run to the wrong logs.
+    #
+    # Writing the file is not the same as applying it: a running container keeps
+    # the environment it started with. If the restart fails, the worker never
     # learns the runner exists and every scraper run reports "not configured" —
     # while the runner itself starts fine and its health check passes, so
     # nothing downstream contradicts a success message here. Fail loudly and
     # keep the restart output, which is the only place the reason appears.
     if ! command -v docker &>/dev/null; then
-        die "docker not found — cannot apply SCRAPER_RUNNER_URL to the running web container"
+        die "docker not found — cannot apply SCRAPER_RUNNER_URL to the running services"
     fi
 
-    print_info "Restarting web container to pick up SCRAPER_RUNNER_URL..."
+    print_info "Restarting services to pick up SCRAPER_RUNNER_URL..."
     local restart_output
     if ! restart_output=$(sudo -u "$user" sg docker -c "cd $install_dir && ./timetiles restart" 2>&1); then
-        print_error "Failed to restart the web container"
+        print_error "Failed to restart the services"
         echo "$restart_output" >&2
-        print_info "SCRAPER_RUNNER_URL is set in $env_file but the running app has not picked it up"
+        print_info "SCRAPER_RUNNER_URL is set in $env_file but the running services have not picked it up"
         print_info "Fix the stack, then run: cd $install_dir && ./timetiles restart"
-        die "Could not apply SCRAPER_RUNNER_URL to the web container"
+        die "Could not apply SCRAPER_RUNNER_URL to the running services"
     fi
 
     print_success "SCRAPER_RUNNER_URL enabled"
