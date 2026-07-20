@@ -201,6 +201,12 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   // before it auto-verifies the first user, so a transport that throws locks
   // the operator out of a fresh deployment entirely.
   if (environment === "production") {
+    // The logger is not built yet at config time, so this has to be console.
+    // The directive is oxlint's, not eslint's: only oxlint enforces no-console
+    // here, and eslint reports an `eslint-disable` for it as an unused
+    // directive -- one comment cannot satisfy both, and it must sit directly
+    // above the statement or "next line" lands on a comment.
+    // oxlint-disable-next-line no-console
     console.warn(
       "EMAIL_SMTP_HOST is not set — outgoing email is disabled. " +
         "Account verification and password-reset messages will not be delivered."
