@@ -1,10 +1,12 @@
 @import "tailwindcss";
-@source "../**/*.{ts,tsx}";
-
 @import "tw-animate-css";
 
 /* Theme — swap this import to use a different theme */
 @import "../themes/cartographic.css";
+
+/* Must stay below every @import: CSS requires @import to precede all other
+   at-rules, so a @source in between makes the imports after it invalid. */
+@source "../**/*.{ts,tsx}";
 
 @utility animate-in {
   animation: var(--animate-in);
