@@ -26,9 +26,12 @@
 SCRAPER_RUNTIME_DIR="/run/timescrape"
 
 # Podman's image store (graphroot) lives under XDG_DATA_HOME. It cannot stay at
-# the default $HOME/.local/share: the app user's home IS the install dir, which
-# is a git working tree and read-only under ProtectSystem=strict. That put ~1 GB
-# of container images inside the checkout and out of the service's reach.
+# the default $HOME/.local/share, because the app user's home IS the install dir
+# and ProtectSystem=strict leaves that read-only for the runner -- `podman run`
+# needs to write a container layer there, so nothing could start. Measured on
+# production: 1.7 GB of images sitting somewhere the service cannot write.
+# (That location is gitignored, so it never showed up in `git status`; the
+# problem is reachability, not tidiness.)
 SCRAPER_DATA_HOME="/var/lib/timetiles"
 
 # Work area for scraper checkouts and outputs. Under /tmp, which is cleared on
@@ -146,6 +149,19 @@ d $SCRAPER_DATA_HOME/containers 0700 $user $user -
 EOF
     systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
     print_info "Created podman runtime and storage directories"
+
+    # Hosts bootstrapped before the store moved keep their images at the old
+    # default under the app user's home. They are re-pulled into the new
+    # location below, so the old copy is dead weight -- on production that is
+    # 1.7 GB. Not deleted automatically: it is several gigabytes under someone
+    # else's home directory, and a bootstrap step is the wrong place to decide
+    # that for an operator.
+    local legacy_store="$install_dir/.local/share/containers"
+    if [[ -d "$legacy_store" ]]; then
+        print_warning "Old podman image store found at $legacy_store"
+        print_info "  Images are re-pulled into $SCRAPER_DATA_HOME/containers; remove the old one with:"
+        print_info "  sudo rm -rf $legacy_store"
+    fi
 
     # Verify rootless Podman works
     if podman_as "$user" 60 info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
