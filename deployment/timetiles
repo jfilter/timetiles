@@ -196,6 +196,19 @@ as_deploy_user() {
     fi
 }
 
+# Rootless Podman blocks in a futex wait — it does not fail — when its
+# per-user runtime dir is missing, so an unbounded call hangs the CLI with no
+# output. Pin XDG_RUNTIME_DIR (sudo drops it) and cap every invocation.
+#
+# Usage: podman_as_deploy_user <timeout-seconds> <podman args...>
+podman_as_deploy_user() {
+    local timeout_s="$1"
+    shift
+
+    local runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
+    as_deploy_user timeout "$timeout_s" env "XDG_RUNTIME_DIR=$runtime_dir" podman "$@"
+}
+
 load_env_vars() {
     local wanted="$*"
     while IFS= read -r line; do
@@ -1080,7 +1093,7 @@ EOF
 
             # Check base images (as deploy user)
             for img in timescrape-python timescrape-node; do
-                if as_deploy_user podman images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
+                if podman_as_deploy_user 60 images --format '{{.Repository}}' 2>/dev/null | grep -q "$img"; then
                     print_ok "Base image: $img"
                 else
                     print_fail "Base image missing: $img"
@@ -1088,7 +1101,7 @@ EOF
             done
 
             # Check sandbox network
-            if as_deploy_user podman network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
+            if podman_as_deploy_user 60 network ls --format '{{.Name}}' 2>/dev/null | grep -q "^scraper-sandbox$"; then
                 print_ok "Scraper sandbox network exists"
             else
                 print_fail "Scraper sandbox network missing"
@@ -1356,16 +1369,16 @@ EOF
             python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
             node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
 
-            if as_deploy_user podman pull "$python_image" 2>/dev/null; then
-                as_deploy_user podman tag "$python_image" timescrape-python
+            if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
+                podman_as_deploy_user 60 tag "$python_image" timescrape-python
             elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/python/Dockerfile" ]]; then
-                as_deploy_user podman build -t timescrape-python "$SCRIPT_DIR/../apps/timescrape/images/python/"
+                podman_as_deploy_user 1800 build -t timescrape-python "$SCRIPT_DIR/../apps/timescrape/images/python/"
             fi
 
-            if as_deploy_user podman pull "$node_image" 2>/dev/null; then
-                as_deploy_user podman tag "$node_image" timescrape-node
+            if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
+                podman_as_deploy_user 60 tag "$node_image" timescrape-node
             elif [[ -f "$SCRIPT_DIR/../apps/timescrape/images/node/Dockerfile" ]]; then
-                as_deploy_user podman build -t timescrape-node "$SCRIPT_DIR/../apps/timescrape/images/node/"
+                podman_as_deploy_user 1800 build -t timescrape-node "$SCRIPT_DIR/../apps/timescrape/images/node/"
             fi
 
             sudo -n /bin/systemctl restart timescrape-runner.service
@@ -1392,7 +1405,7 @@ EOF
         # safe form: re-tagging on update orphans the old layer (reclaimed here)
         # without removing a tag a running scrape still needs.
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
-            as_deploy_user podman image prune -f >/dev/null 2>&1 || true
+            podman_as_deploy_user 300 image prune -f >/dev/null 2>&1 || true
         fi
         echo -e "${GREEN}Image cleanup done.${NC}"
         ;;

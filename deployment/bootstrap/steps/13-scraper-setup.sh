@@ -3,6 +3,30 @@
 # Installs Podman, pulls base images, and configures the TimeScrape runner
 # as a systemd service. Skipped by default — set SKIP_SCRAPER=false to enable.
 
+# Rootless Podman can wedge instead of failing: it blocks in a futex wait
+# after opening its sqlite backend and never returns, turning any invocation
+# into a silent bootstrap hang. Observed here at 47 minutes with no output,
+# with the run otherwise healthy — so the cap below is the load-bearing part.
+# Every call goes through podman_as, which bounds the call and pins
+# XDG_RUNTIME_DIR, since sudo does not carry it over.
+#
+# The timeout is what guarantees the bootstrap makes progress. The runtime dir
+# handling in configure_rootless is hardening around the same area, not a
+# proven cure — the underlying wedge was not fully root-caused.
+runtime_dir_for() {
+    echo "/run/user/$(id -u "$1")"
+}
+
+# Usage: podman_as <user> <timeout-seconds> <podman args...>
+podman_as() {
+    local user="$1"
+    local timeout_s="$2"
+    shift 2
+
+    timeout "$timeout_s" sudo -u "$user" \
+        env "XDG_RUNTIME_DIR=$(runtime_dir_for "$user")" podman "$@"
+}
+
 run_step() {
     if [[ "${SKIP_SCRAPER:-true}" == "true" ]]; then
         print_skip "Scraper setup skipped (SKIP_SCRAPER=true)"
@@ -77,11 +101,30 @@ configure_rootless() {
         print_info "Added sub-GID range for $user"
     fi
 
-    # Enable lingering so user services start at boot (not just on login)
-    loginctl enable-linger "$user" 2>/dev/null || true
+    # Enable lingering so user services start at boot (not just on login).
+    # This is also what makes logind create the runtime dir Podman needs, so a
+    # failure here is reported rather than swallowed — a wedged logind answers
+    # "Could not enable linger: Connection timed out", and the missing dir then
+    # surfaces much later as an unexplained hang.
+    if loginctl enable-linger "$user" 2>/dev/null; then
+        print_info "Enabled lingering for $user"
+    else
+        print_warning "Could not enable lingering for $user (logind unavailable)"
+    fi
+
+    # Create the runtime dir directly when logind did not, so rootless Podman
+    # has the per-user location it expects rather than falling back. This did
+    # not by itself unstick an already-wedged Podman in testing, so treat it as
+    # hardening; the timeout on podman_as is what bounds a wedge.
+    local runtime_dir
+    runtime_dir="$(runtime_dir_for "$user")"
+    if [[ ! -d "$runtime_dir" ]]; then
+        install -d -o "$user" -g "$user" -m 700 "$runtime_dir"
+        print_info "Created runtime directory $runtime_dir"
+    fi
 
     # Verify rootless Podman works
-    if sudo -u "$user" podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
+    if podman_as "$user" 60 info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
         print_success "Rootless Podman configured for $user"
     else
         print_warning "Could not verify rootless Podman (may work after re-login)"
@@ -102,23 +145,23 @@ pull_base_images() {
     # Try pulling from GHCR first, fall back to local build
     print_step "Setting up scraper base images..."
 
-    if sudo -u "$user" podman pull "$python_image" 2>/dev/null; then
-        sudo -u "$user" podman tag "$python_image" timescrape-python
+    if podman_as "$user" 900 pull "$python_image" 2>/dev/null; then
+        podman_as "$user" 60 tag "$python_image" timescrape-python
         print_success "Pulled timescrape-python from registry"
     elif [[ -f "$src_dir/apps/timescrape/images/python/Dockerfile" ]]; then
         print_info "Registry pull failed, building timescrape-python locally..."
-        sudo -u "$user" podman build -t timescrape-python "$src_dir/apps/timescrape/images/python/"
+        podman_as "$user" 1800 build -t timescrape-python "$src_dir/apps/timescrape/images/python/"
         print_success "Built timescrape-python locally"
     else
         die "Cannot pull or build timescrape-python image"
     fi
 
-    if sudo -u "$user" podman pull "$node_image" 2>/dev/null; then
-        sudo -u "$user" podman tag "$node_image" timescrape-node
+    if podman_as "$user" 900 pull "$node_image" 2>/dev/null; then
+        podman_as "$user" 60 tag "$node_image" timescrape-node
         print_success "Pulled timescrape-node from registry"
     elif [[ -f "$src_dir/apps/timescrape/images/node/Dockerfile" ]]; then
         print_info "Registry pull failed, building timescrape-node locally..."
-        sudo -u "$user" podman build -t timescrape-node "$src_dir/apps/timescrape/images/node/"
+        podman_as "$user" 1800 build -t timescrape-node "$src_dir/apps/timescrape/images/node/"
         print_success "Built timescrape-node locally"
     else
         die "Cannot pull or build timescrape-node image"
@@ -130,12 +173,12 @@ create_sandbox_network() {
 
     print_step "Creating scraper sandbox network..."
 
-    if sudo -u "$user" podman network ls --format '{{.Name}}' | grep -q "^scraper-sandbox$"; then
+    if podman_as "$user" 60 network ls --format '{{.Name}}' | grep -q "^scraper-sandbox$"; then
         print_info "Scraper sandbox network already exists"
         return 0
     fi
 
-    sudo -u "$user" podman network create --internal scraper-sandbox
+    podman_as "$user" 120 network create --internal scraper-sandbox
     print_success "Created Podman network: scraper-sandbox"
 }
 
@@ -242,6 +285,9 @@ Type=simple
 User=$user
 Group=$user
 WorkingDirectory=$install_dir/scraper-runner
+# Rootless Podman resolves its runtime state here. A system unit gets no
+# XDG_RUNTIME_DIR from logind, and without it podman blocks instead of failing.
+Environment=XDG_RUNTIME_DIR=$(runtime_dir_for "$user")
 EnvironmentFile=$install_dir/.env.production
 ExecStart=/usr/bin/node $install_dir/scraper-runner/dist/index.js
 Restart=on-failure
@@ -253,7 +299,9 @@ SyslogIdentifier=timescrape-runner
 # Security hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
-ReadWritePaths=/tmp/timescrape $install_dir/scraper-runner /var/log/timetiles
+# The leading dash keeps the unit startable when logind has not created the
+# runtime dir yet; ProtectSystem=strict would otherwise make it read-only.
+ReadWritePaths=/tmp/timescrape $install_dir/scraper-runner /var/log/timetiles -$(runtime_dir_for "$user")
 ProtectHome=yes
 PrivateTmp=no
 
