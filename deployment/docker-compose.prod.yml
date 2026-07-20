@@ -241,8 +241,18 @@ services:
         "jobs:run",
         "--cron",
         "*/1 * * * *",
-        "--queue",
-        "default,maintenance",
+        # --all-queues, not a comma-separated list: Payload passes --queue
+        # through unchanged and matches it with `equals`, so "default,maintenance"
+        # matched no job at all. Both queues silently accumulated work that was
+        # never tried -- no error, no log line, total_tried stayed 0 -- which hid
+        # scheduled imports, stuck-run cleanup, account deletion and the 30-day
+        # audit-log IP purge.
+        #
+        # This also picks up ingest jobs, which worker-ingest normally claims
+        # first on its 10s cron; Payload locks jobs, so the overlap is safe. The
+        # alternative, one worker per queue, keeps the separation cleaner but
+        # costs a third container for cleanup work that tolerates delay.
+        "--all-queues",
         "--limit",
         "20",
         "--handle-schedules",
