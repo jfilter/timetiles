@@ -20,8 +20,19 @@ init_podman() {
     # has would read as absent here, and one these tests pull would be invisible
     # to the runner. Both are set unconditionally rather than with :- defaults,
     # since an inherited value would reintroduce that split.
-    export XDG_RUNTIME_DIR="/run/timescrape"
+    export XDG_RUNTIME_DIR="/run/user/$(id -u)"
     export XDG_DATA_HOME="/var/lib/timetiles"
+}
+
+# Strip podman's warning banner from captured output.
+#
+# BATS's `run` merges stderr into $output, and podman prefixes its result with
+# whatever warnings it felt like emitting -- "The cgroupv2 manager is set to
+# systemd but there is no systemd user session available" and its three
+# companions, for one. A test comparing $output to "true" then fails while the
+# actual value is correct, which is a test bug reported as a product bug.
+podman_value() {
+    podman_bounded "$@" | grep -vE '^time=".*" level=(warning|info)' | tail -1
 }
 
 # Run podman with a bounded timeout. Exit status 124 means it hung.

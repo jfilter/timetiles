@@ -13,17 +13,28 @@
 # The timeout is what guarantees the bootstrap makes progress. The runtime dir
 # handling in configure_rootless is hardening around the same area, not a
 # proven cure — the underlying wedge was not fully root-caused.
-# Podman's runtime state (runroot). It cannot be /run/user/$uid, and not for a
-# timing reason: the unit sets ProtectHome=yes, which makes systemd mount an
-# empty read-only tmpfs over /run/user as well as /home and /root. Verified
-# inside the running service's namespace -- /run/user is mode d--------- and
-# contains nothing. So the per-user runtime dir was never visible to the runner
-# no matter when logind created it, podman fell back to $HOME/rundir, and that
-# is read-only too under ProtectSystem=strict. Every scraper run died with
+# Podman's runtime state (runroot), and the reason the runner could never start
+# a container: the unit paired this with ProtectHome=yes, which mounts an empty
+# read-only tmpfs over /run/user just as it does over /home and /root. Verified
+# inside the running service's namespace -- /run/user was mode d--------- and
+# empty. Podman fell back to $HOME/rundir, read-only under ProtectSystem=strict,
+# and every run died with
 #   mkdir /opt/timetiles-src/deployment/rundir/libpod: no such file or directory
-# while systemctl reported the unit active. A tmpfiles.d entry recreates this
-# path at every boot, before any regular service starts.
-SCRAPER_RUNTIME_DIR="/run/timescrape"
+# while systemctl reported the unit active.
+#
+# The fix is to expose this path to the unit (ProtectHome=tmpfs + BindPaths),
+# not to move podman somewhere logind-independent. That was tried: a runroot
+# under /run created by tmpfiles works for starting containers but loses the
+# systemd user session, and rootless podman needs that session's cgroup
+# delegation to apply a limit. `podman run --memory 512m` -- which the runner
+# always passes -- then fails with
+#   rootless needs no limits + no cgrouppath when no permission is granted
+# Delegate=yes on the unit does not help; podman still resolves its cgroup
+# under system.slice rather than the delegated subtree. So logind is not
+# avoidable here, only orderable: lingering below, plus After=user@$uid.
+runtime_dir_for() {
+    echo "/run/user/$(id -u "$1")"
+}
 
 # Podman's image store (graphroot) lives under XDG_DATA_HOME. It cannot stay at
 # the default $HOME/.local/share, because the app user's home IS the install dir
@@ -50,7 +61,7 @@ podman_as() {
     # pulled here would land somewhere the runner cannot see and every run would
     # fail with "image not known" after a bootstrap that reported success.
     timeout "$timeout_s" sudo -u "$user" \
-        env "XDG_RUNTIME_DIR=$SCRAPER_RUNTIME_DIR" \
+        env "XDG_RUNTIME_DIR=$(runtime_dir_for "$user")" \
             "XDG_DATA_HOME=$SCRAPER_DATA_HOME" \
             podman "$@"
 }
@@ -129,26 +140,34 @@ configure_rootless() {
         print_info "Added sub-GID range for $user"
     fi
 
-    # Podman's directories, recreated at every boot by systemd-tmpfiles.
-    #
-    # This deliberately replaces the previous `loginctl enable-linger` approach.
-    # Lingering existed to make logind materialise /run/user/$uid for podman --
-    # which the runner unit could never see anyway (ProtectHome=yes), and which
-    # coupled the whole feature to logind, the component whose vz boot-race wedge
-    # made podman block instead of fail. tmpfiles.d runs as part of
-    # systemd-tmpfiles-setup.service, ordered before every regular service, so
-    # these directories are simply always there and logind is out of the picture.
+    # Lingering starts user@$uid.service at boot, which is what creates
+    # /run/user/$uid and — the part that actually matters — gives rootless podman
+    # a systemd user session to delegate cgroups through. Without that session
+    # podman falls back to --cgroup-manager=cgroupfs and every `podman run` that
+    # carries a limit fails; the runner always passes --memory, so the feature is
+    # dead without this. A failure here is reported rather than swallowed: a
+    # wedged logind answers "Could not enable linger: Connection timed out", and
+    # the consequences surface much later as unexplained container errors.
+    if loginctl enable-linger "$user" 2>/dev/null; then
+        print_info "Enabled lingering for $user"
+    else
+        print_warning "Could not enable lingering for $user (logind unavailable)"
+        print_warning "  Rootless podman will lose cgroup delegation and reject --memory limits"
+    fi
+
+    # The directories podman and the runner write to, recreated at every boot.
+    # The work dir is under /tmp, which is cleared on reboot, and it appears in
+    # the unit's ReadWritePaths without a leading dash — a dash would let the
+    # unit start and then fail to write, which is exactly how the runtime-dir
+    # bug stayed hidden. /run/user/$uid is deliberately NOT listed here: it
+    # belongs to logind, and the unit orders itself after user@$uid instead.
     cat > /etc/tmpfiles.d/timetiles-scraper.conf << EOF
-# Rootless Podman state for the TimeScrape runner. Recreated on every boot:
-# $SCRAPER_RUNTIME_DIR lives on tmpfs, and $SCRAPER_WORK_DIR is under /tmp, which
-# is cleared. Both appear in the unit's ReadWritePaths without a leading dash, so
-# a missing one stops the unit rather than letting it run unable to write.
-d $SCRAPER_RUNTIME_DIR 0700 $user $user -
+# Work area and image store for the TimeScrape runner.
 d $SCRAPER_WORK_DIR 0700 $user $user -
 d $SCRAPER_DATA_HOME/containers 0700 $user $user -
 EOF
     systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
-    print_info "Created podman runtime and storage directories"
+    print_info "Created scraper work and image-store directories"
 
     # Hosts bootstrapped before the store moved keep their images at the old
     # default under the app user's home. They are re-pulled into the new
@@ -339,17 +358,25 @@ create_runner_systemd_service() {
 [Unit]
 Description=TimeScrape Runner
 Documentation=https://github.com/jfilter/timetiles/blob/main/apps/timescrape/docs/SETUP.md
-After=network-online.target timetiles.service
-Wants=network-online.target
+# user@$(id -u "$user").service is logind's per-user manager, started at boot
+# because lingering is enabled. It owns /run/user/$(id -u "$user"), which this
+# unit binds in below and which rootless podman needs for cgroup delegation.
+# Without the ordering the bind mount can be set up before the directory exists
+# and the unit fails to start — loudly, which is the point.
+After=network-online.target timetiles.service user@$(id -u "$user").service
+Wants=network-online.target user@$(id -u "$user").service
 
 [Service]
 Type=simple
 User=$user
 Group=$user
 WorkingDirectory=$install_dir/scraper-runner
-# Both paths are created by /etc/tmpfiles.d/timetiles-scraper.conf, so they exist
-# before this unit starts and do not depend on logind having opened a session.
-Environment=XDG_RUNTIME_DIR=$SCRAPER_RUNTIME_DIR
+# The runtime dir comes from logind (see After= above); the data home is created
+# by /etc/tmpfiles.d/timetiles-scraper.conf. The data home is not the default
+# \$HOME/.local/share because this user's home is the install dir, which
+# ProtectSystem=strict leaves read-only — and \`podman run\` has to write a
+# container layer into the image store.
+Environment=XDG_RUNTIME_DIR=$(runtime_dir_for "$user")
 Environment=XDG_DATA_HOME=$SCRAPER_DATA_HOME
 EnvironmentFile=$install_dir/.env.production
 ExecStart=/usr/bin/node $install_dir/scraper-runner/dist/index.js
@@ -367,8 +394,13 @@ ProtectSystem=strict
 # where podman needs to -- which is how every scraper run came to fail while
 # systemctl reported the service active and healthy. Without the dash a missing
 # directory stops the unit, which is the failure anyone would actually notice.
-ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $SCRAPER_RUNTIME_DIR $SCRAPER_DATA_HOME/containers
-ProtectHome=yes
+ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $(runtime_dir_for "$user") $SCRAPER_DATA_HOME/containers
+# tmpfs rather than yes, plus an explicit bind of the runtime dir. ProtectHome=yes
+# covers /home, /root AND /run/user, and hiding the last one is what left podman
+# with no usable runroot and no cgroup delegation. tmpfs keeps /home and /root
+# just as inaccessible while BindPaths puts back the one directory podman needs.
+ProtectHome=tmpfs
+BindPaths=$(runtime_dir_for "$user")
 PrivateTmp=no
 
 [Install]

@@ -24,7 +24,7 @@ setup() {
 @test "rootless podman responds" {
     skip_if_no_podman
 
-    run podman_bounded info --format '{{.Host.Security.Rootless}}'
+    run podman_value info --format '{{.Host.Security.Rootless}}'
     [ "$status" -ne 124 ]
     [ "$status" -eq 0 ]
     [ "$output" = "true" ]
@@ -58,7 +58,7 @@ setup() {
     skip_if_no_podman
     skip_if_no_scraper_deployment
 
-    run podman_bounded network inspect scraper-sandbox --format '{{.Internal}}'
+    run podman_value network inspect scraper-sandbox --format '{{.Internal}}'
     [ "$status" -eq 0 ]
     # Internal is what keeps a scraper off the host network; a non-internal
     # network here would be a containment failure, not a cosmetic difference.
