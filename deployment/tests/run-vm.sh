@@ -287,13 +287,31 @@ echo -e "${GREEN}✓ Codebase synced${NC}"
 # Lima provision block, which only runs per boot.
 if [[ "$LOCAL_BUILD" == "true" ]]; then
     print_info "Configuring local build mode..."
+    # A local image name and pull_policy: never are what actually make this
+    # local. Without them the build is tagged with the same GHCR reference the
+    # base file names, and `up` is free to replace it with the pulled image --
+    # so the VM silently tested the published build instead of the working
+    # tree, and `docker compose ps` could not show the difference because it
+    # prints the tag, not the image ID. docker-compose.override.yml.example
+    # has always set a local tag for exactly this reason; the harness did not.
+    #
+    # All three app services need it: they only share an image name, there is
+    # no inheritance from web, so naming the tag once is not enough.
     vm_sudo "cat > $GUEST_DEPLOY/docker-compose.override.yml <<'OVERRIDE'
 services:
   web:
+    image: timetiles-vm:local
+    pull_policy: never
     build:
       context: $GUEST_SRC
       dockerfile: deployment/Dockerfile.prod
       network: host
+  worker-ingest:
+    image: timetiles-vm:local
+    pull_policy: never
+  worker-general:
+    image: timetiles-vm:local
+    pull_policy: never
 OVERRIDE"
 else
     print_info "Configuring GHCR pull mode..."
