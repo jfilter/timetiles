@@ -13,9 +13,29 @@
 # The timeout is what guarantees the bootstrap makes progress. The runtime dir
 # handling in configure_rootless is hardening around the same area, not a
 # proven cure — the underlying wedge was not fully root-caused.
-runtime_dir_for() {
-    echo "/run/user/$(id -u "$1")"
-}
+# Podman's runtime state (runroot). It cannot be /run/user/$uid, and not for a
+# timing reason: the unit sets ProtectHome=yes, which makes systemd mount an
+# empty read-only tmpfs over /run/user as well as /home and /root. Verified
+# inside the running service's namespace -- /run/user is mode d--------- and
+# contains nothing. So the per-user runtime dir was never visible to the runner
+# no matter when logind created it, podman fell back to $HOME/rundir, and that
+# is read-only too under ProtectSystem=strict. Every scraper run died with
+#   mkdir /opt/timetiles-src/deployment/rundir/libpod: no such file or directory
+# while systemctl reported the unit active. A tmpfiles.d entry recreates this
+# path at every boot, before any regular service starts.
+SCRAPER_RUNTIME_DIR="/run/timescrape"
+
+# Podman's image store (graphroot) lives under XDG_DATA_HOME. It cannot stay at
+# the default $HOME/.local/share: the app user's home IS the install dir, which
+# is a git working tree and read-only under ProtectSystem=strict. That put ~1 GB
+# of container images inside the checkout and out of the service's reach.
+SCRAPER_DATA_HOME="/var/lib/timetiles"
+
+# Work area for scraper checkouts and outputs. Under /tmp, which is cleared on
+# reboot, so it is recreated by the same tmpfiles.d entry -- it appears in
+# ReadWritePaths without a leading dash, so a missing one keeps the unit from
+# starting at all.
+SCRAPER_WORK_DIR="/tmp/timescrape"
 
 # Usage: podman_as <user> <timeout-seconds> <podman args...>
 podman_as() {
@@ -23,8 +43,13 @@ podman_as() {
     local timeout_s="$2"
     shift 2
 
+    # Same runroot and graphroot the service uses. If these differed, the images
+    # pulled here would land somewhere the runner cannot see and every run would
+    # fail with "image not known" after a bootstrap that reported success.
     timeout "$timeout_s" sudo -u "$user" \
-        env "XDG_RUNTIME_DIR=$(runtime_dir_for "$user")" podman "$@"
+        env "XDG_RUNTIME_DIR=$SCRAPER_RUNTIME_DIR" \
+            "XDG_DATA_HOME=$SCRAPER_DATA_HOME" \
+            podman "$@"
 }
 
 run_step() {
@@ -101,27 +126,26 @@ configure_rootless() {
         print_info "Added sub-GID range for $user"
     fi
 
-    # Enable lingering so user services start at boot (not just on login).
-    # This is also what makes logind create the runtime dir Podman needs, so a
-    # failure here is reported rather than swallowed — a wedged logind answers
-    # "Could not enable linger: Connection timed out", and the missing dir then
-    # surfaces much later as an unexplained hang.
-    if loginctl enable-linger "$user" 2>/dev/null; then
-        print_info "Enabled lingering for $user"
-    else
-        print_warning "Could not enable lingering for $user (logind unavailable)"
-    fi
-
-    # Create the runtime dir directly when logind did not, so rootless Podman
-    # has the per-user location it expects rather than falling back. This did
-    # not by itself unstick an already-wedged Podman in testing, so treat it as
-    # hardening; the timeout on podman_as is what bounds a wedge.
-    local runtime_dir
-    runtime_dir="$(runtime_dir_for "$user")"
-    if [[ ! -d "$runtime_dir" ]]; then
-        install -d -o "$user" -g "$user" -m 700 "$runtime_dir"
-        print_info "Created runtime directory $runtime_dir"
-    fi
+    # Podman's directories, recreated at every boot by systemd-tmpfiles.
+    #
+    # This deliberately replaces the previous `loginctl enable-linger` approach.
+    # Lingering existed to make logind materialise /run/user/$uid for podman --
+    # which the runner unit could never see anyway (ProtectHome=yes), and which
+    # coupled the whole feature to logind, the component whose vz boot-race wedge
+    # made podman block instead of fail. tmpfiles.d runs as part of
+    # systemd-tmpfiles-setup.service, ordered before every regular service, so
+    # these directories are simply always there and logind is out of the picture.
+    cat > /etc/tmpfiles.d/timetiles-scraper.conf << EOF
+# Rootless Podman state for the TimeScrape runner. Recreated on every boot:
+# $SCRAPER_RUNTIME_DIR lives on tmpfs, and $SCRAPER_WORK_DIR is under /tmp, which
+# is cleared. Both appear in the unit's ReadWritePaths without a leading dash, so
+# a missing one stops the unit rather than letting it run unable to write.
+d $SCRAPER_RUNTIME_DIR 0700 $user $user -
+d $SCRAPER_WORK_DIR 0700 $user $user -
+d $SCRAPER_DATA_HOME/containers 0700 $user $user -
+EOF
+    systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
+    print_info "Created podman runtime and storage directories"
 
     # Verify rootless Podman works
     if podman_as "$user" 60 info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
@@ -307,9 +331,10 @@ Type=simple
 User=$user
 Group=$user
 WorkingDirectory=$install_dir/scraper-runner
-# Rootless Podman resolves its runtime state here. A system unit gets no
-# XDG_RUNTIME_DIR from logind, and without it podman blocks instead of failing.
-Environment=XDG_RUNTIME_DIR=$(runtime_dir_for "$user")
+# Both paths are created by /etc/tmpfiles.d/timetiles-scraper.conf, so they exist
+# before this unit starts and do not depend on logind having opened a session.
+Environment=XDG_RUNTIME_DIR=$SCRAPER_RUNTIME_DIR
+Environment=XDG_DATA_HOME=$SCRAPER_DATA_HOME
 EnvironmentFile=$install_dir/.env.production
 ExecStart=/usr/bin/node $install_dir/scraper-runner/dist/index.js
 Restart=on-failure
@@ -321,9 +346,12 @@ SyslogIdentifier=timescrape-runner
 # Security hardening
 NoNewPrivileges=yes
 ProtectSystem=strict
-# The leading dash keeps the unit startable when logind has not created the
-# runtime dir yet; ProtectSystem=strict would otherwise make it read-only.
-ReadWritePaths=/tmp/timescrape $install_dir/scraper-runner /var/log/timetiles -$(runtime_dir_for "$user")
+# No leading dashes. A dash makes systemd skip a missing path, and under
+# ProtectSystem=strict the result is a unit that starts and then cannot write
+# where podman needs to -- which is how every scraper run came to fail while
+# systemctl reported the service active and healthy. Without the dash a missing
+# directory stops the unit, which is the failure anyone would actually notice.
+ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $SCRAPER_RUNTIME_DIR $SCRAPER_DATA_HOME/containers
 ProtectHome=yes
 PrivateTmp=no
 
@@ -352,9 +380,10 @@ start_runner() {
 
     print_step "Starting scraper runner..."
 
-    # Create the data directory (required by systemd ReadWritePaths)
-    mkdir -p /tmp/timescrape
-    chown "$user:$user" /tmp/timescrape
+    # Re-apply rather than mkdir: the tmpfiles entry is the single definition of
+    # these directories and their ownership, and it is also what recreates them
+    # after a reboot. Running it again here keeps this step idempotent on its own.
+    systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
 
     systemctl start timescrape-runner.service
 

@@ -199,15 +199,24 @@ as_deploy_user() {
 
 # Rootless Podman blocks in a futex wait — it does not fail — when its
 # per-user runtime dir is missing, so an unbounded call hangs the CLI with no
-# output. Pin XDG_RUNTIME_DIR (sudo drops it) and cap every invocation.
+# output. Pin the locations (sudo drops them) and cap every invocation.
+#
+# These must match /etc/tmpfiles.d/timetiles-scraper.conf and the runner unit.
+# The store is not /run/user/$uid or $HOME: the deploy user's home is the install
+# dir, a read-only git tree under the unit's hardening, and the per-user runtime
+# dir only exists once logind has opened a session. Pointing the CLI somewhere
+# else than the service would make `timetiles` report on an empty image store
+# while the runner used a full one.
 #
 # Usage: podman_as_deploy_user <timeout-seconds> <podman args...>
 podman_as_deploy_user() {
     local timeout_s="$1"
     shift
 
-    local runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
-    as_deploy_user timeout "$timeout_s" env "XDG_RUNTIME_DIR=$runtime_dir" podman "$@"
+    as_deploy_user timeout "$timeout_s" env \
+        "XDG_RUNTIME_DIR=/run/timescrape" \
+        "XDG_DATA_HOME=/var/lib/timetiles" \
+        podman "$@"
 }
 
 load_env_vars() {

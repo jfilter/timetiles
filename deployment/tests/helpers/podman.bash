@@ -15,11 +15,13 @@ PODMAN_TIMEOUT="${PODMAN_TIMEOUT:-60}"
 
 # Initialize the rootless environment (call in setup)
 init_podman() {
-    # Rootless Podman needs its per-user runtime dir. The suite runs under
-    # `sudo -u timetiles`, which does not set XDG_RUNTIME_DIR itself, and
-    # without it Podman falls back to a different location than the one
-    # bootstrap and the runner service use.
-    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    # Point at exactly the locations bootstrap and the runner unit use, or these
+    # tests inspect a different store than production does -- an image the runner
+    # has would read as absent here, and one these tests pull would be invisible
+    # to the runner. Both are set unconditionally rather than with :- defaults,
+    # since an inherited value would reintroduce that split.
+    export XDG_RUNTIME_DIR="/run/timescrape"
+    export XDG_DATA_HOME="/var/lib/timetiles"
 }
 
 # Run podman with a bounded timeout. Exit status 124 means it hung.
