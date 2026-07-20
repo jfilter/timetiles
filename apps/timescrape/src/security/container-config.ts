@@ -44,7 +44,18 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     "--read-only",
     "--tmpfs=/tmp:rw,size=64m,noexec",
     `-v=${codeDir}:/scraper:ro,Z`,
-    `-v=${outputDir}:/output:rw,Z`,
+    // `U` chowns the mount to the container's mapped uid. Without it the
+    // container -- which runs as uid 1000, mapped into an unprivileged subuid
+    // range -- cannot write to a directory owned by the runner's own uid, and
+    // every scraper fails with EACCES on its output file. The runner reads the
+    // result back through the file's mode bits and removes the tree via
+    // `podman unshare`, which is the only part that needs the mapping undone.
+    //
+    // This requires the directory's owner and group to fall inside the runner
+    // user's id mapping. They do -- the unit runs as User/Group=timetiles and
+    // the runner creates the directory itself -- but running the runner under
+    // a primary group it does not own would make the chown fail with EPERM.
+    `-v=${outputDir}:/output:rw,Z,U`,
 
     // Security hardening
     "--cap-drop=ALL",

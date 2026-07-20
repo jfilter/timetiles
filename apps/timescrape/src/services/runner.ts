@@ -137,6 +137,30 @@ const runPodmanContainer = async (
   }
 };
 
+/**
+ * Remove a work directory that a container may have taken ownership of.
+ *
+ * The output mount uses `:U`, so Podman chowns it into the container's mapped
+ * subuid range. Those uids are not the runner's own, which leaves it unable to
+ * unlink anything inside -- a plain remove fails with EPERM and the directory
+ * leaks. `podman unshare` runs inside the user namespace that owns those
+ * subuids, which is what makes the tree removable again without root.
+ *
+ * Only this directory needs it. Persistent outputs are written by the runner
+ * itself via copyFile, so they stay owned by the runner and remove normally.
+ */
+const removeContainerWrittenDir = async (dir: string): Promise<void> => {
+  try {
+    await execFileAsync("podman", ["unshare", "rm", "-rf", dir], { timeout: 30_000 });
+  } catch (error) {
+    // A run that failed before starting a container leaves the tree owned by
+    // the runner, where a plain remove is both sufficient and cheaper than
+    // reaching for Podman -- so treat this as the expected path, not a defect.
+    logger.info({ dir, error: String(error) }, "podman unshare cleanup unavailable, removing directly");
+    await rm(dir, { recursive: true, force: true });
+  }
+};
+
 const collectOutput = async (
   outputDir: string,
   outputFileName: string,
@@ -294,7 +318,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 
     // Cleanup work directory
     try {
-      await rm(workDir, { recursive: true, force: true });
+      await removeContainerWrittenDir(workDir);
     } catch (error) {
       logError("Failed to cleanup work directory", error, { runId, workDir });
     }

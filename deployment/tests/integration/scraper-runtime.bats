@@ -75,6 +75,46 @@ setup() {
 }
 
 # =============================================================================
+# Output mount
+# =============================================================================
+
+# The runner bind-mounts a host directory it created itself and the container
+# writes its result there. Both halves have to work: the container must be able
+# to write, and the runner must still be able to remove the tree afterwards.
+# `:U` fixes the first by chowning the mount into the container's uid range,
+# which is exactly what breaks the second -- so neither half is redundant.
+@test "container can write to the output mount and the host can clean it up" {
+    skip_if_no_podman
+    require_scraper_image timescrape-python
+
+    local dir="${BATS_TEST_TMPDIR}/scraper-output"
+    mkdir -p "$dir"
+
+    # Match the group the runner actually creates its directories with. The
+    # suite runs under `sg docker` (the compose tests need it), so anything
+    # created here lands in the docker group -- a gid outside the rootless
+    # id mapping, which makes the `:U` chown fail with EPERM. The runner's
+    # unit sets Group=timetiles, so use the login primary group instead of
+    # the effective one.
+    chgrp "$(id -gn "$(id -un)")" "$dir"
+
+    run podman_bounded run --rm --userns=auto -v="$dir:/output:rw,Z,U" \
+        timescrape-python python -c "open('/output/result.csv','w').write('a,b\n')"
+    [ "$status" -eq 0 ]
+    [ -f "$dir/result.csv" ]
+
+    # The runner reads the result back through the file's mode bits...
+    run cat "$dir/result.csv"
+    [ "$status" -eq 0 ]
+
+    # ...and removes the tree via `podman unshare`, since the chowned files
+    # belong to a subuid it cannot unlink directly.
+    run podman_bounded unshare rm -rf "$dir"
+    [ "$status" -eq 0 ]
+    [ ! -d "$dir" ]
+}
+
+# =============================================================================
 # Runner service
 # =============================================================================
 

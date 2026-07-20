@@ -35,7 +35,18 @@ describe("buildPodmanArgs", () => {
     const args = buildPodmanArgs(baseConfig);
 
     expect(args).toContain("-v=/tmp/code:/scraper:ro,Z");
-    expect(args).toContain("-v=/tmp/output:/output:rw,Z");
+    expect(args).toContain("-v=/tmp/output:/output:rw,Z,U");
+  });
+
+  it("chowns the output mount into the container's uid range", () => {
+    // Without `U` the container runs as a mapped subuid that cannot write to a
+    // directory owned by the runner, and every scraper dies with EACCES on its
+    // output file. Asserted separately from the mount test above because the
+    // failure it guards against is silent at build time and only shows up when
+    // a real container runs.
+    const args = buildPodmanArgs(baseConfig);
+
+    expect(args.find((a) => a.startsWith("-v=/tmp/output:"))).toBe("-v=/tmp/output:/output:rw,Z,U");
   });
 
   it("adds environment variables", () => {
