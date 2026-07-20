@@ -252,7 +252,8 @@ services:
         # first on its 10s cron; Payload locks jobs, so the overlap is safe. The
         # alternative, one worker per queue, keeps the separation cleaner but
         # costs a third container for cleanup work that tolerates delay.
-        "--all-queues",
+        "--queue",
+        "default",
         "--limit",
         "20",
         "--handle-schedules",
@@ -264,6 +265,80 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-general.log
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
+      SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
+      SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
+      - ${CONFIG_DIR:-./config}:/app/apps/web/config:ro
+    networks:
+      - timetiles-network
+    # See worker-ingest above.
+    healthcheck:
+      disable: true
+
+  # Nginx reverse proxy with SSL support
+
+  # Maintenance worker — cleanup and retention jobs
+#
+# Separate from worker-general because --queue takes exactly one value:
+# Payload matches it with `equals`, so "default,maintenance" matched no
+# job at all and both queues sat idle. --all-queues would cover them, but
+# it would also let this worker race worker-ingest for ingest jobs, and
+# Payload's concurrency-key guard reads before it locks -- two workers
+# polling the same instant can admit two different jobs sharing one key,
+# which for a double-clicked ingest retry means duplicate events.
+  worker-maintenance:
+    image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
+    container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
+    working_dir: /app/apps/web
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    command:
+      [
+        "node",
+        "/app/node_modules/.pnpm/node_modules/payload/bin.js",
+        "jobs:run",
+        "--cron",
+        "*/1 * * * *",
+        # --all-queues, not a comma-separated list: Payload passes --queue
+        # through unchanged and matches it with `equals`, so "default,maintenance"
+        # matched no job at all. Both queues silently accumulated work that was
+        # never tried -- no error, no log line, total_tried stayed 0 -- which hid
+        # scheduled imports, stuck-run cleanup, account deletion and the 30-day
+        # audit-log IP purge.
+        #
+        # This also picks up ingest jobs, which worker-ingest normally claims
+        # first on its 10s cron; Payload locks jobs, so the overlap is safe. The
+        # alternative, one worker per queue, keeps the separation cleaner but
+        # costs a third container for cleanup work that tolerates delay.
+        "--queue",
+        "maintenance",
+        "--limit",
+        "20",
+      ]
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE: /var/log/timetiles/worker-maintenance.log
       UPLOAD_DIR: ${UPLOAD_DIR:-/app/apps/web/uploads}
       SCRAPER_RUNNER_URL: ${SCRAPER_RUNNER_URL:-}
       SCRAPER_API_KEY: ${SCRAPER_API_KEY:-}
