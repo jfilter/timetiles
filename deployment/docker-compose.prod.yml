@@ -118,6 +118,10 @@ services:
       # Logging (all containers write to /var/log/timetiles/ via shared volume)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/web.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
       # the download, and the maintenance worker deletes it on expiry. The
@@ -212,6 +216,10 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-ingest.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Transactional mail is queued as a job and therefore SENT BY A WORKER,
       # not by web. Without these the worker falls through to the no-op
       # jsonTransport in payload-config-factory.ts and marks every send
@@ -291,6 +299,10 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-general.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
       # the download, and the maintenance worker deletes it on expiry. The
@@ -384,6 +396,10 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-maintenance.log
+      # Without this the value in .env.production never reaches the container:
+      # compose has no env_file, so the app always used the in-memory store --
+      # per-process counters and an empty pg table, with nothing logged.
+      RATE_LIMIT_BACKEND: ${RATE_LIMIT_BACKEND:-memory}
       # Absolute and shared, because the pieces live in different containers:
       # a worker writes the file, web stat()s the stored absolute path to serve
       # the download, and the maintenance worker deletes it on expiry. The

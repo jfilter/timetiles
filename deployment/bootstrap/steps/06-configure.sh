@@ -63,6 +63,19 @@ run_step() {
     # Point the container's /app/apps/web/config mount at the cloned source
     # repo's apps/web/config dir, so bundled data-package manifests refresh
     # on every `git pull`. The path is resolved relative to the compose file.
+    #
+    # This must NOT be "./config" (deployment/config), even though that is the
+    # template's default: the single mount also carries data-packages/ and
+    # data-packages.activations.yml, which exist only under apps/web/config and
+    # are sparse-checked-out by step 05 for exactly this reason. Pointing it at
+    # deployment/config would mount a dir holding nothing but an example file
+    # and silently strip every bundled data package.
+    #
+    # Consequence for operators: timetiles.yml belongs in <src>/apps/web/config/
+    # (where .gitignore already excludes it so `git pull` keeps working), NOT in
+    # deployment/config/. A file left at the latter is never mounted, and
+    # getAppConfig() reads a missing file as "no overrides" — so every rate
+    # limit, quota and batch size stays at its default without logging a thing.
     sed -i "s|^CONFIG_DIR=.*|CONFIG_DIR=../apps/web/config|" "$env_file"
 
     # Pre-configure scraper API key (if enabled). SCRAPER_RUNNER_URL is set later

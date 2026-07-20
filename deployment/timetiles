@@ -407,7 +407,16 @@ case "$1" in
     restart)
         check_env
         echo -e "${YELLOW}Restarting services...${NC}"
-        $DC_CMD restart
+        # `docker compose restart` bounces the EXISTING containers and never
+        # re-reads --env-file, so a value written to .env.production after the
+        # container was created stays invisible to the app. That silently broke
+        # the bootstrap: step 13 writes SCRAPER_RUNNER_URL and calls us to apply
+        # it, and the web container came back still not knowing a runner exists.
+        # `up -d` reconciles against the current env + compose files instead,
+        # recreating only the containers whose config actually changed — data
+        # lives in named volumes, so nothing is lost. Note the flip side: when
+        # nothing changed, `up -d` legitimately leaves every container running.
+        $DC_CMD up -d
         echo -e "${GREEN}Services restarted!${NC}"
         ;;
         

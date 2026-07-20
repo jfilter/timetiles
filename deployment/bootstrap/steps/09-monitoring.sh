@@ -84,9 +84,24 @@ EOF
 }
 
 setup_log_rotation() {
+    local install_dir="${INSTALL_DIR:-/opt/timetiles}"
+
     print_step "Configuring log rotation..."
 
-    cat > /etc/logrotate.d/timetiles << 'EOF'
+    # The app's own logs (web.log, worker-*.log) are NOT in /var/log/timetiles on
+    # the host — that path is only the CONTAINER side of the bind mount declared in
+    # docker-compose.prod.yml as `${LOG_HOST_DIR:-./logs}:/var/log/timetiles`.
+    # Rotating only the host /var/log/timetiles caught the cron-written files
+    # (backup.log, nginx-reload.log, alerts.log) and reported success nightly while
+    # web.log/worker-*.log grew unbounded at LOG_LEVEL=info until the disk filled.
+    # LOG_HOST_DIR is relative to the compose file, i.e. to $install_dir.
+    local log_host_dir="${LOG_HOST_DIR:-./logs}"
+    if [[ "$log_host_dir" != /* ]]; then
+        log_host_dir="$install_dir/${log_host_dir#./}"
+    fi
+
+    cat > /etc/logrotate.d/timetiles << EOF
+# Host-side operational logs (cron: backups, nginx reload, health alerts)
 /var/log/timetiles/*.log {
     daily
     missingok
@@ -97,11 +112,28 @@ setup_log_rotation() {
     create 640 timetiles timetiles
     copytruncate
 }
+
+# Container-written application logs (bind-mounted to /var/log/timetiles inside
+# the web/worker containers). copytruncate is required here: the running Node
+# process holds the fd open, so a rename-based rotation would leave it writing to
+# the rotated inode forever. It also means \`create\` does not apply — the original
+# file keeps its container-side ownership, which is what we want.
+$log_host_dir/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    copytruncate
+}
 EOF
 
     chmod 644 /etc/logrotate.d/timetiles
 
     print_success "Log rotation configured (14 days retention)"
+    print_info "  - Host logs: /var/log/timetiles/*.log"
+    print_info "  - App logs:  $log_host_dir/*.log"
 }
 
 create_systemd_service() {
