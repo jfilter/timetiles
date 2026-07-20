@@ -170,7 +170,13 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      # Long enough to cover a slow migration. This container applies pending
+      # migrations during Payload init, and /api/health cannot answer until
+      # that finishes, so the startup grace period has to outlast the longest
+      # plausible migration rather than a normal boot. It also gates more than
+      # itself now: the workers wait for this health check, so a premature
+      # "unhealthy" here would keep them from starting at all.
+      start_period: 180s
 
   # Ingest worker — processes ingest workflows (high throughput)
   worker-ingest:
