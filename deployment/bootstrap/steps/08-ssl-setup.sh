@@ -87,6 +87,13 @@ run_step() {
         # failure is the self-signed certificate — report that and fail the step
         # rather than closing with "SSL setup complete" over a broken lock icon.
         print_error "HTTPS verification failed - nginx never reloaded the Let's Encrypt certificate"
+        # Returning non-zero makes bootstrap.sh die here, so steps 09-13 do NOT
+        # run. Say so: an operator who only repairs nginx would be left with an
+        # internet-facing host that never got fail2ban, SSH hardening,
+        # monitoring or alerting, and nothing else would ever mention it.
+        print_warning "Bootstrap stops here: monitoring, SSH hardening, fail2ban,"
+        print_warning "alerting and scraper setup (steps 09-13) have NOT run."
+        print_info "Fix the certificate problem, then re-run: bootstrap.sh --resume"
         return 1
     else
         print_warning "HTTPS verification failed - certificate may still be propagating"

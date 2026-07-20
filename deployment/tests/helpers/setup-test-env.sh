@@ -34,6 +34,29 @@ fi
 echo "Creating test .env.production..."
 cp "$DEPLOY_DIR/.env.production.example" "$ENV_FILE"
 
+# Carry the scraper wiring over from the backup. Bootstrap step 13 writes
+# SCRAPER_RUNNER_URL and SCRAPER_API_KEY into .env.production after the runner
+# is installed; the template has both commented out. Regenerating from the
+# template therefore silently unconfigures the runner, and the worker that
+# calls it then fails every scraper run with "SCRAPER_RUNNER_URL environment
+# variable is not configured" -- a seam failure the harness caused itself.
+# The systemd unit keeps running with its original key, so the key has to come
+# across too or the restored URL would only buy an auth failure instead.
+if [[ -f "$ENV_FILE.pre-test-backup" ]]; then
+    for key in SCRAPER_RUNNER_URL SCRAPER_API_KEY; do
+        line=$(grep "^${key}=" "$ENV_FILE.pre-test-backup" 2>/dev/null | tail -1)
+        if [[ -n "$line" ]]; then
+            # Replace the commented template line if present, else append.
+            if grep -q "^#\? *${key}=" "$ENV_FILE"; then
+                sed -i.bak "s|^#\? *${key}=.*|${line}|" "$ENV_FILE"
+            else
+                echo "$line" >> "$ENV_FILE"
+            fi
+            echo "Preserved $key from the bootstrapped environment"
+        fi
+    done
+fi
+
 # Set test values
 sed -i.bak 's/CHANGE_ME_STRONG_PASSWORD/test_password_123/g' "$ENV_FILE"
 sed -i.bak 's/your-domain.com/localhost/g' "$ENV_FILE"

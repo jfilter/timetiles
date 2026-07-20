@@ -27,7 +27,12 @@ API_TOKEN=""
 
 # curl against the deployment's own nginx, whose certificate is self-signed.
 _api_curl() {
-    curl -sk --max-time 30 --resolve "${API_DOMAIN}:443:127.0.0.1" "$@"
+    # -g (globoff) is load-bearing: Payload's REST filters use bracketed query
+    # params like where[repo][equals]=1, and curl treats [ ] as glob ranges
+    # unless globbing is off. Without it curl fails before sending and prints
+    # NOTHING -- not even the --write-out status -- so the caller sees an empty
+    # body and reads it as "no results" rather than as a failed request.
+    curl -skg --max-time 30 --resolve "${API_DOMAIN}:443:127.0.0.1" "$@"
 }
 
 skip_if_no_api() {

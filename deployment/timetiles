@@ -420,7 +420,16 @@ case "$1" in
         # An optional service name is honoured -- the maintenance docs tell
         # operators to run `timetiles restart worker-ingest`, and before this the
         # argument was silently ignored and the whole stack came up instead.
+        #
+        # Then an explicit restart, because `up -d` alone is NOT one: it only
+        # recreates containers whose compose config changed, so it is a no-op
+        # in exactly the cases the docs send people here for -- freeing memory
+        # on a running web container, reviving a wedged worker, picking up an
+        # edited nginx.conf, which is bind-mounted and therefore changes no
+        # compose config. `up -d` applies env and compose changes; the restart
+        # then guarantees a fresh process either way.
         $DC_CMD up -d ${2:+"$2"}
+        $DC_CMD restart ${2:+"$2"}
         echo -e "${GREEN}Services restarted!${NC}"
         ;;
         
@@ -1481,6 +1490,7 @@ EOF
         # REST creates. Without this command an operator cannot get into their
         # own installation.
         check_env
+        load_env_vars DOMAIN_NAME
 
         ADMIN_EMAIL="${2:-}"
         if [[ -z "$ADMIN_EMAIL" ]]; then

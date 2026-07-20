@@ -27,6 +27,7 @@ admin-init-password.txt
 .cache/
 backups/
 uploads/
+exports/
 ssl/
 data/
 logs/

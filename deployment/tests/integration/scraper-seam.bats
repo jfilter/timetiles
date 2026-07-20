@@ -151,9 +151,18 @@ setup() {
     local status
     status=$(jq -r '.docs[0].status' < "$BATS_FILE_TMPDIR/run.json")
 
-    # "running" here means the job never came back: either worker-ingest did not
-    # pick it up, or the container hung. Both are seam failures.
+    # Report the whole record, not just the assertion: teardown_file deletes the
+    # repo and cascades to its runs, so by the time anyone inspects the
+    # deployment afterwards there is nothing left to look at.
+    if [ "$status" != "success" ]; then
+        echo "run record: $(jq -c '.docs[0] // "NO RUN RECORD"' < "$BATS_FILE_TMPDIR/run.json")" >&2
+    fi
+
+    # "running" means the job never came back: either the worker did not pick it
+    # up, or the container hung. "null" means no run was ever recorded, i.e. the
+    # trigger was accepted but nothing downstream acted on it.
     [ "$status" != "running" ]
+    [ "$status" != "null" ]
     [ "$status" = "success" ]
 }
 

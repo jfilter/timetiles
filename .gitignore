@@ -25,6 +25,7 @@ deployment/backups/
 deployment/nginx-test/
 deployment/ssl/
 deployment/uploads/
+deployment/exports/
 deployment/credentials.txt
 deployment/admin-init-password.txt
 deployment/docker-compose.test.yml
