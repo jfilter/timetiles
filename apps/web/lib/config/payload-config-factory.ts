@@ -189,6 +189,32 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     return;
   }
 
+  // Production without SMTP disables outgoing mail rather than falling through
+  // to Ethereal. Ethereal provisions a throwaway inbox through a third-party
+  // service, which is a development convenience and has no business being a
+  // production dependency -- and mail routed there is invisible to the operator
+  // anyway, so it only looks like it works.
+  //
+  // Disabling is deliberately not the same as leaving `config.email` unset:
+  // a configured no-op transport keeps sends from throwing, which is what
+  // matters for `registerFirstUser`. Payload sends the verification email
+  // before it auto-verifies the first user, so a transport that throws locks
+  // the operator out of a fresh deployment entirely.
+  if (environment === "production") {
+    // eslint-disable-next-line no-console -- the logger is not built yet at config time
+    console.warn(
+      "EMAIL_SMTP_HOST is not set — outgoing email is disabled. " +
+        "Account verification and password-reset messages will not be delivered."
+    );
+    config.email = nodemailerAdapter({
+      defaultFromAddress: env.EMAIL_FROM_ADDRESS,
+      defaultFromName: env.EMAIL_FROM_NAME,
+      transport: nodemailer.createTransport({ jsonTransport: true }),
+      skipVerify: true,
+    });
+    return;
+  }
+
   const ethereal = await getEtherealCredentials();
   config.email = nodemailerAdapter({
     defaultFromAddress: env.EMAIL_FROM_ADDRESS,

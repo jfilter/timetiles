@@ -284,6 +284,22 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
 };
 
 // eslint-disable-next-line @typescript-eslint/require-await -- Async for interface compatibility with wrapHealthCheck
+/**
+ * Recognise hosts that come from example configuration rather than a real
+ * mail server. RFC 2606 reserves example.com/net/org precisely so they never
+ * resolve, which is what makes them a silent trap here.
+ */
+const isPlaceholderHost = (host: string | undefined): boolean => {
+  if (host == null || host === "") return false;
+  const normalized = host.trim().toLowerCase();
+  return (
+    /(^|\.)example\.(com|net|org)$/.test(normalized) ||
+    normalized.includes("your-provider") ||
+    normalized.includes("changeme") ||
+    normalized.includes("change_me")
+  );
+};
+
 const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking email configuration");
 
@@ -291,11 +307,29 @@ const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   const hasSmtpHost = Boolean(env.EMAIL_SMTP_HOST);
   const isProduction = env.NODE_ENV === "production";
 
-  if (isProduction && !hasSmtpHost) {
-    logger.warn("SMTP not configured in production - emails will not be sent");
+  // A placeholder host is the worst of both worlds: the app treats it as a
+  // working mail server, so every send fails with ENOTFOUND. That includes the
+  // verification email Payload sends while registering the first admin, which
+  // leaves a fresh deployment with no way to create one. This used to report
+  // "healthy" purely because the variable was set.
+  if (hasSmtpHost && isPlaceholderHost(env.EMAIL_SMTP_HOST)) {
+    logger.warn("EMAIL_SMTP_HOST is a placeholder", { host: env.EMAIL_SMTP_HOST });
     return {
       status: "error",
-      message: "SMTP not configured (EMAIL_SMTP_HOST not set) - emails will not work in production",
+      message:
+        `EMAIL_SMTP_HOST is a placeholder (${env.EMAIL_SMTP_HOST}) - every send will fail. ` +
+        "Set a real SMTP host, or leave it unset to run without outgoing mail.",
+    };
+  }
+
+  if (isProduction && !hasSmtpHost) {
+    // Degraded rather than error: running without outgoing mail is a supported
+    // configuration, not a fault. The app works; account verification and
+    // password resets simply are not delivered.
+    logger.warn("SMTP not configured in production - outgoing email is disabled");
+    return {
+      status: "degraded",
+      message: "SMTP not configured (EMAIL_SMTP_HOST not set) - outgoing email is disabled",
     };
   }
 

@@ -133,7 +133,12 @@ describe("health", () => {
       }
     });
 
-    it("should report error for email in production without SMTP", async () => {
+    // Downgraded from error to degraded on purpose: running without outgoing
+    // mail is now a supported configuration. The example deployment config
+    // ships EMAIL_SMTP_HOST unset, because a placeholder host made every send
+    // fail -- including the one Payload sends while registering the first
+    // admin, which locked operators out of fresh deployments entirely.
+    it("should report degraded for email in production without SMTP", async () => {
       const mockPayload = {
         find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
         db: {
@@ -156,9 +161,49 @@ describe("health", () => {
       try {
         const results = await runHealthChecks();
 
-        expect(results.email.status).toBe("error");
+        expect(results.email.status).toBe("degraded");
         expect(results.email.message).toContain("SMTP not configured");
-        expect(results.email.message).toContain("production");
+        expect(results.email.message).toContain("disabled");
+      } finally {
+        process.env.PAYLOAD_SECRET = origSecret;
+        process.env.DATABASE_URL = origDbUrl;
+        vi.unstubAllEnvs();
+        if (origSmtpHost === undefined) {
+          delete process.env.EMAIL_SMTP_HOST;
+        } else {
+          process.env.EMAIL_SMTP_HOST = origSmtpHost;
+        }
+      }
+    });
+
+    it("should report error when EMAIL_SMTP_HOST is a placeholder", async () => {
+      const mockPayload = {
+        find: vi.fn().mockResolvedValue({ totalDocs: 1, docs: [] }),
+        db: {
+          drizzle: { execute: vi.fn().mockResolvedValue({ rowCount: 1, rows: [{ exists: true, size: "50 MB" }] }) },
+        },
+      };
+      mockGetPayload.mockResolvedValue(mockPayload);
+      vi.mocked(fs.access).mockResolvedValue(undefined);
+      vi.mocked(fs.readdir).mockResolvedValue([] as never);
+
+      const origSecret = process.env.PAYLOAD_SECRET;
+      const origDbUrl = process.env.DATABASE_URL;
+      const origSmtpHost = process.env.EMAIL_SMTP_HOST;
+      process.env.PAYLOAD_SECRET = "test-secret";
+      process.env.DATABASE_URL = "postgres://localhost/test";
+      vi.stubEnv("NODE_ENV", "production");
+      // The exact value the example config used to ship.
+      process.env.EMAIL_SMTP_HOST = "smtp.example.com";
+      resetEnv();
+
+      try {
+        const results = await runHealthChecks();
+
+        // Previously reported "healthy" purely because the variable was set,
+        // while every send failed with ENOTFOUND.
+        expect(results.email.status).toBe("error");
+        expect(results.email.message).toContain("placeholder");
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
         process.env.DATABASE_URL = origDbUrl;
@@ -188,7 +233,7 @@ describe("health", () => {
       const origSmtpUser = process.env.EMAIL_SMTP_USER;
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
-      process.env.EMAIL_SMTP_HOST = "smtp.example.com";
+      process.env.EMAIL_SMTP_HOST = "smtp.mailhost.internal";
       process.env.EMAIL_SMTP_USER = "user@example.com";
       resetEnv();
 
@@ -196,7 +241,7 @@ describe("health", () => {
         const results = await runHealthChecks();
 
         expect(results.email.status).toBe("healthy");
-        expect(results.email.message).toContain("smtp.example.com");
+        expect(results.email.message).toContain("smtp.mailhost.internal");
         expect(results.email.message).toContain("with authentication");
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
@@ -231,7 +276,7 @@ describe("health", () => {
       const origSmtpUser = process.env.EMAIL_SMTP_USER;
       process.env.PAYLOAD_SECRET = "test-secret";
       process.env.DATABASE_URL = "postgres://localhost/test";
-      process.env.EMAIL_SMTP_HOST = "smtp.example.com";
+      process.env.EMAIL_SMTP_HOST = "smtp.mailhost.internal";
       delete process.env.EMAIL_SMTP_USER;
       resetEnv();
 
@@ -239,7 +284,7 @@ describe("health", () => {
         const results = await runHealthChecks();
 
         expect(results.email.status).toBe("healthy");
-        expect(results.email.message).toContain("smtp.example.com");
+        expect(results.email.message).toContain("smtp.mailhost.internal");
         expect(results.email.message).not.toContain("with authentication");
       } finally {
         process.env.PAYLOAD_SECRET = origSecret;
