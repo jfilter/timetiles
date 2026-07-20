@@ -261,8 +261,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
+    command: [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
@@ -331,14 +330,14 @@ services:
   # Nginx reverse proxy with SSL support
 
   # Maintenance worker — cleanup and retention jobs
-#
-# Separate from worker-general because --queue takes exactly one value:
-# Payload matches it with `equals`, so "default,maintenance" matched no
-# job at all and both queues sat idle. --all-queues would cover them, but
-# it would also let this worker race worker-ingest for ingest jobs, and
-# Payload's concurrency-key guard reads before it locks -- two workers
-# polling the same instant can admit two different jobs sharing one key,
-# which for a double-clicked ingest retry means duplicate events.
+  #
+  # Separate from worker-general because --queue takes exactly one value:
+  # Payload matches it with `equals`, so "default,maintenance" matched no
+  # job at all and both queues sat idle. --all-queues would cover them, but
+  # it would also let this worker race worker-ingest for ingest jobs, and
+  # Payload's concurrency-key guard reads before it locks -- two workers
+  # polling the same instant can admit two different jobs sharing one key,
+  # which for a double-clicked ingest retry means duplicate events.
   worker-maintenance:
     image: ${TIMETILES_IMAGE:-ghcr.io/jfilter/timetiles}:${TIMETILES_VERSION:-latest}
     container_name: ${COMPOSE_PROJECT_NAME:-timetiles}-worker-maintenance
@@ -356,8 +355,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
+    command: [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
