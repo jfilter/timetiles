@@ -20,7 +20,7 @@ import { TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildAccountExistsEmailHtml, buildAccountVerificationEmailHtml } from "@/lib/email/templates";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
@@ -78,7 +78,7 @@ const sendVerificationAndAudit = async (
     const verifyUrl = `${baseUrl}/verify-email?token=${createdUser._verificationToken}`;
     const { branding, t } = await getEmailContext(payload, createdUser.locale);
 
-    await queueEmail(
+    const queued = await queueEmail(
       payload,
       {
         to: normalizedEmail,
@@ -87,6 +87,17 @@ const sendVerificationAndAudit = async (
       },
       EMAIL_CONTEXTS.ACCOUNT_VERIFICATION
     );
+
+    // The account already exists at this point, so failing the request would be
+    // worse than succeeding: the caller would retry into a duplicate-email
+    // error. Log it as an error instead -- without the mail the user cannot
+    // verify, and nothing else in the system would ever say so.
+    if (!queued.queued) {
+      logError(queued.error, "Failed to queue account verification email", {
+        email: maskEmail(normalizedEmail),
+        userId: createdUser.id,
+      });
+    }
   } else {
     logger.error(
       { email: maskEmail(normalizedEmail), userId: createdUser.id },

@@ -5,6 +5,7 @@
 # Usage:
 #   docker build -f deployment/Dockerfile.allinone -t timetiles:allinone .
 #   docker run -d -p 80:80 -p 443:443 -v timetiles-data:/data timetiles:allinone
+#   docker exec -it <container> /app/create-admin.sh you@example.com
 
 FROM ubuntu:24.04 AS base
 
@@ -126,10 +127,13 @@ WORKDIR /app
 # Copy full built project (non-standalone — works for both next start and payload CLI)
 COPY --from=builder --chown=nextjs:nodejs /build ./
 
-# Create directories for data, certbot, and supervisor logs
-RUN mkdir -p /data/postgresql /data/uploads /data/ssl /var/www/certbot /var/log/supervisor \
+# Create directories for data, certbot, and supervisor logs.
+# exports/ and config/ belong under /data with uploads: generated exports and
+# the operator's timetiles.yml are the two other pieces of state that must
+# outlive a container recreate, and /data is the only declared VOLUME.
+RUN mkdir -p /data/postgresql /data/uploads /data/exports /data/config /data/ssl /var/www/certbot /var/log/supervisor \
     && chown -R postgres:postgres /data/postgresql \
-    && chown -R nextjs:nodejs /data/uploads
+    && chown -R nextjs:nodejs /data/uploads /data/exports /data/config
 
 # Expose ports
 EXPOSE 80 443

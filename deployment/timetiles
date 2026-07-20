@@ -153,7 +153,7 @@ print_usage() {
     echo "  pull      - Pull images from registry"
     echo "  up        - Start all services"
     echo "  down      - Stop all services"
-    echo "  restart   - Restart all services"
+    echo "  restart [service] - Restart all services, or just one"
     echo "  logs            - View all logs (web + scraper merged)"
     echo "  logs --web      - View web app logs only"
     echo "  logs --scraper  - View scraper logs only"
@@ -416,7 +416,11 @@ case "$1" in
         # recreating only the containers whose config actually changed — data
         # lives in named volumes, so nothing is lost. Note the flip side: when
         # nothing changed, `up -d` legitimately leaves every container running.
-        $DC_CMD up -d
+        #
+        # An optional service name is honoured -- the maintenance docs tell
+        # operators to run `timetiles restart worker-ingest`, and before this the
+        # argument was silently ignored and the whole stack came up instead.
+        $DC_CMD up -d ${2:+"$2"}
         echo -e "${GREEN}Services restarted!${NC}"
         ;;
         
@@ -1508,7 +1512,7 @@ EOF
             -e "TIMETILES_ADMIN_PASSWORD=$ADMIN_PASSWORD" \
             web node /app/node_modules/.pnpm/node_modules/payload/bin.js \
             run scripts/create-admin.ts; then
-            echo -e "${GREEN}Admin user created. Sign in at https://\${DOMAIN_NAME}/dashboard${NC}"
+            echo -e "${GREEN}Admin user created. Sign in at https://${DOMAIN_NAME}/dashboard${NC}"
         else
             echo -e "${RED}Failed to create admin user.${NC}"
             exit 1

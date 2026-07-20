@@ -295,8 +295,9 @@ if [[ "$LOCAL_BUILD" == "true" ]]; then
     # prints the tag, not the image ID. docker-compose.override.yml.example
     # has always set a local tag for exactly this reason; the harness did not.
     #
-    # All three app services need it: they only share an image name, there is
-    # no inheritance from web, so naming the tag once is not enough.
+    # Every app service needs it: they only share an image name, there is no
+    # inheritance from web, so naming the tag once is not enough. A service
+    # added here later and forgotten silently falls back to the registry.
     vm_sudo "cat > $GUEST_DEPLOY/docker-compose.override.yml <<'OVERRIDE'
 services:
   web:
@@ -310,6 +311,9 @@ services:
     image: timetiles-vm:local
     pull_policy: never
   worker-general:
+    image: timetiles-vm:local
+    pull_policy: never
+  worker-maintenance:
     image: timetiles-vm:local
     pull_policy: never
 OVERRIDE"
@@ -336,7 +340,7 @@ vm_sudo "
     # EACCES. That failure is silent in the harness output and surfaces much
     # later as an unrelated-looking API error, because Payload's onInit seed
     # dies with it -- which is exactly how it was found.
-    chown -R 1001:1001 $GUEST_DEPLOY/logs $GUEST_DEPLOY/uploads 2>/dev/null || true
+    chown -R 1001:1001 $GUEST_DEPLOY/logs $GUEST_DEPLOY/uploads $GUEST_DEPLOY/exports 2>/dev/null || true
 
     cd /opt/timetiles
     docker compose -f docker-compose.prod.yml --env-file .env.production down -v 2>/dev/null || true

@@ -90,12 +90,65 @@ The default `memory` backend is only correct for single-web-instance deployments
 Everything in a single container — PostgreSQL, Nginx, and the app — managed by supervisord. Good for quick demos or personal use.
 
 ```bash
-docker run -d \
+docker run -d --name timetiles \
   -p 80:80 -p 443:443 \
   -v timetiles-data:/data \
   -e PAYLOAD_SECRET=$(openssl rand -base64 32) \
   -e DB_PASSWORD=$(openssl rand -base64 16) \
   ghcr.io/jfilter/timetiles:latest-allinone
+```
+
+Then create your admin account — see [First Admin Account](#first-admin-account).
+
+### Persistent Data
+
+The `/data` volume is the only thing worth backing up. Everything that must
+outlive a container recreate lives there:
+
+| Path               | Contents                                      |
+| ------------------ | --------------------------------------------- |
+| `/data/postgresql` | Database cluster                              |
+| `/data/uploads`    | Uploaded source files                         |
+| `/data/exports`    | Generated data exports                        |
+| `/data/config`     | Optional `timetiles.yml` override (see below) |
+| `/data/ssl`        | TLS certificate and key                       |
+
+### Configuration Overrides
+
+The container sets sensible defaults for a single-host install; pass `-e` to
+override any of them:
+
+| Variable                  | Default                | When to change it                                                                    |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------ |
+| `TRUSTED_PROXY_CIDRS`     | `127.0.0.1/32,::1/128` | Another proxy or CDN sits in front of this container — add the CIDR it forwards from |
+| `LOG_LEVEL`               | `info`                 | Set `debug` while troubleshooting                                                    |
+| `DEPLOYMENT_ENVIRONMENT`  | `production`           | Set `staging` or `preview` to show the environment banner                            |
+| `NEXT_PUBLIC_PAYLOAD_URL` | `http://localhost`     | Set to your public URL                                                               |
+
+`TRUSTED_PROXY_CIDRS` decides which forwarded IPs the app believes. The default
+covers the bundled Nginx, which reaches the app over loopback. If you put
+another proxy in front and do not extend this, every visitor shares one
+rate-limit bucket.
+
+For the tunables in `timetiles.yml` (rate limits, quotas, batch sizes), drop the
+file into the volume — the app picks it up on restart:
+
+```bash
+# Start from the template shipped in the image
+docker cp timetiles:/app/apps/web/config/timetiles.example.yml ./timetiles.yml
+docker cp ./timetiles.yml timetiles:/data/config/timetiles.yml
+docker restart timetiles
+```
+
+See [Configuration](./configuration) for the full reference.
+
+### Logs
+
+All services log to the container's stdout, so `docker logs` is the single place
+to look and your Docker log driver handles rotation:
+
+```bash
+docker logs -f timetiles
 ```
 
 ## Bootstrap Script (Ubuntu 24.04)
@@ -110,18 +163,29 @@ The script prompts for your domain, email, and other settings interactively.
 
 ## First Admin Account
 
-A fresh installation has no user accounts. Create the first one before signing in:
+A fresh installation has no user accounts. Create the first one before signing in.
+
+**Docker Compose and bootstrap installs:**
 
 ```bash
 timetiles create-admin you@example.com
 ```
 
-The command asks for a password twice and creates a verified admin account. It
-refuses if an account with that address already exists, so it cannot be used to
-change an existing user's password or role.
+**All-in-one container** — the `timetiles` CLI drives Docker Compose and cannot
+reach it, so run the equivalent helper inside the container:
+
+```bash
+docker exec -it timetiles /app/create-admin.sh you@example.com
+```
+
+Both ask for a password twice and create a verified admin account. Both refuse
+if an account with that address already exists, so neither can be used to change
+an existing user's password or role. `-it` matters: without it there is no
+terminal to read the password from. For unattended setups, pass the password as
+`TIMETILES_ADMIN_PASSWORD` instead of typing it.
 
 Self-registration through the web interface always creates a regular user, never
-an admin — this command is the only way to create one.
+an admin — these commands are the only way to create one.
 
 ## Configuration
 

@@ -201,7 +201,6 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   // before it auto-verifies the first user, so a transport that throws locks
   // the operator out of a fresh deployment entirely.
   if (environment === "production") {
-    // eslint-disable-next-line no-console -- the logger is not built yet at config time
     console.warn(
       "EMAIL_SMTP_HOST is not set — outgoing email is disabled. " +
         "Account verification and password-reset messages will not be delivered."
@@ -209,6 +208,7 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
     config.email = nodemailerAdapter({
       defaultFromAddress: env.EMAIL_FROM_ADDRESS,
       defaultFromName: env.EMAIL_FROM_NAME,
+      // eslint-disable-next-line sonarjs/no-clear-text-protocols -- JSON transport is in-memory; nothing is sent over the wire
       transport: nodemailer.createTransport({ jsonTransport: true }),
       skipVerify: true,
     });

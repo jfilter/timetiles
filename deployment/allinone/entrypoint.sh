@@ -6,17 +6,37 @@ set -eo pipefail
 
 echo "=== TimeTiles All-in-One Container Starting ==="
 
+# Everything that must survive a container recreate lives under /data — that is
+# the only path declared as a VOLUME in Dockerfile.allinone.
+DATA_EXPORT_DIR="${DATA_EXPORT_DIR:-/data/exports}"
+
 # Create required directories
 echo "Creating directories..."
 mkdir -p /data/postgresql
 mkdir -p /data/uploads
 mkdir -p /data/ssl
+mkdir -p /data/config
+mkdir -p "${DATA_EXPORT_DIR}"
 mkdir -p /var/log/supervisor
 mkdir -p /var/www/certbot
 
 # Set directory ownership
 chown -R postgres:postgres /data/postgresql
 chown -R nextjs:nodejs /data/uploads
+# Exports are written by the worker and read back by the web process, both as
+# nextjs. Left on the container layer (the ".exports" default resolves to
+# /app/apps/web/.exports) every generated export is silently lost on recreate.
+chown -R nextjs:nodejs "${DATA_EXPORT_DIR}"
+chown nextjs:nodejs /data/config
+
+# Operator config overrides have to reach getAppConfig(), which resolves
+# "config/timetiles.yml" against the app's cwd (/app/apps/web) — a container-layer
+# path with no way to get a file into it. Link that one file out to the volume.
+# Only the file, not the whole config/ directory: the directory also carries the
+# image's data-package manifests, and replacing it would hide them.
+# A dangling link is the expected steady state — existsSync() reports false and
+# the app uses its built-in defaults, exactly as when no file is present.
+ln -sfn /data/config/timetiles.yml /app/apps/web/config/timetiles.yml
 
 # ── Security: require secrets to be explicitly set ──────────────────────────
 # DB_PASSWORD (or POSTGRES_PASSWORD) must be provided — no fallback
@@ -132,6 +152,26 @@ export UPLOAD_DIR="/data/uploads"
 # the wrappers had no `set -e`. Nothing broke only because the same values also
 # reached the process via supervisord's inherited environment; the next variable
 # added here would have had no effect at all.
+#
+# Notes on the values below — kept out here because the heredoc is unquoted, so
+# anything inside it is expanded, backticks included:
+#
+# TRUSTED_PROXY_CIDRS: nginx sits in this same container and reaches the app
+#   over the loopback interface, so the loopback ranges are the entire trust
+#   boundary. Unset, the app refuses to read X-Forwarded-For in production (the
+#   header is client-spoofable until a proxy is declared) and every visitor
+#   collapses into one rate-limit bucket keyed "unknown". Override to add the
+#   CIDR of an outer proxy or CDN when one fronts this container.
+# RUN_AUTO_ACTIVATIONS: only one process may run the data-package
+#   auto-activator; start-worker.sh unsets it so the worker cannot race web.
+# LOG_FILE: deliberately absent. Supervisord forwards every service's output to
+#   the container's stdout, so docker logs is the one place to look and the
+#   Docker log driver handles rotation. A file would need a logrotate install to
+#   stay bounded and pino would write every line twice.
+#
+# The operator-supplied values are single-quoted in the file: the wrappers
+# re-expand it with source, where an unquoted space would split the line into a
+# bogus command and a dollar sign would interpolate.
 umask 077
 cat > /etc/timetiles.env << EOF
 DATABASE_URL=${DATABASE_URL}
@@ -139,9 +179,14 @@ UPLOAD_DIR=${UPLOAD_DIR}
 PAYLOAD_SECRET=${PAYLOAD_SECRET}
 NEXT_PUBLIC_PAYLOAD_URL=${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost}
 NODE_ENV=production
+DEPLOYMENT_ENVIRONMENT='${DEPLOYMENT_ENVIRONMENT:-production}'
 PORT=3000
 HOSTNAME=0.0.0.0
 NEXT_TELEMETRY_DISABLED=1
+DATA_EXPORT_DIR='${DATA_EXPORT_DIR}'
+TRUSTED_PROXY_CIDRS='${TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128}'
+RUN_AUTO_ACTIVATIONS='${RUN_AUTO_ACTIVATIONS:-true}'
+LOG_LEVEL='${LOG_LEVEL:-info}'
 EOF
 # root:nodejs 0640 — readable by the nextjs user (member of nodejs) and by no
 # one else. Still keeps DATABASE_URL/PAYLOAD_SECRET off world-readable paths.
@@ -184,11 +229,68 @@ fi
 set -a
 source /etc/timetiles.env
 set +a
+# Both processes read the same env file, but only one of them may run the
+# data-package auto-activator: two concurrent onInits would race the same
+# idempotency check. Web keeps it; the worker drops it (the app defaults to off).
+unset RUN_AUTO_ACTIVATIONS
 cd /app/apps/web && exec node ../../node_modules/.pnpm/node_modules/payload/bin.js \
   jobs:run --cron '*/10 * * * * *' --all-queues --limit 10 --handle-schedules
 WRAPPER
 chmod +x /app/start-worker.sh
 chown nextjs:nodejs /app/start-worker.sh
+
+# Admin bootstrap. `timetiles create-admin` speaks `docker compose exec web`, so
+# it cannot reach this image at all — and self-registration is no substitute:
+# the users collection forces role "user" on every unauthenticated REST create,
+# leaving an all-in-one operator locked out of their own installation.
+#   docker exec -it <container> /app/create-admin.sh you@example.com
+cat > /app/create-admin.sh << 'WRAPPER'
+#!/bin/bash
+set -eo pipefail
+
+ADMIN_EMAIL="${1:-${TIMETILES_ADMIN_EMAIL:-}}"
+if [ -z "$ADMIN_EMAIL" ]; then
+    echo "Usage: docker exec -it <container> /app/create-admin.sh <email>" >&2
+    exit 1
+fi
+
+# Prompted rather than read from argv, which would expose the password in the
+# process list and the caller's shell history. TIMETILES_ADMIN_PASSWORD stays
+# honoured so non-interactive callers (provisioning, tests) still work.
+if [ -z "${TIMETILES_ADMIN_PASSWORD:-}" ]; then
+    read -rsp "Password for ${ADMIN_EMAIL}: " TIMETILES_ADMIN_PASSWORD
+    echo ""
+    read -rsp "Repeat password: " ADMIN_PASSWORD_REPEAT
+    echo ""
+    if [ "$TIMETILES_ADMIN_PASSWORD" != "$ADMIN_PASSWORD_REPEAT" ]; then
+        echo "Passwords do not match." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -r /etc/timetiles.env ]; then
+    echo "FATAL: /etc/timetiles.env is not readable by $(id -un) — the container has not finished starting, or this was run as the wrong user." >&2
+    exit 1
+fi
+set -a
+source /etc/timetiles.env
+set +a
+export TIMETILES_ADMIN_EMAIL="$ADMIN_EMAIL"
+export TIMETILES_ADMIN_PASSWORD
+
+# The script talks to the DB through the Local API, which is the only path that
+# can set role "admin" — the REST hooks that force "user" key off req.payloadAPI.
+CMD='cd /app/apps/web && exec node /app/node_modules/.pnpm/node_modules/payload/bin.js run scripts/create-admin.ts'
+
+# `docker exec` defaults to root; run as the app user anyway so this can never
+# leave root-owned files behind in /app. The credentials travel in the
+# environment, which su preserves, and never through the command line.
+if [ "$(id -u)" -eq 0 ]; then
+    exec su nextjs -s /bin/bash -c "$CMD"
+fi
+exec bash -c "$CMD"
+WRAPPER
+chmod 755 /app/create-admin.sh
 
 echo "=== Starting Supervisord ==="
 exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf

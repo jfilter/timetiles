@@ -18,7 +18,7 @@ import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildOldEmailNotificationHtml, buildVerificationEmailHtml } from "@/lib/email/templates";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { hashEmail } from "@/lib/security/hash";
 import { maskEmail } from "@/lib/security/masking";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
@@ -58,7 +58,7 @@ const updateEmailAndNotify = async (
   const firstName = user.firstName ?? "";
   const { branding, t } = await getEmailContext(payload, user.locale);
 
-  await queueEmail(
+  const queued = await queueEmail(
     payload,
     {
       to: newEmail,
@@ -67,6 +67,13 @@ const updateEmailAndNotify = async (
     },
     EMAIL_CONTEXTS.EMAIL_CHANGE_VERIFICATION
   );
+
+  // The pending change is already recorded, so the user now waits for a mail
+  // that will never arrive unless this shows up somewhere. The courtesy notice
+  // to the OLD address below stays advisory and may keep ignoring its result.
+  if (!queued.queued) {
+    logError(queued.error, "Failed to queue email-change verification", { userId: user.id });
+  }
 
   await queueEmail(
     payload,

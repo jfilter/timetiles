@@ -3,10 +3,8 @@
 #
 # The rest of this suite only touches unauthenticated endpoints, so this is the
 # first place that needs a logged-in session. A fresh deployment has no users at
-# all -- bootstrap deliberately creates none -- so the first admin is created
-# through Payload's first-register endpoint, which only works while the users
-# table is empty. That makes it safe: on a deployment that already has users it
-# fails, and we fall through to a normal login.
+# all -- bootstrap deliberately creates none -- so the admin is created through
+# `timetiles create-admin`, the same command an operator uses.
 
 load '../helpers/common.bash'
 

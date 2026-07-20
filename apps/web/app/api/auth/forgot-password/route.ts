@@ -14,7 +14,7 @@ import { apiRoute } from "@/lib/api";
 import { getEmailContext } from "@/lib/email/context";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
 import { buildResetPasswordEmailHtml } from "@/lib/email/templates";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
 import { getBaseUrl } from "@/lib/utils/base-url";
@@ -48,7 +48,7 @@ export const POST = apiRoute({
         const resetUrl = `${baseUrl}/reset-password?token=${token}`;
         const { branding, t } = await getEmailContext(payload, existingUser.locale);
 
-        await queueEmail(
+        const queued = await queueEmail(
           payload,
           {
             to: body.email,
@@ -58,7 +58,15 @@ export const POST = apiRoute({
           EMAIL_CONTEXTS.PASSWORD_RESET
         );
 
-        logger.info({ email: maskEmail(body.email) }, "Queued password reset email");
+        // The response stays deliberately identical either way -- diverging
+        // would let a caller enumerate accounts. But the log must not claim a
+        // send that never got queued: this is the only trace an operator has
+        // when a user reports that the reset mail never arrived.
+        if (queued.queued) {
+          logger.info({ email: maskEmail(body.email) }, "Queued password reset email");
+        } else {
+          logError(queued.error, "Failed to queue password reset email", { email: maskEmail(body.email) });
+        }
       } else {
         logger.info({ email: maskEmail(body.email) }, "Password reset requested for non-existent email");
       }

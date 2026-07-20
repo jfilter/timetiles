@@ -240,6 +240,11 @@ const checkGeocodingService = async (): Promise<HealthCheckResult> => {
     }
 
     const result = await runGeocodingProbe(payload, providers.totalDocs);
+    // Last writer wins on purpose: two concurrent health calls would each
+    // run a probe and store an equally fresh verdict, so there is nothing to
+    // lose. The memo exists to bound how often the provider is touched, not
+    // to serialise callers.
+    // eslint-disable-next-line require-atomic-updates -- see above
     geocodingProbeCache = { at: Date.now(), result };
 
     logger.debug("Geocoding service check complete", { status: result.status, totalProviders: providers.totalDocs });
@@ -391,7 +396,6 @@ const checkDatabaseFunctions = async (): Promise<HealthCheckResult> => {
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/require-await -- Async for interface compatibility with wrapHealthCheck
 /**
  * Recognise hosts that come from example configuration rather than a real
  * mail server. RFC 2606 reserves example.com/net/org precisely so they never
@@ -408,6 +412,7 @@ const isPlaceholderHost = (host: string | undefined): boolean => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/require-await -- Async for interface compatibility with wrapHealthCheck
 const checkEmailConfiguration = async (): Promise<HealthCheckResult> => {
   logger.debug("Checking email configuration");
 

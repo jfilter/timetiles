@@ -22,6 +22,7 @@ run_step() {
     # ownership is right from the first container start.
     install -d -o 1001 -g 1001 "$install_dir/logs"
     install -d -o 1001 -g 1001 "$install_dir/uploads"
+    install -d -o 1001 -g 1001 "$install_dir/exports"
 
     # Always generate self-signed SSL certificate as a fallback
     # Nginx requires SSL certs to start - Let's Encrypt (Step 08) will replace these if DNS is configured
