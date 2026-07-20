@@ -81,12 +81,29 @@ jobs:
           fi
         working-directory: apps/web
 
+      # Sonar's new code period is "previous version". Without a project version it
+      # has no boundary to move to, so the baseline stays pinned at the first
+      # analysis ever and "new code" degenerates into the whole codebase. The repo
+      # is versioned by tag, so feed the latest tag in. Needs fetch-depth: 0 above.
+      - name: Resolve project version for Sonar
+        id: sonar-version
+        if: always() && github.actor != 'dependabot[bot]'
+        run: echo "version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)" >> "$GITHUB_OUTPUT"
+
       - name: SonarCloud Scan
         if: always() && github.actor != 'dependabot[bot]'
         uses: SonarSource/sonarqube-scan-action@v8
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          # qualitygate.wait makes this step fail on a red gate — that is the point,
+          # it is what turns a red gate into a red build. It is deliberately NOT
+          # applied when the tests failed: coverage would be partial, so the gate
+          # would go red for the wrong reason and mask the real failure below.
+          args: >
+            -Dsonar.projectVersion=${{ steps.sonar-version.outputs.version }}
+            ${{ steps.test-coverage.outcome == 'success' && '-Dsonar.qualitygate.wait=true' || '' }}
 
       - name: Fail if tests failed
         if: steps.test-coverage.outcome == 'failure'
