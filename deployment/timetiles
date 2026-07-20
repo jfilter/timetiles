@@ -161,6 +161,7 @@ print_usage() {
     echo "  backup       - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
+    echo "  create-admin <email> - Create an admin user (needed once after install)"
     echo "  ssl       - Initialize Let's Encrypt SSL certificate"
     echo "  update    - Pull latest code and redeploy"
     echo "  check     - Verify all deployment aspects are properly configured"
@@ -1408,6 +1409,51 @@ EOF
             podman_as_deploy_user 300 image prune -f >/dev/null 2>&1 || true
         fi
         echo -e "${GREEN}Image cleanup done.${NC}"
+        ;;
+
+    create-admin)
+        # A fresh deployment has no users: the deploy seed preset seeds none,
+        # and Payload's first-register endpoint cannot produce an admin here
+        # because the users collection forces `role: "user"` on unauthenticated
+        # REST creates. Without this command an operator cannot get into their
+        # own installation.
+        check_env
+
+        ADMIN_EMAIL="${2:-}"
+        if [[ -z "$ADMIN_EMAIL" ]]; then
+            echo -e "${RED}Usage: $0 create-admin <email>${NC}"
+            exit 1
+        fi
+
+        # Read the password from the terminal rather than argv, which would put
+        # it in the process list and the shell history. TIMETILES_ADMIN_PASSWORD
+        # stays available for non-interactive callers such as the test suite.
+        ADMIN_PASSWORD="${TIMETILES_ADMIN_PASSWORD:-}"
+        if [[ -z "$ADMIN_PASSWORD" ]]; then
+            read -rsp "Password for $ADMIN_EMAIL: " ADMIN_PASSWORD
+            echo ""
+            read -rsp "Repeat password: " ADMIN_PASSWORD_REPEAT
+            echo ""
+            if [[ "$ADMIN_PASSWORD" != "$ADMIN_PASSWORD_REPEAT" ]]; then
+                echo -e "${RED}Passwords do not match.${NC}"
+                exit 1
+            fi
+        fi
+
+        echo -e "${YELLOW}Creating admin user $ADMIN_EMAIL...${NC}"
+
+        # Passed as environment rather than arguments so the password never
+        # reaches the container's process list.
+        if $DC_CMD --env-file "$ENV_FILE" exec -T \
+            -e "TIMETILES_ADMIN_EMAIL=$ADMIN_EMAIL" \
+            -e "TIMETILES_ADMIN_PASSWORD=$ADMIN_PASSWORD" \
+            web node /app/node_modules/.pnpm/node_modules/payload/bin.js \
+            run scripts/create-admin.ts; then
+            echo -e "${GREEN}Admin user created. Sign in at https://\${DOMAIN_NAME}/dashboard${NC}"
+        else
+            echo -e "${RED}Failed to create admin user.${NC}"
+            exit 1
+        fi
         ;;
 
     version|--version|-v)

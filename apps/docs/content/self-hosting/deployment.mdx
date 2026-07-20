@@ -33,6 +33,9 @@ timetiles up
 
 # 4. Set up SSL (after DNS is pointing to your server)
 timetiles ssl
+
+# 5. Create your admin account
+timetiles create-admin you@example.com
 ```
 
 </Tabs.Tab>
@@ -104,6 +107,21 @@ curl -sSL https://raw.githubusercontent.com/jfilter/timetiles/main/deployment/bo
 ```
 
 The script prompts for your domain, email, and other settings interactively.
+
+## First Admin Account
+
+A fresh installation has no user accounts. Create the first one before signing in:
+
+```bash
+timetiles create-admin you@example.com
+```
+
+The command asks for a password twice and creates a verified admin account. It
+refuses if an account with that address already exists, so it cannot be used to
+change an existing user's password or role.
+
+Self-registration through the web interface always creates a regular user, never
+an admin — this command is the only way to create one.
 
 ## Configuration
 
