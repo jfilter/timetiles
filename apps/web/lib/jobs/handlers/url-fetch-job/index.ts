@@ -374,10 +374,15 @@ const createImportFromFetchResult = async (
   return { ingestFileId, filename };
 };
 
+// No `queue` or `concurrency` here, deliberately: Payload's TaskConfig has
+// neither field. Only workflow.queue is read (queues/localAPI.js), so both were
+// silently ignored while reading as authoritative intent. This task runs solely
+// as a step of the scheduled-ingest workflow, which declares queue: "ingest" --
+// that is where the queue actually comes from. Declaring it here again would
+// only mislead the next reader, and would still do nothing if someone ever
+// queued this task standalone: it would land on `default`.
 export const urlFetchJob = {
   slug: "url-fetch",
-  queue: "ingest" as const,
-  concurrency: () => "ingest-pipeline",
   // Retry transient infrastructure failures (DNS not ready at container cold-start,
   // upstream blips, brief network flaps). The handler defers lifecycle updates to
   // the scheduled-ingest workflow's catch via `deferLifecycleUpdates`, so retries
