@@ -3,8 +3,10 @@
  *
  * @module
  */
-import type { CollectionBeforeChangeHook, CollectionBeforeDeleteHook } from "payload";
+import { sql } from "@payloadcms/db-postgres/drizzle";
+import { APIError, type CollectionBeforeChangeHook, type CollectionBeforeDeleteHook } from "payload";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -114,14 +116,51 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
 ];
 
 /**
- * beforeDelete hook that removes the scraper's runs first.
+ * Lock a scraper row and reject the delete if a run is still in flight.
  *
- * scraper_runs.scraper_id is NOT NULL, so deleting a scraper with surviving
- * runs fails at the FK. Cascading here keeps every delete path (admin UI,
- * REST, repo cascade, account deletion) consistent with what the repo-sync
- * job already does manually.
+ * scraper_runs.scraper_id is NOT NULL while its foreign key says
+ * ON DELETE SET NULL — a combination the database can never satisfy, which is
+ * why the cascade below is emulated in application code at all.
+ *
+ * That emulation is not atomic on its own: Payload does not lock the parent
+ * before beforeDelete, so an execution job can insert a run between the child
+ * delete and the parent delete, and the parent delete then dies on the foreign
+ * key with an opaque 500. Taking the row lock here closes that window, because
+ * the job's own writes to this scraper serialize behind it.
+ *
+ * Refusing outright is the honest answer rather than deleting anyway: a run in
+ * flight owns a container on the runner and an in-progress auto-import, and
+ * neither is reliably cancellable from here.
+ */
+const assertScraperNotRunning = async (
+  req: Parameters<CollectionBeforeDeleteHook>[0]["req"],
+  id: number | string
+): Promise<void> => {
+  const db = await getTransactionAwareDrizzle(req.payload, req);
+  const locked = await db.execute(
+    sql`SELECT last_run_status FROM payload.scrapers WHERE id = ${Number(id)} FOR UPDATE`
+  );
+  const rows = (locked as unknown as { rows?: { last_run_status?: string | null }[] }).rows ?? [];
+
+  // No row means it is already gone; let Payload produce its own not-found.
+  if (rows[0]?.last_run_status === "running") {
+    // APIError, not the app's ConflictError: the generic Payload REST handler
+    // only maps Payload errors to their status code.
+    throw new APIError("Scraper is currently running", 409);
+  }
+};
+
+/**
+ * beforeDelete hook that refuses to delete a running scraper, then removes the
+ * scraper's runs.
+ *
+ * Cascading here keeps every delete path (admin UI, REST, repo cascade,
+ * account deletion) consistent with what the repo-sync job already does
+ * manually.
  */
 export const deleteScraperRunsBeforeDelete: CollectionBeforeDeleteHook = async ({ req, id }) => {
+  await assertScraperNotRunning(req, id);
+
   await req.payload.delete({
     collection: "scraper-runs",
     where: { scraper: { equals: id } },

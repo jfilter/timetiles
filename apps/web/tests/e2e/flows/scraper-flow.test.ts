@@ -15,6 +15,8 @@
  * @module
  * @category E2E Tests
  */
+import { SCRAPER_TRIGGER_USER_EMAILS, SEED_USER_PASSWORDS } from "@/lib/seed/seeds/seed-credentials";
+
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 
@@ -23,12 +25,20 @@ test.describe("Scraper Flow - API", () => {
 
   // Shared state across serial tests
   let token: string;
+  // Separate identity for the manual-trigger tests — see the login test below.
+  let triggerToken: string;
   let repoId: number;
   let scraperId: number;
   let baseUrl: string;
+  // Suffix every DB resource this attempt creates. The scraper slug is globally
+  // unique, so a retry after a failed cleanup would otherwise collide with the
+  // previous attempt's leftovers and fail the sync rather than the assertion
+  // under test.
+  let attemptSuffix: string;
 
-  test("should login as admin", async ({ request, baseURL }) => {
+  test("should login as admin", async ({ request, baseURL }, testInfo) => {
     baseUrl = baseURL;
+    attemptSuffix = `w${testInfo.workerIndex}r${testInfo.retry}`;
 
     const loginResponse = await request.post(`${baseURL}/api/users/login`, {
       data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.seed.admin },
@@ -45,6 +55,29 @@ test.describe("Scraper Flow - API", () => {
     expect(body.user.role).toBe("admin");
 
     token = body.token;
+  });
+
+  test("should log in as this attempt's dedicated trigger identity", async ({ request }, testInfo) => {
+    // The trigger endpoint throttles to one run per 30s per user id, and a
+    // retried serial block would inherit the previous attempt's budget — 429
+    // instead of the status under test. The seed provides one admin per
+    // attempt for exactly this.
+    const email = SCRAPER_TRIGGER_USER_EMAILS[testInfo.retry];
+    expect(email, `no seeded trigger identity for attempt ${testInfo.retry}`).toBeDefined();
+
+    const loginResponse = await request.post(`${baseUrl}/api/users/login`, {
+      data: { email, password: SEED_USER_PASSWORDS.scraperTrigger },
+      headers: { "Content-Type": "application/json" },
+      timeout: 10000,
+    });
+
+    expect(loginResponse.status()).toBe(200);
+
+    const body = await loginResponse.json();
+    // Admin, because triggering a run on someone else's scraper requires it.
+    expect(body.user.role).toBe("admin");
+
+    triggerToken = body.token;
   });
 
   test("should enable scrapers feature flag via Settings global", async ({ request }) => {
@@ -77,7 +110,7 @@ test.describe("Scraper Flow - API", () => {
       "scrapers.yml": [
         "scrapers:",
         "  - name: Test Scraper",
-        "    slug: test-scraper",
+        `    slug: test-scraper-${attemptSuffix}`,
         "    runtime: python",
         "    entrypoint: scraper.py",
         "    output: data.csv",
@@ -98,7 +131,7 @@ test.describe("Scraper Flow - API", () => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       createResponse = await request.post(`${baseUrl}/api/scraper-repos`, {
         headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
-        data: { name: `E2E Test Scraper Repo ${Date.now()}`, sourceType: "upload", code: inlineCode },
+        data: { name: `E2E Test Scraper Repo ${attemptSuffix} ${Date.now()}`, sourceType: "upload", code: inlineCode },
         timeout: 10000,
       });
       if (createResponse.status() === 201) break;
@@ -160,7 +193,7 @@ test.describe("Scraper Flow - API", () => {
 
     const scraper = scrapersData.docs[0];
     expect(scraper.name).toBe("Test Scraper");
-    expect(scraper.slug).toBe("test-scraper");
+    expect(scraper.slug).toBe(`test-scraper-${attemptSuffix}`);
     expect(scraper.runtime).toBe("python");
     expect(scraper.entrypoint).toBe("scraper.py");
     expect(scraper.outputFile).toBe("data.csv");
@@ -187,7 +220,7 @@ test.describe("Scraper Flow - API", () => {
     await setScraperRunStatus(scraperId, "running");
 
     const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
-      headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `JWT ${triggerToken}`, "Content-Type": "application/json" },
       timeout: 10000,
     });
 
@@ -204,7 +237,7 @@ test.describe("Scraper Flow - API", () => {
     await setScraperRunStatus(scraperId, "failed");
 
     const runResponse = await request.post(`${baseUrl}/api/scrapers/${scraperId}/run`, {
-      headers: { Authorization: `JWT ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `JWT ${triggerToken}`, "Content-Type": "application/json" },
       timeout: 10000,
     });
 
@@ -215,19 +248,23 @@ test.describe("Scraper Flow - API", () => {
   });
 
   test("should clean up: delete scrapers and the scraper-repo", async ({ request }) => {
-    // Let the execution job queued above settle first. Deleting mid-run races
-    // the beforeDelete cascade: it clears scraper_runs, and a job still in
-    // flight then inserts a run row referencing a scraper that is about to
-    // disappear, which surfaces as a 500 from the FK.
+    // Wait for the execution job queued above to reach a terminal status.
+    // Deleting a running scraper is refused with 409 by design, so this is a
+    // real precondition, not politeness — and it must fail loudly rather than
+    // fall through, or a timeout here would resurface as a confusing 409 on
+    // the delete below.
+    let lastRunStatus: string | null = null;
     for (let attempt = 0; attempt < 30; attempt++) {
       const statusResponse = await request.get(`${baseUrl}/api/scrapers/${scraperId}`, {
         headers: { Authorization: `JWT ${token}` },
         timeout: 10000,
       });
       expect(statusResponse.status()).toBe(200);
-      if ((await statusResponse.json()).lastRunStatus !== "running") break;
+      lastRunStatus = (await statusResponse.json()).lastRunStatus;
+      if (lastRunStatus !== "running") break;
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
+    expect(lastRunStatus, "scraper never left the running state").not.toBe("running");
 
     // First delete the associated scraper to avoid foreign key / hook errors
     const deleteScraperResponse = await request.delete(`${baseUrl}/api/scrapers/${scraperId}`, {

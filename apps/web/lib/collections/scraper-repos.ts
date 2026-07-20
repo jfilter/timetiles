@@ -8,7 +8,7 @@
  * @category Collections
  * @module
  */
-import type { CollectionConfig, PayloadRequest, Where } from "payload";
+import { APIError, type CollectionConfig, type PayloadRequest, type Where } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
@@ -289,12 +289,25 @@ const ScraperRepos: CollectionConfig = {
       // scrapers always fails at the FK. Cascade them (each scraper's
       // beforeDelete cascades its runs) before the repo row goes away.
       async ({ req, id }) => {
-        await req.payload.delete({
+        const result = await req.payload.delete({
           collection: "scrapers",
           where: { repo: { equals: id } },
           overrideAccess: true,
           req,
         });
+
+        // Payload's bulk delete collects per-document failures instead of
+        // throwing. Ignoring them let a running child scraper — whose own
+        // beforeDelete refuses with 409 — survive, and the repo delete then
+        // died on the foreign key as an opaque 500. Surface the child's
+        // conflict as the repo's conflict instead.
+        if (result.errors.length > 0) {
+          throw new APIError(
+            `Cannot delete repo: ${result.errors.length} scraper(s) could not be deleted. ` +
+              `First error: ${result.errors[0]?.message ?? "unknown"}`,
+            409
+          );
+        }
       },
     ],
     afterDelete: [

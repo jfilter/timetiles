@@ -143,13 +143,6 @@ export const handleRunSuccess = async (
     },
   });
 
-  const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), result.status);
-  await asSystem(payload).update({
-    collection: "scrapers",
-    id: scraper.id,
-    data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
-  });
-
   log.info(
     {
       scraperId: scraper.id,
@@ -198,6 +191,18 @@ export const handleRunSuccess = async (
       // Don't fail the whole job if auto-import fails
     }
   }
+
+  // Leave "running" in place until every write for this run is done — the
+  // auto-import above still updates the run's resultFile. The delete path
+  // treats "running" as "more writes may follow" and refuses to delete, so
+  // clearing it earlier would reopen the window where a delete cascades the
+  // runs while this job is still inserting into them.
+  const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), result.status);
+  await asSystem(payload).update({
+    collection: "scrapers",
+    id: scraper.id,
+    data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
+  });
 
   return { ingestFileId };
 };

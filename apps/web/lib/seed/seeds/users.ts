@@ -10,7 +10,7 @@
  */
 import type { User } from "@/payload-types";
 
-import { SEED_USER_API_KEYS, SEED_USER_PASSWORDS } from "./seed-credentials";
+import { SCRAPER_TRIGGER_USER_EMAILS, SEED_USER_API_KEYS, SEED_USER_PASSWORDS } from "./seed-credentials";
 
 // Use Payload type with specific omissions for seed data
 export type UserSeed = Omit<
@@ -60,6 +60,28 @@ export const userSeeds = (environment: string): UserSeed[] => {
       _verified: true, // Pre-verified for testing
     },
   ];
+
+  // Note: this parameter carries the seed *preset* name ("e2e", "development",
+  // "testing"), not NODE_ENV.
+  if (environment === "e2e") {
+    return [
+      ...baseUsers,
+      // One admin per Playwright attempt for the scraper trigger tests — see
+      // SCRAPER_TRIGGER_USER_EMAILS for why they cannot share an identity.
+      // SEED_CONFIG caps the e2e user count at 5, which is exactly these three
+      // plus the two base users — adding more here would silently drop them.
+      ...SCRAPER_TRIGGER_USER_EMAILS.map((email, index) => ({
+        email,
+        password: SEED_USER_PASSWORDS.scraperTrigger,
+        firstName: "Scraper",
+        lastName: `Trigger ${index}`,
+        role: "admin" as const,
+        trustLevel: "5" as const, // UNLIMITED
+        isActive: true,
+        _verified: true,
+      })),
+    ];
+  }
 
   if (environment === "development") {
     return [
