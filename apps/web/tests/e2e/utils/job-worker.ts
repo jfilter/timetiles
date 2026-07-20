@@ -43,9 +43,14 @@ process.on("SIGINT", () => {
 
 const main = async () => {
   console.log("[job-worker] Starting job worker...");
-  // Log database URL (redacted) to verify correct database
+  // Log only the database name to verify the correct database is in use — never
+  // the DATABASE_URL itself, which carries credentials. The allowlist test is
+  // what actually guarantees that: on a URL without a path segment (e.g.
+  // "postgres://user:pass@host") `pop()` returns "user:pass@host" and would
+  // otherwise print the password.
   const dbUrl = process.env.DATABASE_URL ?? "";
-  const dbName = dbUrl.split("/").pop()?.split("?")[0] ?? "unknown";
+  const dbNameCandidate = dbUrl.split("/").pop()?.split("?")[0] ?? "";
+  const dbName = /^[\w-]+$/.test(dbNameCandidate) ? dbNameCandidate : "unknown";
   console.log(`[job-worker] Using database: ${dbName}`);
 
   // Dynamic import AFTER environment is configured
