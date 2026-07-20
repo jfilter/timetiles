@@ -14,8 +14,14 @@ import { runRoutes } from "./api/run.js";
 import { loadConfig } from "./config.js";
 import { AuthError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
+import { assertSecurityAssets } from "./security/container-config.js";
 
 const config = loadConfig();
+
+// Before serving anything: a missing seccomp profile would otherwise surface
+// once per scraper run as a podman exit 125, long after this process reported
+// itself healthy.
+assertSecurityAssets();
 
 const app = new Hono();
 

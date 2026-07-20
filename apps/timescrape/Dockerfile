@@ -48,7 +48,15 @@ WORKDIR /app
 COPY --from=builder /app/apps/timescrape/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package.json ./
-COPY --from=builder /app/apps/timescrape/src/security/seccomp-profile.json ./dist/security/seccomp-profile.json
+# Next to the bundle, not under dist/security/. container-config.ts resolves the
+# profile against import.meta.dirname, and tsup flattens src/index.ts into
+# dist/index.js, so at runtime that directory is dist/ — mirroring the source
+# layout here put the file one level away from where it is looked up. Every
+# container then died with
+#   opening seccomp profile failed: .../dist/seccomp-profile.json: no such file
+# which stayed invisible for as long as the runner could not start a container
+# at all for unrelated reasons.
+COPY --from=builder /app/apps/timescrape/src/security/seccomp-profile.json ./dist/seccomp-profile.json
 
 USER timescrape
 EXPOSE 4000

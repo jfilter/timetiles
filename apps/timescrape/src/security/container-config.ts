@@ -5,9 +5,32 @@
  * @category Security
  */
 
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const SECCOMP_PROFILE_PATH = resolve(import.meta.dirname, "seccomp-profile.json");
+
+/**
+ * Fail at startup if the seccomp profile did not ship next to the bundle.
+ *
+ * The path is resolved against `import.meta.dirname`, which is `src/security/`
+ * when running from source but `dist/` once tsup has flattened the entry point.
+ * A packaging change that puts the profile anywhere else leaves podman to
+ * discover it, per run, as `opening seccomp profile failed: ... no such file` —
+ * an exit 125 attributed to the scraper rather than to the deployment.
+ *
+ * Checked here instead of in a unit test because no test running from source
+ * can see a packaging mistake: the file is always present in `src/`. Failing at
+ * startup makes the deployment's "runner service is active" check catch it.
+ */
+export const assertSecurityAssets = (): void => {
+  if (!existsSync(SECCOMP_PROFILE_PATH)) {
+    throw new Error(
+      `Seccomp profile missing at ${SECCOMP_PROFILE_PATH}. ` +
+        `It must be packaged next to the bundle; see the build script and Dockerfile.`
+    );
+  }
+};
 
 export interface ContainerLimits {
   timeoutSecs: number;

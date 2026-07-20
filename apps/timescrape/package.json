@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts",
+    "build": "tsup src/index.ts --format esm --dts && cp src/security/seccomp-profile.json dist/seccomp-profile.json",
     "start": "node dist/index.js",
     "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**' && eslint . --cache",
     "typecheck": "tsgo --noEmit",
