@@ -70,19 +70,36 @@ podman images | grep timescrape
 
 ### 3. Create the Sandbox Network
 
-Scraper containers run on an isolated network that allows internet access but blocks access to internal services:
+Scraper containers run on a network that reaches the public internet but not your internal services. That takes two steps: a normal NAT network, plus firewall rules that fence its subnet off from every private destination.
 
 ```bash
-podman network create scraper-sandbox
+podman network create --subnet 10.89.200.0/24 scraper-sandbox
 ```
 
-Verify:
+Do **not** use `podman network create --internal` here. `--internal` removes the external gateway altogether, so containers on the network can reach nothing at all and every scraper fails — it is isolation in the wrong direction.
+
+Containment comes from the firewall instead. Deny rules must precede the allow, because ufw takes the first matching route rule:
 
 ```bash
-podman network ls | grep scraper-sandbox
+for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
+  ufw route deny from 10.89.200.0/24 to "$net"
+done
+ufw route allow from 10.89.200.0/24
 ```
 
-Without this network, scraper containers could reach the database, the web app, or other internal services.
+The host itself needs no rule here: traffic from a container to the host is filtered by ufw's incoming policy, not by these route rules.
+
+Verify both halves of the property — one must succeed, the other must fail:
+
+```bash
+podman run --rm --network scraper-sandbox timescrape-python \
+  python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=10)"   # succeeds
+
+podman run --rm --network scraper-sandbox timescrape-python \
+  python -c "import socket; socket.create_connection(('169.254.169.254', 80), timeout=5)"  # must fail
+```
+
+If the second command succeeds, the egress rules are not in effect and a scraper can reach your database, your web app, and your cloud provider's metadata service.
 
 ### 4. Configure Environment
 

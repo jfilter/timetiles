@@ -225,6 +225,36 @@ pull_base_images() {
     fi
 }
 
+# Subnet for the sandbox network.
+#
+# Pinned rather than left to podman's allocator because the egress rules below
+# have to name it. Inside podman's own default pool (10.89.0.0/16), so it does
+# not collide with anything the host's LAN is likely to use.
+SCRAPER_SANDBOX_SUBNET="10.89.200.0/24"
+
+# Destinations a scraper must never reach, whatever else it may reach.
+#
+# The scraper's own subnet is not listed: traffic inside it is bridged, not
+# routed, so these FORWARD rules never see it.
+SCRAPER_BLOCKED_DESTINATIONS=(
+    "10.0.0.0/8"      # RFC1918 class A — other hosts on the operator's network
+    "172.16.0.0/12"   # RFC1918 class B — includes docker's default pool
+    "192.168.0.0/16"  # RFC1918 class C
+    "169.254.0.0/16"  # link-local, incl. the cloud metadata service
+    "127.0.0.0/8"     # loopback
+)
+
+# Create the sandbox network: reachable internet, unreachable neighbours.
+#
+# NOT `--internal`, despite what this used to do. podman's `--internal` removes
+# the external gateway entirely, so a container on the network can reach
+# nothing at all — the scraper feature cannot scrape. ADR 0015 asks for the
+# other shape: "internet access but cannot reach internal services". That is a
+# normal NAT network plus egress filtering, which is what this builds.
+#
+# Containment therefore lives in the firewall, not in the network driver. The
+# host itself is covered separately: container-to-host traffic lands in INPUT,
+# where step 03's `default deny incoming` already governs it.
 create_sandbox_network() {
     local user="$1"
 
@@ -232,11 +262,42 @@ create_sandbox_network() {
 
     if podman_as "$user" 60 network ls --format '{{.Name}}' | grep -q "^scraper-sandbox$"; then
         print_info "Scraper sandbox network already exists"
+    else
+        podman_as "$user" 120 network create --subnet "$SCRAPER_SANDBOX_SUBNET" scraper-sandbox \
+            || die "Failed to create the scraper-sandbox network"
+        print_success "Created Podman network: scraper-sandbox ($SCRAPER_SANDBOX_SUBNET)"
+    fi
+
+    apply_sandbox_egress_rules
+}
+
+# Fence the sandbox subnet off from every private destination.
+#
+# Applied on every run, not only when the network is created: a host whose
+# network already exists from an earlier bootstrap still needs the rules, and
+# ufw deduplicates identical rules itself.
+#
+# Order matters — ufw evaluates route rules top-down and takes the first match,
+# so every deny has to be inserted before the catch-all allow.
+apply_sandbox_egress_rules() {
+    if ! command -v ufw &>/dev/null; then
+        print_warning "ufw not installed — scraper egress is UNFILTERED"
+        print_warning "  A scraper can reach every host the server can reach"
         return 0
     fi
 
-    podman_as "$user" 120 network create --internal scraper-sandbox
-    print_success "Created Podman network: scraper-sandbox"
+    print_step "Restricting scraper egress to public destinations..."
+
+    local destination
+    for destination in "${SCRAPER_BLOCKED_DESTINATIONS[@]}"; do
+        ufw route deny from "$SCRAPER_SANDBOX_SUBNET" to "$destination" >/dev/null \
+            || die "Failed to add egress deny rule for $destination"
+    done
+
+    ufw route allow from "$SCRAPER_SANDBOX_SUBNET" >/dev/null \
+        || die "Failed to add the scraper egress allow rule"
+
+    print_success "Scraper egress restricted (public internet only)"
 }
 
 install_runner() {
@@ -440,9 +501,14 @@ start_runner() {
     # Re-apply rather than mkdir: the tmpfiles entry is the single definition of
     # these directories and their ownership, and it is also what recreates them
     # after a reboot. Running it again here keeps this step idempotent on its own.
-    systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
+    # `|| true` on both: systemd-tmpfiles reports partial failures that the
+    # is-active check below judges far better, and a failed `start` must reach
+    # that check too — it is what dumps the journal and explains what happened.
+    # Letting errexit abort here would replace that diagnosis with a bare exit
+    # code.
+    systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf || true
 
-    systemctl start timescrape-runner.service
+    systemctl start timescrape-runner.service || true
 
     # Give it a moment to start
     sleep 3
