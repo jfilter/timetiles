@@ -17,7 +17,13 @@ import { v4 as uuidv4 } from "uuid";
 import { apiRoute, ValidationError } from "@/lib/api";
 import { createLogger } from "@/lib/logger";
 
-import { ALLOWED_MIME_TYPES, buildPreviewResult, FILE_EXTENSION_REGEX, getPreviewDir, MAX_FILE_SIZE } from "../helpers";
+import {
+  ALLOWED_MIME_TYPES,
+  buildPreviewResult,
+  FILE_EXTENSION_REGEX,
+  getPreviewDir,
+  getPreviewFileSizeLimit,
+} from "../helpers";
 
 const logger = createLogger("api-preview-schema-upload");
 
@@ -76,8 +82,9 @@ export const POST = apiRoute({
       throw new ValidationError("A file is required");
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      throw new ValidationError(`File size exceeds maximum of ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+    const maxFileSize = getPreviewFileSizeLimit(payload, user);
+    if (file.size > maxFileSize) {
+      throw new ValidationError(`File size exceeds maximum of ${Math.floor(maxFileSize / 1024 / 1024)}MB`);
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.type) && !FILE_EXTENSION_REGEX.test(file.name)) {

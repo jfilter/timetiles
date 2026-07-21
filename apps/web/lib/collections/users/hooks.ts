@@ -9,14 +9,16 @@ import type {
   CollectionAfterLoginHook,
   CollectionBeforeChangeHook,
   CollectionBeforeLoginHook,
+  CollectionBeforeOperationHook,
   PayloadRequest,
 } from "payload";
 import { APIError, AuthenticationError } from "payload";
 
 import { DEFAULT_QUOTAS, normalizeTrustLevel, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { validatePassword } from "@/lib/security/password-policy";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
-import { getClientIdentifier } from "@/lib/services/rate-limit-service";
+import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
 import { AppError } from "@/lib/types/errors";
 
 /** Read the client IP from a PayloadRequest, falling back to "unknown". */
@@ -272,5 +274,44 @@ export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
       },
       { req }
     );
+  },
+];
+
+/**
+ * Apply the LOGIN and FORGOT_PASSWORD limits to Payload's own auth endpoints.
+ *
+ * The app has hardened wrappers at /api/auth/login and /api/auth/forgot-password
+ * which carry the rate limits, the audit entries and the response-timing
+ * padding. But Payload registers /api/users/login and /api/users/forgot-password
+ * for every auth-enabled collection, and those are served by the catch-all — so
+ * the same two operations were reachable on a second, entirely unlimited path.
+ * All the abuse controls lived in the door nobody had to use.
+ *
+ * Enforced here rather than by removing the endpoints: `endpoints: false` would
+ * disable every REST endpoint on the collection, including ones the Payload
+ * admin UI needs.
+ *
+ * Scoped to `payloadAPI === "REST"`, which is what Payload sets for its own
+ * endpoints. The app's wrappers reach these operations through the Local API,
+ * where Payload sets "local" — so a request that already paid at the wrapper is
+ * not charged again here.
+ */
+export const usersBeforeOperationHook: CollectionBeforeOperationHook[] = [
+  async ({ args, operation, req }) => {
+    if (operation !== "login" && operation !== "forgotPassword") return args;
+    if (req.payloadAPI !== "REST") return args;
+
+    const configName = operation === "login" ? "LOGIN" : "FORGOT_PASSWORD";
+    const clientId = getClientIdentifier(req as unknown as Request);
+    const result = await getRateLimitService(req.payload).checkConfiguredRateLimit(
+      `${configName}:${clientId}`,
+      RATE_LIMITS[configName]
+    );
+
+    if (!result.allowed) {
+      throw new APIError("Too many requests", 429);
+    }
+
+    return args;
   },
 ];

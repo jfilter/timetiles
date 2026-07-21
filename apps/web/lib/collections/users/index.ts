@@ -27,6 +27,7 @@ import {
   usersAfterLoginHook,
   usersBeforeChangeHook,
   usersBeforeLoginHook,
+  usersBeforeOperationHook,
 } from "./hooks";
 
 const Users: CollectionConfig = {
@@ -119,6 +120,15 @@ const Users: CollectionConfig = {
       return user?.role === "admin";
     },
 
+    // `unlock` is a separate auth operation with its own access rule, and
+    // Payload's default for it is "any authenticated user". It is not covered
+    // by `update` or `delete`: the operation takes a target EMAIL, checks this
+    // rule, and clears that account's failed-login counter. Left at the default,
+    // any logged-in account could lift the brute-force lockout on any other --
+    // which is the whole of the protection, since Payload's five-attempt
+    // lockout is what stands between an attacker and unlimited guesses.
+    unlock: ({ req: { user } }) => user?.role === "admin",
+
     // Only admins can read version history
     readVersions: ({ req: { user } }) => {
       return user?.role === "admin";
@@ -126,6 +136,7 @@ const Users: CollectionConfig = {
   },
   fields: usersFields,
   hooks: {
+    beforeOperation: usersBeforeOperationHook,
     beforeLogin: usersBeforeLoginHook,
     beforeChange: usersBeforeChangeHook,
     // Note: User-usage records are created lazily via QuotaService.getOrCreateUsageRecord()

@@ -20,7 +20,7 @@ import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { createLogger, logError } from "@/lib/logger";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
-import { buildPreviewResult, getPreviewDir, MAX_FILE_SIZE, validateUrl } from "../helpers";
+import { buildPreviewResult, getPreviewDir, getPreviewFileSizeLimit, validateUrl } from "../helpers";
 
 const logger = createLogger("api-preview-schema-url");
 
@@ -88,7 +88,7 @@ export const POST = apiRoute({
         sourceUrl,
         authConfig: authConfig,
         timeout: 60_000,
-        maxSize: MAX_FILE_SIZE,
+        maxSize: getPreviewFileSizeLimit(payload, user),
         maxRetries: 0,
         cacheOptions: { useCache: false, bypassCache: true },
         jsonApiConfig: recordsPath ? { recordsPath } : undefined,

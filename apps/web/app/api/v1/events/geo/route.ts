@@ -140,7 +140,14 @@ const executeClusteringQuery = async (
     useHexCenter = false,
     parentCells,
   } = opts;
-  const parentCellsParam = parentCells?.length ? `{${parentCells.join(",")}}` : null;
+  // Only well-formed H3 cells reach the array literal. Drizzle parameterizes
+  // this value, so a crafted cell cannot escape into the SQL text — but a brace,
+  // quote or backslash produces an invalid array literal, which Postgres rejects
+  // and this public endpoint turns into a 500. Dropping invalid cells keeps the
+  // literal well-formed; an all-invalid list becomes NULL, which the function
+  // already treats as "no parent-cell restriction".
+  const validParentCells = parentCells?.filter((cell) => isValidCell(cell)) ?? [];
+  const parentCellsParam = validParentCells.length > 0 ? `{${validParentCells.join(",")}}` : null;
   return (await payload.db.drizzle.execute(sql`
     SELECT * FROM cluster_events(
       ${bounds.west}::double precision,

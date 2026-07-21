@@ -12,11 +12,13 @@
 import fs from "node:fs";
 
 import Papa from "papaparse";
+import type { Payload } from "payload";
 
 import { ValidationError } from "@/lib/api";
 import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
+import { createQuotaService } from "@/lib/services/quota-service";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import {
   detectLanguage,
@@ -27,6 +29,7 @@ import {
 import type { FieldStatistics } from "@/lib/services/schema-detection/types";
 import { createPairedDateInference } from "@/lib/services/schema-detection/utilities/date-pairs";
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
+import type { User } from "@/payload-types";
 
 export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 
@@ -43,7 +46,35 @@ export const ALLOWED_MIME_TYPES = [
   "application/vnd.oasis.opendocument.spreadsheet",
 ];
 
-export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+/**
+ * Technical ceiling for a preview, independent of any user's quota.
+ *
+ * The preview reads the file into memory, and CSV twice, so it cannot simply
+ * follow an unlimited quota. This bounds that regardless of trust level.
+ */
+export const MAX_PREVIEW_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+/**
+ * The size limit that applies to one user's preview.
+ *
+ * Previously a flat 50 MB for everyone, which contradicted the quota in both
+ * directions: a low-trust user could upload and parse 50 MB only to be rejected
+ * at 1 MB when the import itself was created, while trusted levels were capped
+ * at 50 MB despite being promised 100/500/1000 MB. The quota is authoritative;
+ * the constant above only stops it exceeding what a preview can hold.
+ */
+export const getPreviewFileSizeLimit = (payload: Payload, user: User | null | undefined): number => {
+  try {
+    const quotaMb = createQuotaService(payload).getEffectiveQuotas(user).maxFileSizeMB;
+    if (typeof quotaMb !== "number" || quotaMb <= 0) return MAX_PREVIEW_FILE_SIZE;
+    return Math.min(quotaMb * 1024 * 1024, MAX_PREVIEW_FILE_SIZE);
+  } catch {
+    // A quota lookup that fails must not turn a preview into a 500. Falling
+    // back to the technical ceiling keeps the endpoint working and is no more
+    // permissive than the flat limit that used to apply to everyone.
+    return MAX_PREVIEW_FILE_SIZE;
+  }
+};
 export const SAMPLE_ROW_COUNT = 5;
 export const FILE_EXTENSION_REGEX = /\.(csv|xls|xlsx|ods|json|geojson)$/i;
 
@@ -314,8 +345,6 @@ export const parseFileSheets = async (filePath: string, fileExtension: string): 
 // ---------------------------------------------------------------------------
 // Config suggestion helpers
 // ---------------------------------------------------------------------------
-
-import type { Payload } from "payload";
 
 import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
 import type { SavePreviewMetadataOpts } from "@/lib/ingest/preview-store";
