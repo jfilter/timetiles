@@ -15,8 +15,17 @@ setup() {
 }
 
 # Helper: curl HTTPS with the correct domain resolved to 127.0.0.1
+#
+# -f matters: without it curl exits 0 for any response it managed to receive,
+# including a 502 from nginx with no upstream. "HTTPS health endpoint returns
+# 200" was asserting only that the TLS handshake succeeded.
 curl_https() {
-    curl -sk --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}$1"
+    curl -fsk --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}$1"
+}
+
+# Status code only, for tests that accept a range rather than just 2xx.
+curl_https_code() {
+    curl -sk --resolve "${DOMAIN}:443:127.0.0.1" -o /dev/null -w "%{http_code}" "https://${DOMAIN}$1"
 }
 
 curl_https_head() {
@@ -42,8 +51,10 @@ curl_https_head() {
 # =============================================================================
 
 @test "HTTPS health endpoint returns 200" {
-    run curl_https /api/health
-    [ "$status" -eq 0 ]
+    local http_code
+    http_code=$(curl_https_code /api/health)
+    echo "HTTP status: $http_code"
+    [ "$http_code" = "200" ]
 }
 
 @test "HTTPS explore page returns HTML" {

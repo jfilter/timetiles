@@ -159,7 +159,7 @@ WorkingDirectory=$install_dir
 ExecStart=$install_dir/timetiles up
 ExecStop=$install_dir/timetiles down
 ExecReload=$install_dir/timetiles restart
-# `timetiles up` no longer returns as soon as the containers are created: the
+# \`timetiles up\` no longer returns as soon as the containers are created: the
 # workers declare depends_on web with condition service_healthy, so compose
 # blocks until web answers /api/health, and web only does that once it has
 # applied any pending migrations. That start is bounded by web's own 180s

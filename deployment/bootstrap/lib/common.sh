@@ -49,8 +49,27 @@ print_skip() {
 }
 
 die() {
+    local code="${2:-1}"
     print_error "$1"
-    exit "${2:-1}"
+
+    # `exit` only leaves the CURRENT shell. A die that fires inside a command
+    # substitution, a pipeline element or any other subshell runs in a child,
+    # so the message got printed and the script carried straight on. That is
+    # how an unescaped backtick in step 09's systemd heredoc produced
+    #     ✗ Step 09-monitoring failed
+    #     ✓ Step 09-monitoring completed
+    # in the same run: the ERR trap fired inside the heredoc's command
+    # substitution, die exited only that subshell, and bootstrap went on to
+    # mark the step completed and run steps 10-13 over it.
+    #
+    # $$ stays the top-level shell's PID inside a subshell ($BASHPID is the
+    # child), so this reaches the real script. The TERM trap in this file turns
+    # it into a non-zero exit.
+    if ((BASH_SUBSHELL > 0)); then
+        kill -TERM $$ 2>/dev/null || true
+    fi
+
+    exit "$code"
 }
 
 cleanup() {
