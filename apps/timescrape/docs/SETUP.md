@@ -124,24 +124,30 @@ pnpm --filter scraper dev
 
 The server starts on the port specified by `SCRAPER_PORT` (default 4000).
 
-### Production (container)
+### Production (host, under systemd)
 
-Build and run the runner as a Podman container using the Dockerfile at `apps/timescrape/Dockerfile`:
+Run the runner on the host. There is no working containerized deployment:
+
+- The runner spawns scraper containers with the **`podman` CLI** — `execFileAsync("podman", …)` in
+  `src/services/runner.ts`, and likewise for `podman stop`, `podman rm -f` and `podman unshare rm -rf`.
+  It never opens the Podman API socket.
+- `apps/timescrape/Dockerfile` builds on `node:24-slim` and installs no Podman, so inside that image
+  those calls fail with `podman: command not found`.
+
+Mounting `/run/user/$(id -u)/podman/podman.sock` into a runner container therefore fixes nothing — the
+socket is never read. This document used to recommend exactly that; it was wrong.
+
+Build and install it on the host instead:
 
 ```bash
 cd apps/timescrape
-
-podman build -t timescrape-runner .
-
-podman run -d \
-  --name timescrape-runner \
-  -p 4000:4000 \
-  --env-file .env \
-  -v /run/user/$(id -u)/podman/podman.sock:/run/podman/podman.sock \
-  timescrape-runner
+pnpm build
+node dist/index.js
 ```
 
-**Note:** The runner itself needs access to the Podman socket so it can spawn scraper containers. When running the runner inside a container, mount the rootless Podman socket as shown above. When running the runner directly on the host (outside a container), no socket mount is needed -- the runner invokes `podman` as a CLI command.
+Use systemd to keep it running. `deployment/bootstrap/steps/13-scraper-setup.sh` generates a hardened
+unit and is the reference for what the service needs (`XDG_RUNTIME_DIR`, the writable paths rootless
+Podman requires, and ordering after `user@$UID.service`).
 
 Verify the service is running:
 

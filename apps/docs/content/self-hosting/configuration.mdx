@@ -84,22 +84,20 @@ For structured settings that don't fit flat environment variables — rate limit
 Copy the example and customize:
 
 ```bash
-cp config/timetiles.example.yml config/timetiles.yml
+cp apps/web/config/timetiles.example.yml apps/web/config/timetiles.yml
 ```
 
 The file is **optional**. If absent, all defaults apply. Changes require a server restart.
 
-In Docker, the config directory is mounted read-only into all containers via `CONFIG_DIR` in your `.env.production`. Which value is right depends on how you installed:
+In Docker, the config directory is mounted read-only over `/app/apps/web/config` in all four app containers, via `CONFIG_DIR` in your `.env.production`. There is one correct value, and both the bootstrap script and the shipped template use it:
 
 ```bash
-# Standalone deployment/ checkout
-CONFIG_DIR=./config
-
-# Bootstrapped host — this is what the bootstrap script sets
 CONFIG_DIR=../apps/web/config
 ```
 
-The bootstrap value is not interchangeable: the same mount also carries the bundled data-package manifests, which exist only under `apps/web/config`. Pointing a bootstrapped host at `./config` silently removes all of them. Put your `timetiles.yml` in whichever directory `CONFIG_DIR` names, and copy the template from that same directory — both copies of `timetiles.example.yml` are kept identical.
+Do not change it to `./config`. That path inside the image holds more than your `timetiles.yml` — it also ships the bundled data-package manifests (`data-packages/*.yml` and `data-packages.activations.yml`). A directory bind mount **replaces** the image's directory instead of merging with it, so pointing `CONFIG_DIR` at a directory without those manifests removes every bundled data package. Nothing logs a warning; the feature is simply empty.
+
+`deployment/config/` contains an identical copy of `timetiles.example.yml` for reference, but it is not a valid mount source for the same reason.
 
 ### Rate Limits
 

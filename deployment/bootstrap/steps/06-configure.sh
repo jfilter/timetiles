@@ -84,8 +84,12 @@ run_step() {
     # repo's apps/web/config dir, so bundled data-package manifests refresh
     # on every `git pull`. The path is resolved relative to the compose file.
     #
-    # This must NOT be "./config" (deployment/config), even though that is the
-    # template's default: the single mount also carries data-packages/ and
+    # This is also the template's default, so the sed is normally a no-op — it
+    # stays because it must hold even for an .env.production carried over from
+    # an older install, where the default was "./config".
+    #
+    # It must NOT be "./config" (deployment/config): the single mount also
+    # carries data-packages/ and
     # data-packages.activations.yml, which exist only under apps/web/config and
     # are sparse-checked-out by step 05 for exactly this reason. Pointing it at
     # deployment/config would mount a dir holding nothing but an example file

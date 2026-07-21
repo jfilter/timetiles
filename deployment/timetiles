@@ -1462,12 +1462,38 @@ EOF
                 fi
             }
 
+            # The local build needs the monorepo ROOT, not just the app dir:
+            # apps/timescrape/Dockerfile runs `turbo prune`, which reads
+            # package.json / pnpm-workspace.yaml / turbo.json and the workspace
+            # packages timescrape takes workspace:* deps on. Install hosts have
+            # a sparse checkout (deployment/, apps/web/config/, apps/timescrape/
+            # — see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
+            # present says nothing about the context being buildable. Testing
+            # only for the Dockerfile sent bootstrap into a build that failed
+            # inside prune with an error naming neither the sparse checkout nor
+            # the missing files. Same guard as
+            # bootstrap/steps/13-scraper-setup.sh.
+            src_root="$SCRIPT_DIR/.."
             if docker pull "$image" 2>/dev/null; then
                 extract_runner "$image"
-            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" ]]; then
+            elif [[ -f "$src_root/apps/timescrape/Dockerfile" \
+                && -f "$src_root/pnpm-workspace.yaml" \
+                && -f "$src_root/package.json" \
+                && -f "$src_root/turbo.json" ]]; then
                 echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
-                docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" "$SCRIPT_DIR/.."
+                if ! docker build -t timescrape-runner-local -f "$src_root/apps/timescrape/Dockerfile" "$src_root"; then
+                    echo -e "${RED}Failed to build the scraper runner image${NC}"
+                    exit 1
+                fi
                 extract_runner timescrape-runner-local
+            elif [[ -f "$src_root/apps/timescrape/Dockerfile" ]]; then
+                echo -e "${RED}Cannot pull the runner image, and $src_root is not a full checkout${NC}"
+                echo -e "${YELLOW}The local build runs 'turbo prune' and needs the monorepo root${NC}"
+                echo -e "${YELLOW}(package.json, pnpm-workspace.yaml, turbo.json) plus packages/.${NC}"
+                echo -e "${YELLOW}Install hosts carry a sparse checkout that has none of them.${NC}"
+                echo -e "${YELLOW}Restore registry access, or run:${NC}"
+                echo -e "${YELLOW}  git -C $src_root sparse-checkout disable && git -C $src_root checkout -- .${NC}"
+                exit 1
             else
                 # The rm -rf above already emptied runner_dir, so continuing here
                 # restarts the service against no runner at all and still reports

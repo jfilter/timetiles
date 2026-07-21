@@ -61,7 +61,16 @@ COPY --from=builder /app/apps/timescrape/src/security/seccomp-profile.json ./dis
 USER timescrape
 EXPOSE 4000
 
+# node, not wget: node:24-slim installs wget only to build itself and purges it
+# in the same layer, so the probe exited 127 (command not found) on every
+# interval and the container never left "starting"/"unhealthy" no matter how
+# well the runner was serving. node is the one binary this image is guaranteed
+# to have.
+#
+# 127.0.0.1 rather than localhost for the same reason as
+# docker-compose.prod.yml:161 -- Node resolves localhost via dns.lookup, which
+# answers with the AAAA record first, while the server binds 0.0.0.0 only.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4000/health || exit 1
+  CMD node -e "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 CMD ["node", "dist/index.js"]

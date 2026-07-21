@@ -8,6 +8,16 @@
 #   ./timetiles build
 #   ./timetiles up
 
+# All four app services must be listed. They only share an image *name* in
+# docker-compose.prod.yml — there is no inheritance from `web` — so overriding
+# web alone left worker-ingest, worker-general and worker-maintenance pinned to
+# ${TIMETILES_IMAGE}:${TIMETILES_VERSION}. A "local build" then ran working-tree
+# code in web and published code in every worker, and `docker compose ps` could
+# not show it because it prints the tag, not the image ID.
+#
+# pull_policy: never belongs on all of them, web included: without it `up` is
+# free to replace a locally built image with a pulled one. deployment/tests/
+# run-vm.sh writes the same shape for the same reasons.
 services:
   web:
     build:
@@ -20,3 +30,19 @@ services:
         # 3. Real values are injected at runtime via environment variables
         NEXT_PUBLIC_PAYLOAD_URL: ${NEXT_PUBLIC_PAYLOAD_URL:-http://localhost:3000}
     image: timetiles-web:local
+    pull_policy: never
+
+  # The workers run the same image as web; only the command differs. They are
+  # not rebuilt here — `./timetiles build` builds web, and these three reuse
+  # that tag.
+  worker-ingest:
+    image: timetiles-web:local
+    pull_policy: never
+
+  worker-general:
+    image: timetiles-web:local
+    pull_policy: never
+
+  worker-maintenance:
+    image: timetiles-web:local
+    pull_policy: never
