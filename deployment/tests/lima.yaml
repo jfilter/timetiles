@@ -31,11 +31,19 @@ images:
 vmType: vz
 mountType: virtiofs
 
-# Mirrors the sizing the Vagrantfile used (12288 MB / 4 CPUs). The disk needs
-# headroom for the synced monorepo plus local image builds — bootstrap's
-# check_disk_space gate alone wants 10 GB free on /.
+# CPUs and disk mirror the sizing the Vagrantfile used. The disk needs headroom
+# for the synced monorepo plus local image builds — bootstrap's check_disk_space
+# gate alone wants 10 GB free on /.
+#
+# Memory is lower than the Vagrantfile's 12 GiB. A dev machine also runs a
+# browser, an editor and usually a second VM, and the guest's Next.js production
+# build is the peak of the whole run. At 12 GiB that peak pushed a 32 GiB host
+# into swap exhaustion and macOS killed the build — twice, at the same step, so
+# not a fluke. 8 GiB covers the build with room to spare and leaves the host
+# able to breathe. Raise it if a guest OOM ever shows up in a build log; the
+# failure to watch for is inside the VM, not on the host.
 cpus: 4
-memory: "12GiB"
+memory: "8GiB"
 disk: "60GiB"
 
 # run-vm.sh injects the one mount this harness needs — the repo, read-only —
