@@ -66,6 +66,9 @@ run_step() {
     if [[ -d "$src_dir" ]]; then
         rm -rf "${src_dir}.old"
         mv "$src_dir" "${src_dir}.old"
+        # Carry the operator's state into the new tree BEFORE the swap — the
+        # .old dir is rm -rf'd at the end of this step.
+        preserve_operator_state "${src_dir}.old" "$new_dir"
     fi
     mv "$new_dir" "$src_dir"
 
@@ -95,6 +98,85 @@ run_step() {
     rm -rf "${src_dir}.old"
 
     print_success "Deployment files ready"
+}
+
+# Move the operator's gitignored state from the outgoing tree into the fresh
+# clone.
+#
+# A fresh clone contains only TRACKED files. Everything the operator owns is
+# gitignored by design and therefore absent from it: .env.production (the DB
+# password and PAYLOAD_SECRET — the only copy that exists, since step 06
+# deliberately keeps secrets out of the state file), credentials.txt, uploads/,
+# backups/, exports/, ssl/, logs/, data/, the scraper-runner/ dir, and
+# apps/web/config/timetiles.yml.
+#
+# Before this, a re-clone moved the old tree to .old and then `rm -rf`'d it,
+# destroying all of the above in one step. That path is not hypothetical: it is
+# exactly what `bootstrap.sh --force` does, since completed steps are otherwise
+# skipped.
+#
+# The list comes from git rather than being hardcoded, so it tracks .gitignore
+# as that evolves and correctly spans BOTH ignore files that matter here — the
+# repo root's (which is what covers apps/web/config/timetiles.yml) and
+# deployment/'s.
+preserve_operator_state() {
+    local old_dir="$1"
+    local new_dir="$2"
+    local rel
+
+    [[ -d "$old_dir" ]] || return 0
+
+    while IFS= read -r rel; do
+        [[ -n "$rel" ]] || continue
+        rel="${rel%/}"
+
+        [[ -e "$old_dir/$rel" ]] || continue
+        # Never shadow something the fresh clone legitimately ships.
+        [[ -e "$new_dir/$rel" ]] && continue
+
+        mkdir -p "$(dirname "$new_dir/$rel")"
+        if mv "$old_dir/$rel" "$new_dir/$rel"; then
+            print_info "Preserved $rel"
+        else
+            print_warning "Could not preserve $rel — a copy remains in $old_dir"
+        fi
+    done < <(list_operator_paths "$old_dir")
+}
+
+# Enumerate the gitignored (operator-owned) paths of a tree, repo-relative.
+#
+# Listed per FILE, deliberately without `--directory`. That flag collapses an
+# ignored directory into a single entry, and the caller skips any entry the
+# fresh clone already has — so a collapsed `deployment/config/` would be
+# skipped wholesale (the clone ships a tracked timetiles.example.yml there)
+# and the operator's timetiles.yml inside it would be dropped. Per-file
+# entries merge into existing directories instead of colliding with them.
+list_operator_paths() {
+    local old_dir="$1"
+
+    if [[ -d "$old_dir/.git" ]]; then
+        git -c core.quotePath=false -C "$old_dir" ls-files \
+            --others --ignored --exclude-standard 2>/dev/null \
+            && return 0
+    fi
+
+    # No git metadata (e.g. a SKIP_CLONE tree mounted from a host). Fall back to
+    # the paths whose loss is unrecoverable. Keep in sync with deployment/.gitignore.
+    printf '%s\n' \
+        "deployment/.env.production" \
+        "deployment/.env.production.local" \
+        "deployment/.env.production.overrides" \
+        "deployment/credentials.txt" \
+        "deployment/docker-compose.override.yml" \
+        "deployment/backups" \
+        "deployment/uploads" \
+        "deployment/exports" \
+        "deployment/ssl" \
+        "deployment/data" \
+        "deployment/logs" \
+        "deployment/scraper-runner" \
+        "deployment/config/timetiles.yml" \
+        "apps/web/config/timetiles.yml"
 }
 
 # Idempotently point $install_dir at $src_dir/deployment.

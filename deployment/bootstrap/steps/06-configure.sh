@@ -16,9 +16,29 @@ run_step() {
         die "Environment template not found: $env_template"
     fi
 
+    # Secrets are NOT saved to state — they are only written to .env.production
+    # (chmod 600). On resume they are therefore read back out of .env.production
+    # rather than a plaintext state file.
+    #
+    # That read-back is what this loop does, and until now it did not exist: the
+    # comment claimed it while the code below unconditionally generated fresh
+    # values on every run. Re-running step 06 against a live install issued a
+    # DB_PASSWORD that no longer opened the existing database and a
+    # PAYLOAD_SECRET that invalidated every session and every encrypted field —
+    # bricking the deployment rather than reconfiguring it.
+    local secret_var existing_secret
+    for secret_var in DB_PASSWORD PAYLOAD_SECRET RESTIC_PASSWORD SCRAPER_API_KEY; do
+        # An explicitly configured value (config file / env) always wins.
+        [[ -n "${!secret_var:-}" ]] && continue
+
+        existing_secret="$(read_existing_secret "$env_file" "$secret_var")"
+        if [[ -n "$existing_secret" ]]; then
+            printf -v "$secret_var" '%s' "$existing_secret"
+            print_info "Reusing existing $secret_var from .env.production"
+        fi
+    done
+
     # Generate secrets if not already set
-    # Secrets are NOT saved to state — they are only written to .env.production (chmod 600).
-    # On resume, they are read from .env.production rather than the plaintext state file.
     if [[ -z "${DB_PASSWORD:-}" ]]; then
         DB_PASSWORD=$(generate_password 24)
         print_info "Generated database password"
@@ -105,6 +125,28 @@ run_step() {
     print_success "Environment configured"
 }
 
+# Read a secret back out of an existing .env.production.
+#
+# Prints nothing when the file is absent, the key is absent, or the value is
+# still one of the template's placeholders — the caller treats "nothing" as
+# "generate a fresh one", so a half-written .env.production from a failed
+# earlier run self-heals instead of being preserved as a broken value.
+read_existing_secret() {
+    local file="$1"
+    local key="$2"
+    local value
+
+    [[ -f "$file" ]] || return 0
+
+    value="$(grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d= -f2-)" || true
+
+    case "$value" in
+        "" | *CHANGE_ME* | *your-*) return 0 ;;
+    esac
+
+    printf '%s' "$value"
+}
+
 verify_env_file() {
     local env_file="$1"
 
@@ -118,7 +160,11 @@ verify_env_file() {
 
     for var in "${required_vars[@]}"; do
         local value
-        value=$(grep "^${var}=" "$env_file" | cut -d= -f2-)
+        # `|| true`: a grep miss is precisely the case the die below exists to
+        # report, but under `set -o pipefail` grep's exit 1 propagates through
+        # the pipe and would abort the step here — swallowing the diagnostic
+        # and leaving the operator with a bare "failed with exit code 1".
+        value=$(grep -m1 "^${var}=" "$env_file" | cut -d= -f2-) || true
 
         if [[ -z "$value" ]] || [[ "$value" == *"CHANGE_ME"* ]] || [[ "$value" == *"your-"* ]]; then
             die "Environment variable not properly configured: $var"
