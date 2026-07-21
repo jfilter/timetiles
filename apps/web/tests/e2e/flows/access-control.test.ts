@@ -329,12 +329,32 @@ test.describe("Access Control - User Perspective", () => {
   });
 
   test.describe("Import File Access Control", () => {
-    test("should not allow accessing other users' import files", async ({ request }) => {
-      // Try to access an import file that might exist
-      const response = await request.get("/api/ingest-files/1");
+    test("should not allow accessing other users' import files", async ({ request, playwright, baseURL }) => {
+      // This used to GET /api/ingest-files/1 and accept 404 — an id that "might
+      // exist". When it did not, the 404 meant "no such record", not "access
+      // denied", so the test passed without access control doing anything at
+      // all. Create a real file owned by someone else, then prove it is denied.
+      const admin = await createAdminApi(playwright, baseURL);
+      let ingestFile: ApiDoc | undefined;
 
-      // Should return 401 (unauthorized) or 404 (not found due to access control)
-      expect([401, 403, 404]).toContain(response.status());
+      try {
+        const created = await admin.api.post("/api/ingest-files", {
+          data: { originalName: `e2e-private-import-${Date.now()}.csv`, status: "pending" },
+          headers: admin.authHeaders,
+        });
+        expect(created.status()).toBe(201);
+        ingestFile = ((await created.json()) as { doc: ApiDoc }).doc;
+
+        // The owner can read it — otherwise the denial below proves nothing.
+        const asOwner = await admin.api.get(`/api/ingest-files/${ingestFile.id}`, { headers: admin.authHeaders });
+        expect(asOwner.status()).toBe(200);
+
+        const asStranger = await request.get(`/api/ingest-files/${ingestFile.id}`);
+        expect([401, 403, 404]).toContain(asStranger.status());
+      } finally {
+        await deleteApiDoc(admin.api, admin.authHeaders, "/api/ingest-files", ingestFile);
+        await admin.api.dispose();
+      }
     });
 
     test("should require authentication for import file creation", async ({ request }) => {

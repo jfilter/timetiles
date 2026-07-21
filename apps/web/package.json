@@ -32,7 +32,7 @@
     "test:e2e:debug": "playwright test --debug --headed",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run tests/integration",
-    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "openapi:generate": "tsx scripts/generate-openapi.ts && oxfmt public/openapi.json",
     "demo-data": "dotenv -e ../../.env -e .env.local -- tsx scripts/load-demo-data.ts",
     "packages": "dotenv -e ../../.env -e .env.local -- tsx scripts/manage-packages.ts",
     "heal": "dotenv -e ../../.env -e .env.local -- tsx scripts/heal.ts",

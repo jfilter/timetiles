@@ -4,71 +4,31 @@
     "title": "TimeTiles API",
     "version": "1.0.0",
     "description": "API for querying and aggregating geospatial event data in TimeTiles.\n\n## Overview\n\nTimeTiles provides endpoints for:\n- **Event listing** with pagination and filtering\n- **Aggregations** by catalog or dataset\n- **Temporal histograms** for time-based analysis\n- **Map clustering** for efficient visualization of large datasets\n- **Cluster statistics** for consistent visualization scaling\n\n## Authentication\n\nMost endpoints support optional authentication. Authenticated users may have access to additional catalogs and datasets.\n\n## Filtering\n\nAll event endpoints support common filter parameters:\n- `catalog`: Filter by catalog ID\n- `datasets`: Filter by dataset IDs (comma-separated or multiple params)\n- `startDate` / `endDate`: Temporal filtering (ISO 8601 date format)\n- `bounds`: Geographic bounding box as JSON string",
-    "contact": {
-      "name": "TimeTiles",
-      "url": "https://github.com/timetiles/timetiles"
-    },
-    "license": {
-      "name": "AGPL-3.0-or-later",
-      "url": "https://www.gnu.org/licenses/agpl-3.0.html"
-    }
+    "contact": { "name": "TimeTiles", "url": "https://github.com/timetiles/timetiles" },
+    "license": { "name": "AGPL-3.0-or-later", "url": "https://www.gnu.org/licenses/agpl-3.0.html" }
   },
-  "servers": [
-    {
-      "url": "/",
-      "description": "Current server"
-    }
-  ],
+  "servers": [{ "url": "/", "description": "Current server" }],
   "tags": [
-    {
-      "name": "Events",
-      "description": "Event querying and aggregation endpoints"
-    },
-    {
-      "name": "System",
-      "description": "System health and status endpoints"
-    }
+    { "name": "Events", "description": "Event querying and aggregation endpoints" },
+    { "name": "System", "description": "System health and status endpoints" }
   ],
   "components": {
     "schemas": {
       "EventListResponse": {
         "type": "object",
         "properties": {
-          "events": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/EventItem"
-            }
-          },
+          "events": { "type": "array", "items": { "$ref": "#/components/schemas/EventItem" } },
           "pagination": {
             "type": "object",
             "properties": {
-              "page": {
-                "type": "number"
-              },
-              "limit": {
-                "type": "number"
-              },
-              "totalDocs": {
-                "type": "number"
-              },
-              "totalPages": {
-                "type": "number"
-              },
-              "hasNextPage": {
-                "type": "boolean"
-              },
-              "hasPrevPage": {
-                "type": "boolean"
-              },
-              "nextPage": {
-                "type": "number",
-                "nullable": true
-              },
-              "prevPage": {
-                "type": "number",
-                "nullable": true
-              }
+              "page": { "type": "number" },
+              "limit": { "type": "number" },
+              "totalDocs": { "type": "number" },
+              "totalPages": { "type": "number" },
+              "hasNextPage": { "type": "boolean" },
+              "hasPrevPage": { "type": "boolean" },
+              "nextPage": { "type": "number", "nullable": true },
+              "prevPage": { "type": "number", "nullable": true }
             },
             "required": [
               "page",
@@ -82,247 +42,91 @@
             ]
           }
         },
-        "required": [
-          "events",
-          "pagination"
-        ]
+        "required": ["events", "pagination"]
       },
       "EventItem": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "number"
-          },
+          "id": { "type": "number" },
           "dataset": {
             "type": "object",
-            "properties": {
-              "id": {
-                "type": "number"
-              },
-              "name": {
-                "type": "string"
-              },
-              "catalog": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id"
-            ]
+            "properties": { "id": { "type": "number" }, "name": { "type": "string" }, "catalog": { "type": "string" } },
+            "required": ["id"]
           },
-          "data": {
-            "type": "object",
-            "additionalProperties": {
-              "nullable": true
-            }
-          },
+          "data": { "type": "object", "additionalProperties": { "nullable": true } },
           "location": {
             "type": "object",
             "nullable": true,
-            "properties": {
-              "longitude": {
-                "type": "number"
-              },
-              "latitude": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "longitude",
-              "latitude"
-            ]
+            "properties": { "longitude": { "type": "number" }, "latitude": { "type": "number" } },
+            "required": ["longitude", "latitude"]
           },
-          "locationName": {
-            "type": "string",
-            "nullable": true
-          },
-          "geocodedAddress": {
-            "type": "string",
-            "nullable": true
-          },
-          "eventTimestamp": {
-            "type": "string"
-          },
-          "eventEndTimestamp": {
-            "type": "string",
-            "nullable": true
-          },
-          "isValid": {
-            "type": "boolean"
-          }
+          "locationName": { "type": "string", "nullable": true },
+          "geocodedAddress": { "type": "string", "nullable": true },
+          "eventTimestamp": { "type": "string" },
+          "eventEndTimestamp": { "type": "string", "nullable": true },
+          "isValid": { "type": "boolean" }
         },
-        "required": [
-          "id",
-          "dataset",
-          "data",
-          "location",
-          "eventTimestamp",
-          "isValid"
-        ]
+        "required": ["id", "dataset", "data", "location", "eventTimestamp", "isValid"]
       },
       "ErrorResponse": {
         "type": "object",
-        "properties": {
-          "error": {
-            "type": "string"
-          },
-          "code": {
-            "type": "string"
-          },
-          "details": {
-            "nullable": true
-          }
-        },
-        "required": [
-          "error"
-        ]
+        "properties": { "error": { "type": "string" }, "code": { "type": "string" }, "details": { "nullable": true } },
+        "required": ["error"]
       },
       "Bounds": {
         "type": "object",
         "nullable": true,
         "properties": {
-          "north": {
-            "type": "number",
-            "minimum": -90,
-            "maximum": 90
-          },
-          "south": {
-            "type": "number",
-            "minimum": -90,
-            "maximum": 90
-          },
-          "east": {
-            "type": "number",
-            "minimum": -180,
-            "maximum": 180
-          },
-          "west": {
-            "type": "number",
-            "minimum": -180,
-            "maximum": 180
-          }
+          "north": { "type": "number", "minimum": -90, "maximum": 90 },
+          "south": { "type": "number", "minimum": -90, "maximum": 90 },
+          "east": { "type": "number", "minimum": -180, "maximum": 180 },
+          "west": { "type": "number", "minimum": -180, "maximum": 180 }
         },
-        "required": [
-          "north",
-          "south",
-          "east",
-          "west"
-        ]
+        "required": ["north", "south", "east", "west"]
       },
       "AggregateResponse": {
         "type": "object",
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AggregationItem"
-            }
-          },
-          "total": {
-            "type": "integer"
-          },
-          "groupedBy": {
-            "type": "string"
-          }
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/AggregationItem" } },
+          "total": { "type": "integer" },
+          "groupedBy": { "type": "string" }
         },
-        "required": [
-          "items",
-          "total",
-          "groupedBy"
-        ]
+        "required": ["items", "total", "groupedBy"]
       },
       "AggregationItem": {
         "type": "object",
         "properties": {
-          "id": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ]
-          },
-          "name": {
-            "type": "string"
-          },
-          "count": {
-            "type": "integer"
-          }
+          "id": { "anyOf": [{ "type": "number" }, { "type": "string" }] },
+          "name": { "type": "string" },
+          "count": { "type": "integer" }
         },
-        "required": [
-          "id",
-          "name",
-          "count"
-        ]
+        "required": ["id", "name", "count"]
       },
       "HistogramResponse": {
         "type": "object",
         "properties": {
-          "histogram": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/HistogramBucket"
-            }
-          },
+          "histogram": { "type": "array", "items": { "$ref": "#/components/schemas/HistogramBucket" } },
           "metadata": {
             "type": "object",
             "properties": {
-              "total": {
-                "type": "integer"
-              },
+              "total": { "type": "integer" },
               "dateRange": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "string",
-                    "nullable": true
-                  }
+                  "min": { "type": "string", "nullable": true },
+                  "max": { "type": "string", "nullable": true }
                 },
-                "required": [
-                  "min",
-                  "max"
-                ]
+                "required": ["min", "max"]
               },
-              "bucketSizeSeconds": {
-                "type": "number",
-                "nullable": true
-              },
-              "bucketCount": {
-                "type": "integer"
-              },
+              "bucketSizeSeconds": { "type": "number", "nullable": true },
+              "bucketCount": { "type": "integer" },
               "counts": {
                 "type": "object",
-                "properties": {
-                  "datasets": {
-                    "type": "integer"
-                  },
-                  "catalogs": {
-                    "type": "integer"
-                  }
-                },
-                "required": [
-                  "datasets",
-                  "catalogs"
-                ]
+                "properties": { "datasets": { "type": "integer" }, "catalogs": { "type": "integer" } },
+                "required": ["datasets", "catalogs"]
               },
-              "topDatasets": {
-                "type": "array",
-                "items": {
-                  "nullable": true
-                }
-              },
-              "topCatalogs": {
-                "type": "array",
-                "items": {
-                  "nullable": true
-                }
-              }
+              "topDatasets": { "type": "array", "items": { "nullable": true } },
+              "topCatalogs": { "type": "array", "items": { "nullable": true } }
             },
             "required": [
               "total",
@@ -335,171 +139,66 @@
             ]
           }
         },
-        "required": [
-          "histogram",
-          "metadata"
-        ]
+        "required": ["histogram", "metadata"]
       },
       "HistogramBucket": {
         "type": "object",
         "properties": {
-          "date": {
-            "type": "string",
-            "description": "Bucket start timestamp (ISO 8601)"
-          },
-          "dateEnd": {
-            "type": "string",
-            "description": "Bucket end timestamp (ISO 8601)"
-          },
-          "count": {
-            "type": "integer"
-          }
+          "date": { "type": "string", "description": "Bucket start timestamp (ISO 8601)" },
+          "dateEnd": { "type": "string", "description": "Bucket end timestamp (ISO 8601)" },
+          "count": { "type": "integer" }
         },
-        "required": [
-          "date",
-          "dateEnd",
-          "count"
-        ]
+        "required": ["date", "dateEnd", "count"]
       },
       "MapClustersResponse": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "FeatureCollection"
-            ]
-          },
-          "features": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ClusterFeature"
-            }
-          }
+          "type": { "type": "string", "enum": ["FeatureCollection"] },
+          "features": { "type": "array", "items": { "$ref": "#/components/schemas/ClusterFeature" } }
         },
-        "required": [
-          "type",
-          "features"
-        ]
+        "required": ["type", "features"]
       },
       "ClusterFeature": {
         "type": "object",
         "properties": {
-          "type": {
-            "type": "string",
-            "enum": [
-              "Feature"
-            ]
-          },
-          "id": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "string"
-              }
-            ]
-          },
+          "type": { "type": "string", "enum": ["Feature"] },
+          "id": { "anyOf": [{ "type": "number" }, { "type": "string" }] },
           "geometry": {
             "type": "object",
             "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "Point"
-                ]
-              },
-              "coordinates": {
-                "type": "array",
-                "items": {
-                  "type": "number"
-                },
-                "minItems": 2,
-                "maxItems": 2
-              }
+              "type": { "type": "string", "enum": ["Point"] },
+              "coordinates": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
             },
-            "required": [
-              "type",
-              "coordinates"
-            ]
+            "required": ["type", "coordinates"]
           },
           "properties": {
             "type": "object",
             "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "event-cluster",
-                  "event-location"
-                ]
-              },
-              "count": {
-                "type": "integer"
-              },
-              "clusterId": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "sourceCells": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "h3Cell": {
-                "type": "string"
-              },
-              "eventId": {
-                "type": "integer"
-              },
-              "locationName": {
-                "type": "string"
-              },
-              "locationCount": {
-                "type": "integer"
-              }
+              "type": { "type": "string", "enum": ["event-cluster", "event-location"] },
+              "count": { "type": "integer" },
+              "clusterId": { "type": "string" },
+              "title": { "type": "string" },
+              "sourceCells": { "type": "array", "items": { "type": "string" } },
+              "h3Cell": { "type": "string" },
+              "eventId": { "type": "integer" },
+              "locationName": { "type": "string" },
+              "locationCount": { "type": "integer" }
             },
-            "required": [
-              "type"
-            ]
+            "required": ["type"]
           }
         },
-        "required": [
-          "type",
-          "id",
-          "geometry",
-          "properties"
-        ]
+        "required": ["type", "id", "geometry", "properties"]
       },
       "ClusterStatsResponse": {
         "type": "object",
         "properties": {
-          "p20": {
-            "type": "number"
-          },
-          "p40": {
-            "type": "number"
-          },
-          "p60": {
-            "type": "number"
-          },
-          "p80": {
-            "type": "number"
-          },
-          "p100": {
-            "type": "number"
-          }
+          "p20": { "type": "number" },
+          "p40": { "type": "number" },
+          "p60": { "type": "number" },
+          "p80": { "type": "number" },
+          "p100": { "type": "number" }
         },
-        "required": [
-          "p20",
-          "p40",
-          "p60",
-          "p80",
-          "p100"
-        ]
+        "required": ["p20", "p40", "p60", "p80", "p100"]
       }
     },
     "parameters": {}
@@ -507,68 +206,27 @@
   "paths": {
     "/api/v1/events": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "List events with pagination",
         "description": "Returns a paginated list of events matching the specified filters. Events are returned with enriched data including extracted title, description, and location.",
         "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true
-            },
-            "required": false,
-            "name": "catalog",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "datasets",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "startDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "endDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Bounds"
-            },
-            "required": false,
-            "name": "bounds",
-            "in": "query"
-          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
             "schema": {
               "type": "object",
               "nullable": true,
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 500
-                },
+                "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
               "default": {}
@@ -584,14 +242,8 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "number",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "number",
-                    "nullable": true
-                  }
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
                 }
               },
               "default": {}
@@ -601,72 +253,38 @@
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeCatalogs",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeDatasets",
             "in": "query"
           },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
           {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "clusterCells",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 15
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
             "required": false,
             "name": "h3Resolution",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000,
-              "default": 1
-            },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 1 },
             "required": false,
             "name": "page",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 1000,
-              "default": 100
-            },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 100 },
             "required": false,
             "name": "limit",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "string",
-              "default": "-eventTimestamp"
-            },
+            "schema": { "type": "string", "default": "-eventTimestamp" },
             "required": false,
             "name": "sort",
             "in": "query"
@@ -675,101 +293,42 @@
         "responses": {
           "200": {
             "description": "Paginated event list",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EventListResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventListResponse" } } }
           },
           "400": {
             "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/v1/events/stats": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Aggregate event counts by catalog or dataset",
         "description": "Returns event counts grouped by catalog or dataset. When datasets are explicitly filtered, all selected datasets appear in results (with 0 count if no events match in the current viewport).",
         "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true
-            },
-            "required": false,
-            "name": "catalog",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "datasets",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "startDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "endDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Bounds"
-            },
-            "required": false,
-            "name": "bounds",
-            "in": "query"
-          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
             "schema": {
               "type": "object",
               "nullable": true,
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 500
-                },
+                "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
               "default": {}
@@ -785,14 +344,8 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "number",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "number",
-                    "nullable": true
-                  }
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
                 }
               },
               "default": {}
@@ -802,53 +355,26 @@
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeCatalogs",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeDatasets",
             "in": "query"
           },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
           {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "clusterCells",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 15
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
             "required": false,
             "name": "h3Resolution",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "catalog",
-                "dataset"
-              ]
-            },
+            "schema": { "type": "string", "enum": ["catalog", "dataset"] },
             "required": true,
             "name": "groupBy",
             "in": "query"
@@ -857,101 +383,42 @@
         "responses": {
           "200": {
             "description": "Aggregated event counts",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AggregateResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AggregateResponse" } } }
           },
           "400": {
             "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/v1/events/temporal": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get temporal histogram of events",
         "description": "Returns a histogram of event counts over time with automatically calculated bucket sizes. The bucket size is optimized based on the target, min, and max bucket parameters.",
         "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true
-            },
-            "required": false,
-            "name": "catalog",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "datasets",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "startDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "endDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Bounds"
-            },
-            "required": false,
-            "name": "bounds",
-            "in": "query"
-          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
             "schema": {
               "type": "object",
               "nullable": true,
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 500
-                },
+                "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
               "default": {}
@@ -967,14 +434,8 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "number",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "number",
-                    "nullable": true
-                  }
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
                 }
               },
               "default": {}
@@ -984,74 +445,38 @@
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeCatalogs",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeDatasets",
             "in": "query"
           },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
           {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "clusterCells",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 15
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
             "required": false,
             "name": "h3Resolution",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 500,
-              "default": 30
-            },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 30 },
             "required": false,
             "name": "targetBuckets",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 500,
-              "default": 20
-            },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 20 },
             "required": false,
             "name": "minBuckets",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 500,
-              "default": 50
-            },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50 },
             "required": false,
             "name": "maxBuckets",
             "in": "query"
@@ -1060,101 +485,42 @@
         "responses": {
           "200": {
             "description": "Temporal histogram data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HistogramResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HistogramResponse" } } }
           },
           "400": {
             "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/v1/events/geo": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get clustered events for map display",
         "description": "Returns events clustered based on zoom level and viewport bounds. Uses server-side PostGIS clustering for optimal performance with large datasets. Returns a GeoJSON FeatureCollection.",
         "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true
-            },
-            "required": false,
-            "name": "catalog",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "datasets",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "startDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "endDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Bounds"
-            },
-            "required": false,
-            "name": "bounds",
-            "in": "query"
-          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
             "schema": {
               "type": "object",
               "nullable": true,
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 500
-                },
+                "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
               "default": {}
@@ -1170,14 +536,8 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "number",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "number",
-                    "nullable": true
-                  }
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
                 }
               },
               "default": {}
@@ -1187,231 +547,107 @@
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeCatalogs",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeDatasets",
             "in": "query"
           },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
           {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "clusterCells",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 15
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
             "required": false,
             "name": "h3Resolution",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true,
-              "minimum": 0,
-              "maximum": 28,
-              "default": 10
-            },
+            "schema": { "type": "integer", "nullable": true, "minimum": 0, "maximum": 28, "default": 10 },
             "required": false,
             "name": "zoom",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 5,
-              "maximum": 500,
-              "default": 25
-            },
+            "schema": { "type": "integer", "minimum": 5, "maximum": 500, "default": 25 },
             "required": false,
             "name": "targetClusters",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "string",
-              "enum": [
-                "h3",
-                "grid-k",
-                "dbscan"
-              ],
-              "default": "h3"
-            },
+            "schema": { "type": "string", "enum": ["h3", "grid-k", "dbscan"], "default": "h3" },
             "required": false,
             "name": "clusterAlgorithm",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 20,
-              "default": 2
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 20, "default": 2 },
             "required": false,
             "name": "minPoints",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "boolean",
-              "nullable": true,
-              "default": true
-            },
+            "schema": { "type": "boolean", "nullable": true, "default": true },
             "required": false,
             "name": "mergeOverlapping",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "number",
-              "minimum": 0.3,
-              "maximum": 1.2,
-              "default": 0.6
-            },
+            "schema": { "type": "number", "minimum": 0.3, "maximum": 1.2, "default": 0.6 },
             "required": false,
             "name": "h3ResolutionScale",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "boolean",
-              "nullable": true,
-              "default": false
-            },
+            "schema": { "type": "boolean", "nullable": true, "default": false },
             "required": false,
             "name": "useHexCenter",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "parentCells",
-            "in": "query"
-          }
+          { "schema": { "type": "string" }, "required": false, "name": "parentCells", "in": "query" }
         ],
         "responses": {
           "200": {
             "description": "GeoJSON FeatureCollection of clustered events",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MapClustersResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MapClustersResponse" } } }
           },
           "400": {
             "description": "Invalid request parameters",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/v1/events/geo/stats": {
       "get": {
-        "tags": [
-          "Events"
-        ],
+        "tags": ["Events"],
         "summary": "Get cluster statistics for visualization",
         "description": "Returns percentile breakpoints for cluster sizes across the entire filtered dataset. Used to maintain consistent cluster visualization across all zoom levels and viewports.",
         "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
           {
-            "schema": {
-              "type": "integer",
-              "nullable": true
-            },
-            "required": false,
-            "name": "catalog",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "datasets",
             "in": "query"
           },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "startDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "date"
-            },
-            "required": false,
-            "name": "endDate",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "$ref": "#/components/schemas/Bounds"
-            },
-            "required": false,
-            "name": "bounds",
-            "in": "query"
-          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
             "schema": {
               "type": "object",
               "nullable": true,
               "additionalProperties": {
                 "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 500
-                },
+                "items": { "type": "string", "maxLength": 500 },
                 "maxItems": 100
               },
               "default": {}
@@ -1427,14 +663,8 @@
               "additionalProperties": {
                 "type": "object",
                 "properties": {
-                  "min": {
-                    "type": "number",
-                    "nullable": true
-                  },
-                  "max": {
-                    "type": "number",
-                    "nullable": true
-                  }
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
                 }
               },
               "default": {}
@@ -1444,41 +674,20 @@
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeCatalogs",
             "in": "query"
           },
           {
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
+            "schema": { "type": "array", "items": { "type": "integer" } },
             "required": false,
             "name": "scopeDatasets",
             "in": "query"
           },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
           {
-            "schema": {
-              "type": "string"
-            },
-            "required": false,
-            "name": "clusterCells",
-            "in": "query"
-          },
-          {
-            "schema": {
-              "type": "integer",
-              "minimum": 2,
-              "maximum": 15
-            },
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
             "required": false,
             "name": "h3Resolution",
             "in": "query"
@@ -1487,32 +696,18 @@
         "responses": {
           "200": {
             "description": "Cluster size percentile statistics",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ClusterStatsResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClusterStatsResponse" } } }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/v1/sources/stats": {
       "get": {
-        "tags": [
-          "Sources"
-        ],
+        "tags": ["Sources"],
         "summary": "Get data source statistics",
         "description": "Returns event counts grouped by catalog and dataset. Used to display total event counts for each data source in the filter UI.",
         "responses": {
@@ -1523,49 +718,25 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "catalogCounts": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "integer"
-                      }
-                    },
-                    "datasetCounts": {
-                      "type": "object",
-                      "additionalProperties": {
-                        "type": "integer"
-                      }
-                    },
-                    "totalEvents": {
-                      "type": "integer"
-                    }
+                    "catalogCounts": { "type": "object", "additionalProperties": { "type": "integer" } },
+                    "datasetCounts": { "type": "object", "additionalProperties": { "type": "integer" } },
+                    "totalEvents": { "type": "integer" }
                   },
-                  "required": [
-                    "catalogCounts",
-                    "datasetCounts",
-                    "totalEvents"
-                  ]
+                  "required": ["catalogCounts", "datasetCounts", "totalEvents"]
                 }
               }
             }
           },
           "500": {
             "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           }
         }
       }
     },
     "/api/health": {
       "get": {
-        "tags": [
-          "System"
-        ],
+        "tags": ["System"],
         "summary": "Health check endpoint",
         "description": "Returns the health status of the API and its dependencies.",
         "responses": {
@@ -1576,14 +747,8 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "status": {
-                      "type": "string",
-                      "example": "ok"
-                    },
-                    "timestamp": {
-                      "type": "string",
-                      "format": "date-time"
-                    }
+                    "status": { "type": "string", "example": "ok" },
+                    "timestamp": { "type": "string", "format": "date-time" }
                   }
                 }
               }
