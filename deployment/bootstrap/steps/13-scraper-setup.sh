@@ -36,14 +36,21 @@ runtime_dir_for() {
     echo "/run/user/$(id -u "$1")"
 }
 
-# Podman's image store (graphroot) lives under XDG_DATA_HOME. It cannot stay at
-# the default $HOME/.local/share, because the app user's home IS the install dir
-# and ProtectSystem=strict leaves that read-only for the runner -- `podman run`
-# needs to write a container layer there, so nothing could start. Measured on
-# production: 1.7 GB of images sitting somewhere the service cannot write.
-# (That location is gitignored, so it never showed up in `git status`; the
-# problem is reachability, not tidiness.)
-SCRAPER_DATA_HOME="/var/lib/timetiles"
+# Podman's image store, left at its default under the app user's home. The
+# runner needs to write here -- `podman run` creates a container layer -- and
+# ProtectSystem=strict makes the whole tree read-only, so the unit grants this
+# one directory back through ReadWritePaths.
+#
+# Relocating it instead, via XDG_DATA_HOME or a storage.conf graphroot, was
+# tried and reverted: it splits podman's network handling. `network create` and
+# `network ls` follow the moved graphroot while `podman run --network` keeps
+# looking at the default, so a network created seconds earlier comes back as
+#   unable to find network with name or ID scraper-sandbox: network not found
+# Reproduced with a freshly created network, and confirmed against a control run
+# on the default graphroot, which works. Keeping the store where podman expects
+# it is the cheaper half of the trade: the directory is gitignored, so the only
+# real objection to its location was tidiness.
+SCRAPER_IMAGE_STORE_SUBDIR=".local/share/containers"
 
 # Work area for scraper checkouts and outputs. Under /tmp, which is cleared on
 # reboot, so it is recreated by the same tmpfiles.d entry -- it appears in
@@ -62,7 +69,6 @@ podman_as() {
     # fail with "image not known" after a bootstrap that reported success.
     timeout "$timeout_s" sudo -u "$user" \
         env "XDG_RUNTIME_DIR=$(runtime_dir_for "$user")" \
-            "XDG_DATA_HOME=$SCRAPER_DATA_HOME" \
             podman "$@"
 }
 
@@ -162,25 +168,17 @@ configure_rootless() {
     # bug stayed hidden. /run/user/$uid is deliberately NOT listed here: it
     # belongs to logind, and the unit orders itself after user@$uid instead.
     cat > /etc/tmpfiles.d/timetiles-scraper.conf << EOF
-# Work area and image store for the TimeScrape runner.
+# Work area for the TimeScrape runner, recreated after /tmp is cleared.
 d $SCRAPER_WORK_DIR 0700 $user $user -
-d $SCRAPER_DATA_HOME/containers 0700 $user $user -
 EOF
     systemd-tmpfiles --create /etc/tmpfiles.d/timetiles-scraper.conf
-    print_info "Created scraper work and image-store directories"
+    print_info "Created scraper work directory"
 
-    # Hosts bootstrapped before the store moved keep their images at the old
-    # default under the app user's home. They are re-pulled into the new
-    # location below, so the old copy is dead weight -- on production that is
-    # 1.7 GB. Not deleted automatically: it is several gigabytes under someone
-    # else's home directory, and a bootstrap step is the wrong place to decide
-    # that for an operator.
-    local legacy_store="$install_dir/.local/share/containers"
-    if [[ -d "$legacy_store" ]]; then
-        print_warning "Old podman image store found at $legacy_store"
-        print_info "  Images are re-pulled into $SCRAPER_DATA_HOME/containers; remove the old one with:"
-        print_info "  sudo rm -rf $legacy_store"
-    fi
+    # The image store is a plain directory under the user's home, but it has to
+    # exist before the unit starts: it is a ReadWritePath without a leading dash,
+    # so systemd refuses to start the service if it is missing. Podman would
+    # create it on first pull, which happens later in this step.
+    install -d -o "$user" -g "$user" -m 700 "$install_dir/$SCRAPER_IMAGE_STORE_SUBDIR"
 
     # Verify rootless Podman works
     if podman_as "$user" 60 info --format '{{.Host.Security.Rootless}}' 2>/dev/null | grep -q "true"; then
@@ -385,13 +383,10 @@ Type=simple
 User=$user
 Group=$user
 WorkingDirectory=$install_dir/scraper-runner
-# The runtime dir comes from logind (see After= above); the data home is created
-# by /etc/tmpfiles.d/timetiles-scraper.conf. The data home is not the default
-# \$HOME/.local/share because this user's home is the install dir, which
-# ProtectSystem=strict leaves read-only — and \`podman run\` has to write a
-# container layer into the image store.
+# The runtime dir comes from logind (see After= above). The image store keeps
+# podman's default location under this user's home and is granted back through
+# ReadWritePaths below; moving it breaks network lookup, see the note at the top.
 Environment=XDG_RUNTIME_DIR=$(runtime_dir_for "$user")
-Environment=XDG_DATA_HOME=$SCRAPER_DATA_HOME
 EnvironmentFile=$install_dir/.env.production
 ExecStart=/usr/bin/node $install_dir/scraper-runner/dist/index.js
 Restart=on-failure
@@ -408,7 +403,7 @@ ProtectSystem=strict
 # where podman needs to -- which is how every scraper run came to fail while
 # systemctl reported the service active and healthy. Without the dash a missing
 # directory stops the unit, which is the failure anyone would actually notice.
-ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $(runtime_dir_for "$user") $SCRAPER_DATA_HOME/containers
+ReadWritePaths=$SCRAPER_WORK_DIR $install_dir/scraper-runner /var/log/timetiles $(runtime_dir_for "$user") $install_dir/$SCRAPER_IMAGE_STORE_SUBDIR
 # tmpfs rather than yes, plus an explicit bind of the runtime dir. ProtectHome=yes
 # covers /home, /root AND /run/user, and hiding the last one is what left podman
 # with no usable runroot and no cgroup delegation. tmpfs keeps /home and /root

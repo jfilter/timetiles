@@ -199,13 +199,10 @@ as_deploy_user() {
 
 # Rootless Podman blocks in a futex wait — it does not fail — when its
 # per-user runtime dir is missing, so an unbounded call hangs the CLI with no
-# output. Pin the locations (sudo drops them) and cap every invocation.
+# output. Pin it (sudo drops it) and cap every invocation.
 #
-# Both must match the runner unit. The image store is deliberately not the
-# default $HOME/.local/share: the deploy user's home is the install dir, which
-# the unit's ProtectSystem=strict leaves read-only. Pointing the CLI somewhere
-# other than the service would make `timetiles` report on an empty image store
-# while the runner used a full one.
+# It must match the runner unit. Pointing the CLI at a different runtime dir
+# would make `timetiles` report on a different store than the runner uses.
 #
 # Usage: podman_as_deploy_user <timeout-seconds> <podman args...>
 podman_as_deploy_user() {
@@ -215,7 +212,6 @@ podman_as_deploy_user() {
     local runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
     as_deploy_user timeout "$timeout_s" env \
         "XDG_RUNTIME_DIR=$runtime_dir" \
-        "XDG_DATA_HOME=/var/lib/timetiles" \
         podman "$@"
 }
 

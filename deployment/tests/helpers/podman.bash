@@ -15,13 +15,11 @@ PODMAN_TIMEOUT="${PODMAN_TIMEOUT:-60}"
 
 # Initialize the rootless environment (call in setup)
 init_podman() {
-    # Point at exactly the locations bootstrap and the runner unit use, or these
-    # tests inspect a different store than production does -- an image the runner
-    # has would read as absent here, and one these tests pull would be invisible
-    # to the runner. Both are set unconditionally rather than with :- defaults,
-    # since an inherited value would reintroduce that split.
+    # The same runtime dir bootstrap and the runner unit use, so these tests
+    # inspect the store production actually has. Set unconditionally rather than
+    # with a :- default: an inherited value would quietly point the suite at a
+    # different store, where an image the runner holds reads as absent.
     export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-    export XDG_DATA_HOME="/var/lib/timetiles"
 }
 
 # Strip podman's warning banner from captured output.
