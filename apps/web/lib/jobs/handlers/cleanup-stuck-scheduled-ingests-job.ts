@@ -17,6 +17,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
+import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScheduledIngestFailure, resolveScheduledIngestStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
@@ -57,7 +58,10 @@ const cancelOrphanedWorkflowJobs = async (
       collection: "payload-jobs" as const,
       where: {
         and: [
-          { "input.scheduledIngestId": { equals: String(scheduledIngestId) } },
+          // Both id representations — see the same fix in
+          // cleanup-stuck-scrapers-job.ts. Job input is jsonb, so a string
+          // `equals` never matches a numerically-enqueued id.
+          buildResourceIdMatch("input.scheduledIngestId", scheduledIngestId),
           { processing: { equals: false } },
           { completedAt: { exists: false } },
           { createdAt: { less_than: orphanedJobCutoff } },

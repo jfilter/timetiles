@@ -116,6 +116,16 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
 ];
 
 /**
+ * How long a "running" claim stays authoritative.
+ *
+ * Matches the default threshold of cleanup-stuck-scrapers-job, which is the job
+ * that clears these claims: past this age the reaper itself would call the run
+ * stuck and reset it, so continuing to honour the claim here only blocks
+ * deletes on a run the system has already given up on.
+ */
+const RUNNING_CLAIM_STALE_AFTER_MS = 4 * 60 * 60 * 1000;
+
+/**
  * Lock a scraper row and reject the delete if a run is still in flight.
  *
  * scraper_runs.scraper_id is NOT NULL while its foreign key says
@@ -128,9 +138,24 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
  * key with an opaque 500. Taking the row lock here closes that window, because
  * the job's own writes to this scraper serialize behind it.
  *
- * Refusing outright is the honest answer rather than deleting anyway: a run in
- * flight owns a container on the runner and an in-progress auto-import, and
- * neither is reliably cancellable from here.
+ * Refusing outright is the honest answer for a run that really is in flight: it
+ * owns a container on the runner and an in-progress auto-import, and neither is
+ * reliably cancellable from here.
+ *
+ * But the refusal is bounded by age, because an UNBOUNDED one is a trap. A
+ * worker killed mid-scrape leaves `last_run_status = 'running'` with nothing to
+ * clear it, and scraper-repos' beforeDelete re-raises this 409 at repo level —
+ * which account deletion (deletion-service) cascades through inside a single
+ * transaction. One wedged scraper therefore aborted and rolled back a user's
+ * entire account deletion, permanently. A claim older than the reaper's own
+ * threshold is treated as abandoned and the delete proceeds.
+ *
+ * The bound only applies when staleness can be PROVEN. A NULL last_run_at keeps
+ * blocking: it means the claim's age is unknown, not that it is old, and
+ * guessing "old" there would delete a scraper whose run is genuinely live.
+ * Account deletion does not depend on this bound anyway — deletion-service
+ * clears the user's running claims outright before cascading, so it stays
+ * unblocked even for rows predating the claim-time timestamp.
  */
 const assertScraperNotRunning = async (
   req: Parameters<CollectionBeforeDeleteHook>[0]["req"],
@@ -138,16 +163,30 @@ const assertScraperNotRunning = async (
 ): Promise<void> => {
   const db = await getTransactionAwareDrizzle(req.payload, req);
   const locked = await db.execute(
-    sql`SELECT last_run_status FROM payload.scrapers WHERE id = ${Number(id)} FOR UPDATE`
+    sql`SELECT last_run_status, last_run_at FROM payload.scrapers WHERE id = ${Number(id)} FOR UPDATE`
   );
-  const rows = (locked as unknown as { rows?: { last_run_status?: string | null }[] }).rows ?? [];
+  const rows =
+    (locked as unknown as { rows?: { last_run_status?: string | null; last_run_at?: string | Date | null }[] }).rows ??
+    [];
 
   // No row means it is already gone; let Payload produce its own not-found.
-  if (rows[0]?.last_run_status === "running") {
-    // APIError, not the app's ConflictError: the generic Payload REST handler
-    // only maps Payload errors to their status code.
-    throw new APIError("Scraper is currently running", 409);
+  if (rows[0]?.last_run_status !== "running") return;
+
+  const lastRunAt = rows[0]?.last_run_at;
+  const claimedAt = lastRunAt ? new Date(lastRunAt).getTime() : Number.NaN;
+  const isProvablyStale = Number.isFinite(claimedAt) && Date.now() - claimedAt > RUNNING_CLAIM_STALE_AFTER_MS;
+
+  if (isProvablyStale) {
+    req.payload.logger.warn(
+      { scraperId: id, lastRunAt },
+      "Deleting scraper with a stale 'running' claim; no live run could be confirmed"
+    );
+    return;
   }
+
+  // APIError, not the app's ConflictError: the generic Payload REST handler
+  // only maps Payload errors to their status code.
+  throw new APIError("Scraper is currently running", 409);
 };
 
 /**

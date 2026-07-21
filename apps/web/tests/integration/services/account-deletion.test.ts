@@ -410,6 +410,59 @@ describe.sequential("Account Deletion Service", () => {
       expect(runs.docs).toHaveLength(0);
     });
 
+    it("should delete the account even when a scraper is wedged in 'running'", async () => {
+      // Regression: the scrapers beforeDelete guard refuses to delete a running
+      // scraper with a 409, and scraper-repos re-raises it at repo level. A
+      // worker killed mid-scrape leaves last_run_status = 'running' with
+      // nothing to clear it, so ONE wedged scraper aborted and rolled back the
+      // user's entire account deletion — permanently, on every retry. A user's
+      // right to be erased cannot be hostage to a stuck background job.
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user", trustLevel: "3" } });
+
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: {
+          name: "Wedged Repo",
+          sourceType: "upload",
+          code: { "scraper.py": "pass" },
+          createdBy: users.testUser.id,
+        },
+        overrideAccess: true,
+      });
+      const scraper = await payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Wedged Scraper",
+          slug: "wedged-scraper",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          repoCreatedBy: users.testUser.id,
+        },
+        overrideAccess: true,
+      });
+
+      // lastRunStatus denies field-level writes, so claim it the way the
+      // trigger routes do. No lastRunAt — this is the un-provable-age case the
+      // delete guard deliberately keeps blocking.
+      await payload.db.drizzle.execute(
+        `UPDATE payload.scrapers SET last_run_status = 'running' WHERE id = ${scraper.id}`
+      );
+
+      const result = await deletionService.executeDeletion(users.testUser.id);
+
+      expect(result.success).toBe(true);
+      expect(result.dataDeleted.scraperRepos).toBe(1);
+
+      const [repos, scrapers] = await Promise.all([
+        payload.find({ collection: "scraper-repos", where: { id: { equals: repo.id } }, overrideAccess: true }),
+        payload.find({ collection: "scrapers", where: { id: { equals: scraper.id } }, overrideAccess: true }),
+      ]);
+      expect(repos.docs).toHaveLength(0);
+      expect(scrapers.docs).toHaveLength(0);
+    });
+
     it("should anonymize user and mark as deleted", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });

@@ -95,10 +95,11 @@ export class SeedingOperations {
     // Apply data transformations
     const transformedData = this.dataProcessing.applyDataTransformations(preparedData, config, collectionName);
 
-    // Handle global collections
+    // Handle global collections. The result is RETURNED, not discarded: a
+    // swallowed global failure meant the deploy bootstrap reported success
+    // after failing to seed settings/footer/main-menu.
     if (collectionName === MAIN_MENU_SLUG || collectionName === FOOTER_SLUG || collectionName === SETTINGS_SLUG) {
-      await this.seedGlobalCollection(transformedData, collectionName, idempotent, deploymentEnv);
-      return null;
+      return this.seedGlobalCollection(transformedData, collectionName, idempotent, deploymentEnv);
     }
 
     // Resolve relationships for regular collections
@@ -120,13 +121,26 @@ export class SeedingOperations {
     return result;
   }
 
+  /**
+   * Seed one global, reporting the outcome as a {@link SeedResult}.
+   *
+   * Returning a result rather than swallowing the error is the point: the
+   * caller accumulates `failed` into the run totals, and `seedWithConfig`
+   * exits non-zero when those are non-empty. While this logged-and-returned,
+   * a global that failed to seed never incremented anything, so a deploy whose
+   * settings/footer/main-menu seeding blew up still reported success.
+   */
   private async seedGlobalCollection(
     seedData: SeedData,
     collectionName: string,
     idempotent: boolean,
     deploymentEnv: DeploymentEnv | undefined
-  ): Promise<void> {
-    if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG && collectionName !== SETTINGS_SLUG) return;
+  ): Promise<SeedResult> {
+    const ok = (skipped: number): SeedResult => ({ created: 1 - skipped, skipped, failed: 0, errors: [] });
+
+    if (collectionName !== MAIN_MENU_SLUG && collectionName !== FOOTER_SLUG && collectionName !== SETTINGS_SLUG) {
+      return ok(1);
+    }
 
     try {
       const enData = (Array.isArray(seedData) && seedData.length > 0 ? seedData[0] : seedData) as Record<
@@ -150,7 +164,7 @@ export class SeedingOperations {
         >;
         if (!isGlobalEmpty(slug, existing)) {
           logger.debug(`Skipping ${collectionName} global — already populated`);
-          return;
+          return ok(1);
         }
       }
 
@@ -172,9 +186,16 @@ export class SeedingOperations {
       }
 
       logger.info(`Seeded ${collectionName} global (en${deData ? " + de" : ""}) successfully!`);
+      return ok(0);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       logger.error({ global: collectionName }, `Failed to seed ${collectionName} global: ${errorMsg}`);
+      return {
+        created: 0,
+        skipped: 0,
+        failed: 1,
+        errors: [{ item: collectionName, error: errorMsg, type: "unknown" }],
+      };
     }
   }
 
@@ -391,18 +412,24 @@ export class SeedingOperations {
     }
   }
 
+  /**
+   * `environment` here is the PRESET name (testing | e2e | development |
+   * deploy), not NODE_ENV.
+   *
+   * This used to branch on `environment === "test"` to rewrite slugs into
+   * per-run unique ones. No caller can pass "test" — it is not a preset — so
+   * the branch was unreachable and `generateTestSlug` was dead with it. Rather
+   * than re-point it at "testing" (which would give the testing preset a fresh
+   * random slug on every run, breaking every fixture that looks a seed up by
+   * slug), it is removed: `findExistingItem` below already handles re-runs by
+   * skipping records that are already there.
+   */
   private async createSingleItem(
     resolvedItem: Record<string, unknown>,
     collectionName: string,
-    environment: string,
-    idempotent: boolean
+    _environment: string,
+    _idempotent: boolean
   ): Promise<SeedItemResult> {
-    // For test environment (non-idempotent), add timestamp to slug to ensure uniqueness.
-    // In idempotent mode the seed slug is the identity key — must be preserved verbatim.
-    if (!idempotent && environment === "test" && resolvedItem.slug != null) {
-      resolvedItem.slug = this.dataProcessing.generateTestSlug(resolvedItem.slug);
-    }
-
     // Check if item already exists to avoid duplicate key errors
     const existingItem = await this.findExistingItem(collectionName, resolvedItem);
     if (existingItem != null) {

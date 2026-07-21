@@ -73,14 +73,10 @@ export interface PresetConfig {
   description: string;
   /** Collections enabled for this preset */
   enabled: string[];
-  /** How much data to generate */
-  volume: "small" | "medium" | "large";
-  /** How realistic/complex the data should be */
-  realism: "simple" | "realistic";
-  /** Performance vs richness trade-off */
-  performance: "fast" | "balanced" | "rich";
-  /** Logging verbosity */
-  debugging: "quiet" | "normal" | "verbose";
+  // A preset used to also declare `volume`, `realism`, `performance` and
+  // `debugging`. No code ever read any of them; the actual sizing lives in each
+  // collection's `count` and the generators in its `options`. They are dropped
+  // rather than kept as settings that look meaningful and are not.
   /** Preset-specific overrides for collection configurations */
   overrides?: Record<string, Partial<CollectionConfig>>;
 }
@@ -332,10 +328,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         FOOTER_SLUG,
         SETTINGS_SLUG,
       ],
-      volume: "small",
-      realism: "simple",
-      performance: "fast",
-      debugging: "quiet",
       overrides: {
         events: {
           customGenerator: "simple-patterns",
@@ -362,10 +354,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         SETTINGS_SLUG,
         COLLECTION_GEOCODING_PROVIDERS,
       ],
-      volume: "medium",
-      realism: "realistic",
-      performance: "balanced",
-      debugging: "normal",
       overrides: {
         events: {
           count: 100, // Enough to test UI, not too slow
@@ -395,10 +383,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         "scrapers",
         "scraper-runs",
       ],
-      volume: "large",
-      realism: "realistic",
-      performance: "rich",
-      debugging: "verbose",
       overrides: {
         events: {
           customGenerator: "realistic-temporal-spatial-patterns",
@@ -419,10 +403,6 @@ export const SEED_CONFIG: SeedConfiguration = {
     deploy: {
       description: "Idempotent on-boot bootstrap for deployments and local dev",
       enabled: ["sites", "views", "pages", MAIN_MENU_SLUG, FOOTER_SLUG, SETTINGS_SLUG, COLLECTION_GEOCODING_PROVIDERS],
-      volume: "small",
-      realism: "simple",
-      performance: "fast",
-      debugging: "quiet",
     },
   },
 };

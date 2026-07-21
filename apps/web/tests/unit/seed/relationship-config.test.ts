@@ -68,23 +68,20 @@ describe("relationship-config", () => {
       expect(config.transform!("My Custom Catalog")).toBe("My Custom Catalog");
     });
 
-    it("should map known dataset slugs to names", () => {
+    it("resolves events by the unique dataset slug, with no name transform", () => {
+      // Events must NOT be resolved by dataset `name`. Names come from shared
+      // templates, so several catalogs produce datasets with the same one
+      // ("Research Study Results" exists three times); resolving by name with
+      // limit:1 attached a catalog's events to another catalog's dataset. The
+      // slug is `${catalog.slug}-${template.slug}` and is genuinely unique.
+      //
+      // The transform this used to assert mapped slugs INTO those ambiguous
+      // names — it converted the unique key into the broken one, so it is gone.
       const config = RELATIONSHIP_CONFIG.events![0]!;
-      expect(config.transform!("air-quality")).toBe("Air Quality Measurements");
-    });
 
-    it("should map known event dataset slugs to names", () => {
-      const config = RELATIONSHIP_CONFIG.events![0]!;
-      expect(config.transform!("water-quality")).toBe("Water Quality Data");
-      expect(config.transform!("gdp-growth")).toBe("GDP Growth Rates");
-      expect(config.transform!("employment-stats")).toBe("Employment Statistics");
-      expect(config.transform!("cultural-participation")).toBe("Cultural Participation Rates");
-      expect(config.transform!("research-publications")).toBe("Research Publications Database");
-    });
-
-    it("should pass through unknown event dataset values", () => {
-      const config = RELATIONSHIP_CONFIG.events![0]!;
-      expect(config.transform!("My Custom Dataset")).toBe("My Custom Dataset");
+      expect(config.searchField).toBe("slug");
+      expect(config.fallbackSearch).toBe("name");
+      expect(config.transform).toBeUndefined();
     });
 
     it("should map additional catalog slugs to names", () => {

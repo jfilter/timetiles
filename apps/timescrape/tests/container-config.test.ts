@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildPodmanArgs } from "../src/security/container-config.js";
+import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../src/security/container-config.js";
 
 describe("buildPodmanArgs", () => {
   const baseConfig = {
@@ -29,6 +29,17 @@ describe("buildPodmanArgs", () => {
     expect(args).toContain("--memory=512m");
     expect(args).toContain("--cpus=1");
     expect(args).toContain("--pids-limit=256");
+  });
+
+  it("keeps the stop grace period small and independent of the run timeout", () => {
+    // --stop-timeout is the SIGTERM->SIGKILL grace, not a run budget. Deriving
+    // it from timeoutSecs (up to 3600s) made every `podman stop` outlast the
+    // runner's own client timeouts, so a timed-out container was never killed.
+    const args = buildPodmanArgs(baseConfig);
+
+    expect(args).toContain(`--stop-timeout=${CONTAINER_STOP_GRACE_SECS}`);
+    expect(args).not.toContain("--stop-timeout=300");
+    expect(CONTAINER_STOP_GRACE_SECS).toBeLessThanOrEqual(30);
   });
 
   it("mounts code as read-only and output as read-write", () => {

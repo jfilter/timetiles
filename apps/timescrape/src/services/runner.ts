@@ -20,7 +20,7 @@ import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
 import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
-import { buildPodmanArgs } from "../security/container-config.js";
+import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
 import { prepareCode } from "./code-prep.js";
 import { validateOutput } from "./output-validator.js";
@@ -136,6 +136,122 @@ const runPodmanContainer = async (
     const codeNote = typeof execError.code === "string" ? `\n[runner] process error: ${execError.code}` : "";
     return { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${codeNote}`, exitCode };
   }
+};
+
+/**
+ * Terminate a run's container, escalating until it is actually gone.
+ *
+ * Every step here is sized against podman's OWN grace period, because the
+ * previous shape could not kill anything: it ran `podman stop` under a 10s
+ * client timeout against a container configured with `--stop-timeout` equal to
+ * the run timeout (up to 3600s), then fell back to `podman rm -f` under a 5s
+ * client timeout while `rm --force` itself waits out the same grace before
+ * SIGKILL. Both calls were killed before podman ever reached the SIGKILL step,
+ * so a container ignoring SIGTERM survived the timeout meant to end it.
+ *
+ *   1. `podman stop -t <grace>` — lets a well-behaved scraper flush and exit.
+ *      The client timeout exceeds the grace so podman's own SIGKILL can land.
+ *   2. `podman kill -s KILL` — no grace period at all, for a container that
+ *      ignored SIGTERM or a stop that failed for any other reason.
+ *   3. `podman rm -f -t 0` — backstop. `--rm` normally reaps the container, but
+ *      a container that never started, or a podman-side failure, can leave one
+ *      behind holding the run name and its share of the disk. `-t 0` skips the
+ *      SIGTERM wait so this cannot hang either.
+ */
+const forceKillContainer = async (runId: string): Promise<void> => {
+  const name = `run-${runId}`;
+
+  try {
+    await execFileAsync("podman", ["stop", "-t", String(CONTAINER_STOP_GRACE_SECS), name], {
+      timeout: (CONTAINER_STOP_GRACE_SECS + 5) * 1000,
+    });
+    return;
+  } catch (error) {
+    logger.info({ runId, error: String(error) }, "podman stop did not complete, escalating to SIGKILL");
+  }
+
+  try {
+    await execFileAsync("podman", ["kill", "-s", "KILL", name], { timeout: 10_000 });
+  } catch (error) {
+    logger.info({ runId, error: String(error) }, "podman kill failed, attempting force-remove");
+  }
+
+  try {
+    await execFileAsync("podman", ["rm", "-f", "-t", "0", name], { timeout: 15_000 });
+  } catch {
+    // Already removed by `--rm`, or never created. Nothing left to do.
+  }
+};
+
+/** How often the output watchdog samples the output directory. */
+const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
+
+/** Total bytes held by a directory tree, ignoring anything unreadable. */
+const directorySizeBytes = async (dir: string): Promise<number> => {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+
+  let total = 0;
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += await directorySizeBytes(full);
+    } else if (entry.isFile()) {
+      total += await stat(full)
+        .then((s) => s.size)
+        .catch(() => 0);
+    }
+  }
+  return total;
+};
+
+/**
+ * Kill a run as soon as its output exceeds the configured size cap.
+ *
+ * SCRAPER_MAX_OUTPUT_SIZE_MB was only ever checked in `collectOutput`, after
+ * the container exited — by which point the bytes are already on the runner
+ * host's disk, so the limit could not prevent the write it exists to limit.
+ * `/output` is a bind mount and carries no quota of its own (see the mount
+ * comment in security/container-config.ts), so the cap has to be enforced from
+ * out here while the run is still in flight.
+ *
+ * Sampling means the bound is approximate: a run can overshoot by whatever it
+ * writes within one interval. That is a far weaker guarantee than a quota, but
+ * it turns "fills the host disk" into "overshoots the cap briefly". A hard
+ * bound requires SCRAPER_DATA_DIR to sit on a size-limited filesystem.
+ */
+const startOutputWatchdog = (
+  runId: string,
+  outputDir: string,
+  maxSizeMb: number
+): { stop: () => void; breached: () => boolean } => {
+  const maxBytes = maxSizeMb * 1024 * 1024;
+  let breached = false;
+  let checking = false;
+
+  const check = async (): Promise<void> => {
+    try {
+      const bytes = await directorySizeBytes(outputDir);
+      if (bytes <= maxBytes || breached) return;
+      breached = true;
+      logger.warn({ runId, bytes, maxBytes }, "Scraper output exceeded size limit, killing container");
+      await forceKillContainer(runId);
+    } catch (error) {
+      logError("Output watchdog check failed", error, { runId, outputDir });
+    } finally {
+      checking = false;
+    }
+  };
+
+  const timer = setInterval(() => {
+    // Skip if a sample is still in flight: a large tree can take longer to walk
+    // than the interval, and overlapping walks would pile up.
+    if (checking || breached) return;
+    checking = true;
+    void check();
+  }, OUTPUT_WATCHDOG_INTERVAL_MS);
+  timer.unref();
+
+  return { stop: () => clearInterval(timer), breached: () => breached };
 };
 
 /**
@@ -291,9 +407,36 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     logger.info({ runId, runtime: request.runtime, entrypoint: request.entrypoint }, "Starting scraper container");
 
     const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
-    const { stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs);
+
+    // Bound the output write while it happens; the post-run size check in
+    // collectOutput cannot, because by then the bytes are already on disk.
+    const watchdog = startOutputWatchdog(runId, outputDir, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
+    let stdout: string;
+    let stderr: string;
+    let exitCode: number;
+    try {
+      ({ stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs));
+    } finally {
+      watchdog.stop();
+    }
 
     const durationMs = Date.now() - runStartedAt;
+
+    // A watchdog kill is a failed run, full stop. Whatever the scraper managed
+    // to write is a truncated fragment of a result it never finished, so it is
+    // not offered for download — but the logs are kept so the cause is visible.
+    if (watchdog.breached()) {
+      totalFailed++;
+      const reason = `Output exceeded the ${config.SCRAPER_MAX_OUTPUT_SIZE_MB}MB limit; container was killed mid-run`;
+      logger.info({ runId, status: "failed", durationMs }, "Scraper run killed by output watchdog");
+      return {
+        status: "failed",
+        exit_code: exitCode === 0 ? 1 : exitCode,
+        duration_ms: durationMs,
+        stdout: truncateLog(stdout),
+        stderr: truncateLog(`${stderr}\n[runner] ${reason}`),
+      };
+    }
 
     const {
       output,
@@ -322,16 +465,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 
     if (error instanceof TimeoutError) {
       totalTimeout++;
-      // Try to stop the container, force-remove as fallback
-      try {
-        await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 10_000 });
-      } catch {
-        try {
-          await execFileAsync("podman", ["rm", "-f", `run-${runId}`], { timeout: 5_000 });
-        } catch {
-          // Container may have already been removed
-        }
-      }
+      // Escalate all the way to SIGKILL. A container that ignores SIGTERM must
+      // still die here, or it outlives the timeout and keeps its memory, pids
+      // and network slot until something else notices.
+      await forceKillContainer(runId);
 
       return {
         status: "timeout",
@@ -360,12 +497,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 };
 
 export const stopRun = async (runId: string): Promise<void> => {
-  try {
-    await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 15_000 });
-    logger.info({ runId }, "Container stopped");
-  } catch (error) {
-    logError("Failed to stop container", error, { runId });
-  }
+  // Same escalation as the timeout path: an operator asking for a stop means
+  // the container must go, not that it should be politely asked.
+  await forceKillContainer(runId);
+  logger.info({ runId }, "Container stopped");
 };
 
 export const isRunActive = (runId: string): boolean => activeRuns.has(runId);

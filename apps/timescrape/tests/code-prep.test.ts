@@ -4,15 +4,21 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { simpleGit } from "simple-git";
+
 import { RunnerError } from "../src/lib/errors.js";
 import type { RunRequest } from "../src/types.js";
 
 // Mock simple-git and logger to avoid side effects
 vi.mock("simple-git", () => ({ simpleGit: vi.fn() }));
 
+vi.mock("../src/lib/ssrf-guard.js", () => ({ assertGitTargetIsPublic: vi.fn().mockResolvedValue(undefined) }));
+
 vi.mock("../src/lib/logger.js", () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
 
-vi.mock("../src/config.js", () => ({ getConfig: vi.fn(() => ({ SCRAPER_MAX_REPO_SIZE_MB: 50 })) }));
+vi.mock("../src/config.js", () => ({
+  getConfig: vi.fn(() => ({ SCRAPER_MAX_REPO_SIZE_MB: 50, SCRAPER_GIT_CLONE_TIMEOUT: 60_000 })),
+}));
 
 describe("prepareCode", () => {
   let codeDir: string;
@@ -34,6 +40,30 @@ describe("prepareCode", () => {
 
     await expect(prepareCode(request, codeDir)).rejects.toThrow(RunnerError);
     await expect(prepareCode(request, codeDir)).rejects.toThrow("Either code_url or code must be provided");
+  });
+
+  describe("cloneRepo", () => {
+    it("refuses HTTP redirects so the SSRF guard cannot be bypassed", async () => {
+      // assertGitTargetIsPublic validates the URL in THIS process, then git
+      // re-resolves it. With git's default followRedirects=initial, a public
+      // URL can 302 to an internal host the guard never inspected — verified
+      // against the real git binary. Disabling redirects is what closes that.
+      const clone = vi.fn().mockResolvedValue(undefined);
+      const raw = vi.fn().mockResolvedValue("size-pack: 100\n");
+      vi.mocked(simpleGit).mockReturnValue({ clone, cwd: vi.fn(() => ({ raw })) } as never);
+
+      const { prepareCode } = await import("../src/services/code-prep.js");
+
+      await prepareCode(
+        { run_id: "test-7", runtime: "python", entrypoint: "main.py", code_url: "https://example.com/repo.git" },
+        codeDir
+      );
+
+      expect(simpleGit).toHaveBeenCalledWith(
+        expect.objectContaining({ config: expect.arrayContaining(["http.followRedirects=false"]) })
+      );
+      expect(clone).toHaveBeenCalledWith("https://example.com/repo.git", codeDir, ["--depth", "1", "--single-branch"]);
+    });
   });
 
   describe("writeInlineCode", () => {

@@ -239,14 +239,15 @@ describe.sequential("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     const result = await scraperRepoSyncJob.handler(context);
 
-    // Should delete the scraper-runs for the removed scraper first
-    expect(mockPayload.delete).toHaveBeenCalledWith({
-      collection: "scraper-runs",
-      where: { scraper: { equals: 51 } },
-      overrideAccess: true,
-    });
-    // Then delete the scraper itself
+    // Deletes the scraper, and ONLY the scraper. The runs are cascaded by the
+    // scrapers beforeDelete hook, which does it AFTER refusing to delete a
+    // running scraper. Deleting them here first inverted that order: a scraper
+    // mid-run lost its entire run history and only then hit the 409 that
+    // rejected the delete — data destroyed by an operation that then failed.
     expect(mockPayload.delete).toHaveBeenCalledWith({ collection: "scrapers", id: 51, overrideAccess: true });
+    expect(mockPayload.delete).not.toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scraper-runs" as const })
+    );
 
     // Should update the kept scraper
     const scraperUpdateCalls = mockPayload.update.mock.calls.filter(
@@ -258,6 +259,32 @@ describe.sequential("scraperRepoSyncJob", () => {
     );
 
     expect(result.output).toEqual(expect.objectContaining({ success: true, created: 0, updated: 1, deleted: 1 }));
+  });
+
+  it("skips a running scraper that left the manifest instead of failing the whole sync", async () => {
+    const repo = { id: 5, sourceType: "upload", code: { "scrapers.yml": "scrapers: ..." }, createdBy: 100 };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const existingScrapers = [
+      { id: 50, slug: "keep-this", name: "Keep This", repo: 5 },
+      { id: 51, slug: "remove-this", name: "Remove This", repo: 5 },
+    ];
+    mockPayload.find.mockResolvedValue({ docs: existingScrapers });
+
+    // The scrapers beforeDelete hook refuses a running scraper with a 409.
+    const conflict = Object.assign(new Error("Scraper is currently running"), { status: 409 });
+    mockPayload.delete.mockRejectedValueOnce(conflict);
+
+    const parsedScrapers = [createParsedScraper({ name: "Keep This", slug: "keep-this", entrypoint: "keep.py" })];
+    const { parseManifest } = await import("@/lib/ingest/manifest-parser");
+    (parseManifest as any).mockReturnValue({ success: true, scrapers: parsedScrapers });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+    const result = await scraperRepoSyncJob.handler(context);
+
+    // The sync completes; the running scraper is simply left for the next run.
+    // Aborting here would strand every remaining create/update in the manifest.
+    expect(result.output).toEqual(expect.objectContaining({ success: true, updated: 1, deleted: 0 }));
   });
 
   it("should update repo lastSyncStatus to 'success' on success", async () => {

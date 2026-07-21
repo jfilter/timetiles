@@ -39,7 +39,22 @@ const cloneRepo = async (codeUrl: string, codeDir: string): Promise<void> => {
   // Configure a block (idle) timeout so a stalled or trickling git server kills
   // the git process and rejects, rather than hanging forever and permanently
   // holding a concurrency slot in the runner.
-  const git = simpleGit({ timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT } });
+  //
+  // `config` entries are passed as `-c <key>=<value>` BEFORE the subcommand.
+  //
+  // http.followRedirects=false is what makes assertGitTargetIsPublic below mean
+  // anything. The guard resolves the hostname in THIS process and then hands
+  // the original URL to a separate git process, which resolves again and, with
+  // git's default `http.followRedirects=initial`, follows a redirect to any
+  // host the guard never inspected. A public URL answering 302 with an internal
+  // Location therefore reached that internal host from the runner's own
+  // network. Refusing redirects outright closes the gap: git aborts instead of
+  // silently re-targeting. Legitimate hosts (GitHub, GitLab, Codeberg) serve
+  // clone traffic directly, so nothing normal depends on following one.
+  const git = simpleGit({
+    timeout: { block: config.SCRAPER_GIT_CLONE_TIMEOUT },
+    config: ["http.followRedirects=false"],
+  });
 
   logger.info({ url, branch: branch ?? "default" }, "Cloning repository");
 

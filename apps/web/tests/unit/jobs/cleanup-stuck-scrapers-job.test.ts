@@ -125,12 +125,17 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     const context = createMockContext({ stuckThresholdHours: 4 });
     await cleanupStuckScrapersJob.handler(context as any);
 
+    // The id must be matched in BOTH representations. Every trigger path
+    // enqueues `input: { scraperId: scraper.id }` as a NUMBER, and Payload's
+    // postgres adapter compiles a string `equals` on a jsonb path into a JSON
+    // *string* comparison — so a string-only clause matched nothing and this
+    // cancellation never fired for any real job.
     expect(mockPayload.find).toHaveBeenCalledWith({
       collection: "payload-jobs",
       overrideAccess: true,
       where: {
         and: [
-          { "input.scraperId": { equals: "7" } },
+          { or: [{ "input.scraperId": { equals: "7" } }, { "input.scraperId": { equals: 7 } }] },
           { processing: { equals: false } },
           { completedAt: { exists: false } },
           { createdAt: { less_than: expect.any(String) } },
