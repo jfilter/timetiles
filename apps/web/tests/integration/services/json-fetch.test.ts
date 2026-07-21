@@ -390,6 +390,29 @@ describe.sequential("JSON fetch integration", () => {
     expect(result.data.toString()).toContain("title,date");
   });
 
+  it("keeps every column when stripping excluded fields from a ragged native CSV", async () => {
+    // First data row is short, so header-mode parsing yields an object without
+    // `city`/`secret`. Deriving the output header from that first row alone
+    // dropped `city` for every row in the file.
+    server.respond("/api/ragged.csv", {
+      body: "title,city,secret\nEvent 1\nEvent 2,Berlin,classified\n",
+      headers: { "Content-Type": "text/csv" },
+    });
+
+    const result = await fetchRemoteData({
+      sourceUrl: server.getUrl("/api/ragged.csv"),
+      maxRetries: 0,
+      excludeFields: ["secret"],
+    });
+
+    const csv = result.data.toString();
+    expect(result.wasConverted).toBe(false);
+    expect(csv).toContain("city");
+    expect(csv).toContain("Berlin");
+    expect(csv).not.toContain("secret");
+    expect(csv).not.toContain("classified");
+  });
+
   // -------------------------------------------------------------------------
   // 13. Pagination: stops when records < limitValue (partial last page)
   // -------------------------------------------------------------------------

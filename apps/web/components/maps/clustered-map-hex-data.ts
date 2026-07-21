@@ -86,11 +86,31 @@ export const buildHoverFetchParams = (
   return params;
 };
 
-/** Convert an H3 cell boundary to a GeoJSON-compatible [lng, lat] ring. */
+/**
+ * Convert an H3 cell boundary to a GeoJSON-compatible [lng, lat] ring.
+ *
+ * h3-js returns raw vertex longitudes, so a cell straddling the antimeridian
+ * comes back with some vertices near +180 and others near -180. Rendered as-is,
+ * MapLibre draws the polygon the "long way" around and the hexagon smears into
+ * a band across the entire map. Shifting the negative vertices by +360 keeps the
+ * ring contiguous — MapLibre accepts longitudes outside [-180, 180] and wraps
+ * them, so the hexagon draws in the right place on both copies of the world.
+ *
+ * A hexagon is far smaller than a hemisphere, so a >180° span can only mean the
+ * ring wrapped; no legitimate cell is that wide.
+ */
 const cellToGeoJsonRing = (cellId: string): Array<[number, number]> => {
   const boundary = cellToBoundary(cellId);
   const coords = boundary.map(([lat, lng]) => [lng, lat] as [number, number]);
-  if (coords.length > 0) coords.push(coords[0]!);
+
+  const lngs = coords.map(([lng]) => lng);
+  if (lngs.length > 0 && Math.max(...lngs) - Math.min(...lngs) > 180) {
+    for (const coord of coords) {
+      if (coord[0] < 0) coord[0] += 360;
+    }
+  }
+
+  if (coords.length > 0) coords.push([...coords[0]!] as [number, number]);
   return coords;
 };
 

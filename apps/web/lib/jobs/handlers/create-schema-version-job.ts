@@ -187,6 +187,13 @@ export const createSchemaVersionJob = {
       // the DB level with the jsonb `||` operator instead — a single UPDATE with
       // no read-modify-write race, preserving the union of field keys. isPublic
       // and owner are untouched, so the datasets afterChange sync stays a no-op.
+      //
+      // Known consequence: `||` unions keys, so a field that disappears from the
+      // source keeps its (now stale) entry here. Pruning is deliberately NOT done
+      // from this job — a single sheet only ever knows its own subset of the
+      // dataset's fields, and dropping the rest is exactly the last-writer-wins
+      // bug the merge exists to prevent. Reconciling removed fields needs a
+      // dataset-level pass that can see every sheet/source feeding the dataset.
       if (fieldStats && Object.keys(fieldStats).length > 0) {
         const fieldTypes = buildFieldTypes(fieldStats);
         await payload.db.drizzle
@@ -194,6 +201,11 @@ export const createSchemaVersionJob = {
           .set({
             fieldMetadata: sql`coalesce(${datasets.fieldMetadata}, '{}'::jsonb) || ${JSON.stringify(fieldStats)}::jsonb`,
             fieldTypes: sql`coalesce(${datasets.fieldTypes}, '{}'::jsonb) || ${JSON.stringify(fieldTypes)}::jsonb`,
+            // Payload maintains updatedAt itself; a raw UPDATE must do it by hand,
+            // otherwise the row changes while its timestamp (and the
+            // datasets_updated_at_idx-backed sorting/staleness checks that read it)
+            // still points at the previous write.
+            updatedAt: sql`now()`,
           })
           .where(eq(datasets.id, dataset.id));
       }

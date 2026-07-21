@@ -312,6 +312,92 @@ unknownKey: true
       expect(config.batchSizes.eventCreation).toBe(1000);
     });
 
+    it("treats a section written with no children as absent", () => {
+      // `account:` with nothing under it parses to null, which is the natural
+      // YAML way to write "nothing overridden here". It must not blow up the
+      // config load (which every request depends on).
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+account:
+batchSizes:
+quotas:
+rateLimits:
+`);
+      resetAppConfig();
+
+      const config = getAppConfig();
+
+      expect(config.account.deletionGracePeriodDays).toBe(30);
+      expect(config.batchSizes.eventCreation).toBe(1000);
+      expect(config.quotas[1]!.maxTotalEvents).toBe(5000);
+      expect(config.rateLimits.FILE_UPLOAD.windows).toHaveLength(3);
+    });
+
+    it("treats an empty nested section as absent", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+cache:
+  urlFetch:
+`);
+      resetAppConfig();
+
+      const config = getAppConfig();
+
+      expect(config.cache.urlFetch.defaultTtlSeconds).toBe(3600);
+      expect(config.cache.urlFetch.respectCacheControl).toBe(true);
+    });
+
+    it("rejects an unknown key nested inside a known section", () => {
+      // Silently dropping a misspelled setting leaves the operator believing a
+      // limit is in force when the default is still applied.
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+batchSizes:
+  eventCreationn: 2000
+`);
+      resetAppConfig();
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it("rejects an unknown quota field name", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+quotas:
+  "1":
+    maxTotalEvent: 99999
+`);
+      resetAppConfig();
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it("rejects an unknown trust level key", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+quotas:
+  "9":
+    maxTotalEvents: 99999
+`);
+      resetAppConfig();
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it("rejects an unknown rate limit endpoint name", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(`
+rateLimits:
+  FILE_UPLOADS:
+    windows:
+      - limit: 10
+        windowMs: 1000
+`);
+      resetAppConfig();
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
     it("handles YAML file with only comments gracefully", () => {
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockReturnValue("# This is just a comment\n");

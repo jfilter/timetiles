@@ -29,11 +29,18 @@ vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/utils/base-url", () => ({ getBaseUrl: vi.fn(() => "https://example.com") }));
 
-vi.mock("@/lib/services/rate-limit-service", () => ({
-  getClientIdentifier: vi.fn().mockReturnValue("test-client"),
-  getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
-  RATE_LIMITS: { REGISTRATION: { windows: [] }, FORGOT_PASSWORD: { windows: [] } },
-}));
+// Only the service call is mocked. RATE_LIMITS stays REAL so the tests can
+// assert which configured limit each route actually resolves — stub configs
+// made every configName indistinguishable, so a route wired to the wrong one
+// still looked correct.
+vi.mock("@/lib/services/rate-limit-service", async () => {
+  const { RATE_LIMITS } = await import("@/lib/constants/rate-limits");
+  return {
+    getClientIdentifier: vi.fn().mockReturnValue("test-client"),
+    getRateLimitService: vi.fn().mockReturnValue({ checkConfiguredRateLimit: mocks.mockCheckRateLimit }),
+    RATE_LIMITS,
+  };
+});
 
 vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mocks.mockIsEnabled }),
@@ -44,6 +51,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as forgotPasswordPOST } from "@/app/api/auth/forgot-password/route";
 import { POST as registerPOST } from "@/app/api/auth/register/route";
+import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { EMAIL_CONTEXTS } from "@/lib/email/send";
 
 const { mockPayload, mockCheckRateLimit, mockIsEnabled } = mocks;
@@ -214,21 +222,51 @@ describe.sequential("POST /api/auth/forgot-password", () => {
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 
-  it("wires the FORGOT_PASSWORD rate limit: 3 requests pass, the 4th returns 429", async () => {
-    // Regression: commit 0496522e added a dedicated FORGOT_PASSWORD rate
-    // limit config (burst=3/60s, hourly=10, daily=20) and wired the route
-    // via `rateLimit: { configName: "FORGOT_PASSWORD" }`. This test confirms
-    // the middleware is wired and enforces the burst ceiling.
-    //
-    // Unit-level strategy: the middleware delegates to the mocked
-    // rate-limit service, so we simulate the burst window by returning
-    // { allowed: true } three times and { allowed: false } on the 4th.
-    mockCheckRateLimit
-      .mockReset()
-      .mockReturnValueOnce({ allowed: true })
-      .mockReturnValueOnce({ allowed: true })
-      .mockReturnValueOnce({ allowed: true })
-      .mockReturnValueOnce({ allowed: false, resetTime: Date.now() + 60_000 });
+  it("resolves the route's limit from the FORGOT_PASSWORD config, not some other endpoint's", async () => {
+    // The route declares `rateLimit: { configName: "FORGOT_PASSWORD" }`, and
+    // the middleware resolves that name against the real RATE_LIMITS table.
+    // Asserting the resolved config *identity* is what makes a mis-wired
+    // configName (e.g. "REGISTRATION") fail here: a scripted allow/deny
+    // sequence alone is satisfied by any configName, or none at all.
+    mockCheckRateLimit.mockReset().mockReturnValue({ allowed: true });
+    mockPayload.forgotPassword.mockResolvedValue(null);
+
+    const response = await forgotPasswordPOST(
+      createJsonRequest("http://localhost/api/auth/forgot-password", { email: "rl@example.com" }),
+      defaultParams
+    );
+    expect(response.status).toBe(200);
+
+    expect(mockCheckRateLimit).toHaveBeenCalledTimes(1);
+    const [key, config] = mockCheckRateLimit.mock.calls[0] as [string, unknown];
+
+    // Guard the premise: these two configs must be distinguishable objects,
+    // otherwise the identity assertion below would prove nothing.
+    expect(RATE_LIMITS.FORGOT_PASSWORD).not.toBe(RATE_LIMITS.REGISTRATION);
+    expect(config).toBe(RATE_LIMITS.FORGOT_PASSWORD);
+
+    // The bucket key is namespaced per config so forgot-password cannot eat
+    // another endpoint's budget for the same anonymous client.
+    expect(key).toContain("FORGOT_PASSWORD");
+  });
+
+  it("enforces the configured FORGOT_PASSWORD burst ceiling and 429s past it", async () => {
+    // Drive the scripted allow/deny sequence from the real configured burst
+    // window rather than a hardcoded 3, so lowering the limit in app-config
+    // without updating the route is visible here.
+    const burst = RATE_LIMITS.FORGOT_PASSWORD.windows.find((window) => window.name === "burst");
+    expect(burst).toBeDefined();
+    const burstLimit = burst!.limit;
+    expect(burstLimit).toBeGreaterThan(0);
+
+    mockCheckRateLimit.mockReset().mockImplementation((_key: string, config: { windows: { limit: number }[] }) => {
+      // Emulate the real service: count calls against the config it was
+      // handed. A route wired to a laxer config gets a laxer ceiling here,
+      // exactly as it would in production.
+      const limit = config.windows.find((window) => (window as { name?: string }).name === "burst")?.limit ?? 0;
+      const callCount = mockCheckRateLimit.mock.calls.length;
+      return callCount <= limit ? { allowed: true } : { allowed: false, resetTime: Date.now() + 60_000 };
+    });
 
     mockPayload.forgotPassword.mockResolvedValue(null);
 
@@ -237,15 +275,16 @@ describe.sequential("POST /api/auth/forgot-password", () => {
 
     const expectedSuccess = "If an account exists for that email, we've sent password reset instructions.";
 
-    // First three calls succeed with the uniform non-enumerating success body.
-    for (let i = 0; i < 3; i++) {
+    // Every request up to the configured ceiling succeeds with the uniform
+    // non-enumerating success body.
+    for (let i = 0; i < burstLimit; i++) {
       const response = await forgotPasswordPOST(buildRequest(), defaultParams);
       const data = await response.json();
       expect(response.status).toBe(200);
       expect(data.message).toBe(expectedSuccess);
     }
 
-    // Fourth call within the burst window is rate-limited.
+    // The next one within the burst window is rate-limited.
     const limitedResponse = await forgotPasswordPOST(buildRequest(), defaultParams);
     const limitedData = await limitedResponse.json();
 
@@ -256,8 +295,8 @@ describe.sequential("POST /api/auth/forgot-password", () => {
     // concern — this assertion simply pins the current middleware
     // behavior so future changes don't silently regress it.
     expect(limitedData.error).toContain("Too many requests");
+    expect(limitedResponse.headers.get("Retry-After")).not.toBeNull();
 
-    // Configured rate limit was consulted exactly 4 times with the burst config.
-    expect(mockCheckRateLimit).toHaveBeenCalledTimes(4);
+    expect(mockCheckRateLimit).toHaveBeenCalledTimes(burstLimit + 1);
   });
 });

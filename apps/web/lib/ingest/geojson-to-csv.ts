@@ -79,11 +79,12 @@ export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: n
     case "MultiPoint": {
       const points = geometry.coordinates as [number, number][];
       if (!Array.isArray(points) || points.length === 0) return null;
-      const sum = points.reduce((acc, p) => ({ lng: acc.lng + (p[0] ?? 0), lat: acc.lat + (p[1] ?? 0) }), {
-        lng: 0,
-        lat: 0,
-      });
-      return { latitude: sum.lat / points.length, longitude: sum.lng / points.length };
+      // Longitudes are averaged in the unwrapped frame so a set straddling the
+      // dateline averages to ±180, not to 0 (see unwrapLongitudes).
+      const lngs = unwrapLongitudes(points.map((p) => p[0] ?? 0));
+      const latSum = points.reduce((acc, p) => acc + (p[1] ?? 0), 0);
+      const lngSum = lngs.reduce((acc, lng) => acc + lng, 0);
+      return { latitude: latSum / points.length, longitude: normalizeLongitude(lngSum / lngs.length) };
     }
 
     case "LineString": {
@@ -122,17 +123,78 @@ export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: n
   }
 };
 
+/**
+ * Wrap a longitude back into (-180, 180].
+ *
+ * The antimeridian itself is reported as +180 rather than -180 (they name the
+ * same meridian) so an unwrapped centroid that lands exactly on it does not
+ * flip sign relative to the input coordinates.
+ */
+const normalizeLongitude = (lng: number): number => {
+  const wrapped = ((((lng + 180) % 360) + 360) % 360) - 180;
+  if (wrapped === -180) return 180;
+  return Object.is(wrapped, -0) ? 0 : wrapped;
+};
+
+/**
+ * Rewrite longitudes into a continuous frame that may extend past ±180.
+ *
+ * Longitude is cyclic, so plain min/max (or a plain mean) puts a geometry
+ * straddling the antimeridian — e.g. a Fiji or Chukotka polygon with vertices
+ * at 179 and -179 — at longitude 0, dropping the feature in the Gulf of Guinea
+ * half a world away.
+ *
+ * The shortest arc covering the points is found by locating the LARGEST gap
+ * between consecutive sorted longitudes (including the wrap-around gap): that
+ * gap is the empty side of the circle, so the points span the complement. Every
+ * longitude before the gap's end is shifted by +360 so the whole set is
+ * monotonic and ordinary min/max/mean arithmetic works.
+ *
+ * Using the largest gap rather than a fixed ">180 span means it crosses" test
+ * keeps ordinary wide geometries (a country spanning 40° of longitude) untouched.
+ */
+const unwrapLongitudes = (lngs: number[]): number[] => {
+  if (lngs.length < 2) return lngs;
+
+  const sorted = [...lngs].sort((a, b) => a - b);
+  let gapStart = sorted[sorted.length - 1]!;
+  let largestGap = sorted[0]! + 360 - gapStart;
+  for (let i = 1; i < sorted.length; i++) {
+    const gap = sorted[i]! - sorted[i - 1]!;
+    if (gap > largestGap) {
+      largestGap = gap;
+      gapStart = sorted[i - 1]!;
+    }
+  }
+
+  // The wrap-around gap is the largest: the points already form one contiguous
+  // run, nothing to shift.
+  if (gapStart === sorted[sorted.length - 1]!) return lngs;
+
+  return lngs.map((lng) => (lng <= gapStart ? lng + 360 : lng));
+};
+
 /** Compute the center of a bounding box from an array of [lng, lat] coordinates. */
 const bboxCentroid = (coords: [number, number][]): { latitude: number; longitude: number } | null => {
   if (!Array.isArray(coords) || coords.length === 0) return null;
+
+  // Non-finite vertices are skipped rather than poisoning the bounds (a single
+  // NaN would otherwise make every comparison below false).
+  // Number.isFinite (not the global) — the global coerces, so `isFinite(null)`
+  // is true and a null vertex would sneak in as 0.
+  const valid = coords.filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
+  if (valid.length === 0) return null;
+
+  const lngs = unwrapLongitudes(valid.map(([lng]) => lng));
 
   let minLng = Infinity;
   let maxLng = -Infinity;
   let minLat = Infinity;
   let maxLat = -Infinity;
-
-  for (const [lng, lat] of coords) {
-    if (lng == null || lat == null) continue;
+  // Explicit loops (not Math.min(...spread)) — detailed WFS rings can carry
+  // hundreds of thousands of vertices and blow the argument limit.
+  for (const [index, [, lat]] of valid.entries()) {
+    const lng = lngs[index]!;
     if (lng < minLng) minLng = lng;
     if (lng > maxLng) maxLng = lng;
     if (lat < minLat) minLat = lat;
@@ -141,7 +203,7 @@ const bboxCentroid = (coords: [number, number][]): { latitude: number; longitude
 
   if (!isFinite(minLng) || !isFinite(minLat)) return null;
 
-  return { latitude: (minLat + maxLat) / 2, longitude: (minLng + maxLng) / 2 };
+  return { latitude: (minLat + maxLat) / 2, longitude: normalizeLongitude((minLng + maxLng) / 2) };
 };
 
 // ---------------------------------------------------------------------------
