@@ -24,11 +24,33 @@ const mocks = vi.hoisted(() => {
   const MockGeocodingService = class {
     geocode = geocode;
   };
+  // A spy, not a plain closure: the handler passes (addresses, batchSize, bias)
+  // and the geocoding bias is only observable through these call args. An
+  // inline arrow that dropped the third parameter made bias regressions
+  // completely invisible to this suite.
+  const batchGeocode = vi.fn(async (addresses: string[], _batchSize: number = 10, _bias?: unknown) => {
+    const results = new Map();
+    const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
+
+    for (const address of addresses) {
+      try {
+        const result = await geocode(address);
+        results.set(address, result);
+        summary.successful++;
+      } catch (error) {
+        results.set(address, error);
+        summary.failed++;
+      }
+    }
+
+    return { results, summary };
+  });
   return {
     streamBatchesFromFile: vi.fn(),
     cleanupSidecarFiles: vi.fn(),
     cleanupSidecarsForJob: vi.fn(),
     geocode,
+    batchGeocode,
     MockGeocodingService,
     getIngestFilePath: vi.fn().mockReturnValue("/app/uploads/test-import.csv"),
   };
@@ -43,26 +65,11 @@ vi.mock("@/lib/services/geocoding", () => ({
     geocode: mocks.geocode,
     isEnabled: () => Promise.resolve(true),
     /**
-     * Mock batchGeocode that delegates to the mocked geocode function,
-     * mirroring the real GeocodingOperations.batchGeocode behavior.
+     * Delegates to the mocked geocode function, mirroring the real
+     * GeocodingOperations.batchGeocode behavior. Declared in vi.hoisted so it
+     * is a spy and its (addresses, batchSize, bias) args are assertable.
      */
-    batchGeocode: async (addresses: string[], _batchSize: number = 10) => {
-      const results = new Map();
-      const summary = { total: addresses.length, successful: 0, failed: 0, cached: 0 };
-
-      for (const address of addresses) {
-        try {
-          const result = await mocks.geocode(address);
-          results.set(address, result);
-          summary.successful++;
-        } catch (error) {
-          results.set(address, error);
-          summary.failed++;
-        }
-      }
-
-      return { results, summary };
-    },
+    batchGeocode: mocks.batchGeocode,
   }),
 }));
 
@@ -207,6 +214,80 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
       // Should return correct output
       expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
+    });
+
+    it("should forward the file's geocodingBias to batchGeocode", async () => {
+      // The bias (country codes / view box) comes from the ingest file's
+      // processingOptions — set by a data package or scheduled ingest — and is
+      // what keeps ambiguous place names resolving inside the expected region.
+      // If the handler stops passing it, geocoding silently goes global.
+      const geocodingBias = {
+        countryCodes: ["ua", "pl"],
+        viewBox: { minLon: 22.1, minLat: 44.3, maxLon: 40.2, maxLat: 52.4 },
+        bounded: true,
+      };
+
+      const mockIngestJob = {
+        ...createMockIngestJob(),
+        id: 123,
+        dataset: 456,
+        // Object ref: loadIngestFile returns it as-is, so processingOptions
+        // reach the handler without another findByID stub.
+        ingestFile: { filename: "test-import.csv", processingOptions: { geocodingBias } },
+        sheetIndex: 0,
+        interpretationPlan: {
+          ops: [],
+          columns: [],
+          roles: { location: "address" },
+          ambiguityResolution: "best-effort",
+        },
+      };
+
+      mockStreamBatches([{ id: "1", title: "Event 1", address: "Kyiv" }]);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+      mocks.geocode.mockResolvedValue({
+        latitude: 50.45,
+        longitude: 30.52,
+        confidence: 0.9,
+        normalizedAddress: "Kyiv, Ukraine",
+      });
+
+      await geocodeBatchJob.handler(mockContext);
+
+      expect(mocks.batchGeocode).toHaveBeenCalledTimes(1);
+      const [addresses, , bias] = mocks.batchGeocode.mock.calls[0]!;
+      expect(addresses).toEqual(["kyiv"]);
+      expect(bias).toEqual(geocodingBias);
+    });
+
+    it("should pass undefined bias when the file declares none", async () => {
+      const mockIngestJob = {
+        ...createMockIngestJob(),
+        id: 123,
+        dataset: 456,
+        ingestFile: { filename: "test-import.csv", processingOptions: {} },
+        sheetIndex: 0,
+        interpretationPlan: {
+          ops: [],
+          columns: [],
+          roles: { location: "address" },
+          ambiguityResolution: "best-effort",
+        },
+      };
+
+      mockStreamBatches([{ id: "1", title: "Event 1", address: "Kyiv" }]);
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+      mocks.geocode.mockResolvedValue({
+        latitude: 50.45,
+        longitude: 30.52,
+        confidence: 0.9,
+        normalizedAddress: "Kyiv, Ukraine",
+      });
+
+      await geocodeBatchJob.handler(mockContext);
+
+      expect(mocks.batchGeocode).toHaveBeenCalledTimes(1);
+      expect(mocks.batchGeocode.mock.calls[0]![2]).toBeUndefined();
     });
 
     it("should skip rows without location values", async () => {

@@ -133,7 +133,13 @@ export const extractCoordinates = (
       if (typeof locationValue === "string") {
         const trimmed = locationValue.trim();
         const geocoded = geocodingResults[normalizeGeocodingAddress(trimmed)];
-        if (geocoded) {
+        // Validate geocoder output with the same gate the source-data branch
+        // uses. A provider that answers (0,0) (or an out-of-range/NaN pair) for
+        // an address it cannot resolve would otherwise pin the event to Null
+        // Island; falling through leaves the event without a location, which is
+        // the honest outcome. Results persisted on the job by an earlier run
+        // are re-checked here too, not just at geocode time.
+        if (geocoded && isValidCoordinate(geocoded.coordinates.lat, geocoded.coordinates.lng)) {
           return {
             location: { latitude: geocoded.coordinates.lat, longitude: geocoded.coordinates.lng },
             coordinateSource: {

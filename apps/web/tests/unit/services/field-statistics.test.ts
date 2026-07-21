@@ -138,4 +138,33 @@ describe("field-statistics unique-sample overflow", () => {
     expect(stats.enumValues).toHaveLength(2);
     expect(stats.enumValues?.find((e) => e.value === "open")?.count).toBe(25);
   });
+
+  it("does not turn a scalar column into a tag field because of a stray array value", () => {
+    // A mostly-scalar column with one array-shaped row must stay a scalar enum.
+    // Classifying it as a tag field replaced the enum values with the stray
+    // array's elements, making every scalar value unfilterable.
+    const cap = 100;
+    const stats = createFieldStats("category");
+    for (let i = 0; i < 99; i++) updateFieldStats(stats, i % 2 === 0 ? "news" : "sports", cap);
+    updateFieldStats(stats, ["weather", "traffic"], cap);
+
+    enrichEnumFields({ category: stats }, { enumThreshold: 10, enumMode: "count" });
+
+    expect(stats.isTagField).toBeUndefined();
+    expect(stats.isEnumCandidate).toBe(true);
+    expect(stats.enumValues?.map((e) => e.value)).toContain("news");
+    expect(stats.enumValues?.map((e) => e.value)).toContain("sports");
+  });
+
+  it("still detects a genuine tag column where arrays dominate", () => {
+    const cap = 100;
+    const stats = createFieldStats("tags");
+    for (let i = 0; i < 20; i++) updateFieldStats(stats, i % 2 === 0 ? ["news", "local"] : ["sports"], cap);
+    updateFieldStats(stats, "news", cap);
+
+    enrichEnumFields({ tags: stats }, { enumThreshold: 10, enumMode: "count" });
+
+    expect(stats.isTagField).toBe(true);
+    expect(stats.enumValues?.map((e) => e.value).sort()).toEqual(["local", "news", "sports"]);
+  });
 });

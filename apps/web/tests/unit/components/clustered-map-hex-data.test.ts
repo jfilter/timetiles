@@ -7,9 +7,11 @@
  * @module
  * @category Tests
  */
+import { cellToBoundary } from "h3-js";
 import { describe, expect, it } from "vitest";
 
-import { buildHoverFetchParams, resolveParentCells } from "@/components/maps/clustered-map-hex-data";
+import type { ClusterFeature } from "@/components/maps/clustered-map";
+import { buildH3HexData, buildHoverFetchParams, resolveParentCells } from "@/components/maps/clustered-map-hex-data";
 
 describe("buildHoverFetchParams", () => {
   it("copies supported filter params and hover metadata", () => {
@@ -48,6 +50,48 @@ describe("buildHoverFetchParams", () => {
     expect(params.has("bounds")).toBe(false);
     expect(params.get("zoom")).toBe("4");
     expect(params.get("targetClusters")).toBe("100");
+  });
+});
+
+describe("buildH3HexData antimeridian handling", () => {
+  /** Res-5 cell straddling 180° near Antarctica; its raw boundary mixes +179.x and -179.x. */
+  const STRADDLING_CELL = "85f385a3fffffff";
+  /** Ordinary Berlin cell, nowhere near the dateline. */
+  const BERLIN_CELL = "851f1d4bfffffff";
+
+  const cluster = (id: string): ClusterFeature => ({
+    type: "Feature",
+    id,
+    geometry: { type: "Point", coordinates: [0, 0] },
+    properties: { type: "event-cluster", count: 3 },
+  });
+
+  const ringOf = (collection: GeoJSON.FeatureCollection, index: number): Array<[number, number]> =>
+    (collection.features[index]!.geometry as GeoJSON.Polygon).coordinates[0] as Array<[number, number]>;
+
+  it("keeps a dateline-straddling hexagon contiguous instead of spanning the globe", () => {
+    // Guard the premise: h3-js really does hand back a wrapped boundary here.
+    const rawLngs = cellToBoundary(STRADDLING_CELL).map(([, lng]) => lng);
+    expect(Math.max(...rawLngs) - Math.min(...rawLngs)).toBeGreaterThan(180);
+
+    const ring = ringOf(buildH3HexData("h3", [cluster(STRADDLING_CELL)]), 0);
+    const lngs = ring.map(([lng]) => lng);
+
+    // A hexagon is a fraction of a degree wide — before normalization this span
+    // was ~360, which MapLibre drew as a band across the whole map.
+    expect(Math.max(...lngs) - Math.min(...lngs)).toBeLessThan(1);
+    // Vertices past the antimeridian stay unwrapped (>180); MapLibre wraps them.
+    expect(Math.max(...lngs)).toBeGreaterThan(180);
+    // Ring is still closed.
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
+  });
+
+  it("leaves hexagons away from the dateline untouched", () => {
+    const ring = ringOf(buildH3HexData("h3", [cluster(BERLIN_CELL)]), 0);
+    const raw = cellToBoundary(BERLIN_CELL).map(([lat, lng]) => [lng, lat]);
+
+    expect(ring.slice(0, -1)).toEqual(raw);
+    expect(ring[0]).toEqual(ring[ring.length - 1]);
   });
 });
 

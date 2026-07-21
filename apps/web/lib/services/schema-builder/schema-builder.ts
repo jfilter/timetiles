@@ -375,6 +375,62 @@ export class ProgressiveSchemaBuilder {
     return { type: "object", properties: {} };
   }
 
+  /**
+   * Return the child-property bag for an array field, creating or repairing the
+   * container as needed.
+   *
+   * Field statistics record both the array field itself (`items`) and its item
+   * fields (`items[].a`). The leaf entry is visited first and produces a plain
+   * `{ type: "array" }` schema with no `items`, so descending blindly would
+   * dereference `undefined`.
+   */
+  private descendIntoArray(current: Record<string, SchemaProperty>, fieldName: string): Record<string, SchemaProperty> {
+    const existing = current[fieldName];
+    if (existing === undefined) {
+      current[fieldName] = this.createArrayProperty();
+    } else {
+      existing.type ??= "array";
+      const items = existing.items;
+      if (items == null || typeof items !== "object") {
+        existing.items = { type: "object", properties: {} };
+      } else {
+        (items as SchemaProperty).type ??= "object";
+        (items as SchemaProperty).properties ??= {};
+      }
+    }
+    return (current[fieldName]!.items as { properties: Record<string, SchemaProperty> }).properties;
+  }
+
+  /**
+   * Return the child-property bag for an object field, creating or repairing
+   * the container as needed (see {@link descendIntoArray}).
+   */
+  private descendIntoObject(
+    current: Record<string, SchemaProperty>,
+    fieldName: string
+  ): Record<string, SchemaProperty> {
+    const existing = current[fieldName];
+    if (existing === undefined) {
+      current[fieldName] = this.createObjectProperty();
+    } else {
+      existing.type ??= "object";
+      existing.properties ??= {};
+    }
+    return current[fieldName]!.properties!;
+  }
+
+  /**
+   * Write the leaf schema for a field without discarding any container shape a
+   * previously-visited child path already built underneath it.
+   */
+  private setLeafProperty(current: Record<string, SchemaProperty>, part: string, stats: FieldStatistics): void {
+    const built = this.buildPropertySchema(stats);
+    const existing = current[part];
+    if (existing?.properties !== undefined) built.properties = existing.properties;
+    if (existing?.items !== undefined) built.items = existing.items;
+    current[part] = built;
+  }
+
   private processFieldPath(
     properties: Record<string, SchemaProperty>,
     fieldPath: string,
@@ -390,18 +446,15 @@ export class ProgressiveSchemaBuilder {
       const isLast = i === parts.length - 1;
 
       if (part.endsWith("[]")) {
-        const fieldName = part.slice(0, -2);
-        current[fieldName] ??= this.createArrayProperty();
-        current = (current[fieldName] as { items: { properties: Record<string, SchemaProperty> } }).items.properties;
+        current = this.descendIntoArray(current, part.slice(0, -2));
       } else if (isLast) {
-        current[part] = this.buildPropertySchema(stats);
+        this.setLeafProperty(current, part, stats);
         // Mark as required if appears in most records
         if (stats.occurrences >= this.state.recordCount * 0.9) {
           required.push(part);
         }
       } else {
-        current[part] ??= this.createObjectProperty();
-        current = (current[part] as { properties: Record<string, SchemaProperty> }).properties;
+        current = this.descendIntoObject(current, part);
       }
     }
   }

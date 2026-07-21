@@ -227,6 +227,37 @@ describe("extractCoordinates", () => {
       expect(result.coordinateSource.normalizedAddress).toBe("Munich, Bavaria, Germany");
     });
 
+    // Regression: geocoder output skipped the isValidCoordinate gate the
+    // source-data branch applies, so a provider answering (0,0) for an address
+    // it could not resolve pinned the event to Null Island instead of leaving
+    // it un-located. Job records written before the geocoder-side fix still
+    // carry such results, so the guard has to live here too.
+    it("should reject a Null Island geocoding result rather than place the event there", () => {
+      const row = { location: "Nowhere" };
+      const fieldMappings = { locationPath: "location" };
+      const geocodingResults = {
+        nowhere: { coordinates: { lat: 0, lng: 0 }, confidence: 0.9, formattedAddress: "Nowhere" },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
+    it("should reject out-of-range geocoding results", () => {
+      const row = { location: "Broken" };
+      const fieldMappings = { locationPath: "location" };
+      const geocodingResults = {
+        broken: { coordinates: { lat: 91, lng: 200 }, confidence: 0.9, formattedAddress: "Broken" },
+      };
+
+      const result = extractCoordinates(row, fieldMappings, geocodingResults);
+
+      expect(result.location).toBeUndefined();
+      expect(result.coordinateSource.type).toBe("none");
+    });
+
     it("should return none when location not found in geocoding results", () => {
       const row = { location: "Unknown Place" };
       const fieldMappings = { locationPath: "location" };

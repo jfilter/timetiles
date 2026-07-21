@@ -14,6 +14,7 @@ import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/ingest/url-fetch/paginated-fetch";
 import { logger } from "@/lib/logger";
+import { unparseRowsToCsv } from "@/lib/utils/csv-escape";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
@@ -403,7 +404,12 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
     // uploads are already stored verbatim; escaping only this converted subset
     // was both inconsistent and lossy. Formula-injection escaping (CWE-1236)
     // belongs at the user-facing export boundary — see lib/utils/csv-escape.ts.
-    finalData = Buffer.from(Papa.unparse(strippedRows), "utf-8");
+    //
+    // unparseRowsToCsv (not bare Papa.unparse) because header-mode parsing omits
+    // trailing keys on short rows: a ragged CSV whose first data row is short
+    // would otherwise derive the header from that row and drop every later
+    // column for the entire file.
+    finalData = Buffer.from(unparseRowsToCsv(strippedRows), "utf-8");
   }
 
   // Validate file extension

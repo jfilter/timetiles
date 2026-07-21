@@ -12,7 +12,7 @@
  * @module
  */
 import { parseAsArrayOf, parseAsFloat, parseAsInteger, parseAsString, useQueryState, useQueryStates } from "nuqs";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { formatISODate } from "@/lib/utils/date";
 
@@ -240,13 +240,20 @@ export const useSelectedEvent = () => {
     parseAsInteger.withOptions({ history: "push", shallow: true })
   );
 
-  const openEvent = (eventId: number) => {
-    void setSelectedEventId(eventId);
-  };
+  // Both handlers must keep a stable identity across renders: they flow into
+  // the `selection` useMemo in use-explorer-state and into the useCallback dep
+  // array of useMapInteractions. A fresh function per render makes both of
+  // those memos no-ops and rebuilds the map click handlers on every render.
+  const openEvent = useCallback(
+    (eventId: number) => {
+      void setSelectedEventId(eventId);
+    },
+    [setSelectedEventId]
+  );
 
-  const closeEvent = () => {
+  const closeEvent = useCallback(() => {
     void setSelectedEventId(null);
-  };
+  }, [setSelectedEventId]);
 
   return { selectedEventId, isOpen: selectedEventId !== null, openEvent, closeEvent };
 };

@@ -101,10 +101,27 @@ export class ProviderRateLimiter {
 
   /**
    * Report a successful geocoding request — resets backoff state.
+   *
+   * A success reported while a backoff is still active is IGNORED. Requests run
+   * concurrently (batchGeocode fires BATCH_CONCURRENCY lookups at once), so a
+   * request that was already in flight when a sibling got a 429 can land
+   * afterwards; clearing the backoff on that stale success erased the throttle
+   * another request had just set and let the whole batch burst straight back
+   * into the provider. Only a success observed *after* the backoff window
+   * elapsed proves the provider recovered — and such a caller necessarily got
+   * through waitForSlot, which sleeps the window out first.
    */
   reportSuccess(providerName: string): void {
     const state = this.state.get(providerName);
     if (!state) return;
+
+    if (state.backoffUntil > Date.now()) {
+      logger.debug("Ignoring success reported during an active backoff", {
+        providerName,
+        remainingBackoffMs: state.backoffUntil - Date.now(),
+      });
+      return;
+    }
 
     if (state.consecutiveThrottles > 0) {
       logger.debug("Provider recovered from throttling", {

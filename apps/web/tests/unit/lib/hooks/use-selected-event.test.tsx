@@ -22,7 +22,26 @@ const createWrapper =
     <NuqsTestingAdapter searchParams={searchParams}>{children}</NuqsTestingAdapter>
   );
 
-describe("useSelectedEvent", () => {
+/**
+ * nuqs writes the URL from a queue flushed on a macrotask, and the hook's
+ * handlers void the setter's promise, so there is nothing to await directly.
+ * Testing Library's `waitFor` does not let that timer run inside a React act
+ * environment, so drain a few macrotasks explicitly instead.
+ */
+const flushUrlUpdates = async () => {
+  await act(async () => {
+    for (let i = 0; i < 5; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+};
+
+// Sequential: the root config sets `sequence.concurrent`, and vitest only reads
+// that from the root (a project-level override is ignored). Testing Library
+// renders into one shared document and runs a global cleanup() after each test,
+// so a concurrent sibling's cleanup unmounts this test's hook mid-await and
+// `result.current` becomes null.
+describe.sequential("useSelectedEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -45,7 +64,7 @@ describe("useSelectedEvent", () => {
     expect(result.current.isOpen).toBe(true);
   });
 
-  it("should open event and update URL", () => {
+  it("should open event and update URL", async () => {
     const onUrlUpdate = vi.fn();
 
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -58,14 +77,17 @@ describe("useSelectedEvent", () => {
       result.current.openEvent(456);
     });
 
+    await flushUrlUpdates();
+
     expect(onUrlUpdate).toHaveBeenCalledTimes(1);
-    const lastCallArgs = onUrlUpdate.mock.calls.at(-1);
-    expect(lastCallArgs).not.toBeUndefined();
-    const lastCall = lastCallArgs![0] as UrlUpdateEvent;
+    const lastCall = onUrlUpdate.mock.calls.at(-1)?.[0] as UrlUpdateEvent;
     expect(lastCall.queryString).toContain("event=456");
+    expect(lastCall.searchParams.get("event")).toBe("456");
+    // history: "push" keeps the browser back button working for the modal
+    expect(lastCall.options.history).toBe("push");
   });
 
-  it("should close event and clear URL param", () => {
+  it("should close event and clear URL param", async () => {
     const onUrlUpdate = vi.fn();
 
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -84,7 +106,13 @@ describe("useSelectedEvent", () => {
       result.current.closeEvent();
     });
 
+    await flushUrlUpdates();
+
     expect(onUrlUpdate).toHaveBeenCalled();
+    const lastCall = onUrlUpdate.mock.calls.at(-1)?.[0] as UrlUpdateEvent;
+    // The param must be removed, not merely rewritten to some other value.
+    expect(lastCall.searchParams.get("event")).toBeNull();
+    expect(lastCall.queryString).not.toContain("event=");
   });
 
   it("should handle non-numeric event param gracefully", () => {
@@ -102,7 +130,7 @@ describe("useSelectedEvent", () => {
     expect(result.current.isOpen).toBe(false);
   });
 
-  it("should preserve other URL params when opening event", () => {
+  it("should preserve other URL params when opening event", async () => {
     const onUrlUpdate = vi.fn();
 
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -117,15 +145,15 @@ describe("useSelectedEvent", () => {
       result.current.openEvent(789);
     });
 
+    await flushUrlUpdates();
+
     expect(onUrlUpdate).toHaveBeenCalledTimes(1);
-    const lastCallArgs = onUrlUpdate.mock.calls.at(-1);
-    expect(lastCallArgs).not.toBeUndefined();
-    const lastCall = lastCallArgs![0] as UrlUpdateEvent;
+    const lastCall = onUrlUpdate.mock.calls.at(-1)?.[0] as UrlUpdateEvent;
     // Should contain the new event param
-    expect(lastCall.queryString).toContain("event=789");
+    expect(lastCall.searchParams.get("event")).toBe("789");
     // Should preserve existing params
-    expect(lastCall.queryString).toContain("catalog=1");
-    expect(lastCall.queryString).toContain("datasets=2");
+    expect(lastCall.searchParams.get("catalog")).toBe("1");
+    expect(lastCall.searchParams.get("datasets")).toBe("2");
   });
 
   it("openEvent and closeEvent should be stable references", () => {

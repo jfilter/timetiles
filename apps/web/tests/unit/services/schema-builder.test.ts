@@ -654,6 +654,8 @@ describe("ProgressiveSchemaBuilder", () => {
       expect(props.score.minimum).toBe(10);
       expect(props.score.maximum).toBe(100);
     });
+
+    // Nested/array containers are covered in schema-builder-nested.test.ts.
   });
 
   describe("buildPropertySchema edge cases", () => {

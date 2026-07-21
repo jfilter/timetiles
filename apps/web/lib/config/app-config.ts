@@ -66,16 +66,82 @@ const reviewThresholdsSchema = z.object({
 // config uses partial validation inline. Types are defined as interfaces below.
 
 /**
+ * Endpoint names that may appear under `rateLimits:`.
+ *
+ * `DEFAULT_RATE_LIMITS` below is checked against this list by `satisfies`, so
+ * the two cannot drift.
+ */
+const RATE_LIMIT_ENDPOINTS = [
+  "FILE_UPLOAD",
+  "PROGRESS_CHECK",
+  "IMPORT_RETRY",
+  "ADMIN_IMPORT_RESET",
+  "RETRY_RECOMMENDATIONS",
+  "API_GENERAL",
+  "WEBHOOK_TRIGGER",
+  "NEWSLETTER_SUBSCRIBE",
+  "PASSWORD_CHANGE",
+  "EMAIL_CHANGE",
+  "ACCOUNT_DELETION",
+  "DELETION_PASSWORD_ATTEMPTS",
+  "DATA_EXPORT",
+  "REGISTRATION",
+  "LOGIN",
+  "FORGOT_PASSWORD",
+  "RESET_PASSWORD",
+  "SCRAPER_TRIGGER",
+] as const;
+
+type RateLimitEndpoint = (typeof RATE_LIMIT_ENDPOINTS)[number];
+
+/**
+ * Reject record keys outside a known set.
+ *
+ * `z.record(z.string(), …)` accepts any key, and the merge step in
+ * `buildConfig` then drops keys it does not recognise. A misspelled trust level
+ * or endpoint therefore used to load "successfully" while silently applying the
+ * defaults the operator meant to override. (A keyed `z.record` is not usable
+ * here: zod 4 makes an enum-keyed record exhaustive, which would force every
+ * key to be present.)
+ */
+const rejectUnknownKeys = (allowedKeys: readonly string[], label: string) => (value: object, ctx: z.RefinementCtx) => {
+  for (const key of Object.keys(value)) {
+    if (!allowedKeys.includes(key)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Unknown ${label} "${key}". Expected one of: ${allowedKeys.join(", ")}`,
+      });
+    }
+  }
+};
+
+const trustLevelKeys = Object.values(TRUST_LEVELS).map(String);
+
+/**
  * Schema for the optional YAML config file.
  * All fields are optional — missing values use hardcoded defaults.
+ *
+ * Strict at every level (not just the top): unknown keys are operator typos,
+ * and silently ignoring them hides the fact that the intended override never
+ * took effect. `null` sections (a YAML heading with no children) are stripped
+ * before validation — see `stripNullSections`.
  */
 const yamlConfigSchema = z
   .object({
-    rateLimits: z.record(z.string(), rateLimitConfigSchema).optional(),
-    quotas: z.record(z.string(), userQuotasSchema.partial()).optional(),
-    trustLevelRateLimits: z.record(z.string(), trustLevelRateLimitsSchema.partial()).optional(),
-    batchSizes: batchSizesSchema.partial().optional(),
-    reviewThresholds: reviewThresholdsSchema.partial().optional(),
+    rateLimits: z
+      .record(z.string(), rateLimitConfigSchema.strict())
+      .superRefine(rejectUnknownKeys(RATE_LIMIT_ENDPOINTS, "rate limit endpoint"))
+      .optional(),
+    quotas: z
+      .record(z.string(), userQuotasSchema.partial().strict())
+      .superRefine(rejectUnknownKeys(trustLevelKeys, "trust level"))
+      .optional(),
+    trustLevelRateLimits: z
+      .record(z.string(), trustLevelRateLimitsSchema.partial().strict())
+      .superRefine(rejectUnknownKeys(trustLevelKeys, "trust level"))
+      .optional(),
+    batchSizes: batchSizesSchema.partial().strict().optional(),
+    reviewThresholds: reviewThresholdsSchema.partial().strict().optional(),
     cache: z
       .object({
         urlFetch: z
@@ -86,10 +152,12 @@ const yamlConfigSchema = z
             maxTtlSeconds: z.number().int().positive().optional(),
             respectCacheControl: z.boolean().optional(),
           })
+          .strict()
           .optional(),
       })
+      .strict()
       .optional(),
-    account: z.object({ deletionGracePeriodDays: z.number().int().positive().optional() }).optional(),
+    account: z.object({ deletionGracePeriodDays: z.number().int().positive().optional() }).strict().optional(),
   })
   .strict();
 
@@ -222,7 +290,7 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 100, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
     ],
   },
-} satisfies Record<string, RateLimitConfig>;
+} satisfies Record<RateLimitEndpoint, RateLimitConfig>;
 
 const DEFAULT_QUOTAS = {
   [TRUST_LEVELS.UNTRUSTED]: {
@@ -529,6 +597,27 @@ const resolveConfigPath = (): string => {
 // Loader
 // ---------------------------------------------------------------------------
 
+/**
+ * Recursively drop keys whose value is `null`.
+ *
+ * A YAML heading with no children (`account:` on a line of its own, or a
+ * section whose entries are all commented out) parses to `null`, which is the
+ * natural way to write "nothing overridden here". Every section here is
+ * `.optional()`, meaning *absent* — without this, such a file failed validation
+ * and `getAppConfig()` threw on every request that touched config.
+ */
+const stripNullSections = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(stripNullSections);
+  if (value === null || typeof value !== "object") return value;
+
+  const result: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (entry === null) continue;
+    result[key] = stripNullSections(entry);
+  }
+  return result;
+};
+
 const loadFromYaml = (): Record<string, unknown> => {
   const configPath = resolveConfigPath();
 
@@ -541,7 +630,7 @@ const loadFromYaml = (): Record<string, unknown> => {
     }
 
     // Validate against the YAML schema (all fields optional)
-    return yamlConfigSchema.parse(parsed);
+    return yamlConfigSchema.parse(stripNullSections(parsed));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       // File doesn't exist — use all defaults

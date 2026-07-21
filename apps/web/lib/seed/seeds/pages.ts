@@ -8,8 +8,19 @@
  *
  * @module
  */
-import { DELETION_GRACE_PERIOD_DAYS, IP_RETENTION_DAYS } from "@/lib/constants/account-constants";
+import { getAppConfig } from "@/lib/config/app-config";
+import { IP_RETENTION_DAYS } from "@/lib/constants/account-constants";
 import type { Page } from "@/payload-types";
+
+/**
+ * Grace period the deployment actually enforces.
+ *
+ * `DELETION_GRACE_PERIOD_DAYS` is the client-side display default; the deletion
+ * service schedules against `getAppConfig().account.deletionGracePeriodDays`.
+ * Seeding the privacy policy from the constant made the published policy
+ * contradict the configured behaviour whenever an operator changed it.
+ */
+const deletionGracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
 
 /** Seed data type for Pages. Allows string slugs for relationship fields (resolved at seed time). */
 export type PageSeed = Omit<Page, "id" | "createdAt" | "updatedAt" | "site"> & { site: number | string };
@@ -361,7 +372,7 @@ export const pagesSeedDe: Record<string, Partial<PageSeed>> = {
                 children: [
                   {
                     type: "text",
-                    text: `Sie können jederzeit die Löschung Ihres Kontos und aller zugehörigen Daten beantragen. Nach einer ${DELETION_GRACE_PERIOD_DAYS}-tägigen Frist werden Kontodaten dauerhaft gelöscht. IP-Adressen in Protokollen werden nach ${IP_RETENTION_DAYS} Tagen anonymisiert.`,
+                    text: `Sie können jederzeit die Löschung Ihres Kontos und aller zugehörigen Daten beantragen. Nach einer ${deletionGracePeriodDays}-tägigen Frist werden Kontodaten dauerhaft gelöscht. IP-Adressen in Protokollen werden nach ${IP_RETENTION_DAYS} Tagen anonymisiert.`,
                   },
                 ],
               },
@@ -897,7 +908,7 @@ export const pagesSeed: PageSeed[] = [
                 children: [
                   {
                     type: "text",
-                    text: `You can request deletion of your account and all associated data at any time. After a ${DELETION_GRACE_PERIOD_DAYS}-day grace period, account data is permanently deleted. IP addresses in audit logs are anonymized after ${IP_RETENTION_DAYS} days.`,
+                    text: `You can request deletion of your account and all associated data at any time. After a ${deletionGracePeriodDays}-day grace period, account data is permanently deleted. IP addresses in audit logs are anonymized after ${IP_RETENTION_DAYS} days.`,
                   },
                 ],
               },

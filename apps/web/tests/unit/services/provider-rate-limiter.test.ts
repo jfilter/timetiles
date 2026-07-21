@@ -146,16 +146,51 @@ describe("ProviderRateLimiter", () => {
       expect(wait2).toBeGreaterThan(wait1);
     });
 
-    it("should reset backoff on reportSuccess", () => {
+    it("should reset backoff on a reportSuccess after the backoff expired", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
       rateLimiter.reportThrottle("test-provider");
       expect(rateLimiter.isAvailable("test-provider")).toBe(false);
 
+      // A caller only gets through waitForSlot once the window has elapsed, so
+      // this is what a genuine recovery looks like.
+      vi.advanceTimersByTime(2100);
       rateLimiter.reportSuccess("test-provider");
+
       expect(rateLimiter.isAvailable("test-provider")).toBe(true);
       expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(0);
+      // Backoff escalation is reset too: the next throttle starts at 2s again.
+      rateLimiter.reportThrottle("test-provider");
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBeLessThanOrEqual(2000);
+    });
+
+    it("ignores a success reported while a backoff is still active", () => {
+      // Regression: batchGeocode runs BATCH_CONCURRENCY lookups at once, so a
+      // request already in flight when a sibling got a 429 lands *after* the
+      // throttle. Clearing the backoff on that stale success erased the
+      // throttle another request had just set and let the whole batch burst
+      // straight back into the provider that had asked us to stop.
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      rateLimiter.reportThrottle("test-provider", 5000);
+      rateLimiter.reportSuccess("test-provider");
+
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBeGreaterThan(4000);
+    });
+
+    it("keeps escalating backoff when stale successes interleave with throttles", () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+
+      rateLimiter.reportThrottle("test-provider"); // 2s
+      rateLimiter.reportSuccess("test-provider"); // stale — ignored
+      vi.advanceTimersByTime(2100);
+      rateLimiter.reportThrottle("test-provider"); // 4s, not back to 2s
+
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBeGreaterThan(3000);
     });
 
     it("should cap backoff at maximum", () => {

@@ -168,6 +168,65 @@ describe("extractCentroid", () => {
     const result = extractCentroid({ type: "Point", coordinates: [] });
     expect(result).toBeNull();
   });
+
+  // Regression: longitude is cyclic, so a naive bbox/mean put every geometry
+  // straddling the antimeridian at longitude ~0 — a Fiji polygon landed in the
+  // Gulf of Guinea, half a world from the real feature.
+  describe("antimeridian crossings", () => {
+    it("places a LineString crossing the dateline at ±180, not 0", () => {
+      const result = extractCentroid({
+        type: "LineString",
+        coordinates: [
+          [179, 10],
+          [-179, 10],
+        ],
+      });
+      expect(result).toEqual({ latitude: 10, longitude: 180 });
+    });
+
+    it("places a Polygon crossing the dateline near the dateline", () => {
+      // Fiji-like ring spanning 178 → -178.
+      const result = extractCentroid({
+        type: "Polygon",
+        coordinates: [
+          [
+            [178, -18],
+            [-178, -18],
+            [-178, -16],
+            [178, -16],
+            [178, -18],
+          ],
+        ],
+      });
+      expect(result!.latitude).toBe(-17);
+      expect(Math.abs(result!.longitude)).toBe(180);
+    });
+
+    it("averages MultiPoint longitudes across the dateline", () => {
+      const result = extractCentroid({
+        type: "MultiPoint",
+        coordinates: [
+          [179, 10],
+          [-177, 10],
+        ],
+      });
+      // Midpoint of 179 → 183 is 181, i.e. -179 once wrapped.
+      expect(result).toEqual({ latitude: 10, longitude: -179 });
+    });
+
+    it("leaves an ordinary wide geometry alone", () => {
+      // Spans 100° of longitude but never crosses the dateline — the largest
+      // longitude gap is the wrap-around one, so nothing is shifted.
+      const result = extractCentroid({
+        type: "LineString",
+        coordinates: [
+          [-50, 10],
+          [50, 10],
+        ],
+      });
+      expect(result).toEqual({ latitude: 10, longitude: 0 });
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------

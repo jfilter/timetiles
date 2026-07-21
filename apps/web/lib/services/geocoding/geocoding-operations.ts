@@ -15,6 +15,7 @@
  */
 import type { Entry } from "node-geocoder";
 
+import { isValidCoordinate } from "@/lib/geospatial/validation";
 import { createLogger, logPerformance } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
 
@@ -152,7 +153,12 @@ export class GeocodingOperations {
   }
 
   private async checkCache(address: string, startTime: number, bias?: GeocodingBias): Promise<GeocodingResult | null> {
-    if (this.hasBias(bias)) {
+    // The cache is keyed by address alone, so a biased lookup must not read a
+    // (possibly unbiased) cached entry — but only when the bias can actually
+    // change the answer. If no enabled provider accepts an object query the
+    // bias is dropped before the request is sent, so the lookup is byte-for-byte
+    // the unbiased one and the cache is exactly right.
+    if (this.hasBias(bias) && this.biasIsEffective()) {
       return null;
     }
 
@@ -171,7 +177,12 @@ export class GeocodingOperations {
   }
 
   private async cacheResult(address: string, result: GeocodingResult, bias?: GeocodingBias): Promise<void> {
-    if (this.hasBias(bias)) {
+    // Skip the write only when the bias actually reached the provider that
+    // produced this result. A string-only provider (Photon/Google/OpenCage)
+    // never saw the bias, so its answer is the plain-address answer and belongs
+    // in the address-keyed cache — otherwise every lookup of a biased import
+    // re-hit the provider forever and never populated the cache at all.
+    if (this.hasBias(bias) && this.providerAppliesBias(result.provider)) {
       return;
     }
     await this.cacheManager.cacheResult(address, result);
@@ -179,6 +190,54 @@ export class GeocodingOperations {
 
   private hasBias(bias?: GeocodingBias): boolean {
     return Object.keys(this.buildBiasParams(bias)).length > 0;
+  }
+
+  /** True when at least one enabled provider would actually send the bias. */
+  private biasIsEffective(): boolean {
+    return this.providerManager.getEnabledProviders().some((provider) => this.supportsObjectQuery(provider));
+  }
+
+  /** True when the named provider sends the bias rather than dropping it. */
+  private providerAppliesBias(providerName: string): boolean {
+    const provider = this.providerManager.getProviders().find((candidate) => candidate.name === providerName);
+    // Unknown provider: assume the bias applied and keep the result out of the
+    // address-keyed cache rather than risk poisoning it.
+    return provider == null || this.supportsObjectQuery(provider);
+  }
+
+  /**
+   * Choose which providers {@link tryProviders} should attempt, in order.
+   *
+   * Providers in backoff are skipped only while some other provider can serve
+   * the request. When EVERY provider is backing off we wait instead of
+   * skipping: `waitForSlot` sleeps out the remaining backoff, so the request
+   * still completes a moment later. Skipping them all made `tryProviders`
+   * return null immediately and `geocode` throw ALL_PROVIDERS_FAILED, which
+   * turned a single transient 429 into a permanent failure for every address
+   * in flight during the backoff window (and made geocodeDistributed's
+   * "nothing available → fall back to geocode()" path a no-op, since geocode()
+   * applied the very same filter).
+   *
+   * Only the soonest-available provider is tried in that case, so the wait is
+   * bounded by one backoff window rather than the sum of all of them.
+   */
+  private selectProvidersToTry(
+    enabledProviders: ProviderConfig[],
+    rateLimiter: ReturnType<typeof getProviderRateLimiter>
+  ): ProviderConfig[] {
+    const available = enabledProviders.filter((provider) => rateLimiter.isAvailable(provider.name));
+    if (available.length > 0 || enabledProviders.length === 0) {
+      return available;
+    }
+
+    const soonest = [...enabledProviders].sort(
+      (a, b) => rateLimiter.getTimeUntilAllowed(a.name) - rateLimiter.getTimeUntilAllowed(b.name)
+    )[0]!;
+    logger.debug("All providers in backoff, waiting for the soonest-available one", {
+      provider: soonest.name,
+      waitMs: rateLimiter.getTimeUntilAllowed(soonest.name),
+    });
+    return [soonest];
   }
 
   /**
@@ -189,12 +248,7 @@ export class GeocodingOperations {
     const enabledProviders = this.providerManager.getEnabledProviders();
     const rateLimiter = getProviderRateLimiter();
 
-    for (const provider of enabledProviders) {
-      if (!rateLimiter.isAvailable(provider.name)) {
-        logger.debug("Skipping provider in backoff", { provider: provider.name });
-        continue;
-      }
-
+    for (const provider of this.selectProvidersToTry(enabledProviders, rateLimiter)) {
       try {
         const result = await this.tryProviderWithRetry(provider, address, bias);
         if (result != null) {
@@ -542,14 +596,13 @@ export class GeocodingOperations {
     return Math.min(Math.max(confidence, 0), 1);
   }
 
+  // isValidCoordinate additionally rejects NaN and the Null Island region.
+  // Providers do return (0,0) for input they cannot resolve; without this the
+  // bogus point was cached, persisted onto the ingest job and rendered as a
+  // real event in the Gulf of Guinea. Rejecting it here lets the next provider
+  // take the address instead.
   private isResultAcceptable(result: GeocodingResult): boolean {
-    return (
-      result.latitude != null &&
-      result.longitude != null &&
-      (result.confidence ?? 0) >= 0.5 &&
-      Math.abs(result.latitude) <= 90 &&
-      Math.abs(result.longitude) <= 180
-    );
+    return (result.confidence ?? 0) >= 0.5 && isValidCoordinate(result.latitude, result.longitude);
   }
 
   private createBatches<T>(items: T[], batchSize: number): T[][] {

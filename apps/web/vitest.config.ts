@@ -81,7 +81,11 @@ export default defineConfig({
           name: "components",
           globals: true,
           environment: "jsdom",
-          include: ["tests/unit/components/**/*.test.tsx"],
+          // Every .tsx unit test needs jsdom + the React plugin, not just the
+          // ones under components/. Keep this glob wide so a React/hook test
+          // placed elsewhere under tests/unit/ is still collected — a narrower
+          // glob silently dropped tests/unit/lib/hooks/*.test.tsx.
+          include: ["tests/unit/**/*.test.tsx"],
           setupFiles: ["tests/setup/unit/global-setup.ts"],
           testTimeout: 10000,
         },
