@@ -234,7 +234,9 @@
     "beeswarmClusterMax": "Cluster max",
     "beeswarmShowingDots": "Showing dots",
     "beeswarmClusters": "{count, plural, one {# cluster} other {# clusters}}",
-    "beeswarmChartSettings": "Chart settings"
+    "beeswarmChartSettings": "Chart settings",
+    "beeswarmEventsCount": "{count, plural, one {# event} other {# events}}",
+    "beeswarmOtherGroups": "Other ({count})"
   },
   "Filters": {
     "dataSources": "Data Sources",

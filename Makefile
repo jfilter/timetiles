@@ -278,6 +278,10 @@ check-theme:
 check-cva:
 	@./scripts/check-cva-variants.sh packages/ui/src
 
+# FILES is expanded into a shell variable and split with globbing off, rather
+# than interpolated straight onto the command line. App Router paths carry both
+# characters that break a bare interpolation: `(frontend)` is shell syntax, and
+# `[locale]` is a glob character class.
 check-ai:
 	@if [ -n "$(FILES)" ]; then \
 		PKG=$${PACKAGE:-web}; \
@@ -288,7 +292,9 @@ check-ai:
 			timescrape|scraper) PKG_DIR="apps/timescrape" ;; \
 			*) echo "❌ Unknown package: $$PKG"; exit 1 ;; \
 		esac; \
-		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $(FILES); \
+		FILE_LIST="$(FILES)"; \
+		set -f; \
+		pnpm exec tsx scripts/check-ai-files.ts "$$PKG_DIR" $$FILE_LIST; \
 	elif [ -z "$(PACKAGE)" ]; then \
 		pnpm exec tsx scripts/check-ai.ts; \
 	else \

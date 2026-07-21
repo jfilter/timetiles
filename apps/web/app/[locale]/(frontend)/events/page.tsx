@@ -8,7 +8,7 @@
  * @module
  */
 import configPromise from "@payload-config";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { getPayload } from "payload";
 
 import { Link } from "@/i18n/navigation";
@@ -33,6 +33,9 @@ export default async function EventsListPage() {
   });
 
   const t = await getTranslations("Events");
+  // Without an explicit locale, Intl formats in the SERVER's, so /de rendered
+  // English dates next to German labels.
+  const locale = await getLocale();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -62,7 +65,7 @@ export default async function EventsListPage() {
                     <div className="space-y-1 text-sm text-gray-600">
                       {event.eventTimestamp != null && (
                         <p>
-                          {t("date")}: {formatDateShort(event.eventTimestamp)}
+                          {t("date")}: {formatDateShort(event.eventTimestamp, locale)}
                         </p>
                       )}
                       {dataset != null && (

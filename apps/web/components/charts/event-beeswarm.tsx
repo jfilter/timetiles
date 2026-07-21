@@ -89,12 +89,27 @@ const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string;
   return groups;
 };
 
+/**
+ * Translated strings the pure transform helpers need.
+ *
+ * Passed in rather than looked up inside them: these helpers are not
+ * components, so they cannot call useTranslations, and hardcoding English here
+ * is how the chart ended up with English series names and tooltips under /de.
+ */
+interface BeeswarmLabels {
+  /** "3 events" — pluralized. */
+  eventsCount: (count: number) => string;
+  /** "Other (4)" — the merged remainder series. */
+  otherGroups: (count: number) => string;
+}
+
 /** Build BeeswarmDataItem[] from a group's items. */
 const buildSeriesData = (
   group: { name: string; items: TemporalClusterItem[] },
   mode: "individual" | "clustered",
   colorIdx: number,
-  maxClusterCount: { value: number }
+  maxClusterCount: { value: number },
+  labels: BeeswarmLabels
 ): BeeswarmDataItem[] =>
   group.items.map((item, i) => {
     if (item.count > maxClusterCount.value) maxClusterCount.value = item.count;
@@ -115,7 +130,7 @@ const buildSeriesData = (
           id: -(colorIdx * 10000 + i + 1),
           count: item.count,
           dataset: group.name,
-          label: `${item.count.toLocaleString()} events`,
+          label: labels.eventsCount(item.count),
         };
   });
 
@@ -123,7 +138,8 @@ const buildSeriesData = (
 const transformToSeries = (
   items: TemporalClusterItem[],
   mode: "individual" | "clustered",
-  topN: number
+  topN: number,
+  labels: BeeswarmLabels
 ): { series: BeeswarmSeries[]; maxClusterCount: number } => {
   if (items.length === 0) return { series: [], maxClusterCount: 1 };
 
@@ -140,15 +156,19 @@ const transformToSeries = (
   for (let i = 0; i < topGroups.length; i++) {
     const [, group] = topGroups[i]!;
     const color = DATASET_COLORS[i % DATASET_COLORS.length] ?? DATASET_COLORS[0];
-    series.push({ name: group.name, color, data: buildSeriesData(group, mode, i, maxRef) });
+    series.push({ name: group.name, color, data: buildSeriesData(group, mode, i, maxRef, labels) });
   }
 
   // Merge remaining into "Other"
   if (otherGroups.length > 0) {
     const otherItems = otherGroups.flatMap(([, g]) => g.items);
-    const otherGroup = { name: `Other (${otherGroups.length})`, items: otherItems };
+    const otherGroup = { name: labels.otherGroups(otherGroups.length), items: otherItems };
     const colorIdx = topGroups.length;
-    series.push({ name: otherGroup.name, color: "#9ca3af", data: buildSeriesData(otherGroup, mode, colorIdx, maxRef) });
+    series.push({
+      name: otherGroup.name,
+      color: "#9ca3af",
+      data: buildSeriesData(otherGroup, mode, colorIdx, maxRef, labels),
+    });
   }
 
   return { series, maxClusterCount: maxRef.value };
@@ -344,9 +364,19 @@ export const EventBeeswarm = ({
   const total = data?.metadata.total ?? 0;
   const mode = data?.metadata.mode ?? "individual";
 
+  // `count` must stay a number: next-intl's ICU plural selection compares it
+  // numerically, and a string silently falls through to the "other" branch.
+  const labels = useMemo<BeeswarmLabels>(
+    () => ({
+      eventsCount: (count: number) => t("beeswarmEventsCount", { count }),
+      otherGroups: (count: number) => t("beeswarmOtherGroups", { count }),
+    }),
+    [t]
+  );
+
   const { series, maxClusterCount } = useMemo(
-    () => transformToSeries(data?.items ?? [], mode, maxGroups),
-    [data?.items, mode, maxGroups]
+    () => transformToSeries(data?.items ?? [], mode, maxGroups, labels),
+    [data?.items, mode, maxGroups, labels]
   );
 
   // Auto rows layout in fullscreen when multiple groups exist
