@@ -62,16 +62,10 @@ dist
 
 # TypeScript build artifacts
 *.tsbuildinfo
-# Compiled outputs in packages/ui
-packages/ui/src/**/*.js
-packages/ui/src/**/*.d.ts
-packages/ui/src/**/*.d.ts.map
-packages/ui/tests/**/*.js
-packages/ui/tests/**/*.d.ts
-packages/ui/tests/**/*.d.ts.map
-packages/ui/*.js
-packages/ui/*.d.ts
-packages/ui/*.d.ts.map
+# NOTE: packages/ui used to ignore compiled .js/.d.ts next to its sources.
+# Those rules are gone on purpose -- tsc no longer emits there (noEmit in
+# packages/ui/tsconfig.json), and hiding stray emits is what let 182 stale files
+# shadow the .tsx sources in every local vitest run.
 
 # Debug
 npm-debug.log*

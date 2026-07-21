@@ -21,7 +21,7 @@ import {
 } from "@tanstack/react-table";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { Fragment, type ReactNode, useCallback, useState } from "react";
+import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode, useCallback, useState } from "react";
 
 import { Button } from "./button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
@@ -39,6 +39,39 @@ interface DataTableProps<TData, TValue> {
   /** Custom row ID extractor for stable expand state. Defaults to row index. */
   readonly getRowId?: (row: TData) => string;
 }
+
+/**
+ * Selector for controls that own their own click/keyboard semantics.
+ * Events originating inside one of these must not also toggle the row,
+ * otherwise activating e.g. a row action button silently expands the row.
+ */
+const INTERACTIVE_SELECTOR = [
+  "a[href]",
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "label",
+  "summary",
+  "[contenteditable='true']",
+  '[role="button"]',
+  '[role="link"]',
+  '[role="checkbox"]',
+  '[role="radio"]',
+  '[role="switch"]',
+  '[role="menuitem"]',
+  '[role="tab"]',
+  '[role="option"]',
+].join(",");
+
+/** True when the event originated from an interactive control nested inside the row. */
+const isFromInteractiveDescendant = (event: { target: EventTarget | null; currentTarget: EventTarget | null }) => {
+  const { target, currentTarget } = event;
+  if (!(target instanceof Element) || !(currentTarget instanceof Element)) return false;
+
+  const interactive = target.closest(INTERACTIVE_SELECTOR);
+  return interactive !== null && interactive !== currentTarget && currentTarget.contains(interactive);
+};
 
 const SortIndicator = ({ direction }: { readonly direction: false | "asc" | "desc" }) => {
   if (direction === "asc") return <ArrowUpIcon className="ml-1 inline h-3.5 w-3.5" />;
@@ -101,6 +134,24 @@ const DataTable = <TData, TValue>({
     });
   }, []);
 
+  const handleRowClick = useCallback(
+    (rowId: string) => (event: MouseEvent<HTMLTableRowElement>) => {
+      if (isFromInteractiveDescendant(event)) return;
+      toggleRow(rowId);
+    },
+    [toggleRow]
+  );
+
+  const handleRowKeyDown = useCallback(
+    (rowId: string) => (event: KeyboardEvent<HTMLTableRowElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (isFromInteractiveDescendant(event)) return;
+      event.preventDefault();
+      toggleRow(rowId);
+    },
+    [toggleRow]
+  );
+
   const table = useReactTable({
     data,
     columns,
@@ -143,19 +194,10 @@ const DataTable = <TData, TValue>({
                     <TableRow
                       data-state={row.getIsSelected() ? "selected" : undefined}
                       className={renderExpandedRow ? "cursor-pointer" : undefined}
-                      onClick={renderExpandedRow ? () => toggleRow(row.id) : undefined}
+                      onClick={renderExpandedRow ? handleRowClick(row.id) : undefined}
                       aria-expanded={renderExpandedRow ? isExpanded : undefined}
                       tabIndex={renderExpandedRow ? 0 : undefined}
-                      onKeyDown={
-                        renderExpandedRow
-                          ? (e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                toggleRow(row.id);
-                              }
-                            }
-                          : undefined
-                      }
+                      onKeyDown={renderExpandedRow ? handleRowKeyDown(row.id) : undefined}
                     >
                       {renderExpandedRow && (
                         <TableCell className="w-8 px-2">

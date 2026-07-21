@@ -27,6 +27,10 @@ const heroVariants = cva("relative flex items-center overflow-hidden", {
     },
     background: {
       grid: "bg-background", // Grid pattern applied via separate JSX element
+      // Soft vertical wash from the page surface into the muted tone and back.
+      // Distinct from `grid` on purpose: the CMS hero block offers both and the
+      // two must not render identically.
+      gradient: "bg-gradient-to-b from-background via-muted to-background",
       solid: "bg-card", // Solid surface color, no grid
       none: "bg-transparent",
     },

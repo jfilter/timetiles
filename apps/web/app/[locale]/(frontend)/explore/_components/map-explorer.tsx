@@ -101,7 +101,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   }, [mapRef]);
 
   // Get human-readable filter labels (uses helper function)
-  const filterLabels = getFilterLabels(filters, catalogs, datasets, locale);
+  const filterLabels = getFilterLabels(filters, catalogs, datasets, t("unknownDataset"), locale);
 
   // Desktop: Flex layout - both map and list shrink proportionally when filters open
   return (

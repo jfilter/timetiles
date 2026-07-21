@@ -144,7 +144,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       maxCount,
     } = useClusterState(clusters);
 
-    const { isMapPositioned, handleLoad, handleMoveEnd } = useMapBounds({
+    const { isMapPositioned, isMapLoaded, handleLoad, handleMoveEnd } = useMapBounds({
       initialBounds,
       initialViewState,
       onBoundsChange,
@@ -159,7 +159,7 @@ export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
       algorithm,
       currentZoom,
       mapRef,
-      isMapPositioned,
+      isMapLoaded,
       scope,
     });
 

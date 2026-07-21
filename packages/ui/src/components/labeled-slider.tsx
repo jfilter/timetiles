@@ -6,6 +6,7 @@
  * @module
  * @category Components
  */
+import { useId } from "react";
 
 export interface LabeledSliderProps {
   /** Label displayed above the slider. */
@@ -38,26 +39,33 @@ export const LabeledSlider = ({
   minLabel,
   maxLabel,
   formatValue = String,
-}: LabeledSliderProps) => (
-  <div>
-    <div className="flex items-center justify-between">
-      <label className="text-muted-foreground text-xs font-medium">{label}</label>
-      <span className="text-foreground text-xs tabular-nums">{formatValue(value)}</span>
-    </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="accent-primary h-1 w-full cursor-pointer"
-    />
-    {(minLabel ?? maxLabel) && (
-      <div className="text-muted-foreground/80 flex justify-between text-[10px]">
-        <span>{minLabel}</span>
-        <span>{maxLabel}</span>
+}: LabeledSliderProps) => {
+  const inputId = useId();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between">
+        <label htmlFor={inputId} className="text-muted-foreground text-xs font-medium">
+          {label}
+        </label>
+        <span className="text-foreground text-xs tabular-nums">{formatValue(value)}</span>
       </div>
-    )}
-  </div>
-);
+      <input
+        id={inputId}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="accent-primary h-1 w-full cursor-pointer"
+      />
+      {(minLabel ?? maxLabel) && (
+        <div className="text-muted-foreground/80 flex justify-between text-[10px]">
+          <span>{minLabel}</span>
+          <span>{maxLabel}</span>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -277,14 +277,24 @@ const buildFieldDescription = (field: { cardinality: number; values: Array<{ val
   return `${field.cardinality} values \u00b7 ${preview}${suffix}`;
 };
 
+export interface GroupByOptionsResult {
+  options: GroupByOption[];
+  /**
+   * True until the queries backing the option list have settled. The list is
+   * incomplete while loading — notably "catalog" is missing — so callers must
+   * not treat a value's absence as "unsupported" before this turns false.
+   */
+  isLoading: boolean;
+}
+
 /** Hook to build groupBy dropdown options, hiding options that would produce only 1 group. */
-export const useGroupByOptions = (selectedDatasetIds: string[]): GroupByOption[] => {
+export const useGroupByOptions = (selectedDatasetIds: string[]): GroupByOptionsResult => {
   const t = useTranslations("Explore");
   const singleDatasetId = selectedDatasetIds.length === 1 ? selectedDatasetIds[0]! : null;
   const enumFieldsQuery = useDatasetEnumFieldsQuery(singleDatasetId);
   const dataSourcesQuery = useDataSourcesQuery();
 
-  return useMemo<GroupByOption[]>(() => {
+  const options = useMemo<GroupByOption[]>(() => {
     const opts: GroupByOption[] = [{ value: "none", label: t("groupByNone"), description: t("groupByNoneDesc") }];
 
     // Show "Dataset" only when 2+ datasets are selected
@@ -311,6 +321,12 @@ export const useGroupByOptions = (selectedDatasetIds: string[]): GroupByOption[]
     }
     return opts;
   }, [enumFieldsQuery.data, dataSourcesQuery.data, selectedDatasetIds, t]);
+
+  // "catalog" needs the data-sources list; a single-dataset selection also
+  // waits on its enum fields. Report loading until both inputs are in.
+  const isLoading = dataSourcesQuery.isPending || (singleDatasetId != null && enumFieldsQuery.isPending);
+
+  return { options, isLoading };
 };
 
 // oxlint-disable-next-line complexity

@@ -72,6 +72,15 @@ jobs:
         run: pnpm build
         working-directory: packages/ui
 
+      # The unit-test workflow runs `pnpm test:coverage` with working-directory
+      # apps/web, so it never reaches this package. Without this step nothing in
+      # CI executes packages/ui's suite -- a test asserting a class the source
+      # stopped emitting sat green here for months.
+      - name: Test UI package
+        timeout-minutes: 3
+        run: pnpm test
+        working-directory: packages/ui
+
       - name: Build Storybook
         timeout-minutes: 3
         run: pnpm storybook:build

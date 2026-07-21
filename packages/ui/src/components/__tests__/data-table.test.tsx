@@ -10,7 +10,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { type ColumnDef, DataTable } from "../data-table";
 
@@ -259,6 +259,114 @@ describe("DataTable - sort indicator", () => {
 
     const sortIcon = nameButton.querySelector("svg");
     expect(sortIcon).toBeInTheDocument();
+  });
+});
+
+const getRowId = (row: TestItem) => String(row.id);
+const renderExpandedRow = (row: TestItem) => <p>Details for {row.name}</p>;
+
+const ALPHA_DETAILS = "Details for Alpha";
+const RUN_ALPHA = "Run Alpha";
+
+const withActionColumn = (onAction: (id: number) => void): ColumnDef<TestItem, unknown>[] => [
+  ...testColumns,
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => (
+      <button type="button" onClick={() => onAction(row.original.id)}>
+        {`Run ${row.original.name}`}
+      </button>
+    ),
+  },
+];
+
+const renderExpandable = (columns: ColumnDef<TestItem, unknown>[] = testColumns) =>
+  render(<DataTable columns={columns} data={testData} renderExpandedRow={renderExpandedRow} getRowId={getRowId} />);
+
+describe("DataTable - expandable rows", () => {
+  it("expands a row when the row itself is clicked", async () => {
+    const user = userEvent.setup();
+
+    renderExpandable();
+
+    await user.click(screen.getByText("Alpha"));
+
+    expect(screen.getByText(ALPHA_DETAILS)).toBeInTheDocument();
+  });
+
+  it("expands a row when Enter is pressed on the focused row", async () => {
+    const user = userEvent.setup();
+
+    renderExpandable();
+
+    const table = screen.getByRole("treegrid");
+    const tbody = within(table).getAllByRole("rowgroup")[1]!;
+    const firstRow = within(tbody).getAllByRole("row")[0]!;
+
+    firstRow.focus();
+    expect(firstRow).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.getByText(ALPHA_DETAILS)).toBeInTheDocument();
+  });
+});
+
+describe("DataTable - expandable rows ignore interactive cell content", () => {
+  it("does not expand the row when a button inside a cell is clicked", async () => {
+    const user = userEvent.setup();
+    const onAction = vi.fn();
+
+    renderExpandable(withActionColumn(onAction));
+
+    await user.click(screen.getByRole("button", { name: RUN_ALPHA }));
+
+    expect(onAction).toHaveBeenCalledExactlyOnceWith(1);
+    expect(screen.queryByText(ALPHA_DETAILS)).not.toBeInTheDocument();
+  });
+
+  it("does not expand the row when Enter is pressed on a button inside a cell", async () => {
+    const user = userEvent.setup();
+    const onAction = vi.fn();
+
+    renderExpandable(withActionColumn(onAction));
+
+    screen.getByRole("button", { name: RUN_ALPHA }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(onAction).toHaveBeenCalledExactlyOnceWith(1);
+    expect(screen.queryByText(ALPHA_DETAILS)).not.toBeInTheDocument();
+  });
+
+  it("does not expand the row when a link inside a cell is clicked", async () => {
+    const user = userEvent.setup();
+
+    renderExpandable([
+      ...testColumns,
+      { id: "link", header: "Link", cell: ({ row }) => <a href="#detail">{`Open ${row.original.name}`}</a> },
+    ]);
+
+    await user.click(screen.getByRole("link", { name: "Open Alpha" }));
+
+    expect(screen.queryByText(ALPHA_DETAILS)).not.toBeInTheDocument();
+  });
+
+  it("does not expand the row when a checkbox inside a cell is toggled", async () => {
+    const user = userEvent.setup();
+
+    renderExpandable([
+      ...testColumns,
+      {
+        id: "select",
+        header: "Select",
+        cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.name}`} />,
+      },
+    ]);
+
+    await user.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
+    expect(screen.queryByText(ALPHA_DETAILS)).not.toBeInTheDocument();
   });
 });
 

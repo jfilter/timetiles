@@ -4,6 +4,9 @@
  * Renders a row of buttons where exactly one is active at a time.
  * Used for preset selections like cluster density (Fine/Normal/Coarse).
  *
+ * The active option is conveyed via `aria-pressed` in addition to colour,
+ * so the selection is perceivable without seeing the styling.
+ *
  * @module
  * @category Components
  */
@@ -32,6 +35,7 @@ export const PresetButtonGroup = <T extends string>({
       <button
         key={option.key}
         type="button"
+        aria-pressed={value === option.key}
         onClick={() => onChange(option.key)}
         className={cn(
           "border-border ring-ring/40 flex-1 rounded-sm border px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2",

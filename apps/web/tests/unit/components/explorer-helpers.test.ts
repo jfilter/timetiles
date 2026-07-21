@@ -6,9 +6,14 @@
  */
 import { describe, expect, it } from "vitest";
 
+import type { DataSourceCatalog, DataSourceDataset } from "@/lib/hooks/use-data-sources-query";
+import type { FilterState } from "@/lib/types/filter-state";
+
 import {
   buildEventsDescription,
   type FilterLabels,
+  getFilterLabels,
+  shouldResetGroupBy,
   type TranslateFn,
 } from "../../../app/[locale]/(frontend)/explore/_components/explorer-helpers";
 
@@ -71,5 +76,50 @@ describe("buildEventsDescription", () => {
     };
     const result = buildEventsDescription(8135, 8135, labels, false, mockT);
     expect(result).toBe("Showing all 8,135 events from Myanmar, since Feb 11, 1996.");
+  });
+});
+
+describe("shouldResetGroupBy", () => {
+  const loadedOptions = [{ value: "none" }, { value: "dataset" }];
+
+  it("keeps a URL-restored 'catalog' while the option list is still loading", () => {
+    // A shared link carries ?groupBy=catalog. Until the data-sources query
+    // resolves, "catalog" is not in the option list — resetting here would
+    // silently drop the shared selection before it could ever be honoured.
+    expect(shouldResetGroupBy("catalog", [{ value: "none" }], true)).toBe(false);
+  });
+
+  it("resets a built-in value that is genuinely unavailable once loaded", () => {
+    expect(shouldResetGroupBy("catalog", loadedOptions, false)).toBe(true);
+  });
+
+  it("keeps a built-in value that is present in the loaded options", () => {
+    expect(shouldResetGroupBy("dataset", loadedOptions, false)).toBe(false);
+  });
+
+  it("never resets 'none'", () => {
+    expect(shouldResetGroupBy("none", [], false)).toBe(false);
+  });
+
+  it("never resets custom field paths — the API tolerates unknown fields", () => {
+    expect(shouldResetGroupBy("data.agency", loadedOptions, false)).toBe(false);
+  });
+});
+
+describe("getFilterLabels dataset fallback", () => {
+  const filters = { datasets: ["42"], startDate: null, endDate: null } as unknown as FilterState;
+  const catalogs: DataSourceCatalog[] = [];
+
+  it("uses the caller-supplied localized label for an unresolved dataset", () => {
+    // Regression: a hardcoded English "Unknown Dataset" used to leak into the
+    // localized explore description for every locale.
+    const labels = getFilterLabels(filters, catalogs, [], "Unbekannter Datensatz", "de");
+    expect(labels.datasets).toEqual([{ id: "42", name: "Unbekannter Datensatz" }]);
+  });
+
+  it("prefers the real dataset name when it resolves", () => {
+    const datasets = [{ id: 42, name: "Myanmar" }] as unknown as DataSourceDataset[];
+    const labels = getFilterLabels(filters, catalogs, datasets, "Unbekannter Datensatz", "de");
+    expect(labels.datasets).toEqual([{ id: "42", name: "Myanmar" }]);
   });
 });

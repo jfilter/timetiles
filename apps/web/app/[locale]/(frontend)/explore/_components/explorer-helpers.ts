@@ -28,12 +28,13 @@ export const simplifyBounds = (mapBounds: MapBounds | null): MapBounds | null =>
   return { north: mapBounds.north, south: mapBounds.south, east: mapBounds.east, west: mapBounds.west };
 };
 
-/** Get dataset name by ID, falling back to a caller-supplied (localized) label. */
-export const getDatasetName = (
-  datasets: DataSourceDataset[],
-  datasetId: string,
-  fallback = "Unknown Dataset"
-): string => {
+/**
+ * Get dataset name by ID, falling back to a caller-supplied (localized) label.
+ *
+ * The fallback is required on purpose: it renders inside the user-facing
+ * description, so a hardcoded English default would leak into every locale.
+ */
+export const getDatasetName = (datasets: DataSourceDataset[], datasetId: string, fallback: string): string => {
   const dataset = datasets.find((d) => String(d.id) === datasetId);
   return dataset?.name ?? fallback;
 };
@@ -46,9 +47,10 @@ export const getFilterLabels = (
   filters: FilterState,
   _catalogs: DataSourceCatalog[],
   datasets: DataSourceDataset[],
+  unknownDatasetLabel: string,
   locale?: string
 ): FilterLabels => ({
-  datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id) })),
+  datasets: filters.datasets.map((id) => ({ id, name: getDatasetName(datasets, id, unknownDatasetLabel) })),
   dateRange: formatDateRange(filters.startDate, filters.endDate, locale),
   fieldFilters: filters.fieldFilters && Object.keys(filters.fieldFilters).length > 0 ? filters.fieldFilters : undefined,
 });
@@ -128,6 +130,28 @@ export const buildEventsDescription = (
   }
 
   return sentence + ".";
+};
+
+/** Built-in groupBy values whose availability is derived from the loaded data sources. */
+const BUILT_IN_GROUP_VALUES = ["none", "dataset", "catalog"];
+
+/**
+ * Decide whether a groupBy value must fall back to "none".
+ *
+ * Only built-in values are ever reset — custom field paths are left alone
+ * because the API degrades gracefully on unknown fields. The `optionsLoading`
+ * guard matters for shared links: `?groupBy=catalog` arrives before the
+ * data-sources query resolves, and the option list does not contain "catalog"
+ * until then, so resetting eagerly silently discards the shared selection.
+ */
+export const shouldResetGroupBy = (
+  groupBy: string,
+  options: ReadonlyArray<{ value: string }>,
+  optionsLoading: boolean
+): boolean => {
+  if (optionsLoading) return false;
+  if (!BUILT_IN_GROUP_VALUES.includes(groupBy) || groupBy === "none") return false;
+  return !options.some((o) => o.value === groupBy);
 };
 
 /** Check if data bounds are outside the current viewport */

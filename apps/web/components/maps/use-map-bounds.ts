@@ -45,6 +45,11 @@ export const useMapBounds = ({
   setCurrentZoom,
 }: UseMapBoundsProps) => {
   const [isMapPositioned, setIsMapPositioned] = useState(!!initialViewState);
+  // Distinct from isMapPositioned, which starts true for a URL-supplied view
+  // state — i.e. before the maplibre instance exists. Consumers that need to
+  // touch the live map (attach native listeners, query layers) must wait for
+  // this instead.
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const hasAppliedBoundsRef = useRef(false);
 
   // Fit map to bounds or apply view state when they arrive after initial load.
@@ -84,6 +89,7 @@ export const useMapBounds = ({
       hasAppliedBoundsRef.current = true;
     }
     setIsMapPositioned(true);
+    setIsMapLoaded(true);
     const { bounds, zoom } = logMapInitialized(map, !!initialBounds || !!initialViewState);
     const center = map.getCenter();
     onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat }, false);
@@ -100,5 +106,5 @@ export const useMapBounds = ({
     onBoundsChange?.(bounds, zoom, { lng: center.lng, lat: center.lat }, evt.originalEvent != null);
   };
 
-  return { isMapPositioned, handleLoad, handleMoveEnd };
+  return { isMapPositioned, isMapLoaded, handleLoad, handleMoveEnd };
 };
