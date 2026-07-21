@@ -5,7 +5,12 @@
     "moduleResolution": "bundler",
     "module": "ESNext",
     "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // tsup owns the build (outDir dist). The shared base sets declaration +
+    // declarationMap with no outDir, so a bare `tsc`/`tsgo` here writes .js and
+    // .d.ts next to every source file -- and vite resolves .js before .tsx, so
+    // those shadow the sources in every test run. Emit nothing from tsc.
+    "noEmit": true
   },
   "include": ["."],
   "exclude": ["node_modules", "dist"]

@@ -13,7 +13,7 @@ const meta: Meta<typeof Hero> = {
   argTypes: {
     variant: { control: "select", options: ["centered", "split", "full-bleed"] },
     size: { control: "select", options: ["sm", "default", "lg"] },
-    background: { control: "select", options: ["grid", "solid", "none"] },
+    background: { control: "select", options: ["grid", "gradient", "solid", "none"] },
   },
   parameters: { layout: "fullscreen" },
 };
@@ -86,6 +86,16 @@ export const WithDescription: Story = {
       <HeroActions>
         <Button size="lg">View on GitHub</Button>
       </HeroActions>
+    </Hero>
+  ),
+};
+
+export const GradientBackground: Story = {
+  args: { background: "gradient" },
+  render: (args) => (
+    <Hero {...args}>
+      <HeroHeadline>Gradient Background</HeroHeadline>
+      <HeroSubheadline>Soft vertical wash instead of the grid texture.</HeroSubheadline>
     </Hero>
   ),
 };

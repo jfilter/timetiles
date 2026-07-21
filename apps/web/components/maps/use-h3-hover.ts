@@ -29,7 +29,13 @@ interface UseH3HoverProps {
   algorithm: string;
   currentZoom: number;
   mapRef: React.RefObject<MapRef | null>;
-  isMapPositioned: boolean;
+  /**
+   * Mirrors the map's `load` event. Must NOT be a positioning flag: a URL with
+   * lat/lng/zoom makes the map "positioned" before it exists, so gating the
+   * listener on that would run the attach effect once against an empty ref and
+   * never re-run it.
+   */
+  isMapLoaded: boolean;
   scope?: ViewScope;
 }
 
@@ -48,7 +54,7 @@ const boundsToKey = (
   return `${round(bounds.getNorth())},${round(bounds.getSouth())},${round(bounds.getEast())},${round(bounds.getWest())}`;
 };
 
-export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, scope }: UseH3HoverProps) => {
+export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapLoaded, scope }: UseH3HoverProps) => {
   const [hoverTarget, setHoverTarget] = useState<HoverTarget | null>(null);
   const roundedZoom = Math.round(currentZoom);
   const searchParams = useSearchParams();
@@ -121,7 +127,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, sc
   // Native mousemove handler to detect cluster hover across features
   // (react-map-gl's onMouseEnter only fires once per layer entry, not per feature)
   useEffect(() => {
-    if (!isMapPositioned) return;
+    if (!isMapLoaded) return;
     const map = mapRef.current?.getMap();
     if (!map) return;
 
@@ -145,7 +151,7 @@ export const useH3Hover = ({ algorithm, currentZoom, mapRef, isMapPositioned, sc
     return () => {
       map.off("mousemove", onMove);
     };
-  }, [isMapPositioned, mapRef]);
+  }, [isMapLoaded, mapRef]);
 
   return { hoverHexData, handleH3Hover, handleH3HoverLeave };
 };

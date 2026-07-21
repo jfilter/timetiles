@@ -215,7 +215,19 @@ export const NewsletterSubmitButton = ({
   );
 };
 
-/** Shared status message display used by both NewsletterForm and NewsletterCTA. */
+/**
+ * Shared status message display used by both NewsletterForm and NewsletterCTA.
+ *
+ * Both live regions are always mounted — even while idle — so assistive
+ * technology observes them before any content arrives. Regions inserted into
+ * the DOM at the same moment as their text are frequently missed by screen
+ * readers, which is why the empty wrappers are deliberately not short-circuited.
+ *
+ * Two separate regions are used rather than one whose role flips, because
+ * mutating the role of a live region already registered by a screen reader is
+ * unreliable. Errors land in the assertive `alert` region, everything else in
+ * the polite `status` region.
+ */
 export const NewsletterStatusMessage = ({
   status,
   message,
@@ -226,8 +238,28 @@ export const NewsletterStatusMessage = ({
   /** When true, renders a decorated panel with icons (CTA variant); otherwise a simple text line */
   decorated?: boolean;
 }) => {
-  if (!message) return null;
+  const body = message ? <NewsletterStatusMessageBody status={status} message={message} decorated={decorated} /> : null;
+  const isError = status === "error";
 
+  return (
+    <>
+      <output aria-live="polite">{isError ? null : body}</output>
+      <div role="alert" aria-live="assertive">
+        {isError ? body : null}
+      </div>
+    </>
+  );
+};
+
+const NewsletterStatusMessageBody = ({
+  status,
+  message,
+  decorated,
+}: {
+  status: NewsletterStatus;
+  message: string;
+  decorated: boolean;
+}) => {
   if (decorated) {
     return (
       <div

@@ -21,7 +21,11 @@ describe("buttonVariants", () => {
     it("applies destructive variant classes", () => {
       const classes = buttonVariants({ variant: "destructive" });
       expect(classes).toContain("bg-destructive");
-      expect(classes).toContain("text-white");
+      // The theme token, not a hardcoded colour: `text-white` is unreadable on the
+      // light-on-dark destructive surfaces some themes define. Commit 43a6ad08 moved
+      // the source to the token but left this assertion on the literal, and nothing
+      // caught it -- see the CI gap noted in packages/ui's test wiring.
+      expect(classes).toContain("text-destructive-foreground");
     });
 
     it("applies outline variant classes", () => {

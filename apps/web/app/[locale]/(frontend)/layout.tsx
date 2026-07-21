@@ -50,6 +50,7 @@ import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
 import { SiteProvider } from "@/lib/context/site-context";
 import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
+import { buildCustomHeadElements } from "@/lib/security/head-html";
 import { sanitizeHTML } from "@/lib/security/html-sanitizer";
 import { resolveSite } from "@/lib/services/resolution/site-resolver";
 import config from "@/payload.config";
@@ -265,9 +266,13 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
     ? { __html: sanitizeHTML(site.customCode.bodyEndHtml) }
     : undefined;
 
+  // Admin-authored head HTML is parsed into real elements — raw HTML cannot be
+  // injected into <head> without breaking out of it. See lib/security/head-html.ts.
+  const customHeadElements = buildCustomHeadElements(site?.customCode?.headHtml);
+
   return (
     <html lang={locale} suppressHydrationWarning>
-      <head />
+      <head>{customHeadElements}</head>
       <body
         className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontInter.variable} ${fontJetBrains.variable} font-sans antialiased`}
         data-site={site?.slug ?? undefined}

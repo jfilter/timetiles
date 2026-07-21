@@ -14,6 +14,7 @@ import type { GlobalAfterChangeHook } from "payload";
 import sharp from "sharp";
 
 import { getEnv } from "@/lib/config/env";
+import { FAVICON_SIZES, faviconFileName, type FaviconTheme } from "@/lib/constants/favicon-files";
 import { logError, logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
@@ -41,13 +42,11 @@ const getMediaId = (field: unknown): string | null => {
 /**
  * Generates favicon files from a source image.
  */
-const generateFaviconSet = async (sourceBuffer: Buffer, publicDir: string, suffix: string): Promise<void> => {
-  const sizes = [
-    { name: `favicon${suffix}.ico`, size: 32 },
-    { name: `apple-touch-icon${suffix}.png`, size: 180 },
-    { name: `icon-192${suffix}.png`, size: 192 },
-    { name: `icon-512${suffix}.png`, size: 512 },
-  ];
+const generateFaviconSet = async (sourceBuffer: Buffer, publicDir: string, theme: FaviconTheme): Promise<void> => {
+  // Filenames come from the shared constant that `lib/metadata/favicon-icons.ts`
+  // also reads — that module is what points browsers at these files. Anything
+  // written here under a name nobody reads is dead weight.
+  const sizes = FAVICON_SIZES.map(({ base, size }) => ({ name: faviconFileName(base, theme), size }));
 
   await Promise.all(
     sizes.map(({ name, size }) =>
@@ -111,11 +110,13 @@ const fetchMediaBuffer = async (
 /**
  * Generates favicon files when faviconSourceLight or faviconSourceDark changes.
  *
- * Output files for each theme:
- * - favicon-light.ico / favicon-dark.ico (32x32)
- * - apple-touch-icon.png / apple-touch-icon-dark.png (180x180)
- * - icon-192.png / icon-192-dark.png (192x192)
- * - icon-512.png / icon-512-dark.png (512x512)
+ * Output files for each theme (`-light` / `-dark` suffix):
+ * - icon-32-{theme}.png (32x32)
+ * - apple-touch-icon-{theme}.png (180x180)
+ * - icon-192-{theme}.png (192x192)
+ * - icon-512-{theme}.png (512x512)
+ *
+ * `lib/metadata/favicon-icons.ts` references these exact names.
  */
 // eslint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning doc
 export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previousDoc, req }) => {
@@ -143,7 +144,7 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
     if (lightChanged && currentLightId) {
       const buffer = await fetchMediaBuffer(req.payload, currentLightId);
       if (buffer) {
-        await generateFaviconSet(buffer, publicDir, "-light");
+        await generateFaviconSet(buffer, publicDir, "light");
         logger.info("Generated light theme favicon files");
       }
     } else if (lightChanged && !currentLightId) {
@@ -154,7 +155,7 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
     if (darkChanged && currentDarkId) {
       const buffer = await fetchMediaBuffer(req.payload, currentDarkId);
       if (buffer) {
-        await generateFaviconSet(buffer, publicDir, "-dark");
+        await generateFaviconSet(buffer, publicDir, "dark");
         logger.info("Generated dark theme favicon files");
       }
     } else if (darkChanged && !currentDarkId) {

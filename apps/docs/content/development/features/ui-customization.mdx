@@ -223,14 +223,11 @@ BlockRenderer
 ### Style Resolution
 
 ```typescript
-// Padding maps to Tailwind classes
-const PADDING_MAP = {
-  none: "py-0", // → pt-0 or pb-0
-  sm: "py-4",
-  md: "py-8",
-  lg: "py-16",
-  xl: "py-24",
-};
+// Padding maps to Tailwind classes. Both directions are spelled out as full
+// literal class names — Tailwind only emits utilities it can find verbatim
+// while scanning the source, so a class built at runtime never reaches the CSS.
+const PADDING_TOP_MAP = { none: "pt-0", sm: "pt-4", md: "pt-8", lg: "pt-16", xl: "pt-24" };
+const PADDING_BOTTOM_MAP = { none: "pb-0", sm: "pb-4", md: "pb-8", lg: "pb-16", xl: "pb-24" };
 
 // Max width maps to Tailwind classes
 const MAX_WIDTH_MAP = { sm: "max-w-3xl", md: "max-w-5xl", lg: "max-w-6xl", xl: "max-w-7xl", full: "max-w-full" };

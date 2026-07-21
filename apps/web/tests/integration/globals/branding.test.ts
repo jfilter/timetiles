@@ -11,6 +11,8 @@ import { join } from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
+
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
 describe.sequential("Branding Global", () => {
@@ -102,8 +104,8 @@ describe.sequential("Branding Favicon Generation", () => {
 
   // Generated favicon files to clean up after tests
   const generatedFiles = [
-    "favicon-light.ico",
-    "favicon-dark.ico",
+    "icon-32-light.png",
+    "icon-32-dark.png",
     "apple-touch-icon-light.png",
     "apple-touch-icon-dark.png",
     "icon-192-light.png",
@@ -197,7 +199,7 @@ describe.sequential("Branding Favicon Generation", () => {
 
     // Check that favicon files were generated
     const expectedFiles = [
-      "favicon-light.ico",
+      "icon-32-light.png",
       "apple-touch-icon-light.png",
       "icon-192-light.png",
       "icon-512-light.png",
@@ -207,6 +209,14 @@ describe.sequential("Branding Favicon Generation", () => {
       const filePath = join(publicDir, file);
       expect(existsSync(filePath), `Expected ${file} to exist`).toBe(true);
     }
+
+    // The page metadata must point at the files just generated — not at the
+    // raw uploaded source image, which is what browsers used to be handed.
+    const icons = buildFaviconIcons({ branding, site: null });
+    const urls = [...icons.icon, ...icons.shortcut, ...icons.apple].map((entry) => entry.url);
+    expect(urls).toContain("/icon-192-light.png");
+    expect(urls).toContain("/apple-touch-icon-light.png");
+    expect(urls).not.toContain(mediaDoc.url);
   });
 
   it("should generate both light and dark favicon sets", async () => {
@@ -251,8 +261,8 @@ describe.sequential("Branding Favicon Generation", () => {
     });
 
     // Check that all favicon files were generated for both themes
-    const lightFiles = ["favicon-light.ico", "apple-touch-icon-light.png", "icon-192-light.png", "icon-512-light.png"];
-    const darkFiles = ["favicon-dark.ico", "apple-touch-icon-dark.png", "icon-192-dark.png", "icon-512-dark.png"];
+    const lightFiles = ["icon-32-light.png", "apple-touch-icon-light.png", "icon-192-light.png", "icon-512-light.png"];
+    const darkFiles = ["icon-32-dark.png", "apple-touch-icon-dark.png", "icon-192-dark.png", "icon-512-dark.png"];
 
     for (const file of [...lightFiles, ...darkFiles]) {
       const filePath = join(publicDir, file);

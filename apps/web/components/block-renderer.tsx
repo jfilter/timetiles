@@ -69,7 +69,9 @@ import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
 
 const renderHero = (block: HeroBlock, key: string) => {
-  const heroBackground = block.background === "gradient" ? "grid" : (block.background ?? "grid");
+  // Both CMS options must reach the Hero unchanged. Collapsing "gradient" onto
+  // "grid" made the select a no-op — the two options rendered identically.
+  const heroBackground = block.background ?? "grid";
   return (
     <Hero key={key} background={heroBackground}>
       <HeroHeadline>{block.title}</HeroHeadline>
@@ -199,7 +201,13 @@ const renderTestimonials = (block: TestimonialsBlock, key: string) => (
   </div>
 );
 
-const PADDING_MAP: Record<string, string> = { none: "py-0", sm: "py-4", md: "py-8", lg: "py-16", xl: "py-24" };
+// Padding classes MUST appear as complete literal strings in this file.
+// Tailwind extracts candidates by scanning source text, so a class assembled at
+// runtime (e.g. deriving "pt-16" from a shared "py-16" entry) is never emitted
+// into the CSS and the setting silently does nothing.
+const PADDING_TOP_MAP: Record<string, string> = { none: "pt-0", sm: "pt-4", md: "pt-8", lg: "pt-16", xl: "pt-24" };
+
+const PADDING_BOTTOM_MAP: Record<string, string> = { none: "pb-0", sm: "pb-4", md: "pb-8", lg: "pb-16", xl: "pb-24" };
 
 const MAX_WIDTH_MAP: Record<string, string> = {
   sm: "max-w-3xl",
@@ -224,12 +232,12 @@ const buildBlockStyleClasses = (style: BlockStyle): string[] => {
   const classes: string[] = [];
 
   if (style.paddingTop) {
-    const pt = PADDING_MAP[style.paddingTop];
-    if (pt) classes.push(pt.replace("py-", "pt-"));
+    const pt = PADDING_TOP_MAP[style.paddingTop];
+    if (pt) classes.push(pt);
   }
   if (style.paddingBottom) {
-    const pb = PADDING_MAP[style.paddingBottom];
-    if (pb) classes.push(pb.replace("py-", "pb-"));
+    const pb = PADDING_BOTTOM_MAP[style.paddingBottom];
+    if (pb) classes.push(pb);
   }
   if (style.hideOnMobile) classes.push("hidden md:block");
   if (style.hideOnDesktop) classes.push("md:hidden");

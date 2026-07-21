@@ -111,7 +111,7 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
   const getDatasetNames = (): string[] =>
     filters.datasets.map((id) => getDatasetName(datasets, id, t("unknownDataset")));
   const dateRangeLabel = formatDateRange(filters.startDate, filters.endDate, locale);
-  const filterLabels = getFilterLabels(filters, catalogs, datasets, locale);
+  const filterLabels = getFilterLabels(filters, catalogs, datasets, t("unknownDataset"), locale);
 
   if (isDesktop === false) {
     // Mobile Layout — only the active tab is mounted

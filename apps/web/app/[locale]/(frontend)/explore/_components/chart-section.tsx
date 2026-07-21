@@ -35,6 +35,7 @@ import { useFilters } from "@/lib/hooks/use-filters";
 import { formatMonthYear, parseISODate } from "@/lib/utils/date";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
+import { shouldResetGroupBy } from "./explorer-helpers";
 import { type ChartMeta, type ChartType, useChartTypeLabels, VisualizationPanel } from "./visualization-panel";
 
 const DATASET_BAR = "dataset-bar" as const satisfies ChartType;
@@ -163,17 +164,15 @@ export const ChartSection = ({
 
   // Shared groupBy options for both histogram and beeswarm
   const datasetIds = useMemo(() => filters.datasets.map(String), [filters.datasets]);
-  const groupByOptions = useGroupByOptions(datasetIds);
+  const { options: groupByOptions, isLoading: groupByOptionsLoading } = useGroupByOptions(datasetIds);
 
-  // Reset groupBy only when a built-in option (dataset/catalog) was removed from the list.
-  // Custom field values are never auto-reset — the API handles unknown fields gracefully.
-  const BUILT_IN_GROUP_VALUES = ["none", "dataset", "catalog"];
-  const shouldResetGroupBy =
-    BUILT_IN_GROUP_VALUES.includes(groupBy) && groupBy !== "none" && !groupByOptions.some((o) => o.value === groupBy);
-  const effectiveGroupByValue = shouldResetGroupBy ? "none" : groupBy;
+  // Reset groupBy only when a built-in option (dataset/catalog) was removed from
+  // the list — and only once the option list has actually loaded.
+  const needsGroupByReset = shouldResetGroupBy(groupBy, groupByOptions, groupByOptionsLoading);
+  const effectiveGroupByValue = needsGroupByReset ? "none" : groupBy;
   useEffect(() => {
-    if (shouldResetGroupBy) void setGroupBy("none");
-  }, [shouldResetGroupBy, setGroupBy]);
+    if (needsGroupByReset) void setGroupBy("none");
+  }, [needsGroupByReset, setGroupBy]);
 
   const renderChart = (height: number | string | undefined, variant: "compact" | "fullscreen" = "compact") => {
     const effectiveGroupBy = variant === "fullscreen" ? effectiveGroupByValue : "none";
