@@ -29,6 +29,17 @@ playwright-report/
 .env.local
 uploads/
 backups/
+exports/
+
+# The app user's home IS the install dir (a symlink into this tree), so its XDG
+# directories land inside the rsync target. .local/share/containers is podman's
+# image store for the scraper runner -- see deployment/.gitignore, which lists
+# the same paths for the same reason. Without these, a warm `./run-vm.sh`
+# re-run deletes the scraper images out from under a live runner service, and
+# the next scraper run fails with "image not known".
+.config/
+.local/
+.cache/
 
 # Agent tooling — .gemini/ and .opencode/ additionally carry broken symlinks
 .claude/

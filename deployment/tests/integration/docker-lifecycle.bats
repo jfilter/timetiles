@@ -97,9 +97,18 @@ setup() {
 @test "web container receives scraper env vars when configured" {
     skip_if_services_not_running
 
-    # Check that SCRAPER_RUNNER_URL is passed through (may be empty if not configured)
+    # The old assertion was `status -eq 0 || status -eq 1`, which printenv
+    # cannot violate -- the test could not fail. Compare the container's view
+    # against .env.production instead, which is the pass-through this is
+    # supposed to prove.
+    local configured
+    configured=$(grep "^SCRAPER_RUNNER_URL=" "$DEPLOY_DIR/.env.production" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"')
+
+    if [[ -z "$configured" ]]; then
+        skip "SCRAPER_RUNNER_URL not configured in .env.production"
+    fi
+
     run $DC_CMD exec -T web printenv SCRAPER_RUNNER_URL
-    # Status 0 means the var exists (even if empty), status 1 means it doesn't
-    # Both are acceptable — we just verify the compose config passes it through
-    [ "$status" -eq 0 ] || [ "$status" -eq 1 ]
+    [ "$status" -eq 0 ]
+    [ "$(echo "$output" | tr -d '\r')" = "$configured" ]
 }

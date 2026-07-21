@@ -152,3 +152,81 @@ run_execute_step() {
     [ "$status" -eq 0 ]
     assert_contains "$output" "MARKED:test-step"
 }
+
+# =============================================================================
+# die() from inside a subshell
+#
+# Regression under test, observed in a VM run on 2026-07-21: step 09's systemd
+# heredoc is unquoted and its body carried a comment reading
+#     # `timetiles up` no longer returns ...
+# The backticks made bash run `timetiles up` while expanding the heredoc. That
+# is a command substitution, so it runs in a SUBSHELL. errexit tripped there,
+# the inherited ERR trap called die, and die's `exit` left only the subshell.
+# The result in one run:
+#     ✗ Step 09-monitoring failed
+#     ✓ Step 09-monitoring completed
+# and bootstrap continued through steps 10-13 over a step it had already
+# declared failed.
+# =============================================================================
+
+@test "a failure inside a command substitution does not mark the step completed" {
+    # The substitution must feed a command that SUCCEEDS, or this proves
+    # nothing: `out=$(bad-cmd)` fails in the parent too, because an assignment
+    # takes the substitution's status, and errexit would catch it with or
+    # without die's subshell handling. Here print_info returns 0 and swallows
+    # it, so only the ERR trap inside the subshell fires -- the step 09 shape.
+    run_execute_step 'run_step() { print_info "value: $(definitely-not-a-real-command)"; print_info "kept going"; }'
+
+    [ "$status" -ne 0 ]
+    ! assert_contains "$output" "MARKED:test-step"
+}
+
+@test "an unescaped backtick in an unquoted heredoc does not mark the step completed" {
+    # The exact shape of the step 09 bug: a heredoc whose delimiter is unquoted,
+    # with backticks in what the author meant as a comment.
+    run_execute_step 'run_step() { cat > /dev/null << EOF
+# `definitely-not-a-real-command` explains the setting below
+Key=value
+EOF
+}'
+
+    [ "$status" -ne 0 ]
+    ! assert_contains "$output" "MARKED:test-step"
+}
+
+@test "no step script has an unescaped backtick inside an unquoted heredoc" {
+    # The runtime guard above stops such a step from being marked completed.
+    # This one stops the mistake from reaching a host at all -- the expansion
+    # also silently mangles the file being written.
+    run python3 - "$BOOTSTRAP_DIR" <<'PY'
+import re, sys, pathlib
+
+root = pathlib.Path(sys.argv[1])
+problems = []
+
+for path in sorted(root.rglob("*.sh")):
+    lines = path.read_text().splitlines()
+    i = 0
+    while i < len(lines):
+        m = re.search(r'<<-?\s*(["\']?)([A-Za-z_][A-Za-z0-9_]*)\1', lines[i])
+        if not m:
+            i += 1
+            continue
+        quoted, delim = bool(m.group(1)), m.group(2)
+        j = i + 1
+        while j < len(lines) and lines[j].strip() != delim:
+            j += 1
+        if not quoted:
+            for k, body in enumerate(lines[i + 1:j], start=i + 2):
+                if re.search(r'(?<!\\)`', body):
+                    problems.append(f"{path}:{k}: {body.strip()[:80]}")
+        i = j + 1
+
+for p in problems:
+    print(p)
+sys.exit(1 if problems else 0)
+PY
+
+    echo "$output"
+    [ "$status" -eq 0 ]
+}

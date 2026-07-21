@@ -95,9 +95,27 @@ skip_if_no_docker() {
     fi
 }
 
-# Skip test if services are not running
+# Guard for tests that need a live deployment.
+#
+# Skipping is right on a developer machine that happens to have Docker but no
+# deployment. It is NOT right in the VM harness, where the whole point is that
+# bootstrap just produced a running stack: there, every integration test would
+# skip, bats would report success, run-all.sh would print "All tests passed!"
+# and run-vm.sh would exit 0 over a completely dead deployment. A green run has
+# to mean something was checked.
+#
+# run-vm.sh exports DEPLOYMENT_EXPECTED=1 to say "the stack must be up here".
 skip_if_services_not_running() {
-    if ! container_running "postgres" || ! container_running "web"; then
-        skip "Services not running (run setup-test-env.sh first)"
+    if container_running "postgres" && container_running "web"; then
+        return 0
     fi
+
+    if [[ "${DEPLOYMENT_EXPECTED:-}" == "1" ]]; then
+        echo "postgres running: $(container_running postgres && echo yes || echo no)" >&2
+        echo "web running:      $(container_running web && echo yes || echo no)" >&2
+        $DC_CMD ps >&2 2>&1 || true
+        return 1
+    fi
+
+    skip "Services not running (run setup-test-env.sh first)"
 }
