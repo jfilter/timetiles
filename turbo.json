@@ -42,6 +42,7 @@
     "SCRAPER_GIT_CLONE_TIMEOUT",
     "SCRAPER_DATA_DIR",
     "TIMESCRAPE_OUTPUT_DIR",
+    "TIMESCRAPE_OUTPUT_FILE",
     "NEXT_PHASE",
     "SKIP_DB_CHECK",
     "NEXT_PUBLIC_SITE_URL",
@@ -57,7 +58,10 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      // apps/docs sets Next's output:"export" in production, so its real artifact
+      // is out/ (plus the pagefind index written into out/_pagefind). Without
+      // out/** a cache hit restored no static export at all.
+      "outputs": [".next/**", "!.next/cache/**", "dist/**", "out/**"]
     },
     "lint": {
       "dependsOn": ["transit"],

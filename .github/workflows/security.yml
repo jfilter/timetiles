@@ -411,15 +411,19 @@ jobs:
             let comment = '## Security Scan Results\n\n';
             comment += `Scan completed at ${new Date().toISOString()}\n\n`;
 
+            // Returns { report } on success or { error } when the report is
+            // missing or unparseable. Collapsing both into null previously made
+            // an absent report indistinguishable from a clean scan, so a run
+            // where every scan failed to upload still claimed "All Checks Passed".
             function readJSON(filePath) {
-              try {
-                if (fs.existsSync(filePath)) {
-                  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                }
-              } catch (e) {
-                console.error(`Error reading ${filePath}:`, e);
+              if (!fs.existsSync(filePath)) {
+                return { error: `report not found at ${filePath} (the scan job likely failed or uploaded no artifact)` };
               }
-              return null;
+              try {
+                return { report: JSON.parse(fs.readFileSync(filePath, 'utf8')) };
+              } catch (e) {
+                return { error: `report at ${filePath} is not valid JSON: ${e.message}` };
+              }
             }
 
             const scanTypes = [
@@ -430,10 +434,15 @@ jobs:
             ];
 
             let hasIssues = false;
+            const missingReports = [];
 
             for (const scan of scanTypes) {
-              const report = readJSON(scan.path);
-              if (report) {
+              const { report, error } = readJSON(scan.path);
+              if (error) {
+                missingReports.push(`${scan.name}: ${error}`);
+                comment += `### ${scan.name}\n`;
+                comment += `**Scan result unavailable** — ${error}\n\n`;
+              } else {
                 comment += `### ${scan.name}\n`;
 
                 let criticalCount = 0;
@@ -466,12 +475,21 @@ jobs:
               }
             }
 
+            if (missingReports.length > 0) {
+              comment += '### Security Scan Incomplete\n';
+              comment += `${missingReports.length} of ${scanTypes.length} scan reports could not be read, so this PR has **not** been fully scanned:\n`;
+              for (const missing of missingReports) {
+                comment += `- ${missing}\n`;
+              }
+              comment += '\nCheck the scan jobs above for failures before merging.\n\n';
+            }
+
             if (hasIssues) {
               comment += '### Action Required\n';
               comment += '- Review the security scan results in the [Security tab](../../security/code-scanning)\n';
               comment += '- Fix critical vulnerabilities before merging\n';
               comment += '- Remove any exposed secrets immediately\n';
-            } else {
+            } else if (missingReports.length === 0) {
               comment += '### All Checks Passed\n';
               comment += 'No critical security issues detected.\n';
             }
@@ -501,6 +519,12 @@ jobs:
                 issue_number: context.issue.number,
                 body: comment
               });
+            }
+
+            // Post the comment first, then fail — a scan whose report never
+            // arrived is an unknown, not a pass, and must not be reported green.
+            if (missingReports.length > 0) {
+              core.setFailed(`Security scan incomplete: ${missingReports.length} of ${scanTypes.length} reports could not be read.\n${missingReports.join('\n')}`);
             }
 
   security-summary:

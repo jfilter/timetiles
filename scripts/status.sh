@@ -80,9 +80,13 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 0
 fi
 
-# Call health endpoint
-HEALTH_JSON=$(curl -s http://localhost:3000/api/health 2>/dev/null)
-CURL_EXIT=$?
+# Call health endpoint.
+# `set -e` aborts the script on a failing command substitution, so a plain
+# `HEALTH_JSON=$(curl ...)` followed by `CURL_EXIT=$?` never reaches the error
+# handling below — the script just exits. Keeping the assignment on the left of
+# `||` puts it in a tested context, which suppresses the errexit abort.
+CURL_EXIT=0
+HEALTH_JSON=$(curl -s --max-time 5 http://localhost:3000/api/health 2>/dev/null) || CURL_EXIT=$?
 
 if [ "$CURL_EXIT" -ne 0 ] || [ -z "$HEALTH_JSON" ]; then
     print_warning "Could not reach health endpoint at http://localhost:3000/api/health"

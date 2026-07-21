@@ -15,8 +15,9 @@
 import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
 
 const paths = process.argv.slice(2);
-const unformatted = runFormatCheck(paths, process.cwd());
+const result = runFormatCheck(paths, process.cwd());
 
-reportFormatSection(unformatted);
+reportFormatSection(result);
 
-process.exit(unformatted.length > 0 ? 1 : 0);
+// A tool failure is a failed gate, not a clean run.
+process.exit(result.unformatted.length > 0 || result.toolError !== undefined ? 1 : 0);
