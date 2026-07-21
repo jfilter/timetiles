@@ -85,10 +85,14 @@ jobs:
       # has no boundary to move to, so the baseline stays pinned at the first
       # analysis ever and "new code" degenerates into the whole codebase. The repo
       # is versioned by tag, so feed the latest tag in. Needs fetch-depth: 0 above.
+      # --match 'v*' restricts this to release tags. `git describe --tags` is
+      # name-agnostic and returns the closest reachable tag by commit distance,
+      # so a package tag (e.g. @timetiles/ui@1.2.3) became the project version and
+      # silently reset Sonar's new-code baseline that gates this build.
       - name: Resolve project version for Sonar
         id: sonar-version
         if: always() && github.actor != 'dependabot[bot]'
-        run: echo "version=$(git describe --tags --abbrev=0 2>/dev/null || echo 0.0.0)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || echo 0.0.0)" >> "$GITHUB_OUTPUT"
 
       - name: SonarCloud Scan
         if: always() && github.actor != 'dependabot[bot]'

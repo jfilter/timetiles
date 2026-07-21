@@ -17,9 +17,10 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { getConfig } from "../config.js";
+import { countCsvDataRows } from "../lib/csv.js";
 import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
-import { buildPodmanArgs } from "../security/container-config.js";
+import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
 import { prepareCode } from "./code-prep.js";
 import { validateOutput } from "./output-validator.js";
@@ -138,6 +139,122 @@ const runPodmanContainer = async (
 };
 
 /**
+ * Terminate a run's container, escalating until it is actually gone.
+ *
+ * Every step here is sized against podman's OWN grace period, because the
+ * previous shape could not kill anything: it ran `podman stop` under a 10s
+ * client timeout against a container configured with `--stop-timeout` equal to
+ * the run timeout (up to 3600s), then fell back to `podman rm -f` under a 5s
+ * client timeout while `rm --force` itself waits out the same grace before
+ * SIGKILL. Both calls were killed before podman ever reached the SIGKILL step,
+ * so a container ignoring SIGTERM survived the timeout meant to end it.
+ *
+ *   1. `podman stop -t <grace>` — lets a well-behaved scraper flush and exit.
+ *      The client timeout exceeds the grace so podman's own SIGKILL can land.
+ *   2. `podman kill -s KILL` — no grace period at all, for a container that
+ *      ignored SIGTERM or a stop that failed for any other reason.
+ *   3. `podman rm -f -t 0` — backstop. `--rm` normally reaps the container, but
+ *      a container that never started, or a podman-side failure, can leave one
+ *      behind holding the run name and its share of the disk. `-t 0` skips the
+ *      SIGTERM wait so this cannot hang either.
+ */
+const forceKillContainer = async (runId: string): Promise<void> => {
+  const name = `run-${runId}`;
+
+  try {
+    await execFileAsync("podman", ["stop", "-t", String(CONTAINER_STOP_GRACE_SECS), name], {
+      timeout: (CONTAINER_STOP_GRACE_SECS + 5) * 1000,
+    });
+    return;
+  } catch (error) {
+    logger.info({ runId, error: String(error) }, "podman stop did not complete, escalating to SIGKILL");
+  }
+
+  try {
+    await execFileAsync("podman", ["kill", "-s", "KILL", name], { timeout: 10_000 });
+  } catch (error) {
+    logger.info({ runId, error: String(error) }, "podman kill failed, attempting force-remove");
+  }
+
+  try {
+    await execFileAsync("podman", ["rm", "-f", "-t", "0", name], { timeout: 15_000 });
+  } catch {
+    // Already removed by `--rm`, or never created. Nothing left to do.
+  }
+};
+
+/** How often the output watchdog samples the output directory. */
+const OUTPUT_WATCHDOG_INTERVAL_MS = 2000;
+
+/** Total bytes held by a directory tree, ignoring anything unreadable. */
+const directorySizeBytes = async (dir: string): Promise<number> => {
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+
+  let total = 0;
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += await directorySizeBytes(full);
+    } else if (entry.isFile()) {
+      total += await stat(full)
+        .then((s) => s.size)
+        .catch(() => 0);
+    }
+  }
+  return total;
+};
+
+/**
+ * Kill a run as soon as its output exceeds the configured size cap.
+ *
+ * SCRAPER_MAX_OUTPUT_SIZE_MB was only ever checked in `collectOutput`, after
+ * the container exited — by which point the bytes are already on the runner
+ * host's disk, so the limit could not prevent the write it exists to limit.
+ * `/output` is a bind mount and carries no quota of its own (see the mount
+ * comment in security/container-config.ts), so the cap has to be enforced from
+ * out here while the run is still in flight.
+ *
+ * Sampling means the bound is approximate: a run can overshoot by whatever it
+ * writes within one interval. That is a far weaker guarantee than a quota, but
+ * it turns "fills the host disk" into "overshoots the cap briefly". A hard
+ * bound requires SCRAPER_DATA_DIR to sit on a size-limited filesystem.
+ */
+const startOutputWatchdog = (
+  runId: string,
+  outputDir: string,
+  maxSizeMb: number
+): { stop: () => void; breached: () => boolean } => {
+  const maxBytes = maxSizeMb * 1024 * 1024;
+  let breached = false;
+  let checking = false;
+
+  const check = async (): Promise<void> => {
+    try {
+      const bytes = await directorySizeBytes(outputDir);
+      if (bytes <= maxBytes || breached) return;
+      breached = true;
+      logger.warn({ runId, bytes, maxBytes }, "Scraper output exceeded size limit, killing container");
+      await forceKillContainer(runId);
+    } catch (error) {
+      logError("Output watchdog check failed", error, { runId, outputDir });
+    } finally {
+      checking = false;
+    }
+  };
+
+  const timer = setInterval(() => {
+    // Skip if a sample is still in flight: a large tree can take longer to walk
+    // than the interval, and overlapping walks would pile up.
+    if (checking || breached) return;
+    checking = true;
+    void check();
+  }, OUTPUT_WATCHDOG_INTERVAL_MS);
+  timer.unref();
+
+  return { stop: () => clearInterval(timer), breached: () => breached };
+};
+
+/**
  * Remove a work directory that a container may have taken ownership of.
  *
  * The output mount uses `:U`, so Podman chowns it into the container's mapped
@@ -161,6 +278,24 @@ const removeContainerWrittenDir = async (dir: string): Promise<void> => {
   }
 };
 
+type CollectedOutput = { output: RunResult["output"] | undefined; exitCode: number; stderr: string };
+
+/**
+ * Record a bad output as a FAILED RUN carrying the scraper's own logs.
+ *
+ * Throwing `OutputValidationError` here used to answer the caller with HTTP
+ * 422, which discards stdout and stderr — the operator saw "invalid output"
+ * and had no way to learn why the scraper produced it. Bad output is a fact
+ * ABOUT the run, not a malformed request, so it belongs in the run record.
+ * An already-failing exit code is preserved; a scraper that claimed success
+ * is forced to exit 1.
+ */
+const failedOutput = (exitCode: number, stderr: string, reason: string): CollectedOutput => ({
+  output: undefined,
+  exitCode: exitCode === 0 ? 1 : exitCode,
+  stderr: `${stderr}\n[runner] ${reason}`,
+});
+
 const collectOutput = async (
   outputDir: string,
   outputFileName: string,
@@ -168,45 +303,62 @@ const collectOutput = async (
   exitCode: number,
   stderr: string,
   runId: string
-): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> => {
+): Promise<CollectedOutput> => {
   const outputFile = join(outputDir, outputFileName);
+  // A path escape is a malformed REQUEST, not a run outcome, so it stays an
+  // HTTP error — the request could never have produced a valid run.
   if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
     throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
   }
 
+  // Success/failure split for output, made explicit:
+  //   - file MISSING            -> failure. The scraper never wrote a result;
+  //                                if it also exited 0 it lied about its work.
+  //   - file present, 0 records -> SUCCESS with rows: 0. Finding nothing is a
+  //                                valid scrape (an empty listing page today).
+  //   - file present, oversize
+  //     or headerless           -> failure. Real output, unusable shape.
+  // Every failure branch keeps stdout/stderr so the cause stays visible.
+  let stats: Awaited<ReturnType<typeof stat>>;
   try {
-    const stats = await stat(outputFile);
-    const sizeMb = stats.size / (1024 * 1024);
-    if (sizeMb > maxSizeMb) {
-      throw new OutputValidationError(`Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
-    }
+    stats = await stat(outputFile);
+  } catch {
+    return exitCode === 0
+      ? failedOutput(exitCode, stderr, `No output file produced at ${outputFileName}`)
+      : { output: undefined, exitCode, stderr };
+  }
 
-    // Read content for validation and row counting, then discard
-    const content = await readFile(outputFile);
+  const sizeMb = stats.size / (1024 * 1024);
+  if (sizeMb > maxSizeMb) {
+    return failedOutput(exitCode, stderr, `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
+  }
+
+  let content: Buffer;
+  try {
+    content = await readFile(outputFile);
     await validateOutput(content, maxSizeMb);
+  } catch (error) {
+    if (error instanceof OutputValidationError) return failedOutput(exitCode, stderr, error.message);
+    if (error instanceof RunnerError) throw error;
+    return failedOutput(exitCode, stderr, `Could not read output file: ${String(error)}`);
+  }
 
-    const lines = content
-      .toString("utf-8")
-      .split("\n")
-      .filter((l) => l.trim().length > 0);
-    const rows = Math.max(0, lines.length - 1);
+  // Count parsed CSV records, not raw lines: a quoted field may contain line
+  // breaks, so line counting inflates the row total on any multi-line value.
+  const rows = countCsvDataRows(content.toString("utf-8"));
 
+  try {
     // Copy output file to persistent location for download
     const config = getConfig();
     const persistentDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
     await mkdir(persistentDir, { recursive: true });
     await copyFile(outputFile, join(persistentDir, outputFileName));
-
-    const downloadUrl = `/output/${runId}/${outputFileName}`;
-
-    return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
   } catch (error) {
-    if (error instanceof RunnerError) throw error;
-    if (exitCode === 0) {
-      return { output: undefined, exitCode: 1, stderr: stderr + "\nNo valid output file produced" };
-    }
-    return { output: undefined, exitCode, stderr };
+    return failedOutput(exitCode, stderr, `Could not persist output file: ${String(error)}`);
   }
+
+  const downloadUrl = `/output/${runId}/${outputFileName}`;
+  return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
 };
 
 export const executeRun = async (request: RunRequest): Promise<RunResult> => {
@@ -233,6 +385,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     // Prepare code (clone git repo or write inline code)
     await prepareCode(request, codeDir);
 
+    // One source of truth for the filename: the container is told where to
+    // write and `collectOutput` reads the same name back.
+    const outputFileName = request.output_file ?? "data.csv";
+
     // Build podman args with full hardening
     const podmanArgs = buildPodmanArgs({
       runId,
@@ -240,6 +396,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       entrypoint: request.entrypoint,
       codeDir,
       outputDir,
+      outputFile: outputFileName,
       env: request.env ?? {},
       limits: {
         timeoutSecs: request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT,
@@ -250,22 +407,42 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     logger.info({ runId, runtime: request.runtime, entrypoint: request.entrypoint }, "Starting scraper container");
 
     const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
-    const { stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs);
+
+    // Bound the output write while it happens; the post-run size check in
+    // collectOutput cannot, because by then the bytes are already on disk.
+    const watchdog = startOutputWatchdog(runId, outputDir, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
+    let stdout: string;
+    let stderr: string;
+    let exitCode: number;
+    try {
+      ({ stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs));
+    } finally {
+      watchdog.stop();
+    }
 
     const durationMs = Date.now() - runStartedAt;
+
+    // A watchdog kill is a failed run, full stop. Whatever the scraper managed
+    // to write is a truncated fragment of a result it never finished, so it is
+    // not offered for download — but the logs are kept so the cause is visible.
+    if (watchdog.breached()) {
+      totalFailed++;
+      const reason = `Output exceeded the ${config.SCRAPER_MAX_OUTPUT_SIZE_MB}MB limit; container was killed mid-run`;
+      logger.info({ runId, status: "failed", durationMs }, "Scraper run killed by output watchdog");
+      return {
+        status: "failed",
+        exit_code: exitCode === 0 ? 1 : exitCode,
+        duration_ms: durationMs,
+        stdout: truncateLog(stdout),
+        stderr: truncateLog(`${stderr}\n[runner] ${reason}`),
+      };
+    }
 
     const {
       output,
       exitCode: finalExitCode,
       stderr: finalStderr,
-    } = await collectOutput(
-      outputDir,
-      request.output_file ?? "data.csv",
-      config.SCRAPER_MAX_OUTPUT_SIZE_MB,
-      exitCode,
-      stderr,
-      runId
-    );
+    } = await collectOutput(outputDir, outputFileName, config.SCRAPER_MAX_OUTPUT_SIZE_MB, exitCode, stderr, runId);
 
     const status = finalExitCode === 0 ? "success" : "failed";
     if (status === "success") {
@@ -288,16 +465,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 
     if (error instanceof TimeoutError) {
       totalTimeout++;
-      // Try to stop the container, force-remove as fallback
-      try {
-        await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 10_000 });
-      } catch {
-        try {
-          await execFileAsync("podman", ["rm", "-f", `run-${runId}`], { timeout: 5_000 });
-        } catch {
-          // Container may have already been removed
-        }
-      }
+      // Escalate all the way to SIGKILL. A container that ignores SIGTERM must
+      // still die here, or it outlives the timeout and keeps its memory, pids
+      // and network slot until something else notices.
+      await forceKillContainer(runId);
 
       return {
         status: "timeout",
@@ -326,12 +497,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 };
 
 export const stopRun = async (runId: string): Promise<void> => {
-  try {
-    await execFileAsync("podman", ["stop", `run-${runId}`], { timeout: 15_000 });
-    logger.info({ runId }, "Container stopped");
-  } catch (error) {
-    logError("Failed to stop container", error, { runId });
-  }
+  // Same escalation as the timeout path: an operator asking for a stop means
+  // the container must go, not that it should be politely asked.
+  await forceKillContainer(runId);
+  logger.info({ runId }, "Container stopped");
 };
 
 export const isRunActive = (runId: string): boolean => activeRuns.has(runId);

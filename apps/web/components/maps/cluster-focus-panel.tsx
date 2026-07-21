@@ -11,7 +11,7 @@
 
 import { Button } from "@timetiles/ui/components/button";
 import { Calendar, Database, Filter, Layers, Loader2, Tag, X, ZoomIn } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import type { ClusterSummaryResponse } from "@/lib/schemas/events";
 
@@ -33,6 +33,7 @@ export const ClusterFocusPanel = ({
   onClose,
 }: ClusterFocusPanelProps) => {
   const t = useTranslations("Explore");
+  const locale = useLocale();
 
   return (
     <div className="bg-background/95 border-border flex w-64 max-w-[calc(100%-2rem)] flex-col rounded-lg border shadow-lg backdrop-blur-sm">
@@ -79,7 +80,7 @@ export const ClusterFocusPanel = ({
             {summary.temporalRange && (
               <SectionRow icon={Calendar} label={t("clusterTemporalRange")}>
                 <span className="text-foreground text-xs">
-                  {formatDateRange(summary.temporalRange.earliest, summary.temporalRange.latest)}
+                  {formatDateRange(summary.temporalRange.earliest, summary.temporalRange.latest, locale)}
                 </span>
               </SectionRow>
             )}
@@ -158,18 +159,25 @@ const SectionRow = ({
   </div>
 );
 
-/** Format ISO date string to short locale format. */
-const formatShortDate = (iso: string): string => {
+/**
+ * Format ISO date string to short locale format.
+ *
+ * The locale is a required argument rather than an `undefined` default: passing
+ * undefined to Intl uses the BROWSER's locale, which is not necessarily the one
+ * the app is rendering in — a German browser on the English site got German
+ * month names beside English labels.
+ */
+const formatShortDate = (iso: string, locale: string): string => {
   try {
-    return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    return new Date(iso).toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
   } catch {
     return iso;
   }
 };
 
 /** Format a date range compactly. */
-const formatDateRange = (earliest: string, latest: string): string => {
-  const from = formatShortDate(earliest);
-  const to = formatShortDate(latest);
+const formatDateRange = (earliest: string, latest: string, locale: string): string => {
+  const from = formatShortDate(earliest, locale);
+  const to = formatShortDate(latest, locale);
   return from === to ? from : `${from} – ${to}`;
 };

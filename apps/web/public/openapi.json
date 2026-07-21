@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "description": "API for querying and aggregating geospatial event data in TimeTiles.\n\n## Overview\n\nTimeTiles provides endpoints for:\n- **Event listing** with pagination and filtering\n- **Aggregations** by catalog or dataset\n- **Temporal histograms** for time-based analysis\n- **Map clustering** for efficient visualization of large datasets\n- **Cluster statistics** for consistent visualization scaling\n\n## Authentication\n\nMost endpoints support optional authentication. Authenticated users may have access to additional catalogs and datasets.\n\n## Filtering\n\nAll event endpoints support common filter parameters:\n- `catalog`: Filter by catalog ID\n- `datasets`: Filter by dataset IDs (comma-separated or multiple params)\n- `startDate` / `endDate`: Temporal filtering (ISO 8601 date format)\n- `bounds`: Geographic bounding box as JSON string",
     "contact": { "name": "TimeTiles", "url": "https://github.com/timetiles/timetiles" },
-    "license": { "name": "MIT", "url": "https://opensource.org/licenses/MIT" }
+    "license": { "name": "AGPL-3.0-or-later", "url": "https://www.gnu.org/licenses/agpl-3.0.html" }
   },
   "servers": [{ "url": "/", "description": "Current server" }],
   "tags": [
@@ -14,31 +14,6 @@
   ],
   "components": {
     "schemas": {
-      "EventItem": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "number" },
-          "dataset": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "number" },
-              "title": { "type": "string" },
-              "catalog": { "type": "string" }
-            },
-            "required": ["id"]
-          },
-          "data": { "type": "object", "additionalProperties": { "nullable": true } },
-          "location": {
-            "type": "object",
-            "nullable": true,
-            "properties": { "longitude": { "type": "number" }, "latitude": { "type": "number" } },
-            "required": ["longitude", "latitude"]
-          },
-          "eventTimestamp": { "type": "string" },
-          "isValid": { "type": "boolean" }
-        },
-        "required": ["id", "dataset", "data", "location", "eventTimestamp", "isValid"]
-      },
       "EventListResponse": {
         "type": "object",
         "properties": {
@@ -69,19 +44,45 @@
         },
         "required": ["events", "pagination"]
       },
+      "EventItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "number" },
+          "dataset": {
+            "type": "object",
+            "properties": { "id": { "type": "number" }, "name": { "type": "string" }, "catalog": { "type": "string" } },
+            "required": ["id"]
+          },
+          "data": { "type": "object", "additionalProperties": { "nullable": true } },
+          "location": {
+            "type": "object",
+            "nullable": true,
+            "properties": { "longitude": { "type": "number" }, "latitude": { "type": "number" } },
+            "required": ["longitude", "latitude"]
+          },
+          "locationName": { "type": "string", "nullable": true },
+          "geocodedAddress": { "type": "string", "nullable": true },
+          "eventTimestamp": { "type": "string" },
+          "eventEndTimestamp": { "type": "string", "nullable": true },
+          "isValid": { "type": "boolean" }
+        },
+        "required": ["id", "dataset", "data", "location", "eventTimestamp", "isValid"]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": { "error": { "type": "string" }, "code": { "type": "string" }, "details": { "nullable": true } },
         "required": ["error"]
       },
-      "AggregationItem": {
+      "Bounds": {
         "type": "object",
+        "nullable": true,
         "properties": {
-          "id": { "anyOf": [{ "type": "number" }, { "type": "string" }] },
-          "name": { "type": "string" },
-          "count": { "type": "integer" }
+          "north": { "type": "number", "minimum": -90, "maximum": 90 },
+          "south": { "type": "number", "minimum": -90, "maximum": 90 },
+          "east": { "type": "number", "minimum": -180, "maximum": 180 },
+          "west": { "type": "number", "minimum": -180, "maximum": 180 }
         },
-        "required": ["id", "name", "count"]
+        "required": ["north", "south", "east", "west"]
       },
       "AggregateResponse": {
         "type": "object",
@@ -92,14 +93,14 @@
         },
         "required": ["items", "total", "groupedBy"]
       },
-      "HistogramBucket": {
+      "AggregationItem": {
         "type": "object",
         "properties": {
-          "date": { "type": "string", "description": "Bucket start timestamp (ISO 8601)" },
-          "dateEnd": { "type": "string", "description": "Bucket end timestamp (ISO 8601)" },
+          "id": { "anyOf": [{ "type": "number" }, { "type": "string" }] },
+          "name": { "type": "string" },
           "count": { "type": "integer" }
         },
-        "required": ["date", "dateEnd", "count"]
+        "required": ["id", "name", "count"]
       },
       "HistogramResponse": {
         "type": "object",
@@ -140,6 +141,23 @@
         },
         "required": ["histogram", "metadata"]
       },
+      "HistogramBucket": {
+        "type": "object",
+        "properties": {
+          "date": { "type": "string", "description": "Bucket start timestamp (ISO 8601)" },
+          "dateEnd": { "type": "string", "description": "Bucket end timestamp (ISO 8601)" },
+          "count": { "type": "integer" }
+        },
+        "required": ["date", "dateEnd", "count"]
+      },
+      "MapClustersResponse": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["FeatureCollection"] },
+          "features": { "type": "array", "items": { "$ref": "#/components/schemas/ClusterFeature" } }
+        },
+        "required": ["type", "features"]
+      },
       "ClusterFeature": {
         "type": "object",
         "properties": {
@@ -156,22 +174,20 @@
           "properties": {
             "type": "object",
             "properties": {
-              "type": { "type": "string", "enum": ["event-cluster", "event-point"] },
+              "type": { "type": "string", "enum": ["event-cluster", "event-location"] },
               "count": { "type": "integer" },
-              "title": { "type": "string" }
+              "clusterId": { "type": "string" },
+              "title": { "type": "string" },
+              "sourceCells": { "type": "array", "items": { "type": "string" } },
+              "h3Cell": { "type": "string" },
+              "eventId": { "type": "integer" },
+              "locationName": { "type": "string" },
+              "locationCount": { "type": "integer" }
             },
             "required": ["type"]
           }
         },
         "required": ["type", "id", "geometry", "properties"]
-      },
-      "MapClustersResponse": {
-        "type": "object",
-        "properties": {
-          "type": { "type": "string", "enum": ["FeatureCollection"] },
-          "features": { "type": "array", "items": { "$ref": "#/components/schemas/ClusterFeature" } }
-        },
-        "required": ["type", "features"]
       },
       "ClusterStatsResponse": {
         "type": "object",
@@ -203,9 +219,60 @@
           },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
-          { "schema": { "type": "string" }, "required": false, "name": "bounds", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
-            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "ff",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "integer", "minimum": 1, "maximum": 1000, "default": 1 },
             "required": false,
             "name": "page",
             "in": "query"
@@ -254,7 +321,58 @@
           },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
-          { "schema": { "type": "string" }, "required": false, "name": "bounds", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "ff",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          },
           {
             "schema": { "type": "string", "enum": ["catalog", "dataset"] },
             "required": true,
@@ -293,21 +411,72 @@
           },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
-          { "schema": { "type": "string" }, "required": false, "name": "bounds", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
-            "schema": { "type": "integer", "nullable": true, "default": 30 },
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "ff",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 30 },
             "required": false,
             "name": "targetBuckets",
             "in": "query"
           },
           {
-            "schema": { "type": "integer", "nullable": true, "default": 20 },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 20 },
             "required": false,
             "name": "minBuckets",
             "in": "query"
           },
           {
-            "schema": { "type": "integer", "nullable": true, "default": 50 },
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 50 },
             "required": false,
             "name": "maxBuckets",
             "in": "query"
@@ -344,19 +513,101 @@
           },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
           {
-            "schema": { "type": "string", "description": "Required JSON bounding box" },
-            "required": true,
-            "description": "Required JSON bounding box",
-            "name": "bounds",
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "ff",
             "in": "query"
           },
           {
-            "schema": { "type": "integer", "nullable": true, "default": 10 },
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "integer", "nullable": true, "minimum": 0, "maximum": 28, "default": 10 },
             "required": false,
             "name": "zoom",
             "in": "query"
-          }
+          },
+          {
+            "schema": { "type": "integer", "minimum": 5, "maximum": 500, "default": 25 },
+            "required": false,
+            "name": "targetClusters",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "string", "enum": ["h3", "grid-k", "dbscan"], "default": "h3" },
+            "required": false,
+            "name": "clusterAlgorithm",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 20, "default": 2 },
+            "required": false,
+            "name": "minPoints",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "boolean", "nullable": true, "default": true },
+            "required": false,
+            "name": "mergeOverlapping",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "number", "minimum": 0.3, "maximum": 1.2, "default": 0.6 },
+            "required": false,
+            "name": "h3ResolutionScale",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "boolean", "nullable": true, "default": false },
+            "required": false,
+            "name": "useHexCenter",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "parentCells", "in": "query" }
         ],
         "responses": {
           "200": {
@@ -389,7 +640,58 @@
           },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
           { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
-          { "schema": { "type": "string" }, "required": false, "name": "bounds", "in": "query" }
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "ff",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "object",
+              "nullable": true,
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "default": {}
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          }
         ],
         "responses": {
           "200": {
@@ -432,7 +734,7 @@
         }
       }
     },
-    "/api/v1/health": {
+    "/api/health": {
       "get": {
         "tags": ["System"],
         "summary": "Health check endpoint",

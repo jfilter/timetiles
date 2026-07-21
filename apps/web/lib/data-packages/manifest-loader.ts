@@ -176,16 +176,32 @@ const manifestSchema = z.object({
     coverage: coverageSchema,
   }),
 
-  fieldMappings: z.object({
-    titlePath: z.string().optional(),
-    descriptionPath: z.string().optional(),
-    timestampPath: z.string().optional(),
-    endTimestampPath: z.string().optional(),
-    locationNamePath: z.string().optional(),
-    locationPath: z.string().optional(),
-    latitudePath: z.string().optional(),
-    longitudePath: z.string().optional(),
-  }),
+  // Keep in sync with `DataPackageFieldMappings` (= Partial<FieldPathMappings>)
+  // and every key read by `createDatasetFromManifest`. A non-strict Zod object
+  // DROPS unknown keys, so a missing declaration here does not fail — it
+  // silently discards the value and the package imports with the wrong
+  // geometry/time interpretation. `.strict()` turns any future drift into a
+  // loud validation error instead.
+  fieldMappings: z
+    .object({
+      titlePath: z.string().optional(),
+      descriptionPath: z.string().optional(),
+      timestampPath: z.string().optional(),
+      endTimestampPath: z.string().optional(),
+      locationNamePath: z.string().optional(),
+      locationPath: z.string().optional(),
+      latitudePath: z.string().optional(),
+      longitudePath: z.string().optional(),
+      // Combined-coordinate column plus its explicit axis order, and the
+      // day/month order for the timestamp columns. Pinning these in a manifest
+      // is what keeps the ambiguous-order review gate from firing on an
+      // unattended data-package import.
+      coordinatePath: z.string().optional(),
+      coordinateFormat: z.enum(["lat,lng", "lng,lat", "ambiguous"]).optional(),
+      timestampOrder: z.enum(["D/M", "M/D", "ambiguous"]).optional(),
+      endTimestampOrder: z.enum(["D/M", "M/D", "ambiguous"]).optional(),
+    })
+    .strict(),
 
   schedule: z.object({
     type: z.enum(["frequency", "cron"]),

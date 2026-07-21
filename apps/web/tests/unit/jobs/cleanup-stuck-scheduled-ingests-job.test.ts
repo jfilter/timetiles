@@ -365,7 +365,9 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         collection: "payload-jobs",
         where: {
           and: [
-            { "input.scheduledIngestId": { equals: "import-1" } },
+            // `or` over both id representations — a string-only clause never
+            // matches a numerically-enqueued id in jsonb job input.
+            { or: [{ "input.scheduledIngestId": { equals: "import-1" } }] },
             { processing: { equals: false } },
             { completedAt: { exists: false } },
             { createdAt: { less_than: "2026-04-28T08:00:00.000Z" } },

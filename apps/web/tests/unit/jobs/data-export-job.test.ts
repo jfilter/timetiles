@@ -248,4 +248,32 @@ describe.sequential("dataExportJob", () => {
       exportId: 42,
     });
   });
+
+  it("should keep the export ready when only the notification email fails", async () => {
+    // The archive is written and the record is already committed as "ready" by
+    // the time the email is sent. A failure loading branding/translations (or an
+    // SMTP outage) must not flip the record to "failed": that lies to the user
+    // and orphans the ZIP, which no cleanup pass can then find.
+    (sendExportReadyEmail as any).mockRejectedValueOnce(new Error("Email branding unavailable"));
+
+    const context = createContext({ exportId: 42 });
+
+    const result = await dataExportJob.handler(context as any);
+
+    // The job still reports success rather than rethrowing.
+    expect(result.output).toEqual(expect.objectContaining({ success: true, exportId: 42 }));
+
+    // The record was never flipped to "failed" and no failure email went out.
+    expect(mockPayload.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "failed" }) })
+    );
+    expect(sendExportFailedEmail).not.toHaveBeenCalled();
+
+    // But the notification failure is still recorded.
+    expect(logError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "Data export ready but notification email failed",
+      expect.objectContaining({ exportId: 42 })
+    );
+  });
 });

@@ -1,5 +1,7 @@
 # Maintenance
 
+import { Callout } from "nextra/components";
+
 Backups, updates, monitoring, and troubleshooting for production instances.
 
 ## Backups
@@ -19,14 +21,44 @@ timetiles backup prune        # Apply retention policy
 timetiles backup auto         # Set up daily cron job
 ```
 
+<Callout type="warning">
+  `timetiles backup` writes **two** snapshots, not one: a `db`-tagged snapshot and an `uploads`-tagged snapshot. This
+  matters for recovery — see below.
+</Callout>
+
 ### Restore
 
+Restore operates on **one snapshot at a time**, and each snapshot holds either the database or the
+uploads. A full recovery is therefore two commands.
+
 ```bash
-timetiles restore             # List available snapshots
-timetiles restore latest      # Restore most recent
-timetiles restore abc123      # Restore specific snapshot
-timetiles restore abc123 --offsite  # Restore from S3
+timetiles backup list         # Find the snapshot IDs and their tags
+timetiles restore abc123      # Restore that snapshot
+timetiles restore abc123 --offsite  # Restore it from S3
 ```
+
+#### Full disaster recovery
+
+```bash
+# 1. List snapshots and note the newest `db` id and the newest `uploads` id
+timetiles backup list
+
+# 2. Restore the database
+timetiles restore <newest-db-id>
+
+# 3. Restore the uploads
+timetiles restore <newest-uploads-id>
+```
+
+<Callout type="warning">
+  Do **not** use `timetiles restore latest` for disaster recovery. `latest` resolves to the newest snapshot of any tag,
+  and because a full backup writes the database first and the uploads second, that is always the uploads snapshot. It
+  restores your files and leaves the database exactly as it was — which on a rebuilt host means empty. The command
+  reports which half it restored (`Restore complete! Restored: uploads`); read that line, it is the only signal that the
+  database was not touched.
+</Callout>
+
+`timetiles restore` with no arguments lists the available snapshots, same as `timetiles backup list`.
 
 ### Offsite Storage (S3)
 

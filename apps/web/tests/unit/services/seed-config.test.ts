@@ -122,19 +122,21 @@ describe("Configuration System", () => {
   });
 
   it("should provide preset-specific settings", () => {
+    // Presets are distinguished by which collections they enable and by their
+    // per-collection overrides. (They used to also carry volume/realism/
+    // performance/debugging, which this test asserted — but nothing in the
+    // seeding code ever read those, so the assertions only proved the constants
+    // still held the values the constants held. Both are gone.)
     const devPreset = SEED_CONFIG.presets.development!;
-    expect(devPreset.volume).toBe("large");
-    expect(devPreset.realism).toBe("realistic");
-    expect(devPreset.debugging).toBe("verbose");
+    expect(devPreset.enabled).toContain("events");
+    expect(devPreset.overrides?.events?.customGenerator).toBe("realistic-temporal-spatial-patterns");
 
     const testPreset = SEED_CONFIG.presets.testing!;
-    expect(testPreset.volume).toBe("small");
-    expect(testPreset.realism).toBe("simple");
-    expect(testPreset.performance).toBe("fast");
+    expect(testPreset.enabled).toContain("events");
+    expect(testPreset.enabled.length).toBeLessThan(devPreset.enabled.length);
 
     const e2ePreset = SEED_CONFIG.presets.e2e!;
-    expect(e2ePreset.volume).toBe("medium");
-    expect(e2ePreset.realism).toBe("realistic");
+    expect(e2ePreset.enabled).toContain("events");
   });
 });
 
@@ -154,10 +156,7 @@ describe("Configuration Validation", () => {
       expect(presetConfig).toHaveProperty("enabled");
       expect(Array.isArray(presetConfig.enabled)).toBe(true);
       expect(presetConfig.enabled.length).toBeGreaterThan(0);
-      expect(presetConfig).toHaveProperty("volume");
-      expect(presetConfig).toHaveProperty("realism");
-      expect(presetConfig).toHaveProperty("performance");
-      expect(presetConfig).toHaveProperty("debugging");
+      expect(presetConfig).toHaveProperty("description");
     });
 
     expect(Object.keys(SEED_CONFIG.presets)).toHaveLength(4);
@@ -170,8 +169,6 @@ describe("Configuration Validation", () => {
     expect(devPreset.enabled).toContain("users");
     expect(devPreset.enabled).toContain("catalogs");
     expect(devPreset.enabled).toContain("events");
-    expect(devPreset.volume).toBe("large");
-    expect(devPreset.realism).toBe("realistic");
   });
 
   it("should have valid collection configurations with proper counts", () => {

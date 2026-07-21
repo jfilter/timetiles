@@ -5,6 +5,8 @@ description: How to deploy and operate the TimeScrape runner for executing scrap
 
 # Scraper Deployment
 
+import { Callout } from "nextra/components";
+
 This guide covers deploying the TimeScrape runner, the stateless service that executes scraper code inside hardened Podman containers. The runner is an optional component -- deploy it only if you need scraper functionality.
 
 ## Prerequisites
@@ -70,19 +72,36 @@ podman images | grep timescrape
 
 ### 3. Create the Sandbox Network
 
-Scraper containers run on an isolated network that allows internet access but blocks access to internal services:
+Scraper containers run on a network that reaches the public internet but not your internal services. That takes two steps: a normal NAT network, plus firewall rules that fence its subnet off from every private destination.
 
 ```bash
-podman network create scraper-sandbox
+podman network create --subnet 10.89.200.0/24 scraper-sandbox
 ```
 
-Verify:
+Do **not** use `podman network create --internal` here. `--internal` removes the external gateway altogether, so containers on the network can reach nothing at all and every scraper fails — it is isolation in the wrong direction.
+
+Containment comes from the firewall instead. Deny rules must precede the allow, because ufw takes the first matching route rule:
 
 ```bash
-podman network ls | grep scraper-sandbox
+for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 127.0.0.0/8; do
+  ufw route deny from 10.89.200.0/24 to "$net"
+done
+ufw route allow from 10.89.200.0/24
 ```
 
-Without this network, scraper containers could reach the database, the web app, or other internal services.
+The host itself needs no rule here: traffic from a container to the host is filtered by ufw's incoming policy, not by these route rules.
+
+Verify both halves of the property — one must succeed, the other must fail:
+
+```bash
+podman run --rm --network scraper-sandbox timescrape-python \
+  python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=10)"   # succeeds
+
+podman run --rm --network scraper-sandbox timescrape-python \
+  python -c "import socket; socket.create_connection(('169.254.169.254', 80), timeout=5)"  # must fail
+```
+
+If the second command succeeds, the egress rules are not in effect and a scraper can reach your database, your web app, and your cloud provider's metadata service.
 
 ### 4. Configure Environment
 
@@ -191,24 +210,23 @@ sudo systemctl enable timescrape-runner
 sudo systemctl start timescrape-runner
 ```
 
-### Production: Containerized Runner
+### The runner does not run in a container
 
-Build and run the runner itself as a Podman container:
+Run the runner on the host, under systemd, as shown above. There is no supported containerized
+deployment, and the obvious attempt does not work:
 
-```bash
-cd apps/timescrape
+- The runner spawns scraper containers by executing the **`podman` CLI**, not by calling the Podman
+  API. See `execFileAsync("podman", ...)` in `apps/timescrape/src/services/runner.ts`; cleanup, stop
+  and remove go the same way.
+- `apps/timescrape/Dockerfile` is built on `node:24-slim` and installs no Podman. There is no `podman`
+  binary in the image for those calls to find.
 
-podman build -t timescrape-runner .
+So mounting `/run/user/$(id -u)/podman/podman.sock` into the runner container achieves nothing — the
+socket is never read, and every run fails with `podman: command not found`. This page previously
+documented that mount as required; it was wrong in both directions.
 
-podman run -d \
-  --name timescrape-runner \
-  -p 4000:4000 \
-  --env-file .env \
-  -v /run/user/$(id -u)/podman/podman.sock:/run/podman/podman.sock \
-  timescrape-runner
-```
-
-The runner needs access to the Podman socket to spawn scraper containers. When running the runner inside a container, mount the rootless Podman socket as shown above. When running directly on the host, no socket mount is needed -- the runner invokes `podman` as a CLI command.
+`deployment/bootstrap/steps/13-scraper-setup.sh` is the reference implementation: it installs the
+runner on the host and manages it with a systemd unit.
 
 ### Health Check
 
@@ -226,43 +244,47 @@ Expected response:
 
 ---
 
-## Docker Compose Example
+## Using the Runner with a Docker Compose Deployment
 
-If you run TimeTiles with Docker Compose, you can add the runner as an additional service. Note that the runner requires Podman on the host, so this example runs the runner on the host network with access to the Podman socket.
+The runner is **not** a compose service — see [The runner does not run in a
+container](#the-runner-does-not-run-in-a-container). It runs on the host under systemd, alongside the
+compose stack, and the app containers reach it over the host gateway.
+
+`deployment/docker-compose.prod.yml` already carries the two pieces this needs:
 
 ```yaml
-# docker-compose.scraper.yml
-# Use alongside your main docker-compose.prod.yml
-
-services:
-  timescrape-runner:
-    build:
-      context: ./apps/timescrape
-      dockerfile: Dockerfile
-    ports:
-      - "4000:4000"
-    environment:
-      - SCRAPER_API_KEY=${SCRAPER_API_KEY}
-      - SCRAPER_PORT=4000
-      - SCRAPER_MAX_CONCURRENT=${SCRAPER_MAX_CONCURRENT:-3}
-      - SCRAPER_DEFAULT_TIMEOUT=${SCRAPER_DEFAULT_TIMEOUT:-300}
-      - SCRAPER_DEFAULT_MEMORY=${SCRAPER_DEFAULT_MEMORY:-512}
-    volumes:
-      # Mount Podman socket for container management
-      - /run/user/1000/podman/podman.sock:/run/podman/podman.sock
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+# web (health reporting) and worker-ingest (the service that actually calls the runner)
+extra_hosts:
+  - "host.docker.internal:host-gateway"
 ```
 
-Start with:
+Point the stack at it in `.env.production`:
 
 ```bash
-docker compose -f docker-compose.prod.yml -f docker-compose.scraper.yml up -d
+SCRAPER_RUNNER_URL=http://host.docker.internal:4000
+SCRAPER_API_KEY=<same value as the runner's>
 ```
+
+<Callout type="warning">
+  A container reaching a host-native service is **incoming** traffic as far as the host is concerned: it
+  arrives on the host's `INPUT` chain, not the `FORWARD` chain Docker manages. A host firewalled with
+  `ufw default deny incoming` therefore drops it, and every scraper run fails with a connection timeout
+  while the runner's own `curl http://localhost:4000/health` succeeds — the loopback check does not
+  cross the firewall.
+
+Open the port to the compose bridge subnet and nothing else, so the runner stays unreachable from the
+LAN:
+
+```bash
+ufw allow from 172.16.238.0/24 to any port 4000 proto tcp
+```
+
+`172.16.238.0/24` is the pinned subnet of `timetiles-network` (`DOCKER_NETWORK_SUBNET` in
+`.env.production`). It is pinned precisely so this rule can name it — an auto-allocated Docker subnet
+changes between recreates and would silently invalidate the rule. Bootstrap step 13 adds this rule for
+you and then verifies it by probing the runner from inside `worker-ingest`.
+
+</Callout>
 
 ---
 

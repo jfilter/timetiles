@@ -409,12 +409,28 @@ export class RelationshipResolver {
       // Type assertion is necessary due to dynamic collection names
       const collectionSlug = collection as keyof Config["collections"];
 
-      return await this.payload.find({
+      const result = await this.payload.find({
         collection: collectionSlug,
         where: { [field]: { equals: value } },
-        limit: 1,
+        // limit 2 + an explicit sort so a non-unique search field is both
+        // DETECTABLE and DETERMINISTIC. With limit:1 and Payload's default
+        // `-createdAt` sort, an ambiguous lookup silently returned whichever
+        // document happened to be created last and looked like a clean hit —
+        // which is how seeded events ended up attached to another catalog's
+        // identically-named dataset.
+        limit: 2,
+        sort: "id",
         depth: 0, // Minimal depth for performance
       });
+
+      if (result.docs.length > 1) {
+        logger.warn(
+          `Ambiguous relationship lookup: ${collection}.${field}='${value}' matched multiple documents; ` +
+            `using the lowest id. Resolve this collection by a unique field instead.`
+        );
+      }
+
+      return result;
     } catch (error) {
       logger.error(`Error searching ${collection} by ${field}='${value}':`, error);
       throw error;

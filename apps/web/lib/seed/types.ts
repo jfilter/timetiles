@@ -70,15 +70,15 @@ export interface SeedOptions {
   payload?: Payload;
   /** Seeding preset name (testing, e2e, development, deploy) */
   preset?: string;
-  /** How much data to generate */
-  volume?: "small" | "medium" | "large";
-  /** How realistic/complex the data should be */
-  realism?: "simple" | "realistic";
-  /** Performance vs richness trade-off */
-  performance?: "fast" | "balanced" | "rich";
-  /** Logging verbosity */
-  debugging?: "quiet" | "normal" | "verbose";
-  /** Seed for deterministic random generation */
+  /**
+   * Seed for deterministic random generation. Merged into every collection's
+   * `options` by `seedWithConfig`, where the custom generators read it.
+   *
+   * (`volume`, `realism`, `performance` and `debugging` used to live here too.
+   * Nothing ever read them — they were parsed from the CLI, documented in its
+   * help text, and discarded — so they are gone rather than left as flags that
+   * silently do nothing.)
+   */
   randomSeed?: number;
   /** Override counts for specific collections */
   countOverrides?: Record<string, number>;

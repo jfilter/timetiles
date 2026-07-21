@@ -14,7 +14,7 @@ import type { CollectionConfig } from "payload";
 
 import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
 import { create, deleteAccess, read, readVersions, update } from "./access";
-import { enforceSingleDefault, invalidateViewCache, setCreatedBy } from "./hooks";
+import { enforceSingleDefault, invalidateViewCache, setCreatedBy, validateSiteOwnership } from "./hooks";
 
 const Views: CollectionConfig = {
   slug: "views",
@@ -26,7 +26,10 @@ const Views: CollectionConfig = {
     description: "Configure UI views with custom data scope, filters, and map settings",
   },
   access: { read, create, update, delete: deleteAccess, readVersions },
-  hooks: { beforeChange: [setCreatedBy, enforceSingleDefault], afterChange: [invalidateViewCache] },
+  hooks: {
+    beforeChange: [setCreatedBy, validateSiteOwnership, enforceSingleDefault],
+    afterChange: [invalidateViewCache],
+  },
   fields: [
     // ============ IDENTITY ============
     {

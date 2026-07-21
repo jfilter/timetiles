@@ -518,6 +518,13 @@ describe.sequential("Workflow Combinations (Integration)", () => {
       const datasetId = typeof jobs.docs[0].dataset === "object" ? jobs.docs[0].dataset.id : jobs.docs[0].dataset;
       const events = await payload.find({ collection: "events", where: { dataset: { equals: datasetId } }, limit: 10 });
       expect(events.docs).toHaveLength(0);
+    } else {
+      // The no-job branch used to be silent, which made every assertion above
+      // optional: a workflow that stopped before creating a job passed exactly
+      // like one that ran correctly. No job is only defensible if the file
+      // itself failed — a file reported "completed" with nothing behind it is
+      // the workflow having quietly done nothing.
+      expect(result.ingestFile.status).toBe("failed");
     }
     // File should reach a terminal state
     expect(["completed", "failed"]).toContain(result.ingestFile.status);

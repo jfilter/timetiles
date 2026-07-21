@@ -2,7 +2,7 @@
 
 Three ways to deploy TimeTiles to production. All include PostgreSQL, Nginx with SSL, and background workers.
 
-import { Tabs } from "nextra/components";
+import { Callout, Tabs } from "nextra/components";
 
 ## Deployment Options
 
@@ -94,9 +94,21 @@ docker run -d --name timetiles \
   -p 80:80 -p 443:443 \
   -v timetiles-data:/data \
   -e PAYLOAD_SECRET=$(openssl rand -base64 32) \
-  -e DB_PASSWORD=$(openssl rand -base64 16) \
+  -e DB_PASSWORD=$(openssl rand -hex 24) \
   ghcr.io/jfilter/timetiles:latest-allinone
 ```
+
+<Callout type="warning">
+  `DB_PASSWORD` must not contain `@ : / % +` or other URI-special characters. The container builds its
+  `DATABASE_URL` by interpolating the password into `postgresql://user:PASSWORD@host/db` without
+  percent-encoding it, so one of those characters silently produces a malformed connection string and the
+  app fails to reach its own database. That is why the command above uses `openssl rand -hex`, not
+  `openssl rand -base64` — base64 output is drawn from an alphabet that includes `/` and `+`. If you
+  prefer base64, strip them: `openssl rand -base64 32 | tr -d '/+='`.
+
+`PAYLOAD_SECRET` is never interpolated into a URL, so base64 is fine there.
+
+</Callout>
 
 Then create your admin account — see [First Admin Account](#first-admin-account).
 
@@ -197,12 +209,12 @@ cp deployment/.env.production.example deployment/.env.production
 
 **Required settings:**
 
-| Variable            | Description                               |
-| ------------------- | ----------------------------------------- |
-| `DOMAIN_NAME`       | Your production domain                    |
-| `DB_PASSWORD`       | Database password (20+ characters)        |
-| `PAYLOAD_SECRET`    | Random secret (`openssl rand -base64 32`) |
-| `LETSENCRYPT_EMAIL` | Email for SSL certificate notifications   |
+| Variable            | Description                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| `DOMAIN_NAME`       | Your production domain                                                                 |
+| `DB_PASSWORD`       | Database password (20+ chars, no `@ : / % +` — see note above; `openssl rand -hex 24`) |
+| `PAYLOAD_SECRET`    | Random secret (`openssl rand -base64 32`)                                              |
+| `LETSENCRYPT_EMAIL` | Email for SSL certificate notifications                                                |
 
 **Shared-rate-limit setting for multi-web deployments:**
 

@@ -45,6 +45,7 @@ export class ConfigDrivenSeeding {
       exitOnFailure = true,
       idempotent = false,
       deploymentEnv,
+      randomSeed,
       payload,
     } = options;
 
@@ -74,7 +75,8 @@ export class ConfigDrivenSeeding {
       configOverrides,
       preset,
       idempotent,
-      deploymentEnv
+      deploymentEnv,
+      randomSeed
     );
 
     // Generate schemas and field metadata for datasets if generateSchemas is enabled
@@ -120,7 +122,8 @@ export class ConfigDrivenSeeding {
     configOverrides: Record<string, Partial<CollectionConfig>>,
     preset: string,
     idempotent: boolean,
-    deploymentEnv: SeedOptions["deploymentEnv"]
+    deploymentEnv: SeedOptions["deploymentEnv"],
+    randomSeed: SeedOptions["randomSeed"]
   ): Promise<OverallSeedResults> {
     const overallResults: OverallSeedResults = {
       totalCreated: 0,
@@ -137,7 +140,15 @@ export class ConfigDrivenSeeding {
         continue;
       }
 
-      const finalConfig = this.applyConfigOverrides(config, configOverrides, collectionName);
+      // randomSeed reaches the generators only through a collection's `options`
+      // (that is where applyDataTransformations reads it from), so it has to be
+      // merged in here. Without this the --seed/--random flags were parsed and
+      // then dropped, and "deterministic random data" was never deterministic.
+      const withOverrides = this.applyConfigOverrides(config, configOverrides, collectionName);
+      const finalConfig =
+        randomSeed === undefined
+          ? withOverrides
+          : { ...withOverrides, options: { ...withOverrides.options, randomSeed } };
 
       try {
         const result = await this.seedManager.seedCollectionWithConfig(

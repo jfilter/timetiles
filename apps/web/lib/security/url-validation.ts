@@ -49,6 +49,71 @@ const PRIVATE_IPV6_PATTERNS = [
 ];
 
 /**
+ * IPv6 forms that carry an IPv4 address inside them.
+ *
+ * Both spellings have to be handled, because the value reaching us depends on
+ * who wrote it. A human types the dotted form (`::ffff:169.254.169.254`), but
+ * the WHATWG URL parser rewrites it: `new URL("http://[::ffff:169.254.169.254]/")`
+ * yields the hostname `[::ffff:a9fe:a9fe]`. Matching only the dotted form —
+ * which is what this module used to do — left the hex form unrecognised, so a
+ * mapped link-local or RFC1918 target passed every check and reached the
+ * cloud metadata service.
+ *
+ * `::ffff:` is the IPv4-mapped prefix, a bare `::` the deprecated
+ * IPv4-compatible one, and `64:ff9b::` the well-known NAT64 prefix — all three
+ * deliver traffic to the embedded IPv4 address, so all three must be unwrapped
+ * before the IPv4 range checks can mean anything.
+ *
+ * Matched by prefix rather than by one combined pattern. Expressing all three
+ * as a single regex needs nested optional groups (`::(?:ffff)?::?`) whose
+ * alternatives overlap, which backtracks — `security/detect-unsafe-regex` flags
+ * it, rightly. Longest first, so `::ffff:` is not swallowed by the bare `::`.
+ */
+// eslint-disable-next-line sonarjs/no-hardcoded-ip -- these are the reserved IANA prefixes themselves, not addresses of any host
+const IPV4_EMBEDDED_PREFIXES = ["64:ff9b::", "::ffff:", "::"];
+
+/** A dotted quad, as a human writes the mapped form. */
+const DOTTED_QUAD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+/** Two hextets, as the URL parser rewrites it. Each alternative is anchored and fixed-width. */
+const HEXTET_PAIR = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
+
+/** Extract the IPv4 address an IPv6 literal carries, or null if it carries none. */
+const embeddedIpv4 = (value: string): string | null => {
+  const prefix = IPV4_EMBEDDED_PREFIXES.find((candidate) => value.startsWith(candidate));
+  if (prefix == null) return null;
+
+  // `::ffff:0:1.2.3.4` — the SIIT spelling puts a zero hextet before the address.
+  let rest = value.slice(prefix.length);
+  if (rest.startsWith("0:")) rest = rest.slice(2);
+
+  if (DOTTED_QUAD.test(rest)) return rest;
+
+  const hextets = HEXTET_PAIR.exec(rest);
+  if (hextets?.[1] == null || hextets[2] == null) return null;
+
+  const high = Number.parseInt(hextets[1], 16);
+  const low = Number.parseInt(hextets[2], 16);
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+};
+
+/**
+ * Reduce an address literal to the form the range checks can match.
+ *
+ * Strips the brackets a URL hostname keeps around an IPv6 literal, and unwraps
+ * any embedded IPv4 address to its dotted form. A DNS name passes through
+ * untouched: names carry neither brackets nor `::`.
+ */
+const normalizeAddressLiteral = (value: string): string => {
+  let normalized = value.toLowerCase();
+  if (normalized.startsWith("[") && normalized.endsWith("]")) {
+    normalized = normalized.slice(1, -1);
+  }
+
+  return embeddedIpv4(normalized) ?? normalized;
+};
+
+/**
  * Check whether a raw IP address is in a private/internal range.
  *
  * Operates on resolved IP strings (e.g., from `dns.promises.lookup()`),
@@ -58,12 +123,7 @@ const PRIVATE_IPV6_PATTERNS = [
  * @returns `true` if the IP is private/internal.
  */
 export const isPrivateIP = (ip: string): boolean => {
-  const normalized = ip.toLowerCase();
-  const ipv6MappedIpv4 = normalized.startsWith("::ffff:") ? normalized.slice("::ffff:".length) : null;
-
-  if (ipv6MappedIpv4) {
-    return isPrivateIP(ipv6MappedIpv4);
-  }
+  const normalized = normalizeAddressLiteral(ip);
 
   if (normalized === "0.0.0.0") return true;
 
@@ -122,7 +182,10 @@ export const isPrivateUrl = (url: string): boolean => {
     return true;
   }
 
-  const hostname = parsed.hostname.toLowerCase();
+  // Normalize before matching: the parser keeps brackets around an IPv6
+  // literal and rewrites an embedded IPv4 address into hex, neither of which
+  // the range patterns below recognise. A DNS name is unaffected.
+  const hostname = normalizeAddressLiteral(parsed.hostname);
 
   // Check well-known private hostnames
   if (PRIVATE_HOSTNAMES.has(hostname)) {
@@ -193,9 +256,18 @@ export const resolvePublicHostname = async (
     return null;
   }
 
+  // A URL hostname keeps the brackets around an IPv6 literal, and
+  // `dns.lookup("[::1]")` always fails with ENOTFOUND. Because a failed lookup
+  // is deliberately non-blocking below, passing the bracketed form meant every
+  // IPv6-literal URL skipped the resolved-address check and the IP pinning
+  // entirely — the rebinding protection this function exists for did not apply
+  // to any of them. Stripping the brackets makes `lookup` echo the literal
+  // back, which `isPrivateIP` can then actually classify.
+  const lookupHost = hostname.startsWith("[") && hostname.endsWith("]") ? hostname.slice(1, -1) : hostname;
+
   let resolved: Array<{ address: string; family: number }>;
   try {
-    const raw = (await dns.promises.lookup(hostname, { all: true, verbatim: true })) as
+    const raw = (await dns.promises.lookup(lookupHost, { all: true, verbatim: true })) as
       | Array<{ address: string; family: number }>
       | { address: string; family: number };
     resolved = Array.isArray(raw) ? raw : [raw];

@@ -442,7 +442,10 @@ case "$1" in
         check_env
         case "${2:-}" in
             --web)
-                $DC_CMD logs -f --tail=100
+                # Name the service: without it `logs` streams every container
+                # in the compose project, which is what the bare `timetiles
+                # logs` case already does.
+                $DC_CMD logs -f --tail=100 web
                 ;;
             --scraper)
                 journalctl -u timescrape-runner -f --no-pager -n 100
@@ -572,7 +575,13 @@ case "$1" in
 
             list)
                 REPO="$RESTIC_REPOSITORY"
-                if [[ "$2" == "--offsite" ]]; then
+                # Use the flag the argument loop already parsed. Testing "$2"
+                # here read a positional that the loop's own `shift`s had long
+                # since consumed, so `backup --offsite list` silently listed the
+                # LOCAL repository while printing nothing to say so -- an
+                # operator verifying their offsite backups saw local snapshots
+                # and concluded the offsite copy was fine.
+                if $OFFSITE; then
                     if [[ -z "$RESTIC_OFFSITE_REPOSITORY" ]]; then
                         echo -e "${RED}No offsite repository configured${NC}"
                         exit 1
@@ -785,7 +794,26 @@ EOF
         fi
 
         RESTORE_DIR=$(mktemp -d)
-        trap "rm -rf $RESTORE_DIR" EXIT INT TERM
+
+        # The app and the workers hold open connections and locks on exactly the
+        # objects a `--clean` dump drops and recreates, so a restore against a
+        # live stack blocks on those locks, and anything a worker writes midway
+        # through lands in a database that is half old and half new. Stop them
+        # for the duration; postgres itself obviously stays up, and nginx stays
+        # up so the site serves 502s rather than refusing connections.
+        RESTORE_APP_SERVICES="web worker-ingest worker-general worker-maintenance"
+        RESTORE_APP_STOPPED=false
+
+        restore_cleanup() {
+            rm -rf "$RESTORE_DIR"
+            if [[ "$RESTORE_APP_STOPPED" == "true" ]]; then
+                echo -e "${YELLOW}Restarting application services...${NC}"
+                # shellcheck disable=SC2086 # deliberate word splitting
+                $DC_CMD start $RESTORE_APP_SERVICES \
+                    || echo -e "${RED}Could not restart services - run 'timetiles start'${NC}"
+            fi
+        }
+        trap restore_cleanup EXIT INT TERM
 
         # Restore snapshot to temp directory
         echo -e "${YELLOW}Extracting snapshot...${NC}"
@@ -801,12 +829,31 @@ EOF
         # Without this, that ended in a green "Restore complete!" and no data.
         RESTORED_WHAT=""
 
+        # Quiesce the stack before touching data (see restore_cleanup above).
+        # Mark it stopped first so the cleanup trap brings the services back
+        # even if `stop` itself fails partway through.
+        echo -e "${YELLOW}Stopping application services...${NC}"
+        RESTORE_APP_STOPPED=true
+        # shellcheck disable=SC2086 # deliberate word splitting
+        $DC_CMD stop $RESTORE_APP_SERVICES \
+            || echo -e "${YELLOW}Could not stop all services - continuing${NC}"
+
         # Check what was restored
         if [[ -f "$RESTORE_DIR/database.sql" ]]; then
             echo -e "${YELLOW}Restoring database...${NC}"
 
-            # Restore database
-            if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME' < "$RESTORE_DIR/database.sql"; then
+            # Restore database.
+            #
+            # ON_ERROR_STOP=1 and --single-transaction are load-bearing, not
+            # hygiene. psql's default is to report an error, carry on, and exit
+            # 0 -- so a dump whose DROP statements succeeded and whose CREATE
+            # and COPY statements all failed still exited 0, and this command
+            # printed "Database restored" / "Restore complete!" over a database
+            # it had just emptied. Disaster recovery reported success while
+            # destroying the data it was called to save. With both flags an
+            # error aborts and the transaction rolls back, leaving the previous
+            # contents intact and this branch reporting the failure.
+            if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS psql -v ON_ERROR_STOP=1 --single-transaction -h localhost -U $POSTGRES_USER $POSTGRES_DBNAME' < "$RESTORE_DIR/database.sql"; then
                 echo -e "${RED}Database restore failed${NC}"
                 send_alert "Restore Failed" "Database restore failed at $(date)"
                 exit 1
@@ -1415,12 +1462,38 @@ EOF
                 fi
             }
 
+            # The local build needs the monorepo ROOT, not just the app dir:
+            # apps/timescrape/Dockerfile runs `turbo prune`, which reads
+            # package.json / pnpm-workspace.yaml / turbo.json and the workspace
+            # packages timescrape takes workspace:* deps on. Install hosts have
+            # a sparse checkout (deployment/, apps/web/config/, apps/timescrape/
+            # — see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
+            # present says nothing about the context being buildable. Testing
+            # only for the Dockerfile sent bootstrap into a build that failed
+            # inside prune with an error naming neither the sparse checkout nor
+            # the missing files. Same guard as
+            # bootstrap/steps/13-scraper-setup.sh.
+            src_root="$SCRIPT_DIR/.."
             if docker pull "$image" 2>/dev/null; then
                 extract_runner "$image"
-            elif [[ -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" ]]; then
+            elif [[ -f "$src_root/apps/timescrape/Dockerfile" \
+                && -f "$src_root/pnpm-workspace.yaml" \
+                && -f "$src_root/package.json" \
+                && -f "$src_root/turbo.json" ]]; then
                 echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
-                docker build -t timescrape-runner-local -f "$SCRIPT_DIR/../apps/timescrape/Dockerfile" "$SCRIPT_DIR/.."
+                if ! docker build -t timescrape-runner-local -f "$src_root/apps/timescrape/Dockerfile" "$src_root"; then
+                    echo -e "${RED}Failed to build the scraper runner image${NC}"
+                    exit 1
+                fi
                 extract_runner timescrape-runner-local
+            elif [[ -f "$src_root/apps/timescrape/Dockerfile" ]]; then
+                echo -e "${RED}Cannot pull the runner image, and $src_root is not a full checkout${NC}"
+                echo -e "${YELLOW}The local build runs 'turbo prune' and needs the monorepo root${NC}"
+                echo -e "${YELLOW}(package.json, pnpm-workspace.yaml, turbo.json) plus packages/.${NC}"
+                echo -e "${YELLOW}Install hosts carry a sparse checkout that has none of them.${NC}"
+                echo -e "${YELLOW}Restore registry access, or run:${NC}"
+                echo -e "${YELLOW}  git -C $src_root sparse-checkout disable && git -C $src_root checkout -- .${NC}"
+                exit 1
             else
                 # The rm -rf above already emptied runner_dir, so continuing here
                 # restarts the service against no runner at all and still reports
@@ -1520,13 +1593,22 @@ EOF
 
         echo -e "${YELLOW}Creating admin user $ADMIN_EMAIL...${NC}"
 
-        # Passed as environment rather than arguments so the password never
-        # reaches the container's process list.
-        if $DC_CMD --env-file "$ENV_FILE" exec -T \
-            -e "TIMETILES_ADMIN_EMAIL=$ADMIN_EMAIL" \
-            -e "TIMETILES_ADMIN_PASSWORD=$ADMIN_PASSWORD" \
-            web node /app/node_modules/.pnpm/node_modules/payload/bin.js \
-            run scripts/create-admin.ts; then
+        # The password is piped over stdin, never passed as an argument.
+        #
+        # `docker compose exec -e TIMETILES_ADMIN_PASSWORD=$ADMIN_PASSWORD ...`
+        # keeps it out of the CONTAINER's process list but puts it straight into
+        # the HOST's: the exec invocation is itself a local process, so any user
+        # on the box could read the new admin password out of `ps aux` for as
+        # long as the command ran. Reading it off stdin inside the container and
+        # exporting it there keeps it out of both process lists.
+        CREATE_ADMIN_SH='IFS= read -r TIMETILES_ADMIN_PASSWORD
+export TIMETILES_ADMIN_PASSWORD
+exec node /app/node_modules/.pnpm/node_modules/payload/bin.js run scripts/create-admin.ts'
+
+        if printf '%s\n' "$ADMIN_PASSWORD" \
+            | $DC_CMD --env-file "$ENV_FILE" exec -T \
+                -e "TIMETILES_ADMIN_EMAIL=$ADMIN_EMAIL" \
+                web sh -c "$CREATE_ADMIN_SH"; then
             echo -e "${GREEN}Admin user created. Sign in at https://${DOMAIN_NAME}/dashboard${NC}"
         else
             echo -e "${RED}Failed to create admin user.${NC}"

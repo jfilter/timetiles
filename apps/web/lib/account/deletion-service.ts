@@ -474,6 +474,24 @@ export class AccountDeletionService {
   }
 
   /**
+   * Clear "running" claims on every scraper belonging to this user's repos.
+   *
+   * Written as raw SQL for the same reason the trigger routes claim it that
+   * way: `lastRunStatus` denies field-level update, so a Payload update cannot
+   * set it. Runs inside the deletion transaction via the transaction-aware
+   * drizzle handle, so it rolls back with everything else if the deletion
+   * fails.
+   */
+  private async releaseRunningScraperClaims(userId: number, req: TransactionReq): Promise<void> {
+    const db = await getTransactionAwareDrizzle(this.payload, req);
+    await db.execute(sql`
+      UPDATE payload.scrapers SET last_run_status = 'failed'
+      WHERE last_run_status = 'running'
+        AND repo_id IN (SELECT id FROM payload.scraper_repos WHERE created_by_id = ${userId})
+    `);
+  }
+
+  /**
    * Delete scheduled ingests, import files, scrapers, views, and data exports.
    */
   private async deleteUserResources(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
@@ -488,6 +506,17 @@ export class AccountDeletionService {
     // Delete scraper repos. Each repo's beforeDelete cascades its scrapers
     // (and their runs and webhook tokens) — without this, a deleted user's
     // code kept executing on schedule and their webhook URLs stayed live.
+    //
+    // Release any "running" claim first. The scrapers beforeDelete hook refuses
+    // to delete a running scraper with a 409, and scraper-repos re-raises it at
+    // repo level — so a single scraper wedged in "running" (a worker killed
+    // mid-scrape leaves the claim with nothing to clear it) aborted this whole
+    // transaction and rolled the account deletion back, permanently. Account
+    // deletion must not be hostage to a stuck background job: the user asked to
+    // be erased, and every one of these scrapers is being destroyed anyway, so
+    // an in-flight run is moot rather than something to protect.
+    await this.releaseRunningScraperClaims(userId, req);
+
     const scraperRepos = await findUserDocs(this.payload, "scraper-repos", userId);
 
     for (const repo of scraperRepos) {

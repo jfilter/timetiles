@@ -13,7 +13,10 @@
 #
 # For one-liner installation, see install.sh
 
-set -euo pipefail
+# -E so that shell functions inherit the ERR trap execute_step installs; without
+# it the trap is reset inside every function body and would never fire for a
+# failure inside a step.
+set -Eeuo pipefail
 
 # Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -141,6 +144,31 @@ parse_args() {
     done
 }
 
+# Run one step and record it as completed only if it actually succeeded.
+#
+# Deliberately NOT `if run_step; then mark_completed "$step"`. Putting a
+# function call in an `if` condition disables errexit for that function's
+# ENTIRE body, so a step whose internal command failed but whose LAST command
+# succeeded was still marked completed — and every run_step in steps/ ends on a
+# print_success, so that was the normal outcome, not a corner case. The
+# bootstrap then continued over a broken step, and worse, `--resume` skipped it
+# on the next run because the state file recorded it as done. Only explicit
+# `die` calls ever stopped anything; bare failures were invisible.
+#
+# Calling run_step outside any condition keeps errexit armed inside its body:
+# the first unguarded failure aborts the script and mark_completed is never
+# reached. The ERR trap only supplies the message naming the step.
+execute_step() {
+    local step="$1"
+
+    trap 'die "Step $step failed"' ERR
+    run_step
+    trap - ERR
+
+    mark_completed "$step"
+    print_success "Step $step completed"
+}
+
 validate_step() {
     local step="$1"
     for valid_step in "${STEPS[@]}"; do
@@ -160,12 +188,7 @@ run_single_step() {
 
     # Source and run the step
     source "$SCRIPT_DIR/steps/${step}.sh"
-    if run_step; then
-        mark_completed "$step"
-        print_success "Step $step completed"
-    else
-        die "Step $step failed"
-    fi
+    execute_step "$step"
 }
 
 run_all_steps() {
@@ -197,12 +220,7 @@ run_all_steps() {
         print_header "Step: $step"
 
         source "$SCRIPT_DIR/steps/${step}.sh"
-        if run_step; then
-            mark_completed "$step"
-            print_success "Step $step completed"
-        else
-            die "Step $step failed"
-        fi
+        execute_step "$step"
 
         echo ""
     done

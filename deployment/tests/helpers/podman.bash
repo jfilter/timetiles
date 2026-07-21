@@ -22,15 +22,34 @@ init_podman() {
     export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 }
 
-# Strip podman's warning banner from captured output.
+# Strip podman's warning banner from captured output, WITHOUT losing podman's
+# exit status.
 #
 # BATS's `run` merges stderr into $output, and podman prefixes its result with
 # whatever warnings it felt like emitting -- "The cgroupv2 manager is set to
 # systemd but there is no systemd user session available" and its three
 # companions, for one. A test comparing $output to "true" then fails while the
 # actual value is correct, which is a test bug reported as a product bug.
+#
+# The filtering used to be a pipeline (`podman_bounded … | grep … | tail -1`).
+# BATS runs tests without `pipefail`, so $status was always `tail`'s -- i.e.
+# always 0 -- and every `[ "$status" -ne 124 ]` canary in this suite was dead
+# code that could not fail. Since the timeout canary is the entire reason this
+# file exists (see the header), that defeated the point of the helper.
+#
+# So: run podman first, keep its status in a variable, and only then filter.
+# 2>&1 is part of the contract -- the banner goes to stderr, and if it is not
+# captured and filtered here it escapes into the $output that `run` assembles,
+# which is exactly the mess this helper was added to prevent.
 podman_value() {
-    podman_bounded "$@" | grep -vE '^time=".*" level=(warning|info)' | tail -1
+    local raw
+    local status=0
+
+    raw=$(podman_bounded "$@" 2>&1) || status=$?
+
+    printf '%s\n' "$raw" | grep -vE '^time=".*" level=(warning|info)' | tail -1
+
+    return "$status"
 }
 
 # Run podman with a bounded timeout. Exit status 124 means it hung.

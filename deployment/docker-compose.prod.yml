@@ -70,9 +70,20 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
-    # No ports exposed directly - nginx handles this
+    # No ports exposed directly - nginx handles this.
+    #
+    # 3000 is hardcoded here and below, deliberately. It used to be
+    # ${CONTAINER_PORT:-3000}, which made the port look configurable while two
+    # consumers ignored it: this service's healthcheck hardcodes 3000, and
+    # nginx/nginx.conf hardcodes `server web:3000`. Setting CONTAINER_PORT
+    # therefore moved the listener away from both, so web never reported
+    # healthy, the workers (which gate on web's health) never started, and nginx
+    # proxied to a closed port -- the whole stack deadlocked on a knob the
+    # template advertised. nginx.conf is a plain bind-mounted file with no
+    # substitution step for compose-only installs, so there is nowhere to
+    # honour the value; the knob is gone from .env.production.example instead.
     expose:
-      - "${CONTAINER_PORT:-3000}"
+      - "3000"
     # Allow the web container to reach host-native services (e.g., scraper runner)
     # Remove this block if scraper runner is not used
     extra_hosts:
@@ -113,7 +124,8 @@ services:
       # workers leave this unset to avoid racing on the same idempotency
       # check). See apps/web/lib/data-packages/auto-activator.ts.
       RUN_AUTO_ACTIVATIONS: ${RUN_AUTO_ACTIVATIONS:-true}
-      PORT: ${CONTAINER_PORT:-3000}
+      # See the `expose` block above for why this is not configurable.
+      PORT: "3000"
 
       # Logging (all containers write to /var/log/timetiles/ via shared volume)
       LOG_LEVEL: ${LOG_LEVEL:-info}
@@ -532,3 +544,27 @@ volumes:
 networks:
   timetiles-network:
     driver: bridge
+    # Pinned, not left to Docker's allocator.
+    #
+    # The host firewall has to name this range. worker-ingest reaches the
+    # scraper runner at host.docker.internal:4000 — a host-native service, so
+    # that traffic lands in the host's INPUT chain, where bootstrap step 03's
+    # `ufw default deny incoming` drops it. Step 13 opens port 4000 for this
+    # subnet and nothing else, which keeps the runner unreachable from the LAN.
+    # An auto-allocated subnet cannot be named that way: Docker hands out
+    # 172.17→172.31 in creation order, so the range this network gets depends on
+    # what else exists on the host and changes when networks are recreated —
+    # a firewall rule written against it would go stale silently and every
+    # scraper run would start failing again.
+    #
+    # 172.16.238.0/24 is deliberate on both ends: inside 172.16.0.0/12, so
+    # TRUSTED_PROXY_CIDRS and postgres's ALLOW_IP_RANGE still cover it and the
+    # scraper sandbox's egress denylist still fences scrapers off from it; but
+    # outside 172.17.0.0/16–172.31.0.0/16, which is Docker's own default pool,
+    # so it cannot collide with a network Docker allocated by itself.
+    #
+    # Override only if it clashes with a real route on your host — and set the
+    # same value in .env.production, which is where step 13 reads it from.
+    ipam:
+      config:
+        - subnet: ${DOCKER_NETWORK_SUBNET:-172.16.238.0/24}

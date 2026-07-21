@@ -90,18 +90,6 @@ export class DataProcessing {
     return transformedData;
   }
 
-  generateTestSlug(originalSlug: unknown): string {
-    const timestamp = Date.now();
-    // Math.random is acceptable here as this is only for test seed data generation
-
-    const random = Math.random().toString(36).substring(2, 8);
-
-    if (typeof originalSlug === "string") {
-      return `test-${originalSlug}-${timestamp}-${random}`;
-    }
-    return `test-slug-${timestamp}-${random}`;
-  }
-
   private generateAdditionalItems(existingItems: SeedData, needed: number, collectionName: string): unknown[] {
     const additional: unknown[] = [];
     const itemsArray = Array.isArray(existingItems) ? existingItems : [];
@@ -317,11 +305,29 @@ export class DataProcessing {
     this.appendIndexToField(newItem, "slug", index, "-");
   }
 
+  /**
+   * Vary a cloned user seed — and strip everything that must not be cloned.
+   *
+   * Padding a collection to its configured count round-robins `structuredClone`
+   * over the base seeds, and the first of those is the ADMIN. Varying only the
+   * email and first name meant every clone of it kept `role: "admin"`, an
+   * UNLIMITED trust level, and — worst — the admin's literal `apiKey` value. The
+   * development preset seeds 15 users from 6 base seeds, so a normal `pnpm seed`
+   * minted extra administrators that all authenticated with the same API key.
+   *
+   * A clone is a filler account: it gets the ordinary user role and default
+   * trust, and no API credentials at all.
+   */
   private applyUserVariations(newItem: Record<string, unknown>, index: number): void {
     if (this.isStringField(newItem, "email")) {
       const emailParts = (newItem.email as string).split("@");
       newItem.email = `${emailParts[0]}+${index + 1}@${emailParts[1]}`;
     }
     this.appendIndexToField(newItem, "firstName", index);
+
+    delete newItem.apiKey;
+    delete newItem.enableAPIKey;
+    newItem.role = "user";
+    newItem.trustLevel = "2"; // REGULAR — same default the plain user seeds use
   }
 }

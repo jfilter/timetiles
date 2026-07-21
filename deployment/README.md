@@ -124,11 +124,13 @@ The scraper runner executes user-defined web scrapers in isolated Podman contain
 
 ### Why not in docker-compose?
 
-Podman containers can't be launched from inside Docker — the runner needs direct access to the host's Podman socket (`/run/user/UID/podman/podman.sock`). Running it as a systemd service under the `timetiles` user preserves rootless isolation.
+The runner spawns scraper containers by shelling out to the **`podman` CLI** (`podman run`, `podman stop`, `podman unshare rm -rf`) — not by talking to the Podman API socket. `apps/timescrape/Dockerfile` is a `node:24-slim` image with no Podman in it, so containerizing the runner leaves those calls with no binary to find, and mounting `podman.sock` into it does nothing because nothing reads the socket. Running it as a systemd service under the `timetiles` user is the only working shape, and it preserves rootless isolation.
 
 ### How it connects
 
-The web app reaches the runner via `SCRAPER_RUNNER_URL` (typically `http://host.docker.internal:4000`). The runner authenticates requests using a shared `SCRAPER_API_KEY`.
+The web app reaches the runner via `SCRAPER_RUNNER_URL` (typically `http://host.docker.internal:4000`), and `worker-ingest` is the container that actually calls it. The runner authenticates requests using a shared `SCRAPER_API_KEY`.
+
+That call is container → host, so it lands in the host's `INPUT` chain rather than the `FORWARD` chain Docker manages, and `ufw default deny incoming` (bootstrap step 03) drops it unless a rule allows it. Step 13 adds `ufw allow from $DOCKER_NETWORK_SUBNET to any port 4000 proto tcp` — scoped to the compose bridge subnet so the runner is not exposed to the LAN — and then verifies it by probing the runner from inside `worker-ingest`, since the runner's own loopback health check never crosses the firewall and so cannot detect this.
 
 ### Enabling scrapers
 

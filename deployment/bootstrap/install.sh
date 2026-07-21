@@ -185,8 +185,15 @@ parse_args() {
         esac
     done
 
-    # Export for bootstrap.sh
-    BOOTSTRAP_ARGS=("${bootstrap_args[@]:-}")
+    # Export for bootstrap.sh.
+    #
+    # NOT "${bootstrap_args[@]:-}": on an EMPTY array that expands to a single
+    # empty-string element, so bootstrap.sh was invoked as `./bootstrap.sh ""`,
+    # hit the `*)` arm of its parser and exited 1 with "Unknown option: ".
+    # That aborted the documented one-liner install — the default, no-argument
+    # path — every single time. The `${a[@]+...}` form expands to nothing at
+    # all when the array is empty, and is safe under `set -u` on every bash.
+    BOOTSTRAP_ARGS=(${bootstrap_args[@]+"${bootstrap_args[@]}"})
 }
 
 main() {
@@ -196,7 +203,9 @@ main() {
 
     check_requirements
     clone_bootstrap
-    run_bootstrap "${BOOTSTRAP_ARGS[@]:-}"
+    # Same guard as in parse_args: `:-` here would re-introduce the empty
+    # positional argument even after the array itself was built correctly.
+    run_bootstrap ${BOOTSTRAP_ARGS[@]+"${BOOTSTRAP_ARGS[@]}"}
 
     # Cleanup is handled by trap
 }

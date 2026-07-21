@@ -45,8 +45,8 @@ info:
     name: TimeTiles
     url: https://github.com/timetiles/timetiles
   license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
+    name: AGPL-3.0-or-later
+    url: https://www.gnu.org/licenses/agpl-3.0.html
 servers:
   - url: /
     description: Current server
@@ -57,48 +57,6 @@ tags:
     description: System health and status endpoints
 components:
   schemas:
-    EventItem:
-      type: object
-      properties:
-        id:
-          type: number
-        dataset:
-          type: object
-          properties:
-            id:
-              type: number
-            title:
-              type: string
-            catalog:
-              type: string
-          required:
-            - id
-        data:
-          type: object
-          additionalProperties:
-            nullable: true
-        location:
-          type: object
-          nullable: true
-          properties:
-            longitude:
-              type: number
-            latitude:
-              type: number
-          required:
-            - longitude
-            - latitude
-        eventTimestamp:
-          type: string
-        isValid:
-          type: boolean
-      required:
-        - id
-        - dataset
-        - data
-        - location
-        - eventTimestamp
-        - isValid
     EventListResponse:
       type: object
       properties:
@@ -139,6 +97,57 @@ components:
       required:
         - events
         - pagination
+    EventItem:
+      type: object
+      properties:
+        id:
+          type: number
+        dataset:
+          type: object
+          properties:
+            id:
+              type: number
+            name:
+              type: string
+            catalog:
+              type: string
+          required:
+            - id
+        data:
+          type: object
+          additionalProperties:
+            nullable: true
+        location:
+          type: object
+          nullable: true
+          properties:
+            longitude:
+              type: number
+            latitude:
+              type: number
+          required:
+            - longitude
+            - latitude
+        locationName:
+          type: string
+          nullable: true
+        geocodedAddress:
+          type: string
+          nullable: true
+        eventTimestamp:
+          type: string
+        eventEndTimestamp:
+          type: string
+          nullable: true
+        isValid:
+          type: boolean
+      required:
+        - id
+        - dataset
+        - data
+        - location
+        - eventTimestamp
+        - isValid
     ErrorResponse:
       type: object
       properties:
@@ -150,21 +159,31 @@ components:
           nullable: true
       required:
         - error
-    AggregationItem:
+    Bounds:
       type: object
+      nullable: true
       properties:
-        id:
-          anyOf:
-            - type: number
-            - type: string
-        name:
-          type: string
-        count:
-          type: integer
+        north:
+          type: number
+          minimum: -90
+          maximum: 90
+        south:
+          type: number
+          minimum: -90
+          maximum: 90
+        east:
+          type: number
+          minimum: -180
+          maximum: 180
+        west:
+          type: number
+          minimum: -180
+          maximum: 180
       required:
-        - id
-        - name
-        - count
+        - north
+        - south
+        - east
+        - west
     AggregateResponse:
       type: object
       properties:
@@ -180,20 +199,20 @@ components:
         - items
         - total
         - groupedBy
-    HistogramBucket:
+    AggregationItem:
       type: object
       properties:
-        date:
+        id:
+          anyOf:
+            - type: number
+            - type: string
+        name:
           type: string
-          description: Bucket start timestamp (ISO 8601)
-        dateEnd:
-          type: string
-          description: Bucket end timestamp (ISO 8601)
         count:
           type: integer
       required:
-        - date
-        - dateEnd
+        - id
+        - name
         - count
     HistogramResponse:
       type: object
@@ -253,6 +272,35 @@ components:
       required:
         - histogram
         - metadata
+    HistogramBucket:
+      type: object
+      properties:
+        date:
+          type: string
+          description: Bucket start timestamp (ISO 8601)
+        dateEnd:
+          type: string
+          description: Bucket end timestamp (ISO 8601)
+        count:
+          type: integer
+      required:
+        - date
+        - dateEnd
+        - count
+    MapClustersResponse:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - FeatureCollection
+        features:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClusterFeature"
+      required:
+        - type
+        - features
     ClusterFeature:
       type: object
       properties:
@@ -287,11 +335,25 @@ components:
               type: string
               enum:
                 - event-cluster
-                - event-point
+                - event-location
             count:
               type: integer
+            clusterId:
+              type: string
             title:
               type: string
+            sourceCells:
+              type: array
+              items:
+                type: string
+            h3Cell:
+              type: string
+            eventId:
+              type: integer
+            locationName:
+              type: string
+            locationCount:
+              type: integer
           required:
             - type
       required:
@@ -299,20 +361,6 @@ components:
         - id
         - geometry
         - properties
-    MapClustersResponse:
-      type: object
-      properties:
-        type:
-          type: string
-          enum:
-            - FeatureCollection
-        features:
-          type: array
-          items:
-            $ref: "#/components/schemas/ClusterFeature"
-      required:
-        - type
-        - features
     ClusterStatsResponse:
       type: object
       properties:
@@ -351,7 +399,7 @@ paths:
           in: query
         - schema:
             type: array
-            items: &a1
+            items: &a2
               type: integer
           required: false
           name: datasets
@@ -369,13 +417,68 @@ paths:
           name: endDate
           in: query
         - schema:
-            type: string
+            $ref: "#/components/schemas/Bounds"
           required: false
           name: bounds
           in: query
         - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                maxLength: 500
+              maxItems: 100
+            default: {}
+          required: false
+          name: ff
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: object
+              properties:
+                min:
+                  type: number
+                  nullable: true
+                max:
+                  type: number
+                  nullable: true
+            default: {}
+          required: false
+          name: rf
+          in: query
+        - schema:
+            type: array
+            items: &a1
+              type: integer
+          required: false
+          name: scopeCatalogs
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeDatasets
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: clusterCells
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 15
+          required: false
+          name: h3Resolution
+          in: query
+        - schema:
             type: integer
             minimum: 1
+            maximum: 1000
             default: 1
           required: false
           name: page
@@ -430,7 +533,7 @@ paths:
           in: query
         - schema:
             type: array
-            items: *a1
+            items: *a2
           required: false
           name: datasets
           in: query
@@ -447,9 +550,62 @@ paths:
           name: endDate
           in: query
         - schema:
-            type: string
+            $ref: "#/components/schemas/Bounds"
           required: false
           name: bounds
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                maxLength: 500
+              maxItems: 100
+            default: {}
+          required: false
+          name: ff
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: object
+              properties:
+                min:
+                  type: number
+                  nullable: true
+                max:
+                  type: number
+                  nullable: true
+            default: {}
+          required: false
+          name: rf
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeCatalogs
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeDatasets
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: clusterCells
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 15
+          required: false
+          name: h3Resolution
           in: query
         - schema:
             type: string
@@ -495,7 +651,7 @@ paths:
           in: query
         - schema:
             type: array
-            items: *a1
+            items: *a2
           required: false
           name: datasets
           in: query
@@ -512,27 +668,83 @@ paths:
           name: endDate
           in: query
         - schema:
-            type: string
+            $ref: "#/components/schemas/Bounds"
           required: false
           name: bounds
           in: query
         - schema:
-            type: integer
+            type: object
             nullable: true
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                maxLength: 500
+              maxItems: 100
+            default: {}
+          required: false
+          name: ff
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: object
+              properties:
+                min:
+                  type: number
+                  nullable: true
+                max:
+                  type: number
+                  nullable: true
+            default: {}
+          required: false
+          name: rf
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeCatalogs
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeDatasets
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: clusterCells
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 15
+          required: false
+          name: h3Resolution
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 500
             default: 30
           required: false
           name: targetBuckets
           in: query
         - schema:
             type: integer
-            nullable: true
+            minimum: 1
+            maximum: 500
             default: 20
           required: false
           name: minBuckets
           in: query
         - schema:
             type: integer
-            nullable: true
+            minimum: 1
+            maximum: 500
             default: 50
           required: false
           name: maxBuckets
@@ -573,7 +785,7 @@ paths:
           in: query
         - schema:
             type: array
-            items: *a1
+            items: *a2
           required: false
           name: datasets
           in: query
@@ -590,18 +802,124 @@ paths:
           name: endDate
           in: query
         - schema:
-            type: string
-            description: Required JSON bounding box
-          required: true
-          description: Required JSON bounding box
+            $ref: "#/components/schemas/Bounds"
+          required: false
           name: bounds
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                maxLength: 500
+              maxItems: 100
+            default: {}
+          required: false
+          name: ff
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: object
+              properties:
+                min:
+                  type: number
+                  nullable: true
+                max:
+                  type: number
+                  nullable: true
+            default: {}
+          required: false
+          name: rf
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeCatalogs
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeDatasets
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: clusterCells
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 15
+          required: false
+          name: h3Resolution
           in: query
         - schema:
             type: integer
             nullable: true
+            minimum: 0
+            maximum: 28
             default: 10
           required: false
           name: zoom
+          in: query
+        - schema:
+            type: integer
+            minimum: 5
+            maximum: 500
+            default: 25
+          required: false
+          name: targetClusters
+          in: query
+        - schema:
+            type: string
+            enum:
+              - h3
+              - grid-k
+              - dbscan
+            default: h3
+          required: false
+          name: clusterAlgorithm
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 20
+            default: 2
+          required: false
+          name: minPoints
+          in: query
+        - schema:
+            type: boolean
+            nullable: true
+            default: true
+          required: false
+          name: mergeOverlapping
+          in: query
+        - schema:
+            type: number
+            minimum: 0.3
+            maximum: 1.2
+            default: 0.6
+          required: false
+          name: h3ResolutionScale
+          in: query
+        - schema:
+            type: boolean
+            nullable: true
+            default: false
+          required: false
+          name: useHexCenter
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: parentCells
           in: query
       responses:
         "200":
@@ -639,7 +957,7 @@ paths:
           in: query
         - schema:
             type: array
-            items: *a1
+            items: *a2
           required: false
           name: datasets
           in: query
@@ -656,9 +974,62 @@ paths:
           name: endDate
           in: query
         - schema:
-            type: string
+            $ref: "#/components/schemas/Bounds"
           required: false
           name: bounds
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: array
+              items:
+                type: string
+                maxLength: 500
+              maxItems: 100
+            default: {}
+          required: false
+          name: ff
+          in: query
+        - schema:
+            type: object
+            nullable: true
+            additionalProperties:
+              type: object
+              properties:
+                min:
+                  type: number
+                  nullable: true
+                max:
+                  type: number
+                  nullable: true
+            default: {}
+          required: false
+          name: rf
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeCatalogs
+          in: query
+        - schema:
+            type: array
+            items: *a1
+          required: false
+          name: scopeDatasets
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: clusterCells
+          in: query
+        - schema:
+            type: integer
+            minimum: 2
+            maximum: 15
+          required: false
+          name: h3Resolution
           in: query
       responses:
         "200":
@@ -708,7 +1079,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /api/v1/health:
+  /api/health:
     get:
       tags:
         - System

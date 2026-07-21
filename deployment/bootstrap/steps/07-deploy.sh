@@ -57,7 +57,10 @@ run_step() {
     if ! wait_for_health "http://localhost/api/health" 300 10; then
         print_error "Application failed to become healthy"
         print_info "Checking logs..."
-        run_as_user "./timetiles logs 2>&1 | tail -50"
+        # `|| true`: this is diagnostic output on the way to the die below.
+        # With errexit armed inside run_step, a non-zero exit here would abort
+        # the step before the operator ever saw the logs or the reason.
+        run_as_user "./timetiles logs 2>&1 | tail -50" || true
         die "Application health check failed"
     fi
 

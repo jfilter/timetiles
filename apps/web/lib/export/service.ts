@@ -8,11 +8,10 @@
  * @module
  * @category Services
  */
-import { createWriteStream } from "node:fs";
 import { mkdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
-import { type Archiver, ZipArchive } from "archiver";
+import type { Archiver } from "archiver";
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
@@ -34,6 +33,7 @@ import type {
 } from "@/payload-types";
 
 import { createLogger } from "../logger";
+import { type ArchiveResult, buildExportArchive } from "./archive";
 import type {
   AuditLogExportData,
   CatalogExportData,
@@ -42,7 +42,6 @@ import type {
   EventExportData,
   ExecuteExportResult,
   ExportData,
-  ExportManifest,
   ExportSummary,
   IngestFileExportData,
   IngestJobExportData,
@@ -513,77 +512,31 @@ export class DataExportService {
 
   /**
    * Create ZIP archive from export data.
+   *
+   * Archive streaming (and partial-file cleanup on failure) lives in
+   * `./archive`; this method only resolves the output path and supplies the
+   * Payload-backed event/media producer.
    */
   async createArchive(
     exportId: number,
     userId: number,
     baseData: Omit<ExportData, "events">,
     summary: ExportSummary
-  ): Promise<{ filePath: string; fileSize: number }> {
+  ): Promise<ArchiveResult> {
     // Ensure export directory exists
     const exportDir = path.isAbsolute(EXPORT_DIR) ? EXPORT_DIR : path.join(process.cwd(), EXPORT_DIR);
     await mkdir(exportDir, { recursive: true });
 
     const timestamp = new Date().toISOString().split("T")[0];
     const filename = `timetiles-export-${userId}-${timestamp}-${exportId}.zip`;
-    const outputPath = path.join(exportDir, filename);
 
-    return new Promise((resolve, reject) => {
-      const output = createWriteStream(outputPath);
-      const archive = new ZipArchive({ zlib: { level: 6 } });
-
-      output.on("close", () => {
-        void (async () => {
-          try {
-            const stats = await stat(outputPath);
-            resolve({ filePath: outputPath, fileSize: stats.size });
-          } catch (err) {
-            reject(err instanceof Error ? err : new Error(String(err)));
-          }
-        })();
-      });
-
-      archive.on("error", (err: Error) => reject(err));
-      // Without this a disk-full/permission error on the write stream is an
-      // unhandled 'error' event — crashing the worker or leaving the export
-      // record stuck in "processing" forever.
-      output.on("error", (err: Error) => reject(err));
-      archive.pipe(output);
-
-      // Add manifest
-      const manifest: ExportManifest = {
-        exportedAt: baseData.exportedAt,
-        version: baseData.version,
-        userId,
-        recordCounts: summary,
-      };
-      archive.append(JSON.stringify(manifest, null, 2), { name: "manifest.json" });
-
-      // Add user profile
-      archive.append(JSON.stringify(baseData.user, null, 2), { name: "profile.json" });
-
-      // Add collections
-      archive.append(JSON.stringify(baseData.catalogs, null, 2), { name: "catalogs.json" });
-      archive.append(JSON.stringify(baseData.datasets, null, 2), { name: "datasets.json" });
-      archive.append(JSON.stringify(baseData.datasetSchemas, null, 2), { name: "dataset-schemas.json" });
-      archive.append(JSON.stringify(baseData.importFiles, null, 2), { name: "ingest-files.json" });
-      archive.append(JSON.stringify(baseData.importJobs, null, 2), { name: "import-jobs.json" });
-      archive.append(JSON.stringify(baseData.scheduledIngests, null, 2), { name: "scheduled-ingests.json" });
-      archive.append(JSON.stringify(baseData.media, null, 2), { name: "media/metadata.json" });
-      archive.append(JSON.stringify(baseData.auditLog, null, 2), { name: "audit-log.json" });
-      archive.append(JSON.stringify(baseData.scraperRepos, null, 2), { name: "scraper-repos.json" });
-      archive.append(JSON.stringify(baseData.scrapers, null, 2), { name: "scrapers.json" });
-      archive.append(JSON.stringify(baseData.scraperRuns, null, 2), { name: "scraper-runs.json" });
-
-      // Process events and media asynchronously, then finalize
-      void (async () => {
-        try {
-          await this.addEventsAndMediaToArchive(archive, baseData);
-          await archive.finalize();
-        } catch (err) {
-          reject(err instanceof Error ? err : new Error(String(err)));
-        }
-      })();
+    return buildExportArchive({
+      exportId,
+      outputPath: path.join(exportDir, filename),
+      userId,
+      baseData,
+      summary,
+      addEventsAndMedia: (archive, data) => this.addEventsAndMediaToArchive(archive, data),
     });
   }
 

@@ -533,26 +533,39 @@ export const deactivateDataPackage = async (
   // prefix query can also return foreign activations whose key merely contains
   // "<slug>:" (e.g. "city-demo:..." matches slug "demo"). Filter exactly in JS
   // before acting — otherwise deactivation can disable the wrong package.
-  const scheduledIngest = result.docs.find(
+  //
+  // ALL exact matches, not just the first: a parameterized package can hold N
+  // activations under different parameter sets, and the deactivate route never
+  // forwards `parameters`. Acting on a single arbitrary document left the rest
+  // live with no way to reach them through the UI.
+  const matches = result.docs.filter(
     (doc) => doc.dataPackageSlug === slug || doc.dataPackageSlug?.startsWith(`${slug}:`) === true
   );
-  if (!scheduledIngest) {
+  if (matches.length === 0) {
     throw new Error(`Data package "${slug}" is not activated`);
   }
 
-  const ownerId = extractRelationId(scheduledIngest.createdBy);
-  if (user.role !== "admin" && ownerId !== user.id) {
+  // Ownership is enforced per document. A non-admin who owns none of the
+  // matches gets the same 403 as before; partial ownership deactivates only
+  // their own activations.
+  const owned = matches.filter((doc) => user.role === "admin" || extractRelationId(doc.createdBy) === user.id);
+  if (owned.length === 0) {
     throw new Error("You can only deactivate data packages you activated");
   }
 
-  await payload.update({
-    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    id: scheduledIngest.id,
-    data: { enabled: false },
-    overrideAccess: true,
-  });
+  for (const scheduledIngest of owned) {
+    await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      id: scheduledIngest.id,
+      data: { enabled: false },
+      overrideAccess: true,
+    });
+  }
 
-  logger.info({ slug, scheduledIngestId: scheduledIngest.id }, "Deactivated data package");
+  logger.info(
+    { slug, scheduledIngestIds: owned.map((doc) => doc.id), skipped: matches.length - owned.length },
+    "Deactivated data package"
+  );
 };
 
 // ---------------------------------------------------------------------------

@@ -64,10 +64,22 @@ jobs:
         with:
           images: ${{ inputs.image-name }}
           flavor: ${{ inputs.flavor }}
+          # `latest` is deliberately NOT a type=raw tag here. A raw tag enabled on
+          # "any tag push" moved :latest onto every prerelease (v0.1.0-alpha.N),
+          # so a bare `docker pull` from the self-hosting docs served an alpha.
+          # metadata-action's default `latest=auto` flavor already implements the
+          # correct rule: it sets :latest only when a type=semver pattern matches
+          # and the version has no prerelease identifier. The allinone caller
+          # passes `onlatest=true`, which applies its `-allinone` suffix to that
+          # auto-generated latest tag as well.
+          #
+          # `value=` on the semver entries is empty on tag pushes (metadata-action
+          # then falls back to the git tag, its documented default) and carries the
+          # workflow_dispatch tag input otherwise, so a dispatched build is tagged
+          # for the tag it actually built instead of producing no tags at all.
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable=${{ inputs.original-event-name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+            type=semver,pattern={{version}},value=${{ inputs.dispatch-tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.dispatch-tag }}
             type=raw,value=edge,enable=${{ inputs.original-event-name == 'schedule' || (inputs.original-event-name == 'workflow_dispatch' && inputs.dispatch-tag == '') }}
 
       - name: Create multi-arch manifest

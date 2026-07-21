@@ -36,6 +36,7 @@ jobs:
       # DEFAULT_LOCALE is inlined at build time (next.config env passthrough);
       # set the repo variable to bake a non-English default into the images.
       build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
+      ref: ${{ github.event.inputs.tag }}
     secrets: inherit
 
   build-allinone:
@@ -47,6 +48,7 @@ jobs:
       timeout-minutes: 30
       lfs: true
       build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
+      ref: ${{ github.event.inputs.tag }}
     secrets: inherit
 
   build-timescrape:
@@ -56,6 +58,7 @@ jobs:
       dockerfile: apps/timescrape/Dockerfile
       scope: timescrape
       timeout-minutes: 15
+      ref: ${{ github.event.inputs.tag }}
     secrets: inherit
 
   build-scraper-python:
@@ -66,6 +69,7 @@ jobs:
       context: apps/timescrape/images/python
       scope: scraper-python
       timeout-minutes: 15
+      ref: ${{ github.event.inputs.tag }}
     secrets: inherit
 
   build-scraper-node:
@@ -76,6 +80,7 @@ jobs:
       context: apps/timescrape/images/node
       scope: scraper-node
       timeout-minutes: 15
+      ref: ${{ github.event.inputs.tag }}
     secrets: inherit
 
   # ── Test deployment after main image builds ───────────────────────────
@@ -90,6 +95,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
+          # Test the tag's own deployment scripts against the tag's image, not main's.
+          ref: ${{ github.event.inputs.tag }}
           lfs: true
 
       - name: Download amd64 digest
@@ -211,6 +218,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          # Smoke test with the compose file and helper scripts from the ref that
+          # produced the image under test.
+          ref: ${{ github.event.inputs.tag }}
 
       - name: Log in to Container Registry
         uses: docker/login-action@v4
@@ -351,22 +362,32 @@ jobs:
           VERSION: ${{ steps.tag.outputs.version }}
           ALLINONE_AVAILABLE: ${{ needs.merge-allinone.result == 'success' }}
         run: |
+          set -u
           echo "==> Verifying arm64 manifests..."
-          for img in "${IMAGE}:${VERSION}" "${IMAGE}-timescrape:${VERSION}"; do
-            if docker manifest inspect "$img" 2>/dev/null | grep -q "arm64"; then
-              echo "  $img: arm64 manifest present"
+
+          IMAGES="${IMAGE}:${VERSION} ${IMAGE}-timescrape:${VERSION}"
+          if [ "$ALLINONE_AVAILABLE" = "true" ]; then
+            IMAGES="$IMAGES ${IMAGE}:${VERSION}-allinone"
+          fi
+
+          MISSING=""
+          for img in $IMAGES; do
+            # Keep stderr: when inspect fails we want the reason in the log.
+            if docker manifest inspect "$img" | grep -q "arm64"; then
+              echo "  OK: $img: arm64 manifest present"
             else
-              echo "  WARNING: $img: arm64 manifest missing"
+              echo "  FAIL: $img: arm64 manifest missing"
+              MISSING="$MISSING $img"
             fi
           done
-          if [ "$ALLINONE_AVAILABLE" = "true" ]; then
-            img="${IMAGE}:${VERSION}-allinone"
-            if docker manifest inspect "$img" 2>/dev/null | grep -q "arm64"; then
-              echo "  $img: arm64 manifest present"
-            else
-              echo "  WARNING: $img: arm64 manifest missing"
-            fi
+
+          # A missing arm64 manifest previously only printed a WARNING, so this
+          # step could not fail the job and arm64 regressions shipped unnoticed.
+          if [ -n "$MISSING" ]; then
+            echo "ERROR: arm64 manifest missing for:$MISSING"
+            exit 1
           fi
+          echo "==> All arm64 manifests present."
 
       - name: Collect logs on failure
         if: failure()

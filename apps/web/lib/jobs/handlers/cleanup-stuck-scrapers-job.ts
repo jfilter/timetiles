@@ -19,6 +19,7 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
+import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
@@ -51,7 +52,14 @@ const cancelOrphanedWorkflowJobs = async (
       collection: "payload-jobs" as const,
       where: {
         and: [
-          { "input.scraperId": { equals: String(scraperId) } },
+          // Must match the numeric form too. Job input is jsonb, and a string
+          // `equals` on a jsonb path compiles to a JSON *string* comparison —
+          // while every trigger path enqueues `scraperId` as a NUMBER. The
+          // string-only clause was therefore always false and this cancellation
+          // never ran, leaving orphaned jobs holding their concurrency key
+          // forever. buildResourceIdMatch covers both representations; the
+          // sibling hasActivePayloadJob check already uses it.
+          buildResourceIdMatch("input.scraperId", scraperId),
           { processing: { equals: false } },
           { completedAt: { exists: false } },
           { createdAt: { less_than: orphanedJobCutoff } },

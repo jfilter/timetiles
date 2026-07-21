@@ -35,7 +35,14 @@ const expectEventsWithinDateRange = async (response: Response, startDate: string
   const start = new Date(`${startDate}T00:00:00.000Z`).getTime();
   const end = new Date(`${endDate}T23:59:59.999Z`).getTime();
 
-  for (const event of body.events ?? []) {
+  // Without this the whole check is vacuous: an empty result skips the loop and
+  // the helper asserts nothing but the status code, so a filter that wrongly
+  // excludes everything passes exactly like a correct one. Both callers filter
+  // ranges the seed data covers, so an empty response is itself a failure.
+  const events = body.events ?? [];
+  expect(events.length).toBeGreaterThan(0);
+
+  for (const event of events) {
     expect(event.eventTimestamp).toBeTruthy();
     const timestamp = new Date(event.eventTimestamp!).getTime();
     expect(timestamp).toBeGreaterThanOrEqual(start);

@@ -38,6 +38,11 @@ on:
         required: false
         type: string
         default: ""
+      ref:
+        description: "Git ref to build. Empty (default) checks out the triggering ref."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -61,6 +66,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
         with:
+          # Without this, a workflow_dispatch that names a tag still built main
+          # HEAD. An empty string is checkout's documented default and resolves
+          # to the ref that triggered the run.
+          ref: ${{ inputs.ref }}
           lfs: ${{ inputs.lfs }}
 
       - name: Set up Docker Buildx

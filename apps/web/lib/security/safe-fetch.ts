@@ -185,6 +185,57 @@ const stripSensitiveHeaders = <T extends { headers?: HeadersInit }>(init: T): T 
   return { ...init, headers: safe };
 };
 
+/** Statuses that RFC 9110 §15.4 lets a client rewrite from POST to GET. */
+const METHOD_REWRITE_STATUSES = new Set([301, 302, 303]);
+
+/** Drop the request body (and its content headers) from a fetch init. */
+const stripBody = <T extends { headers?: HeadersInit; body?: unknown }>(init: T): T => {
+  const headers = new Headers(init.headers);
+  headers.delete("content-type");
+  headers.delete("content-length");
+  const { body: _body, ...rest } = init;
+  return { ...rest, headers } as T;
+};
+
+/**
+ * Rewrite the next hop per RFC 9110 §15.4, plus a cross-origin body guard.
+ *
+ * Two separate problems, both fixed here:
+ *
+ * 1. Because we use `redirect: 'manual'` and re-issue each hop ourselves, the
+ *    method/body conversion the platform normally performs is disabled. HTTP
+ *    requires 303 — and, by universal practice, 301/302 on a POST — to become a
+ *    bodiless GET. Replaying the body was simply wrong.
+ * 2. `stripSensitiveHeaders` keeps credentials out of cross-origin HEADERS, but
+ *    the request BODY can carry them too: `fetchOAuthToken` POSTs a
+ *    `client_id`/`username`/`password` form to a user-controlled `oauthTokenUrl`.
+ *    A 307/308 to an attacker origin preserves method and body by definition, so
+ *    the body must be dropped on any cross-origin hop regardless of status —
+ *    otherwise the header allowlist protects nothing.
+ */
+const rewriteForRedirect = <T extends { method?: string; headers?: HeadersInit; body?: unknown }>(
+  init: T,
+  status: number,
+  crossOrigin: boolean
+): T => {
+  let next = crossOrigin ? stripSensitiveHeaders(init) : init;
+
+  const method = (next.method ?? "GET").toUpperCase();
+  const isBodyMethod = method !== "GET" && method !== "HEAD";
+  // 303 rewrites any method; 301/302 rewrite POST (what every client does).
+  const rewritesToGet = METHOD_REWRITE_STATUSES.has(status) && isBodyMethod && (status === 303 || method === "POST");
+  if (rewritesToGet) {
+    return { ...stripBody(next), method: "GET" };
+  }
+
+  // 307/308 preserve method and body — safe same-origin, never across origins.
+  if (crossOrigin && next.body != null) {
+    next = stripBody(next);
+  }
+
+  return next;
+};
+
 export const safeFetch = async (url: string, options?: SafeFetchOptions): Promise<Response> => {
   const maxRedirects = options?.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
   const dnsCheck = isDnsCheckEnabled(options?.dnsCheck);
@@ -215,12 +266,11 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
     const nextUrl = nextRedirectUrl(response, currentUrl);
     if (nextUrl === null) return response;
 
-    // Cross-origin redirects must not carry credential-bearing headers, matching
-    // undici's automatic-redirect behavior that `redirect: 'manual'` disables.
+    // Cross-origin redirects must not carry credential-bearing headers OR a
+    // credential-bearing body, matching the automatic-redirect behavior that
+    // `redirect: 'manual'` disables. Also applies RFC 9110's POST→GET rewrite.
     const crossOrigin = new URL(nextUrl).origin !== new URL(currentUrl).origin;
-    if (crossOrigin) {
-      fetchOptions = stripSensitiveHeaders(fetchOptions);
-    }
+    fetchOptions = rewriteForRedirect(fetchOptions, response.status, crossOrigin);
 
     logger.debug("Following redirect with SSRF validation", {
       from: currentUrl,
@@ -228,6 +278,7 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
       status: response.status,
       redirect: redirectCount + 1,
       crossOrigin,
+      method: fetchOptions.method ?? "GET",
     });
     currentUrl = nextUrl;
   }

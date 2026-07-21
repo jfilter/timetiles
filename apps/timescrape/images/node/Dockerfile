@@ -21,6 +21,21 @@ RUN usermod -l scraper -d /home/scraper -m -s /bin/false node \
 # Create working directories
 RUN mkdir -p /scraper /output && chown scraper:scraper /output
 
+# Make the globally installed packages resolvable as bare specifiers.
+#
+# NODE_PATH alone is NOT enough: Node's ESM resolver ignores it entirely, and
+# every scraper the SDK scaffolds uses `import` syntax (Node 24 auto-detects
+# ESM in a bare .js file, so the import runs as ESM even without a
+# package.json). The result was that no node-runtime scraper could load
+# @timetiles/scraper -- it died with ERR_MODULE_NOT_FOUND before scraping
+# anything.
+#
+# The ESM resolver DOES walk the node_modules chain up to the filesystem root,
+# so a /node_modules symlink puts the global store on that path. The scraper's
+# own /scraper/node_modules, if the repo ships one, still wins -- it is checked
+# first. NODE_PATH stays for CJS `require()` of the pre-installed helpers.
+RUN ln -s /usr/local/lib/node_modules /node_modules
+
 USER scraper
 WORKDIR /scraper
 

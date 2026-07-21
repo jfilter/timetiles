@@ -250,4 +250,75 @@ describe.sequential("safeFetch", () => {
       await expect(safeFetch("https://attacker.com/redirect")).rejects.toThrow("unsupported protocol");
     });
   });
+
+  describe("redirect method and body handling", () => {
+    /** The init passed to the Nth fetch call (1-based). */
+    const initOf = (call: number) => mockFetch.mock.calls[call - 1]![1] as RequestInit;
+
+    const postWithCredentials = (url: string) =>
+      safeFetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Authorization: "Bearer secret-token" },
+        body: new URLSearchParams({ grant_type: "password", username: "alice", password: "hunter2" }),
+      });
+
+    it("does not replay a POST body across a cross-origin 302", async () => {
+      // fetchOAuthToken POSTs client_id/username/password to a user-controlled
+      // oauthTokenUrl. Replaying that body to a redirect target hands the
+      // credentials to whoever controls the redirect — the header allowlist
+      // protects nothing if the body still goes.
+      mockFetch
+        .mockResolvedValueOnce(createResponse(302, { location: "https://attacker.example/collect" }))
+        .mockResolvedValueOnce(createResponse(200));
+
+      await postWithCredentials("https://idp.example/token");
+
+      const hop = initOf(2);
+      expect(hop.body).toBeUndefined();
+      expect(hop.method).toBe("GET");
+      expect(new Headers(hop.headers).get("authorization")).toBeNull();
+      expect(new Headers(hop.headers).get("content-type")).toBeNull();
+    });
+
+    it("does not replay a POST body across a cross-origin 307 either", async () => {
+      // 307/308 preserve method and body by definition, so the status-based
+      // RFC rewrite alone would still leak the credentials.
+      mockFetch
+        .mockResolvedValueOnce(createResponse(307, { location: "https://attacker.example/collect" }))
+        .mockResolvedValueOnce(createResponse(200));
+
+      await postWithCredentials("https://idp.example/token");
+
+      const hop = initOf(2);
+      expect(hop.body).toBeUndefined();
+      expect(new Headers(hop.headers).get("authorization")).toBeNull();
+    });
+
+    it("rewrites POST to GET on a same-origin 303 per RFC 9110", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createResponse(303, { location: "https://idp.example/result" }))
+        .mockResolvedValueOnce(createResponse(200));
+
+      await postWithCredentials("https://idp.example/token");
+
+      const hop = initOf(2);
+      expect(hop.method).toBe("GET");
+      expect(hop.body).toBeUndefined();
+      // Same-origin: credential headers are still allowed through.
+      expect(new Headers(hop.headers).get("authorization")).toBe("Bearer secret-token");
+    });
+
+    it("preserves method and body on a same-origin 307", async () => {
+      mockFetch
+        .mockResolvedValueOnce(createResponse(307, { location: "https://idp.example/token-v2" }))
+        .mockResolvedValueOnce(createResponse(200));
+
+      await postWithCredentials("https://idp.example/token");
+
+      const hop = initOf(2);
+      expect(hop.method).toBe("POST");
+      expect(hop.body).toBeDefined();
+      expect(new Headers(hop.headers).get("authorization")).toBe("Bearer secret-token");
+    });
+  });
 });

@@ -51,7 +51,10 @@ All event endpoints support common filter parameters:
 - \`bounds\`: Geographic bounding box as JSON string
     `.trim(),
     contact: { name: "TimeTiles", url: "https://github.com/timetiles/timetiles" },
-    license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
+    // Must match package.json and LICENSE. This said MIT while the project is
+    // AGPL — a licence statement served to every API consumer, telling them
+    // they had permissions they do not have.
+    license: { name: "AGPL-3.0-or-later", url: "https://www.gnu.org/licenses/agpl-3.0.html" },
   },
   servers: [{ url: "/", description: "Current server" }],
   tags: [

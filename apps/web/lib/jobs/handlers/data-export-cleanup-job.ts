@@ -1,9 +1,11 @@
 /**
  * Background job for cleaning up expired data exports.
  *
- * This scheduled job runs periodically to:
- * - Delete expired export ZIP files from disk
- * - Update export records to 'expired' status
+ * Export archives contain the user's complete personal data, so the record and
+ * its file must be retired together. This scheduled job runs periodically to:
+ * - Expire ready exports past their `expiresAt` and delete their ZIPs
+ * - Purge records older than 30 days, unlinking any file they still point at
+ * - Fail exports abandoned in 'pending'/'processing' by a killed worker
  *
  * @module
  * @category Jobs
@@ -12,10 +14,181 @@ import { unlink } from "node:fs/promises";
 
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
+import type { SystemPayload } from "@/lib/services/system-payload";
 import { asSystem } from "@/lib/services/system-payload";
+
+/** Collection slug for data exports. */
+const DATA_EXPORTS = "data-exports" as const;
 
 /** Max concurrent `unlink()` calls per chunk. Bounded to avoid overwhelming the FS. */
 const UNLINK_CONCURRENCY = 10;
+
+/** Days a failed/expired record is retained before the row itself is purged. */
+const RECORD_RETENTION_DAYS = 30;
+
+/**
+ * Hours after `requestedAt` before an export still in "pending"/"processing" is
+ * considered abandoned and flipped to "failed".
+ *
+ * `POST /api/data-exports/request` refuses a new request while ANY record for
+ * the user sits in those states, so a worker killed mid-run (OOM, redeploy)
+ * locks the user out of exporting forever — nothing else in the system ever
+ * heals that record. More generous than the 4h used by the scraper/ingest
+ * reapers because archiving streams every event in an account.
+ */
+const STALE_EXPORT_HOURS = 6;
+
+/** Per-pass tally folded into the job output. */
+interface PassResult {
+  filesDeleted?: number;
+  recordsUpdated?: number;
+  recordsDeleted?: number;
+  staleFailed?: number;
+  errors?: number;
+}
+
+type PendingUnlink = { exportId: string | number; filePath: string };
+
+/** Best-effort unlink; a file that is already gone is not an error. */
+const unlinkQuietly = async (exportId: string | number, filePath: string, context: string): Promise<boolean> => {
+  try {
+    await unlink(filePath);
+    logger.debug({ exportId, filePath }, "Deleted export file");
+    return true;
+  } catch (error) {
+    logger.warn({ exportId, filePath, error, context }, "Could not delete export file (may already be deleted)");
+    return false;
+  }
+};
+
+/**
+ * Pass 1: mark expired "ready" exports as expired and collect their files.
+ *
+ * Records are updated sequentially (Payload writes are cheap and serialize
+ * naturally) and marked BEFORE the unlink so no download can race the cleanup.
+ */
+const expireReadyExports = async (
+  sys: SystemPayload,
+  now: Date
+): Promise<PassResult & { pending: PendingUnlink[] }> => {
+  const expired = await sys.find({
+    collection: DATA_EXPORTS,
+    where: { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
+    limit: 100,
+  });
+
+  const pending: PendingUnlink[] = [];
+  let recordsUpdated = 0;
+  let errors = 0;
+
+  for (const record of expired.docs) {
+    try {
+      const oldFilePath = record.filePath;
+      await sys.update({ collection: DATA_EXPORTS, id: record.id, data: { status: "expired", filePath: null } });
+      recordsUpdated++;
+      if (oldFilePath) pending.push({ exportId: record.id, filePath: oldFilePath });
+    } catch (error) {
+      errors++;
+      logError(error, "Failed to clean up export", { exportId: record.id });
+    }
+  }
+
+  return { pending, recordsUpdated, errors };
+};
+
+/**
+ * Pass 2: unlink files in bounded-concurrency chunks.
+ *
+ * One failing unlink (e.g. already deleted) must not block the others, and the
+ * record is already updated so there is no orphan risk.
+ */
+const unlinkPending = async (pending: PendingUnlink[]): Promise<number> => {
+  let filesDeleted = 0;
+
+  for (let i = 0; i < pending.length; i += UNLINK_CONCURRENCY) {
+    const chunk = pending.slice(i, i + UNLINK_CONCURRENCY);
+    const results = await Promise.all(
+      chunk.map(({ exportId, filePath }) => unlinkQuietly(exportId, filePath, "expiry"))
+    );
+    filesDeleted += results.filter(Boolean).length;
+  }
+
+  return filesDeleted;
+};
+
+/**
+ * Pass 3: purge failed/expired records older than the retention window.
+ *
+ * Deleting the record destroys the only pointer to its archive, so any file it
+ * still references is unlinked first — otherwise a PII-bearing ZIP is orphaned
+ * on disk permanently.
+ */
+const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResult> => {
+  const cutoff = new Date(now.getTime() - RECORD_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+  const old = await sys.find({
+    collection: DATA_EXPORTS,
+    where: { and: [{ status: { in: ["failed", "expired"] } }, { requestedAt: { less_than: cutoff.toISOString() } }] },
+    limit: 100,
+  });
+
+  let recordsDeleted = 0;
+  let filesDeleted = 0;
+  let errors = 0;
+
+  for (const record of old.docs) {
+    try {
+      if (record.filePath && (await unlinkQuietly(record.id, record.filePath, "purge"))) {
+        filesDeleted++;
+      }
+      await sys.delete({ collection: DATA_EXPORTS, id: record.id });
+      recordsDeleted++;
+    } catch (error) {
+      errors++;
+      logError(error, "Failed to delete old export record", { exportId: record.id });
+    }
+  }
+
+  return { recordsDeleted, filesDeleted, errors };
+};
+
+/**
+ * Pass 4: fail exports abandoned in "pending"/"processing" past
+ * {@link STALE_EXPORT_HOURS}, so the user is not locked out of exporting.
+ */
+const reapStaleExports = async (sys: SystemPayload, now: Date): Promise<PassResult> => {
+  const cutoff = new Date(now.getTime() - STALE_EXPORT_HOURS * 60 * 60 * 1000);
+  const stale = await sys.find({
+    collection: DATA_EXPORTS,
+    where: {
+      and: [{ status: { in: ["pending", "processing"] } }, { requestedAt: { less_than: cutoff.toISOString() } }],
+    },
+    limit: 100,
+  });
+
+  let staleFailed = 0;
+  let errors = 0;
+
+  for (const record of stale.docs) {
+    try {
+      await sys.update({
+        collection: DATA_EXPORTS,
+        id: record.id,
+        data: {
+          status: "failed",
+          completedAt: now.toISOString(),
+          errorLog: `Export abandoned — no progress for over ${STALE_EXPORT_HOURS}h (worker likely terminated)`,
+        },
+      });
+      staleFailed++;
+      logger.warn({ exportId: record.id, requestedAt: record.requestedAt }, "Failed abandoned data export");
+    } catch (error) {
+      errors++;
+      logError(error, "Failed to reap stale export", { exportId: record.id });
+    }
+  }
+
+  return { staleFailed, errors };
+};
 
 /**
  * Scheduled job for cleaning up expired data exports.
@@ -31,93 +204,24 @@ export const dataExportCleanupJob = {
       logger.info({ jobId: job?.id }, "Starting data export cleanup job");
 
       const now = new Date();
-      let filesDeleted = 0;
-      let recordsUpdated = 0;
-      let errors = 0;
 
-      // Find all ready exports that have expired
-      const expiredExports = await sys.find({
-        collection: "data-exports",
-        where: { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
-        limit: 100,
-      });
+      const expiry = await expireReadyExports(sys, now);
+      const unlinked = await unlinkPending(expiry.pending);
+      const purge = await purgeOldRecords(sys, now);
+      const stale = await reapStaleExports(sys, now);
 
-      logger.info({ count: expiredExports.docs.length, jobId: job?.id }, "Found expired exports to clean up");
+      const output = {
+        success: true,
+        filesDeleted: unlinked + (purge.filesDeleted ?? 0),
+        recordsUpdated: expiry.recordsUpdated ?? 0,
+        recordsDeleted: purge.recordsDeleted ?? 0,
+        staleFailed: stale.staleFailed ?? 0,
+        errors: (expiry.errors ?? 0) + (purge.errors ?? 0) + (stale.errors ?? 0),
+      };
 
-      // Pass 1: mark records as expired (sequential — Payload updates are cheap and serialize
-      // naturally in the write path). Collect file paths to unlink in the next pass.
-      type PendingUnlink = { exportId: string | number; filePath: string };
-      const pendingUnlinks: PendingUnlink[] = [];
-      for (const exportRecord of expiredExports.docs) {
-        try {
-          const oldFilePath = exportRecord.filePath;
+      logger.info({ jobId: job?.id, ...output }, "Data export cleanup job completed");
 
-          // Mark as expired first to prevent download attempts during cleanup
-          await sys.update({
-            collection: "data-exports",
-            id: exportRecord.id,
-            data: { status: "expired", filePath: null },
-          });
-          recordsUpdated++;
-
-          if (oldFilePath) {
-            pendingUnlinks.push({ exportId: exportRecord.id, filePath: oldFilePath });
-          }
-        } catch (error) {
-          errors++;
-          logError(error, "Failed to clean up export", { exportId: exportRecord.id });
-        }
-      }
-
-      // Pass 2: unlink files in bounded-concurrency chunks. One failing unlink (e.g. already
-      // deleted) must not block the others — use Promise.allSettled per chunk and log each
-      // rejection individually. Record is already updated so there is no orphan risk.
-      for (let i = 0; i < pendingUnlinks.length; i += UNLINK_CONCURRENCY) {
-        const chunk = pendingUnlinks.slice(i, i + UNLINK_CONCURRENCY);
-        const results = await Promise.allSettled(chunk.map(({ filePath }) => unlink(filePath)));
-
-        for (let j = 0; j < results.length; j++) {
-          const { exportId, filePath } = chunk[j]!;
-          const result = results[j]!;
-          if (result.status === "fulfilled") {
-            filesDeleted++;
-            logger.debug({ exportId, filePath }, "Deleted export file");
-          } else {
-            logger.warn(
-              { exportId, filePath, error: result.reason },
-              "Could not delete export file (may already be deleted)"
-            );
-          }
-        }
-      }
-
-      // Also find and clean up old failed or expired records (older than 30 days)
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const oldRecords = await sys.find({
-        collection: "data-exports",
-        where: {
-          and: [{ status: { in: ["failed", "expired"] } }, { requestedAt: { less_than: thirtyDaysAgo.toISOString() } }],
-        },
-        limit: 100,
-      });
-
-      let recordsDeleted = 0;
-      for (const record of oldRecords.docs) {
-        try {
-          await sys.delete({ collection: "data-exports", id: record.id });
-          recordsDeleted++;
-        } catch (error) {
-          errors++;
-          logError(error, "Failed to delete old export record", { exportId: record.id });
-        }
-      }
-
-      logger.info(
-        { jobId: job?.id, filesDeleted, recordsUpdated, recordsDeleted, errors },
-        "Data export cleanup job completed"
-      );
-
-      return { output: { success: true, filesDeleted, recordsUpdated, recordsDeleted, errors } };
+      return { output };
     } catch (error) {
       logError(error, "Data export cleanup job failed", { jobId: job?.id });
       throw error;

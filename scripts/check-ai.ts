@@ -127,7 +127,8 @@ function runCheckWithFreshResults(command: string, cwd: string, resultDir: strin
 
 // Format is checked repo-wide in one pass — oxfmt covers the whole tree in ~2s,
 // and it is the first gate CI runs, so a miss here fails the build before anything else.
-const unformattedFiles = runFormatCheck([], process.cwd());
+const formatResult = runFormatCheck([], process.cwd());
+const unformattedFiles = formatResult.unformatted;
 
 const runResults = new Map<string, { lint: CheckRunResult | null; typecheck: CheckRunResult | null }>();
 
@@ -239,7 +240,9 @@ for (const pkg of PACKAGES) {
 }
 
 const totalFormatErrors = unformattedFiles.length;
-if (totalFormatErrors > 0) {
+// oxfmt failing outright must fail the gate too — an empty file list from a
+// crashed run is not a clean tree.
+if (totalFormatErrors > 0 || formatResult.toolError !== undefined) {
   allPassed = false;
 }
 
@@ -270,8 +273,8 @@ if (allPassed && totalWarnings === 0) {
 }
 console.log("=".repeat(70));
 
-if (totalFormatErrors > 0) {
-  reportFormatSection(unformattedFiles);
+if (totalFormatErrors > 0 || formatResult.toolError !== undefined) {
+  reportFormatSection(formatResult);
 }
 
 // Show sample errors (max 10). Scoped to package errors — format issues are

@@ -43,3 +43,33 @@ describe("getSafeLocalRedirectPath", () => {
     expect(getSafeLocalRedirectPath("https://evil.example/phish", "/login")).toBe("/login");
   });
 });
+
+/**
+ * Browsers strip tab, LF and CR from a URL before parsing it. A target can
+ * therefore look local to a prefix check and still navigate off-site: the
+ * checks see `/<TAB>/evil.example`, the browser sees `//evil.example`.
+ */
+describe("isSafeLocalRedirectPath — characters browsers strip", () => {
+  const TAB = String.fromCharCode(9);
+  const LF = String.fromCharCode(10);
+  const CR = String.fromCharCode(13);
+
+  it.each([
+    ["tab", `/${TAB}/evil.example/phish`],
+    ["line feed", `/${LF}/evil.example/phish`],
+    ["carriage return", `/${CR}/evil.example/phish`],
+    ["repeated tabs", `/${TAB}${TAB}/evil.example/phish`],
+    ["tab before a backslash", `/${TAB}\\evil.example/phish`],
+  ])("rejects a target smuggling a host past the prefix check with %s", (_label, target) => {
+    expect(isSafeLocalRedirectPath(target)).toBe(false);
+    expect(getSafeLocalRedirectPath(target)).toBe("/");
+  });
+
+  it("still accepts ordinary in-app paths", () => {
+    expect(isSafeLocalRedirectPath("/")).toBe(true);
+    expect(isSafeLocalRedirectPath("/de/explore?tag=a&tag=b")).toBe(true);
+    expect(isSafeLocalRedirectPath("/account/settings#security")).toBe(true);
+    // An encoded slash is data inside the path, not a host separator.
+    expect(isSafeLocalRedirectPath("/explore?next=%2Ffoo")).toBe(true);
+  });
+});

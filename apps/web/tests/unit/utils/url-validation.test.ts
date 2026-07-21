@@ -288,6 +288,54 @@ describe("isPrivateIP", () => {
   it("blocks carrier-grade NAT 100.64.0.1", () => {
     expect(isPrivateIP("100.64.0.1")).toBe(true);
   });
+
+  // The dotted spelling above is the one a human writes. `dns.lookup` echoes an
+  // IP literal back verbatim, so whatever the URL parser produced is what lands
+  // here — and that is the compressed hex form.
+  it("blocks IPv4-mapped IPv6 in its compressed hex form", () => {
+    expect(isPrivateIP("::ffff:7f00:1")).toBe(true); // 127.0.0.1
+    expect(isPrivateIP("::ffff:a9fe:a9fe")).toBe(true); // 169.254.169.254
+    expect(isPrivateIP("::ffff:a00:5")).toBe(true); // 10.0.0.5
+    expect(isPrivateIP("::ffff:c0a8:101")).toBe(true); // 192.168.1.1
+  });
+
+  it("blocks an IPv4 private address behind the NAT64 prefix", () => {
+    expect(isPrivateIP("64:ff9b::a9fe:a9fe")).toBe(true);
+  });
+
+  it("still allows a public IPv4 carried in a mapped IPv6 address", () => {
+    expect(isPrivateIP("::ffff:808:808")).toBe(false); // 8.8.8.8
+  });
+});
+
+/**
+ * The WHATWG parser rewrites an IPv4-mapped IPv6 literal: the hostname of
+ * `http://[::ffff:169.254.169.254]/` is `[::ffff:a9fe:a9fe]`. Matching only the
+ * dotted spelling meant none of the private-range patterns fired and the
+ * request reached the cloud metadata service.
+ */
+describe("isPrivateUrl — IPv4-mapped IPv6 literals", () => {
+  it.each([
+    ["cloud metadata", "http://[::ffff:169.254.169.254]/latest/meta-data/"],
+    ["loopback", "http://[::ffff:127.0.0.1]/data.csv"],
+    ["class A private", "http://[::ffff:10.0.0.5]/data.csv"],
+    ["class C private", "http://[::ffff:192.168.1.1]/data.csv"],
+    ["NAT64-wrapped metadata", "http://[64:ff9b::a9fe:a9fe]/latest/meta-data/"],
+  ])("blocks %s written as a mapped IPv6 literal", (_label, url) => {
+    expect(isPrivateUrl(url)).toBe(true);
+  });
+
+  it("still allows a public IPv6 literal", () => {
+    expect(isPrivateUrl("http://[2606:4700::1111]/data.csv")).toBe(false);
+    expect(isPrivateUrl("http://[2001:4860:4860::8888]/data.csv")).toBe(false);
+  });
+
+  // Regression guard for the ULA patterns: they must not swallow public domains
+  // that merely start with "fd". See PRIVATE_IPV6_PATTERNS.
+  it("still allows public domains starting with fd", () => {
+    expect(isPrivateUrl("https://fda.gov/data.csv")).toBe(false);
+    expect(isPrivateUrl("https://fdic.gov/data.csv")).toBe(false);
+  });
 });
 
 describe("validateResolvedPublicHostname", () => {

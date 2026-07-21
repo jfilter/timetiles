@@ -151,8 +151,18 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 # via -e flags or docker-compose environment section
 
 # Health check
+#
+# Goes through nginx on purpose -- nginx is one of the services supervisord
+# manages here, so a probe that skipped it could report healthy while the
+# container served nothing. That only works because the port-80 server block in
+# deployment/allinone/nginx.conf exempts /api/health from the HTTPS redirect;
+# without that exemption this probe follows the 301 into the self-signed
+# certificate and fails permanently.
+#
+# 127.0.0.1 rather than localhost: nginx listens on 0.0.0.0:80 (IPv4 only) while
+# Node's DNS resolution answers localhost with ::1 first.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD node -e "fetch('http://localhost/api/health').then(r=>{if(!r.ok)throw r.status}).catch(()=>process.exit(1))"
+    CMD node -e "fetch('http://127.0.0.1/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 # Note: This multi-service container requires root for the entrypoint to initialize
 # PostgreSQL, generate SSL certificates, and start supervisord. Individual services

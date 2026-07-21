@@ -286,11 +286,24 @@ configure_nginx() {
     # files assume-unchanged so `git status` stays clean. `git reset --hard`
     # in `timetiles update` still overwrites them, so upstream template
     # changes propagate normally.
-    local repo_root=""
-    if [[ -d "$nginx_dir/../.." ]]; then
-        repo_root="$(cd "$nginx_dir/../.." && pwd)"
-    fi
-    find "$nginx_dir/sites-enabled" -type f -name "*.conf" -print0 \
+    # $install_dir is a SYMLINK to <src>/deployment, and bash's `cd` resolves
+    # ".." logically -- against the symlink path rather than the real one. So
+    # `cd /opt/timetiles/nginx/../..` canonicalized to /opt, not to the intended
+    # /opt/timetiles-src; the `-d "$repo_root/.git"` guard below then never
+    # matched and the assume-unchanged marking this comment describes never ran
+    # at all, leaving every substituted nginx conf permanently dirty in
+    # `git status`. `cd -P` resolves each component physically.
+    #
+    # The file paths need the same treatment: find'ing through $nginx_dir
+    # yields /opt/timetiles/... paths, which share no prefix with the resolved
+    # repo root, so `${f#...}` stripped nothing and git was handed an absolute
+    # path outside its worktree. Walk the resolved directory instead, so the
+    # stripped paths come out repo-relative.
+    local nginx_real repo_root=""
+    nginx_real="$(cd -P "$nginx_dir" && pwd)"
+    repo_root="$(cd -P "$nginx_real/../.." && pwd)"
+
+    find "$nginx_real/sites-enabled" -type f -name "*.conf" -print0 \
         | while IFS= read -r -d '' f; do
             sed -i "s/\${DOMAIN_NAME}/$domain/g" "$f"
             if [[ -n "$repo_root" ]] && [[ -d "$repo_root/.git" ]]; then

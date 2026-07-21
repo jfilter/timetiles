@@ -42,7 +42,7 @@ const queueAccountExistsEmail = async (
     payload,
     {
       to: normalizedEmail,
-      subject: t("accountExistsSubject"),
+      subject: t.plain("accountExistsSubject"),
       html: buildAccountExistsEmailHtml(resetUrl, locale, branding),
     },
     EMAIL_CONTEXTS.ACCOUNT_EXISTS
@@ -82,7 +82,7 @@ const sendVerificationAndAudit = async (
       payload,
       {
         to: normalizedEmail,
-        subject: t("verifyAccountSubject"),
+        subject: t.plain("verifyAccountSubject"),
         html: buildAccountVerificationEmailHtml(verifyUrl, createdUser.firstName ?? "", createdUser.locale, branding),
       },
       EMAIL_CONTEXTS.ACCOUNT_VERIFICATION

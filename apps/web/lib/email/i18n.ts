@@ -15,10 +15,44 @@ import en from "./messages/en";
 /** All translation keys available for emails. */
 export type EmailKey = keyof typeof en;
 
-/** A translation function returned by {@link getEmailTranslations}. */
-export type EmailTranslator = (key: EmailKey, params?: Record<string, string | number>) => string;
+/**
+ * A translation function returned by {@link getEmailTranslations}.
+ *
+ * Calling it escapes substituted values for HTML, because that is where almost
+ * every result goes — the templates interpolate straight into markup. Use
+ * `.plain()` for the few places that are not markup, above all subject lines,
+ * where an escaped ampersand would be visible to the recipient.
+ */
+export type EmailTranslator = ((key: EmailKey, params?: EmailParams) => string) & {
+  /** Same substitution, no HTML escaping. For plain-text contexts only. */
+  plain: (key: EmailKey, params?: EmailParams) => string;
+};
+
+type EmailParams = Record<string, string | number>;
 
 const messages: Record<string, Record<EmailKey, string>> = { en, de };
+
+const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
+
+/**
+ * Substitute `{name}` placeholders.
+ *
+ * The replacement is passed as a FUNCTION rather than a string: as a string,
+ * `replaceAll` interprets `$&`, `` $` ``, `$'` and `$1` inside it, so a value
+ * the user chose could splice other parts of the message into the output.
+ */
+const interpolate = (text: string, params: EmailParams | undefined, escape: boolean): string => {
+  if (!params) return text;
+
+  let result = text;
+  for (const [key, value] of Object.entries(params)) {
+    const rendered = escape ? escapeHtml(String(value)) : String(value);
+    result = result.replaceAll(`{${key}}`, () => rendered);
+  }
+  return result;
+};
 
 /**
  * Get a translation function for the given locale.
@@ -32,21 +66,24 @@ const messages: Record<string, Record<EmailKey, string>> = { en, de };
  * t("footer"); // "Dies ist eine automatische Nachricht von TimeTiles..."
  * ```
  */
-export const getEmailTranslations = (
-  locale?: string | null,
-  defaults?: Record<string, string | number>
-): EmailTranslator => {
-  const resolved = locale && locale in messages ? locale : DEFAULT_LOCALE;
-  const msgs = messages[resolved]!;
+/**
+ * The locale email content will actually be rendered in.
+ *
+ * Shared so that date formatting and message lookup cannot disagree — they did,
+ * and German emails carried English dates as a result.
+ */
+export const resolveEmailLocale = (locale?: string | null): string =>
+  locale && locale in messages ? locale : DEFAULT_LOCALE;
 
-  return (key, params) => {
-    let text: string = msgs[key];
+export const getEmailTranslations = (locale?: string | null, defaults?: EmailParams): EmailTranslator => {
+  const msgs = messages[resolveEmailLocale(locale)]!;
+
+  const render = (key: EmailKey, params: EmailParams | undefined, escape: boolean): string => {
     const merged = (defaults ?? params) ? { ...defaults, ...params } : undefined;
-    if (merged) {
-      for (const [k, v] of Object.entries(merged)) {
-        text = text.replaceAll(`{${k}}`, String(v));
-      }
-    }
-    return text;
+    return interpolate(msgs[key], merged, escape);
   };
+
+  const translate = ((key, params) => render(key, params, true)) as EmailTranslator;
+  translate.plain = (key, params) => render(key, params, false);
+  return translate;
 };

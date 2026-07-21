@@ -21,10 +21,6 @@ interface ParsedArgs {
   truncate: boolean;
   idempotent: boolean;
   deploymentEnv?: "staging" | "production";
-  volume?: string;
-  realism?: string;
-  performance?: string;
-  debugging?: string;
   randomSeed?: number;
 }
 
@@ -84,22 +80,6 @@ const applyArg = (arg: string, nextArg: string | undefined, result: ParsedArgs):
       result.deploymentEnv = parseDeploymentEnv(nextArg);
       return true;
     }
-    if (isFlag(arg, "--volume")) {
-      result.volume = nextArg;
-      return true;
-    }
-    if (isFlag(arg, "--realism")) {
-      result.realism = nextArg;
-      return true;
-    }
-    if (isFlag(arg, "--performance")) {
-      result.performance = nextArg;
-      return true;
-    }
-    if (isFlag(arg, "--debugging")) {
-      result.debugging = nextArg;
-      return true;
-    }
     if (isFlag(arg, "--seed")) {
       result.randomSeed = Number.parseInt(nextArg, 10);
       return true;
@@ -157,10 +137,6 @@ Options:
   --truncate                  Truncate collections before seeding (incompatible with deploy)
   --idempotent                Skip-if-exists per record; skip globals already populated
   --deployment-env <env>      staging|production — selects per-env seed variants (deploy preset)
-  --volume <level>            Override volume: small|medium|large
-  --realism <level>           Override realism: simple|realistic
-  --performance <level>       Override performance: fast|balanced|rich
-  --debugging <level>         Override debugging: quiet|normal|verbose
   --random                    Use random seed (different data each run)
   --seed <number>             Use specific seed for deterministic random data
 
@@ -168,7 +144,7 @@ Examples:
   pnpm seed                           # Seed development preset
   pnpm seed testing                   # Seed testing preset
   pnpm seed development users events  # Seed only users and events
-  pnpm seed --volume large --random   # Development with large volume, random data
+  pnpm seed --random                  # Development with different random data each run
   pnpm seed e2e --seed 12345          # E2E preset with specific seed
   pnpm seed --truncate                # Truncate and seed
   pnpm seed deploy                    # Idempotent deploy bootstrap (uses DEPLOYMENT_ENVIRONMENT)
@@ -210,18 +186,7 @@ Examples:
       ]);
     } else {
       // Default to seed command - parse arguments
-      const {
-        preset,
-        collections,
-        truncate,
-        idempotent,
-        deploymentEnv,
-        volume,
-        realism,
-        performance,
-        debugging,
-        randomSeed,
-      } = parseArguments(args);
+      const { preset, collections, truncate, idempotent, deploymentEnv, randomSeed } = parseArguments(args);
 
       const flags = [
         truncate ? "truncate" : null,
@@ -239,10 +204,6 @@ Examples:
           truncate,
           idempotent,
           deploymentEnv,
-          volume: volume as "small" | "medium" | "large" | undefined,
-          realism: realism as "simple" | "realistic" | undefined,
-          performance: performance as "fast" | "balanced" | "rich" | undefined,
-          debugging: debugging as "quiet" | "normal" | "verbose" | undefined,
           randomSeed,
         }),
         new Promise((_resolve, reject) =>

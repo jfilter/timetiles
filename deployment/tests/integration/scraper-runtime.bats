@@ -51,18 +51,122 @@ setup() {
 }
 
 # =============================================================================
+# Node SDK resolution
+# =============================================================================
+
+# Starting the interpreter is not the same as running a scraper. The image
+# exposed its globally installed packages through NODE_PATH alone, which the
+# ESM resolver ignores entirely -- so every scraper the SDK scaffolds (all of
+# them use `import`) died with ERR_MODULE_NOT_FOUND before scraping anything,
+# while `node -e "console.log('ok')"` above kept passing. Nothing executed a
+# real scraper against the image, so the whole node runtime was broken
+# unnoticed. This test does.
+@test "a node scraper can import the SDK and write its output" {
+    skip_if_no_podman
+    require_scraper_image timescrape-node
+
+    local code="${BATS_TEST_TMPDIR}/code"
+    local out="${BATS_TEST_TMPDIR}/out"
+    mkdir -p "$code" "$out"
+
+    # `:U` chowns the output mount into the container's uid range, which needs
+    # the directory's group to fall inside the rootless id mapping -- see the
+    # output-mount test below for why the login group, not the effective one.
+    chgrp "$(id -gn "$(id -un)")" "$out"
+
+    # ESM, exactly as `timetiles-scraper init --runtime node` scaffolds it.
+    cat > "$code/scraper.js" <<'SCRAPER'
+import { output } from "@timetiles/scraper";
+output.writeRow({ title: "Example Event", date: "2026-01-15" });
+output.save();
+console.log(`wrote ${output.rowCount} rows`);
+SCRAPER
+
+    run podman_bounded run --rm --userns=auto \
+        -v="$code:/scraper:ro,Z" -v="$out:/output:rw,Z,U" \
+        -e=TIMESCRAPE_OUTPUT_DIR=/output \
+        timescrape-node node /scraper/scraper.js
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"wrote 1 rows"* ]]
+    [ -f "$out/data.csv" ]
+
+    run cat "$out/data.csv"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"title,date"* ]]
+
+    podman_bounded unshare rm -rf "$out"
+}
+
+# The pre-installed helper libraries have to be reachable the same way, or a
+# scraper resolves the SDK and then dies on its first `import axios`.
+@test "a node scraper can import the pre-installed helper libraries" {
+    skip_if_no_podman
+    require_scraper_image timescrape-node
+
+    local code="${BATS_TEST_TMPDIR}/libs"
+    mkdir -p "$code"
+
+    cat > "$code/scraper.js" <<'SCRAPER'
+import axios from "axios";
+import * as cheerio from "cheerio";
+console.log(typeof axios.get === "function" && typeof cheerio.load === "function" ? "libs ok" : "libs missing");
+SCRAPER
+
+    run podman_bounded run --rm -v="$code:/scraper:ro,Z" \
+        timescrape-node node /scraper/scraper.js
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"libs ok"* ]]
+}
+
+# =============================================================================
 # Sandbox network
 # =============================================================================
 
-@test "scraper sandbox network exists and is internal" {
+@test "scraper sandbox network exists and is not internal" {
     skip_if_no_podman
     skip_if_no_scraper_deployment
 
     run podman_value network inspect scraper-sandbox --format '{{.Internal}}'
     [ "$status" -eq 0 ]
-    # Internal is what keeps a scraper off the host network; a non-internal
-    # network here would be a containment failure, not a cosmetic difference.
-    [ "$output" = "true" ]
+    # This used to assert "true", which read as containment but is the opposite
+    # of what the feature needs: podman's --internal strips the external
+    # gateway, so a scraper on such a network can reach nothing at all. ADR 0015
+    # specifies internet access without access to internal services. Egress
+    # filtering delivers that, and the two tests below are what actually verify
+    # it — this one only pins the network shape they depend on.
+    [ "$output" = "false" ]
+}
+
+# The property the sandbox exists for, stated as two opposing facts. Asserting
+# the network's flags cannot express it: the containment now lives in firewall
+# rules, so only a real connection attempt proves anything.
+
+@test "a scraper can reach the public internet" {
+    skip_if_no_podman
+    skip_if_no_scraper_deployment
+    require_scraper_image timescrape-python
+
+    # A TCP connect, not a DNS lookup or an HTTP fetch: it isolates reachability
+    # from name resolution and from any proxy in the way.
+    run podman_bounded run --rm --network scraper-sandbox timescrape-python \
+        python -c "import socket; socket.create_connection(('1.1.1.1', 443), timeout=10); print('reachable')"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"reachable"* ]]
+}
+
+@test "a scraper cannot reach private networks" {
+    skip_if_no_podman
+    skip_if_no_scraper_deployment
+    require_scraper_image timescrape-python
+
+    # The cloud metadata service stands in for every internal destination: it is
+    # the one address that exists on every cloud host, answers instantly when
+    # reachable, and hands out credentials when it does. If the egress rules are
+    # missing this connects, so a pass here is meaningful rather than incidental.
+    run podman_bounded run --rm --network scraper-sandbox timescrape-python \
+        python -c "import socket; socket.create_connection(('169.254.169.254', 80), timeout=5); print('LEAKED')"
+    [ "$status" -ne 0 ]
+    [[ "$output" != *"LEAKED"* ]]
 }
 
 @test "a container runs attached to the sandbox network" {

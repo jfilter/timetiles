@@ -27,8 +27,8 @@ export const sendDeletionScheduledEmail = async (
   cancelUrl: string,
   locale?: string | null
 ): Promise<void> => {
-  const { branding, t } = await getEmailContext(payload, locale);
-  const formattedDate = formatLongDate(deletionScheduledAt);
+  const { branding, t, locale: resolvedLocale } = await getEmailContext(payload, locale);
+  const formattedDate = formatLongDate(deletionScheduledAt, false, resolvedLocale);
 
   const html = emailLayout(
     `
@@ -60,7 +60,7 @@ export const sendDeletionScheduledEmail = async (
 
   await queueEmail(
     payload,
-    { to: email, subject: t("deletionScheduledSubject"), html },
+    { to: email, subject: t.plain("deletionScheduledSubject"), html },
     EMAIL_CONTEXTS.DELETION_SCHEDULED
   );
 };
@@ -97,7 +97,7 @@ export const sendDeletionCancelledEmail = async (
 
   await queueEmail(
     payload,
-    { to: email, subject: t("deletionCancelledSubject"), html },
+    { to: email, subject: t.plain("deletionCancelledSubject"), html },
     EMAIL_CONTEXTS.DELETION_CANCELLED
   );
 };
@@ -157,7 +157,7 @@ export const sendDeletionCompletedEmail = async (
 
   await queueEmail(
     payload,
-    { to: email, subject: t("deletionCompletedSubject"), html },
+    { to: email, subject: t.plain("deletionCompletedSubject"), html },
     EMAIL_CONTEXTS.DELETION_COMPLETED
   );
 };

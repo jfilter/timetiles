@@ -151,6 +151,16 @@ interface UpsertResult {
  * - Updates existing scrapers whose properties have changed.
  * - Deletes scrapers in the DB that are no longer in the manifest.
  */
+/**
+ * Is this the scrapers beforeDelete hook refusing to remove a running scraper?
+ *
+ * Matched on status rather than instanceof: the hook throws Payload's `APIError`
+ * with 409, and Payload re-wraps errors as they cross the delete boundary, so
+ * the concrete class is not something this caller can rely on.
+ */
+const isScraperRunningConflict = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 409;
+
 const syncScrapers = async (
   payload: Payload,
   repoId: number,
@@ -209,13 +219,34 @@ const syncScrapers = async (
     }
   }
 
-  // Delete scrapers no longer in manifest (and their associated runs)
+  // Delete scrapers no longer in manifest.
+  //
+  // The runs are NOT deleted here. The scrapers beforeDelete hook cascades them
+  // itself, and — crucially — it does so AFTER assertScraperNotRunning. Deleting
+  // them up front inverted that order: a scraper that was mid-run had its entire
+  // run history destroyed and only then hit the 409 that refused the delete, so
+  // the sync both lost data and failed.
+  //
+  // A refusal is also per-scraper, not fatal to the sync. One scraper running
+  // while its manifest entry disappears must not abort the whole job (which
+  // would roll back or skip every remaining create/update); it is left in place
+  // and picked up by the next sync once the run finishes.
   for (const [slug, doc] of existingBySlug) {
-    if (!manifestSlugs.has(slug)) {
-      await asSystem(payload).delete({ collection: "scraper-runs", where: { scraper: { equals: doc.id } } });
+    if (manifestSlugs.has(slug)) continue;
+
+    try {
       await asSystem(payload).delete({ collection: "scrapers", id: doc.id });
       result.deleted++;
       logger.info("Deleted scraper no longer in manifest", { slug, id: doc.id });
+    } catch (error) {
+      if (isScraperRunningConflict(error)) {
+        logger.warn("Scraper no longer in manifest is running; deferring delete to the next sync", {
+          slug,
+          id: doc.id,
+        });
+        continue;
+      }
+      throw error;
     }
   }
 

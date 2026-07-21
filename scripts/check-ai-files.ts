@@ -12,11 +12,18 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
 import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
+
+/**
+ * Fatal problems with the checking tools themselves (crashed, missing, or ran
+ * over zero files). These are kept separate from lint/type findings: a tool
+ * that never ran is not a clean result, and must never be reported as one.
+ */
+const toolFailures: string[] = [];
 
 const args = process.argv.slice(2);
 if (args.length < 2) {
@@ -54,7 +61,11 @@ console.log("=".repeat(70));
 // Deliberately NOT scoped to the checked files: CI runs oxfmt over the whole tree,
 // so scoping here would report green while CI fails on an untouched file.
 // A full pass takes ~2s, which is cheaper than a red CI run.
-const unformattedFiles = runFormatCheck([], process.cwd());
+const formatResult = runFormatCheck([], process.cwd());
+const unformattedFiles = formatResult.unformatted;
+if (formatResult.toolError !== undefined) {
+  toolFailures.push(formatResult.toolError);
+}
 
 // --- Lint: run oxlint on specified files only ---
 interface OxlintDiagnostic {
@@ -67,10 +78,32 @@ interface OxlintDiagnostic {
 
 interface OxlintOutput {
   diagnostics: OxlintDiagnostic[];
+  /** Number of files oxlint actually linted. 0 means it never looked at anything. */
+  number_of_files?: number;
 }
+
+/**
+ * Pull the JSON object out of oxlint's output.
+ *
+ * oxlint prefixes its JSON with human-readable notices on some paths (e.g.
+ * "No files found to lint."), so a bare `JSON.parse` of the whole stream throws
+ * on exactly the runs we most need to notice.
+ */
+const extractJsonObject = (raw: string): OxlintOutput | null => {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end <= start) return null;
+  try {
+    return JSON.parse(raw.slice(start, end + 1)) as OxlintOutput;
+  } catch {
+    return null;
+  }
+};
 
 let lintErrors = 0;
 let lintWarnings = 0;
+/** True only once oxlint has demonstrably linted at least one file. */
+let lintRan = false;
 const lintIssues: Array<{
   file: string;
   line: number;
@@ -81,16 +114,37 @@ const lintIssues: Array<{
 }> = [];
 
 const configPath = path.resolve(process.cwd(), ".oxlintrc.json");
-const fileArgs = relativeToPackage.join(" ");
 
-try {
-  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json ${fileArgs} 2>&1`, {
-    encoding: "utf-8",
-    cwd: pkgPath,
-  });
+// spawnSync with an argument array — NOT a shell string. Interpolating the file
+// list into a shell command word-splits any path containing a space, so oxlint
+// silently linted zero files and the run was reported as passing.
+const lintRun = spawnSync("pnpm", ["exec", "oxlint", "--config", configPath, "--format=json", ...relativeToPackage], {
+  encoding: "utf-8",
+  cwd: pkgPath,
+});
 
-  const result: OxlintOutput = JSON.parse(output);
-  for (const diag of result.diagnostics) {
+const lintOutput = (lintRun.stdout ?? "") + "\n" + (lintRun.stderr ?? "");
+const lintResult = extractJsonObject(lintOutput);
+
+if (lintRun.error) {
+  toolFailures.push(`oxlint could not be started: ${lintRun.error.message}`);
+} else if (lintResult === null) {
+  toolFailures.push(
+    `oxlint produced no parseable JSON (exit code ${lintRun.status ?? "signal " + lintRun.signal}).\n` +
+      `    Output: ${lintOutput.trim().split("\n").slice(0, 5).join("\n            ") || "(empty)"}`
+  );
+} else if ((lintResult.number_of_files ?? 0) === 0) {
+  // oxlint ran but looked at nothing — a bad path or a file excluded by
+  // ignorePatterns. Reporting this as "no lint issues" is what let broken
+  // invocations pass for so long.
+  toolFailures.push(
+    `oxlint linted 0 files. The requested paths matched nothing, or every one of\n` +
+      `    them is excluded by ignorePatterns in .oxlintrc.json:\n` +
+      relativeToPackage.map((f) => `      ${f}`).join("\n")
+  );
+} else {
+  lintRan = true;
+  for (const diag of lintResult.diagnostics) {
     const severity = diag.severity === "error" ? "error" : "warning";
     if (severity === "error") lintErrors++;
     else lintWarnings++;
@@ -104,27 +158,12 @@ try {
       severity,
     });
   }
-} catch (error) {
-  const errorWithOutput = error as { stdout?: string | Buffer };
-  const stdout = errorWithOutput.stdout?.toString() ?? "";
-  try {
-    const result: OxlintOutput = JSON.parse(stdout);
-    for (const diag of result.diagnostics) {
-      const severity = diag.severity === "error" ? "error" : "warning";
-      if (severity === "error") lintErrors++;
-      else lintWarnings++;
-      const label = diag.labels[0];
-      lintIssues.push({
-        file: diag.filename,
-        line: label?.span.line ?? 1,
-        column: label?.span.column ?? 1,
-        rule: diag.code,
-        message: diag.message,
-        severity,
-      });
-    }
-  } catch {
-    // Could not parse output
+
+  if (lintResult.number_of_files !== undefined && lintResult.number_of_files < relativeToPackage.length) {
+    console.log(
+      `\n⚠  oxlint linted ${lintResult.number_of_files} of ${relativeToPackage.length} requested files ` +
+        `(the rest are excluded by ignorePatterns).`
+    );
   }
 }
 
@@ -139,20 +178,27 @@ interface TypeScriptError {
 }
 
 let typecheckErrors = 0;
+/** True unless tsgo failed to start or died without parseable diagnostics. */
+let typecheckRan = true;
 const typecheckIssues: TypeScriptError[] = [];
 
 // Normalize file paths for matching (resolve to absolute)
 const targetFilesSet = new Set(resolvedFiles.map((f) => path.resolve(f)));
 
-try {
-  execSync("pnpm exec tsgo --noEmit --pretty false 2>&1", { encoding: "utf-8", cwd: pkgPath });
-  // No errors at all
-} catch (error) {
-  const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer };
-  const stdout = errorWithOutput.stdout?.toString() ?? "";
-  const stderr = errorWithOutput.stderr?.toString() ?? "";
-  const output = stdout + "\n" + stderr;
+const typecheckRun = spawnSync("pnpm", ["exec", "tsgo", "--noEmit", "--pretty", "false"], {
+  encoding: "utf-8",
+  cwd: pkgPath,
+});
+
+if (typecheckRun.error) {
+  typecheckRan = false;
+  toolFailures.push(`tsgo could not be started: ${typecheckRun.error.message}`);
+} else if (typecheckRun.status !== 0) {
+  const output = (typecheckRun.stdout ?? "") + "\n" + (typecheckRun.stderr ?? "");
   const lines = output.split("\n");
+  // Diagnostics anywhere in the project, before filtering down to our files.
+  // Used to tell "tsgo reported real errors elsewhere" apart from "tsgo broke".
+  let sawAnyDiagnostic = false;
 
   // eslint-disable-next-line sonarjs/slow-regex, regexp/no-super-linear-backtracking
   const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
@@ -161,6 +207,7 @@ try {
   for (const line of lines) {
     const match = diagnosticPattern.exec(line);
     if (match?.[1] && match[2] && match[3] && match[4] && match[5] && match[6]) {
+      sawAnyDiagnostic = true;
       // Save previous error if it matches our files
       if (currentError) {
         const absPath = path.resolve(pkgPath, currentError.file);
@@ -191,18 +238,31 @@ try {
       if (currentError.severity === "error") typecheckErrors++;
     }
   }
+
+  // tsgo failed but emitted nothing we could parse — a bad tsconfig, a crash, or
+  // an OOM. Treating that as "no type errors in specified files" turned a broken
+  // typechecker into a green gate.
+  if (!sawAnyDiagnostic) {
+    typecheckRan = false;
+    toolFailures.push(
+      `tsgo exited ${typecheckRun.status} without any parseable diagnostics.\n` +
+        `    Output: ${output.trim().split("\n").slice(0, 5).join("\n            ") || "(empty)"}`
+    );
+  }
 }
 
 // --- Output ---
 const formatErrors = unformattedFiles.length;
-const totalErrors = formatErrors + lintErrors + typecheckErrors;
+const totalErrors = formatErrors + lintErrors + typecheckErrors + toolFailures.length;
 
-reportFormatSection(unformattedFiles);
+reportFormatSection(formatResult);
 
 console.log("\n" + "-".repeat(70));
 console.log("LINT:");
 console.log("-".repeat(70));
-if (lintErrors === 0 && lintWarnings === 0) {
+if (!lintRan) {
+  console.log("❌ oxlint did not run — see TOOL FAILURES below");
+} else if (lintErrors === 0 && lintWarnings === 0) {
   console.log("✅ No lint issues");
 } else {
   console.log(`${lintErrors} errors, ${lintWarnings} warnings`);
@@ -216,7 +276,9 @@ if (lintErrors === 0 && lintWarnings === 0) {
 console.log("\n" + "-".repeat(70));
 console.log("TYPECHECK:");
 console.log("-".repeat(70));
-if (typecheckErrors === 0) {
+if (!typecheckRan) {
+  console.log("❌ tsgo did not run to completion — see TOOL FAILURES below");
+} else if (typecheckErrors === 0) {
   console.log("✅ No type errors in specified files");
 } else {
   console.log(`${typecheckErrors} errors`);
@@ -226,12 +288,23 @@ if (typecheckErrors === 0) {
   }
 }
 
+if (toolFailures.length > 0) {
+  console.log("\n" + "-".repeat(70));
+  console.log("TOOL FAILURES:");
+  console.log("-".repeat(70));
+  console.log("A check could not be performed. This is NOT a passing result.");
+  for (const failure of toolFailures) {
+    console.log(`  ✗ ${failure}`);
+  }
+}
+
 console.log("\n" + "=".repeat(70));
 if (totalErrors === 0) {
   console.log("✅ ALL CHECKS PASSED for specified files");
 } else {
   console.log(
-    `❌ ${totalErrors} errors found (${formatErrors} format, ${lintErrors} lint, ${typecheckErrors} typecheck)`
+    `❌ ${totalErrors} errors found (${formatErrors} format, ${lintErrors} lint, ` +
+      `${typecheckErrors} typecheck, ${toolFailures.length} tool failures)`
   );
 }
 console.log("=".repeat(70));

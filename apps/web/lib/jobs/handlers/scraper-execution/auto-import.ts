@@ -154,9 +154,15 @@ export const handleRunSuccess = async (
     "Scraper execution completed"
   );
 
-  // Auto-import if enabled and run succeeded
+  // Auto-import if enabled and run succeeded.
+  //
+  // A zero-row run is a success (an empty listing page today is a valid
+  // result, not a fault), but there is nothing to import: its CSV is empty or
+  // header-only, and feeding that to schema detection creates a stranded
+  // import job. Record the run and stop there.
   let ingestFileId: number | string | undefined;
-  if (scraper.autoImport && result.status === "success" && result.output?.download_url) {
+  const hasRowsToImport = (result.output?.rows ?? 0) > 0;
+  if (scraper.autoImport && result.status === "success" && result.output?.download_url && hasRowsToImport) {
     try {
       ingestFileId = await triggerAutoImport(
         context,

@@ -337,6 +337,10 @@ Source: `apps/timescrape/src/config.ts`
 
 The TimeScrape runner server lives on the internal network (needs access to TimeTiles for communication). Scraper containers live on the `scraper-sandbox` network which has internet access but cannot reach internal services (PostgreSQL, web app, runner API).
 
+That combination is not something a network driver flag can express, and reaching for one gets it backwards. Podman's `--internal` sounds like the property above but delivers the opposite: it removes the external gateway, so containers reach nothing at all and every scraper fails. The bootstrap therefore creates an ordinary NAT network on a pinned subnet (`10.89.200.0/24`) and enforces containment in the firewall — ufw `route deny` rules from that subnet to each RFC1918 range plus link-local and loopback, followed by a catch-all `route allow`. Traffic from a container to the host itself is governed separately, by ufw's incoming policy.
+
+Because the containment is now a firewall property rather than a network attribute, it can only be verified by attempting connections. `deployment/tests/integration/scraper-runtime.bats` asserts both directions: a public address must be reachable, and `169.254.169.254` must not.
+
 ## Consequences
 
 - The runner (`apps/timescrape`) is a separate deployment target. Operators who do not need scraping can skip it entirely. The main TimeTiles application functions without it — the feature flag ensures graceful degradation.

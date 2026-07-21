@@ -42,8 +42,21 @@ logpath = /var/log/auth.log
 maxretry = 3
 bantime = 3600
 findtime = 600
+EOF
 
-# nginx rate limit violations (if using limit_req with logging)
+    # The nginx jail is only added when the log it watches actually exists.
+    #
+    # nginx runs as a CONTAINER here and logs through Docker's json-file
+    # driver, so on a stock deployment nothing ever creates
+    # /var/log/nginx/error.log on the host. fail2ban >= 0.10 refuses to start
+    # the whole server when a jail's logpath is missing — so unconditionally
+    # writing this jail took down the sshd jail with it, and the swallowed
+    # restart failure below meant the step still reported "configured and
+    # running" while no brute-force protection existed at all.
+    if [[ -f /var/log/nginx/error.log ]]; then
+        cat >> /etc/fail2ban/jail.local << 'EOF'
+
+# nginx rate limit violations (host-side nginx log is present)
 [nginx-limit-req]
 enabled = true
 port = http,https
@@ -53,6 +66,10 @@ maxretry = 5
 bantime = 600
 findtime = 120
 EOF
+        print_info "Enabled nginx-limit-req jail"
+    else
+        print_info "No host nginx log - nginx-limit-req jail not enabled (nginx runs in a container)"
+    fi
 
     print_info "Created /etc/fail2ban/jail.local"
 
@@ -75,10 +92,23 @@ EOF
     # Restart fail2ban to apply changes
     print_step "Starting fail2ban service..."
     systemctl enable fail2ban
-    systemctl restart fail2ban
+    if ! systemctl restart fail2ban; then
+        print_error "fail2ban failed to start"
+        journalctl -u fail2ban --no-pager -n 20 || true
+        die "fail2ban startup failed"
+    fi
 
     # Wait a moment for fail2ban to start
     sleep 2
+
+    # Confirm it is still up: fail2ban can exit shortly after a "successful"
+    # restart when a jail turns out to be unusable, and this step used to
+    # report success regardless.
+    if ! systemctl is-active --quiet fail2ban; then
+        print_error "fail2ban is not running after restart"
+        journalctl -u fail2ban --no-pager -n 20 || true
+        die "fail2ban did not stay running"
+    fi
 
     # Show status
     print_step "fail2ban status:"
