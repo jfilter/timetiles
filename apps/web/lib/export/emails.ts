@@ -28,8 +28,8 @@ export const sendExportReadyEmail = async (
   fileSizeMB: number,
   locale?: string | null
 ): Promise<void> => {
-  const { branding, t } = await getEmailContext(payload, locale);
-  const formattedDate = formatLongDate(expiresAt, true);
+  const { branding, t, locale: resolvedLocale } = await getEmailContext(payload, locale);
+  const formattedDate = formatLongDate(expiresAt, true, resolvedLocale);
   const settingsUrl = `${getEnv().NEXT_PUBLIC_PAYLOAD_URL}/account/settings`;
 
   const html = emailLayout(
@@ -83,7 +83,7 @@ export const sendExportReadyEmail = async (
     branding.logoUrl
   );
 
-  await queueEmail(payload, { to: email, subject: t("exportReadySubject"), html }, EMAIL_CONTEXTS.EXPORT_READY);
+  await queueEmail(payload, { to: email, subject: t.plain("exportReadySubject"), html }, EMAIL_CONTEXTS.EXPORT_READY);
 };
 
 /**
@@ -132,5 +132,5 @@ export const sendExportFailedEmail = async (
     branding.logoUrl
   );
 
-  await queueEmail(payload, { to: email, subject: t("exportFailedSubject"), html }, EMAIL_CONTEXTS.EXPORT_FAILED);
+  await queueEmail(payload, { to: email, subject: t.plain("exportFailedSubject"), html }, EMAIL_CONTEXTS.EXPORT_FAILED);
 };

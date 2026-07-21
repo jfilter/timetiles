@@ -52,7 +52,7 @@ export const POST = apiRoute({
           payload,
           {
             to: body.email,
-            subject: t("resetPasswordSubject"),
+            subject: t.plain("resetPasswordSubject"),
             html: buildResetPasswordEmailHtml(resetUrl, existingUser.firstName ?? "", existingUser.locale, branding),
           },
           EMAIL_CONTEXTS.PASSWORD_RESET

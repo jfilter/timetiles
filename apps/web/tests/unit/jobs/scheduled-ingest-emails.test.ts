@@ -52,18 +52,21 @@ const buildCronIngest = (overrides: Partial<ScheduledIngest> = {}): ScheduledIng
 
 const owner = { email: TEST_EMAILS.user, firstName: "Ada", locale: "en" };
 
+// The dashboard is mounted at /dashboard, not Payload's default /admin — see
+// ADMIN_ROUTE. These assertions used to expect /admin, which is why every alert
+// email linked to a 404 without anything noticing.
 describe("buildScheduledIngestAdminUrl", () => {
   it("builds a clean URL without double slashes", () => {
     expect(buildScheduledIngestAdminUrl("https://app.example.com/", 42)).toBe(
-      "https://app.example.com/admin/collections/scheduled-ingests/42"
+      "https://app.example.com/dashboard/collections/scheduled-ingests/42"
     );
     expect(buildScheduledIngestAdminUrl("https://app.example.com", 42)).toBe(
-      "https://app.example.com/admin/collections/scheduled-ingests/42"
+      "https://app.example.com/dashboard/collections/scheduled-ingests/42"
     );
   });
 
   it("tolerates a null serverURL (falls back to relative path)", () => {
-    expect(buildScheduledIngestAdminUrl(null, 42)).toBe("/admin/collections/scheduled-ingests/42");
+    expect(buildScheduledIngestAdminUrl(null, 42)).toBe("/dashboard/collections/scheduled-ingests/42");
   });
 });
 
@@ -95,7 +98,7 @@ describe.sequential("sendScheduledIngestConfigInvalidEmail", () => {
     expect(job.input.html).toContain("Unable to calculate next run");
     expect(job.input.html).toContain("cron");
     expect(job.input.html).toContain("not-a-cron");
-    expect(job.input.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
+    expect(job.input.html).toContain("https://app.example.com/dashboard/collections/scheduled-ingests/42");
     // Greeting uses firstName
     expect(job.input.html).toContain("Ada");
   });
@@ -144,6 +147,6 @@ describe.sequential("sendScheduledIngestRetriesExhaustedEmail", () => {
     expect(job.input.html).toContain("hourly");
     expect(job.input.html).toContain("4");
     expect(job.input.html).toContain("3");
-    expect(job.input.html).toContain("https://app.example.com/admin/collections/scheduled-ingests/42");
+    expect(job.input.html).toContain("https://app.example.com/dashboard/collections/scheduled-ingests/42");
   });
 });

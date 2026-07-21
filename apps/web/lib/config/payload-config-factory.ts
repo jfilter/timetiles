@@ -23,6 +23,7 @@ import { buildConfig } from "payload";
 import sharp from "sharp";
 
 import Users from "@/lib/collections/users";
+import { ADMIN_ROUTE } from "@/lib/constants/routes";
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { schemaDetectionPlugin } from "@/lib/services/schema-detection";
@@ -269,7 +270,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       defaultLocale: "en",
       fallback: true,
     },
-    routes: { admin: "/dashboard" },
+    routes: { admin: ADMIN_ROUTE },
     admin: {
       user: collections?.includes("users") ? Users.slug : undefined,
       disable: disableAdmin || environment === "test",

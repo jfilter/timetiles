@@ -14,6 +14,7 @@
  */
 import type { Payload } from "payload";
 
+import { adminCollectionUrl } from "@/lib/constants/routes";
 import { getEmailContext } from "@/lib/email/context";
 import { callout, emailButton, emailLayout, greeting } from "@/lib/email/layout";
 import { EMAIL_CONTEXTS, queueEmail } from "@/lib/email/send";
@@ -31,10 +32,8 @@ interface EmailRecipient {
  *
  * Exported so tests can assert on the generated link without re-deriving it.
  */
-export const buildScheduledIngestAdminUrl = (serverURL: string | null | undefined, id: number | string): string => {
-  const base = (serverURL ?? "").replace(/\/$/, "");
-  return `${base}/admin/collections/scheduled-ingests/${id}`;
-};
+export const buildScheduledIngestAdminUrl = (serverURL: string | null | undefined, id: number | string): string =>
+  adminCollectionUrl(serverURL ?? "", "scheduled-ingests", id);
 
 /** Render a small "Type: cron \"* * * * *\"" / "Type: frequency \"hourly\"" summary line. */
 const renderScheduleSummary = (scheduledIngest: ScheduledIngest): string => {
@@ -83,7 +82,7 @@ export const sendScheduledIngestConfigInvalidEmail = async (
 
   await queueEmail(
     payload,
-    { to: owner.email, subject: t("scheduledIngestConfigInvalidSubject", { name }), html },
+    { to: owner.email, subject: t.plain("scheduledIngestConfigInvalidSubject", { name }), html },
     EMAIL_CONTEXTS.SCHEDULED_INGEST_CONFIG_INVALID
   );
 };
@@ -127,7 +126,7 @@ export const sendScheduledIngestRetriesExhaustedEmail = async (
 
   await queueEmail(
     payload,
-    { to: owner.email, subject: t("scheduledIngestRetriesExhaustedSubject", { name }), html },
+    { to: owner.email, subject: t.plain("scheduledIngestRetriesExhaustedSubject", { name }), html },
     EMAIL_CONTEXTS.SCHEDULED_INGEST_RETRIES_EXHAUSTED
   );
 };

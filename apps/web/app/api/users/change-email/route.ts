@@ -62,7 +62,7 @@ const updateEmailAndNotify = async (
     payload,
     {
       to: newEmail,
-      subject: t("emailVerifySubject"),
+      subject: t.plain("emailVerifySubject"),
       html: buildVerificationEmailHtml(verifyUrl, firstName, user.locale, branding),
     },
     EMAIL_CONTEXTS.EMAIL_CHANGE_VERIFICATION
@@ -79,7 +79,7 @@ const updateEmailAndNotify = async (
     payload,
     {
       to: user.email,
-      subject: t("emailChangedSubject"),
+      subject: t.plain("emailChangedSubject"),
       html: buildOldEmailNotificationHtml(firstName, user.locale, branding),
     },
     EMAIL_CONTEXTS.EMAIL_CHANGE_OLD_ADDRESS
