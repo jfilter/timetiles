@@ -75,6 +75,7 @@ const writer = new OutputWriter<MySchema>(outputDir);
 
 ## Environment
 
-| Variable                | Default   | Description                                                                    |
-| ----------------------- | --------- | ------------------------------------------------------------------------------ |
-| `TIMESCRAPE_OUTPUT_DIR` | `/output` | Output directory for CSV files. Set automatically inside TimeTiles containers. |
+| Variable                 | Default    | Description                                                                    |
+| ------------------------ | ---------- | ------------------------------------------------------------------------------ |
+| `TIMESCRAPE_OUTPUT_DIR`  | `/output`  | Output directory for CSV files. Set automatically inside TimeTiles containers. |
+| `TIMESCRAPE_OUTPUT_FILE` | `data.csv` | Output filename. Set automatically from the manifest's `output:` field.        |

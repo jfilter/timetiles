@@ -107,6 +107,160 @@ describe("runner", () => {
       expect(result.output!.download_url).toBe("/output/550e8400-e29b-41d4-a716-446655440001/data.csv");
     });
 
+    it("counts CSV records, not lines, when a field spans multiple lines", async () => {
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "", stderr: "" });
+        }
+      );
+
+      // Two data rows, one of which carries a quoted three-line description.
+      const csvContent = Buffer.from('id,description\n1,"line one\nline two\nline three"\n2,plain\n');
+      mockStat.mockResolvedValue({ size: csvContent.length });
+      mockReadFile.mockResolvedValue(csvContent);
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440010" });
+
+      expect(result.status).toBe("success");
+      expect(result.output!.rows).toBe(2);
+    });
+
+    it("treats a zero-row output as a successful run of zero rows", async () => {
+      // Finding nothing is a valid scrape. It used to surface as HTTP 422.
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "no entries today", stderr: "" });
+        }
+      );
+
+      const csvContent = Buffer.from("");
+      mockStat.mockResolvedValue({ size: 0 });
+      mockReadFile.mockResolvedValue(csvContent);
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440011" });
+
+      expect(result.status).toBe("success");
+      expect(result.exit_code).toBe(0);
+      expect(result.output!.rows).toBe(0);
+      expect(result.stdout).toContain("no entries today");
+    });
+
+    it("treats a header-only output as a successful run of zero rows", async () => {
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "", stderr: "" });
+        }
+      );
+
+      const csvContent = Buffer.from("id,title\n");
+      mockStat.mockResolvedValue({ size: csvContent.length });
+      mockReadFile.mockResolvedValue(csvContent);
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440012" });
+
+      expect(result.status).toBe("success");
+      expect(result.output!.rows).toBe(0);
+    });
+
+    it("records unusable output as a failed run that keeps the scraper logs", async () => {
+      // Invalid output is a fact about the run, not a malformed request: it
+      // must not become an HTTP error that discards stdout/stderr.
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "scraped 400 pages", stderr: "warning: selector missed" });
+        }
+      );
+
+      // Data with no header row — real output, unusable shape.
+      const csvContent = Buffer.from("\n1,A\n2,B\n");
+      mockStat.mockResolvedValue({ size: csvContent.length });
+      mockReadFile.mockResolvedValue(csvContent);
+
+      const { validateOutput } = await import("../src/services/output-validator.js");
+      const { OutputValidationError } = await import("../src/lib/errors.js");
+      vi.mocked(validateOutput).mockRejectedValueOnce(new OutputValidationError("Output file has no header row"));
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440013" });
+
+      expect(result.status).toBe("failed");
+      expect(result.exit_code).toBe(1);
+      expect(result.output).toBeUndefined();
+      expect(result.stdout).toContain("scraped 400 pages");
+      expect(result.stderr).toContain("warning: selector missed");
+      expect(result.stderr).toContain("no header row");
+    });
+
+    it("records oversized output as a failed run that keeps the scraper logs", async () => {
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "wrote everything", stderr: "" });
+        }
+      );
+
+      mockStat.mockResolvedValue({ size: 200 * 1024 * 1024 }); // 200MB, limit is 100MB
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440014" });
+
+      expect(result.status).toBe("failed");
+      expect(result.stdout).toContain("wrote everything");
+      expect(result.stderr).toContain("exceeds limit");
+    });
+
+    it("fails a run whose scraper exited 0 without writing an output file", async () => {
+      // The other side of the split: a MISSING file means the scraper never
+      // produced a result, whatever its exit code claimed.
+      mockExecFile.mockImplementation(
+        (
+          _cmd: string,
+          _args: string[],
+          _opts: Record<string, unknown>,
+          cb: (err: null, result: { stdout: string; stderr: string }) => void
+        ) => {
+          cb(null, { stdout: "done", stderr: "" });
+        }
+      );
+
+      mockStat.mockRejectedValue(new Error("ENOENT"));
+
+      const { executeRun } = await import("../src/services/runner.js");
+      const result = await executeRun({ ...BASE_REQUEST, run_id: "550e8400-e29b-41d4-a716-446655440015" });
+
+      expect(result.status).toBe("failed");
+      expect(result.exit_code).toBe(1);
+      expect(result.stderr).toContain("No output file produced");
+      expect(result.stdout).toContain("done");
+    });
+
     it("returns timeout status when podman is killed", async () => {
       // execFile mock: process killed (timeout)
       mockExecFile.mockImplementation(

@@ -45,12 +45,14 @@ export interface ContainerConfig {
   entrypoint: string;
   codeDir: string;
   outputDir: string;
+  /** Filename the manifest declared via `output:`. Defaults to data.csv. */
+  outputFile?: string;
   env: Record<string, string>;
   limits: ContainerLimits;
 }
 
 export const buildPodmanArgs = (config: ContainerConfig): string[] => {
-  const { runId, runtime, entrypoint, codeDir, outputDir, env, limits } = config;
+  const { runId, runtime, entrypoint, codeDir, outputDir, outputFile, env, limits } = config;
 
   const args: string[] = [
     "run",
@@ -102,6 +104,7 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     "USER",
     "SHELL",
     "TIMESCRAPE_OUTPUT_DIR",
+    "TIMESCRAPE_OUTPUT_FILE",
   ]);
 
   for (const [key, value] of Object.entries(env)) {
@@ -110,8 +113,12 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
     args.push(`-e=${key}=${value}`);
   }
 
-  // Output file path env var for helper libraries
+  // Output location env vars for helper libraries. The filename must travel
+  // with the directory: the runner reads back the manifest's configured
+  // `output:` name, so an SDK that only knew the directory always wrote
+  // data.csv and any other configured name failed the run.
   args.push("-e=TIMESCRAPE_OUTPUT_DIR=/output");
+  args.push(`-e=TIMESCRAPE_OUTPUT_FILE=${outputFile ?? "data.csv"}`);
 
   // Image and command
   const image = `timescrape-${runtime}`;

@@ -8,9 +8,12 @@ describe("validateOutput", () => {
     await expect(validateOutput(content, 100)).resolves.toBeUndefined();
   });
 
-  it("rejects empty content", async () => {
+  it("accepts empty content — a scrape that found nothing is still valid", async () => {
+    // A listing page with no entries today is a correct result, not a fault.
+    // Rejecting it here turned every legitimately-empty scrape into a failed
+    // run. The caller decides success from whether the file EXISTS.
     const content = Buffer.from("");
-    await expect(validateOutput(content, 100)).rejects.toThrow("empty");
+    await expect(validateOutput(content, 100)).resolves.toBeUndefined();
   });
 
   it("rejects content exceeding size limit", async () => {

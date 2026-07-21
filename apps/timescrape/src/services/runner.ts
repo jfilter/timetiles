@@ -17,6 +17,7 @@ import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import { getConfig } from "../config.js";
+import { countCsvDataRows } from "../lib/csv.js";
 import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
 import { buildPodmanArgs } from "../security/container-config.js";
@@ -161,6 +162,24 @@ const removeContainerWrittenDir = async (dir: string): Promise<void> => {
   }
 };
 
+type CollectedOutput = { output: RunResult["output"] | undefined; exitCode: number; stderr: string };
+
+/**
+ * Record a bad output as a FAILED RUN carrying the scraper's own logs.
+ *
+ * Throwing `OutputValidationError` here used to answer the caller with HTTP
+ * 422, which discards stdout and stderr — the operator saw "invalid output"
+ * and had no way to learn why the scraper produced it. Bad output is a fact
+ * ABOUT the run, not a malformed request, so it belongs in the run record.
+ * An already-failing exit code is preserved; a scraper that claimed success
+ * is forced to exit 1.
+ */
+const failedOutput = (exitCode: number, stderr: string, reason: string): CollectedOutput => ({
+  output: undefined,
+  exitCode: exitCode === 0 ? 1 : exitCode,
+  stderr: `${stderr}\n[runner] ${reason}`,
+});
+
 const collectOutput = async (
   outputDir: string,
   outputFileName: string,
@@ -168,45 +187,62 @@ const collectOutput = async (
   exitCode: number,
   stderr: string,
   runId: string
-): Promise<{ output: RunResult["output"] | undefined; exitCode: number; stderr: string }> => {
+): Promise<CollectedOutput> => {
   const outputFile = join(outputDir, outputFileName);
+  // A path escape is a malformed REQUEST, not a run outcome, so it stays an
+  // HTTP error — the request could never have produced a valid run.
   if (!resolve(outputFile).startsWith(resolve(outputDir) + "/")) {
     throw new RunnerError("output_file escapes output directory", "INVALID_REQUEST", 400);
   }
 
+  // Success/failure split for output, made explicit:
+  //   - file MISSING            -> failure. The scraper never wrote a result;
+  //                                if it also exited 0 it lied about its work.
+  //   - file present, 0 records -> SUCCESS with rows: 0. Finding nothing is a
+  //                                valid scrape (an empty listing page today).
+  //   - file present, oversize
+  //     or headerless           -> failure. Real output, unusable shape.
+  // Every failure branch keeps stdout/stderr so the cause stays visible.
+  let stats: Awaited<ReturnType<typeof stat>>;
   try {
-    const stats = await stat(outputFile);
-    const sizeMb = stats.size / (1024 * 1024);
-    if (sizeMb > maxSizeMb) {
-      throw new OutputValidationError(`Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
-    }
+    stats = await stat(outputFile);
+  } catch {
+    return exitCode === 0
+      ? failedOutput(exitCode, stderr, `No output file produced at ${outputFileName}`)
+      : { output: undefined, exitCode, stderr };
+  }
 
-    // Read content for validation and row counting, then discard
-    const content = await readFile(outputFile);
+  const sizeMb = stats.size / (1024 * 1024);
+  if (sizeMb > maxSizeMb) {
+    return failedOutput(exitCode, stderr, `Output size (${sizeMb.toFixed(1)}MB) exceeds limit (${maxSizeMb}MB)`);
+  }
+
+  let content: Buffer;
+  try {
+    content = await readFile(outputFile);
     await validateOutput(content, maxSizeMb);
+  } catch (error) {
+    if (error instanceof OutputValidationError) return failedOutput(exitCode, stderr, error.message);
+    if (error instanceof RunnerError) throw error;
+    return failedOutput(exitCode, stderr, `Could not read output file: ${String(error)}`);
+  }
 
-    const lines = content
-      .toString("utf-8")
-      .split("\n")
-      .filter((l) => l.trim().length > 0);
-    const rows = Math.max(0, lines.length - 1);
+  // Count parsed CSV records, not raw lines: a quoted field may contain line
+  // breaks, so line counting inflates the row total on any multi-line value.
+  const rows = countCsvDataRows(content.toString("utf-8"));
 
+  try {
     // Copy output file to persistent location for download
     const config = getConfig();
     const persistentDir = join(config.SCRAPER_DATA_DIR, "outputs", runId);
     await mkdir(persistentDir, { recursive: true });
     await copyFile(outputFile, join(persistentDir, outputFileName));
-
-    const downloadUrl = `/output/${runId}/${outputFileName}`;
-
-    return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
   } catch (error) {
-    if (error instanceof RunnerError) throw error;
-    if (exitCode === 0) {
-      return { output: undefined, exitCode: 1, stderr: stderr + "\nNo valid output file produced" };
-    }
-    return { output: undefined, exitCode, stderr };
+    return failedOutput(exitCode, stderr, `Could not persist output file: ${String(error)}`);
   }
+
+  const downloadUrl = `/output/${runId}/${outputFileName}`;
+  return { output: { rows, bytes: stats.size, download_url: downloadUrl }, exitCode, stderr };
 };
 
 export const executeRun = async (request: RunRequest): Promise<RunResult> => {
@@ -233,6 +269,10 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     // Prepare code (clone git repo or write inline code)
     await prepareCode(request, codeDir);
 
+    // One source of truth for the filename: the container is told where to
+    // write and `collectOutput` reads the same name back.
+    const outputFileName = request.output_file ?? "data.csv";
+
     // Build podman args with full hardening
     const podmanArgs = buildPodmanArgs({
       runId,
@@ -240,6 +280,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       entrypoint: request.entrypoint,
       codeDir,
       outputDir,
+      outputFile: outputFileName,
       env: request.env ?? {},
       limits: {
         timeoutSecs: request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT,
@@ -258,14 +299,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       output,
       exitCode: finalExitCode,
       stderr: finalStderr,
-    } = await collectOutput(
-      outputDir,
-      request.output_file ?? "data.csv",
-      config.SCRAPER_MAX_OUTPUT_SIZE_MB,
-      exitCode,
-      stderr,
-      runId
-    );
+    } = await collectOutput(outputDir, outputFileName, config.SCRAPER_MAX_OUTPUT_SIZE_MB, exitCode, stderr, runId);
 
     const status = finalExitCode === 0 ? "success" : "failed";
     if (status === "success") {

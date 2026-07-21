@@ -56,6 +56,34 @@ describe("buildPodmanArgs", () => {
     expect(args).toContain("-e=TIMESCRAPE_OUTPUT_DIR=/output");
   });
 
+  it("passes the configured output filename to the container", () => {
+    // The runner reads back the manifest's `output:` name. Without telling the
+    // container about it, the SDK always wrote data.csv and any manifest
+    // declaring another name failed with "no output file produced".
+    const args = buildPodmanArgs({ ...baseConfig, outputFile: "events.csv" });
+
+    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=events.csv");
+  });
+
+  it("defaults the output filename to data.csv", () => {
+    const args = buildPodmanArgs(baseConfig);
+
+    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=data.csv");
+  });
+
+  it("does not let scraper env override the output location", () => {
+    const args = buildPodmanArgs({
+      ...baseConfig,
+      outputFile: "events.csv",
+      env: { TIMESCRAPE_OUTPUT_FILE: "/etc/passwd", TIMESCRAPE_OUTPUT_DIR: "/etc" },
+    });
+
+    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_FILE=events.csv");
+    expect(args).toContain("-e=TIMESCRAPE_OUTPUT_DIR=/output");
+    expect(args).not.toContain("-e=TIMESCRAPE_OUTPUT_FILE=/etc/passwd");
+    expect(args).not.toContain("-e=TIMESCRAPE_OUTPUT_DIR=/etc");
+  });
+
   it("uses correct image and command for python", () => {
     const args = buildPodmanArgs(baseConfig);
 
