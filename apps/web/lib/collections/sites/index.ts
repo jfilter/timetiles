@@ -151,7 +151,15 @@ const Sites: CollectionConfig = {
       name: "customCode",
       label: "Custom Code",
       admin: { description: "Custom CSS and HTML injection (scoped to this site)" },
-      access: { update: ({ req: { user } }) => user?.role === "admin" },
+      // Payload field access does NOT inherit `create` from `update`: an
+      // unspecified `create` is permitted for anyone who may create the
+      // document, and Sites `create` is isEditorOrAdmin. Without this an editor
+      // could inject head/body HTML on the initial write and only be blocked
+      // from editing it afterwards.
+      access: {
+        create: ({ req: { user } }) => user?.role === "admin",
+        update: ({ req: { user } }) => user?.role === "admin",
+      },
       fields: [
         {
           name: "headHtml",

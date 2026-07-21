@@ -37,7 +37,9 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockPayload = {
       findByID: vi.fn(),
-      find: vi.fn(),
+      // Default to an empty page so tests only have to script the passes they
+      // care about; `mockResolvedValueOnce` chains still take precedence.
+      find: vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 }),
       create: vi.fn(),
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn().mockResolvedValue({}),
@@ -51,7 +53,14 @@ describe.sequential("dataExportCleanupJob", () => {
 
     const result = await dataExportCleanupJob.handler(createContext());
 
-    expect(result.output).toEqual({ success: true, filesDeleted: 0, recordsUpdated: 0, recordsDeleted: 0, errors: 0 });
+    expect(result.output).toEqual({
+      success: true,
+      filesDeleted: 0,
+      recordsUpdated: 0,
+      recordsDeleted: 0,
+      staleFailed: 0,
+      errors: 0,
+    });
   });
 
   it("should update expired exports and delete their files", async () => {
@@ -70,7 +79,14 @@ describe.sequential("dataExportCleanupJob", () => {
 
     expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-1.zip");
 
-    expect(result.output).toEqual({ success: true, filesDeleted: 1, recordsUpdated: 1, recordsDeleted: 0, errors: 0 });
+    expect(result.output).toEqual({
+      success: true,
+      filesDeleted: 1,
+      recordsUpdated: 1,
+      recordsDeleted: 0,
+      staleFailed: 0,
+      errors: 0,
+    });
   });
 
   it("should handle file error when unlink throws", async () => {
@@ -160,7 +176,14 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-2.zip");
     expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-3.zip");
 
-    expect(result.output).toEqual({ success: true, filesDeleted: 3, recordsUpdated: 3, recordsDeleted: 0, errors: 0 });
+    expect(result.output).toEqual({
+      success: true,
+      filesDeleted: 3,
+      recordsUpdated: 3,
+      recordsDeleted: 0,
+      staleFailed: 0,
+      errors: 0,
+    });
   });
 
   it("should continue unlinking other files when one unlink fails", async () => {
@@ -209,5 +232,89 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-2.zip");
     expect(result.output.recordsUpdated).toBe(2);
     expect(result.output.filesDeleted).toBe(1);
+  });
+
+  it("should unlink an old record's file before purging the record", async () => {
+    // Deleting the record destroys the only pointer to its archive. A retained
+    // filePath (e.g. a "failed" record whose archive was already written) would
+    // otherwise orphan a PII-bearing ZIP on disk permanently.
+    mockPayload.find.mockResolvedValueOnce({ docs: [], totalDocs: 0 }).mockResolvedValueOnce({
+      docs: [
+        { id: 30, status: "failed", filePath: "/tmp/orphan-30.zip" },
+        { id: 31, status: "expired", filePath: null },
+      ],
+      totalDocs: 2,
+    });
+
+    const result = await dataExportCleanupJob.handler(createContext());
+
+    expect(mockUnlink).toHaveBeenCalledTimes(1);
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/orphan-30.zip");
+    expect(result.output.recordsDeleted).toBe(2);
+    expect(result.output.filesDeleted).toBe(1);
+    expect(result.output.errors).toBe(0);
+  });
+
+  it("should fail exports abandoned in processing so the user is not locked out", async () => {
+    // POST /api/data-exports/request refuses a new request while any record for
+    // the user is pending/processing, and nothing else heals a killed worker's
+    // record — without this sweep the user can never export again.
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // expired "ready" pass
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // old failed/expired pass
+      .mockResolvedValueOnce({
+        docs: [{ id: 40, status: "processing", requestedAt: "2026-01-01T00:00:00.000Z" }],
+        totalDocs: 1,
+      });
+
+    const result = await dataExportCleanupJob.handler(createContext());
+
+    expect(mockPayload.update).toHaveBeenCalledWith({
+      collection: "data-exports",
+      id: 40,
+      data: expect.objectContaining({ status: "failed", errorLog: expect.stringContaining("abandoned") }),
+      overrideAccess: true,
+    });
+    expect(result.output.staleFailed).toBe(1);
+    expect(result.output.errors).toBe(0);
+  });
+
+  it("should only sweep pending/processing records older than the stale cutoff", async () => {
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
+
+    await dataExportCleanupJob.handler(createContext());
+
+    const staleQuery = mockPayload.find.mock.calls[2]?.[0];
+    expect(staleQuery.where.and[0]).toEqual({ status: { in: ["pending", "processing"] } });
+    expect(staleQuery.where.and[1].requestedAt.less_than).toEqual(expect.any(String));
+
+    // The cutoff must be in the past, not "now" — otherwise a just-queued export
+    // would be reaped out from under its own worker.
+    const cutoff = new Date(staleQuery.where.and[1].requestedAt.less_than).getTime();
+    expect(cutoff).toBeLessThan(Date.now());
+  });
+
+  it("should increment errors and continue when a stale-export update fails", async () => {
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+      .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+      .mockResolvedValueOnce({
+        docs: [
+          { id: 50, status: "pending", requestedAt: "2026-01-01T00:00:00.000Z" },
+          { id: 51, status: "processing", requestedAt: "2026-01-01T00:00:00.000Z" },
+        ],
+        totalDocs: 2,
+      });
+
+    mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
+
+    const result = await dataExportCleanupJob.handler(createContext());
+
+    expect(result.output.staleFailed).toBe(1);
+    expect(result.output.errors).toBe(1);
+    expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to reap stale export", { exportId: 50 });
   });
 });

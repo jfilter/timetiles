@@ -16,6 +16,14 @@
  * parameters (time range, bounds, field filters) are applied to the same
  * canonical-filter scope, forced to this single dataset.
  *
+ * Cross-filtering (mirrors enum-stats): when computing bounds for field X, all
+ * OTHER active filters are applied but X's own range filter is excluded, so a
+ * slider's domain never collapses onto its own selection.
+ *
+ * Only fields whose column has a resolved number-kind policy get bounds — those
+ * are exactly the fields whose range filter the event endpoints actually
+ * execute, so the UI never offers a slider that does nothing.
+ *
  * @module
  */
 import { sql } from "@payloadcms/db-postgres";
@@ -27,12 +35,8 @@ import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
-import { resolveDatasetFieldContext } from "@/lib/services/resolve-event-query-context";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import type { NumberFormat } from "@/lib/utils/number-parsing";
-
-/** US default convention for numeric columns lacking a resolved plan policy. */
-const US_FORMAT: NumberFormat = { decimalSeparator: ".", thousandsSeparator: null };
 
 interface NumericBoundsRow extends Record<string, unknown> {
   min: number | null;
@@ -108,31 +112,62 @@ export const GET = apiRoute({
     if (numberPaths.length === 0) return { fields: [] };
 
     // Resolve each numeric path's NumberFormat from the dataset's interpretation
-    // plan; columns with no number-kind policy fall back to the US default (the
-    // path was still classified numeric by detection — e.g. native-number columns
-    // that stringify as "42"/"1.5", which are US-canonical and ::numeric-castable).
+    // plan. A path with NO number-kind policy is dropped rather than defaulted:
+    // `resolveDatasetFieldContext` deletes exactly those keys from `rf` on every
+    // event endpoint and `buildRangeFilterConditions` skips them, so advertising
+    // a slider for them offered the user a control that silently does nothing.
+    // The two sides must agree on one rule, and the query side owns it ("never
+    // cast blind" — an unknown convention cannot be safely ::numeric-normalized).
     const planFormats = projectNumberFormats(dataset.interpretationPlan, numberPaths);
+    const filterablePaths = numberPaths.filter((path) => path in planFormats);
+    if (filterablePaths.length === 0) return { fields: [] };
 
     // Force dataset filter to this dataset (regardless of URL params).
     const baseQuery = { ...query, datasets: [datasetId] };
 
-    // The dataset scope/where is identical for every field, so resolve it once
-    // rather than per field.
-    const filters = buildCanonicalFilters({ parameters: baseQuery, includePublic: true, ownerId: user?.id ?? null });
-    if (filters.denyResults) return { fields: [] };
-    // Resolve tag-field containment + range-filter number formats (same as the
-    // main event endpoints). Without it an active tag filter takes the scalar SQL
-    // branch and matches no rows — zeroing every numeric bound — and range
-    // filters are silently dropped from the WHERE clause.
-    await resolveDatasetFieldContext(filters, payload, user);
-    const whereClause = toSqlWhereClause(filters);
+    /**
+     * Build the WHERE scope for one field's bounds query.
+     *
+     * Cross-filtering mirrors enum-stats: every OTHER active filter applies, but
+     * the field's own range filter is excluded. Sharing one clause across all
+     * fields computed each slider's domain THROUGH its own filter, so dragging a
+     * handle progressively collapsed that slider's own range.
+     *
+     * Tag containment and number formats are resolved from the already-loaded
+     * `dataset` (rather than `resolveDatasetFieldContext`, which would re-fetch
+     * it once per field) — without them an active tag filter takes the scalar
+     * SQL branch and zeroes every bound, and range filters are dropped.
+     */
+    const scopeFor = (ownPath: string) => {
+      const { [ownPath]: _ownRange, ...otherRanges } = baseQuery.rf ?? {};
+      const filters = buildCanonicalFilters({
+        parameters: { ...baseQuery, rf: otherRanges },
+        includePublic: true,
+        ownerId: user?.id ?? null,
+      });
+      if (filters.denyResults) return null;
+
+      const tagKeys = Object.keys(filters.fieldFilters ?? {}).filter((key) => fm[key]?.isTagField === true);
+      if (tagKeys.length > 0) {
+        filters.tagFields = new Set(tagKeys);
+      }
+
+      if (filters.rangeFilters && Object.keys(filters.rangeFilters).length > 0) {
+        filters.numberFormats = projectNumberFormats(dataset.interpretationPlan, Object.keys(filters.rangeFilters));
+      }
+
+      return toSqlWhereClause(filters);
+    };
 
     // Run the per-field MIN/MAX bounds queries concurrently instead of N
     // sequential round-trips.
     const fields = (
       await Promise.all(
-        numberPaths.map(async (path) => {
-          const value = normalizedNumericExpr(path, planFormats[path] ?? US_FORMAT);
+        filterablePaths.map(async (path) => {
+          const whereClause = scopeFor(path);
+          if (whereClause == null) return null;
+
+          const value = normalizedNumericExpr(path, planFormats[path]!);
           // isInteger from precomputed numericStats when present (native numbers),
           // else from the live parse: all numeric rows whole.
           const knownIsInteger = fm[path]?.numericStats?.isInteger;

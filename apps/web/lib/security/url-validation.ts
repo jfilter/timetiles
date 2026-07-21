@@ -63,9 +63,39 @@ const PRIVATE_IPV6_PATTERNS = [
  * IPv4-compatible one, and `64:ff9b::` the well-known NAT64 prefix — all three
  * deliver traffic to the embedded IPv4 address, so all three must be unwrapped
  * before the IPv4 range checks can mean anything.
+ *
+ * Matched by prefix rather than by one combined pattern. Expressing all three
+ * as a single regex needs nested optional groups (`::(?:ffff)?::?`) whose
+ * alternatives overlap, which backtracks — `security/detect-unsafe-regex` flags
+ * it, rightly. Longest first, so `::ffff:` is not swallowed by the bare `::`.
  */
-const IPV4_EMBEDDED_DOTTED = /^(?:64:ff9b|::(?:ffff)?)::?(?:0:)?(\d{1,3}(?:\.\d{1,3}){3})$/;
-const IPV4_EMBEDDED_HEX = /^(?:64:ff9b|::(?:ffff)?)::?(?:0:)?([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
+// eslint-disable-next-line sonarjs/no-hardcoded-ip -- these are the reserved IANA prefixes themselves, not addresses of any host
+const IPV4_EMBEDDED_PREFIXES = ["64:ff9b::", "::ffff:", "::"];
+
+/** A dotted quad, as a human writes the mapped form. */
+const DOTTED_QUAD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+/** Two hextets, as the URL parser rewrites it. Each alternative is anchored and fixed-width. */
+const HEXTET_PAIR = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
+
+/** Extract the IPv4 address an IPv6 literal carries, or null if it carries none. */
+const embeddedIpv4 = (value: string): string | null => {
+  const prefix = IPV4_EMBEDDED_PREFIXES.find((candidate) => value.startsWith(candidate));
+  if (prefix == null) return null;
+
+  // `::ffff:0:1.2.3.4` — the SIIT spelling puts a zero hextet before the address.
+  let rest = value.slice(prefix.length);
+  if (rest.startsWith("0:")) rest = rest.slice(2);
+
+  if (DOTTED_QUAD.test(rest)) return rest;
+
+  const hextets = HEXTET_PAIR.exec(rest);
+  if (hextets?.[1] == null || hextets[2] == null) return null;
+
+  const high = Number.parseInt(hextets[1], 16);
+  const low = Number.parseInt(hextets[2], 16);
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+};
 
 /**
  * Reduce an address literal to the form the range checks can match.
@@ -80,17 +110,7 @@ const normalizeAddressLiteral = (value: string): string => {
     normalized = normalized.slice(1, -1);
   }
 
-  const dotted = IPV4_EMBEDDED_DOTTED.exec(normalized);
-  if (dotted?.[1] != null) return dotted[1];
-
-  const hex = IPV4_EMBEDDED_HEX.exec(normalized);
-  if (hex?.[1] != null && hex[2] != null) {
-    const high = Number.parseInt(hex[1], 16);
-    const low = Number.parseInt(hex[2], 16);
-    return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
-  }
-
-  return normalized;
+  return embeddedIpv4(normalized) ?? normalized;
 };
 
 /**

@@ -8,7 +8,7 @@
  * @category API
  */
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { stat, unlink } from "node:fs/promises";
 import { Readable } from "node:stream";
 
 import { sql } from "@payloadcms/db-postgres";
@@ -26,6 +26,25 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Best-effort delete of an export archive from disk.
+ *
+ * Export ZIPs contain the user's complete personal data, so every path that
+ * retires a record must also retire its file — otherwise the record (the only
+ * pointer to the file) is purged after 30 days and the PII is orphaned on disk
+ * forever. Failures are logged, never thrown: the caller's outcome (a 410, a
+ * status flip) must not depend on the filesystem.
+ */
+const discardExportFile = async (filePath: string | null | undefined, exportId: string): Promise<void> => {
+  if (!filePath) return;
+  try {
+    await unlink(filePath);
+    logger.debug({ exportId, filePath }, "Deleted export file");
+  } catch (error) {
+    logger.warn({ exportId, filePath, error }, "Could not delete export file (may already be deleted)");
+  }
+};
+
 /** Stream the export file to the client after all validation passes. */
 const streamExportFile = async (
   payload: Payload,
@@ -34,14 +53,17 @@ const streamExportFile = async (
   exportRecord: Pick<DataExportRecord, "filePath" | "expiresAt">,
   userId: number
 ): Promise<Response> => {
-  // Check expiry
+  // Check expiry. Clear `filePath` and unlink in the same step the record is
+  // retired: the cleanup job only sweeps records still in "ready", so an export
+  // expired here would otherwise keep its PII-bearing ZIP on disk forever.
   if (exportRecord.expiresAt && new Date(exportRecord.expiresAt) < new Date()) {
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,
-      data: { status: "expired" },
+      data: { status: "expired", filePath: null },
       overrideAccess: true,
     });
+    await discardExportFile(exportRecord.filePath, exportId);
     throw new AppError(410, "Export has expired. Please request a new export.");
   }
 
@@ -55,10 +77,12 @@ const streamExportFile = async (
   try {
     fileStats = await stat(filePath);
   } catch {
+    // The file is gone; drop the dangling pointer so nothing tries to serve or
+    // unlink it again.
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,
-      data: { status: "failed", errorLog: "Export file missing from disk" },
+      data: { status: "failed", filePath: null, errorLog: "Export file missing from disk" },
       overrideAccess: true,
     });
     throw new NotFoundError("Export file not found on disk");

@@ -132,16 +132,24 @@ export const dataExportJob = {
       // Calculate file size in MB for email
       const fileSizeMB = result.fileSize / (1024 * 1024);
 
-      // Send notification email
-      await sendExportReadyEmail(
-        payload,
-        user.email,
-        user.firstName,
-        downloadUrl,
-        expiresAt.toISOString(),
-        fileSizeMB,
-        user.locale
-      );
+      // Send notification email. The record is already committed as "ready" and
+      // the archive is on disk, so the export HAS succeeded — a failure here
+      // (email branding/translations, SMTP) must not flip the record back to
+      // "failed", which would both lie to the user and orphan the ZIP (the
+      // cleanup job only sweeps records still in "ready").
+      try {
+        await sendExportReadyEmail(
+          payload,
+          user.email,
+          user.firstName,
+          downloadUrl,
+          expiresAt.toISOString(),
+          fileSizeMB,
+          user.locale
+        );
+      } catch (notifyError) {
+        logError(notifyError, "Data export ready but notification email failed", { exportId, jobId: job?.id });
+      }
 
       logger.info({ jobId: job?.id, exportId, fileSize: result.fileSize }, "Data export completed successfully");
 

@@ -3,6 +3,9 @@
  */
 import "@/tests/mocks/services/logger";
 
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ countUserDocs: vi.fn(), findUserDocs: vi.fn() }));
@@ -230,5 +233,48 @@ describe.sequential("DataExportService", () => {
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({ collection: "scraper-runs", pagination: false, overrideAccess: true })
     );
+  });
+
+  it("should delete the partial archive when createArchive fails mid-write", async () => {
+    // createArchive opens the output write stream before producing any data, so
+    // a mid-archive failure leaves a partial ZIP of the user's personal data on
+    // disk. The record is marked "failed" with `filePath` never set, so neither
+    // the cleanup job nor account deletion can ever find that file.
+    const payload = { find: vi.fn(), findByID: vi.fn() } as any;
+    const service = createDataExportService(payload);
+
+    const exportId = 987_654;
+    const userId = 4242;
+    const timestamp = new Date().toISOString().split("T")[0];
+    const expectedPath = path.join(
+      process.cwd(),
+      ".exports-test",
+      `timetiles-export-${userId}-${timestamp}-${exportId}.zip`
+    );
+
+    // A circular structure makes the first JSON.stringify inside the archive
+    // builder throw, rejecting after the write stream has already created the file.
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    const baseData = {
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+      user: {},
+      catalogs: [circular],
+      datasets: [],
+      importFiles: [],
+      importJobs: [],
+      scheduledIngests: [],
+      media: [],
+      datasetSchemas: [],
+      auditLog: [],
+      scraperRepos: [],
+      scrapers: [],
+      scraperRuns: [],
+    } as any;
+
+    await expect(service.createArchive(exportId, userId, baseData, {} as any)).rejects.toThrow();
+
+    expect(existsSync(expectedPath), `partial archive left behind at ${expectedPath}`).toBe(false);
   });
 });

@@ -869,4 +869,63 @@ describe("manifest-loader", () => {
       expect(result).toBeUndefined();
     });
   });
+
+  // -------------------------------------------------------------------------
+  // fieldMappings coverage
+  // -------------------------------------------------------------------------
+
+  describe("fieldMappings", () => {
+    it("preserves coordinatePath, coordinateFormat and the timestamp orders", () => {
+      // A non-strict Zod object DROPS undeclared keys. These four are read by
+      // createDatasetFromManifest and typed on DataPackageFieldMappings, so
+      // omitting them from the schema silently discarded them and the package
+      // imported with the wrong geometry/time interpretation.
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue(["package.yml"] as any);
+      readFileSyncSpy.mockReturnValue(
+        minimalManifest({
+          fieldMappings: {
+            titlePath: "title",
+            timestampPath: "date",
+            endTimestampPath: "end_date",
+            coordinatePath: "coords",
+            coordinateFormat: "lng,lat",
+            timestampOrder: "D/M",
+            endTimestampOrder: "M/D",
+          },
+        })
+      );
+
+      const [manifest] = loadAllManifests();
+
+      expect(manifest!.fieldMappings).toMatchObject({
+        coordinatePath: "coords",
+        coordinateFormat: "lng,lat",
+        timestampOrder: "D/M",
+        endTimestampOrder: "M/D",
+      });
+    });
+
+    it("rejects an unrecognised fieldMappings key instead of silently dropping it", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue(["package.yml"] as any);
+      readFileSyncSpy.mockReturnValue(
+        minimalManifest({ fieldMappings: { titlePath: "title", coordinatePth: "coords" } })
+      );
+
+      // Typo'd key must fail validation loudly (manifest skipped + warning)
+      // rather than importing with the mapping silently missing.
+      expect(loadAllManifests()).toEqual([]);
+    });
+
+    it("rejects an invalid coordinateFormat value", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readdirSyncSpy.mockReturnValue(["package.yml"] as any);
+      readFileSyncSpy.mockReturnValue(
+        minimalManifest({ fieldMappings: { titlePath: "title", coordinateFormat: "lat-lng" } })
+      );
+
+      expect(loadAllManifests()).toEqual([]);
+    });
+  });
 });

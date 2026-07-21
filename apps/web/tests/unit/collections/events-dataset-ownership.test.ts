@@ -33,7 +33,6 @@ vi.mock("@/lib/collections/catalog-ownership", async (importOriginal) => ({
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as CatalogOwnershipModule from "@/lib/collections/catalog-ownership";
-
 import { eventsBeforeChangeHook } from "@/lib/collections/events/hooks";
 
 const OWNER_ID = 42;
@@ -47,7 +46,6 @@ const datasetOwnedBy = (ownerId: number) => ({
 });
 
 const runHook = async (user: { id: number; role: string } | null) =>
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- hook signature is narrowed by Payload generics the test does not model
   (eventsBeforeChangeHook as (args: unknown) => Promise<unknown>)({
     data: { dataset: 7, title: "injected" },
     operation: "update",

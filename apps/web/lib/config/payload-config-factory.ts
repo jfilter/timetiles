@@ -23,8 +23,8 @@ import { buildConfig } from "payload";
 import sharp from "sharp";
 
 import Users from "@/lib/collections/users";
-import { ADMIN_ROUTE } from "@/lib/constants/routes";
 import { getEnv } from "@/lib/config/env";
+import { ADMIN_ROUTE } from "@/lib/constants/routes";
 import { logger } from "@/lib/logger";
 import { schemaDetectionPlugin } from "@/lib/services/schema-detection";
 
