@@ -37,6 +37,21 @@ jobs:
         timeout-minutes: 5
         run: pnpm typecheck || (cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ 2>/dev/null | head -1) 2>/dev/null; exit 1)
 
+      # The spec is committed AND publicly served, so it can drift from the
+      # routes without anything noticing. It had: a stale copy documented
+      # /api/v1/health, an endpoint that does not exist, and declared the API
+      # MIT-licensed while the project is AGPL.
+      - name: Check the committed OpenAPI spec matches the routes
+        timeout-minutes: 2
+        working-directory: apps/web
+        run: |
+          pnpm openapi:generate
+          if ! git diff --quiet -- public/openapi.json public/openapi.yaml; then
+            echo "::error::The committed OpenAPI spec is stale. Run 'pnpm openapi:generate' in apps/web and commit the result."
+            git diff -- public/openapi.json public/openapi.yaml
+            exit 1
+          fi
+
       - name: Lint infrastructure
         timeout-minutes: 2
         run: |
