@@ -1,3 +1,0 @@
-packages/assets/logos/**/*.png filter=lfs diff=lfs merge=lfs -text
-packages/assets/logos/**/*.jpg filter=lfs diff=lfs merge=lfs -text
-packages/assets/logos/**/*.jpeg filter=lfs diff=lfs merge=lfs -text

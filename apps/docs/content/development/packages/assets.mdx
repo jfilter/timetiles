@@ -1,76 +1,57 @@
 # Assets Package
 
-Shared logos and visual assets for the TimeTiles monorepo. All assets are automatically available after running `make setup`.
+The assets package contains the canonical TimeTiles SVG logos and the tooling
+for generating raster exports.
 
-## Available Assets
+## Structure
 
-### Latest Logo Versions
-
-The recommended logos are in the `latest/` directory:
-
-**Structure:**
-
-```
-latest/
+```text
+packages/assets/logos/latest/
 ├── light/
-│   ├── no-grid/           # Clean versions without grid overlay
-│   │   ├── logo_square.svg
-│   │   ├── wordmark_horizontal.svg
-│   │   ├── wordmark_compact.svg
-│   │   └── png/
-│   ├── grid/              # Versions with cartographic grid overlay
-│   │   └── (same files)
-│   └── transparent/       # Transparent background versions (SVG + PNG)
-│       └── (same files)
+│   ├── grid/
+│   ├── no-grid/
+│   └── transparent/
 └── dark/
-    ├── no-grid/
     ├── grid/
+    ├── no-grid/
     └── transparent/
 ```
 
-**Files:**
+Each variant contains:
 
-- `logo_square.svg` - Square logo icon (no text)
-- `wordmark_horizontal.svg` - Horizontal wordmark (icon + "TimeTiles")
-- `wordmark_compact.svg` - Compact wordmark (icon + stacked "Time/Tiles")
-- `png/logo_square_{16,32,48,64,128,256,512,1024,2000}.png` - Square PNG exports
-- `png/wordmark_horizontal_{256,512,1024,2000}.png` - Horizontal wordmark exports
-- `png/wordmark_compact_{256,512,1024,2000}.png` - Compact wordmark exports
-- `png/favicon.ico` - Favicon
+- `logo_square.svg` — square logo icon
+- `wordmark_horizontal.svg` — horizontal icon and wordmark
+- `wordmark_compact.svg` — compact stacked wordmark
 
-### Logo Variations (v3)
+The SVG files are the source of truth and are committed to Git. Generated
+`png/` directories are intentionally ignored.
 
-Additional logo variations are available in `v3/static/` with many design options:
+## Generate raster assets
 
-- `diamond-XX-*.svg` - Diamond-based designs
-- `square-XX-*.svg` - Square-based designs
-- `symmetric-XX-*.svg` - Symmetric patterns
-- `wordmark-XX-*.svg` - Text-based logos
-- `carto-XX-*.svg` - Cartographic-themed designs
-- `bold-XX-*.svg` - Bold geometric designs
+```bash
+pnpm --filter @timetiles/assets generate:logos
+```
 
-### Legacy Logo Versions
+This creates:
 
-Historical logo versions are available in `v1/` and `v2/` directories for backwards compatibility.
+- `png/logo_square_{16,32,48,64,128,256,512,1024,2000}.png`
+- `png/wordmark_horizontal_{256,512,1024,2000}.png`
+- `png/wordmark_compact_{256,512,1024,2000}.png`
+- `png/favicon.ico` for non-transparent variants
+
+The same files can be downloaded as a ZIP by running the
+`Generate Logo Assets` workflow in GitHub Actions.
 
 ## Usage
 
-Import assets directly in your code:
+Applications should import SVG sources directly:
 
 ```typescript
 import logo from "@timetiles/assets/logos/latest/light/no-grid/logo_square.svg";
 import logoHorizontal from "@timetiles/assets/logos/latest/light/no-grid/wordmark_horizontal.svg";
-import favicon from "@timetiles/assets/logos/latest/light/no-grid/png/logo_square_256.png";
-
-// Use in React components
-<img src={logo} alt="TimeTiles" />
 ```
 
-Next.js apps must include asset handling in their webpack config (already configured in `apps/web` and `apps/docs`).
+Next.js apps must include `@timetiles/assets` in `transpilePackages`.
 
-## Notes
-
-- PNG/JPEG files are stored via Git LFS (automatically handled by `make setup`)
-- Don't modify logo colors or gradients
-- Preserve aspect ratios when scaling
-- Use horizontal variants for headers, vertical for sidebars
+Do not modify logo colors or gradients, and preserve aspect ratios when
+scaling.

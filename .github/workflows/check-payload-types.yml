@@ -35,8 +35,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-        with:
-          lfs: true
       - uses: ./.github/actions/setup
 
       - name: Setup database

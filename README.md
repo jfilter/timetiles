@@ -65,7 +65,7 @@ Full docs at **[docs.timetiles.io](https://docs.timetiles.io)**.
 
 - Node.js 24+, pnpm 10.12+
 - Docker & Docker Compose **or** local PostgreSQL 17+ with PostGIS
-- Git, Git LFS, Make
+- Git, Make
 
 If you use `mise`, this repo now pins the toolchain in `.mise.toml`:
 

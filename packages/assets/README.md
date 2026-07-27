@@ -1,46 +1,23 @@
 # @timetiles/assets
 
-Shared assets for the TimeTiles monorepo.
+Shared TimeTiles logos and visual assets.
 
-## Structure
+The SVG files below `logos/latest/` are the canonical, committed sources. PNG
+exports and favicons are generated on demand and ignored by Git:
 
-```
-logos/
-  ├── animated/                     # Animated logo variations (logo only)
-  │   ├── 01-base-static.svg        # Base animation with subtle effects
-  │   ├── 02-rotating.svg           # Rotating tiles animation
-  │   ├── 03-floating.svg           # Floating tiles animation
-  │   ├── 04-breathing.svg          # Breathing effect animation
-  │   ├── 05-wave-cascade.svg       # Wave cascade animation
-  │   ├── 06-random-drift.svg       # Random drift animation
-  │   ├── 07-orbit.svg              # Orbital movement animation
-  │   ├── 08-spiral.svg             # Spiral animation
-  │   ├── 09-pendulum.svg           # Pendulum swing animation
-  │   └── 10-magnetic-pull.svg      # Magnetic pull animation
-  │
-  ├── animated-with-text/           # Animated logos with TimeTiles text
-  │   ├── *-horizontal.svg          # Horizontal layout (logo + text)
-  │   └── *-vertical.svg            # Vertical layout (logo + text)
-  │
-  └── static/                       # Static logos and exports
-      ├── logo-static.svg               # Main static logo (no animations)
-      ├── logo-with-text-horizontal.svg # Logo + text horizontal layout
-      ├── logo-with-text-vertical.svg   # Logo + text vertical layout
-      │
-      ├── logo-*.png                    # PNG exports (256, 512, 1024, 2048, 4096)
-      ├── logo-*.jpg                    # JPG exports with white background
-      ├── logo-horizontal-*.png         # Horizontal layout PNGs
-      ├── logo-horizontal-*.jpg         # Horizontal layout JPGs
-      ├── logo-vertical-*.png           # Vertical layout PNGs
-      └── logo-vertical-*.jpg           # Vertical layout JPGs
+```bash
+pnpm --filter @timetiles/assets generate:logos
 ```
 
-## Usage
+The command creates `png/` next to each SVG variant. It exports square logos at
+16–2000 px, compact and horizontal wordmarks at 256–2000 px, and multi-size
+favicons for the non-transparent variants.
 
-In Next.js apps, copy logos to public folder during build or use them directly:
+Use SVG assets directly in applications:
 
 ```tsx
-import logo from "@timetiles/assets/logos/logo.svg";
+import logo from "@timetiles/assets/logos/latest/light/no-grid/logo_square.svg";
 ```
 
-For static serving, configure your build process to copy the assets.
+To download a complete generated branding archive without a local checkout, run
+the `Generate Logo Assets` workflow in GitHub Actions.

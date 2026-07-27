@@ -60,6 +60,9 @@ out/
 build
 dist
 
+# Generated raster exports; SVG files are the canonical logo sources.
+packages/assets/logos/latest/**/png/
+
 # TypeScript build artifacts
 *.tsbuildinfo
 # NOTE: packages/ui used to ignore compiled .js/.d.ts next to its sources.

@@ -32,7 +32,6 @@ jobs:
       dockerfile: deployment/Dockerfile.prod
       scope: main
       timeout-minutes: 30
-      lfs: true
       # DEFAULT_LOCALE is inlined at build time (next.config env passthrough);
       # set the repo variable to bake a non-English default into the images.
       build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
@@ -46,7 +45,6 @@ jobs:
       dockerfile: deployment/Dockerfile.allinone
       scope: allinone
       timeout-minutes: 30
-      lfs: true
       build-args: DEFAULT_LOCALE=${{ vars.DEFAULT_LOCALE || 'en' }}
       ref: ${{ github.event.inputs.tag }}
     secrets: inherit
@@ -97,7 +95,6 @@ jobs:
         with:
           # Test the tag's own deployment scripts against the tag's image, not main's.
           ref: ${{ github.event.inputs.tag }}
-          lfs: true
 
       - name: Download amd64 digest
         uses: actions/download-artifact@v8

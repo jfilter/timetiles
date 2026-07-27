@@ -41,7 +41,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: true
           fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
@@ -112,7 +111,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: true
           fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
@@ -251,7 +249,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: true
           fetch-depth: 0
       - uses: ./.github/actions/setup
         with:
@@ -331,7 +328,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          lfs: true
           fetch-depth: 0
       - uses: ./.github/actions/setup
         with:

@@ -1,0 +1,30 @@
+name: Generate Logo Assets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate branding archive
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+
+      - name: Generate raster logo exports
+        run: pnpm --filter @timetiles/assets generate:logos
+
+      - name: Create branding archive
+        working-directory: packages/assets/logos/latest
+        run: zip -r "$RUNNER_TEMP/timetiles-logo-assets.zip" . -i '*.svg' '*.png' '*.ico'
+
+      - name: Upload branding archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: timetiles-logo-assets
+          path: ${{ runner.temp }}/timetiles-logo-assets.zip
+          if-no-files-found: error
+          retention-days: 30

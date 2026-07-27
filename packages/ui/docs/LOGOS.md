@@ -15,7 +15,7 @@ packages/assets/logos/latest/
 │   │   ├── logo_square.svg        # 667×667px - App icons, favicons
 │   │   ├── wordmark_compact.svg   # 667×334px - Social media, compact spaces
 │   │   ├── wordmark_horizontal.svg # 1084×334px - Headers, wide layouts
-│   │   └── png/                   # PNG exports
+│   │   └── png/                   # Generated PNG exports (ignored by Git)
 │   │       ├── favicon.ico        # Multi-res: 16, 32, 48px
 │   │       ├── logo_square_*.png  # 16, 32, 48, 64, 128, 256, 512, 1024, 2000px
 │   │       ├── wordmark_compact_*.png
@@ -199,10 +199,16 @@ export function Hero() {
 
 ## Available PNG Sizes
 
-All logo formats (square, compact, horizontal) are exported in multiple sizes:
+Generate raster exports and favicons from the canonical SVG files with:
 
-**Square & Compact**: 16, 32, 48, 64, 128, 256, 512, 1024, 2000px
-**Horizontal**: 320w, 640w, 1280w, 2000w
+```bash
+pnpm --filter @timetiles/assets generate:logos
+```
+
+The generated `png/` directories are ignored by Git. The available sizes are:
+
+**Square**: 16, 32, 48, 64, 128, 256, 512, 1024, 2000px
+**Compact & Horizontal**: 256, 512, 1024, 2000px
 **Favicon**: Multi-resolution .ico files (16, 32, 48px embedded)
 
 ## Design System Color Reference
@@ -222,6 +228,7 @@ All logo variations use these exact design system colors:
 ## Asset Locations
 
 **Source SVG files**: `packages/assets/logos/latest/`
+**Generated raster files**: Run `pnpm --filter @timetiles/assets generate:logos`
 **In Next.js public folder**: Copy to `public/logos/` for web usage
 **Import in components**: Use Next.js `<Image>` component with appropriate paths
 

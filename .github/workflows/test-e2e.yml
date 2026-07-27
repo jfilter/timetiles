@@ -49,16 +49,7 @@ jobs:
       CI: true
 
     steps:
-      # git-lfs is not bundled in the Playwright image; install it (as root)
-      # before checkout so the `lfs: true` fetch can pull the asset binaries.
-      - name: Install git-lfs
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends git-lfs
-
       - uses: actions/checkout@v7
-        with:
-          lfs: true
       - uses: ./.github/actions/setup
 
       # @timetiles/ui is built by the Playwright global setup

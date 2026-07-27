@@ -7,9 +7,12 @@
     "./logos/*": "./logos/*"
   },
   "scripts": {
-    "format": "oxfmt --write ."
+    "format": "oxfmt --write .",
+    "generate:logos": "tsx scripts/generate-logos.ts"
   },
   "devDependencies": {
-    "@mermaid-js/mermaid-cli": "^11.16.0"
+    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "sharp": "^0.34.5",
+    "tsx": "catalog:"
   }
 }

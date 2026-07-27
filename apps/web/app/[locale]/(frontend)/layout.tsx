@@ -16,8 +16,8 @@ import ptfBannerDeDark from "@timetiles/assets/logos/funding/ptf-banner-de-dark.
 import ptfBannerDeLight from "@timetiles/assets/logos/funding/ptf-banner-de-light.svg";
 import ptfBannerEnDark from "@timetiles/assets/logos/funding/ptf-banner-en-dark.svg";
 import ptfBannerEnLight from "@timetiles/assets/logos/funding/ptf-banner-en-light.svg";
-import LogoCompactDark from "@timetiles/assets/logos/latest/dark/transparent/png/wordmark_compact_512.png";
-import LogoCompactLight from "@timetiles/assets/logos/latest/light/transparent/png/wordmark_compact_512.png";
+import LogoCompactDark from "@timetiles/assets/logos/latest/dark/transparent/wordmark_compact.svg";
+import LogoCompactLight from "@timetiles/assets/logos/latest/light/transparent/wordmark_compact.svg";
 import {
   Footer,
   FooterBottom,
