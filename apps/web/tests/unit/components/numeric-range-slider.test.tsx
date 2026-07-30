@@ -95,7 +95,12 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "0 → 100" }));
     // Two spinbuttons (min, max); the first is the min input.
     const minInput = within(container).getAllByRole("spinbutton")[0]!;
+    // Typed input commits on BLUR, not per keystroke. Committing each keystroke made the min
+    // box unusable whenever the domain floor has more digits than the first character typed:
+    // for [1990, 2025], typing "2" committed 2, which collapses to null (open end) and blanked
+    // the controlled input, so no such minimum could ever be entered.
     fireEvent.change(minInput, { target: { value: "25" } });
+    fireEvent.blur(minInput);
     expect(onChange).toHaveBeenCalledWith(25, null);
   });
 
@@ -118,6 +123,7 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "0 → 50" }));
     const minInput = within(container).getAllByRole("spinbutton")[0]!;
     fireEvent.change(minInput, { target: { value: "60" } });
+    fireEvent.blur(minInput);
     expect(onChange).toHaveBeenCalledWith(50, 50);
   });
 
@@ -137,6 +143,7 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "40 → 100" }));
     const maxInput = within(container).getAllByRole("spinbutton")[1]!;
     fireEvent.change(maxInput, { target: { value: "10" } });
+    fireEvent.blur(maxInput);
     expect(onChange).toHaveBeenCalledWith(40, 40);
   });
 
@@ -157,6 +164,7 @@ describe("NumericRangeSlider", () => {
     const minInput = within(container).getAllByRole("spinbutton")[0]!;
     // Typing the domain minimum collapses to null, matching the drag/keyboard paths.
     fireEvent.change(minInput, { target: { value: "0" } });
+    fireEvent.blur(minInput);
     expect(onChange).toHaveBeenCalledWith(null, null);
   });
 
@@ -176,6 +184,7 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "10 → 50" }));
     const maxInput = within(container).getAllByRole("spinbutton")[1]!;
     fireEvent.change(maxInput, { target: { value: "100" } });
+    fireEvent.blur(maxInput);
     expect(onChange).toHaveBeenCalledWith(10, null);
   });
 
@@ -195,6 +204,7 @@ describe("NumericRangeSlider", () => {
     fireEvent.click(within(container).getByRole("button", { name: "25 → 100" }));
     const minInput = within(container).getAllByRole("spinbutton")[0]!;
     fireEvent.change(minInput, { target: { value: "" } });
+    fireEvent.blur(minInput);
     expect(onChange).toHaveBeenCalledWith(null, null);
   });
 });

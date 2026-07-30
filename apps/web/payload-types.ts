@@ -1740,7 +1740,7 @@ export interface ScheduledIngest {
   /**
    * Status of last execution
    */
-  lastStatus?: ('success' | 'failed' | 'running') | null;
+  lastStatus?: ('success' | 'failed' | 'running' | 'paused') | null;
   /**
    * Error message from last failed execution
    */
@@ -1776,7 +1776,7 @@ export interface ScheduledIngest {
   executionHistory?:
     | {
         executedAt: string;
-        status: 'success' | 'failed';
+        status: 'success' | 'failed' | 'paused';
         /**
          * Duration in milliseconds
          */

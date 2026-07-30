@@ -33,7 +33,22 @@ import { NodePalette } from "./node-palette";
 import { SourceColumnNode } from "./nodes/source-column-node";
 import { TargetFieldNode } from "./nodes/target-field-node";
 import { TransformNode } from "./nodes/transform-node";
+import type { FlowEditorError } from "./use-flow-editor";
 import { useFlowEditor } from "./use-flow-editor";
+
+/** Translate a FlowEditorError. A switch keeps every t() key literal, as next-intl requires. */
+const renderFlowError = (error: FlowEditorError, t: ReturnType<typeof useTranslations<"Ingest">>): string => {
+  switch (error.kind) {
+    case "noPreviewId":
+      return t("flowErrorNoPreviewId");
+    case "loadFailed":
+      return t("flowErrorLoadFailed");
+    case "sheetNotFound":
+      return t("flowErrorSheetNotFound", { sheetIndex: error.sheetIndex });
+    case "message":
+      return error.message;
+  }
+};
 
 interface FlowEditorClientProps {
   previewId: string | null;
@@ -121,7 +136,7 @@ export const FlowEditorClient = ({ previewId, sheetIndex }: Readonly<FlowEditorC
   if (error) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <div className="text-destructive">{error}</div>
+        <div className="text-destructive">{renderFlowError(error, t)}</div>
         <Button variant="outline" asChild>
           <Link href="/ingest">
             <ArrowLeft className="mr-2 h-4 w-4" />

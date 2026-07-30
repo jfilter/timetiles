@@ -16,7 +16,7 @@ import { Checkbox } from "@timetiles/ui/components/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@timetiles/ui/components/popover";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, ChevronRight, Info } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { memo, useState } from "react";
 
 import { getDatasetColors } from "@/lib/constants/dataset-colors";
@@ -40,13 +40,18 @@ interface DataSourceSelectorProps {
   eventCountsByDataset?: Record<string, number>;
 }
 
-/** Map ISO 639-3 language codes to display names */
-const getLanguageName = (code: string): string => {
+/**
+ * Map ISO 639-3 language codes to display names in the VIEWER's locale.
+ *
+ * Hardcoding "en" meant the dataset info popover read "German" under /de, right next to the
+ * translated "Sprache" label.
+ */
+const getLanguageName = (code: string, locale: string): string => {
   // ISO 639-3 to 639-1 for Intl.DisplayNames
   const map: Record<string, string> = { eng: "en", deu: "de", fra: "fr", spa: "es", ita: "it", nld: "nl", por: "pt" };
   const shortCode = map[code] ?? code;
   try {
-    return new Intl.DisplayNames(["en"], { type: "language" }).of(shortCode) ?? code;
+    return new Intl.DisplayNames([locale], { type: "language" }).of(shortCode) ?? code;
   } catch {
     return code;
   }
@@ -63,6 +68,7 @@ const DatasetInfoPopover = ({
   catalogName?: string;
 }) => {
   const t = useTranslations("Filters");
+  const locale = useLocale();
   const hasDetails =
     Boolean(dataset.description) || Boolean(dataset.language) || Boolean(catalogName) || eventCount != null;
   if (!hasDetails) return null;
@@ -88,7 +94,7 @@ const DatasetInfoPopover = ({
             {dataset.language && (
               <div className="flex justify-between py-0.5">
                 <dt className="text-muted-foreground">{t("language")}</dt>
-                <dd>{getLanguageName(dataset.language)}</dd>
+                <dd>{getLanguageName(dataset.language, locale)}</dd>
               </div>
             )}
             {eventCount != null && (

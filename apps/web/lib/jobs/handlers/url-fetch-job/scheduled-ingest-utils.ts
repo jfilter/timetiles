@@ -84,14 +84,16 @@ export const loadScheduledIngestForLifecycle = async (
   }
 };
 
+/** An ingest file id, absent when a run produced no file (an empty source). */
+type OptionalIngestFileId = number | string | undefined;
+
 /**
  * Updates scheduled ingest status on successful execution.
  */
 export const updateScheduledIngestSuccess = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
-  /** Absent when the run succeeded with nothing to import (empty source). */
-  importFileId: number | string | undefined,
+  importFileId: OptionalIngestFileId,
   duration: number
 ): Promise<void> => {
   try {
@@ -126,6 +128,47 @@ export const updateScheduledIngestSuccess = async (
     });
   } catch (error) {
     logError(error, "Failed to update scheduled ingest success status", { scheduledIngestId: scheduledIngest.id });
+    throw error;
+  }
+};
+
+/**
+ * Resolve a run that finished but left the import waiting on a human.
+ *
+ * NOT the success path: that one increments `successfulRuns`, clears `lastError` and writes
+ * a "success" history entry, which would claim the import completed and hide the pending
+ * review. NOT the failure path either: that increments `currentRetries`, so a feed that
+ * legitimately needs review on every run auto-disabled itself after `maxRetries` runs even
+ * though the owner approved each one. `lastStatus` must still move off "running".
+ */
+export const updateScheduledIngestPaused = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  importFileId: OptionalIngestFileId,
+  duration: number,
+  reason: string
+): Promise<void> => {
+  try {
+    const executionHistory = scheduledIngest.executionHistory ?? [];
+    executionHistory.unshift({
+      executedAt: new Date().toISOString(),
+      status: "paused",
+      jobId: importFileId?.toString(),
+      duration,
+      error: reason,
+    });
+
+    if (executionHistory.length > 10) {
+      executionHistory.splice(10);
+    }
+
+    await payload.update({
+      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+      id: scheduledIngest.id,
+      data: { lastRun: new Date().toISOString(), lastStatus: "paused", lastError: reason, executionHistory },
+    });
+  } catch (error) {
+    logError(error, "Failed to update scheduled ingest paused status", { scheduledIngestId: scheduledIngest.id });
     throw error;
   }
 };

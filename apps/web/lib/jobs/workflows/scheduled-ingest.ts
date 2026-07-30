@@ -16,6 +16,7 @@ import { asSystem } from "@/lib/services/system-payload";
 import {
   loadScheduledIngestForLifecycle,
   updateScheduledIngestFailure,
+  updateScheduledIngestPaused,
   updateScheduledIngestSuccess,
 } from "../handlers/url-fetch-job/scheduled-ingest-utils";
 import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
@@ -204,7 +205,16 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       // left at "running", and `currentRetries` must not climb — the pending review is
       // surfaced through the ingest job's NEEDS_REVIEW stage, which is the right channel.
       if (terminalFailure instanceof ScheduledIngestPausedError) {
-        await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
+        const paused = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
+        if (paused) {
+          await updateScheduledIngestPaused(
+            req.payload,
+            paused,
+            ingestFileId,
+            Date.now() - workflowStart,
+            terminalFailure.message
+          );
+        }
         logger.info("scheduled-ingest: paused for review", {
           scheduledIngestId,
           ingestFileId,

@@ -44,6 +44,14 @@ const toFieldLabel = (path: string): string =>
  * cardinality as MAX_VALUES for any field with more distinct values than that — enum
  * detection allows up to 50, and tag fields up to 200.
  *
+ * Both branches count EVENTS, not occurrences. The tag branch expands each array element
+ * into its own row, so a plain COUNT(*) would count tag occurrences: ten events with two
+ * tags each gave a denominator of 20, showing a tag present in five events as 25% instead
+ * of 50%, and a value repeated within one event inflated its own count. COUNT(DISTINCT e.id)
+ * makes "percent" mean the same thing for tags as for scalars — the share of matching
+ * events carrying this value. Tag shares therefore need not sum to 100%: an event with two
+ * tags is legitimately counted under both.
+ *
  * The datasets join is required: toSqlConditions references d.catalog_id for access control.
  */
 const buildEnumStatsQuery = (fieldPath: string, isTag: boolean, whereClause: SqlFragment) => {
@@ -53,17 +61,29 @@ const buildEnumStatsQuery = (fieldPath: string, isTag: boolean, whereClause: Sql
         ELSE '[]'::jsonb
       END`;
   const scalarValue = sql`e.transformed_data #>> string_to_array(${fieldPath}, '.')`;
-  const totals = sql`(SUM(COUNT(*)) OVER ())::bigint AS total_count, (COUNT(*) OVER ())::integer AS distinct_count`;
 
-  return isTag
-    ? sql`SELECT elem AS value, COUNT(*)::integer AS count, ${totals}
-              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(${normalizedArrayValue}) AS elem
-              WHERE ${whereClause}
-              GROUP BY elem ORDER BY count DESC LIMIT ${MAX_VALUES}`
-    : sql`SELECT ${scalarValue} AS value, COUNT(*)::integer AS count, ${totals}
-              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
-              WHERE ${whereClause} AND ${scalarValue} IS NOT NULL
-              GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
+  if (isTag) {
+    // The denominator is the number of distinct events that carry the field at all, so it
+    // cannot be derived by summing the per-value event counts (an event with two tags would
+    // count twice). It is computed once over the same filtered set.
+    return sql`WITH tagged AS (
+                SELECT e.id AS event_id, elem AS value
+                FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(${normalizedArrayValue}) AS elem
+                WHERE ${whereClause}
+              )
+              SELECT value, COUNT(DISTINCT event_id)::integer AS count,
+                     (SELECT COUNT(DISTINCT event_id) FROM tagged)::bigint AS total_count,
+                     (COUNT(*) OVER ())::integer AS distinct_count
+              FROM tagged
+              GROUP BY value ORDER BY count DESC LIMIT ${MAX_VALUES}`;
+  }
+
+  return sql`SELECT ${scalarValue} AS value, COUNT(*)::integer AS count,
+                    (SUM(COUNT(*)) OVER ())::bigint AS total_count,
+                    (COUNT(*) OVER ())::integer AS distinct_count
+             FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
+             WHERE ${whereClause} AND ${scalarValue} IS NOT NULL
+             GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
 };
 
 export const GET = apiRoute({

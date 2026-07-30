@@ -18,12 +18,14 @@ vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.f
 vi.mock("@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils", () => ({
   loadScheduledIngestForLifecycle: vi.fn().mockResolvedValue({ id: 42, statistics: {}, executionHistory: [] }),
   updateScheduledIngestFailure: vi.fn().mockResolvedValue(undefined),
+  updateScheduledIngestPaused: vi.fn().mockResolvedValue(undefined),
   updateScheduledIngestSuccess: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {
   loadScheduledIngestForLifecycle,
   updateScheduledIngestFailure,
+  updateScheduledIngestPaused,
   updateScheduledIngestSuccess,
 } from "@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils";
 import { updateIngestFileStatus } from "@/lib/jobs/workflows/completion";
@@ -237,8 +239,12 @@ describe.sequential("scheduledIngestWorkflow", () => {
 
     await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).resolves.toBeUndefined();
 
+    // Its own lifecycle state — not "failed" (which increments currentRetries and eventually
+    // auto-disables the schedule) and not "success" (which would inflate successfulRuns and
+    // claim an import that has not finished).
     expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
-    expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();
+    expect(updateScheduledIngestPaused).toHaveBeenCalledOnce();
   });
 
   it("should still fail the run when a downstream job actually failed", async () => {

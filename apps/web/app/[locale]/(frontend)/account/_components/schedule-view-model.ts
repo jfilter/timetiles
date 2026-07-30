@@ -14,6 +14,9 @@ import type { ScheduledIngest } from "@/payload-types";
 export const getScheduleStatusVariant = (schedule: ScheduledIngest): StatusVariant => {
   if (!schedule.enabled) return "muted";
   if (schedule.lastStatus === "failed") return "error";
+  // A paused run needs the owner's attention — showing it as "success" is exactly the
+  // hiding this status was added to prevent.
+  if (schedule.lastStatus === "paused") return "warning";
   return "success";
 };
 

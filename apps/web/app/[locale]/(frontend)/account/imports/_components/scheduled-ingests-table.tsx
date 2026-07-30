@@ -116,6 +116,7 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
           let label = t("statusActive");
           if (variant === "muted") label = t("statusDisabled");
           else if (variant === "error") label = t("statusFailed");
+          else if (variant === "warning") label = t("statusAwaitingReview");
           return <StatusBadge variant={variant} label={label} />;
         },
       },

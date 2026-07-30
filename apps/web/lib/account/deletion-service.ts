@@ -338,6 +338,7 @@ export class AccountDeletionService {
 
     // Filesystem deletions are irreversible, so they run only once the DB side is durable.
     const pendingUnlinks: Array<{ exportId: number | string; filePath: string }> = [];
+    const pendingMediaDeletes: Array<number | string> = [];
 
     try {
       // Begin a Payload-managed transaction
@@ -351,7 +352,7 @@ export class AccountDeletionService {
         await this.deletePrivateData(userId, result, req);
 
         // Delete user resources (scheduled ingests, import files)
-        await this.deleteUserResources(userId, result, req, pendingUnlinks);
+        await this.deleteUserResources(userId, result, req, pendingUnlinks, pendingMediaDeletes);
 
         // Finalize user deletion and create audit log
         await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result, req);
@@ -376,6 +377,21 @@ export class AccountDeletionService {
         await unlink(filePath).catch((error: unknown) => {
           logError(error, "Failed to unlink data export file during account deletion", { exportId, filePath });
         });
+      }
+
+      // Best-effort and post-commit, for the same reason. A failure here leaves an orphaned
+      // media row rather than a rolled-back row whose file is already gone.
+      for (const mediaId of pendingMediaDeletes) {
+        try {
+          await this.payload.delete({ collection: "media", id: mediaId, overrideAccess: true });
+          result.dataDeleted.media++;
+        } catch (error) {
+          logError(error, "Failed to delete user media during account deletion", { userId, mediaId });
+        }
+      }
+
+      if (pendingMediaDeletes.length > 0) {
+        logger.info({ userId, mediaDeleted: result.dataDeleted.media }, "Deleted user media");
       }
 
       logger.info({ userId, result }, "Account deletion completed");
@@ -525,7 +541,8 @@ export class AccountDeletionService {
     userId: number,
     result: ExecuteDeletionResult,
     req: TransactionReq,
-    pendingUnlinks: Array<{ exportId: number | string; filePath: string }>
+    pendingUnlinks: Array<{ exportId: number | string; filePath: string }>,
+    pendingMediaDeletes: Array<number | string>
   ): Promise<void> {
     // Delete scheduled ingests
     const scheduledIngests = await findUserDocs(this.payload, "scheduled-ingests", userId);
@@ -564,20 +581,18 @@ export class AccountDeletionService {
       result.dataDeleted.importFiles++;
     }
 
-    // Delete uploaded media. Counted in the deletion SUMMARY the user is shown, but never
-    // actually deleted: `finalizeAndAudit` only anonymizes the users row, so every media
-    // row survived pointing at a tombstoned user — and the media collection's read access
-    // is public, so the files stayed publicly served after an erasure request. Payload's
-    // upload adapter unlinks the file and its generated sizes on delete.
+    // Uploaded media is counted in the deletion SUMMARY the user is shown but was never
+    // actually deleted: finalizeAndAudit only anonymizes the users row, so every media row
+    // survived pointing at a tombstoned user — and the media collection's read access is
+    // public, so the files stayed publicly served after an erasure request.
+    //
+    // Deferred to after the commit for the same reason as the export ZIPs: Payload's upload
+    // adapter unlinks the original and its generated sizes as part of the delete, and an
+    // irreversible filesystem effect must not run inside a transaction that can still roll
+    // back. Collected here so the count is known while the query context is at hand.
     const mediaDocs = await findUserDocs(this.payload, "media", userId);
-
     for (const item of mediaDocs) {
-      await this.payload.delete({ collection: "media", id: item.id, overrideAccess: true, req });
-      result.dataDeleted.media++;
-    }
-
-    if (mediaDocs.length > 0) {
-      logger.info({ userId, mediaDeleted: mediaDocs.length }, "Deleted user media");
+      pendingMediaDeletes.push(item.id);
     }
 
     // Delete views created by this user
@@ -649,6 +664,11 @@ export class AccountDeletionService {
         firstName: null,
         lastName: null,
         isActive: false,
+        // Payload's API-key strategy consults neither isActive nor sessions nor beforeLogin,
+        // so a key issued to this account would keep granting full access under its original
+        // role after the account was erased. Sessions are cleared below; this is the key.
+        enableAPIKey: false,
+        apiKey: null,
       },
       overrideAccess: true,
       req,

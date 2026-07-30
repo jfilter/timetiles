@@ -488,6 +488,10 @@ const executionFields: Field[] = [
       { label: "Success", value: "success" },
       { label: "Failed", value: "failed" },
       { label: "Running", value: "running" },
+      // The run finished but the import is parked awaiting a human decision. Distinct from
+      // "success" (which would inflate successfulRuns and hide the pending review) and from
+      // "failed" (which increments currentRetries and eventually auto-disables the schedule).
+      { label: "Awaiting review", value: "paused" },
     ],
     admin: { position: "sidebar", readOnly: true, description: "Status of last execution" },
   },
@@ -541,6 +545,7 @@ const executionFields: Field[] = [
         options: [
           { label: "Success", value: "success" },
           { label: "Failed", value: "failed" },
+          { label: "Awaiting review", value: "paused" },
         ],
       },
       { name: "duration", type: "number", admin: { description: "Duration in milliseconds" } },
