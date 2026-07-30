@@ -98,13 +98,20 @@ export class AccountDeletionService {
       }
     }
 
-    // Check for active import jobs
+    // Check for active import jobs.
+    //
+    // NEEDS_REVIEW counts as terminal here. It is not in-flight work — it is a job parked
+    // waiting for a human, and several review reasons (FILE_TOO_LARGE among them) can never
+    // be approved or resumed at all, while /reset and /retry both require FAILED. Treating
+    // it as active made one such job block erasure permanently: scheduleDeletion threw
+    // forever and every nightly execute-account-deletion run aborted on the same check, so
+    // the user could not delete their account without an admin.
     const activeJobs = await this.payload.find({
       collection: "ingest-jobs",
       where: {
         and: [
           { "dataset.createdBy": { equals: userId } },
-          { stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] } },
+          { stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED, PROCESSING_STAGE.NEEDS_REVIEW] } },
         ],
       },
       limit: 1,
@@ -314,12 +321,23 @@ export class AccountDeletionService {
       deletedUserId: userId,
       transferredToUserId: systemUser.id,
       dataTransferred: { catalogs: 0, datasets: 0 },
-      dataDeleted: { catalogs: 0, datasets: 0, events: 0, scheduledIngests: 0, importFiles: 0, scraperRepos: 0 },
+      dataDeleted: {
+        catalogs: 0,
+        datasets: 0,
+        events: 0,
+        scheduledIngests: 0,
+        importFiles: 0,
+        scraperRepos: 0,
+        media: 0,
+      },
     };
 
     // Create a minimal req object for Payload's transaction utilities.
     // `context` must be present because Payload operations destructure it in hooks.
     const req = { payload: this.payload, transactionID: undefined, context: {} } as TransactionReq;
+
+    // Filesystem deletions are irreversible, so they run only once the DB side is durable.
+    const pendingUnlinks: Array<{ exportId: number | string; filePath: string }> = [];
 
     try {
       // Begin a Payload-managed transaction
@@ -333,7 +351,7 @@ export class AccountDeletionService {
         await this.deletePrivateData(userId, result, req);
 
         // Delete user resources (scheduled ingests, import files)
-        await this.deleteUserResources(userId, result, req);
+        await this.deleteUserResources(userId, result, req, pendingUnlinks);
 
         // Finalize user deletion and create audit log
         await this.finalizeAndAudit(userId, user, deletedBy, deletionType, ipAddress, result, req);
@@ -351,6 +369,15 @@ export class AccountDeletionService {
       }
 
       result.success = true;
+
+      // Safe now that the transaction is committed: the rows these files belonged to are
+      // gone for good, so an unlink can no longer contradict a rolled-back database.
+      for (const { exportId, filePath } of pendingUnlinks) {
+        await unlink(filePath).catch((error: unknown) => {
+          logError(error, "Failed to unlink data export file during account deletion", { exportId, filePath });
+        });
+      }
+
       logger.info({ userId, result }, "Account deletion completed");
 
       // Send completion email AFTER commit — best-effort, deletion already succeeded
@@ -494,7 +521,12 @@ export class AccountDeletionService {
   /**
    * Delete scheduled ingests, import files, scrapers, views, and data exports.
    */
-  private async deleteUserResources(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
+  private async deleteUserResources(
+    userId: number,
+    result: ExecuteDeletionResult,
+    req: TransactionReq,
+    pendingUnlinks: Array<{ exportId: number | string; filePath: string }>
+  ): Promise<void> {
     // Delete scheduled ingests
     const scheduledIngests = await findUserDocs(this.payload, "scheduled-ingests", userId);
 
@@ -532,6 +564,22 @@ export class AccountDeletionService {
       result.dataDeleted.importFiles++;
     }
 
+    // Delete uploaded media. Counted in the deletion SUMMARY the user is shown, but never
+    // actually deleted: `finalizeAndAudit` only anonymizes the users row, so every media
+    // row survived pointing at a tombstoned user — and the media collection's read access
+    // is public, so the files stayed publicly served after an erasure request. Payload's
+    // upload adapter unlinks the file and its generated sizes on delete.
+    const mediaDocs = await findUserDocs(this.payload, "media", userId);
+
+    for (const item of mediaDocs) {
+      await this.payload.delete({ collection: "media", id: item.id, overrideAccess: true, req });
+      result.dataDeleted.media++;
+    }
+
+    if (mediaDocs.length > 0) {
+      logger.info({ userId, mediaDeleted: mediaDocs.length }, "Deleted user media");
+    }
+
     // Delete views created by this user
     const views = await this.payload.find({
       collection: "views",
@@ -559,19 +607,18 @@ export class AccountDeletionService {
     });
 
     for (const exportRecord of dataExports.docs) {
-      // Capture the on-disk path before deleting the row. The data-exports
-      // collection is not a Payload upload collection and has no delete hook,
-      // so the ZIP — which contains the user's full PII — must be unlinked here
-      // or it orphans on disk indefinitely.
+      // Capture the on-disk path before deleting the row. The data-exports collection is
+      // not a Payload upload collection and has no delete hook, so the ZIP — which contains
+      // the user's full PII — must be unlinked or it orphans on disk indefinitely.
+      //
+      // The unlink is DEFERRED to after the commit. Doing it here mixed an irreversible
+      // filesystem effect into an open transaction: a later failure in finalizeAndAudit
+      // rolls the rows back, and the restored data-exports would point at files that are
+      // already gone (the download route then flips them to "failed").
       const { filePath } = exportRecord;
       await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true, req });
       if (filePath != null && filePath !== "") {
-        await unlink(filePath).catch((error: unknown) => {
-          logError(error, "Failed to unlink data export file during account deletion", {
-            exportId: exportRecord.id,
-            filePath,
-          });
-        });
+        pendingUnlinks.push({ exportId: exportRecord.id, filePath });
       }
     }
 

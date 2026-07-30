@@ -92,6 +92,21 @@ const requiresSqlFilteredPagination = (filters: CanonicalEventFilters): boolean 
   (filters.rangeFilters != null && Object.keys(filters.rangeFilters).length > 0) ||
   (filters.clusterCells?.length ?? 0) > 0;
 
+/**
+ * Append `id` as a tiebreaker so paging is deterministic.
+ *
+ * The sort columns are not unique — every row of a bulk insert shares one `createdAt`, and
+ * a date-only source column gives a whole day the same `eventTimestamp`. Without a unique
+ * final key, Postgres may order tied rows differently per query, so the infinite list shows
+ * some events twice and silently skips others across page boundaries. The SQL-filtered path
+ * already does this (see buildOrderByClause); this is the same guarantee for the Payload path.
+ */
+const withStableTiebreaker = (sort: string): string[] => {
+  const field = sort.startsWith("-") ? sort.slice(1) : sort;
+  if (field === "id") return [sort];
+  return [sort, sort.startsWith("-") ? "-id" : "id"];
+};
+
 const executeEventsQuery = async (
   payload: Payload,
   where: ReturnType<typeof toPayloadWhere>,
@@ -103,7 +118,7 @@ const executeEventsQuery = async (
     where,
     page: query.page,
     limit: query.limit,
-    sort: query.sort,
+    sort: withStableTiebreaker(query.sort),
     depth: 1,
     user,
     overrideAccess: false,
