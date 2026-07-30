@@ -385,6 +385,49 @@ const createActivationScheduledIngest = async (
   }
 };
 
+/**
+ * Handle a data package that already has an activation row.
+ *
+ * Deactivation only flips `enabled` and keeps the row, so without this the package was stuck
+ * showing "Activated" forever with no way back on — no other code path re-enables it.
+ * Re-enabling is owner-only (the rule deactivateDataPackage enforces) and consumes an
+ * ACTIVE_SCHEDULES slot exactly like a fresh activation, so it passes the same quota gate.
+ */
+const reactivateOrReject = async (
+  payload: Payload,
+  existingDoc: { id: number; enabled?: boolean | null; createdBy?: unknown; catalog?: unknown; dataset?: unknown },
+  user: User,
+  activationKey: string,
+  req: ActivateOptions["req"]
+): Promise<ActivateResult> => {
+  const ownsExisting = user.role === "admin" || extractRelationId(existingDoc.createdBy) === user.id;
+
+  if (existingDoc.enabled !== false || !ownsExisting) {
+    throw new Error(`Data package "${activationKey}" is already activated`);
+  }
+
+  if (req?.user) {
+    await createQuotaService(payload).validateQuota(req.user, "ACTIVE_SCHEDULES", 1);
+  }
+
+  await payload.update({
+    collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+    id: existingDoc.id,
+    data: { enabled: true },
+    overrideAccess: true,
+    // Pass the acting request so the collection's quota hooks see the real user.
+    ...(req ? { req } : {}),
+  });
+
+  logger.info({ activationKey, scheduledIngestId: existingDoc.id }, "Re-activated data package");
+
+  return {
+    scheduledIngestId: existingDoc.id,
+    catalogId: extractRelationId(existingDoc.catalog) as number,
+    datasetId: extractRelationId(existingDoc.dataset) as number,
+  };
+};
+
 /** Activate a data package: create catalog, dataset, and scheduled ingest. */
 export const activateDataPackage = async (
   payload: Payload,
@@ -398,13 +441,12 @@ export const activateDataPackage = async (
   const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
   const activationKey = buildActivationKey(manifest.slug, parameters);
 
-  // Check THIS USER has not already activated it (with these parameters). The query runs
-  // with overrideAccess, so without the ownership clause another user's activation both
-  // blocked this one and — once re-activation was added below — would have been the row we
-  // flipped back on. Scoping also matches deactivateDataPackage, which is owner-only.
+  // Deliberately GLOBAL, matching the unique index on dataPackageSlug: an activation is one
+  // per key for the whole instance, not per user. Scoping this by owner would let a second
+  // user past the check and straight into a raw unique-violation from Postgres.
   const existing = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    where: { and: [{ dataPackageSlug: { equals: activationKey } }, { createdBy: { equals: user.id } }] },
+    where: { dataPackageSlug: { equals: activationKey } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
@@ -412,24 +454,7 @@ export const activateDataPackage = async (
 
   const existingDoc = existing.docs[0];
   if (existingDoc) {
-    // A DEACTIVATED activation must be re-activatable. Deactivation only flips `enabled` and
-    // keeps the row, so this used to throw forever: the package was stuck showing "Activated"
-    // with no way back on, and no other code path re-enables it.
-    if (existingDoc.enabled === false) {
-      await payload.update({
-        collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-        id: existingDoc.id,
-        data: { enabled: true },
-        overrideAccess: true,
-      });
-      logger.info({ activationKey, scheduledIngestId: existingDoc.id }, "Re-activated data package");
-      return {
-        scheduledIngestId: existingDoc.id,
-        catalogId: extractRelationId(existingDoc.catalog) as number,
-        datasetId: extractRelationId(existingDoc.dataset) as number,
-      };
-    }
-    throw new Error(`Data package "${activationKey}" is already activated`);
+    return reactivateOrReject(payload, existingDoc, user, activationKey, options.req);
   }
 
   // For interactive user activations (req present) enforce the active-schedules
@@ -606,22 +631,23 @@ export const deactivateDataPackage = async (
 export const getActivationStatus = async (
   payload: Payload,
   slugs: string[],
-  /** Whose activations to report. Omitted only by trusted system callers. */
+  /** The requesting user. Internal ids are returned only for activations they own. */
   userId?: number
 ): Promise<Map<string, DataPackageActivation>> => {
   if (slugs.length === 0) return new Map();
 
-  const slugClause = {
-    or: slugs.flatMap((slug) => [{ dataPackageSlug: { equals: slug } }, { dataPackageSlug: { like: `${slug}:%` } }]),
-  };
-
+  // The query stays GLOBAL: dataPackageSlug is uniquely indexed instance-wide, so "is this
+  // package activated" is an instance-wide fact and filtering by owner would tell a second
+  // user "not activated" for something they cannot activate.
+  //
+  // What was actually leaking is the DETAIL. Running with overrideAccess handed every user
+  // the owner's scheduledIngestId/catalogId/datasetId and a Deactivate button that 403s, so
+  // those are now returned only to the owner (see `ownedByCaller` below).
   const result = await payload.find({
     collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-    // Scoped to the caller. This runs with overrideAccess, so without the ownership clause
-    // every user saw every other user's activation — the package showed as "Activated" with
-    // a stranger's scheduledIngestId/catalogId/datasetId in the response, offered a
-    // Deactivate button that 403s, and could not be activated either (see below).
-    where: userId == null ? slugClause : { and: [slugClause, { createdBy: { equals: userId } }] },
+    where: {
+      or: slugs.flatMap((slug) => [{ dataPackageSlug: { equals: slug } }, { dataPackageSlug: { like: `${slug}:%` } }]),
+    },
     limit: 0,
     depth: 0,
     overrideAccess: true,
@@ -636,11 +662,19 @@ export const getActivationStatus = async (
     if (!doc.dataPackageSlug) continue;
     const bareSlug = bareSlugFromActivationKey(doc.dataPackageSlug);
     if (!requestedSlugs.has(bareSlug)) continue;
+    // Internal ids only for the owner. Everyone else learns that the package is activated —
+    // an instance-wide fact they need, since they cannot activate it either — and nothing else.
+    const ownedByCaller = userId != null && extractRelationId(doc.createdBy) === userId;
     const activation: DataPackageActivation = {
-      scheduledIngestId: doc.id,
-      catalogId: extractRelationId(doc.catalog) as number,
-      datasetId: extractRelationId(doc.dataset) as number,
       enabled: doc.enabled ?? false,
+      ownedByCaller,
+      ...(ownedByCaller
+        ? {
+            scheduledIngestId: doc.id,
+            catalogId: extractRelationId(doc.catalog),
+            datasetId: extractRelationId(doc.dataset),
+          }
+        : {}),
     };
     // Prefer an enabled activation when a slug has multiple parameter sets.
     const current = statusMap.get(bareSlug);

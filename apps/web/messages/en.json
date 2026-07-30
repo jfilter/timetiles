@@ -1050,7 +1050,8 @@
     "errorTitle": "Failed to load data packages",
     "errorSubtitle": "Please try again later",
     "emptyTitle": "No data packages available",
-    "emptySubtitle": "Check back later for curated data sources"
+    "emptySubtitle": "Check back later for curated data sources",
+    "activatedByAnotherUser": "Activated by another user"
   },
   "Footer": {
     "fundingText": "Funded 2025–2026 by the BMFTR (FKZ 16IS25S03)",

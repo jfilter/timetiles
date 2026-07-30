@@ -1050,7 +1050,8 @@
     "errorTitle": "Fehler beim Laden der Datenpakete",
     "errorSubtitle": "Bitte versuche es spaeter erneut",
     "emptyTitle": "Keine Datenpakete verfuegbar",
-    "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen"
+    "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen",
+    "activatedByAnotherUser": "Von einem anderen Nutzer aktiviert"
   },
   "Footer": {
     "fundingText": "Gefördert 2025–2026 vom BMFTR (FKZ 16IS25S03)",

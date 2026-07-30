@@ -65,6 +65,7 @@ import * as migration_20260612_160000_tag_field_filters from './20260612_160000_
 import * as migration_20260629_193946_add_ingest_files_cleanup_task_slug from './20260629_193946_add_ingest_files_cleanup_task_slug';
 import * as migration_20260629_194054_add_data_package_slug_unique from './20260629_194054_add_data_package_slug_unique';
 import * as migration_20260730_192628 from './20260730_192628';
+import * as migration_20260730_231500_revoke_inactive_user_credentials from './20260730_231500_revoke_inactive_user_credentials';
 
 export const migrations = [
   {
@@ -401,5 +402,10 @@ export const migrations = [
     up: migration_20260730_192628.up,
     down: migration_20260730_192628.down,
     name: '20260730_192628'
+  },
+  {
+    up: migration_20260730_231500_revoke_inactive_user_credentials.up,
+    down: migration_20260730_231500_revoke_inactive_user_credentials.down,
+    name: '20260730_231500_revoke_inactive_user_credentials'
   },
 ];
