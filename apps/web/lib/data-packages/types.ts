@@ -251,10 +251,13 @@ export interface DataPackageManifest {
 
 /** Activation state for a data package. */
 export interface DataPackageActivation {
-  scheduledIngestId: number;
-  catalogId: number;
-  datasetId: number;
+  /** Present only when the requesting user owns the activation — these are internal ids. */
+  scheduledIngestId?: number;
+  catalogId?: number;
+  datasetId?: number;
   enabled: boolean;
+  /** Whether the requesting user may deactivate it (owner or admin). */
+  ownedByCaller: boolean;
 }
 
 /** Data package with activation status for API responses. */

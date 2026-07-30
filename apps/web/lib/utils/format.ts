@@ -51,10 +51,13 @@ export const formatCompactNumber = (n: number, locale?: string): string => {
   const formatDecimal = (value: number): string =>
     value.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 1 });
 
-  if (n < 10_000) return `${formatDecimal(n / 1000)}k`;
-  if (n < 1_000_000) return `${Math.round(n / 1000)}k`;
-  if (n < 10_000_000) return `${formatDecimal(n / 1_000_000)}M`;
-  return `${Math.round(n / 1_000_000)}M`;
+  // Thresholds are compared against the ROUNDED value, not the raw one. Comparing the raw
+  // value let a number round up across its own unit boundary and print in the unit it had
+  // just left — 999_999 rendered as "1000k" instead of "1.0M".
+  if (Math.round(n / 1000) < 1000) {
+    return n < 10_000 ? `${formatDecimal(n / 1000)}k` : `${Math.round(n / 1000)}k`;
+  }
+  return n < 10_000_000 ? `${formatDecimal(n / 1_000_000)}M` : `${Math.round(n / 1_000_000)}M`;
 };
 
 /**
@@ -63,8 +66,14 @@ export const formatCompactNumber = (n: number, locale?: string): string => {
 export const formatFileSize = (bytes: number | null | undefined): string => {
   if (bytes == null) return "Unknown size";
 
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  // Each threshold is checked against the value as it will be PRINTED, so a size that
+  // rounds up to a full unit steps up instead of printing "1024.0 KB".
+  const KB = 1024;
+  const MB = KB * 1024;
+  const GB = MB * 1024;
+
+  if (bytes < KB) return `${bytes} B`;
+  if (Number((bytes / KB).toFixed(1)) < 1024) return `${(bytes / KB).toFixed(1)} KB`;
+  if (Number((bytes / MB).toFixed(2)) < 1024) return `${(bytes / MB).toFixed(2)} MB`;
+  return `${(bytes / GB).toFixed(2)} GB`;
 };

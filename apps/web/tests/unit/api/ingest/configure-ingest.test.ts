@@ -15,7 +15,7 @@ import "@/tests/mocks/services/site-resolver";
 
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
-  mockPayload: { create: vi.fn(), update: vi.fn(), find: vi.fn(), count: vi.fn(), auth: vi.fn() },
+  mockPayload: { create: vi.fn(), update: vi.fn(), find: vi.fn(), findByID: vi.fn(), count: vi.fn(), auth: vi.fn() },
   mockGetPayload: vi.fn(),
   mockExistsSync: vi.fn(),
   mockReadFileSync: vi.fn(),
@@ -193,6 +193,9 @@ describe.sequential("POST /api/ingest/configure", () => {
 
     // Default: catalog ownership check passes (Bug 13)
     mocks.mockPayload.find.mockResolvedValue({ docs: [{ id: 1 }], totalDocs: 1 });
+
+    // Default: the targeted dataset lives in the (ownership-checked) request catalog
+    mocks.mockPayload.findByID.mockResolvedValue({ id: 42, catalog: 1 });
 
     // Default: dataset has no events (so idStrategy updates proceed)
     mocks.mockPayload.count.mockResolvedValue({ totalDocs: 0 });
@@ -465,6 +468,34 @@ describe.sequential("POST /api/ingest/configure", () => {
       const updateData = (datasetUpdateCalls[0]![0] as Record<string, unknown>).data as Record<string, unknown>;
       expect(updateData).not.toHaveProperty("idStrategy");
       expect(updateData).toHaveProperty("interpretationPlan"); // Other config still updated
+    });
+
+    it("should reject a datasetId that belongs to a different catalog", async () => {
+      // The catalog is ownership-checked, the datasetId is not — so a dataset outside the
+      // request's catalog must be refused. Payload's Local API update runs with
+      // overrideAccess: true, so this guard is the only thing standing between an
+      // attacker-supplied datasetId and someone else's dataset configuration.
+      mocks.mockPayload.findByID.mockResolvedValueOnce({ id: 42, catalog: 999 });
+
+      const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(403);
+      const datasetUpdateCalls = mocks.mockPayload.update.mock.calls.filter(
+        (call: unknown[]) => (call[0] as Record<string, unknown>).collection === "datasets"
+      );
+      expect(datasetUpdateCalls).toHaveLength(0);
+    });
+
+    it("should reject a datasetId that does not exist", async () => {
+      mocks.mockPayload.findByID.mockResolvedValueOnce(null);
+
+      const req = createRequest({ ...baseBody, sheetMappings: [{ sheetIndex: 0, datasetId: 42, newDatasetName: "" }] });
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(403);
     });
   });
 

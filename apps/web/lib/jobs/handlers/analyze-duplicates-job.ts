@@ -25,7 +25,7 @@ import { getFileRowCount, streamBatchesFromFile } from "@/lib/ingest/file-reader
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
-import { createJobLogger, logError, logPerformance } from "@/lib/logger";
+import { createJobLogger, logError, logger as baseLogger, logPerformance } from "@/lib/logger";
 import { generateUniqueId } from "@/lib/services/id-generation";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, IngestJob } from "@/payload-types";
@@ -113,6 +113,7 @@ const analyzeInternalDuplicates = async (
   const uniqueIdMap = new Map<string, number>();
   let totalRows = 0;
   let batchNumber = 0;
+  let skippedRows = 0;
 
   const ANALYSIS_BATCH_SIZE = BATCH_SIZES.DUPLICATE_ANALYSIS;
 
@@ -138,7 +139,18 @@ const analyzeInternalDuplicates = async (
     for (const [index, row] of rows.entries()) {
       const rowNumber = totalRows + index;
       const idRow = interpretForId(row);
-      const uniqueId = generateUniqueId(idRow, dataset);
+
+      // `generateUniqueId` throws on an unusable row (e.g. an empty external ID). Create-events
+      // records the same failure per row and keeps going — without this guard one bad row out
+      // of ten thousand failed the whole sheet here and, for a scheduled source, burned a retry.
+      let uniqueId: string;
+      try {
+        uniqueId = generateUniqueId(idRow, dataset);
+      } catch (error) {
+        baseLogger.warn({ rowNumber, err: error }, "Skipping row in duplicate analysis — could not generate unique ID");
+        skippedRows++;
+        continue;
+      }
 
       if (uniqueIdMap.has(uniqueId)) {
         internalDuplicates.push({ rowNumber, uniqueId, firstOccurrence: uniqueIdMap.get(uniqueId) });
@@ -172,6 +184,10 @@ const analyzeInternalDuplicates = async (
       totalRows,
       batchNumber
     );
+  }
+
+  if (skippedRows > 0) {
+    baseLogger.warn({ skippedRows, totalRows }, "Duplicate analysis skipped rows with unusable unique IDs");
   }
 
   return { internalDuplicates, uniqueIdMap, totalRows };

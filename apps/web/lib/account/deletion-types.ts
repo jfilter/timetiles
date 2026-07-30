@@ -40,6 +40,7 @@ export interface ExecuteDeletionResult {
     scheduledIngests: number;
     importFiles: number;
     scraperRepos: number;
+    media: number;
   };
 }
 

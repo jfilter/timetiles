@@ -236,7 +236,9 @@
     "beeswarmClusters": "{count, plural, one {# cluster} other {# clusters}}",
     "beeswarmChartSettings": "Chart settings",
     "beeswarmEventsCount": "{count, plural, one {# event} other {# events}}",
-    "beeswarmOtherGroups": "Other ({count})"
+    "beeswarmOtherGroups": "Other ({count})",
+    "histogramEventsLabel": "Events",
+    "histogramTotalLabel": "Total"
   },
   "Filters": {
     "dataSources": "Data Sources",
@@ -843,7 +845,10 @@
     "selectDateOrderPlaceholder": "Select date order...",
     "selectEndDateOrder": "Which order are the end dates in? (D/M = day first, M/D = month first)",
     "selectEndDateOrderWithSample": "Which order are the end dates in? (e.g. \"{sample}\" — D/M = day first, M/D = month first)",
-    "contentHashPreview": "Content hash of all fields"
+    "contentHashPreview": "Content hash of all fields",
+    "flowErrorNoPreviewId": "No preview ID provided. Please start from the import wizard.",
+    "flowErrorLoadFailed": "Failed to load data",
+    "flowErrorSheetNotFound": "Sheet {sheetIndex} not found"
   },
   "ImportActivity": {
     "title": "Import Activity",
@@ -871,6 +876,7 @@
     "statusProcessing": "Processing",
     "statusCompleted": "Completed",
     "statusFailed": "Failed",
+    "statusAwaitingReview": "Awaiting review",
     "statusActive": "Active",
     "statusDisabled": "Disabled",
     "statusRunning": "Running",
@@ -921,6 +927,7 @@
     "noSchedulesDescription": "Create a scheduled import by importing data from a URL in the import wizard.",
     "disabled": "Disabled",
     "failed": "Failed",
+    "awaitingReview": "Awaiting review",
     "active": "Active",
     "lastRun": "Last run: {date}",
     "nextRun": "Next run: {date}",
@@ -937,7 +944,8 @@
     "monthly": "Monthly",
     "strict": "Strict",
     "additive": "Additive",
-    "flexible": "Flexible"
+    "flexible": "Flexible",
+    "actionFailed": "Action failed. Please try again."
   },
   "Scrapers": {
     "title": "Scrapers",
@@ -971,7 +979,8 @@
     "errorLabel": "Error",
     "triggeredVia": "via {trigger}",
     "outputRows": "{count, plural, one {# row} other {# rows}}",
-    "queued": "Queued"
+    "queued": "Queued",
+    "actionFailed": "Action failed. Please try again."
   },
   "Header": {
     "importData": "Import Data",
@@ -1041,7 +1050,8 @@
     "errorTitle": "Failed to load data packages",
     "errorSubtitle": "Please try again later",
     "emptyTitle": "No data packages available",
-    "emptySubtitle": "Check back later for curated data sources"
+    "emptySubtitle": "Check back later for curated data sources",
+    "activatedByAnotherUser": "Activated by another user"
   },
   "Footer": {
     "fundingText": "Funded 2025–2026 by the BMFTR (FKZ 16IS25S03)",

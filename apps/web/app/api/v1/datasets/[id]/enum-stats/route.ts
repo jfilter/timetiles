@@ -22,7 +22,69 @@ import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 
+/** A composable SQL fragment, matching the alias used in lib/filters/to-sql-conditions. */
+type SqlFragment = ReturnType<typeof sql>;
+
 const MAX_VALUES = 30;
+
+/** Turn a raw field path into a human label: "event_type" / "eventType" -> "Event Type". */
+const toFieldLabel = (path: string): string =>
+  path
+    .replaceAll("_", " ")
+    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll(/\b\w/g, (c) => c.toUpperCase());
+
+/**
+ * Top-N value counts for one field, plus the FULL totals as window aggregates.
+ *
+ * `total_count` and `distinct_count` are computed over the whole grouped set: Postgres
+ * evaluates window functions after GROUP BY but before LIMIT, so they survive the top-N
+ * truncation. Deriving them from the returned rows instead made percentages sum to ~100%
+ * of the visible slice (a value with a true 3% share rendered as 10%) and reported
+ * cardinality as MAX_VALUES for any field with more distinct values than that — enum
+ * detection allows up to 50, and tag fields up to 200.
+ *
+ * Both branches count EVENTS, not occurrences. The tag branch expands each array element
+ * into its own row, so a plain COUNT(*) would count tag occurrences: ten events with two
+ * tags each gave a denominator of 20, showing a tag present in five events as 25% instead
+ * of 50%, and a value repeated within one event inflated its own count. COUNT(DISTINCT e.id)
+ * makes "percent" mean the same thing for tags as for scalars — the share of matching
+ * events carrying this value. Tag shares therefore need not sum to 100%: an event with two
+ * tags is legitimately counted under both.
+ *
+ * The datasets join is required: toSqlConditions references d.catalog_id for access control.
+ */
+const buildEnumStatsQuery = (fieldPath: string, isTag: boolean, whereClause: SqlFragment) => {
+  const arrayValue = sql`e.transformed_data #> string_to_array(${fieldPath}, '.')`;
+  const normalizedArrayValue = sql`CASE
+        WHEN jsonb_typeof(${arrayValue}) = 'array' THEN ${arrayValue}
+        ELSE '[]'::jsonb
+      END`;
+  const scalarValue = sql`e.transformed_data #>> string_to_array(${fieldPath}, '.')`;
+
+  if (isTag) {
+    // The denominator is the number of distinct events that carry the field at all, so it
+    // cannot be derived by summing the per-value event counts (an event with two tags would
+    // count twice). It is computed once over the same filtered set.
+    return sql`WITH tagged AS (
+                SELECT e.id AS event_id, elem AS value
+                FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(${normalizedArrayValue}) AS elem
+                WHERE ${whereClause}
+              )
+              SELECT value, COUNT(DISTINCT event_id)::integer AS count,
+                     (SELECT COUNT(DISTINCT event_id) FROM tagged)::bigint AS total_count,
+                     (COUNT(*) OVER ())::integer AS distinct_count
+              FROM tagged
+              GROUP BY value ORDER BY count DESC LIMIT ${MAX_VALUES}`;
+  }
+
+  return sql`SELECT ${scalarValue} AS value, COUNT(*)::integer AS count,
+                    (SUM(COUNT(*)) OVER ())::bigint AS total_count,
+                    (COUNT(*) OVER ())::integer AS distinct_count
+             FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
+             WHERE ${whereClause} AND ${scalarValue} IS NOT NULL
+             GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
+};
 
 export const GET = apiRoute({
   auth: "optional",
@@ -98,41 +160,28 @@ export const GET = apiRoute({
 
       const whereClause = toSqlWhereClause(filters);
       const isTag = field.isTagField === true;
-      const arrayValue = sql`e.transformed_data #> string_to_array(${fieldPath}, '.')`;
-      const normalizedArrayValue = sql`CASE
-        WHEN jsonb_typeof(${arrayValue}) = 'array' THEN ${arrayValue}
-        ELSE '[]'::jsonb
-      END`;
-      const scalarValue = sql`e.transformed_data #>> string_to_array(${fieldPath}, '.')`;
-      // Join datasets table — toSqlConditions references d.catalog_id for access control.
-      const sqlQuery = isTag
-        ? sql`SELECT elem AS value, COUNT(*)::integer AS count
-              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id, jsonb_array_elements_text(${normalizedArrayValue}) AS elem
-              WHERE ${whereClause}
-              GROUP BY elem ORDER BY count DESC LIMIT ${MAX_VALUES}`
-        : sql`SELECT ${scalarValue} AS value, COUNT(*)::integer AS count
-              FROM payload.events e JOIN payload.datasets d ON e.dataset_id = d.id
-              WHERE ${whereClause} AND ${scalarValue} IS NOT NULL
-              GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
 
-      const rows = await payload.db.drizzle.execute<{ value: string; count: number }>(sqlQuery);
+      const rows = await payload.db.drizzle.execute<{
+        value: string;
+        count: number;
+        total_count: number | string;
+        distinct_count: number;
+      }>(buildEnumStatsQuery(fieldPath, isTag, whereClause));
 
-      const total = rows.rows.reduce((s, r) => s + Number(r.count), 0);
-      const label = field.path
-        .replaceAll("_", " ")
-        .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
-        .replaceAll(/\b\w/g, (c) => c.toUpperCase());
+      const firstRow = rows.rows[0];
+      const total = firstRow ? Number(firstRow.total_count) : 0;
+      const cardinality = firstRow ? Number(firstRow.distinct_count) : 0;
 
       fields.push({
         path: field.path,
-        label,
+        label: toFieldLabel(field.path),
         isTag,
         values: rows.rows.map((r) => ({
           value: String(r.value),
           count: Number(r.count),
           percent: total > 0 ? Math.round((Number(r.count) / total) * 1000) / 10 : 0,
         })),
-        cardinality: rows.rows.length,
+        cardinality,
       });
     }
 

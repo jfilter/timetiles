@@ -57,6 +57,15 @@ export const validateDatasetAccessForUser = async (
   const catalogOwnerId = extractRelationId(catalog?.createdBy);
   const isPublicCatalog = catalog?.isPublic ?? false;
 
+  // "Own or public" is deliberate and matches validateCatalogOwnership (lib/collections/
+  // catalog-ownership.ts), the canonical statement of this policy: contributing an import
+  // into someone else's PUBLIC catalog is a feature, not a hole. It differs from the events
+  // beforeChange hook, which is strict-ownership because it guards a different attack —
+  // re-pointing an existing event at a stranger's dataset.
+  //
+  // This check is not what stops a targeted write at an arbitrary dataset; that is enforced
+  // upstream where the datasetId is accepted (configure-service and the scheduled-ingests
+  // collection both verify the dataset against a catalog the caller owns).
   if (catalogOwnerId !== userId && !isPublicCatalog) {
     throw new Error(
       `Ingest file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`

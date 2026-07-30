@@ -81,13 +81,14 @@ const getRunStatusBadge = (scraper: Scraper, t: TranslateFn) => {
 interface ScraperCardProps {
   scraper: Scraper;
   loadingState?: string;
+  errorMessage?: string;
   onRun: () => void;
   onViewLogs: () => void;
   showLogs: boolean;
   t: TranslateFn;
 }
 
-const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs, t }: ScraperCardProps) => {
+const ScraperCard = ({ scraper, loadingState, errorMessage, onRun, onViewLogs, showLogs, t }: ScraperCardProps) => {
   const isLoading = Boolean(loadingState);
   const stats = resolveScraperStats(scraper.statistics);
 
@@ -138,6 +139,11 @@ const ScraperCard = ({ scraper, loadingState, onRun, onViewLogs, showLogs, t }: 
           </Button>
         </div>
       </div>
+      {errorMessage != null && errorMessage !== "" && (
+        <p role="alert" className="text-destructive mt-2 text-sm">
+          {errorMessage}
+        </p>
+      )}
       {showLogs && <ScraperRunLog scraperId={scraper.id} />}
     </div>
   );
@@ -148,6 +154,8 @@ interface RepoCardProps {
   scrapers: Scraper[];
   loadingState?: string;
   scraperLoadingStates: Record<number, string>;
+  scraperErrors: Record<number, string>;
+  errorMessage?: string;
   onSync: () => void;
   onDelete: () => void;
   onRunScraper: (id: number) => void;
@@ -159,6 +167,8 @@ const RepoCard = ({
   scrapers,
   loadingState,
   scraperLoadingStates,
+  scraperErrors,
+  errorMessage,
   onSync,
   onDelete,
   onRunScraper,
@@ -249,6 +259,7 @@ const RepoCard = ({
                 key={scraper.id}
                 scraper={scraper}
                 loadingState={scraperLoadingStates[scraper.id]}
+                errorMessage={scraperErrors[scraper.id]}
                 onRun={() => onRunScraper(scraper.id)}
                 onViewLogs={() => toggleScraperLogs(scraper.id)}
                 showLogs={expandedScrapers.has(scraper.id)}
@@ -260,6 +271,12 @@ const RepoCard = ({
 
         {scrapers.length === 0 && repo.lastSyncAt && (
           <div className="text-muted-foreground mt-4 border-t pt-3 text-sm">{t("noScrapersInManifest")}</div>
+        )}
+
+        {errorMessage != null && errorMessage !== "" && (
+          <p role="alert" className="text-destructive mt-3 text-sm">
+            {errorMessage}
+          </p>
         )}
       </CardContent>
     </Card>
@@ -275,12 +292,31 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
   const t = useTranslations("Scrapers");
   const { data: repos = [] } = useScraperReposQuery(initialRepos);
   const { data: allScrapers = [] } = useScrapersQuery(undefined, initialScrapers);
-  const { states: repoLoadingStates, setLoading: setRepoLoading, clearLoading: clearRepoLoading } = useLoadingStates();
+  const {
+    states: repoLoadingStates,
+    setLoading: setRepoLoading,
+    clearLoading: clearRepoLoading,
+    errors: repoErrors,
+    setError: setRepoError,
+  } = useLoadingStates();
   const {
     states: scraperLoadingStates,
     setLoading: setScraperLoading,
     clearLoading: clearScraperLoading,
+    errors: scraperErrors,
+    setError: setScraperError,
   } = useLoadingStates();
+
+  /** Surface a failed row mutation — a 409/429 otherwise just cleared the spinner silently. */
+  const toMessage = (error: unknown) => (error instanceof Error ? error.message : t("actionFailed"));
+  const repoHandlers = (id: number) => ({
+    onError: (error: unknown) => setRepoError(id, toMessage(error)),
+    onSettled: () => clearRepoLoading(id),
+  });
+  const scraperHandlers = (id: number) => ({
+    onError: (error: unknown) => setScraperError(id, toMessage(error)),
+    onSettled: () => clearScraperLoading(id),
+  });
 
   const syncMutation = useSyncScraperRepoMutation();
   const deleteMutation = useDeleteScraperRepoMutation();
@@ -288,7 +324,7 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
 
   const handleSync = (repoId: number) => {
     setRepoLoading(repoId, "syncing");
-    syncMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
+    syncMutation.mutate(repoId, repoHandlers(repoId));
   };
 
   const { requestConfirm, confirmDialog } = useConfirmDialog();
@@ -301,14 +337,14 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
       variant: "destructive",
       onConfirm: () => {
         setRepoLoading(repoId, "deleting");
-        deleteMutation.mutate(repoId, { onSettled: () => clearRepoLoading(repoId) });
+        deleteMutation.mutate(repoId, repoHandlers(repoId));
       },
     });
   };
 
   const handleRunScraper = (scraperId: number) => {
     setScraperLoading(scraperId, "running");
-    runMutation.mutate(scraperId, { onSettled: () => clearScraperLoading(scraperId) });
+    runMutation.mutate(scraperId, scraperHandlers(scraperId));
   };
 
   const scrapersByRepo = groupScrapersByRepo(allScrapers);
@@ -332,7 +368,9 @@ export const ScrapersListClient = ({ initialRepos, initialScrapers }: ScrapersLi
             repo={repo}
             scrapers={scrapersByRepo[repo.id] ?? []}
             loadingState={repoLoadingStates[repo.id]}
+            errorMessage={repoErrors[repo.id]}
             scraperLoadingStates={scraperLoadingStates}
+            scraperErrors={scraperErrors}
             onSync={() => handleSync(repo.id)}
             onDelete={() => handleDelete(repo.id)}
             onRunScraper={handleRunScraper}

@@ -73,6 +73,20 @@ export class FileSystemCacheStorage implements CacheStorage {
     await this.initPromise;
   }
 
+  /**
+   * Drop an index entry and release its accounting.
+   *
+   * Every removal path must go through here: forgetting the `totalSize` subtraction
+   * leaves phantom bytes that can hold the cache permanently "over capacity".
+   */
+  private releaseIndexEntry(key: string): void {
+    const entry = this.index.get(key);
+    if (!entry) return;
+    this.index.delete(key);
+    this.stats.entries--;
+    this.stats.totalSize -= entry.size;
+  }
+
   private getCacheFilePath(key: string): string {
     const hash = crypto.createHash("sha256").update(key).digest("hex");
     const subdir = hash.substring(0, 2); // Use first 2 chars for subdirectory
@@ -110,9 +124,12 @@ export class FileSystemCacheStorage implements CacheStorage {
       this.stats.hits++;
       return entry;
     } catch (error) {
-      // File might be corrupted or deleted
+      // File might be corrupted or deleted. Release its accounting too: dropping the
+      // index entry alone left `totalSize` (and `entries`) counting bytes that are gone,
+      // and phantom size above `maxSize` makes cleanupLRU evict on every subsequent set()
+      // — including the entry just written, pinning the hit rate at zero across restarts.
       logger.debug("Failed to read cache file", { key, error });
-      this.index.delete(key);
+      this.releaseIndexEntry(key);
       await this.saveIndex();
       this.stats.misses++;
       return null;
@@ -183,16 +200,12 @@ export class FileSystemCacheStorage implements CacheStorage {
 
     try {
       await fs.unlink(indexEntry.file);
-      this.index.delete(key);
-      this.stats.entries--;
-      this.stats.totalSize -= indexEntry.size;
+      this.releaseIndexEntry(key);
       await this.saveIndex();
       return true;
     } catch {
       // File might already be deleted
-      this.index.delete(key);
-      this.stats.entries--;
-      this.stats.totalSize -= indexEntry.size;
+      this.releaseIndexEntry(key);
       await this.saveIndex();
       return false;
     }
@@ -395,10 +408,9 @@ export class FileSystemCacheStorage implements CacheStorage {
         }
       }
 
-      // Remove invalid entries
+      // Remove invalid entries — subtracting their size, not just the count.
       for (const key of invalidKeys) {
-        this.index.delete(key);
-        this.stats.entries--;
+        this.releaseIndexEntry(key);
       }
 
       if (invalidKeys.length > 0) {

@@ -84,9 +84,14 @@ export const flattenObject = (obj: Record<string, unknown>, prefix?: string, dep
  * @returns `{ records, path }` or `null` if no suitable array was found.
  */
 const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[]; path: string } | null => {
-  // Top-level array
+  // Top-level array. An empty one is unambiguous — it IS the records array, it just has no
+  // records today. Reporting "could not find records array" turned a quiet source into a
+  // scheduled-ingest failure that consumed a retry.
   if (Array.isArray(json)) {
-    if (json.length > 0 && isPlainObject(json[0])) {
+    if (json.length === 0) {
+      return { records: [], path: "" };
+    }
+    if (isPlainObject(json[0])) {
       return { records: json as Record<string, unknown>[], path: "" };
     }
     return null;

@@ -94,13 +94,29 @@ describe("buildCanonicalFilters", () => {
     expect(filters.fieldFilters).toEqual({ category: ["A", "B"] });
   });
 
-  it("strips invalid field filter keys", () => {
+  it("rejects invalid field filter keys instead of silently dropping them", () => {
+    // Dropping them meant the request fell through to an UNFILTERED query and returned
+    // HTTP 200 with every event in scope — the opposite of what the caller asked for.
     const longKey = "a".repeat(100);
-    const filters = buildCanonicalFilters({
-      parameters: { ff: { valid_key: ["A"], "invalid key with spaces": ["B"], [longKey]: ["C"] }, rf: {} },
-    });
 
-    expect(filters.fieldFilters).toEqual({ valid_key: ["A"] });
+    expect(() =>
+      buildCanonicalFilters({
+        parameters: { ff: { valid_key: ["A"], "invalid key with spaces": ["B"], [longKey]: ["C"] }, rf: {} },
+      })
+    ).toThrow(/Invalid field filter key/);
+  });
+
+  it("rejects invalid range filter keys", () => {
+    expect(() => buildCanonicalFilters({ parameters: { ff: {}, rf: { "invalid key": { min: 1, max: 2 } } } })).toThrow(
+      /Invalid range filter key/
+    );
+  });
+
+  it("still ignores a well-formed filter entry that carries no constraint", () => {
+    const filters = buildCanonicalFilters({ parameters: { ff: { category: [] }, rf: { price: {} } } });
+
+    expect(filters.fieldFilters).toBeUndefined();
+    expect(filters.rangeFilters).toBeUndefined();
   });
 
   describe("scope constraints", () => {

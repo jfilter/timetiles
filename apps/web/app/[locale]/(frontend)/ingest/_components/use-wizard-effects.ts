@@ -70,14 +70,10 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
  * Combines wizard store state with live auth state from React Query.
  */
 export const useWizardCanProceed = (): boolean => {
-  const { currentStep, file, sheets, selectedCatalogId, sheetMappings, fieldMappings } = useWizardProceedState();
+  const proceedState = useWizardProceedState();
   const { isAuthenticated, isEmailVerified } = useAuthState();
 
-  return canProceedFromStep(
-    { currentStep, file, sheets, selectedCatalogId, sheetMappings, fieldMappings } as Parameters<
-      typeof canProceedFromStep
-    >[0],
-    isAuthenticated,
-    isEmailVerified
-  );
+  // No cast: the slice must structurally satisfy ProceedState, so a field the selector
+  // forgets is a compile error rather than an `undefined` that crashes at render time.
+  return canProceedFromStep(proceedState, isAuthenticated, isEmailVerified);
 };

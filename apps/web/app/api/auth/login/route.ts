@@ -68,8 +68,24 @@ export const POST = apiRoute({
         "Login failed"
       );
 
-      // Re-throw so the client receives Payload's standard error response.
-      if (error instanceof APIError) throw error;
+      // Every authentication failure returns ONE indistinguishable response. Payload throws
+      // AuthenticationError for an unknown email but LockedAuth ("This user is locked due to
+      // having too many failed login attempts") once maxLoginAttempts is hit — and only a
+      // registered address can ever accumulate attempts. Forwarding that message verbatim
+      // turned six requests into a reliable account-existence oracle, defeating the timing
+      // padding that /register and /forgot-password use for exactly this reason. The real
+      // cause is logged and audited above.
+      //
+      // A 403 from the deactivation hook is deliberately NOT collapsed: it is only reachable
+      // with correct credentials, so it reveals nothing the caller does not already know.
+      // Only genuine auth rejections are collapsed. An infrastructure failure (including the
+      // 500 thrown a few lines above when login returns no token, or a database error inside
+      // payload.login) must NOT come back as "invalid credentials": the caller's password was
+      // fine, and masking it as a 401 both misleads them and audits a false LOGIN_FAILED.
+      // A 403 is passed through — it is only reachable after the password check (unverified
+      // email, deactivated account), so it reveals nothing the caller does not already know.
+      if (!(error instanceof APIError)) throw error;
+      if (error.status >= 500 || error.status === 403) throw error;
       throw new AuthenticationError();
     }
   },

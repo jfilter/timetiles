@@ -15,7 +15,7 @@ import path from "node:path";
 import type { NextRequest } from "next/server";
 import type { Payload } from "payload";
 
-import { ValidationError } from "@/lib/api/errors";
+import { ForbiddenError, ValidationError } from "@/lib/api/errors";
 import { buildPlanFromWizard } from "@/lib/ingest/plan-builder";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type {
@@ -29,6 +29,7 @@ import type {
 } from "@/lib/ingest/types/wizard";
 import { createLogger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Dataset, IngestFile, User } from "@/payload-types";
 
 const logger = createLogger("import-configure-service");
@@ -99,6 +100,29 @@ export const translateSchemaMode = (
   }
 };
 
+/**
+ * Guards against configuring a dataset the caller has no claim to.
+ *
+ * `catalogId` has already been ownership-checked by {@link getOrCreateCatalog}, so
+ * requiring the dataset to live in that catalog is sufficient — and it is the only
+ * gate, because the Local API `update` below runs with `overrideAccess: true` and the
+ * datasets `beforeChange` hook skips its catalog check when `data.catalog` is absent.
+ */
+const assertDatasetBelongsToCatalog = async (payload: Payload, datasetId: number, catalogId: number): Promise<void> => {
+  const dataset = await payload.findByID({
+    collection: "datasets",
+    id: datasetId,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+  });
+
+  if (!dataset || extractRelationId(dataset.catalog) !== catalogId) {
+    logger.warn({ datasetId, catalogId }, "Rejected dataset configuration — dataset is not in the target catalog");
+    throw new ForbiddenError("You do not have permission to configure this dataset");
+  }
+};
+
 // Create or update dataset with wizard configuration
 /* oxlint-disable-next-line max-params -- Transform support requires an additional parameter */
 export const processDataset = async (
@@ -153,6 +177,12 @@ export const processDataset = async (
 
     return newDataset.id;
   }
+
+  // The caller's ownership of `catalogId` is already verified by getOrCreateCatalog, but
+  // `sheetMapping.datasetId` is attacker-controlled. Payload's Local API defaults to
+  // overrideAccess: true, so the datasets access rules never run on the update below —
+  // without this check any user could rewrite any other user's dataset configuration.
+  await assertDatasetBelongsToCatalog(payload, sheetMapping.datasetId, catalogId);
 
   // Check if dataset has events — if so, preserve existing idStrategy
   const eventCount = await payload.count({

@@ -195,7 +195,12 @@ export const createSchemaVersionJob = {
       // bug the merge exists to prevent. Reconciling removed fields needs a
       // dataset-level pass that can see every sheet/source feeding the dataset.
       if (fieldStats && Object.keys(fieldStats).length > 0) {
-        const fieldTypes = buildFieldTypes(fieldStats);
+        // `buildFieldTypes` returns null when no column falls into a type group (e.g. every
+        // column is free text). Merging that would evaluate as `'{}'::jsonb || 'null'::jsonb`,
+        // and jsonb `||` promotes a non-object operand to an array — the column would become
+        // `[{}, null]` and every later merge would append to that array instead of the object,
+        // permanently breaking the categorical filter UI. Merge an empty object instead.
+        const fieldTypes = buildFieldTypes(fieldStats) ?? {};
         await payload.db.drizzle
           .update(datasets)
           .set({

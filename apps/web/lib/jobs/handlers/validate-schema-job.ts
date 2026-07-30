@@ -160,7 +160,8 @@ export const validateSchemaJob = {
         processingOptions.schemaMode,
         comparison,
         dataset,
-        hasHighConfidenceTransforms
+        hasHighConfidenceTransforms,
+        processingOptions.autoApproveSchema
       );
       const approvalReason =
         schemaModeResult.approvalReason ?? getApprovalReason(hasHighConfidenceTransforms, comparison.isBreaking);

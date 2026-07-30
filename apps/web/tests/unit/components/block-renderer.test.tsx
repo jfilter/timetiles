@@ -26,10 +26,7 @@ import type { Block } from "@/lib/types/cms-blocks";
 
 import { renderWithProviders } from "../../setup/unit/react-render";
 
-const BLOCK_RENDERER_SOURCE = readFileSync(
-  join(process.cwd(), "components", "block-renderer.tsx"),
-  "utf8"
-) as unknown as string;
+const BLOCK_RENDERER_SOURCE = readFileSync(join(process.cwd(), "components", "block-renderer.tsx"), "utf8");
 
 /** Assert a Tailwind utility appears verbatim (whole token) in the scanned source. */
 const containsLiteralClass = (source: string, className: string): boolean =>
@@ -92,9 +89,7 @@ describe("BlockRenderer block style padding", () => {
 
   it("applies the configured padding to the block wrapper", () => {
     const { container } = renderWithProviders(
-      <BlockRenderer
-        blocks={[heroBlock({ blockStyle: { paddingTop: "lg", paddingBottom: "xl" } } as Partial<Block>)]}
-      />
+      <BlockRenderer blocks={[heroBlock({ blockStyle: { paddingTop: "lg", paddingBottom: "xl" } })]} />
     );
 
     const wrapper = container.querySelector('[data-block-type="hero"]');

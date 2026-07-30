@@ -236,7 +236,9 @@
     "beeswarmClusters": "{count, plural, one {# Cluster} other {# Cluster}}",
     "beeswarmChartSettings": "Diagrammeinstellungen",
     "beeswarmEventsCount": "{count, plural, one {# Ereignis} other {# Ereignisse}}",
-    "beeswarmOtherGroups": "Andere ({count})"
+    "beeswarmOtherGroups": "Andere ({count})",
+    "histogramEventsLabel": "Ereignisse",
+    "histogramTotalLabel": "Gesamt"
   },
   "Filters": {
     "dataSources": "Datenquellen",
@@ -843,7 +845,10 @@
     "selectDateOrderPlaceholder": "Datums-Reihenfolge auswählen...",
     "selectEndDateOrder": "In welcher Reihenfolge stehen die End-Datumsangaben? (D/M = Tag zuerst, M/D = Monat zuerst)",
     "selectEndDateOrderWithSample": "In welcher Reihenfolge stehen die End-Datumsangaben? (z. B. \"{sample}\" — D/M = Tag zuerst, M/D = Monat zuerst)",
-    "contentHashPreview": "Inhaltshash aller Felder"
+    "contentHashPreview": "Inhaltshash aller Felder",
+    "flowErrorNoPreviewId": "Keine Vorschau-ID angegeben. Bitte im Import-Assistenten starten.",
+    "flowErrorLoadFailed": "Daten konnten nicht geladen werden",
+    "flowErrorSheetNotFound": "Blatt {sheetIndex} nicht gefunden"
   },
   "ImportActivity": {
     "title": "Import-Aktivität",
@@ -871,6 +876,7 @@
     "statusProcessing": "Wird verarbeitet",
     "statusCompleted": "Abgeschlossen",
     "statusFailed": "Fehlgeschlagen",
+    "statusAwaitingReview": "Prüfung nötig",
     "statusActive": "Aktiv",
     "statusDisabled": "Deaktiviert",
     "statusRunning": "Läuft",
@@ -921,6 +927,7 @@
     "noSchedulesDescription": "Erstellen Sie einen geplanten Import, indem Sie Daten von einer URL im Import-Assistenten importieren.",
     "disabled": "Deaktiviert",
     "failed": "Fehlgeschlagen",
+    "awaitingReview": "Prüfung nötig",
     "active": "Aktiv",
     "lastRun": "Letzter Lauf: {date}",
     "nextRun": "Nächster Lauf: {date}",
@@ -937,7 +944,8 @@
     "monthly": "Monatlich",
     "strict": "Strikt",
     "additive": "Additiv",
-    "flexible": "Flexibel"
+    "flexible": "Flexibel",
+    "actionFailed": "Aktion fehlgeschlagen. Bitte erneut versuchen."
   },
   "Scrapers": {
     "title": "Scraper",
@@ -971,7 +979,8 @@
     "errorLabel": "Fehler",
     "triggeredVia": "über {trigger}",
     "outputRows": "{count, plural, one {# Zeile} other {# Zeilen}}",
-    "queued": "In Warteschlange"
+    "queued": "In Warteschlange",
+    "actionFailed": "Aktion fehlgeschlagen. Bitte erneut versuchen."
   },
   "Header": {
     "importData": "Daten importieren",
@@ -1041,7 +1050,8 @@
     "errorTitle": "Fehler beim Laden der Datenpakete",
     "errorSubtitle": "Bitte versuche es spaeter erneut",
     "emptyTitle": "Keine Datenpakete verfuegbar",
-    "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen"
+    "emptySubtitle": "Schau spaeter nach kuratierten Datenquellen",
+    "activatedByAnotherUser": "Von einem anderen Nutzer aktiviert"
   },
   "Footer": {
     "fundingText": "Gefördert 2025–2026 vom BMFTR (FKZ 16IS25S03)",

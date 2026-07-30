@@ -48,10 +48,13 @@ export interface UrlFetchJobInput {
   deferLifecycleUpdates?: boolean;
 }
 
+/** A Payload document id as it arrives from job input — absent when there is nothing to reference. */
+type OptionalDocId = string | number | undefined;
+
 interface ImportContext {
   originalName: string;
-  catalogId: string | number | undefined;
-  userId: string | number | undefined;
+  catalogId: OptionalDocId;
+  userId: OptionalDocId;
   scheduledIngestId: number | undefined;
   scheduledIngest: ScheduledIngest | null;
   advancedConfig: ScheduledIngest["advancedOptions"];
@@ -207,8 +210,8 @@ const assertScheduledIngestInputMatches = (
 };
 
 const buildSuccessOutput = (
-  ingestFileId: string | number,
-  filename: string,
+  ingestFileId: OptionalDocId,
+  filename: string | undefined,
   contentHash: string,
   isDuplicate: boolean,
   result: FetchRemoteDataResult
@@ -219,6 +222,7 @@ const buildSuccessOutput = (
       filename,
       contentHash,
       isDuplicate,
+      noRecords: false,
       contentType: result.mimeType,
       fileSize: result.data.length,
       ...(isDuplicate && { skippedReason: "Duplicate content detected" }),
@@ -436,6 +440,24 @@ export const urlFetchJob = {
         fileSize: result.data.length,
         wasConverted: result.wasConverted,
       });
+
+      // A successful fetch that yielded zero records is a successful run with nothing to
+      // import — an empty listing today is a valid answer, not a fault. Stop here rather
+      // than creating an ingest file whose schema detection would fail: that failure
+      // consumed a retry per empty day and eventually auto-disabled the schedule. This
+      // matches how the scraper path already treats a zero-row run (see auto-import.ts).
+      if (result.wasConverted && result.recordCount === 0) {
+        logger.info("URL fetch returned no records; nothing to import", {
+          sourceUrl: sanitizeUrlForLogging(effectiveInput.sourceUrl),
+          scheduledIngestId: input.scheduledIngestId,
+        });
+        if (scheduledIngest && !deferLifecycleUpdates) {
+          await updateScheduledIngestSuccess(payload, scheduledIngest, undefined, Date.now() - startTime);
+        }
+        // Built from the same helper so the output shape cannot drift from the normal path.
+        const empty = buildSuccessOutput(undefined, undefined, result.contentHash, false, result);
+        return { output: { ...empty.output, noRecords: true, skippedReason: "Source returned no records" } };
+      }
 
       // Check for duplicate content
       const importContext = createImportContext(effectiveInput, scheduledIngest);

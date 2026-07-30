@@ -186,6 +186,7 @@ describe.sequential("urlFetchJob", () => {
           filename: expect.stringContaining(".csv"),
           contentHash: expect.any(String),
           isDuplicate: false,
+          noRecords: false,
           contentType: "text/csv",
           fileSize: mockCsvData.length,
         },

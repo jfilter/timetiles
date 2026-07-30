@@ -95,12 +95,14 @@ const checkRequiresApproval = (
 ): boolean => comparison.isBreaking || !!dataset.schemaConfig?.locked || !dataset.schemaConfig?.autoApproveNonBreaking;
 
 // Helper function to determine approval requirement based on schema mode and dataset config
+/* oxlint-disable-next-line max-params -- one flag per decision input; grouping them would just move the noise */
 export const determineRequiresApproval = (
   schemaModeRequiresApproval: boolean | undefined,
   schemaMode: string | undefined,
   comparison: SchemaComparison,
   dataset: { schemaConfig?: { locked?: boolean | null; autoApproveNonBreaking?: boolean | null } | null },
-  hasHighConfidenceTransforms: boolean
+  hasHighConfidenceTransforms: boolean,
+  autoApproveSchema?: boolean | null
 ): boolean => {
   // If schema mode explicitly requires approval, return true
   if (schemaModeRequiresApproval) {
@@ -110,6 +112,16 @@ export const determineRequiresApproval = (
   if (schemaMode) {
     return false;
   }
+  // The source asked for unattended approval (scheduled ingest option, or a scraper's
+  // auto-import which hardcodes it). Honor it for non-breaking changes — this flag was
+  // written by three producers and read by none, so scraper runs whose target dataset was
+  // created in the admin UI (autoApproveNonBreaking defaults to false there) parked in
+  // NEEDS_REVIEW forever with no human in the loop to clear them. A breaking change or a
+  // locked schema still requires a human, as does a suspected field rename.
+  if (autoApproveSchema === true && !comparison.isBreaking && !dataset.schemaConfig?.locked) {
+    return hasHighConfidenceTransforms;
+  }
+
   // Fall back to dataset config check
   return checkRequiresApproval(comparison, dataset) || hasHighConfidenceTransforms;
 };

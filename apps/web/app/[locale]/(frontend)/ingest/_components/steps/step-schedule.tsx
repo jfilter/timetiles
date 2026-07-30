@@ -20,6 +20,7 @@ import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
 
 import { AuthConfigFields } from "../auth-config-fields";
+import { useWizardCanProceed } from "../use-wizard-effects";
 import { type ScheduleConfig, useWizardScheduleStepState } from "../wizard-store";
 
 export interface StepScheduleProps {
@@ -56,6 +57,7 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const t = useTranslations("Ingest");
+  const canProceed = useWizardCanProceed();
   const { sourceUrl, scheduleConfig, authConfig, file, editMode, nextStep, prevStep, configureSchedule, setUrlAuth } =
     useWizardScheduleStepState();
 
@@ -295,7 +297,7 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
                 t("oneTimeImport")
               )}
             </span>
-            <Button size="lg" onClick={nextStep} className="gap-2">
+            <Button size="lg" onClick={nextStep} disabled={!canProceed} className="gap-2">
               {t("continueToReview")}
               <ArrowRight className="h-4 w-4" />
             </Button>

@@ -26,6 +26,13 @@ import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
 import { useWizardStore } from "../../_components/wizard-store";
 
+/** Why the flow editor cannot render. Translated at the render site so keys stay literal. */
+export type FlowEditorError =
+  | { kind: "noPreviewId" }
+  | { kind: "loadFailed" }
+  | { kind: "sheetNotFound"; sheetIndex: number }
+  | { kind: "message"; message: string };
+
 type FlowNode = Node<SourceColumnNodeData | TargetFieldNodeData | TransformNodeData>;
 type FlowEdge = Edge<{ isValid: boolean; confidence?: number }>;
 
@@ -102,7 +109,7 @@ interface UseFlowEditorResult {
   onEdgesDelete: (deletedEdges: FlowEdge[]) => void;
   addTransformNode: (type: TransformType, position: { x: number; y: number }) => void;
   isLoading: boolean;
-  error: string | null;
+  error: FlowEditorError | null;
   sheetInfo: SheetInfo | null;
   serializeFlowState: () => FlowEditorResult;
 }
@@ -263,10 +270,17 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
 
   // Derive loading and error states
   const isLoading = !previewId ? false : queryLoading;
-  const error = (() => {
-    if (!previewId) return "No preview ID provided. Please start from the import wizard.";
-    if (queryError) return queryError instanceof Error ? queryError.message : "Failed to load data";
-    if (sheet === null && !queryLoading) return `Sheet ${sheetIndex} not found`;
+  // A discriminated CAUSE, not a sentence: these are rendered full-screen, and returning
+  // English from this hook meant /de showed English. The literals escaped the
+  // i18next/no-literal-string rule because they live in a .ts hook rather than in JSX.
+  // The render site switches on `kind` so every t() call keeps a literal key, which is what
+  // next-intl's types require. A server message is passed through — no key can express it.
+  const error = ((): FlowEditorError | null => {
+    if (!previewId) return { kind: "noPreviewId" };
+    if (queryError) {
+      return queryError instanceof Error ? { kind: "message", message: queryError.message } : { kind: "loadFailed" };
+    }
+    if (sheet === null && !queryLoading) return { kind: "sheetNotFound", sheetIndex };
     return null;
   })();
 

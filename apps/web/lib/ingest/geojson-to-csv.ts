@@ -289,11 +289,11 @@ export const convertGeoJsonToCsv = (buffer: Buffer, options?: GeoJsonToCsvOption
     throw new Error("Not a valid GeoJSON FeatureCollection or Feature.");
   }
 
+  // An empty FeatureCollection is valid GeoJSON and a legitimate answer from a source that
+  // simply has nothing to report today. Returning an empty result lets the caller record a
+  // successful run with nothing to import; throwing here burned a scheduled-ingest retry per
+  // empty day and eventually auto-disabled the schedule.
   const { features } = featureCollection;
-
-  if (features.length === 0) {
-    throw new Error("GeoJSON FeatureCollection contains no features.");
-  }
 
   const geometryTypes = new Set<string>();
   const rows: Record<string, unknown>[] = [];

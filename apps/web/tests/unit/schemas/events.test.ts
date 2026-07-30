@@ -36,11 +36,21 @@ describe("event schemas", () => {
       }
     });
 
-    it("defaults rf to an empty object when absent or malformed JSON", () => {
+    it("defaults rf to an empty object when absent", () => {
       const absent = EventFiltersSchema.safeParse({});
-      const malformed = EventFiltersSchema.safeParse({ rf: "not-json" });
       expect(absent.success && absent.data.rf).toEqual({});
-      expect(malformed.success && malformed.data.rf).toEqual({});
+    });
+
+    it("rejects malformed rf/ff JSON instead of silently returning unfiltered data", () => {
+      // Defaulting to {} made a broken filter return the FULL result set with HTTP 200 —
+      // the caller asked to narrow the data and got all of it.
+      expect(EventFiltersSchema.safeParse({ rf: "not-json" }).success).toBe(false);
+      expect(EventFiltersSchema.safeParse({ ff: "not-json" }).success).toBe(false);
+    });
+
+    it("rejects an ff key longer than the field-key limit", () => {
+      const longKey = "a".repeat(65);
+      expect(EventFiltersSchema.safeParse({ ff: JSON.stringify({ [longKey]: ["x"] }) }).success).toBe(false);
     });
 
     it("rejects an rf entry whose min exceeds its max", () => {

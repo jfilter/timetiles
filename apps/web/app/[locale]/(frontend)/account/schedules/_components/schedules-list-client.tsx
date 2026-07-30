@@ -63,6 +63,7 @@ const SCHEMA_MODE_KEYS = { strict: "strict", additive: "additive", flexible: "fl
 const STATUS_ICONS: Record<string, React.ReactNode> = {
   muted: <PauseCircleIcon className="h-3 w-3" />,
   error: <XCircleIcon className="h-3 w-3" />,
+  warning: <PauseCircleIcon className="h-3 w-3" />,
   success: <CheckCircle2Icon className="h-3 w-3" />,
 };
 
@@ -72,12 +73,14 @@ const getStatusBadge = (schedule: ScheduledIngest, t: TranslateFn) => {
   let label = t("active");
   if (variant === "muted") label = t("disabled");
   else if (variant === "error") label = t("failed");
+  else if (variant === "warning") label = t("awaitingReview");
   return <StatusBadge variant={variant} label={label} icon={STATUS_ICONS[variant]} />;
 };
 
 interface ScheduleCardProps {
   schedule: ScheduledIngest;
   loadingState?: string;
+  errorMessage?: string;
   onToggle: () => void;
   onEdit: () => void;
   onRun: () => void;
@@ -85,7 +88,16 @@ interface ScheduleCardProps {
   t: TranslateFn;
 }
 
-const ScheduleCard = ({ schedule, loadingState, onToggle, onEdit, onRun, onDelete, t }: ScheduleCardProps) => {
+const ScheduleCard = ({
+  schedule,
+  loadingState,
+  errorMessage,
+  onToggle,
+  onEdit,
+  onRun,
+  onDelete,
+  t,
+}: ScheduleCardProps) => {
   const isLoading = Boolean(loadingState);
 
   const frequencyKey = FREQUENCY_KEYS[schedule.frequency ?? "daily"];
@@ -178,6 +190,12 @@ const ScheduleCard = ({ schedule, loadingState, onToggle, onEdit, onRun, onDelet
             </Button>
           </div>
         </div>
+
+        {errorMessage != null && errorMessage !== "" && (
+          <p role="alert" className="text-destructive mt-3 text-sm">
+            {errorMessage}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -188,7 +206,13 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
   const tImport = useTranslations("Ingest");
   const router = useRouter();
   const { data: schedules = [] } = useScheduledIngestsQuery(initialSchedules);
-  const { states: loadingStates, setLoading, clearLoading } = useLoadingStates();
+  const { states: loadingStates, setLoading, clearLoading, errors, setError } = useLoadingStates();
+
+  /** Surface a failed row mutation — otherwise the spinner just clears and nothing changes. */
+  const rowHandlers = (id: number) => ({
+    onError: (error: unknown) => setError(id, error instanceof Error ? error.message : t("actionFailed")),
+    onSettled: () => clearLoading(id),
+  });
 
   const toggleMutation = useToggleScheduledIngestMutation();
   const deleteMutation = useDeleteScheduledIngestMutation();
@@ -196,7 +220,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
 
   const handleToggleEnabled = (id: number, currentEnabled: boolean) => {
     setLoading(id, "toggling");
-    toggleMutation.mutate({ id, enabled: !currentEnabled }, { onSettled: () => clearLoading(id) });
+    toggleMutation.mutate({ id, enabled: !currentEnabled }, rowHandlers(id));
   };
 
   const handleEdit = (id: number) => {
@@ -205,7 +229,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
 
   const handleManualRun = (id: number) => {
     setLoading(id, "running");
-    triggerMutation.mutate(id, { onSettled: () => clearLoading(id) });
+    triggerMutation.mutate(id, rowHandlers(id));
   };
 
   const { requestConfirm, confirmDialog } = useConfirmDialog();
@@ -218,7 +242,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
       variant: "destructive",
       onConfirm: () => {
         setLoading(id, "deleting");
-        deleteMutation.mutate(id, { onSettled: () => clearLoading(id) });
+        deleteMutation.mutate(id, rowHandlers(id));
       },
     });
   };
@@ -257,6 +281,7 @@ export const SchedulesListClient = ({ initialSchedules }: SchedulesListClientPro
               key={schedule.id}
               schedule={schedule}
               loadingState={loadingStates[schedule.id]}
+              errorMessage={errors[schedule.id]}
               onToggle={callbacks.onToggle}
               onEdit={callbacks.onEdit}
               onRun={callbacks.onRun}

@@ -38,6 +38,10 @@ import { buildSheetsFromWizardMetadata, processCSVFile, processExcelFile } from 
  * Convert GeoJSON or JSON files to CSV for pipeline processing.
  * Returns updated filePath and fileExtension, or null if no conversion needed.
  */
+/** Extensions the CSV parser handles. `.txt` is accepted on upload and by the URL fetcher
+ *  (a CSV served as `text/plain`), so it must not fall through to the Excel reader. */
+const CSV_LIKE_EXTENSIONS = new Set([".csv", ".txt"]);
+
 const convertToCsvIfNeeded = async (
   filePath: string,
   fileExtension: string
@@ -396,7 +400,9 @@ export const datasetDetectionJob = {
         }
 
         // xlsx library handles .xls, .xlsx, and .ods files
-        sheets = fileExtension === ".csv" ? await processCSVFile(filePath) : await processExcelFile(filePath);
+        sheets = CSV_LIKE_EXTENSIONS.has(fileExtension)
+          ? await processCSVFile(filePath)
+          : await processExcelFile(filePath);
       }
 
       if (sheets.length === 0) {

@@ -8,10 +8,11 @@
  * @module
  * @category Filters
  */
+import { ValidationError } from "@/lib/api/errors";
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 
 import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-filters";
-import { sanitizeFieldFilters, sanitizeRangeFilters } from "./field-validation";
+import { isValidFieldKey, sanitizeFieldFilters, sanitizeRangeFilters } from "./field-validation";
 
 /**
  * Options for building canonical event filters.
@@ -83,10 +84,17 @@ export const buildCanonicalFilters = ({
   // Field + numeric range filters (validate keys/bounds at construction time)
   applyDataFieldFilters(filters, parameters);
 
-  // H3 cell filter (precise spatial constraint)
-  if (parameters.clusterCells != null && parameters.h3Resolution != null) {
+  // H3 cell filter (precise spatial constraint).
+  //
+  // Cells that cannot be applied must deny, never fall through to "no spatial filter":
+  // `?clusterCells=8a2a...` with no `h3Resolution` used to return the whole dataset with
+  // HTTP 200. This mirrors buildH3CellSqlCondition, which emits FALSE when cells were
+  // requested but none survive validation.
+  if (parameters.clusterCells != null) {
     const cells = parameters.clusterCells.split(",").filter(Boolean);
-    if (cells.length > 0) {
+    if (cells.length === 0 || parameters.h3Resolution == null) {
+      filters.denyResults = true;
+    } else {
       filters.clusterCells = cells;
       filters.h3Resolution = parameters.h3Resolution;
     }
@@ -106,6 +114,15 @@ export const buildCanonicalFilters = ({
  * plan in resolveEventQueryContext, which also enforces the single-dataset gate.
  */
 const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  // A dropped filter must never degrade into "no filter". Sanitizing silently meant an
+  // unusable key (too long, invalid characters, too deep a path, empty value list) produced
+  // HTTP 200 with the FULL result set — the caller asked to narrow the data and got all of it.
+  // An unusable KEY is a client error — reject it. An entry with no constraint
+  // (empty value list, both bounds null) is benign and is still dropped silently.
+  const invalidFieldKeys = Object.keys(parameters.ff).filter((key) => !isValidFieldKey(key));
+  if (invalidFieldKeys.length > 0) {
+    throw new ValidationError(`Invalid field filter key(s): ${invalidFieldKeys.join(", ")}`);
+  }
   if (Object.keys(parameters.ff).length > 0) {
     const sanitized = sanitizeFieldFilters(parameters.ff);
     if (Object.keys(sanitized).length > 0) {
@@ -113,6 +130,10 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
     }
   }
 
+  const invalidRangeKeys = Object.keys(parameters.rf).filter((key) => !isValidFieldKey(key));
+  if (invalidRangeKeys.length > 0) {
+    throw new ValidationError(`Invalid range filter key(s): ${invalidRangeKeys.join(", ")}`);
+  }
   if (Object.keys(parameters.rf).length > 0) {
     const sanitizedRanges = sanitizeRangeFilters(parameters.rf);
     if (Object.keys(sanitizedRanges).length > 0) {
@@ -124,10 +145,11 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
 /**
  * Apply the start/end date range, normalizing the end to the full day.
  *
- * Drops an inverted pair (start after end) instead of emitting an always-empty
- * SQL window — mirrors sanitizeRangeFilters' min>max handling for numeric
- * ranges, so both range kinds are defended symmetrically against an inverted
- * filter slipping past.
+ * An inverted pair (start after end) describes an EMPTY interval, so it must match nothing.
+ * Dropping both bounds instead made the request fail OPEN: `?startDate=2026-06-01&
+ * endDate=2026-01-01` returned every accessible event with HTTP 200, while the UI still
+ * showed the date range as an active filter. `denyResults` is the established idiom here
+ * for "these filters are well-formed but can match no row" (see applyScopeConstraints).
  */
 const applyDateRange = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
   const normalizedEnd = normalizeEndDate(parameters.endDate ?? null);
@@ -135,7 +157,10 @@ const applyDateRange = (filters: CanonicalEventFilters, parameters: EventQueryPa
   const endTs = normalizedEnd != null ? Date.parse(normalizedEnd) : null;
   const inverted =
     startTs != null && endTs != null && Number.isFinite(startTs) && Number.isFinite(endTs) && startTs > endTs;
-  if (inverted) return;
+  if (inverted) {
+    filters.denyResults = true;
+    return;
+  }
 
   if (parameters.startDate != null) {
     filters.startDate = parameters.startDate;

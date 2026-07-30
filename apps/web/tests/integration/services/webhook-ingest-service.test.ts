@@ -241,7 +241,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(result.output.ingestFileId).toBeDefined();
 
       // Check if successful and has ingestFileId
-      if (!("ingestFileId" in result.output)) {
+      if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
       expect(result.output.ingestFileId).toBeDefined();
@@ -308,7 +308,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       expect(result.output.ingestFileId).toBeDefined();
 
       // Check if successful and has ingestFileId
-      if (!("ingestFileId" in result.output)) {
+      if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
 
@@ -352,9 +352,8 @@ describe.sequential("Webhook Import Service Integration", () => {
         },
       });
 
-      expect(result1.output.ingestFileId).toBeDefined();
-      if (!("isDuplicate" in result1.output)) {
-        throw new Error("Expected result with isDuplicate");
+      if (result1.output.ingestFileId == null) {
+        throw new Error("Expected successful result with ingestFileId");
       }
       expect(result1.output.isDuplicate).toBe(false);
       const firstFileId = result1.output.ingestFileId;
@@ -386,9 +385,8 @@ describe.sequential("Webhook Import Service Integration", () => {
         },
       });
 
-      expect(result2.output.ingestFileId).toBeDefined();
-      if (!("isDuplicate" in result2.output)) {
-        throw new Error("Expected result with isDuplicate");
+      if (result2.output.ingestFileId == null) {
+        throw new Error("Expected successful result with ingestFileId");
       }
       expect(result2.output.isDuplicate).toBe(true);
       expect(result2.output.skippedReason).toBe("Duplicate content detected");
@@ -424,7 +422,7 @@ describe.sequential("Webhook Import Service Integration", () => {
         },
       });
 
-      if (!("ingestFileId" in result1.output)) {
+      if (result1.output.ingestFileId == null) {
         throw new Error("Expected result with ingestFileId");
       }
       const firstFileId = result1.output.ingestFileId;
@@ -703,7 +701,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       });
 
       // Check if successful and has ingestFileId
-      if (!("ingestFileId" in result.output)) {
+      if (result.output.ingestFileId == null) {
         throw new Error("Expected successful result with ingestFileId");
       }
 

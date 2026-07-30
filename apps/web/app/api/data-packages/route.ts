@@ -15,7 +15,7 @@ export const GET = apiRoute({
     const slugs = manifests.map((m) => m.slug);
 
     // Only fetch activation status for authenticated users
-    const statusMap = user ? await getActivationStatus(payload, slugs) : new Map();
+    const statusMap = user ? await getActivationStatus(payload, slugs, user.id) : new Map();
 
     const packages: DataPackageListItem[] = manifests.map((manifest) => {
       const activation = statusMap.get(manifest.slug);
@@ -23,7 +23,9 @@ export const GET = apiRoute({
         ...manifest,
         // Strip auth secrets from response
         source: { ...manifest.source, auth: manifest.source.auth ? { type: manifest.source.auth.type } : undefined },
-        activated: !!activation,
+        // `enabled` matters: a deactivated package kept reporting "Activated", so the UI
+        // only ever offered Deactivate and there was no way back on.
+        activated: activation?.enabled === true,
         activation,
       };
     });

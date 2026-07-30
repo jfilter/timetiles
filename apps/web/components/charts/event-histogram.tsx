@@ -15,7 +15,7 @@ import type { TimeHistogramSeries } from "@timetiles/ui/charts";
 import { DATASET_COLORS, TimeHistogram, useChartTheme } from "@timetiles/ui/charts";
 import { LabeledSlider } from "@timetiles/ui/components/labeled-slider";
 import { useLocale, useTranslations } from "next-intl";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { expandGroupNames } from "@/components/charts/event-beeswarm";
 import { EMPTY_ARRAY } from "@/lib/constants/empty";
@@ -30,7 +30,8 @@ import type { BaseChartProps } from "./types";
 /** Aggregate temporal-cluster items into stacked histogram series. */
 const buildGroupedSeries = (
   items: Array<{ groupName: string | null; count: number; bucketStart: string }>,
-  maxGroups: number
+  maxGroups: number,
+  otherLabel: (count: number) => string
 ): TimeHistogramSeries[] | undefined => {
   const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
   for (const item of items) {
@@ -70,7 +71,7 @@ const buildGroupedSeries = (
         otherBuckets.set(date, (otherBuckets.get(date) ?? 0) + count);
       }
     }
-    series.push({ name: `Other (${otherGroups.length})`, color: "#9ca3af", data: zeroFill(otherBuckets) });
+    series.push({ name: otherLabel(otherGroups.length), color: "#9ca3af", data: zeroFill(otherBuckets) });
   }
 
   return series.length > 0 ? series : undefined;
@@ -106,6 +107,9 @@ export const EventHistogram = ({
 
   const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
+  // Same merged-series label the beeswarm uses, so both charts read alike under /de.
+  const otherLabel = useCallback((count: number) => t("beeswarmOtherGroups", { count }), [t]);
+
   const isGrouped = groupBy !== "none";
   const boundsOrNull = bounds ?? null;
 
@@ -126,8 +130,10 @@ export const EventHistogram = ({
 
   const groupedData = useMemo<TimeHistogramSeries[] | undefined>(
     () =>
-      isGrouped && clustersQuery.data?.items ? buildGroupedSeries(clustersQuery.data.items, maxGroups) : undefined,
-    [isGrouped, clustersQuery.data?.items, maxGroups]
+      isGrouped && clustersQuery.data?.items
+        ? buildGroupedSeries(clustersQuery.data.items, maxGroups, otherLabel)
+        : undefined,
+    [isGrouped, clustersQuery.data?.items, maxGroups, otherLabel]
   );
 
   // Pick loading/error state from the active query (grouped vs ungrouped)
@@ -149,6 +155,8 @@ export const EventHistogram = ({
         bucketSizeSeconds={bucketSizeSeconds}
         showDataZoom={showDataZoom}
         locale={locale}
+        eventsLabel={t("histogramEventsLabel")}
+        totalLabel={t("histogramTotalLabel")}
       />
       {showControls && isGrouped && onMaxGroupsChange && (
         <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">

@@ -83,7 +83,13 @@ export class GeocodingService {
    * intentionally does not, so providers stay testable while disabled.
    */
   async isEnabled(): Promise<boolean> {
-    await this.initialize();
+    // Deliberately loads only the settings, not the providers. `initialize()` also calls
+    // `loadProviders()`, which throws when none are configured — so asking "is geocoding on?"
+    // used to THROW on an instance with geocoding switched off and no providers, failing the
+    // import instead of skipping the stage. A kill-switch check must never be able to fail.
+    if (!this.initialized) {
+      await this.loadSettings();
+    }
     return this.settings?.enabled !== false;
   }
 

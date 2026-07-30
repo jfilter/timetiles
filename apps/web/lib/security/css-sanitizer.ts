@@ -64,10 +64,13 @@ const isForbiddenDeclaration = (decl: Declaration): boolean => {
   // javascript:/expression: schemes in values
   if (/(javascript|expression)\s*:/i.test(decl.value)) return true;
 
-  // Reject any backslash-encoded escapes — attackers use them to smuggle
-  // keywords like `j\61 vascript` past string filters, and we have no
-  // legitimate need for them in an admin-scoped stylesheet.
-  if (/\\[0-9a-f]/i.test(decl.value)) return true;
+  // Reject ANY backslash — attackers use CSS escapes to smuggle keywords past the
+  // string filters above, and we have no legitimate need for them in an admin-scoped
+  // stylesheet. This must not be narrowed to hex escapes (`\\[0-9a-f]`): CSS also
+  // allows escaping an ordinary character, so `\u\r\l(...)` tokenizes as `url(...)`
+  // while matching none of the patterns above. The property name is checked too —
+  // `\70 osition` would otherwise slip past FORBIDDEN_PROPERTIES.
+  if (decl.value.includes("\\") || decl.prop.includes("\\")) return true;
 
   return false;
 };

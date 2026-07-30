@@ -30,6 +30,45 @@ import {
   useDeactivateDataPackageMutation,
 } from "@/lib/hooks/use-data-packages-query";
 
+/**
+ * The action available for a package.
+ *
+ * Activation is instance-wide (dataPackageSlug is uniquely indexed), so a package activated
+ * by someone else is neither activatable nor deactivatable by this user — offering either
+ * button produced a 409 or a 403. Show the state instead.
+ */
+const renderPackageAction = ({
+  pkg,
+  isPending,
+  t,
+  onDeactivate,
+  onActivate,
+}: {
+  pkg: DataPackageListItem;
+  isPending: boolean;
+  t: ReturnType<typeof useTranslations<"DataPackages">>;
+  onDeactivate: () => void;
+  onActivate: () => void;
+}) => {
+  if (pkg.activated && pkg.activation?.ownedByCaller !== true) {
+    return <span className="text-muted-foreground text-sm">{t("activatedByAnotherUser")}</span>;
+  }
+
+  if (pkg.activated) {
+    return (
+      <Button variant="outline" size="sm" onClick={onDeactivate} disabled={isPending}>
+        {t("deactivate")}
+      </Button>
+    );
+  }
+
+  return (
+    <Button size="sm" onClick={onActivate} disabled={isPending}>
+      {t("activate")}
+    </Button>
+  );
+};
+
 const formatNumber = (n: number): string => {
   if (n >= 1000) return `~${Math.round(n / 1000)}k`;
   return String(n);
@@ -89,15 +128,13 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
         </CardContent>
 
         <CardFooter>
-          {pkg.activated ? (
-            <Button variant="outline" size="sm" onClick={handleDeactivate} disabled={isPending}>
-              {t("deactivate")}
-            </Button>
-          ) : (
-            <Button size="sm" onClick={() => setConfirmOpen(true)} disabled={isPending}>
-              {t("activate")}
-            </Button>
-          )}
+          {renderPackageAction({
+            pkg,
+            isPending,
+            t,
+            onDeactivate: handleDeactivate,
+            onActivate: () => setConfirmOpen(true),
+          })}
         </CardFooter>
       </Card>
 

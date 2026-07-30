@@ -14,6 +14,7 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { getEnv } from "@/lib/config/env";
 import { getEmailBranding } from "@/lib/email/branding";
 import { getEmailTranslations } from "@/lib/email/i18n";
 import { buildAccountVerificationEmailHtml, buildResetPasswordEmailHtml } from "@/lib/email/templates";
@@ -36,6 +37,10 @@ const Users: CollectionConfig = {
   ...createCommonConfig({ versions: false, drafts: false }),
   auth: {
     useAPIKey: true,
+    // Payload defaults `cookies.secure` to false, so the session cookie went out without the
+    // Secure attribute — a single plaintext http:// request to this host (or a sibling
+    // subdomain) before HSTS is primed leaks the token in the clear.
+    cookies: { secure: getEnv().NODE_ENV === "production", sameSite: "Lax" },
     // Enable email verification token generation and direct-email fallback
     // This auto-adds _verified and _verificationToken fields
     //

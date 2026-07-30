@@ -39,32 +39,57 @@ const positionToValue = (position: number, min: number, max: number, isInteger: 
 const formatBound = (value: number, isInteger: boolean): string =>
   value.toLocaleString(undefined, isInteger ? { maximumFractionDigits: 0 } : { maximumFractionDigits: 4 });
 
+/**
+ * A number input that commits only on blur or Enter.
+ *
+ * Committing per keystroke made the min box unusable whenever the domain floor has more
+ * digits than the first thing you type: for a [1990, 2025] year field, typing "2" committed
+ * 2, which is <= the floor and therefore collapses to `null` (open end), which re-rendered
+ * the controlled input as empty — so no minimum starting below the floor could ever be
+ * entered. Holding a local draft while focused keeps the intermediate keystrokes out of
+ * the committed filter state.
+ */
 const NumberInput = ({
   value,
-  onChange,
+  onCommit,
   min,
   max,
   step,
   label,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCommit: (raw: string) => void;
   min: number;
   max: number;
   step: number | "any";
   label: string;
-}) => (
-  <input
-    type="number"
-    value={value}
-    onChange={onChange}
-    min={min}
-    max={max}
-    step={step}
-    aria-label={label}
-    className={NUMBER_INPUT_CLASS}
-  />
-);
+}) => {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  return (
+    <input
+      type="number"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== null) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          setDraft(null);
+        }
+      }}
+      min={min}
+      max={max}
+      step={step}
+      aria-label={label}
+      className={NUMBER_INPUT_CLASS}
+    />
+  );
+};
 
 export interface NumericRangeValue {
   min: number | null;
@@ -177,13 +202,13 @@ export const NumericRangeSlider = ({
   // Like the drag/keyboard paths, each side clamps against the other: an
   // intermediate keystroke producing min > max would otherwise hit the server's
   // Zod refine and 422 every events/stats/chart query until corrected.
-  const handleMinInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const parsed = e.target.value === "" ? null : Number(e.target.value);
+  const handleMinInput = (raw: string) => {
+    const parsed = raw === "" ? null : Number(raw);
     const nextMin = parsed != null && Number.isFinite(parsed) ? parsed : null;
     commit(Math.min(nextMin ?? min, value.max ?? max), value.max ?? max);
   };
-  const handleMaxInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const parsed = e.target.value === "" ? null : Number(e.target.value);
+  const handleMaxInput = (raw: string) => {
+    const parsed = raw === "" ? null : Number(raw);
     const nextMax = parsed != null && Number.isFinite(parsed) ? parsed : null;
     commit(value.min ?? min, Math.max(nextMax ?? max, value.min ?? min));
   };
@@ -244,7 +269,7 @@ export const NumericRangeSlider = ({
             <div className="flex items-center justify-center gap-2">
               <NumberInput
                 value={value.min == null ? "" : String(value.min)}
-                onChange={handleMinInput}
+                onCommit={handleMinInput}
                 min={min}
                 max={max}
                 step={step}
@@ -255,7 +280,7 @@ export const NumericRangeSlider = ({
               </span>
               <NumberInput
                 value={value.max == null ? "" : String(value.max)}
-                onChange={handleMaxInput}
+                onCommit={handleMaxInput}
                 min={min}
                 max={max}
                 step={step}

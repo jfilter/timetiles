@@ -32,7 +32,12 @@ const Media: CollectionConfig = {
       { name: "tablet", width: 1024, height: undefined, position: "centre" },
     ],
     adminThumbnail: "thumbnail",
-    mimeTypes: ["image/*"],
+    // Raster types only, enumerated deliberately. `image/*` accepted image/svg+xml, and an
+    // SVG is an active document: any authenticated user could upload one containing a
+    // <script>, and media `read` is public and served inline from this origin, so sending
+    // the file URL to an admin executed it with their session. There is no script-src CSP to
+    // fall back on. SVG also cannot be resized into the configured sizes anyway.
+    mimeTypes: ["image/png", "image/jpeg", "image/gif", "image/webp", "image/avif"],
   },
   admin: {
     useAsTitle: "filename",

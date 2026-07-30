@@ -33,6 +33,49 @@ type DataRecord = Record<string, unknown>;
 /** Default enum detection config — percentage mode scales across dataset sizes. */
 export const DEFAULT_ENUM_CONFIG = { enumThreshold: 10, enumMode: "percentage" as const };
 
+/** JSON-Schema `$ref` prefix quicktype emits for its named definitions. */
+const DEFINITIONS_PREFIX = "#/definitions/";
+
+/**
+ * Inline every `#/definitions/...` reference so the schema stands on its own.
+ *
+ * Quicktype hoists each nested object into `definitions` and refers to it by `$ref`.
+ * Downstream code (schema comparison, the categorical-filter UI, the stored dataset
+ * schema) has no resolver, so an unresolved `$ref` is an opaque node whose shape is
+ * simply lost. Inlining keeps the same information in a self-contained document.
+ *
+ * A recursive type (`Node` containing a `Node`) cannot be inlined finitely — those refs
+ * are left intact, which is no worse than the previous behavior and terminates.
+ */
+const inlineSchemaRefs = (root: SchemaProperty): SchemaProperty => {
+  const definitions = (root.definitions ?? {}) as Record<string, SchemaProperty>;
+
+  const resolve = (node: unknown, expanding: readonly string[]): unknown => {
+    if (Array.isArray(node)) return node.map((item) => resolve(item, expanding));
+    if (node === null || typeof node !== "object") return node;
+
+    const obj = node as SchemaProperty;
+    const ref = typeof obj.$ref === "string" ? obj.$ref : undefined;
+
+    if (ref?.startsWith(DEFINITIONS_PREFIX)) {
+      const name = ref.slice(DEFINITIONS_PREFIX.length);
+      const target = definitions[name];
+      // Unknown target or a cycle: keep the ref rather than looping forever.
+      if (!target || expanding.includes(name)) return { ...obj };
+      return resolve(target, [...expanding, name]);
+    }
+
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (key === "definitions") continue; // hoisted away by the inlining
+      out[key] = resolve(value, expanding);
+    }
+    return out;
+  };
+
+  return resolve(root, []) as SchemaProperty;
+};
+
 export class ProgressiveSchemaBuilder {
   private readonly state: SchemaBuilderState;
   private readonly config: {
@@ -263,26 +306,28 @@ export class ProgressiveSchemaBuilder {
         return this.buildManualSchema();
       }
 
-      // Quicktype might wrap the schema in a definitions structure
-      // Check if we have a $ref at the top level
-      if (schema.$ref && schema.definitions) {
-        // Extract the referenced schema from definitions
-        const refName = (schema.$ref as string).replace("#/definitions/", "");
-        const definitions = schema.definitions as Record<string, SchemaProperty>;
-        if (definitions[refName]) {
-          schema = definitions[refName]!;
-        }
-      }
+      // Quicktype emits every nested object as a named entry in `definitions` and refers to
+      // it by `$ref`. Resolving ONLY the top-level ref and then dropping `definitions` left
+      // dangling refs behind: a nested field like `user` was stored as
+      // `{"$ref": "#/definitions/User"}` with nothing to resolve it against, so its shape
+      // was lost — schema comparison could not see nested fields at all, and a breaking
+      // nested change auto-approved. Inline the whole graph so the stored schema is
+      // self-contained.
+      schema = inlineSchemaRefs(schema);
 
       // Ensure schema has the required top-level structure
       schema.type ??= "object";
       schema.properties ??= {};
 
       // For first import (no current schema), mark all fields as optional
-      // Only mark fields as required if they appear in 90%+ of records
+      // Only mark fields as required if they appear in 90%+ of records.
+      //
+      // Only TOP-LEVEL names belong here. `fieldStats` is keyed by dot-path, and pushing
+      // "user.name" into the root `required` is invalid JSON Schema — nothing at the root
+      // is named that. Requiredness for nested fields comes from the inlined definitions.
       const required: string[] = [];
       for (const [field, stats] of Object.entries(this.state.fieldStats)) {
-        if (stats.occurrences >= this.state.recordCount * 0.9) {
+        if (!field.includes(".") && stats.occurrences >= this.state.recordCount * 0.9) {
           required.push(field);
         }
       }

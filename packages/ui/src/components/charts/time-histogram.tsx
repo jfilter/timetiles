@@ -13,6 +13,7 @@
 import type { EChartsOption } from "echarts";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
+import { escapeHtml } from "../../lib/escape-html";
 import { BaseChart } from "./base-chart";
 import { ChartEmptyState } from "./chart-empty-state";
 import type { ChartTheme, EChartsEventParams } from "./types";
@@ -66,6 +67,10 @@ export interface TimeHistogramProps {
   onDataZoomChange?: (start: number, end: number) => void;
   /** BCP 47 locale for tooltip date formatting (defaults to the browser locale) */
   locale?: string;
+  /** Localized label for the per-bucket count row in the tooltip */
+  eventsLabel?: string;
+  /** Localized label for the total row in the stacked tooltip */
+  totalLabel?: string;
 }
 
 /**
@@ -264,7 +269,9 @@ const getTooltipConfig = (
   _darkMode: boolean,
   bucketSeconds: number | null | undefined,
   isStacked: boolean,
-  locale?: string
+  locale?: string,
+  eventsLabel = "Events",
+  totalLabel = "Total"
 ): NonNullable<EChartsOption["tooltip"]> => ({
   trigger: "axis" as const,
   backgroundColor: chartTheme.tooltipBackground,
@@ -294,17 +301,21 @@ const getTooltipConfig = (
     const pointCount = typeof point.data[1] === "number" ? point.data[1] : 0;
 
     if (!isStacked) {
-      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div>Events: ${pointCount.toLocaleString()}</div></div>`;
+      return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div>${escapeHtml(eventsLabel)}: ${pointCount.toLocaleString(locale)}</div></div>`;
     }
 
-    // Stacked: show each group's count
+    // Stacked: show each group's count. `seriesName` is a raw value from imported data and
+    // this string is rendered via innerHTML, so it must be escaped; `marker` is ECharts'
+    // own generated swatch markup and is intentionally left as-is.
     const total = histogramEntries.reduce((sum, entry) => sum + entry.data[1], 0);
     const rows = histogramEntries
       .filter((entry) => entry.data[1] > 0)
       .sort((a, b) => b.data[1] - a.data[1])
-      .map((entry) => `<div>${entry.marker} ${entry.seriesName}: ${entry.data[1].toLocaleString()}</div>`)
+      .map(
+        (entry) => `<div>${entry.marker} ${escapeHtml(entry.seriesName)}: ${entry.data[1].toLocaleString(locale)}</div>`
+      )
       .join("");
-    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div style="font-weight: 600;">Total: ${total.toLocaleString()}</div>${rows}</div>`;
+    return `<div style="padding: 4px 8px; max-width: 320px;"><div style="font-weight: 600;">${formatDateRange(startDate, endDate, bucketSeconds, locale)}</div><div style="font-weight: 600;">${escapeHtml(totalLabel)}: ${total.toLocaleString(locale)}</div>${rows}</div>`;
   },
 });
 
@@ -377,6 +388,8 @@ const buildHistogramChartOption = ({
   dataZoomStart,
   dataZoomEnd,
   locale,
+  eventsLabel,
+  totalLabel,
 }: {
   data: TimeHistogramDataItem[];
   groupedData: TimeHistogramSeries[] | undefined;
@@ -387,6 +400,8 @@ const buildHistogramChartOption = ({
   dataZoomStart: number | undefined;
   dataZoomEnd: number | undefined;
   locale: string | undefined;
+  eventsLabel: string | undefined;
+  totalLabel: string | undefined;
 }): EChartsOption => {
   const axisConfig = getAxisConfig(effectiveTheme);
   const hasGroupedLegend = Boolean(groupedData && groupedData.length > 1);
@@ -402,7 +417,15 @@ const buildHistogramChartOption = ({
       containLabel: true,
     },
     ...axisConfig,
-    tooltip: getTooltipConfig(effectiveTheme, isDark, bucketSizeSeconds, Boolean(groupedData), locale),
+    tooltip: getTooltipConfig(
+      effectiveTheme,
+      isDark,
+      bucketSizeSeconds,
+      Boolean(groupedData),
+      locale,
+      eventsLabel,
+      totalLabel
+    ),
     series: groupedData ? getStackedSeriesConfig(groupedData, effectiveTheme) : getSeriesConfig(effectiveTheme, data),
     ...(hasGroupedLegend
       ? {
@@ -460,6 +483,8 @@ export const TimeHistogram = ({
   dataZoomEnd,
   onDataZoomChange,
   locale,
+  eventsLabel,
+  totalLabel,
 }: TimeHistogramProps) => {
   const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
   const chartOption = buildHistogramChartOption({
@@ -472,6 +497,8 @@ export const TimeHistogram = ({
     dataZoomStart,
     dataZoomEnd,
     locale,
+    eventsLabel,
+    totalLabel,
   });
 
   const handleChartClick = (params: EChartsEventParams) => {

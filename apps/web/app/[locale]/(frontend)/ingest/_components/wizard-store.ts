@@ -606,6 +606,8 @@ export const useWizardProceedState = () =>
     file: state.file,
     sheets: state.sheets,
     selectedCatalogId: state.selectedCatalogId,
+    newCatalogName: state.newCatalogName,
     sheetMappings: state.sheetMappings,
     fieldMappings: state.fieldMappings,
+    scheduleConfig: state.scheduleConfig,
   }));

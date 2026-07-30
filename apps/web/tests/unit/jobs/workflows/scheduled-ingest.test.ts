@@ -18,12 +18,14 @@ vi.mock("@/lib/jobs/workflows/completion", () => ({ updateIngestFileStatus: vi.f
 vi.mock("@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils", () => ({
   loadScheduledIngestForLifecycle: vi.fn().mockResolvedValue({ id: 42, statistics: {}, executionHistory: [] }),
   updateScheduledIngestFailure: vi.fn().mockResolvedValue(undefined),
+  updateScheduledIngestPaused: vi.fn().mockResolvedValue(undefined),
   updateScheduledIngestSuccess: vi.fn().mockResolvedValue(undefined),
 }));
 
 import {
   loadScheduledIngestForLifecycle,
   updateScheduledIngestFailure,
+  updateScheduledIngestPaused,
   updateScheduledIngestSuccess,
 } from "@/lib/jobs/handlers/url-fetch-job/scheduled-ingest-utils";
 import { updateIngestFileStatus } from "@/lib/jobs/workflows/completion";
@@ -225,12 +227,34 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
-  it("should treat review-paused downstream jobs as a scheduled-ingest failure", async () => {
+  it("should resolve a review-paused run without counting it as a failure", async () => {
+    // A review pause is not a failure: the fetch and downstream jobs worked, a human simply
+    // has to approve something. Failing it incremented `currentRetries`, and because a
+    // paused run never reached updateScheduledIngestSuccess (which resets the counter), a
+    // feed that legitimately needs review each day auto-disabled itself after maxRetries
+    // runs — even though the owner approved every single one. The pending review is
+    // surfaced through the ingest job's NEEDS_REVIEW stage instead.
     mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
     mockReq.payload.find.mockResolvedValueOnce({ docs: [{ stage: "needs-review", reviewReason: "schema-drift" }] });
 
+    await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).resolves.toBeUndefined();
+
+    // Its own lifecycle state — not "failed" (which increments currentRetries and eventually
+    // auto-disables the schedule) and not "success" (which would inflate successfulRuns and
+    // claim an import that has not finished).
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
+    expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();
+    expect(updateScheduledIngestPaused).toHaveBeenCalledOnce();
+  });
+
+  it("should still fail the run when a downstream job actually failed", async () => {
+    mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
+    mockReq.payload.find.mockResolvedValueOnce({
+      docs: [{ stage: "failed", errorLog: { lastError: "geocoding provider unreachable" } }],
+    });
+
     await expect(handler(createWorkflowArgs(mockJob, tasks, mockReq))).rejects.toThrow(
-      "Scheduled ingest paused for review: schema-drift"
+      "geocoding provider unreachable"
     );
 
     expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
