@@ -106,9 +106,24 @@ describe("preProcessRecords", () => {
     ];
 
     const result = preProcessRecords(records, config);
-    // Record without uid is skipped (empty key), only uid=1 survives
+    // Grouping is a MERGE, not a filter. A record with no group key is still a record, so it
+    // passes through un-merged — silently dropping it truncated the import while the run
+    // still reported success.
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => r.title)).toEqual(["No UID", "Has UID"]);
+  });
+
+  it("should group by a nested dot-path", () => {
+    // `groupBy` is a path, like extractFields' `from`. A bare key lookup dropped every
+    // record when the path was nested, producing an empty CSV.
+    const records = [
+      { meta: { uid: 1 }, title: "First", startDate: "2024-06-01 10:00:00", endDate: "2024-06-01 12:00:00" },
+      { meta: { uid: 1 }, title: "Second", startDate: "2024-06-01 14:00:00", endDate: "2024-06-01 18:00:00" },
+    ];
+
+    const result = preProcessRecords(records, { ...config, groupBy: "meta.uid" });
+
     expect(result).toHaveLength(1);
-    expect(result[0]!.title).toBe("Has UID");
   });
 
   it("should handle ISO date format", () => {

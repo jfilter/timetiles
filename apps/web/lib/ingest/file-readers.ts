@@ -27,6 +27,19 @@ const getFileExtension = (filePath: string): string | undefined => filePath.toLo
 const isExcelExtension = (ext: string | undefined): boolean => ext !== undefined && EXCEL_EXTENSIONS.has(ext);
 
 /**
+ * Extensions parsed with the CSV reader.
+ *
+ * `.txt` belongs here because both the upload hooks and the URL fetcher accept
+ * `text/plain` — the common case is a CSV served without a `text/csv` content type
+ * (raw.githubusercontent.com and most plain file servers do exactly that). Papa's
+ * delimiter auto-detection handles the actual separator.
+ */
+const DELIMITED_TEXT_EXTENSIONS = new Set(["csv", "txt"]);
+
+const isDelimitedTextExtension = (ext: string | undefined): boolean =>
+  ext !== undefined && DELIMITED_TEXT_EXTENSIONS.has(ext);
+
+/**
  * Async generator that yields batches of rows from a file using streaming.
  *
  * For CSV files, uses Papa.parse's step callback with pause/resume backpressure —
@@ -45,7 +58,7 @@ export async function* streamBatchesFromFile(
   const fileExtension = getFileExtension(filePath);
 
   try {
-    if (fileExtension === "csv") {
+    if (isDelimitedTextExtension(fileExtension)) {
       yield* streamBatchesFromCSV(filePath, batchSize);
     } else if (isExcelExtension(fileExtension)) {
       const csvPath = getSidecarPath(filePath, sheetIndex);
@@ -244,7 +257,7 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
 export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise<number> => {
   const fileExtension = getFileExtension(filePath);
 
-  if (fileExtension === "csv") {
+  if (isDelimitedTextExtension(fileExtension)) {
     return countCsvRecords(filePath);
   } else if (isExcelExtension(fileExtension)) {
     // xlsx library handles .xls, .xlsx, and .ods files

@@ -8,10 +8,11 @@
  * @module
  * @category Filters
  */
+import { ValidationError } from "@/lib/api/errors";
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 
 import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-filters";
-import { sanitizeFieldFilters, sanitizeRangeFilters } from "./field-validation";
+import { isValidFieldKey, sanitizeFieldFilters, sanitizeRangeFilters } from "./field-validation";
 
 /**
  * Options for building canonical event filters.
@@ -106,6 +107,15 @@ export const buildCanonicalFilters = ({
  * plan in resolveEventQueryContext, which also enforces the single-dataset gate.
  */
 const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: EventQueryParams): void => {
+  // A dropped filter must never degrade into "no filter". Sanitizing silently meant an
+  // unusable key (too long, invalid characters, too deep a path, empty value list) produced
+  // HTTP 200 with the FULL result set — the caller asked to narrow the data and got all of it.
+  // An unusable KEY is a client error — reject it. An entry with no constraint
+  // (empty value list, both bounds null) is benign and is still dropped silently.
+  const invalidFieldKeys = Object.keys(parameters.ff).filter((key) => !isValidFieldKey(key));
+  if (invalidFieldKeys.length > 0) {
+    throw new ValidationError(`Invalid field filter key(s): ${invalidFieldKeys.join(", ")}`);
+  }
   if (Object.keys(parameters.ff).length > 0) {
     const sanitized = sanitizeFieldFilters(parameters.ff);
     if (Object.keys(sanitized).length > 0) {
@@ -113,6 +123,10 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
     }
   }
 
+  const invalidRangeKeys = Object.keys(parameters.rf).filter((key) => !isValidFieldKey(key));
+  if (invalidRangeKeys.length > 0) {
+    throw new ValidationError(`Invalid range filter key(s): ${invalidRangeKeys.join(", ")}`);
+  }
   if (Object.keys(parameters.rf).length > 0) {
     const sanitizedRanges = sanitizeRangeFilters(parameters.rf);
     if (Object.keys(sanitizedRanges).length > 0) {

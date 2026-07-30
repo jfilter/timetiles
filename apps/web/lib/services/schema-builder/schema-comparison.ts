@@ -33,7 +33,32 @@ interface ChangeDetectionContext {
   oldRequired: string[];
   newRequired: string[];
   changes: SchemaChange[];
+  /** Dotted path of the object being compared; empty at the top level. */
+  pathPrefix: string;
 }
+
+/** A property that is only a `$ref` — no inlined shape, so nothing can be concluded from it. */
+const isUnresolvedRef = (prop: SchemaProperty | undefined): boolean =>
+  typeof prop?.$ref === "string" && !prop.properties && !prop.type;
+
+/** Qualify a field name with its parent path so nested changes report `user.name`, not `name`. */
+const qualify = (pathPrefix: string, field: string): string => (pathPrefix ? `${pathPrefix}.${field}` : field);
+
+/**
+ * The nested object a property describes, if any.
+ *
+ * Handles both a plain object property and an array-of-objects, so
+ * `items[].sku` is compared the same way `user.name` is.
+ */
+const nestedShapeOf = (prop: SchemaProperty | undefined): SchemaProperty | undefined => {
+  if (!prop || typeof prop !== "object") return undefined;
+  if (prop.properties) return prop;
+  const { items } = prop;
+  if (items && typeof items === "object" && "properties" in items && items.properties) {
+    return items;
+  }
+  return undefined;
+};
 
 /**
  * Detects removed fields from schema.
@@ -44,10 +69,11 @@ const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
 
   for (const field of Object.keys(oldProps)) {
     if (!newProps[field]) {
+      const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
         type: "removed_field",
-        path: field,
-        details: { description: `Field '${field}' was removed` },
+        path,
+        details: { description: `Field '${path}' was removed` },
         severity: "error",
         autoApprovable: false,
       };
@@ -72,14 +98,15 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
   for (const field of Object.keys(newProps)) {
     if (!oldProps[field]) {
       const isRequired = newRequired.includes(field);
+      const path = qualify(context.pathPrefix, field);
 
       // For first imports, all new fields are non-breaking
       const isBreaking = !isFirstImport && isRequired;
 
       const change: SchemaChange = {
         type: "new_field",
-        path: field,
-        details: { description: `Field '${field}' was added${isRequired ? " (required)" : ""}`, required: isRequired },
+        path,
+        details: { description: `Field '${path}' was added${isRequired ? " (required)" : ""}`, required: isRequired },
         severity: isBreaking ? "error" : "info",
         autoApprovable: !isBreaking,
       };
@@ -140,20 +167,26 @@ const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
     const oldProp = oldProps[field]!;
     const newProp = newProps[field];
 
+    // A node that is nothing but an unresolved `$ref` carries no type information. Schemas
+    // stored before refs were inlined look like that, so comparing them would report a
+    // bogus "unknown -> object" type change for every nested field on the next import.
+    if (isUnresolvedRef(oldProp) || isUnresolvedRef(newProp)) continue;
+
     const oldType = getFieldType(oldProp);
     const newType = getFieldType(newProp);
 
     if (oldType !== newType) {
+      const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
         type: "type_change",
-        path: field,
-        details: { description: `Field '${field}' type changed from ${oldType} to ${newType}`, oldType, newType },
+        path,
+        details: { description: `Field '${path}' type changed from ${oldType} to ${newType}`, oldType, newType },
         severity: "error",
         autoApprovable: false,
       };
       changes.push(change);
       hasBreakingChanges = true;
-    } else if (detectEnumChanges(field, oldProp, newProp, changes)) {
+    } else if (detectEnumChanges(qualify(context.pathPrefix, field), oldProp, newProp, changes)) {
       hasBreakingChanges = true;
     }
   }
@@ -174,10 +207,11 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
   for (const field of addedRequired) {
     if (oldProps[field]) {
       // Field existed but became required (breaking)
+      const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
         type: "format_change",
-        path: field,
-        details: { description: `Field '${field}' became required` },
+        path,
+        details: { description: `Field '${path}' became required` },
         severity: "error",
         autoApprovable: false,
       };
@@ -189,10 +223,11 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
   for (const field of removedRequired) {
     if (newProps[field]) {
       // Field became optional (non-breaking)
+      const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
         type: "format_change",
-        path: field,
-        details: { description: `Field '${field}' became optional` },
+        path,
+        details: { description: `Field '${path}' became optional` },
         severity: "info",
         autoApprovable: true,
       };
@@ -206,24 +241,65 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
 /**
  * Compares two schemas and identifies changes.
  */
-export const compareSchemas = (oldSchema: SchemaProperty, newSchema: SchemaProperty): SchemaComparison => {
-  const changes: SchemaChange[] = [];
+/**
+ * Compare one object level, then descend into every child object present in both schemas.
+ *
+ * Detected schemas are NESTED (`{user: {properties: {name: ...}}}`), not flattened to dot
+ * paths, so comparing only the top level saw a changed child as an unchanged `object` on
+ * both sides. A removed or retyped nested field produced ZERO changes and `isBreaking:
+ * false`, which auto-approved a genuinely breaking schema change and imported against it.
+ *
+ * Cycle-guarded via the ANCESTOR chain, not a global visited set: a shared schema object
+ * legitimately referenced by two sibling fields must still be compared under each of them.
+ * Only a node that contains itself is skipped.
+ */
+const compareLevel = (
+  oldSchema: SchemaProperty,
+  newSchema: SchemaProperty,
+  pathPrefix: string,
+  changes: SchemaChange[],
+  ancestors: readonly SchemaProperty[]
+): boolean => {
+  if (ancestors.includes(oldSchema) || ancestors.includes(newSchema)) return false;
+  const chain = [...ancestors, oldSchema, newSchema];
+
+  const oldProps = oldSchema.properties ?? {};
+  const newProps = newSchema.properties ?? {};
 
   const context: ChangeDetectionContext = {
-    oldProps: oldSchema.properties ?? {},
-    newProps: newSchema.properties ?? {},
+    oldProps,
+    newProps,
     oldRequired: oldSchema.required ?? [],
     newRequired: newSchema.required ?? [],
     changes,
+    pathPrefix,
   };
 
-  // Run all detection phases
+  // Run all detection phases at this level
   const removedBreaking = detectRemovedFields(context);
   const addedBreaking = detectAddedFields(context);
   const modificationBreaking = detectFieldModifications(context);
   const requiredBreaking = detectRequiredFieldChanges(context);
 
-  const isBreaking = removedBreaking || addedBreaking || modificationBreaking || requiredBreaking;
+  let nestedBreaking = false;
+  for (const field of Object.keys(oldProps)) {
+    const oldNested = nestedShapeOf(oldProps[field]);
+    const newNested = nestedShapeOf(newProps[field]);
+    // Only descend when BOTH sides are still object-shaped; an object→scalar switch is
+    // already reported as a type change by detectFieldModifications.
+    if (!oldNested || !newNested) continue;
+    if (compareLevel(oldNested, newNested, qualify(pathPrefix, field), changes, chain)) {
+      nestedBreaking = true;
+    }
+  }
+
+  return removedBreaking || addedBreaking || modificationBreaking || requiredBreaking || nestedBreaking;
+};
+
+export const compareSchemas = (oldSchema: SchemaProperty, newSchema: SchemaProperty): SchemaComparison => {
+  const changes: SchemaChange[] = [];
+
+  const isBreaking = compareLevel(oldSchema, newSchema, "", changes, []);
 
   // Determine if changes require approval
   const requiresApproval = changes.some((c) => c.severity === "error" || c.severity === "warning");

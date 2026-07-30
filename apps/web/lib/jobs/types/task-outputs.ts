@@ -93,6 +93,8 @@ export interface CreateEventsOutput {
 export interface UrlFetchOutput {
   ingestFileId?: number | string;
   isDuplicate?: boolean;
+  /** True when the source responded successfully but carried no records. */
+  noRecords?: boolean;
   skippedReason?: string;
   reason?: string;
 }

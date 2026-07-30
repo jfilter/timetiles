@@ -185,6 +185,69 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
   }
 };
 
+/** Collect every dataset relationship a schedule payload references. */
+const collectReferencedDatasetIds = (data: Record<string, unknown> | undefined): Array<string | number> => {
+  const ids: Array<string | number> = [];
+
+  const push = (value: unknown): void => {
+    if (value == null) return;
+    const id = extractRelationId(value as { id: string | number } | string | number);
+    if (id != null) ids.push(id);
+  };
+
+  push(data?.dataset);
+
+  const multiSheet = data?.multiSheetConfig as { sheets?: Array<{ dataset?: unknown }> } | undefined;
+  for (const sheet of multiSheet?.sheets ?? []) push(sheet?.dataset);
+
+  return ids;
+};
+
+/**
+ * Validates that every dataset a schedule points at belongs to a catalog the user owns.
+ *
+ * `catalog` alone is not enough: `dataset` and `multiSheetConfig.sheets[].dataset` are plain
+ * writable relationships, so without this an owner could retarget their own schedule at a
+ * stranger's dataset and have the cron write attacker-controlled rows into it on every run.
+ * Public catalogs do not grant write access here: contributing an import into a public
+ * catalog goes through its own dataset, whereas naming a specific existing dataset is a
+ * targeted write. Privileged users (admin/editor) bypass, matching this collection's
+ * `update` access, which already lets them manage any schedule.
+ */
+const validateDatasetAccess = async (data: unknown, req: PayloadRequest): Promise<void> => {
+  const typedData = data as Record<string, unknown> | undefined;
+  if (!req.user || isPrivileged(req.user)) return;
+
+  const datasetIds = collectReferencedDatasetIds(typedData);
+  if (datasetIds.length === 0) return;
+
+  for (const datasetId of datasetIds) {
+    const dataset = await req.payload.findByID({
+      collection: "datasets",
+      id: datasetId,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+    });
+
+    const catalogId = dataset ? extractRelationId(dataset.catalog) : undefined;
+    const catalog =
+      catalogId == null
+        ? null
+        : await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+            depth: 0,
+            overrideAccess: true,
+            disableErrors: true,
+          });
+
+    if (!catalog || extractRelationId(catalog.createdBy) !== req.user.id) {
+      throw new Error("You do not have permission to use this dataset");
+    }
+  }
+};
+
 const trackScheduleQuotaUsage = async (
   req: PayloadRequest,
   ownerId: string | number,
@@ -340,6 +403,9 @@ const ScheduledIngests: CollectionConfig = {
 
         // Validate catalog access
         await validateCatalogAccess(data, req);
+
+        // Validate every referenced dataset — `catalog` alone leaves `dataset` unguarded
+        await validateDatasetAccess(data, req);
 
         // Validate URL
         if (data.sourceUrl) {

@@ -6,6 +6,7 @@
 
 import type { EChartsOption } from "echarts";
 
+import { escapeHtml } from "../../../lib/escape-html";
 import type { ChartTheme } from "../types";
 import { computeClusterSize } from "./sizing";
 import type { BeeswarmDataItem, BeeswarmSeries, BeeswarmYAxisConfig } from "./types";
@@ -22,15 +23,20 @@ const renderTooltip = (params: unknown, locale?: string): string => {
   if (!p.data || !Array.isArray(p.data) || p.data.length < 4) return "";
   const [, , , item] = p.data as [number, number, number, BeeswarmDataItem];
   const dateStr = formatTooltipDate(item.x, locale);
+  // Every interpolated value below originates in imported data — escape it, the tooltip
+  // string is rendered via innerHTML (ECharts renderMode defaults to "html").
   if (item.count) {
-    const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${p.seriesName}</div>` : "";
-    return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${item.count.toLocaleString()} events</div><div>${dateStr}</div>${datasetLine}</div>`;
+    const datasetLine = p.seriesName ? `<div style="opacity: 0.7;">${escapeHtml(p.seriesName)}</div>` : "";
+    // `label` carries the caller's localized count string; fall back only when absent.
+    const countLine = escapeHtml(item.label ?? `${item.count.toLocaleString(locale)} events`);
+    return `<div style="padding: 4px 8px;"><div style="font-weight: 600;">${countLine}</div><div>${dateStr}</div>${datasetLine}</div>`;
   }
+  const datasetName = item.dataset ?? p.seriesName;
   return `
           <div style="padding: 4px 8px; max-width: 250px;">
-            <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${item.label ?? dateStr}</div>
+            <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.label ?? dateStr)}</div>
             <div>${dateStr}</div>
-            ${(item.dataset ?? p.seriesName) ? `<div style="opacity: 0.7;">${item.dataset ?? p.seriesName}</div>` : ""}
+            ${datasetName ? `<div style="opacity: 0.7;">${escapeHtml(datasetName)}</div>` : ""}
           </div>
         `;
 };

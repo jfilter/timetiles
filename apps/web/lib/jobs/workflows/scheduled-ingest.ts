@@ -128,6 +128,17 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
         },
       })) as UrlFetchOutput;
 
+      // A source with nothing to report is a successful run, not a failure — failing here
+      // burned a retry per empty day until the schedule auto-disabled itself.
+      if (fetchResult.noRecords) {
+        const scheduledIngest = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
+        if (scheduledIngest) {
+          await updateScheduledIngestSuccess(req.payload, scheduledIngest, undefined, Date.now() - workflowStart);
+        }
+        logger.info("scheduled-ingest: source returned no records, nothing to import", { scheduledIngestId });
+        return;
+      }
+
       if (!fetchResult.ingestFileId) {
         throw new Error("Scheduled ingest did not create an ingest file.");
       }

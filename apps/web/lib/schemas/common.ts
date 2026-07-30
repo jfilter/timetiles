@@ -84,19 +84,28 @@ export const DateParamSchema = z.preprocess(
  * Field filters parameter (JSON-encoded record of field paths to value arrays).
  *
  * Parses `?ff={"category":["A","B"]}` into `Record<string, string[]>`.
- * Invalid JSON silently defaults to an empty object.
+ *
+ * An absent parameter defaults to an empty object. Malformed JSON does NOT — it
+ * fails validation, because silently substituting `{}` made a broken filter
+ * return the full, unfiltered result set with HTTP 200.
+ *
+ * Keys are capped at MAX_FIELD_KEY_LENGTH (64, mirrored here to keep this module
+ * dependency-free) so an over-long key is rejected rather than dropped later by
+ * `sanitizeFieldFilters` — same reason.
  */
 export const FieldFiltersParamSchema = z.preprocess(
   (val) => {
-    if (typeof val !== "string") return {};
+    if (val == null) return {};
+    if (typeof val !== "string") return val;
     try {
       return JSON.parse(val) as Record<string, unknown>;
     } catch {
-      return {};
+      // Surface as a validation error rather than an empty (fail-open) filter.
+      return val;
     }
   },
   z
-    .record(z.string().max(500), z.array(z.string().max(500)).max(100))
+    .record(z.string().max(64), z.array(z.string().max(500)).max(100))
     .default({})
     .refine((rec) => Object.keys(rec).length <= 20, { message: "Field filters may contain at most 20 keys" })
 );
@@ -112,11 +121,13 @@ export const FieldFiltersParamSchema = z.preprocess(
  */
 export const RangeFiltersParamSchema = z.preprocess(
   (val) => {
-    if (typeof val !== "string") return {};
+    if (val == null) return {};
+    if (typeof val !== "string") return val;
     try {
       return JSON.parse(val) as Record<string, unknown>;
     } catch {
-      return {};
+      // See FieldFiltersParamSchema: an empty fallback here silently returns unfiltered data.
+      return val;
     }
   },
   z

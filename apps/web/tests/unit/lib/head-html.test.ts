@@ -113,10 +113,7 @@ describe("buildCustomHeadElements", () => {
 
 describe("frontend layout head wiring", () => {
   it("renders the custom head elements inside <head>", () => {
-    const source: string = readFileSync(
-      join(process.cwd(), "app", "[locale]", "(frontend)", "layout.tsx"),
-      "utf8"
-    ) as unknown as string;
+    const source = readFileSync(join(process.cwd(), "app", "[locale]", "(frontend)", "layout.tsx"), "utf8");
 
     expect(source).toContain("buildCustomHeadElements");
     expect(source).toMatch(/<head>\{customHeadElements\}<\/head>/);

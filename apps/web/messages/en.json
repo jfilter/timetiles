@@ -236,7 +236,9 @@
     "beeswarmClusters": "{count, plural, one {# cluster} other {# clusters}}",
     "beeswarmChartSettings": "Chart settings",
     "beeswarmEventsCount": "{count, plural, one {# event} other {# events}}",
-    "beeswarmOtherGroups": "Other ({count})"
+    "beeswarmOtherGroups": "Other ({count})",
+    "histogramEventsLabel": "Events",
+    "histogramTotalLabel": "Total"
   },
   "Filters": {
     "dataSources": "Data Sources",

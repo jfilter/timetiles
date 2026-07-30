@@ -90,7 +90,8 @@ export const loadScheduledIngestForLifecycle = async (
 export const updateScheduledIngestSuccess = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
-  importFileId: number | string,
+  /** Absent when the run succeeded with nothing to import (empty source). */
+  importFileId: number | string | undefined,
   duration: number
 ): Promise<void> => {
   try {
@@ -102,7 +103,7 @@ export const updateScheduledIngestSuccess = async (
     executionHistory.unshift({
       executedAt: new Date().toISOString(),
       status: "success",
-      jobId: importFileId.toString(),
+      jobId: importFileId?.toString(),
       duration,
     });
 

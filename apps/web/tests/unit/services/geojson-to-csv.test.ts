@@ -447,9 +447,15 @@ describe("convertGeoJsonToCsv", () => {
     expect(parseFloat(rows[0]!.longitude!)).toBe(13.4);
   });
 
-  it("throws for empty FeatureCollection", () => {
+  it("returns zero features for an empty FeatureCollection", () => {
+    // An empty FeatureCollection is valid GeoJSON and a legitimate "nothing today" answer.
+    // Throwing made every empty day a scheduled-ingest failure that burned a retry.
     const geojson = makeFeatureCollection([]);
-    expect(() => convertGeoJsonToCsv(toBuffer(geojson))).toThrow("no features");
+
+    const result = convertGeoJsonToCsv(toBuffer(geojson));
+
+    expect(result.featureCount).toBe(0);
+    expect(result.geometryTypes).toEqual([]);
   });
 
   it("throws for invalid GeoJSON", () => {

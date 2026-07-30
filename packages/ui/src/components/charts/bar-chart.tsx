@@ -12,6 +12,7 @@
 import type { EChartsOption } from "echarts";
 
 import { defaultLightTheme } from "../../lib/chart-themes";
+import { escapeHtml } from "../../lib/escape-html";
 import { BaseChart } from "./base-chart";
 import { ChartEmptyState } from "./chart-empty-state";
 import type { BarChartDataItem, ChartTheme } from "./types";
@@ -124,7 +125,9 @@ export const BarChart = ({
         const idx = p.dataIndex ?? 0;
         const name = labels[idx] ?? "";
         const val = p.value ?? 0;
-        return `<strong>${name}</strong><br/>${val.toLocaleString()}`;
+        // `name` is a catalog/dataset name from imported data and this string is rendered
+        // via innerHTML (ECharts renderMode defaults to "html") — escape it.
+        return `<strong>${escapeHtml(name)}</strong><br/>${val.toLocaleString()}`;
       },
     },
 

@@ -160,10 +160,15 @@ describe("convertJsonToCsv", () => {
       expect(() => convertJsonToCsv(toBuffer(json))).toThrow("Could not find records array");
     });
 
-    it("should throw when top-level array is empty", () => {
+    it("should return zero records for an empty top-level array", () => {
+      // An empty array IS the records array — it just has no records today. Treating it as
+      // "could not find records array" turned a quiet upstream into a scheduled-ingest
+      // failure that consumed a retry and eventually auto-disabled the schedule.
       const json: unknown[] = [];
 
-      expect(() => convertJsonToCsv(toBuffer(json))).toThrow("Could not find records array");
+      const result = convertJsonToCsv(toBuffer(json));
+
+      expect(result.recordCount).toBe(0);
     });
   });
 });

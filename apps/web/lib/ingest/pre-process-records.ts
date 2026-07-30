@@ -128,25 +128,48 @@ export const preProcessRecords = (
   if (!config.groupBy) return records;
 
   const { groupBy, mergeFields } = config;
-  const groups = new Map<string, Record<string, unknown>[]>();
+
+  // Buckets in first-appearance order, so the output keeps the input's row order. Records
+  // with no group key get a bucket of their own instead of a synthetic string key — a
+  // synthetic key would share a namespace with real ones and could collide.
+  const buckets: Record<string, unknown>[][] = [];
+  const bucketByKey = new Map<string, Record<string, unknown>[]>();
+  let ungroupedCount = 0;
 
   for (const record of records) {
-    const key = String((record[groupBy] as string) ?? "");
-    if (!key) continue;
-    const group = groups.get(key);
-    if (group) {
-      group.push(record);
+    // `groupBy` is a path, same as extractFields' `from` — a bare key lookup would drop
+    // every record for a nested path.
+    const rawKey = getByPath(record, groupBy);
+    // Only scalars form a usable group key; an object would stringify to "[object Object]"
+    // and collapse unrelated records into one group.
+    const key =
+      typeof rawKey === "string" || typeof rawKey === "number" || typeof rawKey === "boolean" ? String(rawKey) : "";
+
+    if (!key) {
+      // A record with no group key is still a record. Grouping is a merge operation, not a
+      // filter — dropping these silently truncated the import while it reported success.
+      ungroupedCount++;
+      buckets.push([record]);
+      continue;
+    }
+
+    const existing = bucketByKey.get(key);
+    if (existing) {
+      existing.push(record);
     } else {
-      groups.set(key, [record]);
+      const bucket = [record];
+      bucketByKey.set(key, bucket);
+      buckets.push(bucket);
     }
   }
 
-  const merged = Array.from(groups.values()).map((group) => mergeGroup(group, mergeFields ?? {}));
+  const merged = buckets.map((bucket) => mergeGroup(bucket, mergeFields ?? {}));
 
   logger.info("Pre-processing complete", {
     inputRecords: records.length,
     outputRecords: merged.length,
     groupsCollapsed: records.length - merged.length,
+    ungroupedRecords: ungroupedCount,
   });
 
   return merged;

@@ -296,11 +296,13 @@ describe.sequential("JSON fetch integration", () => {
   // 9. Empty JSON response
   // -------------------------------------------------------------------------
   it("handles empty JSON array gracefully", async () => {
+    // An empty array is a valid "nothing today" answer, not a fault. Rejecting it made every
+    // quiet day a scheduled-ingest failure that consumed a retry.
     server.respondWithJSON("/api/empty", []);
 
-    await expect(fetchRemoteData({ sourceUrl: server.getUrl("/api/empty"), maxRetries: 0 })).rejects.toThrow(
-      "Could not find records"
-    );
+    const result = await fetchRemoteData({ sourceUrl: server.getUrl("/api/empty"), maxRetries: 0 });
+
+    expect(result.recordCount).toBe(0);
   });
 
   // -------------------------------------------------------------------------
