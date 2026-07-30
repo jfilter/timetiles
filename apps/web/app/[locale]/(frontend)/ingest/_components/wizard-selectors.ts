@@ -19,7 +19,32 @@ import { type WizardState, type WizardStep } from "./wizard-store";
  * @param isEmailVerified - Whether the user's email is verified
  * @returns true if the user can proceed to the next step
  */
-export const canProceedFromStep = (state: WizardState, isAuthenticated: boolean, isEmailVerified: boolean): boolean => {
+/**
+ * Exactly the state `canProceedFromStep` reads.
+ *
+ * Narrower than `WizardState` on purpose: the caller passes a store SLICE, and typing the
+ * parameter as the full state forced an `as` cast that silently hid two missing fields —
+ * `newCatalogName` was `undefined`, so `.trim()` threw and crashed step 3 for every user
+ * with no catalogs, while `scheduleConfig` being `undefined` made the step-5 cron gate a
+ * no-op. With this type the compiler catches the next omission.
+ */
+export type ProceedState = Pick<
+  WizardState,
+  | "currentStep"
+  | "file"
+  | "sheets"
+  | "selectedCatalogId"
+  | "newCatalogName"
+  | "sheetMappings"
+  | "fieldMappings"
+  | "scheduleConfig"
+>;
+
+export const canProceedFromStep = (
+  state: ProceedState,
+  isAuthenticated: boolean,
+  isEmailVerified: boolean
+): boolean => {
   switch (state.currentStep) {
     case 1:
       return isAuthenticated && isEmailVerified;
@@ -46,9 +71,11 @@ export const canProceedFromStep = (state: WizardState, isAuthenticated: boolean,
  * corrected. A whitespace-only name was worse: it is truthy, so a catalog literally named
  * " " was created.
  */
-const hasCompleteCatalogSelection = (state: WizardState): boolean => {
+const hasCompleteCatalogSelection = (state: ProceedState): boolean => {
   if (state.selectedCatalogId === null || state.sheetMappings.length === 0) return false;
-  if (state.selectedCatalogId === "new" && state.newCatalogName.trim() === "") return false;
+  // `?? ""` is defence in depth: the types now guarantee the field is present, but reading it
+  // off an incomplete store slice previously threw here and crashed the whole step.
+  if (state.selectedCatalogId === "new" && (state.newCatalogName ?? "").trim() === "") return false;
   return state.sheetMappings.every((m) => m.datasetId !== "new" || (m.newDatasetName ?? "").trim() !== "");
 };
 
@@ -61,7 +88,7 @@ const hasCompleteCatalogSelection = (state: WizardState): boolean => {
  * import had failed while it was actually running. Retrying then failed with "preview not
  * found", because the preview was already cleaned up.
  */
-const hasUsableSchedule = (state: WizardState): boolean => {
+const hasUsableSchedule = (state: ProceedState): boolean => {
   const config = state.scheduleConfig;
   if (!config?.enabled) return true;
   if (config.scheduleType !== "cron") return true;

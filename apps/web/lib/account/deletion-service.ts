@@ -384,8 +384,8 @@ export class AccountDeletionService {
       for (const mediaId of pendingMediaDeletes) {
         try {
           await this.payload.delete({ collection: "media", id: mediaId, overrideAccess: true });
-          result.dataDeleted.media++;
         } catch (error) {
+          result.dataDeleted.media--;
           logError(error, "Failed to delete user media during account deletion", { userId, mediaId });
         }
       }
@@ -590,9 +590,13 @@ export class AccountDeletionService {
     // adapter unlinks the original and its generated sizes as part of the delete, and an
     // irreversible filesystem effect must not run inside a transaction that can still roll
     // back. Collected here so the count is known while the query context is at hand.
+    // Counted here, not in the post-commit loop: finalizeAndAudit serializes `dataDeleted`
+    // into the audit row INSIDE the transaction, so incrementing later left the GDPR erasure
+    // record permanently claiming zero media. The loop decrements if a delete actually fails.
     const mediaDocs = await findUserDocs(this.payload, "media", userId);
     for (const item of mediaDocs) {
       pendingMediaDeletes.push(item.id);
+      result.dataDeleted.media++;
     }
 
     // Delete views created by this user
