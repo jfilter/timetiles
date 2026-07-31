@@ -56,6 +56,33 @@ describe("middleware embed headers", () => {
     );
   });
 
+  describe("uploaded files", () => {
+    // Uploads are served inline from this origin. The media collection no longer accepts
+    // SVG, but files stored before that restriction still are — only a response header can
+    // stop one of those executing script in a viewer's session.
+    it.each(["/api/media/file/logo.svg", "/api/media/file/photo.png", "/api/ingest-files/file/data.csv"])(
+      "sandboxes %s",
+      (pathname) => {
+        resetHeaders();
+        const response = middleware(createMockRequest(pathname) as never);
+
+        const csp = response.headers.get("Content-Security-Policy");
+        expect(csp).toContain("sandbox");
+        expect(csp).toContain("default-src 'none'");
+        expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+        expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+      }
+    );
+
+    it("does not sandbox a normal API route that merely mentions file", () => {
+      resetHeaders();
+      const response = middleware(createMockRequest("/api/v1/events/file-counts") as never);
+
+      expect(response.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'self'");
+      expect(response.headers.has("X-Content-Type-Options")).toBe(false);
+    });
+  });
+
   describe("non-embed routes", () => {
     it.each(["/", "/explore", "/de/explore", "/login", "/dashboard", "/embedded-page", "/api/v1/events"])(
       "sets X-Frame-Options DENY for %s",

@@ -21,11 +21,39 @@ import { routing } from "./i18n/routing";
 /** Matches `/embed`, `/{locale}/embed`, and any sub-paths. */
 const EMBED_ROUTE_PATTERN = /^\/(?:[a-z]{2}\/)?embed(?:\/|$)/;
 const API_ROUTE_PATTERN = /^\/api(?:\/|$)/;
+/** Payload serves uploaded files from `/api/{collection}/file/{filename}`. */
+const UPLOADED_FILE_PATTERN = /^\/api\/[^/]+\/file\//;
 
 const intlMiddleware = createMiddleware(routing);
 
+/**
+ * Neutralize uploaded files that a browser would otherwise treat as active documents.
+ *
+ * Uploads are served inline from this origin, so an SVG is a script-execution vector: the
+ * media collection no longer ACCEPTS svg, but files stored before that restriction are
+ * still served, and only a response header can defuse those. `sandbox` blocks scripts,
+ * forms and popups; `default-src 'none'` stops the file reaching back to the app; and
+ * `nosniff` keeps a mislabelled file from being re-interpreted as HTML.
+ *
+ * Raster images and downloads are unaffected — neither needs script, and inline styles are
+ * still permitted so SVG artwork renders correctly.
+ */
+const applyUploadedFileHeaders = (response: Response) => {
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox; frame-ancestors 'self'"
+  );
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  return response;
+};
+
 const applyFrameHeaders = (request: NextRequest, response: Response) => {
   const { pathname } = request.nextUrl;
+
+  if (UPLOADED_FILE_PATTERN.test(pathname)) {
+    return applyUploadedFileHeaders(response);
+  }
 
   if (EMBED_ROUTE_PATTERN.test(pathname)) {
     // Allow embedding from any origin

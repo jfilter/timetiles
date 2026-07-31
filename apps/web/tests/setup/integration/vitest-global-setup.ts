@@ -104,6 +104,58 @@ const buildTemplateUrl = (): string => {
 };
 
 /**
+ * Drop worker databases left over by earlier runs.
+ *
+ * A worker database is named after its fork's PID (`timetiles_test_<pid>`), so every run
+ * picks fresh names, and `teardown` deliberately keeps the template rather than cleaning up.
+ * Nothing ever dropped the clones: a local checkout had accumulated 611 of them at ~50 MB
+ * each — 26 GB — until Postgres ran the disk out and crashed mid-test.
+ *
+ * Pruning here rather than in `teardown` also covers the runs that never reach teardown
+ * (crash, timeout, `pkill`), which are exactly the ones that leak most.
+ *
+ * Databases with an open connection are skipped, so a suite running concurrently in another
+ * worktree keeps its own clone.
+ */
+const pruneStaleWorkerDatabases = async (): Promise<void> => {
+  const client = createDatabaseClient({ database: "postgres" });
+  let stale: string[] = [];
+
+  try {
+    await client.connect();
+    const result = await client.query(
+      `SELECT d.datname
+       FROM pg_database d
+       WHERE d.datname ~ '^timetiles_test_[0-9]+$'
+         AND NOT EXISTS (SELECT 1 FROM pg_stat_activity a WHERE a.datname = d.datname)`
+    );
+    stale = result.rows.map((row) => row.datname as string);
+  } catch (error) {
+    // Never fail the suite over housekeeping.
+    console.warn("[Global Setup] Could not list stale worker databases:", error);
+    return;
+  } finally {
+    await client.end();
+  }
+
+  if (stale.length === 0) {
+    return;
+  }
+
+  let dropped = 0;
+  for (const dbName of stale) {
+    try {
+      await dropDatabase(dbName, { ifExists: true });
+      dropped++;
+    } catch {
+      // A worker may have connected between the query and the drop — leave it for next run.
+    }
+  }
+
+  console.log(`[Global Setup] Dropped ${dropped} stale worker database(s)`);
+};
+
+/**
  * Vitest global setup function.
  * Creates template database with migrations if needed.
  */
@@ -122,6 +174,8 @@ export const setup = async (): Promise<void> => {
     console.error("[Global Setup] PostgreSQL not available:", error);
     throw error;
   }
+
+  await pruneStaleWorkerDatabases();
 
   // Check if valid template already exists (fast path for repeated runs)
   if (await databaseExists(TEMPLATE_DB_NAME)) {

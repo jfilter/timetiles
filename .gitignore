@@ -73,6 +73,7 @@ packages/assets/logos/latest/**/png/
 # Debug
 npm-debug.log*
 dev.log
+dev.log.1
 
 # Misc
 .DS_Store

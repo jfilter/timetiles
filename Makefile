@@ -175,6 +175,9 @@ jobs: ensure-infra
 # Logs are written to apps/web/dev.log for debugging (in addition to stdout)
 dev: ensure-infra
 	@echo "🚀 Starting development server..."
+	@# The logger appends, so without this the file grows across every dev session
+	@# forever — one checkout reached 923 MB. Keep the previous session as .1.
+	@if [ -f apps/web/dev.log ]; then mv -f apps/web/dev.log apps/web/dev.log.1; fi
 	LOG_FILE=dev.log exec pnpm --filter web dev
 
 # Start Storybook component explorer for the UI package
