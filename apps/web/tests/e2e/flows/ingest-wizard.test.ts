@@ -673,10 +673,13 @@ test.describe("Import Wizard - Error Handling", () => {
     // Upload may fail validation — use setInputFiles directly to avoid timeout in uploadFile()
     await page.locator('input[type="file"]').setInputFiles(emptyPath);
 
-    // Page should still be functional — the upload heading should remain visible
-    // or an error/warning message should be shown (exclude Next.js route announcer)
-    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
-    const errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)');
+    // Page should still be functional — the upload heading should remain visible, or an
+    // error/warning should be shown. Scoped to <main>: Next's route announcer and the footer
+    // newsletter form both keep a permanently-present role="alert" live region, so a
+    // page-wide query is a strict-mode violation regardless of what the wizard did.
+    const wizard = page.getByRole("main");
+    const uploadHeading = wizard.getByRole("heading", { name: /upload your data/i });
+    const errorMessage = wizard.locator('[role="alert"]');
     await expect(uploadHeading.or(errorMessage)).toBeVisible({ timeout: 10000 });
   });
 
@@ -686,10 +689,13 @@ test.describe("Import Wizard - Error Handling", () => {
     // Upload may fail validation — use setInputFiles directly to avoid timeout in uploadFile()
     await page.locator('input[type="file"]').setInputFiles(malformedPath);
 
-    // Page should still be functional — the upload heading should remain visible
-    // or an error/warning message should be shown (exclude Next.js route announcer)
-    const uploadHeading = page.getByRole("heading", { name: /upload your data/i });
-    const errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)');
+    // Page should still be functional — the upload heading should remain visible, or an
+    // error/warning should be shown. Scoped to <main>: Next's route announcer and the footer
+    // newsletter form both keep a permanently-present role="alert" live region, so a
+    // page-wide query is a strict-mode violation regardless of what the wizard did.
+    const wizard = page.getByRole("main");
+    const uploadHeading = wizard.getByRole("heading", { name: /upload your data/i });
+    const errorMessage = wizard.locator('[role="alert"]');
     await expect(uploadHeading.or(errorMessage)).toBeVisible({ timeout: 10000 });
   });
 });

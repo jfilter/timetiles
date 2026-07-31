@@ -189,9 +189,12 @@ test.describe("Navbar Authentication", () => {
       const submitButton = page.getByRole("button", { name: /sign in/i });
       await submitButton.click();
 
-      // Should show error message
-      const errorMessage = page.getByRole("alert");
+      // Scoped to the login form: Next's route announcer and the footer newsletter form both
+      // keep a role="alert" live region on every page, so an unscoped query is a strict-mode
+      // violation that never actually looked at the login error.
+      const errorMessage = page.locator("form:has(#login-email)").getByRole("alert");
       await expect(errorMessage).toBeVisible({ timeout: 5000 });
+      await expect(errorMessage).not.toBeEmpty();
 
       // Should still be on login page
       expect(page.url()).toContain("/login");

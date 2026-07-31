@@ -9,29 +9,44 @@
  */
 import type { APIRequestContext } from "@playwright/test";
 
-import { TEST_CREDENTIALS, TEST_EMAILS } from "../../constants/test-credentials";
+import { TEST_EMAILS } from "../../constants/test-credentials";
 import { expect, test } from "../fixtures";
 import { ExplorePage } from "../pages/explore.page";
 
 type ApiDoc = { id: number | string; name?: string; isPublic?: boolean; data?: { title?: string } };
 
 type PlaywrightRequestFactory = {
-  request: { newContext: (options: { baseURL: string }) => Promise<APIRequestContext> };
+  request: { newContext: (options: { baseURL: string; storageState?: string }) => Promise<APIRequestContext> };
 };
+
+/**
+ * Admin API context that REUSES the session `auth.setup` already established.
+ *
+ * Logging in again per test was the cause of a flaky 404: Payload keeps `useSessions` on, and
+ * `addSessionToUser` appends to `user.sessions` with a read-modify-write of the whole user
+ * document. Two concurrent logins of the same account lose one of the sessions, and the JWT
+ * strategy answers `user: null` for a token whose sid is gone — the request then continues
+ * silently as anonymous, so a private record it had just created came back 404. With
+ * `fullyParallel` workers all logging in as the seed admin, that also evicted the storageState
+ * session other test files depend on. Loading the saved cookie adds no session at all.
+ */
+const ADMIN_AUTH_FILE = "test-results/.auth/admin.json";
 
 const createAdminApi = async (
   playwright: PlaywrightRequestFactory,
   baseURL: string
 ): Promise<{ api: APIRequestContext; authHeaders: Record<string, string> }> => {
-  const api = await playwright.request.newContext({ baseURL });
-  const loginResponse = await api.post("/api/users/login", {
-    data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.seed.admin },
-    headers: { "Content-Type": "application/json" },
-  });
-  expect(loginResponse.status()).toBe(200);
+  const api = await playwright.request.newContext({ baseURL, storageState: ADMIN_AUTH_FILE });
+  const authHeaders = { "Content-Type": "application/json" };
 
-  const body = (await loginResponse.json()) as { token: string };
-  return { api, authHeaders: { Authorization: `JWT ${body.token}`, "Content-Type": "application/json" } };
+  // Assert we are actually somebody — Payload answers 200 with `user: null` when the cookie
+  // is not accepted, and every later failure would then be a misleading 403/404.
+  const me = await api.get("/api/users/me", { headers: authHeaders });
+  expect(me.status()).toBe(200);
+  const meBody = (await me.json()) as { user?: { email?: string } | null };
+  expect(meBody.user?.email).toBe(TEST_EMAILS.admin);
+
+  return { api, authHeaders };
 };
 
 const createPrivateCatalog = async (
@@ -338,9 +353,23 @@ test.describe("Access Control - User Perspective", () => {
       let ingestFile: ApiDoc | undefined;
 
       try {
+        // `ingest-files` is an upload collection, so a create needs an actual file part —
+        // a JSON body can only ever answer 400, which is what this assertion used to hit.
+        // The `user` relationship is required, so the owner has to be sent along too.
+        const me = await admin.api.get("/api/users/me", { headers: admin.authHeaders });
+        expect(me.status()).toBe(200);
+        const adminId = ((await me.json()) as { user: { id: number } }).user.id;
+
         const created = await admin.api.post("/api/ingest-files", {
-          data: { originalName: `e2e-private-import-${Date.now()}.csv`, status: "pending" },
-          headers: admin.authHeaders,
+          multipart: {
+            file: {
+              name: `e2e-private-import-${Date.now()}.csv`,
+              mimeType: "text/csv",
+              buffer: Buffer.from("name,value\nprivate,1\n"),
+            },
+            _payload: JSON.stringify({ originalName: `e2e-private-import-${Date.now()}.csv`, user: adminId }),
+          },
+          headers: { Authorization: admin.authHeaders.Authorization! },
         });
         expect(created.status()).toBe(201);
         ingestFile = ((await created.json()) as { doc: ApiDoc }).doc;
