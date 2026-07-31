@@ -146,7 +146,24 @@ const createDbAdapter = (
 ) =>
   postgresAdapter({
     ...DEFAULT_DB_CONFIG,
-    pool: { connectionString: databaseUrl ?? "", max: environment === "test" ? 5 : undefined, ...poolConfig },
+    pool: {
+      connectionString: databaseUrl ?? "",
+      max: environment === "test" ? 5 : undefined,
+      // Pin every connection's session time zone. Payload's postgres adapter maps timestamp
+      // columns in `mode: "string"`, so a row's date reaches Payload as the text Postgres
+      // rendered it in — and it then does `new Date(text).toISOString()`. Under a non-UTC
+      // session zone, a timestamp before that zone's first standard offset (pre-1900 almost
+      // everywhere, LMT) renders with a SECONDS-precision offset like `+00:53:28`, which
+      // JavaScript's date parser rejects. The read then throws `RangeError: Invalid time
+      // value` and takes the whole request with it — a historical event simply could not be
+      // stored or read. Under UTC the offset is always `+00`.
+      //
+      // It also removes an environment-dependent difference: the codebase treats every
+      // timestamp as UTC (histogram buckets, `formatISODate`, the explicit
+      // `AT TIME ZONE 'UTC'` in quota-service), so the session must not disagree.
+      options: "-c timezone=UTC",
+      ...poolConfig,
+    },
     prodMigrations: runMigrations ? DEFAULT_DB_CONFIG.prodMigrations : undefined,
   });
 

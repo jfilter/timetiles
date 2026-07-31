@@ -84,6 +84,10 @@ const getDefaultLeasePool = (payload: Payload): LeasePool => {
     max: LEASE_POOL_MAX,
     idleTimeoutMillis: LEASE_POOL_IDLE_TIMEOUT_MS,
     connectionTimeoutMillis: LEASE_POOL_CONNECT_TIMEOUT_MS,
+    // Same UTC pin as the work pool (see payload-config-factory). This pool only takes
+    // advisory locks today, but a second pool that silently disagrees about the session
+    // time zone is a trap waiting for the first query here that touches a timestamp.
+    options: "-c timezone=UTC",
   });
   // pg emits idle-client errors as pool events; without a listener they become
   // uncaught process errors. Log and let pg evict the broken client.
