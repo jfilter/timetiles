@@ -37,7 +37,12 @@ export interface CleanupStuckScrapersJobInput {
 }
 
 /**
- * Resets a stuck scraper to failed status.
+ * Cancel the workflow jobs an abandoned scraper run left behind.
+ *
+ * Errors deliberately propagate. Swallowing them and returning 0 made a transient database
+ * error permanent: the scraper had already been flipped out of `running`, and the reaper only
+ * ever looks at `lastRunStatus = "running"`, so the orphaned job kept its concurrency key
+ * forever with nothing left to revisit it.
  */
 const cancelOrphanedWorkflowJobs = async (
   payload: Payload,
@@ -47,42 +52,39 @@ const cancelOrphanedWorkflowJobs = async (
 ): Promise<number> => {
   const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
 
-  try {
-    const orphanedJobs = await asSystem(payload).find({
-      collection: "payload-jobs" as const,
-      where: {
-        and: [
-          // Must match the numeric form too. Job input is jsonb, and a string
-          // `equals` on a jsonb path compiles to a JSON *string* comparison —
-          // while every trigger path enqueues `scraperId` as a NUMBER. The
-          // string-only clause was therefore always false and this cancellation
-          // never ran, leaving orphaned jobs holding their concurrency key
-          // forever. buildResourceIdMatch covers both representations; the
-          // sibling hasActivePayloadJob check already uses it.
-          buildResourceIdMatch("input.scraperId", scraperId),
-          { processing: { equals: false } },
-          { completedAt: { exists: false } },
-          { createdAt: { less_than: orphanedJobCutoff } },
-        ],
-      },
-      limit: 50,
-      pagination: false,
-    });
+  const orphanedJobs = await asSystem(payload).find({
+    collection: "payload-jobs" as const,
+    where: {
+      and: [
+        // Must match the numeric form too. Job input is jsonb, and a string
+        // `equals` on a jsonb path compiles to a JSON *string* comparison —
+        // while every trigger path enqueues `scraperId` as a NUMBER. The
+        // string-only clause was therefore always false and this cancellation
+        // never ran, leaving orphaned jobs holding their concurrency key
+        // forever. buildResourceIdMatch covers both representations; the
+        // sibling hasActivePayloadJob check already uses it.
+        buildResourceIdMatch("input.scraperId", scraperId),
+        { processing: { equals: false } },
+        { completedAt: { exists: false } },
+        { createdAt: { less_than: orphanedJobCutoff } },
+      ],
+    },
+    // 0 lifts the limit; a fixed number would strand everything past it, since the scraper
+    // leaves `running` on the same pass (`pagination: false` does not lift an explicit limit).
+    limit: 0,
+    pagination: false,
+  });
 
-    let cancelled = 0;
-    for (const job of orphanedJobs.docs) {
-      await asSystem(payload).update({
-        collection: "payload-jobs" as const,
-        id: job.id,
-        data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
-      });
-      cancelled++;
-    }
-    return cancelled;
-  } catch (error) {
-    logError(error, "Failed to cancel orphaned scraper workflow jobs", { scraperId, orphanedJobCutoff });
-    return 0;
+  let cancelled = 0;
+  for (const job of orphanedJobs.docs) {
+    await asSystem(payload).update({
+      collection: "payload-jobs" as const,
+      id: job.id,
+      data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
+    });
+    cancelled++;
   }
+  return cancelled;
 };
 
 /**
@@ -93,31 +95,28 @@ const cancelOrphanedWorkflowJobs = async (
  * forever — skewing run stats and the run-log UI even after the scraper itself
  * is reset. Mirror the scheduled-ingest cleanup, which records the stuck run as
  * failed.
+ *
+ * Errors propagate for the same reason as in cancelOrphanedWorkflowJobs.
  */
 const failStuckScraperRuns = async (payload: Payload, scraperId: number, finishedAt: string): Promise<number> => {
-  try {
-    const stuck = await asSystem(payload).find({
+  const stuck = await asSystem(payload).find({
+    collection: "scraper-runs",
+    where: { scraper: { equals: scraperId }, status: { equals: "running" } },
+    limit: 0,
+    pagination: false,
+  });
+  for (const run of stuck.docs) {
+    await asSystem(payload).update({
       collection: "scraper-runs",
-      where: { scraper: { equals: scraperId }, status: { equals: "running" } },
-      limit: 50,
-      pagination: false,
+      id: run.id,
+      data: {
+        status: "failed",
+        finishedAt,
+        error: "Run auto-reset by cleanup: worker stopped before reporting a result.",
+      },
     });
-    for (const run of stuck.docs) {
-      await asSystem(payload).update({
-        collection: "scraper-runs",
-        id: run.id,
-        data: {
-          status: "failed",
-          finishedAt,
-          error: "Run auto-reset by cleanup: worker stopped before reporting a result.",
-        },
-      });
-    }
-    return stuck.docs.length;
-  } catch (error) {
-    logError(error, "Failed to fail stuck scraper runs", { scraperId });
-    return 0;
   }
+  return stuck.docs.length;
 };
 
 const resetStuckScraper = async (
@@ -129,6 +128,14 @@ const resetStuckScraper = async (
   const lastRunTime = scraper.lastRunAt ? parseDateInput(scraper.lastRunAt) : null;
   const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
+  // Dependent state first, scraper last. `lastRunStatus = "running"` is the only handle the
+  // reaper has on this scraper, so it must not be released until everything that depends on
+  // it is terminal — otherwise a failure here leaves an orphaned job or a "running" run
+  // record behind with no later pass able to see it. Both steps are idempotent, so retrying
+  // the whole scraper on the next hourly run is safe.
+  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
+  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
+
   // Update statistics (also increments totalRuns — a stuck run is still a run)
   const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
 
@@ -137,9 +144,6 @@ const resetStuckScraper = async (
     id: scraper.id,
     data: { lastRunStatus: "failed", statistics: updatedStats },
   });
-
-  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
-  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
 
   logger.info("Reset stuck scraper", {
     scraperId: scraper.id,

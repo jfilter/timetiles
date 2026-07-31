@@ -141,7 +141,9 @@ describe.sequential("cleanupStuckScrapersJob", () => {
           { createdAt: { less_than: expect.any(String) } },
         ],
       },
-      limit: 50,
+      // 0, not a fixed page: the scraper leaves `running` on this same pass, so anything
+      // past a capped page would never be revisited.
+      limit: 0,
       pagination: false,
     });
     expect(mockPayload.update).toHaveBeenCalledWith({
@@ -150,6 +152,29 @@ describe.sequential("cleanupStuckScrapersJob", () => {
       overrideAccess: true,
       data: { completedAt: expect.any(String), hasError: true, processing: false },
     });
+  });
+
+  /**
+   * `lastRunStatus = "running"` is the only handle the reaper has on a scraper. Flipping it
+   * before the dependent cleanup meant a transient failure there was permanent: no later run
+   * could see the scraper again, so the orphaned job kept its concurrency key forever.
+   */
+  it("leaves the scraper running when dependent cleanup fails, so the next run retries", async () => {
+    const scraper = createMockScraper({ id: 9 });
+    mockPayload.find.mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 }).mockRejectedValueOnce(new Error("boom"));
+
+    const context = createMockContext();
+    const result = await cleanupStuckScrapersJob.handler(context as any);
+
+    expect(result.output).toEqual(
+      expect.objectContaining({
+        success: true,
+        stuckCount: 1,
+        resetCount: 0,
+        errors: [{ id: "9", name: "Test Scraper", error: "boom" }],
+      })
+    );
+    expect(mockPayload.update).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "scrapers" }));
   });
 
   it("should skip a scraper that has an active Payload job", async () => {

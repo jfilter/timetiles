@@ -90,6 +90,12 @@ const buildCatalogCondition = (catalogId?: number, catalogIds?: number[]): SqlFr
 };
 
 const buildEventAccessCondition = (filters: CanonicalEventFilters): SqlFragment => {
+  // A privileged user reads every event (see the `events` collection's read rule). Without
+  // this the SQL path was stricter than the Payload path for the very same request.
+  if (filters.unrestrictedAccess === true) {
+    return sql`TRUE`;
+  }
+
   const accessConditions: SqlFragment[] = [];
 
   if (filters.includePublic !== false) {

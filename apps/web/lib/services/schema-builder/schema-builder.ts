@@ -392,21 +392,53 @@ export class ProgressiveSchemaBuilder {
     return null;
   }
 
+  /**
+   * Step from a schema node into its `properties` map.
+   *
+   * Every part of the path except the last one names a container, and the value looked up
+   * for it is the container's schema node (`{type:"object", properties:{…}}`), not the map
+   * of its children. Without this step the next part was searched in the node itself, so
+   * `user.age` never resolved and nested fields silently lost their statistics-derived
+   * `minimum`/`maximum`, enums and date hints. The array branch already descends into
+   * `items.properties`, which is what made the asymmetry an oversight rather than a design.
+   *
+   * Returning null (rather than the node) when there is no `properties` map matters: a node
+   * like `{type:"object"}` would otherwise let the next part match one of the schema's own
+   * keywords, and `prop.minimum = …` on the resulting string throws in strict mode.
+   */
+  private static descendIntoProperties(node: unknown): unknown {
+    if (typeof node !== "object" || node === null) return null;
+    const nested = (node as { properties?: unknown }).properties;
+    return typeof nested === "object" && nested !== null ? nested : null;
+  }
+
   private getNestedProperty(properties: Record<string, SchemaProperty>, path: string): SchemaProperty | null {
+    // No filtering of empty parts: `""` is a legal JSON key and `processRecord` records it
+    // verbatim, so dropping it would leave an empty path that resolves to the whole
+    // properties map — and the caller would then write `minimum`/`enum` into that map.
     const parts = path.split(".");
     let current: unknown = properties;
 
-    for (const part of parts) {
+    for (const [index, part] of parts.entries()) {
+      const isLast = index === parts.length - 1;
+
       if (part.endsWith("[]")) {
         const fieldName = part.slice(0, -2);
         current = this.processArrayPart(current, fieldName);
       } else {
         current = this.processObjectPart(current, part);
+        if (!isLast) {
+          current = ProgressiveSchemaBuilder.descendIntoProperties(current);
+        }
       }
 
       if (current === null) {
         return null;
       }
+    }
+
+    if (typeof current !== "object" || current === null) {
+      return null;
     }
 
     return current as SchemaProperty;
