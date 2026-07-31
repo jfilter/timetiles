@@ -13,7 +13,7 @@ import type {
   CollectionBeforeOperationHook,
   PayloadRequest,
 } from "payload";
-import { APIError, AuthenticationError } from "payload";
+import { APIError, AuthenticationError, LockedAuth } from "payload";
 
 import { DEFAULT_QUOTAS, normalizeTrustLevel, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
@@ -291,13 +291,19 @@ export const usersAfterLoginHook: CollectionAfterLoginHook[] = [
   },
 ];
 
+/**
+ * Auth failures that must be indistinguishable from one another.
+ *
+ * `AuthenticationError` covers both "no such email" and "wrong password", but Payload
+ * throws `LockedAuth` once maxLoginAttempts is reached — and only a REGISTERED address can
+ * ever accumulate attempts. Anything else that surfaces as a 401 is treated the same way.
+ */
+const isCollapsibleAuthError = (error: Error): boolean =>
+  error instanceof AuthenticationError || error instanceof LockedAuth;
+
 export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
-  async ({ error, req }) => {
-    // Only log authentication errors. Payload throws AuthenticationError
-    // for both "no matching email" and "wrong password", which is
-    // compliance-adequate — distinguishing them at this layer would
-    // enable email enumeration.
-    if (!(error instanceof AuthenticationError)) return;
+  async ({ error, req, result }) => {
+    if (!isCollapsibleAuthError(error)) return;
 
     // `req.data` carries the login payload during the login op.
     // Email may be missing when the client sent malformed JSON.
@@ -319,6 +325,23 @@ export const usersAfterErrorHook: CollectionAfterErrorHook[] = [
       },
       { req }
     );
+
+    // Collapse the RESPONSE too, not just the audit entry.
+    //
+    // /api/auth/login is a hardened wrapper, but Payload's own /api/users/login stays
+    // registered and is served by the catch-all at app/(payload)/api/[...slug]. There,
+    // LockedAuth's "This user is locked due to having too many failed login attempts"
+    // went back verbatim — so six requests against an address proved whether it exists,
+    // the exact oracle the wrapper was hardened to close. It also locks the real owner
+    // out for lockTime, making it a targeted DoS on any known address.
+    //
+    // `result` carries the REST-formatted body; returning a response overrides it. In a
+    // GraphQL context `result` is absent and this is a no-op, which is correct — GraphQL
+    // is disabled by default here.
+    if (!result) return;
+
+    const generic = new AuthenticationError(req.t);
+    return { response: { ...result, errors: [{ message: generic.message }] }, status: generic.status };
   },
 ];
 
