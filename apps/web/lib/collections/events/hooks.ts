@@ -31,6 +31,15 @@ const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
 
   const quotaService = createQuotaService(req.payload);
   await quotaService.checkAndIncrementUsage(req.user, "TOTAL_EVENTS", 1, req);
+
+  // Only claim compensation for a NON-transactional increment. On Postgres the create always
+  // runs in a transaction, and Payload's create op calls killTransaction() in its catch —
+  // rolling the increment back AND deleting req.transactionID before afterError fires. The
+  // compensating decrement would then run outside the (already rolled back) transaction and
+  // subtract a SECOND time. Since decrementUsage floors at 0, alternating one good create
+  // with one deliberately failing one pins the counter at 0 and defeats the limit entirely.
+  // Same guard as scraper-repos.ts, which hit this first.
+  if (req.transactionID) return;
   (req as EventQuotaRequest).eventQuotaClaimedForUser = req.user.id;
 };
 

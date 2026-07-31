@@ -23,6 +23,7 @@ import type { User } from "@/payload-types";
 import { PROCESSING_STAGE } from "../constants/ingest-constants";
 import { createLogger, logError } from "../logger";
 import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
+import { disposeOfPrivateCatalog } from "./deletion-catalog-disposal";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
@@ -146,7 +147,9 @@ export class AccountDeletionService {
 
     // Count events in public vs private datasets
     // First get all dataset IDs for this user
-    const userDatasets = await findUserDocs(this.payload, "datasets", userId, { limit: 10000 });
+    // No limit: findUserDocs only sets `pagination: false` when none is given, so a cap here
+    // silently understated the event counts shown in the preview and the completion email.
+    const userDatasets = await findUserDocs(this.payload, "datasets", userId);
 
     const publicDatasetIds = userDatasets.filter((d) => d.isPublic).map((d) => d.id);
     const privateDatasetIds = userDatasets.filter((d) => !d.isPublic).map((d) => d.id);
@@ -349,7 +352,7 @@ export class AccountDeletionService {
         await this.transferPublicData(userId, systemUser.id, user.email, result, req);
 
         // Delete private data
-        await this.deletePrivateData(userId, result, req);
+        await this.deletePrivateData(userId, systemUser.id, result, req);
 
         // Delete user resources (scheduled ingests, import files)
         await this.deleteUserResources(userId, result, req, pendingUnlinks, pendingMediaDeletes);
@@ -481,7 +484,12 @@ export class AccountDeletionService {
   /**
    * Delete private datasets, events, and catalogs.
    */
-  private async deletePrivateData(userId: number, result: ExecuteDeletionResult, req: TransactionReq): Promise<void> {
+  private async deletePrivateData(
+    userId: number,
+    systemUserId: number,
+    result: ExecuteDeletionResult,
+    req: TransactionReq
+  ): Promise<void> {
     const isPrivateFilter = [{ isPublic: { equals: false } }];
 
     // Delete private datasets and their events
@@ -507,12 +515,11 @@ export class AccountDeletionService {
       result.dataDeleted.datasets++;
     }
 
-    // Delete private catalogs
+    // Delete private catalogs — but only the ones nothing points at any more.
     const privateCatalogs = await findUserDocs(this.payload, "catalogs", userId, { extraWhere: isPrivateFilter });
 
     for (const catalog of privateCatalogs) {
-      await this.payload.delete({ collection: "catalogs", id: catalog.id, overrideAccess: true, req });
-      result.dataDeleted.catalogs++;
+      await disposeOfPrivateCatalog(this.payload, catalog.id, { userId, systemUserId, result, req });
     }
   }
 

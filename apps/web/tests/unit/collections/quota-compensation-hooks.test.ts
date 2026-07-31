@@ -42,6 +42,10 @@ if (!scraperRepoQuotaHook || !scraperRepoAfterErrorHook) {
 const createReq = (id: string | number = "user-1") =>
   ({ user: { id, role: "user", trustLevel: "1" }, payload: {}, context: {} }) as never;
 
+/** A create running inside a transaction — which, on Postgres, is every create. */
+const createTransactionalReq = (id: string | number) =>
+  ({ user: { id, role: "user", trustLevel: "1" }, payload: {}, context: {}, transactionID: "tx-1" }) as never;
+
 describe.sequential("quota compensation hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -105,6 +109,38 @@ describe.sequential("quota compensation hooks", () => {
     eventsAfterChangeHook({ doc: { id: 1 }, operation: "create", req } as never);
     await eventsAfterErrorHook({ req } as never);
 
+    expect(quotaMocks.decrementUsage).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The compensating decrement must NOT run when the increment was transactional.
+   *
+   * Payload's create op calls `killTransaction()` in its catch: the increment is rolled back
+   * AND `req.transactionID` is deleted before `afterError` fires. A decrement at that point
+   * runs outside the (already reverted) transaction and subtracts a second time. Because
+   * `decrementUsage` floors at 0, alternating one good create with one deliberately failing
+   * create pins the counter at 0 and defeats the quota completely.
+   */
+  it.each([
+    {
+      quota: "CATALOGS_PER_USER",
+      claim: (req: never) => catalogQuotaHook({ data: { isPublic: true }, operation: "create", req } as never),
+      fail: (req: never) => catalogAfterErrorHook({ req } as never),
+    },
+    {
+      quota: "TOTAL_EVENTS",
+      claim: (req: never) => eventsBeforeChangeHook({ data: {}, operation: "create", req } as never),
+      fail: (req: never) => eventsAfterErrorHook({ req } as never),
+    },
+  ])("does not double-subtract $quota when the create was transactional", async ({ claim, fail }) => {
+    const req = createTransactionalReq(20);
+
+    await claim(req);
+    await fail(req);
+
+    // The increment still happens — the quota check itself must stay atomic.
+    expect(quotaMocks.checkAndIncrementUsage).toHaveBeenCalled();
+    // ...but the rollback already undid it, so nothing may be subtracted on top.
     expect(quotaMocks.decrementUsage).not.toHaveBeenCalled();
   });
 

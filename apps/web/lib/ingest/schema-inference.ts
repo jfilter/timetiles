@@ -254,14 +254,19 @@ export class SchemaInferenceService {
     const eventsToSample = Math.min(sampleSize, eventCount);
 
     while (processedCount < eventsToSample) {
-      const remainingToSample = eventsToSample - processedCount;
-      const currentBatchSize = Math.min(batchSize, remainingToSample);
-
+      // The page size must stay CONSTANT: Payload derives the offset as (page - 1) * limit,
+      // so shrinking the limit for the final batch rewound it. With sampleSize 250 and
+      // batchSize 100, page 3 asked for limit 50 and therefore offset 100 — re-reading events
+      // 101-150 instead of 201-250. The run then reported 250 samples drawn from 200 distinct
+      // events, and any field that only occurs in the tail never reached the schema. Trim the
+      // surplus locally instead. `sort: "id"` keeps the scan stable: the default ordering is
+      // by createdAt, which a bulk insert gives every row in a batch identically.
       const events = await payload.find({
         collection: COLLECTION_NAMES.EVENTS,
         where: { dataset: { equals: datasetId } },
-        limit: currentBatchSize,
+        limit: batchSize,
         page,
+        sort: "id",
         overrideAccess: true,
         req,
       });
@@ -270,7 +275,9 @@ export class SchemaInferenceService {
         break;
       }
 
-      const dataRecords = events.docs
+      const docs = events.docs.slice(0, eventsToSample - processedCount);
+
+      const dataRecords = docs
         .map((event) => event.transformedData)
         .filter((d): d is Record<string, unknown> => d != null && typeof d === "object");
 
@@ -278,7 +285,7 @@ export class SchemaInferenceService {
         schemaBuilder.processBatch(dataRecords);
       }
 
-      processedCount += events.docs.length;
+      processedCount += docs.length;
       page++;
 
       if (!events.hasNextPage) {
