@@ -45,6 +45,12 @@ export const auditLogIpCleanupJob = {
           collection: "audit-log",
           where: { and: [{ timestamp: { less_than: cutoffDate.toISOString() } }, { ipAddress: { exists: true } }] },
           limit: PAGE_SIZE,
+          // Only the id is used below, and Payload returns it with any include-select. What
+          // matters is that `ipAddress` is NOT selected: pulling the very value this job
+          // exists to erase into memory serves nothing. `timestamp` is the column the filter
+          // already reads and keeps this an include-select (`id` is not a selectable key).
+          depth: 0,
+          select: { timestamp: true },
         });
 
         // From the first read only: later pages shrink as rows are cleared, so overwriting

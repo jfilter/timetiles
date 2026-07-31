@@ -85,17 +85,85 @@ export const parseRangeFilters = (raw: string | null): Record<string, RangeBound
   }
 };
 
-// Custom hook for managing all filter state via URL
-// Uses useQueryStates to batch related URL param updates into a single URL change,
-// avoiding intermediate states and unnecessary rerenders.
-export const useFilters = () => {
-  const [filterParams, setFilterParams] = useQueryStates({
+const useFilterParams = () =>
+  useQueryStates({
     datasets: parseAsArrayOfStrings,
     startDate: parseAsStringOrNull,
     endDate: parseAsStringOrNull,
     ff: parseAsStringOrNull,
     rf: parseAsStringOrNull,
   });
+
+type SetFilterParams = ReturnType<typeof useFilterParams>[1];
+
+/**
+ * Setters that read the current filters before writing them back.
+ *
+ * All of these use nuqs' functional updater rather than the values from the render they were
+ * created in. Two interactions inside one tick — two checkboxes, a click plus a keyboard
+ * toggle — otherwise both read the same rendered snapshot, and the second absolute write
+ * silently discarded the first. nuqs emits synchronously, so the updater sees the pending
+ * value.
+ */
+const createStatefulSetters = (setFilterParams: SetFilterParams) => ({
+  setFieldFilter: (fieldPath: string, values: string[]) => {
+    void setFilterParams((prev) => {
+      const updated = { ...parseFieldFilters(prev.ff) };
+      if (values.length > 0) {
+        updated[fieldPath] = values;
+      } else {
+        delete updated[fieldPath];
+      }
+      return { ff: serializeFieldFilters(updated) };
+    });
+  },
+
+  setRangeFilter: (fieldPath: string, min: number | null, max: number | null) => {
+    void setFilterParams((prev) => {
+      const updated = { ...parseRangeFilters(prev.rf) };
+      if (min == null && max == null) {
+        delete updated[fieldPath];
+      } else {
+        updated[fieldPath] = { min, max };
+      }
+      return { rf: serializeRangeFilters(updated) };
+    });
+  },
+
+  // Toggle all datasets belonging to a catalog on/off
+  toggleCatalogDatasets: (catalogDatasetIds: string[]) => {
+    void setFilterParams((prev) => {
+      const previous = prev.datasets ?? [];
+      const current = new Set(previous);
+      const allSelected = catalogDatasetIds.every((id) => current.has(id));
+
+      const newDatasets = allSelected
+        ? previous.filter((id) => !catalogDatasetIds.includes(id))
+        : [...previous, ...catalogDatasetIds.filter((id) => !current.has(id))];
+
+      // Same clearing as setDatasets — field/range filters are dataset-specific.
+      return { datasets: newDatasets, ff: "", rf: "" };
+    });
+  },
+
+  toggleDataset: (datasetId: string) => {
+    void setFilterParams((prev) => {
+      const current = prev.datasets ?? [];
+      const newDatasets = current.includes(datasetId)
+        ? current.filter((id) => id !== datasetId)
+        : [...current, datasetId];
+      return { datasets: newDatasets, ff: "", rf: "" };
+    });
+  },
+});
+
+// Custom hook for managing all filter state via URL
+// Uses useQueryStates to batch related URL param updates into a single URL change,
+// avoiding intermediate states and unnecessary rerenders.
+export const useFilters = () => {
+  const [filterParams, setFilterParams] = useFilterParams();
+  const { setFieldFilter, setRangeFilter, toggleCatalogDatasets, toggleDataset } =
+    createStatefulSetters(setFilterParams);
 
   const datasets = filterParams.datasets;
   const startDate = filterParams.startDate;
@@ -123,26 +191,6 @@ export const useFilters = () => {
   const setFieldFilters = (newFieldFilters: Record<string, string[]>) =>
     void setFilterParams({ ff: serializeFieldFilters(newFieldFilters) });
 
-  const setFieldFilter = (fieldPath: string, values: string[]) => {
-    const updated = { ...fieldFilters };
-    if (values.length > 0) {
-      updated[fieldPath] = values;
-    } else {
-      delete updated[fieldPath];
-    }
-    void setFilterParams({ ff: serializeFieldFilters(updated) });
-  };
-
-  const setRangeFilter = (fieldPath: string, min: number | null, max: number | null) => {
-    const updated = { ...rangeFilters };
-    if (min == null && max == null) {
-      delete updated[fieldPath];
-    } else {
-      updated[fieldPath] = { min, max };
-    }
-    void setFilterParams({ rf: serializeRangeFilters(updated) });
-  };
-
   const applyFilterState = (newFilters: FilterState) => {
     void setFilterParams({
       datasets: newFilters.datasets,
@@ -157,28 +205,6 @@ export const useFilters = () => {
     applyFilterState(removeFilter(filters, filterType, value));
 
   const handleClearAllFilters = () => applyFilterState(clearAllFilters(filters));
-
-  // Toggle all datasets belonging to a catalog on/off
-  const toggleCatalogDatasets = (catalogDatasetIds: string[]) => {
-    const current = new Set(filters.datasets);
-    const allSelected = catalogDatasetIds.every((id) => current.has(id));
-
-    let newDatasets: string[];
-    if (allSelected) {
-      // Deselect all datasets from this catalog
-      newDatasets = filters.datasets.filter((id) => !catalogDatasetIds.includes(id));
-    } else {
-      // Select all datasets from this catalog (add missing ones)
-      const toAdd = catalogDatasetIds.filter((id) => !current.has(id));
-      newDatasets = [...filters.datasets, ...toAdd];
-    }
-    handleSetDatasets(newDatasets);
-  };
-
-  const toggleDataset = (datasetId: string) => {
-    const current = filters.datasets;
-    handleSetDatasets(current.includes(datasetId) ? current.filter((id) => id !== datasetId) : [...current, datasetId]);
-  };
 
   const setSingleDayFilter = (date: Date) => {
     // Use the UTC calendar day so a histogram bar-click filters the same day

@@ -47,6 +47,10 @@ describe.sequential("auditLogIpCleanupJob", () => {
       collection: "audit-log",
       where: { and: [{ timestamp: { less_than: expect.any(String) } }, { ipAddress: { exists: true } }] },
       limit: 500,
+      // Only the id is used, and `ipAddress` is deliberately NOT selected — this job exists
+      // to erase it, so reading it back serves nothing.
+      depth: 0,
+      select: { timestamp: true },
       overrideAccess: true,
     });
   });
