@@ -119,6 +119,29 @@ const failStuckScraperRuns = async (payload: Payload, scraperId: number, finishe
   return stuck.docs.length;
 };
 
+/**
+ * How many stuck-thresholds a scraper may spend waiting for its dependent cleanup to succeed.
+ *
+ * `claimScraperRunning` only claims a scraper whose `lastRunStatus` is NOT "running", so a
+ * scraper left in that state can never be scheduled again — this reaper is the only thing
+ * that can release it. Ordering the dependent cleanup first is right for a transient failure
+ * (the next hourly pass retries safely), but a permanently failing cleanup would then keep
+ * the scraper dead forever. Past this multiple of the threshold the scraper is released
+ * regardless, and the leftovers are logged as an error rather than silently retried.
+ */
+const FORCE_RESET_THRESHOLD_MULTIPLE = 6;
+
+const cleanUpDependents = async (
+  payload: Payload,
+  scraper: Scraper,
+  currentTime: Date,
+  thresholdHours: number
+): Promise<{ cancelledJobs: number; failedRuns: number }> => {
+  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
+  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
+  return { cancelledJobs, failedRuns };
+};
+
 const resetStuckScraper = async (
   payload: Payload,
   scraper: Scraper,
@@ -127,14 +150,27 @@ const resetStuckScraper = async (
 ): Promise<void> => {
   const lastRunTime = scraper.lastRunAt ? parseDateInput(scraper.lastRunAt) : null;
   const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
+  const forceCutoffMs = thresholdHours * FORCE_RESET_THRESHOLD_MULTIPLE * 60 * 60 * 1000;
+  const mayForce = stuckDuration > forceCutoffMs;
 
-  // Dependent state first, scraper last. `lastRunStatus = "running"` is the only handle the
-  // reaper has on this scraper, so it must not be released until everything that depends on
-  // it is terminal — otherwise a failure here leaves an orphaned job or a "running" run
-  // record behind with no later pass able to see it. Both steps are idempotent, so retrying
-  // the whole scraper on the next hourly run is safe.
-  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
-  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
+  // Dependent state first, scraper last: `lastRunStatus = "running"` is the only handle the
+  // reaper has, so releasing it before the dependents are terminal would strand an orphaned
+  // job or a "running" run record with no later pass able to see it. Both steps are
+  // idempotent, so retrying the whole scraper on the next hourly pass is safe.
+  let dependents: { cancelledJobs: number; failedRuns: number };
+  try {
+    dependents = await cleanUpDependents(payload, scraper, currentTime, thresholdHours);
+  } catch (error) {
+    if (!mayForce) throw error;
+    // Long past the point where retrying is plausibly transient. Release the scraper anyway —
+    // a scraper that can never run again is worse than a leftover job record.
+    logError(error, "Releasing stuck scraper despite failed dependent cleanup", {
+      scraperId: scraper.id,
+      name: scraper.name,
+      stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
+    });
+    dependents = { cancelledJobs: 0, failedRuns: 0 };
+  }
 
   // Update statistics (also increments totalRuns — a stuck run is still a run)
   const updatedStats = recordScraperRun(resolveScraperStats(scraper.statistics), "failed");
@@ -149,8 +185,7 @@ const resetStuckScraper = async (
     scraperId: scraper.id,
     name: scraper.name,
     stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
-    cancelledJobs,
-    failedRuns,
+    ...dependents,
   });
 };
 
