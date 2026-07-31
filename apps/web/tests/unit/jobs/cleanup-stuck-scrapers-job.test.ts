@@ -177,6 +177,38 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     expect(mockPayload.update).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "scrapers" }));
   });
 
+  /**
+   * `claimScraperRunning` refuses a scraper whose status is already "running", so one left
+   * there can never be scheduled again — this job is its only way out. Retrying forever on a
+   * permanently failing dependent cleanup would therefore be a deadlock, not patience.
+   */
+  it("releases a long-stuck scraper even when dependent cleanup keeps failing", async () => {
+    const scraper = createMockScraper({
+      id: 11,
+      // Well past 6x the 4h threshold.
+      lastRunAt: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    });
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 })
+      .mockRejectedValue(new Error("cleanup still broken"));
+
+    const context = createMockContext();
+    const result = await cleanupStuckScrapersJob.handler(context as any);
+
+    expect(result.output).toEqual(expect.objectContaining({ stuckCount: 1, resetCount: 1 }));
+    expect(mockPayload.update).toHaveBeenCalledWith({
+      collection: "scrapers",
+      id: 11,
+      overrideAccess: true,
+      data: { lastRunStatus: "failed", statistics: expect.objectContaining({ failedRuns: 2 }) },
+    });
+    expect(mockLogError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "Releasing stuck scraper despite failed dependent cleanup",
+      expect.objectContaining({ scraperId: 11 })
+    );
+  });
+
   it("should skip a scraper that has an active Payload job", async () => {
     const scraper = createMockScraper();
     mockPayload.find.mockResolvedValue({ docs: [scraper], totalDocs: 1 });
