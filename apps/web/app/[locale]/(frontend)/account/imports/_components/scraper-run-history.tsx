@@ -61,7 +61,10 @@ const RunRow = ({ run }: { readonly run: ScraperRun }) => {
           <ExternalLinkIcon className="h-3 w-3" />
         </Link>
       </div>
-      {run.status === "failed" && run.error && (
+      {/* Not gated on "failed": a run whose scrape succeeded but whose auto-import did not
+          carries an error while staying a successful run, and that is precisely the case where
+          the user otherwise sees a green run with a row count and never receives any data. */}
+      {run.error != null && run.error !== "" && (
         <div className="text-destructive mt-0.5 truncate pl-4 text-xs">{run.error}</div>
       )}
     </div>

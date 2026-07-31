@@ -48,6 +48,19 @@ export const resolveParentCells = (rawSourceCells: unknown, clusterId: string): 
 };
 
 /**
+ * Precision the hover bounds are quantised to, shared with `boundsToKey` in use-h3-hover.
+ *
+ * The hover query key includes the serialized params, so writing raw bounds here defeated the
+ * rounding `boundsToKey` applies: with the pointer resting on a cell, every pan or zoom
+ * produced a new key and refetched the expensive geo aggregation — each result then held in
+ * cache for the ten-minute `expensive` gcTime.
+ */
+export const HOVER_BOUNDS_PRECISION = 10000;
+
+export const roundHoverBound = (value: number): number =>
+  Math.round(value * HOVER_BOUNDS_PRECISION) / HOVER_BOUNDS_PRECISION;
+
+/**
  * Build URL search params for the hover child-cells API request,
  * inheriting relevant filters from the current page search params.
  */
@@ -76,10 +89,10 @@ export const buildHoverFetchParams = (
     params.set(
       "bounds",
       JSON.stringify({
-        north: mapBounds.getNorth(),
-        south: mapBounds.getSouth(),
-        east: mapBounds.getEast(),
-        west: mapBounds.getWest(),
+        north: roundHoverBound(mapBounds.getNorth()),
+        south: roundHoverBound(mapBounds.getSouth()),
+        east: roundHoverBound(mapBounds.getEast()),
+        west: roundHoverBound(mapBounds.getWest()),
       })
     );
   }

@@ -35,13 +35,17 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
  * forever. Failures are logged, never thrown: the caller's outcome (a 410, a
  * status flip) must not depend on the filesystem.
  */
-const discardExportFile = async (filePath: string | null | undefined, exportId: string): Promise<void> => {
-  if (!filePath) return;
+const discardExportFile = async (filePath: string | null | undefined, exportId: string): Promise<boolean> => {
+  if (!filePath) return true;
   try {
     await unlink(filePath);
     logger.debug({ exportId, filePath }, "Deleted export file");
+    return true;
   } catch (error) {
-    logger.warn({ exportId, filePath, error }, "Could not delete export file (may already be deleted)");
+    const gone = typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT";
+    if (gone) return true;
+    logger.warn({ exportId, filePath, error }, "Could not delete export file");
+    return false;
   }
 };
 
@@ -53,17 +57,25 @@ const streamExportFile = async (
   exportRecord: Pick<DataExportRecord, "filePath" | "expiresAt">,
   userId: number
 ): Promise<Response> => {
-  // Check expiry. Clear `filePath` and unlink in the same step the record is
-  // retired: the cleanup job only sweeps records still in "ready", so an export
-  // expired here would otherwise keep its PII-bearing ZIP on disk forever.
+  // Check expiry. Retire the record, then unlink — and drop `filePath` only once the file is
+  // actually gone. Clearing it first meant a failed unlink stranded a ZIP of personal data on
+  // disk with nothing pointing at it; the cleanup job now re-sweeps expired records that still
+  // carry a path, so leaving it set is what lets that retry find the file.
   if (exportRecord.expiresAt && new Date(exportRecord.expiresAt) < new Date()) {
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,
-      data: { status: "expired", filePath: null },
+      data: { status: "expired" },
       overrideAccess: true,
     });
-    await discardExportFile(exportRecord.filePath, exportId);
+    if (await discardExportFile(exportRecord.filePath, exportId)) {
+      await payload.update({
+        collection: DATA_EXPORTS_COLLECTION,
+        id: normalizedExportId,
+        data: { filePath: null },
+        overrideAccess: true,
+      });
+    }
     throw new AppError(410, "Export has expired. Please request a new export.");
   }
 

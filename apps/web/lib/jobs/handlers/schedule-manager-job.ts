@@ -210,7 +210,11 @@ export const scheduleManagerJob = {
       const scheduledIngests = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
         where: { enabled: { equals: true } },
-        limit: 1000,
+        // Must be 0, not a cap: `pagination: false` keeps an explicit limit, and the read is
+        // deterministically ordered, so a capped scheduler would run the same first N every
+        // minute and never reach the rest — permanently, not in rotation. `totalDocs` falls
+        // back to `docs.length` here, so the truncation would not even show in the log below.
+        limit: 0,
         pagination: false,
       });
 

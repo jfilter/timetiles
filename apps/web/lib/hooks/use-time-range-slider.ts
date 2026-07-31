@@ -79,9 +79,9 @@ interface UseTimeRangeSliderReturn {
   /** Keyboard handler factory for start/end slider handles */
   handleHandleKeyDown: (handle: "start" | "end") => (e: React.KeyboardEvent) => void;
   /** Change handler for start date input */
-  handleStartDateInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleStartDateInputChange: (value: string) => void;
   /** Change handler for end date input */
-  handleEndDateInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleEndDateInputChange: (value: string) => void;
   /** Open date editing mode */
   handleOpenEditMode: () => void;
   /** Close date editing mode */
@@ -256,8 +256,7 @@ export const useTimeRangeSlider = ({
   // range that silently returns zero events. Clamp each side against the other
   // here too — snapping to the opposing bound, mirroring numeric-range-slider —
   // while leaving the open-ended and empty-input cases untouched.
-  const handleStartDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleStartDateInputChange = (value: string) => {
     if (!value) {
       onStartDateChange(null);
       return;
@@ -269,8 +268,7 @@ export const useTimeRangeSlider = ({
     onStartDateChange(value);
   };
 
-  const handleEndDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleEndDateInputChange = (value: string) => {
     if (!value) {
       onEndDateChange(null);
       return;

@@ -10,7 +10,6 @@
  * @category Tests
  */
 import { act, renderHook } from "@testing-library/react";
-import { type ChangeEvent } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // Mock the query hooks
@@ -298,7 +297,7 @@ describe("useTimeRangeSlider", () => {
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       act(() => {
-        result.current.handleStartDateInputChange({ target: { value: "2024-06-15" } } as ChangeEvent<HTMLInputElement>);
+        result.current.handleStartDateInputChange("2024-06-15");
       });
 
       expect(props.onStartDateChange).toHaveBeenCalledWith("2024-06-15");
@@ -313,7 +312,7 @@ describe("useTimeRangeSlider", () => {
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       act(() => {
-        result.current.handleEndDateInputChange({ target: { value: "" } } as ChangeEvent<HTMLInputElement>);
+        result.current.handleEndDateInputChange("");
       });
 
       expect(props.onEndDateChange).toHaveBeenCalledWith(null);
@@ -329,7 +328,7 @@ describe("useTimeRangeSlider", () => {
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       act(() => {
-        result.current.handleStartDateInputChange({ target: { value: "2024-09-01" } } as ChangeEvent<HTMLInputElement>);
+        result.current.handleStartDateInputChange("2024-09-01");
       });
 
       // Typed start (Sep) is after end (Jun) → snaps to the end bound instead.
@@ -346,7 +345,7 @@ describe("useTimeRangeSlider", () => {
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       act(() => {
-        result.current.handleEndDateInputChange({ target: { value: "2024-01-01" } } as ChangeEvent<HTMLInputElement>);
+        result.current.handleEndDateInputChange("2024-01-01");
       });
 
       // Typed end (Jan) is before start (Jun) → snaps to the start bound instead.
@@ -363,7 +362,7 @@ describe("useTimeRangeSlider", () => {
       const { result } = renderHook(() => useTimeRangeSlider(props));
 
       act(() => {
-        result.current.handleStartDateInputChange({ target: { value: "2024-03-01" } } as ChangeEvent<HTMLInputElement>);
+        result.current.handleStartDateInputChange("2024-03-01");
       });
 
       expect(props.onStartDateChange).toHaveBeenCalledWith("2024-03-01");

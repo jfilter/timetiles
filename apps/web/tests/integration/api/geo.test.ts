@@ -351,11 +351,10 @@ describe.sequential("/api/v1/events/geo", () => {
 
     const response = await GET(request, { params: Promise.resolve({}) });
 
-    // Invalid bounds silently become undefined at schema level,
-    // then route rejects with ValidationError → 400
-    expect(response.status).toBe(400);
-    const data = await response.json();
-    expect(data.error).toBe("Missing required parameter: bounds");
+    // A malformed bounds parameter fails schema validation (422) instead of being dropped.
+    // It used to become `undefined`, which this endpoint then reported as "missing" — and on
+    // every endpoint where bounds is optional it meant an unbounded query answered 200.
+    expect(response.status).toBe(422);
   });
 
   it("should use tile-based clustering for stable cluster positions", async () => {

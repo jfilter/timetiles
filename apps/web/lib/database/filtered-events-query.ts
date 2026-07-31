@@ -81,5 +81,20 @@ export const buildClusterFilterClause = (
   eventTable: typeof events
 ) => and(baseWhereClause, isNotNull(eventTable.location_longitude), cellCondition)!;
 
-export const buildClusterPreviewTitle = (eventTable: typeof events) =>
-  sql<string | null>`(${eventTable.transformedData}->>'title')::text`;
+/**
+ * Resolve an event's display title the same way the events API does.
+ *
+ * `extractEventFields` tries the dataset's `interpretationPlan.roles.title` path first, then
+ * `title`, then `name`. This used to read `->>'title'` alone, so every dataset whose title
+ * role points elsewhere — five of the ten shipped data packages (`event_type`, `description`,
+ * `name`, `source_headline`) — showed the correct title in the list and a bare
+ * "Event 12345" in map popups and cluster previews.
+ *
+ * The role holds a dot path, hence `string_to_array` + `#>>` rather than a plain `->>`.
+ */
+export const buildClusterPreviewTitle = (eventTable: typeof events, datasetTable: typeof datasets) =>
+  sql<string | null>`COALESCE(
+    ${eventTable.transformedData} #>> string_to_array(${datasetTable.interpretationPlan}->'roles'->>'title', '.'),
+    ${eventTable.transformedData}->>'title',
+    ${eventTable.transformedData}->>'name'
+  )::text`;

@@ -28,6 +28,10 @@ const UNIX_SECONDS_MAX = 9_999_999_999;
 const UNIX_MILLISECONDS_MIN = 1_000_000_000_000;
 const UNIX_MILLISECONDS_MAX = 9_999_999_999_999;
 
+/** Text-month formats, kept out of FORMAT_PATTERNS because they are not separator-delimited. */
+const DAY_FIRST_TEXT_FORMAT = "D MMMM YYYY";
+const MONTH_FIRST_TEXT_FORMAT = "MMMM D, YYYY";
+
 const FORMAT_PATTERNS: Record<string, DateFormatPattern> = {
   "DD/MM/YYYY": { order: ["D", "M", "Y"], separator: "/" },
   "MM/DD/YYYY": { order: ["M", "D", "Y"], separator: "/" },
@@ -172,7 +176,7 @@ const parseTextMonthDate = (value: string, inputFormat: string): Date | null => 
   let month = 0;
   let year = 0;
 
-  if (inputFormat === "D MMMM YYYY") {
+  if (inputFormat === DAY_FIRST_TEXT_FORMAT) {
     day = parseUnsignedInteger(parts[0] ?? "") ?? 0;
     month = MONTH_NAMES[parts[1]?.toLowerCase() ?? ""] ?? 0;
     year = parseUnsignedInteger(parts[2] ?? "") ?? 0;
@@ -186,7 +190,7 @@ const parseTextMonthDate = (value: string, inputFormat: string): Date | null => 
 };
 
 const parseKnownFormat = (value: string, inputFormat: string): Date | null => {
-  if (inputFormat === "D MMMM YYYY" || inputFormat === "MMMM D, YYYY") {
+  if (inputFormat === DAY_FIRST_TEXT_FORMAT || inputFormat === MONTH_FIRST_TEXT_FORMAT) {
     return parseTextMonthDate(value, inputFormat);
   }
 
@@ -293,7 +297,8 @@ export const parseImportDate = (value: ImportDateInput, dayMonthOrder?: DayMonth
   const separated = parseSeparatedDate(trimmed, dayMonthOrder);
   if (separated.matched) return separated.date;
 
-  const textMonth = parseTextMonthDate(trimmed, "D MMMM YYYY") ?? parseTextMonthDate(trimmed, "MMMM D, YYYY");
+  const textMonth =
+    parseTextMonthDate(trimmed, DAY_FIRST_TEXT_FORMAT) ?? parseTextMonthDate(trimmed, MONTH_FIRST_TEXT_FORMAT);
   if (textMonth) return textMonth;
 
   return null;
@@ -309,7 +314,7 @@ export const parseImportDate = (value: ImportDateInput, dayMonthOrder?: DayMonth
 export const parseImportDateWithFormat = (value: ImportDateInput, inputFormat?: string | null): Date | null => {
   const format = inputFormat?.trim() ?? "";
   const isKnownStructuredFormat = FORMAT_PATTERNS[format] !== undefined;
-  const isKnownTextFormat = format === "D MMMM YYYY" || format === "MMMM D, YYYY";
+  const isKnownTextFormat = format === DAY_FIRST_TEXT_FORMAT || format === MONTH_FIRST_TEXT_FORMAT;
 
   if (isKnownStructuredFormat || isKnownTextFormat) {
     return typeof value === "string" ? parseKnownFormat(value.trim(), format) : null;
@@ -322,3 +327,60 @@ export const parseImportDateWithFormat = (value: ImportDateInput, inputFormat?: 
  * True when a value can be parsed by the import date rules.
  */
 export const isImportDateLike = (value: ImportDateInput): boolean => parseImportDate(value) !== null;
+
+const MONTH_LABELS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** Calendar parts of an instant as seen in `timeZone` (UTC when omitted). */
+const calendarPartsIn = (date: Date, timeZone?: string): { year: number; month: number; day: number } => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timeZone ?? "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const get = (type: string) => Number.parseInt(parts.find((part) => part.type === type)?.value ?? "0", 10);
+  return { year: get("year"), month: get("month"), day: get("day") };
+};
+
+/**
+ * Render a date in one of the DATE_FORMAT_OPTIONS patterns.
+ *
+ * Counterpart to `parseImportDateWithFormat` — the transform editor offers nine output
+ * formats, and every one of them except ISO 8601 used to come out as `YYYY-MM-DD`.
+ *
+ * `timeZone` is the zone whose calendar date is meant. It matters for date-only output:
+ * the instant for "2024-06-15 in Asia/Tokyo" is 2024-06-14T15:00Z, so reading the parts off
+ * UTC moved the date a day back for every zone east of Greenwich.
+ *
+ * An unknown pattern falls back to `YYYY-MM-DD`.
+ */
+export const formatDateWithPattern = (date: Date, pattern: string, timeZone?: string): string => {
+  const { year, month, day } = calendarPartsIn(date, timeZone);
+  const yyyy = String(year).padStart(4, "0");
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+  const monthLabel = MONTH_LABELS[month - 1] ?? "";
+
+  if (pattern === DAY_FIRST_TEXT_FORMAT) return `${day} ${monthLabel} ${yyyy}`;
+  if (pattern === MONTH_FIRST_TEXT_FORMAT) return `${monthLabel} ${day}, ${yyyy}`;
+
+  const structured = FORMAT_PATTERNS[pattern];
+  if (!structured) return `${yyyy}-${mm}-${dd}`;
+
+  const byToken: Record<string, string> = { Y: yyyy, M: mm, D: dd };
+  return structured.order.map((token) => byToken[token]).join(structured.separator);
+};

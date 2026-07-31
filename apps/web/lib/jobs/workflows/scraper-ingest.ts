@@ -34,7 +34,14 @@ export const scraperIngestWorkflow: WorkflowConfig<"scraper-ingest"> = {
     })) as ScraperExecutionOutput;
 
     if (!scraperResult.ingestFileId) {
-      logger.info("scraper-ingest: no output file (autoImport disabled?)", { scraperId });
+      if (scraperResult.autoImportError != null) {
+        logger.error("scraper-ingest: auto-import failed, no data was imported", {
+          scraperId,
+          error: scraperResult.autoImportError,
+        });
+      } else {
+        logger.info("scraper-ingest: no output file (autoImport disabled?)", { scraperId });
+      }
       return;
     }
 

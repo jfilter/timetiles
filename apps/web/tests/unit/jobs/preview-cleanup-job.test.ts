@@ -47,6 +47,18 @@ const writeData = (previewId: string, ext = ".csv"): void => {
   fs.writeFileSync(path.join(testDir, `${previewId}${ext}`), "title,date\n");
 };
 
+/**
+ * Age a data file past the orphan grace period.
+ *
+ * The upload route writes the data file, parses every sheet, and only then saves the
+ * metadata — so a just-written file with no sidecar is normal, not an orphan. The sweep now
+ * requires it to be older than the TTL, which means an orphan fixture has to be backdated.
+ */
+const backdateData = (previewId: string, ext = ".csv"): void => {
+  const past = new Date(Date.now() - 2 * PREVIEW_EXPIRY_MS);
+  fs.utimesSync(path.join(testDir, `${previewId}${ext}`), past, past);
+};
+
 describe.sequential("sweepExpiredPreviews", () => {
   beforeEach(() => {
     // Each test gets its own isolated temp directory to avoid collisions with
@@ -94,11 +106,25 @@ describe.sequential("sweepExpiredPreviews", () => {
   it("removes orphan data files with no companion meta.json", () => {
     const id = uuid("3");
     writeData(id);
+    backdateData(id);
 
     const result = sweepExpiredPreviews(new Date(), testDir);
 
     expect(result.orphanedRemoved).toBe(1);
     expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(false);
+  });
+
+  it("leaves a just-written data file alone while its metadata is still being built", () => {
+    // The upload route writes the file, parses every sheet (seconds to minutes for a large
+    // XLSX) and only then saves the sidecar. A sweep landing in that window used to delete
+    // the file and count it as cleaned, handing the wizard a previewId with no data behind it.
+    const id = uuid("5");
+    writeData(id);
+
+    const result = sweepExpiredPreviews(new Date(), testDir);
+
+    expect(result.orphanedRemoved).toBe(0);
+    expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(true);
   });
 
   it("ignores unrelated files that don't match the preview id shape", () => {
@@ -134,6 +160,7 @@ describe.sequential("sweepExpiredPreviews", () => {
     writeData(stale);
 
     writeData(orphan);
+    backdateData(orphan);
 
     const result = sweepExpiredPreviews(new Date(), testDir);
 

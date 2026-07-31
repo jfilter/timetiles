@@ -76,7 +76,9 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-ingests",
         where: { lastStatus: { equals: "running" } },
-        limit: 1000,
+        // 0, not a cap: `pagination: false` keeps an explicit limit, so any number here would
+        // permanently starve everything past it (the ordering does not rotate).
+        limit: 0,
         pagination: false,
       });
 
@@ -135,7 +137,9 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-ingests",
         where: { lastStatus: { equals: "running" } },
-        limit: 1000,
+        // 0, not a cap: `pagination: false` keeps an explicit limit, so any number here would
+        // permanently starve everything past it (the ordering does not rotate).
+        limit: 0,
         pagination: false,
       });
 

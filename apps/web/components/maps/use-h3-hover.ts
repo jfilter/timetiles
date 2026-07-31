@@ -22,6 +22,7 @@ import {
   childFeaturesToHexPolygons,
   EMPTY_FEATURE_COLLECTION,
   resolveParentCells,
+  roundHoverBound,
   toFeatureIdString,
 } from "./clustered-map-hex-data";
 
@@ -49,8 +50,9 @@ const boundsToKey = (
   bounds: { getNorth: () => number; getSouth: () => number; getEast: () => number; getWest: () => number } | null
 ): string => {
   if (!bounds) return "none";
-  // Round to 4 decimals to avoid thrashing the cache on tiny pan deltas.
-  const round = (n: number) => Math.round(n * 10000) / 10000;
+  // Same quantisation the fetch params use — the query key contains both, so they must agree
+  // or the rounding here buys nothing.
+  const round = roundHoverBound;
   return `${round(bounds.getNorth())},${round(bounds.getSouth())},${round(bounds.getEast())},${round(bounds.getWest())}`;
 };
 
