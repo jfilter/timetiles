@@ -63,15 +63,6 @@ export interface CanonicalEventFilters {
   h3Resolution?: number;
   /** When true, filters are valid but should match no rows (access denied) */
   denyResults?: boolean;
-  /**
-   * The requesting user may read every event, so no access clause applies.
-   *
-   * Mirrors the `events` collection's own read rule, which returns `true` outright for a
-   * privileged user. Without this the SQL path narrowed admins and editors to public-or-owned
-   * while the Payload path showed them everything — the same request answered differently
-   * depending only on whether a filter or a custom sort pushed it onto SQL.
-   */
-  unrestrictedAccess?: boolean;
 }
 
 /**

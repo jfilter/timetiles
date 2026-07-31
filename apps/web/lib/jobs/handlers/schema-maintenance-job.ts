@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { SchemaFreshnessResult } from "@/lib/ingest/schema-freshness";
-import { getSchemaFreshness } from "@/lib/ingest/schema-freshness";
+import { countEventsByDataset, getSchemaFreshness } from "@/lib/ingest/schema-freshness";
 import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
@@ -62,6 +62,8 @@ export interface SchemaMaintenanceResult {
   schemasFailed: number;
   duration: number;
   details?: ProcessingResult[];
+  /** True when `details` omits some routine skips (see MAX_ROUTINE_DETAIL_ENTRIES) */
+  detailsTruncated?: boolean;
 }
 
 /**
@@ -104,10 +106,18 @@ const shouldSkipDataset = (
 const evaluateDataset = async (
   payload: Payload,
   dataset: DatasetInfo,
-  forceRegenerate: boolean
+  forceRegenerate: boolean,
+  eventCounts: Map<number, number>
 ): Promise<Candidate | ProcessingResult> => {
   const latestSchema = await SchemaInferenceService.getLatestSchema(payload, dataset.id);
-  const freshness = await getSchemaFreshness(payload, dataset.id, latestSchema);
+  // Counts come from one grouped query for the whole scan; absent means no events.
+  const freshness = await getSchemaFreshness(
+    payload,
+    dataset.id,
+    latestSchema,
+    undefined,
+    eventCounts.get(dataset.id) ?? 0
+  );
 
   const skipCheck = shouldSkipDataset(freshness, forceRegenerate);
   if (skipCheck.skip) {
@@ -144,6 +154,22 @@ const regenerateDataset = async (
   return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: result.message };
 };
 
+/**
+ * Hard ceiling on the persisted `details` array.
+ *
+ * Entries that needed work come first so a truncated report still shows what happened, but
+ * the TOTAL is capped: a systematic failure produces one `failed` entry per dataset, so
+ * capping only the routine skips would still let the job record grow with the dataset count.
+ */
+const MAX_DETAIL_ENTRIES = 200;
+
+const capDetails = (details: ProcessingResult[]): ProcessingResult[] => {
+  if (details.length <= MAX_DETAIL_ENTRIES) return details;
+  const notable = details.filter((entry) => entry.action !== "skipped");
+  const routine = details.filter((entry) => entry.action === "skipped");
+  return [...notable, ...routine].slice(0, MAX_DETAIL_ENTRIES);
+};
+
 const toFailure = (dataset: DatasetInfo, error: unknown): ProcessingResult => {
   const reason = error instanceof Error ? error.message : String(error);
   logger.warn("Failed to process schema for dataset", { datasetId: dataset.id, error: reason });
@@ -174,10 +200,14 @@ const processAllDatasets = async (
   const details: ProcessingResult[] = [];
   const stats: ProcessingStats = { generated: 0, skipped: 0, failed: 0 };
   const candidates: Candidate[] = [];
+  const eventCounts = await countEventsByDataset(
+    payload,
+    datasets.map((dataset) => dataset.id)
+  );
 
   for (const dataset of datasets) {
     try {
-      const outcome = await evaluateDataset(payload, dataset, forceRegenerate);
+      const outcome = await evaluateDataset(payload, dataset, forceRegenerate, eventCounts);
       if (isCandidate(outcome)) {
         candidates.push(outcome);
       } else {
@@ -249,6 +279,8 @@ export const schemaMaintenanceJob = {
       const { details, stats } = await processAllDatasets(payload, datasets, forceRegenerate, maxDatasets);
       const duration = Date.now() - startTime;
 
+      const cappedDetails = capDetails(details);
+
       logger.info("Schema maintenance completed", { datasetsChecked: datasets.length, ...stats, duration });
 
       return {
@@ -259,7 +291,11 @@ export const schemaMaintenanceJob = {
           schemasSkipped: stats.skipped,
           schemasFailed: stats.failed,
           duration,
-          details,
+          // The scan covers every dataset, but this array is persisted verbatim in the job
+          // record. Report every dataset that actually needed work and only a sample of the
+          // "nothing to do" ones, so the output cannot grow with the dataset count.
+          details: cappedDetails,
+          detailsTruncated: cappedDetails.length < details.length,
         },
       };
     } catch (error) {

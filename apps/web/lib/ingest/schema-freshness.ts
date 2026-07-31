@@ -8,6 +8,7 @@
  * @module
  * @category Services
  */
+import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
@@ -28,6 +29,42 @@ export interface SchemaFreshnessResult {
   schemaCreatedAt: string | null;
 }
 
+const countEventsFor = async (payload: Payload, datasetId: number, req?: PayloadRequest): Promise<number> => {
+  const eventCountResult = await payload.count({
+    collection: COLLECTION_NAMES.EVENTS,
+    where: { dataset: { equals: datasetId } },
+    overrideAccess: true,
+    req,
+  });
+  return eventCountResult.totalDocs;
+};
+
+/**
+ * Event counts for many datasets in one query.
+ *
+ * The maintenance job checks every dataset for staleness, and one `payload.count` per dataset
+ * turns that scan into 1 round trip per dataset against a fixed job timeout. Datasets with no
+ * events are absent from the result — read them as 0.
+ *
+ * `datasetIds` scopes the aggregate. A targeted run over one dataset must not degrade an
+ * indexable count into a GROUP BY over the whole events table.
+ */
+export const countEventsByDataset = async (payload: Payload, datasetIds: number[]): Promise<Map<number, number>> => {
+  if (datasetIds.length === 0) return new Map();
+
+  const result = (await payload.db.drizzle.execute(
+    sql`SELECT dataset_id, COUNT(*)::bigint AS total
+        FROM payload.events
+        WHERE dataset_id IN (${sql.join(
+          datasetIds.map((id) => sql`${id}`),
+          sql`, `
+        )})
+        GROUP BY dataset_id`
+  )) as { rows: Array<{ dataset_id: number | string; total: number | string }> };
+
+  return new Map(result.rows.map((row) => [Number(row.dataset_id), Number(row.total)]));
+};
+
 /**
  * Check if a dataset's schema is stale by querying the actual event count.
  *
@@ -35,22 +72,18 @@ export interface SchemaFreshnessResult {
  * @param datasetId - ID of the dataset to check
  * @param schema - The current schema version (or null if no schema exists)
  * @param req - Optional request for context
+ * @param knownEventCount - Count already fetched by the caller (see countEventsByDataset).
+ *   Skips the per-dataset count query without introducing a second staleness rule.
  * @returns Freshness result with staleness status and reason
  */
 export const getSchemaFreshness = async (
   payload: Payload,
   datasetId: number,
   schema: DatasetSchema | null,
-  req?: PayloadRequest
+  req?: PayloadRequest,
+  knownEventCount?: number
 ): Promise<SchemaFreshnessResult> => {
-  // Query actual event count from database
-  const eventCountResult = await payload.count({
-    collection: COLLECTION_NAMES.EVENTS,
-    where: { dataset: { equals: datasetId } },
-    overrideAccess: true,
-    req,
-  });
-  const currentEventCount = eventCountResult.totalDocs;
+  const currentEventCount = knownEventCount ?? (await countEventsFor(payload, datasetId, req));
 
   // No schema exists - stale if there are events
   if (!schema) {
