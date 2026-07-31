@@ -28,6 +28,21 @@ const waitForEventsListResponse = (page: Page, expectedParams: Record<string, st
     { timeout: 15000 }
   );
 
+/**
+ * Ranges derived from today, not hard-coded.
+ *
+ * The environmental seed timestamps events at `Date.now() - index * 1h`, so the data always
+ * sits in the current month. Fixed 2024 windows matched it only while "now" was in 2024 —
+ * these assertions had been failing on every run since, for a reason that had nothing to do
+ * with filtering.
+ */
+const pad = (value: number): string => String(value).padStart(2, "0");
+
+const CURRENT_YEAR = new Date().getUTCFullYear();
+
+const YEAR_START = `${CURRENT_YEAR}-01-01`;
+const YEAR_END = `${CURRENT_YEAR}-12-31`;
+
 const expectEventsWithinDateRange = async (response: Response, startDate: string, endDate: string) => {
   expect(response.status()).toBe(200);
 
@@ -114,10 +129,10 @@ test.describe("Explore Page - Filtering", () => {
   test("should filter by date range", async ({ page }) => {
     await explorePage.toggleDataset("Air Quality Measurements");
 
-    const filteredResponsePromise = waitForEventsListResponse(page, { startDate: "2024-01-01", endDate: "2024-12-31" });
+    const filteredResponsePromise = waitForEventsListResponse(page, { startDate: YEAR_START, endDate: YEAR_END });
 
-    await explorePage.setStartDate("2024-01-01");
-    await explorePage.setEndDate("2024-12-31");
+    await explorePage.setStartDate(YEAR_START);
+    await explorePage.setEndDate(YEAR_END);
     const filteredResponse = await filteredResponsePromise;
 
     await explorePage.page.waitForFunction(
@@ -131,15 +146,15 @@ test.describe("Explore Page - Filtering", () => {
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    await explorePage.assertUrlParam("startDate", "2024-01-01");
-    await explorePage.assertUrlParam("endDate", "2024-12-31");
-    await expectEventsWithinDateRange(filteredResponse, "2024-01-01", "2024-12-31");
+    await explorePage.assertUrlParam("startDate", YEAR_START);
+    await explorePage.assertUrlParam("endDate", YEAR_END);
+    await expectEventsWithinDateRange(filteredResponse, YEAR_START, YEAR_END);
   });
 
   test("should clear date filters", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.setStartDate("2024-01-01");
-    await explorePage.setEndDate("2024-12-31");
+    await explorePage.setStartDate(YEAR_START);
+    await explorePage.setEndDate(YEAR_END);
 
     await explorePage.waitForApiResponse();
     await explorePage.clearDateFilters();
@@ -158,16 +173,16 @@ test.describe("Explore Page - Filtering", () => {
 
   test("should combine multiple filters", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.setStartDate("2024-06-01");
-    await explorePage.setEndDate("2024-06-30");
+    await explorePage.setStartDate(YEAR_START);
+    await explorePage.setEndDate(YEAR_END);
 
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
     const params = await explorePage.getUrlParams();
     expect(params.has("datasets")).toBe(true);
-    expect(params.get("startDate")).toBe("2024-06-01");
-    expect(params.get("endDate")).toBe("2024-06-30");
+    expect(params.get("startDate")).toBe(YEAR_START);
+    expect(params.get("endDate")).toBe(YEAR_END);
   });
 
   test("should update results when changing dataset selection", async () => {
@@ -209,24 +224,40 @@ test.describe("Explore Page - Filtering", () => {
   });
 
   test("should handle edge cases in date filtering", async ({ page }) => {
+    // The month has to come from the data, not from the calendar: the seed spreads events
+    // over the past year, so any fixed month is a coin flip on whether it contains any — and
+    // an empty result would fail this test for a reason that has nothing to do with
+    // filtering. Take the month of an event that actually exists.
+    const unfilteredPromise = waitForEventsListResponse(page, {});
     await explorePage.toggleDataset("Air Quality Measurements");
+    const unfiltered = await unfilteredPromise;
+
+    const body = (await unfiltered.json()) as { events?: Array<{ eventTimestamp?: string | null }> };
+    const sample = body.events?.find((event) => Boolean(event.eventTimestamp))?.eventTimestamp;
+    expect(sample, "seed data must contain at least one timestamped event").toBeTruthy();
+
+    const sampleDate = new Date(sample!);
+    const year = sampleDate.getUTCFullYear();
+    const month = sampleDate.getUTCMonth() + 1;
+    const monthStart = `${year}-${pad(month)}-01`;
+    const monthEnd = `${year}-${pad(month)}-${pad(new Date(Date.UTC(year, month, 0)).getUTCDate())}`;
 
     // Single-month date range
-    const julyResponsePromise = waitForEventsListResponse(page, { startDate: "2024-07-01", endDate: "2024-07-31" });
+    const monthResponsePromise = waitForEventsListResponse(page, { startDate: monthStart, endDate: monthEnd });
 
-    await explorePage.setStartDate("2024-07-01");
-    await explorePage.setEndDate("2024-07-31");
-    const julyResponse = await julyResponsePromise;
+    await explorePage.setStartDate(monthStart);
+    await explorePage.setEndDate(monthEnd);
+    const monthResponse = await monthResponsePromise;
 
     await explorePage.waitForApiResponse();
     await explorePage.waitForEventsToLoad();
 
-    await expectEventsWithinDateRange(julyResponse, "2024-07-01", "2024-07-31");
+    await expectEventsWithinDateRange(monthResponse, monthStart, monthEnd);
   });
 
   test("should preserve filters when navigating", async () => {
     await explorePage.toggleDataset("Air Quality Measurements");
-    await explorePage.setStartDate("2024-01-01");
+    await explorePage.setStartDate(YEAR_START);
 
     await explorePage.waitForApiResponse();
 
@@ -243,6 +274,6 @@ test.describe("Explore Page - Filtering", () => {
     expect(selected.some((name) => /Air Quality Measurements/i.test(name))).toBe(true);
 
     // Verify date filter is restored via URL
-    await explorePage.assertUrlParam("startDate", "2024-01-01");
+    await explorePage.assertUrlParam("startDate", YEAR_START);
   });
 });

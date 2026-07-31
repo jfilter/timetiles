@@ -24,15 +24,21 @@ const DATE_INPUT_CLASS =
   "border-primary/20 focus:border-secondary focus:ring-secondary/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
 
 /**
- * A date input that commits only on blur or Enter.
+ * A date input that commits a complete date immediately and holds everything else.
  *
- * Same reasoning as `NumberInput` in numeric-range-slider: `<input type="date">` reports an
- * empty value for every incomplete entry, so committing per keystroke pushed `null` while the
- * year was still being typed, and the controlled value snapped back to the data minimum on
- * each one. Clearing the field deliberately had the same effect — the box refilled itself with
- * a date the filter did not actually have.
+ * `<input type="date">` reports an empty value for every incomplete entry, so committing per
+ * keystroke pushed `null` while the year was still being typed and the controlled value
+ * snapped back to the data minimum on each one. Those intermediate states go into a draft and
+ * are committed on blur — which is also how clearing the field takes effect.
+ *
+ * A complete date does NOT wait for blur: the native calendar popup emits one without moving
+ * focus, so blur-only made picking a date look like it did nothing at all.
  */
-const DateInput = ({
+/** `<input type="date">` yields either "" or a full YYYY-MM-DD; nothing in between. */
+const COMPLETE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Exported for direct testing — the commit rule is subtle and only E2E caught it breaking. */
+export const DateInput = ({
   value,
   onCommit,
   min,
@@ -58,8 +64,24 @@ const DateInput = ({
     <input
       type="date"
       value={draft ?? value}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        const next = e.target.value;
+        // `<input type="date">` reports "" for every incomplete entry, so committing each
+        // keystroke pushed null while the user was still typing the year and the field
+        // refilled itself from the data minimum. Hold those in a draft — but a COMPLETE date
+        // applies at once, because that is also what picking one from the native calendar
+        // popup produces, and a popup selection does not blur the field. Waiting for blur
+        // there meant choosing a date visibly did nothing.
+        if (COMPLETE_DATE.test(next)) {
+          setDraft(null);
+          onCommit(next);
+          return;
+        }
+        setDraft(next);
+      }}
       onBlur={() => {
+        // Covers the one case onChange deliberately holds back: the field was emptied, which
+        // is how the filter gets cleared.
         if (draft !== null) onCommit(draft);
         setDraft(null);
       }}
