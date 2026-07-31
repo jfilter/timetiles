@@ -21,7 +21,8 @@ import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-con
 interface TemporalClusterRow {
   bucket_start: string;
   bucket_end: string;
-  bucket_size_seconds: number;
+  /** int8 since 20260731_210000 — node-postgres returns it as a string. */
+  bucket_size_seconds: string;
   group_id: string;
   group_name: string;
   event_count: number;
@@ -116,7 +117,7 @@ const buildResponse = (rows: TemporalClusterRow[], groupBy: string): TemporalClu
       total,
       mode: isIndividual ? "individual" : "clustered",
       groupBy,
-      bucketSizeSeconds: firstRow!.bucket_size_seconds ?? null,
+      bucketSizeSeconds: firstRow ? Number(firstRow.bucket_size_seconds) : null,
       bucketCount: bucketStarts.size,
       dateRange: {
         min: firstRow?.bucket_start ? new Date(firstRow.bucket_start).toISOString() : null,
