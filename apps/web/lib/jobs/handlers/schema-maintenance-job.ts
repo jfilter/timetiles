@@ -24,7 +24,7 @@ export interface SchemaMaintenanceJobInput {
   datasetIds?: number[];
   /** Optional: force regeneration even if schemas appear fresh */
   forceRegenerate?: boolean;
-  /** Optional: maximum datasets to process in one run (default: 100) */
+  /** Optional: maximum schemas to REGENERATE in one run (default: 100) */
   maxDatasets?: number;
 }
 
@@ -46,6 +46,14 @@ interface ProcessingStats {
   failed: number;
 }
 
+/** A dataset that needs regeneration, plus what made it stale */
+interface Candidate {
+  dataset: DatasetInfo;
+  freshness: SchemaFreshnessResult;
+}
+
+const isCandidate = (value: Candidate | ProcessingResult): value is Candidate => "dataset" in value;
+
 export interface SchemaMaintenanceResult {
   success: boolean;
   datasetsChecked: number;
@@ -56,17 +64,23 @@ export interface SchemaMaintenanceResult {
   details?: ProcessingResult[];
 }
 
-/** Get datasets to check for schema staleness */
-const getDatasetsToCheck = async (
-  payload: Payload,
-  specificIds: number[] | undefined,
-  maxDatasets: number
-): Promise<DatasetInfo[]> => {
+/**
+ * Get datasets to check for schema staleness.
+ *
+ * Every dataset is inspected, not the first N. The old `limit: maxDatasets` truncated the
+ * scan at a fixed 100 with no cursor and no rotating order, so an installation with more
+ * datasets than that re-checked the same head of the list every night and everything past
+ * it kept a stale schema forever. The staleness check itself is cheap (a count plus the
+ * latest schema version); the run is bounded by capping the expensive regenerations below.
+ */
+const getDatasetsToCheck = async (payload: Payload, specificIds: number[] | undefined): Promise<DatasetInfo[]> => {
   const datasets = await asSystem(payload).find({
     collection: COLLECTION_NAMES.DATASETS,
     where: specificIds?.length ? { id: { in: specificIds } } : {},
-    limit: maxDatasets,
+    limit: 0,
     pagination: false,
+    sort: "id",
+    select: { name: true },
   });
 
   return datasets.docs.map((d) => ({ id: d.id, name: d.name }));
@@ -86,12 +100,12 @@ const shouldSkipDataset = (
   return { skip: false };
 };
 
-/** Process a single dataset for schema maintenance */
-const processDataset = async (
+/** Decide whether a dataset needs work, without doing any of it */
+const evaluateDataset = async (
   payload: Payload,
   dataset: DatasetInfo,
   forceRegenerate: boolean
-): Promise<ProcessingResult> => {
+): Promise<Candidate | ProcessingResult> => {
   const latestSchema = await SchemaInferenceService.getLatestSchema(payload, dataset.id);
   const freshness = await getSchemaFreshness(payload, dataset.id, latestSchema);
 
@@ -100,6 +114,16 @@ const processDataset = async (
     return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: skipCheck.reason };
   }
 
+  return { dataset, freshness };
+};
+
+/** Regenerate the schema of a dataset already known to need it */
+const regenerateDataset = async (
+  payload: Payload,
+  dataset: DatasetInfo,
+  freshness: SchemaFreshnessResult,
+  forceRegenerate: boolean
+): Promise<ProcessingResult> => {
   const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id, { forceRegenerate });
 
   if (result.generated) {
@@ -120,32 +144,73 @@ const processDataset = async (
   return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: result.message };
 };
 
-/** Process all datasets and collect results */
+const toFailure = (dataset: DatasetInfo, error: unknown): ProcessingResult => {
+  const reason = error instanceof Error ? error.message : String(error);
+  logger.warn("Failed to process schema for dataset", { datasetId: dataset.id, error: reason });
+  return { datasetId: dataset.id, datasetName: dataset.name, action: "failed", reason };
+};
+
+/**
+ * Order stale datasets least-recently-serviced first.
+ *
+ * A dataset with no schema at all has nothing to sort by and goes first; the rest follow by
+ * schema age. Regenerating writes a new schema, so a serviced dataset moves to the back —
+ * that is what keeps the per-run cap from repeatedly picking the same head of the list.
+ */
+const byStalestFirst = (a: Candidate, b: Candidate): number => {
+  const aAt = a.freshness.schemaCreatedAt;
+  const bAt = b.freshness.schemaCreatedAt;
+  if (aAt === null || bAt === null) return (aAt === null ? 0 : 1) - (bAt === null ? 0 : 1);
+  return Date.parse(aAt) - Date.parse(bAt);
+};
+
+/** Check every dataset, then regenerate at most `maxDatasets` of the stale ones */
 const processAllDatasets = async (
   payload: Payload,
   datasets: DatasetInfo[],
-  forceRegenerate: boolean
+  forceRegenerate: boolean,
+  maxDatasets: number
 ): Promise<{ details: ProcessingResult[]; stats: ProcessingStats }> => {
   const details: ProcessingResult[] = [];
   const stats: ProcessingStats = { generated: 0, skipped: 0, failed: 0 };
+  const candidates: Candidate[] = [];
 
   for (const dataset of datasets) {
     try {
-      const result = await processDataset(payload, dataset, forceRegenerate);
+      const outcome = await evaluateDataset(payload, dataset, forceRegenerate);
+      if (isCandidate(outcome)) {
+        candidates.push(outcome);
+      } else {
+        details.push(outcome);
+        stats.skipped++;
+      }
+    } catch (error) {
+      stats.failed++;
+      details.push(toFailure(dataset, error));
+    }
+  }
+
+  candidates.sort(byStalestFirst);
+
+  for (const [index, candidate] of candidates.entries()) {
+    if (index >= maxDatasets) {
+      details.push({
+        datasetId: candidate.dataset.id,
+        datasetName: candidate.dataset.name,
+        action: "skipped",
+        reason: "Deferred to the next run (per-run regeneration limit reached)",
+      });
+      stats.skipped++;
+      continue;
+    }
+
+    try {
+      const result = await regenerateDataset(payload, candidate.dataset, candidate.freshness, forceRegenerate);
       details.push(result);
       stats[result.action === "generated" ? "generated" : "skipped"]++;
     } catch (error) {
       stats.failed++;
-      details.push({
-        datasetId: dataset.id,
-        datasetName: dataset.name,
-        action: "failed",
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      logger.warn("Failed to process schema for dataset", {
-        datasetId: dataset.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      details.push(toFailure(candidate.dataset, error));
     }
   }
 
@@ -180,8 +245,8 @@ export const schemaMaintenanceJob = {
     logger.info("Starting schema maintenance job", { datasetIds: input?.datasetIds, forceRegenerate, maxDatasets });
 
     try {
-      const datasets = await getDatasetsToCheck(payload, input?.datasetIds, maxDatasets);
-      const { details, stats } = await processAllDatasets(payload, datasets, forceRegenerate);
+      const datasets = await getDatasetsToCheck(payload, input?.datasetIds);
+      const { details, stats } = await processAllDatasets(payload, datasets, forceRegenerate, maxDatasets);
       const duration = Date.now() - startTime;
 
       logger.info("Schema maintenance completed", { datasetsChecked: datasets.length, ...stats, duration });

@@ -181,4 +181,51 @@ describe.sequential("Schema Maintenance Job", () => {
     // No events + no schema = fresh (no schema needed)
     expect(result.output.details?.[0]?.reason).toBe("Schema is up-to-date");
   });
+
+  /**
+   * The scan used to stop at `maxDatasets` datasets ordered by id, with no cursor and no
+   * rotating order, so anything past that window kept a stale schema forever. The cap now
+   * bounds the regenerations, not the scan.
+   */
+  it("reaches datasets beyond the per-run regeneration limit", async () => {
+    const datasetIds = [testDatasetId];
+    for (let i = 0; i < 2; i++) {
+      const { dataset } = await withDataset(testEnv, testCatalogId, {
+        name: `Overflow Dataset ${i}`,
+        description: "Dataset past the per-run limit",
+      });
+      datasetIds.push(dataset.id);
+    }
+
+    for (const datasetId of datasetIds) {
+      await payload.create({
+        collection: "events",
+        data: {
+          dataset: datasetId,
+          uniqueId: generateUniqueId(datasetId),
+          sourceData: { name: "Event" },
+          transformedData: { name: "Event" },
+          eventTimestamp: new Date().toISOString(),
+        },
+        overrideAccess: true,
+      });
+    }
+
+    const lastDatasetId = datasetIds[datasetIds.length - 1]!;
+
+    // One regeneration per run; three runs must reach all three datasets, including the
+    // last one, which the truncated scan could never have seen.
+    for (let run = 0; run < datasetIds.length; run++) {
+      const result = await schemaMaintenanceJob.handler({ req: { payload }, input: { maxDatasets: 1 } });
+      expect(result.output.datasetsChecked).toBe(datasetIds.length);
+      expect(result.output.schemasGenerated).toBe(1);
+    }
+
+    const schemas = await payload.find({
+      collection: "dataset-schemas",
+      where: { dataset: { equals: lastDatasetId } },
+      overrideAccess: true,
+    });
+    expect(schemas.docs).toHaveLength(1);
+  });
 });

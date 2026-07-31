@@ -55,3 +55,49 @@ describe("ProgressiveSchemaBuilder manual schema for nested data", () => {
     expect(propertiesOf(propertiesOf(props.meta).b).c!.type).toBe("string");
   });
 });
+
+/**
+ * `enhanceSchemaWithStats` walks the generated schema by dot-path to attach the
+ * statistics quicktype cannot infer. The walker looked each part up directly in
+ * the previous part's schema NODE instead of stepping into its `properties` map,
+ * so nothing below the top level was ever reached.
+ */
+describe("ProgressiveSchemaBuilder statistics on nested fields", () => {
+  const records = Array.from({ length: 10 }, (_, index) => ({
+    age: 20 + index,
+    user: { age: 30 + index },
+    items: [{ qty: 40 + index }],
+  }));
+
+  it("attaches numeric constraints to nested object fields", async () => {
+    const builder = new ProgressiveSchemaBuilder();
+    builder.processBatch(records);
+
+    const props = propertiesOf(await builder.getSchema());
+
+    expect(props.age).toMatchObject({ minimum: 20, maximum: 29 });
+    expect(propertiesOf(props.user).age).toMatchObject({ minimum: 30, maximum: 39 });
+  });
+
+  it("attaches numeric constraints to fields inside arrays of objects", async () => {
+    const builder = new ProgressiveSchemaBuilder();
+    builder.processBatch(records);
+
+    const props = propertiesOf(await builder.getSchema());
+
+    expect(propertiesOf(props.items!.items).qty).toMatchObject({ minimum: 40, maximum: 49 });
+  });
+
+  it("resolves a nested field whose name collides with a schema keyword", async () => {
+    const builder = new ProgressiveSchemaBuilder();
+    // A child literally named `type` must resolve through `user.properties`, not against the
+    // node's own `type` keyword — that would land on the string "object", and assigning a
+    // constraint to a string primitive throws in strict mode.
+    builder.processBatch(records.map((record) => ({ ...record, user: { ...record.user, type: 5 } })));
+
+    const props = propertiesOf(await builder.getSchema());
+
+    expect(propertiesOf(props.user).type).toMatchObject({ minimum: 5, maximum: 5 });
+    expect(props.user!.type).toBe("object");
+  });
+});

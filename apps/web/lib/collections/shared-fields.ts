@@ -14,15 +14,21 @@
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import type { Access, CollectionBeforeChangeHook, Field, Where } from "payload";
 
+import { isPrivileged } from "@/lib/utils/user-roles";
 import type { Config } from "@/payload-types";
 
 import { createSlugHook } from "./slug";
 
 // Access control helpers for role-based permissions
 
-/** Plain boolean helper for checking admin or editor role outside Payload Access context. */
-export const isPrivileged = (user?: { role?: string | null } | null): boolean =>
-  user?.role === "admin" || user?.role === "editor";
+/**
+ * Plain boolean helper for checking admin or editor role outside Payload Access context.
+ *
+ * Defined one layer down so infrastructure code can reach it — `lib/services` may not import
+ * from `lib/collections`, and the SQL query adapter has to make the same decision the access
+ * rules below do.
+ */
+export { isPrivileged };
 
 export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";
 export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user);

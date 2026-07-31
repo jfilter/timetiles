@@ -76,7 +76,7 @@ export const GET = apiRoute({
       return buildListResponse(buildEmptyQueryResult(query.limit));
     }
 
-    if (requiresSqlFilteredPagination(ctx.filters)) {
+    if (requiresSqlFilteredPagination(ctx.filters) || requiresCustomFieldSort(query.sort)) {
       const result = await executeSqlFilteredEventsQuery(payload, ctx.filters, query, user);
       return buildListResponse(result);
     }
@@ -91,6 +91,42 @@ const requiresSqlFilteredPagination = (filters: CanonicalEventFilters): boolean 
   (filters.fieldFilters != null && Object.keys(filters.fieldFilters).length > 0) ||
   (filters.rangeFilters != null && Object.keys(filters.rangeFilters).length > 0) ||
   (filters.clusterCells?.length ?? 0) > 0;
+
+/**
+ * Real event columns. Everything else in `sort` is a path into `transformedData`.
+ *
+ * Payload cannot sort by those: `buildOrderBy` resolves the column inside a try/catch and
+ * silently drops the sort item on failure, leaving only the `id` tiebreaker. So `sort=title`
+ * meant "by title" when a field/range/cluster filter pushed the request onto the SQL path and
+ * "by id" without one — the same URL, two orderings. Route a non-native sort to SQL as well.
+ */
+// Typed against the column map below, so the routing decision and the map cannot drift:
+// a missing or excess key is a type error on either side.
+const NATIVE_SORT_FIELD_FLAGS: Record<NativeSortField, true> = {
+  createdAt: true,
+  eventEndTimestamp: true,
+  eventTimestamp: true,
+  id: true,
+  locationName: true,
+  uniqueId: true,
+  updatedAt: true,
+  validationStatus: true,
+};
+
+const NATIVE_SORT_FIELD_SET: ReadonlySet<string> = new Set(Object.keys(NATIVE_SORT_FIELD_FLAGS));
+
+/**
+ * True only for a sort the SQL path can express and the Payload path cannot.
+ *
+ * A value that is neither a real column nor a valid field key is meaningless on both paths,
+ * and the two disagree about which arbitrary order to fall back to (`id` under Payload,
+ * `eventTimestamp` under SQL). Leaving those on the Payload path keeps garbage input
+ * answering exactly as it did before.
+ */
+const requiresCustomFieldSort = (sort: string): boolean => {
+  const field = sort.replace(/^-/, "");
+  return !NATIVE_SORT_FIELD_SET.has(field) && isValidFieldKey(field);
+};
 
 /**
  * Append `id` as a tiebreaker so paging is deterministic.
@@ -127,18 +163,8 @@ const executeEventsQuery = async (
 type FilteredEventTable = ReturnType<typeof createFilteredEventDatasetScope>["eventTable"];
 
 const buildSortExpression = (eventTable: FilteredEventTable, sortField: string) => {
-  const sortableColumns = {
-    createdAt: eventTable.createdAt,
-    eventEndTimestamp: eventTable.eventEndTimestamp,
-    eventTimestamp: eventTable.eventTimestamp,
-    id: eventTable.id,
-    locationName: eventTable.locationName,
-    uniqueId: eventTable.uniqueId,
-    updatedAt: eventTable.updatedAt,
-    validationStatus: eventTable.validationStatus,
-  } as const;
-
-  const column = sortableColumns[sortField as keyof typeof sortableColumns];
+  const sortableColumns = nativeSortColumns(eventTable);
+  const column = sortableColumns[sortField as NativeSortField];
   if (column) {
     return column;
   }
@@ -148,6 +174,20 @@ const buildSortExpression = (eventTable: FilteredEventTable, sortField: string) 
 
   return eventTable.eventTimestamp;
 };
+
+const nativeSortColumns = (eventTable: FilteredEventTable) =>
+  ({
+    createdAt: eventTable.createdAt,
+    eventEndTimestamp: eventTable.eventEndTimestamp,
+    eventTimestamp: eventTable.eventTimestamp,
+    id: eventTable.id,
+    locationName: eventTable.locationName,
+    uniqueId: eventTable.uniqueId,
+    updatedAt: eventTable.updatedAt,
+    validationStatus: eventTable.validationStatus,
+  }) as const;
+
+type NativeSortField = keyof ReturnType<typeof nativeSortColumns>;
 
 const buildOrderByClause = (eventTable: FilteredEventTable, sort: string) => {
   const isDescending = sort.startsWith("-");

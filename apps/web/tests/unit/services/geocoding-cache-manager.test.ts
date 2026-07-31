@@ -39,6 +39,19 @@ describe("normalizeGeocodingAddress", () => {
     expect(normalizeGeocodingAddress("Köln")).not.toBe(normalizeGeocodingAddress("Kln"));
   });
 
+  // Regression: dropping the slash fused the parts into a different house number, so
+  // "12/1 Main St" became "121 main st" — colliding with a real, different address and
+  // sending the wrong string to the provider.
+  it("turns slashes into a separator instead of fusing address parts", () => {
+    expect(normalizeGeocodingAddress("12/1 Main St")).toBe("12 1 main st");
+    expect(normalizeGeocodingAddress("12/1 Main St")).not.toBe(normalizeGeocodingAddress("121 Main St"));
+    expect(normalizeGeocodingAddress("Apt 3/B, Berlin")).toBe("apt 3 b, berlin");
+  });
+
+  it("still drops apostrophes rather than splitting the word", () => {
+    expect(normalizeGeocodingAddress("O'Brien St")).toBe("obrien st");
+  });
+
   it("collapses duplicate commas and trims leading/trailing separators", () => {
     expect(normalizeGeocodingAddress(",,Berlin,, Mitte,")).toBe("berlin, mitte");
   });

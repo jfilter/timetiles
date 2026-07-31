@@ -67,6 +67,7 @@ import * as migration_20260629_194054_add_data_package_slug_unique from './20260
 import * as migration_20260730_192628 from './20260730_192628';
 import * as migration_20260730_231500_revoke_inactive_user_credentials from './20260730_231500_revoke_inactive_user_credentials';
 import * as migration_20260731_120000_fix_cluster_and_histogram_math from './20260731_120000_fix_cluster_and_histogram_math';
+import * as migration_20260731_170000_fix_histogram_bucket_count from './20260731_170000_fix_histogram_bucket_count';
 
 export const migrations = [
   {
@@ -413,5 +414,10 @@ export const migrations = [
     up: migration_20260731_120000_fix_cluster_and_histogram_math.up,
     down: migration_20260731_120000_fix_cluster_and_histogram_math.down,
     name: '20260731_120000_fix_cluster_and_histogram_math'
+  },
+  {
+    up: migration_20260731_170000_fix_histogram_bucket_count.up,
+    down: migration_20260731_170000_fix_histogram_bucket_count.down,
+    name: '20260731_170000_fix_histogram_bucket_count'
   },
 ];

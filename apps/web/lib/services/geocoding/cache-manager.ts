@@ -39,11 +39,18 @@ const logger = createLogger("geocoding-cache-manager");
  * → "mllerstrae 12, kln"), emptied fully non-Latin addresses out of the
  * geocode set entirely, and collided cache keys for addresses differing only
  * in non-ASCII letters.
+ *
+ * Slashes separate address parts ("12/1 Main St", "Apt 3/B") and become a space rather than
+ * being dropped: dropping them fused the parts into a different house number, so "12/1 Main
+ * St" normalized to "121 main st" — the same key as the genuinely different "121 Main St",
+ * and, because this string is also what gets sent to the provider, the wrong lookup. Other
+ * punctuation keeps being dropped, which is what an apostrophe ("O'Brien" → "obrien") wants.
  */
 export const normalizeGeocodingAddress = (address: string): string =>
   address
     .toLowerCase()
     .trim()
+    .replaceAll(/[/\\|]+/g, " ")
     .replaceAll(/\s+/g, " ")
     .replaceAll(/[^\p{L}\p{N}_\s,.-]/gu, "")
     .replaceAll(/,{2,}/g, ",")

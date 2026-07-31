@@ -340,4 +340,71 @@ describe.sequential("/api/v1/events/temporal", () => {
     const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
     expect(totalCount).toBe(1);
   });
+
+  // Regression: the bucket count was derived as CEIL(range/size) while generate_series is
+  // inclusive of its endpoint and yields FLOOR(range/size)+1 rows. On an exactly divisible
+  // range the two differ by one, so maxBuckets=50 answered with 51 (fixed in 20260731_170000).
+  it("never returns more buckets than maxBuckets on an exactly divisible range", async () => {
+    const start = new Date("2027-01-01T00:00:00.000Z");
+    const timestamps = [start, new Date(start.getTime() + 100_000)]; // exactly 100 seconds apart
+
+    for (const [i, timestamp] of timestamps.entries()) {
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `histogram-divisible-${i}`,
+          dataset: Number.parseInt(testDatasetId),
+          sourceData: { title: `Divisible ${i}` },
+          transformedData: { title: `Divisible ${i}` },
+          location: { latitude: 1, longitude: 1 },
+          eventTimestamp: timestamp.toISOString(),
+        },
+      });
+    }
+
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}` +
+        `&startDate=2026-12-31&endDate=2027-01-02&targetBuckets=50&minBuckets=1&maxBuckets=50`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.metadata.bucketCount).toBeLessThanOrEqual(50);
+    // Both events still have to land somewhere — the trailing series point is what holds the
+    // one sitting exactly on the range's upper bound.
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBe(2);
+  });
+
+  // The minBuckets branch runs unconditionally after the maxBuckets cap and re-derives the
+  // bucket size, so with min == max it used to undo the cap that had just been applied.
+  it("keeps maxBuckets a hard ceiling when minBuckets equals maxBuckets", async () => {
+    const start = new Date("2027-02-01T00:00:00.000Z");
+    for (const [i, offset] of [0, 100_000].entries()) {
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `histogram-minmax-${i}`,
+          dataset: Number.parseInt(testDatasetId),
+          sourceData: { title: `MinMax ${i}` },
+          transformedData: { title: `MinMax ${i}` },
+          location: { latitude: 1, longitude: 1 },
+          eventTimestamp: new Date(start.getTime() + offset).toISOString(),
+        },
+      });
+    }
+
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}` +
+        `&startDate=2027-01-31&endDate=2027-02-02&targetBuckets=30&minBuckets=50&maxBuckets=50`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.metadata.bucketCount).toBeLessThanOrEqual(50);
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBe(2);
+  });
 });

@@ -16,6 +16,7 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import type { EventFilters as EventQueryParams } from "@/lib/schemas/events";
 import { canAccessCatalog } from "@/lib/services/access-control";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
+import { isPrivileged } from "@/lib/utils/user-roles";
 import type { User } from "@/payload-types";
 
 interface ResolveOptions {
@@ -58,6 +59,12 @@ export const resolveEventQueryContext = async ({
 
   if (filters.denyResults) {
     return { denied: true };
+  }
+
+  // Matches the events collection's read rule, which returns `true` for a privileged user.
+  // Only the SQL output adapter consumes this; the Payload path already applies the rule.
+  if (isPrivileged(user)) {
+    filters.unrestrictedAccess = true;
   }
 
   await resolveDatasetFieldContext(filters, payload, user);
