@@ -11,6 +11,8 @@
  * @module
  * @category Integration Tests
  */
+import { randomUUID } from "node:crypto";
+
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -22,6 +24,10 @@ import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 import type { TestEnvironment } from "../../setup/integration/environment";
 
 const WORLD_BOUNDS = { north: 90, south: -90, east: 180, west: -180 };
+
+/** Integration projects run with `retry: 2`; a fixed uniqueId makes the retry fail on a
+ *  duplicate key instead of the assertion that actually broke. */
+const RUN_ID = randomUUID().slice(0, 8);
 
 describe.sequential("privileged access parity across event endpoints", () => {
   let payload: Payload;
@@ -90,7 +96,7 @@ describe.sequential("privileged access parity across event endpoints", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `privileged-parity-${i}`,
+          uniqueId: `privileged-parity-${i}-${RUN_ID}`,
           dataset: privateDatasetId,
           sourceData: { title: `Private ${i}` },
           transformedData: { title: `Private ${i}` },

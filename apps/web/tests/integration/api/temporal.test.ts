@@ -7,11 +7,21 @@
  * @module
  * @category Integration Tests
  */
+import { randomUUID } from "node:crypto";
+
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { GET } from "../../../app/api/v1/events/temporal/route";
+
+/**
+ * Integration projects run with `retry: 2`. A test that creates rows under FIXED uniqueIds
+ * fails its retry with a duplicate-key ValidationError instead of the assertion that actually
+ * broke, which buries the real failure. One suffix per run keeps a retry clean.
+ */
+const RUN_ID = randomUUID().slice(0, 8);
+const uid = (name: string): string => `${name}-${RUN_ID}`;
 
 interface HistogramBucket {
   date: string;
@@ -72,7 +82,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       const event = await payload.create({
         collection: "events",
         data: {
-          uniqueId: `histogram-test-event-${i + 1}`,
+          uniqueId: uid(`histogram-test-event-${i + 1}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: {
             title: `Test Event ${i + 1}`,
@@ -318,7 +328,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `histogram-single-ts-${i}`,
+          uniqueId: uid(`histogram-single-ts-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Single TS ${i}` },
           transformedData: { title: `Single TS ${i}` },
@@ -352,7 +362,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `histogram-divisible-${i}`,
+          uniqueId: uid(`histogram-divisible-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Divisible ${i}` },
           transformedData: { title: `Divisible ${i}` },
@@ -390,7 +400,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `histogram-centuries-${i}`,
+          uniqueId: uid(`histogram-centuries-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Centuries ${i}` },
           transformedData: { title: `Centuries ${i}` },
@@ -424,7 +434,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `histogram-minmax-${i}`,
+          uniqueId: uid(`histogram-minmax-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `MinMax ${i}` },
           transformedData: { title: `MinMax ${i}` },

@@ -10,6 +10,8 @@
  * @module
  * @category Integration Tests
  */
+import { randomUUID } from "node:crypto";
+
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -24,6 +26,10 @@ const ROWS = [
   { title: "Alpha", price: "10" },
   { title: "Bravo", price: "20" },
 ];
+
+/** Integration projects run with `retry: 2`; a fixed uniqueId makes the retry fail on a
+ *  duplicate key instead of the assertion that actually broke. */
+const RUN_ID = randomUUID().slice(0, 8);
 
 describe.sequential("event list sorting by a transformedData field", () => {
   let payload: Payload;
@@ -57,7 +63,7 @@ describe.sequential("event list sorting by a transformedData field", () => {
       await payload.create({
         collection: "events",
         data: {
-          uniqueId: `sort-parity-${index + 1}`,
+          uniqueId: `sort-parity-${index + 1}-${RUN_ID}`,
           dataset: datasetId,
           sourceData: row,
           transformedData: row,

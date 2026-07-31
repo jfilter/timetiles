@@ -158,11 +158,13 @@ export class ExplorePage {
       .filter({ hasText: /\w{3} \d{4} → \w{3} \d{4}/ })
       .first();
 
-    // Wait for button to be visible and stable before clicking.
-    // Previously used `force: true` to bypass actionability checks,
-    // which masked overlay/animation issues in the time-range section.
+    // Wait for the button to be visible, then let `click()` handle the rest. It re-resolves
+    // the locator on every actionability retry, whereas an explicit scrollIntoViewIfNeeded
+    // holds one element handle and throws "not attached to the DOM" if the section remounts
+    // underneath it — which it does, because this button's own label is the date range and a
+    // committed filter change rerenders it. Previously `force: true` hid that by skipping
+    // actionability entirely.
     await dateRangeButton.waitFor({ state: "visible", timeout: 10000 });
-    await dateRangeButton.scrollIntoViewIfNeeded();
     await dateRangeButton.click({ timeout: 10000 });
 
     // Wait for edit mode to open (date inputs to appear)

@@ -11,10 +11,16 @@
  * @module
  * @category Integration Tests
  */
+import { randomUUID } from "node:crypto";
+
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { TestEnvironment } from "../../setup/integration/environment";
+
+/** Integration projects run with `retry: 2`; a fixed uniqueId makes the retry fail on a
+ *  duplicate key instead of the assertion that actually broke. */
+const RUN_ID = randomUUID().slice(0, 8);
 
 describe.sequential("database session time zone", () => {
   let payload: Payload;
@@ -62,7 +68,7 @@ describe.sequential("database session time zone", () => {
     const created = await payload.create({
       collection: "events",
       data: {
-        uniqueId: `historic-${label.replace(/\s+/g, "-")}`,
+        uniqueId: `historic-${label.replace(/\s+/g, "-")}-${RUN_ID}`,
         dataset: datasetId,
         sourceData: { title: label },
         transformedData: { title: label },
