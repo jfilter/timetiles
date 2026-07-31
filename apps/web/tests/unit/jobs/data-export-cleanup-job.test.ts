@@ -70,14 +70,24 @@ describe.sequential("dataExportCleanupJob", () => {
 
     const result = await dataExportCleanupJob.handler(createContext());
 
+    // Two writes, deliberately: the status flips first so no download can race the cleanup,
+    // and the path is dropped only once the file is confirmed gone. Clearing it up front lost
+    // the only pointer whenever the unlink failed transiently.
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "data-exports",
       id: 1,
-      data: { status: "expired", filePath: null },
+      data: { status: "expired" },
       overrideAccess: true,
     });
 
     expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-1.zip");
+
+    expect(mockPayload.update).toHaveBeenCalledWith({
+      collection: "data-exports",
+      id: 1,
+      data: { filePath: null },
+      overrideAccess: true,
+    });
 
     expect(result.output).toEqual({
       success: true,

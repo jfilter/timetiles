@@ -226,8 +226,13 @@ export const eventsQueryKeys = {
   list: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope, clusterFilter?: ClusterFilter) =>
     [...eventsQueryKeys.lists(), { filters, bounds, limit, scope, clusterFilter }] as const,
   infinite: () => [...eventsQueryKeys.all, "infinite"] as const,
-  infiniteList: (filters: FilterState, bounds: BoundsType, limit: number, scope?: ViewScope) =>
-    [...eventsQueryKeys.infinite(), { filters, bounds, limit, scope }] as const,
+  infiniteList: (
+    filters: FilterState,
+    bounds: BoundsType,
+    limit: number,
+    scope?: ViewScope,
+    clusterFilter?: ClusterFilter
+  ) => [...eventsQueryKeys.infinite(), { filters, bounds, limit, scope, clusterFilter }] as const,
   clusters: () => [...eventsQueryKeys.all, "clusters"] as const,
   cluster: (
     filters: FilterState,
@@ -578,17 +583,23 @@ export const useEventsAggregationQuery = (
   return { ...query, isInitialLoad, isUpdating };
 };
 
-// Infinite query hook for paginated events list
+// Infinite query hook for paginated events list.
+//
+// `clusterFilter` is not optional in practice: the map, charts and the list description all
+// honour a clicked H3 cell, and without it here the list underneath kept showing every event
+// of the base filters — two contradictory counts on one screen.
 export const useEventsInfiniteQuery = (
   filters: FilterState,
   bounds: BoundsType,
   limit: number = 20,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ) =>
   useInfiniteQuery({
-    queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit, scope),
-    queryFn: ({ pageParam, signal }) => fetchEventsInternal(filters, bounds, { page: pageParam, limit }, signal, scope),
+    queryKey: eventsQueryKeys.infiniteList(filters, bounds, limit, scope, clusterFilter),
+    queryFn: ({ pageParam, signal }) =>
+      fetchEventsInternal(filters, bounds, { page: pageParam, limit }, signal, scope, clusterFilter),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
     enabled: enabled && bounds != null,
@@ -601,9 +612,10 @@ export const useEventsInfiniteFlattened = (
   bounds: BoundsType,
   limit: number = 20,
   enabled: boolean = true,
-  scope?: ViewScope
+  scope?: ViewScope,
+  clusterFilter?: ClusterFilter
 ) => {
-  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled, scope);
+  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled, scope, clusterFilter);
 
   // Flatten all pages into a single array
   const events = query.data?.pages ? query.data.pages.flatMap((page) => page.events) : [];

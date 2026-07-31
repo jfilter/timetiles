@@ -25,6 +25,9 @@ import type { MapBounds } from "@/lib/geospatial";
 import { MapClustersQuerySchema } from "@/lib/schemas/events";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
+/** Ground metres per CSS pixel at zoom 0. MapLibre's world is 512px wide at zoom 0. */
+const WEB_MERCATOR_METERS_PER_PIXEL_AT_ZOOM_0 = 78271.517;
+
 export const GET = apiRoute({
   auth: "optional",
   query: MapClustersQuerySchema,
@@ -91,7 +94,13 @@ export const GET = apiRoute({
         15: 0.5,
       };
       const centerLat = (bounds.south + bounds.north) / 2;
-      const groundRes = (156543.03 * Math.cos((centerLat * Math.PI) / 180)) / Math.pow(2, query.zoom);
+      // 78271.517, not the more familiar 156543.03: that constant is metres per pixel at zoom
+      // 0 for 256px tiles, but MapLibre defines the world as 512px wide at zoom 0. Using the
+      // 256px value made groundRes twice too large, so hexRadius came out at half the real
+      // hex size and capped every cluster circle at half its intended radius — down to
+      // 1-2px, effectively invisible, at low zoom.
+      const groundRes =
+        (WEB_MERCATOR_METERS_PER_PIXEL_AT_ZOOM_0 * Math.cos((centerLat * Math.PI) / 180)) / 2 ** query.zoom;
       hexRadiusPx = (edgeMeters[h3Res] ?? 100) / groundRes;
     }
 

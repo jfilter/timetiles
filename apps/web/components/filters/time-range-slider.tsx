@@ -12,6 +12,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
+import { useState } from "react";
 
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useTimeRangeSlider } from "@/lib/hooks/use-time-range-slider";
@@ -22,29 +23,53 @@ import { formatISODate, formatMonthYear, parseISODate } from "@/lib/utils/date";
 const DATE_INPUT_CLASS =
   "border-primary/20 focus:border-secondary focus:ring-secondary/20 rounded border bg-transparent px-2 py-1 font-mono text-xs focus:ring-1 focus:outline-none";
 
+/**
+ * A date input that commits only on blur or Enter.
+ *
+ * Same reasoning as `NumberInput` in numeric-range-slider: `<input type="date">` reports an
+ * empty value for every incomplete entry, so committing per keystroke pushed `null` while the
+ * year was still being typed, and the controlled value snapped back to the data minimum on
+ * each one. Clearing the field deliberately had the same effect — the box refilled itself with
+ * a date the filter did not actually have.
+ */
 const DateInput = ({
   value,
-  onChange,
+  onCommit,
   min,
   max,
   label,
 }: {
   value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCommit: (raw: string) => void;
   min: string;
   max: string;
   label: string;
-}) => (
-  <input
-    type="date"
-    value={value}
-    onChange={onChange}
-    min={min}
-    max={max}
-    aria-label={label}
-    className={DATE_INPUT_CLASS}
-  />
-);
+}) => {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  return (
+    <input
+      type="date"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== null) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.currentTarget.blur();
+        } else if (e.key === "Escape") {
+          setDraft(null);
+        }
+      }}
+      min={min}
+      max={max}
+      aria-label={label}
+      className={DATE_INPUT_CLASS}
+    />
+  );
+};
 
 interface TimeRangeSliderProps {
   filters: FilterState;
@@ -206,8 +231,8 @@ export const TimeRangeSlider = ({
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2">
               <DateInput
-                value={startDate ?? formatISODate(minTimestamp)}
-                onChange={handleStartDateInputChange}
+                value={startDate ?? ""}
+                onCommit={handleStartDateInputChange}
                 min={formatISODate(minTimestamp)}
                 max={endDate ?? formatISODate(maxTimestamp)}
                 label={t("startDate")}
@@ -216,8 +241,8 @@ export const TimeRangeSlider = ({
                 →
               </span>
               <DateInput
-                value={endDate ?? formatISODate(maxTimestamp)}
-                onChange={handleEndDateInputChange}
+                value={endDate ?? ""}
+                onCommit={handleEndDateInputChange}
                 min={startDate ?? formatISODate(minTimestamp)}
                 max={formatISODate(maxTimestamp)}
                 label={t("endDate")}

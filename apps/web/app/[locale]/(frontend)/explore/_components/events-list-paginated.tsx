@@ -12,10 +12,13 @@
 import { Button, ContentState } from "@timetiles/ui";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useMemo } from "react";
 
+import { parseH3ClusterFilter } from "@/lib/geospatial";
 import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
+import { useUIStore } from "@/lib/store";
 import type { SimpleBounds } from "@/lib/utils/event-params";
 
 import { EventsList } from "./events-list";
@@ -47,8 +50,14 @@ export const EventsListPaginated = ({
   const tCommon = useTranslations("Common");
   const scope = useViewScope();
 
+  // Clicking a marker sets an H3 cell focus that the map, charts and the surrounding
+  // description all respect. This list did not, so the same screen showed "12 events" above
+  // and every event of the base filters below.
+  const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
+  const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
+
   const { events, total, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } =
-    useEventsInfiniteFlattened(filters, bounds, 20, true, scope);
+    useEventsInfiniteFlattened(filters, bounds, 20, true, scope, clusterFilter);
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);

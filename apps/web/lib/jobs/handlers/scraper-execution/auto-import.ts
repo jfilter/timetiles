@@ -117,6 +117,35 @@ export const triggerAutoImport = async (
 };
 
 /**
+ * Record an auto-import failure on the run without turning the run itself into a failure.
+ *
+ * The scrape succeeded, so it is not a failed run — but it must not read as a clean success
+ * either. Without this the run showed status "success" with N rows, no error and no
+ * resultFile, and the only trace that the user received no data at all was a log line.
+ */
+const recordAutoImportFailure = async (
+  payload: JobHandlerContext["req"]["payload"],
+  scraper: Scraper,
+  runId: number,
+  importError: unknown
+): Promise<string> => {
+  logError(importError, "Auto-import failed after successful scrape", { scraperId: scraper.id, runId });
+  const message = importError instanceof Error ? importError.message : "Unknown error";
+
+  try {
+    await asSystem(payload).update({
+      collection: "scraper-runs",
+      id: runId,
+      data: { error: `Auto-import failed: ${message}` },
+    });
+  } catch (updateError) {
+    logError(updateError, "Failed to record auto-import error on scraper run", { runId });
+  }
+
+  return message;
+};
+
+/**
  * Update the scraper-run with results, update scraper statistics, and return output info.
  */
 export const handleRunSuccess = async (
@@ -125,7 +154,7 @@ export const handleRunSuccess = async (
   repo: ScraperRepo,
   runId: number,
   result: RunnerResponse
-): Promise<{ ingestFileId?: number | string }> => {
+): Promise<{ ingestFileId?: number | string; autoImportError?: string }> => {
   const { payload } = context.req;
   const finishedAt = new Date().toISOString();
 
@@ -161,6 +190,7 @@ export const handleRunSuccess = async (
   // header-only, and feeding that to schema detection creates a stranded
   // import job. Record the run and stop there.
   let ingestFileId: number | string | undefined;
+  let autoImportError: string | undefined;
   const hasRowsToImport = (result.output?.rows ?? 0) > 0;
   if (scraper.autoImport && result.status === "success" && result.output?.download_url && hasRowsToImport) {
     try {
@@ -193,8 +223,7 @@ export const handleRunSuccess = async (
         /* best-effort cleanup */
       }
     } catch (importError) {
-      logError(importError, "Auto-import failed after successful scrape", { scraperId: scraper.id, runId });
-      // Don't fail the whole job if auto-import fails
+      autoImportError = await recordAutoImportFailure(payload, scraper, runId, importError);
     }
   }
 
@@ -210,7 +239,7 @@ export const handleRunSuccess = async (
     data: { lastRunAt: finishedAt, lastRunStatus: result.status, statistics: updatedStats },
   });
 
-  return { ingestFileId };
+  return { ingestFileId, autoImportError };
 };
 
 /**

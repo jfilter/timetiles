@@ -49,15 +49,31 @@ interface PassResult {
 
 type PendingUnlink = { exportId: string | number; filePath: string };
 
-/** Best-effort unlink; a file that is already gone is not an error. */
-const unlinkQuietly = async (exportId: string | number, filePath: string, context: string): Promise<boolean> => {
+const isENOENT = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT";
+
+/**
+ * Best-effort unlink; a file that is already gone is not an error.
+ *
+ * "missing" and "failed" are distinguished because only the former means the file is really
+ * gone. A "failed" path has to stay on the record so a later run can retry it.
+ */
+const unlinkQuietly = async (
+  exportId: string | number,
+  filePath: string,
+  context: string
+): Promise<"deleted" | "missing" | "failed"> => {
   try {
     await unlink(filePath);
     logger.debug({ exportId, filePath }, "Deleted export file");
-    return true;
+    return "deleted";
   } catch (error) {
-    logger.warn({ exportId, filePath, error, context }, "Could not delete export file (may already be deleted)");
-    return false;
+    if (isENOENT(error)) {
+      logger.debug({ exportId, filePath, context }, "Export file already gone");
+      return "missing";
+    }
+    logger.warn({ exportId, filePath, error, context }, "Could not delete export file");
+    return "failed";
   }
 };
 
@@ -66,6 +82,12 @@ const unlinkQuietly = async (exportId: string | number, filePath: string, contex
  *
  * Records are updated sequentially (Payload writes are cheap and serialize
  * naturally) and marked BEFORE the unlink so no download can race the cleanup.
+ *
+ * The status flips but `filePath` stays — it is cleared only once the file is actually gone
+ * (see `unlinkPending`). Clearing it up front meant a transient unlink failure — I/O error,
+ * unmounted volume, permissions — left a ZIP full of exported personal data on disk with no
+ * record pointing at it, so neither this pass nor the later purge could ever remove it.
+ * Already-expired records that still carry a path are picked up again here for that reason.
  */
 const expireReadyExports = async (
   sys: SystemPayload,
@@ -73,7 +95,13 @@ const expireReadyExports = async (
 ): Promise<PassResult & { pending: PendingUnlink[] }> => {
   const expired = await sys.find({
     collection: DATA_EXPORTS,
-    where: { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
+    where: {
+      or: [
+        { and: [{ status: { equals: "ready" } }, { expiresAt: { less_than: now.toISOString() } }] },
+        // Retry: expired earlier, but the file survived a failed unlink.
+        { and: [{ status: { equals: "expired" } }, { filePath: { exists: true } }] },
+      ],
+    },
     limit: 100,
   });
 
@@ -83,10 +111,11 @@ const expireReadyExports = async (
 
   for (const record of expired.docs) {
     try {
-      const oldFilePath = record.filePath;
-      await sys.update({ collection: DATA_EXPORTS, id: record.id, data: { status: "expired", filePath: null } });
-      recordsUpdated++;
-      if (oldFilePath) pending.push({ exportId: record.id, filePath: oldFilePath });
+      if (record.status !== "expired") {
+        await sys.update({ collection: DATA_EXPORTS, id: record.id, data: { status: "expired" } });
+        recordsUpdated++;
+      }
+      if (record.filePath) pending.push({ exportId: record.id, filePath: record.filePath });
     } catch (error) {
       errors++;
       logError(error, "Failed to clean up export", { exportId: record.id });
@@ -97,18 +126,30 @@ const expireReadyExports = async (
 };
 
 /**
- * Pass 2: unlink files in bounded-concurrency chunks.
+ * Pass 2: unlink files in bounded-concurrency chunks, then drop the path from the record.
  *
- * One failing unlink (e.g. already deleted) must not block the others, and the
- * record is already updated so there is no orphan risk.
+ * One failing unlink (e.g. already deleted) must not block the others. `filePath` is cleared
+ * only when the file is confirmed gone — a path kept after a failed unlink is what lets the
+ * next run retry instead of orphaning the archive.
  */
-const unlinkPending = async (pending: PendingUnlink[]): Promise<number> => {
+const unlinkPending = async (sys: SystemPayload, pending: PendingUnlink[]): Promise<number> => {
   let filesDeleted = 0;
 
   for (let i = 0; i < pending.length; i += UNLINK_CONCURRENCY) {
     const chunk = pending.slice(i, i + UNLINK_CONCURRENCY);
     const results = await Promise.all(
-      chunk.map(({ exportId, filePath }) => unlinkQuietly(exportId, filePath, "expiry"))
+      chunk.map(async ({ exportId, filePath }) => {
+        const outcome = await unlinkQuietly(exportId, filePath, "expiry");
+        if (outcome === "failed") return false;
+
+        try {
+          await sys.update({ collection: DATA_EXPORTS, id: exportId, data: { filePath: null } });
+        } catch (error) {
+          // The file is gone either way; a stale path just means one more retry next run.
+          logError(error, "Failed to clear export file path", { exportId });
+        }
+        return outcome === "deleted";
+      })
     );
     filesDeleted += results.filter(Boolean).length;
   }
@@ -137,8 +178,13 @@ const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResul
 
   for (const record of old.docs) {
     try {
-      if (record.filePath && (await unlinkQuietly(record.id, record.filePath, "purge"))) {
-        filesDeleted++;
+      if (record.filePath) {
+        const outcome = await unlinkQuietly(record.id, record.filePath, "purge");
+        if (outcome === "deleted") filesDeleted++;
+        // Deleting the record destroys the only pointer to the archive, so keep it until the
+        // file is confirmed gone — the next hourly run retries. (An explicit comparison: the
+        // outcome is a string now, and every string is truthy.)
+        if (outcome === "failed") continue;
       }
       await sys.delete({ collection: DATA_EXPORTS, id: record.id });
       recordsDeleted++;
@@ -206,7 +252,7 @@ export const dataExportCleanupJob = {
       const now = new Date();
 
       const expiry = await expireReadyExports(sys, now);
-      const unlinked = await unlinkPending(expiry.pending);
+      const unlinked = await unlinkPending(sys, expiry.pending);
       const purge = await purgeOldRecords(sys, now);
       const stale = await reapStaleExports(sys, now);
 

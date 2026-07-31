@@ -37,11 +37,11 @@ describe.sequential("auditLogIpCleanupJob", () => {
   });
 
   it("should return zero counts when no entries found", async () => {
-    mockPayload.find.mockResolvedValueOnce({ docs: [], totalDocs: 0 });
+    mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
 
     const result = await auditLogIpCleanupJob.handler(createContext());
 
-    expect(result.output).toEqual({ success: true, cleared: 0, totalEligible: 0 });
+    expect(result.output).toEqual({ success: true, cleared: 0, totalEligible: 0, hasMore: false });
 
     expect(mockPayload.find).toHaveBeenCalledWith({
       collection: "audit-log",
@@ -60,6 +60,8 @@ describe.sequential("auditLogIpCleanupJob", () => {
       ],
       totalDocs: 3,
     });
+    // The job pages until the backlog is drained, so the second read must come back empty.
+    mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
 
     const result = await auditLogIpCleanupJob.handler(createContext());
 
@@ -84,7 +86,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
       overrideAccess: true,
     });
 
-    expect(result.output).toEqual({ success: true, cleared: 3, totalEligible: 3 });
+    expect(result.output).toEqual({ success: true, cleared: 3, totalEligible: 3, hasMore: false });
   });
 
   it("should log error and continue when a per-entry update throws", async () => {
@@ -95,6 +97,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
       ],
       totalDocs: 2,
     });
+    mockPayload.find.mockResolvedValue({ docs: [], totalDocs: 0 });
 
     mockPayload.update.mockRejectedValueOnce(new Error("Update failed for entry 10")).mockResolvedValueOnce({});
 
