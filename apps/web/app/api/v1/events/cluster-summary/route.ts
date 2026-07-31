@@ -122,7 +122,7 @@ const executeClusterSummary = async (
     payload.db.drizzle
       .select({
         id: datasetScope.eventTable.id,
-        title: buildClusterPreviewTitle(datasetScope.eventTable),
+        title: buildClusterPreviewTitle(datasetScope.eventTable, datasetScope.datasetTable),
         timestamp: datasetScope.eventTable.eventTimestamp,
         dataset_name: datasetScope.datasetTable.name,
       })

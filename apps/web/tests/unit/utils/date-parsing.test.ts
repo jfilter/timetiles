@@ -6,7 +6,12 @@
 
 import { describe, expect, it } from "vitest";
 
-import { isImportDateLike, parseImportDate, parseImportDateWithFormat } from "@/lib/utils/date-parsing";
+import {
+  formatDateWithPattern,
+  isImportDateLike,
+  parseImportDate,
+  parseImportDateWithFormat,
+} from "@/lib/utils/date-parsing";
 
 const expectIso = (value: unknown, expected: string): void => {
   expect(parseImportDate(value as string | number | Date | null | undefined)?.toISOString()).toBe(expected);
@@ -111,5 +116,35 @@ describe("parseImportDateWithFormat", () => {
       "2024-03-15T00:00:00.000Z"
     );
     expect(parseImportDateWithFormat("39135", "UNKNOWN-FORMAT")).toBeNull();
+  });
+});
+
+describe("formatDateWithPattern", () => {
+  const date = new Date("2024-12-31T00:00:00.000Z");
+
+  it("renders every pattern the transform editor offers", () => {
+    // These all used to come out as "2024-12-31": the transform only special-cased
+    // ISO 8601 and sent everything else through toISOString().split("T")[0].
+    expect(formatDateWithPattern(date, "DD/MM/YYYY")).toBe("31/12/2024");
+    expect(formatDateWithPattern(date, "MM/DD/YYYY")).toBe("12/31/2024");
+    expect(formatDateWithPattern(date, "YYYY-MM-DD")).toBe("2024-12-31");
+    expect(formatDateWithPattern(date, "DD-MM-YYYY")).toBe("31-12-2024");
+    expect(formatDateWithPattern(date, "MM-DD-YYYY")).toBe("12-31-2024");
+    expect(formatDateWithPattern(date, "DD.MM.YYYY")).toBe("31.12.2024");
+    expect(formatDateWithPattern(date, "YYYY/MM/DD")).toBe("2024/12/31");
+    expect(formatDateWithPattern(date, "D MMMM YYYY")).toBe("31 December 2024");
+    expect(formatDateWithPattern(date, "MMMM D, YYYY")).toBe("December 31, 2024");
+  });
+
+  it("falls back to ISO date-only for an unknown pattern", () => {
+    expect(formatDateWithPattern(date, "not-a-pattern")).toBe("2024-12-31");
+  });
+
+  it("reads the calendar date in the given zone, not in UTC", () => {
+    // 2024-06-15 in Asia/Tokyo is the instant 2024-06-14T15:00Z. Taking the UTC parts off
+    // that moved every imported date a day back for zones east of Greenwich.
+    const tokyoMidnight = new Date("2024-06-14T15:00:00.000Z");
+    expect(formatDateWithPattern(tokyoMidnight, "YYYY-MM-DD", "Asia/Tokyo")).toBe("2024-06-15");
+    expect(formatDateWithPattern(tokyoMidnight, "YYYY-MM-DD")).toBe("2024-06-14");
   });
 });

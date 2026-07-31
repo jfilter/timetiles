@@ -126,7 +126,9 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     expect(scraperFindCall![0]).toEqual({
       collection: "scrapers",
       where: { and: [{ enabled: { equals: true } }, { schedule: { exists: true } }] },
-      limit: 1000,
+      // 0, not a cap: `pagination: false` keeps an explicit limit, so any number here would
+      // permanently starve everything past it (the ordering does not rotate).
+      limit: 0,
       pagination: false,
       overrideAccess: true,
     });

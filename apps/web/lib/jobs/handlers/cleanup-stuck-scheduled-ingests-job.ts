@@ -171,7 +171,8 @@ export const cleanupStuckScheduledIngestsJob = {
       const runningImports = await payload.find({
         collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
         where: { lastStatus: { equals: "running" } },
-        limit: 1000,
+        // 0 lifts the limit; a number would cap the reaper itself — see cleanup-stuck-scrapers-job.
+        limit: 0,
         pagination: false,
       });
 

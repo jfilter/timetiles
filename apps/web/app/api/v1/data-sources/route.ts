@@ -50,7 +50,11 @@ export const GET = apiRoute({
     const [catalogsResult, datasetsResult] = await Promise.all([
       payload.find({
         collection: "catalogs",
-        limit: 500,
+        // `pagination: false` does NOT lift a limit — the drizzle adapter only drops it at
+        // `limit: 0`. With 500 the 501st catalog vanished from the response while its
+        // datasets still arrived, and the selector groups by catalog, so those datasets
+        // disappeared from the picker entirely.
+        limit: 0,
         pagination: false,
         select: { id: true, name: true, description: true, createdBy: true },
         user,
@@ -60,6 +64,10 @@ export const GET = apiRoute({
         collection: "datasets",
         page: query.page,
         limit: query.limit,
+        // The client fetches page 1, then pages 2..N in parallel and concatenates. Payload's
+        // default `-createdAt` has no unique tiebreaker and bulk creation ties on the
+        // millisecond, so without this a dataset could appear on two pages — or on none.
+        sort: ["-createdAt", "-id"],
         depth: 0,
         select: { id: true, name: true, description: true, language: true, catalog: true, hasTemporalData: true },
         user,

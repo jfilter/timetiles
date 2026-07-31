@@ -22,7 +22,9 @@ export const GET = apiRoute({
       payload.find({
         collection: "catalogs",
         where: { createdBy: { equals: user.id } },
-        limit: 100,
+        // `pagination: false` keeps an explicit limit — only `limit: 0` lifts it. A user with
+        // more than 100 catalogs silently lost the rest from the wizard.
+        limit: 0,
         pagination: false,
         sort: "-createdAt",
         select: { id: true, name: true },
@@ -30,7 +32,7 @@ export const GET = apiRoute({
       payload.find({
         collection: "datasets",
         where: { "catalog.createdBy": { equals: user.id } },
-        limit: 1000,
+        limit: 0,
         pagination: false,
         depth: 1,
         select: { id: true, name: true, catalog: true },

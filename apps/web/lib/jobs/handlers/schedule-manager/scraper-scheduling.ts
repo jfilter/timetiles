@@ -98,7 +98,9 @@ export const processScheduledScrapers = async (
   const scrapers = await asSystem(payload).find({
     collection: "scrapers",
     where: { and: [{ enabled: { equals: true } }, { schedule: { exists: true } }] },
-    limit: 1000,
+    // 0, not a cap — see schedule-manager-job.ts: a capped scheduler starves everything past
+    // the limit forever, because the ordering does not rotate.
+    limit: 0,
     pagination: false,
   });
 

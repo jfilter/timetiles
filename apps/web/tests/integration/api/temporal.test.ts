@@ -259,10 +259,17 @@ describe.sequential("/api/v1/events/temporal", () => {
     expect(data.metadata.bucketCount).toBeLessThanOrEqual(50);
   });
 
-  it("should handle invalid bounds format", async () => {
-    // Invalid bounds are silently ignored (become undefined) by the Zod schema.
-    // Since bounds is optional for the temporal endpoint, this returns 200 with all data.
+  it("rejects a malformed bounds parameter instead of ignoring it", async () => {
+    // Bounds is optional here, so dropping a malformed value returned 200 over every event
+    // worldwide — a broken viewport read as "nothing in view". Same reasoning as ff/rf.
     const request = new NextRequest("http://localhost:3000/api/events/histogram?bounds=invalid");
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(422);
+  });
+
+  it("still treats an absent bounds parameter as no spatial filter", async () => {
+    const request = new NextRequest("http://localhost:3000/api/events/histogram");
     const response = await GET(request, { params: Promise.resolve({}) });
 
     expect(response.status).toBe(200);

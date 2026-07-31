@@ -177,7 +177,9 @@ export const cleanupStuckScrapersJob = {
       const runningScrapers = await asSystem(payload).find({
         collection: "scrapers",
         where: { lastRunStatus: { equals: "running" } },
-        limit: 1000,
+        // 0 lifts the limit; a number would cap the reaper itself, leaving anything past it
+        // stuck forever (`pagination: false` does not lift an explicit limit).
+        limit: 0,
         pagination: false,
       });
 

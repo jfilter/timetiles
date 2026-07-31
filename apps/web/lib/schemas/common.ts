@@ -190,18 +190,23 @@ const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, 
 };
 
 /**
- * Parse, normalize and validate a JSON bounds string. Returns the normalized
- * object or undefined.
+ * Parse, normalize and validate a JSON bounds string.
+ *
+ * An absent (or empty) parameter yields `undefined` — no spatial filter. A parameter that is
+ * PRESENT but malformed is returned unchanged so the schema rejects it, for the same reason
+ * `ff`/`rf` do: silently dropping it made a broken viewport return every event worldwide with
+ * HTTP 200, which reads as "there is nothing here" rather than "your filter was invalid".
  */
-export const parseBoundsString = (val: unknown): Record<string, unknown> | undefined => {
+export const parseBoundsString = (val: unknown): unknown => {
   if (typeof val !== "string" || !val) return undefined;
   try {
     const parsed = JSON.parse(val) as Record<string, unknown>;
     const normalized = normalizeBoundsObject(parsed);
-    if (!isValidBoundsObject(normalized)) return undefined;
+    // Surface as a validation error rather than a fail-open (unbounded) query.
+    if (!isValidBoundsObject(normalized)) return val;
     return normalized;
   } catch {
-    return undefined;
+    return val;
   }
 };
 
@@ -229,7 +234,7 @@ const isValidBoundsObject = (parsed: unknown): boolean => {
  * Bounds as JSON string parameter, parsed and validated into a MapBounds object.
  *
  * Accepts a JSON string like `{"north":37.8,"south":37.7,"east":-122.4,"west":-122.5}`.
- * Invalid or malformed bounds silently become `undefined`.
+ * An absent parameter means "no spatial filter"; a malformed one fails validation.
  */
 export const BoundsParamSchema = z.preprocess(parseBoundsString, BoundsSchema.optional());
 

@@ -27,7 +27,7 @@ import type {
   SplitTransform,
   StringOpTransform,
 } from "@/lib/ingest/types/transforms";
-import { parseImportDate, parseImportDateWithFormat } from "@/lib/utils/date-parsing";
+import { formatDateWithPattern, parseImportDate, parseImportDateWithFormat } from "@/lib/utils/date-parsing";
 import { deleteByPathOrKey, getByPathOrKey, setByPathOrKey } from "@/lib/utils/object-path";
 import { defaultIfEmpty } from "@/lib/utils/strings";
 
@@ -180,14 +180,14 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
       // Apply timezone if configured
       const adjusted = transform.timezone ? adjustForTimezone(parsed, transform.timezone) : parsed;
 
-      // Format output based on outputFormat
-      let output: string;
-      if (transform.outputFormat === "ISO 8601") {
-        output = adjusted.toISOString();
-      } else {
-        // Default: date-only ISO format
-        output = adjusted.toISOString().split("T")[0]!;
-      }
+      // Format output based on outputFormat. Everything except ISO 8601 is a date-only
+      // pattern, so its calendar parts must be read in the source timezone: the instant for
+      // "2024-06-15 in Asia/Tokyo" is 2024-06-14T15:00Z, and taking the UTC date off that
+      // silently moved every imported date a day back for zones east of Greenwich.
+      const output =
+        transform.outputFormat === "ISO 8601"
+          ? adjusted.toISOString()
+          : formatDateWithPattern(adjusted, transform.outputFormat ?? "YYYY-MM-DD", transform.timezone);
 
       if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && output !== trimmedValue && !transform.timezone) {
         return;

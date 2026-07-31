@@ -139,8 +139,8 @@ describe("common schemas", () => {
   });
 
   describe("BoundsParamSchema", () => {
-    it("should accept string", () => {
-      const result = BoundsParamSchema.safeParse('{"north":52}');
+    it("should accept a complete bounds string", () => {
+      const result = BoundsParamSchema.safeParse('{"north":52.5,"south":52.3,"east":13.5,"west":13.3}');
       expect(result.success).toBe(true);
     });
 
@@ -204,13 +204,17 @@ describe("common schemas", () => {
     });
 
     it("should still reject garbage bounds (north <= south, non-finite values)", () => {
-      const inverted = BoundsParamSchema.safeParse('{"north":10,"south":20,"east":10,"west":-10}');
-      expect(inverted.success).toBe(true);
-      expect(inverted.data).toBeUndefined();
+      // These used to parse successfully to `undefined`, which dropped the spatial filter and
+      // answered 200 over every event worldwide. A present-but-broken viewport is an error.
+      expect(BoundsParamSchema.safeParse('{"north":10,"south":20,"east":10,"west":-10}').success).toBe(false);
+      expect(BoundsParamSchema.safeParse('{"north":"x","south":-10,"east":10,"west":-10}').success).toBe(false);
+      expect(BoundsParamSchema.safeParse("not-json").success).toBe(false);
+      expect(BoundsParamSchema.safeParse('{"north":52}').success).toBe(false);
+    });
 
-      const nonNumeric = BoundsParamSchema.safeParse('{"north":"x","south":-10,"east":10,"west":-10}');
-      expect(nonNumeric.success).toBe(true);
-      expect(nonNumeric.data).toBeUndefined();
+    it("should treat an absent or empty parameter as no spatial filter", () => {
+      expect(BoundsParamSchema.safeParse(undefined).data).toBeUndefined();
+      expect(BoundsParamSchema.safeParse("").data).toBeUndefined();
     });
   });
 });

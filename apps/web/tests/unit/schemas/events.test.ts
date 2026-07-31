@@ -156,13 +156,11 @@ describe("event schemas", () => {
       }
     });
 
-    it("should treat invalid bounds JSON as undefined", () => {
+    it("should reject invalid bounds JSON instead of dropping it", () => {
+      // Dropping it produced a query with no spatial restriction at all — on the endpoints
+      // where bounds is optional that answered 200 with every event worldwide.
       const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52}', zoom: 10 });
-      // Invalid bounds silently become undefined (validated at route level)
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.bounds).toBeUndefined();
-      }
+      expect(result.success).toBe(false);
     });
   });
 

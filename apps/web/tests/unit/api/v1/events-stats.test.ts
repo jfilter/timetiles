@@ -100,15 +100,14 @@ describe.sequential("GET /api/v1/events/stats", () => {
       expect(data.error).toBe("Validation failed");
     });
 
-    it("should silently ignore invalid bounds parameter", async () => {
+    it("should reject an invalid bounds parameter", async () => {
       const req = createRequest("?groupBy=catalog&bounds=invalid");
 
       const response = await GET(req, { params: Promise.resolve({}) });
 
-      // Invalid bounds are ignored by the schema, so the route still succeeds.
-      expect(response.status).toBe(200);
-      const data = await response.json();
-      expect(data).toEqual({ items: [], total: 0, groupedBy: "catalog" });
+      // Ignoring it meant this route answered 200 with unrestricted stats for a viewport the
+      // caller believed it had set.
+      expect(response.status).toBe(422);
     });
   });
 
