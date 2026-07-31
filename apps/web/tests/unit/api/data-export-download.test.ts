@@ -84,14 +84,31 @@ describe.sequential("GET /api/data-exports/[id]/download", () => {
     const response = await GET(createRequest(), routeParams);
 
     expect(response.status).toBe(410);
+    // Two writes, in this order: retire the record, unlink, and only then forget the path.
+    // Clearing it in the first write stranded the archive whenever the unlink failed.
     expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "data-exports",
-        id: EXPORT_ID,
-        data: { status: "expired", filePath: null },
-      })
+      expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { status: "expired" } })
     );
     expect(mocks.mockUnlink).toHaveBeenCalledWith(FILE_PATH);
+    expect(payload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { filePath: null } })
+    );
+  });
+
+  it("keeps filePath when the unlink fails so the cleanup job can retry", async () => {
+    const payload = setup({
+      id: EXPORT_ID,
+      user: USER_ID,
+      status: "ready",
+      filePath: FILE_PATH,
+      expiresAt: "2020-01-01T00:00:00.000Z",
+    });
+    mocks.mockUnlink.mockRejectedValueOnce(Object.assign(new Error("EIO"), { code: "EIO" }));
+
+    const response = await GET(createRequest(), routeParams);
+
+    expect(response.status).toBe(410);
+    expect(payload.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: { filePath: null } }));
   });
 
   it("still returns 410 when the unlink fails", async () => {

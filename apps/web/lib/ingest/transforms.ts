@@ -189,7 +189,13 @@ const applyDateParseTransform = (data: Record<string, unknown>, transform: DateP
           ? adjusted.toISOString()
           : formatDateWithPattern(adjusted, transform.outputFormat ?? "YYYY-MM-DD", transform.timezone);
 
-      if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && output !== trimmedValue && !transform.timezone) {
+      // Round-trip sanity check (same idea as `parseAsDate`): an ISO date-only input must
+      // parse back to the same calendar date, otherwise the parse misread it and writing the
+      // result would corrupt the value. Compare the CANONICAL ISO rendering — comparing the
+      // formatted output makes every non-ISO output format differ trivially, which silently
+      // turned the whole transform into a no-op for ISO input.
+      const canonical = formatDateWithPattern(adjusted, "YYYY-MM-DD", transform.timezone);
+      if (ISO_DATE_ONLY_REGEX.test(trimmedValue) && canonical !== trimmedValue && !transform.timezone) {
         return;
       }
       setByPathOrKey(data, transform.from, output);

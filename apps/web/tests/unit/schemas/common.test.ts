@@ -212,6 +212,23 @@ describe("common schemas", () => {
       expect(BoundsParamSchema.safeParse('{"north":52}').success).toBe(false);
     });
 
+    it("should widen a zero-height viewport instead of rejecting it", () => {
+      // /api/v1/events/bounds returns raw MIN/MAX with no padding, so a dataset with a single
+      // event (or one filtered to a single latitude) reports north === south, and the mobile
+      // explorer seeds its viewport straight from that. Rejecting it would 422 every bounded
+      // query for those users. An INVERTED range stays invalid — that is a caller error.
+      const result = BoundsParamSchema.safeParse('{"north":52.52,"south":52.52,"east":13.4,"west":13.4}');
+      expect(result.success).toBe(true);
+      const bounds = result.data as { north: number; south: number };
+      expect(bounds.north).toBeGreaterThan(bounds.south);
+      expect(bounds.north - bounds.south).toBeLessThan(0.001);
+
+      // Degenerate at the pole widens downward rather than past 90.
+      const atPole = BoundsParamSchema.safeParse('{"north":90,"south":90,"east":13.4,"west":13.4}');
+      expect(atPole.success).toBe(true);
+      expect((atPole.data as { north: number }).north).toBeLessThanOrEqual(90);
+    });
+
     it("should treat an absent or empty parameter as no spatial filter", () => {
       expect(BoundsParamSchema.safeParse(undefined).data).toBeUndefined();
       expect(BoundsParamSchema.safeParse("").data).toBeUndefined();

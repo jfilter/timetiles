@@ -142,6 +142,9 @@ export const RangeFiltersParamSchema = z.preprocess(
     .refine((rec) => Object.keys(rec).length <= 20, { message: "Range filters may contain at most 20 keys" })
 );
 
+/** Degrees a zero-height viewport is widened by — about 1 cm, far below any display precision. */
+const DEGENERATE_BOUNDS_EPSILON = 1e-7;
+
 /** Wrap an out-of-range longitude into [-180, 180]; in-range values (incl. ±180) pass through. */
 const wrapLongitude = (lng: number): number =>
   lng >= -180 && lng <= 180 ? lng : ((((lng + 180) % 360) + 360) % 360) - 180;
@@ -179,11 +182,27 @@ const normalizeBoundsObject = (parsed: Record<string, unknown>): Record<string, 
   const normWest = spansWholeWorld ? -180 : wrapLongitude(west);
   const normEast = spansWholeWorld ? 180 : wrapLongitude(east);
 
+  let normNorth = Number.isFinite(north) ? Math.min(north, 90) : north;
+  let normSouth = Number.isFinite(south) ? Math.max(south, -90) : south;
+
+  // A zero-height viewport is degenerate, not malformed: /api/v1/events/bounds returns raw
+  // MIN/MAX with no padding, so a single event — or a filter narrowing to one latitude —
+  // yields north === south, and the mobile explorer seeds the viewport straight from it.
+  // Validation requires north > south, so without this widening those users would get a 422
+  // on every bounded query instead of seeing their one event.
+  // Only exact equality is widened. An INVERTED range (north < south) stays invalid — that is
+  // a caller error, not a viewport, and silently repairing it would filter by something the
+  // caller never asked for.
+  if (typeof normNorth === "number" && typeof normSouth === "number" && normNorth === normSouth) {
+    normNorth = Math.min(90, normSouth + DEGENERATE_BOUNDS_EPSILON);
+    if (normNorth <= normSouth) normSouth = Math.max(-90, normNorth - DEGENERATE_BOUNDS_EPSILON);
+  }
+
   return {
     ...parsed,
     // Non-finite latitudes pass through unchanged so validation still rejects them.
-    north: Number.isFinite(north) ? Math.min(north, 90) : north,
-    south: Number.isFinite(south) ? Math.max(south, -90) : south,
+    north: normNorth,
+    south: normSouth,
     east: normEast,
     west: normWest,
   };

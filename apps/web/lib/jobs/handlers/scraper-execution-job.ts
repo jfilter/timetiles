@@ -17,7 +17,7 @@ import type { Scraper, ScraperRepo } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
 import { handleRunFailure, handleRunSuccess } from "./scraper-execution/auto-import";
-import type { ScraperExecutionJobInput } from "./scraper-execution/runner-api";
+import type { RunnerResponse, ScraperExecutionJobInput } from "./scraper-execution/runner-api";
 import { buildRunnerRequest, callRunner } from "./scraper-execution/runner-api";
 
 const log = createLogger("scraper-execution-job");
@@ -73,6 +73,27 @@ const createRunRecord = async (
 
   return run;
 };
+
+/**
+ * Shape the task output.
+ *
+ * `autoImportError` is carried so the workflow can tell "auto-import is switched off" apart
+ * from "auto-import broke" — both leave `ingestFileId` unset, and only the second one means
+ * the user got no data from a run that otherwise looks successful.
+ */
+const buildRunOutput = (
+  runId: number,
+  result: RunnerResponse,
+  ingestFileId: number | string | undefined,
+  autoImportError: string | undefined
+) => ({
+  runId,
+  status: result.status,
+  durationMs: result.duration_ms,
+  outputRows: result.output?.rows,
+  ...(ingestFileId != null ? { ingestFileId } : {}),
+  ...(autoImportError != null ? { autoImportError } : {}),
+});
 
 // ---------------------------------------------------------------------------
 // Job handler
@@ -138,17 +159,9 @@ export const scraperExecutionJob = {
       log.info({ scraperId, runId: run.id, runUuid, runtime: scraper.runtime }, "Calling runner API");
 
       const result = await callRunner(request);
-      const { ingestFileId } = await handleRunSuccess(context, scraper, repo, run.id, result);
+      const { ingestFileId, autoImportError } = await handleRunSuccess(context, scraper, repo, run.id, result);
 
-      return {
-        output: {
-          runId: run.id,
-          status: result.status,
-          durationMs: result.duration_ms,
-          outputRows: result.output?.rows,
-          ...(ingestFileId != null ? { ingestFileId } : {}),
-        },
-      };
+      return { output: buildRunOutput(run.id, result, ingestFileId, autoImportError) };
     } catch (error) {
       if (run && scraper) {
         await handleRunFailure(payload, scraper, run.id, error);

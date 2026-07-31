@@ -104,4 +104,6 @@ export interface ScraperExecutionOutput {
   ingestFileId?: number | string;
   hasOutput?: boolean;
   reason?: string;
+  /** Set when the scrape succeeded but importing its output did not — distinct from "off". */
+  autoImportError?: string;
 }
