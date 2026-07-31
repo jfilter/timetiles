@@ -69,6 +69,7 @@ import * as migration_20260730_231500_revoke_inactive_user_credentials from './2
 import * as migration_20260731_120000_fix_cluster_and_histogram_math from './20260731_120000_fix_cluster_and_histogram_math';
 import * as migration_20260731_170000_fix_histogram_bucket_count from './20260731_170000_fix_histogram_bucket_count';
 import * as migration_20260731_200000_title_resolution_skips_empty from './20260731_200000_title_resolution_skips_empty';
+import * as migration_20260731_210000_widen_bucket_size_to_bigint from './20260731_210000_widen_bucket_size_to_bigint';
 
 export const migrations = [
   {
@@ -425,5 +426,10 @@ export const migrations = [
     up: migration_20260731_200000_title_resolution_skips_empty.up,
     down: migration_20260731_200000_title_resolution_skips_empty.down,
     name: '20260731_200000_title_resolution_skips_empty'
+  },
+  {
+    up: migration_20260731_210000_widen_bucket_size_to_bigint.up,
+    down: migration_20260731_210000_widen_bucket_size_to_bigint.down,
+    name: '20260731_210000_widen_bucket_size_to_bigint'
   },
 ];

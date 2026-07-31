@@ -56,7 +56,9 @@ const executeHistogramQuery = async (payload: Payload, query: HistogramQuery, fi
       ${maxBuckets}::integer
     )
   `)) as {
-    rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>;
+    // `bucket_size_seconds` is an int8 since 20260731_210000, and node-postgres hands int8
+    // back as a string to avoid a silent precision loss — coerce before it reaches the JSON.
+    rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: string; event_count: number }>;
   };
 };
 
@@ -74,7 +76,7 @@ const buildEmptyHistogramResponse = () => ({
 });
 
 const buildHistogramResponse = (
-  rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: number; event_count: number }>
+  rows: Array<{ bucket_start: string; bucket_end: string; bucket_size_seconds: string; event_count: number }>
 ) => {
   const total = rows.reduce((sum: number, row) => sum + Number.parseInt(String(row.event_count), 10), 0);
 
@@ -95,7 +97,7 @@ const buildHistogramResponse = (
     metadata: {
       total,
       dateRange: { min: rows[0]?.bucket_start ?? null, max: rows.at(-1)?.bucket_end ?? null },
-      bucketSizeSeconds: rows[0]?.bucket_size_seconds ?? null,
+      bucketSizeSeconds: rows[0] ? Number(rows[0].bucket_size_seconds) : null,
       bucketCount: rows.length,
       counts: { datasets: 0, catalogs: 0 },
       topDatasets: [],

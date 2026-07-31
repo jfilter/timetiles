@@ -377,6 +377,45 @@ describe.sequential("/api/v1/events/temporal", () => {
     expect(totalCount).toBe(2);
   });
 
+  /**
+   * `bucket_size_seconds` was an int4, so a bucket could not exceed ~68 years. A dataset
+   * spanning longer could not be reduced to a single bucket at all: the size was clamped and
+   * `maxBuckets=1` still produced two. Widened to int8 in 20260731_210000.
+   */
+  it("covers a range longer than the old int4 bucket ceiling with one bucket", async () => {
+    // 70 years ~= 2.21e9 seconds, past the 2.147e9 int4 ceiling. The window below ends
+    // before 2024 so the suite's other events stay out of the aggregate.
+    const timestamps = ["1950-01-01T00:00:00.000Z", "2020-01-01T00:00:00.000Z"];
+    for (const [i, timestamp] of timestamps.entries()) {
+      await payload.create({
+        collection: "events",
+        data: {
+          uniqueId: `histogram-centuries-${i}`,
+          dataset: Number.parseInt(testDatasetId),
+          sourceData: { title: `Centuries ${i}` },
+          transformedData: { title: `Centuries ${i}` },
+          location: { latitude: 1, longitude: 1 },
+          eventTimestamp: timestamp,
+        },
+      });
+    }
+
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/histogram?datasets=${testDatasetId}` +
+        `&startDate=1949-01-01&endDate=2021-01-01&targetBuckets=1&minBuckets=1&maxBuckets=1`
+    );
+    const response = await GET(request, { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.metadata.bucketCount).toBe(1);
+    // 70 years of seconds — beyond int4, and a number in the JSON, not an int8 string.
+    expect(data.metadata.bucketSizeSeconds).toBeGreaterThan(2_147_483_647);
+    expect(typeof data.metadata.bucketSizeSeconds).toBe("number");
+    const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
+    expect(totalCount).toBe(2);
+  });
+
   // The minBuckets branch runs unconditionally after the maxBuckets cap and re-derives the
   // bucket size, so with min == max it used to undo the cap that had just been applied.
   it("keeps maxBuckets a hard ceiling when minBuckets equals maxBuckets", async () => {
