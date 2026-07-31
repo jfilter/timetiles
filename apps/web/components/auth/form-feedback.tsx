@@ -11,7 +11,15 @@ import { Check } from "lucide-react";
 /** Inline error message for form mutations. */
 export const FormError = ({ error }: { error: Error | null }) => {
   if (!error) return null;
-  return <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm">{error.message}</div>;
+  // `role="alert"` so the failure is announced, matching packages/ui's ErrorMessage. Without
+  // it a screen-reader user submitted the form and got no feedback at all — the message
+  // appeared silently — and the E2E test that meant to assert it matched Next's route
+  // announcer instead.
+  return (
+    <div className="bg-destructive/10 text-destructive rounded-md p-3 text-sm" role="alert">
+      {error.message}
+    </div>
+  );
 };
 
 interface FormSuccessProps {

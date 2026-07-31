@@ -187,6 +187,38 @@ export const terminateConnections = async (databaseName: string): Promise<void> 
   }
 };
 
+/** SQLSTATE for a backend killed by pg_terminate_backend. */
+const ADMIN_SHUTDOWN = "57P01";
+
+const isOwnTermination = (error: unknown): boolean => {
+  if (typeof error !== "object" || error === null) return false;
+  const { code, message } = error as { code?: string; message?: string };
+  return code === ADMIN_SHUTDOWN || (message ?? "").includes("terminating connection due to administrator command");
+};
+
+/**
+ * Swallow the fallout of our own `pg_terminate_backend`, and only that.
+ *
+ * `dropDatabase` deliberately kills every backend on the target database. A `pg.Pool` with an
+ * idle client there raises the resulting 57P01 as an `error` EVENT, and a pool without a
+ * listener turns that into an unhandled exception — killing the process. That is exactly what
+ * happened in the Playwright teardown: every test passed, then the runner died mid-cleanup
+ * and reported failure. Anything that is not our own termination stays fatal.
+ */
+const toleratingOwnTerminations = async <T>(run: () => Promise<T>): Promise<T> => {
+  const onUncaught = (error: unknown): void => {
+    if (isOwnTermination(error)) return;
+    throw error;
+  };
+
+  process.on("uncaughtException", onUncaught);
+  try {
+    return await run();
+  } finally {
+    process.off("uncaughtException", onUncaught);
+  }
+};
+
 /**
  * Drop a database.
  *
@@ -201,21 +233,22 @@ export const terminateConnections = async (databaseName: string): Promise<void> 
  * await dropDatabase('timetiles_test_e2e');
  * ```
  */
-export const dropDatabase = async (databaseName: string, options: { ifExists?: boolean } = {}): Promise<void> => {
-  // Terminate connections first
-  await terminateConnections(databaseName);
+export const dropDatabase = async (databaseName: string, options: { ifExists?: boolean } = {}): Promise<void> =>
+  toleratingOwnTerminations(async () => {
+    // Terminate connections first
+    await terminateConnections(databaseName);
 
-  const client = createDatabaseClient({ database: "postgres" });
-  try {
-    await client.connect();
+    const client = createDatabaseClient({ database: "postgres" });
+    try {
+      await client.connect();
 
-    const sql = options.ifExists ? `DROP DATABASE IF EXISTS "${databaseName}"` : `DROP DATABASE "${databaseName}"`;
+      const sql = options.ifExists ? `DROP DATABASE IF EXISTS "${databaseName}"` : `DROP DATABASE "${databaseName}"`;
 
-    await client.query(sql);
-  } finally {
-    await client.end();
-  }
-};
+      await client.query(sql);
+    } finally {
+      await client.end();
+    }
+  });
 
 /**
  * Create a database.
