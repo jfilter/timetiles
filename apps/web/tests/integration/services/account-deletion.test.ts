@@ -337,6 +337,53 @@ describe.sequential("Account Deletion Service", () => {
       ).resolves.toBeTruthy();
     });
 
+    // A soft-deleted dataset still holds its catalog_id. Counting without `trash: true`
+    // reported zero, the catalog was deleted, and ON DELETE SET NULL stripped the parent off
+    // a row that can then never be restored — `catalog` is required.
+    it("keeps a private catalog that only a trashed dataset points at", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+
+      const privateCatalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Private Catalog With Trashed Dataset", isPublic: false },
+        user: users.testUser,
+      });
+
+      const trashedDataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Trashed Dataset", catalog: privateCatalog.id, isPublic: true, language: "eng" },
+        user: users.testUser,
+      });
+
+      // Soft-delete: `trash: true` on DELETE means "permanently delete, trashed rows too".
+      // Moving a row to the trash is an update that stamps deletedAt.
+      await payload.update({
+        collection: "datasets",
+        id: trashedDataset.id,
+        data: { deletedAt: new Date().toISOString() },
+        overrideAccess: true,
+      });
+
+      const result = await deletionService.executeDeletion(users.testUser.id);
+      expect(result.success).toBe(true);
+
+      const keptCatalog = await payload.findByID({
+        collection: "catalogs",
+        id: privateCatalog.id,
+        overrideAccess: true,
+      });
+      expect(keptCatalog.id).toBe(privateCatalog.id);
+
+      const stillTrashed = await payload.findByID({
+        collection: "datasets",
+        id: trashedDataset.id,
+        trash: true,
+        overrideAccess: true,
+      });
+      expect(extractRelationId(stillTrashed.catalog)).toBe(privateCatalog.id);
+    });
+
     it("should delete private data", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });

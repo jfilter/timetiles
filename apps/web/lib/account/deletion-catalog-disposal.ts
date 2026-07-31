@@ -46,6 +46,11 @@ export const disposeOfPrivateCatalog = async (
   const remaining = await payload.count({
     collection: "datasets",
     where: { catalog: { equals: catalogId } },
+    // Datasets are a trash-enabled collection, and a soft-deleted row still holds its
+    // catalog_id. Counting without this would report zero, delete the catalog, and let
+    // ON DELETE SET NULL strip the parent from a dataset that can then never be restored:
+    // `catalog` is a required field.
+    trash: true,
     overrideAccess: true,
     req,
   });

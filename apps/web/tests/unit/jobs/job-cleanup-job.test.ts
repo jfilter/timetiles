@@ -48,7 +48,9 @@ describe.sequential("jobCleanupJob", () => {
 
     const result = await jobCleanupJob.handler(createContext());
 
-    expect(result).toEqual({ output: { success: true, failedDeleted: 0, completedDeleted: 0, errors: 0 } });
+    expect(result).toEqual({
+      output: { success: true, failedDeleted: 0, completedDeleted: 0, errors: 0, hasMore: false },
+    });
   });
 
   it("should delete old failed jobs", async () => {
@@ -74,7 +76,7 @@ describe.sequential("jobCleanupJob", () => {
       id: "failed-3",
       overrideAccess: true,
     });
-    expect(result.output).toEqual({ success: true, failedDeleted: 3, completedDeleted: 0, errors: 0 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 3, completedDeleted: 0, errors: 0, hasMore: false });
   });
 
   it("should delete old completed jobs", async () => {
@@ -95,7 +97,7 @@ describe.sequential("jobCleanupJob", () => {
       id: "completed-2",
       overrideAccess: true,
     });
-    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 2, errors: 0 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 2, errors: 0, hasMore: false });
   });
 
   it("should delete both failed and completed jobs in one run", async () => {
@@ -106,7 +108,34 @@ describe.sequential("jobCleanupJob", () => {
     const result = await jobCleanupJob.handler(createContext());
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(2);
-    expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 1, errors: 0 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 1, errors: 0, hasMore: false });
+  });
+
+  /**
+   * One capped query per category meant any instance producing more stale jobs a day than the
+   * page size fell further behind every day — while reporting success and quietly blowing
+   * through the retention windows this job exists to enforce.
+   */
+  it("drains a backlog larger than one page", async () => {
+    const page = (count: number, offset: number) => ({
+      docs: Array.from({ length: count }, (_, i) => ({ id: `job-${offset + i}` })),
+    });
+
+    mockPayload.find
+      .mockResolvedValueOnce(page(500, 0)) // failed, page 1 — full, so there is more
+      .mockResolvedValueOnce(page(120, 500)) // failed, page 2 — short, backlog drained
+      .mockResolvedValue({ docs: [] }); // completed: nothing to do
+
+    const result = await jobCleanupJob.handler(createContext());
+
+    expect(result.output).toEqual({
+      success: true,
+      failedDeleted: 620,
+      completedDeleted: 0,
+      errors: 0,
+      hasMore: false,
+    });
+    expect(mockPayload.delete).toHaveBeenCalledTimes(620);
   });
 
   it("should query failed jobs with 7-day retention cutoff", async () => {
@@ -123,6 +152,8 @@ describe.sequential("jobCleanupJob", () => {
       collection: "payload-jobs",
       where: { and: [{ hasError: { equals: true } }, { updatedAt: { less_than: expectedCutoff } }] },
       limit: 500,
+      // Only the id is used to delete; depth 0 keeps the drain from hydrating each job.
+      depth: 0,
       overrideAccess: true,
     });
 
@@ -143,6 +174,8 @@ describe.sequential("jobCleanupJob", () => {
       collection: "payload-jobs",
       where: { and: [{ completedAt: { exists: true } }, { completedAt: { less_than: expectedCutoff } }] },
       limit: 500,
+      // Only the id is used to delete; depth 0 keeps the drain from hydrating each job.
+      depth: 0,
       overrideAccess: true,
     });
 
@@ -158,7 +191,7 @@ describe.sequential("jobCleanupJob", () => {
 
     const result = await jobCleanupJob.handler(createContext());
 
-    expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 0, errors: 1 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 0, errors: 1, hasMore: false });
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete failed job", { payloadJobId: "fail-1" });
   });
 
@@ -171,7 +204,7 @@ describe.sequential("jobCleanupJob", () => {
 
     const result = await jobCleanupJob.handler(createContext());
 
-    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 1, errors: 1 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 1, errors: 1, hasMore: false });
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete completed job", {
       payloadJobId: "comp-1",
     });
@@ -186,7 +219,7 @@ describe.sequential("jobCleanupJob", () => {
 
     const result = await jobCleanupJob.handler(createContext());
 
-    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 0, errors: 2 });
+    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 0, errors: 2, hasMore: false });
     expect(logError).toHaveBeenCalledTimes(2);
   });
 

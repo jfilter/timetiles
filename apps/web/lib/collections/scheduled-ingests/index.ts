@@ -50,7 +50,7 @@ const shouldSkipQuotaSideEffects = (req: { context?: Record<string, unknown> }):
 
 type OwnerId = string | number;
 type OptionalOwnerId = OwnerId | null | undefined;
-type ActiveScheduleQuotaClaim = { ownerId: OwnerId };
+type ActiveScheduleQuotaClaim = { ownerId: OwnerId; rolledBackWithTransaction: boolean };
 type ActiveScheduleQuotaRequest = PayloadRequest & { activeScheduleQuotaClaim?: ActiveScheduleQuotaClaim };
 
 const sameOwner = (left: OptionalOwnerId, right: OptionalOwnerId): boolean =>
@@ -88,15 +88,17 @@ const claimActiveSchedulesQuota = async (req: PayloadRequest, ownerId: OwnerId):
 
   await quotaService.checkAndIncrementUsage(user, "ACTIVE_SCHEDULES", 1, req);
 
-  // Only claim compensation for a NON-transactional increment. On Postgres the create always
-  // runs in a transaction, and Payload's create op calls killTransaction() in its catch —
-  // rolling the increment back AND deleting req.transactionID before afterError fires. The
-  // compensating decrement would then run outside the (already rolled back) transaction and
-  // subtract a SECOND time. Since decrementUsage floors at 0, alternating one good create
-  // with one deliberately failing one pins the counter at 0 and defeats the limit entirely.
-  // Same guard as scraper-repos.ts, which hit this first.
-  if (req.transactionID) return;
-  (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim = { ownerId };
+  // The marker does DOUBLE DUTY here, unlike in the other collections: afterChange reads it
+  // to skip a second increment, and afterError reads it to compensate. It must therefore
+  // always be set — what varies is whether compensation is allowed. Payload's create op calls
+  // killTransaction() in its catch, rolling the increment back AND deleting req.transactionID
+  // before afterError fires; a decrement there would subtract a SECOND time, and since
+  // decrementUsage floors at 0, alternating a good create with a deliberately failing one
+  // would pin the counter at 0 and defeat the limit entirely.
+  (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim = {
+    ownerId,
+    rolledBackWithTransaction: req.transactionID != null,
+  };
 };
 
 const hasActiveScheduleQuotaClaim = (req: PayloadRequest, ownerId: OwnerId): boolean =>
@@ -113,6 +115,10 @@ const compensateActiveScheduleQuotaOnError = async (req: PayloadRequest): Promis
   if (!claim) return;
 
   delete (req as ActiveScheduleQuotaRequest).activeScheduleQuotaClaim;
+
+  // The transaction rollback already reverted the increment — subtracting again would be a
+  // second, uncompensated decrement.
+  if (claim.rolledBackWithTransaction) return;
 
   try {
     const quotaService = createQuotaService(req.payload);
