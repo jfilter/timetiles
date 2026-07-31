@@ -281,8 +281,23 @@ export const usersAfterChangeHook: CollectionAfterChangeHook[] = [
   },
 ];
 
+/**
+ * Set on `payload.login` when the call is a password CONFIRMATION, not a sign-in.
+ *
+ * `verifyPassword` (lib/api/auth-helpers) confirms a password by running the real login
+ * operation and then undoing its side effects — the attempt counter and the session it
+ * creates. The audit entry is the third side effect: without this flag, every password
+ * change, email change and deletion request appended a LOGIN_SUCCESS row for a login that
+ * never happened, with no IP because no request is passed. That corrupts the very artifact
+ * the audit log exists for, and the "review your recent activity" advice in the
+ * deletion-cancelled email points users straight at it.
+ */
+export const SKIP_LOGIN_AUDIT = "skipLoginAudit";
+
 export const usersAfterLoginHook: CollectionAfterLoginHook[] = [
   async ({ req, user }) => {
+    if (req.context?.[SKIP_LOGIN_AUDIT] === true) return;
+
     await auditLog(
       req.payload,
       { action: AUDIT_ACTIONS.LOGIN_SUCCESS, userId: user.id, userEmail: user.email, ipAddress: getReqIp(req) },

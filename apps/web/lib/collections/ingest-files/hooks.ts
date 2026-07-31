@@ -163,8 +163,16 @@ export const beforeValidateHooks: CollectionBeforeValidateHook[] = [
     await quotaService.checkAndIncrementUsage(user, "FILE_UPLOADS_PER_DAY", 1, req);
 
     // Mark that the quota was claimed so afterError / afterChange hooks know whether
-    // a compensating decrement is needed.
-    (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = true;
+    // a compensating decrement is needed — but only for a NON-transactional increment. On
+    // Postgres the create runs in a transaction, and Payload's create op calls
+    // killTransaction() in its catch, rolling the increment back AND deleting
+    // req.transactionID before afterError fires. The compensating decrement would then run
+    // outside the rolled-back transaction and subtract a SECOND time; decrementUsage floors
+    // at 0, so alternating a good create with a failing one pins the daily counter at 0.
+    // Same guard as scraper-repos.ts, which hit this first.
+    if (!req.transactionID) {
+      (req as typeof req & { ingestFileQuotaClaimed?: boolean }).ingestFileQuotaClaimed = true;
+    }
 
     return data;
   },

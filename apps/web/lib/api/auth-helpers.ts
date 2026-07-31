@@ -8,6 +8,7 @@ import { commitTransaction, initTransaction, killTransaction, type Payload, type
 
 import { AppError, ForbiddenError } from "@/lib/api/errors";
 import { isPrivileged } from "@/lib/collections/shared-fields";
+import { SKIP_LOGIN_AUDIT } from "@/lib/collections/users/hooks";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { type FeatureFlags, getFeatureFlagService } from "@/lib/services/feature-flag-service";
@@ -221,7 +222,13 @@ export const resetPasswordAndRevokeSessions = async (
 const verifyPassword = async (payload: Payload, user: User, password: string): Promise<void> => {
   let result: Awaited<ReturnType<typeof payload.login>>;
   try {
-    result = await payload.login({ collection: "users", data: { email: user.email, password }, depth: 0 });
+    result = await payload.login({
+      collection: "users",
+      data: { email: user.email, password },
+      depth: 0,
+      // Third side effect to undo: the afterLogin hook would audit this as a sign-in.
+      context: { [SKIP_LOGIN_AUDIT]: true },
+    });
   } catch {
     // `payload.login` increments loginAttempts (and may set lockUntil) outside
     // the request transaction, so the side effect persists. Undo it here: a

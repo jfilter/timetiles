@@ -158,7 +158,12 @@ const convertHtmlInJson = async (
   if (htmlExtractConfig.detailPage) {
     const fetchFn = async (url: string) => {
       const result = await fetchWithRetry(url, {
-        authHeaders,
+        // The detail-page URL comes out of the FETCHED CONTENT (`detailPage.urlField`), so
+        // the source decides where this request goes. Sending the configured credentials
+        // along unconditionally hands a bearer token or API key to any host a compromised or
+        // hostile feed names. Same reasoning as the cross-origin strip in safe-fetch, which
+        // only covers redirects — this is the initial hop.
+        authHeaders: isSameOriginForCredentials(url, options.sourceUrl) ? authHeaders : {},
         timeout,
         retryConfig: { maxRetries: options.maxRetries ?? 0 },
       });
@@ -169,6 +174,19 @@ const convertHtmlInJson = async (
 
   if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
   return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed };
+};
+
+/**
+ * True only when both URLs parse and share scheme, host and port.
+ *
+ * Anything unparseable is treated as a different origin — credentials are withheld on doubt.
+ */
+export const isSameOriginForCredentials = (candidate: string, reference: string): boolean => {
+  try {
+    return new URL(candidate).origin === new URL(reference).origin;
+  } catch {
+    return false;
+  }
 };
 
 /** Convert a JSON response to CSV, handling pagination and pre-processing. */

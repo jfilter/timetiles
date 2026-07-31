@@ -98,6 +98,32 @@ describe.sequential("scheduled-ingests quota hooks", () => {
     expect(quotaMocks.mockDecrementUsage).toHaveBeenCalledWith(1, "ACTIVE_SCHEDULES", 1, expect.anything());
   });
 
+  /**
+   * The claim marker has two jobs here: it stops afterChange from incrementing a second time,
+   * AND it tells afterError to compensate. Suppressing it under a transaction (the right move
+   * in the other collections, where it only drives compensation) made every successful create
+   * count twice — and since only one decrement ever follows, the drift was permanent.
+   */
+  it("still suppresses the second increment when the claim was transactional", async () => {
+    const req = {
+      user: { id: 1 },
+      payload: {},
+      activeScheduleQuotaClaim: { ownerId: 1, rolledBackWithTransaction: true },
+    };
+
+    await afterChangeHook({ doc: { enabled: true, createdBy: 1 }, operation: "create", req } as never);
+
+    expect(quotaMocks.mockIncrementUsage).not.toHaveBeenCalled();
+  });
+
+  it("does not compensate when the claim was rolled back with its transaction", async () => {
+    await afterErrorHook({
+      req: { user: { id: 1 }, payload: {}, activeScheduleQuotaClaim: { ownerId: 1, rolledBackWithTransaction: true } },
+    } as never);
+
+    expect(quotaMocks.mockDecrementUsage).not.toHaveBeenCalled();
+  });
+
   it("does not increment ACTIVE_SCHEDULES when skipQuotaChecks context is set", async () => {
     await afterChangeHook({
       doc: { enabled: true, createdBy: 1 },

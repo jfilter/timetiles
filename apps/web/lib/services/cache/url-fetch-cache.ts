@@ -41,6 +41,19 @@ interface CachedEntry {
   };
 }
 
+/**
+ * Whether a cache key belongs to exactly this user.
+ *
+ * Keys are `GET:<url>:user:<id>` with an optional `:auth:<fingerprint>` suffix, so the user id
+ * is a whole segment. A plain `includes(":user:1")` also matched ":user:10", ":user:100" and
+ * so on — invalidating one user threw away nine other users' entries, forcing them to re-fetch
+ * their external sources and burn URL_FETCHES_PER_DAY doing it.
+ */
+export const belongsToUser = (key: string, userId: string): boolean => {
+  const segment = `:user:${userId}`;
+  return key.endsWith(segment) || key.includes(`${segment}:`);
+};
+
 export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
@@ -643,9 +656,8 @@ export class UrlFetchCache {
    * Invalidate all cached entries for a specific user
    */
   async invalidateForUser(userId: string): Promise<void> {
-    // Get all cache keys and filter for this user
     const allKeys = await this.cache.keys();
-    const userKeys = allKeys.filter((k) => k.includes(`:user:${userId}`));
+    const userKeys = allKeys.filter((k) => belongsToUser(k, userId));
 
     for (const key of userKeys) {
       await this.cache.delete(key);
