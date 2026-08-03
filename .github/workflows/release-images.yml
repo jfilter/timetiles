@@ -351,6 +351,16 @@ jobs:
 
           echo "==> Checking all-in-one health (includes DB init)..."
           bash .github/scripts/wait-for-health.sh http://localhost:8080/api/health allinone-test 45 3
+
+          echo "==> Checking all-in-one background worker..."
+          WORKER_STATUS="$(docker exec allinone-test supervisorctl status worker)"
+          echo "${WORKER_STATUS}"
+          if [[ ! "${WORKER_STATUS}" =~ ^worker[[:space:]]+RUNNING ]]; then
+            echo "Background worker is not running" >&2
+            docker logs allinone-test
+            exit 1
+          fi
+
           docker stop allinone-test && docker rm allinone-test
 
       - name: Verify arm64 manifests
