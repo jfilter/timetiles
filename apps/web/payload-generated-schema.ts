@@ -125,7 +125,7 @@ export const enum__ingest_jobs_v_version_stage = db_schema.enum(
 );
 export const enum_scheduled_ingests_execution_history_status = db_schema.enum(
   "enum_scheduled_ingests_execution_history_status",
-  ["success", "failed"],
+  ["success", "failed", "paused"],
 );
 export const trig_by = db_schema.enum("trig_by", [
   "schedule",
@@ -166,7 +166,7 @@ export const si_json_paging_method = db_schema.enum("si_json_paging_method", [
 ]);
 export const enum_scheduled_ingests_last_status = db_schema.enum(
   "enum_scheduled_ingests_last_status",
-  ["success", "failed", "running"],
+  ["success", "failed", "running", "paused"],
 );
 export const enum_scheduled_ingests_status = db_schema.enum(
   "enum_scheduled_ingests_status",
@@ -176,6 +176,7 @@ export const enum__scheduled_ingests_v_version_execution_history_status =
   db_schema.enum("enum__scheduled_ingests_v_version_execution_history_status", [
     "success",
     "failed",
+    "paused",
   ]);
 export const enum__scheduled_ingests_v_version_schedule_type = db_schema.enum(
   "enum__scheduled_ingests_v_version_schedule_type",
@@ -199,7 +200,7 @@ export const enum__scheduled_ingests_v_version_auth_config_type =
   ]);
 export const enum__scheduled_ingests_v_version_last_status = db_schema.enum(
   "enum__scheduled_ingests_v_version_last_status",
-  ["success", "failed", "running"],
+  ["success", "failed", "running", "paused"],
 );
 export const enum__scheduled_ingests_v_version_status = db_schema.enum(
   "enum__scheduled_ingests_v_version_status",
