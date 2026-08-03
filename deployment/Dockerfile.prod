@@ -80,9 +80,14 @@ RUN CI=true pnpm prune --prod --ignore-scripts
 FROM node:24-alpine AS runner
 WORKDIR /app
 
-# Upgrade base packages to pick up security patches, install runtime deps, create user
+# Upgrade base packages to pick up security patches, install runtime deps, create user.
+# The runtime invokes Next.js and Payload directly with node, so npm is unnecessary.
+# Remove the npm bundled with the base image to keep its transitive packages (and
+# their CVEs) out of the production attack surface.
 RUN apk upgrade --no-cache \
     && apk add --no-cache libc6-compat \
+    && rm -rf /usr/local/lib/node_modules/npm \
+    && rm -f /usr/local/bin/npm /usr/local/bin/npx \
     && addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
