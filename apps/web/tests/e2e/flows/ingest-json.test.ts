@@ -167,16 +167,15 @@ test.describe("Import Wizard - JSON URL Input", () => {
     const fetchButton = page.getByRole("button", { name: /fetch/i });
     await expect(fetchButton).toBeVisible();
 
-    // Enter a URL pointing to a JSON API endpoint
-    await urlInput.fill("https://httpbin.org/json");
+    // Use the E2E-only local fixture so this release gate never depends on
+    // external DNS, network latency, or a third party's response shape.
+    const fixtureUrl = new URL("/api/test-fixtures?format=json", page.url()).toString();
+    await urlInput.fill(fixtureUrl);
 
     // Fetch button should be enabled now
     await expect(fetchButton).toBeEnabled();
 
-    // Click Fetch — the server will attempt to download from this URL.
-    // We intercept the preview-schema/url API response to verify the
-    // client sends the request correctly, regardless of whether the
-    // remote fetch succeeds.
+    // Click Fetch and verify the complete browser-to-server URL import path.
     const apiResponsePromise = page.waitForResponse((resp) => resp.url().includes("/api/ingest/preview-schema/url"), {
       timeout: 30_000,
     });
@@ -185,21 +184,9 @@ test.describe("Import Wizard - JSON URL Input", () => {
 
     // Wait for the API response
     const apiResponse = await apiResponsePromise;
-    const status = apiResponse.status();
+    expect(apiResponse.status()).toBe(200);
 
-    // The server tried to fetch the URL. Depending on network
-    // availability and SSRF rules, we may get success or an error.
-    // The server tried to fetch the URL. Regardless of whether the
-    // external URL is reachable, verify that the API responded and
-    // the wizard shows either a success preview or an error message.
-    if (status === 200) {
-      const fileReady = page.getByText(/file ready for import|url data ready|ready|detected/i);
-      await expect(fileReady).toBeVisible({ timeout: 10_000 });
-    } else {
-      // Error: any visible text mentioning the failure is acceptable
-      const errorVisible = page.getByText(/failed|error|unsupported|could not/i).first();
-      await expect(errorVisible).toBeVisible({ timeout: 5_000 });
-    }
+    await expect(page.getByText("URL data ready for import", { exact: true })).toBeVisible({ timeout: 10_000 });
   });
 
   test("should show authentication settings in URL tab", async ({ page }) => {

@@ -16,10 +16,42 @@ Workshop on AI,Hands-on workshop covering practical AI applications,2025-06-01,5
 Summer Jazz Night,Open-air jazz concert in the park,2025-06-15,52.5280,13.4430,music
 Street Food Festival,International street food from 30 vendors,2025-07-01,52.5030,13.4290,food`;
 
-export const GET = () => {
+const JSON_DATA = [
+  {
+    title: "Workshop on AI",
+    description: "Hands-on workshop covering practical AI applications",
+    date: "2025-06-01",
+    latitude: 52.52,
+    longitude: 13.405,
+    category: "technology",
+  },
+  {
+    title: "Summer Jazz Night",
+    description: "Open-air jazz concert in the park",
+    date: "2025-06-15",
+    latitude: 52.528,
+    longitude: 13.443,
+    category: "music",
+  },
+  {
+    title: "Street Food Festival",
+    description: "International street food from 30 vendors",
+    date: "2025-07-01",
+    latitude: 52.503,
+    longitude: 13.429,
+    category: "food",
+  },
+];
+
+export const GET = (request: Request) => {
   if (!isE2E()) {
     return new Response("Not found", { status: 404 });
   }
+
+  if (new URL(request.url).searchParams.get("format") === "json") {
+    return Response.json(JSON_DATA, { headers: { "Content-Disposition": "inline; filename=scheduled-events.json" } });
+  }
+
   return new Response(CSV_DATA, {
     headers: { "Content-Type": "text/csv", "Content-Disposition": "inline; filename=scheduled-events.csv" },
   });
