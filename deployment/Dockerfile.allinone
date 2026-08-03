@@ -29,12 +29,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # PostgreSQL and PostGIS
     postgresql-17 \
     postgresql-17-postgis-3 \
+    postgresql-17-h3 \
     # Web server and process manager
     nginx \
     supervisor \
     # SSL and utilities
     openssl \
     # Clean up
+    && test -f /usr/share/postgresql/17/extension/h3.control \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/ssl/private/ssl-cert-snakeoil.key /etc/ssl/certs/ssl-cert-snakeoil.pem
 
