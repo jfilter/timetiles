@@ -18,8 +18,8 @@ import { ExplorePage } from "../pages/explore.page";
 
 const DATASET = "Air Quality Measurements";
 
-/** Fetch the /api/v1/events list for a dataset (optionally range-filtered) and return its events. */
-const fetchListEvents = async (page: Page, datasets: string, rf?: string): Promise<unknown[]> => {
+/** Navigate to the list view and wait for its dataset-scoped events request. */
+const openListView = async (page: Page, datasets: string, rf?: string): Promise<void> => {
   const responsePromise = page.waitForResponse(
     (response) => {
       const url = new URL(response.url());
@@ -33,8 +33,6 @@ const fetchListEvents = async (page: Page, datasets: string, rf?: string): Promi
   await page.goto(target, { waitUntil: "domcontentloaded" });
   const response = await responsePromise;
   expect(response.status()).toBe(200);
-  const body = (await response.json()) as { events?: unknown[] };
-  return body.events ?? [];
 };
 
 test.describe("Explore Page - Numeric Range Filter", () => {
@@ -62,15 +60,19 @@ test.describe("Explore Page - Numeric Range Filter", () => {
     const datasets = (await explorePage.getUrlParams()).get("datasets");
     expect(datasets).toBeTruthy();
 
-    // Baseline: the dataset has events.
-    const baselineEvents = await fetchListEvents(page, datasets!);
-    expect(baselineEvents.length).toBeGreaterThan(0);
+    // Baseline: the list UI renders events for this dataset. Assert the
+    // user-visible result instead of reading a response body through Chromium's
+    // DevTools protocol, which can evict bodies under CI concurrency.
+    await openListView(page, datasets!);
+    await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
+      timeout: 15000,
+    });
 
     // A range above the domain maximum (value ∈ [0,100]) deterministically
     // excludes every event — proving the rf param flows through to the SQL range
     // filter (and that the cast is applied, not ignored).
     const rf = encodeURIComponent(JSON.stringify({ value: { min: 101, max: null } }));
-    const filteredEvents = await fetchListEvents(page, datasets!, rf);
-    expect(filteredEvents).toHaveLength(0);
+    await openListView(page, datasets!, rf);
+    await expect(page.getByText(/No events found|Keine Ereignisse gefunden/i).first()).toBeVisible({ timeout: 15000 });
   });
 });
