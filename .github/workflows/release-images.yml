@@ -353,10 +353,19 @@ jobs:
           bash .github/scripts/wait-for-health.sh http://localhost:8080/api/health allinone-test 45 3
 
           echo "==> Checking all-in-one background worker..."
-          WORKER_STATUS="$(docker exec allinone-test supervisorctl status worker)"
-          echo "${WORKER_STATUS}"
+          WORKER_STATUS=""
+          for attempt in {1..15}; do
+            WORKER_STATUS="$(docker exec allinone-test supervisorctl \
+              -c /etc/supervisor/supervisord.conf status worker 2>&1 || true)"
+            echo "Worker status (${attempt}/15): ${WORKER_STATUS}"
+            if [[ "${WORKER_STATUS}" =~ ^worker[[:space:]]+RUNNING ]]; then
+              break
+            fi
+            sleep 2
+          done
+
           if [[ ! "${WORKER_STATUS}" =~ ^worker[[:space:]]+RUNNING ]]; then
-            echo "Background worker is not running" >&2
+            echo "Background worker did not reach RUNNING state" >&2
             docker logs allinone-test
             exit 1
           fi
