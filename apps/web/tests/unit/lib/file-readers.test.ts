@@ -62,6 +62,20 @@ describe.sequential("File Readers", () => {
       expect(batches[0]![2]).toEqual({ id: "3", name: "Charlie" });
     });
 
+    it("should transcode a non-UTF-8 (Windows-1252) CSV instead of corrupting it", async () => {
+      const iconv = await import("iconv-lite");
+      const csvPath = path.join(tempDir, "latin1.csv");
+      const content = "id,name\n1,Köln\n2,Müllerstraße\n";
+      fs.writeFileSync(csvPath, iconv.default.encode(content, "windows-1252"));
+
+      const rows = await flattenBatches(streamBatchesFromFile(csvPath, { batchSize: 100 }));
+
+      expect(rows).toEqual([
+        { id: "1", name: "Köln" },
+        { id: "2", name: "Müllerstraße" },
+      ]);
+    });
+
     it("should split rows into multiple batches", async () => {
       const rows = Array.from({ length: 10 }, (_, i) => `${i + 1},Item ${i + 1}`);
       const csvPath = writeTempCSV("multi.csv", `id,name\n${rows.join("\n")}\n`);
@@ -223,6 +237,32 @@ describe.sequential("File Readers", () => {
 
       expect(sheet0Rows.length).toBeGreaterThan(0);
       expect(sheet1Rows.length).toBeGreaterThan(0);
+    });
+
+    it("should not yield phantom blank rows for a padded used-range", async () => {
+      const { loadXlsx } = await import("@/lib/ingest/xlsx-loader");
+      const { utils, write } = await loadXlsx();
+
+      const sheet = utils.aoa_to_sheet([
+        ["title", "date"],
+        ["Event A", "2024-01-01"],
+        ["Event B", "2024-01-02"],
+      ]);
+      // Pad the used range far beyond the real data, as tools that delete rows
+      // but keep formatting commonly do.
+      sheet["!ref"] = "A1:B10";
+
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, sheet, "Sheet1");
+
+      const xlsxPath = path.join(tempDir, "padded.xlsx");
+      const buffer = write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
+      fs.writeFileSync(xlsxPath, buffer);
+
+      const rows = await flattenBatches(streamBatchesFromFile(xlsxPath, { batchSize: 100 }));
+
+      expect(rows).toHaveLength(2);
+      expect(rows.map((r) => r.title)).toEqual(["Event A", "Event B"]);
     });
   });
 

@@ -12,6 +12,7 @@ import readline from "node:readline";
 
 import Papa from "papaparse";
 
+import { createDecodedTextStream } from "@/lib/ingest/file-encoding";
 import { countCsvRecords } from "@/lib/ingest/file-readers";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
@@ -34,7 +35,7 @@ export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => 
 
   // Read only the first line to get headers
   const headerLine = await new Promise<string>((resolve, reject) => {
-    const stream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const stream = createDecodedTextStream(filePath);
     const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
     let resolved = false;
 

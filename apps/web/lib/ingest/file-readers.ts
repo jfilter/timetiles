@@ -12,6 +12,7 @@ import fs from "node:fs";
 
 import Papa from "papaparse";
 
+import { createDecodedTextStream } from "@/lib/ingest/file-encoding";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
@@ -145,7 +146,7 @@ async function* streamBatchesFromCSV(csvPath: string, batchSize: number): AsyncG
     }
   };
 
-  const fileStream = fs.createReadStream(csvPath, { encoding: "utf-8" });
+  const fileStream = createDecodedTextStream(csvPath);
 
   // Start parsing in the background
   const parsePromise = new Promise<void>((resolve, reject) => {
@@ -242,7 +243,10 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
     throw new Error(`Worksheet ${sheetName} not found`);
   }
 
-  const csvContent = utils.sheet_to_csv(worksheet);
+  // blankrows:false drops fully-empty rows from a padded used-range (tools that
+  // delete rows but keep formatting leave stale "!ref" bounds) — otherwise they'd
+  // become phantom all-comma CSV rows downstream.
+  const csvContent = utils.sheet_to_csv(worksheet, { blankrows: false });
   fs.writeFileSync(csvPath, csvContent, "utf-8");
 
   logger.info("Converted Excel/ODS sheet to CSV sidecar", { filePath, sheetIndex, csvPath });
@@ -286,7 +290,7 @@ export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise
 export const countCsvRecords = (filePath: string): Promise<number> =>
   new Promise((resolve, reject) => {
     let count = 0;
-    const fileStream = fs.createReadStream(filePath, { encoding: "utf-8" });
+    const fileStream = createDecodedTextStream(filePath);
 
     Papa.parse(fileStream, {
       header: true,
