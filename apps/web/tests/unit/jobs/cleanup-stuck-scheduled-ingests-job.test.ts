@@ -361,7 +361,8 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       mockPayload.find
         .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
         .mockResolvedValueOnce(NO_ACTIVE_JOBS)
-        .mockResolvedValueOnce({ docs: [{ id: "old-workflow-job" }], totalDocs: 1 });
+        .mockResolvedValueOnce({ docs: [{ id: "old-workflow-job" }], totalDocs: 1 })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
 
       await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -377,7 +378,9 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
             { createdAt: { less_than: "2026-04-28T08:00:00.000Z" } },
           ],
         },
-        limit: 50,
+        // 0, not a cap: a fixed number would strand orphaned jobs past it forever, since the
+        // schedule leaves "running" on this same pass.
+        limit: 0,
         overrideAccess: true,
         pagination: false,
       });
@@ -388,6 +391,65 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         data: { completedAt: "2026-04-28T12:00:00.000Z", hasError: true, processing: false },
         overrideAccess: true,
       });
+    });
+
+    it("does not mark the schedule failed when cancelling orphaned jobs errors — the error must propagate, not be swallowed", async () => {
+      const stuckImport = {
+        id: "import-1",
+        name: "Stuck Import",
+        lastStatus: "running",
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        executionHistory: [],
+        statistics: {},
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockRejectedValueOnce(new Error("transient db error"));
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      // The schedule must NOT be flipped to "failed" — that would wedge its concurrency
+      // key forever since the reaper only ever revisits lastStatus="running".
+      expect(mockPayload.update).not.toHaveBeenCalled();
+      expect(result.output.resetCount).toBe(0);
+      expect(result.output.errors?.[0]).toEqual({ id: "import-1", name: "Stuck Import", error: "transient db error" });
+    });
+
+    it("fails the abandoned run's ingest-file and non-terminal ingest-jobs so they aren't left dangling", async () => {
+      const stuckImport = {
+        id: "import-1",
+        name: "Stuck Import",
+        lastStatus: "running",
+        lastRun: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+        executionHistory: [],
+        statistics: {},
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }) // scheduled-ingests
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS) // hasActivePayloadJob
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS) // cancelOrphanedWorkflowJobs
+        .mockResolvedValueOnce({ docs: [{ id: "file-1", status: "processing" }], totalDocs: 1 }) // stuck ingest-files
+        .mockResolvedValueOnce({ docs: [{ id: "job-1", stage: "create-events" }], totalDocs: 1 }); // stuck ingest-jobs
+
+      await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "ingest-jobs",
+          id: "job-1",
+          data: expect.objectContaining({ stage: "failed" }),
+        })
+      );
+      expect(mockPayload.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          collection: "ingest-files",
+          id: "file-1",
+          data: expect.objectContaining({ status: "failed" }),
+        })
+      );
     });
   });
 });

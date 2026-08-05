@@ -15,7 +15,8 @@
 
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { failIngestJob } from "@/lib/jobs/utils/resource-loading";
 import { logError, logger } from "@/lib/logger";
 import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
@@ -44,6 +45,12 @@ export interface CleanupStuckScheduledIngestsJobInput {
  * payload-job record stays pending indefinitely. This blocks concurrency
  * slots and prevents future imports from running. Mark them as completed
  * with an error so the concurrency key is released.
+ *
+ * Errors deliberately propagate (mirrors cleanup-stuck-scrapers-job.ts): swallowing them
+ * and returning 0 made a transient database error permanent — the schedule had already
+ * been flipped out of `running` below, and the reaper only ever looks at
+ * `lastStatus = "running"`, so the orphaned job would keep its concurrency key forever
+ * with nothing left to revisit it.
  */
 const cancelOrphanedWorkflowJobs = async (
   payload: Payload,
@@ -53,38 +60,78 @@ const cancelOrphanedWorkflowJobs = async (
 ): Promise<number> => {
   const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
 
-  try {
-    const orphanedJobs = await asSystem(payload).find({
+  const orphanedJobs = await asSystem(payload).find({
+    collection: "payload-jobs" as const,
+    where: {
+      and: [
+        // Both id representations — see the same fix in
+        // cleanup-stuck-scrapers-job.ts. Job input is jsonb, so a string
+        // `equals` never matches a numerically-enqueued id.
+        buildResourceIdMatch("input.scheduledIngestId", scheduledIngestId),
+        { processing: { equals: false } },
+        { completedAt: { exists: false } },
+        { createdAt: { less_than: orphanedJobCutoff } },
+      ],
+    },
+    // 0 lifts the limit; a fixed number would strand everything past it, since the
+    // schedule leaves `running` on the same pass (`pagination: false` does not lift an
+    // explicit limit).
+    limit: 0,
+    pagination: false,
+  });
+
+  let cancelled = 0;
+  for (const job of orphanedJobs.docs) {
+    await asSystem(payload).update({
       collection: "payload-jobs" as const,
+      id: job.id,
+      data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
+    });
+    cancelled++;
+  }
+  return cancelled;
+};
+
+/**
+ * Fail the run's downstream ingest state left over by an abandoned scheduled-ingest run.
+ *
+ * A worker that dies mid-workflow leaves the ingest-file in a non-terminal status
+ * (parsing/processing) and its ingest-jobs at whatever stage they were mid-flight —
+ * nothing else ever revisits them: `ingest-files-cleanup-job` Pass A only reclaims
+ * completed/failed rows, and Pass B skips any file still referenced by a row. Without
+ * this, the CSV on disk and the stale rows leak forever for every killed run. Mirrors
+ * `failStuckScraperRuns` in cleanup-stuck-scrapers-job.ts.
+ */
+const failStuckIngestFile = async (payload: Payload, scheduledIngestId: number | string): Promise<number> => {
+  const sys = asSystem(payload);
+  const stuckFiles = await sys.find({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    where: { scheduledIngest: { equals: scheduledIngestId }, status: { not_in: ["completed", "failed"] } },
+    limit: 0,
+    pagination: false,
+  });
+
+  for (const file of stuckFiles.docs) {
+    const stuckJobs = await sys.find({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
       where: {
-        and: [
-          // Both id representations — see the same fix in
-          // cleanup-stuck-scrapers-job.ts. Job input is jsonb, so a string
-          // `equals` never matches a numerically-enqueued id.
-          buildResourceIdMatch("input.scheduledIngestId", scheduledIngestId),
-          { processing: { equals: false } },
-          { completedAt: { exists: false } },
-          { createdAt: { less_than: orphanedJobCutoff } },
-        ],
+        ingestFile: { equals: file.id },
+        stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] },
       },
-      limit: 50,
       pagination: false,
     });
-
-    let cancelled = 0;
-    for (const job of orphanedJobs.docs) {
-      await asSystem(payload).update({
-        collection: "payload-jobs" as const,
-        id: job.id,
-        data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
-      });
-      cancelled++;
+    for (const job of stuckJobs.docs) {
+      await failIngestJob(payload, job.id, new Error("Worker stopped before reporting a result"), "reaper");
     }
-    return cancelled;
-  } catch (error) {
-    logError(error, "Failed to cancel orphaned workflow jobs", { scheduledIngestId, orphanedJobCutoff });
-    return 0;
+
+    await sys.update({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      id: file.id,
+      data: { status: "failed", errorLog: "Import was stuck and automatically reset by cleanup job" },
+    });
   }
+
+  return stuckFiles.docs.length;
 };
 
 const resetStuckImport = async (
@@ -98,8 +145,10 @@ const resetStuckImport = async (
     const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
     const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
 
-    // Cancel orphaned workflow jobs to release concurrency slots
+    // Cancel orphaned workflow jobs to release concurrency slots, and fail the run's
+    // downstream ingest-file/ingest-jobs state so it isn't left dangling non-terminal.
     const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id, currentTime, thresholdHours);
+    const failedFiles = await failStuckIngestFile(payload, scheduledIngest.id);
 
     // Update execution history with failure
     const executionHistory = scheduledIngest.executionHistory ?? [];
@@ -136,6 +185,7 @@ const resetStuckImport = async (
       name: scheduledIngest.name,
       stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
       cancelledWorkflowJobs: cancelledJobs,
+      failedIngestFiles: failedFiles,
     });
   } catch (error) {
     logError(error, "Failed to reset stuck import", {

@@ -290,6 +290,39 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       expect(mocks.batchGeocode.mock.calls[0]![2]).toBeUndefined();
     });
 
+    it("should also geocode locationName so create-events' fallback can find a result", async () => {
+      const mockIngestJob = {
+        ...createMockIngestJob(),
+        id: 123,
+        interpretationPlan: {
+          ops: [],
+          columns: [],
+          roles: { location: "address", locationName: "venue" },
+          ambiguityResolution: "best-effort",
+        },
+      };
+
+      // location present but non-geocodable; locationName is a good fallback address
+      mockStreamBatches([{ id: "1", title: "Event 1", address: "n/a", venue: "Berlin Hauptbahnhof" }]);
+
+      mockPayload.findByID.mockResolvedValue(mockIngestJob);
+
+      mocks.geocode.mockResolvedValue({
+        latitude: 52.5251,
+        longitude: 13.3694,
+        confidence: 0.9,
+        normalizedAddress: "Berlin Hauptbahnhof, Berlin, Germany",
+      });
+
+      const result = await geocodeBatchJob.handler(mockContext);
+
+      // Both the primary location and the locationName fallback must be submitted for geocoding.
+      expect(mocks.geocode).toHaveBeenCalledWith("n a");
+      expect(mocks.geocode).toHaveBeenCalledWith("berlin hauptbahnhof");
+
+      expect(result.output).toEqual({ geocoded: 2, failed: 0, skipped: 0, uniqueLocations: 2 });
+    });
+
     it("should skip rows without location values", async () => {
       const mockIngestJob = {
         ...createMockIngestJob(),

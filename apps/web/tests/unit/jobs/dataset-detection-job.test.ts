@@ -38,6 +38,10 @@ const mocks = vi.hoisted(() => {
     unlinkSync: vi.fn(),
     createReadStream: vi.fn(),
     writeFileSync: vi.fn(),
+    // Used by lib/ingest/file-encoding.ts for charset detection before streaming.
+    openSync: vi.fn().mockReturnValue(0),
+    readSync: vi.fn().mockReturnValue(0),
+    closeSync: vi.fn(),
   };
   return { fs: fsMock };
 });
