@@ -70,15 +70,28 @@ const validateStep = (field: string, name: string): string | true => {
 };
 
 /**
- * Validates a list of cron expression values.
+ * Validates a single comma-list member, which may itself be a range (with optional step).
+ */
+const validateListMember = (member: string, min: number, max: number, name: string): string | true => {
+  if (member.includes("-")) {
+    return validateRange(member, min, max, name);
+  }
+  const num = parseStrictCronNumber(member);
+  if (num == null || num < min || num > max) {
+    return `Invalid ${name} value ${member} in cron expression (must be ${min}-${max})`;
+  }
+  return true;
+};
+
+/**
+ * Validates a list of cron expression values, each of which may be a plain
+ * number or a range (e.g. "1-5,10").
  */
 const validateList = (field: string, min: number, max: number, name: string): string | true => {
   const values = field.split(",");
   for (const v of values) {
-    const num = parseStrictCronNumber(v);
-    if (num == null || num < min || num > max) {
-      return `Invalid ${name} value ${v} in cron expression (must be ${min}-${max})`;
-    }
+    const result = validateListMember(v, min, max, name);
+    if (result !== true) return result;
   }
   return true;
 };
@@ -89,15 +102,16 @@ const validateList = (field: string, min: number, max: number, name: string): st
 const validateField = (field: string, min: number, max: number, name: string): string | true => {
   if (field === "*") return true;
 
-  // Handle different cron patterns
+  // Handle different cron patterns — comma lists first, since a list member
+  // may itself contain a range (e.g. "1-5,10").
+  if (field.includes(",")) {
+    return validateList(field, min, max, name);
+  }
   if (field.includes("-")) {
     return validateRange(field, min, max, name);
   }
   if (field.startsWith("*/")) {
     return validateStep(field, name);
-  }
-  if (field.includes(",")) {
-    return validateList(field, min, max, name);
   }
 
   // Simple numeric value

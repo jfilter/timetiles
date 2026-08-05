@@ -9,6 +9,16 @@ import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 
 const mocks = vi.hoisted(() => ({ safeFindByID: vi.fn() }));
 
+/** Chainable mock for the retry route's raw `payload.db.drizzle.update(...).set(...).where(...).returning(...)` claim. */
+const makeDrizzleUpdateMock = (returning: unknown[]) => {
+  const chain = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue(returning),
+  };
+  return { update: vi.fn().mockReturnValue(chain), chain };
+};
+
 class MockValidationError extends Error {}
 
 vi.mock("@/lib/api", () => ({
@@ -23,11 +33,21 @@ const { POST: retryPost } = await import("@/app/api/ingest-jobs/[id]/retry/route
 const { POST: resetPost } = await import("@/app/api/ingest-jobs/[id]/reset/route");
 
 describe.sequential("ingest-job recovery routes", () => {
-  let payload: { jobs: { queue: ReturnType<typeof vi.fn> }; update: ReturnType<typeof vi.fn> };
+  let payload: {
+    jobs: { queue: ReturnType<typeof vi.fn> };
+    update: ReturnType<typeof vi.fn>;
+    db: { drizzle: ReturnType<typeof makeDrizzleUpdateMock> };
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    payload = { jobs: { queue: vi.fn().mockResolvedValue({ id: "wf-1" }) }, update: vi.fn().mockResolvedValue({}) };
+    payload = {
+      jobs: { queue: vi.fn().mockResolvedValue({ id: "wf-1" }) },
+      update: vi.fn().mockResolvedValue({}),
+      // The retry route claims the job via a raw drizzle UPDATE ... RETURNING;
+      // one matching row means the claim succeeded.
+      db: { drizzle: makeDrizzleUpdateMock([{ id: 1 }]) },
+    };
   });
 
   it("retries failed jobs from analyze-duplicates instead of detect-schema", async () => {

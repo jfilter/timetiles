@@ -33,6 +33,10 @@ describe("scheduled-ingests validation", () => {
     it("rejects partially numeric list cron values", () => {
       expect(validateCronExpression("0 1,2oops * * *")).toMatch(/Invalid hour value 2oops/i);
     });
+
+    it("accepts comma lists containing ranges", () => {
+      expect(validateCronExpression("0 9 * * 1-5,0")).toBe(true);
+    });
   });
 
   describe("validateUrl", () => {

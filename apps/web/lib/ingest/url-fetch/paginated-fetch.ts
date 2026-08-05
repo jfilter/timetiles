@@ -360,7 +360,8 @@ export const fetchPaginated = async (
     const pageTimeout = getRemainingPaginationTimeout(startedAt, options.timeout);
     const { json, pageRecords } = await fetchOnePage(state, pageConfig, pageTimeout);
 
-    allRecords.push(...pageRecords);
+    const remainingCapacity = maxRecords - allRecords.length;
+    allRecords.push(...pageRecords.slice(0, Math.max(0, remainingCapacity)));
     pagesProcessed++;
 
     if (allRecords.length >= maxRecords) {

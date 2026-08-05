@@ -79,4 +79,32 @@ describe.sequential("fetchPaginated", () => {
       });
     }
   });
+
+  // Regression: a page was appended in full before the maxRecords check, so a
+  // large page could push totalRecords well past the configured ceiling.
+  it("truncates a page's records to stay within maxRecords", async () => {
+    mocks.fetchWithRetry.mockImplementation(() => ({
+      data: Buffer.from(JSON.stringify({ items: Array.from({ length: 10 }, (_, i) => ({ id: i })) })),
+      contentType: "application/json",
+      attempts: 1,
+    }));
+
+    const result = await fetchPaginated(
+      "https://example.test/events",
+      {
+        enabled: true,
+        type: "page",
+        limitParam: "limit",
+        limitValue: 10,
+        pageParam: "page",
+        maxPages: 5,
+        maxRecords: 15,
+      },
+      "items",
+      {}
+    );
+
+    expect(result.totalRecords).toBe(15);
+    expect(result.allRecords).toHaveLength(15);
+  });
 });
