@@ -35,6 +35,7 @@ const applyDirectionToValue = (value: number, direction: string): number => {
  * tryParseDecimal("40.7128");  // Returns 40.7128
  * tryParseDecimal("-74.0060"); // Returns -74.0060
  * tryParseDecimal("1.5e2");    // Returns 150
+ * tryParseDecimal("52,52");    // Returns 52.52 (EU comma decimal)
  * tryParseDecimal("abc");      // Returns null
  * ```
  */
@@ -45,12 +46,23 @@ export const tryParseDecimal = (str: string): number | null => {
   // Allows: 123, -123, 123.456, -123.456, .5, -.5, 1.5e2, 1.5e-2
   // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
   const numericRegex = /^-?(?:\d+(?:\.\d+)?|\.\d+)([eE][+-]?\d+)?$/;
-  if (!numericRegex.test(trimmed)) {
-    return null;
+  if (numericRegex.test(trimmed)) {
+    const decimal = Number.parseFloat(trimmed);
+    return Number.isNaN(decimal) ? null : decimal;
   }
 
-  const decimal = Number.parseFloat(trimmed);
-  return Number.isNaN(decimal) ? null : decimal;
+  // EU comma-decimal fallback (e.g. "52,52"). A coordinate value never needs a
+  // thousands separator, so a single comma with no dot is unambiguously a
+  // decimal separator here — unlike free-form numeric columns, which route
+  // through decideNumberFormat/parseLocaleNumber for that ambiguity.
+  // eslint-disable-next-line security/detect-unsafe-regex -- Well-bounded regex for decimal parsing
+  const euCommaRegex = /^-?(?:\d+,\d+|,\d+)([eE][+-]?\d+)?$/;
+  if (euCommaRegex.test(trimmed)) {
+    const decimal = Number.parseFloat(trimmed.replace(",", "."));
+    return Number.isNaN(decimal) ? null : decimal;
+  }
+
+  return null;
 };
 
 /**

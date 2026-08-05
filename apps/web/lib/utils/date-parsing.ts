@@ -228,11 +228,47 @@ const resolveSeparatedOrder = (
   return inferDayMonthOrder(first, second, separator);
 };
 
-const parseSeparatedDate = (value: string, dayMonthOrder?: DayMonthOrder): { matched: boolean; date: Date | null } => {
-  for (const separator of ["/", "-", "."]) {
-    if (!value.includes(separator)) continue;
+const NO_TIME_PART = { datePart: "", hours: 0, minutes: 0, seconds: 0 };
 
-    const parts = value.split(separator);
+/** Parse a trailing "HH:MM[:SS]" token (already split off by whitespace); null if it isn't one. */
+const parseTimeToken = (token: string): { hours: number; minutes: number; seconds: number } | null => {
+  const segments = token.split(":");
+  if (segments.length < 2 || segments.length > 3) return null;
+  if (!segments.every((segment) => segment.length > 0 && segment.length <= 2 && /^\d+$/.test(segment))) return null;
+
+  return {
+    hours: Number.parseInt(segments[0] ?? "0", 10),
+    minutes: Number.parseInt(segments[1] ?? "0", 10),
+    seconds: Number.parseInt(segments[2] ?? "0", 10),
+  };
+};
+
+/** Strip an optional trailing "HH:MM[:SS]" from a separated date, returning the date-only text and the time parts. */
+const splitTrailingTime = (value: string): { datePart: string; hours: number; minutes: number; seconds: number } => {
+  const trimmed = value.trimEnd();
+  const lastSpace = trimmed.lastIndexOf(" ");
+  if (lastSpace === -1) return { ...NO_TIME_PART, datePart: value };
+
+  const time = parseTimeToken(trimmed.slice(lastSpace + 1));
+  if (!time) return { ...NO_TIME_PART, datePart: value };
+
+  return { datePart: trimmed.slice(0, lastSpace), ...time };
+};
+
+const applyTime = (date: Date | null, hours: number, minutes: number, seconds: number): Date | null => {
+  if (!date) return null;
+  if (hours > 23 || minutes > 59 || seconds > 59) return null;
+  date.setUTCHours(hours, minutes, seconds, 0);
+  return date;
+};
+
+const parseSeparatedDate = (value: string, dayMonthOrder?: DayMonthOrder): { matched: boolean; date: Date | null } => {
+  const { datePart, hours, minutes, seconds } = splitTrailingTime(value);
+
+  for (const separator of ["/", "-", "."]) {
+    if (!datePart.includes(separator)) continue;
+
+    const parts = datePart.split(separator);
     if (parts.length !== 3) continue;
 
     const first = parseUnsignedInteger(parts[0] ?? "");
@@ -241,23 +277,37 @@ const parseSeparatedDate = (value: string, dayMonthOrder?: DayMonthOrder): { mat
     if (first === null || second === null || third === null) continue;
 
     if (parts[0]?.trim().length === 4) {
-      return { matched: true, date: parseDateParts(parts, ["Y", "M", "D"]) };
+      return { matched: true, date: applyTime(parseDateParts(parts, ["Y", "M", "D"]), hours, minutes, seconds) };
     }
 
     return {
       matched: true,
-      date: parseDateParts(parts, resolveSeparatedOrder(first, second, separator, dayMonthOrder)),
+      date: applyTime(
+        parseDateParts(parts, resolveSeparatedOrder(first, second, separator, dayMonthOrder)),
+        hours,
+        minutes,
+        seconds
+      ),
     };
   }
 
   return { matched: false, date: null };
 };
 
+/** True when a date-time string already carries a UTC/offset marker (Z or ±HH:MM). */
+const HAS_TZ_OFFSET_REGEX = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+/** Matches a bare date with no time component, e.g. "2024-06-15". */
+const ISO_DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 const parseIsoDate = (value: string): Date | null => {
   if (!ISO_DATE_PREFIX_REGEX.test(value)) return null;
   if (hasInvalidIsoDatePart(value)) return null;
 
-  const parsed = new Date(value);
+  // Date-time forms without an explicit offset are host-timezone per spec; force UTC
+  // so they agree with the rest of this module's Date.UTC-based parsing.
+  const normalized = ISO_DATE_ONLY_REGEX.test(value) || HAS_TZ_OFFSET_REGEX.test(value) ? value : `${value}Z`;
+
+  const parsed = new Date(normalized);
   return isValidDate(parsed) ? parsed : null;
 };
 
