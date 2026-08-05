@@ -177,15 +177,15 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
     expect(data.pagination.totalDocs).toBe(3);
   });
 
-  it("ignores range filters when more than one dataset is selected (single-dataset gate)", async () => {
+  it("denies (empty result, not unfiltered) a range filter when more than one dataset is selected", async () => {
     const url = `http://localhost:3000/api/v1/events?datasets=${usDatasetId},${euDatasetId}&rf=${encodeURIComponent(
       JSON.stringify({ price: { min: 10, max: 100 } })
     )}&limit=100`;
     const response = await GET(new NextRequest(url), { params: Promise.resolve({}) });
     expect(response.status).toBe(200);
     const data = (await response.json()) as { pagination: { totalDocs: number } };
-    // Gate drops the range filter → all events across both datasets (5 US + 3 EU).
-    expect(data.pagination.totalDocs).toBe(8);
+    // A range filter is unresolvable across multiple datasets; must deny, not fail open.
+    expect(data.pagination.totalDocs).toBe(0);
   });
 
   it("ignores a range filter on a field with no resolved number policy", async () => {

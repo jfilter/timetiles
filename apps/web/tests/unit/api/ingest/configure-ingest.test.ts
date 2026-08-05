@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   mockUnlinkSync: vi.fn(),
   mockValidateQuota: vi.fn(),
   mockCheckQuota: vi.fn(),
+  mockIsFeatureEnabled: vi.fn(),
 }));
 
 // 3. vi.mock calls
@@ -42,6 +43,10 @@ vi.mock("@/lib/config/app-config", () => ({
 }));
 
 vi.mock("@/lib/middleware/auth", () => ({}));
+
+vi.mock("@/lib/services/feature-flag-service", () => ({
+  getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mocks.mockIsFeatureEnabled }),
+}));
 
 // Rate limiting is opt-in on the configure route but the middleware touches
 // getPayload + the rate-limit service, which these tests don't wire up.
@@ -203,6 +208,9 @@ describe.sequential("POST /api/ingest/configure", () => {
     // Default: quota check passes (Bug 15)
     mocks.mockValidateQuota.mockResolvedValue(undefined);
 
+    // Default: import creation feature flag is enabled
+    mocks.mockIsFeatureEnabled.mockResolvedValue(true);
+
     // Default: preview metadata exists and is valid
     setupPreviewMetadata(basePreviewMeta);
   });
@@ -246,6 +254,27 @@ describe.sequential("POST /api/ingest/configure", () => {
 
       expect(response.status).toBe(422);
       expect(body.code).toBe("VALIDATION_ERROR");
+    });
+  });
+
+  describe("Access Gates", () => {
+    it("should return 403 when enableImportCreation feature flag is disabled", async () => {
+      mocks.mockIsFeatureEnabled.mockResolvedValue(false);
+      const req = createRequest(baseBody);
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(403);
+      expect(mocks.mockPayload.create).not.toHaveBeenCalled();
+    });
+
+    it("should return 403 when the user has a pending account deletion", async () => {
+      const req = createRequest(baseBody, { ...mockUser, deletionScheduledAt: new Date().toISOString() });
+
+      const response = await POST(req, routeContext);
+
+      expect(response.status).toBe(403);
+      expect(mocks.mockPayload.create).not.toHaveBeenCalled();
     });
   });
 

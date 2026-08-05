@@ -28,7 +28,8 @@ vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/services/rate-limit-service", () => ({
   getRateLimitService: () => mocks.mockRateLimitService,
-  RATE_LIMITS: { WEBHOOK_TRIGGER: {} },
+  getClientIdentifier: () => "127.0.0.1",
+  RATE_LIMITS: { WEBHOOK_TRIGGER: {}, WEBHOOK_TRIGGER_ATTEMPT: {} },
 }));
 
 import { beforeEach, describe, expect, it, vi } from "vitest";

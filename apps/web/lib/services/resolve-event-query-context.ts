@@ -99,8 +99,10 @@ export const resolveDatasetFieldContext = async (
   if (!hasRangeFilters && !hasFieldFilters) return;
 
   // Cross-dataset gate: both resolutions require exactly one dataset.
+  // Range filters cannot be resolved without one dataset's number-format policy,
+  // so deny the query rather than silently returning the unfiltered result set.
   if (filters.datasets?.length !== 1) {
-    if (hasRangeFilters) delete filters.rangeFilters;
+    if (hasRangeFilters) filters.denyResults = true;
     return;
   }
 

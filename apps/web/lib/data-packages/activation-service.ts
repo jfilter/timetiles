@@ -210,7 +210,8 @@ interface ActivateResult {
 const findOrCreateCatalog = async (
   payload: Payload,
   resolved: DataPackageManifest,
-  user: User
+  user: User,
+  req: ActivateOptions["req"]
 ): Promise<{ catalog: Catalog; reused: boolean }> => {
   // Scope the reuse lookup to the activating user's OWN catalogs. A bare
   // name-only match under overrideAccess is an IDOR: a package named like a
@@ -253,6 +254,7 @@ const findOrCreateCatalog = async (
           region: cat.region ?? meta.region,
         },
         overrideAccess: true,
+        req,
       });
       return { catalog: updated, reused: true };
     }
@@ -273,6 +275,7 @@ const findOrCreateCatalog = async (
       ...meta,
     },
     overrideAccess: true,
+    req,
   });
   return { catalog: created, reused: false };
 };
@@ -466,7 +469,7 @@ export const activateDataPackage = async (
     await createQuotaService(payload).validateQuota(req.user, "ACTIVE_SCHEDULES", 1);
   }
 
-  const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user);
+  const { catalog, reused } = await findOrCreateCatalog(payload, resolved, user, req);
 
   logger.info(
     { catalogId: catalog.id, name: resolved.catalog.name, reused },

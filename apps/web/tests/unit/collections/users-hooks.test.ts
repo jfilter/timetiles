@@ -14,10 +14,30 @@ import { describe, expect, it } from "vitest";
 import Users from "@/lib/collections/users";
 import { usersBeforeChangeHook, usersBeforeLoginHook } from "@/lib/collections/users/hooks";
 
+const passwordPolicyHook = usersBeforeChangeHook[0]!;
 const securityHook = usersBeforeChangeHook[1]!;
 const beforeLogin = usersBeforeLoginHook[0]!;
 
 const localReq = { payloadAPI: "local", user: null } as never;
+
+describe("usersBeforeChangeHook: password policy (ADR 0039)", () => {
+  it("rejects a weak/breached password submitted via GraphQL, not just REST", async () => {
+    const data: Record<string, unknown> = { password: "password" };
+    const req = { payloadAPI: "GraphQL", user: { id: 1, role: "user" } } as never;
+
+    await expect(
+      passwordPolicyHook({ data, operation: "update", req, originalDoc: undefined } as never)
+    ).rejects.toThrow();
+  });
+
+  it("still exempts Local API calls (seeds, tests, system operations)", async () => {
+    const data: Record<string, unknown> = { password: "password" };
+
+    await expect(
+      passwordPolicyHook({ data, operation: "update", req: localReq, originalDoc: undefined } as never)
+    ).resolves.toBe(data);
+  });
+});
 
 describe("usersBeforeChangeHook: verification token expiry", () => {
   it("stamps _verificationTokenExpiresAt on create even though the token is not in data", async () => {
@@ -113,6 +133,17 @@ describe("usersBeforeChangeHook: REST auth-field guard", () => {
         originalDoc: original,
       } as never)
     ).not.toThrow();
+  });
+
+  it("rejects a non-admin GraphQL update that changes the login email (account takeover)", () => {
+    expect(() =>
+      securityHook({
+        data: { email: "attacker@evil.tld" },
+        operation: "update",
+        req: { payloadAPI: "GraphQL", user: { id: 1, role: "user" } },
+        originalDoc: original,
+      } as never)
+    ).toThrow(/dedicated endpoints/);
   });
 });
 
