@@ -29,12 +29,14 @@ import type { BaseChartProps } from "./types";
 
 /** Aggregate temporal-cluster items into stacked histogram series. */
 const buildGroupedSeries = (
-  items: Array<{ groupName: string | null; count: number; bucketStart: string }>,
+  items: Array<{ groupName: string | null; count: number; bucketStart: string; bucketEnd: string }>,
   maxGroups: number,
   otherLabel: (count: number) => string
 ): TimeHistogramSeries[] | undefined => {
   const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
+  const bucketEnds = new Map<string, string>();
   for (const item of items) {
+    bucketEnds.set(item.bucketStart, item.bucketEnd);
     const names = expandGroupNames(item.groupName ?? "");
     for (const name of names) {
       if (!groupTotals.has(name)) {
@@ -56,7 +58,7 @@ const buildGroupedSeries = (
   const otherGroups = sorted.slice(maxGroups);
 
   const zeroFill = (buckets: Map<string, number>) =>
-    sortedDates.map((date) => ({ date, count: buckets.get(date) ?? 0 }));
+    sortedDates.map((date) => ({ date, dateEnd: bucketEnds.get(date) ?? date, count: buckets.get(date) ?? 0 }));
 
   const series: TimeHistogramSeries[] = topGroups.map(([, group], idx) => ({
     name: group.name,
@@ -101,7 +103,7 @@ export const EventHistogram = ({
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
   const locale = useLocale();
-  const { filters, setSingleDayFilter } = useFilters();
+  const { filters, setBucketRangeFilter } = useFilters();
   const scope = useViewScope();
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
 
@@ -145,7 +147,7 @@ export const EventHistogram = ({
       <TimeHistogram
         data={isGrouped ? undefined : histogram}
         groupedData={groupedData}
-        onBarClick={setSingleDayFilter}
+        onBarClick={setBucketRangeFilter}
         theme={chartTheme}
         height={height}
         className={className}
@@ -157,6 +159,7 @@ export const EventHistogram = ({
         locale={locale}
         eventsLabel={t("histogramEventsLabel")}
         totalLabel={t("histogramTotalLabel")}
+        updatingLabel={t("chartUpdating")}
       />
       {showControls && isGrouped && onMaxGroupsChange && (
         <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">

@@ -20,7 +20,7 @@ import {
   Label,
 } from "@timetiles/ui";
 import { AlertTriangle, Check, Loader2, RefreshCw, Trash2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import type { CannotDeleteReasonCode } from "@/lib/account/deletion-types";
@@ -39,6 +39,7 @@ type Step = "summary" | "confirm" | "success";
 export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: DeleteAccountModalProps) => {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const [step, setStep] = useState<Step>("summary");
   const [password, setPassword] = useState("");
   const [deletionScheduledAt, setDeletionScheduledAt] = useState<string | null>(null);
@@ -298,7 +299,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
               {t.rich("deletionScheduledFor", {
                 date: new Date(
                   deletionScheduledAt ?? Date.now() + DELETION_GRACE_PERIOD_DAYS * 86_400_000
-                ).toLocaleDateString(),
+                ).toLocaleDateString(locale),
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </p>

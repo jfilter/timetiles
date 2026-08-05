@@ -424,6 +424,7 @@ export const EventBeeswarm = ({
         visibleCount={total}
         layout={layout}
         emptyMessage={t("noEventsToDisplay")}
+        updatingLabel={t("chartUpdating")}
         maxClusterCount={maxClusterCount}
         clusterMinSize={clusterMin}
         clusterMaxSize={clusterMax}

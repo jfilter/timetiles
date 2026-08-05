@@ -33,11 +33,14 @@ const LoginContent = () => {
       ? redirectTo
       : `/${locale}${redirectTo}`;
 
-  const handleSuccess = () => {
+  const handleLoginSuccess = () => {
     // Use full page navigation to ensure server components re-render with new auth state
     // router.refresh() + router.push() has race condition where navigation happens before refresh
     globalThis.location.href = localizedRedirect;
   };
+
+  // Registration creates no session (email verification required first) — RegisterForm
+  // shows its own "check your email" panel, so don't navigate away from it.
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-4 py-12">
@@ -45,7 +48,7 @@ const LoginContent = () => {
         <h1 className="text-foreground dark:text-foreground text-3xl font-bold">{t("welcomeBack")}</h1>
         <p className="text-muted-foreground mt-2">{t("signInDescription")}</p>
       </div>
-      <AuthTabs onSuccess={handleSuccess} />
+      <AuthTabs onLoginSuccess={handleLoginSuccess} />
     </div>
   );
 };

@@ -37,8 +37,8 @@ export interface TimeHistogramProps {
   data?: TimeHistogramDataItem[];
   /** Grouped/stacked series — overrides `data` when provided */
   groupedData?: TimeHistogramSeries[];
-  /** Callback when a bar is clicked, receives the date */
-  onBarClick?: (date: Date) => void;
+  /** Callback when a bar is clicked, receives the bucket's [start, end) range */
+  onBarClick?: (start: Date, end: Date) => void;
   /** Chart theme configuration */
   theme?: ChartTheme;
   /** Height of the chart */
@@ -71,6 +71,8 @@ export interface TimeHistogramProps {
   eventsLabel?: string;
   /** Localized label for the total row in the stacked tooltip */
   totalLabel?: string;
+  /** Label for the corner badge shown while isUpdating is true */
+  updatingLabel?: string;
 }
 
 /**
@@ -80,7 +82,7 @@ export interface TimeHistogramProps {
  * ```tsx
  * <TimeHistogram
  *   data={[{ date: '2024-01-01', count: 10 }, { date: '2024-01-02', count: 15 }]}
- *   onBarClick={(date) => console.log('Clicked:', date)}
+ *   onBarClick={(start, end) => console.log('Clicked bucket:', start, end)}
  *   theme={chartTheme}
  *   isUpdating={isLoading}
  * />
@@ -439,14 +441,20 @@ const buildHistogramChartOption = ({
   };
 };
 
-const getClickedBarDate = (params: EChartsEventParams): Date | null => {
+const getClickedBarRange = (params: EChartsEventParams): { start: Date; end: Date } | null => {
   if (params.data == null || !Array.isArray(params.data) || params.data.length < 2) {
     return null;
   }
 
   // Click params carry the raw data item — same string/Date/number forms as
-  // the tooltip. A number-only check made bar clicks dead for ISO-string data.
-  return parseTimeAxisValue(params.data[0]);
+  // the tooltip: [date, count, dateEnd]. A number-only check made bar clicks
+  // dead for ISO-string data.
+  const start = parseTimeAxisValue(params.data[0]);
+  if (!start) return null;
+  // Buckets are adaptive (month/year, not always a day) — fall back to the
+  // start when dateEnd is missing rather than collapsing the range to it.
+  const end = parseTimeAxisValue(params.data[2]) ?? start;
+  return { start, end };
 };
 
 const getDataZoomRange = (params: EChartsEventParams): { start: number; end: number } => {
@@ -485,6 +493,7 @@ export const TimeHistogram = ({
   locale,
   eventsLabel,
   totalLabel,
+  updatingLabel,
 }: TimeHistogramProps) => {
   const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
   const chartOption = buildHistogramChartOption({
@@ -502,9 +511,9 @@ export const TimeHistogram = ({
   });
 
   const handleChartClick = (params: EChartsEventParams) => {
-    const clickedDate = getClickedBarDate(params);
-    if (clickedDate && onBarClick) {
-      onBarClick(clickedDate);
+    const range = getClickedBarRange(params);
+    if (range && onBarClick) {
+      onBarClick(range.start, range.end);
     }
   };
 
@@ -540,6 +549,7 @@ export const TimeHistogram = ({
       config={chartOption}
       onEvents={chartEvents}
       skeletonVariant="histogram"
+      updatingLabel={updatingLabel}
     />
   );
 };

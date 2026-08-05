@@ -13,6 +13,7 @@ import {
   buildEventsDescription,
   type FilterLabels,
   getFilterLabels,
+  getInitialViewState,
   shouldResetGroupBy,
   type TranslateFn,
 } from "../../../app/[locale]/(frontend)/explore/_components/explorer-helpers";
@@ -121,5 +122,27 @@ describe("getFilterLabels dataset fallback", () => {
     const datasets = [{ id: 42, name: "Myanmar" }] as unknown as DataSourceDataset[];
     const labels = getFilterLabels(filters, catalogs, datasets, "Unbekannter Datensatz", "de");
     expect(labels.datasets).toEqual([{ id: "42", name: "Myanmar" }]);
+  });
+});
+
+describe("getInitialViewState", () => {
+  it("returns the view state for valid coordinates", () => {
+    const result = getInitialViewState(true, { latitude: 10, longitude: 20, zoom: 5 });
+    expect(result).toEqual({ latitude: 10, longitude: 20, zoom: 5 });
+  });
+
+  it("rejects an out-of-range latitude (e.g. ?lat=95) instead of crashing MapLibre downstream", () => {
+    const result = getInitialViewState(true, { latitude: 95, longitude: 10, zoom: 5 });
+    expect(result).toBeNull();
+  });
+
+  it("rejects an out-of-range longitude", () => {
+    const result = getInitialViewState(true, { latitude: 10, longitude: 200, zoom: 5 });
+    expect(result).toBeNull();
+  });
+
+  it("rejects non-finite values", () => {
+    const result = getInitialViewState(true, { latitude: Number.NaN, longitude: 10, zoom: 5 });
+    expect(result).toBeNull();
   });
 });

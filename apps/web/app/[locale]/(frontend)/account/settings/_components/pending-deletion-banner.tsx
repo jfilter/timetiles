@@ -11,7 +11,7 @@
 
 import { Button, Input, Label } from "@timetiles/ui";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useRouter } from "@/i18n/navigation";
@@ -25,6 +25,7 @@ interface PendingDeletionBannerProps {
 export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBannerProps) => {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
+  const locale = useLocale();
   const router = useRouter();
   const cancelMutation = useCancelDeletionMutation();
   const [password, setPassword] = useState("");
@@ -46,7 +47,7 @@ export const PendingDeletionBanner = ({ deletionScheduledAt }: PendingDeletionBa
   // render show neutral values, then the real local values fill in.
   const mounted = useMounted();
   const deletionDate = new Date(deletionScheduledAt);
-  const formattedDate = mounted ? deletionDate.toLocaleDateString() : "";
+  const formattedDate = mounted ? deletionDate.toLocaleDateString(locale) : "";
   const daysRemaining = mounted
     ? Math.max(0, Math.ceil((deletionDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
     : 0;

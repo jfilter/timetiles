@@ -118,18 +118,30 @@ export const applyThemeToOption = (option: EChartsOption, theme: ChartTheme): EC
   const xAxis = safeSpreadAxis(option.xAxis);
   result.xAxis = {
     ...xAxis,
-    axisLine: { ...safeSpread(xAxis.axisLine), lineStyle: { color: theme.axisLineColor } },
+    axisLine: {
+      ...safeSpread(xAxis.axisLine),
+      lineStyle: { ...safeSpread(safeSpread(xAxis.axisLine).lineStyle), color: theme.axisLineColor },
+    },
     axisLabel: { ...safeSpread(xAxis.axisLabel), color: theme.textColor },
-    splitLine: { ...safeSpread(xAxis.splitLine), lineStyle: { color: theme.splitLineColor } },
+    splitLine: {
+      ...safeSpread(xAxis.splitLine),
+      lineStyle: { ...safeSpread(safeSpread(xAxis.splitLine).lineStyle), color: theme.splitLineColor },
+    },
   };
 
   // Handle yAxis safely — deep-merge to preserve custom formatters, intervals, etc.
   const yAxis = safeSpreadAxis(option.yAxis);
   result.yAxis = {
     ...yAxis,
-    axisLine: { ...safeSpread(yAxis.axisLine), lineStyle: { color: theme.axisLineColor } },
+    axisLine: {
+      ...safeSpread(yAxis.axisLine),
+      lineStyle: { ...safeSpread(safeSpread(yAxis.axisLine).lineStyle), color: theme.axisLineColor },
+    },
     axisLabel: { ...safeSpread(yAxis.axisLabel), color: theme.textColor },
-    splitLine: { ...safeSpread(yAxis.splitLine), lineStyle: { color: theme.splitLineColor } },
+    splitLine: {
+      ...safeSpread(yAxis.splitLine),
+      lineStyle: { ...safeSpread(safeSpread(yAxis.splitLine).lineStyle), color: theme.splitLineColor },
+    },
   };
 
   // Handle series safely

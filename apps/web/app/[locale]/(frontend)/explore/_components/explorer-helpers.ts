@@ -180,8 +180,12 @@ export const getInitialViewState = (
   mapPosition: MapPosition
 ): { latitude: number; longitude: number; zoom: number } | null => {
   if (!hasMapPosition) return null;
-  if (mapPosition.latitude == null || mapPosition.longitude == null || mapPosition.zoom == null) return null;
-  return { latitude: mapPosition.latitude, longitude: mapPosition.longitude, zoom: mapPosition.zoom };
+  const { latitude, longitude, zoom } = mapPosition;
+  if (latitude == null || longitude == null || zoom == null) return null;
+  // MapLibre's LngLat throws for out-of-range values; URL params are unvalidated user input.
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !Number.isFinite(zoom)) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return { latitude, longitude, zoom };
 };
 
 /** Check if zoom to data button should be shown */

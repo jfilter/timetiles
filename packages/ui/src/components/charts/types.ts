@@ -63,6 +63,8 @@ export interface BaseChartProps {
   onEvents?: Record<string, (params: EChartsEventParams) => void>;
   /** Skeleton variant to show during initial load */
   skeletonVariant?: "histogram" | "bar" | "scatter";
+  /** Label for the corner badge shown while isUpdating is true */
+  updatingLabel?: string;
 }
 
 export interface BarChartDataItem {
@@ -86,12 +88,15 @@ export interface BarChartProps {
 
 export interface TimeHistogramDataItem {
   date: string | Date | number;
+  /** End date of the bucket (for adaptive tooltips showing date ranges) */
+  dateEnd?: string | Date | number;
   count: number;
 }
 
 export interface TimeHistogramProps {
   data?: TimeHistogramDataItem[];
-  onBarClick?: (date: Date) => void;
+  /** Fires with the bucket's [start, end) range, not just its start. */
+  onBarClick?: (start: Date, end: Date) => void;
   theme?: ChartTheme;
   height?: number | string;
   className?: string;
@@ -101,4 +106,5 @@ export interface TimeHistogramProps {
   onRetry?: () => void;
   loadingMessage?: string;
   emptyMessage?: string;
+  updatingLabel?: string;
 }

@@ -54,6 +54,8 @@ export interface BarChartProps {
   onRetry?: () => void;
   /** Click handler for bar clicks */
   onBarClick?: (item: BarChartDataItem, index: number) => void;
+  /** Label for the corner badge shown while isUpdating is true */
+  updatingLabel?: string;
 }
 
 /**
@@ -75,6 +77,7 @@ export const BarChart = ({
   isError = false,
   onRetry,
   onBarClick,
+  updatingLabel,
 }: BarChartProps) => {
   // Sort descending by value, carrying each item's original index — labels
   // are NOT unique (datasets in different catalogs may share a name), so the
@@ -196,6 +199,7 @@ export const BarChart = ({
       config={chartOption}
       onEvents={onEventsHandler}
       skeletonVariant="bar"
+      updatingLabel={updatingLabel}
     />
   );
 };

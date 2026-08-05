@@ -206,13 +206,17 @@ export const useFilters = () => {
 
   const handleClearAllFilters = () => applyFilterState(clearAllFilters(filters));
 
-  const setSingleDayFilter = (date: Date) => {
-    // Use the UTC calendar day so a histogram bar-click filters the same day
-    // the time-range slider would (it uses formatISODate), and so the value
-    // matches the UTC-based histogram buckets and the timestamptz date filters.
+  const setBucketRangeFilter = (start: Date, end: Date) => {
+    // Use UTC calendar days so a histogram bar-click filters the same days
+    // the time-range slider would (it uses formatISODate), matching the
+    // UTC-based histogram buckets and the timestamptz date filters.
     // formatLocalISODate would shift the day by one in non-UTC timezones.
-    const formatted = formatISODate(date.getTime());
-    void setFilterParams({ startDate: formatted, endDate: formatted });
+    // `end` is the bucket's exclusive boundary; the date filter is inclusive,
+    // so step back 1ms to land on the bucket's last included calendar day.
+    const startFormatted = formatISODate(start.getTime());
+    const endTime = end.getTime() > start.getTime() ? end.getTime() - 1 : start.getTime();
+    const endFormatted = formatISODate(endTime);
+    void setFilterParams({ startDate: startFormatted, endDate: endFormatted });
   };
 
   const clearDateRange = () => {
@@ -238,7 +242,7 @@ export const useFilters = () => {
     // Higher-level actions
     toggleCatalogDatasets,
     toggleDataset,
-    setSingleDayFilter,
+    setBucketRangeFilter,
     clearDateRange,
 
     // Helper functions
