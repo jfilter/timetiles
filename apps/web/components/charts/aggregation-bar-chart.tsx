@@ -11,6 +11,7 @@
 "use client";
 
 import { BarChart, type BarChartDataItem, useChartTheme } from "@timetiles/ui/charts";
+import { useTranslations } from "next-intl";
 
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useEventsAggregationQuery } from "@/lib/hooks/use-events-queries";
@@ -39,6 +40,7 @@ const AggregationBarChartComponent = ({
   type,
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
+  const t = useTranslations("Explore");
   const { filters, toggleCatalogDatasets, toggleDataset } = useFilters();
   const scope = useViewScope();
   const { data: dataSources } = useDataSourcesQuery();
@@ -86,6 +88,7 @@ const AggregationBarChartComponent = ({
       isError={isError}
       theme={chartTheme}
       onBarClick={handleBarClick}
+      updatingLabel={t("chartUpdating")}
     />
   );
 };

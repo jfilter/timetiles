@@ -60,6 +60,24 @@ describe("applyThemeToOption - basic application", () => {
     });
   });
 
+  it("preserves custom lineStyle properties like dashed type and opacity", () => {
+    const option: EChartsOption = {
+      xAxis: { type: "category", splitLine: { lineStyle: { opacity: 0.3 } } },
+      yAxis: { type: "value", splitLine: { lineStyle: { type: "dashed" } }, axisLine: { lineStyle: { width: 2 } } },
+      series: [],
+    };
+
+    const result = applyThemeToOption(option, defaultLightTheme);
+
+    expect(result.xAxis).toMatchObject({
+      splitLine: { lineStyle: { opacity: 0.3, color: defaultLightTheme.splitLineColor } },
+    });
+    expect(result.yAxis).toMatchObject({
+      splitLine: { lineStyle: { type: "dashed", color: defaultLightTheme.splitLineColor } },
+      axisLine: { lineStyle: { width: 2, color: defaultLightTheme.axisLineColor } },
+    });
+  });
+
   it("applies item color to series", () => {
     const option: EChartsOption = { series: [{ type: "bar", data: [1, 2, 3] }] };
 

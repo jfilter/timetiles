@@ -159,6 +159,7 @@
     "histogramBarTitle": "{date}: {count, plural, one {# event} other {# events}}",
     "allEvents": "All Events",
     "eventsLabel": "Events",
+    "chartUpdating": "Updating",
     "expandChart": "Expand chart",
     "analyzeChart": "Analyze",
     "collapseChart": "Collapse chart",

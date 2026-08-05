@@ -158,6 +158,9 @@ export const scraperExecutionJob = {
 
       log.info({ scraperId, runId: run.id, runUuid, runtime: scraper.runtime }, "Calling runner API");
 
+      // Once the runner is dispatched, the resource is consumed regardless of outcome —
+      // a stuck run is still a run. Drop the claim so the catch block won't refund it.
+      quotaClaimed = false;
       const result = await callRunner(request);
       const { ingestFileId, autoImportError } = await handleRunSuccess(context, scraper, repo, run.id, result);
 

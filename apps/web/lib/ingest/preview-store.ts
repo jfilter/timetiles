@@ -236,7 +236,7 @@ export const sweepExpiredPreviews = (now: Date = new Date(), dirOverride?: strin
   // file legitimately has no sidecar. Deleting on sight meant a sweep landing in that window
   // handed the wizard a previewId whose data file was already gone, and counted it as a
   // successful cleanup. Same grace-period reasoning as INGEST_FILE_ORPHAN_GRACE_HOURS.
-  const orphanCutoff = Date.now() - PREVIEW_EXPIRY_MS;
+  const orphanCutoff = now.getTime() - PREVIEW_EXPIRY_MS;
   for (const orphan of dataFileSet) {
     if (!PREVIEW_DATA_FILE_NAME_RE.test(orphan)) continue;
     const orphanPath = path.join(previewDir, orphan);

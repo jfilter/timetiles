@@ -96,7 +96,14 @@ export default defineConfig({
           name: "integration-isolated",
           globals: true,
           environment: "node",
-          include: ["tests/integration/services/data-package-activation.test.ts"],
+          include: [
+            "tests/integration/services/data-package-activation.test.ts",
+            // Mocks @/lib/middleware/rate-limit — under isolate:false (the "integration"
+            // project below) an earlier file in the same worker can already have cached
+            // the real module, so the mock silently doesn't apply and the real per-user
+            // burst limit (1/min) 429s the second concurrent call. Needs its own registry.
+            "tests/integration/api/ingest-job-retry-concurrency.test.ts",
+          ],
           isolate: true,
           // Global setup runs ONCE before all workers (creates template database)
           globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],
@@ -117,7 +124,10 @@ export default defineConfig({
           globals: true,
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
-          exclude: ["tests/integration/services/data-package-activation.test.ts"],
+          exclude: [
+            "tests/integration/services/data-package-activation.test.ts",
+            "tests/integration/api/ingest-job-retry-concurrency.test.ts",
+          ],
           isolate: false,
           // Global setup runs ONCE before all workers (creates template database)
           globalSetup: ["tests/setup/integration/vitest-global-setup.ts"],

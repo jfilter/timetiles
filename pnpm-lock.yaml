@@ -307,6 +307,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
+      chardet:
+        specifier: ^2.2.0
+        version: 2.2.0
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -322,6 +325,9 @@ importers:
       h3-js:
         specifier: ^4.5.0
         version: 4.5.0
+      iconv-lite:
+        specifier: ^0.7.3
+        version: 0.7.3
       lru-cache:
         specifier: ^11.5.2
         version: 11.5.2

@@ -10,6 +10,7 @@
  */
 import Papa from "papaparse";
 
+import { decodeBufferToUtf8 } from "@/lib/ingest/file-encoding";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { fetchPaginated, type PaginationConfig } from "@/lib/ingest/url-fetch/paginated-fetch";
@@ -412,7 +413,7 @@ export const fetchRemoteData = async (options: FetchRemoteDataOptions): Promise<
   // already strip before CSV conversion — this handles raw CSV responses).
   let finalData = converted.finalData;
   if (!wasConverted && options.excludeFields?.length && finalExtension === ".csv") {
-    const parsed = Papa.parse<Record<string, unknown>>(finalData.toString("utf-8"), {
+    const parsed = Papa.parse<Record<string, unknown>>(decodeBufferToUtf8(finalData), {
       header: true,
       skipEmptyLines: true,
     });

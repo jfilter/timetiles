@@ -71,6 +71,7 @@ export const BeeswarmChart = ({
   isError = false,
   onRetry,
   emptyMessage = "No data available",
+  updatingLabel,
   maxClusterCount = 1,
   layout = "merged",
   dotSizeOverride,
@@ -162,6 +163,7 @@ export const BeeswarmChart = ({
       config={chartOption}
       onEvents={chartEvents}
       skeletonVariant="scatter"
+      updatingLabel={updatingLabel}
     />
   );
 };

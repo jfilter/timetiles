@@ -87,6 +87,10 @@ describe.sequential("Webhook Trigger API Integration", () => {
     // Clear rate limits for clean test state
     await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:burst`);
     await rateLimitService.resetRateLimit(`webhook:scheduled-ingest:${testScheduledIngest.id}:hourly`);
+    // Clear the pre-resolution per-IP guard too, so a fast run of many tests
+    // doesn't trip it and mask unrelated assertions with a 429.
+    await rateLimitService.resetRateLimit("WEBHOOK_TRIGGER_ATTEMPT:unknown:burst");
+    await rateLimitService.resetRateLimit("WEBHOOK_TRIGGER_ATTEMPT:unknown:hourly");
   });
 
   describe("Successful Webhook Trigger", () => {
@@ -331,6 +335,23 @@ describe.sequential("Webhook Trigger API Integration", () => {
       // create above — the DB column holds only the hash.
       const response2 = await callWebhook(import2.webhookTokenPlaintext!);
       expect(response2.status).toBe(200);
+    });
+
+    it("throttles invalid-token attempts per IP before token resolution", async () => {
+      // The per-resource WEBHOOK_TRIGGER limit only applies once a token
+      // resolves, so a flood of *invalid* tokens would otherwise never be
+      // throttled. The pre-resolution WEBHOOK_TRIGGER_ATTEMPT burst window
+      // caps that at 20 req/10s per client regardless of token validity.
+      let lastResponse: Response | undefined;
+      for (let i = 0; i < 21; i++) {
+        lastResponse = await callWebhook(`invalid-token-${i}`);
+      }
+
+      expect(lastResponse!.status).toBe(429);
+      const data = await lastResponse!.json();
+      expect(data).toMatchObject({ error: "Too many requests" });
+
+      await rateLimitService.resetRateLimit("WEBHOOK_TRIGGER_ATTEMPT:unknown:burst");
     });
   });
 

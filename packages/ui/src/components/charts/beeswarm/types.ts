@@ -44,6 +44,8 @@ export interface BeeswarmChartProps {
   /** Number of visible points */
   visibleCount?: number;
   emptyMessage?: string;
+  /** Label for the corner badge shown while isUpdating is true */
+  updatingLabel?: string;
   /** Max cluster count for sizing proportional circles */
   maxClusterCount?: number;
   /**

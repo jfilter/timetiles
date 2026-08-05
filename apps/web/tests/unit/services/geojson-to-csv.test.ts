@@ -73,6 +73,18 @@ describe("extractCentroid", () => {
     expect(result).toEqual({ latitude: 52, longitude: 12 });
   });
 
+  it("skips non-finite/null vertices in MultiPoint instead of treating them as 0,0", () => {
+    const result = extractCentroid({
+      type: "MultiPoint",
+      coordinates: [
+        [13.4, 52.5],
+        [null, null],
+      ],
+    });
+    expect(result?.latitude).toBeCloseTo(52.5);
+    expect(result?.longitude).toBeCloseTo(13.4);
+  });
+
   it("computes LineString centroid as bbox center", () => {
     const result = extractCentroid({
       type: "LineString",

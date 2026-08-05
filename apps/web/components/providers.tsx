@@ -34,14 +34,14 @@ import { ThemeProvider } from "./theme-provider";
 
 /** Bridges next-themes and theme presets into the UI library's provider. */
 const UIBridge = ({ children }: Readonly<{ children: ReactNode }>) => {
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const { preset } = useThemePreset();
   const presetConfig = PRESET_THEMES[preset];
 
   return (
     <UIProvider
       // eslint-disable-next-line i18next/no-literal-string -- technical theme value, not user-facing
-      resolveTheme={() => theme ?? "light"}
+      resolveTheme={() => resolvedTheme ?? "light"}
       lightChartTheme={presetConfig?.light}
       darkChartTheme={presetConfig?.dark}
       mapColors={presetConfig?.map}

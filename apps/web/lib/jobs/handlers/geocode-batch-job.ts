@@ -98,10 +98,10 @@ const processRowForLocation = (
   if (rowHasValidCoords(row, coordinateFields)) {
     return { skipped: true };
   }
+  // Add both: create-events falls back to locationName whenever location
+  // fails to geocode, so locationName must be submitted regardless.
   const location = locationField ? getByPathOrKey(row, locationField) : undefined;
-  if (addNormalizedLocation(location, uniqueLocations)) {
-    return { skipped: false };
-  }
+  addNormalizedLocation(location, uniqueLocations);
   const locationName = locationNameField ? getByPathOrKey(row, locationNameField) : undefined;
   addNormalizedLocation(locationName, uniqueLocations);
   return { skipped: false };

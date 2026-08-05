@@ -404,7 +404,7 @@ describe.sequential("scraperExecutionJob", () => {
     );
   });
 
-  it("should roll back SCRAPER_RUNS_PER_DAY quota on failure", async () => {
+  it("should keep the SCRAPER_RUNS_PER_DAY quota charged once the runner has been dispatched", async () => {
     globalThis.fetch = createFailureFetchMock(500, "Server error");
 
     const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
@@ -414,12 +414,9 @@ describe.sequential("scraperExecutionJob", () => {
     // Quota was incremented before the run
     expect(mockQuotaService.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
 
-    // On failure, quota should be rolled back
-    expect(mockQuotaService.decrementUsage).toHaveBeenCalledWith(
-      200, // repoOwnerId
-      "SCRAPER_RUNS_PER_DAY",
-      1
-    );
+    // The runner was actually invoked (and failed), so the quota charge stands —
+    // refunding it here would let a reliably-broken runner be hammered without limit.
+    expect(mockQuotaService.decrementUsage).not.toHaveBeenCalled();
   });
 
   describe("auto-import", () => {

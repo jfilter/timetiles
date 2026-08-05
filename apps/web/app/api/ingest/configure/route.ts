@@ -10,7 +10,7 @@
  */
 import path from "node:path";
 
-import { apiRoute, ForbiddenError, ValidationError } from "@/lib/api";
+import { apiRoute, ForbiddenError, requireFeatureEnabled, ValidationError } from "@/lib/api";
 import {
   createIngestFileRecord,
   createScheduledIngest,
@@ -43,6 +43,11 @@ export const POST = apiRoute({
   rateLimit: { configName: "API_GENERAL", keyPrefix: (u) => `configure:${u!.id}` },
   body: ConfigureImportBodySchema,
   handler: async ({ body, req, user, payload }) => {
+    await requireFeatureEnabled(payload, "enableImportCreation", "Import creation is currently disabled.");
+    if (user.deletionScheduledAt) {
+      throw new ForbiddenError("Account scheduled for deletion cannot create imports");
+    }
+
     logger.debug(
       {
         previewId: body.previewId,
@@ -114,6 +119,7 @@ export const POST = apiRoute({
       // Create scheduled ingest if requested
       let scheduledIngestId: number | null = null;
       if (body.createSchedule?.enabled) {
+        await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");
         scheduledIngestId = await createScheduledIngest({
           payload,
           req,

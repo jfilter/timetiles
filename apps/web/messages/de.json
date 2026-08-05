@@ -159,6 +159,7 @@
     "histogramBarTitle": "{date}: {count, plural, one {# Ereignis} other {# Ereignisse}}",
     "allEvents": "Alle Ereignisse",
     "eventsLabel": "Ereignisse",
+    "chartUpdating": "Aktualisiere",
     "expandChart": "Diagramm vergrößern",
     "analyzeChart": "Analysieren",
     "collapseChart": "Diagramm einklappen",

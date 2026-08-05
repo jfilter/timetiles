@@ -4,7 +4,7 @@
 // Import centralized mocks FIRST (before anything that uses them)
 import "@/tests/mocks/services/logger";
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -709,6 +709,19 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   });
 
   describe("Quota Check", () => {
+    // These tests override the createQuotaService mock's return value directly
+    // (mockReturnValue, not mockReturnValueOnce), which persists past vi.clearAllMocks()
+    // and leaks into later describe blocks — restore the module's default after each.
+    afterEach(async () => {
+      const { createQuotaService } = await import("@/lib/services/quota-service");
+      vi.mocked(createQuotaService).mockReturnValue({
+        checkQuota: vi.fn().mockResolvedValue({ allowed: true, current: 0, limit: 10000, remaining: 10000 }),
+        checkAndIncrementUsage: vi.fn().mockResolvedValue(true),
+        incrementUsage: vi.fn().mockResolvedValue(undefined),
+        decrementUsage: vi.fn().mockResolvedValue(undefined),
+      } as any);
+    });
+
     it("should check quota against uniqueRows, not totalRows, when duplicates exist", async () => {
       // totalRows=1000, uniqueRows=50 (950 internal duplicates)
       // Quota limit is 100 — uniqueRows (50) is within limit

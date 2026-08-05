@@ -110,7 +110,9 @@ export const auditLog = async (
         details: entry.details ?? undefined,
       },
       overrideAccess: true,
-      ...(options?.req && { req: options.req }),
+      // Clone req: on error Payload deletes req.transactionID, which would
+      // silently strip the caller's transaction from later writes.
+      ...(options?.req && { req: { ...options.req } }),
     });
   } catch (error) {
     logger.error({ error, action: entry.action, userId: entry.userId }, "Failed to create audit log entry");

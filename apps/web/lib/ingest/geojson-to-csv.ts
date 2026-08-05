@@ -78,13 +78,17 @@ export const extractCentroid = (geometry: GeoJsonGeometry | null): { latitude: n
 
     case "MultiPoint": {
       const points = geometry.coordinates as [number, number][];
-      if (!Array.isArray(points) || points.length === 0) return null;
+      if (!Array.isArray(points)) return null;
+      // Non-finite/null vertices are skipped, same as bboxCentroid, rather than
+      // coerced to 0 which would drag the centroid toward Null Island.
+      const valid = points.filter((p) => Number.isFinite(p?.[0]) && Number.isFinite(p?.[1]));
+      if (valid.length === 0) return null;
       // Longitudes are averaged in the unwrapped frame so a set straddling the
       // dateline averages to ±180, not to 0 (see unwrapLongitudes).
-      const lngs = unwrapLongitudes(points.map((p) => p[0] ?? 0));
-      const latSum = points.reduce((acc, p) => acc + (p[1] ?? 0), 0);
+      const lngs = unwrapLongitudes(valid.map((p) => p[0]));
+      const latSum = valid.reduce((acc, p) => acc + p[1], 0);
       const lngSum = lngs.reduce((acc, lng) => acc + lng, 0);
-      return { latitude: latSum / points.length, longitude: normalizeLongitude(lngSum / lngs.length) };
+      return { latitude: latSum / valid.length, longitude: normalizeLongitude(lngSum / lngs.length) };
     }
 
     case "LineString": {

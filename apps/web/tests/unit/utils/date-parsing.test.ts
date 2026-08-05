@@ -29,6 +29,12 @@ describe("parseImportDate", () => {
     expectIso("2024-06-15T10:30:00Z", "2024-06-15T10:30:00.000Z");
   });
 
+  it("should treat offset-less datetime strings as UTC regardless of host timezone", () => {
+    expectIso("2024-06-15T10:30:00", "2024-06-15T10:30:00.000Z");
+    expectIso("2024-06-15 10:30", "2024-06-15T10:30:00.000Z");
+    expectIso("2024-06-15T10:30:00+02:00", "2024-06-15T08:30:00.000Z");
+  });
+
   it("should reject invalid ISO calendar dates", () => {
     expect(parseImportDate("2024-02-30")).toBeNull();
     expect(parseImportDate("2024-13-01")).toBeNull();
@@ -42,6 +48,12 @@ describe("parseImportDate", () => {
     expectIso("15.03.2024", "2024-03-15T00:00:00.000Z");
     expectIso("15 March 2024", "2024-03-15T00:00:00.000Z");
     expectIso("March 15, 2024", "2024-03-15T00:00:00.000Z");
+  });
+
+  it("should parse separated dates that carry a trailing time", () => {
+    expectIso("15/06/2024 10:30", "2024-06-15T10:30:00.000Z");
+    expectIso("15.06.2024 09:00:15", "2024-06-15T09:00:15.000Z");
+    expect(isImportDateLike("15/06/2024 10:30")).toBe(true);
   });
 
   it("should parse bare years in the supported range", () => {

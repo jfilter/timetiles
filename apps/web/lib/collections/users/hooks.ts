@@ -63,7 +63,8 @@ type UsersBeforeChangeArgs = Parameters<CollectionBeforeChangeHook>[0];
  * or plant a known API key as a permanent backdoor — bypassing the
  * current-password check, email verification, rate limits and audit trail the
  * dedicated routes enforce. Those routes run via the Local API
- * (`payloadAPI !== "REST"`), so gate only non-admin REST writes.
+ * (`payloadAPI === "local"`), so gate every other API (REST, GraphQL) instead
+ * of allowlisting just REST.
  */
 const assertNoRestrictedAuthFieldWrites = ({
   data,
@@ -71,7 +72,7 @@ const assertNoRestrictedAuthFieldWrites = ({
   req,
   originalDoc,
 }: Pick<UsersBeforeChangeArgs, "data" | "operation" | "req" | "originalDoc">): void => {
-  if (!(operation === "update" && req.payloadAPI === "REST" && req.user?.role !== "admin")) return;
+  if (!(operation === "update" && req.payloadAPI !== "local" && req.user?.role !== "admin")) return;
 
   const changesEmail = typeof data.email === "string" && data.email !== originalDoc?.email;
   const changesPassword = typeof data.password === "string" && data.password.length > 0;
@@ -87,12 +88,11 @@ const assertNoRestrictedAuthFieldWrites = ({
 
 export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
   async ({ data, req }) => {
-    // Centralized password policy (ADR 0039): only enforce when the
-    // caller actually supplies a plaintext password via the public REST
-    // API. Local API calls (seeds, tests, system operations) are
-    // intentionally exempt so fixture passwords don't need to meet the
-    // real-world 12-char + HIBP bar.
-    if (req.payloadAPI !== "REST") return data;
+    // Centralized password policy (ADR 0039): enforce on every public API
+    // (REST, GraphQL), not just REST — Local API calls (seeds, tests, system
+    // operations) are intentionally exempt so fixture passwords don't need
+    // to meet the real-world 12-char + HIBP bar.
+    if (req.payloadAPI !== "REST" && req.payloadAPI !== "GraphQL") return data;
     const pw = typeof data.password === "string" ? data.password : undefined;
     if (!pw) return data;
     const result = await validatePassword(pw);

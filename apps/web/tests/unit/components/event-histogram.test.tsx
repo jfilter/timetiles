@@ -35,7 +35,7 @@ vi.mock("@/lib/context/view-context", () => ({
 vi.mock("../../../lib/hooks/use-filters", () => ({
   useFilters: () => ({
     filters: { catalog: null, datasets: [], startDate: null, endDate: null, fieldFilters: {}, rangeFilters: {} },
-    setSingleDayFilter: vi.fn(),
+    setBucketRangeFilter: vi.fn(),
   }),
 }));
 
@@ -163,6 +163,41 @@ describe.sequential("EventHistogram", () => {
       expect(chartElement.textContent).toContain("2024-01-02T00:00:00.000Z");
       expect(chartElement.textContent).toContain("5");
       expect(chartElement.textContent).toContain("10");
+    });
+  });
+
+  it("propagates bucketEnd into grouped series so tooltips span the full bucket", async () => {
+    mockUseHistogramQuery.mockReturnValue({
+      data: { histogram: [] },
+      isLoading: false,
+      error: null,
+      isInitialLoad: false,
+      isUpdating: false,
+    });
+    mockUseTemporalClustersQuery.mockReturnValue({
+      data: {
+        items: [
+          {
+            groupName: "Dataset A",
+            count: 5,
+            bucketStart: "2024-01-01T00:00:00.000Z",
+            bucketEnd: "2024-01-08T00:00:00.000Z",
+          },
+        ],
+      },
+      isLoading: false,
+      isInitialLoad: false,
+      isUpdating: false,
+      isError: false,
+    });
+
+    renderWithProviders(<EventHistogram groupBy="dataset" />);
+
+    await waitFor(() => {
+      const chartElement = screen.getByTestId("echarts-mock");
+      // Series data is [date, count, dateEnd] — dateEnd must be the real bucket end,
+      // not fall back to the start (which would collapse a weekly bucket to one day).
+      expect(chartElement.textContent).toContain("2024-01-08T00:00:00.000Z");
     });
   });
 

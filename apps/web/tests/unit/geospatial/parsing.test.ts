@@ -47,6 +47,12 @@ describe("Coordinate Parser Utilities", () => {
     it("should handle strings with leading/trailing spaces", () => {
       expect(tryParseDecimal("  42.5  ")).toBe(42.5);
     });
+
+    it("should parse EU comma-decimal coordinates", () => {
+      expect(tryParseDecimal("52,52")).toBe(52.52);
+      expect(tryParseDecimal("-13,405")).toBe(-13.405);
+      expect(tryParseDecimal(",5")).toBe(0.5);
+    });
   });
 
   describe("parseDMSFormat", () => {

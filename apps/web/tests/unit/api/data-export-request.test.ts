@@ -15,7 +15,17 @@ const mockSummary = { events: 100, datasets: 3 };
 
 const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockCreateDataExportService: vi.fn() }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+  // The route wraps check-then-create in a transaction with an advisory lock;
+  // stub so it runs without a real transaction.
+  initTransaction: vi.fn().mockResolvedValue(false),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@payloadcms/db-postgres", () => ({
+  sql: (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values }),
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
@@ -35,6 +45,8 @@ const createMockPayload = () => ({
   create: vi.fn(),
   update: vi.fn(),
   jobs: { queue: vi.fn().mockResolvedValue({ id: "job-1" }) },
+  // getTransactionAwareDrizzle falls back to this when there's no transaction ID.
+  db: { drizzle: { execute: vi.fn().mockResolvedValue(undefined) } },
 });
 
 const createRequest = () =>
@@ -110,16 +122,23 @@ describe.sequential("POST /api/data-exports/request", () => {
     );
   });
 
-  it("returns 409 on race condition during create", async () => {
-    mockPayload.find
-      .mockResolvedValueOnce({ docs: [] }) // initial check: no active export
-      .mockResolvedValueOnce({ docs: [{ id: 100, status: "pending" }] }); // race check: found one
-    mockPayload.create.mockRejectedValue(new Error("Unique constraint violation"));
+  it("acquires the per-user advisory lock before checking for an active export", async () => {
+    // Regression test: the check-then-create used to run as two unlocked
+    // operations, so two concurrent requests could both see zero active
+    // exports and both insert. The lock must be taken first.
+    const callOrder: string[] = [];
+    mockPayload.db.drizzle.execute.mockImplementation(() => {
+      callOrder.push("lock");
+    });
+    mockPayload.find.mockImplementation(() => {
+      callOrder.push("find");
+      return { docs: [] };
+    });
+    mockPayload.create.mockResolvedValue({ id: 42 });
 
-    const response = await POST(createRequest(), emptyParams);
-    expect(response.status).toBe(409);
+    await POST(createRequest(), emptyParams);
 
-    const data = await response.json();
-    expect(data.error).toBe("Export already in progress");
+    expect(callOrder).toEqual(["lock", "find"]);
+    expect(mockPayload.db.drizzle.execute).toHaveBeenCalled();
   });
 });

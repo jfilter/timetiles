@@ -8,6 +8,9 @@ import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 // Mock next-themes
 vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "light" }) }));
 
+// Mock next-intl
+vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key, useLocale: () => "en" }));
+
 // Mock nuqs
 vi.mock("nuqs", () => ({
   parseAsString: { withDefault: () => {} },

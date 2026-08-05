@@ -27,9 +27,10 @@ export const createActivePollingInterval =
 export const createItemPollingInterval =
   <T>(predicate: (data: T) => boolean, intervalMs: number) =>
   // eslint-disable-next-line sonarjs/function-return-type -- React Query refetchInterval API requires false | number
-  (query: { state: { data: T | undefined } }): number | false => {
-    const data = query.state.data;
-    if (data == null) return false; // let React Query handle the initial fetch
+  (query: { state: { data: T | undefined; status: string } }): number | false => {
+    const { data, status } = query.state;
+    // No data yet: keep polling after a failed/exhausted fetch, otherwise let React Query handle the initial fetch.
+    if (data == null) return status === "error" ? intervalMs : false;
     return predicate(data) ? intervalMs : false;
   };
 

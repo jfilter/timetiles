@@ -9,9 +9,12 @@
  * @module
  * @category API Routes
  */
+import path from "node:path";
+
+import { commitTransaction, initTransaction, killTransaction, type PayloadRequest } from "payload";
 import { z } from "zod";
 
-import { apiRoute, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api";
+import { apiRoute, ForbiddenError, NotFoundError, requireFeatureEnabled, ValidationError } from "@/lib/api";
 import { getOrCreateCatalog, processSheetMappings, translateSchemaMode } from "@/lib/ingest/configure-service";
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
@@ -27,6 +30,8 @@ import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
+
+import { parseFileSheets } from "../preview-schema/helpers";
 
 const logger = createLogger("api-update-schedule");
 
@@ -85,25 +90,53 @@ export const PATCH = apiRoute({
       throw new ValidationError("New catalog name is required");
     }
 
-    // Process sheet mappings — creates/updates datasets with field mapping overrides
-    const { datasetMappingEntries } = await processSheetMappings(
-      payload,
-      req,
-      body.sheetMappings,
-      body.fieldMappings,
-      finalCatalogId,
-      body.deduplicationStrategy,
-      body.geocodingEnabled,
-      body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined
-    );
+    // Re-parse preview sheets so processSheetMappings can validate that every
+    // user-supplied field path exists in the detected schema (mirrors the
+    // create endpoint — otherwise stale/invalid paths persist silently).
+    const fileExtension = path.extname(previewMeta.filePath).toLowerCase();
+    let previewSheets;
+    try {
+      previewSheets = await parseFileSheets(previewMeta.filePath, fileExtension);
+    } catch (parseError) {
+      const message = parseError instanceof Error ? parseError.message : "Unknown error";
+      throw new ValidationError(`Failed to re-parse preview for validation: ${message}`);
+    }
 
-    // Update dataset schema config based on schema mode
-    const schemaConfig = translateSchemaMode(body.scheduleConfig.schemaMode);
-    await Promise.all(
-      datasetMappingEntries.map(async (entry) => {
-        await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
-      })
-    );
+    // Dataset creation/updates and the scheduled-ingest update below must land
+    // together — without a transaction, a failure partway through (e.g. the final
+    // scheduled-ingest update) leaves datasets modified/orphaned while the API
+    // reports failure, and a retry then operates on half-applied state.
+    const txReq = req as unknown as PayloadRequest;
+    txReq.payload = payload;
+    txReq.context ??= {};
+    const ownsTransaction = await initTransaction(txReq);
+
+    let datasetMappingEntries;
+    try {
+      // Process sheet mappings — creates/updates datasets with field mapping overrides
+      ({ datasetMappingEntries } = await processSheetMappings(
+        payload,
+        req,
+        body.sheetMappings,
+        body.fieldMappings,
+        finalCatalogId,
+        body.deduplicationStrategy,
+        body.geocodingEnabled,
+        body.transforms as Array<{ sheetIndex: number; transforms: IngestTransform[] }> | undefined,
+        previewSheets
+      ));
+
+      // Update dataset schema config based on schema mode
+      const schemaConfig = translateSchemaMode(body.scheduleConfig.schemaMode);
+      await Promise.all(
+        datasetMappingEntries.map(async (entry) => {
+          await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
+        })
+      );
+    } catch (error) {
+      if (ownsTransaction) await killTransaction(txReq);
+      throw error;
+    }
 
     // Build scheduled ingest update data
     const isSingleSheet = datasetMappingEntries.length === 1;
@@ -120,7 +153,7 @@ export const PATCH = apiRoute({
     // Otherwise, force responseFormat to "auto" to prevent Payload defaulting to "json".
     const advancedOptions = hasJsonApiConfig
       ? { ...existing.advancedOptions, responseFormat: "json" as const, jsonApiConfig: body.jsonApiConfig }
-      : { ...existing.advancedOptions, responseFormat: "auto" as const };
+      : { ...existing.advancedOptions, responseFormat: "auto" as const, jsonApiConfig: null };
 
     const updateData: Record<string, unknown> = {
       name: body.scheduleConfig.name,
@@ -130,7 +163,9 @@ export const PATCH = apiRoute({
       schemaMode: body.scheduleConfig.schemaMode,
       frequency: body.scheduleConfig.scheduleType === "frequency" ? body.scheduleConfig.frequency : undefined,
       cronExpression: body.scheduleConfig.scheduleType === "cron" ? body.scheduleConfig.cronExpression : undefined,
-      dataset: isSingleSheet && firstDatasetId ? firstDatasetId : undefined,
+      // Use null (not undefined) for the sheet-mode fields being cleared — Payload
+      // treats undefined as "field omitted" and undefined leaves the prior value stored.
+      dataset: isSingleSheet && firstDatasetId ? firstDatasetId : null,
       multiSheetConfig:
         !isSingleSheet && datasetMappingEntries.length > 0
           ? {
@@ -141,7 +176,7 @@ export const PATCH = apiRoute({
                 skipIfMissing: false,
               })),
             }
-          : undefined,
+          : { enabled: false, sheets: [] },
     };
 
     // Always include advancedOptions to prevent Payload from filling group defaults
@@ -152,7 +187,18 @@ export const PATCH = apiRoute({
       updateData.authConfig = body.authConfig;
     }
 
-    await payload.update({ collection: COLLECTION, id: body.scheduledIngestId, data: updateData, req });
+    try {
+      // The collection's create access denies when the flag is off, but Payload
+      // update access doesn't re-check it — enforce it here so a disabled flag
+      // also blocks reconfiguring an existing schedule.
+      await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");
+
+      await payload.update({ collection: COLLECTION, id: body.scheduledIngestId, data: updateData, req });
+      if (ownsTransaction) await commitTransaction(txReq);
+    } catch (error) {
+      if (ownsTransaction) await killTransaction(txReq);
+      throw error;
+    }
 
     logger.info(
       { scheduledIngestId: body.scheduledIngestId, name: body.scheduleConfig.name },

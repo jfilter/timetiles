@@ -127,6 +127,19 @@ describe.sequential("sweepExpiredPreviews", () => {
     expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(true);
   });
 
+  it("computes the orphan grace cutoff from the injected `now`, not wall-clock", () => {
+    // Data file's mtime is "now" at the real wall-clock time, but the caller injects a `now`
+    // 2 TTLs in the future — the orphan cutoff must follow that injected instant.
+    const id = uuid("6");
+    writeData(id);
+
+    const future = new Date(Date.now() + 2 * PREVIEW_EXPIRY_MS);
+    const result = sweepExpiredPreviews(future, testDir);
+
+    expect(result.orphanedRemoved).toBe(1);
+    expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(false);
+  });
+
   it("ignores unrelated files that don't match the preview id shape", () => {
     fs.writeFileSync(path.join(testDir, "unrelated-file.txt"), "hi");
 

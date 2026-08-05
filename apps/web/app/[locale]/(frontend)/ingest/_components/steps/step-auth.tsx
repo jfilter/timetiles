@@ -93,7 +93,7 @@ export const StepAuth = ({ className }: Readonly<StepAuthProps>) => {
         <p className="text-muted-foreground mt-2">{t("signInDescription")}</p>
       </div>
 
-      <AuthTabs onSuccess={handleAuthSuccess} />
+      <AuthTabs onLoginSuccess={handleAuthSuccess} />
     </div>
   );
 };

@@ -60,7 +60,9 @@ const reconcileReservedEventQuota = async (
   const adjustment = actualEventsCreated - reservedEvents;
 
   if (adjustment > 0) {
-    await quotaService.checkAndIncrementUsage(owner.user, "TOTAL_EVENTS", adjustment);
+    // Non-throwing: the import already committed, so a top-up crossing the limit
+    // must not roll back committed events. Usage is allowed to exceed the cap here.
+    await quotaService.checkAndIncrementUsage(owner.user, "TOTAL_EVENTS", adjustment, undefined, false);
   } else if (adjustment < 0) {
     await quotaService.decrementUsage(owner.userId, "TOTAL_EVENTS", Math.abs(adjustment));
   }

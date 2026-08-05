@@ -79,6 +79,7 @@ const RATE_LIMIT_ENDPOINTS = [
   "RETRY_RECOMMENDATIONS",
   "API_GENERAL",
   "WEBHOOK_TRIGGER",
+  "WEBHOOK_TRIGGER_ATTEMPT",
   "NEWSLETTER_SUBSCRIBE",
   "PASSWORD_CHANGE",
   "EMAIL_CHANGE",
@@ -208,6 +209,15 @@ const DEFAULT_RATE_LIMITS = {
     windows: [
       { limit: 1, windowMs: 10 * 1000, name: "burst" },
       { limit: 5, windowMs: 60 * 60 * 1000, name: "hourly" },
+    ],
+  },
+  // Per-IP guard applied before token resolution, so token-guessing traffic
+  // never reaches the resource-scoped WEBHOOK_TRIGGER limit above (that key
+  // only exists once a token successfully resolves).
+  WEBHOOK_TRIGGER_ATTEMPT: {
+    windows: [
+      { limit: 20, windowMs: 10 * 1000, name: "burst" },
+      { limit: 200, windowMs: 60 * 60 * 1000, name: "hourly" },
     ],
   },
   NEWSLETTER_SUBSCRIBE: {
@@ -520,6 +530,7 @@ export type RateLimitName =
   | "RETRY_RECOMMENDATIONS"
   | "API_GENERAL"
   | "WEBHOOK_TRIGGER"
+  | "WEBHOOK_TRIGGER_ATTEMPT"
   | "NEWSLETTER_SUBSCRIBE"
   | "PASSWORD_CHANGE"
   | "EMAIL_CHANGE"

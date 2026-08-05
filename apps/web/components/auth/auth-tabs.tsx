@@ -20,13 +20,20 @@ import { RegisterForm } from "./register-form";
 export interface AuthTabsProps {
   /** Default tab value ("signin" or "signup") */
   defaultTab?: "signin" | "signup";
-  /** Callback fired on successful authentication */
-  onSuccess?: () => void;
+  /** Callback fired on successful sign-in (a session now exists) */
+  onLoginSuccess?: () => void;
+  /** Callback fired on successful registration (no session yet — verification email sent) */
+  onRegisterSuccess?: () => void;
   /** Additional CSS classes */
   className?: string;
 }
 
-export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readonly<AuthTabsProps>) => {
+export const AuthTabs = ({
+  defaultTab = "signin",
+  onLoginSuccess,
+  onRegisterSuccess,
+  className,
+}: Readonly<AuthTabsProps>) => {
   const t = useTranslations("Auth");
   const tCommon = useTranslations("Common");
   const [activeTab, setActiveTab] = useState(defaultTab);
@@ -56,7 +63,7 @@ export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readon
         </TabsList>
 
         <TabsContent value="signin">
-          <LoginForm onSuccess={onSuccess} />
+          <LoginForm onSuccess={onLoginSuccess} />
           <p className="text-muted-foreground mt-4 text-center text-sm">
             {t("noAccount")}{" "}
             <button type="button" className="text-primary hover:underline" onClick={handleSwitchToSignup}>
@@ -66,7 +73,7 @@ export const AuthTabs = ({ defaultTab = "signin", onSuccess, className }: Readon
         </TabsContent>
 
         <TabsContent value="signup">
-          <RegisterForm onSuccess={onSuccess} />
+          <RegisterForm onSuccess={onRegisterSuccess} />
           <p className="text-muted-foreground mt-4 text-center text-sm">
             {t("hasAccount")}{" "}
             <button type="button" className="text-primary hover:underline" onClick={handleSwitchToSignin}>

@@ -233,6 +233,23 @@ describe.sequential("auditLog", () => {
 
       expect(result).toBeUndefined();
     });
+
+    it("does not strip the caller's req.transactionID when the create fails", async () => {
+      // Payload's create() deletes req.transactionID on the object it receives when it fails.
+      mockPayload.create.mockImplementation(({ req }: { req?: { transactionID?: number } }) => {
+        delete req?.transactionID;
+        throw new Error("insert failed");
+      });
+
+      const callerReq = { transactionID: 123 };
+      await auditLog(
+        mockPayload,
+        { action: AUDIT_ACTIONS.DELETION_EXECUTED, userId: 1, userEmail: "user@example.com" },
+        { req: callerReq }
+      );
+
+      expect(callerReq.transactionID).toBe(123);
+    });
   });
 });
 

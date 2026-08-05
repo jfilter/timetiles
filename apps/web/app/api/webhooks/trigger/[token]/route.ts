@@ -66,6 +66,9 @@ const createRateLimitResponse = (rateLimitCheck: { failedWindow?: string; resetT
 
 export const POST = apiRoute({
   auth: "none",
+  // Cheap per-IP guard checked before token resolution, so unbounded
+  // random-token guessing can't spend a DB lookup + log write per attempt.
+  rateLimit: { configName: "WEBHOOK_TRIGGER_ATTEMPT" },
   params: z.object({ token: z.string() }),
   handler: async ({ params, payload }) => {
     const { token } = params;
