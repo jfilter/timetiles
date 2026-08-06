@@ -30,7 +30,8 @@ const createSelectBuilder = (result: unknown) => {
     from: vi.fn(() => builder),
     innerJoin: vi.fn(() => builder),
     where: vi.fn(() => builder),
-    groupBy: vi.fn(() => Promise.resolve(result)),
+    groupBy: vi.fn(() => builder),
+    orderBy: vi.fn(() => Promise.resolve(result)),
   };
 
   return builder;

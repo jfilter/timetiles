@@ -33,10 +33,9 @@ import { apiRoute, NotFoundError } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
-import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
+import { buildNormalizedNumericExpr, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import type { NumberFormat } from "@/lib/utils/number-parsing";
 
 interface NumericBoundsRow extends Record<string, unknown> {
   min: number | null;
@@ -61,21 +60,6 @@ const labelFor = (path: string): string =>
     .replaceAll("_", " ")
     .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
     .replaceAll(/\b\w/g, (c) => c.toUpperCase());
-
-/** Build the regex-guarded normalized `::numeric` expression for one field/format. */
-const normalizedNumericExpr = (fieldPath: string, format: NumberFormat) => {
-  let normalized = sql`(e.transformed_data #>> string_to_array(${fieldPath}, '.'))`;
-  // Strip thousands separator first, then convert the decimal separator to '.'.
-  if (format.thousandsSeparator) {
-    normalized = sql`replace(${normalized}, ${format.thousandsSeparator}, '')`;
-  }
-  if (format.decimalSeparator === ",") {
-    normalized = sql`replace(${normalized}, ',', '.')`;
-  }
-  // Only US-canonical numeric text becomes ::numeric; everything else → NULL.
-  // The `\.` must reach Postgres literally, hence `\\.` in this JS template.
-  return sql`CASE WHEN ${normalized} ~ '^-?[0-9]+(\\.[0-9]+)?$' THEN ${normalized}::numeric ELSE NULL END`;
-};
 
 export const GET = apiRoute({
   auth: "optional",
@@ -167,7 +151,7 @@ export const GET = apiRoute({
           const whereClause = scopeFor(path);
           if (whereClause == null) return null;
 
-          const value = normalizedNumericExpr(path, planFormats[path]!);
+          const value = buildNormalizedNumericExpr(path, planFormats[path]!);
           // isInteger from precomputed numericStats when present (native numbers),
           // else from the live parse: all numeric rows whole.
           const knownIsInteger = fm[path]?.numericStats?.isInteger;

@@ -226,7 +226,7 @@ export const buildRangeFilterConditions = (
 };
 
 /** Build the regex-guarded `::numeric` (NULL for non-numeric cells) for one field/format. */
-const buildNormalizedNumericExpr = (fieldKey: string, format: NumberFormat): SqlFragment => {
+export const buildNormalizedNumericExpr = (fieldKey: string, format: NumberFormat): SqlFragment => {
   // Raw text value at the path.
   let normalized: SqlFragment = sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.'))`;
 

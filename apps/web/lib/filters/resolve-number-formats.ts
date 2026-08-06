@@ -19,6 +19,7 @@
  * @module
  * @category Filters
  */
+import { isRecord } from "@/lib/utils/is-record";
 import type { NumberFormat } from "@/lib/utils/number-parsing";
 
 /** Minimal shape of one persisted column policy needed to derive a NumberFormat. */
@@ -34,9 +35,6 @@ interface PersistedColumn {
   kind?: unknown;
   policy?: PersistedNumberPolicy | null;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 /** Read the `columns` array off a persisted interpretation plan, or an empty list. */
 const readPlanColumns = (interpretationPlan: unknown): PersistedColumn[] => {
