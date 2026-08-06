@@ -26,21 +26,19 @@ RUN --mount=type=cache,id=pnpm-scraper,target=/pnpm/store \
 COPY --from=pruner /app/out/full/ .
 
 WORKDIR /app/apps/timescrape
-# Build workspace deps first: tsup bundles @timetiles/shared from its dist
-# (declared noExternal in tsup.config.ts — the prod-deps npm stage cannot
-# resolve workspace: protocols, so it must not stay a runtime dependency).
+# Build workspace deps first: @timetiles/shared is a runtime dependency, so its
+# dist must exist for typechecking here and for the deploy stage below.
 RUN pnpm --filter @timetiles/shared build && pnpm exec tsup src/index.ts --format esm --dts
 
-# Stage 4: Production dependencies only (clean, no workspace refs)
-FROM node:24-slim AS deps
+# Stage 4: Production node_modules via pnpm deploy — resolves workspace: deps to
+# real directories and installs lockfile-exact versions (npm install --omit=dev
+# re-resolved semver ranges without a lockfile and cannot parse workspace:).
+# --legacy: pnpm 10's default deploy mode requires inject-workspace-packages.
+# strict-peer-dependencies off: deploy re-checks the WHOLE workspace's peers and
+# .npmrc's strict setting fails it on pre-existing web/ui peer warnings.
 WORKDIR /app
-COPY --from=builder /app/apps/timescrape/package.json ./
-# Drop devDependencies before installing prod deps with npm. They use pnpm-only
-# `workspace:`/`catalog:` protocols that npm can't parse (EUNSUPPORTEDPROTOCOL),
-# and `--omit=dev` excludes them from the install anyway. Prod dependencies are
-# plain semver and install cleanly. Done via node so the JSON stays valid.
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));delete p.devDependencies;fs.writeFileSync('package.json',JSON.stringify(p,null,2));" && \
-    npm install --omit=dev
+RUN pnpm --filter timescrape deploy --legacy --prod --ignore-scripts \
+    --config.strict-peer-dependencies=false /app/deploy
 
 # Stage 5: Production runner
 FROM node:24-slim
@@ -49,8 +47,8 @@ RUN useradd -m -u 1001 -s /bin/false timescrape
 WORKDIR /app
 
 COPY --from=builder /app/apps/timescrape/dist ./dist
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/package.json ./
+COPY --from=builder /app/deploy/node_modules ./node_modules
+COPY --from=builder /app/deploy/package.json ./
 # Next to the bundle, not under dist/security/. container-config.ts resolves the
 # profile against import.meta.dirname, and tsup flattens src/index.ts into
 # dist/index.js, so at runtime that directory is dist/ — mirroring the source

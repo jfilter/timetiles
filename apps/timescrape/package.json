@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.0.10",
+    "@timetiles/shared": "workspace:*",
     "hono": "^4.12.31",
     "pino": "^10.3.1",
     "simple-git": "^3.36.0",
@@ -22,7 +23,6 @@
   },
   "devDependencies": {
     "@timetiles/eslint-config": "workspace:*",
-    "@timetiles/shared": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@types/node": "^26.1.1",
     "eslint": "catalog:",
