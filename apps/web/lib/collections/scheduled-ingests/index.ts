@@ -331,8 +331,10 @@ const auditAdminModification = async (
   }
 };
 
+const COLLECTION_SLUG = "scheduled-ingests" as const;
+
 const ScheduledIngests: CollectionConfig = {
-  slug: "scheduled-ingests",
+  slug: COLLECTION_SLUG,
   ...createCommonConfig(),
   admin: {
     useAsTitle: "name",
@@ -343,13 +345,7 @@ const ScheduledIngests: CollectionConfig = {
   },
   access: {
     // Users can only read their own scheduled ingests, editors and admins can read all
-    // eslint-disable-next-line sonarjs/function-return-type
-    read: ({ req: { user } }): boolean | { createdBy: { equals: string | number } } => {
-      if (!user) return false;
-      if (isPrivileged(user)) return true;
-
-      return { createdBy: { equals: user.id } };
-    },
+    read: createOwnershipAccess(COLLECTION_SLUG),
 
     // Anyone authenticated can create (denied for pending-deletion accounts), but createdBy will be set automatically
     // Quota check moved to beforeChange hook to avoid deadlock
@@ -363,13 +359,13 @@ const ScheduledIngests: CollectionConfig = {
     }),
 
     // Users can only update their own scheduled ingests, editors and admins can update all
-    update: createOwnershipAccess("scheduled-ingests"),
+    update: createOwnershipAccess(COLLECTION_SLUG),
 
     // Users can delete their own, editors and admins can delete any
-    delete: createOwnershipAccess("scheduled-ingests"),
+    delete: createOwnershipAccess(COLLECTION_SLUG),
 
     // Only owners, editors, or admins can read version history
-    readVersions: createOwnershipAccess("scheduled-ingests"),
+    readVersions: createOwnershipAccess(COLLECTION_SLUG),
   },
   fields: [...coreFields, ...importConfigFields, ...runtimeFields],
   hooks: {

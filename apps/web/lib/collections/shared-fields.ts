@@ -51,7 +51,14 @@ export const denyPendingDeletion =
  */
 export const createOwnershipAccess = (
   _collection: string,
-  ownerField: "createdBy" | "ownedBy" | "user" | "repoCreatedBy" | "scraperOwner" = "createdBy"
+  ownerField:
+    | "createdBy"
+    | "ownedBy"
+    | "user"
+    | "repoCreatedBy"
+    | "scraperOwner"
+    | "catalogOwnerId"
+    | "catalogCreatorId" = "createdBy"
 ): Access => {
   // Payload Access functions legitimately return boolean | Where
   // eslint-disable-next-line sonarjs/function-return-type
@@ -59,6 +66,25 @@ export const createOwnershipAccess = (
     if (isPrivileged(user)) return true;
     if (!user) return false;
     return { [ownerField]: { equals: user.id } };
+  };
+};
+
+/**
+ * Factory for public-or-owned read access.
+ * Editors/admins see all; authenticated users see public rows OR their own scope;
+ * anonymous users see public rows only. Zero-query (WHERE clauses on indexed fields).
+ */
+export const createPublicReadAccess = (
+  publicWhere: Where,
+  buildOwnerWhere: (userId: string | number) => Where
+): Access => {
+  // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
+  return ({ req: { user } }): boolean | Where => {
+    if (isPrivileged(user)) return true;
+    if (user) {
+      return { or: [publicWhere, buildOwnerWhere(user.id)] };
+    }
+    return publicWhere;
   };
 };
 
@@ -83,14 +109,7 @@ export const createPublicOwnershipAccess = (
   };
 
   return {
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-    read: ({ req: { user } }): boolean | Where => {
-      if (isPrivileged(user)) return true;
-      if (user) {
-        return { or: [{ isPublic: { equals: true } }, { [ownerField]: { equals: user.id } }] };
-      }
-      return { isPublic: { equals: true } };
-    },
+    read: createPublicReadAccess({ isPublic: { equals: true } }, (userId) => ({ [ownerField]: { equals: userId } })),
     create: isAuthenticated,
     update,
     deleteAccess: update,
