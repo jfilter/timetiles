@@ -1,0 +1,37 @@
+{
+  "name": "@timetiles/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code shared between the TimeTiles apps — currently the SSRF private-IP classification",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      },
+      "default": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsgo --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache"
+  },
+  "devDependencies": {
+    "@timetiles/eslint-config": "workspace:*",
+    "@timetiles/typescript-config": "workspace:*",
+    "@types/node": "^26.1.1",
+    "eslint": "catalog:",
+    "tsup": "^8.5.1",
+    "typescript": "catalog:"
+  }
+}

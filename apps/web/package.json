@@ -51,6 +51,7 @@
     "@tanstack/react-query-devtools": "^5.101.2",
     "@tanstack/react-virtual": "^3.14.6",
     "@timetiles/assets": "workspace:*",
+    "@timetiles/shared": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
     "@timetiles/ui": "workspace:*",
     "@types/archiver": "^8.0.0",
