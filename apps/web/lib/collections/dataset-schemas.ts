@@ -9,11 +9,11 @@
  *
  * @module
  */
-import type { CollectionConfig, Where } from "payload";
+import type { CollectionConfig } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import { createCommonConfig, isEditorOrAdmin, isPrivileged } from "./shared-fields";
+import { createCommonConfig, createPublicReadAccess, isEditorOrAdmin } from "./shared-fields";
 
 const DatasetSchemas: CollectionConfig = {
   slug: "dataset-schemas",
@@ -26,16 +26,9 @@ const DatasetSchemas: CollectionConfig = {
   },
   access: {
     // Schema access uses denormalized fields for zero-query access control
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-    read: ({ req: { user } }): boolean | Where => {
-      if (isPrivileged(user)) return true;
-
-      if (user) {
-        return { or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: user.id } }] };
-      }
-
-      return { datasetIsPublic: { equals: true } };
-    },
+    read: createPublicReadAccess({ datasetIsPublic: { equals: true } }, (userId) => ({
+      catalogOwnerId: { equals: userId },
+    })),
 
     // Auto-generated during imports - no manual creation
     create: () => false,

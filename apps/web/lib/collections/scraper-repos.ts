@@ -8,7 +8,7 @@
  * @category Collections
  * @module
  */
-import { APIError, type CollectionConfig, type PayloadRequest, type Where } from "payload";
+import { APIError, type CollectionConfig, type PayloadRequest } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
@@ -133,7 +133,6 @@ import {
   createOwnershipAccess,
   createSlugField,
   isEditorOrAdmin,
-  isPrivileged,
   setCreatedByHook,
 } from "./shared-fields";
 
@@ -146,12 +145,7 @@ const ScraperRepos: CollectionConfig = {
   ...createCommonConfig({ versions: false, drafts: false, trash: false }),
   admin: { useAsTitle: "name", defaultColumns: ["name", "sourceType", "createdBy", "updatedAt"], group: "Scrapers" },
   access: {
-    // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-    read: ({ req: { user } }): boolean | Where => {
-      if (isPrivileged(user)) return true;
-      if (!user) return false;
-      return { createdBy: { equals: user.id } };
-    },
+    read: createOwnershipAccess(COLLECTION_SLUG),
     create: async ({ req: { user, payload } }) => {
       if (!user) return false;
       const enabled = await getFeatureFlagService(payload).isEnabled("enableScrapers");
