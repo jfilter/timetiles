@@ -8,17 +8,11 @@
  * @module
  * @category API
  */
-import { count, eq } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
-
 import { apiRoute } from "@/lib/api";
-import {
-  createFilteredEventCatalogScope,
-  createFilteredEventDatasetScope,
-  toCountRecord,
-} from "@/lib/database/filtered-events-query";
+import { toCountRecord } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { logger } from "@/lib/logger";
+import { executeCatalogAggregation, executeDatasetAggregation } from "@/lib/services/aggregation-service";
 
 export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
 
@@ -33,9 +27,12 @@ export const GET = apiRoute({
   auth: "optional",
   handler: async ({ user, payload }) => {
     const filters: CanonicalEventFilters = { includePublic: true, ...(user ? { ownerId: user.id } : {}) };
-    const catalogCountsPromise = fetchCatalogCounts(payload, filters);
-    const datasetCountsPromise = fetchDatasetCounts(payload, filters);
-    const [catalogCounts, datasetCounts] = await Promise.all([catalogCountsPromise, datasetCountsPromise]);
+    const [catalogRows, datasetRows] = await Promise.all([
+      executeCatalogAggregation(payload, filters),
+      executeDatasetAggregation(payload, filters),
+    ]);
+    const catalogCounts = toCountRecord(catalogRows);
+    const datasetCounts = toCountRecord(datasetRows);
 
     // Calculate total events
     const totalEvents = Object.values(catalogCounts).reduce((sum, count) => sum + count, 0);
@@ -48,30 +45,3 @@ export const GET = apiRoute({
     return { catalogCounts, datasetCounts, totalEvents };
   },
 });
-
-const fetchCatalogCounts = async (payload: Payload, filters: CanonicalEventFilters) => {
-  const { eventTable, datasetTable, catalogTable, whereClause } = createFilteredEventCatalogScope(filters);
-
-  const rows = await payload.db.drizzle
-    .select({ id: datasetTable.catalog, count: count() })
-    .from(eventTable)
-    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
-    .innerJoin(catalogTable, eq(datasetTable.catalog, catalogTable.id))
-    .where(whereClause)
-    .groupBy(datasetTable.catalog);
-
-  return toCountRecord(rows);
-};
-
-const fetchDatasetCounts = async (payload: Payload, filters: CanonicalEventFilters) => {
-  const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
-
-  const rows = await payload.db.drizzle
-    .select({ id: eventTable.dataset, count: count() })
-    .from(eventTable)
-    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
-    .where(whereClause)
-    .groupBy(eventTable.dataset);
-
-  return toCountRecord(rows);
-};

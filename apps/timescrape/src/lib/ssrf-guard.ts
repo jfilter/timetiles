@@ -36,20 +36,49 @@ const PRIVATE_IPV6_PATTERNS = [
   /^::1$/, // Loopback
   /^::$/, // Unspecified
   /^fe80:/i, // Link-local
-  /^fc00:/i, // Unique local (ULA)
-  /^fd/i, // Unique local (ULA)
+  /^f[cd][0-9a-f]{0,2}:/i, // Unique local (ULA, full fc00::/7)
 ];
+
+/**
+ * IPv6 prefixes that deliver traffic to an embedded IPv4 address: the
+ * IPv4-mapped (`::ffff:`), deprecated IPv4-compatible (`::`), and NAT64
+ * (`64:ff9b::`) prefixes. Longest first so `::ffff:` beats the bare `::`.
+ */
+const IPV4_EMBEDDED_PREFIXES = ["64:ff9b::", "::ffff:", "::"];
+
+/** A dotted quad, as the mapped form is usually written. */
+const DOTTED_QUAD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+
+/** Two hextets, as parsers canonicalize an embedded IPv4 (`::ffff:a9fe:a9fe`). */
+const HEXTET_PAIR = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
+
+/** Extract the IPv4 address an IPv6 literal carries, or null if it carries none. */
+const embeddedIpv4 = (value: string): string | null => {
+  const prefix = IPV4_EMBEDDED_PREFIXES.find((candidate) => value.startsWith(candidate));
+  if (prefix == null) return null;
+
+  // `::ffff:0:1.2.3.4` — the SIIT spelling puts a zero hextet before the address.
+  let rest = value.slice(prefix.length);
+  if (rest.startsWith("0:")) rest = rest.slice(2);
+
+  if (DOTTED_QUAD.test(rest)) return rest;
+
+  const hextets = HEXTET_PAIR.exec(rest);
+  if (hextets?.[1] == null || hextets[2] == null) return null;
+
+  const high = Number.parseInt(hextets[1], 16);
+  const low = Number.parseInt(hextets[2], 16);
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
+};
 
 /**
  * Check whether a raw resolved IP address is in a private/internal range.
  */
 export const isPrivateIP = (ip: string): boolean => {
-  const normalized = ip.toLowerCase();
-
-  // Unwrap IPv4-mapped IPv6 addresses (e.g. ::ffff:10.0.0.1) and re-check.
-  if (normalized.startsWith("::ffff:")) {
-    return isPrivateIP(normalized.slice("::ffff:".length));
-  }
+  const lowered = ip.toLowerCase();
+  // Unwrap any embedded IPv4 (mapped/compatible/NAT64, dotted or hex form) so
+  // the IPv4 range checks apply to the address the traffic actually reaches.
+  const normalized = embeddedIpv4(lowered) ?? lowered;
 
   if (normalized === "0.0.0.0") return true;
 

@@ -23,9 +23,7 @@ import { collectTransformsForTargetPath } from "@/lib/ingest/transform-builders"
 import { applyTransforms } from "@/lib/ingest/transforms";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isRecord } from "@/lib/utils/is-record";
 
 /**
  * Narrow a persisted `interpretationPlan` (Payload stores it as `type: "json"`,

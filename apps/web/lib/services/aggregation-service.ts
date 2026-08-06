@@ -88,7 +88,8 @@ export const executeAggregationQuery = async (
   return { items, total, groupedBy: groupBy };
 };
 
-const executeCatalogAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
+/** Event counts per catalog (id, name, count), ordered by count descending. */
+export const executeCatalogAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
   const { eventTable, datasetTable, catalogTable, whereClause } = createFilteredEventCatalogScope(filters);
 
   return payload.db.drizzle
@@ -101,7 +102,8 @@ const executeCatalogAggregation = async (payload: Payload, filters: CanonicalEve
     .orderBy(desc(count()));
 };
 
-const executeDatasetAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
+/** Event counts per dataset (id, name, count), ordered by count descending. */
+export const executeDatasetAggregation = async (payload: Payload, filters: CanonicalEventFilters) => {
   const { eventTable, datasetTable, whereClause } = createFilteredEventDatasetScope(filters);
 
   return payload.db.drizzle

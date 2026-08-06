@@ -9,6 +9,7 @@
  */
 import { logger } from "@/lib/logger";
 import { unparseRowsToCsv } from "@/lib/utils/csv-escape";
+import { isRecord } from "@/lib/utils/is-record";
 import { deleteByPathOrKey, getByPath } from "@/lib/utils/object-path";
 
 import { type PreProcessingConfig, preProcessRecords } from "./pre-process-records";
@@ -37,9 +38,6 @@ export interface JsonToCsvResult {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
 /**
  * Flatten a record's nested objects into dot-separated keys.
  *
@@ -57,7 +55,7 @@ export const flattenObject = (obj: Record<string, unknown>, prefix?: string, dep
 
     if (Array.isArray(value)) {
       result[fullKey] = JSON.stringify(value);
-    } else if (isPlainObject(value)) {
+    } else if (isRecord(value)) {
       if (depth >= MAX_FLATTEN_DEPTH) {
         // Too deep — serialize as JSON to prevent stack overflow
         result[fullKey] = JSON.stringify(value);
@@ -91,16 +89,16 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
     if (json.length === 0) {
       return { records: [], path: "" };
     }
-    if (isPlainObject(json[0])) {
+    if (isRecord(json[0])) {
       return { records: json as Record<string, unknown>[], path: "" };
     }
     return null;
   }
 
   // Top-level object: scan properties for the first array of objects
-  if (isPlainObject(json)) {
+  if (isRecord(json)) {
     for (const [key, value] of Object.entries(json)) {
-      if (Array.isArray(value) && value.length > 0 && isPlainObject(value[0])) {
+      if (Array.isArray(value) && value.length > 0 && isRecord(value[0])) {
         return { records: value as Record<string, unknown>[], path: key };
       }
     }
