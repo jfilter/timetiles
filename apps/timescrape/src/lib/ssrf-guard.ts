@@ -9,8 +9,8 @@
  * defence-in-depth on top of the trust-level-3 gate and the container network
  * isolation; the clone itself runs over the host network, so the check matters.
  *
- * Mirrors the IP-range logic in apps/web/lib/security/url-validation.ts. The two
- * apps do not share code, so the patterns are duplicated intentionally.
+ * The IP-range classification comes from @timetiles/shared (bundled into the
+ * runner at build time), so web and timescrape cannot drift apart on it.
  *
  * @module
  * @category Lib
@@ -18,79 +18,11 @@
 
 import dns from "node:dns";
 
+import { isPrivateIP } from "@timetiles/shared";
+
 import { RunnerError } from "./errors.js";
 
-/** IPv4 private/internal range patterns (operate on resolved IP strings). */
-const PRIVATE_IPV4_PATTERNS = [
-  /^127\./, // Loopback
-  /^10\./, // Class A private
-  /^172\.(1[6-9]|2\d|3[01])\./, // Class B private
-  /^192\.168\./, // Class C private
-  /^0\./, // "This" network
-  /^169\.254\./, // Link-local (incl. cloud metadata 169.254.169.254)
-  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // Carrier-grade NAT (RFC 6598)
-];
-
-/** IPv6 loopback / private patterns. */
-const PRIVATE_IPV6_PATTERNS = [
-  /^::1$/, // Loopback
-  /^::$/, // Unspecified
-  /^fe80:/i, // Link-local
-  /^f[cd][0-9a-f]{0,2}:/i, // Unique local (ULA, full fc00::/7)
-];
-
-/**
- * IPv6 prefixes that deliver traffic to an embedded IPv4 address: the
- * IPv4-mapped (`::ffff:`), deprecated IPv4-compatible (`::`), and NAT64
- * (`64:ff9b::`) prefixes. Longest first so `::ffff:` beats the bare `::`.
- */
-const IPV4_EMBEDDED_PREFIXES = ["64:ff9b::", "::ffff:", "::"];
-
-/** A dotted quad, as the mapped form is usually written. */
-const DOTTED_QUAD = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
-
-/** Two hextets, as parsers canonicalize an embedded IPv4 (`::ffff:a9fe:a9fe`). */
-const HEXTET_PAIR = /^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/;
-
-/** Extract the IPv4 address an IPv6 literal carries, or null if it carries none. */
-const embeddedIpv4 = (value: string): string | null => {
-  const prefix = IPV4_EMBEDDED_PREFIXES.find((candidate) => value.startsWith(candidate));
-  if (prefix == null) return null;
-
-  // `::ffff:0:1.2.3.4` — the SIIT spelling puts a zero hextet before the address.
-  let rest = value.slice(prefix.length);
-  if (rest.startsWith("0:")) rest = rest.slice(2);
-
-  if (DOTTED_QUAD.test(rest)) return rest;
-
-  const hextets = HEXTET_PAIR.exec(rest);
-  if (hextets?.[1] == null || hextets[2] == null) return null;
-
-  const high = Number.parseInt(hextets[1], 16);
-  const low = Number.parseInt(hextets[2], 16);
-  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
-};
-
-/**
- * Check whether a raw resolved IP address is in a private/internal range.
- */
-export const isPrivateIP = (ip: string): boolean => {
-  const lowered = ip.toLowerCase();
-  // Unwrap any embedded IPv4 (mapped/compatible/NAT64, dotted or hex form) so
-  // the IPv4 range checks apply to the address the traffic actually reaches.
-  const normalized = embeddedIpv4(lowered) ?? lowered;
-
-  if (normalized === "0.0.0.0") return true;
-
-  for (const pattern of PRIVATE_IPV4_PATTERNS) {
-    if (pattern.test(normalized)) return true;
-  }
-  for (const pattern of PRIVATE_IPV6_PATTERNS) {
-    if (pattern.test(normalized)) return true;
-  }
-
-  return false;
-};
+export { isPrivateIP } from "@timetiles/shared";
 
 /**
  * Resolve a git URL's host and reject it when any answer is a private/internal

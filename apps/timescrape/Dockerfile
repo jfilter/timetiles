@@ -26,7 +26,10 @@ RUN --mount=type=cache,id=pnpm-scraper,target=/pnpm/store \
 COPY --from=pruner /app/out/full/ .
 
 WORKDIR /app/apps/timescrape
-RUN pnpm exec tsup src/index.ts --format esm --dts
+# Build workspace deps first: tsup bundles @timetiles/shared from its dist
+# (declared noExternal in tsup.config.ts — the prod-deps npm stage cannot
+# resolve workspace: protocols, so it must not stay a runtime dependency).
+RUN pnpm --filter @timetiles/shared build && pnpm exec tsup src/index.ts --format esm --dts
 
 # Stage 4: Production dependencies only (clean, no workspace refs)
 FROM node:24-slim AS deps
