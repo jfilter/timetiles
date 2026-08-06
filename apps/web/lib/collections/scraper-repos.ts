@@ -12,7 +12,6 @@ import { APIError, type CollectionConfig, type PayloadRequest } from "payload";
 
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
-import { getFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
@@ -126,6 +125,7 @@ const validateGitBranch = (value: string): string | true => {
   return true;
 };
 
+import { canCreateScraperResources } from "./scrapers/access";
 import {
   basicMetadataFields,
   createCommonConfig,
@@ -146,14 +146,7 @@ const ScraperRepos: CollectionConfig = {
   admin: { useAsTitle: "name", defaultColumns: ["name", "sourceType", "createdBy", "updatedAt"], group: "Scrapers" },
   access: {
     read: createOwnershipAccess(COLLECTION_SLUG),
-    create: async ({ req: { user, payload } }) => {
-      if (!user) return false;
-      const enabled = await getFeatureFlagService(payload).isEnabled("enableScrapers");
-      if (!enabled) return false;
-      // Trust level 3+ required
-      const trustLevel = typeof user.trustLevel === "string" ? Number(user.trustLevel) : (user.trustLevel ?? 0);
-      return trustLevel >= 3 || user.role === "admin";
-    },
+    create: canCreateScraperResources,
     update: createOwnershipAccess(COLLECTION_SLUG),
     delete: createOwnershipAccess(COLLECTION_SLUG),
     readVersions: isEditorOrAdmin,

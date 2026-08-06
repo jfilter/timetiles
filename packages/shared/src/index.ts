@@ -1,5 +1,5 @@
 /**
- * @timetiles/shared — code shared between the TimeTiles apps.
+ * Entry point of the shared package — code shared between the TimeTiles apps.
  *
  * @module
  */

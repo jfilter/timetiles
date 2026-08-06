@@ -7,6 +7,8 @@
  * @module
  * @category Email
  */
+import { escapeHtml } from "@timetiles/ui/lib/escape-html";
+
 import { DEFAULT_LOCALE } from "@/i18n/config";
 
 import de from "./messages/de";
@@ -31,10 +33,6 @@ export type EmailTranslator = ((key: EmailKey, params?: EmailParams) => string) 
 type EmailParams = Record<string, string | number>;
 
 const messages: Record<string, Record<EmailKey, string>> = { en, de };
-
-const HTML_ESCAPES: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-
-const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (char) => HTML_ESCAPES[char] ?? char);
 
 /**
  * Substitute `{name}` placeholders.

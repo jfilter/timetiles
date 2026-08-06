@@ -44,6 +44,7 @@ const serverEntry: Record<string, string> = {
   "components/icons/index": "./src/components/icons/index.ts",
   "lib/utils": "./src/lib/utils.ts",
   "lib/chart-themes": "./src/lib/chart-themes.ts",
+  "lib/escape-html": "./src/lib/escape-html.ts",
   "components/button": "./src/components/button.tsx",
   "components/card": "./src/components/card.tsx",
   "components/header": "./src/components/header.tsx",

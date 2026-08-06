@@ -51,7 +51,11 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn(() => Prom
 vi.mock("@/lib/ingest/configure-service", () => ({
   processSheetMappings: mocks.mockProcessSheetMappings,
   getOrCreateCatalog: mocks.mockGetOrCreateCatalog,
-  translateSchemaMode: vi.fn(() => ({ mode: "flexible" })),
+  applySchemaConfigToDatasets: vi.fn(() => Promise.resolve()),
+  buildSheetLinkFields: vi.fn((entries: { dataset: number }[]) => ({
+    dataset: entries.length === 1 ? entries[0]?.dataset : null,
+    multiSheetConfig: { enabled: false, sheets: [] },
+  })),
 }));
 
 vi.mock("@/lib/ingest/preview-store", () => ({
