@@ -10,8 +10,7 @@
  * @module
  * @category Jobs
  */
-import { unlink } from "node:fs/promises";
-
+import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import type { SystemPayload } from "@/lib/services/system-payload";
@@ -48,34 +47,6 @@ interface PassResult {
 }
 
 type PendingUnlink = { exportId: string | number; filePath: string };
-
-const isENOENT = (error: unknown): boolean =>
-  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT";
-
-/**
- * Best-effort unlink; a file that is already gone is not an error.
- *
- * "missing" and "failed" are distinguished because only the former means the file is really
- * gone. A "failed" path has to stay on the record so a later run can retry it.
- */
-const unlinkQuietly = async (
-  exportId: string | number,
-  filePath: string,
-  context: string
-): Promise<"deleted" | "missing" | "failed"> => {
-  try {
-    await unlink(filePath);
-    logger.debug({ exportId, filePath }, "Deleted export file");
-    return "deleted";
-  } catch (error) {
-    if (isENOENT(error)) {
-      logger.debug({ exportId, filePath, context }, "Export file already gone");
-      return "missing";
-    }
-    logger.warn({ exportId, filePath, error, context }, "Could not delete export file");
-    return "failed";
-  }
-};
 
 /**
  * Pass 1: mark expired "ready" exports as expired and collect their files.
@@ -139,7 +110,7 @@ const unlinkPending = async (sys: SystemPayload, pending: PendingUnlink[]): Prom
     const chunk = pending.slice(i, i + UNLINK_CONCURRENCY);
     const results = await Promise.all(
       chunk.map(async ({ exportId, filePath }) => {
-        const outcome = await unlinkQuietly(exportId, filePath, "expiry");
+        const outcome = await unlinkExportFile(exportId, filePath, "expiry");
         if (outcome === "failed") return false;
 
         try {
@@ -179,7 +150,7 @@ const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResul
   for (const record of old.docs) {
     try {
       if (record.filePath) {
-        const outcome = await unlinkQuietly(record.id, record.filePath, "purge");
+        const outcome = await unlinkExportFile(record.id, record.filePath, "purge");
         if (outcome === "deleted") filesDeleted++;
         // Deleting the record destroys the only pointer to the archive, so keep it until the
         // file is confirmed gone — the next hourly run retries. (An explicit comparison: the

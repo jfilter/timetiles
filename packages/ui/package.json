@@ -76,6 +76,13 @@
         "default": "./dist/lib/chart-themes.js"
       }
     },
+    "./lib/escape-html": {
+      "source": "./src/lib/escape-html.ts",
+      "import": {
+        "types": "./dist/lib/escape-html.d.ts",
+        "default": "./dist/lib/escape-html.js"
+      }
+    },
     "./components/button": {
       "source": "./src/components/button.tsx",
       "import": {

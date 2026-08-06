@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import type { NextRequest } from "next/server";
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
 import { ForbiddenError, ValidationError } from "@/lib/api/errors";
 import { buildPlanFromWizard } from "@/lib/ingest/plan-builder";
@@ -98,6 +98,64 @@ export const translateSchemaMode = (
     default:
       return { locked: false, autoGrow: true, autoApproveNonBreaking: true };
   }
+};
+
+/**
+ * Apply the schema config derived from a schedule's schema mode to every mapped dataset.
+ *
+ * `req` joins the caller's transaction when one is open (the update-schedule route);
+ * the wizard create path runs outside one and passes none.
+ */
+export const applySchemaConfigToDatasets = async (
+  payload: Payload,
+  datasetMappingEntries: DatasetMappingEntry[],
+  schemaMode: CreateScheduleConfig["schemaMode"],
+  req?: PayloadRequest
+): Promise<void> => {
+  const schemaConfig = translateSchemaMode(schemaMode);
+  await Promise.all(
+    datasetMappingEntries.map(async (entry) => {
+      await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
+      logger.info({ datasetId: entry.dataset, schemaMode, schemaConfig }, "Updated dataset schema config for schedule");
+    })
+  );
+};
+
+/**
+ * Build the `dataset` / `multiSheetConfig` pair linking a scheduled ingest to its datasets.
+ *
+ * `empty` distinguishes create from update: on create the fields can simply be omitted
+ * (`undefined`), but on update Payload treats `undefined` as "field omitted" and keeps the
+ * prior value — clearing requires explicit `null` / a disabled config.
+ */
+export const buildSheetLinkFields = (
+  datasetMappingEntries: DatasetMappingEntry[],
+  empty: "omit" | "clear"
+): {
+  dataset: number | null | undefined;
+  multiSheetConfig:
+    | { enabled: boolean; sheets: { sheetIdentifier: string; dataset: number; skipIfMissing: boolean }[] }
+    | undefined;
+} => {
+  const isSingleSheet = datasetMappingEntries.length === 1;
+  const firstDatasetId = datasetMappingEntries[0]?.dataset;
+  const emptyDataset = empty === "clear" ? null : undefined;
+  const emptyMultiSheet = empty === "clear" ? { enabled: false, sheets: [] } : undefined;
+
+  return {
+    dataset: isSingleSheet && firstDatasetId ? firstDatasetId : emptyDataset,
+    multiSheetConfig:
+      !isSingleSheet && datasetMappingEntries.length > 0
+        ? {
+            enabled: true,
+            sheets: datasetMappingEntries.map((entry) => ({
+              sheetIdentifier: entry.sheetIdentifier,
+              dataset: entry.dataset,
+              skipIfMissing: false,
+            })),
+          }
+        : emptyMultiSheet,
+  };
 };
 
 /**
@@ -412,24 +470,10 @@ export const createScheduledIngest = async ({
   const quotaService = createQuotaService(payload);
   await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
-  // Determine if single or multi-sheet
-  const isSingleSheet = datasetMappingEntries.length === 1;
-  const firstDatasetId = datasetMappingEntries[0]?.dataset;
-
   // Build auth config for scheduled ingest (use from schedule config or fall back to preview auth)
   const authConfig = scheduleConfig.authConfig ?? previewMeta.authConfig ?? { type: "none" as const };
 
-  // Update datasets with schema config based on schema mode
-  const schemaConfig = translateSchemaMode(scheduleConfig.schemaMode);
-  await Promise.all(
-    datasetMappingEntries.map(async (entry) => {
-      await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig } });
-      logger.info(
-        { datasetId: entry.dataset, schemaMode: scheduleConfig.schemaMode, schemaConfig },
-        "Updated dataset schema config for schedule"
-      );
-    })
-  );
+  await applySchemaConfigToDatasets(payload, datasetMappingEntries, scheduleConfig.schemaMode);
 
   // Build advanced options with JSON API config if present
   const advancedOptions = scheduleConfig.jsonApiConfig
@@ -450,18 +494,7 @@ export const createScheduledIngest = async ({
     advancedOptions,
     frequency: scheduleConfig.scheduleType === "frequency" ? scheduleConfig.frequency : undefined,
     cronExpression: scheduleConfig.scheduleType === "cron" ? scheduleConfig.cronExpression : undefined,
-    dataset: isSingleSheet && firstDatasetId ? firstDatasetId : undefined,
-    multiSheetConfig:
-      !isSingleSheet && datasetMappingEntries.length > 0
-        ? {
-            enabled: true,
-            sheets: datasetMappingEntries.map((entry) => ({
-              sheetIdentifier: entry.sheetIdentifier,
-              dataset: entry.dataset,
-              skipIfMissing: false,
-            })),
-          }
-        : undefined,
+    ...buildSheetLinkFields(datasetMappingEntries, "omit"),
   };
 
   const scheduledIngest = await payload.create({ collection: "scheduled-ingests", data: baseData, req });

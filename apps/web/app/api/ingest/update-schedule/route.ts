@@ -15,7 +15,12 @@ import { commitTransaction, initTransaction, killTransaction, type PayloadReques
 import { z } from "zod";
 
 import { apiRoute, ForbiddenError, NotFoundError, requireFeatureEnabled, ValidationError } from "@/lib/api";
-import { getOrCreateCatalog, processSheetMappings, translateSchemaMode } from "@/lib/ingest/configure-service";
+import {
+  applySchemaConfigToDatasets,
+  buildSheetLinkFields,
+  getOrCreateCatalog,
+  processSheetMappings,
+} from "@/lib/ingest/configure-service";
 import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
 import { validateRequest } from "@/lib/ingest/preview-validation";
 import {
@@ -127,21 +132,13 @@ export const PATCH = apiRoute({
       ));
 
       // Update dataset schema config based on schema mode
-      const schemaConfig = translateSchemaMode(body.scheduleConfig.schemaMode);
-      await Promise.all(
-        datasetMappingEntries.map(async (entry) => {
-          await payload.update({ collection: "datasets", id: entry.dataset, data: { schemaConfig }, req });
-        })
-      );
+      await applySchemaConfigToDatasets(payload, datasetMappingEntries, body.scheduleConfig.schemaMode, txReq);
     } catch (error) {
       if (ownsTransaction) await killTransaction(txReq);
       throw error;
     }
 
     // Build scheduled ingest update data
-    const isSingleSheet = datasetMappingEntries.length === 1;
-    const firstDatasetId = datasetMappingEntries[0]?.dataset;
-
     // Only treat jsonApiConfig as meaningful if it has a recordsPath or enabled pagination.
     // Zod's optional() can produce an empty object {} which is truthy but has no real config.
     const hasJsonApiConfig =
@@ -163,20 +160,9 @@ export const PATCH = apiRoute({
       schemaMode: body.scheduleConfig.schemaMode,
       frequency: body.scheduleConfig.scheduleType === "frequency" ? body.scheduleConfig.frequency : undefined,
       cronExpression: body.scheduleConfig.scheduleType === "cron" ? body.scheduleConfig.cronExpression : undefined,
-      // Use null (not undefined) for the sheet-mode fields being cleared — Payload
-      // treats undefined as "field omitted" and undefined leaves the prior value stored.
-      dataset: isSingleSheet && firstDatasetId ? firstDatasetId : null,
-      multiSheetConfig:
-        !isSingleSheet && datasetMappingEntries.length > 0
-          ? {
-              enabled: true,
-              sheets: datasetMappingEntries.map((entry) => ({
-                sheetIdentifier: entry.sheetIdentifier,
-                dataset: entry.dataset,
-                skipIfMissing: false,
-              })),
-            }
-          : { enabled: false, sheets: [] },
+      // "clear": sheet-mode fields being emptied need explicit null / a disabled
+      // config — Payload treats undefined as "field omitted" and keeps the prior value.
+      ...buildSheetLinkFields(datasetMappingEntries, "clear"),
     };
 
     // Always include advancedOptions to prevent Payload from filling group defaults

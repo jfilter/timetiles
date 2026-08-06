@@ -8,7 +8,7 @@
  * @category API
  */
 import { createReadStream } from "node:fs";
-import { stat, unlink } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 
 import { sql } from "@payloadcms/db-postgres";
@@ -16,6 +16,7 @@ import type { Payload } from "payload";
 import { z } from "zod";
 
 import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
+import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { DataExport as DataExportRecord } from "@/payload-types";
@@ -26,27 +27,10 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Best-effort delete of an export archive from disk.
- *
- * Export ZIPs contain the user's complete personal data, so every path that
- * retires a record must also retire its file — otherwise the record (the only
- * pointer to the file) is purged after 30 days and the PII is orphaned on disk
- * forever. Failures are logged, never thrown: the caller's outcome (a 410, a
- * status flip) must not depend on the filesystem.
- */
+/** True when the file is confirmed gone; a failed unlink keeps `filePath` on the record for retry. */
 const discardExportFile = async (filePath: string | null | undefined, exportId: string): Promise<boolean> => {
   if (!filePath) return true;
-  try {
-    await unlink(filePath);
-    logger.debug({ exportId, filePath }, "Deleted export file");
-    return true;
-  } catch (error) {
-    const gone = typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT";
-    if (gone) return true;
-    logger.warn({ exportId, filePath, error }, "Could not delete export file");
-    return false;
-  }
+  return (await unlinkExportFile(exportId, filePath, "download")) !== "failed";
 };
 
 /** Stream the export file to the client after all validation passes. */
