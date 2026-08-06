@@ -198,6 +198,9 @@ importers:
       '@hono/node-server':
         specifier: ^2.0.10
         version: 2.0.10(hono@4.12.31)
+      '@timetiles/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       hono:
         specifier: ^4.12.31
         version: 4.12.31
@@ -214,9 +217,6 @@ importers:
       '@timetiles/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@timetiles/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@timetiles/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
