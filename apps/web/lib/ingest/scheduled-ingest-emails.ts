@@ -12,6 +12,7 @@
  * @module
  * @category Services
  */
+import { escapeHtml } from "@timetiles/ui/lib/escape-html";
 import type { Payload } from "payload";
 
 import { adminCollectionUrl } from "@/lib/constants/routes";
@@ -38,9 +39,9 @@ export const buildScheduledIngestAdminUrl = (serverURL: string | null | undefine
 /** Render a small "Type: cron \"* * * * *\"" / "Type: frequency \"hourly\"" summary line. */
 const renderScheduleSummary = (scheduledIngest: ScheduledIngest): string => {
   if (scheduledIngest.scheduleType === "cron") {
-    return `cron <code>${scheduledIngest.cronExpression ?? ""}</code>`;
+    return `cron <code>${escapeHtml(scheduledIngest.cronExpression)}</code>`;
   }
-  return `frequency <code>${scheduledIngest.frequency ?? ""}</code>`;
+  return `frequency <code>${escapeHtml(scheduledIngest.frequency)}</code>`;
 };
 
 /**
@@ -58,6 +59,8 @@ export const sendScheduledIngestConfigInvalidEmail = async (
   const { branding, t } = await getEmailContext(payload, owner.locale);
   const adminUrl = buildScheduledIngestAdminUrl(payload.config.serverURL, scheduledIngest.id);
   const name = scheduledIngest.name ?? "";
+  // The callouts below build markup directly; `t()` escapes its own params, this does not.
+  const nameHtml = escapeHtml(name);
 
   const html = emailLayout(
     `
@@ -66,9 +69,9 @@ export const sendScheduledIngestConfigInvalidEmail = async (
     <p>${t("scheduledIngestConfigInvalidBody", { name })}</p>
 
     ${callout(
-      `<p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestLabel")}</strong> ${name}</p>
+      `<p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestLabel")}</strong> ${nameHtml}</p>
        <p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestTypeLabel")}</strong> ${renderScheduleSummary(scheduledIngest)}</p>
-       <p style="margin: 0;"><strong>${t("scheduledIngestErrorLabel")}</strong> ${errorMessage}</p>`,
+       <p style="margin: 0;"><strong>${t("scheduledIngestErrorLabel")}</strong> ${escapeHtml(errorMessage)}</p>`,
       "red"
     )}
 
@@ -102,6 +105,8 @@ export const sendScheduledIngestRetriesExhaustedEmail = async (
   const { branding, t } = await getEmailContext(payload, owner.locale);
   const adminUrl = buildScheduledIngestAdminUrl(payload.config.serverURL, scheduledIngest.id);
   const name = scheduledIngest.name ?? "";
+  // The callouts below build markup directly; `t()` escapes its own params, this does not.
+  const nameHtml = escapeHtml(name);
 
   const html = emailLayout(
     `
@@ -110,9 +115,9 @@ export const sendScheduledIngestRetriesExhaustedEmail = async (
     <p>${t("scheduledIngestRetriesExhaustedBody", { name, currentRetries, maxRetries })}</p>
 
     ${callout(
-      `<p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestLabel")}</strong> ${name}</p>
+      `<p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestLabel")}</strong> ${nameHtml}</p>
        <p style="margin: 0 0 8px 0;"><strong>${t("scheduledIngestTypeLabel")}</strong> ${renderScheduleSummary(scheduledIngest)}</p>
-       <p style="margin: 0;"><strong>${t("scheduledIngestErrorLabel")}</strong> ${lastError}</p>`,
+       <p style="margin: 0;"><strong>${t("scheduledIngestErrorLabel")}</strong> ${escapeHtml(lastError)}</p>`,
       "red"
     )}
 

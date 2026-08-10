@@ -505,6 +505,9 @@ export const stopRun = async (runId: string): Promise<void> => {
   logger.info({ runId }, "Container stopped");
 };
 
+/** Ids of runs currently executing — used by the shutdown handler to stop them. */
+export const getActiveRunIds = (): string[] => [...activeRuns];
+
 export const isRunActive = (runId: string): boolean => activeRuns.has(runId);
 
 export const getActiveRunCount = (): number => activeRuns.size;

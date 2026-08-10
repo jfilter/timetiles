@@ -48,9 +48,13 @@ export const detectIdFields = (fieldStats: Record<string, FieldStatistics>, opti
     // Check naming patterns
     const matchesPattern = effectivePatterns.some((pattern) => pattern.test(fieldName));
 
-    // Check characteristics: unique values and appropriate type
+    // Check characteristics: unique values and appropriate type.
+    // A saturated sample cap makes uniqueValues a lower bound, so the equality
+    // below can never hold for a genuinely unique column in a large file —
+    // treat the overflow itself as "all distinct so far" instead.
+    const allValuesDistinct = stats.uniqueSamplesOverflow === true || stats.uniqueValues === stats.occurrences;
     const hasIdCharacteristics =
-      stats.uniqueValues === stats.occurrences &&
+      allValuesDistinct &&
       stats.occurrences > 1 &&
       ((stats.typeDistribution["string"] ?? 0) > 0 ||
         (stats.typeDistribution["number"] ?? 0) > 0 ||

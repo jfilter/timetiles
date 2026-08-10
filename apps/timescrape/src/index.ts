@@ -15,6 +15,7 @@ import { loadConfig } from "./config.js";
 import { AuthError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
 import { assertSecurityAssets } from "./security/container-config.js";
+import { getActiveRunIds, stopRun } from "./services/runner.js";
 
 const config = loadConfig();
 
@@ -60,9 +61,34 @@ app.onError((error, c) => {
 app.route("/", runRoutes);
 
 // Start server
-serve({ fetch: app.fetch, port: config.SCRAPER_PORT }, (info) => {
+const server = serve({ fetch: app.fetch, port: config.SCRAPER_PORT }, (info) => {
   logger.info(
     { port: info.port, env: config.NODE_ENV, maxConcurrent: config.SCRAPER_MAX_CONCURRENT },
     "TimeScrape runner started"
   );
 });
+
+/**
+ * Stop in-flight containers on shutdown.
+ *
+ * This process is PID 1 in its container, so without a handler a stop or
+ * redeploy kills it outright and every running scraper container is left for
+ * the web side's stuck-run reaper to notice an hour later.
+ */
+let shuttingDown = false;
+const shutdown = (signal: NodeJS.Signals): void => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
+  const runIds = getActiveRunIds();
+  logger.info({ signal, activeRuns: runIds.length }, "Shutting down TimeScrape runner");
+
+  server.close(() => {
+    void Promise.allSettled(runIds.map((runId) => stopRun(runId))).then(() => {
+      process.exit(0);
+    });
+  });
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
