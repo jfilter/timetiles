@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createEventsBatchJob } from "@/lib/jobs/handlers/create-events-batch-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { createMockContext, createMockIngestFile } from "@/tests/setup/factories";
+import { createMockContext, createMockIngestFile, createMockIngestJob } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -207,14 +207,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   describe("Success Cases", () => {
     it("should create events successfully from streamed data", async () => {
       // Mock import job - needs to be mutable to track updates (using const with Object.assign)
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 2 } },
+      const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 2 } } },
+      });
 
       // Mock dataset
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
@@ -288,14 +284,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("preserves string import file IDs when marking the file complete", async () => {
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } } },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
@@ -331,18 +323,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
     it("should skip duplicate rows identified in previous stage", async () => {
       // Mock import job with duplicates
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
-          external: [{ rowNumber: 2, uniqueId: "dataset-456:ext:3" }],
-          summary: { uniqueRows: 1 },
-        },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: {
+          duplicates: {
+            internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
+            external: [{ rowNumber: 2, uniqueId: "dataset-456:ext:3" }],
+            summary: { uniqueRows: 1 },
+          },
+        },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
 
@@ -395,13 +385,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should process multiple batches in single job", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 4 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 4 } } },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
@@ -447,21 +434,20 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should mark import as completed after processing all batches", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: {
-          internal: [],
-          external: [],
-          summary: { internalDuplicates: 1, externalDuplicates: 2, uniqueRows: 10 },
+      const mockIngestJob = createMockIngestJob({
+        overrides: {
+          duplicates: {
+            internal: [],
+            external: [],
+            summary: { internalDuplicates: 1, externalDuplicates: 2, uniqueRows: 10 },
+          },
+          progress: {
+            stages: { "create-events": { status: "in_progress", rowsProcessed: 10, rowsTotal: 10 } },
+            overallPercentage: 0,
+            estimatedCompletionTime: null,
+          },
         },
-        progress: {
-          stages: { "create-events": { status: "in_progress", rowsProcessed: 10, rowsTotal: 10 } },
-          overallPercentage: 0,
-          estimatedCompletionTime: null,
-        },
-      };
+      });
 
       const mockDataset = { id: "dataset-456" };
       const mockIngestFile = { id: "file-789", filename: "test.csv" };
@@ -507,19 +493,17 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Progress Tracking", () => {
     it("should pass totalRows (not uniqueRows) to startStage when duplicates exist", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
-          external: [],
-          // totalRows=5, uniqueRows=4 — stream iterates all 5 rows
-          summary: { totalRows: 5, uniqueRows: 4, internalDuplicates: 1, externalDuplicates: 0 },
-        },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: {
+          duplicates: {
+            internal: [{ rowNumber: 1, uniqueId: "dataset-456:ext:2" }],
+            external: [],
+            // totalRows=5, uniqueRows=4 — stream iterates all 5 rows
+            summary: { totalRows: 5, uniqueRows: 4, internalDuplicates: 1, externalDuplicates: 0 },
+          },
+        },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
@@ -553,14 +537,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should not double-count failed rows in batch progress", async () => {
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 5 } },
+      const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 5 } } },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
@@ -616,17 +596,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Retry Idempotency", () => {
     it("should delete events from prior attempt on retry using chunked SQL", async () => {
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        // cleanupPriorAttempt scopes the delete to rows created at/after the job
-        // was created, so the mock job must carry a createdAt.
-        createdAt: "2026-01-01T00:00:00.000Z",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: {
+          // cleanupPriorAttempt scopes the delete to rows created at/after the job
+          // was created, so the mock job must carry a createdAt.
+          createdAt: "2026-01-01T00:00:00.000Z",
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+        },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
@@ -675,12 +653,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
       mockPayload.update.mockResolvedValue({});
@@ -689,12 +664,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should throw Error when ingest file not found (onFail handles failure marking)", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = { id: "dataset-456" };
 
@@ -737,18 +709,16 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
         decrementUsage: mockDecrementUsage,
       } as any);
 
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: {
-          internal: Array.from({ length: 950 }, (_, i) => ({ rowNumber: i + 50, uniqueId: `dup-${i}` })),
-          external: [],
-          summary: { totalRows: 1000, uniqueRows: 50, internalDuplicates: 950, externalDuplicates: 0 },
-        },
+      const mockIngestJob: any = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: {
+          duplicates: {
+            internal: Array.from({ length: 950 }, (_, i) => ({ rowNumber: i + 50, uniqueId: `dup-${i}` })),
+            external: [],
+            summary: { totalRows: 1000, uniqueRows: 50, internalDuplicates: 950, externalDuplicates: 0 },
+          },
+        },
+      });
 
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
@@ -794,13 +764,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle empty stream gracefully", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 0 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 0 } } },
+      });
 
       const mockDataset = { id: "dataset-456" };
       const mockIngestFile = { id: "file-789", filename: "empty.csv" };
@@ -841,16 +808,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
 
   describe("Type Transformations", () => {
     it("should skip transformations when allowTransformations is false", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        // The job plan is the detection-resolved plan; an inactive authored
-        // transform is filtered out, leaving no ops.
-        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
-      };
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          // The job plan is the detection-resolved plan; an inactive authored
+          // transform is filtered out, leaving no ops.
+          interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+        },
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -891,29 +857,28 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should apply type transformations and mark event as transformed", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        interpretationPlan: {
-          ops: [
-            {
-              id: "transform-age",
-              type: "string-op",
-              from: "age",
-              operation: "expression",
-              expression: "toNumber(value)",
-              active: true,
-              autoDetected: false,
-            },
-          ],
-          columns: [],
-          roles: {},
-          ambiguityResolution: "best-effort",
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          interpretationPlan: {
+            ops: [
+              {
+                id: "transform-age",
+                type: "string-op",
+                from: "age",
+                operation: "expression",
+                expression: "toNumber(value)",
+                active: true,
+                autoDetected: false,
+              },
+            ],
+            columns: [],
+            roles: {},
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -954,38 +919,37 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should record transformation audit values from target paths", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        interpretationPlan: {
-          ops: [
-            {
-              id: "transform-code-label",
-              type: "string-op",
-              from: "metadata.code",
-              to: "metadata.label",
-              operation: "uppercase",
-              active: true,
-              autoDetected: false,
-            },
-            {
-              id: "transform-summary",
-              type: "concatenate",
-              fromFields: ["title", "city"],
-              separator: " - ",
-              to: "summary",
-              active: true,
-              autoDetected: false,
-            },
-          ],
-          columns: [],
-          roles: {},
-          ambiguityResolution: "best-effort",
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          interpretationPlan: {
+            ops: [
+              {
+                id: "transform-code-label",
+                type: "string-op",
+                from: "metadata.code",
+                to: "metadata.label",
+                operation: "uppercase",
+                active: true,
+                autoDetected: false,
+              },
+              {
+                id: "transform-summary",
+                type: "concatenate",
+                fromFields: ["title", "city"],
+                separator: " - ",
+                to: "summary",
+                active: true,
+                autoDetected: false,
+              },
+            ],
+            columns: [],
+            roles: {},
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -1027,14 +991,13 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should handle empty transformations array", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
-      };
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+        },
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -1071,38 +1034,37 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should apply multiple transformations to different fields", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        interpretationPlan: {
-          ops: [
-            {
-              id: "transform-age",
-              type: "string-op",
-              from: "age",
-              operation: "expression",
-              expression: "toNumber(value)",
-              active: true,
-              autoDetected: false,
-            },
-            {
-              id: "transform-active",
-              type: "string-op",
-              from: "active",
-              operation: "expression",
-              expression: "parseBool(value)",
-              active: true,
-              autoDetected: false,
-            },
-          ],
-          columns: [],
-          roles: {},
-          ambiguityResolution: "best-effort",
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          interpretationPlan: {
+            ops: [
+              {
+                id: "transform-age",
+                type: "string-op",
+                from: "age",
+                operation: "expression",
+                expression: "toNumber(value)",
+                active: true,
+                autoDetected: false,
+              },
+              {
+                id: "transform-active",
+                type: "string-op",
+                from: "active",
+                operation: "expression",
+                expression: "parseBool(value)",
+                active: true,
+                autoDetected: false,
+              },
+            ],
+            columns: [],
+            roles: {},
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -1144,16 +1106,15 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should skip disabled transformation rules", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        // A disabled authored transform is filtered out during plan authoring,
-        // so the detection-resolved job plan carries no ops.
-        interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
-      };
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          // A disabled authored transform is filtered out during plan authoring,
+          // so the detection-resolved job plan carries no ops.
+          interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "best-effort" },
+        },
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -1192,29 +1153,28 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     });
 
     it("should handle transformation errors gracefully", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        interpretationPlan: {
-          ops: [
-            {
-              id: "transform-age",
-              type: "string-op",
-              from: "age",
-              operation: "expression",
-              expression: "parseNumber(value)",
-              active: true,
-              autoDetected: false,
-            },
-          ],
-          columns: [],
-          roles: {},
-          ambiguityResolution: "best-effort",
+        overrides: {
+          duplicates: { internal: [], external: [], summary: { uniqueRows: 1 } },
+          interpretationPlan: {
+            ops: [
+              {
+                id: "transform-age",
+                type: "string-op",
+                from: "age",
+                operation: "expression",
+                expression: "parseNumber(value)",
+                active: true,
+                autoDetected: false,
+              },
+            ],
+            columns: [],
+            roles: {},
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -1260,14 +1220,10 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     it("no-ops with stored results when the job already COMPLETED, without re-processing", async () => {
       // At-least-once redelivery of an already-finished import: the handler must NOT
       // re-run create-events (which would delete this job's own committed events).
-      const mockIngestJob: any = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob: any = createMockIngestJob({
         stage: "completed",
-        results: { totalEvents: 5, duplicatesSkipped: 1 },
-      };
+        overrides: { results: { totalEvents: 5, duplicatesSkipped: 1 } },
+      });
       const mockDataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
       const mockIngestFile = createMockIngestFile();
 

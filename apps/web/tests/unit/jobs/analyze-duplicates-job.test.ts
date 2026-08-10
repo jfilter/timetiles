@@ -11,7 +11,7 @@ import { analyzeDuplicatesJob } from "@/lib/jobs/handlers/analyze-duplicates-job
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { getDuplicateRatesForReview } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
-import { createMockIngestFile } from "@/tests/setup/factories";
+import { createMockIngestFile, createMockIngestJob } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -166,12 +166,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   describe("Success Cases", () => {
     it("should skip analysis when deduplication is disabled", async () => {
       // Mock import job
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Mock dataset with deduplication disabled
       const mockDataset = { id: "dataset-456", deduplicationConfig: { enabled: false } };
@@ -221,13 +218,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should process file with no duplicates", async () => {
       // Mock import job
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456", // Reference to dataset
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Mock dataset with deduplication enabled - note the nested structure
       const mockDataset = {
@@ -302,13 +295,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // transforms. The handler now reads the authored ops from the dataset
       // interpretationPlan for content-hash strategies, feeding the fully
       // transformed row to generateUniqueId — mirroring create-events-batch-job.
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Content-hash strategy + a lowercase transform on a field that
       // differs by case between the two rows.
@@ -373,13 +362,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should replay the full transform chain needed to produce an external id", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -439,13 +424,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should identify internal duplicates", async () => {
       // Mock import job
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Mock dataset with deduplication enabled
       const mockDataset = {
@@ -501,13 +482,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
     it("should identify external duplicates", async () => {
       // Mock import job
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Mock dataset with deduplication enabled
       const mockDataset = {
@@ -562,13 +539,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // (as updates), so they must count toward uniqueRows and the quota pre-check
       // rather than being subtracted. Mirrors the test above but with the
       // "update" strategy configured on the dataset.
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -647,13 +620,10 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
+      const mockIngestJob = createMockIngestJob({
         sheetIndex: 1,
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -695,13 +665,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
   describe("File Pre-scan Optimization", () => {
     it("should not pre-scan file when deduplication is enabled", async () => {
       // Mock import job
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       // Mock dataset with deduplication enabled
       const mockDataset = {
@@ -751,13 +717,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle empty file", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -875,13 +837,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const { shouldReviewHighDuplicates } = await import("@/lib/jobs/workflows/review-checks");
       (shouldReviewHighDuplicates as any).mockReturnValueOnce({ needsReview: true, duplicateRate: 0.85 });
 
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -911,13 +869,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       const { checkQuotaForSheet } = await import("@/lib/jobs/workflows/review-checks");
       (checkQuotaForSheet as any).mockResolvedValueOnce({ allowed: false, current: 100, limit: 50 });
 
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",
@@ -950,13 +904,9 @@ describe.sequential("AnalyzeDuplicatesJob Handler", () => {
       // terminal, not stuck in needs-review with no valid resume.
       const { setNeedsReview } = await import("@/lib/jobs/workflows/review-checks");
 
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-      };
+      });
 
       const mockDataset = {
         id: "dataset-456",

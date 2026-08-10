@@ -16,7 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createSchemaVersionJob } from "@/lib/jobs/handlers/create-schema-version-job";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
-import { createMockDataset } from "@/tests/setup/factories";
+import { createMockDataset, createMockIngestJob } from "@/tests/setup/factories";
 
 // Use vi.hoisted to create mocks that can be used in vi.mock factories
 const mocks = vi.hoisted(() => {
@@ -92,32 +92,33 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
   describe("Success Cases", () => {
     it("should create schema version successfully", async () => {
       // Mock import job with manually approved schema
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: {
-          requiresApproval: true, // Manual approval required
-          approved: true, // And it was approved
-          approvedBy: 789, // Numeric ID
-        },
-        schema: { title: { type: "string" }, date: { type: "date" } },
+      const schema = { title: { type: "string" }, date: { type: "date" } };
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-        // The job's resolved interpretation plan; createSchemaVersion persists the
-        // role paths projected via planToSchemaFieldMappings (ADR 0040).
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: {
-            title: "title",
-            description: "details",
-            locationName: "venue",
-            timestamp: "date",
-            endTimestamp: "end_date",
+        overrides: {
+          schemaValidation: {
+            requiresApproval: true, // Manual approval required
+            approved: true, // And it was approved
+            approvedBy: 789, // Numeric ID
           },
-          ambiguityResolution: "best-effort",
+          schema,
+          duplicates: { summary: { uniqueRows: 100 } },
+          // The job's resolved interpretation plan; createSchemaVersion persists the
+          // role paths projected via planToSchemaFieldMappings (ADR 0040).
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: {
+              title: "title",
+              description: "details",
+              locationName: "venue",
+              timestamp: "date",
+              endTimestamp: "end_date",
+            },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Mock dataset
       const mockDataset = createMockDataset();
@@ -126,7 +127,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       const mockFieldStats = { title: { uniqueCount: 100, nullCount: 0 }, date: { uniqueCount: 95, nullCount: 5 } };
 
       // Mock created schema version
-      const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456", schema: mockIngestJob.schema };
+      const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456", schema };
 
       // Setup payload mock responses
       mockPayload.findByID
@@ -152,7 +153,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Verify schema version creation
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
-        schema: mockIngestJob.schema,
+        schema,
         fieldMetadata: mockFieldStats,
         fieldMappings: {
           titlePath: "title",
@@ -192,14 +193,14 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Stable scheduled feeds previously appended an identical
       // dataset-schemas row on EVERY successful import.
       const schema = { title: { type: "string" }, date: { type: "date" } };
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: { requiresApproval: false },
-        schema,
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          schemaValidation: { requiresApproval: false },
+          schema,
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
       const mockDataset = createMockDataset();
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(mockDataset);
@@ -223,14 +224,14 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should skip when schema version already exists", async () => {
       // Mock import job with existing schema version
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        datasetSchemaVersion: "existing-schema-version-123",
-        schemaValidation: { approved: true, approvedBy: "user-789" },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          datasetSchemaVersion: "existing-schema-version-123",
+          schemaValidation: { approved: true, approvedBy: "user-789" },
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
@@ -253,16 +254,16 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should skip when schema is not approved", async () => {
       // Mock import job with manual approval required but not yet approved
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: {
-          requiresApproval: true, // Manual approval required
-          approved: false, // But not yet approved
-        },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          schemaValidation: {
+            requiresApproval: true, // Manual approval required
+            approved: false, // But not yet approved
+          },
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob);
 
@@ -280,18 +281,19 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Mock import job with dataset as object
       const mockDataset = createMockDataset();
 
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: mockDataset, // Dataset as object instead of ID
-        schemaValidation: {
-          requiresApproval: true, // Manual approval required
-          approved: true, // And it was approved
-          approvedBy: "user-789",
-        },
-        schema: { title: { type: "string" } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          dataset: mockDataset, // Dataset as object instead of ID
+          schemaValidation: {
+            requiresApproval: true, // Manual approval required
+            approved: true, // And it was approved
+            approvedBy: "user-789",
+          },
+          schema: { title: { type: "string" } },
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
 
       const mockSchemaVersion = { id: "schema-version-101", dataset: "dataset-456" };
 
@@ -312,18 +314,19 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
 
     it("should handle approvedBy as object reference", async () => {
       // Mock import job with approvedBy as object
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: {
-          requiresApproval: true, // Manual approval required
-          approved: true, // And it was approved
-          approvedBy: { id: "user-789", name: "Test User" },
-        },
-        schema: { title: { type: "string" } },
+      const schema = { title: { type: "string" } };
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          schemaValidation: {
+            requiresApproval: true, // Manual approval required
+            approved: true, // And it was approved
+            approvedBy: { id: "user-789", name: "Test User" },
+          },
+          schema,
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
 
       const mockDataset = createMockDataset();
 
@@ -340,7 +343,7 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Verify schema version creation with correct approvedBy ID
       expect(mocks.createSchemaVersion).toHaveBeenCalledWith(mockPayload, {
         dataset: "dataset-456",
-        schema: mockIngestJob.schema,
+        schema,
         fieldMetadata: {},
         // No interpretationPlan on this job → planToSchemaFieldMappings(null) === {}.
         fieldMappings: {},
@@ -365,13 +368,10 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should throw Error when dataset not found (onFail handles failure marking)", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: { approved: true },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: { schemaValidation: { approved: true }, duplicates: { summary: { uniqueRows: 100 } } },
+      });
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Dataset not found
       mockPayload.update.mockResolvedValue({});
@@ -380,14 +380,14 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
     });
 
     it("should re-throw transient errors for Payload to retry", async () => {
-      const mockIngestJob = {
-        id: "import-123",
-        dataset: "dataset-456",
-        schemaValidation: { approved: true, approvedBy: "user-789" },
-        schema: { title: { type: "string" } },
+      const mockIngestJob = createMockIngestJob({
         progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
-        duplicates: { summary: { uniqueRows: 100 } },
-      };
+        overrides: {
+          schemaValidation: { approved: true, approvedBy: "user-789" },
+          schema: { title: { type: "string" } },
+          duplicates: { summary: { uniqueRows: 100 } },
+        },
+      });
 
       const mockDataset = createMockDataset();
 

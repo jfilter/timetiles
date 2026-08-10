@@ -190,14 +190,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should require approval for breaking changes", async () => {
       // Mock import job
-      const mockIngestJob = {
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [] },
         progress: { total: 100 },
-      };
+        overrides: { duplicates: { internal: [], external: [] } },
+      });
 
       // Mock dataset without auto-approval for breaking changes
       const mockDataset = {
@@ -297,14 +294,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should handle locked schema configuration", async () => {
       // Mock import job
-      const mockIngestJob = {
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [] },
         progress: { total: 100 },
-      };
+        overrides: { duplicates: { internal: [], external: [] } },
+      });
 
       // Mock dataset with locked schema
       const mockDataset = {
@@ -487,14 +481,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
   describe("Edge Cases", () => {
     it("should handle no schema changes", async () => {
       // Mock import job
-      const mockIngestJob = {
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [], external: [] },
         progress: { total: 100 },
-      };
+        overrides: { duplicates: { internal: [], external: [] } },
+      });
 
       // Mock dataset
       const mockDataset = {
@@ -570,14 +561,11 @@ describe.sequential("ValidateSchemaJob Handler", () => {
 
     it("should skip duplicate rows during schema validation", async () => {
       // Mock import job with duplicates
-      const mockIngestJob = {
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        dataset: "dataset-456",
-        ingestFile: "file-789",
-        sheetIndex: 0,
-        duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2 }] },
         progress: { total: 100 },
-      };
+        overrides: { duplicates: { internal: [{ rowNumber: 1 }], external: [{ rowNumber: 2 }] } },
+      });
 
       // Mock dataset
       const mockDataset = {
