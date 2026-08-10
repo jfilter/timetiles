@@ -41,6 +41,7 @@ const AggregationBarChartComponent = ({
 }: Readonly<AggregationBarChartProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
   const { filters, toggleCatalogDatasets, toggleDataset } = useFilters();
   const scope = useViewScope();
   const { data: dataSources } = useDataSourcesQuery();
@@ -89,6 +90,11 @@ const AggregationBarChartComponent = ({
       theme={chartTheme}
       onBarClick={handleBarClick}
       updatingLabel={t("chartUpdating")}
+      emptyMessage={t("chartNoMatch")}
+      emptySuggestion={t("chartNoMatchSuggestion")}
+      errorMessage={t("chartError")}
+      errorSuggestion={t("chartErrorSuggestion")}
+      retryLabel={tCommon("tryAgain")}
     />
   );
 };

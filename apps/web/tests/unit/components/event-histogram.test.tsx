@@ -120,7 +120,8 @@ describe.sequential("EventHistogram", () => {
 
     // Wait for no data message to appear
     await waitFor(() => {
-      expect(screen.getByText("No data available")).toBeInTheDocument();
+      expect(screen.getByText("No matching events")).toBeInTheDocument();
+      expect(screen.getByText("Try adjusting your filters")).toBeInTheDocument();
     });
   });
 

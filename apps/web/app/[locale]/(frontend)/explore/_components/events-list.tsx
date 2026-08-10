@@ -255,6 +255,7 @@ export const EventsList = ({
         title={t("failedToLoadEvents")}
         subtitle={error.message ?? tCommon("error")}
         onRetry={onRetry}
+        retryLabel={tCommon("tryAgain")}
         height={256}
       />
     );

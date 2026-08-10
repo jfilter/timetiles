@@ -475,11 +475,25 @@ const executionFields: Field[] = [
   },
 
   // Execution Status Fields
-  { name: "lastRun", type: "date", admin: { position: "sidebar", readOnly: true, description: "Last execution time" } },
+  //
+  // `access` here is load-bearing, not cosmetic: `admin.readOnly` only affects the
+  // dashboard UI, so without it an owner could set these via REST. `nextRun` has
+  // absolute precedence in the scheduler, so a past value fires the import on the
+  // next tick — repeated, that drives arbitrarily frequent outbound fetches past
+  // the configured frequency. `lastStatus` is the concurrency lock, and resetting
+  // `currentRetries`/`statistics` defeats the auto-disable-after-N-failures guard.
+  // Internal writers go through the Local API (overrideAccess), so they are unaffected.
+  {
+    name: "lastRun",
+    type: "date",
+    admin: { position: "sidebar", readOnly: true, description: "Last execution time" },
+    access: { create: () => false, update: () => false },
+  },
   {
     name: "nextRun",
     type: "date",
     admin: { position: "sidebar", readOnly: true, description: "Next scheduled execution time" },
+    access: { create: () => false, update: () => false },
   },
   {
     name: "lastStatus",
@@ -494,17 +508,20 @@ const executionFields: Field[] = [
       { label: "Awaiting review", value: "paused" },
     ],
     admin: { position: "sidebar", readOnly: true, description: "Status of last execution" },
+    access: { create: () => false, update: () => false },
   },
   {
     name: "lastError",
     type: "text",
     admin: { readOnly: true, description: "Error message from last failed execution" },
+    access: { create: () => false, update: () => false },
   },
   {
     name: "currentRetries",
     type: "number",
     defaultValue: 0,
     admin: { readOnly: true, description: "Current retry attempt count" },
+    access: { create: () => false, update: () => false },
   },
 
   // Statistics
@@ -512,6 +529,7 @@ const executionFields: Field[] = [
     name: "statistics",
     type: "group",
     admin: { description: "Execution statistics", readOnly: true },
+    access: { create: () => false, update: () => false },
     fields: [
       { name: "totalRuns", type: "number", defaultValue: 0, admin: { description: "Total number of executions" } },
       {

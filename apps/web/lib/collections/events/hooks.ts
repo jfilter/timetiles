@@ -16,7 +16,11 @@ import type {
 } from "payload";
 import { Forbidden } from "payload";
 
-import { extractDenormalizedAccessFields, safeFetchRecord } from "@/lib/collections/catalog-ownership";
+import {
+  extractDenormalizedAccessFields,
+  safeFetchRecord,
+  stripClientDenormFields,
+} from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { logError } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -67,7 +71,15 @@ const compensateEventQuotaOnError = async (req: PayloadRequest): Promise<void> =
  * - Sets datasetIsPublic and catalogOwnerId from the dataset/catalog for access control
  * - Validates quotas before event creation
  */
-export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({ data, operation, req }) => {
+/** Denormalized access-control fields on events — derived here, never client-supplied. */
+const EVENT_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
+
+export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({ data: incoming, operation, req }) => {
+  // A client PATCH that omits `dataset` skips the derivation below, so without
+  // this the caller's own datasetIsPublic/catalogOwnerId would be stored —
+  // publishing a single event out of a private dataset.
+  const data = stripClientDenormFields(incoming, req, EVENT_DENORM_FIELDS);
+
   // Set denormalized access control fields
   if (data?.dataset) {
     const datasetId = requireRelationId(data.dataset, "event.dataset");

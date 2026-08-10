@@ -24,6 +24,8 @@ export interface ChartEmptyStateProps {
   suggestion?: string;
   /** Callback for retry button (only shown for error variant) */
   onRetry?: () => void;
+  /** Override the retry button label (localize from the app side) */
+  retryLabel?: string;
 }
 
 const chartMessages: Record<ChartEmptyStateProps["variant"], { title: string; subtitle: string }> = {
@@ -80,6 +82,7 @@ export const ChartEmptyState = ({
   message,
   suggestion,
   onRetry,
+  retryLabel,
 }: ChartEmptyStateProps) => {
   return (
     <ContentState
@@ -90,6 +93,7 @@ export const ChartEmptyState = ({
       title={message ?? chartMessages[variant].title}
       subtitle={suggestion ?? chartMessages[variant].subtitle}
       onRetry={onRetry}
+      retryLabel={retryLabel}
     />
   );
 };

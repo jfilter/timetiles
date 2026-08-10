@@ -735,6 +735,44 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
 
+    it("should mark the import file failed when no sheet matches a mapping", async () => {
+      const mockIngestFile = {
+        id: 123,
+        filename: "multi.xlsx",
+        filePath: "/tmp/multi.xlsx",
+        catalog: 456,
+        originalName: "multi.xlsx",
+        metadata: {
+          source: "import-wizard",
+          datasetMapping: {
+            mappingType: "multiple",
+            sheetMappings: [{ sheetIdentifier: "99", dataset: "ds-1", skipIfMissing: false }],
+          },
+          wizardConfig: {
+            sheetMappings: [
+              { sheetIndex: 0, newDatasetName: "Events" },
+              { sheetIndex: 1, newDatasetName: "Locations" },
+            ],
+            fieldMappings: [],
+          },
+        },
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      mockPayload.find.mockResolvedValue({ docs: [] });
+
+      const result = await datasetDetectionJob.handler(mockContext);
+
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(result.output).toEqual(expect.objectContaining({ ingestJobsCreated: 0, sheets: [] }));
+      // Without this the file stays "processing" forever and is never reclaimed
+      expect(mockPayload.update).toHaveBeenLastCalledWith({
+        collection: "ingest-files",
+        id: "ingest-file-123",
+        data: expect.objectContaining({ status: "failed", errorLog: expect.any(String) }),
+      });
+    });
+
     it("should fall back to parsing when datasetMapping is missing", async () => {
       const mockIngestFile = {
         id: 123,

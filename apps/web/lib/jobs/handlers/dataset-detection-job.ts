@@ -311,6 +311,34 @@ const processSheetWithMapping = async (
   });
 };
 
+/**
+ * Pair each created job with its sheet metadata.
+ *
+ * Keyed on the job's stored sheetIndex (authoritative) rather than the array
+ * position: when sheets are skipped (no mapping / skipIfMissing), createdJobs is
+ * shorter than `sheets`, so a positional lookup attaches the wrong sheet.
+ */
+const buildSheetOutputs = (sheets: SheetInfo[], createdJobs: Array<{ id: string | number; sheetIndex?: unknown }>) =>
+  createdJobs.map((job) => {
+    const sheetIndex = Number(job.sheetIndex ?? 0);
+    const sheet = sheets.find((s) => s.index === sheetIndex);
+    return {
+      index: sheetIndex,
+      ingestJobId: job.id,
+      name: sheet?.name ?? `Sheet ${sheetIndex}`,
+      rowCount: sheet?.rowCount ?? 0,
+    };
+  });
+
+/** Terminal failure for an ingest file: the only status the cleanup job can reclaim besides "completed". */
+const markIngestFileFailed = async (payload: Payload, ingestFileId: string | number, errorLog: string) => {
+  await payload.update({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    id: ingestFileId,
+    data: { status: "failed", errorLog },
+  });
+};
+
 export const datasetDetectionJob = {
   slug: JOB_TYPES.DATASET_DETECTION,
   retries: 1,
@@ -432,6 +460,22 @@ export const datasetDetectionJob = {
         userId,
       });
 
+      // No job means no downstream stage ever runs, and the status deriver
+      // early-returns for a file without jobs — without this the row stays
+      // "processing" forever and the cleanup job never reclaims the upload.
+      if (createdJobs.length === 0) {
+        await markIngestFileFailed(
+          payload,
+          ingestFileId,
+          "No sheets could be imported: none of the detected sheets matched a configured dataset mapping"
+        );
+        logger.warn("[dataset-detection] no import jobs created, marking file failed", {
+          ingestFileId,
+          sheetCount: sheets.length,
+        });
+        return { output: { sheetsDetected: sheets.length, ingestJobsCreated: 0, sheets: [] } };
+      }
+
       logger.info("[dataset-detection] created import jobs", {
         ingestFileId,
         durationMs: Date.now() - taskStart,
@@ -443,30 +487,13 @@ export const datasetDetectionJob = {
         output: {
           sheetsDetected: sheets.length,
           ingestJobsCreated: createdJobs.length,
-          sheets: createdJobs.map((j) => {
-            // Use the job's stored sheetIndex (authoritative) rather than the
-            // array position: when sheets are skipped (no mapping /
-            // skipIfMissing), createdJobs is shorter than `sheets`, so a
-            // positional lookup attaches the wrong sheet's name/rowCount.
-            const sheetIndex = Number(j.sheetIndex ?? 0);
-            const sheet = sheets.find((s) => s.index === sheetIndex);
-            return {
-              index: sheetIndex,
-              ingestJobId: j.id,
-              name: sheet?.name ?? `Sheet ${sheetIndex}`,
-              rowCount: sheet?.rowCount ?? 0,
-            };
-          }),
+          sheets: buildSheetOutputs(sheets, createdJobs),
         },
       };
     } catch (error) {
       logError(error, "Dataset detection failed", { jobId, ingestFileId });
 
-      await payload.update({
-        collection: COLLECTION_NAMES.INGEST_FILES,
-        id: ingestFileId,
-        data: { status: "failed", errorLog: error instanceof Error ? error.message : "Unknown error" },
-      });
+      await markIngestFileFailed(payload, ingestFileId, error instanceof Error ? error.message : "Unknown error");
 
       // Throw — Payload marks workflow as failed; onFail updates ingest file status
       throw error;
