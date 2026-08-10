@@ -90,10 +90,18 @@ const RATE_LIMIT_ENDPOINTS = [
   "LOGIN",
   "FORGOT_PASSWORD",
   "RESET_PASSWORD",
+  "VERIFY_EMAIL",
   "SCRAPER_TRIGGER",
 ] as const;
 
-type RateLimitEndpoint = (typeof RATE_LIMIT_ENDPOINTS)[number];
+/**
+ * All rate limit endpoint names.
+ *
+ * Derived from {@link RATE_LIMIT_ENDPOINTS}: restating the list as a hand-written
+ * union let the two drift — a new endpoint validated at runtime was still a type
+ * error at the route that used it.
+ */
+export type RateLimitName = (typeof RATE_LIMIT_ENDPOINTS)[number];
 
 /**
  * Reject record keys outside a known set.
@@ -289,6 +297,16 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 30, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
     ],
   },
+  // Email verification / email-change confirmation. The token is 20 random
+  // bytes, so this is not a guessing gate — it bounds an unauthenticated
+  // endpoint that spends a DB query and a log write per request.
+  VERIFY_EMAIL: {
+    windows: [
+      { limit: 5, windowMs: 60 * 1000, name: "burst" },
+      { limit: 20, windowMs: 60 * 60 * 1000, name: "hourly" },
+      { limit: 50, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
+    ],
+  },
   // Manual scraper run / repo-sync triggers. These queue expensive work
   // (container-based execution, git clone + manifest re-parse), so throttle
   // per-user re-queues for defense in depth (ownership + a concurrency claim
@@ -300,7 +318,7 @@ const DEFAULT_RATE_LIMITS = {
       { limit: 100, windowMs: 24 * 60 * 60 * 1000, name: "daily" },
     ],
   },
-} satisfies Record<RateLimitEndpoint, RateLimitConfig>;
+} satisfies Record<RateLimitName, RateLimitConfig>;
 
 const DEFAULT_QUOTAS = {
   [TRUST_LEVELS.UNTRUSTED]: {
@@ -520,28 +538,6 @@ export interface CacheConfig {
 export interface AccountConfig {
   deletionGracePeriodDays: number;
 }
-
-/** All rate limit endpoint names. */
-export type RateLimitName =
-  | "FILE_UPLOAD"
-  | "PROGRESS_CHECK"
-  | "IMPORT_RETRY"
-  | "ADMIN_IMPORT_RESET"
-  | "RETRY_RECOMMENDATIONS"
-  | "API_GENERAL"
-  | "WEBHOOK_TRIGGER"
-  | "WEBHOOK_TRIGGER_ATTEMPT"
-  | "NEWSLETTER_SUBSCRIBE"
-  | "PASSWORD_CHANGE"
-  | "EMAIL_CHANGE"
-  | "ACCOUNT_DELETION"
-  | "DELETION_PASSWORD_ATTEMPTS"
-  | "DATA_EXPORT"
-  | "REGISTRATION"
-  | "LOGIN"
-  | "FORGOT_PASSWORD"
-  | "RESET_PASSWORD"
-  | "SCRAPER_TRIGGER";
 
 export interface AppConfig {
   rateLimits: Record<RateLimitName, RateLimitConfig>;

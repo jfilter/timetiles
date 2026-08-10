@@ -675,6 +675,10 @@ export class AccountDeletionService {
         firstName: null,
         lastName: null,
         isActive: false,
+        // An unconfirmed email change would otherwise leave a real address on the
+        // tombstoned row forever, and its token could still drive `email` back.
+        pendingEmail: null,
+        _verificationToken: null,
         // Payload's API-key strategy consults neither isActive nor sessions nor beforeLogin,
         // so a key issued to this account would keep granting full access under its original
         // role after the account was erased. Sessions are cleared below; this is the key.

@@ -377,11 +377,17 @@ jobs:
           IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           VERSION: ${{ steps.tag.outputs.version }}
           ALLINONE_AVAILABLE: ${{ needs.merge-allinone.result == 'success' }}
+          TIMESCRAPE_AVAILABLE: ${{ needs.merge-timescrape.result == 'success' }}
         run: |
           set -u
           echo "==> Verifying arm64 manifests..."
 
-          IMAGES="${IMAGE}:${VERSION} ${IMAGE}-timescrape:${VERSION}"
+          # Only verify what was actually published: this job runs whenever main
+          # succeeded, even if the timescrape or allinone merge failed.
+          IMAGES="${IMAGE}:${VERSION}"
+          if [ "$TIMESCRAPE_AVAILABLE" = "true" ]; then
+            IMAGES="$IMAGES ${IMAGE}-timescrape:${VERSION}"
+          fi
           if [ "$ALLINONE_AVAILABLE" = "true" ]; then
             IMAGES="$IMAGES ${IMAGE}:${VERSION}-allinone"
           fi

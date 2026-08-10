@@ -168,10 +168,24 @@ const buildEnvSchema = z.object({
 
 export type Env = z.infer<typeof runtimeEnvSchema>;
 
-const shouldRelaxSchema = (): boolean =>
-  process.env.NEXT_PHASE === "phase-production-build" ||
-  process.env.SKIP_DB_CHECK === "true" ||
-  process.env.VITEST === "true";
+/**
+ * Relaxed schema: build and test only.
+ *
+ * It defaults PAYLOAD_SECRET to a constant published in this repo, and that
+ * secret signs sessions and derives the credential-encryption key — so a
+ * production process must never reach it. SKIP_DB_CHECK reads as "skip a
+ * startup probe", which is exactly why it must not silently unlock this.
+ */
+const shouldRelaxSchema = (): boolean => {
+  if (process.env.NODE_ENV === "production") {
+    return process.env.NEXT_PHASE === "phase-production-build";
+  }
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" ||
+    process.env.SKIP_DB_CHECK === "true" ||
+    process.env.VITEST === "true"
+  );
+};
 
 let _env: Env | null = null;
 

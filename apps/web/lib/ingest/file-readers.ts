@@ -279,11 +279,28 @@ export const getFileRowCount = async (filePath: string, sheetIndex = 0): Promise
       return 0;
     }
 
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
-    return Math.max(0, jsonData.length - 1); // Subtract header row
+    // Must mirror convertSheetToCSV + streamBatchesFromCSV exactly: a stale "!ref" pads the
+    // used range with blank rows, and counting those overstates the quota charge and rowsTotal.
+    const csvContent = utils.sheet_to_csv(worksheet, { blankrows: false });
+    return countCsvRecordsFromString(csvContent);
   }
 
   return 0;
+};
+
+/** Count CSV records in an in-memory string with the import parser's semantics. */
+export const countCsvRecordsFromString = (csvContent: string): number => {
+  let count = 0;
+  Papa.parse(csvContent, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header: string) => header.trim(),
+    transform: (value: string) => value.trim(),
+    step: () => {
+      count++;
+    },
+  });
+  return count;
 };
 
 /** Stream-count CSV records using the same parser semantics as import processing. */
