@@ -145,6 +145,24 @@ describe("POST /run endpoint", () => {
       const body = await res.json();
       expect(body.error).toBe("Invalid or missing API key");
     });
+
+    it("returns 401 with a wrong API key of the same byte length", async () => {
+      // Same length as TEST_API_KEY, so the length guard passes and the
+      // constant-time comparison itself is what has to reject the token.
+      const sameLengthKey = "X".repeat(Buffer.byteLength(TEST_API_KEY));
+      expect(Buffer.byteLength(sameLengthKey)).toBe(Buffer.byteLength(TEST_API_KEY));
+
+      const res = await app.request("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sameLengthKey}` },
+        body: JSON.stringify(VALID_RUN_BODY),
+      });
+
+      expect(res.status).toBe(401);
+
+      const body = await res.json();
+      expect(body.error).toBe("Invalid or missing API key");
+    });
   });
 
   describe("Request Validation", () => {

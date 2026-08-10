@@ -15,6 +15,8 @@ import path from "node:path";
 import Papa from "papaparse";
 import { read, utils, write } from "xlsx";
 
+import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
+
 import { getFixturePath } from "../../setup/paths";
 
 describe("File Parsing", () => {
@@ -287,7 +289,10 @@ Event 2,2024-03-16
       ]);
     });
 
-    it("should convert Excel data to object format", () => {
+    it("streams Excel rows as objects through the production reader", async () => {
+      // Goes through streamBatchesFromFile — the reader the import jobs use. A local
+      // header/row conversion stood here before and claimed to be "the same logic",
+      // while production converts the sheet to a CSV sidecar and keeps header case.
       const workbook = utils.book_new();
       const worksheetData = [
         ["Title", "Description", "Date", "Location"],
@@ -297,36 +302,30 @@ Event 2,2024-03-16
       const worksheet = utils.aoa_to_sheet(worksheetData);
       utils.book_append_sheet(workbook, worksheet, "Sheet1");
 
-      // Write to buffer and read back
-      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
-      const readWorkbook = read(excelBuffer, { type: "buffer" });
-      const sheetName = readWorkbook.SheetNames[0];
-      const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const rawData = readWorksheet ? utils.sheet_to_json(readWorksheet, { header: 1, defval: "" }) : ([] as any[]);
+      // Own directory: the shared tempDir is torn down by the afterEach of any
+      // sibling test, and the suites in this file run concurrently.
+      const ownDir = fs.mkdtempSync(path.join(os.tmpdir(), "file-parsing-xlsx-"));
+      const filePath = path.join(ownDir, "events.xlsx");
+      fs.writeFileSync(filePath, write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer);
 
-      // Convert to object format (same logic as in import jobs)
-      const headers = (rawData[0] as string[]).map((h) => h.toString().trim().toLowerCase());
-      const parsedData = rawData.slice(1).map((row: any[]) => {
-        const obj: any = {};
-        headers.forEach((header, index) => {
-          obj[header] = row[index] ?? "";
-        });
-        return obj;
-      });
+      const rows: Record<string, unknown>[] = [];
+      try {
+        for await (const batch of streamBatchesFromFile(filePath, { batchSize: 10 })) {
+          rows.push(...batch);
+        }
+      } finally {
+        cleanupSidecarFiles(filePath);
+        fs.rmSync(ownDir, { recursive: true, force: true });
+      }
 
-      expect(parsedData).toHaveLength(2);
-      expect(parsedData[0]).toMatchObject({
-        title: "Tech Conference 2024",
-        description: "Annual technology conference",
-        date: "2024-03-15",
-        location: "Convention Center",
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({
+        Title: "Tech Conference 2024",
+        Description: "Annual technology conference",
+        Date: "2024-03-15",
+        Location: "Convention Center",
       });
-      expect(parsedData[1]).toMatchObject({
-        title: "Art Gallery Opening",
-        description: "Contemporary art exhibition",
-        date: "2024-03-20",
-        location: "Modern Art Gallery",
-      });
+      expect(rows[1]).toMatchObject({ Title: "Art Gallery Opening", Location: "Modern Art Gallery" });
     });
 
     it("should handle empty Excel files", () => {

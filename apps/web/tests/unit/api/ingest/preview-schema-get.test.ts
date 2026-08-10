@@ -54,38 +54,12 @@ vi.mock("@/lib/config/app-config", () => ({
 vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
 
-vi.mock("@/lib/services/schema-detection", () => {
-  const TEST_FIELD_PATTERNS: Record<string, Record<string, RegExp[]>> = {
-    title: { eng: [/^title$/i] },
-    description: { eng: [/^description$/i] },
-    timestamp: { eng: [/^date$/i] },
-    endTimestamp: { eng: [/^end_date$/i] },
-    location: { eng: [/^location$/i] },
-    locationName: { eng: [/^venue$/i] },
-  };
-
-  const getFieldPatterns = (fieldType: string, language: string): readonly RegExp[] => {
-    const typePatterns = TEST_FIELD_PATTERNS[fieldType];
-    return typePatterns?.[language] ?? typePatterns?.eng ?? [];
-  };
-
-  const matchFieldNamePatterns = (names: string[], fieldType: string, language: string) => {
-    const patterns = getFieldPatterns(fieldType, language);
-    for (let i = 0; i < patterns.length; i++) {
-      const match = names.find((n) => patterns[i]!.test(n));
-      if (match) return { name: match, patternIndex: i, patternCount: patterns.length, isFallback: false };
-    }
-    return null;
-  };
-
-  return {
-    detectLanguage: mocks.mockDetectLanguage,
-    FIELD_PATTERNS: TEST_FIELD_PATTERNS,
-    LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
-    LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
-    getFieldPatterns,
-    matchFieldNamePatterns,
-  };
+// Only language detection is stubbed (it is non-deterministic on short samples);
+// the real pattern table and matcher run, so this exercises production matching
+// instead of a hand-written copy that could drift from it.
+vi.mock("@/lib/services/schema-detection", async (importOriginal) => {
+  const actual = await importOriginal<typeof SchemaDetection>();
+  return { ...actual, detectLanguage: mocks.mockDetectLanguage };
 });
 
 vi.mock("@/lib/security/url-validation", () => ({ isPrivateUrl: mocks.mockIsPrivateUrl }));
@@ -95,6 +69,7 @@ import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET } from "@/app/api/ingest/preview-schema/route";
+import type * as SchemaDetection from "@/lib/services/schema-detection";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentials";
 

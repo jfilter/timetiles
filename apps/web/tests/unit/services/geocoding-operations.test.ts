@@ -389,6 +389,32 @@ describe.sequential("GeocodingOperations", () => {
       await expect(ops.geocode("Somewhere unresolvable")).rejects.toThrow("All geocoding providers failed");
       expect(cacheManager.cacheResult).not.toHaveBeenCalled();
     });
+
+    // Regression: a rejected ANSWER is not a reason to stop asking. With
+    // fallbackEnabled=false the loop broke after the first unacceptable result,
+    // so a later provider that would have resolved the address was never tried.
+    it("keeps trying fallbacks after a rejected result even with fallback disabled", async () => {
+      const failingGeocoder = createMockGeocoder({
+        throws: new GeocodingError("Service down", "SERVICE_UNAVAILABLE", true, 503),
+      });
+      const nullIslandGeocoder = createMockGeocoder({ lat: 0, lng: 0 });
+      const goodGeocoder = createMockGeocoder({ lat: 48.14, lng: 11.58, city: "Munich" });
+
+      const providerManager = createMockProviderManager([
+        createProvider("primary", 10, failingGeocoder),
+        createProvider("null-island", 10, nullIslandGeocoder),
+        createProvider("good", 10, goodGeocoder),
+      ]);
+      const cacheManager = createMockCacheManager();
+      const settingsNoFallback: GeocodingSettings = { ...defaultSettings, fallbackEnabled: false };
+
+      const ops = new GeocodingOperations(providerManager as any, cacheManager as any, settingsNoFallback);
+
+      const result = await ops.batchGeocode(["Munich"], 10);
+
+      expect(result.summary.successful).toBe(1);
+      expect(goodGeocoder.geocode).toHaveBeenCalled();
+    });
   });
 
   describe("bias / cache interaction", () => {

@@ -9,6 +9,7 @@
  */
 import type { Payload } from "payload";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { logger } from "@/lib/logger";
@@ -67,6 +68,12 @@ export const validateDatasetAccessForUser = async (
   // upstream where the datasetId is accepted (configure-service and the scheduled-ingests
   // collection both verify the dataset against a catalog the caller owns).
   if (catalogOwnerId !== userId && !isPublicCatalog) {
+    // Only the numeric id reaches this job, so the role has to be looked up before
+    // rejecting: configure-service lets admins target a foreign private catalog, and
+    // without this their own import would fail here at detection time.
+    const owner = await asSystem(payload).findByID({ collection: "users", id: userId });
+    if (isPrivileged(owner)) return;
+
     throw new Error(
       `Ingest file owner does not have access to the target dataset (dataset ${dataset.id} in catalog ${catalogId})`
     );

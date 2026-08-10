@@ -112,6 +112,27 @@ describe.sequential("FileSystemCacheStorage", () => {
       newStorage.destroy();
     });
 
+    it("persists every setMany entry to the index file", async () => {
+      // Reading back through the same instance only proves the in-memory map;
+      // the index on disk is what a second process sees, and overlapping writes
+      // to that single file used to be able to truncate it.
+      const entries = new Map([
+        ["many-1", "value1"],
+        ["many-2", "value2"],
+        ["many-3", "value3"],
+      ]);
+
+      await storage.setMany(entries);
+
+      const newStorage = new FileSystemCacheStorage({ cacheDir: tempDir });
+      for (const [key, value] of entries) {
+        const entry = await newStorage.get(key);
+        expect(entry?.value).toBe(value);
+      }
+
+      newStorage.destroy();
+    });
+
     it("should handle cache directory creation", async () => {
       const nestedDir = path.join(tempDir, "nested", "deep", "cache");
       const tempStorage = new FileSystemCacheStorage({ cacheDir: nestedDir });

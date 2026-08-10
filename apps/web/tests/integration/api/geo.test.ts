@@ -172,58 +172,23 @@ describe.sequential("/api/v1/events/geo", () => {
     // Tight bounds around SF test events (37.7749-37.7752, -122.4193 to -122.4196)
     const bounds = { north: 37.78, south: 37.77, east: -122.41, west: -122.43 };
 
-    // Test request construction (for documentation)
-    // new NextRequest(
-    //   `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`,
-    // );
+    // Through the real route: a hand-rolled copy of its row-to-feature transform
+    // stood here and had already fallen behind the h3Cell / clusterId / root-id rules.
+    const request = new NextRequest(
+      `http://localhost:3000/api/events/map-clusters?bounds=${encodeURIComponent(JSON.stringify(bounds))}&zoom=16`
+    );
 
-    // Instead of calling the API route (which uses main DB),
-    // call the clustering function directly using the test DB
-    const result = (await testEnv.payload.db.drizzle.execute(
-      sql`
-        SELECT * FROM cluster_events(
-          ${bounds.west}::double precision,
-          ${bounds.south}::double precision,
-          ${bounds.east}::double precision,
-          ${bounds.north}::double precision,
-          16::integer,
-          '{}'::jsonb
-        )
-      `
-    )) as { rows: Array<Record<string, unknown>> };
+    const response = await GET(request, { params: Promise.resolve({}) });
 
-    // Transform the result for the frontend (same logic as API route)
-    const clusters = result.rows.map((row: Record<string, unknown>) => {
-      const isCluster = Number(row.event_count) > 1;
+    if (response.status !== 200) {
+      const error = await response.json();
+      throw new Error(`API returned ${response.status}: ${JSON.stringify(error)}`);
+    }
 
-      return {
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [
-            Number.parseFloat(
-              typeof row.longitude === "string" || typeof row.longitude === "number" ? String(row.longitude) : "0"
-            ),
-            Number.parseFloat(
-              typeof row.latitude === "string" || typeof row.latitude === "number" ? String(row.latitude) : "0"
-            ),
-          ],
-        },
-        properties: {
-          id: row.cluster_id ?? row.event_id,
-          type: isCluster ? "event-cluster" : "event-location",
-          ...(isCluster ? { count: Number(row.event_count) } : {}),
-          ...(row.event_title
-            ? { title: typeof row.event_title === "string" ? row.event_title : JSON.stringify(row.event_title) }
-            : {}),
-          ...(row.event_ids && Number(row.event_count) <= 10 ? { eventIds: row.event_ids } : {}),
-        },
-      };
-    });
-
-    const data = { type: "FeatureCollection", features: clusters };
+    const data = await response.json();
 
     // At zoom level 16 in SF area, we should see results (either clusters or individual events)
+    expect(data).toHaveProperty("type", "FeatureCollection");
     expect(data.features.length).toBeGreaterThan(0);
 
     // Check that we get proper feature structure
@@ -239,12 +204,12 @@ describe.sequential("/api/v1/events/geo", () => {
     }
 
     // If it's a single-event location, verify structure
-    const singles = data.features.filter((f: any) => f.properties.type === "event-location");
+    const singles = data.features.filter((f: MapClusterFeature) => f.properties.type === "event-location");
     if (singles.length > 0) {
       const single = singles[0];
       expect(single).toBeDefined();
       if (single) {
-        expect(single.properties).toHaveProperty("id");
+        expect(single).toHaveProperty("id");
         expect(single.properties).toHaveProperty("title");
       }
     }

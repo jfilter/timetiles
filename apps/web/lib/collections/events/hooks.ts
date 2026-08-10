@@ -85,28 +85,33 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
     const datasetId = requireRelationId(data.dataset, "event.dataset");
     const dataset = await safeFetchRecord(req, "datasets", datasetId, 1);
 
-    if (dataset) {
-      const accessFields = extractDenormalizedAccessFields(dataset);
-
-      // The collection's `update` access decides WHICH events you may touch —
-      // it filters on the event's current catalogOwnerId. It says nothing about
-      // the dataset you may move one INTO, and `dataset` carries no field-level
-      // access of its own. Without this check an owner could PATCH their own
-      // event's dataset to someone else's: the assignment below would then
-      // recompute catalogOwnerId from the new dataset and hand the event to the
-      // victim, injecting attacker-controlled rows into their dataset (and
-      // publishing them, if that dataset is public).
-      //
-      // Only enforced for a non-privileged acting user. Import jobs and other
-      // system writes run without a user, and editors/admins may legitimately
-      // move events between catalogs.
-      if (req.user && !isPrivileged(req.user) && accessFields.catalogOwnerId !== req.user.id) {
-        throw new Forbidden(req.t);
-      }
-
-      // Assign collected values (avoids race condition warnings)
-      Object.assign(data, accessFields);
+    if (!dataset) {
+      // Fail closed: silently skipping the derivation left the row's previous
+      // catalogOwnerId/datasetIsPublic in place, so a lookup failure handed the
+      // old owner continued read access to an event that had moved on.
+      throw new Error(`Event dataset ${datasetId} could not be resolved for access-field derivation`);
     }
+
+    const accessFields = extractDenormalizedAccessFields(dataset);
+
+    // The collection's `update` access decides WHICH events you may touch —
+    // it filters on the event's current catalogOwnerId. It says nothing about
+    // the dataset you may move one INTO, and `dataset` carries no field-level
+    // access of its own. Without this check an owner could PATCH their own
+    // event's dataset to someone else's: the assignment below would then
+    // recompute catalogOwnerId from the new dataset and hand the event to the
+    // victim, injecting attacker-controlled rows into their dataset (and
+    // publishing them, if that dataset is public).
+    //
+    // Only enforced for a non-privileged acting user. Import jobs and other
+    // system writes run without a user, and editors/admins may legitimately
+    // move events between catalogs.
+    if (req.user && !isPrivileged(req.user) && accessFields.catalogOwnerId !== req.user.id) {
+      throw new Forbidden(req.t);
+    }
+
+    // Assign collected values (avoids race condition warnings)
+    Object.assign(data, accessFields);
   }
 
   // Skip quota checks for system operations and admin users

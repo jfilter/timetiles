@@ -6,7 +6,14 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { deleteByPath, deleteByPathOrKey, getByPath, getByPathOrKey, setByPath } from "@/lib/utils/object-path";
+import {
+  deleteByPath,
+  deleteByPathOrKey,
+  getByPath,
+  getByPathOrKey,
+  setByPath,
+  setByPathOrKey,
+} from "@/lib/utils/object-path";
 
 describe.sequential("object-path", () => {
   describe("getByPath", () => {
@@ -66,6 +73,24 @@ describe.sequential("object-path", () => {
       const obj: Record<string, unknown> = { nested: {} };
       deleteByPath(obj, "nested.__proto__");
       expect(Object.getPrototypeOf(obj.nested)).toBe(Object.prototype);
+    });
+  });
+
+  describe("setByPathOrKey", () => {
+    it("writes simple and dotted keys", () => {
+      const obj: Record<string, unknown> = { "a.b": 1 };
+      setByPathOrKey(obj, "a.b", 2);
+      setByPathOrKey(obj, "plain", 3);
+      expect(obj).toEqual({ "a.b": 2, plain: 3 });
+    });
+
+    it("rejects an unsafe direct key", () => {
+      // The direct-key branch skips setByPath, so it needs its own guard —
+      // otherwise `__proto__` re-parents the row object.
+      const obj: Record<string, unknown> = {};
+      expect(() => setByPathOrKey(obj, "__proto__", { polluted: true })).toThrow(/Unsafe path segment/);
+      expect(Object.getPrototypeOf(obj)).toBe(Object.prototype);
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
   });
 

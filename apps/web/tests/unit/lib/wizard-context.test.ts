@@ -40,6 +40,7 @@ vi.mock("zustand/middleware", async (importOriginal) => {
   };
 });
 
+import { canProceedFromStep } from "../../../app/[locale]/(frontend)/ingest/_components/wizard-selectors";
 import {
   initialState,
   useWizardStore,
@@ -572,34 +573,13 @@ describe("Wizard Store", () => {
  * requirements that must be met.
  */
 describe("canProceed Validation", () => {
-  // Helper function to compute canProceed (mirrors wizard-selectors.ts logic)
-  // Auth state is now external (from useAuthState), so step 1 takes explicit booleans
+  // Thin adapter over the production selector. A local re-implementation drifted
+  // here before: it allowed step 5 unconditionally and knew nothing about the
+  // blank-name checks, so the mirror passed while the wizard behaved differently.
   const computeCanProceed = (
     state: WizardState,
     auth: { isAuthenticated: boolean; isEmailVerified: boolean } = { isAuthenticated: false, isEmailVerified: false }
-  ): boolean => {
-    switch (state.currentStep) {
-      case 1:
-        return auth.isAuthenticated && auth.isEmailVerified;
-      case 2:
-        return state.file !== null && state.sheets.length > 0;
-      case 3:
-        return state.selectedCatalogId !== null && state.sheetMappings.length > 0;
-      case 4:
-        return state.fieldMappings.every(
-          (m) =>
-            m.titleField !== null &&
-            m.dateField !== null &&
-            (m.locationField !== null || (m.latitudeField !== null && m.longitudeField !== null))
-        );
-      case 5:
-        return true;
-      case 6:
-        return false;
-      default:
-        return false;
-    }
-  };
+  ): boolean => canProceedFromStep(state, auth.isAuthenticated, auth.isEmailVerified);
 
   describe("Step 1: Authentication", () => {
     it("requires both authentication AND email verification", () => {

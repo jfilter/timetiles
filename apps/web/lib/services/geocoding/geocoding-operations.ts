@@ -132,6 +132,7 @@ export class GeocodingOperations {
     const result = await this.iterateProviders(available, address, bias, {
       skipProviderName: primaryName,
       revalidateAvailability: true,
+      continueAfterRejectedResult: true,
     });
 
     if (result != null) {
@@ -253,12 +254,16 @@ export class GeocodingOperations {
    * providers in the loop were awaited. tryProviders skips this because
    * `selectProvidersToTry` already computed the exact list to attempt,
    * including the deliberate one-provider "wait out the backoff" case.
+   *
+   * `continueAfterRejectedResult` keeps walking the list when a provider answered
+   * but the answer failed validation. The fallback path needs it: with fallback
+   * disabled, one bogus answer must not consume the remaining candidates.
    */
   private async iterateProviders(
     providers: ProviderConfig[],
     address: string,
     bias: GeocodingBias | undefined,
-    options: { skipProviderName?: string; revalidateAvailability?: boolean } = {}
+    options: { skipProviderName?: string; revalidateAvailability?: boolean; continueAfterRejectedResult?: boolean } = {}
   ): Promise<GeocodingResult | null> {
     const rateLimiter = getProviderRateLimiter();
 
@@ -266,29 +271,11 @@ export class GeocodingOperations {
       if (provider.name === options.skipProviderName) continue;
       if (options.revalidateAvailability === true && !rateLimiter.isAvailable(provider.name)) continue;
 
-      try {
-        const result = await this.tryProviderWithRetry(provider, address, bias);
-        if (result != null) {
-          // Validate per provider so an unacceptable result (low confidence,
-          // bogus coordinates) falls through to the next provider instead of
-          // failing the whole lookup.
-          if (this.isResultAcceptable(result)) {
-            return result;
-          }
-          logger.debug("Provider result failed validation, trying next provider", {
-            provider: provider.name,
-            addressHash: hashForLog(address),
-          });
-        }
-      } catch (error) {
-        // Always log — silently swallowing a provider failure hides which
-        // provider is failing, especially during the fallback path.
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn(`Geocoding failed with provider ${provider.name}`, {
-          error: errorMessage,
-          addressHash: hashForLog(address),
-        });
-      }
+      const outcome = await this.attemptProvider(provider, address, bias);
+      if (outcome.accepted) return outcome.result;
+
+      // A rejected ANSWER is not a reason to stop asking the remaining providers.
+      if (outcome.rejected && options.continueAfterRejectedResult === true) continue;
 
       if (!this.shouldContinueWithFallback()) {
         break;
@@ -296,6 +283,41 @@ export class GeocodingOperations {
     }
 
     return null;
+  }
+
+  /**
+   * Ask one provider. Returns the accepted result, or why it did not produce one:
+   * `rejected` means the provider answered but the answer failed validation (low
+   * confidence, bogus coordinates), as opposed to failing or answering nothing.
+   */
+  private async attemptProvider(
+    provider: ProviderConfig,
+    address: string,
+    bias: GeocodingBias | undefined
+  ): Promise<{ accepted: true; result: GeocodingResult } | { accepted: false; rejected: boolean }> {
+    try {
+      const result = await this.tryProviderWithRetry(provider, address, bias);
+      if (result == null) return { accepted: false, rejected: false };
+
+      if (this.isResultAcceptable(result)) {
+        return { accepted: true, result };
+      }
+
+      logger.debug("Provider result failed validation, trying next provider", {
+        provider: provider.name,
+        addressHash: hashForLog(address),
+      });
+      return { accepted: false, rejected: true };
+    } catch (error) {
+      // Always log — silently swallowing a provider failure hides which
+      // provider is failing, especially during the fallback path.
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn(`Geocoding failed with provider ${provider.name}`, {
+        error: errorMessage,
+        addressHash: hashForLog(address),
+      });
+      return { accepted: false, rejected: false };
+    }
   }
 
   /**

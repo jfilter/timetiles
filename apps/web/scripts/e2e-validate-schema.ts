@@ -18,7 +18,7 @@
  * @category Scripts
  */
 
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -59,16 +59,17 @@ export interface DatabaseInfo {
 const runDatabaseQuery = (dbName: string, sql: string, description?: string): string => {
   const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
-  let command: string;
-  if (isCI) {
-    command = `PGPASSWORD=${getDbPassword()} psql -h ${getDbHost()} -U ${getDbUser()} -d ${dbName} -t -c "${sql}"`;
-  } else {
-    command = `cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`;
-  }
-
   try {
-    // eslint-disable-next-line sonarjs/os-command -- Safe database query execution
-    const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
+    // psql gets an argument array and the password via the environment — credentials
+    // and SQL never pass through a shell, so no quoting rules apply to them.
+    const result = isCI
+      ? execFileSync("psql", ["-h", getDbHost(), "-U", getDbUser(), "-d", dbName, "-t", "-c", sql], {
+          stdio: "pipe",
+          encoding: "utf8",
+          env: { ...process.env, PGPASSWORD: getDbPassword() },
+        })
+      : // eslint-disable-next-line sonarjs/os-command -- local make target, no credentials in the string
+        execSync(`cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`, { stdio: "pipe", encoding: "utf8" });
     if (description) {
       logger.debug(`✓ ${description}: ${result.trim()}`);
     }
@@ -165,12 +166,18 @@ const getExpectedMigrations = (): string[] => {
 
     const content = fs.readFileSync(migrationsIndexPath, "utf8");
 
-    // Extract migration names from the imports/exports
-    // Look for patterns like: export { default as Migration_20250729_195546 }
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- match() returns null, not undefined
-    const migrationMatches = content.match(/Migration_(\d{8}_\d{6})/g) || [];
+    // The generated index registers each migration as `name: '20260321_233540_slug'`.
+    // Anchor on that — the import identifiers carry a `migration_` prefix and a
+    // slug, so matching them yields names the migrations table never contains.
+    const names: string[] = [];
+    const nameEntry = /name:\s*'([^']+)'/g;
+    let match = nameEntry.exec(content);
+    while (match != null) {
+      if (match[1] != null) names.push(match[1]);
+      match = nameEntry.exec(content);
+    }
 
-    return migrationMatches.map((match) => match.replace("Migration_", ""));
+    return names;
   } catch (error) {
     logger.warn("Failed to read expected migrations", { error });
     return [];
@@ -232,9 +239,8 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
   // Get migration information
   const expectedMigrations = getExpectedMigrations();
   const completedMigrations = getCompletedMigrations();
-  const missingMigrations = expectedMigrations.filter(
-    (expected) => !completedMigrations.some((completed) => completed.includes(expected))
-  );
+  const completedNames = new Set(completedMigrations);
+  const missingMigrations = expectedMigrations.filter((expected) => !completedNames.has(expected));
 
   const hasMigrationsTable = completedMigrations.length > 0 || dbInfo.hasPayloadSchema;
 

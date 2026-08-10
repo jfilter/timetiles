@@ -95,6 +95,12 @@ export const setByPath = (obj: Record<string, unknown>, path: string, value: unk
  * keys win; otherwise a nested object path is created.
  */
 export const setByPathOrKey = (obj: Record<string, unknown>, path: string, value: unknown): void => {
+  // The direct-key branch bypasses setByPath's guard, and a literal "__proto__"
+  // assignment re-parents the row object. Transform paths are user-configured.
+  if (isUnsafeKey(path)) {
+    throw new Error(`Unsafe path segment in: ${path}`);
+  }
+
   if (!path.includes(".") || Object.hasOwn(obj, path)) {
     obj[path] = value;
     return;

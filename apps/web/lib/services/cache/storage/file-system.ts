@@ -44,6 +44,9 @@ export class FileSystemCacheStorage implements CacheStorage {
   private readonly defaultTTL: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
   private initPromise: Promise<void> | null = null;
+  /** Serializes index writes; every set() rewrites the same file. */
+  private indexWriteChain: Promise<void> = Promise.resolve();
+  private indexWriteSeq = 0;
 
   constructor(options: FileSystemCacheOptions = {}) {
     this.cacheDir = options.cacheDir ?? path.join(process.cwd(), ".cache", "general");
@@ -292,8 +295,11 @@ export class FileSystemCacheStorage implements CacheStorage {
   async setMany<T>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void> {
     await this.ensureInitialized();
 
-    // Batch write for efficiency
-    await Promise.all(Array.from(entries).map(([key, value]) => this.set(key, value, options)));
+    // Sequential: every set() rewrites the single index file, so concurrent
+    // writes can interleave and leave a truncated index behind.
+    for (const [key, value] of entries) {
+      await this.set(key, value, options);
+    }
   }
 
   async getStats(): Promise<CacheStats> {
@@ -430,7 +436,20 @@ export class FileSystemCacheStorage implements CacheStorage {
       stats: this.stats,
       lastUpdated: new Date().toISOString(),
     };
-    await fs.writeFile(this.indexFile, JSON.stringify(indexData, null, 2));
+    // Write-then-rename through a serialized queue: every set() rewrites this one
+    // file, so overlapping writes could otherwise leave a truncated index behind —
+    // loadIndex reads that as "corrupted" and drops the whole cache.
+    const payload = JSON.stringify(indexData, null, 2);
+    this.indexWriteSeq += 1;
+    const tempFile = `${this.indexFile}.${process.pid}.${this.indexWriteSeq}.tmp`;
+
+    const write = async (): Promise<void> => {
+      await fs.writeFile(tempFile, payload);
+      await fs.rename(tempFile, this.indexFile);
+    };
+    this.indexWriteChain = this.indexWriteChain.then(write, write);
+
+    return this.indexWriteChain;
   }
 
   destroy(): void {

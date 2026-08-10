@@ -179,7 +179,9 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
     }));
 
     // Default mock for extractDenormalizedAccessFields
-    mocks.extractDenormalizedAccessFields.mockReturnValue({ datasetIsPublic: false, catalogOwnerId: undefined });
+    // null, not undefined — the real helper never returns undefined, and Payload
+    // would drop an undefined owner from the write.
+    mocks.extractDenormalizedAccessFields.mockReturnValue({ datasetIsPublic: false, catalogOwnerId: null });
 
     drizzleMock = createDrizzleMock();
 

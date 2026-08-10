@@ -78,7 +78,9 @@ const processCatalogValidation = async (
   const catalog = await safeFetchRecord(req, "catalogs", catalogId);
 
   if (!catalog) {
-    return { catalogIsPublic: false };
+    // Explicit null, not an omitted key: on a partial update Payload would drop the
+    // omitted field and the row would keep the previous owner's read access.
+    return { catalogCreatorId: null, catalogIsPublic: false };
   }
 
   const catalogCreatorId = getCatalogCreatorId(catalog);
