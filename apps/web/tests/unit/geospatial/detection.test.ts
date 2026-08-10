@@ -14,31 +14,18 @@ import { checkCommaFormat, checkGeoJsonFormat, checkSpaceFormat } from "../../..
 describe("Geospatial Format Detection", () => {
   describe("checkCommaFormat", () => {
     describe("valid detections", () => {
-      it("should detect comma-separated coordinates with spaces", () => {
-        const result = checkCommaFormat(["40.7128, -74.0060", "51.5074, -0.1278"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should detect comma-separated coordinates without spaces", () => {
-        const result = checkCommaFormat(["40.7128,-74.0060", "51.5074,-0.1278"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should detect integer coordinates", () => {
-        const result = checkCommaFormat(["40, -74", "51, -1"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should detect coordinates with multiple spaces after comma", () => {
-        const result = checkCommaFormat(["40.7128,  -74.0060", "51.5074,   -0.1278"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should handle number inputs by converting to string", () => {
-        // The function converts numbers to strings via String(s)
-        // A bare number like 40.7128 becomes "40.7128" which does not match the comma pattern
-        const result = checkCommaFormat([40.7128, 51.5074]);
-        expect(result).toBeNull();
+      // A detected format always reports { format: "combined_comma", confidence: 1.0 } here;
+      // null means the samples did not match. Bare numbers are stringified via String(s),
+      // so 40.7128 becomes "40.7128" — no comma, no match.
+      it.each([
+        ["comma-separated coordinates with spaces", ["40.7128, -74.0060", "51.5074, -0.1278"], true],
+        ["comma-separated coordinates without spaces", ["40.7128,-74.0060", "51.5074,-0.1278"], true],
+        ["integer coordinates", ["40, -74", "51, -1"], true],
+        ["coordinates with multiple spaces after comma", ["40.7128,  -74.0060", "51.5074,   -0.1278"], true],
+        ["number inputs (stringified, no comma)", [40.7128, 51.5074], false],
+      ])("%s", (_name, samples, detected) => {
+        const result = checkCommaFormat(samples);
+        expect(result).toEqual(detected ? { format: "combined_comma", confidence: 1.0 } : null);
       });
     });
 
@@ -87,88 +74,38 @@ describe("Geospatial Format Detection", () => {
       });
     });
 
-    describe("invalid inputs", () => {
-      it("should return null for empty array", () => {
-        // empty array: 0/0 = NaN, which is not >= 0.7
-        const result = checkCommaFormat([]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for non-coordinate strings", () => {
-        const result = checkCommaFormat(["hello, world", "foo, bar"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for space-separated coordinates", () => {
-        const result = checkCommaFormat(["40.7128 -74.0060", "51.5074 -0.1278"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for null and undefined values", () => {
-        const result = checkCommaFormat([null, undefined, null]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for boolean values", () => {
-        const result = checkCommaFormat([true, false, true]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for object values", () => {
-        const result = checkCommaFormat([{ lat: 40 }, { lat: 51 }]);
-        expect(result).toBeNull();
-      });
-    });
-
-    describe("edge cases", () => {
-      it("should reject coordinates out of valid range", () => {
-        const result = checkCommaFormat(["91.0, -74.0060", "100.0, -181.0"]);
-        expect(result).toBeNull();
-      });
-
-      it("should reject near-null-island coordinates", () => {
-        // isValidCoordinate rejects coordinates within ~0.01 of (0,0)
-        const result = checkCommaFormat(["0.001, 0.001", "0.005, 0.005"]);
-        expect(result).toBeNull();
-      });
-
-      it("should accept negative latitude and longitude", () => {
-        const result = checkCommaFormat(["-33.8688, -70.6693", "-22.9068, -43.1729"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should accept coordinates at boundary values", () => {
-        const result = checkCommaFormat(["90, 180", "-90, -180"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should handle a single valid sample", () => {
-        const result = checkCommaFormat(["40.7128, -74.0060"]);
-        expect(result).toEqual({ format: "combined_comma", confidence: 1.0 });
-      });
-
-      it("should reject when too many spaces after comma (more than 5)", () => {
-        // The regex allows \s{0,5} after the comma
-        const result = checkCommaFormat(["40.7128,      -74.0060"]);
-        expect(result).toBeNull();
+    describe("invalid inputs and edge cases", () => {
+      // Rejection reasons worth remembering: an empty array yields 0/0 = NaN (not >= 0.7);
+      // isValidCoordinate rejects coordinates within ~0.01 of (0,0) (null island);
+      // the regex allows at most \s{0,5} after the comma.
+      it.each([
+        ["empty array", [], false],
+        ["non-coordinate strings", ["hello, world", "foo, bar"], false],
+        ["space-separated coordinates", ["40.7128 -74.0060", "51.5074 -0.1278"], false],
+        ["null and undefined values", [null, undefined, null], false],
+        ["boolean values", [true, false, true], false],
+        ["object values", [{ lat: 40 }, { lat: 51 }], false],
+        ["coordinates out of valid range", ["91.0, -74.0060", "100.0, -181.0"], false],
+        ["near-null-island coordinates", ["0.001, 0.001", "0.005, 0.005"], false],
+        ["negative latitude and longitude", ["-33.8688, -70.6693", "-22.9068, -43.1729"], true],
+        ["coordinates at boundary values", ["90, 180", "-90, -180"], true],
+        ["a single valid sample", ["40.7128, -74.0060"], true],
+        ["too many spaces after comma (more than 5)", ["40.7128,      -74.0060"], false],
+      ])("%s", (_name, samples, detected) => {
+        const result = checkCommaFormat(samples);
+        expect(result).toEqual(detected ? { format: "combined_comma", confidence: 1.0 } : null);
       });
     });
   });
 
   describe("checkSpaceFormat", () => {
     describe("valid detections", () => {
-      it("should detect space-separated coordinates", () => {
-        const result = checkSpaceFormat(["40.7128 -74.0060", "51.5074 -0.1278"]);
-        expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
-      });
-
-      it("should detect integer coordinates with space separator", () => {
-        const result = checkSpaceFormat(["40 -74", "51 -1"]);
-        expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
-      });
-
-      it("should detect coordinates with multiple spaces", () => {
-        const result = checkSpaceFormat(["40.7128  -74.0060", "51.5074   -0.1278"]);
+      it.each([
+        ["space-separated coordinates", ["40.7128 -74.0060", "51.5074 -0.1278"]],
+        ["integer coordinates with space separator", ["40 -74", "51 -1"]],
+        ["coordinates with multiple spaces", ["40.7128  -74.0060", "51.5074   -0.1278"]],
+      ])("%s", (_name, samples) => {
+        const result = checkSpaceFormat(samples);
         expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
       });
     });
@@ -211,91 +148,51 @@ describe("Geospatial Format Detection", () => {
       });
     });
 
-    describe("invalid inputs", () => {
-      it("should return null for empty array", () => {
-        const result = checkSpaceFormat([]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for comma-separated coordinates", () => {
-        const result = checkSpaceFormat(["40.7128, -74.0060", "51.5074, -0.1278"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for plain text", () => {
-        const result = checkSpaceFormat(["hello world", "foo bar"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for null and undefined values", () => {
-        const result = checkSpaceFormat([null, undefined]);
-        expect(result).toBeNull();
-      });
-    });
-
-    describe("edge cases", () => {
-      it("should reject coordinates out of valid range", () => {
-        const result = checkSpaceFormat(["91.0 200.0", "100.0 -200.0"]);
-        expect(result).toBeNull();
-      });
-
-      it("should accept negative coordinates", () => {
-        const result = checkSpaceFormat(["-33.8688 151.2093", "-22.9068 -43.1729"]);
-        expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
-      });
-
-      it("should accept boundary values", () => {
-        const result = checkSpaceFormat(["90 180", "-90 -180"]);
-        expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
-      });
-
-      it("should handle a single valid sample", () => {
-        const result = checkSpaceFormat(["40.7128 -74.0060"]);
-        expect(result).toEqual({ format: "combined_space", confidence: 1.0 });
-      });
-
-      it("should reject when too many spaces (more than 5)", () => {
-        // The regex allows \s{1,5} between values
-        const result = checkSpaceFormat(["40.7128      -74.0060"]);
-        expect(result).toBeNull();
-      });
-
-      it("should handle number inputs", () => {
-        // A number like 40.7128 becomes "40.7128" which does not have a space
-        const result = checkSpaceFormat([40.7128, 51.5074]);
-        expect(result).toBeNull();
+    describe("invalid inputs and edge cases", () => {
+      // The regex allows \s{1,5} between values; bare numbers are stringified
+      // via String(s), so 40.7128 becomes "40.7128" — no space, no match.
+      it.each([
+        ["empty array", [], false],
+        ["comma-separated coordinates", ["40.7128, -74.0060", "51.5074, -0.1278"], false],
+        ["plain text", ["hello world", "foo bar"], false],
+        ["null and undefined values", [null, undefined], false],
+        ["coordinates out of valid range", ["91.0 200.0", "100.0 -200.0"], false],
+        ["negative coordinates", ["-33.8688 151.2093", "-22.9068 -43.1729"], true],
+        ["boundary values", ["90 180", "-90 -180"], true],
+        ["a single valid sample", ["40.7128 -74.0060"], true],
+        ["too many spaces (more than 5)", ["40.7128      -74.0060"], false],
+        ["number inputs (stringified, no space)", [40.7128, 51.5074], false],
+      ])("%s", (_name, samples, detected) => {
+        const result = checkSpaceFormat(samples);
+        expect(result).toEqual(detected ? { format: "combined_space", confidence: 1.0 } : null);
       });
     });
   });
 
   describe("checkGeoJsonFormat", () => {
     describe("valid detections", () => {
-      it("should detect GeoJSON Point strings", () => {
-        const result = checkGeoJsonFormat([
-          '{"type": "Point", "coordinates": [-74.0060, 40.7128]}',
-          '{"type": "Point", "coordinates": [-0.1278, 51.5074]}',
-        ]);
-        expect(result).toEqual({ format: "geojson", confidence: 1.0 });
-      });
-
-      it("should detect GeoJSON Point objects (pre-parsed)", () => {
-        const result = checkGeoJsonFormat([
-          { type: "Point", coordinates: [-74.006, 40.7128] },
-          { type: "Point", coordinates: [-0.1278, 51.5074] },
-        ]);
-        expect(result).toEqual({ format: "geojson", confidence: 1.0 });
-      });
-
-      it("should detect mixed strings and objects", () => {
-        const result = checkGeoJsonFormat([
-          '{"type": "Point", "coordinates": [-74.0060, 40.7128]}',
-          { type: "Point", coordinates: [-0.1278, 51.5074] },
-        ]);
-        expect(result).toEqual({ format: "geojson", confidence: 1.0 });
-      });
-
-      it("should handle GeoJSON with extra properties", () => {
-        const result = checkGeoJsonFormat([{ type: "Point", coordinates: [-74.006, 40.7128], crs: "EPSG:4326" }]);
+      it.each([
+        [
+          "GeoJSON Point strings",
+          [
+            '{"type": "Point", "coordinates": [-74.0060, 40.7128]}',
+            '{"type": "Point", "coordinates": [-0.1278, 51.5074]}',
+          ],
+        ],
+        [
+          "GeoJSON Point objects (pre-parsed)",
+          [
+            { type: "Point", coordinates: [-74.006, 40.7128] },
+            { type: "Point", coordinates: [-0.1278, 51.5074] },
+          ],
+        ],
+        [
+          "mixed strings and objects",
+          ['{"type": "Point", "coordinates": [-74.0060, 40.7128]}', { type: "Point", coordinates: [-0.1278, 51.5074] }],
+        ],
+        ["GeoJSON with extra properties", [{ type: "Point", coordinates: [-74.006, 40.7128], crs: "EPSG:4326" }]],
+      ])("%s", (_name, samples) => {
+        const result = checkGeoJsonFormat(samples);
         expect(result).toEqual({ format: "geojson", confidence: 1.0 });
       });
     });
@@ -328,98 +225,81 @@ describe("Geospatial Format Detection", () => {
     });
 
     describe("invalid inputs", () => {
-      it("should return null for empty array", () => {
-        const result = checkGeoJsonFormat([]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for plain strings", () => {
-        const result = checkGeoJsonFormat(["hello", "world"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for invalid JSON strings", () => {
-        const result = checkGeoJsonFormat(["{not valid json}", "{{bad}}"]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for non-Point GeoJSON types", () => {
-        const result = checkGeoJsonFormat([
-          {
-            type: "LineString",
-            coordinates: [
-              [-74, 40],
-              [-73, 41],
-            ],
-          },
-          {
-            type: "Polygon",
-            coordinates: [
-              [
+      it.each([
+        ["empty array", []],
+        ["plain strings", ["hello", "world"]],
+        ["invalid JSON strings", ["{not valid json}", "{{bad}}"]],
+        [
+          "non-Point GeoJSON types",
+          [
+            {
+              type: "LineString",
+              coordinates: [
                 [-74, 40],
                 [-73, 41],
-                [-72, 40],
-                [-74, 40],
               ],
-            ],
-          },
-        ]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for GeoJSON Point with missing coordinates", () => {
-        const result = checkGeoJsonFormat([{ type: "Point" }, { type: "Point" }]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for GeoJSON Point with empty coordinates", () => {
-        const result = checkGeoJsonFormat([
-          { type: "Point", coordinates: [] },
-          { type: "Point", coordinates: [] },
-        ]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for GeoJSON Point with only one coordinate", () => {
-        const result = checkGeoJsonFormat([
-          { type: "Point", coordinates: [-74.006] },
-          { type: "Point", coordinates: [40.7128] },
-        ]);
-        expect(result).toBeNull();
-      });
-
-      it("should return null for null and undefined values", () => {
-        const result = checkGeoJsonFormat([null, undefined]);
-        expect(result).toBeNull();
+            },
+            {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [-74, 40],
+                  [-73, 41],
+                  [-72, 40],
+                  [-74, 40],
+                ],
+              ],
+            },
+          ],
+        ],
+        ["GeoJSON Point with missing coordinates", [{ type: "Point" }, { type: "Point" }]],
+        [
+          "GeoJSON Point with empty coordinates",
+          [
+            { type: "Point", coordinates: [] },
+            { type: "Point", coordinates: [] },
+          ],
+        ],
+        [
+          "GeoJSON Point with only one coordinate",
+          [
+            { type: "Point", coordinates: [-74.006] },
+            { type: "Point", coordinates: [40.7128] },
+          ],
+        ],
+        ["null and undefined values", [null, undefined]],
+      ])("returns null for %s", (_name, samples) => {
+        expect(checkGeoJsonFormat(samples)).toBeNull();
       });
     });
 
     describe("edge cases", () => {
-      it("should reject GeoJSON with out-of-range coordinates", () => {
-        const result = checkGeoJsonFormat([
-          { type: "Point", coordinates: [200, 100] },
-          { type: "Point", coordinates: [-200, -100] },
-        ]);
-        expect(result).toBeNull();
-      });
-
-      it("should reject GeoJSON with near-null-island coordinates", () => {
-        const result = checkGeoJsonFormat([
-          { type: "Point", coordinates: [0.001, 0.001] },
-          { type: "Point", coordinates: [0.005, 0.005] },
-        ]);
-        expect(result).toBeNull();
-      });
-
-      it("should use GeoJSON coordinate order (lon, lat)", () => {
-        // GeoJSON uses [longitude, latitude]
-        const result = checkGeoJsonFormat([{ type: "Point", coordinates: [-74.006, 40.7128] }]);
-        expect(result).toEqual({ format: "geojson", confidence: 1.0 });
-      });
-
-      it("should handle a single valid GeoJSON sample", () => {
-        const result = checkGeoJsonFormat([{ type: "Point", coordinates: [-74.006, 40.7128] }]);
-        expect(result).toEqual({ format: "geojson", confidence: 1.0 });
+      // GeoJSON coordinate order is [longitude, latitude].
+      it.each([
+        [
+          "rejects out-of-range coordinates",
+          [
+            { type: "Point", coordinates: [200, 100] },
+            { type: "Point", coordinates: [-200, -100] },
+          ],
+          false,
+        ],
+        [
+          "rejects near-null-island coordinates",
+          [
+            { type: "Point", coordinates: [0.001, 0.001] },
+            { type: "Point", coordinates: [0.005, 0.005] },
+          ],
+          false,
+        ],
+        [
+          "accepts a single valid sample in (lon, lat) order",
+          [{ type: "Point", coordinates: [-74.006, 40.7128] }],
+          true,
+        ],
+      ])("%s", (_name, samples, detected) => {
+        const result = checkGeoJsonFormat(samples);
+        expect(result).toEqual(detected ? { format: "geojson", confidence: 1.0 } : null);
       });
 
       it("should accept GeoJSON with extra coordinates (3D)", () => {
