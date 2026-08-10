@@ -8,10 +8,10 @@
  * @module
  * @category Services
  */
-import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { fetchDatasetEventCounts } from "@/lib/database/filtered-events-query";
 import type { DatasetSchema } from "@/payload-types";
 
 export type StalenessReason = "added" | "deleted" | "no_schema";
@@ -49,21 +49,8 @@ const countEventsFor = async (payload: Payload, datasetId: number, req?: Payload
  * `datasetIds` scopes the aggregate. A targeted run over one dataset must not degrade an
  * indexable count into a GROUP BY over the whole events table.
  */
-export const countEventsByDataset = async (payload: Payload, datasetIds: number[]): Promise<Map<number, number>> => {
-  if (datasetIds.length === 0) return new Map();
-
-  const result = (await payload.db.drizzle.execute(
-    sql`SELECT dataset_id, COUNT(*)::bigint AS total
-        FROM payload.events
-        WHERE dataset_id IN (${sql.join(
-          datasetIds.map((id) => sql`${id}`),
-          sql`, `
-        )})
-        GROUP BY dataset_id`
-  )) as { rows: Array<{ dataset_id: number | string; total: number | string }> };
-
-  return new Map(result.rows.map((row) => [Number(row.dataset_id), Number(row.total)]));
-};
+export const countEventsByDataset = (payload: Payload, datasetIds: number[]): Promise<Map<number, number>> =>
+  fetchDatasetEventCounts(payload, datasetIds);
 
 /**
  * Check if a dataset's schema is stale by querying the actual event count.

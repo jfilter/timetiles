@@ -13,6 +13,9 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+// eslint-disable-next-line boundaries/dependencies -- dev-only script sharing the root tooling's diagnostic parser; no runtime coupling
+import { parseTscOutput } from "../../../scripts/shared/typecheck-utils";
+
 interface LintMessage {
   ruleId: string | null;
   severity: number;
@@ -223,45 +226,8 @@ const runTypeCheck = (): CheckResults["typecheck"] => {
     // Parse TypeScript output
     const errorWithOutput = error as { stdout?: Buffer | string; stderr?: Buffer | string };
     const output = errorWithOutput.stdout?.toString() ?? "";
-    const lines = output.split("\n");
-
-    // Enhanced pattern to catch both errors and warnings
-    // eslint-disable-next-line sonarjs/slow-regex, sonarjs/super-linear-regex, regexp/no-super-linear-backtracking
-    const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
-    let currentError: TypeScriptError | null = null;
-    let warningCount = 0;
-
-    lines.forEach((line) => {
-      const match = diagnosticPattern.exec(line);
-      if (match?.[1] && match[2] && match[3] && match[4] && match[5] && match[6]) {
-        // Save previous error if exists
-        if (currentError) {
-          errors.push(currentError);
-        }
-
-        const severity = match[4] as "error" | "warning";
-        if (severity === "warning") {
-          warningCount++;
-        }
-
-        currentError = {
-          file: match[1],
-          line: Number.parseInt(match[2], 10),
-          column: Number.parseInt(match[3], 10),
-          code: match[5],
-          message: match[6],
-          severity,
-        };
-      } else if (currentError && line.trim() && !/^\s*$/.test(line)) {
-        // Continuation of multi-line message
-        currentError.message += "\n" + line;
-      }
-    });
-
-    // Don't forget the last error
-    if (currentError) {
-      errors.push(currentError);
-    }
+    errors.push(...parseTscOutput(output, "raw"));
+    const warningCount = errors.filter((e) => e.severity === "warning").length;
 
     // Save all errors to JSON file
     const results = {

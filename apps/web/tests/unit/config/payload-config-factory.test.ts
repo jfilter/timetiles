@@ -23,7 +23,10 @@ vi.mock("nodemailer", () => ({
   default: { createTestAccount: createTestAccountMock, createTransport: createTransportMock },
 }));
 
-vi.mock("@payloadcms/db-postgres", () => ({ postgresAdapter: postgresAdapterMock }));
+vi.mock("@payloadcms/db-postgres", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  postgresAdapter: postgresAdapterMock,
+}));
 
 vi.mock("@payloadcms/email-nodemailer", () => ({ nodemailerAdapter: nodemailerAdapterMock }));
 

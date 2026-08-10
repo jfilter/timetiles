@@ -8,6 +8,7 @@
  * @module
  * @category Services
  */
+import { isPlainOutputFilename } from "@timetiles/shared";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
@@ -54,12 +55,9 @@ const scraperEntrySchema = z.object({
   output: z
     .string()
     .min(1)
-    // Mirror the runner's rule exactly (timescrape rejects anything else with
-    // an opaque 400 at RUN time): a plain filename, no separators, no dotfile.
-    .refine(
-      (v) => !v.includes("..") && !v.includes("/") && !v.startsWith("."),
-      "Output must be a plain filename without path separators"
-    )
+    // Same predicate the runner enforces at RUN time (shared package), so a
+    // manifest accepted here can never fail there with an opaque 400.
+    .refine(isPlainOutputFilename, "Output must be a plain filename without path separators")
     .optional(),
   schedule: z
     .string()

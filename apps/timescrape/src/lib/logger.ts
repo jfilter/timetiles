@@ -30,7 +30,8 @@ const createLogger = (): pino.Logger => {
 
 export const logger = createLogger();
 
-export const logError = (message: string, error: unknown, context?: Record<string, unknown>): void => {
+// Error-first argument order, matching apps/web's logError.
+export const logError = (error: unknown, message: string, context?: Record<string, unknown>): void => {
   const errorInfo =
     error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
   logger.error({ error: errorInfo, ...context }, message);

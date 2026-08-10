@@ -21,6 +21,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/collections/shared-fields", () => ({
   isPrivileged: mocks.isPrivileged,
   isEditorOrAdmin: mocks.isEditorOrAdmin,
+  // Mirrors the real wrapper: pending-deletion accounts are denied before the inner check runs
+  denyPendingDeletion:
+    (inner: (args: unknown) => unknown) =>
+    (args: { req: { user: { deletionStatus?: string } | null } }): unknown =>
+      args.req.user?.deletionStatus === "pending_deletion" ? false : inner(args),
 }));
 
 vi.mock("@/lib/services/feature-flag-service", () => ({
@@ -133,6 +138,15 @@ describe.sequential("ingestJobsAccess", () => {
     it("should deny when feature is disabled", async () => {
       mocks.mockIsEnabled.mockResolvedValue(false);
       const req = { user: { id: 1, role: "user" }, payload: {} };
+
+      const result = await ingestJobsAccess.create({ req } as any);
+
+      expect(result).toBe(false);
+    });
+
+    it("should deny a pending-deletion account even when the feature is enabled", async () => {
+      mocks.mockIsEnabled.mockResolvedValue(true);
+      const req = { user: { id: 1, role: "user", deletionStatus: "pending_deletion" }, payload: {} };
 
       const result = await ingestJobsAccess.create({ req } as any);
 

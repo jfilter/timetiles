@@ -16,6 +16,7 @@ import { randomBytes } from "node:crypto";
 
 import type { PayloadRequest } from "payload";
 
+import { getByPath } from "@/lib/utils/object-path";
 import type { Config } from "@/payload-types";
 
 /**
@@ -136,10 +137,9 @@ export const createSlugHook =
 
 // Helper functions to reduce cognitive complexity
 const getSourceValue = (data: Record<string, unknown> | undefined, sourceField: string | undefined): unknown => {
-  const getNested = createNestedValueGetter();
   let sourceValue = data?.name;
   if (sourceField != null && sourceField !== "" && data != null) {
-    sourceValue = getNested(data, sourceField);
+    sourceValue = getByPath(data, sourceField);
   }
   return sourceValue;
 };
@@ -200,15 +200,3 @@ const validateAndUpdateSlug = async (
     return value + "-" + Date.now();
   }
 };
-
-const createNestedValueGetter =
-  (): ((obj: Record<string, unknown>, path: string) => unknown) =>
-  (obj: Record<string, unknown>, path: string): unknown => {
-    return path
-      .split(".")
-      .reduce(
-        (o: unknown, k) =>
-          o != null && typeof o === "object" && k in o ? (o as Record<string, unknown>)[k] : undefined,
-        obj
-      );
-  };

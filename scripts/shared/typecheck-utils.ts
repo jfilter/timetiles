@@ -21,9 +21,11 @@ export interface TypeScriptError {
 
 /**
  * Parse tsc/tsgo output into structured TypeScript errors.
- * Handles multi-line error messages by joining continuation lines.
+ * Handles multi-line error messages by joining continuation lines:
+ * "space" collapses them into one trimmed line, "raw" keeps the original
+ * newlines and indentation (used by check-summary's detailed report).
  */
-export const parseTscOutput = (output: string): TypeScriptError[] => {
+export const parseTscOutput = (output: string, continuation: "space" | "raw" = "space"): TypeScriptError[] => {
   const lines = output.split("\n");
   // eslint-disable-next-line sonarjs/slow-regex, regexp/no-super-linear-backtracking
   const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
@@ -47,7 +49,7 @@ export const parseTscOutput = (output: string): TypeScriptError[] => {
         severity,
       };
     } else if (currentError && line.trim() && !/^\s*$/.test(line)) {
-      currentError.message += " " + line.trim();
+      currentError.message += continuation === "raw" ? "\n" + line : " " + line.trim();
     }
   });
 

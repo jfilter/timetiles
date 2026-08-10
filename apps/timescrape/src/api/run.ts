@@ -13,6 +13,7 @@ import { rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 
+import { isPlainOutputFilename, isSafeRelativeEntrypoint } from "@timetiles/shared";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -25,17 +26,11 @@ import { executeRun, getActiveRunCount, getMetrics, isRunActive, stopRun } from 
 const runRequestSchema = z.object({
   run_id: z.uuid(),
   runtime: z.enum(["python", "node"]),
-  entrypoint: z
-    .string()
-    .min(1)
-    .refine((v) => !v.includes("..") && !v.startsWith("/"), "Invalid entrypoint path"),
+  entrypoint: z.string().min(1).refine(isSafeRelativeEntrypoint, "Invalid entrypoint path"),
   output_file: z
     .string()
     .min(1)
-    .refine(
-      (v) => !v.includes("..") && !v.includes("/") && !v.startsWith("."),
-      "output_file must be a plain filename without path separators"
-    )
+    .refine(isPlainOutputFilename, "output_file must be a plain filename without path separators")
     .optional(),
   code_url: z
     .url()
@@ -80,7 +75,7 @@ runRoutes.post("/run", async (c) => {
     if (error instanceof RunnerError) {
       return c.json({ error: error.message, code: error.code }, error.statusCode as ContentfulStatusCode);
     }
-    logError("Unexpected error in /run", error);
+    logError(error, "Unexpected error in /run");
     return c.json({ error: "Internal server error" }, 500);
   }
 });

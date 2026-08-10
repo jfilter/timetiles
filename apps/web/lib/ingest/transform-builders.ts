@@ -124,7 +124,12 @@ const TRANSFORM_BUILDERS: Record<string, (t: DatasetTransformEntry, base: Transf
   extract: buildExtractTransform,
 };
 
-const getTransformOutputPaths = (transform: IngestTransform): string[] => {
+/**
+ * Field paths a transform writes to. Exhaustive over the transform union so a
+ * new transform type fails compilation here instead of silently diverging from
+ * consumers (create-events batch overwrite detection reuses this).
+ */
+export const getTransformOutputPaths = (transform: IngestTransform): string[] => {
   switch (transform.type) {
     case "rename":
       return [transform.to];
