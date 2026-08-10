@@ -13,28 +13,10 @@
 "use client";
 
 import { cellToParent, getResolution, isValidCell } from "h3-js";
-import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ClusterFeature } from "./clustered-map";
-
-const TRANSITION_DURATION = 500;
-
-interface Pos {
-  lng: number;
-  lat: number;
-}
-
-/** Build a map of cluster_id → position from features */
-const posMap = (features: ClusterFeature[]): Map<string, Pos> => {
-  const m = new Map<string, Pos>();
-  for (const f of features) {
-    const id = String(f.id ?? "");
-    if (id && f.geometry?.coordinates) {
-      m.set(id, { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
-    }
-  }
-  return m;
-};
+import type { FeaturePosition } from "./use-transition-animation";
+import { useTransitionAnimation } from "./use-transition-animation";
 
 /** Check if an ID is an H3 cell (hex string starting with 8) */
 const isH3Id = (id: string): boolean => {
@@ -51,7 +33,11 @@ const isH3Id = (id: string): boolean => {
  * Try to find an ancestor (parent or grandparent) of newId in the old positions map.
  * Returns the ancestor position if found, otherwise undefined.
  */
-const findAncestorPosition = (newId: string, newRes: number, oldPositions: Map<string, Pos>): Pos | undefined => {
+const findAncestorPosition = (
+  newId: string,
+  newRes: number,
+  oldPositions: Map<string, FeaturePosition>
+): FeaturePosition | undefined => {
   if (newRes <= 0) return undefined;
   try {
     const parent = cellToParent(newId, newRes - 1);
@@ -73,7 +59,11 @@ const findAncestorPosition = (newId: string, newRes: number, oldPositions: Map<s
  * Find old cells that are children of newId and compute their centroid position.
  * Returns the centroid position if any children found, otherwise undefined.
  */
-const findChildrenCentroid = (newId: string, newRes: number, oldPositions: Map<string, Pos>): Pos | undefined => {
+const findChildrenCentroid = (
+  newId: string,
+  newRes: number,
+  oldPositions: Map<string, FeaturePosition>
+): FeaturePosition | undefined => {
   let sumLng = 0;
   let sumLat = 0;
   let count = 0;
@@ -99,8 +89,11 @@ const findChildrenCentroid = (newId: string, newRes: number, oldPositions: Map<s
  * Zoom in: old cell at res N → find new cells at res N+1 that are children
  * Zoom out: old cells at res N → find new cell at res N-1 that is parent
  */
-const matchH3Clusters = (oldPositions: Map<string, Pos>, newPositions: Map<string, Pos>): Map<string, Pos> => {
-  const origins = new Map<string, Pos>();
+const matchH3Clusters = (
+  oldPositions: Map<string, FeaturePosition>,
+  newPositions: Map<string, FeaturePosition>
+): Map<string, FeaturePosition> => {
+  const origins = new Map<string, FeaturePosition>();
 
   for (const [newId] of newPositions) {
     // Direct match (same cell, just panned)
@@ -131,87 +124,11 @@ const matchH3Clusters = (oldPositions: Map<string, Pos>, newPositions: Map<strin
   return origins;
 };
 
-const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3;
-
-/** Interpolate features: position + scale (for size animation) */
-const interpolate = (features: ClusterFeature[], origins: Map<string, Pos>, progress: number): ClusterFeature[] => {
-  if (progress >= 1 || origins.size === 0) return features;
-  const eased = easeOutCubic(progress);
-
-  return features.map((f) => {
-    const id = String(f.id ?? "");
-    const origin = origins.get(id);
-    if (!origin) return f;
-
-    const [tLng, tLat] = f.geometry.coordinates;
-    const lng = origin.lng + (tLng - origin.lng) * eased;
-    const lat = origin.lat + (tLat - origin.lat) * eased;
-
-    return {
-      ...f,
-      geometry: { ...f.geometry, coordinates: [lng, lat] as [number, number] },
-      properties: {
-        ...f.properties,
-        // Scale from 0 to 1 during transition (MapLibre can use this)
-        transitionScale: eased,
-      },
-    };
-  });
-};
-
 /**
  * H3-specific cluster transition hook.
  *
  * Uses exact H3 parent-child relationships for smooth zoom animations.
  * Children expand from parent position on zoom-in, converge on zoom-out.
  */
-export const useH3Transition = (clusters: ClusterFeature[]): ClusterFeature[] => {
-  const [animated, setAnimated] = useState<ClusterFeature[]>(clusters);
-  const prevRef = useRef<ClusterFeature[]>([]);
-  const animRef = useRef<number | null>(null);
-
-  const doAnimate = useCallback((start: number, target: ClusterFeature[], origins: Map<string, Pos>) => {
-    const elapsed = performance.now() - start;
-    const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
-    setAnimated(interpolate(target, origins, progress));
-
-    if (progress < 1) {
-      animRef.current = requestAnimationFrame(() => doAnimate(start, target, origins));
-    } else {
-      animRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (animRef.current != null) {
-      cancelAnimationFrame(animRef.current);
-      animRef.current = null;
-    }
-
-    const prev = prevRef.current;
-    prevRef.current = clusters;
-
-    if (prev.length === 0 || clusters.length === 0) {
-      setAnimated(clusters);
-      return;
-    }
-
-    const oldPos = posMap(prev);
-    const newPos = posMap(clusters);
-    const origins = matchH3Clusters(oldPos, newPos);
-
-    if (origins.size === 0) {
-      setAnimated(clusters);
-      return;
-    }
-
-    const start = performance.now();
-    animRef.current = requestAnimationFrame(() => doAnimate(start, clusters, origins));
-
-    return () => {
-      if (animRef.current != null) cancelAnimationFrame(animRef.current);
-    };
-  }, [clusters, doAnimate]);
-
-  return animated;
-};
+export const useH3Transition = (clusters: ClusterFeature[]): ClusterFeature[] =>
+  useTransitionAnimation(clusters, matchH3Clusters, { withTransitionScale: true });

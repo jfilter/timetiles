@@ -5,7 +5,7 @@
  */
 import type { Access } from "payload";
 
-import { denyPendingDeletion, isEditorOrAdmin, isPrivileged } from "../shared-fields";
+import { createFeatureFlaggedCreateAccess, isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const ingestJobsAccess = {
   // Import jobs can be read by the import file owner, editors, or admins
@@ -22,14 +22,7 @@ export const ingestJobsAccess = {
   }) as Access,
 
   // Only authenticated users can create import jobs (denied for pending-deletion accounts, feature flag must be enabled)
-  create: denyPendingDeletion(async ({ req: { user, payload } }) => {
-    if (!user) return false;
-
-    // Check feature flag - even admins can't create if disabled
-    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
-    // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
-    return await getFeatureFlagService(payload).isEnabled("enableImportCreation");
-  }),
+  create: createFeatureFlaggedCreateAccess("enableImportCreation"),
 
   // Only editors and admins can update via the generic REST API.
   //

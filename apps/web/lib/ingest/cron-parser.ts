@@ -13,6 +13,7 @@
  * @category Utilities
  */
 
+import { parseDigits } from "@/lib/utils/number-parsing";
 import { createTimezoneFormatter, getDatePartsWithFormatter } from "@/lib/utils/timezone";
 
 export interface CronParts {
@@ -159,11 +160,6 @@ const getOrdinalSuffix = (n: number): string => {
   return s[(v - 20) % 10] ?? s[v] ?? s[0] ?? "th";
 };
 
-const strictParseInt = (value: string): number | null => {
-  if (!/^\d+$/.test(value)) return null;
-  return Number.parseInt(value, 10);
-};
-
 /**
  * Test if a cron field matches a specific value.
  * Supports wildcards (*), steps (asterisk/N and A-B/N), ranges (A-B), and lists (A,B,C).
@@ -177,21 +173,21 @@ export const matchesCronField = (field: string, value: number, fieldMin = 0): bo
 
   return field.split(",").some((part) => {
     if (part.startsWith("*/")) {
-      const step = strictParseInt(part.slice(2));
+      const step = parseDigits(part.slice(2));
       return step != null && step > 0 && (value - fieldMin) % step === 0;
     }
     if (part.includes("-")) {
       const [rangeRaw, stepRaw] = part.split("/");
       const [startRaw, endRaw] = (rangeRaw ?? "").split("-");
-      const start = strictParseInt(startRaw ?? "");
-      const end = strictParseInt(endRaw ?? "");
+      const start = parseDigits(startRaw ?? "");
+      const end = parseDigits(endRaw ?? "");
       if (start == null || end == null) return false;
-      const step = stepRaw === undefined ? 1 : strictParseInt(stepRaw);
+      const step = stepRaw === undefined ? 1 : parseDigits(stepRaw);
       if (step == null || step <= 0) return false;
       // Ranges with steps count from the range start: 1-30/2 → 1,3,…,29.
       return value >= start && value <= end && (value - start) % step === 0;
     }
-    const parsed = strictParseInt(part);
+    const parsed = parseDigits(part);
     return parsed != null && parsed === value;
   });
 };

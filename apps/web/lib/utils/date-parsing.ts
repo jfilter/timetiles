@@ -10,6 +10,8 @@
  * @category Utils
  */
 
+import { parseDigits } from "./number-parsing";
+
 export type ImportDateInput = string | number | Date | null | undefined;
 
 type DatePart = "D" | "M" | "Y";
@@ -99,11 +101,7 @@ const isBareYearString = (value: string): boolean => value.length === 4 && conta
 
 const isNumericString = (value: string): boolean => value !== "" && Number.isFinite(Number(value));
 
-const parseUnsignedInteger = (value: string): number | null => {
-  const trimmed = value.trim();
-  if (!containsOnlyDigits(trimmed)) return null;
-  return Number.parseInt(trimmed, 10);
-};
+const parseUnsignedInteger = (value: string): number | null => parseDigits(value.trim());
 
 const createUtcDate = (year: number, month: number, day: number): Date | null => {
   if (year < 1000 || year > 9999 || !isValidCalendarDate(year, month, day)) {

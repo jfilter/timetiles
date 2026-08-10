@@ -18,14 +18,13 @@ import type { Payload } from "payload";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { failIngestJob } from "@/lib/jobs/utils/resource-loading";
 import { logError, logger } from "@/lib/logger";
-import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScheduledIngestFailure, resolveScheduledIngestStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
+import { cancelOrphanedWorkflowJobs, hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScheduledIngestsJobInput {
   /** Hours after which a running import is considered stuck (default: 4).
@@ -34,63 +33,6 @@ export interface CleanupStuckScheduledIngestsJobInput {
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
 }
-
-/**
- * Resets a stuck import to failed status.
- */
-/**
- * Cancel orphaned workflow jobs for a scheduled ingest.
- *
- * When a workflow gets stuck (e.g., server restart mid-processing), the
- * payload-job record stays pending indefinitely. This blocks concurrency
- * slots and prevents future imports from running. Mark them as completed
- * with an error so the concurrency key is released.
- *
- * Errors deliberately propagate (mirrors cleanup-stuck-scrapers-job.ts): swallowing them
- * and returning 0 made a transient database error permanent — the schedule had already
- * been flipped out of `running` below, and the reaper only ever looks at
- * `lastStatus = "running"`, so the orphaned job would keep its concurrency key forever
- * with nothing left to revisit it.
- */
-const cancelOrphanedWorkflowJobs = async (
-  payload: Payload,
-  scheduledIngestId: number | string,
-  currentTime: Date,
-  thresholdHours: number
-): Promise<number> => {
-  const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
-
-  const orphanedJobs = await asSystem(payload).find({
-    collection: "payload-jobs" as const,
-    where: {
-      and: [
-        // Both id representations — see the same fix in
-        // cleanup-stuck-scrapers-job.ts. Job input is jsonb, so a string
-        // `equals` never matches a numerically-enqueued id.
-        buildResourceIdMatch("input.scheduledIngestId", scheduledIngestId),
-        { processing: { equals: false } },
-        { completedAt: { exists: false } },
-        { createdAt: { less_than: orphanedJobCutoff } },
-      ],
-    },
-    // 0 lifts the limit; a fixed number would strand everything past it, since the
-    // schedule leaves `running` on the same pass (`pagination: false` does not lift an
-    // explicit limit).
-    limit: 0,
-    pagination: false,
-  });
-
-  let cancelled = 0;
-  for (const job of orphanedJobs.docs) {
-    await asSystem(payload).update({
-      collection: "payload-jobs" as const,
-      id: job.id,
-      data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
-    });
-    cancelled++;
-  }
-  return cancelled;
-};
 
 /**
  * Fail the run's downstream ingest state left over by an abandoned scheduled-ingest run.
@@ -163,7 +105,13 @@ const resetStuckImport = async (
     let cancelledJobs = 0;
     let failedFiles = 0;
     try {
-      cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id, currentTime, thresholdHours);
+      cancelledJobs = await cancelOrphanedWorkflowJobs(
+        payload,
+        "input.scheduledIngestId",
+        scheduledIngest.id,
+        currentTime,
+        thresholdHours
+      );
       failedFiles = await failStuckIngestFile(payload, scheduledIngest.id);
     } catch (error) {
       if (!mayForce) throw error;
