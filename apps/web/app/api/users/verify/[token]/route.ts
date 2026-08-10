@@ -23,6 +23,7 @@ interface UserWithVerificationToken {
 
 export const POST = apiRoute({
   auth: "none",
+  rateLimit: { configName: "VERIFY_EMAIL" },
   params: z.object({ token: z.string().min(1) }),
   handler: async ({ payload, params }) => {
     const { token } = params;

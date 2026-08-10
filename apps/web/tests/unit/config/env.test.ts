@@ -157,6 +157,27 @@ describe.sequential("getEnv", () => {
       }
     });
 
+    it("refuses the relaxed schema in production even with SKIP_DB_CHECK=true", () => {
+      const saved = { ...process.env };
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("SKIP_DB_CHECK", "true");
+      delete process.env.DATABASE_URL;
+      delete process.env.PAYLOAD_SECRET;
+      resetEnv();
+
+      try {
+        // The relaxed schema would default PAYLOAD_SECRET to a constant published
+        // in this repo — it signs sessions and derives the credential key.
+        expect(() => getEnv()).toThrow();
+      } finally {
+        for (const key of Object.keys(process.env)) {
+          if (!(key in saved)) delete process.env[key];
+        }
+        Object.assign(process.env, saved);
+        resetEnv();
+      }
+    });
+
     it("uses relaxed schema when SKIP_DB_CHECK=true", () => {
       const saved = { ...process.env };
       vi.stubEnv("SKIP_DB_CHECK", "true");

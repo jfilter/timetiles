@@ -232,6 +232,49 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(entry?.value).toEqual(largeData);
     });
 
+    it("should round-trip a large binary body byte-identically", async () => {
+      const body = Buffer.alloc(3 * 1024 * 1024);
+      for (let i = 0; i < body.length; i++) {
+        body[i] = i % 256;
+      }
+
+      const binaryStorage = new FileSystemCacheStorage({
+        cacheDir: path.join(tempDir, "binary"),
+        maxSize: 64 * 1024 * 1024,
+      });
+
+      await binaryStorage.set("binary-key", { data: body, status: 200 });
+      const entry = await binaryStorage.get<{ data: Buffer; status: number }>("binary-key");
+
+      expect(entry?.value.status).toBe(200);
+      expect(Buffer.isBuffer(entry?.value.data)).toBe(true);
+      expect(entry?.value.data.equals(body)).toBe(true);
+
+      // The payload must be stored as bytes, not as a JSON byte array
+      // (~11 chars per source byte, which throws past ~48MB).
+      const keyHash = (await import("node:crypto")).createHash("sha256").update("binary-key").digest("hex");
+      const cacheFile = path.join(tempDir, "binary", keyHash.substring(0, 2), `${keyHash}.cache`);
+      const fileSize = (await fs.stat(cacheFile)).size;
+      expect(fileSize).toBeLessThan(body.length * 2);
+
+      binaryStorage.destroy();
+    });
+
+    it("should not rewrite the payload file on a cache hit", async () => {
+      const key = "no-rewrite-key";
+      await storage.set(key, { data: Buffer.from("hello world") });
+
+      const keyHash = (await import("node:crypto")).createHash("sha256").update(key).digest("hex");
+      const cacheFile = path.join(tempDir, keyHash.substring(0, 2), `${keyHash}.cache`);
+      const before = await fs.stat(cacheFile);
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await storage.get(key);
+
+      const after = await fs.stat(cacheFile);
+      expect(after.mtimeMs).toBe(before.mtimeMs);
+    });
+
     it("should handle special characters in keys", async () => {
       const specialKeys = [
         "key-with-spaces and stuff",

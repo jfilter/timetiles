@@ -90,12 +90,17 @@ db-logs:
 # Vitest databases are created on-demand when tests run
 db-reset-tests:
 	@echo "🧹 Dropping all test databases (timetiles_test_*)..."
-	@docker exec timetiles-postgres psql -U timetiles_user -d postgres -t -c \
-		"SELECT datname FROM pg_database WHERE datname LIKE 'timetiles_test_%'" | \
+	@if [ "$(PG_MODE)" = "local" ]; then \
+		PSQL="psql -p $(PG_PORT) -U timetiles_user -d postgres"; \
+	else \
+		PSQL="docker exec timetiles-postgres psql -U timetiles_user -d postgres"; \
+	fi; \
+	set -o pipefail; \
+	$$PSQL -t -c "SELECT datname FROM pg_database WHERE datname LIKE 'timetiles_test_%'" | \
 		while read db; do \
 			if [ -n "$$db" ]; then \
 				echo "  Dropping $$db..."; \
-				docker exec timetiles-postgres psql -U timetiles_user -d postgres -c "DROP DATABASE \"$$db\"" 2>/dev/null || true; \
+				$$PSQL -c "DROP DATABASE \"$$db\"" 2>/dev/null || true; \
 			fi; \
 		done
 	@echo "🔄 Recreating E2E test database..."

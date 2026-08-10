@@ -78,6 +78,33 @@ const decryptAfterRead: FieldHook = ({ value }) => {
 
 const credentialHooks = { beforeChange: [encryptBeforeChange], afterRead: [decryptAfterRead] };
 
+/** Map a JSON object's string values through `transform`, leaving other shapes untouched. */
+const mapJsonValues = (value: unknown, transform: (input: string) => string): unknown => {
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
+      key,
+      typeof entry === "string" ? transform(entry) : entry,
+    ])
+  );
+};
+
+/**
+ * Same at-rest protection as {@link credentialHooks}, for the JSON `customHeaders`
+ * map: header VALUES are encrypted individually, names stay readable so the admin
+ * UI and the header allowlist keep working.
+ */
+const jsonCredentialHooks = {
+  beforeChange: [
+    ({ value }: Parameters<FieldHook>[0]) =>
+      mapJsonValues(value, (entry) => (isEncrypted(entry) ? entry : encryptField(entry, getSecret()))),
+  ],
+  afterRead: [
+    ({ value }: Parameters<FieldHook>[0]) =>
+      mapJsonValues(value, (entry) => (isEncrypted(entry) ? decryptField(entry, getSecret()) : entry)),
+  ],
+};
+
 /**
  * Field-level read guard for decrypted credentials.
  *
@@ -162,12 +189,15 @@ const authFields: Field[] = [
         admin: { condition: (_, siblingData) => siblingData?.type === "oauth", description: "OAuth client ID" },
       },
       {
+        // Half of a credential pair (and often the user's email) — read-restricted
+        // like its password, though not encrypted: the admin UI shows it to the owner.
         name: "username",
         type: "text",
         admin: {
           condition: (_, siblingData) => siblingData?.type === "basic" || siblingData?.type === "oauth",
           description: "Username / email for authentication",
         },
+        access: credentialAccess,
       },
       {
         name: "password",
@@ -180,12 +210,18 @@ const authFields: Field[] = [
         access: credentialAccess,
       },
       {
+        // Free-form auth headers (a custom X-API-Key, a bearer under a non-standard
+        // name) live here, so it gets the same at-rest encryption and owner-only read
+        // guard as the typed credential fields above — otherwise any EDITOR reading
+        // the collection sees every user's headers in plaintext.
         name: "customHeaders",
         type: "json",
         admin: {
           description:
             "Additional custom headers as a JSON object. Header names and values are validated at save time (see customHeaders rules).",
         },
+        hooks: jsonCredentialHooks,
+        access: credentialAccess,
         validate: (value: unknown) => {
           const result = validateCustomHeaders(value);
           return result.ok ? true : (result.error ?? "Invalid customHeaders");

@@ -16,12 +16,17 @@ import path from "node:path";
 import { logger } from "@/lib/logger";
 
 import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, FileSystemCacheOptions } from "../types";
+import { decodeEntry, encodeEntry } from "./entry-codec";
 
 interface IndexEntry {
   file: string;
   expires?: number;
   size: number;
   tags?: string[];
+  /** Access metadata lives here so reads never rewrite the payload and LRU never reads it. */
+  createdAt?: number;
+  lastAccessedAt?: number;
+  accessCount?: number;
 }
 
 interface IndexData {
@@ -110,16 +115,17 @@ export class FileSystemCacheStorage implements CacheStorage {
     }
 
     try {
-      const filePath = indexEntry.file;
-      const data = await fs.readFile(filePath, "utf-8");
-      const entry: CacheEntry<T> = JSON.parse(data);
+      const raw = await fs.readFile(indexEntry.file);
+      const entry = decodeEntry<T>(raw);
 
-      // Update access metadata
-      entry.metadata.accessCount++;
-      entry.metadata.lastAccessedAt = new Date();
-
-      // Write back updated metadata
-      await fs.writeFile(filePath, JSON.stringify(entry, null, 2));
+      // Access metadata is tracked in the index — rewriting the payload on every hit
+      // would re-serialize the whole body.
+      const accessedAt = Date.now();
+      indexEntry.accessCount = (indexEntry.accessCount ?? entry.metadata.accessCount) + 1;
+      indexEntry.lastAccessedAt = accessedAt;
+      entry.metadata.accessCount = indexEntry.accessCount;
+      entry.metadata.lastAccessedAt = new Date(accessedAt);
+      entry.metadata.size ??= indexEntry.size;
 
       this.stats.hits++;
       return entry;
@@ -155,14 +161,13 @@ export class FileSystemCacheStorage implements CacheStorage {
         expiresAt: ttl > 0 ? new Date(now.getTime() + ttl * 1000) : undefined,
         accessCount: 0,
         lastAccessedAt: now,
-        size: JSON.stringify(value).length,
         tags: options?.tags,
         custom: options?.metadata,
       },
     };
 
-    // Write cache file
-    const serialized = JSON.stringify(entry, null, 2);
+    // Write cache file — size comes from the bytes actually written, never a second serialization.
+    const serialized = encodeEntry(entry);
     await fs.writeFile(filePath, serialized);
 
     // Update index
@@ -171,6 +176,9 @@ export class FileSystemCacheStorage implements CacheStorage {
       expires: entry.metadata.expiresAt?.getTime(),
       size: serialized.length,
       tags: options?.tags,
+      createdAt: now.getTime(),
+      lastAccessedAt: now.getTime(),
+      accessCount: 0,
     };
 
     // Remove old entry's size from stats if it exists
@@ -354,21 +362,14 @@ export class FileSystemCacheStorage implements CacheStorage {
     let cleaned = 0;
     const entries: Array<{ key: string; lastAccessed: number; size: number }> = [];
 
-    // Collect all entries with their last access time
+    // Access times come from the index — reading every payload here loaded the whole cache
+    // into memory just to sort it.
     for (const [key, indexEntry] of this.index) {
-      try {
-        const data = await fs.readFile(indexEntry.file, "utf-8");
-        const entry = JSON.parse(data);
-        entries.push({
-          key,
-          lastAccessed: new Date(entry.metadata.lastAccessedAt ?? entry.metadata.createdAt).getTime(),
-          size: indexEntry.size,
-        });
-      } catch {
-        // Skip corrupted entries
-        await this.delete(key);
-        cleaned++;
-      }
+      entries.push({
+        key,
+        lastAccessed: indexEntry.lastAccessedAt ?? indexEntry.createdAt ?? 0,
+        size: indexEntry.size,
+      });
     }
 
     // Sort by last accessed (oldest first)

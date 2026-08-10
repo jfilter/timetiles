@@ -400,6 +400,29 @@ describe.sequential("File Readers", () => {
       expect(count).toBeGreaterThan(0);
     });
 
+    it("should not count phantom blank rows from a padded used-range", async () => {
+      const { loadXlsx } = await import("@/lib/ingest/xlsx-loader");
+      const { utils, write } = await loadXlsx();
+
+      const sheet = utils.aoa_to_sheet([
+        ["title", "date"],
+        ["Event A", "2024-01-01"],
+        ["Event B", "2024-01-02"],
+      ]);
+      sheet["!ref"] = "A1:B50";
+
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, sheet, "Sheet1");
+
+      const xlsxPath = path.join(tempDir, "padded-count.xlsx");
+      fs.writeFileSync(xlsxPath, write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer);
+
+      const streamedRows = await flattenBatches(streamBatchesFromFile(xlsxPath, { batchSize: 100 }));
+
+      expect(await getFileRowCount(xlsxPath)).toBe(streamedRows.length);
+      expect(await getFileRowCount(xlsxPath)).toBe(2);
+    });
+
     it("should return 0 for unsupported file type", async () => {
       const filePath = writeTempCSV("data.json", '{"a":1}');
 
