@@ -166,6 +166,10 @@ export const queueWebhookImport = async (
 ): Promise<{ jobId: number }> => {
   const currentTime = new Date();
   const previousStatus = scheduledIngest.lastStatus ?? null;
+  // The claim also stamps lastRun and resets currentRetries — reverting only the status would
+  // leave the previous outcome ("success") wearing the timestamp of a run that never started.
+  const previousRun = scheduledIngest.lastRun ?? null;
+  const previousRetries = scheduledIngest.currentRetries ?? 0;
 
   try {
     return await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
@@ -173,7 +177,7 @@ export const queueWebhookImport = async (
       alreadyClaimed: true,
     });
   } catch (queueError) {
-    // Revert lastStatus so the import doesn't get stuck as "running"
+    // Revert the claim so the import doesn't get stuck as "running"
     logError(queueError, "Failed to queue webhook job, reverting status", {
       scheduledIngestId: scheduledIngest.id,
       previousStatus,
@@ -181,7 +185,7 @@ export const queueWebhookImport = async (
     await payload.update({
       collection: "scheduled-ingests",
       id: scheduledIngest.id,
-      data: { lastStatus: previousStatus },
+      data: { lastStatus: previousStatus, lastRun: previousRun, currentRetries: previousRetries },
     });
     throw new Error("Failed to queue import job");
   }

@@ -66,11 +66,13 @@ export const safeFetchRecord = async <TSlug extends CollectionSlug>(
  */
 export const extractDenormalizedAccessFields = (
   dataset: Dataset
-): { datasetIsPublic: boolean; catalogOwnerId: number | undefined } => {
+): { datasetIsPublic: boolean; catalogOwnerId: number | null } => {
   const catalog = typeof dataset.catalog === "object" ? dataset.catalog : null;
   const catalogIsPublic = catalog?.isPublic ?? false;
   const datasetIsPublic = (dataset.isPublic ?? false) && catalogIsPublic;
-  const catalogOwnerId = catalog?.createdBy ? extractRelationId<number>(catalog.createdBy) : undefined;
+  // null, never undefined: an ownerless catalog has to CLEAR the denormalized owner —
+  // Payload drops undefined from a write, which would leave the previous owner readable.
+  const catalogOwnerId = catalog?.createdBy ? (extractRelationId<number>(catalog.createdBy) ?? null) : null;
   return { datasetIsPublic, catalogOwnerId };
 };
 

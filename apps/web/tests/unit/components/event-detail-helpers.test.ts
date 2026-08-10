@@ -124,6 +124,16 @@ describe("getEventTitle", () => {
       "Fallback"
     );
   });
+
+  it("should resolve a dotted titlePath into nested data, like the SQL title resolution", () => {
+    expect(getEventTitle({ meta: { title: "Nested" } }, { titlePath: "meta.title" })).toBe("Nested");
+  });
+
+  it("should prefer a literal dotted key over nested traversal", () => {
+    expect(getEventTitle({ "meta.title": "Flat", meta: { title: "Nested" } }, { titlePath: "meta.title" })).toBe(
+      "Flat"
+    );
+  });
 });
 
 describe("extractEventFields", () => {

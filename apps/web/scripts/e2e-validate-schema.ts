@@ -84,8 +84,14 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
 
 const checkDatabaseExists = (): boolean => {
   try {
-    runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
-    return true;
+    // The query succeeds with an EMPTY result set when the database is absent, so the
+    // rows have to be inspected — returning true on "no exception" reported every
+    // missing database as present and pushed the failure into the checks below.
+    const result = runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
+    return result
+      .split("\n")
+      .map((line) => line.trim())
+      .some((line) => line === "1");
   } catch {
     return false;
   }

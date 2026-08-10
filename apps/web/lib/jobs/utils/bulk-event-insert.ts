@@ -42,7 +42,7 @@ export interface BulkEventData {
   schemaVersionNumber?: number;
   contentHash?: string;
   datasetIsPublic?: boolean;
-  catalogOwnerId?: number;
+  catalogOwnerId?: number | null;
 }
 
 /**

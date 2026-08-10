@@ -107,6 +107,23 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     );
   });
 
+  it("reverts lastRun and currentRetries alongside the status when queueing fails", async () => {
+    const previousRun = "2026-01-01T00:00:00.000Z";
+    mockPayload.find.mockResolvedValue({
+      docs: [{ ...mockScheduledIngest, lastStatus: "success", lastRun: previousRun, currentRetries: 2 }],
+    });
+    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
+
+    await POST(createRequest() as never, createContext("test-token-abc"));
+
+    // The claim stamps lastRun and resets currentRetries, so reverting only the status would
+    // leave the previous outcome wearing the timestamp of a run that never started.
+    const revert = mockPayload.update.mock.calls[1]![0] as { data: Record<string, unknown> };
+    expect(revert.data).toEqual(
+      expect.objectContaining({ lastStatus: "success", lastRun: previousRun, currentRetries: 2 })
+    );
+  });
+
   it("should revert to null when lastStatus was undefined (Bug 22)", async () => {
     mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: undefined }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));

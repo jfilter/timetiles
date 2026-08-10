@@ -10,6 +10,7 @@
 
 import type { FieldPathMappings } from "@/lib/definitions/field-registry";
 import { isValidCoordinate } from "@/lib/geospatial/validation";
+import { getByPathOrKey } from "@/lib/utils/object-path";
 
 /** Type for event data object — keys are dynamic, determined by source file + transforms */
 export interface EventData {
@@ -58,7 +59,9 @@ export const planRolesToFieldPathMappings = (dataset: unknown): FieldMappingOver
 /** Extract a non-empty string value from a data object by field path. Returns null if missing, empty, or non-primitive. */
 export const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
   if (!path || typeof data !== "object" || data === null || Array.isArray(data)) return null;
-  const value = (data as Record<string, unknown>)[path];
+  // Dotted role paths must traverse, matching the SQL title resolution in
+  // filtered-events-query (`#>> string_to_array(...)`) — a literal key still wins.
+  const value = getByPathOrKey(data, path);
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return value || null;
   if (typeof value === "number" || typeof value === "boolean") return String(value);

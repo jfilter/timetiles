@@ -362,7 +362,7 @@ describe.sequential("processEventBatch", () => {
       job: buildIngestJob({}),
       dataset: mockDataset,
       ingestJobId: "import-123",
-      accessFields: { datasetIsPublic: false, catalogOwnerId: undefined },
+      accessFields: { datasetIsPublic: false, catalogOwnerId: null },
       logger: createMockLogger(),
     };
   });
@@ -483,7 +483,7 @@ describe.sequential("processEventBatch", () => {
       expect(data).toHaveProperty("sourceData");
       expect(data).toHaveProperty("dataset", 456);
       expect(data).toHaveProperty("datasetIsPublic", false);
-      expect(data).toHaveProperty("catalogOwnerId", undefined);
+      expect(data).toHaveProperty("catalogOwnerId", null);
       expect(data).toHaveProperty("uniqueId", "mock-unique-id");
       expect(data).toHaveProperty("ingestJob");
       expect(data).toHaveProperty("locationName", "Tempelhof");

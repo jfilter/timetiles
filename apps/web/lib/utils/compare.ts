@@ -28,7 +28,12 @@ export const stableStringify = (value: unknown): string =>
   JSON.stringify(value, (_key: string, entry: unknown): unknown => {
     if (entry !== null && typeof entry === "object" && !Array.isArray(entry)) {
       return Object.fromEntries(
-        Object.entries(entry as Record<string, unknown>).sort(([a], [b]) => compareCodeUnits(a, b))
+        Object.entries(entry as Record<string, unknown>)
+          // A literal "__proto__" key is dropped: it can only exist via JSON.parse or
+          // defineProperty, never via assignment, so including it would make the output
+          // depend on how the object was built — and would change existing content hashes.
+          .filter(([key]) => key !== "__proto__")
+          .sort(([a], [b]) => compareCodeUnits(a, b))
       );
     }
     return entry;

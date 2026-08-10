@@ -60,7 +60,9 @@ const validateDatasetVisibility = (catalog: Catalog, isPublic: boolean | undefin
 };
 
 interface CatalogFields {
-  catalogCreatorId?: number;
+  // null, never undefined: Payload drops undefined, so an ownerless catalog could
+  // never clear the denormalized owner and the previous one kept read access.
+  catalogCreatorId?: number | null;
   catalogIsPublic: boolean;
 }
 
@@ -97,7 +99,7 @@ const processCatalogValidation = async (
   // Validate visibility
   validateDatasetVisibility(catalog, isPublic);
 
-  return { catalogCreatorId: catalogCreatorId ?? undefined, catalogIsPublic: catalog.isPublic ?? false };
+  return { catalogCreatorId, catalogIsPublic: catalog.isPublic ?? false };
 };
 
 /**

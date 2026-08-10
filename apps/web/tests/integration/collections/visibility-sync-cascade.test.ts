@@ -129,6 +129,13 @@ describe.sequential("Visibility and ownership sync cascade", () => {
       const updated = await readDataset(datasetId);
       expect(updated.catalogCreatorId).toBe(adminUser.id);
     });
+
+    it("clears catalogCreatorId when the catalog owner is removed", async () => {
+      await payload.update({ collection: "catalogs", id: catalogId, data: { createdBy: null }, overrideAccess: true });
+
+      const updated = await readDataset(datasetId);
+      expect(updated.catalogCreatorId).toBeNull();
+    });
   });
 
   describe("Catalog → Events/Schemas sync (batchSyncChildRecords)", () => {
@@ -207,6 +214,16 @@ describe.sequential("Visibility and ownership sync cascade", () => {
       expect(evPriv.catalogOwnerId).toBe(adminUser.id);
       expect(sPub.catalogOwnerId).toBe(adminUser.id);
       expect(sPriv.catalogOwnerId).toBe(adminUser.id);
+    });
+
+    it("removing the catalog owner clears catalogOwnerId on events and schemas", async () => {
+      await payload.update({ collection: "catalogs", id: catalogId, data: { createdBy: null }, overrideAccess: true });
+
+      // A stale owner id here would keep the previous owner reading private rows.
+      expect((await readEvent(eventInPublicId)).catalogOwnerId).toBeNull();
+      expect((await readEvent(eventInPrivateId)).catalogOwnerId).toBeNull();
+      expect((await readSchema(schemaInPublicId)).catalogOwnerId).toBeNull();
+      expect((await readSchema(schemaInPrivateId)).catalogOwnerId).toBeNull();
     });
   });
 
