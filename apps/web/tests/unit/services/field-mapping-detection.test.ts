@@ -137,171 +137,45 @@ describe("Field Mapping Detection", () => {
     });
   });
 
-  describe("German (deu)", () => {
-    it("should detect German title fields", () => {
-      const fieldStats = createFieldStats({
-        titel: { fieldType: "title" },
-        beschreibung: { fieldType: "description" },
-        datum: { fieldType: "timestamp" },
-      });
+  describe("Language patterns", () => {
+    // French: the `description` column deliberately carries timestamp-shaped samples —
+    // name-based matching must still map it to descriptionPath.
+    it.each([
+      ["German (deu)", "deu", { titel: "title", beschreibung: "description", datum: "timestamp" }],
+      ["French (fra)", "fra", { titre: "title", description: "timestamp", date: "timestamp" }],
+      ["Spanish (spa)", "spa", { "t\u00edtulo": "title", "descripci\u00f3n": "description", fecha: "timestamp" }],
+      ["Italian (ita)", "ita", { titolo: "title", descrizione: "description", data: "timestamp" }],
+      ["Dutch (nld)", "nld", { titel: "title", beschrijving: "description", datum: "timestamp" }],
+      ["Portuguese (por)", "por", { "t\u00edtulo": "title", "descri\u00e7\u00e3o": "description", data: "timestamp" }],
+    ] as const)("detects %s title/description/timestamp fields", (_name, language, fields) => {
+      const [titleField, descriptionField, timestampField] = Object.keys(fields);
+      const fieldStats = createFieldStats(
+        Object.fromEntries(Object.entries(fields).map(([field, fieldType]) => [field, { fieldType }]))
+      );
 
-      const mappings = detectFieldMappings(fieldStats, "deu");
+      const mappings = detectFieldMappings(fieldStats, language);
 
-      expect(mappings.titlePath).toBe("titel");
-      expect(mappings.descriptionPath).toBe("beschreibung");
-      expect(mappings.timestampPath).toBe("datum");
+      expect(mappings.titlePath).toBe(titleField);
+      expect(mappings.descriptionPath).toBe(descriptionField);
+      expect(mappings.timestampPath).toBe(timestampField);
     });
 
-    it("should detect 'bezeichnung' as title", () => {
-      const fieldStats = createFieldStats({ bezeichnung: { fieldType: "title" } });
+    it.each([
+      ["deu", "bezeichnung", "title"],
+      ["deu", "veranstaltung", "title"],
+      ["fra", "\u00e9v\u00e9nement", "title"],
+      ["fra", "heure", "timestamp"],
+      ["spa", "evento", "title"],
+      ["spa", "hora", "timestamp"],
+      ["ita", "evento", "title"],
+      ["nld", "evenement", "title"],
+      ["por", "evento", "title"],
+    ] as const)("detects '%s' alias '%s' as %s", (language, field, kind) => {
+      const fieldStats = createFieldStats({ [field]: { fieldType: kind } });
 
-      const mappings = detectFieldMappings(fieldStats, "deu");
+      const mappings = detectFieldMappings(fieldStats, language);
 
-      expect(mappings.titlePath).toBe("bezeichnung");
-    });
-
-    it("should detect 'veranstaltung' (event) as title", () => {
-      const fieldStats = createFieldStats({ veranstaltung: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "deu");
-
-      expect(mappings.titlePath).toBe("veranstaltung");
-    });
-  });
-
-  describe("French (fra)", () => {
-    it("should detect French title fields", () => {
-      const fieldStats = createFieldStats({
-        titre: { fieldType: "title" },
-        description: { fieldType: "timestamp" },
-        date: { fieldType: "timestamp" },
-      });
-
-      const mappings = detectFieldMappings(fieldStats, "fra");
-
-      expect(mappings.titlePath).toBe("titre");
-      expect(mappings.descriptionPath).toBe("description");
-      expect(mappings.timestampPath).toBe("date");
-    });
-
-    it("should detect 'événement' as title", () => {
-      const fieldStats = createFieldStats({ événement: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "fra");
-
-      expect(mappings.titlePath).toBe("événement");
-    });
-
-    it("should detect 'heure' (time) as timestamp", () => {
-      const fieldStats = createFieldStats({ heure: { fieldType: "timestamp" } });
-
-      const mappings = detectFieldMappings(fieldStats, "fra");
-
-      expect(mappings.timestampPath).toBe("heure");
-    });
-  });
-
-  describe("Spanish (spa)", () => {
-    it("should detect Spanish title fields", () => {
-      const fieldStats = createFieldStats({
-        título: { fieldType: "title" },
-        descripción: { fieldType: "description" },
-        fecha: { fieldType: "timestamp" },
-      });
-
-      const mappings = detectFieldMappings(fieldStats, "spa");
-
-      expect(mappings.titlePath).toBe("título");
-      expect(mappings.descriptionPath).toBe("descripción");
-      expect(mappings.timestampPath).toBe("fecha");
-    });
-
-    it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "spa");
-
-      expect(mappings.titlePath).toBe("evento");
-    });
-
-    it("should detect 'hora' as timestamp", () => {
-      const fieldStats = createFieldStats({ hora: { fieldType: "timestamp" } });
-
-      const mappings = detectFieldMappings(fieldStats, "spa");
-
-      expect(mappings.timestampPath).toBe("hora");
-    });
-  });
-
-  describe("Italian (ita)", () => {
-    it("should detect Italian title fields", () => {
-      const fieldStats = createFieldStats({
-        titolo: { fieldType: "title" },
-        descrizione: { fieldType: "description" },
-        data: { fieldType: "timestamp" },
-      });
-
-      const mappings = detectFieldMappings(fieldStats, "ita");
-
-      expect(mappings.titlePath).toBe("titolo");
-      expect(mappings.descriptionPath).toBe("descrizione");
-      expect(mappings.timestampPath).toBe("data");
-    });
-
-    it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "ita");
-
-      expect(mappings.titlePath).toBe("evento");
-    });
-  });
-
-  describe("Dutch (nld)", () => {
-    it("should detect Dutch title fields", () => {
-      const fieldStats = createFieldStats({
-        titel: { fieldType: "title" },
-        beschrijving: { fieldType: "description" },
-        datum: { fieldType: "timestamp" },
-      });
-
-      const mappings = detectFieldMappings(fieldStats, "nld");
-
-      expect(mappings.titlePath).toBe("titel");
-      expect(mappings.descriptionPath).toBe("beschrijving");
-      expect(mappings.timestampPath).toBe("datum");
-    });
-
-    it("should detect 'evenement' as title", () => {
-      const fieldStats = createFieldStats({ evenement: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "nld");
-
-      expect(mappings.titlePath).toBe("evenement");
-    });
-  });
-
-  describe("Portuguese (por)", () => {
-    it("should detect Portuguese title fields", () => {
-      const fieldStats = createFieldStats({
-        título: { fieldType: "title" },
-        descrição: { fieldType: "description" },
-        data: { fieldType: "timestamp" },
-      });
-
-      const mappings = detectFieldMappings(fieldStats, "por");
-
-      expect(mappings.titlePath).toBe("título");
-      expect(mappings.descriptionPath).toBe("descrição");
-      expect(mappings.timestampPath).toBe("data");
-    });
-
-    it("should detect 'evento' as title", () => {
-      const fieldStats = createFieldStats({ evento: { fieldType: "title" } });
-
-      const mappings = detectFieldMappings(fieldStats, "por");
-
-      expect(mappings.titlePath).toBe("evento");
+      expect(kind === "title" ? mappings.titlePath : mappings.timestampPath).toBe(field);
     });
   });
 
