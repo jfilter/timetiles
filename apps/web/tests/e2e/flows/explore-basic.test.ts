@@ -45,32 +45,34 @@ test.describe("Explore Page - Basic Functionality", () => {
     await expect(explorePage.map).toHaveAttribute("aria-label", "Map");
   });
 
-  test("should display empty states correctly", async () => {
-    // Wait for the page to fully load and events to be fetched
+  test("should render the empty state when a date filter matches no events", async ({ page }) => {
+    // A far-future date window matches nothing in the seed data, so the empty
+    // state is deterministic rather than dependent on the map viewport.
+    await page.goto("/explore?lat=0&lng=0&zoom=1&startDate=2099-01-01&endDate=2099-12-31", {
+      timeout: 30000,
+      waitUntil: "domcontentloaded",
+    });
+    await explorePage.map.waitFor({ state: "visible", timeout: 15000 });
     await explorePage.waitForEventsToLoad();
 
-    // New UI format: "Showing X of Y events" or "Showing all X events"
-    // The events count paragraph is always visible, showing the current state
-    const countText = await explorePage.eventsCount.textContent();
+    // The empty-state copy must actually render...
+    await expect(explorePage.noEventsMessage).toBeVisible({ timeout: 15000 });
+    // ...and no event cards may be left on screen.
+    await expect(page.getByTestId("event-card")).toHaveCount(0);
+    expect(await explorePage.getEventCount()).toBe(0);
+  });
 
-    // The new UI shows descriptive text like:
-    // - "Showing 0 of 56 events in the map view." (when map bounds filter to 0)
-    // - "Showing all 56 events." (when showing everything)
-    // - "No events found" only appears when truly no data exists
+  test("should render events instead of the empty state when data matches", async ({ page }) => {
+    // Global view so the seeded, globally-scattered events fall inside the viewport.
+    await explorePage.goto({ globalView: true });
+    await explorePage.waitForEventsToLoad();
+    await explorePage.waitForEventsLoaded(1);
 
-    if (countText?.includes("Showing")) {
-      // Events count paragraph is visible with descriptive text - this is the expected state
-      await expect(explorePage.eventsCount).toBeVisible();
-    } else {
-      // No events exist at all - check for the no events message
-      const noEventsVisible = await explorePage.noEventsMessage.isVisible().catch(() => false);
-      if (noEventsVisible) {
-        await expect(explorePage.noEventsMessage).toBeVisible();
-      } else {
-        // Fallback - just verify the events count element is present
-        await expect(explorePage.eventsCount).toBeVisible();
-      }
-    }
+    // With data present the empty state must NOT be shown...
+    await expect(explorePage.noEventsMessage).toBeHidden();
+    // ...and real event cards must be rendered.
+    await expect(page.getByTestId("event-card").first()).toBeVisible({ timeout: 15000 });
+    expect(await explorePage.getEventCount()).toBeGreaterThan(0);
   });
 
   test("should have responsive layout", async ({ page }) => {

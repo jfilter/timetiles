@@ -123,6 +123,7 @@ const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: Even
 
   return (
     <Card
+      data-testid="event-card"
       className={cn(
         "border-border bg-background overflow-hidden border",
         onEventClick && "hover:border-ring cursor-pointer transition-colors duration-200",

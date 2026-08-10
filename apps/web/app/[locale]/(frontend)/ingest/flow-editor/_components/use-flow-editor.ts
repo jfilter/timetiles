@@ -16,12 +16,7 @@ import { usePreviewSheetsQuery } from "@/lib/hooks/use-ingest-wizard-queries";
 import { createEmptyFieldMapping, FIELD_MAPPING_STRING_KEYS, setMappingField } from "@/lib/ingest/field-mapping-utils";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/ingest/types/flow-mapping";
 import { createSourceNodes, createTargetNodes } from "@/lib/ingest/types/flow-mapping";
-import {
-  createTransform,
-  type IngestTransform,
-  isTransformValid,
-  type TransformType,
-} from "@/lib/ingest/types/transforms";
+import { createTransform, type IngestTransform, type TransformType } from "@/lib/ingest/types/transforms";
 import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
 import { useWizardStore } from "../../_components/wizard-store";
@@ -76,13 +71,15 @@ const collectTransformChains = (nodes: FlowNode[], edges: FlowEdge[], mapping: F
       (transform as { from: string }).from = sourceData.columnName;
     }
 
-    if (!isTransformValid(transform)) continue;
-
+    // Incomplete transforms are kept, not dropped: the wizard flags them as
+    // invalid and lets the user finish configuring them, so discarding them
+    // here silently deleted in-progress work on every visual-editor round trip.
     transforms.push(transform);
     if (tgtNode) {
       const targetData = tgtNode.data as TargetFieldNodeData;
       const mappedColumn = transform.type === "rename" ? transform.to : sourceData.columnName;
-      setMappingField(mapping, targetData.fieldKey, mappedColumn);
+      // An unfinished rename has no target name yet — never write an empty mapping.
+      if (mappedColumn) setMappingField(mapping, targetData.fieldKey, mappedColumn);
     }
   }
 

@@ -29,18 +29,25 @@ test.describe("Explore Page - List View", () => {
     const mapContainer = page.locator('[data-testid="map-container"], .maplibregl-canvas').first();
     await expect(mapContainer).toBeVisible();
 
-    // Verify the list view has event cards or list items rendered
-    // Wait for at least one event item to appear in the list
-    const eventItems = page.locator('[data-testid^="event-"], .event-card, [role="article"], table tbody tr').first();
-    const hasEventItems = await eventItems
-      .count()
-      .then((c) => c > 0)
-      .catch(() => false);
+    // The seeded database always has events, so the list must render cards.
+    // `event-card` is the list item's own testid — no loose fallback selectors,
+    // which used to match unrelated table rows.
+    const eventCards = page.getByTestId("event-card");
+    await expect(eventCards.first()).toBeVisible({ timeout: 15000 });
 
-    // If events exist, verify they have visible content
-    if (hasEventItems) {
-      await expect(eventItems).toBeVisible();
-    }
+    // The first page holds exactly PAGE_SIZE cards (or all of them if fewer).
+    // Read the list's own header, not the chart panel's copy of the sentence.
+    const listHeader = page
+      .locator("p")
+      .filter({ hasText: /Showing (?:all )?\d[\d,]* event/ })
+      .last();
+    const total = Number.parseInt(
+      /Showing (?:all )?(\d[\d,]*)/.exec((await listHeader.textContent()) ?? "")?.[1]?.replaceAll(",", "") ?? "0",
+      10
+    );
+    expect(total).toBeGreaterThan(0);
+    const PAGE_SIZE = 20;
+    await expect(eventCards).toHaveCount(Math.min(total, PAGE_SIZE));
 
     // Verify page loaded — check for any navigation or header element
     const header = page.locator("header, nav, [role='banner']").first();

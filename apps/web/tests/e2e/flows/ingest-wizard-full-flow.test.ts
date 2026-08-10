@@ -210,10 +210,12 @@ test.describe("Import Wizard - Full Flow", () => {
       await expect(page.locator("tr").filter({ hasText: "datum" }).first()).toBeVisible();
 
       // Verify description field was auto-detected (should have value "beschreibung")
-      const descriptionSelect = page.locator("#description-field");
-      if (await descriptionSelect.isVisible()) {
-        await expect(descriptionSelect).toContainText("beschreibung");
-      }
+      // The mapping table is column-centric: each source column owns a target
+      // <select>. German auto-detection must point "beschreibung" at the
+      // description target.
+      const beschreibungRow = page.getByTestId("column-row-beschreibung");
+      await expect(beschreibungRow).toBeVisible({ timeout: 10000 });
+      await expect(beschreibungRow.locator("select")).toHaveValue("descriptionField");
 
       // No manual field mapping needed - German auto-detection handled it!
 

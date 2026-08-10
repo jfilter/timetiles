@@ -64,8 +64,10 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     // ── Step 4: Field Mapping ──
     await navigateToFieldMapping(page, catalogName);
 
-    // Find the "title" column row
-    const titleRow = page.locator("tr").filter({ hasText: "title" }).first();
+    // Address column rows by their testid. `tr:has-text("title")` also matches
+    // any row whose target <select> merely contains a "Title" option, which
+    // silently redirected transforms to the wrong column.
+    const titleRow = page.getByTestId("column-row-title");
 
     // ── 1. Verify no transforms initially ──
     await expect(titleRow.getByText("Uppercase")).not.toBeVisible();
@@ -101,7 +103,7 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     expect(fullPageContent).toContain("TECH CONFERENCE 2024");
 
     // ── 5. Add a rename transform to "description" column ──
-    const descRow = page.locator("tr").filter({ hasText: "description" }).first();
+    const descRow = page.getByTestId("column-row-description");
     const descAddButton = descRow.getByRole("button", { name: /add transform/i });
     await expect(descAddButton).toBeVisible({ timeout: 5000 });
     await descAddButton.click();
@@ -136,25 +138,27 @@ test.describe("Import Wizard - Comprehensive Transform Test", () => {
     await expect(page.getByRole("heading", { name: /map your fields/i })).toBeVisible({ timeout: 10000 });
 
     // ── 8. Verify transforms survived the round-trip ──
-    const titleRowAfter = page.locator("tr").filter({ hasText: "title" }).first();
+    const titleRowAfter = page.getByTestId("column-row-title");
     await expect(titleRowAfter.getByText("Uppercase")).toBeVisible({ timeout: 5000 });
 
     // ── 9. Remove the rename transform via confirmation dialog ──
-    const descRowAfter = page.locator("tr").filter({ hasText: "description" }).first();
-    const renameChip = descRowAfter.getByText(/rename/i).first();
-    if (await renameChip.isVisible()) {
-      // Click the × button on the rename chip
-      const removeButton = descRowAfter.getByRole("button", { name: /remove transform/i });
-      await removeButton.click();
+    const descRowAfter = page.getByTestId("column-row-description");
+    const renameChip = descRowAfter.getByText("Rename", { exact: true });
 
-      // Confirmation dialog should appear
-      const confirmButton = page.getByRole("button", { name: /confirm/i });
-      await expect(confirmButton).toBeVisible({ timeout: 5000 });
-      await confirmButton.click();
+    // The rename transform must have survived the visual-editor round trip.
+    await expect(renameChip).toBeVisible({ timeout: 10000 });
 
-      // Rename chip should be gone
-      await expect(descRowAfter.getByText(/rename/i)).not.toBeVisible({ timeout: 5000 });
-    }
+    // Click the × button on the rename chip
+    const removeButton = descRowAfter.getByRole("button", { name: /remove transform/i });
+    await removeButton.click();
+
+    // Confirmation dialog should appear
+    const confirmButton = page.getByRole("button", { name: /^confirm$/i });
+    await expect(confirmButton).toBeVisible({ timeout: 5000 });
+    await confirmButton.click();
+
+    // Rename chip should be gone
+    await expect(renameChip).not.toBeVisible({ timeout: 5000 });
 
     // ── 10. Verify preview still shows uppercase (only rename was removed) ──
     await expect(page.getByText("TECH CONFERENCE 2024").first()).toBeVisible({ timeout: 5000 });
