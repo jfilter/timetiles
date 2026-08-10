@@ -8,15 +8,92 @@
 import { describe, expect, it } from "vitest";
 
 import { applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
-import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import type {
+  ConcatenateTransform,
+  DateParseTransform,
+  IngestTransform,
+  RenameTransform,
+  SplitTransform,
+  StringOperation,
+  StringOpTransform,
+} from "@/lib/ingest/types/transforms";
 import { getByPath } from "@/lib/utils/object-path";
+
+// ---------------------------------------------------------------------------
+// File-local builders for the transform literals repeated across these tests.
+// Defaults cover only the fields identical across every literal (id "1",
+// active, autoDetected); anything that varies is an argument or an override.
+// ---------------------------------------------------------------------------
+
+const rename = (from: string, to: string, overrides: Partial<RenameTransform> = {}): RenameTransform => ({
+  id: "1",
+  type: "rename",
+  from,
+  to,
+  active: true,
+  autoDetected: false,
+  ...overrides,
+});
+
+const stringOp = (
+  from: string,
+  operation: StringOperation,
+  overrides: Partial<StringOpTransform> = {}
+): StringOpTransform => ({
+  id: "1",
+  type: "string-op",
+  from,
+  operation,
+  active: true,
+  autoDetected: false,
+  ...overrides,
+});
+
+const dateParse = (
+  inputFormat: string,
+  outputFormat: string,
+  overrides: Partial<DateParseTransform> = {}
+): DateParseTransform => ({
+  id: "1",
+  type: "date-parse",
+  from: "date",
+  inputFormat,
+  outputFormat,
+  active: true,
+  autoDetected: false,
+  ...overrides,
+});
+
+const split = (
+  from: string,
+  delimiter: string,
+  toFields: string[],
+  overrides: Partial<SplitTransform> = {}
+): SplitTransform => ({
+  id: "1",
+  type: "split",
+  from,
+  delimiter,
+  toFields,
+  active: true,
+  autoDetected: false,
+  ...overrides,
+});
+
+const concatenate = (fromFields: string[], separator: string, to: string): ConcatenateTransform => ({
+  id: "1",
+  type: "concatenate",
+  fromFields,
+  separator,
+  to,
+  active: true,
+  autoDetected: false,
+});
 
 describe("applyTransforms", () => {
   it("should apply simple rename transform", () => {
     const data = { date: "2024-01-15", name: "Event" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date")];
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ start_date: "2024-01-15", name: "Event" });
@@ -25,9 +102,7 @@ describe("applyTransforms", () => {
 
   it("should apply nested path rename", () => {
     const data = { user: { email: "john@example.com", name: "John" } };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "user.email", to: "contact.email", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("user.email", "contact.email")];
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ user: { name: "John" }, contact: { email: "john@example.com" } });
@@ -35,10 +110,7 @@ describe("applyTransforms", () => {
 
   it("should apply multiple transforms", () => {
     const data = { date: "2024-01-15", author: "John", title: "Event" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-      { id: "2", type: "rename", from: "author", to: "creator", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date"), rename("author", "creator", { id: "2" })];
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ start_date: "2024-01-15", creator: "John", title: "Event" });
@@ -46,9 +118,7 @@ describe("applyTransforms", () => {
 
   it("should skip inactive transforms", () => {
     const data = { date: "2024-01-15", name: "Event" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: false, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date", { active: false })];
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ date: "2024-01-15", name: "Event" });
@@ -79,9 +149,7 @@ describe("applyTransforms", () => {
 
   it("should skip transforms for non-existent fields", () => {
     const data = { name: "Event" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date")];
 
     const result = applyTransforms(data, transforms);
     expect(result).toEqual({ name: "Event" });
@@ -91,9 +159,7 @@ describe("applyTransforms", () => {
   it("should not mutate original data", () => {
     const data = { date: "2024-01-15", name: "Event" };
     const original = { ...data };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date")];
 
     applyTransforms(data, transforms);
     expect(data).toEqual(original); // Original unchanged
@@ -109,8 +175,8 @@ describe("applyTransforms", () => {
     const data = { event: { date: "2024-01-15", location: { city: "NYC", coords: { lat: 40.7, lng: -74 } } } };
 
     const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "event.date", to: "start_date", active: true, autoDetected: false },
-      { id: "2", type: "rename", from: "event.location.coords.lat", to: "latitude", active: true, autoDetected: false },
+      rename("event.date", "start_date"),
+      rename("event.location.coords.lat", "latitude", { id: "2" }),
     ];
 
     const result = applyTransforms(data, transforms);
@@ -122,17 +188,7 @@ describe("applyTransforms", () => {
 
   it("should apply expression string-op to convert string to number", () => {
     const data = { count: "42" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "count",
-        operation: "expression",
-        expression: "toNumber(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("count", "expression", { expression: "toNumber(value)" })];
 
     const result = applyTransforms(data, transforms);
     expect(result.count).toBe(42);
@@ -141,17 +197,7 @@ describe("applyTransforms", () => {
 
   it("should apply expression string-op to convert string to boolean", () => {
     const data = { active: "true" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "active",
-        operation: "expression",
-        expression: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("active", "expression", { expression: "parseBool(value)" })];
 
     const result = applyTransforms(data, transforms);
     expect(result.active).toBe(true);
@@ -160,17 +206,7 @@ describe("applyTransforms", () => {
 
   it("should keep original value when expression fails", () => {
     const data = { value: "not-a-number" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "value",
-        operation: "expression",
-        expression: "parseNumber(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("value", "expression", { expression: "parseNumber(value)" })];
 
     const result = applyTransforms(data, transforms);
     expect(result.value).toBe("not-a-number");
@@ -178,17 +214,7 @@ describe("applyTransforms", () => {
 
   it("should leave impossible ISO dates unchanged", () => {
     const data = { date: "2024-02-30" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "YYYY-MM-DD",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("YYYY-MM-DD", "YYYY-MM-DD")];
 
     const result = applyTransforms(data, transforms);
     expect(result.date).toBe("2024-02-30");
@@ -196,62 +222,35 @@ describe("applyTransforms", () => {
 
   it("should apply uppercase string-op transform", () => {
     const data = { title: "hello world" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "title", operation: "uppercase", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "uppercase")];
     const result = applyTransforms(data, transforms);
     expect(result.title).toBe("HELLO WORLD");
   });
 
   it("should apply lowercase string-op transform", () => {
     const data = { title: "HELLO WORLD" };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "title", operation: "lowercase", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "lowercase")];
     const result = applyTransforms(data, transforms);
     expect(result.title).toBe("hello world");
   });
 
   it("should apply replace string-op transform", () => {
     const data = { title: "hello-world-2024" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "title",
-        operation: "replace",
-        pattern: "-",
-        replacement: " ",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "replace", { pattern: "-", replacement: " " })];
     const result = applyTransforms(data, transforms);
     expect(result.title).toBe("hello world 2024");
   });
 
   it("should skip string-op on non-string values", () => {
     const data = { count: 42 };
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("count", "uppercase")];
     const result = applyTransforms(data, transforms);
     expect(result.count).toBe(42);
   });
 
   it("should apply concatenate transform", () => {
     const data = { first: "John", last: "Doe", age: 30 };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["first", "last"],
-        separator: " ",
-        to: "fullName",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["first", "last"], " ", "fullName")];
     const result = applyTransforms(data, transforms);
     expect(result.fullName).toBe("John Doe");
     expect(result.first).toBe("John"); // originals preserved
@@ -260,51 +259,21 @@ describe("applyTransforms", () => {
 
   it("should concatenate with custom separator", () => {
     const data = { city: "Berlin", country: "Germany" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["city", "country"],
-        separator: ", ",
-        to: "location",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["city", "country"], ", ", "location")];
     const result = applyTransforms(data, transforms);
     expect(result.location).toBe("Berlin, Germany");
   });
 
   it("should skip undefined fields in concatenate", () => {
     const data = { first: "John" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["first", "middle", "last"],
-        separator: " ",
-        to: "name",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["first", "middle", "last"], " ", "name")];
     const result = applyTransforms(data, transforms);
     expect(result.name).toBe("John");
   });
 
   it("should apply split transform", () => {
     const data = { name: "John Doe" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "name",
-        delimiter: " ",
-        toFields: ["firstName", "lastName"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [split("name", " ", ["firstName", "lastName"])];
     const result = applyTransforms(data, transforms);
     expect(result.firstName).toBe("John");
     expect(result.lastName).toBe("Doe");
@@ -312,17 +281,7 @@ describe("applyTransforms", () => {
 
   it("should split with custom delimiter", () => {
     const data = { coords: "40.7128,-74.0060" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "coords",
-        delimiter: ",",
-        toFields: ["lat", "lng"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [split("coords", ",", ["lat", "lng"])];
     const result = applyTransforms(data, transforms);
     expect(result.lat).toBe("40.7128");
     expect(result.lng).toBe("-74.0060");
@@ -330,17 +289,7 @@ describe("applyTransforms", () => {
 
   it("should handle split with fewer parts than toFields", () => {
     const data = { value: "single" };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "value",
-        delimiter: ",",
-        toFields: ["a", "b", "c"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [split("value", ",", ["a", "b", "c"])];
     const result = applyTransforms(data, transforms);
     expect(result.a).toBe("single");
     expect(result.b).toBeUndefined();
@@ -349,17 +298,7 @@ describe("applyTransforms", () => {
 
   it("should skip split on non-string values", () => {
     const data = { count: 42 };
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "count",
-        delimiter: ",",
-        toFields: ["a", "b"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [split("count", ",", ["a", "b"])];
     const result = applyTransforms(data, transforms);
     expect(result.count).toBe(42);
     expect(result.a).toBeUndefined();
@@ -368,25 +307,9 @@ describe("applyTransforms", () => {
   it("should chain multiple transform types together", () => {
     const data = { full_name: "john doe", date: "15/03/2024" };
     const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "full_name", operation: "uppercase", active: true, autoDetected: false },
-      {
-        id: "2",
-        type: "split",
-        from: "full_name",
-        delimiter: " ",
-        toFields: ["first", "last"],
-        active: true,
-        autoDetected: false,
-      },
-      {
-        id: "3",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("full_name", "uppercase"),
+      split("full_name", " ", ["first", "last"], { id: "2" }),
+      dateParse("DD/MM/YYYY", "YYYY-MM-DD", { id: "3" }),
     ];
     const result = applyTransforms(data, transforms);
     expect(result.first).toBe("JOHN");
@@ -403,9 +326,7 @@ describe("applyTransformsBatch (existing cases)", () => {
       { date: "2024-01-17", name: "Event 3" },
     ];
 
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date")];
 
     const result = applyTransformsBatch(data, transforms);
     expect(result).toHaveLength(3);
@@ -423,9 +344,7 @@ describe("applyTransformsBatch (existing cases)", () => {
     const data = [{ date: "2024-01-15", name: "Event" }];
     const original = structuredClone(data);
 
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "date", to: "start_date", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [rename("date", "start_date")];
 
     applyTransformsBatch(data, transforms);
     expect(data).toEqual(original);
@@ -433,17 +352,7 @@ describe("applyTransformsBatch (existing cases)", () => {
 });
 
 describe("date-parse inputFormat handling", () => {
-  const makeDateTransform = (inputFormat: string): IngestTransform[] => [
-    {
-      id: "1",
-      type: "date-parse",
-      from: "date",
-      inputFormat,
-      outputFormat: "YYYY-MM-DD",
-      active: true,
-      autoDetected: false,
-    },
-  ];
+  const makeDateTransform = (inputFormat: string): IngestTransform[] => [dateParse(inputFormat, "YYYY-MM-DD")];
 
   it("should parse DD/MM/YYYY format correctly", () => {
     expect(applyTransforms({ date: "15/03/2024" }, makeDateTransform("DD/MM/YYYY")).date).toBe("2024-03-15");
@@ -487,51 +396,20 @@ describe("date-parse inputFormat handling", () => {
 
 describe("date-parse timezone and outputFormat handling", () => {
   it("should apply timezone offset when configured", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "YYYY-MM-DD",
-        outputFormat: "ISO 8601",
-        timezone: "America/New_York",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("YYYY-MM-DD", "ISO 8601", { timezone: "America/New_York" })];
     const result = applyTransforms({ date: "2024-06-15" }, transforms);
     // UTC midnight interpreted as midnight Eastern (UTC-4 in June) should shift
     expect(result.date).toMatch(/^2024-06-15T04:00:00/);
   });
 
   it("should produce full ISO 8601 output when outputFormat is ISO 8601", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "ISO 8601",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("DD/MM/YYYY", "ISO 8601")];
     const result = applyTransforms({ date: "15/03/2024" }, transforms);
     expect(result.date).toBe("2024-03-15T00:00:00.000Z");
   });
 
   it("should default to date-only output when outputFormat is not ISO 8601", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("DD/MM/YYYY", "YYYY-MM-DD")];
     const result = applyTransforms({ date: "15/03/2024" }, transforms);
     expect(result.date).toBe("2024-03-15");
   });
@@ -539,102 +417,41 @@ describe("date-parse timezone and outputFormat handling", () => {
 
 describe("date-parse edge cases", () => {
   it("should skip date-parse when value is not a string", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "YYYY-MM-DD",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("YYYY-MM-DD", "YYYY-MM-DD")];
     const result = applyTransforms({ date: 12345 }, transforms);
     expect(result.date).toBe(12345);
   });
 
   it("should skip date-parse when value is undefined", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "YYYY-MM-DD",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("YYYY-MM-DD", "YYYY-MM-DD")];
     const result = applyTransforms({ other: "value" }, transforms);
     expect(result).not.toHaveProperty("date");
   });
 
   it("should keep original value when date parsing throws", () => {
     // Use an input that will cause an exception in Date constructor
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-        timezone: "Invalid/Timezone",
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("DD/MM/YYYY", "YYYY-MM-DD", { timezone: "Invalid/Timezone" })];
     const result = applyTransforms({ date: "15/03/2024" }, transforms);
     // Should keep original since timezone parsing throws
     expect(result.date).toBe("15/03/2024");
   });
 
   it("should reject invalid dates like month 13", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("DD/MM/YYYY", "YYYY-MM-DD")];
     const result = applyTransforms({ date: "15/13/2024" }, transforms);
     // Invalid month 13 should be rejected
     expect(result.date).toBe("15/13/2024");
   });
 
   it("should handle NaN in date parts", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "DD/MM/YYYY",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("DD/MM/YYYY", "YYYY-MM-DD")];
     const result = applyTransforms({ date: "abc/03/2024" }, transforms);
     // NaN part should cause rejection, keep original
     expect(result.date).toBe("abc/03/2024");
   });
 
   it("should leave already-formatted ISO dates unchanged when no timezone", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "date-parse",
-        from: "date",
-        inputFormat: "YYYY-MM-DD",
-        outputFormat: "YYYY-MM-DD",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [dateParse("YYYY-MM-DD", "YYYY-MM-DD")];
     // Input is already in YYYY-MM-DD, output format is also YYYY-MM-DD, no timezone
     // The ISO_DATE_ONLY_REGEX check should keep it unchanged
     const result = applyTransforms({ date: "2024-03-15" }, transforms);
@@ -644,49 +461,25 @@ describe("date-parse edge cases", () => {
 
 describe("string-op edge cases", () => {
   it("should keep value unchanged when replace has no pattern", () => {
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "title", operation: "replace", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "replace")];
     const result = applyTransforms({ title: "hello" }, transforms);
     expect(result.title).toBe("hello");
   });
 
   it("should replace with empty string when no replacement specified", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "title",
-        operation: "replace",
-        pattern: "-",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "replace", { pattern: "-" })];
     const result = applyTransforms({ title: "hello-world" }, transforms);
     expect(result.title).toBe("helloworld");
   });
 
   it("should keep value unchanged for expression without expression string", () => {
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "title", operation: "expression", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "expression")];
     const result = applyTransforms({ title: "hello" }, transforms);
     expect(result.title).toBe("hello");
   });
 
   it("should return string result from expression that returns string", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "title",
-        operation: "expression",
-        expression: "upper(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("title", "expression", { expression: "upper(value)" })];
     const result = applyTransforms({ title: "hello" }, transforms);
     expect(result.title).toBe("HELLO");
   });
@@ -695,15 +488,9 @@ describe("string-op edge cases", () => {
 describe("string-op expression on numeric values", () => {
   it("should apply expression to numeric value", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "type",
-        operation: "expression",
+      stringOp("type", "expression", {
         expression: '(value == 1 ? "State-based" : value == 2 ? "Non-state" : value == 3 ? "One-sided" : value)',
-        active: true,
-        autoDetected: false,
-      },
+      }),
     ];
     expect(applyTransforms({ type: 1 }, transforms).type).toBe("State-based");
     expect(applyTransforms({ type: 2 }, transforms).type).toBe("Non-state");
@@ -712,15 +499,9 @@ describe("string-op expression on numeric values", () => {
 
   it("should require explicit parsing for numeric equality on string values", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "type",
-        operation: "expression",
+      stringOp("type", "expression", {
         expression: '(toNumber(value) == 1 ? "State-based" : toNumber(value) == 2 ? "Non-state" : value)',
-        active: true,
-        autoDetected: false,
-      },
+      }),
     ];
 
     expect(applyTransforms({ type: "1" }, transforms).type).toBe("State-based");
@@ -729,15 +510,7 @@ describe("string-op expression on numeric values", () => {
 
   it("should keep numeric-looking strings raw in expressions unless explicitly parsed", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "external_id",
-        operation: "expression",
-        expression: '(value == 123 ? "matched" : value)',
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("external_id", "expression", { expression: '(value == 123 ? "matched" : value)' }),
     ];
 
     const result = applyTransforms({ external_id: "00123" }, transforms);
@@ -747,17 +520,7 @@ describe("string-op expression on numeric values", () => {
   });
 
   it("should reject numeric strings in parseDate expressions", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "external_id",
-        operation: "expression",
-        expression: "parseDate(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("external_id", "expression", { expression: "parseDate(value)" })];
 
     const result = applyTransforms({ external_id: "39135" }, transforms);
 
@@ -766,16 +529,7 @@ describe("string-op expression on numeric values", () => {
 
   it("should keep source field when expression fails while writing to a different target", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "external_id",
-        to: "external_id_number",
-        operation: "expression",
-        expression: "parseNumber(value)",
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("external_id", "expression", { to: "external_id_number", expression: "parseNumber(value)" }),
     ];
 
     const result = applyTransforms({ external_id: "abc" }, transforms);
@@ -786,15 +540,7 @@ describe("string-op expression on numeric values", () => {
 
   it("should return numeric value unchanged for non-matching expression", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "type",
-        operation: "expression",
-        expression: '(value == 99 ? "matched" : value)',
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("type", "expression", { expression: '(value == 99 ? "matched" : value)' }),
     ];
     const result = applyTransforms({ type: 5 }, transforms);
     expect(result.type).toBe(5);
@@ -802,72 +548,32 @@ describe("string-op expression on numeric values", () => {
 
   it("should apply numeric comparison in expression", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "count",
-        operation: "expression",
-        expression: '(value > 50 ? "high" : "low")',
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("count", "expression", { expression: '(value > 50 ? "high" : "low")' }),
     ];
     expect(applyTransforms({ count: 100 }, transforms).count).toBe("high");
     expect(applyTransforms({ count: 10 }, transforms).count).toBe("low");
   });
 
   it("should apply expression to boolean value", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "active",
-        operation: "expression",
-        expression: '(value ? "yes" : "no")',
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("active", "expression", { expression: '(value ? "yes" : "no")' })];
     expect(applyTransforms({ active: true }, transforms).active).toBe("yes");
     expect(applyTransforms({ active: false }, transforms).active).toBe("no");
   });
 
   it("should keep original numeric value when expression fails", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "count",
-        operation: "expression",
-        expression: "invalidFunc(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("count", "expression", { expression: "invalidFunc(value)" })];
     const result = applyTransforms({ count: 42 }, transforms);
     expect(result.count).toBe(42);
   });
 
   it("should skip expression when value is undefined", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "missing",
-        operation: "expression",
-        expression: "value + 1",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("missing", "expression", { expression: "value + 1" })];
     const result = applyTransforms({ other: "data" }, transforms);
     expect(result).not.toHaveProperty("missing");
   });
 
   it("should still skip uppercase/lowercase/replace on numeric values", () => {
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("count", "uppercase")];
     const result = applyTransforms({ count: 42 }, transforms);
     expect(result.count).toBe(42);
   });
@@ -876,16 +582,7 @@ describe("string-op expression on numeric values", () => {
 describe("string-op to field support", () => {
   it("should write expression result to a different field via to", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "type",
-        to: "type_label",
-        operation: "expression",
-        expression: '(value == 1 ? "State-based" : "Other")',
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("type", "expression", { to: "type_label", expression: '(value == 1 ? "State-based" : "Other")' }),
     ];
     const result = applyTransforms({ type: 1 }, transforms);
     expect(result.type_label).toBe("State-based");
@@ -893,17 +590,7 @@ describe("string-op to field support", () => {
   });
 
   it("should write uppercase result to a different field via to", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "name",
-        to: "name_upper",
-        operation: "uppercase",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("name", "uppercase", { to: "name_upper" })];
     const result = applyTransforms({ name: "hello" }, transforms);
     expect(result.name_upper).toBe("HELLO");
     expect(result.name).toBeUndefined(); // source removed when to !== from
@@ -911,17 +598,7 @@ describe("string-op to field support", () => {
 
   it("should write replace result to a different field via to", () => {
     const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "slug",
-        to: "title",
-        operation: "replace",
-        pattern: "-",
-        replacement: " ",
-        active: true,
-        autoDetected: false,
-      },
+      stringOp("slug", "replace", { to: "title", pattern: "-", replacement: " " }),
     ];
     const result = applyTransforms({ slug: "hello-world" }, transforms);
     expect(result.title).toBe("hello world");
@@ -929,9 +606,7 @@ describe("string-op to field support", () => {
   });
 
   it("should default to from field when to is not specified", () => {
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "name", operation: "uppercase", active: true, autoDetected: false },
-    ];
+    const transforms: IngestTransform[] = [stringOp("name", "uppercase")];
     const result = applyTransforms({ name: "hello" }, transforms);
     expect(result.name).toBe("HELLO");
   });
@@ -939,49 +614,19 @@ describe("string-op to field support", () => {
 
 describe("concatenate edge cases", () => {
   it("should stringify numbers and booleans in concatenation", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["name", "age", "active"],
-        separator: "|",
-        to: "combined",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["name", "age", "active"], "|", "combined")];
     const result = applyTransforms({ name: "John", age: 30, active: true }, transforms);
     expect(result.combined).toBe("John|30|true");
   });
 
   it("should skip object values in concatenation to avoid [object Object]", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["name", "nested"],
-        separator: " ",
-        to: "combined",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["name", "nested"], " ", "combined")];
     const result = applyTransforms({ name: "John", nested: { key: "val" } }, transforms);
     expect(result.combined).toBe("John");
   });
 
   it("should not set target field when all source fields are missing", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["missing1", "missing2"],
-        separator: " ",
-        to: "combined",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [concatenate(["missing1", "missing2"], " ", "combined")];
     const result = applyTransforms({ other: "value" }, transforms);
     expect(result).not.toHaveProperty("combined");
   });
@@ -989,97 +634,37 @@ describe("concatenate edge cases", () => {
 
 describe("parseDate and parseBool expressions", () => {
   it("should parse valid date string via parseDate expression", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "date",
-        operation: "expression",
-        expression: "parseDate(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("date", "expression", { expression: "parseDate(value)" })];
     const result = applyTransforms({ date: "2024-03-15" }, transforms);
     expect(result.date).toMatch(/^2024-03-15T/);
   });
 
   it("should keep original on invalid date via parseDate expression", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "date",
-        operation: "expression",
-        expression: "parseDate(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("date", "expression", { expression: "parseDate(value)" })];
     const result = applyTransforms({ date: "not-a-date" }, transforms);
     expect(result.date).toBe("not-a-date");
   });
 
   it("should parse 'yes' as true via parseBool expression", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "active",
-        operation: "expression",
-        expression: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("active", "expression", { expression: "parseBool(value)" })];
     const result = applyTransforms({ active: "yes" }, transforms);
     expect(result.active).toBe(true);
   });
 
   it("should parse 'no' as false via parseBool expression", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "active",
-        operation: "expression",
-        expression: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("active", "expression", { expression: "parseBool(value)" })];
     const result = applyTransforms({ active: "no" }, transforms);
     expect(result.active).toBe(false);
   });
 
   it("should keep original on invalid boolean via parseBool expression", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "active",
-        operation: "expression",
-        expression: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("active", "expression", { expression: "parseBool(value)" })];
     const result = applyTransforms({ active: "maybe" }, transforms);
     expect(result.active).toBe("maybe");
   });
 
   it("should parse '1' as true and '0' as false via parseBool", () => {
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "val",
-        operation: "expression",
-        expression: "parseBool(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
+    const transforms: IngestTransform[] = [stringOp("val", "expression", { expression: "parseBool(value)" })];
     expect(applyTransforms({ val: "1" }, transforms).val).toBe(true);
     expect(applyTransforms({ val: "0" }, transforms).val).toBe(false);
   });
