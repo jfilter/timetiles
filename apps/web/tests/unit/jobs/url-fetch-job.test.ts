@@ -103,6 +103,18 @@ describe.sequential("urlFetchJob", () => {
   let mockJob: any;
   let mockReq: any;
 
+  /**
+   * Installs the happy-path payload mocks shared by most success tests:
+   * `create` resolves the new ingest file, `findByID` resolves the acting user.
+   * Pass `find` to also stub the duplicate-content lookup (`payload.find`);
+   * it is left untouched otherwise so tests that never reach it stay strict.
+   */
+  const mockHappyPathPayload = (overrides: { create?: unknown; user?: unknown; find?: unknown } = {}) => {
+    mockPayload.create.mockResolvedValue(overrides.create ?? { id: "import-123" });
+    mockPayload.findByID.mockResolvedValue(overrides.user ?? { id: "user-123", role: "user" });
+    if ("find" in overrides) mockPayload.find.mockResolvedValue(overrides.find);
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
@@ -136,10 +148,8 @@ describe.sequential("urlFetchJob", () => {
 
   describe("handler", () => {
     it("should fetch data from URL and save to file", async () => {
-      // Create mock import file record first
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
-      // Mock user lookup
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      // Mock import file creation + user lookup
+      mockHappyPathPayload();
 
       // Mock fetch response
       const mockCsvData = "id,name,value\n1,test,100\n2,test2,200";
@@ -223,8 +233,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle API key authentication", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockHappyPathPayload();
 
       const mockResponse = createMockResponse("{}", { contentType: "application/json" });
 
@@ -256,8 +265,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle Bearer token authentication", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockHappyPathPayload();
 
       const mockResponse = createMockResponse("{}", { contentType: "application/json" });
 
@@ -289,8 +297,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle Basic authentication", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockHappyPathPayload();
 
       const mockResponse = createMockResponse("test data", { contentType: "text/plain" });
 
@@ -320,8 +327,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should detect file type from Content-Type header", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockHappyPathPayload();
 
       const mockResponse = createMockResponse("{}", {
         contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -445,10 +451,8 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle scheduled ingest metadata", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
       // Return user for all findByID calls (scheduled ingest lookup returns null, job uses input directly)
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
-      mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
+      mockHappyPathPayload({ find: { docs: [] } }); // find: no previous imports
 
       const mockResponse = createMockResponse("data", { contentType: "text/csv" });
 
@@ -779,10 +783,8 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should handle retry logic", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-123" });
       // Return user for all findByID calls
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
-      mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
+      mockHappyPathPayload({ find: { docs: [] } }); // find: no previous imports
 
       // Fail twice, then succeed
       let callCount = 0;
@@ -1262,8 +1264,7 @@ describe.sequential("urlFetchJob", () => {
     });
 
     it("should create ingest file with skipIngestFileHooks to prevent afterChange hook", async () => {
-      mockPayload.create.mockResolvedValue({ id: "import-789" });
-      mockPayload.findByID.mockResolvedValue({ id: "user-123", role: "user" });
+      mockHappyPathPayload({ create: { id: "import-789" } });
 
       const mockResponse = createMockResponse("id,name\n1,test", { contentType: "text/csv" });
       (globalThis.fetch as any).mockResolvedValue(mockResponse);
