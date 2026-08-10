@@ -39,33 +39,7 @@ import { Footer } from "@/lib/globals/footer";
 import { MainMenu } from "@/lib/globals/main-menu";
 import { Settings } from "@/lib/globals/settings";
 // Import jobs
-import {
-  analyzeDuplicatesJob,
-  auditLogIpCleanupJob,
-  cacheCleanupJob,
-  cleanupStuckScheduledIngestsJob,
-  cleanupStuckScrapersJob,
-  createEventsBatchJob,
-  createSchemaVersionJob,
-  dataExportCleanupJob,
-  dataExportJob,
-  datasetDetectionJob,
-  executeAccountDeletionJob,
-  geocodeBatchJob,
-  ingestFilesCleanupJob,
-  jobCleanupJob,
-  previewCleanupJob,
-  quotaResetJobConfig,
-  rateLimitCleanupJob,
-  scheduleManagerJob,
-  schemaDetectionJob,
-  schemaMaintenanceJob,
-  scraperExecutionJob,
-  scraperRepoSyncJob,
-  sendEmailJob,
-  urlFetchJob,
-  validateSchemaJob,
-} from "@/lib/jobs/ingest-jobs";
+export { ALL_JOBS } from "@/lib/jobs/ingest-jobs";
 // Import workflows
 export { ALL_WORKFLOWS } from "@/lib/jobs/workflows";
 // Import migrations
@@ -101,35 +75,6 @@ export type CollectionName = keyof typeof COLLECTIONS;
 
 // All globals (grouped: Content, System)
 export const ALL_GLOBALS = [MainMenu, Footer, Branding, Settings];
-
-// All jobs
-export const ALL_JOBS = [
-  datasetDetectionJob,
-  schemaDetectionJob,
-  analyzeDuplicatesJob,
-  validateSchemaJob,
-  createSchemaVersionJob,
-  geocodeBatchJob,
-  createEventsBatchJob,
-  urlFetchJob,
-  scheduleManagerJob,
-  cleanupStuckScheduledIngestsJob,
-  cleanupStuckScrapersJob,
-  quotaResetJobConfig,
-  rateLimitCleanupJob,
-  cacheCleanupJob,
-  previewCleanupJob,
-  ingestFilesCleanupJob,
-  schemaMaintenanceJob,
-  dataExportJob,
-  dataExportCleanupJob,
-  sendEmailJob,
-  auditLogIpCleanupJob,
-  executeAccountDeletionJob,
-  scraperExecutionJob,
-  scraperRepoSyncJob,
-  jobCleanupJob,
-];
 
 // Common upload configuration
 export const DEFAULT_UPLOAD_CONFIG = {

@@ -5,14 +5,15 @@
  * @category Config
  */
 
+import { SCRAPER_MEMORY_DEFAULT_MB, SCRAPER_TIMEOUT_DEFAULT_SECONDS } from "@timetiles/shared";
 import { z } from "zod";
 
 const envSchema = z.object({
   SCRAPER_API_KEY: z.string().min(16, "API key must be at least 16 characters"),
   SCRAPER_PORT: z.coerce.number().default(4000),
   SCRAPER_MAX_CONCURRENT: z.coerce.number().default(3),
-  SCRAPER_DEFAULT_TIMEOUT: z.coerce.number().default(300),
-  SCRAPER_DEFAULT_MEMORY: z.coerce.number().default(512),
+  SCRAPER_DEFAULT_TIMEOUT: z.coerce.number().default(SCRAPER_TIMEOUT_DEFAULT_SECONDS),
+  SCRAPER_DEFAULT_MEMORY: z.coerce.number().default(SCRAPER_MEMORY_DEFAULT_MB),
   SCRAPER_MAX_REPO_SIZE_MB: z.coerce.number().default(50),
   // Idle (block) timeout in ms for git operations. Kills a stalled/trickling
   // git process so a malicious or unresponsive server cannot hold a concurrency

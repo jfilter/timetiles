@@ -7,6 +7,14 @@
  * @module
  * @category Jobs
  */
+import type { ScraperRunRequest, ScraperRunResult } from "@timetiles/shared";
+import {
+  SCRAPER_DEFAULT_OUTPUT_FILE,
+  SCRAPER_MEMORY_DEFAULT_MB,
+  SCRAPER_RUN_STATUSES,
+  SCRAPER_TIMEOUT_DEFAULT_SECONDS,
+} from "@timetiles/shared";
+
 import { getEnv } from "@/lib/config/env";
 import type { Scraper, ScraperRepo } from "@/payload-types";
 
@@ -19,25 +27,14 @@ export interface ScraperExecutionJobInput {
   triggeredBy: "schedule" | "manual" | "webhook";
 }
 
-export interface RunnerRequest {
-  run_id: string;
-  runtime: string;
-  entrypoint: string;
+/** The shared run request, with the fields this app always populates required. */
+export type RunnerRequest = ScraperRunRequest & {
   output_file: string;
-  code_url?: string;
-  code?: Record<string, string>;
   env: Record<string, string>;
   limits: { timeout_secs: number; memory_mb: number };
-}
+};
 
-export interface RunnerResponse {
-  status: "success" | "failed" | "timeout";
-  exit_code: number;
-  duration_ms: number;
-  stdout: string;
-  stderr: string;
-  output?: { rows: number; bytes: number; download_url: string };
-}
+export type RunnerResponse = ScraperRunResult;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -96,7 +93,7 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
-  const timeoutMs = ((request.limits?.timeout_secs ?? 300) + 60) * 1000;
+  const timeoutMs = ((request.limits?.timeout_secs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS) + 60) * 1000;
   const response = await fetch(url, {
     method: "POST",
     headers,
@@ -123,7 +120,7 @@ export const callRunner = async (request: RunnerRequest): Promise<RunnerResponse
   // value (older/alternate runner sending e.g. "error"/"killed") would make the
   // success-path Payload update throw and discard the whole run record. Coerce
   // anything off-contract to "failed" so the run is still recorded.
-  const VALID_STATUSES = new Set<RunnerResponse["status"]>(["success", "failed", "timeout"]);
+  const VALID_STATUSES = new Set<RunnerResponse["status"]>(SCRAPER_RUN_STATUSES);
   const status = VALID_STATUSES.has(parsed.status) ? parsed.status : "failed";
   return {
     ...parsed,
@@ -147,9 +144,12 @@ export const buildRunnerRequest = (scraper: Scraper, repo: ScraperRepo, runUuid:
     // `||`, not `??`: an outputFile cleared to "" must fall back too — the
     // runner rejects empty filenames with a 400.
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty string must fall back, not just null/undefined
-    output_file: scraper.outputFile || "data.csv",
+    output_file: scraper.outputFile || SCRAPER_DEFAULT_OUTPUT_FILE,
     env: parseEnvVars(scraper.envVars),
-    limits: { timeout_secs: scraper.timeoutSecs ?? 300, memory_mb: scraper.memoryMb ?? 512 },
+    limits: {
+      timeout_secs: scraper.timeoutSecs ?? SCRAPER_TIMEOUT_DEFAULT_SECONDS,
+      memory_mb: scraper.memoryMb ?? SCRAPER_MEMORY_DEFAULT_MB,
+    },
   };
 
   const codeUrl = buildCodeUrl(repo);

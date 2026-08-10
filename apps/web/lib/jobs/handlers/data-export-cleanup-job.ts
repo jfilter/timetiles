@@ -10,6 +10,7 @@
  * @module
  * @category Jobs
  */
+import { ACTIVE_DATA_EXPORT_STATUSES } from "@/lib/export/data-export-statuses";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
@@ -177,7 +178,7 @@ const reapStaleExports = async (sys: SystemPayload, now: Date): Promise<PassResu
   const stale = await sys.find({
     collection: DATA_EXPORTS,
     where: {
-      and: [{ status: { in: ["pending", "processing"] } }, { requestedAt: { less_than: cutoff.toISOString() } }],
+      and: [{ status: { in: [...ACTIVE_DATA_EXPORT_STATUSES] } }, { requestedAt: { less_than: cutoff.toISOString() } }],
     },
     limit: 100,
   });

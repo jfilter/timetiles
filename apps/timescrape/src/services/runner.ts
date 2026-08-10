@@ -16,6 +16,8 @@ import { copyFile, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
+import { SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+
 import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
 import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
@@ -387,7 +389,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
 
     // One source of truth for the filename: the container is told where to
     // write and `collectOutput` reads the same name back.
-    const outputFileName = request.output_file ?? "data.csv";
+    const outputFileName = request.output_file ?? SCRAPER_DEFAULT_OUTPUT_FILE;
 
     // Build podman args with full hardening
     const podmanArgs = buildPodmanArgs({

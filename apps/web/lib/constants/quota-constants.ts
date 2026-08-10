@@ -193,6 +193,42 @@ export const normalizeTrustLevel = (trustLevel: string | number | null | undefin
 export type QuotaKey = keyof typeof QUOTAS;
 
 /**
+ * How a quota is presented on the public `/api/quotas` endpoint.
+ */
+export interface PublicQuotaDescriptor {
+  /** Key under `quotas` in the API response. */
+  responseKey: string;
+  /** Whether current usage (`used`/`remaining`) is exposed, or only the limit. */
+  exposesUsage: boolean;
+  /** Upper bound for the displayed limit; privileged limits are capped to it. */
+  displayCap: number;
+}
+
+/** Default cap for displayed limits — keeps unlimited accounts unidentifiable. */
+export const MAX_DISPLAYED_QUOTA_LIMIT = 10000;
+
+/**
+ * Quotas exposed on `/api/quotas`. Explicit by design: a quota that is not
+ * listed here stays internal.
+ */
+export const PUBLIC_QUOTAS = {
+  FILE_UPLOADS_PER_DAY: { responseKey: "fileUploadsPerDay", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  URL_FETCHES_PER_DAY: { responseKey: "urlFetchesPerDay", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  IMPORT_JOBS_PER_DAY: { responseKey: "importJobsPerDay", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  ACTIVE_SCHEDULES: { responseKey: "activeSchedules", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  TOTAL_EVENTS: { responseKey: "totalEvents", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  EVENTS_PER_IMPORT: { responseKey: "eventsPerImport", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  CATALOGS_PER_USER: { responseKey: "catalogsPerUser", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  SCRAPER_REPOS: { responseKey: "scraperRepos", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  SCRAPER_RUNS_PER_DAY: { responseKey: "scraperRunsPerDay", exposesUsage: true, displayCap: MAX_DISPLAYED_QUOTA_LIMIT },
+  // Check-only quota: no counter exists, so only the (capped) limit is shown.
+  FILE_SIZE_MB: { responseKey: "maxFileSizeMB", exposesUsage: false, displayCap: 100 },
+} as const satisfies Partial<Record<QuotaKey, PublicQuotaDescriptor>>;
+
+/** Key of a quota exposed on the public quotas endpoint. */
+export type PublicQuotaKey = keyof typeof PUBLIC_QUOTAS;
+
+/**
  * Rate limit configurations by trust level, loaded from app config.
  * Each level has progressively more generous limits.
  */

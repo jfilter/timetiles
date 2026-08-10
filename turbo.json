@@ -77,7 +77,9 @@
     },
     "format": { "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"] },
     "typecheck": {
-      "dependsOn": ["transit"],
+      // ^build, not transit: web resolves @timetiles/{shared,ui} through their
+      // dist "types", so a stale build silently typechecks against old exports.
+      "dependsOn": ["^build"],
       "inputs": ["**/*.{ts,tsx}", "tsconfig.json", "tsconfig.*.json"],
       "outputs": [".typecheck-results/**"]
     },

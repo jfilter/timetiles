@@ -13,7 +13,15 @@ import { rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 
-import { isPlainOutputFilename, isSafeRelativeEntrypoint } from "@timetiles/shared";
+import {
+  isPlainOutputFilename,
+  isSafeRelativeEntrypoint,
+  SCRAPER_MEMORY_MAX_MB,
+  SCRAPER_MEMORY_MIN_MB,
+  SCRAPER_RUNTIMES,
+  SCRAPER_TIMEOUT_MAX_SECONDS,
+  SCRAPER_TIMEOUT_MIN_SECONDS,
+} from "@timetiles/shared";
 import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -25,7 +33,7 @@ import { executeRun, getActiveRunCount, getMetrics, isRunActive, stopRun } from 
 
 const runRequestSchema = z.object({
   run_id: z.uuid(),
-  runtime: z.enum(["python", "node"]),
+  runtime: z.enum(SCRAPER_RUNTIMES),
   entrypoint: z.string().min(1).refine(isSafeRelativeEntrypoint, "Invalid entrypoint path"),
   output_file: z
     .string()
@@ -41,8 +49,8 @@ const runRequestSchema = z.object({
   env: z.record(z.string(), z.string()).optional(),
   limits: z
     .object({
-      timeout_secs: z.number().int().min(1).max(3600).optional(),
-      memory_mb: z.number().int().min(64).max(4096).optional(),
+      timeout_secs: z.number().int().min(SCRAPER_TIMEOUT_MIN_SECONDS).max(SCRAPER_TIMEOUT_MAX_SECONDS).optional(),
+      memory_mb: z.number().int().min(SCRAPER_MEMORY_MIN_MB).max(SCRAPER_MEMORY_MAX_MB).optional(),
     })
     .optional(),
 });

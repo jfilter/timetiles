@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Hono } from "hono";
 
+import { SCRAPER_TIMEOUT_MIN_SECONDS } from "@timetiles/shared";
+
 import { AuthError } from "../src/lib/errors.js";
 
 // Mock runner service
@@ -232,6 +234,38 @@ describe("POST /run endpoint", () => {
       const body = await res.json();
       expect(body.error).toBe("Invalid request");
       expect(body.details).toBeDefined();
+    });
+
+    it("returns 400 when timeout_secs is below the shared minimum", async () => {
+      const res = await app.request("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_API_KEY}` },
+        body: JSON.stringify({ ...VALID_RUN_BODY, limits: { timeout_secs: SCRAPER_TIMEOUT_MIN_SECONDS - 1 } }),
+      });
+
+      expect(res.status).toBe(400);
+
+      const body = await res.json();
+      expect(body.error).toBe("Invalid request");
+      expect(body.details).toBeDefined();
+    });
+
+    it("accepts timeout_secs at the shared minimum", async () => {
+      vi.mocked(executeRun).mockResolvedValue({
+        status: "success",
+        exit_code: 0,
+        duration_ms: 1,
+        stdout: "",
+        stderr: "",
+      });
+
+      const res = await app.request("/run", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${TEST_API_KEY}` },
+        body: JSON.stringify({ ...VALID_RUN_BODY, limits: { timeout_secs: SCRAPER_TIMEOUT_MIN_SECONDS } }),
+      });
+
+      expect(res.status).toBe(200);
     });
 
     it("returns 400 when code_url is not HTTPS", async () => {

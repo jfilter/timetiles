@@ -3,7 +3,16 @@
  *
  * @module
  */
-import { isPlainOutputFilename } from "@timetiles/shared";
+import {
+  isPlainOutputFilename,
+  SCRAPER_DEFAULT_OUTPUT_FILE,
+  SCRAPER_MEMORY_DEFAULT_MB,
+  SCRAPER_MEMORY_MAX_MB,
+  SCRAPER_MEMORY_MIN_MB,
+  SCRAPER_TIMEOUT_DEFAULT_SECONDS,
+  SCRAPER_TIMEOUT_MAX_SECONDS,
+  SCRAPER_TIMEOUT_MIN_SECONDS,
+} from "@timetiles/shared";
 import type { Field } from "payload";
 
 import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
@@ -49,7 +58,7 @@ export const scraperFields: Field[] = [
   {
     name: "outputFile",
     type: "text",
-    defaultValue: "data.csv",
+    defaultValue: SCRAPER_DEFAULT_OUTPUT_FILE,
     admin: { description: "Output CSV filename" },
     // Same predicate the runner enforces — anything else fails every run with
     // an opaque "Runner API returned 400" instead of failing at save time.
@@ -72,17 +81,17 @@ export const scraperFields: Field[] = [
   {
     name: "timeoutSecs",
     type: "number",
-    defaultValue: 300,
-    min: 10,
-    max: 3600,
+    defaultValue: SCRAPER_TIMEOUT_DEFAULT_SECONDS,
+    min: SCRAPER_TIMEOUT_MIN_SECONDS,
+    max: SCRAPER_TIMEOUT_MAX_SECONDS,
     admin: { description: "Max execution time in seconds" },
   },
   {
     name: "memoryMb",
     type: "number",
-    defaultValue: 512,
-    min: 64,
-    max: 4096,
+    defaultValue: SCRAPER_MEMORY_DEFAULT_MB,
+    min: SCRAPER_MEMORY_MIN_MB,
+    max: SCRAPER_MEMORY_MAX_MB,
     admin: { description: "Memory limit in MB" },
   },
   // Environment variables (may contain secrets — field-level access as defense-in-depth)

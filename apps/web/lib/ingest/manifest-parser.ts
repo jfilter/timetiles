@@ -8,7 +8,19 @@
  * @module
  * @category Services
  */
-import { isPlainOutputFilename, isSafeRelativeEntrypoint } from "@timetiles/shared";
+import type { ScraperRuntime } from "@timetiles/shared";
+import {
+  isPlainOutputFilename,
+  isSafeRelativeEntrypoint,
+  SCRAPER_DEFAULT_OUTPUT_FILE,
+  SCRAPER_MEMORY_DEFAULT_MB,
+  SCRAPER_MEMORY_MAX_MB,
+  SCRAPER_MEMORY_MIN_MB,
+  SCRAPER_RUNTIMES,
+  SCRAPER_TIMEOUT_DEFAULT_SECONDS,
+  SCRAPER_TIMEOUT_MAX_SECONDS,
+  SCRAPER_TIMEOUT_MIN_SECONDS,
+} from "@timetiles/shared";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
@@ -31,7 +43,7 @@ const slugSchema = z
   )
   .refine((v) => !v.includes("--"), "Slug must not contain consecutive hyphens");
 
-const runtimeSchema = z.enum(["python", "node"]);
+const runtimeSchema = z.enum(SCRAPER_RUNTIMES);
 
 /** Entrypoint must not contain path traversal sequences. */
 const entrypointSchema = z
@@ -42,8 +54,8 @@ const entrypointSchema = z
 
 const limitsSchema = z
   .object({
-    timeout: z.number().int().min(10).max(3600).optional(),
-    memory: z.number().int().min(64).max(4096).optional(),
+    timeout: z.number().int().min(SCRAPER_TIMEOUT_MIN_SECONDS).max(SCRAPER_TIMEOUT_MAX_SECONDS).optional(),
+    memory: z.number().int().min(SCRAPER_MEMORY_MIN_MB).max(SCRAPER_MEMORY_MAX_MB).optional(),
   })
   .optional();
 
@@ -88,7 +100,7 @@ const manifestSchema = z.object({
 export interface ParsedScraper {
   name: string;
   slug: string;
-  runtime: "python" | "node";
+  runtime: ScraperRuntime;
   entrypoint: string;
   output: string;
   schedule: string | null;
@@ -111,10 +123,10 @@ export interface ManifestParseError {
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_RUNTIME: "python" | "node" = "python";
-const DEFAULT_OUTPUT = "data.csv";
-const DEFAULT_TIMEOUT = 300;
-const DEFAULT_MEMORY = 512;
+const DEFAULT_RUNTIME: ScraperRuntime = "python";
+const DEFAULT_OUTPUT = SCRAPER_DEFAULT_OUTPUT_FILE;
+const DEFAULT_TIMEOUT = SCRAPER_TIMEOUT_DEFAULT_SECONDS;
+const DEFAULT_MEMORY = SCRAPER_MEMORY_DEFAULT_MB;
 
 // ---------------------------------------------------------------------------
 // Implementation

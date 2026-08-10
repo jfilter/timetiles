@@ -59,6 +59,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET as healthGET } from "@/app/api/health/route";
 import { GET as quotasGET } from "@/app/api/quotas/route";
+import { PUBLIC_QUOTAS } from "@/lib/constants/quota-constants";
 import { createQuotaService } from "@/lib/services/quota-service";
 
 const mockUser = { id: 1, email: "test@test.com", role: "user" };
@@ -149,8 +150,31 @@ describe.sequential("Quotas Route", () => {
     expect(body.quotas.activeSchedules).toEqual({ used: 2, limit: 10, remaining: 8 });
     expect(body.quotas.totalEvents).toEqual({ used: 2, limit: 10, remaining: 8 });
     expect(body.quotas.eventsPerImport).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.catalogsPerUser).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.scraperRepos).toEqual({ used: 2, limit: 10, remaining: 8 });
+    expect(body.quotas.scraperRunsPerDay).toEqual({ used: 2, limit: 10, remaining: 8 });
     expect(body.quotas.maxFileSizeMB).toEqual({ limit: 50 });
-    expect(mocks.mockCheckQuota).toHaveBeenCalledTimes(6);
+    expect(mocks.mockCheckQuota).toHaveBeenCalledTimes(9);
+  });
+
+  it("exposes every quota listed in PUBLIC_QUOTAS", async () => {
+    mocks.mockCheckQuota.mockResolvedValue({ current: 1, limit: 10, remaining: 9, allowed: true });
+    mocks.mockGetEffectiveQuotas.mockReturnValue({ maxFileSizeMB: 50 });
+    mocks.mockGetQuotaHeaders.mockResolvedValue(new Headers());
+
+    const request = createRequest("http://localhost/api/quotas");
+    const response = await (quotasGET as any)(request, { params: Promise.resolve({}) });
+    const body = await response.json();
+
+    const expectedKeys = Object.values(PUBLIC_QUOTAS)
+      .map((descriptor) => descriptor.responseKey)
+      .sort((a, b) => a.localeCompare(b));
+    expect(Object.keys(body.quotas).sort((a, b) => a.localeCompare(b))).toEqual(expectedKeys);
+    for (const descriptor of Object.values(PUBLIC_QUOTAS)) {
+      const entry = body.quotas[descriptor.responseKey];
+      expect(entry.limit).toBeTypeOf("number");
+      expect(entry.used === undefined).toBe(!descriptor.exposesUsage);
+    }
   });
 
   it("caps high limits to MAX_DISPLAYED_LIMIT (10000)", async () => {
