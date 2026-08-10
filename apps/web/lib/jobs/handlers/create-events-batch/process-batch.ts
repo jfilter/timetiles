@@ -149,7 +149,7 @@ const buildTransformationChange = (
 /** Denormalized access fields computed once per job. */
 export interface AccessFields {
   datasetIsPublic: boolean;
-  catalogOwnerId: number | undefined;
+  catalogOwnerId: number | null;
 }
 
 export interface ProcessBatchContext {

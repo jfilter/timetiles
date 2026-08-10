@@ -162,7 +162,8 @@ export class Cache {
     }
 
     try {
-      await this.storage.setMany(fullEntries, options);
+      // Same defaulting as set(): without it a batch write ignores the configured TTL.
+      await this.storage.setMany(fullEntries, { ...options, ttl: options?.ttl ?? this.config.defaultTTL });
     } catch (error) {
       logger.error("Cache setMany error", { error });
     }

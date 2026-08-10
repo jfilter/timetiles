@@ -80,15 +80,16 @@ const detectCatalogChanges = (
   previousDoc: Record<string, unknown> | undefined,
   doc: Record<string, unknown>
 ): CatalogChanges => {
-  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy);
-  const newCreatedBy = extractRelationId<unknown>(doc.createdBy);
+  // Normalize to null: a cleared owner must CASCADE as null, not vanish as undefined.
+  const prevCreatedBy = extractRelationId<unknown>(previousDoc?.createdBy) ?? null;
+  const newCreatedBy = extractRelationId<unknown>(doc.createdBy) ?? null;
   const prevIsPublic = (previousDoc?.isPublic as boolean) ?? false;
   const newIsPublic = (doc.isPublic as boolean) ?? false;
 
   return {
     createdByChanged: prevCreatedBy !== newCreatedBy,
     isPublicChanged: prevIsPublic !== newIsPublic,
-    newCreatedBy,
+    newCreatedBy: newCreatedBy as number | null,
     newIsPublic,
   };
 };
@@ -96,7 +97,7 @@ const detectCatalogChanges = (
 type CatalogChanges = {
   createdByChanged: boolean;
   isPublicChanged: boolean;
-  newCreatedBy: unknown;
+  newCreatedBy: number | null;
   newIsPublic: boolean;
 };
 
@@ -132,14 +133,16 @@ const bulkSyncCollection = async (
 ): Promise<void> =>
   withDenormSync(req, async () => {
     const allIds = datasets.map((d) => d.id);
-    const ownerId = changes.createdByChanged ? (changes.newCreatedBy as number) : undefined;
+    // Spread an ABSENT key when ownership did not change — writing `undefined` would be
+    // dropped by Payload, so a cleared owner has to reach the children as an explicit null.
+    const ownerData = changes.createdByChanged ? { catalogOwnerId: changes.newCreatedBy } : {};
 
     if (!changes.isPublicChanged) {
       // Only ownership changed — same update for all datasets
       await req.payload.update({
         collection,
         where: { dataset: { in: allIds } },
-        data: { catalogOwnerId: ownerId },
+        data: ownerData,
         overrideAccess: true,
         req,
       });
@@ -148,13 +151,12 @@ const bulkSyncCollection = async (
       await req.payload.update({
         collection,
         where: { dataset: { in: allIds } },
-        data: { datasetIsPublic: false, ...(ownerId != null && { catalogOwnerId: ownerId }) },
+        data: { datasetIsPublic: false, ...ownerData },
         overrideAccess: true,
         req,
       });
     } else {
       // Catalog became public — visibility depends on each dataset's own isPublic
-      const ownerData = ownerId != null ? { catalogOwnerId: ownerId } : {};
       const publicIds = datasets.filter((d) => d.isPublic).map((d) => d.id);
       const privateIds = datasets.filter((d) => !d.isPublic).map((d) => d.id);
 
