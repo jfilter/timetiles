@@ -8,6 +8,8 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+
 const SECCOMP_PROFILE_PATH = resolve(import.meta.dirname, "seccomp-profile.json");
 
 /**
@@ -143,7 +145,7 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
   // `output:` name, so an SDK that only knew the directory always wrote
   // data.csv and any other configured name failed the run.
   args.push("-e=TIMESCRAPE_OUTPUT_DIR=/output");
-  args.push(`-e=TIMESCRAPE_OUTPUT_FILE=${outputFile ?? "data.csv"}`);
+  args.push(`-e=TIMESCRAPE_OUTPUT_FILE=${outputFile ?? SCRAPER_DEFAULT_OUTPUT_FILE}`);
 
   // Image and command
   const image = `timescrape-${runtime}`;

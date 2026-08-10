@@ -15,6 +15,7 @@ import { apiRoute, ConflictError } from "@/lib/api";
 import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { RequestExportResponse } from "@/lib/export/api-types";
+import { ACTIVE_DATA_EXPORT_STATUSES } from "@/lib/export/data-export-statuses";
 import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
 import type { DataExport as DataExportRecord } from "@/payload-types";
@@ -27,7 +28,7 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 const findActiveExport = (payload: Payload, userId: number, req?: PayloadRequest) =>
   payload.find({
     collection: DATA_EXPORTS_COLLECTION,
-    where: { and: [{ user: { equals: userId } }, { status: { in: ["pending", "processing"] } }] },
+    where: { and: [{ user: { equals: userId } }, { status: { in: [...ACTIVE_DATA_EXPORT_STATUSES] } }] },
     limit: 1,
     overrideAccess: true,
     req,

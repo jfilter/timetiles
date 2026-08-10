@@ -10,6 +10,8 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { DATA_EXPORT_STATUSES } from "@/lib/export/data-export-statuses";
+
 import { isAdmin } from "./shared-fields";
 
 const DataExports: CollectionConfig = {
@@ -53,13 +55,10 @@ const DataExports: CollectionConfig = {
       type: "select",
       required: true,
       defaultValue: "pending",
-      options: [
-        { label: "Pending", value: "pending" },
-        { label: "Processing", value: "processing" },
-        { label: "Ready", value: "ready" },
-        { label: "Failed", value: "failed" },
-        { label: "Expired", value: "expired" },
-      ],
+      options: DATA_EXPORT_STATUSES.map((value) => ({
+        label: `${value.charAt(0).toUpperCase()}${value.slice(1)}`,
+        value,
+      })),
       admin: { position: "sidebar", description: "Current status of the export request" },
     },
     {

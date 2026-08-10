@@ -11,6 +11,7 @@
  */
 import type { CollectionConfig } from "payload";
 
+import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createCommonConfig, createPublicReadAccess, isEditorOrAdmin } from "./shared-fields";
@@ -206,12 +207,9 @@ const DatasetSchemas: CollectionConfig = {
 
         if (!dataset) return data;
 
-        const catalog = typeof dataset.catalog === "object" ? dataset.catalog : null;
-        const accessFields = {
-          datasetIsPublic: (dataset.isPublic ?? false) && (catalog?.isPublic ?? false),
-          catalogOwnerId: catalog?.createdBy ? extractRelationId(catalog.createdBy) : undefined,
-        };
-        Object.assign(data, accessFields);
+        // Same helper the events hook uses: these fields decide read access, so
+        // the two must not drift on ownership extraction or the visibility rule.
+        Object.assign(data, extractDenormalizedAccessFields(dataset));
 
         return data;
       },

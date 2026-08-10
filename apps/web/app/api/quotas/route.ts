@@ -7,16 +7,33 @@
  */
 
 import { apiRoute } from "@/lib/api";
+import type { PublicQuotaKey } from "@/lib/constants/quota-constants";
+import { PUBLIC_QUOTAS, QUOTAS } from "@/lib/constants/quota-constants";
 import { createQuotaService } from "@/lib/services/quota-service";
+
+/** Response entry for a quota: usage-bearing quotas add `used`/`remaining`. */
+interface PublicQuotaEntry {
+  limit: number;
+  used?: number;
+  remaining?: number;
+}
+
+/**
+ * Cap the displayed limit.
+ *
+ * Security: privileged accounts have unlimited (-1) or very high quotas, which
+ * would make them identifiable. Both are reported as the cap instead.
+ */
+const normalizeLimit = (limit: number | null | undefined, cap: number): number => {
+  if (limit == null || limit === -1 || limit > cap) return cap;
+  return limit;
+};
 
 /**
  * Get current user's quota status.
  *
- * Returns comprehensive quota information including:
- * - Current usage for all quota types
- * - Limits based on trust level
- * - Remaining allowances
- * - Reset times for daily quotas
+ * Returns the quotas listed in {@link PUBLIC_QUOTAS}: limits for all of them
+ * and, where a counter exists, current usage and the remaining allowance.
  */
 export const GET = apiRoute({
   auth: "required",
@@ -24,78 +41,37 @@ export const GET = apiRoute({
   handler: async ({ user, payload }) => {
     const quotaService = createQuotaService(payload);
 
-    // Per-request cache: all 6 checks share one DB lookup for usage record
+    // Per-request cache: all checks share one DB lookup for the usage record
     const cache = { context: {} as Record<string, unknown> };
-
-    // Get all quota statuses in parallel
-    const [fileUploads, urlFetches, importJobs, activeSchedules, totalEvents, eventsPerImport] = await Promise.all([
-      quotaService.checkQuota(user, "FILE_UPLOADS_PER_DAY", 1, cache),
-      quotaService.checkQuota(user, "URL_FETCHES_PER_DAY", 1, cache),
-      quotaService.checkQuota(user, "IMPORT_JOBS_PER_DAY", 1, cache),
-      quotaService.checkQuota(user, "ACTIVE_SCHEDULES", 1, cache),
-      quotaService.checkQuota(user, "TOTAL_EVENTS", 1, cache),
-      quotaService.checkQuota(user, "EVENTS_PER_IMPORT", 1, cache),
-    ]);
-
-    // Get effective quotas for additional info
     const effectiveQuotas = quotaService.getEffectiveQuotas(user);
 
-    // Helper to normalize quotas - cap very high limits to prevent admin identification
-    // Security: Admins have unlimited/very high quotas, which makes them identifiable
-    // By capping displayed limits, we prevent enumeration of privileged accounts
-    const MAX_DISPLAYED_LIMIT = 10000; // Cap shown to normal users
-    const normalizeLimit = (limit: number | null): number => {
-      // -1 means unlimited, null means unknown — both should be capped
-      if (limit === null || limit === -1 || limit > MAX_DISPLAYED_LIMIT) {
-        return MAX_DISPLAYED_LIMIT;
+    const publicKeys = Object.keys(PUBLIC_QUOTAS) as PublicQuotaKey[];
+    const usageKeys = publicKeys.filter((key) => PUBLIC_QUOTAS[key].exposesUsage);
+
+    const usageResults = await Promise.all(usageKeys.map((key) => quotaService.checkQuota(user, key, 1, cache)));
+    const usageByKey = new Map(usageKeys.map((key, index) => [key, usageResults[index]!]));
+
+    const quotas: Record<string, PublicQuotaEntry> = {};
+    for (const key of publicKeys) {
+      const descriptor = PUBLIC_QUOTAS[key];
+      if (descriptor.exposesUsage) {
+        const result = usageByKey.get(key)!;
+        const limit = normalizeLimit(result.limit, descriptor.displayCap);
+        // `remaining` is derived from the DISPLAYED limit; echoing the raw value
+        // would defeat the cap above and re-identify a privileged account.
+        quotas[descriptor.responseKey] = {
+          used: result.current,
+          limit,
+          remaining: Math.max(0, limit - result.current),
+        };
+      } else {
+        const rawLimit = effectiveQuotas[QUOTAS[key].limitField];
+        quotas[descriptor.responseKey] = { limit: normalizeLimit(rawLimit, descriptor.displayCap) };
       }
-      return limit;
-    };
+    }
 
-    // Derive `remaining` from the DISPLAYED (capped) limit rather than echoing the
-    // raw value. An unlimited/privileged account's real `remaining` is huge or -1,
-    // which would defeat the limit cap above and re-identify the account.
-    const normalizeRemaining = (quota: { limit: number | null; current: number }): number =>
-      Math.max(0, normalizeLimit(quota.limit) - quota.current);
-
-    // Return only necessary information - don't expose role, trustLevel, or system architecture details
-    const response = {
-      quotas: {
-        fileUploadsPerDay: {
-          used: fileUploads.current,
-          limit: normalizeLimit(fileUploads.limit),
-          remaining: normalizeRemaining(fileUploads),
-        },
-        urlFetchesPerDay: {
-          used: urlFetches.current,
-          limit: normalizeLimit(urlFetches.limit),
-          remaining: normalizeRemaining(urlFetches),
-        },
-        importJobsPerDay: {
-          used: importJobs.current,
-          limit: normalizeLimit(importJobs.limit),
-          remaining: normalizeRemaining(importJobs),
-        },
-        activeSchedules: {
-          used: activeSchedules.current,
-          limit: normalizeLimit(activeSchedules.limit),
-          remaining: normalizeRemaining(activeSchedules),
-        },
-        totalEvents: {
-          used: totalEvents.current,
-          limit: normalizeLimit(totalEvents.limit),
-          remaining: normalizeRemaining(totalEvents),
-        },
-        eventsPerImport: {
-          used: eventsPerImport.current,
-          limit: normalizeLimit(eventsPerImport.limit),
-          remaining: normalizeRemaining(eventsPerImport),
-        },
-        maxFileSizeMB: {
-          limit: Math.min(effectiveQuotas.maxFileSizeMB, 100), // Cap at 100MB displayed
-        },
-      },
-    };
+    // Only necessary information — no role, trust level, or system internals
+    const response = { quotas };
 
     // Add quota headers — requires explicit Response to set custom headers
     const headers = await quotaService.getQuotaHeaders(user);

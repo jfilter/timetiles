@@ -1,26 +1,15 @@
 /**
  * Shared types for TimeScrape runner.
  *
+ * The run contract itself lives in `@timetiles/shared` so the web app and the
+ * runner cannot drift; these aliases keep the local call sites unchanged.
+ *
  * @module
  * @category Types
  */
 
-export interface RunRequest {
-  run_id: string;
-  runtime: "python" | "node";
-  entrypoint: string;
-  output_file?: string;
-  code_url?: string;
-  code?: Record<string, string>;
-  env?: Record<string, string>;
-  limits?: { timeout_secs?: number; memory_mb?: number };
-}
+import type { ScraperRunRequest, ScraperRunResult } from "@timetiles/shared";
 
-export interface RunResult {
-  status: "success" | "failed" | "timeout";
-  exit_code: number;
-  duration_ms: number;
-  stdout: string;
-  stderr: string;
-  output?: { rows: number; bytes: number; download_url: string };
-}
+export type RunRequest = ScraperRunRequest;
+
+export type RunResult = ScraperRunResult;

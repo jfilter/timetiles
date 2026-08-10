@@ -8,6 +8,7 @@
  * @module
  * @category Tests
  */
+import { SCRAPER_TIMEOUT_MIN_SECONDS } from "@timetiles/shared";
 import { describe, expect, it } from "vitest";
 
 import type { ManifestParseError, ManifestParseResult } from "@/lib/ingest/manifest-parser";
@@ -192,6 +193,38 @@ scrapers:
 
       expect(result.success).toBe(true);
       expect(result.scrapers[0]?.limits).toEqual({ timeout: 300, memory: 1024 });
+    });
+
+    it("rejects a timeout below the shared minimum", () => {
+      const yaml = `
+scrapers:
+  - name: Too Fast
+    slug: too-fast
+    entrypoint: run.py
+    limits:
+      timeout: ${SCRAPER_TIMEOUT_MIN_SECONDS - 1}
+`;
+
+      const result = parseManifest(yaml) as ManifestParseError;
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it("accepts a timeout at the shared minimum", () => {
+      const yaml = `
+scrapers:
+  - name: Fast Enough
+    slug: fast-enough
+    entrypoint: run.py
+    limits:
+      timeout: ${SCRAPER_TIMEOUT_MIN_SECONDS}
+`;
+
+      const result = parseManifest(yaml) as ManifestParseResult;
+
+      expect(result.success).toBe(true);
+      expect(result.scrapers[0]?.limits.timeout).toBe(SCRAPER_TIMEOUT_MIN_SECONDS);
     });
   });
 });
