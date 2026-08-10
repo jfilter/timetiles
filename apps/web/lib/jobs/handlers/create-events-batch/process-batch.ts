@@ -14,6 +14,7 @@ import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
+import { getTransformOutputPaths } from "@/lib/ingest/transform-builders";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -95,27 +96,6 @@ const valuesEqual = (left: unknown, right: unknown): boolean => {
   if (Object.is(left, right)) return true;
   if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
   return JSON.stringify(left) === JSON.stringify(right);
-};
-
-const getTransformOutputPaths = (t: IngestTransform): string[] => {
-  switch (t.type) {
-    case "rename":
-      return [t.to];
-    case "date-parse":
-      return [t.from];
-    case "string-op":
-      return [t.to ?? t.from];
-    case "concatenate":
-      return [t.to];
-    case "split":
-      return t.toFields;
-    case "parse-json-array":
-      return [t.to ?? t.from];
-    case "split-to-array":
-      return [t.to ?? t.from];
-    case "extract":
-      return [t.to];
-  }
 };
 
 const getTransformInputValue = (t: IngestTransform, row: Record<string, unknown>): unknown => {

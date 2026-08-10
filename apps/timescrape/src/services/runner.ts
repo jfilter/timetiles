@@ -90,7 +90,7 @@ export const sweepStaleOutputs = async (): Promise<void> => {
         logger.info({ dir, ttlHours }, "Swept stale scraper output directory");
       }
     } catch (error) {
-      logError("Failed to sweep scraper output directory", error, { dir });
+      logError(error, "Failed to sweep scraper output directory", { dir });
     }
   }
 };
@@ -236,7 +236,7 @@ const startOutputWatchdog = (
       logger.warn({ runId, bytes, maxBytes }, "Scraper output exceeded size limit, killing container");
       await forceKillContainer(runId);
     } catch (error) {
-      logError("Output watchdog check failed", error, { runId, outputDir });
+      logError(error, "Output watchdog check failed", { runId, outputDir });
     } finally {
       checking = false;
     }
@@ -482,7 +482,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     // Count non-timeout failures (clone errors, unexpected throws) so
     // /metrics stays consistent: total = success + failed + timeout.
     totalFailed++;
-    logError("Scraper run failed", error, { runId });
+    logError(error, "Scraper run failed", { runId });
     throw error;
   } finally {
     activeRuns.delete(runId);
@@ -491,7 +491,7 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     try {
       await removeContainerWrittenDir(workDir);
     } catch (error) {
-      logError("Failed to cleanup work directory", error, { runId, workDir });
+      logError(error, "Failed to cleanup work directory", { runId, workDir });
     }
   }
 };
