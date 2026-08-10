@@ -52,7 +52,7 @@ export const ingestFilesAccess = {
   }),
 
   // Only file owner, editors, or admins can update
-  update: createOwnershipAccess("ingest-files", "user"),
+  update: createOwnershipAccess("user"),
 
   // Only admins and editors can delete
   delete: isEditorOrAdmin,

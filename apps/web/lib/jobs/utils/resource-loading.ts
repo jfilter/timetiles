@@ -160,7 +160,10 @@ export const failIngestJob = async (
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     id: ingestJobId,
-    data: { stage: PROCESSING_STAGE.FAILED, errorLog: { lastError: errorMessage, context: context ?? "unknown" } },
+    data: {
+      stage: PROCESSING_STAGE.FAILED,
+      errorLog: { lastError: errorMessage, context: context ?? "unknown", timestamp: new Date().toISOString() },
+    },
   });
 };
 

@@ -9,7 +9,7 @@
  */
 import dns from "node:dns";
 
-import { isPrivateIP, normalizeAddressLiteral, PRIVATE_IPV4_PATTERNS, PRIVATE_IPV6_PATTERNS } from "@timetiles/shared";
+import { isPrivateIP, normalizeAddressLiteral } from "@timetiles/shared";
 
 import { logger } from "@/lib/logger";
 import { isE2E } from "@/lib/utils/is-e2e";
@@ -84,26 +84,9 @@ export const isPrivateUrl = (url: string): boolean => {
     return true;
   }
 
-  // Check for 0.0.0.0 exactly
-  if (hostname === "0.0.0.0") {
-    return true;
-  }
-
-  // IPv4 patterns
-  for (const pattern of PRIVATE_IPV4_PATTERNS) {
-    if (pattern.test(hostname)) {
-      return true;
-    }
-  }
-
-  // IPv6 patterns (may or may not be in brackets depending on URL parsing)
-  for (const pattern of PRIVATE_IPV6_PATTERNS) {
-    if (pattern.test(hostname)) {
-      return true;
-    }
-  }
-
-  return false;
+  // IP-literal classification is owned by the shared package — one implementation
+  // for URL-level checks here and resolved-IP checks in safe-fetch/timescrape.
+  return isPrivateIP(hostname);
 };
 
 /**

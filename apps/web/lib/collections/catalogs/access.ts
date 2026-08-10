@@ -19,10 +19,10 @@ export const catalogsAccess = {
   create: denyPendingDeletion(isAuthenticated),
 
   // Only creator, editors, or admins can update
-  update: createOwnershipAccess("catalogs"),
+  update: createOwnershipAccess(),
 
   // Only creator, editors, or admins can delete
-  delete: createOwnershipAccess("catalogs"),
+  delete: createOwnershipAccess(),
 
   // Only admins and editors can read version history
   readVersions: isEditorOrAdmin,

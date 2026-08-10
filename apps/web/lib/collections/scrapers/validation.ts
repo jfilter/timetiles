@@ -6,6 +6,8 @@
  *
  * @module
  */
+import { isSafeRelativeEntrypoint } from "@timetiles/shared";
+
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
@@ -35,8 +37,7 @@ export const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
  */
 export const validateEntrypoint = (value: unknown): string | true => {
   if (!value || typeof value !== "string") return "Entrypoint is required";
-  if (value.includes("..")) return "Entrypoint must not contain path traversal (..)";
-  if (value.startsWith("/")) return "Entrypoint must be a relative path";
+  if (!isSafeRelativeEntrypoint(value)) return "Entrypoint must be a relative path without traversal (..)";
   if (value.includes("\0")) return "Entrypoint contains invalid characters";
   if (value.length > 255) return "Entrypoint must be at most 255 characters";
   return true;

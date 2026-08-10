@@ -66,7 +66,7 @@ const Events: CollectionConfig = {
     },
 
     // Admins/editors can update all events, catalog owners can update their own
-    update: createOwnershipAccess("events", "catalogOwnerId"),
+    update: createOwnershipAccess("catalogOwnerId"),
 
     // Only admins/editors can delete events
     delete: isEditorOrAdmin,

@@ -22,8 +22,6 @@ import { isPrivateIP } from "@timetiles/shared";
 
 import { RunnerError } from "./errors.js";
 
-export { isPrivateIP } from "@timetiles/shared";
-
 /**
  * Resolve a git URL's host and reject it when any answer is a private/internal
  * address. Throws a {@link RunnerError} on a blocked target. DNS-lookup failures

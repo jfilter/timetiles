@@ -124,26 +124,24 @@ export const applySchemaConfigToDatasets = async (
 /**
  * Build the `dataset` / `multiSheetConfig` pair linking a scheduled ingest to its datasets.
  *
- * `empty` distinguishes create from update: on create the fields can simply be omitted
- * (`undefined`), but on update Payload treats `undefined` as "field omitted" and keeps the
- * prior value — clearing requires explicit `null` / a disabled config.
+ * Empty values are always emitted explicitly (`null` / disabled config): on update Payload
+ * treats `undefined` as "field omitted" and would keep the prior value, and on create the
+ * explicit shape stores the same state as omission — one safe form for both contexts.
  */
 export const buildSheetLinkFields = (
-  datasetMappingEntries: DatasetMappingEntry[],
-  empty: "omit" | "clear"
+  datasetMappingEntries: DatasetMappingEntry[]
 ): {
-  dataset: number | null | undefined;
-  multiSheetConfig:
-    | { enabled: boolean; sheets: { sheetIdentifier: string; dataset: number; skipIfMissing: boolean }[] }
-    | undefined;
+  dataset: number | null;
+  multiSheetConfig: {
+    enabled: boolean;
+    sheets: { sheetIdentifier: string; dataset: number; skipIfMissing: boolean }[];
+  };
 } => {
   const isSingleSheet = datasetMappingEntries.length === 1;
   const firstDatasetId = datasetMappingEntries[0]?.dataset;
-  const emptyDataset = empty === "clear" ? null : undefined;
-  const emptyMultiSheet = empty === "clear" ? { enabled: false, sheets: [] } : undefined;
 
   return {
-    dataset: isSingleSheet && firstDatasetId ? firstDatasetId : emptyDataset,
+    dataset: isSingleSheet && firstDatasetId ? firstDatasetId : null,
     multiSheetConfig:
       !isSingleSheet && datasetMappingEntries.length > 0
         ? {
@@ -154,7 +152,7 @@ export const buildSheetLinkFields = (
               skipIfMissing: false,
             })),
           }
-        : emptyMultiSheet,
+        : { enabled: false, sheets: [] },
   };
 };
 
@@ -494,7 +492,7 @@ export const createScheduledIngest = async ({
     advancedOptions,
     frequency: scheduleConfig.scheduleType === "frequency" ? scheduleConfig.frequency : undefined,
     cronExpression: scheduleConfig.scheduleType === "cron" ? scheduleConfig.cronExpression : undefined,
-    ...buildSheetLinkFields(datasetMappingEntries, "omit"),
+    ...buildSheetLinkFields(datasetMappingEntries),
   };
 
   const scheduledIngest = await payload.create({ collection: "scheduled-ingests", data: baseData, req });

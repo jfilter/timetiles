@@ -12,8 +12,9 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { fetchDatasetEventCounts } from "@/lib/database/filtered-events-query";
 import type { SchemaFreshnessResult } from "@/lib/ingest/schema-freshness";
-import { countEventsByDataset, getSchemaFreshness } from "@/lib/ingest/schema-freshness";
+import { getSchemaFreshness } from "@/lib/ingest/schema-freshness";
 import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
@@ -200,7 +201,8 @@ const processAllDatasets = async (
   const details: ProcessingResult[] = [];
   const stats: ProcessingStats = { generated: 0, skipped: 0, failed: 0 };
   const candidates: Candidate[] = [];
-  const eventCounts = await countEventsByDataset(
+  // One aggregate for the whole scan; datasets with no events are absent — read as 0.
+  const eventCounts = await fetchDatasetEventCounts(
     payload,
     datasets.map((dataset) => dataset.id)
   );

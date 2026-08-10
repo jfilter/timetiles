@@ -99,14 +99,9 @@ runRoutes.get("/status/:runId", (c) => {
 runRoutes.get("/output/:runId/:filename", async (c) => {
   const { runId, filename } = c.req.param();
 
-  if (
-    !runId ||
-    runId.includes("..") ||
-    runId.includes("/") ||
-    !filename ||
-    filename.includes("..") ||
-    filename.includes("/")
-  ) {
+  // runId must be a plain path segment; filename must satisfy the same rule the
+  // write side enforces (isPlainOutputFilename also rejects dotfiles).
+  if (!runId || !isPlainOutputFilename(runId) || !filename || !isPlainOutputFilename(filename)) {
     return c.json({ error: "Invalid parameters" }, 400);
   }
 
@@ -132,7 +127,7 @@ runRoutes.get("/output/:runId/:filename", async (c) => {
 runRoutes.delete("/output/:runId", async (c) => {
   const { runId } = c.req.param();
 
-  if (!runId || runId.includes("..") || runId.includes("/")) {
+  if (!runId || !isPlainOutputFilename(runId)) {
     return c.json({ error: "Invalid parameters" }, 400);
   }
 

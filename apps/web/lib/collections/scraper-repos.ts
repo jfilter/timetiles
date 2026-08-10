@@ -145,10 +145,10 @@ const ScraperRepos: CollectionConfig = {
   ...createCommonConfig({ versions: false, drafts: false, trash: false }),
   admin: { useAsTitle: "name", defaultColumns: ["name", "sourceType", "createdBy", "updatedAt"], group: "Scrapers" },
   access: {
-    read: createOwnershipAccess(COLLECTION_SLUG),
+    read: createOwnershipAccess(),
     create: canCreateScraperResources,
-    update: createOwnershipAccess(COLLECTION_SLUG),
-    delete: createOwnershipAccess(COLLECTION_SLUG),
+    update: createOwnershipAccess(),
+    delete: createOwnershipAccess(),
     readVersions: isEditorOrAdmin,
   },
   fields: [

@@ -160,9 +160,7 @@ export const PATCH = apiRoute({
       schemaMode: body.scheduleConfig.schemaMode,
       frequency: body.scheduleConfig.scheduleType === "frequency" ? body.scheduleConfig.frequency : undefined,
       cronExpression: body.scheduleConfig.scheduleType === "cron" ? body.scheduleConfig.cronExpression : undefined,
-      // "clear": sheet-mode fields being emptied need explicit null / a disabled
-      // config — Payload treats undefined as "field omitted" and keeps the prior value.
-      ...buildSheetLinkFields(datasetMappingEntries, "clear"),
+      ...buildSheetLinkFields(datasetMappingEntries),
     };
 
     // Always include advancedOptions to prevent Payload from filling group defaults
