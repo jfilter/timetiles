@@ -7,7 +7,12 @@ import type { Access, Where } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import { createOwnershipAccess, denyPendingDeletion, isEditorOrAdmin, isPrivileged } from "../shared-fields";
+import {
+  createFeatureFlaggedCreateAccess,
+  createOwnershipAccess,
+  isEditorOrAdmin,
+  isPrivileged,
+} from "../shared-fields";
 
 export const ingestFilesAccess = {
   // Import files can be read by their owner or admins
@@ -43,13 +48,7 @@ export const ingestFilesAccess = {
   }) as Access,
 
   // Only authenticated users can upload files (denied for pending-deletion accounts, feature flag must be enabled)
-  create: denyPendingDeletion(async ({ req: { user, payload } }) => {
-    if (!user) return false;
-
-    // Check feature flag - even admins can't create if disabled
-    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
-    return getFeatureFlagService(payload).isEnabled("enableImportCreation");
-  }),
+  create: createFeatureFlaggedCreateAccess("enableImportCreation"),
 
   // Only file owner, editors, or admins can update
   update: createOwnershipAccess("user"),

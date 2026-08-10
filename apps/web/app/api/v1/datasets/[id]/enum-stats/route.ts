@@ -21,18 +21,12 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
+import { toFieldLabel } from "@/lib/utils/strings";
 
 /** A composable SQL fragment, matching the alias used in lib/filters/to-sql-conditions. */
 type SqlFragment = ReturnType<typeof sql>;
 
 const MAX_VALUES = 30;
-
-/** Turn a raw field path into a human label: "event_type" / "eventType" -> "Event Type". */
-const toFieldLabel = (path: string): string =>
-  path
-    .replaceAll("_", " ")
-    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
-    .replaceAll(/\b\w/g, (c) => c.toUpperCase());
 
 /**
  * Top-N value counts for one field, plus the FULL totals as window aggregates.

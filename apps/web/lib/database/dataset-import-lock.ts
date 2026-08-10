@@ -33,6 +33,7 @@ import { Pool } from "pg";
 
 import { getEnv } from "@/lib/config/env";
 import { type createJobLogger, logError } from "@/lib/logger";
+import { sleep } from "@/lib/utils/sleep";
 
 type Logger = ReturnType<typeof createJobLogger>;
 
@@ -103,8 +104,6 @@ export const closeDatasetLeasePool = async (): Promise<void> => {
   if (pool) await pool.end();
 };
 
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 const makeLease = (client: LeasePoolClient, datasetId: number, log: Logger): DatasetImportLease => {
   let released = false;
   return {
@@ -157,7 +156,7 @@ export const acquireDatasetImportLease = async (
       // Pool fully checked out (connect timed out) or transiently unreachable —
       // retry within the caller's deadline rather than failing the whole import.
       log.warn("Lease pool connection unavailable; retrying within the wait budget", { datasetId, error });
-      await delay(pollIntervalMs);
+      await sleep(pollIntervalMs);
       continue;
     }
     try {
@@ -183,7 +182,7 @@ export const acquireDatasetImportLease = async (
       announcedWait = true;
       log.info("Waiting for a concurrent update-strategy import to finish on this dataset", { datasetId });
     }
-    await delay(pollIntervalMs);
+    await sleep(pollIntervalMs);
   }
 
   throw new Error(`Timed out after ${maxWaitMs}ms waiting for the import lease on dataset ${datasetId}`);

@@ -8,7 +8,7 @@
  * @category Types
  */
 
-import { compareCodeUnits } from "@/lib/utils/compare";
+import { stableStringify } from "@/lib/utils/compare";
 
 export interface FilterState {
   datasets: string[];
@@ -121,15 +121,4 @@ export const clearAllFilters = (filters: FilterState): FilterState => ({
  * Automatically includes every {@link FilterState} field so that
  * adding a new field cannot be silently forgotten.
  */
-export const serializeFilterKey = (filters: FilterState): string =>
-  JSON.stringify(filters, (_, value: unknown) => {
-    // Sort object keys so the output is deterministic regardless of insertion
-    // order. Use UTF-16 code-unit order, NOT localeCompare, so the key is the
-    // same regardless of runtime locale/ICU.
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      return Object.fromEntries(
-        Object.entries(value as Record<string, unknown>).sort(([a], [b]) => compareCodeUnits(a, b))
-      );
-    }
-    return value;
-  });
+export const serializeFilterKey = (filters: FilterState): string => stableStringify(filters);

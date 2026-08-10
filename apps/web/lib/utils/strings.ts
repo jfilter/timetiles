@@ -17,3 +17,10 @@
  */
 export const defaultIfEmpty = (value: string | null | undefined, fallback: string): string =>
   value != null && value !== "" ? value : fallback;
+
+/** Turn a raw field path into a human label: "event_type" / "eventType" -> "Event Type". */
+export const toFieldLabel = (path: string): string =>
+  path
+    .replaceAll("_", " ")
+    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll(/\b\w/g, (c) => c.toUpperCase());

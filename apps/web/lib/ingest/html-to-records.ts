@@ -12,6 +12,7 @@ import * as cheerio from "cheerio";
 import { safeExtractMatch } from "@/lib/ingest/safe-regex";
 import { createLogger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
+import { sleep } from "@/lib/utils/sleep";
 
 const logger = createLogger("html-to-records");
 
@@ -137,8 +138,6 @@ export const extractRecordsFromHtml = (json: unknown, config: HtmlExtractionConf
 const PROGRESS_LOG_INTERVAL = 20;
 const DEFAULT_RATE_LIMIT_MS = 500;
 
-const delay = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
 /** Extract a single field from a detail page's cheerio document. */
 const extractDetailField = ($: cheerio.CheerioAPI, field: DetailPageFieldDef): string => {
   const el = $(field.selector).first();
@@ -218,7 +217,7 @@ export const enrichRecordsFromDetailPages = async (
     }
 
     if (i < records.length - 1) {
-      await delay(rateLimitMs);
+      await sleep(rateLimitMs);
     }
   }
 

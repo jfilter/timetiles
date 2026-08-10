@@ -36,6 +36,7 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { buildNormalizedNumericExpr, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
+import { toFieldLabel } from "@/lib/utils/strings";
 
 interface NumericBoundsRow extends Record<string, unknown> {
   min: number | null;
@@ -53,13 +54,6 @@ const readNumberFieldTypes = (fieldTypes: unknown): string[] => {
   if (!Array.isArray(numbers)) return [];
   return numbers.filter((v): v is string => typeof v === "string");
 };
-
-/** Derive a human-readable label from a field path (mirrors enum-stats). */
-const labelFor = (path: string): string =>
-  path
-    .replaceAll("_", " ")
-    .replaceAll(/([a-z])([A-Z])/g, "$1 $2")
-    .replaceAll(/\b\w/g, (c) => c.toUpperCase());
 
 export const GET = apiRoute({
   auth: "optional",
@@ -170,7 +164,7 @@ export const GET = apiRoute({
 
           return {
             path,
-            label: labelFor(path),
+            label: toFieldLabel(path),
             min: Number(row.min),
             max: Number(row.max),
             isInteger: knownIsInteger ?? row.is_integer ?? false,

@@ -12,6 +12,7 @@
 import type { Payload } from "payload";
 import { v4 as uuidv4 } from "uuid";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { getEnv } from "@/lib/config/env";
 import { createIngestFile } from "@/lib/ingest/create-ingest-file";
 import {
@@ -186,9 +187,6 @@ const createEffectiveInput = (input: UrlFetchJobInput, scheduledIngest: Schedule
   };
 };
 
-const isPrivilegedJobUser = (user: User | null | undefined): boolean =>
-  user?.role === "admin" || user?.role === "editor";
-
 const assertScheduledIngestInputMatches = (
   input: UrlFetchJobInput,
   scheduledIngest: ScheduledIngest | null,
@@ -204,7 +202,7 @@ const assertScheduledIngestInputMatches = (
     throw new Error("URL fetch input user does not own scheduled ingest");
   }
 
-  if (requestUser && !isPrivilegedJobUser(requestUser) && String(requestUser.id) !== String(expectedUserId)) {
+  if (requestUser && !isPrivileged(requestUser) && String(requestUser.id) !== String(expectedUserId)) {
     throw new Error("URL fetch request user does not own scheduled ingest");
   }
 };

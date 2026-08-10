@@ -14,6 +14,7 @@
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import type { Access, CollectionBeforeChangeHook, Field, Where } from "payload";
 
+import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 import type { Config } from "@/payload-types";
 
 import { createSlugHook } from "./slug";
@@ -45,6 +46,20 @@ export const denyPendingDeletion =
     }
     return inner(args);
   };
+
+/**
+ * Factory for create access gated behind a feature flag.
+ * Authentication is required and the flag applies to every role, admins included.
+ * Pending-deletion accounts are denied.
+ */
+export const createFeatureFlaggedCreateAccess = (flag: keyof FeatureFlags): Access =>
+  denyPendingDeletion(async ({ req: { user, payload } }) => {
+    if (!user) return false;
+
+    const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
+    // eslint-disable-next-line @typescript-eslint/return-await -- Returning awaited promise is intentional for async access control
+    return await getFeatureFlagService(payload).isEnabled(flag);
+  });
 
 /**
  * Factory for ownership-based access control.

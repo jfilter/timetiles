@@ -5,39 +5,19 @@
  * - Zoom in: parent cluster splits into children (prefix match)
  * - Zoom out: children merge into parent cluster
  *
- * During the 300ms transition, intermediate positions are interpolated
+ * During the transition, intermediate positions are interpolated
  * so clusters visually move from their old position to their new one.
  *
  * @module
  * @category Components
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-
 import { createLogger } from "@/lib/logger";
 
 import type { ClusterFeature } from "./clustered-map";
+import type { FeaturePosition } from "./use-transition-animation";
+import { useTransitionAnimation } from "./use-transition-animation";
 
 const logger = createLogger("ClusterTransition");
-
-const TRANSITION_DURATION = 500; // ms
-
-interface FeaturePosition {
-  lng: number;
-  lat: number;
-  id: string;
-}
-
-/** Extract position map from features (cluster_id → [lng, lat]) */
-const buildPositionMap = (features: ClusterFeature[]): Map<string, FeaturePosition> => {
-  const map = new Map<string, FeaturePosition>();
-  for (const f of features) {
-    const id = String(f.id ?? "");
-    if (id && f.geometry?.coordinates) {
-      map.set(id, { lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1], id });
-    }
-  }
-  return map;
-};
 
 /** Extract geohash part from cluster ID (strip ":N" merge suffix if present) */
 const geopart = (id: string): string => {
@@ -99,7 +79,7 @@ const matchClusters = (
       }
     }
     if (count > 0) {
-      origins.set(newId, { lng: sumLng / count, lat: sumLat / count, id: newId });
+      origins.set(newId, { lng: sumLng / count, lat: sumLat / count });
     }
     // No fallback — only animate exact prefix matches
   }
@@ -107,32 +87,26 @@ const matchClusters = (
   return origins;
 };
 
-/** Interpolate features from origin positions to target positions */
-const interpolateFeatures = (
-  features: ClusterFeature[],
-  origins: Map<string, FeaturePosition>,
-  progress: number // 0 = at origin, 1 = at target
-): ClusterFeature[] => {
-  if (progress >= 1 || origins.size === 0) return features;
-
-  const eased = easeOutCubic(progress);
-
-  return features.map((f) => {
-    const id = String(f.id ?? "");
-    const origin = origins.get(id);
-    if (!origin) return f;
-
-    const targetLng = f.geometry.coordinates[0];
-    const targetLat = f.geometry.coordinates[1];
-    const lng = origin.lng + (targetLng - origin.lng) * eased;
-    const lat = origin.lat + (targetLat - origin.lat) * eased;
-
-    return { ...f, geometry: { ...f.geometry, coordinates: [lng, lat] as [number, number] } };
-  });
+const logSkip = ({ oldCount, newCount }: { oldCount: number; newCount: number }): void => {
+  logger.debug("No matches found, skipping animation", { oldCount, newCount });
 };
 
-/** Cubic ease-out: fast start, smooth deceleration */
-const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
+const logTransition = ({
+  oldCount,
+  newCount,
+  origins,
+}: {
+  oldCount: number;
+  newCount: number;
+  origins: Map<string, FeaturePosition>;
+}): void => {
+  logger.debug("Animating cluster transition", {
+    oldCount,
+    newCount,
+    matches: origins.size,
+    sampleIds: [...origins.keys()].slice(0, 3),
+  });
+};
 
 /**
  * Hook that returns animated cluster features with smooth transitions.
@@ -140,75 +114,5 @@ const easeOutCubic = (t: number): number => 1 - Math.pow(1 - t, 3);
  * @param clusters - The current (target) cluster features from the API
  * @returns Animated cluster features with interpolated positions during transitions
  */
-export const useClusterTransition = (clusters: ClusterFeature[]): ClusterFeature[] => {
-  const [animatedClusters, setAnimatedClusters] = useState<ClusterFeature[]>(clusters);
-  const prevClustersRef = useRef<ClusterFeature[]>([]);
-  const animationRef = useRef<number | null>(null);
-  const originsRef = useRef<Map<string, FeaturePosition>>(new Map());
-
-  const animate = useCallback(
-    (startTime: number, targetFeatures: ClusterFeature[], origins: Map<string, FeaturePosition>) => {
-      const now = performance.now();
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / TRANSITION_DURATION, 1);
-
-      const interpolated = interpolateFeatures(targetFeatures, origins, progress);
-      setAnimatedClusters(interpolated);
-
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(() => animate(startTime, targetFeatures, origins));
-      } else {
-        animationRef.current = null;
-      }
-    },
-    []
-  );
-
-  useEffect(() => {
-    // Cancel any running animation
-    if (animationRef.current != null) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
-
-    const prev = prevClustersRef.current;
-    prevClustersRef.current = clusters;
-
-    // Skip animation if no previous data or empty
-    if (prev.length === 0 || clusters.length === 0) {
-      setAnimatedClusters(clusters);
-      return;
-    }
-
-    // Build position maps and find matches
-    const oldPositions = buildPositionMap(prev);
-    const newPositions = buildPositionMap(clusters);
-    const origins = matchClusters(oldPositions, newPositions);
-
-    // Skip animation if no matches found (completely different data)
-    if (origins.size === 0) {
-      logger.debug("No matches found, skipping animation", { oldCount: prev.length, newCount: clusters.length });
-      setAnimatedClusters(clusters);
-      return;
-    }
-
-    logger.debug("Animating cluster transition", {
-      oldCount: prev.length,
-      newCount: clusters.length,
-      matches: origins.size,
-      sampleIds: [...origins.keys()].slice(0, 3),
-    });
-
-    originsRef.current = origins;
-    const startTime = performance.now();
-    animationRef.current = requestAnimationFrame(() => animate(startTime, clusters, origins));
-
-    return () => {
-      if (animationRef.current != null) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [clusters, animate]);
-
-  return animatedClusters;
-};
+export const useClusterTransition = (clusters: ClusterFeature[]): ClusterFeature[] =>
+  useTransitionAnimation(clusters, matchClusters, { onTransition: logTransition, onSkip: logSkip });

@@ -18,14 +18,11 @@ const mocks = vi.hoisted(() => ({
   }),
 }));
 
-vi.mock("@/lib/collections/shared-fields", () => ({
+vi.mock("@/lib/collections/shared-fields", async (importOriginal) => ({
+  // Real denyPendingDeletion / createFeatureFlaggedCreateAccess — only the role checks are stubbed.
+  ...(await importOriginal<typeof SharedFields>()),
   isPrivileged: mocks.isPrivileged,
   isEditorOrAdmin: mocks.isEditorOrAdmin,
-  // Mirrors the real wrapper: pending-deletion accounts are denied before the inner check runs
-  denyPendingDeletion:
-    (inner: (args: unknown) => unknown) =>
-    (args: { req: { user: { deletionStatus?: string } | null } }): unknown =>
-      args.req.user?.deletionStatus === "pending_deletion" ? false : inner(args),
 }));
 
 vi.mock("@/lib/services/feature-flag-service", () => ({
@@ -40,6 +37,7 @@ vi.mock("@/lib/utils/relation-id", () => ({
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ingestJobsAccess } from "@/lib/collections/ingest-jobs/access-control";
+import type * as SharedFields from "@/lib/collections/shared-fields";
 
 describe.sequential("ingestJobsAccess", () => {
   beforeEach(() => {

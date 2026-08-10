@@ -14,6 +14,17 @@
  * @category Utils
  */
 
+/**
+ * Parse a digits-only string ("42") into a number, or `null`.
+ *
+ * Strict on purpose: no sign, no separators, no surrounding whitespace — callers
+ * that tolerate padding trim before calling.
+ */
+export const parseDigits = (value: string): number | null => {
+  if (!/^\d+$/.test(value)) return null;
+  return Number.parseInt(value, 10);
+};
+
 /** A resolved per-column number convention. */
 export interface NumberFormat {
   /** The character that separates the integer and fractional parts. */

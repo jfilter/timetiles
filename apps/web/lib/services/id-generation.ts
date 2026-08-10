@@ -11,7 +11,7 @@
  */
 import { createHash, randomBytes } from "node:crypto";
 
-import { compareCodeUnits } from "@/lib/utils/compare";
+import { stableStringify } from "@/lib/utils/compare";
 import { extractExternalIdValue, formatEventId, ID_PREFIXES, sanitizeId } from "@/lib/utils/event-id";
 import { deleteByPathOrKey } from "@/lib/utils/object-path";
 import type { Dataset } from "@/payload-types";
@@ -125,20 +125,4 @@ const generateAutoId = (datasetId: string): { uniqueId: string; strategy: string
   };
 };
 
-const generateContentHash = (data: unknown): string => {
-  const sortReplacer = (_key: string, value: unknown): unknown => {
-    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-      const sorted: Record<string, unknown> = {};
-      // Sort by UTF-16 code unit, NOT localeCompare: the dedup key must be
-      // byte-for-byte reproducible across machines, and localeCompare ordering
-      // depends on the runtime locale/ICU version.
-      for (const k of Object.keys(value).sort((a, b) => compareCodeUnits(a, b))) {
-        sorted[k] = (value as Record<string, unknown>)[k];
-      }
-      return sorted;
-    }
-    return value;
-  };
-  const normalized = JSON.stringify(data, sortReplacer);
-  return createHash("sha256").update(normalized).digest("hex");
-};
+const generateContentHash = (data: unknown): string => createHash("sha256").update(stableStringify(data)).digest("hex");

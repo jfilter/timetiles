@@ -12,6 +12,7 @@
 import { parseCronExpression } from "@/lib/ingest/cron-parser";
 import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { validateExternalHttpUrl } from "@/lib/security/url-validation";
+import { parseDigits } from "@/lib/utils/number-parsing";
 
 /**
  * Validates a URL string for Payload field validation.
@@ -29,14 +30,7 @@ export const validateUrl = (val: string | null | undefined): string | true => {
 /**
  * Validates a cron expression field range.
  */
-const parseStrictCronNumber = (value: string): number | null => {
-  const trimmedValue = value.trim();
-  if (!/^\d+$/.test(trimmedValue)) {
-    return null;
-  }
-
-  return Number.parseInt(trimmedValue, 10);
-};
+const parseStrictCronNumber = (value: string): number | null => parseDigits(value.trim());
 
 const validateRange = (field: string, min: number, max: number, name: string): string | true => {
   // Ranges may carry a step (A-B/N) — validate it, then the bare range.

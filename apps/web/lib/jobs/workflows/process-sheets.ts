@@ -22,7 +22,7 @@
  */
 import type { Payload, RunTaskFunctions } from "payload";
 
-import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { failIngestJob } from "@/lib/jobs/utils/resource-loading";
 import { logError, logger } from "@/lib/logger";
 
 import type {
@@ -46,14 +46,7 @@ const markSheetFailed = async (
 ): Promise<void> => {
   const message = error instanceof Error ? error.message : String(error);
   try {
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: ingestJobId,
-      data: {
-        stage: PROCESSING_STAGE.FAILED,
-        errorLog: { lastError: message, context, timestamp: new Date().toISOString() },
-      },
-    });
+    await failIngestJob(payload, ingestJobId, error, context);
     logger.info(`Sheet marked as FAILED`, { ingestJobId, context, error: message });
   } catch {
     // Best-effort — don't mask the original error

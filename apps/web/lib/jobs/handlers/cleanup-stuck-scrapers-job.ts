@@ -19,14 +19,13 @@
 import type { Payload } from "payload";
 
 import { logError, logger } from "@/lib/logger";
-import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
 import { asSystem } from "@/lib/services/system-payload";
 import { recordScraperRun, resolveScraperStats } from "@/lib/types/run-statistics";
 import { parseDateInput } from "@/lib/utils/date";
 import type { Scraper } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
-import { hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
+import { cancelOrphanedWorkflowJobs, hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
 
 export interface CleanupStuckScrapersJobInput {
   /** Hours after which a running scraper is considered stuck (default: 4).
@@ -35,57 +34,6 @@ export interface CleanupStuckScrapersJobInput {
   /** Whether to run in dry-run mode (default: false) */
   dryRun?: boolean;
 }
-
-/**
- * Cancel the workflow jobs an abandoned scraper run left behind.
- *
- * Errors deliberately propagate. Swallowing them and returning 0 made a transient database
- * error permanent: the scraper had already been flipped out of `running`, and the reaper only
- * ever looks at `lastRunStatus = "running"`, so the orphaned job kept its concurrency key
- * forever with nothing left to revisit it.
- */
-const cancelOrphanedWorkflowJobs = async (
-  payload: Payload,
-  scraperId: number | string,
-  currentTime: Date,
-  thresholdHours: number
-): Promise<number> => {
-  const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
-
-  const orphanedJobs = await asSystem(payload).find({
-    collection: "payload-jobs" as const,
-    where: {
-      and: [
-        // Must match the numeric form too. Job input is jsonb, and a string
-        // `equals` on a jsonb path compiles to a JSON *string* comparison —
-        // while every trigger path enqueues `scraperId` as a NUMBER. The
-        // string-only clause was therefore always false and this cancellation
-        // never ran, leaving orphaned jobs holding their concurrency key
-        // forever. buildResourceIdMatch covers both representations; the
-        // sibling hasActivePayloadJob check already uses it.
-        buildResourceIdMatch("input.scraperId", scraperId),
-        { processing: { equals: false } },
-        { completedAt: { exists: false } },
-        { createdAt: { less_than: orphanedJobCutoff } },
-      ],
-    },
-    // 0 lifts the limit; a fixed number would strand everything past it, since the scraper
-    // leaves `running` on the same pass (`pagination: false` does not lift an explicit limit).
-    limit: 0,
-    pagination: false,
-  });
-
-  let cancelled = 0;
-  for (const job of orphanedJobs.docs) {
-    await asSystem(payload).update({
-      collection: "payload-jobs" as const,
-      id: job.id,
-      data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
-    });
-    cancelled++;
-  }
-  return cancelled;
-};
 
 /**
  * Mark any scraper-runs still "running" for this scraper as failed.
@@ -137,7 +85,13 @@ const cleanUpDependents = async (
   currentTime: Date,
   thresholdHours: number
 ): Promise<{ cancelledJobs: number; failedRuns: number }> => {
-  const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scraper.id, currentTime, thresholdHours);
+  const cancelledJobs = await cancelOrphanedWorkflowJobs(
+    payload,
+    "input.scraperId",
+    scraper.id,
+    currentTime,
+    thresholdHours
+  );
   const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
   return { cancelledJobs, failedRuns };
 };

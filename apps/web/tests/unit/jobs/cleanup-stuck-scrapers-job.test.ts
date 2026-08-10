@@ -25,7 +25,9 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
 
 const mockIsResourceStuck = vi.hoisted(() => vi.fn());
 const mockHasActivePayloadJob = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/jobs/utils/stuck-detection", () => ({
+vi.mock("@/lib/jobs/utils/stuck-detection", async (importOriginal) => ({
+  // Keep the real cancelOrphanedWorkflowJobs — the assertions below cover its queries.
+  ...(await importOriginal<typeof StuckDetection>()),
   isResourceStuck: mockIsResourceStuck,
   hasActivePayloadJob: mockHasActivePayloadJob,
 }));
@@ -33,6 +35,7 @@ vi.mock("@/lib/jobs/utils/stuck-detection", () => ({
 vi.mock("@/lib/utils/date", () => ({ parseDateInput: vi.fn((input: string) => new Date(input)) }));
 
 import { cleanupStuckScrapersJob } from "@/lib/jobs/handlers/cleanup-stuck-scrapers-job";
+import type * as StuckDetection from "@/lib/jobs/utils/stuck-detection";
 
 describe.sequential("cleanupStuckScrapersJob", () => {
   let mockPayload: {
