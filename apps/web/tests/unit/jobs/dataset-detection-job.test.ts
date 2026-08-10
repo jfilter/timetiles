@@ -425,7 +425,10 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Ingest file not found");
     });
 
-    it("should throw when catalog not found", async () => {
+    // Replaces a former "should throw when catalog not found" test: getOrCreateCatalog
+    // never loads the catalog, it only parses the id, so a "missing catalog" cannot be
+    // observed here. The real contract is that the parsed id is used as-is.
+    it("uses the given catalog id without looking the catalog up", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -434,12 +437,17 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         originalName: "test.csv",
       };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce(null); // catalog not found
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      mockPayload.create.mockResolvedValue({ id: 42 });
 
-      // Mock the find call for catalog to return empty docs
-      mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      await datasetDetectionJob.handler(mockContext);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      expect(mockPayload.findByID).toHaveBeenCalledTimes(1);
+      expect(mockPayload.findByID).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "catalogs" }));
+      expect(mockPayload.create).toHaveBeenCalledWith({
+        collection: "datasets",
+        data: expect.objectContaining({ catalog: 456 }),
+      });
     });
 
     it("should throw on file parsing errors", async () => {
@@ -455,7 +463,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mocks.fs.existsSync.mockReturnValue(false);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow(/^Cannot access file /);
 
       expect(mockPayload.update).toHaveBeenCalledWith({
         collection: "ingest-files",
@@ -464,7 +472,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
 
-    it("should throw on CSV parsing errors", async () => {
+    // The CSV path streams via createReadStream (parse-files.ts), so the fixture has to be
+    // supplied through the stream — a readFileSync override is never consulted.
+    it("should throw when the streamed CSV has no header row", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -474,11 +484,16 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      mocks.fs.createReadStream.mockImplementation(() => createMockReadStream(""));
 
-      // Mock invalid CSV content that will cause parsing errors
-      mocks.fs.readFileSync.mockReturnValue("invalid,csv,data\nwith,malformed\nrows");
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("No data rows found in file");
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: "ingest-file-123",
+        data: { status: "failed", errorLog: "No data rows found in file" },
+      });
     });
 
     it("should throw on Excel parsing errors", async () => {
@@ -492,15 +507,25 @@ describe.sequential("DatasetDetectionJob Handler", () => {
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
 
-      // Mock invalid Excel content that will cause SheetJS to throw
-      mocks.fs.readFileSync.mockReturnValue(Buffer.from("invalid excel content"));
+      // ZIP magic bytes without a valid workbook inside: the one input SheetJS rejects
+      // outright. Loose bytes are sniffed as text instead of throwing.
+      mocks.fs.readFileSync.mockReturnValue(Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]));
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow(/Unsupported ZIP file/);
+
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: "ingest-file-123",
+        data: expect.objectContaining({ status: "failed", errorLog: expect.stringContaining("Unsupported ZIP file") }),
+      });
     });
   });
 
   describe("Edge Cases", () => {
-    it("should handle empty CSV file", async () => {
+    // A header-only CSV is valid input: production only rejects when there are neither
+    // headers nor rows. The fixture must go through createReadStream (the streaming path).
+    it("should accept a header-only CSV and report zero rows", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "empty.csv",
@@ -510,14 +535,21 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      mocks.fs.createReadStream.mockImplementation(() => createMockReadStream("header1,header2\n"));
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
 
-      // Mock CSV with only headers, no data rows
-      mocks.fs.readFileSync.mockReturnValue("header1,header2\n");
+      const result = await datasetDetectionJob.handler(mockContext);
 
-      // Mock find calls for catalog and dataset
-      mockPayload.find.mockResolvedValue({ docs: [] });
-
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      expect(result.output.sheetsDetected).toBe(1);
+      expect(result.output.sheets[0]).toEqual(expect.objectContaining({ rowCount: 0 }));
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: "ingest-file-123",
+        data: expect.objectContaining({
+          status: "processing",
+          sheetMetadata: [expect.objectContaining({ rowCount: 0, headers: ["header1", "header2"] })],
+        }),
+      });
     });
 
     it("should handle Excel file with empty sheets", async () => {
@@ -583,7 +615,9 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       });
     });
 
-    it("should handle unsupported file formats", async () => {
+    // `.txt` is deliberately CSV-like (CSV_LIKE_EXTENSIONS): a CSV served as text/plain
+    // must not fall through to the Excel reader.
+    it("should parse .txt files through the CSV path", async () => {
       const mockIngestFile = {
         id: 123,
         filename: "test.txt",
@@ -593,11 +627,36 @@ describe.sequential("DatasetDetectionJob Handler", () => {
       };
 
       mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      mockPayload.create.mockResolvedValue({ id: "test-id" });
 
-      // Mock find calls for catalog
-      mockPayload.find.mockResolvedValue({ docs: [] });
+      const result = await datasetDetectionJob.handler(mockContext);
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow();
+      expect(result.output.sheetsDetected).toBe(1);
+      expect(result.output.sheets[0]).toEqual(expect.objectContaining({ name: "CSV Data", rowCount: 2 }));
+    });
+
+    it("should fail on a genuinely unsupported file format", async () => {
+      const mockIngestFile = {
+        id: 123,
+        filename: "test.docx",
+        filePath: "/tmp/test.docx",
+        catalog: 456,
+        originalName: "test.docx",
+      };
+
+      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
+      // Non-CSV extensions go to the workbook reader; a zip container that is not a
+      // spreadsheet is rejected there.
+      mocks.fs.readFileSync.mockReturnValue(Buffer.from([0x50, 0x4b, 0x03, 0x04, 1, 2, 3, 4]));
+
+      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow(/Unsupported ZIP file/);
+
+      expect(mockPayload.create).not.toHaveBeenCalled();
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "ingest-files",
+        id: "ingest-file-123",
+        data: expect.objectContaining({ status: "failed", errorLog: expect.any(String) }),
+      });
     });
 
     it("should handle very large files gracefully", async () => {

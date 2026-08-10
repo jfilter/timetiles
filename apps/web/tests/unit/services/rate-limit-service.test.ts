@@ -15,6 +15,13 @@ import { createRateLimitStore } from "@/lib/services/rate-limit/factory";
 import { MemoryRateLimitStore } from "@/lib/services/rate-limit/memory-store";
 import { PgRateLimitStore } from "@/lib/services/rate-limit/pg-store";
 import { getClientIdentifier, RateLimitService, resetTrustedProxyState } from "@/lib/services/rate-limit-service";
+import { TEST_SECRETS } from "@/tests/constants/test-credentials";
+
+/** Production-mode env validation requires these; do not rely on the ambient shell env. */
+const stubProductionEnvBaseline = (): void => {
+  vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+  vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
+};
 
 describe("RateLimitService", () => {
   afterEach(() => {
@@ -105,6 +112,7 @@ describe("getClientIdentifier", () => {
 
   it("ignores forwarded IP headers in production when trusted proxies are not configured", () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionEnvBaseline();
     vi.stubEnv("TRUSTED_PROXY_CIDRS", "");
     resetEnv();
 
@@ -121,6 +129,7 @@ describe("getClientIdentifier", () => {
 
   it("uses trusted proxy CIDRs to recover the client IP in production", () => {
     vi.stubEnv("NODE_ENV", "production");
+    stubProductionEnvBaseline();
     vi.stubEnv("TRUSTED_PROXY_CIDRS", "10.0.0.0/8");
     resetEnv();
 

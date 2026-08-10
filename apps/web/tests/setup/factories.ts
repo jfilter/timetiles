@@ -258,10 +258,12 @@ export const TEST_FILENAMES = { CSV: "test.csv", EXCEL: "test.xlsx", EMPTY: "emp
  */
 export const createMockPayload = (overrides: Partial<any> = {}): any => {
   return {
-    findByID: vi.fn(),
-    find: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
+    // Realistic defaults: production reads `.docs` off find() and `.id` off create(),
+    // so bare vi.fn() mocks would make unrelated code throw TypeError.
+    findByID: vi.fn().mockResolvedValue(null),
+    find: vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 }),
+    create: vi.fn().mockResolvedValue({ id: 1 }),
+    update: vi.fn().mockResolvedValue({ id: 1 }),
     jobs: { queue: vi.fn().mockResolvedValue({}) },
     ...overrides,
   };
