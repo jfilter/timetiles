@@ -71,32 +71,6 @@ export class Cache {
   }
 
   /**
-   * Get or compute a value (cache-aside pattern)
-   */
-  async getOrSet<T>(key: string, factory: () => Promise<T> | T, options?: CacheSetOptions): Promise<T> {
-    // Try to get from cache
-    const cached = await this.get<T>(key);
-    if (cached !== null) {
-      logger.debug("Cache hit", { key: this.makeKey(key) });
-      return cached;
-    }
-
-    // Compute value
-    logger.debug("Cache miss, computing value", { key: this.makeKey(key) });
-    try {
-      const value = await factory();
-
-      // Store in cache
-      await this.set(key, value, options);
-
-      return value;
-    } catch (error) {
-      logger.error("Cache factory error", { key: this.makeKey(key), error });
-      throw error;
-    }
-  }
-
-  /**
    * Delete a value from cache
    */
   async delete(key: string): Promise<boolean> {
@@ -191,29 +165,6 @@ export class Cache {
       await this.storage.setMany(fullEntries, options);
     } catch (error) {
       logger.error("Cache setMany error", { error });
-    }
-  }
-
-  /**
-   * Invalidate cache entries by tags
-   */
-  async invalidateByTags(tags: string[]): Promise<number> {
-    try {
-      const keys = await this.storage.keys();
-      let invalidated = 0;
-
-      for (const key of keys) {
-        const entry = await this.storage.get(key);
-        if (entry?.metadata.tags?.some((tag) => tags.includes(tag)) && (await this.storage.delete(key))) {
-          invalidated++;
-        }
-      }
-
-      logger.info("Cache invalidated by tags", { tags, invalidated });
-      return invalidated;
-    } catch (error) {
-      logger.error("Cache invalidateByTags error", { tags, error });
-      return 0;
     }
   }
 

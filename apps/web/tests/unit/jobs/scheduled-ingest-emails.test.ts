@@ -118,6 +118,33 @@ describe.sequential("sendScheduledIngestRetriesExhaustedEmail", () => {
     vi.clearAllMocks();
   });
 
+  it("escapes markup in the schedule name and the upstream error", async () => {
+    const payload = createPayloadMock();
+    const ingest = buildCronIngest({
+      name: '<a href="https://evil.example">Reauthorize</a>',
+      scheduleType: "cron",
+      cronExpression: "<script>x</script>",
+      frequency: null,
+    });
+
+    // The error text comes from the remote host the ingest points at, so it must
+    // never render as live markup in a mail from the trusted sender.
+    await sendScheduledIngestRetriesExhaustedEmail(
+      payload as never,
+      owner,
+      ingest,
+      4,
+      3,
+      '</p><a href="https://evil.example">Click here</a>'
+    );
+
+    const job = payload.jobs.queue.mock.calls[0]?.[0] as { input: { html: string } };
+
+    expect(job.input.html).not.toContain('<a href="https://evil.example">');
+    expect(job.input.html).not.toContain("<script>");
+    expect(job.input.html).toContain("&lt;a href=&quot;https://evil.example&quot;&gt;");
+  });
+
   it("queues an email with retry counts and last error", async () => {
     const payload = createPayloadMock();
     const ingest = buildCronIngest({

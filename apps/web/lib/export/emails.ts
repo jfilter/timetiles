@@ -8,6 +8,7 @@
  * @module
  * @category Services
  */
+import { escapeHtml } from "@timetiles/ui/lib/escape-html";
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
@@ -108,7 +109,7 @@ export const sendExportFailedEmail = async (
     ${
       errorReason
         ? callout(
-            `<p style="margin: 0; font-size: 14px;"><strong>${t("exportFailedError")}</strong> ${errorReason}</p>`,
+            `<p style="margin: 0; font-size: 14px;"><strong>${t("exportFailedError")}</strong> ${escapeHtml(errorReason)}</p>`,
             "red"
           )
         : ""

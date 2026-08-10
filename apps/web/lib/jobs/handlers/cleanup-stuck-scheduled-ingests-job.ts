@@ -134,6 +134,18 @@ const failStuckIngestFile = async (payload: Payload, scheduledIngestId: number |
   return stuckFiles.docs.length;
 };
 
+/**
+ * How far past the stuck threshold the schedule is released even if the dependent
+ * cleanup keeps failing.
+ *
+ * `lastStatus = "running"` is the only handle this reaper has: the scheduler skips
+ * such rows and the atomic claim rejects them, so a schedule stuck there can never
+ * run again. Doing the dependent cleanup first is right for a transient failure,
+ * but a deterministic one would otherwise keep the schedule dead forever.
+ * Mirrors FORCE_RESET_THRESHOLD_MULTIPLE in cleanup-stuck-scrapers-job.
+ */
+const FORCE_RESET_THRESHOLD_MULTIPLE = 6;
+
 const resetStuckImport = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
@@ -144,11 +156,24 @@ const resetStuckImport = async (
     // Calculate how long it was stuck
     const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
     const stuckDuration = lastRunTime ? currentTime.getTime() - lastRunTime.getTime() : 0;
+    const mayForce = stuckDuration > thresholdHours * FORCE_RESET_THRESHOLD_MULTIPLE * 60 * 60 * 1000;
 
     // Cancel orphaned workflow jobs to release concurrency slots, and fail the run's
     // downstream ingest-file/ingest-jobs state so it isn't left dangling non-terminal.
-    const cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id, currentTime, thresholdHours);
-    const failedFiles = await failStuckIngestFile(payload, scheduledIngest.id);
+    let cancelledJobs = 0;
+    let failedFiles = 0;
+    try {
+      cancelledJobs = await cancelOrphanedWorkflowJobs(payload, scheduledIngest.id, currentTime, thresholdHours);
+      failedFiles = await failStuckIngestFile(payload, scheduledIngest.id);
+    } catch (error) {
+      if (!mayForce) throw error;
+      // A schedule that can never run again is worse than a leftover job record.
+      logError(error, "Releasing stuck scheduled ingest despite failed dependent cleanup", {
+        scheduledIngestId: scheduledIngest.id,
+        name: scheduledIngest.name,
+        stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
+      });
+    }
 
     // Update execution history with failure
     const executionHistory = scheduledIngest.executionHistory ?? [];
