@@ -12,9 +12,7 @@
 import { unlink } from "node:fs/promises";
 
 import { logger } from "@/lib/logger";
-
-const isENOENT = (error: unknown): boolean =>
-  typeof error === "object" && error !== null && (error as { code?: unknown }).code === "ENOENT";
+import { isENOENT } from "@/lib/utils/is-enoent";
 
 /**
  * Best-effort unlink; a file that is already gone is not an error.

@@ -8,7 +8,7 @@
  * @module
  * @category Services
  */
-import { isPlainOutputFilename } from "@timetiles/shared";
+import { isPlainOutputFilename, isSafeRelativeEntrypoint } from "@timetiles/shared";
 import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
@@ -37,8 +37,8 @@ const runtimeSchema = z.enum(["python", "node"]);
 const entrypointSchema = z
   .string()
   .min(1, "Entrypoint must not be empty")
-  .refine((val) => !val.includes(".."), "Entrypoint must not contain path traversal (..)")
-  .refine((val) => !val.startsWith("/"), "Entrypoint must not be an absolute path");
+  // Shared predicate: manifest acceptance must never drift from the runner's run-time rule.
+  .refine(isSafeRelativeEntrypoint, "Entrypoint must be a relative path without traversal (..)");
 
 const limitsSchema = z
   .object({

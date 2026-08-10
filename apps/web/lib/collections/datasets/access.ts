@@ -48,7 +48,7 @@ export const create: Access = denyPendingDeletion(async ({ req: { user, payload 
  * Update access: Admins/editors can update all datasets, catalog owners can update their own.
  * Uses WHERE clause on indexed catalogCreatorId field for zero queries.
  */
-export const update: Access = createOwnershipAccess("datasets", "catalogCreatorId");
+export const update: Access = createOwnershipAccess("catalogCreatorId");
 
 /**
  * Delete access: Only admins/editors can delete datasets.

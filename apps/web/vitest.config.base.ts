@@ -11,6 +11,8 @@ export default defineConfig({
       "@timetiles/ui/charts": path.resolve(__dirname, "../../packages/ui/src/components/charts"),
       "@timetiles/ui/icons": path.resolve(__dirname, "../../packages/ui/src/components/icons"),
       "@timetiles/ui": path.resolve(__dirname, "../../packages/ui/src"),
+      // Resolve from source, not dist — a stale build must never shadow current code in tests
+      "@timetiles/shared": path.resolve(__dirname, "../../packages/shared/src"),
     },
   },
 });

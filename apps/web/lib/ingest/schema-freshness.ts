@@ -11,7 +11,6 @@
 import type { Payload, PayloadRequest } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
-import { fetchDatasetEventCounts } from "@/lib/database/filtered-events-query";
 import type { DatasetSchema } from "@/payload-types";
 
 export type StalenessReason = "added" | "deleted" | "no_schema";
@@ -38,19 +37,6 @@ const countEventsFor = async (payload: Payload, datasetId: number, req?: Payload
   });
   return eventCountResult.totalDocs;
 };
-
-/**
- * Event counts for many datasets in one query.
- *
- * The maintenance job checks every dataset for staleness, and one `payload.count` per dataset
- * turns that scan into 1 round trip per dataset against a fixed job timeout. Datasets with no
- * events are absent from the result — read them as 0.
- *
- * `datasetIds` scopes the aggregate. A targeted run over one dataset must not degrade an
- * indexable count into a GROUP BY over the whole events table.
- */
-export const countEventsByDataset = (payload: Payload, datasetIds: number[]): Promise<Map<number, number>> =>
-  fetchDatasetEventCounts(payload, datasetIds);
 
 /**
  * Check if a dataset's schema is stale by querying the actual event count.

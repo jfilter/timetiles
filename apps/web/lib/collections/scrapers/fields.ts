@@ -3,6 +3,7 @@
  *
  * @module
  */
+import { isPlainOutputFilename } from "@timetiles/shared";
 import type { Field } from "payload";
 
 import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
@@ -50,11 +51,11 @@ export const scraperFields: Field[] = [
     type: "text",
     defaultValue: "data.csv",
     admin: { description: "Output CSV filename" },
-    // Mirror the runner's rule — anything else fails every run with an
-    // opaque "Runner API returned 400" instead of failing at save time.
+    // Same predicate the runner enforces — anything else fails every run with
+    // an opaque "Runner API returned 400" instead of failing at save time.
     validate: (value: null | string | undefined) => {
       if (value == null || value === "") return true;
-      if (value.includes("..") || value.includes("/") || value.startsWith(".")) {
+      if (!isPlainOutputFilename(value)) {
         return "Output file must be a plain filename without path separators";
       }
       return true;

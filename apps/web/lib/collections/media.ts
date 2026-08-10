@@ -56,8 +56,8 @@ const Media: CollectionConfig = {
     create: isAuthenticated,
 
     // Only owner, editors, or admins can update/delete
-    update: createOwnershipAccess("media"),
-    delete: createOwnershipAccess("media"),
+    update: createOwnershipAccess(),
+    delete: createOwnershipAccess(),
 
     // Only admins and editors can read version history
     readVersions: isEditorOrAdmin,

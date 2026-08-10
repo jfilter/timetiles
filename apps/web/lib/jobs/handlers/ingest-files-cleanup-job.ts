@@ -33,6 +33,7 @@ import { getIngestFilePath, getIngestFilesDir } from "@/lib/ingest/upload-path";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem, type SystemPayload } from "@/lib/services/system-payload";
+import { isENOENT } from "@/lib/utils/is-enoent";
 
 /** Max concurrent `unlink()` calls per chunk. Bounded to avoid overwhelming the FS. */
 const UNLINK_CONCURRENCY = 10;
@@ -51,9 +52,6 @@ interface IngestFileRow {
   id: number | string;
   filename?: string | null;
 }
-
-const isENOENT = (e: unknown): boolean =>
-  typeof e === "object" && e !== null && (e as { code?: unknown }).code === "ENOENT";
 
 /**
  * Unlink absolute paths in bounded-concurrency chunks. One failing unlink (e.g.

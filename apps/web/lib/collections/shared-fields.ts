@@ -37,8 +37,10 @@ export const denyPendingDeletion =
   (inner: Access): Access =>
   // eslint-disable-next-line sonarjs/function-return-type -- wrapping Access inherently returns mixed types
   (args) => {
-    const user = args.req.user;
-    if (user && (user as { deletionStatus?: string }).deletionStatus === "pending_deletion") {
+    const user = args.req.user as { deletionStatus?: string; deletionScheduledAt?: string | null } | null;
+    // deletionScheduledAt is checked too: legacy or admin-edited rows can carry a schedule
+    // without the status flag, and a scheduled account must never create data either way.
+    if (user && (user.deletionStatus === "pending_deletion" || user.deletionScheduledAt)) {
       return false;
     }
     return inner(args);
@@ -49,17 +51,7 @@ export const denyPendingDeletion =
  * Returns true for editors/admins, or a WHERE clause filtering by ownership field.
  * Uses zero-query approach (WHERE clause) instead of per-document DB lookup.
  */
-export const createOwnershipAccess = (
-  _collection: string,
-  ownerField:
-    | "createdBy"
-    | "ownedBy"
-    | "user"
-    | "repoCreatedBy"
-    | "scraperOwner"
-    | "catalogOwnerId"
-    | "catalogCreatorId" = "createdBy"
-): Access => {
+export const createOwnershipAccess = (ownerField: string = "createdBy"): Access => {
   // Payload Access functions legitimately return boolean | Where
   // eslint-disable-next-line sonarjs/function-return-type
   return ({ req: { user } }): boolean | Where => {
@@ -110,7 +102,7 @@ export const createPublicOwnershipAccess = (
 
   return {
     read: createPublicReadAccess({ isPublic: { equals: true } }, (userId) => ({ [ownerField]: { equals: userId } })),
-    create: isAuthenticated,
+    create: denyPendingDeletion(isAuthenticated),
     update,
     deleteAccess: update,
     readVersions: isEditorOrAdmin,

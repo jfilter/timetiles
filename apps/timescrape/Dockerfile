@@ -30,14 +30,12 @@ WORKDIR /app/apps/timescrape
 # dist must exist for typechecking here and for the deploy stage below.
 RUN pnpm --filter @timetiles/shared build && pnpm exec tsup src/index.ts --format esm --dts
 
-# Stage 4: Production node_modules via pnpm deploy — resolves workspace: deps to
-# real directories and installs lockfile-exact versions (npm install --omit=dev
-# re-resolved semver ranges without a lockfile and cannot parse workspace:).
-# --legacy: pnpm 10's default deploy mode requires inject-workspace-packages.
-# strict-peer-dependencies off: deploy re-checks the WHOLE workspace's peers and
-# .npmrc's strict setting fails it on pre-existing web/ui peer warnings.
+# Stage 4: lockfile-exact production node_modules with workspace: deps resolved to real dirs.
+# --legacy: pnpm 10's default deploy mode requires inject-workspace-packages; strict peers
+# off because deploy re-checks the whole workspace and trips on pre-existing web/ui warnings.
 WORKDIR /app
-RUN pnpm --filter timescrape deploy --legacy --prod --ignore-scripts \
+RUN --mount=type=cache,id=pnpm-scraper,target=/pnpm/store \
+    pnpm --filter timescrape deploy --legacy --prod --ignore-scripts \
     --config.strict-peer-dependencies=false /app/deploy
 
 # Stage 5: Production runner

@@ -3,5 +3,5 @@
  *
  * @module
  */
-export { isPrivateIP, normalizeAddressLiteral, PRIVATE_IPV4_PATTERNS, PRIVATE_IPV6_PATTERNS } from "./private-ip.js";
+export { isPrivateIP, normalizeAddressLiteral } from "./private-ip.js";
 export { isPlainOutputFilename, isSafeRelativeEntrypoint } from "./scraper-paths.js";

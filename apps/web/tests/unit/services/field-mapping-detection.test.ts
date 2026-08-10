@@ -138,32 +138,72 @@ describe("Field Mapping Detection", () => {
   });
 
   describe("Language patterns", () => {
+    // `stats` carries each column's sample SHAPE (fieldType); the expected role comes from
+    // the explicit titleField/descriptionField/timestampField columns, never from key order.
     // French: the `description` column deliberately carries timestamp-shaped samples —
     // name-based matching must still map it to descriptionPath.
     it.each([
-      ["German (deu)", "deu", { titel: "title", beschreibung: "description", datum: "timestamp" }],
-      ["French (fra)", "fra", { titre: "title", description: "timestamp", date: "timestamp" }],
-      ["Spanish (spa)", "spa", { "t\u00edtulo": "title", "descripci\u00f3n": "description", fecha: "timestamp" }],
-      ["Italian (ita)", "ita", { titolo: "title", descrizione: "description", data: "timestamp" }],
-      ["Dutch (nld)", "nld", { titel: "title", beschrijving: "description", datum: "timestamp" }],
-      ["Portuguese (por)", "por", { "t\u00edtulo": "title", "descri\u00e7\u00e3o": "description", data: "timestamp" }],
-    ] as const)("detects %s title/description/timestamp fields", (_name, language, fields) => {
-      const [titleField, descriptionField, timestampField] = Object.keys(fields);
-      const fieldStats = createFieldStats(
-        Object.fromEntries(Object.entries(fields).map(([field, fieldType]) => [field, { fieldType }]))
-      );
+      {
+        language: "deu",
+        titleField: "titel",
+        descriptionField: "beschreibung",
+        timestampField: "datum",
+        stats: { titel: "title", beschreibung: "description", datum: "timestamp" },
+      },
+      {
+        language: "fra",
+        titleField: "titre",
+        descriptionField: "description",
+        timestampField: "date",
+        stats: { titre: "title", description: "timestamp", date: "timestamp" },
+      },
+      {
+        language: "spa",
+        titleField: "título",
+        descriptionField: "descripción",
+        timestampField: "fecha",
+        stats: { título: "title", descripción: "description", fecha: "timestamp" },
+      },
+      {
+        language: "ita",
+        titleField: "titolo",
+        descriptionField: "descrizione",
+        timestampField: "data",
+        stats: { titolo: "title", descrizione: "description", data: "timestamp" },
+      },
+      {
+        language: "nld",
+        titleField: "titel",
+        descriptionField: "beschrijving",
+        timestampField: "datum",
+        stats: { titel: "title", beschrijving: "description", datum: "timestamp" },
+      },
+      {
+        language: "por",
+        titleField: "título",
+        descriptionField: "descrição",
+        timestampField: "data",
+        stats: { título: "title", descrição: "description", data: "timestamp" },
+      },
+    ] as const)(
+      "detects $language title/description/timestamp fields",
+      ({ language, titleField, descriptionField, timestampField, stats }) => {
+        const fieldStats = createFieldStats(
+          Object.fromEntries(Object.entries(stats).map(([field, fieldType]) => [field, { fieldType }]))
+        );
 
-      const mappings = detectFieldMappings(fieldStats, language);
+        const mappings = detectFieldMappings(fieldStats, language);
 
-      expect(mappings.titlePath).toBe(titleField);
-      expect(mappings.descriptionPath).toBe(descriptionField);
-      expect(mappings.timestampPath).toBe(timestampField);
-    });
+        expect(mappings.titlePath).toBe(titleField);
+        expect(mappings.descriptionPath).toBe(descriptionField);
+        expect(mappings.timestampPath).toBe(timestampField);
+      }
+    );
 
     it.each([
       ["deu", "bezeichnung", "title"],
       ["deu", "veranstaltung", "title"],
-      ["fra", "\u00e9v\u00e9nement", "title"],
+      ["fra", "événement", "title"],
       ["fra", "heure", "timestamp"],
       ["spa", "evento", "title"],
       ["spa", "hora", "timestamp"],

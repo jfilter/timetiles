@@ -27,12 +27,6 @@ const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** True when the file is confirmed gone; a failed unlink keeps `filePath` on the record for retry. */
-const discardExportFile = async (filePath: string | null | undefined, exportId: string): Promise<boolean> => {
-  if (!filePath) return true;
-  return (await unlinkExportFile(exportId, filePath, "download")) !== "failed";
-};
-
 /** Stream the export file to the client after all validation passes. */
 const streamExportFile = async (
   payload: Payload,
@@ -52,7 +46,10 @@ const streamExportFile = async (
       data: { status: "expired" },
       overrideAccess: true,
     });
-    if (await discardExportFile(exportRecord.filePath, exportId)) {
+    // "failed" keeps `filePath` on the record so the cleanup job can retry the unlink.
+    const fileGone =
+      !exportRecord.filePath || (await unlinkExportFile(exportId, exportRecord.filePath, "download")) !== "failed";
+    if (fileGone) {
       await payload.update({
         collection: DATA_EXPORTS_COLLECTION,
         id: normalizedExportId,

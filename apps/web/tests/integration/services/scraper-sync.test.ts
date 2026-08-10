@@ -106,7 +106,7 @@ scrapers:
     if (result.success) return;
 
     expect(result.error).toContain("Manifest validation failed");
-    expect(result.error).toContain("path traversal");
+    expect(result.error).toContain("relative path without traversal");
   });
 
   it("should apply defaults from the defaults block correctly", () => {
@@ -199,6 +199,6 @@ scrapers:
     if (result.success) return;
 
     expect(result.error).toContain("Manifest validation failed");
-    expect(result.error).toContain("absolute path");
+    expect(result.error).toContain("relative path without traversal");
   });
 });

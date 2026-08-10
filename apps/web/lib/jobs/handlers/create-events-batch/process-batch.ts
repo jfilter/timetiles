@@ -20,6 +20,7 @@ import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretatio
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import { isRecord } from "@/lib/utils/is-record";
 import { getByPathOrKey } from "@/lib/utils/object-path";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, Event, IngestJob } from "@/payload-types";
@@ -33,8 +34,6 @@ import type { EventSnapshotStore } from "./event-snapshots";
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
 
 export const MAX_INGEST_ERROR_MESSAGE_LENGTH = 500;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
 const getStringProperty = (value: unknown, key: string): string | undefined => {
   if (!isRecord(value)) return undefined;

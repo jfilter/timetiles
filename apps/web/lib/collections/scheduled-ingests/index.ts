@@ -345,7 +345,7 @@ const ScheduledIngests: CollectionConfig = {
   },
   access: {
     // Users can only read their own scheduled ingests, editors and admins can read all
-    read: createOwnershipAccess(COLLECTION_SLUG),
+    read: createOwnershipAccess(),
 
     // Anyone authenticated can create (denied for pending-deletion accounts), but createdBy will be set automatically
     // Quota check moved to beforeChange hook to avoid deadlock
@@ -359,13 +359,13 @@ const ScheduledIngests: CollectionConfig = {
     }),
 
     // Users can only update their own scheduled ingests, editors and admins can update all
-    update: createOwnershipAccess(COLLECTION_SLUG),
+    update: createOwnershipAccess(),
 
     // Users can delete their own, editors and admins can delete any
-    delete: createOwnershipAccess(COLLECTION_SLUG),
+    delete: createOwnershipAccess(),
 
     // Only owners, editors, or admins can read version history
-    readVersions: createOwnershipAccess(COLLECTION_SLUG),
+    readVersions: createOwnershipAccess(),
   },
   fields: [...coreFields, ...importConfigFields, ...runtimeFields],
   hooks: {
