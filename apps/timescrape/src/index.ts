@@ -5,13 +5,12 @@
  * @category Main
  */
 
-import { timingSafeEqual } from "node:crypto";
-
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 
 import { runRoutes } from "./api/run.js";
 import { loadConfig } from "./config.js";
+import { createApiKeyAuth } from "./lib/auth-middleware.js";
 import { AuthError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
 import { assertSecurityAssets } from "./security/container-config.js";
@@ -27,26 +26,7 @@ assertSecurityAssets();
 const app = new Hono();
 
 // API key authentication middleware
-app.use("*", async (c, next) => {
-  // Skip auth for health check and metrics
-  if (c.req.path === "/health" || c.req.path === "/metrics") {
-    return next();
-  }
-
-  const authHeader = c.req.header("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    throw new AuthError();
-  }
-
-  const token = authHeader.slice(7);
-  const tokenBuf = Buffer.from(token);
-  const keyBuf = Buffer.from(config.SCRAPER_API_KEY);
-  if (tokenBuf.length !== keyBuf.length || !timingSafeEqual(tokenBuf, keyBuf)) {
-    throw new AuthError();
-  }
-
-  return next();
-});
+app.use("*", createApiKeyAuth(config.SCRAPER_API_KEY));
 
 // Error handler
 app.onError((error, c) => {

@@ -14,7 +14,7 @@
  * @module
  * @category Services
  */
-import { eq, sql } from "@payloadcms/db-postgres/drizzle";
+import { eq, type SQL, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload, PayloadRequest } from "payload";
 
 import {
@@ -52,6 +52,33 @@ const DAILY_USAGE_FIELDS: Array<keyof Omit<UserUsage, "lastResetDate">> = Object
 
 /** Precomputed reset payload for daily counters (e.g. { urlFetchesToday: 0, ... }) */
 const DAILY_RESET_DATA = Object.fromEntries(DAILY_USAGE_FIELDS.map((f) => [f, 0]));
+
+/**
+ * Builds the SET clause for an atomic daily-counter UPDATE: every daily field
+ * resets to 0 when stale, else keeps its value plus `usageField`'s increment.
+ * Shared by incrementUsage and checkAndIncrementUsage so the two can't
+ * silently disagree on reset semantics.
+ */
+const buildDailyResetSetClauses = (
+  usageField: keyof Omit<UserUsage, "lastResetDate">,
+  amount: number
+): { setClauses: Record<string, unknown>; needsReset: SQL } => {
+  // Day boundaries are pinned to UTC — `::date < CURRENT_DATE` would use the
+  // DB session timezone and disagree with the UTC-based JS checks
+  // (shouldResetDailyUsage/getNextResetTime) for 1-2h around midnight.
+  const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
+
+  const setClauses: Record<string, unknown> = {};
+  for (const field of DAILY_USAGE_FIELDS) {
+    const col = userUsageColumns[field];
+    const increment = field === usageField ? amount : 0;
+    setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END + ${increment}`;
+  }
+  setClauses.lastResetDate = sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`;
+  setClauses.updatedAt = sql`NOW()`;
+
+  return { setClauses, needsReset };
+};
 
 import type { DrizzleInstance } from "@/lib/database/drizzle-transaction";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
@@ -371,19 +398,7 @@ export class QuotaService {
       if (desc.daily) {
         // For daily types, atomically reset stale counters and increment the target.
         // All daily columns are reset in a single UPDATE to prevent stale data.
-        // Day boundaries are pinned to UTC — `::date < CURRENT_DATE` would use the
-        // DB session timezone and disagree with the UTC-based JS checks
-        // (shouldResetDailyUsage/getNextResetTime) for 1-2h around midnight.
-        const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
-
-        const setClauses: Record<string, unknown> = {};
-        for (const field of DAILY_USAGE_FIELDS) {
-          const col = userUsageColumns[field];
-          const increment = field === usageField ? amount : 0;
-          setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END + ${increment}`;
-        }
-        setClauses.lastResetDate = sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`;
-        setClauses.updatedAt = sql`NOW()`;
+        const { setClauses } = buildDailyResetSetClauses(usageField, amount);
 
         await drizzle.update(user_usage).set(setClauses).where(eq(user_usage.user, normalizedUserId));
       } else {
@@ -587,19 +602,11 @@ export class QuotaService {
 
     if (desc.daily) {
       // For daily quotas, reset stale counters before checking the limit.
-      // Uses the same CASE WHEN pattern as incrementUsage to handle the window
-      // between midnight UTC and the quota-reset job. UTC-pinned like above.
-      const needsReset = sql`${user_usage.lastResetDate} IS NULL OR (${user_usage.lastResetDate} AT TIME ZONE 'UTC')::date < (NOW() AT TIME ZONE 'UTC')::date`;
+      // Uses the same builder as incrementUsage to handle the window between
+      // midnight UTC and the quota-reset job, so accounting and enforcement
+      // can't drift on reset semantics.
+      const { setClauses, needsReset } = buildDailyResetSetClauses(usageField, amount);
       const effectiveValue = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${col}, 0) END`;
-
-      const setClauses: Record<string, unknown> = {};
-      for (const field of DAILY_USAGE_FIELDS) {
-        const fieldCol = userUsageColumns[field];
-        const increment = field === usageField ? amount : 0;
-        setClauses[field] = sql`CASE WHEN ${needsReset} THEN 0 ELSE COALESCE(${fieldCol}, 0) END + ${increment}`;
-      }
-      setClauses.lastResetDate = sql`CASE WHEN ${needsReset} THEN NOW() ELSE ${user_usage.lastResetDate} END`;
-      setClauses.updatedAt = sql`NOW()`;
 
       result = await drizzle
         .update(user_usage)

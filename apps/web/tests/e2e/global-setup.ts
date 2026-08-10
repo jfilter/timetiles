@@ -26,6 +26,7 @@ import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 import { createSeedManager } from "@/lib/seed/index";
 
+import { E2E_SEED_COLLECTIONS } from "./config";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
 import { findAvailablePort } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
@@ -71,21 +72,7 @@ const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
   try {
     seedManager = createSeedManager();
     await seedManager.truncate();
-    await seedManager.seedWithConfig({
-      preset: "e2e",
-      collections: [
-        "users",
-        "catalogs",
-        "datasets",
-        "events",
-        "sites",
-        "pages",
-        "main-menu",
-        "footer",
-        "settings",
-        "geocoding-providers",
-      ],
-    });
+    await seedManager.seedWithConfig({ preset: "e2e", collections: [...E2E_SEED_COLLECTIONS] });
     console.log("✅ Seeded E2E test data");
   } finally {
     if (seedManager) {

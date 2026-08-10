@@ -33,3 +33,20 @@ export const E2E_DATABASE_URL = ((): string => {
     return DEFAULT_E2E_DATABASE_URL;
   }
 })();
+
+/**
+ * Collections seeded for the "e2e" preset.
+ * Both `scripts/e2e-setup-database.ts` and `tests/e2e/global-setup.ts` must seed this same set.
+ */
+export const E2E_SEED_COLLECTIONS = [
+  "users",
+  "catalogs",
+  "datasets",
+  "events",
+  "sites",
+  "pages",
+  "main-menu",
+  "footer",
+  "settings",
+  "geocoding-providers",
+] as const;

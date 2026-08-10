@@ -18,7 +18,7 @@
 
 import { setupDatabase } from "../lib/database/setup";
 import { createLogger } from "../lib/logger";
-import { E2E_DATABASE_NAME, E2E_DATABASE_URL } from "../tests/e2e/config";
+import { E2E_DATABASE_NAME, E2E_DATABASE_URL, E2E_SEED_COLLECTIONS } from "../tests/e2e/config";
 import { resetTestDatabase, validateTestDatabaseSchema } from "./e2e-validate-schema";
 
 const logger = createLogger("test-db-setup");
@@ -150,10 +150,7 @@ const seedE2ETestData = async (): Promise<void> => {
 
     // Seed e2e environment data (same as CI: pnpm seed e2e)
     // This creates the catalogs, datasets, and events that E2E tests expect
-    await seedManager.seedWithConfig({
-      preset: "e2e",
-      collections: ["users", "catalogs", "datasets", "events", "pages"],
-    });
+    await seedManager.seedWithConfig({ preset: "e2e", collections: [...E2E_SEED_COLLECTIONS] });
 
     logger.info("✓ Seeded e2e data using seed manager");
   } finally {

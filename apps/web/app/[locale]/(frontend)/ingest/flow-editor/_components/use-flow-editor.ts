@@ -38,6 +38,14 @@ const NODE_TYPE_TRANSFORM = "transform";
 /** Stable reference for empty transforms array to avoid re-render loops in useEffect. */
 const EMPTY_TRANSFORMS: IngestTransform[] = [];
 
+type FlowNodeData = SourceColumnNodeData | TargetFieldNodeData | TransformNodeData;
+
+/** Return a copy of `node` with `isConnected: true` and any extra data fields merged in. */
+const markNodeConnected = <T extends FlowNodeData>(node: FlowNode, extra: Partial<T> = {}): FlowNode => ({
+  ...node,
+  data: { ...(node.data as T), isConnected: true, ...extra },
+});
+
 /**
  * Process transform chains (source→transform→target) and collect valid transforms
  */
@@ -368,30 +376,16 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
         const sourceData = sourceNode.data as SourceColumnNodeData;
         setNodes((nds) =>
           nds.map((node) => {
-            if (node.id === params.source) {
-              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } };
-            }
+            if (node.id === params.source) return markNodeConnected<SourceColumnNodeData>(node);
             if (node.id === params.target) {
-              return {
-                ...node,
-                data: {
-                  ...(node.data as TargetFieldNodeData),
-                  isConnected: true,
-                  connectedColumn: sourceData.columnName,
-                },
-              };
+              return markNodeConnected<TargetFieldNodeData>(node, { connectedColumn: sourceData.columnName });
             }
             return node;
           })
         );
       } else if (isSourceToTransform) {
         setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === params.source) {
-              return { ...node, data: { ...(node.data as SourceColumnNodeData), isConnected: true } };
-            }
-            return node;
-          })
+          nds.map((node) => (node.id === params.source ? markNodeConnected<SourceColumnNodeData>(node) : node))
         );
       } else if (isTransformToTarget) {
         // Find the source column upstream of this transform
@@ -401,12 +395,9 @@ export const useFlowEditor = (previewId: string | null, sheetIndex: number): Use
           upstreamNode?.type === NODE_TYPE_SOURCE ? (upstreamNode.data as SourceColumnNodeData).columnName : null;
 
         setNodes((nds) =>
-          nds.map((node) => {
-            if (node.id === params.target) {
-              return { ...node, data: { ...(node.data as TargetFieldNodeData), isConnected: true, connectedColumn } };
-            }
-            return node;
-          })
+          nds.map((node) =>
+            node.id === params.target ? markNodeConnected<TargetFieldNodeData>(node, { connectedColumn }) : node
+          )
         );
       }
     },

@@ -11,8 +11,7 @@
 
 import type { Field } from "payload";
 
-import { readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
-import { getBaseUrl } from "@/lib/utils/base-url";
+import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
 
 // ---------------------------------------------------------------------------
 // Execution tracking fields
@@ -626,18 +625,7 @@ const webhookFields: Field[] = [
       description: "POST to this URL to trigger the import. Visible only immediately after creation or rotation.",
       condition: (data) => Boolean(data?.webhookEnabled && data?.webhookTokenPlaintext),
     },
-    hooks: {
-      afterRead: [
-        ({ data }) => {
-          const plaintext = data?.webhookTokenPlaintext;
-          if (data?.webhookEnabled && typeof plaintext === "string" && plaintext !== "") {
-            const baseUrl = getBaseUrl();
-            return `${baseUrl}/api/webhooks/trigger/${plaintext}`;
-          }
-          return null;
-        },
-      ],
-    },
+    hooks: { afterRead: [({ data }) => computeWebhookUrl(data)] },
   },
 ];
 

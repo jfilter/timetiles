@@ -43,6 +43,20 @@ export const ErrorResponseSchema = z
   .openapi("ErrorResponse");
 
 /**
+ * Split a comma-separated string (or array of such strings) into a flat list of tokens.
+ * Accepts "1,2,3", ["1", "2", "3"], or a mix like ["1,2", "3"]; anything else yields [].
+ */
+const splitCommaSeparated = (val: unknown): string[] => {
+  if (Array.isArray(val)) {
+    return val.flatMap((v) => String(v).split(",")).filter(Boolean);
+  }
+  if (typeof val === "string") {
+    return val.split(",").filter(Boolean);
+  }
+  return [];
+};
+
+/**
  * Dataset IDs parameter.
  *
  * Supports multiple input formats:
@@ -51,15 +65,7 @@ export const ErrorResponseSchema = z
  * - Mixed: ["1,2", "3"]
  */
 export const DatasetsParamSchema = z
-  .preprocess((val) => {
-    if (Array.isArray(val)) {
-      return val.flatMap((v) => String(v).split(",")).filter(Boolean);
-    }
-    if (typeof val === "string") {
-      return val.split(",").filter(Boolean);
-    }
-    return [];
-  }, z.array(z.coerce.number().int()))
+  .preprocess(splitCommaSeparated, z.array(z.coerce.number().int()))
   .openapi({ type: "array", items: { type: "integer" } });
 
 /**
@@ -116,8 +122,12 @@ export const FieldFiltersParamSchema = z.preprocess(
  * Parses `?rf={"price":{"min":10,"max":50}}` into
  * `Record<string, { min?: number | null; max?: number | null }>`.
  * Each entry must satisfy `min <= max` (open-ended when either side is null).
- * Invalid JSON silently defaults to an empty object. Keys are capped at 64
- * chars (matching MAX_FIELD_KEY_LENGTH) and the record at 20 entries.
+ *
+ * An absent parameter defaults to an empty object. Malformed JSON does NOT — it
+ * fails validation, for the same reason as `FieldFiltersParamSchema` above: a
+ * silent `{}` fallback would return the full, unfiltered result set with HTTP 200.
+ * Keys are capped at 64 chars (matching MAX_FIELD_KEY_LENGTH) and the record at
+ * 20 entries.
  */
 export const RangeFiltersParamSchema = z.preprocess(
   (val) => {
@@ -262,15 +272,7 @@ export const BoundsParamSchema = z.preprocess(parseBoundsString, BoundsSchema.op
  * Same format as DatasetsParamSchema — comma-separated string → number array.
  */
 export const ScopeIdsParamSchema = z
-  .preprocess((val) => {
-    if (Array.isArray(val)) {
-      return val.flatMap((v) => String(v).split(",")).filter(Boolean);
-    }
-    if (typeof val === "string") {
-      return val.split(",").filter(Boolean);
-    }
-    return [];
-  }, z.array(z.coerce.number().int()))
+  .preprocess(splitCommaSeparated, z.array(z.coerce.number().int()))
   .openapi({ type: "array", items: { type: "integer" } });
 
 export { z };

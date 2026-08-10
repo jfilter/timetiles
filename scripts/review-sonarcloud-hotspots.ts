@@ -8,9 +8,9 @@
  * @category Scripts
  */
 
-import * as fs from "fs";
-import * as path from "path";
 import * as readline from "readline";
+
+import { loadEnvFile } from "./shared/load-env";
 
 interface SonarCloudHotspot {
   key: string;
@@ -27,23 +27,6 @@ interface GroupedHotspots {
   probability: string;
   hotspots: SonarCloudHotspot[];
   files: Map<string, SonarCloudHotspot[]>;
-}
-
-function loadEnvFile(): void {
-  const envPath = path.join(process.cwd(), ".env.local");
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, "utf8");
-    envContent.split("\n").forEach((line) => {
-      if (line.trim() && !line.startsWith("#")) {
-        const eqIndex = line.indexOf("=");
-        if (eqIndex > 0) {
-          const key = line.slice(0, eqIndex).trim();
-          const value = line.slice(eqIndex + 1).trim();
-          process.env[key] = value;
-        }
-      }
-    });
-  }
 }
 
 function stripProjectKey(component: string): string {

@@ -12,6 +12,8 @@ import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
+import { loadEnvFile } from "./shared/load-env";
+
 interface SonarCloudAnalysis {
   key: string;
   date: string;
@@ -74,21 +76,6 @@ interface QualityGateStatus {
 /**
  * Load environment variables from .env.local file
  */
-function loadEnvFile(): void {
-  const envPath = path.join(process.cwd(), ".env.local");
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, "utf8");
-    envContent.split("\n").forEach((line) => {
-      if (line.trim() && !line.startsWith("#")) {
-        const [key, value] = line.split("=");
-        if (key && value) {
-          process.env[key.trim()] = value.trim();
-        }
-      }
-    });
-  }
-}
-
 /**
  * Check if the latest commit has been analyzed by SonarCloud
  */

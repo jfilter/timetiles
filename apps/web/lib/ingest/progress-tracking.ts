@@ -159,6 +159,59 @@ export class ProgressTrackingService {
   }
 
   /**
+   * Load a job's stage-progress map, apply a mutator to one stage, and persist
+   * the result with recomputed weighted progress and ETA.
+   *
+   * `jobRef` may be a bare job ID (always fetched fresh) or an already-loaded
+   * job whose in-memory progress is reused when it already has data for
+   * `stage` — and refetched otherwise, e.g. when the caller's copy was loaded
+   * before the stage was initialized. Set `requireExisting` when the stage
+   * must already exist (e.g. it was set up by `startStage`); `startStage`
+   * itself is the one caller that legitimately creates a stage from scratch.
+   */
+  private static async withStage(
+    payload: Payload,
+    jobRef: IngestJob | string | number,
+    stage: ProcessingStage,
+    mutate: (stageData: StageProgress | undefined) => StageProgress,
+    options: { requireExisting?: boolean; extraData?: Record<string, unknown> } = {}
+  ): Promise<void> {
+    const { requireExisting = false, extraData } = options;
+    const normalizedJobId = normalizeJobId(typeof jobRef === "object" ? jobRef.id : jobRef);
+
+    let stages: Record<string, StageProgress> =
+      typeof jobRef === "object" && jobRef.progress?.stages ? this.deserializeStages(jobRef.progress.stages) : {};
+    let stageData = stages[stage];
+
+    if (!stageData) {
+      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
+      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
+      stageData = stages[stage];
+    }
+
+    if (requireExisting && !stageData) {
+      throw new Error(`Stage ${stage} not initialized`);
+    }
+
+    stages[stage] = mutate(stageData);
+
+    const estimatedCompletionTime = this.estimateCompletionTime(stages);
+
+    await payload.update({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      id: normalizedJobId,
+      data: {
+        ...extraData,
+        progress: {
+          stages: this.serializeStages(stages),
+          overallPercentage: this.calculateWeightedProgress(stages),
+          estimatedCompletionTime: estimatedCompletionTime ? estimatedCompletionTime.toISOString() : null,
+        },
+      },
+    });
+  }
+
+  /**
    * Mark a stage as started and update its metadata.
    *
    * This should be called when a job handler begins processing a stage.
@@ -175,36 +228,24 @@ export class ProgressTrackingService {
     stage: ProcessingStage,
     rowsTotal: number
   ): Promise<void> {
-    const normalizedJobId = normalizeJobId(jobId);
-    const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
-
-    const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    const batchSize = this.getBatchSizeForStage(stage);
-    const estimatedBatches = this.calculateEstimatedBatches(rowsTotal, batchSize);
-
-    stages[stage] = {
-      ...stages[stage],
-      status: "in_progress",
-      startedAt: new Date(),
-      rowsTotal,
-      batchesTotal: estimatedBatches,
-      currentBatchTotal: batchSize ?? rowsTotal,
-    } as StageProgress;
-
-    const estimatedCompletionTime = this.estimateCompletionTime(stages);
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedJobId,
-      data: {
-        stage,
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: this.calculateWeightedProgress(stages),
-          estimatedCompletionTime: estimatedCompletionTime ? estimatedCompletionTime.toISOString() : null,
-        },
+    await this.withStage(
+      payload,
+      jobId,
+      stage,
+      (stageData) => {
+        const batchSize = this.getBatchSizeForStage(stage);
+        const estimatedBatches = this.calculateEstimatedBatches(rowsTotal, batchSize);
+        return {
+          ...stageData,
+          status: "in_progress",
+          startedAt: new Date(),
+          rowsTotal,
+          batchesTotal: estimatedBatches,
+          currentBatchTotal: batchSize ?? rowsTotal,
+        } as StageProgress;
       },
-    });
+      { extraData: { stage } }
+    );
   }
 
   /**
@@ -229,51 +270,34 @@ export class ProgressTrackingService {
     rowsProcessed: number,
     currentBatchRows: number
   ): Promise<void> {
-    const normalizedJobId = normalizeJobId(job.id);
+    await this.withStage(
+      payload,
+      job,
+      stage,
+      (stageData) => {
+        const sd = stageData!;
 
-    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    let stageData = stages[stage];
+        // Processing rate = rows-since-stage-start / elapsed, i.e. the cumulative
+        // average over the stage. Because `rowsProcessed` is cumulative this is
+        // already smooth (it does not spike per batch). An EMA was attempted here
+        // previously but never took effect — the previous-rate term read from the
+        // passed job, whose in-memory `rowsPerSecond` was never carried forward
+        // between calls, so it was always null. Use the plain cumulative rate,
+        // consistent with updateAndCompleteBatch.
+        const timeElapsed = sd.startedAt ? (Date.now() - new Date(sd.startedAt).getTime()) / 1000 : 0;
+        const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
 
-    // If the passed job has stale progress (e.g., loaded before initializeStageProgress), re-fetch
-    if (!stageData) {
-      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
-      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
-      stageData = stages[stage];
-      if (!stageData) {
-        throw new Error(`Stage ${stage} not initialized`);
-      }
-    }
+        // Clamp: stages with an unknown total start at rowsTotal=0 (e.g.
+        // analyze-duplicates streams without a pre-scan), which would otherwise
+        // produce a negative remaining count and a garbage ETA.
+        const rowsRemaining = Math.max(0, sd.rowsTotal - rowsProcessed);
+        const estimatedSecondsRemaining =
+          rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
-    // Processing rate = rows-since-stage-start / elapsed, i.e. the cumulative
-    // average over the stage. Because `rowsProcessed` is cumulative this is
-    // already smooth (it does not spike per batch). An EMA was attempted here
-    // previously but never took effect — the previous-rate term read from the
-    // passed job, whose in-memory `rowsPerSecond` was never carried forward
-    // between calls, so it was always null. Use the plain cumulative rate,
-    // consistent with updateAndCompleteBatch.
-    const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
-    const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
-
-    // Clamp: stages with an unknown total start at rowsTotal=0 (e.g.
-    // analyze-duplicates streams without a pre-scan), which would otherwise
-    // produce a negative remaining count and a garbage ETA.
-    const rowsRemaining = Math.max(0, stageData.rowsTotal - rowsProcessed);
-    const estimatedSecondsRemaining =
-      rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
-
-    stages[stage] = { ...stageData, rowsProcessed, currentBatchRows, rowsPerSecond, estimatedSecondsRemaining };
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedJobId,
-      data: {
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: this.calculateWeightedProgress(stages),
-          estimatedCompletionTime: this.estimateCompletionTime(stages)?.toISOString() ?? null,
-        },
+        return { ...sd, rowsProcessed, currentBatchRows, rowsPerSecond, estimatedSecondsRemaining };
       },
-    });
+      { requireExisting: true }
+    );
   }
 
   /**
@@ -295,51 +319,34 @@ export class ProgressTrackingService {
     rowsProcessed: number,
     batchNumber: number
   ): Promise<void> {
-    const normalizedJobId = normalizeJobId(job.id);
+    await this.withStage(
+      payload,
+      job,
+      stage,
+      (stageData) => {
+        const sd = stageData!;
 
-    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    let stageData = stages[stage];
+        // Calculate processing rate (same as updateStageProgress)
+        const timeElapsed = sd.startedAt ? (Date.now() - new Date(sd.startedAt).getTime()) / 1000 : 0;
+        const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
 
-    // If the passed job has stale progress (e.g., loaded before initializeStageProgress), re-fetch
-    if (!stageData) {
-      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
-      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
-      stageData = stages[stage];
-      if (!stageData) {
-        throw new Error(`Stage ${stage} not initialized`);
-      }
-    }
+        // Estimate time remaining (clamped — rowsTotal may be 0 for stages that
+        // stream without a pre-scan, see updateStageProgress)
+        const rowsRemaining = Math.max(0, sd.rowsTotal - rowsProcessed);
+        const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
 
-    // Calculate processing rate (same as updateStageProgress)
-    const timeElapsed = stageData.startedAt ? (Date.now() - new Date(stageData.startedAt).getTime()) / 1000 : 0;
-    const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
-
-    // Estimate time remaining (clamped — rowsTotal may be 0 for stages that
-    // stream without a pre-scan, see updateStageProgress)
-    const rowsRemaining = Math.max(0, stageData.rowsTotal - rowsProcessed);
-    const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
-
-    // Merge both updates: progress fields + batch completion fields
-    stages[stage] = {
-      ...stageData,
-      rowsProcessed,
-      currentBatchRows: 0, // Reset (batch is complete)
-      rowsPerSecond,
-      estimatedSecondsRemaining,
-      batchesProcessed: batchNumber,
-    };
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedJobId,
-      data: {
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: this.calculateWeightedProgress(stages),
-          estimatedCompletionTime: this.estimateCompletionTime(stages)?.toISOString() ?? null,
-        },
+        // Merge both updates: progress fields + batch completion fields
+        return {
+          ...sd,
+          rowsProcessed,
+          currentBatchRows: 0, // Reset (batch is complete)
+          rowsPerSecond,
+          estimatedSecondsRemaining,
+          batchesProcessed: batchNumber,
+        };
       },
-    });
+      { requireExisting: true }
+    );
   }
 
   /**
@@ -360,34 +367,13 @@ export class ProgressTrackingService {
     stage: ProcessingStage,
     batchNumber: number
   ): Promise<void> {
-    const normalizedJobId = normalizeJobId(job.id);
-
-    let stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    let stageData = stages[stage];
-
-    // If the passed job has stale progress, re-fetch
-    if (!stageData) {
-      const freshJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
-      stages = freshJob.progress?.stages ? this.deserializeStages(freshJob.progress.stages) : {};
-      stageData = stages[stage];
-      if (!stageData) {
-        throw new Error(`Stage ${stage} not initialized`);
-      }
-    }
-
-    stages[stage] = { ...stageData, batchesProcessed: batchNumber, currentBatchRows: 0 };
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedJobId,
-      data: {
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: this.calculateWeightedProgress(stages),
-          estimatedCompletionTime: this.estimateCompletionTime(stages)?.toISOString() ?? null,
-        },
-      },
-    });
+    await this.withStage(
+      payload,
+      job,
+      stage,
+      (stageData) => ({ ...stageData!, batchesProcessed: batchNumber, currentBatchRows: 0 }),
+      { requireExisting: true }
+    );
   }
 
   /**
@@ -401,40 +387,28 @@ export class ProgressTrackingService {
    * @param stage - Processing stage name
    */
   static async completeStage(payload: Payload, jobId: string | number, stage: ProcessingStage): Promise<void> {
-    const normalizedJobId = normalizeJobId(jobId);
-    const job = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: normalizedJobId });
+    await this.withStage(
+      payload,
+      jobId,
+      stage,
+      (stageData) => {
+        const sd = stageData!;
 
-    const stages = job.progress?.stages ? this.deserializeStages(job.progress.stages) : {};
-    const stageData = stages[stage];
-
-    if (!stageData) {
-      throw new Error(`Stage ${stage} not initialized`);
-    }
-
-    // Snap rowsProcessed to the total — but never DOWN: stages with an
-    // unknown total carry rowsTotal=0, and snapping would erase the real
-    // count. Backfill rowsTotal from the processed count in that case.
-    const finalRows = Math.max(stageData.rowsTotal, stageData.rowsProcessed);
-    stages[stage] = {
-      ...stageData,
-      status: "completed",
-      completedAt: new Date(),
-      rowsTotal: finalRows,
-      rowsProcessed: finalRows,
-      estimatedSecondsRemaining: 0,
-    };
-
-    await payload.update({
-      collection: COLLECTION_NAMES.INGEST_JOBS,
-      id: normalizedJobId,
-      data: {
-        progress: {
-          stages: this.serializeStages(stages),
-          overallPercentage: this.calculateWeightedProgress(stages),
-          estimatedCompletionTime: this.estimateCompletionTime(stages)?.toISOString() ?? null,
-        },
+        // Snap rowsProcessed to the total — but never DOWN: stages with an
+        // unknown total carry rowsTotal=0, and snapping would erase the real
+        // count. Backfill rowsTotal from the processed count in that case.
+        const finalRows = Math.max(sd.rowsTotal, sd.rowsProcessed);
+        return {
+          ...sd,
+          status: "completed",
+          completedAt: new Date(),
+          rowsTotal: finalRows,
+          rowsProcessed: finalRows,
+          estimatedSecondsRemaining: 0,
+        };
       },
-    });
+      { requireExisting: true }
+    );
   }
 
   /**

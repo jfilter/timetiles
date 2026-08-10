@@ -4,6 +4,7 @@ import { Hono } from "hono";
 
 import { SCRAPER_TIMEOUT_MIN_SECONDS } from "@timetiles/shared";
 
+import { createApiKeyAuth } from "../src/lib/auth-middleware.js";
 import { AuthError } from "../src/lib/errors.js";
 
 // Mock runner service
@@ -51,30 +52,13 @@ import { executeRun } from "../src/services/runner.js";
 const TEST_API_KEY = "test-api-key-long-enough-for-validation";
 
 /**
- * Build a Hono app that replicates the auth middleware from src/index.ts
- * so we can test routes with authentication in isolation.
+ * Build a Hono app wired like src/index.ts — the REAL auth middleware, so the
+ * constant-time comparison is exercised rather than a look-alike.
  */
 function createTestApp(): Hono {
   const app = new Hono();
 
-  // Replicate auth middleware from src/index.ts
-  app.use("*", async (c, next) => {
-    if (c.req.path === "/health" || c.req.path === "/metrics") {
-      return next();
-    }
-
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      throw new AuthError();
-    }
-
-    const token = authHeader.slice(7);
-    if (token !== TEST_API_KEY) {
-      throw new AuthError();
-    }
-
-    return next();
-  });
+  app.use("*", createApiKeyAuth(TEST_API_KEY));
 
   // Error handler matching src/index.ts
   app.onError((error, c) => {

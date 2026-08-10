@@ -18,6 +18,7 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { normalizeGeocodingAddress } from "../../../lib/services/geocoding/cache-manager";
 import {
   createGeocodingService,
   GeocodingError,
@@ -347,15 +348,7 @@ describe("GeocodingService", () => {
       const uniqueAddress = `111 Cache St, San Francisco, CA ${Date.now()}-${Math.random()}`;
 
       // Create a cached result using the same normalization as CacheManager
-      const normalizedAddress = uniqueAddress
-        .toLowerCase()
-        .trim()
-        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
-        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
-        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
-        .trimEnd()
-        .replace(/,$/, ""); // Remove single trailing comma
+      const normalizedAddress = normalizeGeocodingAddress(uniqueAddress);
 
       const cachedResult = await payload.create({
         collection: "location-cache",
@@ -564,15 +557,7 @@ describe("GeocodingService", () => {
       ];
 
       // Create cached result for first address using correct normalization
-      const normalizedAddress = uniqueAddresses[0]!
-        .toLowerCase()
-        .trim()
-        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
-        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
-        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
-        .trimEnd()
-        .replace(/,$/, ""); // Remove single trailing comma
+      const normalizedAddress = normalizeGeocodingAddress(uniqueAddresses[0]!);
 
       await payload.create({
         collection: "location-cache",
@@ -708,15 +693,7 @@ describe("GeocodingService", () => {
       const uniqueAddress = `Old Address ${Date.now()}-${Math.random()}`;
 
       // Use correct address normalization
-      const normalizedAddress = uniqueAddress
-        .toLowerCase()
-        .trim()
-        .replaceAll(/\s+/g, " ") // Replace multiple spaces with single space
-        .replaceAll(/[^\w\s,.-]/g, "") // Remove special characters except common punctuation
-        .replaceAll(/,{2,}/g, ",") // Replace multiple commas with single comma
-        .replace(/^[\s,]+/, "") // Remove leading whitespace and commas
-        .trimEnd()
-        .replace(/,$/, ""); // Remove single trailing comma
+      const normalizedAddress = normalizeGeocodingAddress(uniqueAddress);
 
       const oldEntry = await payload.create({
         collection: "location-cache",

@@ -119,24 +119,31 @@ export const buildLocationLayerConfig = (
 };
 
 /**
- * Build location count label — shows event count on locations with count > 1.
+ * Build a count-label symbol layer config shared by the location and cluster
+ * label layers — same text-field/font/halo, differing only in id, filter,
+ * highlight-match property, and text-size interpolation stops.
  */
-export const buildLocationLabelLayerConfig = (
-  locationFilter: ["==", ["get", string], string],
-  highlightedCells: string[] | null = null
-) => {
+const buildCountLabelLayerConfig = (params: {
+  id: string;
+  filter: unknown[];
+  matchProperty: string;
+  highlightedCells: string[] | null;
+  textSizeStops: [number, number, number, number];
+}) => {
+  const { id, filter, matchProperty, highlightedCells, textSizeStops } = params;
+  const [sizeAt0, sizeAt1, sizeAt25, sizeAt2] = textSizeStops;
   const highlightedCellsList = highlightedCells ?? [];
-  const h3CellMatchFilter =
+  const matchFilter =
     highlightedCells?.length === 1
-      ? ["==", ["get", "h3Cell"], highlightedCells[0]]
-      : ["in", ["get", "h3Cell"], ["literal", highlightedCellsList]];
-  const isHighlighted = highlightedCells != null ? h3CellMatchFilter : null;
+      ? ["==", ["get", matchProperty], highlightedCells[0]]
+      : ["in", ["get", matchProperty], ["literal", highlightedCellsList]];
+  const isHighlighted = highlightedCells != null ? matchFilter : null;
   const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
 
   return {
-    id: "location-count-label",
+    id,
     type: "symbol" as const,
-    filter: ["all", locationFilter, [">", ["coalesce", ["get", "count"], 1], 1]],
+    filter: filter as never,
     layout: {
       "text-field": [
         "case",
@@ -148,7 +155,7 @@ export const buildLocationLabelLayerConfig = (
         ["concat", ["to-string", ["/", ["round", ["/", ["get", "count"], 100]], 10]], "k"],
         ["to-string", ["get", "count"]],
       ],
-      "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 9, 25, 13],
+      "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], sizeAt0, sizeAt1, sizeAt25, sizeAt2],
       // Must exist on the style's glyph server (tiles.versatiles.org). The
       // MapLibre default ("Open Sans Bold", …) 404s there and cluster counts
       // silently fail to render.
@@ -163,6 +170,21 @@ export const buildLocationLabelLayerConfig = (
     },
   } satisfies SymbolLayerConfig;
 };
+
+/**
+ * Build location count label — shows event count on locations with count > 1.
+ */
+export const buildLocationLabelLayerConfig = (
+  locationFilter: ["==", ["get", string], string],
+  highlightedCells: string[] | null = null
+) =>
+  buildCountLabelLayerConfig({
+    id: "location-count-label",
+    filter: ["all", locationFilter, [">", ["coalesce", ["get", "count"], 1], 1]],
+    matchProperty: "h3Cell",
+    highlightedCells,
+    textSizeStops: [1, 9, 25, 13],
+  });
 
 /** Extract valid coordinates from a GeoJSON feature */
 export const getValidCoordinates = (feature: Feature): [number, number] | null => {
@@ -330,46 +352,14 @@ export const buildH3HoverOutlineLayerConfig = () =>
 export const buildClusterLabelLayerConfig = (
   clusterFilter: ["==", ["get", string], string],
   highlightedCells: string[] | null = null
-) => {
-  const highlightedCellsList = highlightedCells ?? [];
-  const clusterMatchFilter =
-    highlightedCells?.length === 1
-      ? ["==", ["get", "clusterId"], highlightedCells[0]]
-      : ["in", ["get", "clusterId"], ["literal", highlightedCellsList]];
-  const isHighlighted = highlightedCells != null ? clusterMatchFilter : null;
-  const textOpacity = isHighlighted ? ["case", isHighlighted, 1, 0.15] : 1;
-
-  return {
+) =>
+  buildCountLabelLayerConfig({
     id: "cluster-count-label",
-    type: "symbol" as const,
     filter: clusterFilter,
-    layout: {
-      "text-field": [
-        "case",
-        [">=", ["get", "count"], 1000000],
-        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000000]]], "M"],
-        [">=", ["get", "count"], 10000],
-        ["concat", ["to-string", ["round", ["/", ["get", "count"], 1000]]], "k"],
-        [">=", ["get", "count"], 1000],
-        ["concat", ["to-string", ["/", ["round", ["/", ["get", "count"], 100]], 10]], "k"],
-        ["to-string", ["get", "count"]],
-      ],
-      "text-size": ["interpolate", ["linear"], ["sqrt", ["get", "count"]], 1, 10, 25, 14],
-      // Must exist on the style's glyph server (tiles.versatiles.org). The
-      // MapLibre default ("Open Sans Bold", …) 404s there and cluster counts
-      // silently fail to render.
-      "text-font": ["noto_sans_bold"],
-      "text-allow-overlap": true,
-    },
-    paint: {
-      "text-color": "#ffffff",
-      "text-halo-color": "rgba(0, 0, 0, 0.5)",
-      "text-halo-width": 1,
-
-      "text-opacity": textOpacity as never,
-    },
-  } satisfies SymbolLayerConfig;
-};
+    matchProperty: "clusterId",
+    highlightedCells,
+    textSizeStops: [1, 10, 25, 14],
+  });
 
 /** Fit map to bounds, handling single-point case */
 export const fitMapToBounds = (

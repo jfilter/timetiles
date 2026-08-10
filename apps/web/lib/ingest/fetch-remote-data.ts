@@ -13,7 +13,11 @@ import Papa from "papaparse";
 import { decodeBufferToUtf8 } from "@/lib/ingest/file-encoding";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { calculateDataHash, fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
-import { fetchPaginated, type PaginationConfig } from "@/lib/ingest/url-fetch/paginated-fetch";
+import {
+  fetchPaginated,
+  type PaginatedFetchOptions,
+  type PaginationConfig,
+} from "@/lib/ingest/url-fetch/paginated-fetch";
 import { logger } from "@/lib/logger";
 import { unparseRowsToCsv } from "@/lib/utils/csv-escape";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
@@ -136,16 +140,7 @@ const convertHtmlInJson = async (
 
   if (jsonApiConfig?.pagination?.enabled) {
     const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, undefined, {
-      authHeaders,
-      timeout,
-      maxRetries: options.maxRetries ?? 0,
-      // Without this the page fetches default to cache-on, ignoring the
-      // feature flag, useHttpCache, and bypassCacheOnManual entirely.
-      cacheOptions: options.cacheOptions,
-      // Mirror the JSON paginated branches: without isFirstRun, fetchPaginated
-      // never selects the configured initialBodyTemplate, so a POST-paginated
-      // html-in-json source silently sends the regular body on its first page.
-      isFirstRun: options.isFirstRun,
+      ...buildPaginationFetchOptions(options, authHeaders, timeout),
       htmlExtractConfig,
     });
     records = result.allRecords;
@@ -201,13 +196,12 @@ const convertFetchedJson = async (
   const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
 
   if (jsonApiConfig?.pagination?.enabled) {
-    const result = await fetchPaginated(sourceUrl, jsonApiConfig.pagination, recordsPath, {
-      authHeaders,
-      timeout,
-      maxRetries: options.maxRetries ?? 0,
-      cacheOptions: options.cacheOptions,
-      isFirstRun: options.isFirstRun,
-    });
+    const result = await fetchPaginated(
+      sourceUrl,
+      jsonApiConfig.pagination,
+      recordsPath,
+      buildPaginationFetchOptions(options, authHeaders, timeout)
+    );
     let records = result.allRecords;
     if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
     if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
@@ -221,6 +215,24 @@ const convertFetchedJson = async (
   });
   return { finalData: result.csv, recordCount: result.recordCount };
 };
+
+/** Build the shared `fetchPaginated` options bag from fetch options + resolved auth/timeout. */
+const buildPaginationFetchOptions = (
+  options: FetchRemoteDataOptions,
+  authHeaders: Record<string, string>,
+  timeout: number
+): Pick<PaginatedFetchOptions, "authHeaders" | "timeout" | "maxRetries" | "cacheOptions" | "isFirstRun"> => ({
+  authHeaders,
+  timeout,
+  maxRetries: options.maxRetries ?? 0,
+  // Without this the page fetches default to cache-on, ignoring the
+  // feature flag, useHttpCache, and bypassCacheOnManual entirely.
+  cacheOptions: options.cacheOptions,
+  // Mirror across every paginated branch: without isFirstRun, fetchPaginated
+  // never selects the configured initialBodyTemplate, so a POST-paginated
+  // source silently sends the regular body on its first page.
+  isFirstRun: options.isFirstRun,
+});
 
 /** Check if the API requires POST-based pagination (body template configured). */
 const isPostPaginatedApi = (options: FetchRemoteDataOptions): boolean => {
@@ -239,13 +251,12 @@ const fetchPostPaginated = async (
   const { sourceUrl, jsonApiConfig } = options;
   const timeout = options.timeout ?? 60_000;
   const recordsPath = jsonApiConfig!.recordsPath ?? undefined;
-  const result = await fetchPaginated(sourceUrl, jsonApiConfig!.pagination!, recordsPath, {
-    authHeaders,
-    timeout,
-    maxRetries: options.maxRetries ?? 0,
-    cacheOptions: options.cacheOptions,
-    isFirstRun: options.isFirstRun,
-  });
+  const result = await fetchPaginated(
+    sourceUrl,
+    jsonApiConfig!.pagination!,
+    recordsPath,
+    buildPaginationFetchOptions(options, authHeaders, timeout)
+  );
 
   let records = result.allRecords;
   if (options.preProcessing) {
