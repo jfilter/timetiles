@@ -51,6 +51,14 @@ export interface TimeHistogramProps {
   isUpdating?: boolean;
   /** Custom empty message */
   emptyMessage?: string;
+  /** Subtitle shown when no data matches the current filters */
+  emptySuggestion?: string;
+  /** Title shown when the fetch failed */
+  errorMessage?: string;
+  /** Subtitle shown when the fetch failed */
+  errorSuggestion?: string;
+  /** Label for the retry button in the error state */
+  retryLabel?: string;
   /** Bucket size in seconds (for adaptive tooltip formatting) */
   bucketSizeSeconds?: number | null;
   /** Whether the data fetch encountered an error */
@@ -483,6 +491,10 @@ export const TimeHistogram = ({
   isInitialLoad = false,
   isUpdating = false,
   emptyMessage = "No data available",
+  emptySuggestion,
+  errorMessage,
+  errorSuggestion,
+  retryLabel,
   bucketSizeSeconds,
   isError = false,
   onRetry,
@@ -530,13 +542,31 @@ export const TimeHistogram = ({
 
   // Handle error state
   if (isError && !isInitialLoad) {
-    return <ChartEmptyState variant="error" height={height} className={className} onRetry={onRetry} />;
+    return (
+      <ChartEmptyState
+        variant="error"
+        height={height}
+        className={className}
+        message={errorMessage}
+        suggestion={errorSuggestion}
+        onRetry={onRetry}
+        retryLabel={retryLabel}
+      />
+    );
   }
 
   // Handle empty state — check both single-series and grouped data
   const hasData = hasHistogramData(data, groupedData);
   if (!hasData && !isInitialLoad && !isUpdating) {
-    return <ChartEmptyState variant="no-match" height={height} className={className} message={emptyMessage} />;
+    return (
+      <ChartEmptyState
+        variant="no-match"
+        height={height}
+        className={className}
+        message={emptyMessage}
+        suggestion={emptySuggestion}
+      />
+    );
   }
 
   return (

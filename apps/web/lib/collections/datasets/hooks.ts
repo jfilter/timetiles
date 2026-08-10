@@ -18,7 +18,7 @@ import type {
   Where,
 } from "payload";
 
-import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
+import { safeFetchRecord, stripClientDenormFields, withDenormSync } from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { logger } from "@/lib/logger";
@@ -351,12 +351,20 @@ export const validateMappingOverrideTransforms: CollectionBeforeChangeHook = ({ 
   return data;
 };
 
+/** Denormalized access-control fields on datasets — derived here, never client-supplied. */
+const DATASET_DENORM_FIELDS = ["catalogCreatorId", "catalogIsPublic"] as const;
+
 export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
-  data,
+  data: incoming,
   req,
   operation,
   originalDoc,
 }) => {
+  // A client PATCH that omits `catalog` skips the derivation below, so without
+  // this the caller's own catalogIsPublic/catalogCreatorId would be stored —
+  // publishing a private dataset or handing it to another account.
+  const data = stripClientDenormFields(incoming, req, DATASET_DENORM_FIELDS);
+
   // Set createdBy on creation
   if (operation === "create" && req.user) {
     data.createdBy = req.user.id;
@@ -526,23 +534,24 @@ const syncDatasetChildAccessFields = async (
   req: PayloadRequest,
   datasetId: number,
   accessFields: { catalogOwnerId: number | null; datasetIsPublic: boolean }
-): Promise<void> => {
-  await req.payload.update({
-    collection: "events",
-    where: { dataset: { equals: datasetId } },
-    data: accessFields,
-    overrideAccess: true,
-    req,
-  });
+): Promise<void> =>
+  withDenormSync(req, async () => {
+    await req.payload.update({
+      collection: "events",
+      where: { dataset: { equals: datasetId } },
+      data: accessFields,
+      overrideAccess: true,
+      req,
+    });
 
-  await req.payload.update({
-    collection: "dataset-schemas",
-    where: { dataset: { equals: datasetId } },
-    data: accessFields,
-    overrideAccess: true,
-    req,
+    await req.payload.update({
+      collection: "dataset-schemas",
+      where: { dataset: { equals: datasetId } },
+      data: accessFields,
+      overrideAccess: true,
+      req,
+    });
   });
-};
 
 /**
  * Sync dataset access-control changes to all child records in this dataset.

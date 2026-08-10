@@ -73,3 +73,48 @@ export const extractDenormalizedAccessFields = (
   const catalogOwnerId = catalog?.createdBy ? extractRelationId<number>(catalog.createdBy) : undefined;
   return { datasetIsPublic, catalogOwnerId };
 };
+
+/**
+ * Marks a write as an internal resync of denormalized access-control fields.
+ *
+ * Those fields (`catalogCreatorId`, `catalogIsPublic`, `datasetIsPublic`,
+ * `catalogOwnerId`) decide who may read a row, so a client must never set them
+ * directly — but the cascades that keep them in sync run through the same
+ * beforeChange hooks with the acting user's `req`. This marker is what tells the
+ * two apart; `overrideAccess` cannot, because the cascades inherit `req.user`.
+ */
+const DENORM_SYNC_CONTEXT_KEY = "syncingDenormalizedAccessFields";
+
+/** Run `fn` with denormalized-access-field writes marked as internal. */
+export const withDenormSync = async <T>(req: PayloadRequest, fn: () => Promise<T>): Promise<T> => {
+  req.context ??= {};
+  const context = req.context;
+  const previous = context[DENORM_SYNC_CONTEXT_KEY];
+  context[DENORM_SYNC_CONTEXT_KEY] = true;
+  try {
+    return await fn();
+  } finally {
+    context[DENORM_SYNC_CONTEXT_KEY] = previous;
+  }
+};
+
+/**
+ * Strip client-supplied denormalized access fields.
+ *
+ * Returns `data` unchanged for internal resyncs and for writes with no acting
+ * user (import jobs, seeds); otherwise removes the listed keys so the hook's own
+ * derivation is the only thing that can set them.
+ */
+export const stripClientDenormFields = <T extends Record<string, unknown>>(
+  data: T,
+  req: PayloadRequest,
+  keys: readonly string[]
+): T => {
+  if (!req.user || req.context?.[DENORM_SYNC_CONTEXT_KEY] === true) return data;
+
+  const cleaned = { ...data };
+  for (const key of keys) {
+    delete cleaned[key];
+  }
+  return cleaned;
+};

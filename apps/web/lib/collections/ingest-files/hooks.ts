@@ -199,8 +199,34 @@ const compensateUploadQuotaOnError = async (
   }
 };
 
+/**
+ * Fields a client must never change after upload.
+ *
+ * The pipeline reads `catalog` when it creates datasets and `user` is the
+ * ownership anchor for the file and its ingest jobs — the manual workflow is
+ * QUEUED, not inline, so the row is patchable in between. Repointing `catalog`
+ * at a stranger's catalog makes the (user-less, unchecked) detection job create
+ * datasets there; repointing `user` hands the file and its jobs to another
+ * account. `status` is pipeline state derived from the jobs.
+ */
+const CLIENT_IMMUTABLE_AFTER_CREATE = ["catalog", "user", "status"] as const;
+
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
-  async ({ data, req, operation }) => {
+  async ({ data, req, operation, originalDoc }) => {
+    if (operation === "update") {
+      // Internal writers (status transitions, dataset detection) go through the
+      // Local API without a user; only client-initiated PATCHes are restricted.
+      if (!req.user || req.context?.seed) return data;
+
+      // Restore rather than delete: `user` is required, so dropping the key
+      // fails validation on an otherwise legitimate PATCH.
+      const restored = { ...data };
+      for (const field of CLIENT_IMMUTABLE_AFTER_CREATE) {
+        if (field in restored) restored[field] = originalDoc?.[field];
+      }
+      return restored;
+    }
+
     // Only run on create operations
     if (operation !== "create") return data;
     // Skip during seeding — seed data provides all fields directly

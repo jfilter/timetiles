@@ -56,6 +56,16 @@ export interface BarChartProps {
   onBarClick?: (item: BarChartDataItem, index: number) => void;
   /** Label for the corner badge shown while isUpdating is true */
   updatingLabel?: string;
+  /** Title shown when no data matches the current filters */
+  emptyMessage?: string;
+  /** Subtitle shown when no data matches the current filters */
+  emptySuggestion?: string;
+  /** Title shown when the fetch failed */
+  errorMessage?: string;
+  /** Subtitle shown when the fetch failed */
+  errorSuggestion?: string;
+  /** Label for the retry button in the error state */
+  retryLabel?: string;
 }
 
 /**
@@ -78,6 +88,11 @@ export const BarChart = ({
   onRetry,
   onBarClick,
   updatingLabel,
+  emptyMessage,
+  emptySuggestion,
+  errorMessage,
+  errorSuggestion,
+  retryLabel,
 }: BarChartProps) => {
   // Sort descending by value, carrying each item's original index — labels
   // are NOT unique (datasets in different catalogs may share a name), so the
@@ -182,11 +197,29 @@ export const BarChart = ({
     : undefined;
 
   if (isError && !isInitialLoad) {
-    return <ChartEmptyState variant="error" height={effectiveHeight} className={className} onRetry={onRetry} />;
+    return (
+      <ChartEmptyState
+        variant="error"
+        height={effectiveHeight}
+        className={className}
+        message={errorMessage}
+        suggestion={errorSuggestion}
+        onRetry={onRetry}
+        retryLabel={retryLabel}
+      />
+    );
   }
 
   if (data.length === 0 && !isInitialLoad && !isUpdating) {
-    return <ChartEmptyState variant="no-match" height={effectiveHeight} className={className} />;
+    return (
+      <ChartEmptyState
+        variant="no-match"
+        height={effectiveHeight}
+        className={className}
+        message={emptyMessage}
+        suggestion={emptySuggestion}
+      />
+    );
   }
 
   return (

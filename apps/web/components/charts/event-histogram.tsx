@@ -31,13 +31,14 @@ import type { BaseChartProps } from "./types";
 const buildGroupedSeries = (
   items: Array<{ groupName: string | null; count: number; bucketStart: string; bucketEnd: string }>,
   maxGroups: number,
-  otherLabel: (count: number) => string
+  otherLabel: (count: number) => string,
+  noValueLabel: string
 ): TimeHistogramSeries[] | undefined => {
   const groupTotals = new Map<string, { name: string; total: number; items: Map<string, number> }>();
   const bucketEnds = new Map<string, string>();
   for (const item of items) {
     bucketEnds.set(item.bucketStart, item.bucketEnd);
-    const names = expandGroupNames(item.groupName ?? "");
+    const names = expandGroupNames(item.groupName ?? "", noValueLabel);
     for (const name of names) {
       if (!groupTotals.has(name)) {
         groupTotals.set(name, { name, total: 0, items: new Map() });
@@ -102,6 +103,7 @@ export const EventHistogram = ({
 }: Readonly<EventHistogramProps>) => {
   const chartTheme = useChartTheme();
   const t = useTranslations("Explore");
+  const tCommon = useTranslations("Common");
   const locale = useLocale();
   const { filters, setBucketRangeFilter } = useFilters();
   const scope = useViewScope();
@@ -111,6 +113,7 @@ export const EventHistogram = ({
 
   // Same merged-series label the beeswarm uses, so both charts read alike under /de.
   const otherLabel = useCallback((count: number) => t("beeswarmOtherGroups", { count }), [t]);
+  const noValueLabel = t("groupNoValue");
 
   const isGrouped = groupBy !== "none";
   const boundsOrNull = bounds ?? null;
@@ -133,9 +136,9 @@ export const EventHistogram = ({
   const groupedData = useMemo<TimeHistogramSeries[] | undefined>(
     () =>
       isGrouped && clustersQuery.data?.items
-        ? buildGroupedSeries(clustersQuery.data.items, maxGroups, otherLabel)
+        ? buildGroupedSeries(clustersQuery.data.items, maxGroups, otherLabel, noValueLabel)
         : undefined,
-    [isGrouped, clustersQuery.data?.items, maxGroups, otherLabel]
+    [isGrouped, clustersQuery.data?.items, maxGroups, otherLabel, noValueLabel]
   );
 
   // Pick loading/error state from the active query (grouped vs ungrouped)
@@ -160,6 +163,11 @@ export const EventHistogram = ({
         eventsLabel={t("histogramEventsLabel")}
         totalLabel={t("histogramTotalLabel")}
         updatingLabel={t("chartUpdating")}
+        emptyMessage={t("chartNoMatch")}
+        emptySuggestion={t("chartNoMatchSuggestion")}
+        errorMessage={t("chartError")}
+        errorSuggestion={t("chartErrorSuggestion")}
+        retryLabel={tCommon("tryAgain")}
       />
       {showControls && isGrouped && onMaxGroupsChange && (
         <div className="bg-background/95 border-border absolute top-0 right-0 z-10 flex w-56 flex-col gap-3 rounded-md border p-3 shadow-md backdrop-blur-sm">

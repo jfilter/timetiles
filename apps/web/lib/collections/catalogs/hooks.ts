@@ -15,6 +15,7 @@ import type {
   PayloadRequest,
 } from "payload";
 
+import { withDenormSync } from "@/lib/collections/catalog-ownership";
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -110,13 +111,15 @@ const syncDatasetsWithCatalog = async (
   if (changes.isPublicChanged) datasetUpdates.catalogIsPublic = changes.newIsPublic;
 
   if (Object.keys(datasetUpdates).length > 0) {
-    await req.payload.update({
-      collection: "datasets",
-      where: { catalog: { equals: catalogId } },
-      data: datasetUpdates,
-      overrideAccess: true,
-      req,
-    });
+    await withDenormSync(req, () =>
+      req.payload.update({
+        collection: "datasets",
+        where: { catalog: { equals: catalogId } },
+        data: datasetUpdates,
+        overrideAccess: true,
+        req,
+      })
+    );
   }
 };
 
@@ -126,54 +129,55 @@ const bulkSyncCollection = async (
   collection: "events" | "dataset-schemas",
   datasets: Array<{ id: number; isPublic: boolean }>,
   changes: CatalogChanges
-): Promise<void> => {
-  const allIds = datasets.map((d) => d.id);
-  const ownerId = changes.createdByChanged ? (changes.newCreatedBy as number) : undefined;
+): Promise<void> =>
+  withDenormSync(req, async () => {
+    const allIds = datasets.map((d) => d.id);
+    const ownerId = changes.createdByChanged ? (changes.newCreatedBy as number) : undefined;
 
-  if (!changes.isPublicChanged) {
-    // Only ownership changed — same update for all datasets
-    await req.payload.update({
-      collection,
-      where: { dataset: { in: allIds } },
-      data: { catalogOwnerId: ownerId },
-      overrideAccess: true,
-      req,
-    });
-  } else if (!changes.newIsPublic) {
-    // Catalog became private — all children become non-public
-    await req.payload.update({
-      collection,
-      where: { dataset: { in: allIds } },
-      data: { datasetIsPublic: false, ...(ownerId != null && { catalogOwnerId: ownerId }) },
-      overrideAccess: true,
-      req,
-    });
-  } else {
-    // Catalog became public — visibility depends on each dataset's own isPublic
-    const ownerData = ownerId != null ? { catalogOwnerId: ownerId } : {};
-    const publicIds = datasets.filter((d) => d.isPublic).map((d) => d.id);
-    const privateIds = datasets.filter((d) => !d.isPublic).map((d) => d.id);
-
-    if (publicIds.length > 0) {
+    if (!changes.isPublicChanged) {
+      // Only ownership changed — same update for all datasets
       await req.payload.update({
         collection,
-        where: { dataset: { in: publicIds } },
-        data: { datasetIsPublic: true, ...ownerData },
+        where: { dataset: { in: allIds } },
+        data: { catalogOwnerId: ownerId },
         overrideAccess: true,
         req,
       });
-    }
-    if (privateIds.length > 0) {
+    } else if (!changes.newIsPublic) {
+      // Catalog became private — all children become non-public
       await req.payload.update({
         collection,
-        where: { dataset: { in: privateIds } },
-        data: { datasetIsPublic: false, ...ownerData },
+        where: { dataset: { in: allIds } },
+        data: { datasetIsPublic: false, ...(ownerId != null && { catalogOwnerId: ownerId }) },
         overrideAccess: true,
         req,
       });
+    } else {
+      // Catalog became public — visibility depends on each dataset's own isPublic
+      const ownerData = ownerId != null ? { catalogOwnerId: ownerId } : {};
+      const publicIds = datasets.filter((d) => d.isPublic).map((d) => d.id);
+      const privateIds = datasets.filter((d) => !d.isPublic).map((d) => d.id);
+
+      if (publicIds.length > 0) {
+        await req.payload.update({
+          collection,
+          where: { dataset: { in: publicIds } },
+          data: { datasetIsPublic: true, ...ownerData },
+          overrideAccess: true,
+          req,
+        });
+      }
+      if (privateIds.length > 0) {
+        await req.payload.update({
+          collection,
+          where: { dataset: { in: privateIds } },
+          data: { datasetIsPublic: false, ...ownerData },
+          overrideAccess: true,
+          req,
+        });
+      }
     }
-  }
-};
+  });
 
 /** Batch sync catalog changes to events and dataset-schemas across all datasets.
  * Groups updates by dataset visibility to minimize DB calls (max 4 instead of 2N). */

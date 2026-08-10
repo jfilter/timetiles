@@ -25,6 +25,8 @@ export interface ContentStateProps {
   subtitle?: string;
   /** Shows retry button (error variant only) */
   onRetry?: () => void;
+  /** Override the retry button label (localize from the app side) */
+  retryLabel?: string;
   /** Container height (number treated as px, string used as-is) */
   height?: number | string;
   /** Additional CSS classes */
@@ -53,7 +55,16 @@ const defaultIcons: Record<ContentStateProps["variant"], ReactNode> = {
  * <ContentState variant="error" onRetry={() => refetch()} />
  * ```
  */
-export const ContentState = ({ variant, icon, title, subtitle, onRetry, height, className }: ContentStateProps) => {
+export const ContentState = ({
+  variant,
+  icon,
+  title,
+  subtitle,
+  onRetry,
+  retryLabel = "Try again",
+  height,
+  className,
+}: ContentStateProps) => {
   const containerStyle = (() => {
     if (height == null) return undefined;
     const containerHeight = typeof height === "number" ? `${height}px` : height;
@@ -76,7 +87,7 @@ export const ContentState = ({ variant, icon, title, subtitle, onRetry, height, 
           onClick={onRetry}
           className="bg-primary text-primary-foreground hover:bg-primary/90 mt-2 rounded-sm px-4 py-1.5 text-xs font-medium transition-colors"
         >
-          Try again
+          {retryLabel}
         </button>
       )}
     </div>

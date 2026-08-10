@@ -62,6 +62,13 @@ export const resolveEventQueryContext = async ({
 
   await resolveDatasetFieldContext(filters, payload, user);
 
+  // Re-check: the cross-dataset gate above sets denyResults, and the JSONB
+  // adapters for the PG-function endpoints cannot express a deny — those routes
+  // would return unfiltered rows where the SQL/Payload paths return none.
+  if (filters.denyResults) {
+    return { denied: true };
+  }
+
   return { denied: false, filters };
 };
 

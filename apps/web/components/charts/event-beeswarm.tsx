@@ -56,16 +56,19 @@ const DEFAULTS = {
  * Expand a group name into individual group names.
  * JSON arrays like '["Cruise missile", "Loitering munition"]' become
  * two separate entries. Scalar strings return as single-element array.
- * '[]' or '(empty)' → ['(no value)'].
+ * '[]' or '(empty)' → [noValueLabel].
+ *
+ * The fallback label becomes a chart series name (legend + tooltip), so it is
+ * passed in localized rather than hardcoded.
  */
-export const expandGroupNames = (name: string): string[] => {
-  if (!name || name === "(empty)" || name === "[]") return ["(no value)"];
+export const expandGroupNames = (name: string, noValueLabel: string): string[] => {
+  if (!name || name === "(empty)" || name === "[]") return [noValueLabel];
   if (name.startsWith("[")) {
     try {
       const arr = JSON.parse(name) as unknown[];
       if (Array.isArray(arr)) {
         const strings = arr.filter((v): v is string => typeof v === "string" && v.length > 0);
-        return strings.length > 0 ? strings : ["(no value)"];
+        return strings.length > 0 ? strings : [noValueLabel];
       }
     } catch {
       // not JSON, use as-is
@@ -75,10 +78,13 @@ export const expandGroupNames = (name: string): string[] => {
 };
 
 /** Group items by groupId, expanding multi-value fields (JSON arrays) into separate groups. */
-const groupByField = (items: TemporalClusterItem[]): Map<string, { name: string; items: TemporalClusterItem[] }> => {
+const groupByField = (
+  items: TemporalClusterItem[],
+  noValueLabel: string
+): Map<string, { name: string; items: TemporalClusterItem[] }> => {
   const groups = new Map<string, { name: string; items: TemporalClusterItem[] }>();
   for (const item of items) {
-    const names = expandGroupNames(item.groupName);
+    const names = expandGroupNames(item.groupName, noValueLabel);
     for (const name of names) {
       if (!groups.has(name)) {
         groups.set(name, { name, items: [] });
@@ -101,6 +107,8 @@ interface BeeswarmLabels {
   eventsCount: (count: number) => string;
   /** "Other (4)" — the merged remainder series. */
   otherGroups: (count: number) => string;
+  /** "(no value)" — series name for items without a group value. */
+  noValue: string;
 }
 
 /** Build BeeswarmDataItem[] from a group's items. */
@@ -143,7 +151,7 @@ const transformToSeries = (
 ): { series: BeeswarmSeries[]; maxClusterCount: number } => {
   if (items.length === 0) return { series: [], maxClusterCount: 1 };
 
-  const groups = groupByField(items);
+  const groups = groupByField(items, labels.noValue);
 
   // Sort groups by total item count, take top N
   const sorted = [...groups.entries()].sort((a, b) => b[1].items.length - a[1].items.length);
@@ -386,6 +394,7 @@ export const EventBeeswarm = ({
     () => ({
       eventsCount: (count: number) => t("beeswarmEventsCount", { count }),
       otherGroups: (count: number) => t("beeswarmOtherGroups", { count }),
+      noValue: t("groupNoValue"),
     }),
     [t]
   );

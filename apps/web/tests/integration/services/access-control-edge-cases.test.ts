@@ -279,7 +279,7 @@ describe.sequential("Access Control Edge Cases", () => {
         payload.update({
           collection: "ingest-files",
           id: ingestFile.id,
-          data: { status: "completed" },
+          data: { metadata: { note: "foreign" } },
           user: otherUser,
           overrideAccess: false,
         })
@@ -289,11 +289,23 @@ describe.sequential("Access Control Edge Cases", () => {
       const updated = await payload.update({
         collection: "ingest-files",
         id: ingestFile.id,
+        data: { metadata: { note: "owner" } },
+        user: ownerUser,
+        overrideAccess: false,
+      });
+      expect((updated.metadata as { note?: string } | null)?.note).toBe("owner");
+
+      // ...but `status` is pipeline state derived from the ingest jobs, so even
+      // the owner cannot drive it from a client PATCH (a forged "completed"
+      // makes the cleanup job reclaim the source file mid-import).
+      const statusAttempt = await payload.update({
+        collection: "ingest-files",
+        id: ingestFile.id,
         data: { status: "completed" },
         user: ownerUser,
         overrideAccess: false,
       });
-      expect(updated.status).toBe("completed");
+      expect(statusAttempt.status).not.toBe("completed");
     });
   });
 

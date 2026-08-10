@@ -101,7 +101,7 @@ export const VisualizationPanel = ({
           {/* Chart type selector with optional hide/show */}
           {showDropdown ? (
             <Select value={isCollapsed ? HIDE_VALUE : chartType} onValueChange={handleValueChange}>
-              <SelectTrigger aria-label="Chart type" className="w-auto shadow-none" size="sm">
+              <SelectTrigger aria-label={t("chartType")} className="w-auto shadow-none" size="sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
