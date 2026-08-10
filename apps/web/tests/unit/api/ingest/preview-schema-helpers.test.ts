@@ -17,14 +17,15 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 
 vi.mock("@/lib/api", () => ({ ValidationError: class ValidationError extends Error {} }));
 
-vi.mock("@/lib/services/schema-detection", () => ({
+// Only language detection is stubbed (for determinism) — the header matcher stays real so
+// these tests cover the actual detection rules rather than a stand-in.
+vi.mock("@/lib/services/schema-detection", async (importOriginal) => ({
+  ...(await importOriginal<typeof SchemaDetection>()),
   detectLanguage: vi.fn().mockReturnValue({ code: "eng", confidence: 0.9 }),
-  LATITUDE_PATTERNS: [/^lat$/i, /^latitude$/i],
-  LONGITUDE_PATTERNS: [/^lng$/i, /^longitude$/i],
-  matchFieldNamePatterns: vi.fn().mockReturnValue(null),
 }));
 
 import { detectSuggestedMappings, parseCSVPreview } from "@/app/api/ingest/preview-schema/helpers";
+import type * as SchemaDetection from "@/lib/services/schema-detection";
 
 describe("detectSuggestedMappings", () => {
   it("uses whole-file rows for paired date inference, not just preview samples", () => {
@@ -45,6 +46,39 @@ describe("detectSuggestedMappings", () => {
     expect(suggestions.mappings.timestampPath.path).toBe("phase_one");
     expect(suggestions.mappings.endTimestampPath.path).toBe("phase_two");
     expect(suggestions.mappings.endTimestampPath.confidenceLevel).not.toBe("none");
+  });
+
+  it("detects the common English header names", () => {
+    const headers = ["title", "description", "date", "location", "url"];
+    const rows = [{ title: "A", description: "B", date: "2026-01-01", location: "Berlin", url: "https://x" }];
+
+    const suggestions = detectSuggestedMappings(headers, rows);
+
+    expect(suggestions.mappings.titlePath.path).toBe("title");
+    expect(suggestions.mappings.descriptionPath.path).toBe("description");
+    expect(suggestions.mappings.timestampPath.path).toBe("date");
+    expect(suggestions.mappings.locationNamePath.path).toBe("location");
+  });
+
+  it("matches headers regardless of case", () => {
+    const headers = ["TITLE", "Description", "START_DATE", "LOCATION"];
+    const rows = [{ TITLE: "A", Description: "B", START_DATE: "2026-01-01", LOCATION: "Berlin" }];
+
+    const suggestions = detectSuggestedMappings(headers, rows);
+
+    // The original spelling is returned — the path has to address the real column.
+    expect(suggestions.mappings.titlePath.path).toBe("TITLE");
+    expect(suggestions.mappings.descriptionPath.path).toBe("Description");
+    expect(suggestions.mappings.locationNamePath.path).toBe("LOCATION");
+  });
+
+  it("prefers the exact header over a partial match", () => {
+    const headers = ["event_title", "title"];
+    const rows = [{ event_title: "A", title: "B" }];
+
+    const suggestions = detectSuggestedMappings(headers, rows);
+
+    expect(suggestions.mappings.titlePath.path).toBe("title");
   });
 });
 

@@ -124,8 +124,15 @@ export const deleteByPath = (obj: Record<string, unknown>, path: string): void =
     return;
   }
 
+  // Same refusal as setByPath: transform paths are user-configured, and without this a
+  // path like "__proto__.toString" walks into Object.prototype and deletes off it.
+  if (keys.some(isUnsafeKey) || isUnsafeKey(lastKey)) {
+    return;
+  }
+
   const parent = keys.reduce((current: unknown, key: string) => {
-    if (current === null || current === undefined || typeof current !== "object") {
+    // Object.hasOwn so inherited keys are never traversed (see setByPath).
+    if (current === null || current === undefined || typeof current !== "object" || !Object.hasOwn(current, key)) {
       return undefined;
     }
     return (current as Record<string, unknown>)[key];

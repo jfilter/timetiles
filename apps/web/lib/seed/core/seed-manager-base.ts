@@ -15,7 +15,6 @@ import { getPayload } from "payload";
 
 import { buildConfigWithDefaults } from "@/lib/config/payload-config-factory";
 import { createLogger } from "@/lib/logger";
-import type { Config } from "@/payload-types";
 
 import { DatabaseOperations } from "../database-operations";
 import { RelationshipResolver } from "../relationship-resolver";
@@ -184,8 +183,7 @@ export abstract class SeedManagerBase {
 
   async getCollectionCount(collection: string): Promise<number> {
     await this.initialize();
-    const count = await this.payload!.count({ collection: collection as keyof Config["collections"] });
-    return count.totalDocs;
+    return this.databaseOperations!.getCollectionCount(collection);
   }
 
   get payloadInstance() {

@@ -16,6 +16,16 @@ export interface CatalogGroup {
   totalEvents: number;
 }
 
+/** Compare two named, counted items by event count (desc) then name (asc). */
+const compareByCountThenName =
+  <T extends { id: number; name: string }>(eventCounts: Record<string, number> | undefined) =>
+  (a: T, b: T): number => {
+    const countA = eventCounts?.[String(a.id)] ?? 0;
+    const countB = eventCounts?.[String(b.id)] ?? 0;
+    if (countB !== countA) return countB - countA;
+    return a.name.localeCompare(b.name);
+  };
+
 /** Filter and sort catalogs by event count, applying view scope if present */
 export const filterAndSortCatalogs = (
   catalogs: DataSourceCatalog[],
@@ -27,25 +37,14 @@ export const filterAndSortCatalogs = (
     const scopeIds = new Set(scopeCatalogIds);
     filtered = filtered.filter((c) => scopeIds.has(c.id));
   }
-  return [...filtered].sort((a, b) => {
-    const countA = eventCounts?.[String(a.id)] ?? 0;
-    const countB = eventCounts?.[String(b.id)] ?? 0;
-    if (countB !== countA) return countB - countA;
-    return a.name.localeCompare(b.name);
-  });
+  return [...filtered].sort(compareByCountThenName(eventCounts));
 };
 
 /** Sort datasets by event count then name */
 const sortDatasets = (
   datasets: DataSourceDataset[],
   eventCounts: Record<string, number> | undefined
-): DataSourceDataset[] =>
-  [...datasets].sort((a, b) => {
-    const countA = eventCounts?.[String(a.id)] ?? 0;
-    const countB = eventCounts?.[String(b.id)] ?? 0;
-    if (countB !== countA) return countB - countA;
-    return a.name.localeCompare(b.name);
-  });
+): DataSourceDataset[] => [...datasets].sort(compareByCountThenName(eventCounts));
 
 /** Group datasets by catalog, sorted by total event count */
 export const groupDatasetsByCatalog = (

@@ -87,8 +87,14 @@ export class DatabaseOperations {
         return { success: false, itemsProcessed: 0 };
       }
 
-      // Get initial count for reporting
-      const initialCount = await this.getCollectionCount(collection);
+      // Get initial count for reporting only — a count failure must not
+      // block the TRUNCATE itself, so it falls back to 0 here.
+      let initialCount = 0;
+      try {
+        initialCount = await this.getCollectionCount(collection);
+      } catch (error) {
+        logger.debug(`Could not get initial count for ${collection}`, { error: (error as Error).message });
+      }
 
       // Execute SQL TRUNCATE with CASCADE
       const tableName = `payload."${collection}"`;
@@ -129,45 +135,6 @@ export class DatabaseOperations {
   }
 
   /**
-   * Process individual deletes for a batch.
-   */
-  private async processIndividualDeletes(
-    items: Array<{ id: string }>,
-    collection: string
-  ): Promise<{ successful: number; errors: unknown[] }> {
-    const deletePromises = items.map(async (item) => {
-      try {
-        await this.payload.delete({ collection: collection as keyof Config["collections"], id: item.id });
-        return { success: true };
-      } catch (error) {
-        return { success: false, error, id: item.id };
-      }
-    });
-
-    const results = await Promise.allSettled(deletePromises);
-    const successful = results.filter((r) => r.status === "fulfilled" && r.value.success).length;
-    const errors: unknown[] = [];
-
-    const failed = results.filter((r) => r.status === "rejected" || (r.status === "fulfilled" && !r.value.success));
-
-    failed.forEach((failure, index) => {
-      if (failure.status === "rejected") {
-        errors.push({
-          error: failure.reason instanceof Error ? failure.reason : new Error(String(failure.reason)),
-          itemIndex: index,
-        });
-      } else if (failure.status === "fulfilled") {
-        errors.push({
-          error: (failure.value as { error: unknown; id: unknown }).error,
-          id: (failure.value as { error: unknown; id: unknown }).id,
-        });
-      }
-    });
-
-    return { successful, errors };
-  }
-
-  /**
    * Process a single batch of items for deletion.
    */
   private async processDeletionBatch(
@@ -186,12 +153,12 @@ export class DatabaseOperations {
       }
 
       // SQL failed, fallback to individual deletes
-      const fallbackResult = await this.fallbackIndividualDeletes(items, collection);
+      const fallbackResult = await this.deleteItemsIndividually(items, collection);
       return { deletedCount: fallbackResult.successful, errors: fallbackResult.errors };
     }
 
     // Use individual deletes
-    const result = await this.processIndividualDeletes(items, collection);
+    const result = await this.deleteItemsIndividually(items, collection);
     return { deletedCount: result.successful, errors: result.errors };
   }
 
@@ -240,26 +207,19 @@ export class DatabaseOperations {
   }
 
   /**
-   * Get collection count efficiently.
+   * Get collection count via Payload's count API. Throws on failure — a
+   * broken collection must not silently look empty to callers.
    */
-  private async getCollectionCount(collection: string): Promise<number> {
-    try {
-      const result = await this.payload.find({
-        collection: collection as keyof Config["collections"],
-        limit: 0,
-        depth: 0,
-      });
-      return result.totalDocs;
-    } catch (error) {
-      logger.warn(`Could not get count for ${collection}`, { error: (error as Error).message });
-      return 0;
-    }
+  async getCollectionCount(collection: string): Promise<number> {
+    const result = await this.payload.count({ collection: collection as keyof Config["collections"] });
+    return result.totalDocs;
   }
 
   /**
-   * Fallback individual deletes when SQL batch fails.
+   * Delete items individually, tolerating per-item failures. Used both as
+   * the direct deletion path and as the fallback when a SQL batch delete fails.
    */
-  private async fallbackIndividualDeletes(
+  private async deleteItemsIndividually(
     items: { id: string | number }[],
     collection: string
   ): Promise<{ successful: number; errors: unknown[] }> {

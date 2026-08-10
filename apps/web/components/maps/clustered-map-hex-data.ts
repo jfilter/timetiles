@@ -163,19 +163,17 @@ export const toFeatureIdString = (value: unknown): string | null => {
   return null;
 };
 
+/** Map a cluster feature with a valid H3 cell id to a hex polygon Feature. */
+const clusterToHexFeature = (f: ClusterFeature): GeoJSON.Feature => ({
+  type: "Feature",
+  properties: { count: f.properties.count ?? 1 },
+  geometry: { type: "Polygon", coordinates: [cellToGeoJsonRing(String(f.id ?? ""))] },
+});
+
 /** Build hex polygon GeoJSON from animated cluster features (H3 algorithm). */
 export const buildH3HexData = (algorithm: string, animatedClusters: ClusterFeature[]): GeoJSON.FeatureCollection => {
   if (algorithm !== "h3") return EMPTY_FEATURE_COLLECTION;
-  const hexFeatures = animatedClusters
-    .filter((f) => isLongValidCell(String(f.id ?? "")))
-    .map((f) => {
-      const coords = cellToGeoJsonRing(String(f.id ?? ""));
-      return {
-        type: "Feature" as const,
-        properties: { count: f.properties.count ?? 1 },
-        geometry: { type: "Polygon" as const, coordinates: [coords] },
-      };
-    });
+  const hexFeatures = animatedClusters.filter((f) => isLongValidCell(String(f.id ?? ""))).map(clusterToHexFeature);
   return { type: "FeatureCollection", features: hexFeatures };
 };
 
@@ -236,16 +234,7 @@ export const buildFocusSubcellHexData = (
   if (!focusedCluster || !clusterChildren || clusterChildren.length === 0) {
     return EMPTY_FEATURE_COLLECTION;
   }
-  const hexFeatures = clusterChildren
-    .filter((f) => isLongValidCell(String(f.id ?? "")))
-    .map((f) => {
-      const coords = cellToGeoJsonRing(String(f.id ?? ""));
-      return {
-        type: "Feature" as const,
-        properties: { count: f.properties.count ?? 1 },
-        geometry: { type: "Polygon" as const, coordinates: [coords] },
-      };
-    });
+  const hexFeatures = clusterChildren.filter((f) => isLongValidCell(String(f.id ?? ""))).map(clusterToHexFeature);
   return { type: "FeatureCollection", features: hexFeatures };
 };
 

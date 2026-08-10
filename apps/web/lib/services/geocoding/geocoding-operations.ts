@@ -129,24 +129,14 @@ export class GeocodingOperations {
     address: string,
     bias?: GeocodingBias
   ): Promise<GeocodingResult> {
-    const rateLimiter = getProviderRateLimiter();
+    const result = await this.iterateProviders(available, address, bias, {
+      skipProviderName: primaryName,
+      revalidateAvailability: true,
+    });
 
-    for (const provider of available) {
-      if (provider.name === primaryName) continue;
-      if (!rateLimiter.isAvailable(provider.name)) continue;
-
-      try {
-        const result = await this.tryProviderWithRetry(provider, address, bias);
-        if (result != null) {
-          if (!this.isResultAcceptable(result)) continue;
-          await this.cacheResult(address, result, bias);
-          return result;
-        }
-      } catch {
-        // Try next provider
-      }
-
-      if (!this.shouldContinueWithFallback()) break;
+    if (result != null) {
+      await this.cacheResult(address, result, bias);
+      return result;
     }
 
     throw new GeocodingError("All geocoding providers failed", "ALL_PROVIDERS_FAILED", false);
@@ -247,14 +237,41 @@ export class GeocodingOperations {
   private async tryProviders(address: string, bias?: GeocodingBias): Promise<GeocodingResult | null> {
     const enabledProviders = this.providerManager.getEnabledProviders();
     const rateLimiter = getProviderRateLimiter();
+    const providers = this.selectProvidersToTry(enabledProviders, rateLimiter);
 
-    for (const provider of this.selectProvidersToTry(enabledProviders, rateLimiter)) {
+    return this.iterateProviders(providers, address, bias);
+  }
+
+  /**
+   * Try each candidate provider in order until one returns an acceptable
+   * result. Shared by tryProviders and tryFallbackProviders so error
+   * handling and validation can't drift between the primary and fallback
+   * lookup paths.
+   *
+   * `revalidateAvailability` re-checks the rate limiter per provider — needed
+   * by tryFallbackProviders since availability can go stale while earlier
+   * providers in the loop were awaited. tryProviders skips this because
+   * `selectProvidersToTry` already computed the exact list to attempt,
+   * including the deliberate one-provider "wait out the backoff" case.
+   */
+  private async iterateProviders(
+    providers: ProviderConfig[],
+    address: string,
+    bias: GeocodingBias | undefined,
+    options: { skipProviderName?: string; revalidateAvailability?: boolean } = {}
+  ): Promise<GeocodingResult | null> {
+    const rateLimiter = getProviderRateLimiter();
+
+    for (const provider of providers) {
+      if (provider.name === options.skipProviderName) continue;
+      if (options.revalidateAvailability === true && !rateLimiter.isAvailable(provider.name)) continue;
+
       try {
         const result = await this.tryProviderWithRetry(provider, address, bias);
         if (result != null) {
           // Validate per provider so an unacceptable result (low confidence,
           // bogus coordinates) falls through to the next provider instead of
-          // failing the whole lookup — matches tryFallbackProviders.
+          // failing the whole lookup.
           if (this.isResultAcceptable(result)) {
             return result;
           }
@@ -264,6 +281,8 @@ export class GeocodingOperations {
           });
         }
       } catch (error) {
+        // Always log — silently swallowing a provider failure hides which
+        // provider is failing, especially during the fallback path.
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn(`Geocoding failed with provider ${provider.name}`, {
           error: errorMessage,

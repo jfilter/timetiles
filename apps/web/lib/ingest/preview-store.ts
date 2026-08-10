@@ -114,25 +114,33 @@ export const loadPreviewMetadata = (previewId: string): PreviewMetadata | null =
 };
 
 /**
- * Remove preview metadata and any associated data files from disk.
- * Caller must have already validated the previewId.
+ * Delete the metadata file and every existing data-file extension for a previewId.
+ * When `dataFileSet` is given, only files still present in the set are removed
+ * (and claimed from it), letting an orphan sweep track what's left.
  */
-export const cleanupPreview = (previewId: string): void => {
-  const previewDir = resolvePreviewDir();
-
-  // Remove the metadata file
+const deletePreviewFileSet = (previewDir: string, previewId: string, dataFileSet?: Set<string>): void => {
   const metaPath = path.join(previewDir, `${previewId}.meta.json`);
   if (fs.existsSync(metaPath)) {
     fs.unlinkSync(metaPath);
   }
 
-  // Remove any associated data files
   for (const ext of DATA_FILE_EXTENSIONS) {
-    const dataPath = path.join(previewDir, `${previewId}${ext}`);
+    const dataName = `${previewId}${ext}`;
+    if (dataFileSet && !dataFileSet.has(dataName)) continue;
+    const dataPath = path.join(previewDir, dataName);
     if (fs.existsSync(dataPath)) {
       fs.unlinkSync(dataPath);
     }
+    dataFileSet?.delete(dataName);
   }
+};
+
+/**
+ * Remove preview metadata and any associated data files from disk.
+ * Caller must have already validated the previewId.
+ */
+export const cleanupPreview = (previewId: string): void => {
+  deletePreviewFileSet(resolvePreviewDir(), previewId);
 };
 
 /** Result of a single preview-cleanup sweep. */
@@ -154,18 +162,6 @@ const readMetadataExpiry = (metaPath: string, now: Date): { expired: boolean } |
     return { expired };
   } catch {
     return { error: true };
-  }
-};
-
-/** Delete the metadata + every known data-file extension for a previewId. */
-const removePreviewSet = (previewDir: string, previewId: string, metaPath: string, dataFileSet: Set<string>): void => {
-  fs.unlinkSync(metaPath);
-  for (const ext of DATA_FILE_EXTENSIONS) {
-    const dataName = `${previewId}${ext}`;
-    if (!dataFileSet.has(dataName)) continue;
-    const dataPath = path.join(previewDir, dataName);
-    if (fs.existsSync(dataPath)) fs.unlinkSync(dataPath);
-    dataFileSet.delete(dataName);
   }
 };
 
@@ -223,7 +219,7 @@ export const sweepExpiredPreviews = (now: Date = new Date(), dirOverride?: strin
     }
 
     try {
-      removePreviewSet(previewDir, previewId, metaPath, dataFileSet);
+      deletePreviewFileSet(previewDir, previewId, dataFileSet);
       result.removed++;
     } catch {
       result.errors++;

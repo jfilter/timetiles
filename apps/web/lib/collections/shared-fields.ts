@@ -108,12 +108,7 @@ export const createPublicReadAccess = (
 export const createPublicOwnershipAccess = (
   ownerField: "createdBy" | "ownedBy" | "user" | "repoCreatedBy" | "scraperOwner" = "createdBy"
 ): { read: Access; create: Access; update: Access; deleteAccess: Access; readVersions: Access } => {
-  // eslint-disable-next-line sonarjs/function-return-type -- Payload access control returns boolean | Where by design
-  const update: Access = ({ req: { user } }): boolean | Where => {
-    if (!user) return false;
-    if (isPrivileged(user)) return true;
-    return { [ownerField]: { equals: user.id } };
-  };
+  const update = createOwnershipAccess(ownerField);
 
   return {
     read: createPublicReadAccess({ isPublic: { equals: true } }, (userId) => ({ [ownerField]: { equals: userId } })),
