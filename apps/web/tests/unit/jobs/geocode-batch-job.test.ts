@@ -147,19 +147,20 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
   describe("Success Cases", () => {
     it("should geocode unique locations successfully", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
         dataset: 456,
         ingestFile: 789,
         sheetIndex: 0,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Mock file with duplicate locations
       mockStreamBatches([
@@ -227,21 +228,22 @@ describe.sequential("GeocodeBatchJob Handler", () => {
         bounded: true,
       };
 
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
         dataset: 456,
-        // Object ref: loadIngestFile returns it as-is, so processingOptions
-        // reach the handler without another findByID stub.
-        ingestFile: { filename: "test-import.csv", processingOptions: { geocodingBias } },
-        sheetIndex: 0,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          // Object ref: loadIngestFile returns it as-is, so processingOptions
+          // reach the handler without another findByID stub.
+          ingestFile: { filename: "test-import.csv", processingOptions: { geocodingBias } },
+          sheetIndex: 0,
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([{ id: "1", title: "Event 1", address: "Kyiv" }]);
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
@@ -261,19 +263,20 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should pass undefined bias when the file declares none", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
         dataset: 456,
-        ingestFile: { filename: "test-import.csv", processingOptions: {} },
-        sheetIndex: 0,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          ingestFile: { filename: "test-import.csv", processingOptions: {} },
+          sheetIndex: 0,
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([{ id: "1", title: "Event 1", address: "Kyiv" }]);
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
@@ -291,16 +294,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should also geocode locationName so create-events' fallback can find a result", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address", locationName: "venue" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address", locationName: "venue" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // location present but non-geocodable; locationName is a good fallback address
       mockStreamBatches([{ id: "1", title: "Event 1", address: "n/a", venue: "Berlin Hauptbahnhof" }]);
@@ -324,16 +328,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip rows without location values", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Mock file with missing/empty locations
       mockStreamBatches([
@@ -363,16 +368,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle geocoding failures gracefully", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([
         { id: "1", title: "Event 1", address: "123 Main St" },
@@ -411,18 +417,19 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip geocoding when no location field detected", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: {
-            // No location role
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: {
+              // No location role
+            },
+            ambiguityResolution: "best-effort",
           },
-          ambiguityResolution: "best-effort",
         },
-      };
+      });
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
@@ -444,16 +451,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle empty file gracefully", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([]);
 
@@ -485,16 +493,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const addresses = Array.from({ length: 51 }, (_, i) => `${i + 1} Main St`);
       const rows = addresses.map((address, idx) => ({ id: String(idx + 1), address }));
 
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
       mockStreamBatches(rows);
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
 
@@ -523,16 +532,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should trim whitespace from locations", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([
         { id: "1", address: "  123 Main St  " },
@@ -559,16 +569,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should skip geocoding rows with parseable source coordinates", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address", latitude: "latitude", longitude: "longitude" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address", latitude: "latitude", longitude: "longitude" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([{ id: "1", address: "40.7128 N, 74.0060 W", latitude: "40.7128 N", longitude: "74.0060 W" }]);
 
@@ -591,12 +602,13 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
     it("should throw Error when import file not found (onFail handles failure marking)", async () => {
       const mockDataset = createMockDataset();
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        dataset: mockDataset, // Use object to avoid lookup
-        ingestFile: 789, // Use numeric so it needs to be looked up
-      };
+        overrides: {
+          dataset: mockDataset, // Use object to avoid lookup
+          ingestFile: 789, // Use numeric so it needs to be looked up
+        },
+      });
 
       // First call returns the job, second call for import file lookup returns null
       mockPayload.findByID.mockResolvedValueOnce(mockIngestJob).mockResolvedValueOnce(null); // Ingest file not found
@@ -606,16 +618,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should re-throw transient errors for Payload to retry", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Mock findByID to return the job for all calls
       mockPayload.findByID.mockResolvedValue(mockIngestJob);
@@ -639,17 +652,18 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should clean up sidecar files on error", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
         sheetIndex: 2,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Mock findByID to return appropriate data for each collection (including error cleanup re-load)
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
@@ -677,16 +691,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
 
   describe("Edge Cases", () => {
     it("should handle non-string location values", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([
         { id: "1", address: "123 Main St" },
@@ -715,17 +730,18 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should fail the job when all geocoding fails", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        ingestFile: { id: 789, filename: "test.csv" },
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          ingestFile: { id: 789, filename: "test.csv" },
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([
         { id: "1", address: "Invalid 1" },
@@ -744,16 +760,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
     });
 
     it("should handle large number of unique locations", async () => {
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       // Generate 100 rows with 50 unique locations (each location appears twice)
       const rows = [];
@@ -847,16 +864,17 @@ describe.sequential("GeocodeBatchJob Handler", () => {
       const { shouldReviewGeocodingPartial } = await import("@/lib/jobs/workflows/review-checks");
       (shouldReviewGeocodingPartial as any).mockReturnValueOnce({ needsReview: true, failRate: 0.6 });
 
-      const mockIngestJob = {
-        ...createMockIngestJob(),
+      const mockIngestJob = createMockIngestJob({
         id: 123,
-        interpretationPlan: {
-          ops: [],
-          columns: [],
-          roles: { location: "address" },
-          ambiguityResolution: "best-effort",
+        overrides: {
+          interpretationPlan: {
+            ops: [],
+            columns: [],
+            roles: { location: "address" },
+            ambiguityResolution: "best-effort",
+          },
         },
-      };
+      });
 
       mockStreamBatches([
         { id: "1", address: "Valid Address" },

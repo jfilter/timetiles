@@ -317,6 +317,8 @@ export interface MockIngestJobOptions {
   stage?: string;
   status?: string;
   errors?: any[];
+  /** Extra or replacement fields, spread last over the defaults. */
+  overrides?: Record<string, unknown>;
 }
 
 export const createMockIngestJob = (options: MockIngestJobOptions = {}) => {
@@ -370,6 +372,7 @@ export const createMockIngestJob = (options: MockIngestJobOptions = {}) => {
     progress: options.progress ?? defaultProgress,
     errors: options.errors ?? [],
     schemaBuilderState: options.schemaBuilderState,
+    ...options.overrides,
   };
 };
 
