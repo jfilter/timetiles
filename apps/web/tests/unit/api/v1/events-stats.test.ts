@@ -33,6 +33,7 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET } from "@/app/api/v1/events/stats/route";
+import type * as ToSqlConditionsModule from "@/lib/filters/to-sql-conditions";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
 
 /**
@@ -215,5 +216,62 @@ describe.sequential("GET /api/v1/events/stats", () => {
       // Error is caught by the apiRoute framework's outer handler
       expect(data.error).toBe("Internal server error");
     });
+  });
+});
+
+/**
+ * The tests above mock the SQL builder, so the predicate that actually scopes rows
+ * never runs. These feed the filters the route produced into the REAL builder, so a
+ * fail-open regression in the canonical filters is visible here.
+ */
+describe.sequential("GET /api/v1/events/stats row scoping (real SQL builder)", () => {
+  /** Flatten a Drizzle SQL fragment into a readable string (chunks + params). */
+  const renderSql = (fragment: unknown): string => {
+    const chunks = (fragment as { queryChunks?: unknown[] }).queryChunks ?? [];
+    return chunks
+      .map((chunk) => {
+        if (typeof chunk === "string") return chunk;
+        const value = (chunk as { value?: unknown }).value;
+        if (Array.isArray(value)) return value.join("");
+        if ((chunk as { queryChunks?: unknown }).queryChunks) return renderSql(chunk);
+        return typeof value === "string" || typeof value === "number" ? String(value) : "";
+      })
+      .join("");
+  };
+
+  const scopingSqlFor = async (user: unknown): Promise<string> => {
+    mocks.mockGetPayload.mockResolvedValue({
+      auth: vi.fn().mockResolvedValue({ user }),
+      db: { drizzle: { select: mocks.mockDrizzleSelect } },
+      find: mocks.mockPayloadFind,
+    });
+
+    const response = await GET(createRequest("?groupBy=catalog", user), { params: Promise.resolve({}) });
+    expect(response.status).toBe(200);
+    expect(mocks.mockBuildAggregationWhereClause).toHaveBeenCalled();
+
+    const filters = mocks.mockBuildAggregationWhereClause.mock.calls[0]?.[0];
+    const { toSqlWhereClause } = await vi.importActual<typeof ToSqlConditionsModule>("@/lib/filters/to-sql-conditions");
+
+    return renderSql(toSqlWhereClause(filters as never));
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaults();
+  });
+
+  it("scopes an anonymous caller to public datasets", async () => {
+    const rendered = await scopingSqlFor(null);
+
+    expect(rendered).toContain("e.dataset_is_public = true");
+    expect(rendered).not.toContain("catalog_owner_id");
+  });
+
+  it("scopes an authenticated caller to own-or-public rows", async () => {
+    const rendered = await scopingSqlFor({ id: 77, role: "user" });
+
+    expect(rendered).toContain("e.dataset_is_public = true");
+    expect(rendered).toContain("e.catalog_owner_id");
   });
 });

@@ -752,21 +752,15 @@ describe.sequential("urlFetchJob", () => {
       // Setup scheduled ingest with max file size limit
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
-        advancedOptions: {
-          maxFileSizeMB: 100, // 100MB limit
-        },
+        enabled: true,
+        advancedOptions: { maxFileSizeMB: 1 },
         retryConfig: { maxRetries: 0 },
       });
 
-      // File size limit is enforced at 100MB — the handler checks Content-Length
-      // headers and rejects immediately without reading the body.
-      // No need for a real 101MB buffer; a small one with a large content-length header suffices.
-      const mockResponse = createMockResponse("small body", {
-        contentType: "text/csv",
-        headers: { "content-length": String(101 * 1024 * 1024) },
-      });
-
-      (globalThis.fetch as any).mockResolvedValue(mockResponse);
+      // The limit is enforced on the DOWNLOADED body length, not on the Content-Length
+      // header, so the fixture has to actually exceed maxFileSizeMB.
+      const oversizedBody = Buffer.alloc(2 * 1024 * 1024, 0x61);
+      (globalThis.fetch as any).mockResolvedValue(createMockResponse(oversizedBody, { contentType: "text/csv" }));
 
       await expect(
         urlFetchJob.handler({
@@ -779,7 +773,9 @@ describe.sequential("urlFetchJob", () => {
           job: mockJob,
           req: mockReq,
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow(/File too large: \d+ bytes \(max: 1048576\)/);
+
+      expect(mockPayload.create).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "ingest-files" }));
     });
 
     it("should handle retry logic", async () => {

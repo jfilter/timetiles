@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetEnv } from "@/lib/config/env";
 import { safeFetch } from "@/lib/security/safe-fetch";
+import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 
 // Mock dns.promises.lookup
 vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
@@ -216,6 +217,9 @@ describe.sequential("safeFetch", () => {
 
     it("enforces DNS resolution checks in production even when SSRF_DNS_CHECK is false", async () => {
       vi.stubEnv("NODE_ENV", "production");
+      // Production-mode env validation requires these; do not rely on the ambient shell env.
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
       vi.stubEnv("SSRF_DNS_CHECK", "false");
       resetEnv();
       dnsLookup.mockResolvedValueOnce({ address: "127.0.0.1", family: 4 });
@@ -227,6 +231,9 @@ describe.sequential("safeFetch", () => {
 
     it("does not allow dnsCheck=false to disable production DNS enforcement", async () => {
       vi.stubEnv("NODE_ENV", "production");
+      // Production-mode env validation requires these; do not rely on the ambient shell env.
+      vi.stubEnv("DATABASE_URL", "postgres://localhost/test");
+      vi.stubEnv("PAYLOAD_SECRET", TEST_SECRETS.payloadSecret);
       vi.stubEnv("SSRF_DNS_CHECK", "false");
       resetEnv();
       dnsLookup.mockResolvedValueOnce({ address: "169.254.169.254", family: 4 });
