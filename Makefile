@@ -104,7 +104,7 @@ db-reset-tests:
 			fi; \
 		done
 	@echo "🔄 Recreating E2E test database..."
-	@cd apps/web && pnpm exec tsx scripts/e2e-setup-database.ts
+	@cd apps/web && pnpm exec dotenv -e ../../.env -e .env.local -- tsx scripts/e2e-setup-database.ts
 	@echo "✅ Test databases reset complete"
 
 # Clean up everything
