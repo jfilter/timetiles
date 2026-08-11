@@ -7,10 +7,11 @@
  * @module
  * @category API
  */
+import type { PayloadRequest } from "payload";
 import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
-import { revokeOtherSessions, verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
+import { changePasswordAndRevokeOtherSessions, verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { logger } from "@/lib/logger";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, validatePassword } from "@/lib/security/password-policy";
 import { TIMING_PAD_MS, withTimingPad } from "@/lib/security/timing-pad";
@@ -48,14 +49,17 @@ export const POST = apiRoute({
         "Current password is incorrect"
       );
 
-      // Update the password
-      await payload.update({ collection: "users", id: user.id, data: { password: newPassword } });
-
-      // Invalidate every other session so a stolen or older session cannot
-      // survive the password change (the current device's session is kept).
+      // Password write and session revocation in ONE transaction: a stolen or
+      // older session must not survive the change, and committing the password
+      // first left every one of them alive whenever the wipe failed.
       const cookiePrefix = payload.config?.cookiePrefix ?? "payload";
       const currentToken = req.cookies?.get(`${cookiePrefix}-token`)?.value;
-      await revokeOtherSessions(payload, user, currentToken);
+      const txReq = { payload, transactionID: undefined, context: {} } as Pick<
+        PayloadRequest,
+        "payload" | "transactionID" | "context"
+      > as PayloadRequest;
+
+      await changePasswordAndRevokeOtherSessions(payload, txReq, user, newPassword, currentToken);
 
       await auditLog(payload, {
         action: AUDIT_ACTIONS.PASSWORD_CHANGED,

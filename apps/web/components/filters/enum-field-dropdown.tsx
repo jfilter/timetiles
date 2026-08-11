@@ -20,7 +20,7 @@ import {
 } from "@timetiles/ui/components/dropdown-menu";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ChevronDown, X } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 interface EnumValue {
   value: string;
@@ -52,6 +52,7 @@ interface EnumCheckboxItemProps {
  * Checkbox item for enum value selection.
  */
 const EnumCheckboxItem = ({ value, count, percent, checked, onToggle, onPreventSelect }: EnumCheckboxItemProps) => {
+  const locale = useLocale();
   const handleCheckedChange = () => {
     onToggle(value);
   };
@@ -61,7 +62,7 @@ const EnumCheckboxItem = ({ value, count, percent, checked, onToggle, onPreventS
       <div className="flex w-full items-center justify-between gap-2">
         <span className="truncate">{value}</span>
         <span className="text-muted-foreground shrink-0 font-mono text-xs">
-          {count.toLocaleString()} ({Math.round(percent)}%)
+          {count.toLocaleString(locale)} ({Math.round(percent)}%)
         </span>
       </div>
     </DropdownMenuCheckboxItem>
@@ -97,9 +98,16 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
     e.preventDefault();
   };
 
+  // The label is a plain div, so without labelling the trigger every enum filter
+  // on the panel announces as just "Any, button".
+  const labelId = `enum-filter-${label.replace(/\s+/g, "-").toLowerCase()}`;
+
   return (
     <div className="space-y-1">
-      <div className="text-muted-foreground dark:text-foreground/60 font-mono text-xs tracking-wider uppercase">
+      <div
+        id={labelId}
+        className="text-muted-foreground dark:text-foreground/60 font-mono text-xs tracking-wider uppercase"
+      >
         {label}
       </div>
       <DropdownMenu>
@@ -107,6 +115,7 @@ export const EnumFieldDropdown = ({ label, values, selectedValues, onSelectionCh
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              aria-labelledby={labelId}
               className={cn(
                 "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm border px-3 py-2 text-sm transition-colors",
                 "bg-background hover:bg-accent",

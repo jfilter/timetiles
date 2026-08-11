@@ -295,4 +295,9 @@ export const cleanupPriorAttempt = async (
   if (deletedTotal > 0) {
     log.info("Cleaned up events from prior attempt", { ingestJobId, deletedTotal });
   }
+
+  // Clear the previous attempt's row errors too. updateJobErrors MERGES into
+  // whatever is stored, and the caller always passes a stored count of 0, so a
+  // retry listed every bad row twice and could push the list past its cap.
+  await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJobId, data: { errors: [] } });
 };

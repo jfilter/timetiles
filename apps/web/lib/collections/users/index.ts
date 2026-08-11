@@ -20,7 +20,7 @@ import { getEmailTranslations } from "@/lib/email/i18n";
 import { buildAccountVerificationEmailHtml, buildResetPasswordEmailHtml } from "@/lib/email/templates";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
-import { createCommonConfig } from "../shared-fields";
+import { createCommonConfig, isPrivileged } from "../shared-fields";
 import { usersFields } from "./fields";
 import {
   usersAfterChangeHook,
@@ -138,6 +138,11 @@ const Users: CollectionConfig = {
     readVersions: ({ req: { user } }) => {
       return user?.role === "admin";
     },
+
+    // Payload's default for `admin` is "any authenticated user", so without this
+    // every self-registered account could open the /dashboard admin UI. The
+    // frontend is the product; the dashboard is for admins and editors.
+    admin: ({ req: { user } }) => isPrivileged(user),
   },
   fields: usersFields,
   hooks: {

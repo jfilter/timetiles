@@ -22,6 +22,7 @@ import type { Config, Plugin } from "payload";
 import { buildConfig } from "payload";
 import sharp from "sharp";
 
+import { isAdmin } from "@/lib/collections/shared-fields";
 import Users from "@/lib/collections/users";
 import { getEnv } from "@/lib/config/env";
 import { ADMIN_ROUTE } from "@/lib/constants/routes";
@@ -303,6 +304,13 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
       enableConcurrencyControl: true,
       jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
         ...defaultJobsCollection,
+        // Payload leaves this collection at the default "any authenticated user"
+        // for every operation. Job rows carry their task input — including the
+        // rendered password-reset and verification mails — so any logged-in
+        // account could read live tokens out of /api/payload-jobs, and could
+        // queue or delete other users' jobs. The queue itself runs through the
+        // Local API with overrideAccess, so denying writes here costs nothing.
+        access: { read: isAdmin, create: () => false, update: () => false, delete: isAdmin },
         admin: {
           ...defaultJobsCollection.admin,
           hidden: false,
@@ -348,7 +356,16 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
   // tests see a clean DB; tests that need data call seedManager explicitly.
   // See lib/seed/operations/config-driven-seeding.ts for idempotent semantics.
   config.onInit = async (payload) => {
-    if (environment !== "test") {
+    // Same single-writer rule as migrations and auto-activation: every container
+    // in a compose stack reaches onInit at once, and this seed is a
+    // find-then-create loop against collections with unique indexes — the loser
+    // gets a 23505, which fails its whole Payload init. In production only the
+    // process that also owns migrations/activations may seed; dev and the
+    // all-in-one image run a single process anyway.
+    const seedsHere =
+      environment !== "production" || (await import("@/lib/config/env").then((m) => m.getEnv())).RUN_MIGRATIONS;
+
+    if (environment !== "test" && seedsHere) {
       const { createSeedManager } = await import("@/lib/seed/seed-manager");
       const env = await import("@/lib/config/env").then((m) => m.getEnv());
       // Only apply deploy-env overrides on production builds. In dev, the

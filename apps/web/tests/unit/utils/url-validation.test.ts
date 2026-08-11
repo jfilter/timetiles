@@ -32,7 +32,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("isPrivateUrl", () => {
+describe.sequential("isPrivateUrl", () => {
   describe("blocks loopback addresses", () => {
     it("blocks 127.0.0.1", () => {
       expect(isPrivateUrl("http://127.0.0.1/data.csv")).toBe(true);
@@ -236,7 +236,7 @@ describe("isPrivateUrl", () => {
   });
 });
 
-describe("isPrivateIP", () => {
+describe.sequential("isPrivateIP", () => {
   it("blocks loopback 127.0.0.1", () => {
     expect(isPrivateIP("127.0.0.1")).toBe(true);
   });
@@ -314,7 +314,7 @@ describe("isPrivateIP", () => {
  * dotted spelling meant none of the private-range patterns fired and the
  * request reached the cloud metadata service.
  */
-describe("isPrivateUrl — IPv4-mapped IPv6 literals", () => {
+describe.sequential("isPrivateUrl — IPv4-mapped IPv6 literals", () => {
   it.each([
     ["cloud metadata", "http://[::ffff:169.254.169.254]/latest/meta-data/"],
     ["loopback", "http://[::ffff:127.0.0.1]/data.csv"],
@@ -338,7 +338,7 @@ describe("isPrivateUrl — IPv4-mapped IPv6 literals", () => {
   });
 });
 
-describe("validateResolvedPublicHostname", () => {
+describe.sequential("validateResolvedPublicHostname", () => {
   it("blocks when any resolved address is private", async () => {
     mockDnsLookup.mockResolvedValueOnce([
       { address: "93.184.216.34", family: 4 },

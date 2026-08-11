@@ -460,7 +460,17 @@ export const useWizardStore = create<WizardStore>()(
 
         reset: () => {
           useWizardStore.persist?.clearStorage();
-          set({ ...initialState, _initialized: true });
+          // Carry the auth state over instead of falling back to initialState:
+          // the layout's initialize() effect only runs on mount, so a plain reset
+          // dropped a signed-in user onto the sign-in step — with a 7-step progress
+          // bar, because startedAuthenticated had been wiped too.
+          const wasAuthenticated = get().startedAuthenticated;
+          set({
+            ...initialState,
+            _initialized: true,
+            startedAuthenticated: wasAuthenticated,
+            currentStep: (wasAuthenticated ? 2 : 1) as WizardStep,
+          });
         },
       }),
       {

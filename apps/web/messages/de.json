@@ -138,6 +138,7 @@
     "byCatalog": "Nach Katalog",
     "loadingMapData": "Kartendaten werden geladen...",
     "unableToLoadMapData": "Kartendaten konnten nicht geladen werden",
+    "unableToLoadEvents": "Ereignisse konnten nicht geladen werden",
     "mapLoadError": "Beim Laden der Karte ist ein Problem aufgetreten",
     "descShowingOfTotal": "{visible, number} von {total, plural, one {# Ereignis} other {# Ereignissen}}",
     "descShowingEvents": "{count, plural, one {# Ereignis} other {# Ereignisse}}",

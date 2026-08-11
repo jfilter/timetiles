@@ -27,6 +27,8 @@ interface MapPanelProps {
   initialBounds?: SimpleBounds | null;
   initialViewState?: MapViewState | null;
   isLoadingBounds: boolean;
+  /** Cluster query failed — the map renders its error state instead of an empty world. */
+  isError?: boolean;
   showZoomToData: boolean;
   onZoomToData: () => void;
   className?: string;
@@ -44,6 +46,7 @@ export const MapPanel = ({
   initialBounds,
   initialViewState,
   isLoadingBounds,
+  isError,
   showZoomToData,
   onZoomToData,
   className,
@@ -61,6 +64,7 @@ export const MapPanel = ({
       initialBounds={initialBounds}
       initialViewState={initialViewState}
       isLoadingBounds={isLoadingBounds}
+      isError={isError}
       scope={scope}
     />
     <div className="absolute bottom-20 left-2 z-10 flex flex-col gap-1.5">

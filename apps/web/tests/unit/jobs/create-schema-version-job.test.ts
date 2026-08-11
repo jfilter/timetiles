@@ -270,8 +270,9 @@ describe.sequential("CreateSchemaVersionJob Handler", () => {
       // Execute job
       const result = await createSchemaVersionJob.handler(mockContext);
 
-      // Verify result — skip path
-      expect(result).toEqual({ output: { skipped: true } });
+      // Verify result — skip path. needsReview stops the pipeline: an unapproved
+      // schema must not reach geocode/create-events through an admin reset.
+      expect(result).toEqual({ output: { skipped: true, needsReview: true } });
 
       // Verify no schema version creation was attempted
       expect(mocks.createSchemaVersion).not.toHaveBeenCalled();

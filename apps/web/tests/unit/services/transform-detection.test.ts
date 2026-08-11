@@ -228,19 +228,27 @@ describe("Transform detection", () => {
     expect(suggestion!.confidence).toBeGreaterThanOrEqual(80);
   });
 
-  it("should handle nullable type compatibility", () => {
-    const oldSchema = { type: "object", properties: { email: { type: "string" } } };
+  // "string" and ["string","null"] must score as the SAME type, so making a column
+  // nullable never costs a rename its suggestion. The previous version of this test
+  // used a name pair that scores below the 70-point threshold either way and hid the
+  // whole assertion behind `if (suggestion)`, so it proved nothing.
+  it("treats a nullable type as compatible with its base type", () => {
+    const oldSchema = { type: "object", properties: { Date: { type: "string" } } };
+    const nullableSchema = { type: "object", properties: { date: { type: ["string", "null"] } } };
+    const plainSchema = { type: "object", properties: { date: { type: "string" } } };
 
-    const newSchema = { type: "object", properties: { user_email: { type: ["string", "null"] } } };
+    const nullableSuggestions = detectTransforms(
+      oldSchema,
+      nullableSchema,
+      compareSchemas(oldSchema, nullableSchema).changes
+    );
+    const plainSuggestions = detectTransforms(oldSchema, plainSchema, compareSchemas(oldSchema, plainSchema).changes);
 
-    const comparison = compareSchemas(oldSchema, newSchema);
-    const suggestions = detectTransforms(oldSchema, newSchema, comparison.changes);
-
-    // Should still detect as compatible types
-    const emailSuggestion = suggestions.find((s) => s.to === "email");
-    if (emailSuggestion) {
-      // Type compatibility should contribute to confidence
-      expect(emailSuggestion.confidence).toBeGreaterThan(50);
-    }
+    expect(nullableSuggestions).toHaveLength(1);
+    // `from` is the new field, `to` the existing one it maps onto.
+    expect(nullableSuggestions[0]!.from).toBe("date");
+    expect(nullableSuggestions[0]!.to).toBe("Date");
+    expect(nullableSuggestions[0]!.reason).toContain("Compatible types");
+    expect(nullableSuggestions[0]!.confidence).toBe(plainSuggestions[0]!.confidence);
   });
 });

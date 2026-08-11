@@ -43,15 +43,33 @@ interface CachedResolver<TSlug extends DefaultableCollectionSlug> {
   clearCache: () => void;
 }
 
+/** Hard cap for a resolver cache; the keys come from request input. */
+const MAX_CACHE_ENTRIES = 256;
+
 export const createCachedResolver = <TSlug extends DefaultableCollectionSlug>(
   options: CachedResolverOptions<TSlug>
 ): CachedResolver<TSlug> => {
   const { collection, keyField, scopeField, cacheTTL = 5 * 60 * 1000, depth = 1 } = options;
 
-  // Caches
+  // Caches. Bounded: the key is request-controlled (the Host header for sites,
+  // the ?view= slug for views), so an unbounded Map grows with every distinct
+  // value a client sends until the next sweep.
   const keyCache = new Map<string, CollectionDoc<TSlug> | null>();
   const defaultCache = new Map<string, CollectionDoc<TSlug> | null>();
   let lastCacheClear = Date.now();
+
+  /** Insert with a simple LRU-ish bound: drop the oldest entry when full. */
+  const setBounded = (
+    cache: Map<string, CollectionDoc<TSlug> | null>,
+    key: string,
+    value: CollectionDoc<TSlug> | null
+  ): void => {
+    if (cache.size >= MAX_CACHE_ENTRIES) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    cache.set(key, value);
+  };
 
   const maybeClearCache = (): void => {
     const now = Date.now();
@@ -93,7 +111,7 @@ export const createCachedResolver = <TSlug extends DefaultableCollectionSlug>(
         overrideAccess: false,
       });
       const doc = (result.docs[0] as CollectionDoc<TSlug> | undefined) ?? null;
-      keyCache.set(ck, doc);
+      setBounded(keyCache, ck, doc);
       return doc;
     } catch (error) {
       logger.error({ error, [keyField]: key, collection }, `Error finding ${collection} by ${keyField}`);
@@ -118,7 +136,7 @@ export const createCachedResolver = <TSlug extends DefaultableCollectionSlug>(
 
       const result = await payload.find({ collection, where, limit: 1, depth, overrideAccess: false });
       const doc = (result.docs[0] as CollectionDoc<TSlug> | undefined) ?? null;
-      defaultCache.set(dk, doc);
+      setBounded(defaultCache, dk, doc);
       return doc;
     } catch (error) {
       logger.error({ error, collection }, `Error finding default ${collection}`);

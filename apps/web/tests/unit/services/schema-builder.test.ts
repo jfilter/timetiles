@@ -397,25 +397,20 @@ describe("ProgressiveSchemaBuilder", () => {
       }
 
       builder.processBatch(records);
+      // The pipeline finalizes enum candidacy before persisting/comparing
+      // (schema-detection-job-support does exactly this). Without it the built
+      // schema carries no `enum` and the comparison can never report enum drift.
+      builder.detectEnumFields();
 
       const comparison = builder.compareWithPrevious(previousSchema);
 
       // Check that enum change is detected
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
-      if (enumChange) {
-        expect(enumChange).toMatchObject({
-          type: "enum_change",
-          path: "status",
-          severity: "info",
-          autoApprovable: true,
-        });
-        const details = enumChange.details as { added?: unknown[]; removed?: unknown[] };
-        expect(details.added).toContain("completed");
-        expect(details.removed).toEqual([]);
-      } else {
-        // If enum detection didn't trigger, at least check the field exists
-        expect(comparison.requiresApproval).toBeDefined();
-      }
+      expect(enumChange).toBeDefined();
+      expect(enumChange).toMatchObject({ type: "enum_change", path: "status", severity: "info", autoApprovable: true });
+      const details = enumChange!.details as { added?: unknown[]; removed?: unknown[] };
+      expect(details.added).toContain("completed");
+      expect(details.removed).toEqual([]);
     });
 
     it("detects enum value removals as breaking", () => {
@@ -439,24 +434,24 @@ describe("ProgressiveSchemaBuilder", () => {
       }
 
       builder.processBatch(records);
+      // The pipeline finalizes enum candidacy before persisting/comparing
+      // (schema-detection-job-support does exactly this). Without it the built
+      // schema carries no `enum` and the comparison can never report enum drift.
+      builder.detectEnumFields();
 
       const comparison = builder.compareWithPrevious(previousSchema);
 
       // Check for enum change
       const enumChange = comparison.changes.find((c) => c.type === "enum_change" && c.path === "status");
-      if (enumChange) {
-        expect(enumChange).toMatchObject({
-          type: "enum_change",
-          path: "status",
-          severity: "warning",
-          autoApprovable: false,
-        });
-        const details = enumChange.details as { added?: unknown[]; removed?: unknown[] };
-        expect(details.removed).toContain("archived");
-      } else {
-        // If enum detection didn't trigger, at least check the comparison completes
-        expect(comparison.requiresApproval).toBeDefined();
-      }
+      expect(enumChange).toBeDefined();
+      expect(enumChange).toMatchObject({
+        type: "enum_change",
+        path: "status",
+        severity: "warning",
+        autoApprovable: false,
+      });
+      const details = enumChange!.details as { added?: unknown[]; removed?: unknown[] };
+      expect(details.removed).toContain("archived");
     });
   });
 

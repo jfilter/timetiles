@@ -247,7 +247,11 @@ export const StepDatasetSelection = ({ className }: Readonly<StepDatasetSelectio
         <p className="text-muted-foreground mt-2">{t("selectDestinationDescription")}</p>
       </div>
 
-      {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
+      {error && (
+        <div role="alert" className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Suggestion banner: prompt the user to apply a server-detected match.
           Applying is explicit (button click) so we never silently mutate

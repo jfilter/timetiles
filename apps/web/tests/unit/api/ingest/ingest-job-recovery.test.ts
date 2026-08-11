@@ -27,7 +27,13 @@ vi.mock("@/lib/api", () => ({
   ValidationError: MockValidationError,
 }));
 
-vi.mock("@/lib/logger", () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+// The routes import queueJobWithRollback straight from @/lib/api/job-helpers, so
+// the real helper runs here — mocking the barrel would have hidden the rollback.
+vi.mock("@/lib/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  logError: vi.fn(),
+  createLogger: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }),
+}));
 
 const { POST: retryPost } = await import("@/app/api/ingest-jobs/[id]/retry/route");
 const { POST: resetPost } = await import("@/app/api/ingest-jobs/[id]/reset/route");

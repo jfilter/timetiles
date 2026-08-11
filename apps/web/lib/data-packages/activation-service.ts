@@ -357,10 +357,10 @@ const deleteOrphanDataset = async (payload: Payload, datasetId: number): Promise
 };
 
 /**
- * Create the activation's scheduled ingest. On a lost-race unique violation,
- * roll back the orphan dataset this activation already created (the winner made
- * its own, so ours is referenced by nothing) and surface the same "already
- * activated" signal the optimistic existence check raises.
+ * Create the activation's scheduled ingest. On ANY failure, roll back the orphan
+ * dataset this activation already created (nothing references it yet); on a
+ * lost-race unique violation, additionally surface the same "already activated"
+ * signal the optimistic existence check raises.
  */
 const createActivationScheduledIngest = async (
   payload: Payload,
@@ -380,8 +380,13 @@ const createActivationScheduledIngest = async (
       req,
     });
   } catch (error) {
+    // Roll the orphan dataset back on EVERY failure, not just the lost race. Any
+    // other error (an invalid cron or URL in the manifest, a DB blip) used to leave
+    // the dataset behind, and the retry then hit the (catalog, name) unique index
+    // and reported "already activated" for a package that has no schedule at all.
+    await deleteOrphanDataset(payload, orphanDatasetId);
+
     if (isUniqueViolation(error)) {
-      await deleteOrphanDataset(payload, orphanDatasetId);
       throw new Error(`Data package "${activationKey}" is already activated`);
     }
     throw error;

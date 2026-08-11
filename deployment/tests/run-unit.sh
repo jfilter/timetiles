@@ -30,5 +30,7 @@ if [[ -d "unit" ]] && ls unit/*.bats &>/dev/null; then
     echo ""
     print_pass "Unit tests passed!"
 else
-    print_info "No unit tests found"
+    # A green run with zero assertions is not a pass: this gates image publication.
+    print_fail "No unit tests found"
+    exit 1
 fi

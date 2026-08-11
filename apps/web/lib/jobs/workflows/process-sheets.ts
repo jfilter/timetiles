@@ -109,7 +109,13 @@ const processOneSheet = async (tasks: RunTaskFunctions, sheet: SheetInfo): Promi
   }
 
   // Step 4: Create schema version
-  await runStep("create-schema-version", "create-schema-version", { ingestJobId: id });
+  const version = await runStep<{ needsReview?: boolean }>("create-schema-version", "create-schema-version", {
+    ingestJobId: id,
+  });
+  if (version.needsReview) {
+    logger.info(`[sheet-${s}] schema still awaits approval`, sheetCtx);
+    return;
+  }
 
   // Step 5: Geocode
   const geocode = await runStep<GeocodeBatchOutput>("geocode-batch", "geocode-batch", {

@@ -48,6 +48,7 @@ export const useExplorerQueries = (
     data: clustersData,
     isFetching: clustersFetching,
     dataUpdatedAt: clustersDataUpdatedAt,
+    isError: clustersError,
   } = useMapClustersQuery(filters, debouncedSimpleBounds, mapZoom, true, scope, clusterDensity);
   const { data: boundsData, isLoading: boundsLoading } = useBoundsQuery(filters, true, scope);
 
@@ -82,6 +83,8 @@ export const useExplorerQueries = (
     data: eventsData,
     isFetching: eventsFetching,
     dataUpdatedAt: eventsDataUpdatedAt,
+    isError: eventsError,
+    refetch: refetchEvents,
   } = useEventsListQuery(filters, effectiveBounds, 1000, true, scope, clusterFilter);
   const { data: totalEventsData } = useEventsTotalQuery(filters, true, scope);
   const events = eventsData?.events ?? EMPTY_ARRAY;
@@ -108,6 +111,9 @@ export const useExplorerQueries = (
     eventsData,
     eventsFetching,
     eventsDataUpdatedAt,
+    eventsError,
+    clustersError,
+    refetchEvents,
     totalEventsData,
     hasTemporalData,
   };

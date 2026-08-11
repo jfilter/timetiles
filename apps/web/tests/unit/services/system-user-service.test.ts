@@ -18,6 +18,33 @@ describe.sequential("SystemUserService", () => {
     vi.clearAllMocks();
   });
 
+  describe("getOrCreateSystemUser — concurrent creation", () => {
+    // users.email is unique and auto-activation runs from onInit, so a rolling
+    // deploy boots several replicas into the same create. An uncaught 23505 there
+    // failed Payload's whole initialization for the losing replica.
+    it("recovers from a concurrent creator instead of throwing", async () => {
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [] })
+        .mockResolvedValueOnce({ docs: [{ id: 9, email: "system@timetiles.internal" }] });
+      mockPayload.create.mockRejectedValue(Object.assign(new Error("duplicate key"), { code: "23505" }));
+
+      const service = new SystemUserService(mockPayload);
+
+      await expect(service.getOrCreateSystemUser()).resolves.toEqual(
+        expect.objectContaining({ id: 9, email: "system@timetiles.internal" })
+      );
+    });
+
+    it("rethrows a create failure that is not a unique violation", async () => {
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.create.mockRejectedValue(new Error("connection reset"));
+
+      const service = new SystemUserService(mockPayload);
+
+      await expect(service.getOrCreateSystemUser()).rejects.toThrow("connection reset");
+    });
+  });
+
   describe("isSystemUser", () => {
     it("rejects partially numeric user ids before loading the user", async () => {
       const service = new SystemUserService(mockPayload);

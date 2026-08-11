@@ -460,7 +460,13 @@ export const StepUpload = ({ className }: Readonly<StepUploadProps>) => {
       )}
 
       {/* Error message */}
-      {error && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{error}</div>}
+      {error && (
+        // role="alert" so a screen reader announces the failure instead of leaving
+        // the user waiting on a silently rendered box.
+        <div role="alert" className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Sticky continue footer */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">

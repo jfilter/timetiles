@@ -11,6 +11,7 @@
  */
 import type { Payload } from "payload";
 
+import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { User } from "@/payload-types";
 
@@ -103,11 +104,40 @@ export class SystemUserService {
 
     // Create system user
     logger.info("Creating system user");
-    const user = await this.payload.create({ collection: "users", data: getSystemUserConfig(), overrideAccess: true });
+    const user = await this.createSystemUser();
 
     this.cachedSystemUserId = user.id;
     logger.info({ userId: user.id }, "System user created");
     return user;
+  }
+
+  /**
+   * Create the system user, tolerating a concurrent creator.
+   *
+   * `users.email` is unique, and two processes can reach the create together —
+   * auto-activation runs from `onInit`, so a rolling deploy boots several replicas
+   * at once and an uncaught 23505 would fail Payload's whole initialization.
+   * Same recovery the data-package activation paths use.
+   */
+  private async createSystemUser(): Promise<User> {
+    try {
+      return await this.payload.create({ collection: "users", data: getSystemUserConfig(), overrideAccess: true });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+
+      const winner = await this.payload.find({
+        collection: "users",
+        where: { email: { equals: SYSTEM_USER_EMAIL } },
+        limit: 1,
+        overrideAccess: true,
+      });
+
+      const user = winner.docs[0];
+      if (!user) throw error;
+
+      logger.info({ userId: user.id }, "System user was created concurrently; using the existing row");
+      return user;
+    }
   }
 
   /**

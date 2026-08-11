@@ -283,6 +283,16 @@ export const schemaDetectionJob = {
 
       // Complete stage and finalize
       await ProgressTrackingService.completeStage(payload, ingestJobId, PROCESSING_STAGE.DETECT_SCHEMA);
+
+      // A sheet with a header but no data rows produces no schema builder, so
+      // nothing is persisted and the NEXT task dies on "Schema builder state not
+      // found" — an internal message that tells the user nothing. Fail here with
+      // the real reason instead. (Whether an empty scheduled source should count
+      // as a failed run at all is a separate product question.)
+      if (lastSchemaBuilder == null && totalRowsProcessed === 0) {
+        throw new Error("No data rows found in the file — nothing to detect a schema from.");
+      }
+
       const fieldMappings = await finalizeSchemaDetection({
         payload,
         ingestJobId,

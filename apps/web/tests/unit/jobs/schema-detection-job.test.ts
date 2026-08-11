@@ -384,7 +384,10 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
     });
 
-    it("should handle empty file and move to validation stage", async () => {
+    // A file with no data rows cannot produce a schema. The stage now says so
+    // directly; before, it "succeeded" and the NEXT task threw the internal
+    // "Schema builder state not found".
+    it("fails with a real reason when the file has no data rows", async () => {
       // Create mock data using factories
       const mockIngestJob = createMockIngestJob();
       const mockIngestFile = createMockIngestFile();
@@ -403,10 +406,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([]));
 
       // Execute job
-      const result = await schemaDetectionJob.handler(mockContext);
-
-      // Verify result indicates zero work
-      expect(result).toEqual({ output: { totalBatches: 0, totalRowsProcessed: 0 } });
+      await expect(schemaDetectionJob.handler(mockContext)).rejects.toThrow(/No data rows found/);
 
       // Verify stage tracking at handler start (workflow controls sequencing)
       expect(mockPayload.update).toHaveBeenCalledWith({

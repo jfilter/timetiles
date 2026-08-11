@@ -131,7 +131,12 @@ export const createSchemaVersionJob = {
         logger.info("Skipping schema version creation", { ingestJobId, reason: skipCheck.reason });
         await ProgressTrackingService.skipStage(payload, ingestJobId, PROCESSING_STAGE.CREATE_SCHEMA_VERSION);
 
-        return { output: { skipped: true } };
+        // "Not approved" must STOP the pipeline, not just skip this stage: the
+        // approval path re-enters here with the approval already committed, but an
+        // admin reset straight to geocode-batch would otherwise create events from
+        // an unapproved schema, with no schema version attached to them.
+        const needsReview = skipCheck.reason === "Schema not approved";
+        return { output: { skipped: true, ...(needsReview ? { needsReview: true } : {}) } };
       }
 
       // Get dataset and prepare schema version data

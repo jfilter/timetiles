@@ -13,6 +13,7 @@
 import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 
@@ -72,11 +73,19 @@ export const POST = apiRoute({
       updateData.errorLog = null;
     }
 
+    const previousStage = ingestJob.stage;
+
     await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: updateData });
 
-    // Queue the ingest-process workflow to resume from the target stage
+    // Queue the ingest-process workflow to resume from the target stage. With
+    // rollback: a failed queue would leave the job parked in targetStage with no
+    // workflow behind it, and reset only accepts a job that is still FAILED.
     const resumeFrom = stageToResumeFrom(targetStage);
-    await payload.jobs.queue({ workflow: "ingest-process", input: { ingestJobId: String(ingestJob.id), resumeFrom } });
+    await queueJobWithRollback(
+      payload,
+      { workflow: "ingest-process", input: { ingestJobId: String(ingestJob.id), resumeFrom } },
+      { collection: "ingest-jobs", id: ingestJob.id, data: { stage: previousStage } }
+    );
 
     logger.info(
       {

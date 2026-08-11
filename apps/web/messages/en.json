@@ -138,6 +138,7 @@
     "byCatalog": "By Catalog",
     "loadingMapData": "Loading map data...",
     "unableToLoadMapData": "Unable to load map data",
+    "unableToLoadEvents": "Unable to load events",
     "mapLoadError": "There was a problem loading the map",
     "descShowingOfTotal": "Showing {visible, number} of {total, plural, one {# event} other {# events}}",
     "descShowingEvents": "Showing {count, plural, one {# event} other {# events}}",

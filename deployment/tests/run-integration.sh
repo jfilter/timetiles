@@ -52,5 +52,7 @@ if [[ -d "integration" ]] && ls integration/*.bats &>/dev/null; then
     echo ""
     print_pass "Integration tests passed!"
 else
-    print_info "No integration tests found"
+    # A green run with zero assertions is not a pass: this gates image publication.
+    print_fail "No integration tests found"
+    exit 1
 fi

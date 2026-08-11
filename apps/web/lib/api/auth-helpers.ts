@@ -139,23 +139,72 @@ const revokeVerificationSession = async (payload: Payload, user: User, token: st
  * session that made this request (identified by the `sid` in its token) is kept
  * so the legitimate user stays logged in on this device. If the current session
  * id cannot be determined we drop ALL sessions (fail closed — the user simply
- * re-authenticates). Best-effort: the password change has already committed, so
- * a failure here is logged rather than surfaced.
+ * re-authenticates). Errors propagate: the caller runs this inside the same
+ * transaction as the password write, so a failure has to roll both back.
  */
 export const revokeOtherSessions = async (
   payload: Payload,
   user: User,
-  currentToken: string | undefined
+  currentToken: string | undefined,
+  req?: PayloadRequest
 ): Promise<void> => {
   const currentSid = decodeSessionIdFromToken(currentToken);
+  const current = await payload.findByID({
+    collection: "users",
+    id: user.id,
+    depth: 0,
+    overrideAccess: true,
+    ...(req ? { req } : {}),
+  });
+
+  // No readable user row means the session list is unknown, and silently doing
+  // nothing would leave every existing session alive after a password change.
+  if (!current) {
+    throw new Error(`Cannot revoke sessions: user ${user.id} could not be loaded`);
+  }
+
+  const sessions = current.sessions ?? [];
+  const remaining = currentSid ? sessions.filter((session) => session.id === currentSid) : [];
+  if (remaining.length === sessions.length) return;
+  await payload.update({
+    collection: "users",
+    id: user.id,
+    data: { sessions: remaining },
+    overrideAccess: true,
+    ...(req ? { req } : {}),
+  });
+};
+
+/**
+ * Change a password AND revoke the other sessions, atomically.
+ *
+ * Both writes commit together or not at all. Committing the password first and
+ * treating the session wipe as best-effort meant a transient failure there left
+ * every stolen session alive while the caller was told the password had changed
+ * — the one thing a password change is supposed to stop. Same reasoning and
+ * shape as {@link resetPasswordAndClearSessions}.
+ */
+export const changePasswordAndRevokeOtherSessions = async (
+  payload: Payload,
+  req: PayloadRequest,
+  user: User,
+  newPassword: string,
+  currentToken: string | undefined
+): Promise<void> => {
+  const ownsTransaction = await initTransaction(req);
   try {
-    const current = await payload.findByID({ collection: "users", id: user.id, depth: 0, overrideAccess: true });
-    const sessions = current.sessions ?? [];
-    const remaining = currentSid ? sessions.filter((session) => session.id === currentSid) : [];
-    if (remaining.length === sessions.length) return;
-    await payload.update({ collection: "users", id: user.id, data: { sessions: remaining }, overrideAccess: true });
+    await payload.update({
+      collection: "users",
+      id: user.id,
+      data: { password: newPassword },
+      overrideAccess: true,
+      req,
+    });
+    await revokeOtherSessions(payload, user, currentToken, req);
+    if (ownsTransaction) await commitTransaction(req);
   } catch (error) {
-    logger.warn({ userId: user.id, error }, "Failed to revoke other sessions after password change");
+    if (ownsTransaction) await killTransaction(req);
+    throw error;
   }
 };
 

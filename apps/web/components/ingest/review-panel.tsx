@@ -463,7 +463,10 @@ export const ReviewPanel = ({ job, className }: Readonly<ReviewPanelProps>) => {
             reason={reason}
             config={config}
             canApproveWithColumn={canApproveWithColumn}
-            isPending={approveMutation.isPending}
+            // Also disabled after success: the panel stays mounted until the next
+            // progress poll (up to 2s), and a second click hits the stage guard
+            // and renders its raw internal message over a successful import.
+            isPending={approveMutation.isPending || approveMutation.isSuccess}
             onApprove={handleApprove}
             onApproveWithout={handleApproveWithout}
             onApproveBestEffort={handleApproveBestEffort}

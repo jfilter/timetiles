@@ -424,7 +424,11 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
         </Card>
       )}
 
-      {wizardError && <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">{wizardError}</div>}
+      {wizardError && (
+        <div role="alert" className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
+          {wizardError}
+        </div>
+      )}
 
       {/* Sticky footer with Back + Start Import / Update Schedule */}
       <div className="bg-background/95 sticky bottom-0 z-10 border-t border-transparent pt-4 pb-2 backdrop-blur-sm">

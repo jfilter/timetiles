@@ -414,7 +414,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
           {/* Error message */}
           {errorMessage && (
             <div className="border-primary/10 border-t px-6 py-4">
-              <div className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm">{errorMessage}</div>
+              <div role="alert" className="bg-destructive/10 text-destructive rounded-sm p-4 text-sm">
+                {errorMessage}
+              </div>
             </div>
           )}
 

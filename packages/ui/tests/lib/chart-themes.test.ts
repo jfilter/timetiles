@@ -84,6 +84,7 @@ describe("applyThemeToOption - basic application", () => {
     const result = applyThemeToOption(option, defaultLightTheme);
 
     expect(Array.isArray(result.series)).toBe(true);
+    expect(Array.isArray(result.series)).toBe(true);
     if (Array.isArray(result.series)) {
       expect(result.series[0]).toMatchObject({
         type: "bar",
@@ -100,6 +101,7 @@ describe("applyThemeToOption - edge cases", () => {
 
     const result = applyThemeToOption(option, defaultDarkTheme);
 
+    expect(Array.isArray(result.series)).toBe(true);
     if (Array.isArray(result.series)) {
       expect(result.series[0]).toMatchObject({ type: "line", data: [10, 20, 30], name: "Test Series" });
     }
@@ -112,6 +114,7 @@ describe("applyThemeToOption - edge cases", () => {
 
     const result = applyThemeToOption(option, themeWithArrayColor);
 
+    expect(Array.isArray(result.series)).toBe(true);
     if (Array.isArray(result.series)) {
       expect(result.series[0]).toMatchObject({
         itemStyle: {
@@ -137,6 +140,7 @@ describe("applyThemeToOption - edge cases", () => {
 
     const result = applyThemeToOption(option, defaultLightTheme);
 
+    expect(Array.isArray(result.series)).toBe(true);
     if (Array.isArray(result.series)) {
       expect(result.series[0]).toMatchObject({
         itemStyle: { borderWidth: 2, opacity: 0.8, color: defaultLightTheme.itemColor },

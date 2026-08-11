@@ -65,6 +65,9 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
     eventsData,
     eventsFetching,
     eventsDataUpdatedAt,
+    eventsError,
+    clustersError,
+    refetchEvents,
     totalEventsData,
     hasTemporalData,
   } = data;
@@ -77,7 +80,9 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
   // Loading phase derived from React Query's native fields:
   //   - isInitialLoad: any query has no successful fetch yet (dataUpdatedAt === 0)
   //   - isUpdating: at least one query is fetching while stale data is on screen
-  const isInitialLoad = eventsDataUpdatedAt === 0 || clustersDataUpdatedAt === 0;
+  // `&& !isError`: a failed query never advances dataUpdatedAt, so without this
+  // the list pulsed its loading skeleton forever instead of showing the error.
+  const isInitialLoad = (eventsDataUpdatedAt === 0 && !eventsError) || (clustersDataUpdatedAt === 0 && !clustersError);
   const isUpdating = (eventsFetching || clustersFetching) && !isInitialLoad;
 
   // ResizeObserver to trigger map resize during grid transitions
@@ -117,6 +122,7 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
         initialBounds={boundsData?.bounds}
         initialViewState={initialViewState}
         isLoadingBounds={isLoadingInitialBounds}
+        isError={clustersError}
         showZoomToData={showZoomToData}
         onZoomToData={handleZoomToData}
         className="relative h-full min-w-0 flex-1 transition-[flex,width] duration-500 ease-in-out"
@@ -155,6 +161,8 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
               events={events}
               isInitialLoad={isInitialLoad}
               isUpdating={isUpdating}
+              error={eventsError ? new Error(t("unableToLoadEvents")) : null}
+              onRetry={() => void refetchEvents()}
               onEventClick={openEvent}
               hideDatasetBadge={filters.datasets.length === 1}
               virtualize

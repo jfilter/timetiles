@@ -29,6 +29,12 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
 
   const conditions: SqlFragment[] = [];
 
+  // Events are a trash-enabled collection: Payload's `find` hides soft-deleted rows,
+  // and every raw-SQL path has to do the same by hand. Without this a deleted event
+  // stays on the map and in the stats, and the list route (raw count + payload.find
+  // hydration) returns short pages against an inflated total.
+  conditions.push(sql`e.deleted_at IS NULL`);
+
   // Access control always applies, with optional catalog narrowing layered on top.
   conditions.push(buildEventAccessCondition(filters));
 

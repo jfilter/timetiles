@@ -442,7 +442,7 @@ export const EventBeeswarm = ({
 
       {variant === "fullscreen" && total > 0 && !isInitialLoad && (
         <div className="text-muted-foreground absolute right-3 bottom-7 font-mono text-xs">
-          {total.toLocaleString()} {t("eventsLabel")}
+          {total.toLocaleString(locale)} {t("eventsLabel")}
         </div>
       )}
 

@@ -76,7 +76,13 @@ export const ingestProcessWorkflow: WorkflowConfig<"ingest-process"> = {
       }
 
       if (resumeFrom !== "create-events") {
-        await tasks["create-schema-version"]("create-version", { input: { ingestJobId: id } });
+        const version = (await tasks["create-schema-version"]("create-version", { input: { ingestJobId: id } })) as {
+          needsReview?: boolean;
+        };
+        if (version.needsReview) {
+          logger.info("ingest-process: schema still awaits approval", { ingestJobId: id });
+          return;
+        }
         const geocode = (await tasks["geocode-batch"]("geocode", {
           input: { ingestJobId: id, batchNumber: 0 },
         })) as GeocodeBatchOutput;

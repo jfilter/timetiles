@@ -95,9 +95,12 @@ EOF
     # Escape single quotes in password to prevent SQL injection (standard PG escaping)
     ESCAPED_DB_PASSWORD="${DB_PASSWORD//\'/\'\'}"
 
-    # Create user and database — heredoc is quoted ('EOSQL') so only the
-    # pre-escaped password variable is expanded via the explicit eval below.
-    su - postgres -c "psql" << EOSQL || { echo "Failed to create database user/database"; exit 1; }
+    # Create user and database. The heredoc is UNQUOTED on purpose so the
+    # pre-escaped variables expand. ON_ERROR_STOP is what makes the `||` guard
+    # real: without it psql prints SQL errors and still exits 0, so a failed
+    # CREATE EXTENSION would leave the volume permanently half-initialised —
+    # the init block never runs again once PG_VERSION exists.
+    su - postgres -c "psql -v ON_ERROR_STOP=1" << EOSQL || { echo "Failed to create database user/database"; exit 1; }
 CREATE USER "${DB_USER}" WITH PASSWORD '${ESCAPED_DB_PASSWORD}';
 CREATE DATABASE "${DB_NAME}" OWNER "${DB_USER}";
 \\c "${DB_NAME}"

@@ -14,7 +14,8 @@ import { and, eq } from "@payloadcms/db-postgres/drizzle";
 import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
-import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { queueJobWithRollback } from "@/lib/api/job-helpers";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import { ingest_jobs } from "@/payload-generated-schema";
 
@@ -51,11 +52,14 @@ export const POST = apiRoute({
     }
 
     // Queue the ingest-process workflow to re-process from the real beginning,
-    // including duplicate analysis and its review/quota gates.
-    await payload.jobs.queue({
-      workflow: "ingest-process",
-      input: { ingestJobId: String(ingestJob.id), resumeFrom: "analyze-duplicates" },
-    });
+    // including duplicate analysis and its review/quota gates. With rollback: the
+    // claim above already left FAILED, and a failed queue would strand the job in
+    // ANALYZE_DUPLICATES, where neither retry nor reset accepts it any more.
+    await queueJobWithRollback(
+      payload,
+      { workflow: "ingest-process", input: { ingestJobId: String(ingestJob.id), resumeFrom: "analyze-duplicates" } },
+      { collection: COLLECTION_NAMES.INGEST_JOBS, id: ingestJob.id, data: { stage: PROCESSING_STAGE.FAILED } }
+    );
 
     logger.info({ ingestJobId: ingestJob.id, userId: user.id }, "Manual retry initiated via workflow");
 

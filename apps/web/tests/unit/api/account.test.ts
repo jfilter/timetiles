@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => {
     create: vi.fn(),
     sendEmail: vi.fn().mockResolvedValue(undefined),
     jobs: { queue: vi.fn().mockResolvedValue({ id: "email-job-1" }) },
+    // beginTransaction returning null makes initTransaction a no-op, the same
+    // shape the job tests use — the password change now runs in a transaction.
+    db: { beginTransaction: vi.fn().mockResolvedValue(null) },
   };
 
   return {
@@ -43,7 +46,13 @@ const mocks = vi.hoisted(() => {
   };
 });
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+  // The password change runs its two writes in one transaction.
+  initTransaction: vi.fn().mockResolvedValue(false),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 
@@ -350,6 +359,9 @@ describe.sequential("POST /api/users/change-password", () => {
   });
 
   it("should successfully change password", async () => {
+    // The route reads the user back to revoke its other sessions.
+    mockPayload.findByID.mockResolvedValue({ id: mockUser.id, sessions: [{ id: "current" }, { id: "other" }] });
+
     const req = createJsonRequest("http://localhost/api/users/change-password", {
       currentPassword: TEST_CREDENTIALS.basic.password,
       newPassword: TEST_CREDENTIALS.basic.strongPassword,
@@ -360,11 +372,32 @@ describe.sequential("POST /api/users/change-password", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.message).toBe("Password changed successfully");
-    expect(mockPayload.update).toHaveBeenCalledWith({
-      collection: "users",
-      id: mockUser.id,
-      data: { password: TEST_CREDENTIALS.basic.strongPassword },
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "users",
+        id: mockUser.id,
+        data: { password: TEST_CREDENTIALS.basic.strongPassword },
+      })
+    );
+  });
+
+  // The session wipe shares the password write's transaction: if it fails, the
+  // password must NOT be reported as changed, or every stolen session survives
+  // a change the user was told had locked them out.
+  it("fails the change when the session revocation fails", async () => {
+    mockPayload.findByID.mockResolvedValue({ id: mockUser.id, sessions: [{ id: "other-session" }] });
+    mockPayload.update.mockImplementation((args: { data?: Record<string, unknown> }) =>
+      args.data && "sessions" in args.data ? Promise.reject(new Error("session wipe failed")) : Promise.resolve({})
+    );
+
+    const req = createJsonRequest("http://localhost/api/users/change-password", {
+      currentPassword: TEST_CREDENTIALS.basic.password,
+      newPassword: TEST_CREDENTIALS.basic.strongPassword,
     });
+
+    const response = await changePasswordPOST(req, defaultParams);
+
+    expect(response.status).toBe(500);
   });
 });
 

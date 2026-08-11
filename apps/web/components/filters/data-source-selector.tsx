@@ -100,7 +100,7 @@ const DatasetInfoPopover = ({
             {eventCount != null && (
               <div className="flex justify-between py-0.5">
                 <dt className="text-muted-foreground">{t("events")}</dt>
-                <dd>{eventCount.toLocaleString()}</dd>
+                <dd>{eventCount.toLocaleString(locale)}</dd>
               </div>
             )}
             {catalogName && (
@@ -127,6 +127,7 @@ const CatalogInfoPopover = ({
   datasetCount: number;
 }) => {
   const t = useTranslations("Filters");
+  const locale = useLocale();
 
   return (
     <Popover>
@@ -153,7 +154,7 @@ const CatalogInfoPopover = ({
             </div>
             <div className="flex justify-between py-0.5">
               <dt className="text-muted-foreground">{t("events")}</dt>
-              <dd>{eventCount.toLocaleString()}</dd>
+              <dd>{eventCount.toLocaleString(locale)}</dd>
             </div>
           </dl>
         </div>
