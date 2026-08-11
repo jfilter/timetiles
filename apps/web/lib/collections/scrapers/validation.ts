@@ -78,12 +78,14 @@ export const resolveRepoOwner = async (
   repoId: number,
   user: { id: number; role?: string | null } | undefined,
   errorMessage: string
-): Promise<number | undefined> => {
+): Promise<number | null> => {
   const repo = await payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true });
   if (!repo) {
     throw new Error("Scraper repo not found");
   }
-  const repoOwnerId = extractRelationId(repo.createdBy) as number | undefined;
+  // null, never undefined: an ownerless repo has to CLEAR the denormalized owner,
+  // and Payload drops undefined from a write, leaving the previous owner in place.
+  const repoOwnerId = extractRelationId<number>(repo.createdBy as number | { id: number } | null | undefined) ?? null;
   if (user && !isPrivileged(user) && repoOwnerId !== user.id) {
     throw new Error(errorMessage);
   }

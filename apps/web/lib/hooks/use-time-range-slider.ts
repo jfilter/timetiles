@@ -140,18 +140,26 @@ export const useTimeRangeSlider = ({
     return { minTimestamp: min, maxTimestamp: max, normalizedBars: bars };
   }, [histogram]);
 
-  // Convert current filter dates to slider positions (0-1)
-  const startPosition = (() => {
-    if (startDate == null || minTimestamp === maxTimestamp) return 0;
-    const ts = parseISODate(startDate);
-    return Math.max(0, Math.min(1, (ts - minTimestamp) / (maxTimestamp - minTimestamp)));
-  })();
+  // Convert current filter dates to slider positions (0-1). An unparseable date
+  // (the URL params are plain strings, so a shared link can carry anything) must
+  // fall back to the track end — NaN would reach the style as `left: NaN%` and
+  // leave the handles unplaced with nothing highlighted.
+  /** A filter bound as a timestamp, falling back when absent OR unparseable. */
+  const boundOr = (dateStr: string | null | undefined, fallback: number): number => {
+    if (dateStr == null) return fallback;
+    const ts = parseISODate(dateStr);
+    return Number.isNaN(ts) ? fallback : ts;
+  };
 
-  const endPosition = (() => {
-    if (endDate == null || minTimestamp === maxTimestamp) return 1;
-    const ts = parseISODate(endDate);
+  const positionFor = (dateStr: string | null | undefined, fallback: 0 | 1): number => {
+    if (dateStr == null || minTimestamp === maxTimestamp) return fallback;
+    const ts = parseISODate(dateStr);
+    if (Number.isNaN(ts)) return fallback;
     return Math.max(0, Math.min(1, (ts - minTimestamp) / (maxTimestamp - minTimestamp)));
-  })();
+  };
+
+  const startPosition = positionFor(startDate, 0);
+  const endPosition = positionFor(endDate, 1);
 
   const rangeStyle = { left: `${startPosition * 100}%`, right: `${(1 - endPosition) * 100}%` };
   const startHandleStyle = { left: `${startPosition * 100}%` };
@@ -165,14 +173,16 @@ export const useTimeRangeSlider = ({
     const clampedTimestamp = clampTimestamp(timestamp);
 
     if (handle === "start") {
-      const endTs = endDate != null ? parseISODate(endDate) : maxTimestamp;
+      // boundOr, not a raw parse: an unparseable opposite bound made every
+      // comparison false and silently froze the handle the user was dragging.
+      const endTs = boundOr(endDate, maxTimestamp);
       if (clampedTimestamp <= endTs) {
         onStartDateChange(formatISODate(clampedTimestamp));
       }
       return;
     }
 
-    const startTs = startDate != null ? parseISODate(startDate) : minTimestamp;
+    const startTs = boundOr(startDate, minTimestamp);
     if (clampedTimestamp >= startTs) {
       onEndDateChange(formatISODate(clampedTimestamp));
     }
@@ -205,12 +215,7 @@ export const useTimeRangeSlider = ({
   const handleHandleKeyDown = (handle: "start" | "end") => (e: React.KeyboardEvent) => {
     if (minTimestamp === maxTimestamp) return;
 
-    let currentValue: number;
-    if (handle === "start") {
-      currentValue = startDate != null ? parseISODate(startDate) : minTimestamp;
-    } else {
-      currentValue = endDate != null ? parseISODate(endDate) : maxTimestamp;
-    }
+    const currentValue = handle === "start" ? boundOr(startDate, minTimestamp) : boundOr(endDate, maxTimestamp);
     const step = Math.max((maxTimestamp - minTimestamp) * 0.01, 1);
 
     let nextValue: number | null = null;
@@ -245,8 +250,8 @@ export const useTimeRangeSlider = ({
 
   // Check if a bar is within the selected range
   const isBarInRange = (barStart: number, barEnd: number): boolean => {
-    const rangeStart = startDate != null ? parseISODate(startDate) : minTimestamp;
-    const rangeEnd = endDate != null ? parseISODate(endDate) : maxTimestamp;
+    const rangeStart = boundOr(startDate, minTimestamp);
+    const rangeEnd = boundOr(endDate, maxTimestamp);
     return barEnd >= rangeStart && barStart <= rangeEnd;
   };
 

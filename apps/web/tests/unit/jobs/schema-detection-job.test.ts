@@ -187,6 +187,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -287,6 +290,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -345,6 +351,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -384,6 +393,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -440,6 +452,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -671,6 +686,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
       mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([mockFileData]));
@@ -802,6 +820,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 
@@ -910,6 +931,9 @@ describe.sequential("SchemaDetectionJob Handler", () => {
       mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
         if (collection === "ingest-jobs") return Promise.resolve(mockIngestJob);
         if (collection === "ingest-files") return Promise.resolve(mockIngestFile);
+        // The handler loads the dataset for its frozen transforms and fails the job
+        // when it cannot — returning null here made the stage run without them.
+        if (collection === "datasets") return Promise.resolve(createMockDataset(TEST_IDS.DATASET));
         return Promise.resolve(null);
       });
 

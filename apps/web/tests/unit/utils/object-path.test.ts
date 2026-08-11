@@ -84,13 +84,25 @@ describe.sequential("object-path", () => {
       expect(obj).toEqual({ "a.b": 2, plain: 3 });
     });
 
-    it("rejects an unsafe direct key", () => {
-      // The direct-key branch skips setByPath, so it needs its own guard —
-      // otherwise `__proto__` re-parents the row object.
+    it("stores a __proto__ column as an own property instead of re-parenting the row", () => {
       const obj: Record<string, unknown> = {};
-      expect(() => setByPathOrKey(obj, "__proto__", { polluted: true })).toThrow(/Unsafe path segment/);
+      setByPathOrKey(obj, "__proto__", { polluted: true });
+
       expect(Object.getPrototypeOf(obj)).toBe(Object.prototype);
-      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(Object.hasOwn(obj, "__proto__")).toBe(true);
+      expect({} as Record<string, unknown>).not.toHaveProperty("polluted");
+    });
+
+    it("treats constructor and prototype as ordinary column names", () => {
+      // A source file may have such a header; throwing here would fail the whole
+      // import, and a plain own-property write is harmless.
+      const obj: Record<string, unknown> = {};
+      setByPathOrKey(obj, "constructor", "c");
+      setByPathOrKey(obj, "prototype", "p");
+
+      expect(obj.constructor).toBe("c");
+      expect(obj.prototype).toBe("p");
+      expect(Object.getPrototypeOf(obj)).toBe(Object.prototype);
     });
   });
 

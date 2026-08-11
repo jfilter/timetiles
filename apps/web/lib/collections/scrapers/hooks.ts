@@ -6,6 +6,7 @@
 import { sql } from "@payloadcms/db-postgres/drizzle";
 import { APIError, type CollectionBeforeChangeHook, type CollectionBeforeDeleteHook } from "payload";
 
+import { isPrivileged } from "@/lib/collections/shared-fields";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -28,7 +29,7 @@ export const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({
   if (req.context?.seed) return data;
 
   // Collect all mutations before applying — avoids require-atomic-updates false positives
-  let repoCreatedBy: number | undefined;
+  let repoCreatedBy: number | null | undefined;
   let shouldDeleteRepoCreatedBy = false;
 
   if (operation === "create") {
@@ -62,7 +63,8 @@ export const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({
     }
   }
 
-  // Build result without mutating data after awaits
+  // Build result without mutating data after awaits. `null` is a real value here
+  // (an ownerless repo) and must survive the undefined check below.
   if (shouldDeleteRepoCreatedBy && repoCreatedBy === undefined) {
     const { repoCreatedBy: _stripped, ...rest } = data;
     return rest;
@@ -109,8 +111,63 @@ export const resetNextRunOnScheduleChange: CollectionBeforeChangeHook = ({ data,
   return data;
 };
 
+/**
+ * Validates that a scraper's `targetDataset` belongs to a catalog the user owns.
+ *
+ * `targetDataset` is a plain writable relationship and `update` access is scoped to the
+ * repo owner, so without this a scraper owner could point their own scraper at a
+ * stranger's dataset: auto-import then writes the scraped rows into it as a SYSTEM job,
+ * which is exactly the case the events hook's cross-dataset guard exempts. Same policy
+ * and wording as `validateDatasetAccess` on scheduled-ingests — owning the catalog is
+ * required, a public catalog does not grant this targeted write, and admins/editors
+ * bypass because they may already manage any scraper.
+ */
+export const validateTargetDatasetAccess: CollectionBeforeChangeHook = async ({ data, req, originalDoc }) => {
+  if (!data) return data;
+  if (req.context?.seed) return data;
+  if (!req.user || isPrivileged(req.user)) return data;
+
+  const targetDatasetId = extractRelationId<number>(data.targetDataset as number | { id: number } | null | undefined);
+  if (targetDatasetId == null) return data;
+
+  // Unchanged value on a partial update needs no re-check.
+  const previousId = extractRelationId<number>(
+    originalDoc?.targetDataset as number | { id: number } | null | undefined
+  );
+  if (previousId === targetDatasetId) return data;
+
+  const dataset = await req.payload.findByID({
+    collection: "datasets",
+    id: targetDatasetId,
+    depth: 0,
+    overrideAccess: true,
+    disableErrors: true,
+    req,
+  });
+
+  const catalogId = dataset ? extractRelationId<number>(dataset.catalog) : undefined;
+  const catalog =
+    catalogId == null
+      ? null
+      : await req.payload.findByID({
+          collection: "catalogs",
+          id: catalogId,
+          depth: 0,
+          overrideAccess: true,
+          disableErrors: true,
+          req,
+        });
+
+  if (!catalog || extractRelationId(catalog.createdBy) !== req.user.id) {
+    throw new APIError("You do not have permission to use this dataset", 403);
+  }
+
+  return data;
+};
+
 export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
   validateAndSetRepoOwnership,
+  validateTargetDatasetAccess,
   webhookTokenLifecycleHook,
   resetNextRunOnScheduleChange,
 ];

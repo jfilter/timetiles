@@ -59,7 +59,9 @@ const inlineSchemaRefs = (root: SchemaProperty): SchemaProperty => {
 
     if (ref?.startsWith(DEFINITIONS_PREFIX)) {
       const name = ref.slice(DEFINITIONS_PREFIX.length);
-      const target = definitions[name];
+      // Object.hasOwn: a definition named "constructor" would otherwise resolve to
+      // the inherited prototype member and be inlined as the schema target.
+      const target = Object.hasOwn(definitions, name) ? definitions[name] : undefined;
       // Unknown target or a cycle: keep the ref rather than looping forever.
       if (!target || expanding.includes(name)) return { ...obj };
       return resolve(target, [...expanding, name]);
@@ -237,8 +239,11 @@ export class ProgressiveSchemaBuilder {
     for (const [key, value] of Object.entries(obj ?? {})) {
       const fieldPath = pathPrefix ? `${pathPrefix}.${key}` : key;
 
-      // Initialize field stats if new
-      if (!this.state.fieldStats[fieldPath]) {
+      // Initialize field stats if new. Object.hasOwn, not truthiness: a source
+      // column named "constructor" or "toString" resolves to the inherited
+      // Object.prototype member, which reads as an existing stats object and
+      // then blows up in updateFieldStats.
+      if (!Object.hasOwn(this.state.fieldStats, fieldPath)) {
         changes.push(this.handleNewField(fieldPath, value));
       }
 
@@ -369,18 +374,20 @@ export class ProgressiveSchemaBuilder {
   }
 
   private processArrayPart(current: unknown, fieldName: string): unknown {
-    if (typeof current !== "object" || current === null || !(fieldName in current)) {
+    // Object.hasOwn, not `in`: `in` also matches inherited keys, so a field named
+    // "constructor" would descend into Object.prototype.
+    if (typeof current !== "object" || current === null || !Object.hasOwn(current, fieldName)) {
       return null;
     }
 
     const field = (current as Record<string, unknown>)[fieldName];
-    if (typeof field !== "object" || field === null || !("items" in field)) {
+    if (typeof field !== "object" || field === null || !Object.hasOwn(field, "items")) {
       return null;
     }
 
-    const items = field.items;
-    if (typeof items === "object" && items !== null && "properties" in items) {
-      return items.properties;
+    const items = (field as Record<string, unknown>).items;
+    if (typeof items === "object" && items !== null && Object.hasOwn(items, "properties")) {
+      return (items as Record<string, unknown>).properties;
     }
     return items;
   }
@@ -462,7 +469,9 @@ export class ProgressiveSchemaBuilder {
    * dereference `undefined`.
    */
   private descendIntoArray(current: Record<string, SchemaProperty>, fieldName: string): Record<string, SchemaProperty> {
-    const existing = current[fieldName];
+    // Object.hasOwn everywhere in here: a field named "constructor" would
+    // otherwise resolve to the inherited prototype member and get patched.
+    const existing = Object.hasOwn(current, fieldName) ? current[fieldName] : undefined;
     if (existing === undefined) {
       current[fieldName] = this.createArrayProperty();
     } else {
@@ -486,7 +495,7 @@ export class ProgressiveSchemaBuilder {
     current: Record<string, SchemaProperty>,
     fieldName: string
   ): Record<string, SchemaProperty> {
-    const existing = current[fieldName];
+    const existing = Object.hasOwn(current, fieldName) ? current[fieldName] : undefined;
     if (existing === undefined) {
       current[fieldName] = this.createObjectProperty();
     } else {
@@ -502,7 +511,7 @@ export class ProgressiveSchemaBuilder {
    */
   private setLeafProperty(current: Record<string, SchemaProperty>, part: string, stats: FieldStatistics): void {
     const built = this.buildPropertySchema(stats);
-    const existing = current[part];
+    const existing = Object.hasOwn(current, part) ? current[part] : undefined;
     if (existing?.properties !== undefined) built.properties = existing.properties;
     if (existing?.items !== undefined) built.items = existing.items;
     current[part] = built;

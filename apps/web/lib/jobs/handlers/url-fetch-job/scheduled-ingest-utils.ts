@@ -23,6 +23,10 @@ import {
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { ScheduledIngest } from "@/payload-types";
 
+/** Payload throws `NotFound` (status 404) for a missing document. */
+const isNotFoundError = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && "status" in error && (error as { status?: number }).status === 404;
+
 /**
  * Narrow request shape used for transaction/audit propagation. Mirrors the
  * type used by `auditLog` so the same structural value can flow through both.
@@ -80,7 +84,14 @@ export const loadScheduledIngestForLifecycle = async (
     return await asSystem(payload).findByID({ collection: COLLECTION_NAMES.SCHEDULED_INGESTS, id: scheduledIngestId });
   } catch (error) {
     logError(error, "Failed to load scheduled ingest for lifecycle update", { scheduledIngestId });
-    return null;
+
+    // A deleted schedule has nothing left to reconcile; anything else (a DB blip)
+    // must surface — swallowing it skipped the status write and stranded the
+    // schedule at lastStatus="running" with its retry counter frozen.
+    if (isNotFoundError(error)) {
+      return null;
+    }
+    throw error;
   }
 };
 

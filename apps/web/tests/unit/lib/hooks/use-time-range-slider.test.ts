@@ -159,6 +159,55 @@ describe("useTimeRangeSlider", () => {
       expect(result.current.endPosition).toBe(1);
     });
 
+    // The date params are plain strings in the URL, so a shared or hand-edited
+    // link can carry anything. NaN positions rendered as `left: NaN%`.
+    it("falls back to the track ends for an unparseable date param", () => {
+      const { result } = setupWithRange("garbage", "also-garbage");
+
+      expect(result.current.startPosition).toBe(0);
+      expect(result.current.endPosition).toBe(1);
+      expect(result.current.rangeStyle.left).toBe("0%");
+      expect(result.current.rangeStyle.right).toBe("0%");
+    });
+
+    it("still highlights bars when a date param is unparseable", () => {
+      const { result } = setupWithRange("garbage", null);
+
+      const bar = result.current.normalizedBars[0]!;
+      expect(result.current.isBarInRange(bar.date, bar.dateEnd)).toBe(true);
+    });
+
+    // The opposite bound is read back when a handle moves. Left unguarded, an
+    // unparseable value made the comparison false and froze the other handle.
+    it("still lets the start handle move when the end param is unparseable", () => {
+      const onStartDateChange = vi.fn();
+      const histogram = makeHistogram([
+        { date: "2024-01-01", dateEnd: "2024-04-01", count: 10 },
+        { date: "2024-07-01", dateEnd: "2024-10-01", count: 15 },
+      ]);
+      mockHistogramQuery.mockReturnValue({ data: histogram, isLoading: false } as unknown as ReturnType<
+        typeof useFullHistogramQuery
+      >);
+
+      const base = defaultProps();
+      const { result } = renderHook(() =>
+        useTimeRangeSlider({
+          ...base,
+          filters: { ...base.filters, startDate: null, endDate: "garbage" },
+          onStartDateChange,
+        })
+      );
+
+      act(() => {
+        result.current.handleHandleKeyDown("start")({
+          key: "ArrowRight",
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent);
+      });
+
+      expect(onStartDateChange).toHaveBeenCalled();
+    });
+
     it("handles zero-width range (single instant)", () => {
       // Histogram where first bucket date === last bucket dateEnd
       const histogram = makeHistogram([{ date: "2024-06-15", dateEnd: "2024-06-15", count: 5 }]);

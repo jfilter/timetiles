@@ -65,11 +65,28 @@ const createRunRecord = async (
     },
   });
 
-  await asSystem(payload).update({
-    collection: "scrapers",
-    id: scraperId,
-    data: { lastRunStatus: "running", lastRunAt: new Date().toISOString() },
-  });
+  try {
+    await asSystem(payload).update({
+      collection: "scrapers",
+      id: scraperId,
+      data: { lastRunStatus: "running", lastRunAt: new Date().toISOString() },
+    });
+  } catch (error) {
+    // The run row is already committed. Throwing without its id would strand it at
+    // "running" forever: the caller never learns the id, and the stuck-run cleanup
+    // only looks at scrapers whose lastRunStatus is still "running" — which the
+    // caller's catch immediately resets to "failed".
+    await asSystem(payload)
+      .update({
+        collection: "scraper-runs",
+        id: run.id,
+        data: { status: "failed", error: "Failed to mark scraper as running", finishedAt: new Date().toISOString() },
+      })
+      .catch((markError: unknown) => {
+        logError(markError, "Failed to fail orphaned scraper run", { scraperId, runId: run.id });
+      });
+    throw error;
+  }
 
   return run;
 };

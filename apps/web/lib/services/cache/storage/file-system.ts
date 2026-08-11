@@ -35,6 +35,14 @@ interface IndexData {
   lastUpdated: string;
 }
 
+/**
+ * File-backed cache for a single owner.
+ *
+ * Index writes are serialized and atomic WITHIN one instance. Two instances (or two
+ * processes) pointed at the same directory each keep their own in-memory index, so
+ * their `index.json` writes are last-write-wins — that is by design, every caller
+ * owns its own cache directory. Do not share a directory between instances.
+ */
 export class FileSystemCacheStorage implements CacheStorage {
   private readonly cacheDir: string;
   private readonly indexFile: string;
@@ -47,8 +55,12 @@ export class FileSystemCacheStorage implements CacheStorage {
   /** Serializes index writes; every set() rewrites the same file. */
   private indexWriteChain: Promise<void> = Promise.resolve();
   private indexWriteSeq = 0;
+  private static instanceCounter = 0;
+  private readonly instanceId: number;
 
   constructor(options: FileSystemCacheOptions = {}) {
+    FileSystemCacheStorage.instanceCounter += 1;
+    this.instanceId = FileSystemCacheStorage.instanceCounter;
     this.cacheDir = options.cacheDir ?? path.join(process.cwd(), ".cache", "general");
     this.indexFile = path.join(this.cacheDir, "index.json");
     this.index = new Map();
@@ -441,11 +453,18 @@ export class FileSystemCacheStorage implements CacheStorage {
     // loadIndex reads that as "corrupted" and drops the whole cache.
     const payload = JSON.stringify(indexData, null, 2);
     this.indexWriteSeq += 1;
-    const tempFile = `${this.indexFile}.${process.pid}.${this.indexWriteSeq}.tmp`;
+    // instanceId as well as pid: two storages on the same directory in one process
+    // would otherwise queue the same temp path and rename each other's file away.
+    const tempFile = `${this.indexFile}.${process.pid}.${this.instanceId}.${this.indexWriteSeq}.tmp`;
 
     const write = async (): Promise<void> => {
-      await fs.writeFile(tempFile, payload);
-      await fs.rename(tempFile, this.indexFile);
+      try {
+        await fs.writeFile(tempFile, payload);
+        await fs.rename(tempFile, this.indexFile);
+      } catch (error) {
+        await fs.unlink(tempFile).catch(() => undefined);
+        throw error;
+      }
     };
     this.indexWriteChain = this.indexWriteChain.then(write, write);
 

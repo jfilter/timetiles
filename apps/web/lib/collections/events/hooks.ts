@@ -18,6 +18,7 @@ import { Forbidden } from "payload";
 
 import {
   extractDenormalizedAccessFields,
+  isDenormSyncWrite,
   safeFetchRecord,
   stripClientDenormFields,
 } from "@/lib/collections/catalog-ownership";
@@ -80,8 +81,10 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
   // publishing a single event out of a private dataset.
   const data = stripClientDenormFields(incoming, req, EVENT_DENORM_FIELDS);
 
-  // Set denormalized access control fields
-  if (data?.dataset) {
+  // Set denormalized access control fields.
+  // Skipped for an internal resync: those writes carry the authoritative values,
+  // and re-deriving would restore the grant a catalog delete is busy removing.
+  if (data?.dataset && !isDenormSyncWrite(req)) {
     const datasetId = requireRelationId(data.dataset, "event.dataset");
     const dataset = await safeFetchRecord(req, "datasets", datasetId, 1);
 

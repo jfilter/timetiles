@@ -11,10 +11,17 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { extractDenormalizedAccessFields } from "@/lib/collections/catalog-ownership";
+import {
+  extractDenormalizedAccessFields,
+  isDenormSyncWrite,
+  stripClientDenormFields,
+} from "@/lib/collections/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { createCommonConfig, createPublicReadAccess, isEditorOrAdmin } from "./shared-fields";
+
+/** Denormalized access-control fields — derived from the dataset, never client-supplied. */
+const SCHEMA_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
 
 const DatasetSchemas: CollectionConfig = {
   slug: "dataset-schemas",
@@ -191,8 +198,17 @@ const DatasetSchemas: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [
-      async ({ data, operation, req }) => {
-        if (operation !== "create" || !data?.dataset) return data;
+      async ({ data: incoming, req }) => {
+        // Strip on EVERY write, derive only where the dataset is present: without the
+        // strip an update could carry client-supplied datasetIsPublic/catalogOwnerId
+        // straight through, publishing one schema row out of a private dataset.
+        const data = stripClientDenormFields(incoming, req, SCHEMA_DENORM_FIELDS);
+
+        // Derive on update too, not only on create: re-pointing the row at another
+        // dataset otherwise kept the old dataset's visibility and owner, so a schema
+        // moved into a private dataset stayed flagged public. Internal resyncs carry
+        // the authoritative values already and must not be re-derived.
+        if (!data?.dataset || isDenormSyncWrite(req)) return data;
 
         const datasetId = extractRelationId(data.dataset);
         if (!datasetId) return data;

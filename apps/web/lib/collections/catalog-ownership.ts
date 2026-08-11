@@ -87,16 +87,30 @@ export const extractDenormalizedAccessFields = (
  */
 const DENORM_SYNC_CONTEXT_KEY = "syncingDenormalizedAccessFields";
 
-/** Run `fn` with denormalized-access-field writes marked as internal. */
+/** True when the current write is an internal denormalized-access resync. */
+export const isDenormSyncWrite = (req: PayloadRequest): boolean => {
+  const depth = req.context?.[DENORM_SYNC_CONTEXT_KEY];
+  return typeof depth === "number" && depth > 0;
+};
+
+/**
+ * Run `fn` with denormalized-access-field writes marked as internal.
+ *
+ * A DEPTH counter, not a boolean: Payload runs the per-document hooks of a bulk
+ * operation concurrently on one shared `req`, so two overlapping syncs would
+ * restore each other's "previous" value and drop the marker mid-flight — the
+ * strip would then delete the very fields the cascade is writing.
+ */
 export const withDenormSync = async <T>(req: PayloadRequest, fn: () => Promise<T>): Promise<T> => {
   req.context ??= {};
   const context = req.context;
-  const previous = context[DENORM_SYNC_CONTEXT_KEY];
-  context[DENORM_SYNC_CONTEXT_KEY] = true;
+  const previous = typeof context[DENORM_SYNC_CONTEXT_KEY] === "number" ? context[DENORM_SYNC_CONTEXT_KEY] : 0;
+  context[DENORM_SYNC_CONTEXT_KEY] = previous + 1;
   try {
     return await fn();
   } finally {
-    context[DENORM_SYNC_CONTEXT_KEY] = previous;
+    const current = typeof context[DENORM_SYNC_CONTEXT_KEY] === "number" ? context[DENORM_SYNC_CONTEXT_KEY] : 1;
+    context[DENORM_SYNC_CONTEXT_KEY] = Math.max(0, current - 1);
   }
 };
 
@@ -112,7 +126,7 @@ export const stripClientDenormFields = <T extends Record<string, unknown>>(
   req: PayloadRequest,
   keys: readonly string[]
 ): T => {
-  if (!req.user || req.context?.[DENORM_SYNC_CONTEXT_KEY] === true) return data;
+  if (!req.user || isDenormSyncWrite(req)) return data;
 
   const cleaned = { ...data };
   for (const key of keys) {

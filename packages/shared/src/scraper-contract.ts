@@ -28,6 +28,15 @@ export const SCRAPER_MEMORY_MIN_MB = 64;
 export const SCRAPER_MEMORY_MAX_MB = 4096;
 export const SCRAPER_MEMORY_DEFAULT_MB = 512;
 
+/**
+ * Cap for a cloned scraper repository, in MB.
+ *
+ * The runner enforces it via SCRAPER_MAX_REPO_SIZE_MB; the web app clones the
+ * same repositories on its own host to read the manifest and must not be the
+ * softer of the two.
+ */
+export const SCRAPER_MAX_REPO_SIZE_MB = 50;
+
 /** Output filename used when a scraper does not configure one. */
 export const SCRAPER_DEFAULT_OUTPUT_FILE = "data.csv";
 

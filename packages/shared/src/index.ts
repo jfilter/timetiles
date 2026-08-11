@@ -13,6 +13,7 @@ export type {
 } from "./scraper-contract.js";
 export {
   SCRAPER_DEFAULT_OUTPUT_FILE,
+  SCRAPER_MAX_REPO_SIZE_MB,
   SCRAPER_MEMORY_DEFAULT_MB,
   SCRAPER_MEMORY_MAX_MB,
   SCRAPER_MEMORY_MIN_MB,

@@ -10,8 +10,9 @@
 import type { Payload, WorkflowConfig } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
-import { logger } from "@/lib/logger";
+import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import type { ScheduledIngest } from "@/payload-types";
 
 import {
   loadScheduledIngestForLifecycle,
@@ -117,17 +118,48 @@ const buildScheduledIngestFailure = async (
  * Every non-failure exit must go through here: leaving `lastStatus` at "running" strands
  * the schedule in the UI, and only this path resets `currentRetries`.
  */
+const LIFECYCLE_RECONCILE_ATTEMPTS = 3;
+
+/**
+ * Write a non-failure lifecycle result, retrying and never rethrowing.
+ *
+ * The import itself has already finished at this point. Letting a failed bookkeeping
+ * write escape into the workflow's catch would record the run as a failure, burn a
+ * retry and eventually auto-disable a schedule that is working perfectly.
+ */
+const reconcileLifecycle = async (
+  scheduledIngestId: number,
+  context: Record<string, unknown>,
+  write: (scheduledIngest: ScheduledIngest) => Promise<void>,
+  payload: Payload
+): Promise<void> => {
+  for (let attempt = 1; attempt <= LIFECYCLE_RECONCILE_ATTEMPTS; attempt++) {
+    try {
+      const scheduledIngest = await loadScheduledIngestForLifecycle(payload, scheduledIngestId);
+      if (scheduledIngest) await write(scheduledIngest);
+      return;
+    } catch (error) {
+      if (attempt === LIFECYCLE_RECONCILE_ATTEMPTS) {
+        logError(error, "Scheduled ingest finished but its status could not be reconciled", context);
+        return;
+      }
+    }
+  }
+};
+
 const recordRunSuccess = async (
   payload: Payload,
   scheduledIngestId: number,
   ingestFileId: string | number | undefined,
   workflowStart: number
-): Promise<void> => {
-  const scheduledIngest = await loadScheduledIngestForLifecycle(payload, scheduledIngestId);
-  if (scheduledIngest) {
-    await updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, Date.now() - workflowStart);
-  }
-};
+): Promise<void> =>
+  reconcileLifecycle(
+    scheduledIngestId,
+    { scheduledIngestId, ingestFileId, outcome: "success" },
+    (scheduledIngest) =>
+      updateScheduledIngestSuccess(payload, scheduledIngest, ingestFileId, Date.now() - workflowStart),
+    payload
+  );
 
 export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
   slug: "scheduled-ingest",
@@ -205,16 +237,19 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
       // left at "running", and `currentRetries` must not climb — the pending review is
       // surfaced through the ingest job's NEEDS_REVIEW stage, which is the right channel.
       if (terminalFailure instanceof ScheduledIngestPausedError) {
-        const paused = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
-        if (paused) {
-          await updateScheduledIngestPaused(
-            req.payload,
-            paused,
-            ingestFileId,
-            Date.now() - workflowStart,
-            terminalFailure.message
-          );
-        }
+        await reconcileLifecycle(
+          scheduledIngestId,
+          { scheduledIngestId, ingestFileId, outcome: "paused" },
+          (paused) =>
+            updateScheduledIngestPaused(
+              req.payload,
+              paused,
+              ingestFileId,
+              Date.now() - workflowStart,
+              terminalFailure.message
+            ),
+          req.payload
+        );
         logger.info("scheduled-ingest: paused for review", {
           scheduledIngestId,
           ingestFileId,

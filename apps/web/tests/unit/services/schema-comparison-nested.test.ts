@@ -120,3 +120,42 @@ describe("compareSchemas — nested objects", () => {
     expect(result.changes).toHaveLength(0);
   });
 });
+
+// A properties bag is a plain object keyed by source column names, so a column
+// called "toString" or "constructor" hits Object.prototype. With a truthiness
+// membership check every change to such a field vanished from the diff — a
+// removed required column would have been auto-approved.
+describe("compareSchemas — columns named like Object.prototype members", () => {
+  const flat = (props: Record<string, SchemaProperty>, required: string[] = []): SchemaProperty => ({
+    type: "object",
+    properties: props,
+    required,
+  });
+
+  it("reports a new field named toString", () => {
+    const result = compareSchemas(
+      flat({ id: { type: "string" } }),
+      flat({ id: { type: "string" }, toString: { type: "string" } })
+    );
+
+    expect(result.changes).toContainEqual(expect.objectContaining({ type: "new_field", path: "toString" }));
+  });
+
+  it("reports a removed field named constructor as breaking", () => {
+    const result = compareSchemas(
+      flat({ id: { type: "string" }, constructor: { type: "string" } }),
+      flat({ id: { type: "string" } })
+    );
+
+    expect(result.isBreaking).toBe(true);
+    expect(result.changes).toContainEqual(
+      expect.objectContaining({ type: "removed_field", path: "constructor", severity: "error" })
+    );
+  });
+
+  it("reports a type change on a field named valueOf", () => {
+    const result = compareSchemas(flat({ valueOf: { type: "string" } }), flat({ valueOf: { type: "integer" } }));
+
+    expect(result.changes).toContainEqual(expect.objectContaining({ type: "type_change", path: "valueOf" }));
+  });
+});

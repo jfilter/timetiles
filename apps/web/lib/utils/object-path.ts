@@ -95,13 +95,15 @@ export const setByPath = (obj: Record<string, unknown>, path: string, value: unk
  * keys win; otherwise a nested object path is created.
  */
 export const setByPathOrKey = (obj: Record<string, unknown>, path: string, value: unknown): void => {
-  // The direct-key branch bypasses setByPath's guard, and a literal "__proto__"
-  // assignment re-parents the row object. Transform paths are user-configured.
-  if (isUnsafeKey(path)) {
-    throw new Error(`Unsafe path segment in: ${path}`);
-  }
-
   if (!path.includes(".") || Object.hasOwn(obj, path)) {
+    // A plain assignment to "__proto__" re-parents the row instead of storing a
+    // field. defineProperty writes the own property the caller asked for. Only
+    // this one key needs it — "constructor"/"prototype" are ordinary own keys
+    // here, and a column may legitimately be named that.
+    if (path === "__proto__") {
+      Object.defineProperty(obj, path, { value, enumerable: true, writable: true, configurable: true });
+      return;
+    }
     obj[path] = value;
     return;
   }

@@ -22,6 +22,7 @@ import {
   catalogAfterDeleteHook,
   catalogAfterErrorHook,
   catalogBeforeChangeHooks,
+  catalogBeforeDeleteHook,
 } from "./hooks";
 
 const Catalogs: CollectionConfig = {
@@ -33,6 +34,7 @@ const Catalogs: CollectionConfig = {
   hooks: {
     beforeChange: catalogBeforeChangeHooks,
     afterChange: catalogAfterChangeHooks,
+    beforeDelete: [catalogBeforeDeleteHook],
     afterDelete: [catalogAfterDeleteHook],
     afterError: [catalogAfterErrorHook],
   },

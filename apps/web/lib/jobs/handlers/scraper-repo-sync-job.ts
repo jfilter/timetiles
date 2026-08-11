@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 
+import { SCRAPER_MAX_REPO_SIZE_MB } from "@timetiles/shared";
 import type { Payload } from "payload";
 
 import type { ParsedScraper } from "@/lib/ingest/manifest-parser";
@@ -65,6 +66,31 @@ const validateGitCloneUrl = async (gitUrl: string): Promise<URL> => {
   return parsed;
 };
 
+/**
+ * Reject an oversized clone, the way the runner does.
+ *
+ * This clone runs on the WEB host just to read `scrapers.yml`, and the repo URL
+ * comes from a trust-level-3 user — without the cap a single huge blob in the tip
+ * commit (which `--depth 1` does not limit) fills the app server's temp space.
+ */
+const assertRepoWithinSizeLimit = async (repoDir: string): Promise<void> => {
+  const { stdout } = await execFileAsync("git", ["-C", repoDir, "count-objects", "-v"], { timeout: 30_000 });
+  const sizeMatch = /size-pack:\s+(\d+)/.exec(stdout);
+  const sizeMb = sizeMatch?.[1] != null ? Number(sizeMatch[1]) / 1024 : 0;
+
+  if (sizeMb > SCRAPER_MAX_REPO_SIZE_MB) {
+    throw new Error(`Repository size (${sizeMb.toFixed(1)}MB) exceeds the ${SCRAPER_MAX_REPO_SIZE_MB}MB limit`);
+  }
+};
+
+/** Materialize only the manifest from a --no-checkout clone. */
+const checkoutManifestOnly = async (repoDir: string): Promise<void> => {
+  await execFileAsync("git", ["-C", repoDir, "sparse-checkout", "set", "--no-cone", "scrapers.yml"], {
+    timeout: 30_000,
+  });
+  await execFileAsync("git", ["-C", repoDir, "checkout"], { timeout: 60_000 });
+};
+
 const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<string> => {
   const parsedGitUrl = await validateGitCloneUrl(gitUrl);
   const tempDir = await mkdtemp(path.join(tmpdir(), "scraper-repo-"));
@@ -82,6 +108,11 @@ const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<st
         "clone",
         "--depth",
         "1",
+        // Only `scrapers.yml` is read here. blob:none + no-checkout keeps the huge
+        // blobs on the server when it supports partial clone (older servers just
+        // ignore the filter, which is why the size check below stays).
+        "--filter=blob:none",
+        "--no-checkout",
         // Empty/absent branch means "repository default branch" (matches the
         // runner and the field's documented fallback) — `--branch ""` makes
         // git fail with "Remote branch  not found", permanently breaking sync.
@@ -99,6 +130,8 @@ const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<st
         },
       }
     );
+    await assertRepoWithinSizeLimit(tempDir);
+    await checkoutManifestOnly(tempDir);
   } catch (error) {
     // The caller only sees the temp dir once the clone succeeds, so clean it
     // up here — otherwise every failed sync (bad URL/branch/auth) leaks a dir.
@@ -164,7 +197,7 @@ const isScraperRunningConflict = (error: unknown): boolean =>
 const syncScrapers = async (
   payload: Payload,
   repoId: number,
-  repoCreatedBy: number | undefined,
+  repoCreatedBy: number | null,
   parsed: ParsedScraper[]
 ): Promise<UpsertResult> => {
   const result: UpsertResult = { created: 0, updated: 0, deleted: 0 };
@@ -191,7 +224,9 @@ const syncScrapers = async (
       name: scraper.name,
       slug: scraper.slug,
       repo: repoId,
-      repoCreatedBy: repoCreatedBy ?? undefined,
+      // null, never undefined: Payload drops undefined from an update, so a repo
+      // whose owner was cleared would leave the old owner on every scraper.
+      repoCreatedBy,
       runtime: scraper.runtime,
       entrypoint: scraper.entrypoint,
       outputFile: scraper.output,
@@ -324,7 +359,7 @@ export const scraperRepoSyncJob = {
       }
 
       // 4. Upsert scrapers
-      const repoCreatedBy = extractRelationId(repo.createdBy);
+      const repoCreatedBy = extractRelationId<number>(repo.createdBy) ?? null;
       const syncResult = await syncScrapers(payload, scraperRepoId, repoCreatedBy, parseResult.scrapers);
 
       // 5. Update repo sync status

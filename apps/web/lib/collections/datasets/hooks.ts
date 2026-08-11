@@ -18,7 +18,12 @@ import type {
   Where,
 } from "payload";
 
-import { safeFetchRecord, stripClientDenormFields, withDenormSync } from "@/lib/collections/catalog-ownership";
+import {
+  isDenormSyncWrite,
+  safeFetchRecord,
+  stripClientDenormFields,
+  withDenormSync,
+} from "@/lib/collections/catalog-ownership";
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { logger } from "@/lib/logger";
@@ -78,9 +83,13 @@ const processCatalogValidation = async (
   const catalog = await safeFetchRecord(req, "catalogs", catalogId);
 
   if (!catalog) {
-    // Explicit null, not an omitted key: on a partial update Payload would drop the
-    // omitted field and the row would keep the previous owner's read access.
-    return { catalogCreatorId: null, catalogIsPublic: false };
+    // Fail closed. safeFetchRecord swallows a transient DB error the same as a
+    // missing row, and both of the alternatives are worse than refusing the write:
+    // omitting catalogCreatorId keeps the previous owner readable (Payload drops
+    // undefined), writing null strips the real owner out of their own dataset —
+    // catalogCreatorId is what `access.update` filters on. The FK guarantees the
+    // catalog exists by the time the write reaches Postgres.
+    throw new Error(`Catalog ${catalogId} could not be resolved for access-field derivation`);
   }
 
   const catalogCreatorId = getCatalogCreatorId(catalog);
@@ -379,20 +388,16 @@ export const validatePublicCatalogDataset: CollectionBeforeChangeHook = async ({
     await validatePrivateImportAllowed(req, data?.isPublic);
   }
 
-  // Process catalog validation and set denormalized fields
-  if ((operation === "create" || operation === "update") && data?.catalog) {
-    try {
-      const catalogFields = await processCatalogValidation(req, data.catalog, data.isPublic, operation, originalDoc);
-      Object.assign(data, catalogFields);
-    } catch (error) {
-      // Re-throw validation errors, swallow others (catalog not found)
-      if (
-        error instanceof Error &&
-        (error.message.includes("must be public") || error.message.includes("can only create"))
-      ) {
-        throw error;
-      }
-    }
+  // Process catalog validation and set denormalized fields.
+  // A denorm resync carries the authoritative values already — re-deriving them
+  // from the catalog would undo them, which is exactly what a catalog delete needs
+  // (its children must lose the grant while the catalog row still exists).
+  if ((operation === "create" || operation === "update") && data?.catalog && !isDenormSyncWrite(req)) {
+    // No catch: every failure in here is either a validation error or an
+    // unresolvable catalog, and both must stop the write. Swallowing the latter
+    // let the dataset be stored with whatever access fields the caller sent.
+    const catalogFields = await processCatalogValidation(req, data.catalog, data.isPublic, operation, originalDoc);
+    Object.assign(data, catalogFields);
   }
 
   return data;

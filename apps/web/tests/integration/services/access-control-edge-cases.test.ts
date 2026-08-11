@@ -155,6 +155,72 @@ describe.sequential("Access Control Edge Cases", () => {
       });
       expect(adminDataset.id).toBe(dataset.id);
     });
+
+    // The FK sets datasets.catalog_id to NULL without running a dataset hook, so
+    // the denormalized grants the catalog handed down have to be cleared by the
+    // catalog's own afterDelete — otherwise the former catalog owner keeps write
+    // access to a dataset they never created, through a catalog that is gone.
+    it("drops the catalog-derived grants from datasets and events when the catalog is deleted", async () => {
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Catalog granting access", isPublic: false },
+        user: ownerUser,
+      });
+
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Dataset of another user", catalog: catalog.id, language: "eng", isPublic: false },
+        user: adminUser,
+      });
+
+      const event = await payload.create({
+        collection: "events",
+        data: {
+          dataset: dataset.id,
+          sourceData: { test: "grant" },
+          transformedData: { test: "grant" },
+          uniqueId: `${dataset.id}:test:grant-${Date.now()}`,
+        },
+        user: adminUser,
+      });
+
+      const beforeDelete = await payload.findByID({
+        collection: "datasets",
+        id: dataset.id,
+        overrideAccess: true,
+        depth: 0,
+      });
+      expect(beforeDelete.catalogCreatorId).toBe(ownerUser.id);
+
+      await payload.delete({ collection: "catalogs", id: catalog.id, user: adminUser, overrideAccess: false });
+
+      const orphanedDataset = await payload.findByID({
+        collection: "datasets",
+        id: dataset.id,
+        overrideAccess: true,
+        depth: 0,
+      });
+      expect(orphanedDataset.catalogCreatorId).toBeNull();
+
+      const orphanedEvent = await payload.findByID({
+        collection: "events",
+        id: event.id,
+        overrideAccess: true,
+        depth: 0,
+      });
+      expect(orphanedEvent.catalogOwnerId).toBeNull();
+
+      // The grant is gone, so the former catalog owner can no longer write to it.
+      await expect(
+        payload.update({
+          collection: "datasets",
+          id: dataset.id,
+          data: { name: "taken over" },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(FORBIDDEN);
+    });
   });
 
   describe("Relationship-Based Access", () => {

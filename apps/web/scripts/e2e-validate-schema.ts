@@ -192,11 +192,15 @@ const getCompletedMigrations = (): string[] => {
       "Get completed migrations"
     );
 
-    return result
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("name") && line !== "---")
-      .map((name) => name.replace(/^migration_/i, ""));
+    return (
+      result
+        .split("\n")
+        .map((line) => line.trim())
+        // The local branch goes through `make db-query`, whose psql output still
+        // carries the header, the dashed rule and a "(N rows)" footer.
+        .filter((line) => line && !line.startsWith("name") && !/^-+$/.test(line) && !/^\(\d+ rows?\)$/.test(line))
+        .map((name) => name.replace(/^migration_/i, ""))
+    );
   } catch {
     logger.debug("No completed migrations found or table doesn't exist");
     return [];

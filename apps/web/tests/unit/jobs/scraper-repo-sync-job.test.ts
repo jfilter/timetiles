@@ -410,6 +410,10 @@ describe.sequential("scraperRepoSyncJob", () => {
         "clone",
         "--depth",
         "1",
+        // Only scrapers.yml is checked out; the size cap backstops servers
+        // that ignore the blob filter.
+        "--filter=blob:none",
+        "--no-checkout",
         "--branch",
         "develop",
         "--single-branch",
@@ -508,9 +512,10 @@ describe.sequential("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     await scraperRepoSyncJob.handler(context);
 
-    // Should still create successfully with undefined repoCreatedBy
+    // Explicit null, not undefined: Payload drops undefined from an update, so an
+    // owner cleared on the repo has to reach the scrapers as a real null.
     expect(mockPayload.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ repoCreatedBy: undefined }) })
+      expect.objectContaining({ data: expect.objectContaining({ repoCreatedBy: null }) })
     );
   });
 

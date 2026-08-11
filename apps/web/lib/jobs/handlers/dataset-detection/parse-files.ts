@@ -81,7 +81,10 @@ export const processExcelFile = async (filePath: string): Promise<SheetInfo[]> =
     const worksheet = workbook.Sheets[sheetName!];
     if (!worksheet) continue;
 
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1 });
+    // blankrows:false to match convertSheetToCSV/getFileRowCount: a stale "!ref"
+    // pads the used range, and counting that padding reported more rows to the
+    // user than the import then actually streamed.
+    const jsonData = utils.sheet_to_json(worksheet, { header: 1, blankrows: false });
     if (jsonData.length > 0 && jsonData[0]) {
       sheets.push({
         name: sheetName ?? `Sheet${i}`,

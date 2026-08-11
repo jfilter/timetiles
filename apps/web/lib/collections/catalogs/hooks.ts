@@ -12,8 +12,10 @@ import type {
   CollectionAfterDeleteHook,
   CollectionAfterErrorHook,
   CollectionBeforeChangeHook,
+  CollectionBeforeDeleteHook,
   PayloadRequest,
 } from "payload";
+import { killTransaction } from "payload";
 
 import { withDenormSync } from "@/lib/collections/catalog-ownership";
 import { createLogger } from "@/lib/logger";
@@ -101,6 +103,22 @@ type CatalogChanges = {
   newIsPublic: boolean;
 };
 
+/**
+ * Run a bulk update and fail loudly on per-document errors.
+ *
+ * Payload's `update({ where })` does not throw when individual documents fail —
+ * it collects them in `errors`. For denormalized ACCESS fields that silence means
+ * some rows keep a grant everybody thinks was revoked, so the caller has to see it.
+ * Same pattern as the scraper-repos cascade delete.
+ */
+const assertNoBulkErrors = (result: { errors?: Array<{ message?: string }> }, context: string): void => {
+  if (result.errors && result.errors.length > 0) {
+    throw new Error(
+      `${context}: ${result.errors.length} document(s) failed. First error: ${result.errors[0]?.message ?? "unknown"}`
+    );
+  }
+};
+
 /** Sync catalog changes to child datasets */
 const syncDatasetsWithCatalog = async (
   req: PayloadRequest,
@@ -112,17 +130,21 @@ const syncDatasetsWithCatalog = async (
   if (changes.isPublicChanged) datasetUpdates.catalogIsPublic = changes.newIsPublic;
 
   if (Object.keys(datasetUpdates).length > 0) {
-    await withDenormSync(req, () =>
-      req.payload.update({
+    await withDenormSync(req, async () => {
+      const result = await req.payload.update({
         collection: "datasets",
         where: { catalog: { equals: catalogId } },
         data: datasetUpdates,
         overrideAccess: true,
         req,
-      })
-    );
+      });
+      assertNoBulkErrors(result, "Catalog sync to datasets");
+    });
   }
 };
+
+/** Datasets per bulk sync round — keeps IN lists and hook concurrency bounded. */
+const DENORM_SYNC_CHUNK_SIZE = 200;
 
 /** Bulk update a single collection for catalog sync */
 const bulkSyncCollection = async (
@@ -137,47 +159,34 @@ const bulkSyncCollection = async (
     // dropped by Payload, so a cleared owner has to reach the children as an explicit null.
     const ownerData = changes.createdByChanged ? { catalogOwnerId: changes.newCreatedBy } : {};
 
+    const syncIds = async (ids: number[], data: Record<string, unknown>): Promise<void> => {
+      if (ids.length === 0) return;
+      const result = await req.payload.update({
+        collection,
+        where: { dataset: { in: ids } },
+        data,
+        overrideAccess: true,
+        req,
+      });
+      assertNoBulkErrors(result, `Catalog sync to ${collection}`);
+    };
+
     if (!changes.isPublicChanged) {
       // Only ownership changed — same update for all datasets
-      await req.payload.update({
-        collection,
-        where: { dataset: { in: allIds } },
-        data: ownerData,
-        overrideAccess: true,
-        req,
-      });
+      await syncIds(allIds, ownerData);
     } else if (!changes.newIsPublic) {
       // Catalog became private — all children become non-public
-      await req.payload.update({
-        collection,
-        where: { dataset: { in: allIds } },
-        data: { datasetIsPublic: false, ...ownerData },
-        overrideAccess: true,
-        req,
-      });
+      await syncIds(allIds, { datasetIsPublic: false, ...ownerData });
     } else {
       // Catalog became public — visibility depends on each dataset's own isPublic
-      const publicIds = datasets.filter((d) => d.isPublic).map((d) => d.id);
-      const privateIds = datasets.filter((d) => !d.isPublic).map((d) => d.id);
-
-      if (publicIds.length > 0) {
-        await req.payload.update({
-          collection,
-          where: { dataset: { in: publicIds } },
-          data: { datasetIsPublic: true, ...ownerData },
-          overrideAccess: true,
-          req,
-        });
-      }
-      if (privateIds.length > 0) {
-        await req.payload.update({
-          collection,
-          where: { dataset: { in: privateIds } },
-          data: { datasetIsPublic: false, ...ownerData },
-          overrideAccess: true,
-          req,
-        });
-      }
+      await syncIds(
+        datasets.filter((d) => d.isPublic).map((d) => d.id),
+        { datasetIsPublic: true, ...ownerData }
+      );
+      await syncIds(
+        datasets.filter((d) => !d.isPublic).map((d) => d.id),
+        { datasetIsPublic: false, ...ownerData }
+      );
     }
   });
 
@@ -191,8 +200,13 @@ const batchSyncChildRecords = async (
   if (datasets.length === 0) return;
   if (!changes.createdByChanged && !changes.isPublicChanged) return;
 
-  await bulkSyncCollection(req, "events", datasets, changes);
-  await bulkSyncCollection(req, "dataset-schemas", datasets, changes);
+  // Chunked: a catalog with thousands of datasets would otherwise produce one
+  // enormous IN list and let Payload run that many per-document hooks at once.
+  for (let offset = 0; offset < datasets.length; offset += DENORM_SYNC_CHUNK_SIZE) {
+    const chunk = datasets.slice(offset, offset + DENORM_SYNC_CHUNK_SIZE);
+    await bulkSyncCollection(req, "events", chunk, changes);
+    await bulkSyncCollection(req, "dataset-schemas", chunk, changes);
+  }
 };
 
 export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
@@ -298,6 +312,77 @@ export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
     return doc;
   },
 ];
+
+/**
+ * Drop the access this catalog grants to everything below it, before it is deleted.
+ *
+ * `datasets.catalog_id` is ON DELETE SET NULL and no dataset hook runs on that
+ * cascade, so without this the orphaned datasets keep `catalogCreatorId` /
+ * `catalogIsPublic` — and every event and dataset-schema below them keeps the
+ * `catalogOwnerId` copied from it — and the former catalog owner goes on reaching
+ * rows whose catalog no longer exists.
+ *
+ * Only the OWNER grant is dropped. The public flags stay frozen as they are: an
+ * orphaned public dataset remains readable to everyone, which is the deliberate
+ * behaviour covered by the orphaned-resources access tests.
+ *
+ * Has to run BEFORE the delete: afterwards `catalog` is NULL, and it is a required
+ * field, so every update of an orphaned dataset fails validation. The write is
+ * marked as a denorm resync, which is also what stops the datasets hook from
+ * re-deriving the values from the catalog that is about to disappear.
+ */
+export const catalogBeforeDeleteHook: CollectionBeforeDeleteHook = async ({ req, id }) => {
+  try {
+    await clearCatalogGrants(req, id);
+  } catch (error) {
+    // A BULK delete (`delete({ where })`) collects per-document hook errors and still
+    // commits the shared transaction — the catalog would survive while the grants this
+    // hook already cleared stayed cleared. Kill the transaction so the whole operation
+    // is all-or-nothing instead of leaving half-stripped access fields behind.
+    await killTransaction(req);
+    throw error;
+  }
+};
+
+const clearCatalogGrants = async (req: PayloadRequest, id: number | string): Promise<void> => {
+  const datasets = await req.payload.find({
+    collection: "datasets",
+    where: { catalog: { equals: id } },
+    limit: 0,
+    pagination: false,
+    depth: 0,
+    // A soft-deleted dataset still carries the grant and can be restored later.
+    trash: true,
+    overrideAccess: true,
+    req,
+  });
+
+  if (datasets.docs.length === 0) return;
+
+  const children = datasets.docs.map((d) => ({ id: d.id, isPublic: d.isPublic ?? false }));
+
+  await batchSyncChildRecords(req, children, {
+    createdByChanged: true,
+    isPublicChanged: false,
+    newCreatedBy: null,
+    newIsPublic: false,
+  });
+
+  for (let offset = 0; offset < children.length; offset += DENORM_SYNC_CHUNK_SIZE) {
+    const ids = children.slice(offset, offset + DENORM_SYNC_CHUNK_SIZE).map((d) => d.id);
+    await withDenormSync(req, async () => {
+      const result = await req.payload.update({
+        collection: "datasets",
+        where: { id: { in: ids } },
+        data: { catalogCreatorId: null },
+        overrideAccess: true,
+        trash: true,
+        req,
+      });
+      assertNoBulkErrors(result, "Catalog delete clearing dataset grants");
+    });
+  }
+};
 
 export const catalogAfterDeleteHook: CollectionAfterDeleteHook = async ({ doc, req }) => {
   // Decrement catalog count when catalog is deleted

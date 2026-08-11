@@ -58,22 +58,16 @@ const loadDatasetAndTransforms = async (
   payload: Payload,
   job: IngestJob,
   logger: ReturnType<typeof createJobLogger>
-): Promise<{ dataset: Dataset | null; transforms: IngestTransform[] }> => {
-  let transforms: IngestTransform[] = [];
-  let dataset: Dataset | null = null;
+): Promise<{ dataset: Dataset; transforms: IngestTransform[] }> => {
+  // Deliberately unguarded: loadEffectiveDatasetForJob either returns a dataset or
+  // throws. Swallowing the throw ran detection with NO authored transforms, which
+  // silently produced a schema for untransformed data — every other stage treats
+  // the same lookup as fatal, so let Payload retry the job.
+  const dataset = await loadEffectiveDatasetForJob(payload, job);
 
-  try {
-    dataset = await loadEffectiveDatasetForJob(payload, job);
-
-    if (dataset) {
-      // Authored ops come from the dataset plan (frozen on the config snapshot at
-      // job creation). The detector resolves them into the job plan downstream.
-      transforms = readInterpretationPlan(dataset)?.ops ?? [];
-    }
-  } catch (error) {
-    // If dataset loading fails, continue with no transforms
-    logger.warn("Failed to load dataset for transforms", { error, dataset: job.dataset });
-  }
+  // Authored ops come from the dataset plan (frozen on the config snapshot at
+  // job creation). The detector resolves them into the job plan downstream.
+  const transforms: IngestTransform[] = readInterpretationPlan(dataset)?.ops ?? [];
 
   logger.info("Loaded import transforms", {
     transformCount: transforms.length,

@@ -61,6 +61,20 @@ const nestedShapeOf = (prop: SchemaProperty | undefined): SchemaProperty | undef
 };
 
 /**
+ * Own-property lookup for a properties bag.
+ *
+ * These bags are plain objects built from source column names, so a column called
+ * "toString" or "constructor" resolves to the inherited Object.prototype member —
+ * a truthiness check then reports the field as already present and every change to
+ * it silently disappears from the diff.
+ */
+const propAt = <T>(props: Record<string, T>, field: string): T | undefined =>
+  Object.hasOwn(props, field) ? props[field] : undefined;
+
+/** True when the properties bag has its OWN entry for this field. */
+const hasProp = (props: Record<string, unknown>, field: string): boolean => Object.hasOwn(props, field);
+
+/**
  * Detects removed fields from schema.
  */
 const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
@@ -68,7 +82,7 @@ const detectRemovedFields = (context: ChangeDetectionContext): boolean => {
   const { oldProps, newProps, changes } = context;
 
   for (const field of Object.keys(oldProps)) {
-    if (!newProps[field]) {
+    if (!hasProp(newProps, field)) {
       const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
         type: "removed_field",
@@ -96,7 +110,7 @@ const detectAddedFields = (context: ChangeDetectionContext): boolean => {
   const isFirstImport = Object.keys(oldProps).length === 0;
 
   for (const field of Object.keys(newProps)) {
-    if (!oldProps[field]) {
+    if (!hasProp(oldProps, field)) {
       const isRequired = newRequired.includes(field);
       const path = qualify(context.pathPrefix, field);
 
@@ -162,10 +176,10 @@ const detectFieldModifications = (context: ChangeDetectionContext): boolean => {
   const { oldProps, newProps, changes } = context;
 
   for (const field of Object.keys(oldProps)) {
-    if (!newProps[field]) continue;
+    if (!hasProp(newProps, field)) continue;
 
-    const oldProp = oldProps[field]!;
-    const newProp = newProps[field];
+    const oldProp = propAt(oldProps, field)!;
+    const newProp = propAt(newProps, field)!;
 
     // A node that is nothing but an unresolved `$ref` carries no type information. Schemas
     // stored before refs were inlined look like that, so comparing them would report a
@@ -205,7 +219,7 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
   const removedRequired = oldRequired.filter((f) => !newRequired.includes(f));
 
   for (const field of addedRequired) {
-    if (oldProps[field]) {
+    if (hasProp(oldProps, field)) {
       // Field existed but became required (breaking)
       const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
@@ -221,7 +235,7 @@ const detectRequiredFieldChanges = (context: ChangeDetectionContext): boolean =>
   }
 
   for (const field of removedRequired) {
-    if (newProps[field]) {
+    if (hasProp(newProps, field)) {
       // Field became optional (non-breaking)
       const path = qualify(context.pathPrefix, field);
       const change: SchemaChange = {
@@ -283,8 +297,8 @@ const compareLevel = (
 
   let nestedBreaking = false;
   for (const field of Object.keys(oldProps)) {
-    const oldNested = nestedShapeOf(oldProps[field]);
-    const newNested = nestedShapeOf(newProps[field]);
+    const oldNested = nestedShapeOf(propAt(oldProps, field));
+    const newNested = nestedShapeOf(propAt(newProps, field));
     // Only descend when BOTH sides are still object-shaped; an object→scalar switch is
     // already reported as a type change by detectFieldModifications.
     if (!oldNested || !newNested) continue;
