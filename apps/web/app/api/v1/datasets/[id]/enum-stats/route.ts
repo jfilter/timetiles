@@ -17,6 +17,7 @@ import { z } from "zod";
 import { apiRoute, NotFoundError } from "@/lib/api";
 import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
+import { jsonTextAtPathOrKey, jsonValueAtPathOrKey } from "@/lib/filters/json-field-sql";
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
@@ -25,6 +26,9 @@ import { toFieldLabel } from "@/lib/utils/strings";
 
 /** A composable SQL fragment, matching the alias used in lib/filters/to-sql-conditions. */
 type SqlFragment = ReturnType<typeof sql>;
+
+/** The jsonb column the value expressions read from, under the `e` alias of the scan below. */
+const EVENT_TRANSFORMED_DATA = sql`e.transformed_data`;
 
 const MAX_VALUES = 30;
 
@@ -49,12 +53,12 @@ const MAX_VALUES = 30;
  * The datasets join is required: toSqlConditions references d.catalog_id for access control.
  */
 const buildEnumStatsQuery = (fieldPath: string, isTag: boolean, whereClause: SqlFragment) => {
-  const arrayValue = sql`e.transformed_data #> string_to_array(${fieldPath}, '.')`;
+  const arrayValue = jsonValueAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldPath}`);
   const normalizedArrayValue = sql`CASE
         WHEN jsonb_typeof(${arrayValue}) = 'array' THEN ${arrayValue}
         ELSE '[]'::jsonb
       END`;
-  const scalarValue = sql`e.transformed_data #>> string_to_array(${fieldPath}, '.')`;
+  const scalarValue = jsonTextAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldPath}`);
 
   if (isTag) {
     // The denominator is the number of distinct events that carry the field at all, so it

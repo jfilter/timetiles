@@ -12,6 +12,7 @@ import { aliasedTable, and, count, inArray, isNotNull, type SQL, sql } from "@pa
 import type { Payload } from "payload";
 
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { jsonTextAtPathOrKey } from "@/lib/filters/json-field-sql";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { catalogs, datasets, events } from "@/payload-generated-schema";
 
@@ -90,14 +91,15 @@ export const buildClusterFilterClause = (
  * `name`, `source_headline`) — showed the correct title in the list and a bare
  * "Event 12345" in map popups and cluster previews.
  *
- * The role holds a dot path, hence `string_to_array` + `#>>` rather than a plain `->>`.
+ * The role holds a dot path, so it resolves through {@link jsonTextAtPathOrKey} — literal key
+ * first, then traversal, the same order `getByPathOrKey` uses on the row.
  */
 export const buildClusterPreviewTitle = (eventTable: typeof events, datasetTable: typeof datasets) =>
   // NULLIF on every candidate: `extractFieldFromData` ends in `return value || null`, so a
   // blank cell falls through to the next name. Plain COALESCE would stop on the empty string
   // and label the marker with nothing while the list beside it shows the fallback.
   sql<string | null>`COALESCE(
-    NULLIF(${eventTable.transformedData} #>> string_to_array(${datasetTable.interpretationPlan}->'roles'->>'title', '.'), ''),
+    NULLIF(${jsonTextAtPathOrKey(sql`${eventTable.transformedData}`, sql`${datasetTable.interpretationPlan}->'roles'->>'title'`)}, ''),
     NULLIF(${eventTable.transformedData}->>'title', ''),
     NULLIF(${eventTable.transformedData}->>'name', '')
   )::text`;

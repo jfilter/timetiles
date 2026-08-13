@@ -15,6 +15,7 @@ import { apiRoute } from "@/lib/api";
 import { createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
+import { jsonTextAtPathOrKey } from "@/lib/filters/json-field-sql";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
@@ -169,7 +170,7 @@ const buildSortExpression = (eventTable: FilteredEventTable, sortField: string) 
     return column;
   }
   if (isValidFieldKey(sortField)) {
-    return sql`${eventTable.transformedData} #>> string_to_array(${sortField}, '.')`;
+    return jsonTextAtPathOrKey(sql`${eventTable.transformedData}`, sql`${sortField}`);
   }
 
   return eventTable.eventTimestamp;

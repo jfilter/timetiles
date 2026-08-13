@@ -59,8 +59,8 @@ export const planRolesToFieldPathMappings = (dataset: unknown): FieldMappingOver
 /** Extract a non-empty string value from a data object by field path. Returns null if missing, empty, or non-primitive. */
 export const extractFieldFromData = (data: unknown, path: string | null | undefined): string | null => {
   if (!path || typeof data !== "object" || data === null || Array.isArray(data)) return null;
-  // Dotted role paths must traverse, matching the SQL title resolution in
-  // filtered-events-query (`#>> string_to_array(...)`) — a literal key still wins.
+  // Literal key first, then traversal — the same order the SQL side uses via
+  // `jsonTextAtPathOrKey`, so list and map agree on a dotted role path.
   const value = getByPathOrKey(data, path);
   if (value === null || value === undefined) return null;
   if (typeof value === "string") return value || null;

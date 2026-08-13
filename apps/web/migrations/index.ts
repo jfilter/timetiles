@@ -72,6 +72,7 @@ import * as migration_20260731_200000_title_resolution_skips_empty from './20260
 import * as migration_20260731_210000_widen_bucket_size_to_bigint from './20260731_210000_widen_bucket_size_to_bigint';
 import * as migration_20260813_180000_pg_functions_skip_trashed_events from './20260813_180000_pg_functions_skip_trashed_events';
 import * as migration_20260813_181000_drop_duplicate_dataset_name_index from './20260813_181000_drop_duplicate_dataset_name_index';
+import * as migration_20260813_200000_pg_functions_literal_key_first from './20260813_200000_pg_functions_literal_key_first';
 
 export const migrations = [
   {
@@ -443,5 +444,10 @@ export const migrations = [
     up: migration_20260813_181000_drop_duplicate_dataset_name_index.up,
     down: migration_20260813_181000_drop_duplicate_dataset_name_index.down,
     name: '20260813_181000_drop_duplicate_dataset_name_index'
+  },
+  {
+    up: migration_20260813_200000_pg_functions_literal_key_first.up,
+    down: migration_20260813_200000_pg_functions_literal_key_first.down,
+    name: '20260813_200000_pg_functions_literal_key_first'
   },
 ];

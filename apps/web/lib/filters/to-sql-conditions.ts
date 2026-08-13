@@ -13,8 +13,12 @@ import type { NumberFormat } from "@/lib/utils/number-parsing";
 
 import type { CanonicalBounds, CanonicalEventFilters, RangeFilter } from "./canonical-event-filters";
 import { isValidFieldKey } from "./field-validation";
+import { jsonTextAtPathOrKey, jsonValueAtPathOrKey } from "./json-field-sql";
 
 type SqlFragment = ReturnType<typeof sql>;
+
+/** The jsonb column every condition in this module reads field values from. */
+const EVENT_TRANSFORMED_DATA = sql`e.transformed_data`;
 
 /**
  * Convert canonical filters to an array of SQL condition fragments.
@@ -169,21 +173,21 @@ export const buildFieldFilterConditions = (
     if (tagFields?.has(fieldKey)) {
       // Tag/array fields: match events whose array contains ANY of the selected values.
       // Uses @> (contains) with OR for each value: (arr @> '["v1"]' OR arr @> '["v2"]').
-      // #> resolves dot-paths the same way the scalar branch and enum-stats do.
+      const arrayValue = jsonValueAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldKey}`);
       const containsClauses = values.map((value) => {
         const jsonbLiteral = JSON.stringify([value]);
-        return sql`e.transformed_data #> string_to_array(${fieldKey}, '.') @> ${jsonbLiteral}::jsonb`;
+        return sql`${arrayValue} @> ${jsonbLiteral}::jsonb`;
       });
       const combined = sql.join(containsClauses, sql` OR `);
       conditions.push(sql`(${combined})`);
     } else {
       // Scalar fields: exact text match via IN
-      conditions.push(
-        sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.')) IN (${sql.join(
-          values.map((value) => sql`${value}`),
-          sql`, `
-        )})`
+      const scalarValue = jsonTextAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldKey}`);
+      const valueList = sql.join(
+        values.map((value) => sql`${value}`),
+        sql`, `
       );
+      conditions.push(sql`${scalarValue} IN (${valueList})`);
     }
   }
   return conditions;
@@ -234,7 +238,7 @@ export const buildRangeFilterConditions = (
 /** Build the regex-guarded `::numeric` (NULL for non-numeric cells) for one field/format. */
 export const buildNormalizedNumericExpr = (fieldKey: string, format: NumberFormat): SqlFragment => {
   // Raw text value at the path.
-  let normalized: SqlFragment = sql`(e.transformed_data #>> string_to_array(${fieldKey}, '.'))`;
+  let normalized: SqlFragment = jsonTextAtPathOrKey(EVENT_TRANSFORMED_DATA, sql`${fieldKey}`);
 
   // Strip thousands separator first, then convert the decimal separator to '.'.
   if (format.thousandsSeparator) {

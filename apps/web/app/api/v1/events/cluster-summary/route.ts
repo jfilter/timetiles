@@ -18,6 +18,7 @@ import {
   createFilteredLocatedEventDatasetScope,
 } from "@/lib/database/filtered-events-query";
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
+import { jsonTextAtPathOrKey } from "@/lib/filters/json-field-sql";
 import { buildH3CellSqlCondition } from "@/lib/filters/to-sql-conditions";
 import { ClusterSummaryQuerySchema, type ClusterSummaryResponse } from "@/lib/schemas/events";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
@@ -188,17 +189,17 @@ const fetchCategoryFacets = async (
   const categories: ClusterSummaryResponse["categories"] = [];
 
   for (const field of fields) {
-    // Enum field paths can be nested dot-paths (meta.category) — resolve them
-    // the same way enum-stats and the filter builders do, via #>>; ->> would
-    // look up the literal key and return NULL for every nested field.
+    // Enum field paths can be nested dot-paths (meta.category) — resolve them the
+    // same way enum-stats and the filter builders do, literal key before traversal.
+    const fieldValue = jsonTextAtPathOrKey(sql`e.transformed_data`, sql`${field}`);
     const result = (await payload.db.drizzle.execute(sql`
-      SELECT (e.transformed_data #>> string_to_array(${field}, '.'))::text as value, COUNT(*)::integer as count
+      SELECT ${fieldValue}::text as value, COUNT(*)::integer as count
       FROM payload.events e
       JOIN payload.datasets d ON e.dataset_id = d.id
       WHERE ${whereClause}
         AND e.location_longitude IS NOT NULL
         AND ${cellCondition}
-        AND e.transformed_data #>> string_to_array(${field}, '.') IS NOT NULL
+        AND ${fieldValue} IS NOT NULL
       GROUP BY value
       ORDER BY count DESC
       LIMIT 5
