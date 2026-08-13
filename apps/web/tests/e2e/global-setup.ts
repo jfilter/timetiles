@@ -20,13 +20,11 @@ const __dirname = path.dirname(__filename);
 // Load environment variables before importing database utilities
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
-import { resetEnv } from "@/lib/config/env";
 import { dropDatabase, listDatabasesByPrefix } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
 import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
-import { createSeedManager } from "@/lib/seed/index";
 
-import { E2E_SEED_COLLECTIONS } from "./config";
+import { seedE2ETestData } from "./seed-e2e-data";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
 import { findAvailablePort } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
@@ -58,31 +56,6 @@ const waitForServer = async (url: string, timeout: number): Promise<void> => {
   }
 
   throw new Error(`Server at ${url} failed to start within ${timeout}ms`);
-};
-
-/**
- * Seed E2E test data into a database.
- */
-const seedE2ETestData = async (databaseUrl: string): Promise<void> => {
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-  process.env.DATABASE_URL = databaseUrl;
-  resetEnv(); // Flush cached getEnv() so Payload connects to the test database
-
-  let seedManager;
-  try {
-    seedManager = createSeedManager();
-    await seedManager.truncate();
-    await seedManager.seedWithConfig({ preset: "e2e", collections: [...E2E_SEED_COLLECTIONS] });
-    console.log("✅ Seeded E2E test data");
-  } finally {
-    if (seedManager) {
-      await seedManager.cleanup();
-    }
-    if (originalDatabaseUrl) {
-      process.env.DATABASE_URL = originalDatabaseUrl;
-    }
-    resetEnv();
-  }
 };
 
 const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseName: string): Promise<void> => {

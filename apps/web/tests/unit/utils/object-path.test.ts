@@ -19,8 +19,19 @@ describe.sequential("object-path", () => {
   describe("getByPath", () => {
     it("walks nested objects and returns undefined for missing segments", () => {
       expect(getByPath({ user: { email: "a@b.c" } }, "user.email")).toBe("a@b.c");
+      expect(getByPath({ user: { profile: { age: 30 } } }, "user.profile.age")).toBe(30);
       expect(getByPath({ user: {} }, "user.phone")).toBeUndefined();
       expect(getByPath(null, "user.email")).toBeUndefined();
+    });
+
+    it("indexes into arrays by position", () => {
+      expect(getByPath({ coords: [10, 20] }, "coords.0")).toBe(10);
+      expect(getByPath({ coords: [10, 20] }, "coords.1")).toBe(20);
+    });
+
+    it("distinguishes a stored null from a missing key", () => {
+      expect(getByPath({ value: null }, "value")).toBeNull();
+      expect(getByPath({ value: null }, "other")).toBeUndefined();
     });
 
     it("never traverses inherited keys", () => {
@@ -40,7 +51,14 @@ describe.sequential("object-path", () => {
     it("creates intermediate objects", () => {
       const obj: Record<string, unknown> = {};
       setByPath(obj, "user.email", "a@b.c");
-      expect(obj).toEqual({ user: { email: "a@b.c" } });
+      setByPath(obj, "a.b.c.d.e", "deep");
+      expect(obj).toEqual({ user: { email: "a@b.c" }, a: { b: { c: { d: { e: "deep" } } } } });
+    });
+
+    it("overwrites an existing value", () => {
+      const obj: Record<string, unknown> = { user: { email: "old@b.c" } };
+      setByPath(obj, "user.email", "new@b.c");
+      expect(obj).toEqual({ user: { email: "new@b.c" } });
     });
 
     it("rejects unsafe segments", () => {

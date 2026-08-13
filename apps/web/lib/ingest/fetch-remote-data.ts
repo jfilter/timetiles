@@ -185,6 +185,27 @@ export const isSameOriginForCredentials = (candidate: string, reference: string)
   }
 };
 
+/** Fetch every page of a paginated JSON API and reduce the records to CSV. */
+const fetchPaginatedToCsv = async (
+  options: FetchRemoteDataOptions,
+  pagination: PaginationConfig,
+  authHeaders: Record<string, string>,
+  timeout: number
+): Promise<Required<ConversionResult>> => {
+  const result = await fetchPaginated(
+    options.sourceUrl,
+    pagination,
+    options.jsonApiConfig?.recordsPath ?? undefined,
+    buildPaginationFetchOptions(options, authHeaders, timeout)
+  );
+
+  let records = result.allRecords;
+  if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
+  if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
+
+  return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed: result.pagesProcessed };
+};
+
 /** Convert a JSON response to CSV, handling pagination and pre-processing. */
 const convertFetchedJson = async (
   options: FetchRemoteDataOptions,
@@ -192,24 +213,14 @@ const convertFetchedJson = async (
   authHeaders: Record<string, string>,
   timeout: number
 ): Promise<ConversionResult> => {
-  const { sourceUrl, jsonApiConfig } = options;
-  const recordsPath = jsonApiConfig?.recordsPath ?? undefined;
+  const { jsonApiConfig } = options;
 
   if (jsonApiConfig?.pagination?.enabled) {
-    const result = await fetchPaginated(
-      sourceUrl,
-      jsonApiConfig.pagination,
-      recordsPath,
-      buildPaginationFetchOptions(options, authHeaders, timeout)
-    );
-    let records = result.allRecords;
-    if (options.preProcessing) records = preProcessRecords(records, options.preProcessing);
-    if (options.excludeFields?.length) records = stripFields(records, options.excludeFields);
-    return { finalData: recordsToCsv(records), recordCount: records.length, pagesProcessed: result.pagesProcessed };
+    return fetchPaginatedToCsv(options, jsonApiConfig.pagination, authHeaders, timeout);
   }
 
   const result = convertJsonToCsv(fetchedData, {
-    recordsPath,
+    recordsPath: jsonApiConfig?.recordsPath ?? undefined,
     preProcessing: options.preProcessing ?? undefined,
     excludeFields: options.excludeFields,
   });
@@ -248,41 +259,25 @@ const fetchPostPaginated = async (
   options: FetchRemoteDataOptions,
   authHeaders: Record<string, string>
 ): Promise<FetchRemoteDataResult> => {
-  const { sourceUrl, jsonApiConfig } = options;
   const timeout = options.timeout ?? 60_000;
-  const recordsPath = jsonApiConfig!.recordsPath ?? undefined;
-  const result = await fetchPaginated(
-    sourceUrl,
-    jsonApiConfig!.pagination!,
-    recordsPath,
-    buildPaginationFetchOptions(options, authHeaders, timeout)
+  const { finalData, recordCount, pagesProcessed } = await fetchPaginatedToCsv(
+    options,
+    options.jsonApiConfig!.pagination!,
+    authHeaders,
+    timeout
   );
 
-  let records = result.allRecords;
-  if (options.preProcessing) {
-    records = preProcessRecords(records, options.preProcessing);
-  }
-  if (options.excludeFields?.length) {
-    records = stripFields(records, options.excludeFields);
-  }
-
-  const finalData = recordsToCsv(records);
-  const contentHash = calculateDataHash(finalData);
-
-  logger.info("POST paginated JSON fetch complete", {
-    pagesProcessed: result.pagesProcessed,
-    totalRecords: records.length,
-  });
+  logger.info("POST paginated JSON fetch complete", { pagesProcessed, totalRecords: recordCount });
 
   return {
     data: finalData,
     mimeType: "text/csv",
     fileExtension: ".csv",
-    contentHash,
+    contentHash: calculateDataHash(finalData),
     originalContentType: "application/json",
     wasConverted: true,
-    recordCount: records.length,
-    pagesProcessed: result.pagesProcessed,
+    recordCount,
+    pagesProcessed,
   };
 };
 

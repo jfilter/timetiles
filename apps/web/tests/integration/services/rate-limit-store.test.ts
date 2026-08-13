@@ -15,12 +15,9 @@ import { MemoryRateLimitStore } from "@/lib/services/rate-limit/memory-store";
 import { PgRateLimitStore } from "@/lib/services/rate-limit/pg-store";
 import type { RateLimitStore } from "@/lib/services/rate-limit/store";
 import { RateLimitService, resetRateLimitService } from "@/lib/services/rate-limit-service";
+import { sleep } from "@/lib/utils/sleep";
 
 import { createIntegrationTestEnvironment } from "../../setup/integration/environment";
-
-const sleep = async (ms: number): Promise<void> => {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-};
 
 describe.sequential("RateLimitStore backends", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;

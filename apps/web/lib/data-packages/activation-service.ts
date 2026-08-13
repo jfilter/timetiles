@@ -14,7 +14,7 @@ import type { DataPackageActivation, DataPackageManifest, DataPackageTransform }
 import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
 import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
-import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
@@ -522,7 +522,7 @@ export const activateDataPackage = async (
       // to "running". Without this, a transient queue failure leaves the freshly
       // activated ingest stuck "running", blocking all future triggers (manual,
       // webhook, scheduler) until the hourly stuck-ingest cleanup heals it.
-      const previousStatus = fullIngest.lastStatus ?? null;
+      const snapshot = captureTriggerClaim(fullIngest);
       try {
         await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
         logger.info({ scheduledIngestId: scheduledIngest.id }, "Triggered first import for data package");
@@ -533,12 +533,7 @@ export const activateDataPackage = async (
         // revert so future triggers are not silently blocked. Mirrors the
         // recovery in queueWebhookImport and the manual trigger route.
         if (!(triggerError instanceof Error && triggerError.message.includes("already running"))) {
-          await payload.update({
-            collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-            id: scheduledIngest.id,
-            data: { lastStatus: previousStatus },
-            overrideAccess: true,
-          });
+          await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
         }
         throw triggerError;
       }

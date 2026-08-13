@@ -12,7 +12,7 @@
 import { z } from "zod";
 
 import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
-import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import { logError } from "@/lib/logger";
 
 export const POST = apiRoute({
@@ -29,9 +29,9 @@ export const POST = apiRoute({
       throw new ConflictError("Import is disabled");
     }
 
-    // Capture the pre-claim status so we can revert if the queue step fails
+    // Capture the pre-claim state so we can revert if the queue step fails
     // after the atomic claim has already set lastStatus to "running".
-    const previousStatus = schedule.lastStatus ?? null;
+    const snapshot = captureTriggerClaim(schedule);
 
     try {
       await triggerScheduledIngest(payload, schedule, new Date(), { triggeredBy: "manual" });
@@ -47,9 +47,9 @@ export const POST = apiRoute({
       // recovery in queueWebhookImport.
       logError(error, "Failed to queue manual ingest job, reverting status", {
         scheduledIngestId: schedule.id,
-        previousStatus,
+        previousStatus: snapshot.lastStatus,
       });
-      await payload.update({ collection: "scheduled-ingests", id: params.id, data: { lastStatus: previousStatus } });
+      await revertTriggerClaim(payload, params.id, snapshot);
       throw error;
     }
 

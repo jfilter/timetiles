@@ -13,6 +13,7 @@ import { NextRequest } from "next/server";
 import { getPayload } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type * as TriggerService from "@/lib/ingest/trigger-service";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
@@ -32,7 +33,10 @@ vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
-vi.mock("@/lib/ingest/trigger-service", () => ({ triggerScheduledIngest: mocks.mockTriggerScheduledIngest }));
+vi.mock("@/lib/ingest/trigger-service", async (importOriginal) => {
+  const actual = await importOriginal<typeof TriggerService>();
+  return { ...actual, triggerScheduledIngest: mocks.mockTriggerScheduledIngest };
+});
 
 // Import AFTER mocks
 const { POST } = await import("@/app/api/scheduled-ingests/[id]/trigger/route");

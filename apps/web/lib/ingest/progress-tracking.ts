@@ -31,6 +31,27 @@ import { normalizeJobId } from "@/lib/utils/event-params";
 import type { IngestJob } from "@/payload-types";
 
 /**
+ * Cumulative processing rate and ETA for a stage.
+ *
+ * The rate is rows-since-stage-start over elapsed time, not a per-batch rate: `rowsProcessed`
+ * is cumulative, so it stays smooth on its own. `rowsRemaining` is clamped because stages that
+ * stream without a pre-scan (analyze-duplicates) start at `rowsTotal = 0`, which would
+ * otherwise yield a negative remainder and a garbage ETA.
+ */
+const calculateThroughput = (
+  stage: StageProgress,
+  rowsProcessed: number
+): { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null } => {
+  const timeElapsed = stage.startedAt ? (Date.now() - new Date(stage.startedAt).getTime()) / 1000 : 0;
+  const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
+
+  const rowsRemaining = Math.max(0, stage.rowsTotal - rowsProcessed);
+  const estimatedSecondsRemaining = rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
+
+  return { rowsPerSecond, estimatedSecondsRemaining };
+};
+
+/**
  * Centralized progress tracking service for detailed per-stage tracking.
  */
 export class ProgressTrackingService {
@@ -276,25 +297,7 @@ export class ProgressTrackingService {
       stage,
       (stageData) => {
         const sd = stageData!;
-
-        // Processing rate = rows-since-stage-start / elapsed, i.e. the cumulative
-        // average over the stage. Because `rowsProcessed` is cumulative this is
-        // already smooth (it does not spike per batch). An EMA was attempted here
-        // previously but never took effect — the previous-rate term read from the
-        // passed job, whose in-memory `rowsPerSecond` was never carried forward
-        // between calls, so it was always null. Use the plain cumulative rate,
-        // consistent with updateAndCompleteBatch.
-        const timeElapsed = sd.startedAt ? (Date.now() - new Date(sd.startedAt).getTime()) / 1000 : 0;
-        const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
-
-        // Clamp: stages with an unknown total start at rowsTotal=0 (e.g.
-        // analyze-duplicates streams without a pre-scan), which would otherwise
-        // produce a negative remaining count and a garbage ETA.
-        const rowsRemaining = Math.max(0, sd.rowsTotal - rowsProcessed);
-        const estimatedSecondsRemaining =
-          rowsPerSecond !== null && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
-
-        return { ...sd, rowsProcessed, currentBatchRows, rowsPerSecond, estimatedSecondsRemaining };
+        return { ...sd, rowsProcessed, currentBatchRows, ...calculateThroughput(sd, rowsProcessed) };
       },
       { requireExisting: true }
     );
@@ -325,23 +328,11 @@ export class ProgressTrackingService {
       stage,
       (stageData) => {
         const sd = stageData!;
-
-        // Calculate processing rate (same as updateStageProgress)
-        const timeElapsed = sd.startedAt ? (Date.now() - new Date(sd.startedAt).getTime()) / 1000 : 0;
-        const rowsPerSecond = timeElapsed > 0 ? rowsProcessed / timeElapsed : null;
-
-        // Estimate time remaining (clamped — rowsTotal may be 0 for stages that
-        // stream without a pre-scan, see updateStageProgress)
-        const rowsRemaining = Math.max(0, sd.rowsTotal - rowsProcessed);
-        const estimatedSecondsRemaining = rowsPerSecond && rowsPerSecond > 0 ? rowsRemaining / rowsPerSecond : null;
-
-        // Merge both updates: progress fields + batch completion fields
         return {
           ...sd,
           rowsProcessed,
           currentBatchRows: 0, // Reset (batch is complete)
-          rowsPerSecond,
-          estimatedSecondsRemaining,
+          ...calculateThroughput(sd, rowsProcessed),
           batchesProcessed: batchNumber,
         };
       },

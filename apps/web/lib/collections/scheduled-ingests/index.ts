@@ -21,6 +21,7 @@
 
 import type { CollectionAfterErrorHook, CollectionConfig, Payload, PayloadRequest } from "payload";
 
+import { validateDatasetCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -28,7 +29,7 @@ import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 
-import { createCommonConfig, createOwnershipAccess, denyPendingDeletion, isPrivileged } from "../shared-fields";
+import { createCommonConfig, createOwnershipAccess, denyPendingDeletion } from "../shared-fields";
 import { coreFields } from "./fields/core-fields";
 import { importConfigFields } from "./fields/ingest-config-fields";
 import { runtimeFields } from "./fields/runtime-fields";
@@ -231,36 +232,12 @@ const collectReferencedDatasetIds = (data: Record<string, unknown> | undefined):
  */
 const validateDatasetAccess = async (data: unknown, req: PayloadRequest): Promise<void> => {
   const typedData = data as Record<string, unknown> | undefined;
-  if (!req.user || isPrivileged(req.user)) return;
+  if (!req.user) return;
 
   const datasetIds = collectReferencedDatasetIds(typedData);
   if (datasetIds.length === 0) return;
 
-  for (const datasetId of datasetIds) {
-    const dataset = await req.payload.findByID({
-      collection: "datasets",
-      id: datasetId,
-      depth: 0,
-      overrideAccess: true,
-      disableErrors: true,
-    });
-
-    const catalogId = dataset ? extractRelationId(dataset.catalog) : undefined;
-    const catalog =
-      catalogId == null
-        ? null
-        : await req.payload.findByID({
-            collection: "catalogs",
-            id: catalogId,
-            depth: 0,
-            overrideAccess: true,
-            disableErrors: true,
-          });
-
-    if (!catalog || extractRelationId(catalog.createdBy) !== req.user.id) {
-      throw new Error("You do not have permission to use this dataset");
-    }
-  }
+  await validateDatasetCatalogOwnership(req, datasetIds, req.user);
 };
 
 const trackScheduleQuotaUsage = async (

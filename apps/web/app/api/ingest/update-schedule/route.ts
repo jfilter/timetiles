@@ -31,7 +31,7 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
-import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -206,7 +206,7 @@ export const PATCH = apiRoute({
         depth: 0,
         req,
       });
-      const previousStatus = updatedSchedule.lastStatus ?? null;
+      const snapshot = captureTriggerClaim(updatedSchedule);
       try {
         await triggerScheduledIngest(payload, updatedSchedule, new Date(), { triggeredBy: "manual" });
         logger.info({ scheduledIngestId: body.scheduledIngestId }, "Triggered run after schedule update");
@@ -218,12 +218,7 @@ export const PATCH = apiRoute({
           // stuck as "running" — revert so future triggers aren't blocked. The
           // schedule update itself succeeded, so we still return success.
           logError(error, "Failed to trigger run after schedule update", { scheduledIngestId: body.scheduledIngestId });
-          await payload.update({
-            collection: COLLECTION,
-            id: body.scheduledIngestId,
-            data: { lastStatus: previousStatus },
-            overrideAccess: true,
-          });
+          await revertTriggerClaim(payload, body.scheduledIngestId, snapshot);
         }
       }
     }

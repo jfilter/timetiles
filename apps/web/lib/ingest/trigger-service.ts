@@ -150,6 +150,35 @@ export const triggerScheduledIngest = async (
   return { jobId: urlFetchJob.id };
 };
 
+/** The fields the atomic claim overwrites, captured before the claim. */
+export interface TriggerClaimSnapshot {
+  lastStatus: ScheduledIngest["lastStatus"];
+  lastRun: string | null;
+  currentRetries: number;
+}
+
+/**
+ * Capture the state the claim is about to overwrite.
+ *
+ * All three fields matter: the claim stamps `lastRun` and resets `currentRetries` alongside
+ * the status, so reverting the status alone leaves the previous outcome wearing the timestamp
+ * of a run that never started and silently restores the retry budget.
+ */
+export const captureTriggerClaim = (scheduledIngest: ScheduledIngest): TriggerClaimSnapshot => ({
+  lastStatus: scheduledIngest.lastStatus ?? null,
+  lastRun: scheduledIngest.lastRun ?? null,
+  currentRetries: scheduledIngest.currentRetries ?? 0,
+});
+
+/** Restore a captured claim after the queue step failed, so the schedule is not stuck "running". */
+export const revertTriggerClaim = async (
+  payload: Payload,
+  id: number | string,
+  snapshot: TriggerClaimSnapshot
+): Promise<void> => {
+  await payload.update({ collection: COLLECTION_NAMES.SCHEDULED_INGESTS, id, data: snapshot, overrideAccess: true });
+};
+
 /**
  * Queue an import job for a webhook-triggered scheduled ingest.
  *
@@ -165,11 +194,7 @@ export const queueWebhookImport = async (
   scheduledIngest: ScheduledIngest
 ): Promise<{ jobId: number }> => {
   const currentTime = new Date();
-  const previousStatus = scheduledIngest.lastStatus ?? null;
-  // The claim also stamps lastRun and resets currentRetries — reverting only the status would
-  // leave the previous outcome ("success") wearing the timestamp of a run that never started.
-  const previousRun = scheduledIngest.lastRun ?? null;
-  const previousRetries = scheduledIngest.currentRetries ?? 0;
+  const snapshot = captureTriggerClaim(scheduledIngest);
 
   try {
     return await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
@@ -180,13 +205,9 @@ export const queueWebhookImport = async (
     // Revert the claim so the import doesn't get stuck as "running"
     logError(queueError, "Failed to queue webhook job, reverting status", {
       scheduledIngestId: scheduledIngest.id,
-      previousStatus,
+      previousStatus: snapshot.lastStatus,
     });
-    await payload.update({
-      collection: "scheduled-ingests",
-      id: scheduledIngest.id,
-      data: { lastStatus: previousStatus, lastRun: previousRun, currentRetries: previousRetries },
-    });
+    await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
     throw new Error("Failed to queue import job");
   }
 };

@@ -7,7 +7,7 @@
  * @module
  * @category Collections
  */
-import type { Payload, PayloadRequest } from "payload";
+import { APIError, type Payload, type PayloadRequest } from "payload";
 
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -44,6 +44,51 @@ export const validateCatalogOwnership = async (
 };
 
 /**
+ * Validates that the user owns the catalog behind every referenced dataset.
+ *
+ * Naming an existing dataset is a targeted write, so — unlike
+ * {@link validateCatalogOwnership} — a public catalog does not grant it. Privileged
+ * users bypass, matching the `update` access of the collections that call this.
+ *
+ * @throws APIError 403 if any dataset is out of reach
+ */
+export const validateDatasetCatalogOwnership = async (
+  req: PayloadRequest,
+  datasetIds: readonly (string | number)[],
+  user: { id: number; role?: string | null }
+): Promise<void> => {
+  if (isPrivileged(user)) return;
+
+  for (const datasetId of datasetIds) {
+    const dataset = await req.payload.findByID({
+      collection: "datasets",
+      id: datasetId,
+      depth: 0,
+      overrideAccess: true,
+      disableErrors: true,
+      req,
+    });
+
+    const catalogId = dataset ? extractRelationId<number>(dataset.catalog) : undefined;
+    const catalog =
+      catalogId == null
+        ? null
+        : await req.payload.findByID({
+            collection: "catalogs",
+            id: catalogId,
+            depth: 0,
+            overrideAccess: true,
+            disableErrors: true,
+            req,
+          });
+
+    if (!catalog || extractRelationId(catalog.createdBy) !== user.id) {
+      throw new APIError("You do not have permission to use this dataset", 403);
+    }
+  }
+};
+
+/**
  * Safe fetch by ID in a Payload hook context (uses `req` for transaction sharing).
  * Returns null instead of throwing on not-found or permission errors.
  */
@@ -74,6 +119,21 @@ export const extractDenormalizedAccessFields = (
   // Payload drops undefined from a write, which would leave the previous owner readable.
   const catalogOwnerId = catalog?.createdBy ? (extractRelationId<number>(catalog.createdBy) ?? null) : null;
   return { datasetIsPublic, catalogOwnerId };
+};
+
+/**
+ * Run a bulk update and fail loudly on per-document errors.
+ *
+ * Payload's `update({ where })` does not throw when individual documents fail — it collects
+ * them in `errors`. For denormalized ACCESS fields that silence means some rows keep a grant
+ * everybody thinks was revoked, so the caller has to see it.
+ */
+export const assertNoBulkErrors = (result: { errors?: Array<{ message?: string }> }, context: string): void => {
+  if (result.errors && result.errors.length > 0) {
+    throw new Error(
+      `${context}: ${result.errors.length} document(s) failed. First error: ${result.errors[0]?.message ?? "unknown"}`
+    );
+  }
 };
 
 /**

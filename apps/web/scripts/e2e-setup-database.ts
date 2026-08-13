@@ -18,7 +18,8 @@
 
 import { setupDatabase } from "../lib/database/setup";
 import { createLogger } from "../lib/logger";
-import { E2E_DATABASE_NAME, E2E_DATABASE_URL, E2E_SEED_COLLECTIONS } from "../tests/e2e/config";
+import { E2E_DATABASE_NAME, E2E_DATABASE_URL } from "../tests/e2e/config";
+import { seedE2ETestData } from "../tests/e2e/seed-e2e-data";
 import { resetTestDatabase, validateTestDatabaseSchema } from "./e2e-validate-schema";
 
 const logger = createLogger("test-db-setup");
@@ -118,7 +119,7 @@ const setupTestDatabase = async (options: { forceReset?: boolean } = {}): Promis
     // Step 5: Seed test data for E2E tests
     logger.info("Step 5: Seeding test data");
     try {
-      await seedE2ETestData();
+      await seedE2ETestData(TEST_DATABASE_URL);
       logger.info("✅ Test data seeded successfully");
     } catch (seedError) {
       logger.error("Failed to seed test data", seedError);
@@ -128,36 +129,6 @@ const setupTestDatabase = async (options: { forceReset?: boolean } = {}): Promis
     const errorMsg = "❌ Test database setup failed:";
     logger.error(errorMsg, error);
     process.exit(1);
-  }
-};
-
-/**
- * Seed E2E test data using the seed manager.
- * Uses "development" environment to match CI and default `pnpm seed` behavior.
- */
-const seedE2ETestData = async (): Promise<void> => {
-  // Set DATABASE_URL to E2E test database so seed manager connects to the right database
-  const originalDatabaseUrl = process.env.DATABASE_URL;
-  process.env.DATABASE_URL = TEST_DATABASE_URL;
-
-  try {
-    const { createSeedManager } = await import("../lib/seed/index");
-
-    const seedManager = createSeedManager();
-
-    // Truncate first to ensure clean state
-    await seedManager.truncate();
-
-    // Seed e2e environment data (same as CI: pnpm seed e2e)
-    // This creates the catalogs, datasets, and events that E2E tests expect
-    await seedManager.seedWithConfig({ preset: "e2e", collections: [...E2E_SEED_COLLECTIONS] });
-
-    logger.info("✓ Seeded e2e data using seed manager");
-  } finally {
-    // Restore original DATABASE_URL
-    if (originalDatabaseUrl) {
-      process.env.DATABASE_URL = originalDatabaseUrl;
-    }
   }
 };
 

@@ -6,7 +6,7 @@
 import { sql } from "@payloadcms/db-postgres/drizzle";
 import { APIError, type CollectionBeforeChangeHook, type CollectionBeforeDeleteHook } from "payload";
 
-import { isPrivileged } from "@/lib/collections/shared-fields";
+import { validateDatasetCatalogOwnership } from "@/lib/collections/catalog-ownership";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { handleWebhookTokenLifecycle } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -117,15 +117,14 @@ export const resetNextRunOnScheduleChange: CollectionBeforeChangeHook = ({ data,
  * `targetDataset` is a plain writable relationship and `update` access is scoped to the
  * repo owner, so without this a scraper owner could point their own scraper at a
  * stranger's dataset: auto-import then writes the scraped rows into it as a SYSTEM job,
- * which is exactly the case the events hook's cross-dataset guard exempts. Same policy
- * and wording as `validateDatasetAccess` on scheduled-ingests — owning the catalog is
- * required, a public catalog does not grant this targeted write, and admins/editors
- * bypass because they may already manage any scraper.
+ * which is exactly the case the events hook's cross-dataset guard exempts. The policy
+ * itself lives in `validateDatasetCatalogOwnership`, shared with scheduled-ingests.
  */
+// eslint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning data
 export const validateTargetDatasetAccess: CollectionBeforeChangeHook = async ({ data, req, originalDoc }) => {
   if (!data) return data;
   if (req.context?.seed) return data;
-  if (!req.user || isPrivileged(req.user)) return data;
+  if (!req.user) return data;
 
   const targetDatasetId = extractRelationId<number>(data.targetDataset as number | { id: number } | null | undefined);
   if (targetDatasetId == null) return data;
@@ -136,31 +135,7 @@ export const validateTargetDatasetAccess: CollectionBeforeChangeHook = async ({ 
   );
   if (previousId === targetDatasetId) return data;
 
-  const dataset = await req.payload.findByID({
-    collection: "datasets",
-    id: targetDatasetId,
-    depth: 0,
-    overrideAccess: true,
-    disableErrors: true,
-    req,
-  });
-
-  const catalogId = dataset ? extractRelationId<number>(dataset.catalog) : undefined;
-  const catalog =
-    catalogId == null
-      ? null
-      : await req.payload.findByID({
-          collection: "catalogs",
-          id: catalogId,
-          depth: 0,
-          overrideAccess: true,
-          disableErrors: true,
-          req,
-        });
-
-  if (!catalog || extractRelationId(catalog.createdBy) !== req.user.id) {
-    throw new APIError("You do not have permission to use this dataset", 403);
-  }
+  await validateDatasetCatalogOwnership(req, [targetDatasetId], req.user);
 
   return data;
 };

@@ -19,11 +19,11 @@ const STRANGER_ID = 99;
 type HookArgs = Parameters<typeof validateTargetDatasetAccess>[0];
 
 /** Payload stub: dataset 7 lives in catalog 3, owned by `catalogOwner`. */
-const createPayload = (catalogOwner: number) => ({
+const createPayload = (catalogOwner: number, isPublic = false) => ({
   findByID: vi.fn(({ collection }: { collection: string }) =>
     collection === "datasets"
       ? Promise.resolve({ id: 7, catalog: 3 })
-      : Promise.resolve({ id: 3, createdBy: catalogOwner, isPublic: true })
+      : Promise.resolve({ id: 3, createdBy: catalogOwner, isPublic })
   ),
 });
 
@@ -31,13 +31,14 @@ const runHook = (
   user: { id: number; role: string } | null,
   catalogOwner: number,
   data: Record<string, unknown> = { targetDataset: 7 },
-  originalDoc?: Record<string, unknown>
+  originalDoc?: Record<string, unknown>,
+  isPublic = false
 ) =>
   validateTargetDatasetAccess({
     data,
     originalDoc,
     operation: "update",
-    req: { user, payload: createPayload(catalogOwner), context: {} },
+    req: { user, payload: createPayload(catalogOwner, isPublic), context: {} },
   } as unknown as HookArgs);
 
 describe.sequential("scrapers validateTargetDatasetAccess", () => {
@@ -48,7 +49,9 @@ describe.sequential("scrapers validateTargetDatasetAccess", () => {
   // A public catalog does NOT grant this: naming an existing dataset is a targeted
   // write, unlike contributing an import through the catalog's own flow.
   it("rejects a public catalog owned by someone else", async () => {
-    await expect(runHook({ id: OWNER_ID, role: "user" }, STRANGER_ID)).rejects.toThrow(/permission/i);
+    await expect(
+      runHook({ id: OWNER_ID, role: "user" }, STRANGER_ID, { targetDataset: 7 }, undefined, true)
+    ).rejects.toThrow(/permission/i);
   });
 
   it("allows a dataset in the user's own catalog", async () => {

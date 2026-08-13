@@ -10,14 +10,12 @@
 
 import { createConnection } from "node:net";
 
+import { sleep } from "@/lib/utils/sleep";
+
 const DEFAULT_PORT_TIMEOUT_MS = 10000;
 const DEFAULT_PROCESS_TIMEOUT_MS = 10000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
 const SOCKET_TIMEOUT_MS = 1000;
-
-const sleep = async (ms: number): Promise<void> => {
-  await new Promise((resolve) => setTimeout(resolve, ms));
-};
 
 const isMissingProcessError = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && (error as NodeJS.ErrnoException).code === "ESRCH";

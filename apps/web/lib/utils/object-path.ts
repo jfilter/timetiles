@@ -9,6 +9,19 @@
  */
 
 /**
+ * Read one path segment, refusing inherited keys.
+ *
+ * `Object.hasOwn` is what keeps a segment like `__proto__` from descending into
+ * `Object.prototype`, where a later write or delete would hit the shared prototype.
+ */
+const readOwnKey = (current: unknown, key: string): unknown => {
+  if (current === null || current === undefined || typeof current !== "object" || !Object.hasOwn(current, key)) {
+    return undefined;
+  }
+  return (current as Record<string, unknown>)[key];
+};
+
+/**
  * Get value at path using dot notation.
  *
  * Returns `undefined` if any part of the path doesn't exist.
@@ -21,15 +34,7 @@
  * ```
  */
 export const getByPath = (obj: unknown, path: string): unknown =>
-  path.split(".").reduce((current: unknown, key: string) => {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-    if (typeof current === "object" && Object.hasOwn(current, key)) {
-      return (current as Record<string, unknown>)[key];
-    }
-    return undefined;
-  }, obj);
+  path.split(".").reduce((current: unknown, key: string) => readOwnKey(current, key), obj);
 
 const hasOwnPathKey = (obj: unknown, path: string): obj is Record<string, unknown> =>
   obj !== null && obj !== undefined && typeof obj === "object" && Object.hasOwn(obj, path);
@@ -138,13 +143,7 @@ export const deleteByPath = (obj: Record<string, unknown>, path: string): void =
     return;
   }
 
-  const parent = keys.reduce((current: unknown, key: string) => {
-    // Object.hasOwn so inherited keys are never traversed (see setByPath).
-    if (current === null || current === undefined || typeof current !== "object" || !Object.hasOwn(current, key)) {
-      return undefined;
-    }
-    return (current as Record<string, unknown>)[key];
-  }, obj);
+  const parent = keys.reduce((current: unknown, key: string) => readOwnKey(current, key), obj as unknown);
 
   if (parent && typeof parent === "object") {
     delete (parent as Record<string, unknown>)[lastKey];

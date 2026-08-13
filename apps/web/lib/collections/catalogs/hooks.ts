@@ -17,7 +17,7 @@ import type {
 } from "payload";
 import { killTransaction } from "payload";
 
-import { withDenormSync } from "@/lib/collections/catalog-ownership";
+import { assertNoBulkErrors, withDenormSync } from "@/lib/collections/catalog-ownership";
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -101,22 +101,6 @@ type CatalogChanges = {
   isPublicChanged: boolean;
   newCreatedBy: number | null;
   newIsPublic: boolean;
-};
-
-/**
- * Run a bulk update and fail loudly on per-document errors.
- *
- * Payload's `update({ where })` does not throw when individual documents fail —
- * it collects them in `errors`. For denormalized ACCESS fields that silence means
- * some rows keep a grant everybody thinks was revoked, so the caller has to see it.
- * Same pattern as the scraper-repos cascade delete.
- */
-const assertNoBulkErrors = (result: { errors?: Array<{ message?: string }> }, context: string): void => {
-  if (result.errors && result.errors.length > 0) {
-    throw new Error(
-      `${context}: ${result.errors.length} document(s) failed. First error: ${result.errors[0]?.message ?? "unknown"}`
-    );
-  }
 };
 
 /** Sync catalog changes to child datasets */

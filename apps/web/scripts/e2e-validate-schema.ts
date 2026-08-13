@@ -58,6 +58,9 @@ export interface DatabaseInfo {
 
 const runDatabaseQuery = (dbName: string, sql: string, description?: string): string => {
   const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+  // The make target passes SQL through a shell, so quotes have to survive it —
+  // same escaping as lib/database/operations.ts.
+  const shellSafeSql = sql.replaceAll('"', String.raw`\"`);
 
   try {
     // psql gets an argument array and the password via the environment — credentials
@@ -69,7 +72,10 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
           env: { ...process.env, PGPASSWORD: getDbPassword() },
         })
       : // eslint-disable-next-line sonarjs/os-command -- local make target, no credentials in the string
-        execSync(`cd ../.. && make db-query DB_NAME=${dbName} SQL="${sql}"`, { stdio: "pipe", encoding: "utf8" });
+        execSync(`cd ../.. && make db-query DB_NAME=${dbName} SQL="${shellSafeSql}"`, {
+          stdio: "pipe",
+          encoding: "utf8",
+        });
     if (description) {
       logger.debug(`✓ ${description}: ${result.trim()}`);
     }

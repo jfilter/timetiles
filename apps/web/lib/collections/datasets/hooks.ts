@@ -19,6 +19,7 @@ import type {
 } from "payload";
 
 import {
+  assertNoBulkErrors,
   isDenormSyncWrite,
   safeFetchRecord,
   stripClientDenormFields,
@@ -545,21 +546,16 @@ const syncDatasetChildAccessFields = async (
   accessFields: { catalogOwnerId: number | null; datasetIsPublic: boolean }
 ): Promise<void> =>
   withDenormSync(req, async () => {
-    await req.payload.update({
-      collection: "events",
-      where: { dataset: { equals: datasetId } },
-      data: accessFields,
-      overrideAccess: true,
-      req,
-    });
-
-    await req.payload.update({
-      collection: "dataset-schemas",
-      where: { dataset: { equals: datasetId } },
-      data: accessFields,
-      overrideAccess: true,
-      req,
-    });
+    for (const collection of ["events", "dataset-schemas"] as const) {
+      const result = await req.payload.update({
+        collection,
+        where: { dataset: { equals: datasetId } },
+        data: accessFields,
+        overrideAccess: true,
+        req,
+      });
+      assertNoBulkErrors(result, `Dataset sync to ${collection}`);
+    }
   });
 
 /**
