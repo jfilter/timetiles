@@ -31,7 +31,7 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
-import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger, logError } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -206,19 +206,18 @@ export const PATCH = apiRoute({
         depth: 0,
         req,
       });
-      const snapshot = captureTriggerClaim(updatedSchedule);
       try {
-        await triggerScheduledIngest(payload, updatedSchedule, new Date(), { triggeredBy: "manual" });
+        await claimAndQueueScheduledIngest(payload, updatedSchedule, new Date(), {
+          triggeredBy: "manual",
+          onQueueFailure: "rollback",
+        });
         logger.info({ scheduledIngestId: body.scheduledIngestId }, "Triggered run after schedule update");
       } catch (error) {
-        if (error instanceof Error && error.message.includes("already running")) {
+        // The schedule update itself succeeded, so neither case fails the request.
+        if (isScheduledIngestBusyError(error)) {
           logger.info({ scheduledIngestId: body.scheduledIngestId }, "Schedule already running, skipping trigger");
         } else {
-          // The atomic claim succeeded but queueing failed, leaving the record
-          // stuck as "running" — revert so future triggers aren't blocked. The
-          // schedule update itself succeeded, so we still return success.
           logError(error, "Failed to trigger run after schedule update", { scheduledIngestId: body.scheduledIngestId });
-          await revertTriggerClaim(payload, body.scheduledIngestId, snapshot);
         }
       }
     }

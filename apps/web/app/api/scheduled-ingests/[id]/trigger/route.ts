@@ -12,7 +12,7 @@
 import { z } from "zod";
 
 import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
-import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import { logError } from "@/lib/logger";
 
 export const POST = apiRoute({
@@ -29,27 +29,17 @@ export const POST = apiRoute({
       throw new ConflictError("Import is disabled");
     }
 
-    // Capture the pre-claim state so we can revert if the queue step fails
-    // after the atomic claim has already set lastStatus to "running".
-    const snapshot = captureTriggerClaim(schedule);
-
     try {
-      await triggerScheduledIngest(payload, schedule, new Date(), { triggeredBy: "manual" });
+      await claimAndQueueScheduledIngest(payload, schedule, new Date(), {
+        triggeredBy: "manual",
+        onQueueFailure: "rollback",
+      });
     } catch (error) {
-      if (error instanceof Error && error.message.includes("already running")) {
-        // The atomic claim was rejected (a run is already in progress), so this
-        // request never set "running" itself — nothing to revert.
+      // A lost claim means this request never set "running" itself.
+      if (isScheduledIngestBusyError(error)) {
         throw new ConflictError("Import is already running");
       }
-      // The atomic claim succeeded but queueing failed, leaving the record stuck
-      // as "running". Revert so future triggers (manual, webhook, scheduler) are
-      // not silently blocked by the "already running" guard. Mirrors the
-      // recovery in queueWebhookImport.
-      logError(error, "Failed to queue manual ingest job, reverting status", {
-        scheduledIngestId: schedule.id,
-        previousStatus: snapshot.lastStatus,
-      });
-      await revertTriggerClaim(payload, params.id, snapshot);
+      logError(error, "Failed to queue manual ingest job, claim reverted", { scheduledIngestId: schedule.id });
       throw error;
     }
 

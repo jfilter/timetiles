@@ -18,6 +18,24 @@ import { scheduled_ingests } from "@/payload-generated-schema";
 import type { ScheduledIngest } from "@/payload-types";
 
 /**
+ * Thrown when the atomic claim loses to a concurrent trigger.
+ *
+ * A distinct type, not a message substring: every caller has to tell "someone else got there
+ * first" (skip, or 409) apart from a real failure, and matching on wording meant a reworded
+ * message would silently route the busy case into the error branch of four call sites.
+ */
+export class ScheduledIngestBusyError extends Error {
+  constructor(scheduledIngestId: number | string) {
+    super(`Scheduled ingest ${scheduledIngestId} is already running (concurrent trigger rejected)`);
+    this.name = "ScheduledIngestBusyError";
+  }
+}
+
+/** True when a trigger failed because the ingest was already claimed. */
+export const isScheduledIngestBusyError = (error: unknown): error is ScheduledIngestBusyError =>
+  error instanceof ScheduledIngestBusyError;
+
+/**
  * Generate an import name from the scheduled ingest's template.
  * Replaces {{name}}, {{date}}, {{time}}, and {{url}} placeholders.
  *
@@ -114,7 +132,7 @@ export const triggerScheduledIngest = async (
       .returning({ id: scheduled_ingests.id });
 
     if (claimResult.length === 0) {
-      throw new Error("scheduled ingest is already running (concurrent trigger rejected)");
+      throw new ScheduledIngestBusyError(scheduledIngest.id);
     }
   }
 
@@ -180,6 +198,46 @@ export const revertTriggerClaim = async (
 };
 
 /**
+ * What a failed queue step leaves behind.
+ *
+ * There are exactly two answers, and which one applies follows from who asked for the run:
+ *
+ * - `"rollback"` — user-initiated runs (webhook, manual trigger, wizard, data-package
+ *   activation). The run happens outside the cadence, so a failure that queued nothing must
+ *   leave no trace: restoring only `lastStatus` would keep the `lastRun` stamp of a run that
+ *   never started and silently reset the retry budget.
+ * - `"record-failure"` — the scheduler. There the tick IS the run, so the claim stays and the
+ *   caller turns it into a recorded failure with an advanced `nextRun`; rolling back would make
+ *   the scheduler re-fire on the same broken import every minute.
+ */
+export type TriggerFailurePolicy = "rollback" | "record-failure";
+
+/**
+ * Claim, queue, and apply the failure policy in one place.
+ *
+ * A lost claim ({@link ScheduledIngestBusyError}) wrote nothing, so it is re-thrown untouched
+ * under either policy — the caller decides whether that means 409, skip, or nothing at all.
+ */
+export const claimAndQueueScheduledIngest = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  currentTime: Date,
+  options: TriggerOptions & { onQueueFailure: TriggerFailurePolicy }
+): Promise<{ jobId: number }> => {
+  const snapshot = captureTriggerClaim(scheduledIngest);
+
+  try {
+    return await triggerScheduledIngest(payload, scheduledIngest, currentTime, options);
+  } catch (error) {
+    if (isScheduledIngestBusyError(error)) throw error;
+    if (options.onQueueFailure === "rollback") {
+      await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
+    }
+    throw error;
+  }
+};
+
+/**
  * Queue an import job for a webhook-triggered scheduled ingest.
  *
  * Sets status to "running" before queueing, reverts on failure.
@@ -194,20 +252,15 @@ export const queueWebhookImport = async (
   scheduledIngest: ScheduledIngest
 ): Promise<{ jobId: number }> => {
   const currentTime = new Date();
-  const snapshot = captureTriggerClaim(scheduledIngest);
 
   try {
-    return await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
+    return await claimAndQueueScheduledIngest(payload, scheduledIngest, currentTime, {
       triggeredBy: "webhook",
       alreadyClaimed: true,
+      onQueueFailure: "rollback",
     });
   } catch (queueError) {
-    // Revert the claim so the import doesn't get stuck as "running"
-    logError(queueError, "Failed to queue webhook job, reverting status", {
-      scheduledIngestId: scheduledIngest.id,
-      previousStatus: snapshot.lastStatus,
-    });
-    await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
+    logError(queueError, "Failed to queue webhook job, claim reverted", { scheduledIngestId: scheduledIngest.id });
     throw new Error("Failed to queue import job");
   }
 };

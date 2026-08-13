@@ -14,7 +14,7 @@ import type { DataPackageActivation, DataPackageManifest, DataPackageTransform }
 import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
 import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
-import { captureTriggerClaim, revertTriggerClaim, triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { claimAndQueueScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
@@ -517,26 +517,14 @@ export const activateDataPackage = async (
         id: scheduledIngest.id,
         overrideAccess: true,
       });
-      // Capture the pre-claim status so we can revert if the queue step fails
-      // after triggerScheduledIngest's atomic claim has already set lastStatus
-      // to "running". Without this, a transient queue failure leaves the freshly
-      // activated ingest stuck "running", blocking all future triggers (manual,
-      // webhook, scheduler) until the hourly stuck-ingest cleanup heals it.
-      const snapshot = captureTriggerClaim(fullIngest);
-      try {
-        await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
-        logger.info({ scheduledIngestId: scheduledIngest.id }, "Triggered first import for data package");
-      } catch (triggerError) {
-        // The atomic claim was rejected (already running) means nothing was
-        // claimed here, so there is nothing to revert. Otherwise the claim
-        // succeeded but queueing failed, leaving the record stuck "running" —
-        // revert so future triggers are not silently blocked. Mirrors the
-        // recovery in queueWebhookImport and the manual trigger route.
-        if (!(triggerError instanceof Error && triggerError.message.includes("already running"))) {
-          await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
-        }
-        throw triggerError;
-      }
+      // Rollback policy: a transient queue failure must not leave the freshly activated
+      // ingest stuck "running", which would block every future trigger until the hourly
+      // stuck-ingest cleanup heals it.
+      await claimAndQueueScheduledIngest(payload, fullIngest, new Date(), {
+        triggeredBy: "manual",
+        onQueueFailure: "rollback",
+      });
+      logger.info({ scheduledIngestId: scheduledIngest.id }, "Triggered first import for data package");
     } catch (error) {
       logger.warn({ scheduledIngestId: scheduledIngest.id, error }, "Failed to trigger first import");
     }

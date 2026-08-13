@@ -13,7 +13,7 @@ import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import { sendScheduledIngestConfigInvalidEmail } from "@/lib/ingest/scheduled-ingest-emails";
-import { triggerScheduledIngest } from "@/lib/ingest/trigger-service";
+import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
@@ -111,14 +111,17 @@ const processScheduledIngest = async (
   }
 
   try {
-    await triggerScheduledIngest(payload, scheduledIngest, currentTime, {
+    // record-failure, not rollback: the tick IS the run here, so a queue failure has to end up
+    // as a recorded failure with an advanced nextRun (handleImportError) instead of being undone
+    // — otherwise the scheduler re-fires on the same broken import every minute.
+    await claimAndQueueScheduledIngest(payload, scheduledIngest, currentTime, {
       triggeredBy: "schedule",
       nextRun: nextRun.toISOString(),
+      onQueueFailure: "record-failure",
     });
   } catch (error) {
-    // Concurrency rejection from the atomic SQL claim means another worker
-    // already claimed this import. This is expected, not an error.
-    if (error instanceof Error && error.message.includes("concurrent trigger rejected")) {
+    // Another worker won the claim. Expected, not an error.
+    if (isScheduledIngestBusyError(error)) {
       logger.info("Skipping scheduled ingest - claimed by another worker", {
         scheduledIngestId: scheduledIngest.id,
         name: scheduledIngest.name,

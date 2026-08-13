@@ -14,6 +14,7 @@ import { getPayload } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as TriggerService from "@/lib/ingest/trigger-service";
+import { ScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
 
 const mockUser = { id: 1, email: TEST_EMAILS.user, role: "user" };
@@ -27,7 +28,7 @@ const mockSchedule = {
   createdBy: { id: 1, email: TEST_EMAILS.user },
 };
 
-const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockTriggerScheduledIngest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ mockGetPayload: vi.fn(), mockClaimAndQueue: vi.fn() }));
 
 vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
 vi.mock("@payload-config", () => ({ default: {} }));
@@ -35,7 +36,7 @@ vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 vi.mock("@/lib/ingest/trigger-service", async (importOriginal) => {
   const actual = await importOriginal<typeof TriggerService>();
-  return { ...actual, triggerScheduledIngest: mocks.mockTriggerScheduledIngest };
+  return { ...actual, claimAndQueueScheduledIngest: mocks.mockClaimAndQueue };
 });
 
 // Import AFTER mocks
@@ -56,7 +57,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     // With isolate: false, ensure the module-level getPayload binding is configured
     mocks.mockGetPayload.mockReset();
     vi.mocked(getPayload).mockReset();
-    mocks.mockTriggerScheduledIngest.mockResolvedValue({ jobId: 123 });
+    mocks.mockClaimAndQueue.mockResolvedValue({ jobId: 123 });
   });
 
   it("should return 401 when not authenticated", async () => {
@@ -122,9 +123,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
   it("should return 409 when import is already running (atomic claim)", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue({ ...mockSchedule, lastStatus: "running" });
-    mocks.mockTriggerScheduledIngest.mockRejectedValue(
-      new Error("scheduled ingest is already running (concurrent trigger rejected)")
-    );
+    mocks.mockClaimAndQueue.mockRejectedValue(new ScheduledIngestBusyError(1));
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
     const response = await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });
@@ -145,7 +144,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     const data = await response.json();
     expect(data.error).toBe("Import is disabled");
     // Never claims "running" or queues a job for a disabled schedule.
-    expect(mocks.mockTriggerScheduledIngest).not.toHaveBeenCalled();
+    expect(mocks.mockClaimAndQueue).not.toHaveBeenCalled();
   });
 
   it("should trigger import when not already running (atomic claim succeeds)", async () => {
@@ -159,16 +158,17 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
     const data = await response.json();
     expect(data.message).toBe("Import triggered");
 
-    // Verify triggerScheduledIngest was called with correct args
-    expect(mocks.mockTriggerScheduledIngest).toHaveBeenCalledWith(mockPayload, mockSchedule, expect.any(Date), {
+    // A manual run is user-initiated, so a failed queue step must roll the claim back.
+    expect(mocks.mockClaimAndQueue).toHaveBeenCalledWith(mockPayload, mockSchedule, expect.any(Date), {
       triggeredBy: "manual",
+      onQueueFailure: "rollback",
     });
   });
 
-  it("should return 500 when triggerScheduledIngest fails with unexpected error", async () => {
+  it("should return 500 when the queue step fails with an unexpected error", async () => {
     const mockPayload = createMockPayload();
     mockPayload.findByID.mockResolvedValue(mockSchedule);
-    mocks.mockTriggerScheduledIngest.mockRejectedValue(new Error("Queue connection failed"));
+    mocks.mockClaimAndQueue.mockRejectedValue(new Error("Queue connection failed"));
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
     vi.mocked(getPayload).mockResolvedValue(mockPayload as any);
 
