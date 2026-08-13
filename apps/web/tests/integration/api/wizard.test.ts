@@ -15,6 +15,8 @@ import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { parseExcelPreview } from "@/app/api/ingest/preview-schema/helpers";
+
 import {
   buildTestInterpretationPlan,
   createIntegrationTestEnvironment,
@@ -145,40 +147,24 @@ describe.sequential("Import Wizard API Endpoints", () => {
     });
 
     it("parses Excel file and extracts sheets with headers", async () => {
-      // Read test Excel fixture
-      const xlsxPath = path.join(__dirname, "../../fixtures/events.xlsx");
-      const xlsxBuffer = fs.readFileSync(xlsxPath);
+      // Goes through the preview parser the wizard route uses, not the xlsx library
+      // directly — a local re-parse would keep passing while the real path broke.
+      const sheets = await parseExcelPreview(path.join(__dirname, "../../fixtures/events.xlsx"));
 
-      // Parse using xlsx (simulating API behavior)
-      const { read, utils } = await import("xlsx");
-      const workbook = read(xlsxBuffer, { type: "buffer" });
-
-      expect(workbook.SheetNames.length).toBeGreaterThan(0);
-
-      const firstSheetName = workbook.SheetNames[0]!;
-      const firstSheet = workbook.Sheets[firstSheetName]!;
-      const jsonData = utils.sheet_to_json(firstSheet, { header: 1, defval: null });
-
-      expect(jsonData.length).toBeGreaterThan(0);
-      // First row should be headers
-      expect(Array.isArray(jsonData[0])).toBe(true);
+      expect(sheets).toHaveLength(1);
+      expect(sheets[0]?.headers).toEqual(["title", "description", "date", "location", "category"]);
+      expect(sheets[0]?.rowCount).toBe(4);
+      expect(sheets[0]?.sampleData[0]).toMatchObject({ title: "Conference 2024", location: "Convention Center" });
     });
 
     it("parses multi-sheet Excel file", async () => {
-      const xlsxPath = path.join(__dirname, "../../fixtures/multi-sheet.xlsx");
-      const xlsxBuffer = fs.readFileSync(xlsxPath);
+      const sheets = await parseExcelPreview(path.join(__dirname, "../../fixtures/multi-sheet.xlsx"));
 
-      const { read, utils } = await import("xlsx");
-      const workbook = read(xlsxBuffer, { type: "buffer" });
-
-      expect(workbook.SheetNames.length).toBeGreaterThan(1);
-
-      // Each sheet should have data
-      for (const sheetName of workbook.SheetNames) {
-        const sheet = workbook.Sheets[sheetName]!;
-        const data = utils.sheet_to_json(sheet, { header: 1 });
-        // Sheet may be empty, but should parse without error
-        expect(Array.isArray(data)).toBe(true);
+      expect(sheets.length).toBeGreaterThan(1);
+      expect(sheets.map((sheet) => sheet.name)).toContain("Tech Events");
+      for (const sheet of sheets) {
+        expect(Array.isArray(sheet.headers)).toBe(true);
+        expect(sheet.sampleData.length).toBeLessThanOrEqual(sheet.rowCount);
       }
     });
 

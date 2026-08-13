@@ -13,7 +13,7 @@ import os from "node:os";
 import path from "node:path";
 
 import Papa from "papaparse";
-import { read, utils, write } from "xlsx";
+import { utils, write } from "xlsx";
 
 import { cleanupSidecarFiles, streamBatchesFromFile } from "@/lib/ingest/file-readers";
 
@@ -185,108 +185,43 @@ Event 2,2024-03-16
   });
 
   describe("Excel Parsing", () => {
-    it("should parse Excel fixture file successfully", () => {
-      // Use Excel fixture instead of creating in-memory
-      const fixturePath = getFixturePath("events.xlsx");
-      const fileBuffer = fs.readFileSync(fixturePath);
-      const workbook = read(fileBuffer, { type: "buffer" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(worksheet!, { header: 1, defval: "" });
+    /** Read every row of a sheet through the reader the import jobs use. */
+    const readSheetRows = async (filePath: string, sheetIndex = 0): Promise<Record<string, unknown>[]> => {
+      const rows: Record<string, unknown>[] = [];
+      try {
+        for await (const batch of streamBatchesFromFile(filePath, { batchSize: 100, sheetIndex })) {
+          rows.push(...batch);
+        }
+      } finally {
+        cleanupSidecarFiles(filePath, sheetIndex);
+      }
+      return rows;
+    };
 
-      expect(jsonData).toHaveLength(5); // header + 4 data rows
-      expect(jsonData[0]).toEqual(["title", "description", "date", "location", "category"]);
-      expect(jsonData[1]).toEqual([
-        "Conference 2024",
-        "Technology conference",
-        "2024-03-15",
-        "Convention Center",
-        "technology",
-      ]);
+    it("reads the Excel fixture through the production reader", async () => {
+      const rows = await readSheetRows(getFixturePath("events.xlsx"));
+
+      expect(rows).toHaveLength(4);
+      expect(rows[0]).toMatchObject({
+        title: "Conference 2024",
+        description: "Technology conference",
+        date: "2024-03-15",
+        location: "Convention Center",
+        category: "technology",
+      });
     });
 
-    it("should parse Excel content successfully", () => {
-      // Create a real Excel workbook in memory
-      const workbook = utils.book_new();
-      const worksheetData = [
-        ["title", "description", "date"],
-        ["Conference 2024", "Tech event", "2024-03-15"],
-        ["Art Show", "Gallery opening", "2024-03-20"],
-      ];
-      const worksheet = utils.aoa_to_sheet(worksheetData);
-      utils.book_append_sheet(workbook, worksheet, "Sheet1");
-
-      // Write to buffer instead of file
-      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
-
-      // Read from buffer (simulating real file reading)
-      const readWorkbook = read(excelBuffer, { type: "buffer" });
-      const sheetName = readWorkbook.SheetNames[0];
-      const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(readWorksheet!, { header: 1, defval: "" });
-
-      expect(jsonData).toHaveLength(3);
-      expect(jsonData[0]).toEqual(["title", "description", "date"]);
-      expect(jsonData[1]).toEqual(["Conference 2024", "Tech event", "2024-03-15"]);
-      expect(jsonData[2]).toEqual(["Art Show", "Gallery opening", "2024-03-20"]);
-    });
-
-    it("should handle Excel files with multiple sheets", () => {
-      const workbook = utils.book_new();
-
-      // Add multiple sheets
-      const sheet1Data = [
-        ["title", "date"],
-        ["Event 1", "2024-03-15"],
-      ];
-      const sheet2Data = [
-        ["name", "location"],
-        ["Event 2", "New York"],
-      ];
-
-      const worksheet1 = utils.aoa_to_sheet(sheet1Data);
-      const worksheet2 = utils.aoa_to_sheet(sheet2Data);
-
-      utils.book_append_sheet(workbook, worksheet1, "Events");
-      utils.book_append_sheet(workbook, worksheet2, "Locations");
-
-      // Write to buffer and read back
-      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
-      const readWorkbook = read(excelBuffer, { type: "buffer" });
-
-      expect(readWorkbook.SheetNames).toHaveLength(2);
-      expect(readWorkbook.SheetNames).toContain("Events");
-      expect(readWorkbook.SheetNames).toContain("Locations");
-
-      // Parse first sheet
-      const firstSheet = readWorkbook.Sheets[readWorkbook.SheetNames[0]!];
-      const firstSheetData = firstSheet ? utils.sheet_to_json(firstSheet, { header: 1 }) : [];
-      expect(firstSheetData[0]).toEqual(["title", "date"]);
-      expect(firstSheetData[1]).toEqual(["Event 1", "2024-03-15"]);
-    });
-
-    it("should handle multi-sheet Excel fixture", () => {
-      // Use multi-sheet fixture
+    it("reads a named sheet of the multi-sheet fixture through the production reader", async () => {
       const fixturePath = getFixturePath("multi-sheet.xlsx");
-      const fileBuffer = fs.readFileSync(fixturePath);
-      const workbook = read(fileBuffer, { type: "buffer" });
+      // Sheet order is part of the fixture contract — the wizard addresses sheets by index.
+      const rows = await readSheetRows(fixturePath, 0);
 
-      expect(workbook.SheetNames).toHaveLength(3);
-      expect(workbook.SheetNames).toContain("Tech Events");
-      expect(workbook.SheetNames).toContain("Art Exhibitions");
-      expect(workbook.SheetNames).toContain("Sports Events");
-
-      // Parse Tech Events sheet
-      const eventsSheet = workbook.Sheets["Tech Events"];
-      const eventsData = eventsSheet ? utils.sheet_to_json(eventsSheet, { header: 1 }) : [];
-      expect(eventsData[0]).toEqual(["title", "event_date", "venue", "city", "description"]);
-      expect(eventsData[1]).toEqual([
-        "AI Summit 2024",
-        "2024-06-15",
-        "Tech Convention Center",
-        "San Francisco, CA",
-        "Annual conference on artificial intelligence trends",
-      ]);
+      expect(rows[0]).toMatchObject({
+        title: "AI Summit 2024",
+        event_date: "2024-06-15",
+        venue: "Tech Convention Center",
+        city: "San Francisco, CA",
+      });
     });
 
     it("streams Excel rows as objects through the production reader", async () => {
@@ -328,19 +263,19 @@ Event 2,2024-03-16
       expect(rows[1]).toMatchObject({ Title: "Art Gallery Opening", Location: "Modern Art Gallery" });
     });
 
-    it("should handle empty Excel files", () => {
+    it("yields no rows for an empty Excel sheet", async () => {
       const workbook = utils.book_new();
-      const worksheet = utils.aoa_to_sheet([]);
-      utils.book_append_sheet(workbook, worksheet, "Empty");
+      utils.book_append_sheet(workbook, utils.aoa_to_sheet([]), "Empty");
 
-      // Write to buffer and read back
-      const excelBuffer = write(workbook, { type: "buffer", bookType: "xlsx" });
-      const readWorkbook = read(excelBuffer, { type: "buffer" });
-      const sheetName = readWorkbook.SheetNames[0];
-      const readWorksheet = readWorkbook.Sheets[sheetName!];
-      const jsonData = utils.sheet_to_json(readWorksheet!, { header: 1, defval: "" });
+      const ownDir = fs.mkdtempSync(path.join(os.tmpdir(), "file-parsing-empty-"));
+      const filePath = path.join(ownDir, "empty.xlsx");
+      fs.writeFileSync(filePath, write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer);
 
-      expect(jsonData).toHaveLength(0);
+      try {
+        expect(await readSheetRows(filePath)).toHaveLength(0);
+      } finally {
+        fs.rmSync(ownDir, { recursive: true, force: true });
+      }
     });
   });
 

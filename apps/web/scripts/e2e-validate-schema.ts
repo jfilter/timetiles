@@ -317,20 +317,10 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
   }
 
   try {
-    // Drop database if exists
-    const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-
-    if (isCI) {
-      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command in CI
-      execSync(
-        `PGPASSWORD=${getDbPassword()} psql -h ${getDbHost()} -U ${getDbUser()} -d postgres -c "DROP DATABASE IF EXISTS ${getDbName()}"`
-      );
-      logger.info("✓ Dropped existing test database");
-    } else {
-      // eslint-disable-next-line sonarjs/os-command -- Safe database drop command via Makefile
-      execSync(`cd ../.. && make db-query DB_NAME=postgres SQL="DROP DATABASE IF EXISTS ${getDbName()}"`);
-      logger.info("✓ Dropped existing test database");
-    }
+    // Same execution path as every other query here: in CI psql gets an argument
+    // array and the password via the environment, so neither ends up in a shell
+    // string (and therefore not in the runner's process list either).
+    runDatabaseQuery("postgres", `DROP DATABASE IF EXISTS ${getDbName()}`, "Drop existing test database");
 
     logger.info("✅ Test database reset completed");
     logger.info("💡 Run 'pnpm test:e2e' to recreate with proper setup");

@@ -20,7 +20,7 @@ import { getEmailTranslations } from "@/lib/email/i18n";
 import { buildAccountVerificationEmailHtml, buildResetPasswordEmailHtml } from "@/lib/email/templates";
 import { getBaseUrl } from "@/lib/utils/base-url";
 
-import { createCommonConfig, isPrivileged } from "../shared-fields";
+import { createCommonConfig, isAdmin, isPrivileged } from "../shared-fields";
 import { usersFields } from "./fields";
 import {
   usersAfterChangeHook,
@@ -109,7 +109,7 @@ const Users: CollectionConfig = {
     // plus the REGISTRATION rate limit. Allowing anonymous REST create (the old
     // `|| !user`) bypassed both gates and let the caller inject `customQuotas`/
     // `quotas` (e.g. -1 = unlimited) straight through POST /api/users.
-    create: ({ req: { user } }) => user?.role === "admin",
+    create: isAdmin,
 
     // Users can update their own profile, admins can update anyone
     // Role changes are prevented via field-level access control on the role field
@@ -121,9 +121,7 @@ const Users: CollectionConfig = {
     },
 
     // Only admins can delete users
-    delete: ({ req: { user } }) => {
-      return user?.role === "admin";
-    },
+    delete: isAdmin,
 
     // `unlock` is a separate auth operation with its own access rule, and
     // Payload's default for it is "any authenticated user". It is not covered
@@ -132,12 +130,10 @@ const Users: CollectionConfig = {
     // any logged-in account could lift the brute-force lockout on any other --
     // which is the whole of the protection, since Payload's five-attempt
     // lockout is what stands between an attacker and unlimited guesses.
-    unlock: ({ req: { user } }) => user?.role === "admin",
+    unlock: isAdmin,
 
     // Only admins can read version history
-    readVersions: ({ req: { user } }) => {
-      return user?.role === "admin";
-    },
+    readVersions: isAdmin,
 
     // Payload's default for `admin` is "any authenticated user", so without this
     // every self-registered account could open the /dashboard admin UI. The
