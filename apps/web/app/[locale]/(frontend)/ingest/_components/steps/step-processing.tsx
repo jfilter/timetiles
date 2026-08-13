@@ -62,7 +62,7 @@ interface ImportProgress {
   error?: string;
   completedAt?: string;
   catalogId?: number;
-  datasets?: Array<{ id: number; name: string; eventsCount: number }>;
+  datasets?: Array<{ id: number; name: string | null; eventsCount: number }>;
   stages: FormattedStage[];
   /** Job requiring review (if any). */
   needsReviewJob?: ProgressApiResponse["jobs"][0] | null;
@@ -98,7 +98,8 @@ const transformProgressResponse = (data: ProgressApiResponse): ImportProgress =>
 
   const datasets = data.jobs.map((job) => ({
     id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
-    name: job.datasetName ?? `Dataset ${job.datasetId}`,
+    // Null rather than an English fallback: only the render knows the viewer's locale.
+    name: job.datasetName ?? null,
     eventsCount: job.results?.totalEvents ?? 0,
   }));
 
@@ -441,7 +442,9 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
               <div className="space-y-2">
                 {progress.datasets.map((dataset) => (
                   <div key={dataset.id} className="bg-card/50 flex items-center justify-between rounded-sm px-4 py-2">
-                    <span className="text-foreground text-sm">{dataset.name}</span>
+                    <span className="text-foreground text-sm">
+                      {dataset.name ?? t("datasetFallbackName", { id: dataset.id })}
+                    </span>
                     <span className="text-muted-foreground font-mono text-sm">
                       {t("eventsCount", { count: dataset.eventsCount })}
                     </span>

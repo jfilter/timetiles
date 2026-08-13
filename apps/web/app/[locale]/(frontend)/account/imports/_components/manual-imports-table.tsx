@@ -11,7 +11,7 @@
 
 import { type ColumnDef, ContentState, DataTable } from "@timetiles/ui";
 import { UploadIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
@@ -48,6 +48,7 @@ const isAwaitingReview = (ingestFile: IngestFile): boolean => {
 export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => {
   const t = useTranslations("ImportActivity");
   const tIngest = useTranslations("Ingest");
+  const locale = useLocale();
   const { data: ingestFiles = [], isLoading } = useIngestFilesQuery(initialData);
 
   const columns = useMemo<ColumnDef<IngestFile, unknown>[]>(
@@ -99,7 +100,7 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
         accessorKey: "uploadedAt",
         header: t("uploaded"),
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.uploadedAt)}</span>
+          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.uploadedAt, locale)}</span>
         ),
       },
       {
@@ -107,12 +108,12 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
         header: t("completed"),
         cell: ({ row }) => (
           <span className="text-muted-foreground text-sm">
-            {row.original.completedAt ? formatDateLocale(row.original.completedAt) : "-"}
+            {row.original.completedAt ? formatDateLocale(row.original.completedAt, locale) : "-"}
           </span>
         ),
       },
     ],
-    [t, tIngest]
+    [locale, t, tIngest]
   );
 
   return (

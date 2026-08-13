@@ -21,7 +21,7 @@ import {
   useConfirmDialog,
 } from "@timetiles/ui";
 import { ClockIcon, MoreHorizontalIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import {
@@ -99,6 +99,7 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
 
 export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProps) => {
   const t = useTranslations("ImportActivity");
+  const locale = useLocale();
   const { data: schedules = [], isLoading } = useScheduledIngestsQuery(initialData);
 
   const columns = useMemo<ColumnDef<ScheduledIngest, unknown>[]>(
@@ -142,14 +143,14 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
         accessorKey: "lastRun",
         header: t("lastRun"),
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.lastRun)}</span>
+          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.lastRun, locale)}</span>
         ),
       },
       {
         accessorKey: "nextRun",
         header: t("nextRun"),
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.nextRun)}</span>
+          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.nextRun, locale)}</span>
         ),
       },
       {
@@ -159,7 +160,7 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
         cell: ({ row }) => <ActionsCell schedule={row.original} />,
       },
     ],
-    [t]
+    [locale, t]
   );
 
   return (

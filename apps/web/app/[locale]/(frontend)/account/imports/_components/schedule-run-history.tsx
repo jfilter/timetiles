@@ -13,7 +13,7 @@ import { ExternalLinkIcon } from "lucide-react";
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { formatDateLocale, formatDuration } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
@@ -29,6 +29,7 @@ type HistoryEntry = NonNullable<ScheduledIngest["executionHistory"]>[number];
 
 const HistoryRow = ({ entry }: { readonly entry: HistoryEntry }) => {
   const t = useTranslations("ImportActivity");
+  const locale = useLocale();
 
   return (
     <div className="border-border flex flex-wrap items-center gap-2 border-b py-1.5 text-xs last:border-b-0">
@@ -36,7 +37,7 @@ const HistoryRow = ({ entry }: { readonly entry: HistoryEntry }) => {
         className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${statusDotClass[entry.status] ?? "bg-gray-400"}`}
         aria-label={entry.status}
       />
-      <span className="text-muted-foreground">{formatDateLocale(entry.executedAt)}</span>
+      <span className="text-muted-foreground">{formatDateLocale(entry.executedAt, locale)}</span>
       <span className="text-muted-foreground">{formatDuration(entry.duration)}</span>
       {entry.recordsImported != null && (
         <span className="text-muted-foreground">{t("recordCount", { count: entry.recordsImported })}</span>

@@ -24,7 +24,7 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
@@ -89,6 +89,7 @@ interface ScraperCardProps {
 }
 
 const ScraperCard = ({ scraper, loadingState, errorMessage, onRun, onViewLogs, showLogs, t }: ScraperCardProps) => {
+  const locale = useLocale();
   const isLoading = Boolean(loadingState);
   const stats = resolveScraperStats(scraper.statistics);
 
@@ -111,7 +112,7 @@ const ScraperCard = ({ scraper, loadingState, errorMessage, onRun, onViewLogs, s
               {scraper.runtime} &middot; {scraper.entrypoint}
             </span>
             {scraper.schedule && <span>{t("schedule", { schedule: scraper.schedule })}</span>}
-            {scraper.lastRunAt && <span>{t("lastRunAt", { date: formatDateLocale(scraper.lastRunAt) })}</span>}
+            {scraper.lastRunAt && <span>{t("lastRunAt", { date: formatDateLocale(scraper.lastRunAt, locale) })}</span>}
             {stats.totalRuns > 0 && (
               <span>
                 {t("runsStats", { total: stats.totalRuns, success: stats.successRuns, failed: stats.failedRuns })}
@@ -174,6 +175,7 @@ const RepoCard = ({
   onRunScraper,
   t,
 }: RepoCardProps) => {
+  const locale = useLocale();
   const isLoading = Boolean(loadingState);
   const [expandedScrapers, setExpandedScrapers] = useState<Set<number>>(new Set());
 
@@ -216,7 +218,7 @@ const RepoCard = ({
             </div>
 
             <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-4 text-xs">
-              {repo.lastSyncAt && <span>{t("lastSynced", { date: formatDateLocale(repo.lastSyncAt) })}</span>}
+              {repo.lastSyncAt && <span>{t("lastSynced", { date: formatDateLocale(repo.lastSyncAt, locale) })}</span>}
               {repo.lastSyncError && (
                 <span className="text-destructive truncate" title={repo.lastSyncError}>
                   {repo.lastSyncError.substring(0, 80)}

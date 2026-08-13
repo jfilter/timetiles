@@ -23,7 +23,7 @@ import {
   Trash2Icon,
   XCircleIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { EmptyResourceCard } from "@/app/[locale]/(frontend)/account/_components/empty-resource-card";
 import { getScheduleStatusVariant } from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
@@ -98,6 +98,7 @@ const ScheduleCard = ({
   onDelete,
   t,
 }: ScheduleCardProps) => {
+  const locale = useLocale();
   const isLoading = Boolean(loadingState);
 
   const frequencyKey = FREQUENCY_KEYS[schedule.frequency ?? "daily"];
@@ -138,9 +139,9 @@ const ScheduleCard = ({
 
             {/* Execution info */}
             <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-4 text-xs">
-              {schedule.lastRun && <span>{t("lastRun", { date: formatDateLocale(schedule.lastRun) })}</span>}
+              {schedule.lastRun && <span>{t("lastRun", { date: formatDateLocale(schedule.lastRun, locale) })}</span>}
               {schedule.nextRun && schedule.enabled && (
-                <span>{t("nextRun", { date: formatDateLocale(schedule.nextRun) })}</span>
+                <span>{t("nextRun", { date: formatDateLocale(schedule.nextRun, locale) })}</span>
               )}
               {schedule.lastError && (
                 <span className="text-destructive truncate" title={schedule.lastError}>

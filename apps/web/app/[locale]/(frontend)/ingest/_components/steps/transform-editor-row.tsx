@@ -13,7 +13,7 @@ import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 
-import { TRANSFORM_TYPE_LABELS } from "@/lib/ingest/types/transforms";
+import { useTransformTypeLabels } from "@/lib/hooks/use-transform-type-labels";
 import type { IngestTransform } from "@/lib/ingest/types/wizard";
 
 import { TransformEditor } from "../transforms/transform-editor";
@@ -43,6 +43,7 @@ export const ExpandedEditorRow = ({
   bgClass,
 }: Readonly<ExpandedEditorRowProps>) => {
   const t = useTranslations("Ingest");
+  const typeLabels = useTransformTypeLabels();
 
   if (!expandedTransform) return null;
 
@@ -54,7 +55,7 @@ export const ExpandedEditorRow = ({
         <div className="max-w-2xl">
           <div className="mb-2 flex items-center gap-2">
             <Icon className={cn("h-4 w-4", TRANSFORM_COLORS[expandedTransform.type])} />
-            <span className="text-foreground text-sm font-medium">{TRANSFORM_TYPE_LABELS[expandedTransform.type]}</span>
+            <span className="text-foreground text-sm font-medium">{typeLabels[expandedTransform.type]}</span>
             <span className="text-muted-foreground text-xs">
               {t("flowSourceColumn")}: {columnName}
             </span>

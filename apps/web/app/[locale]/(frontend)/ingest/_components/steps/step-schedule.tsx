@@ -13,11 +13,12 @@ import { Button, Card, CardContent, Input, Label } from "@timetiles/ui";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@timetiles/ui/components/select";
 import { cn } from "@timetiles/ui/lib/utils";
 import { ArrowLeft, ArrowRight, CalendarIcon, ClockIcon, GlobeIcon, KeyIcon, RepeatIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useMemo } from "react";
 
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { UrlAuthConfig } from "@/lib/ingest/types/wizard";
+import { formatDateShort } from "@/lib/utils/date";
 
 import { AuthConfigFields } from "../auth-config-fields";
 import { useWizardCanProceed } from "../use-wizard-effects";
@@ -57,6 +58,7 @@ const DEFAULT_SCHEDULE_CONFIG: ScheduleConfig = {
 
 export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   const t = useTranslations("Ingest");
+  const locale = useLocale();
   const canProceed = useWizardCanProceed();
   const { sourceUrl, scheduleConfig, authConfig, file, editMode, nextStep, prevStep, configureSchedule, setUrlAuth } =
     useWizardScheduleStepState();
@@ -64,9 +66,11 @@ export const StepSchedule = ({ className }: Readonly<StepScheduleProps>) => {
   // In edit mode, schedule is always enabled
   const isScheduleEnabled = editMode || scheduleConfig?.enabled === true;
 
+  // formatDateShort with the viewer's locale, not a bare toLocaleDateString(): that reads the
+  // runtime's locale, which differs between the SSR pass and the browser and mismatches on hydration.
   const defaultScheduleName = useMemo(
-    () => (file?.name ? `${humanizeFileName(file.name)} - ${new Date().toLocaleDateString()}` : ""),
-    [file?.name]
+    () => (file?.name ? `${humanizeFileName(file.name)} - ${formatDateShort(new Date(), locale)}` : ""),
+    [file?.name, locale]
   );
 
   const activeConfig = useMemo(

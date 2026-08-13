@@ -22,13 +22,9 @@ import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import {
-  createTransform,
-  type IngestTransform,
-  isTransformValid,
-  TRANSFORM_TYPE_LABELS,
-  type TransformType,
-} from "@/lib/ingest/types/transforms";
+import { TRANSFORM_TYPES, type TransformType } from "@/lib/definitions/transform-registry";
+import { useTransformTypeLabels } from "@/lib/hooks/use-transform-type-labels";
+import { createTransform, type IngestTransform, isTransformValid } from "@/lib/ingest/types/transforms";
 
 import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "../steps/column-mapping-shared";
 import { TransformEditor } from "./transform-editor";
@@ -46,13 +42,14 @@ interface AddTransformMenuItemProps {
 }
 
 const AddTransformMenuItem = ({ type, onAdd }: Readonly<AddTransformMenuItemProps>) => {
+  const typeLabels = useTransformTypeLabels();
   const Icon = TRANSFORM_ICONS[type];
   const handleClick = () => onAdd(type);
 
   return (
     <DropdownMenuItem onClick={handleClick}>
       <Icon className={cn("mr-2 h-4 w-4", TRANSFORM_COLORS[type])} />
-      {TRANSFORM_TYPE_LABELS[type]}
+      {typeLabels[type]}
     </DropdownMenuItem>
   );
 };
@@ -78,6 +75,7 @@ const TransformItem = ({
   onUpdate,
 }: Readonly<TransformItemProps>) => {
   const t = useTranslations("Ingest");
+  const typeLabels = useTransformTypeLabels();
   const Icon = TRANSFORM_ICONS[transform.type];
   const isValid = isTransformValid(transform);
 
@@ -110,7 +108,7 @@ const TransformItem = ({
           <Icon className={cn("mt-0.5 h-5 w-5 shrink-0", TRANSFORM_COLORS[transform.type])} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-foreground font-medium">{TRANSFORM_TYPE_LABELS[transform.type]}</span>
+              <span className="text-foreground font-medium">{typeLabels[transform.type]}</span>
               {!isValid && (
                 <span className="bg-secondary/10 text-secondary rounded px-1.5 py-0.5 text-[10px] font-medium">
                   {t("tfIncomplete")}
@@ -189,7 +187,7 @@ export const TransformList = ({ transforms, onTransformsChange, sourceColumns }:
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              {(Object.keys(TRANSFORM_TYPE_LABELS) as TransformType[]).map((type) => (
+              {TRANSFORM_TYPES.map((type) => (
                 <AddTransformMenuItem key={type} type={type} onAdd={addTransform} />
               ))}
             </DropdownMenuContent>

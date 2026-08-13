@@ -10,7 +10,7 @@
 
 import { Card } from "@timetiles/ui";
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
@@ -34,6 +34,7 @@ const statusColors: Record<string, string> = {
 const RunEntry = ({ run }: { run: ScraperRun }) => {
   const [expanded, setExpanded] = useState(false);
   const t = useTranslations("Scrapers");
+  const locale = useLocale();
 
   // Map the status enum to a translated label via literal keys (next-intl's `t`
   // requires statically-known keys; an unknown status falls back to its raw value).
@@ -67,7 +68,7 @@ const RunEntry = ({ run }: { run: ScraperRun }) => {
           <ChevronRightIcon className="h-3 w-3 flex-shrink-0" />
         )}
         <span className={`font-medium ${statusColors[run.status] ?? ""}`}>{statusLabel}</span>
-        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt)}</span>
+        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt, locale)}</span>
         <span className="text-muted-foreground">{formatDuration(run.durationMs)}</span>
         {run.triggeredBy && (
           <span className="text-muted-foreground">{t("triggeredVia", { trigger: run.triggeredBy })}</span>

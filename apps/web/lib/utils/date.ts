@@ -254,13 +254,16 @@ export const formatDateRangeLabel = (
 };
 
 /**
- * Format a date string using the browser's locale-aware toLocaleString().
+ * Format a date and time in the VIEWER's locale.
  *
- * Returns an em-dash for null/undefined input.
+ * Returns an em-dash for null/undefined input. The locale is a required argument
+ * rather than the runtime default: on the server that default is the host's, so a
+ * page under `/de` rendered German labels around US-formatted dates, and the
+ * server/client mismatch is a hydration hazard on top.
  */
-export const formatDateLocale = (dateStr: string | null | undefined): string => {
+export const formatDateLocale = (dateStr: string | null | undefined, locale: string): string => {
   if (!dateStr) return "\u2014";
-  return new Date(dateStr).toLocaleString();
+  return new Date(dateStr).toLocaleString(locale);
 };
 
 /**

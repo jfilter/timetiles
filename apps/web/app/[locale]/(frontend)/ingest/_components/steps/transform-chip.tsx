@@ -19,7 +19,8 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { TRANSFORM_TYPE_LABELS, type TransformType } from "@/lib/ingest/types/transforms";
+import { useTransformTypeLabels } from "@/lib/hooks/use-transform-type-labels";
+import type { TransformType } from "@/lib/ingest/types/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/wizard";
 
 import { TRANSFORM_COLORS, TRANSFORM_ICONS } from "./column-mapping-shared";
@@ -66,6 +67,7 @@ export interface TransformChipProps {
 
 export const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Readonly<TransformChipProps>) => {
   const t = useTranslations("Ingest");
+  const typeLabels = useTransformTypeLabels();
   const Icon = TRANSFORM_ICONS[transform.type];
 
   return (
@@ -83,7 +85,7 @@ export const TransformChip = ({ transform, isExpanded, onToggle, onRemove }: Rea
         onClick={onToggle}
         className="flex items-center gap-1"
         aria-expanded={isExpanded}
-        aria-label={TRANSFORM_TYPE_LABELS[transform.type]}
+        aria-label={typeLabels[transform.type]}
       >
         <Icon className={cn("h-3 w-3", TRANSFORM_COLORS[transform.type])} />
         <span className="text-foreground max-w-[120px] truncate">
@@ -122,6 +124,7 @@ export const AddTransformMenu = ({
   types = DEFAULT_TRANSFORM_TYPES,
 }: Readonly<AddTransformMenuProps>) => {
   const t = useTranslations("Ingest");
+  const typeLabels = useTransformTypeLabels();
 
   return (
     <DropdownMenu>
@@ -141,7 +144,7 @@ export const AddTransformMenu = ({
           return (
             <DropdownMenuItem key={type} onClick={() => onAdd(columnName, type)}>
               <Icon className={cn("mr-2 h-4 w-4", TRANSFORM_COLORS[type])} />
-              {TRANSFORM_TYPE_LABELS[type]}
+              {typeLabels[type]}
             </DropdownMenuItem>
           );
         })}

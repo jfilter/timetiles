@@ -25,6 +25,7 @@ import { useAuthState } from "@/lib/hooks/use-auth-queries";
 import { useDataSourcesQuery } from "@/lib/hooks/use-data-sources-query";
 import { useFilters } from "@/lib/hooks/use-filters";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
+import { getLanguageName } from "@/lib/utils/language-name";
 
 import {
   type CatalogGroup,
@@ -39,23 +40,6 @@ interface DataSourceSelectorProps {
   eventCountsByCatalog?: Record<string, number>;
   eventCountsByDataset?: Record<string, number>;
 }
-
-/**
- * Map ISO 639-3 language codes to display names in the VIEWER's locale.
- *
- * Hardcoding "en" meant the dataset info popover read "German" under /de, right next to the
- * translated "Sprache" label.
- */
-const getLanguageName = (code: string, locale: string): string => {
-  // ISO 639-3 to 639-1 for Intl.DisplayNames
-  const map: Record<string, string> = { eng: "en", deu: "de", fra: "fr", spa: "es", ita: "it", nld: "nl", por: "pt" };
-  const shortCode = map[code] ?? code;
-  try {
-    return new Intl.DisplayNames([locale], { type: "language" }).of(shortCode) ?? code;
-  } catch {
-    return code;
-  }
-};
 
 /** Info popover showing dataset metadata */
 const DatasetInfoPopover = ({

@@ -30,7 +30,7 @@ import { useTranslations } from "next-intl";
 import { useCallback } from "react";
 
 import { useIngestConfigureMutation } from "@/lib/hooks/use-ingest-wizard-mutations";
-import { TRANSFORM_TYPE_LABELS } from "@/lib/ingest/types/transforms";
+import { useTransformTypeLabels } from "@/lib/hooks/use-transform-type-labels";
 import { formatFileSize } from "@/lib/utils/format";
 
 import { useUpdateSchedule } from "../use-update-schedule";
@@ -43,6 +43,7 @@ export interface StepReviewProps {
 
 export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
   const t = useTranslations("Ingest");
+  const typeLabels = useTransformTypeLabels();
   const {
     file,
     sheets,
@@ -387,7 +388,7 @@ export const StepReview = ({ className }: Readonly<StepReviewProps>) => {
                         transform.active ? "bg-ring/10 text-ring" : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {TRANSFORM_TYPE_LABELS[transform.type]}
+                      {typeLabels[transform.type]}
                     </span>
                     <span className="text-muted-foreground font-mono text-sm">
                       {"from" in transform ? transform.from : ""}

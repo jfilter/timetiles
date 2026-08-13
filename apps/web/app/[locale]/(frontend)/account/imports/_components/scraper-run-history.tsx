@@ -13,7 +13,7 @@ import { ExternalLinkIcon } from "lucide-react";
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
 import { formatDateLocale, formatDuration } from "@/lib/utils/date";
@@ -33,6 +33,7 @@ const statusColors: Record<string, string> = {
 
 const RunRow = ({ run }: { readonly run: ScraperRun }) => {
   const t = useTranslations("ImportActivity");
+  const locale = useLocale();
 
   return (
     <div className="border-border border-b py-1.5 last:border-b-0">
@@ -42,7 +43,7 @@ const RunRow = ({ run }: { readonly run: ScraperRun }) => {
           aria-label={run.status}
         />
         <span className="font-medium">{run.status}</span>
-        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt)}</span>
+        <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt, locale)}</span>
         <span className="text-muted-foreground">{formatDuration(run.durationMs)}</span>
         {run.triggeredBy && (
           <span className="text-muted-foreground rounded bg-gray-100 px-1.5 py-0.5 dark:bg-gray-800">

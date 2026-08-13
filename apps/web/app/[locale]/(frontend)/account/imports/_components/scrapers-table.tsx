@@ -21,7 +21,7 @@ import {
   useConfirmDialog,
 } from "@timetiles/ui";
 import { CodeIcon, MoreHorizontalIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import {
@@ -95,6 +95,7 @@ const ActionsCell = ({ row }: { readonly row: ScraperRow }) => {
 
 export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTableProps) => {
   const t = useTranslations("ImportActivity");
+  const locale = useLocale();
   const { data: repos = [] } = useScraperReposQuery(initialRepos);
   const { data: allScrapers = [] } = useScrapersQuery(undefined, initialScrapers);
 
@@ -152,7 +153,9 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
         id: "lastRun",
         header: t("lastRun"),
         cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm">{formatDateLocale(row.original.scraper.lastRunAt)}</span>
+          <span className="text-muted-foreground text-sm">
+            {formatDateLocale(row.original.scraper.lastRunAt, locale)}
+          </span>
         ),
       },
       {
@@ -162,7 +165,7 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
         cell: ({ row }) => <ActionsCell row={row.original} />,
       },
     ],
-    [t]
+    [locale, t]
   );
 
   return (

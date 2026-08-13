@@ -13,7 +13,7 @@ import { ExternalLinkIcon } from "lucide-react";
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
 import { useIngestJobsByFileQuery } from "@/lib/hooks/use-ingest-jobs-query";
@@ -49,6 +49,7 @@ const MAX_VISIBLE_ERRORS = 3;
 
 const JobRow = ({ job }: { readonly job: IngestJob }) => {
   const t = useTranslations("ImportActivity");
+  const locale = useLocale();
   const errorCount = job.errors?.length ?? 0;
 
   return (
@@ -58,7 +59,7 @@ const JobRow = ({ job }: { readonly job: IngestJob }) => {
         <StatusBadge variant={getStageVariant(job.stage)} label={job.stage} />
         {errorCount > 0 && <span className="text-destructive text-xs">{t("errorCount", { count: errorCount })}</span>}
         <span className="text-muted-foreground ml-auto flex items-center gap-2">
-          {formatDateLocale(job.createdAt)}
+          {formatDateLocale(job.createdAt, locale)}
           <Link
             href={`/dashboard/collections/ingest-jobs/${job.id}`}
             className="text-muted-foreground hover:text-foreground"

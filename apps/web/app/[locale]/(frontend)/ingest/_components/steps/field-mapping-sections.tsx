@@ -13,7 +13,7 @@ import { Checkbox, Label, Table, TableBody, TableCell, TableHead, TableHeader, T
 import { Button } from "@timetiles/ui/components/button";
 import { cn } from "@timetiles/ui/lib/utils";
 import { CheckCircleIcon, MapPinIcon, SparklesIcon } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import type {
   ConfidenceLevel,
@@ -22,6 +22,7 @@ import type {
   SheetInfo,
   SuggestedMappings,
 } from "@/lib/ingest/types/wizard";
+import { getLanguageName } from "@/lib/utils/language-name";
 
 import { FieldSelect } from "./field-select";
 
@@ -50,10 +51,13 @@ export const LanguageDetectionBanner = ({
   suggestedMappings,
 }: Readonly<{ suggestedMappings: SuggestedMappings | undefined }>) => {
   const t = useTranslations("Ingest");
+  const locale = useLocale();
 
   if (!suggestedMappings?.language) return null;
 
   const { language } = suggestedMappings;
+  // Detection ships an English name next to the code; name it in the viewer's locale instead.
+  const languageName = getLanguageName(language.code, locale, t("languageUnknown"));
 
   return (
     <div
@@ -65,7 +69,7 @@ export const LanguageDetectionBanner = ({
       </div>
       <div>
         <p className="text-foreground text-sm font-medium">
-          {t("autoDetected", { language: language.name })}
+          {t("autoDetected", { language: languageName })}
           {language.isReliable && (
             <span className="text-muted-foreground ml-2 font-mono text-xs">
               {Math.round(language.confidence * 100)}%
