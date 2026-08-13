@@ -464,7 +464,8 @@ IMAGE_PLATFORMS ?= linux/amd64,linux/arm64
 IMAGE ?= both
 PUSH ?= true
 
-# Load GHCR_TOKEN from .env if present
+# Load GHCR_TOKEN from .env if present. An `op://` reference is resolved at
+# push time via the 1Password CLI, so no token has to sit on disk.
 -include .env
 export GHCR_TOKEN
 
@@ -479,13 +480,22 @@ images:
 	@docker buildx use multiplatform
 	@# Login to GHCR if pushing
 	@if [ "$(PUSH)" = "true" ]; then \
-		if [ -z "$(GHCR_TOKEN)" ]; then \
+		token="$$GHCR_TOKEN"; \
+		case "$$token" in \
+			\"*\") token=$${token#\"}; token=$${token%\"} ;; \
+			\'*\') token=$${token#\'}; token=$${token%\'} ;; \
+		esac; \
+		case "$$token" in op://*) \
+			command -v op >/dev/null 2>&1 || { echo "❌ 1Password CLI 'op' not found — needed to resolve the op:// reference in .env"; exit 1; }; \
+			token="$$(op read "$$token")" || { echo "❌ could not resolve GHCR_TOKEN from 1Password"; exit 1; }; \
+		esac; \
+		if [ -z "$$token" ]; then \
 			echo "❌ GHCR_TOKEN not set. Add it to .env or export it."; \
-			echo "   Create a PAT with write:packages at:"; \
-			echo "   https://github.com/settings/tokens/new?scopes=write:packages"; \
+			echo "   Fine-grained PAT, Packages: write on jfilter/timetiles:"; \
+			echo "   https://github.com/settings/personal-access-tokens/new"; \
 			exit 1; \
 		fi; \
-		echo "$(GHCR_TOKEN)" | docker login ghcr.io -u $(shell gh api user -q .login 2>/dev/null || echo jfilter) --password-stdin; \
+		printf '%s\n' "$$token" | docker login ghcr.io -u $(shell gh api user -q .login 2>/dev/null || echo jfilter) --password-stdin; \
 	fi
 	@# Build main image
 	@if [ "$(IMAGE)" = "main" ] || [ "$(IMAGE)" = "both" ]; then \
