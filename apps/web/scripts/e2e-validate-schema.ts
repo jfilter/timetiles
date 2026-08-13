@@ -18,10 +18,10 @@
  * @category Scripts
  */
 
-import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { executeDatabaseQuery } from "../lib/database/operations";
 import { parseDatabaseUrl } from "../lib/database/url";
 import { createLogger } from "../lib/logger";
 import { E2E_DATABASE_URL } from "../tests/e2e/config";
@@ -30,10 +30,6 @@ const logger = createLogger("schema-validator");
 
 const components = parseDatabaseUrl(E2E_DATABASE_URL);
 
-// Database configuration helpers
-const getDbUser = () => components.username;
-const getDbPassword = () => components.password;
-const getDbHost = () => components.host;
 const getDbName = () => components.database;
 
 export interface SchemaValidationResult {
@@ -56,29 +52,17 @@ export interface DatabaseInfo {
   tableCount: number;
 }
 
-const runDatabaseQuery = (dbName: string, sql: string, description?: string): string => {
-  const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
-  // The make target passes SQL through a shell, so quotes have to survive it —
-  // same escaping as lib/database/operations.ts.
-  const shellSafeSql = sql.replaceAll('"', String.raw`\"`);
-
+/**
+ * Run a query against the E2E database through the shared database layer.
+ *
+ * The connection string is explicit because this script targets the E2E database, which is not
+ * the app's `DATABASE_URL`. Having its own psql/make execution path here is what let the two
+ * copies drift apart (SQL escaping, credentials in a shell string).
+ */
+const runDatabaseQuery = async (dbName: string, sql: string, description?: string): Promise<string> => {
   try {
-    // psql gets an argument array and the password via the environment — credentials
-    // and SQL never pass through a shell, so no quoting rules apply to them.
-    const result = isCI
-      ? execFileSync("psql", ["-h", getDbHost(), "-U", getDbUser(), "-d", dbName, "-t", "-c", sql], {
-          stdio: "pipe",
-          encoding: "utf8",
-          env: { ...process.env, PGPASSWORD: getDbPassword() },
-        })
-      : // eslint-disable-next-line sonarjs/os-command -- local make target, no credentials in the string
-        execSync(`cd ../.. && make db-query DB_NAME=${dbName} SQL="${shellSafeSql}"`, {
-          stdio: "pipe",
-          encoding: "utf8",
-        });
-    if (description) {
-      logger.debug(`✓ ${description}: ${result.trim()}`);
-    }
+    const result = await executeDatabaseQuery(dbName, sql, { connectionString: E2E_DATABASE_URL, description });
+    if (description) logger.debug(`✓ ${description}: ${result.trim()}`);
     return result.trim();
   } catch (error) {
     if (description) {
@@ -89,12 +73,12 @@ const runDatabaseQuery = (dbName: string, sql: string, description?: string): st
   }
 };
 
-const checkDatabaseExists = (): boolean => {
+const checkDatabaseExists = async (): Promise<boolean> => {
   try {
     // The query succeeds with an EMPTY result set when the database is absent, so the
     // rows have to be inspected — returning true on "no exception" reported every
     // missing database as present and pushed the failure into the checks below.
-    const result = runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
+    const result = await runDatabaseQuery("postgres", `SELECT 1 FROM pg_database WHERE datname = '${getDbName()}'`);
     return result
       .split("\n")
       .map((line) => line.trim())
@@ -104,8 +88,8 @@ const checkDatabaseExists = (): boolean => {
   }
 };
 
-const getDatabaseInfo = (): DatabaseInfo => {
-  const exists = checkDatabaseExists();
+const getDatabaseInfo = async (): Promise<DatabaseInfo> => {
+  const exists = await checkDatabaseExists();
 
   if (!exists) {
     return { exists: false, hasPostGIS: false, hasPayloadSchema: false, tableCount: 0 };
@@ -113,7 +97,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
 
   try {
     // Check PostGIS extension
-    const postgisResult = runDatabaseQuery(
+    const postgisResult = await runDatabaseQuery(
       getDbName(),
       "SELECT COUNT(*) FROM pg_extension WHERE extname = 'postgis'",
       "Check PostGIS extension"
@@ -127,7 +111,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     const hasPostGIS = postgisCount > 0;
 
     // Check payload schema
-    const schemaResult = runDatabaseQuery(
+    const schemaResult = await runDatabaseQuery(
       getDbName(),
       "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name = 'payload'",
       "Check payload schema"
@@ -142,7 +126,7 @@ const getDatabaseInfo = (): DatabaseInfo => {
     // Count tables in payload schema
     let tableCount = 0;
     if (hasPayloadSchema) {
-      const tableResult = runDatabaseQuery(
+      const tableResult = await runDatabaseQuery(
         getDbName(),
         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'payload'",
         "Count payload tables"
@@ -190,9 +174,9 @@ const getExpectedMigrations = (): string[] => {
   }
 };
 
-const getCompletedMigrations = (): string[] => {
+const getCompletedMigrations = async (): Promise<string[]> => {
   try {
-    const result = runDatabaseQuery(
+    const result = await runDatabaseQuery(
       getDbName(),
       "SELECT name FROM payload.payload_migrations ORDER BY name",
       "Get completed migrations"
@@ -202,8 +186,8 @@ const getCompletedMigrations = (): string[] => {
       result
         .split("\n")
         .map((line) => line.trim())
-        // The local branch goes through `make db-query`, whose psql output still
-        // carries the header, the dashed rule and a "(N rows)" footer.
+        // The CI branch shells out to psql, whose output still carries the header,
+        // the dashed rule and a "(N rows)" footer.
         .filter((line) => line && !line.startsWith("name") && !/^-+$/.test(line) && !/^\(\d+ rows?\)$/.test(line))
         .map((name) => name.replace(/^migration_/i, ""))
     );
@@ -220,7 +204,7 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
   const suggestions: string[] = [];
 
   // Get database info
-  const dbInfo = getDatabaseInfo();
+  const dbInfo = await getDatabaseInfo();
 
   if (!dbInfo.exists) {
     issues.push("Test database does not exist");
@@ -248,7 +232,7 @@ export const validateTestDatabaseSchema = async (): Promise<SchemaValidationResu
 
   // Get migration information
   const expectedMigrations = getExpectedMigrations();
-  const completedMigrations = getCompletedMigrations();
+  const completedMigrations = await getCompletedMigrations();
   const completedNames = new Set(completedMigrations);
   const missingMigrations = expectedMigrations.filter((expected) => !completedNames.has(expected));
 
@@ -320,7 +304,7 @@ export const resetTestDatabase = async (force: boolean = false): Promise<void> =
     // Same execution path as every other query here: in CI psql gets an argument
     // array and the password via the environment, so neither ends up in a shell
     // string (and therefore not in the runner's process list either).
-    runDatabaseQuery("postgres", `DROP DATABASE IF EXISTS ${getDbName()}`, "Drop existing test database");
+    await runDatabaseQuery("postgres", `DROP DATABASE IF EXISTS ${getDbName()}`, "Drop existing test database");
 
     logger.info("✅ Test database reset completed");
     logger.info("💡 Run 'pnpm test:e2e' to recreate with proper setup");

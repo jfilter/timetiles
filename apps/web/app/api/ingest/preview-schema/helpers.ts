@@ -272,12 +272,16 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) return;
 
-    // `raw: false` returns each cell's FORMATTED text (the same `w` text that
-    // the import path's `sheet_to_csv` emits). Without it sheet_to_json defaults
-    // to raw values (date serials like 45000, raw numbers), so the wizard
-    // preview's value-based schema/date detection diverged from what the import
-    // actually produced from the formatted CSV.
-    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, { header: 1, defval: null, raw: false });
+    // Both options mirror the import path's `sheet_to_csv({ blankrows: false })`:
+    // `raw: false` yields the same FORMATTED cell text (not date serials), and
+    // `blankrows: false` drops the all-empty rows a padded `!ref` leaves behind —
+    // counting those made the preview promise more rows than the import created.
+    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: null,
+      raw: false,
+      blankrows: false,
+    });
 
     if (jsonData.length === 0) {
       sheets.push({

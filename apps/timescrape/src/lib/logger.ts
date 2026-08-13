@@ -10,22 +10,26 @@
 // (multistream/destination). The default export does.
 import pino from "pino";
 
-const baseConfig: pino.LoggerOptions = {
-  name: "timescrape",
-  level: process.env.LOG_LEVEL ?? "info",
-  transport:
-    process.env.NODE_ENV === "development" ? { target: "pino-pretty", options: { colorize: true } } : undefined,
+const baseConfig: pino.LoggerOptions = { name: "timescrape", level: process.env.LOG_LEVEL ?? "info" };
+
+const developmentConfig: pino.LoggerOptions = {
+  ...baseConfig,
+  transport: { target: "pino-pretty", options: { colorize: true } },
 };
 
-// When LOG_FILE is set, write to both stdout and the file (journalctl + persistent file)
+// When LOG_FILE is set, write to both stdout and the file (journalctl + persistent file).
 const createLogger = (): pino.Logger => {
-  if (process.env.LOG_FILE && process.env.NODE_ENV !== "development") {
-    return pino(
-      baseConfig,
-      pino.multistream([{ stream: process.stdout }, { stream: pino.destination(process.env.LOG_FILE) }])
-    );
-  }
-  return pino(baseConfig);
+  const logFile = process.env.LOG_FILE;
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  if (!logFile) return pino(isDevelopment ? developmentConfig : baseConfig);
+
+  // A transport in the options cannot be combined with multistream, so in development the
+  // pretty printer becomes one of the streams — same shape as apps/web's logger. Skipping the
+  // file in development instead (as this did) meant one LOG_FILE with two different meanings
+  // across the two apps.
+  const stdoutStream = isDevelopment ? pino.transport(developmentConfig.transport!) : process.stdout;
+  return pino(baseConfig, pino.multistream([{ stream: stdoutStream }, { stream: pino.destination(logFile) }]));
 };
 
 export const logger = createLogger();

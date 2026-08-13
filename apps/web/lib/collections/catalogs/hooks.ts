@@ -18,6 +18,7 @@ import type {
 import { killTransaction } from "payload";
 
 import { assertNoBulkErrors, withDenormSync } from "@/lib/collections/catalog-ownership";
+import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
 import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -26,8 +27,6 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { setCreatedByHook } from "../shared-fields";
 
 const logger = createLogger("catalogs");
-
-type CatalogQuotaRequest = PayloadRequest & { catalogQuotaClaimedForUser?: string | number };
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
@@ -40,42 +39,11 @@ const validatePrivateVisibility = async (data: Record<string, unknown>, req: Pay
   }
 };
 
-/** Atomically checks quota and increments usage for new catalogs. */
-const checkAndIncrementQuota = async (req: PayloadRequest): Promise<void> => {
-  if (!req.user) return;
-
-  const quotaService = createQuotaService(req.payload);
-  await quotaService.checkAndIncrementUsage(req.user, "CATALOGS_PER_USER", 1, req);
-
-  // Only claim compensation for a NON-transactional increment. On Postgres the create always
-  // runs in a transaction, and Payload's create op calls killTransaction() in its catch —
-  // rolling the increment back AND deleting req.transactionID before afterError fires. The
-  // compensating decrement would then run outside the (already rolled back) transaction and
-  // subtract a SECOND time. Since decrementUsage floors at 0, alternating one good create
-  // with one deliberately failing one pins the counter at 0 and defeats the limit entirely.
-  // Same guard as scraper-repos.ts, which hit this first.
-  if (req.transactionID) return;
-  (req as CatalogQuotaRequest).catalogQuotaClaimedForUser = req.user.id;
-};
-
-const clearCatalogQuotaClaim = (req: PayloadRequest): void => {
-  (req as CatalogQuotaRequest).catalogQuotaClaimedForUser = undefined;
-};
-
-const compensateCatalogQuotaOnError = async (req: PayloadRequest): Promise<void> => {
-  const marked = req as CatalogQuotaRequest;
-  const userId = marked.catalogQuotaClaimedForUser;
-  if (userId == null) return;
-
-  marked.catalogQuotaClaimedForUser = undefined;
-
-  try {
-    const quotaService = createQuotaService(req.payload);
-    await quotaService.decrementUsage(userId, "CATALOGS_PER_USER", 1, req);
-  } catch (error) {
-    logger.error("Failed to compensate CATALOGS_PER_USER after catalog create failure", { userId, error });
-  }
-};
+/** Claim/clear/compensate for CATALOGS_PER_USER; see createQuotaClaimLifecycle for the transaction rule. */
+const catalogQuota = createQuotaClaimLifecycle({
+  contextKey: "catalogQuotaClaimedForUser",
+  quotaKey: "CATALOGS_PER_USER",
+});
 
 /** Detect what changed between previous and new catalog doc */
 const detectCatalogChanges = (
@@ -203,7 +171,7 @@ export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
 
     // Handle quota check and increment for new catalogs
     if (operation === "create") {
-      await checkAndIncrementQuota(req);
+      await catalogQuota.claim(req);
     }
 
     return data;
@@ -213,7 +181,7 @@ export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
 export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
   async ({ doc, previousDoc, operation, req }) => {
     if (operation === "create") {
-      clearCatalogQuotaClaim(req);
+      catalogQuota.clear(req);
       return doc;
     }
 
@@ -377,5 +345,5 @@ export const catalogAfterDeleteHook: CollectionAfterDeleteHook = async ({ doc, r
 };
 
 export const catalogAfterErrorHook: CollectionAfterErrorHook = async ({ req }) => {
-  await compensateCatalogQuotaOnError(req);
+  await catalogQuota.compensate(req);
 };

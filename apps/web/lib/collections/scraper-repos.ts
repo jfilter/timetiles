@@ -10,6 +10,7 @@
  */
 import { APIError, type CollectionConfig, type PayloadRequest } from "payload";
 
+import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -17,21 +18,11 @@ import { createQuotaService } from "@/lib/services/quota-service";
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
 
-type ScraperRepoQuotaRequest = PayloadRequest & { scraperRepoQuotaClaimedForUser?: string | number };
-
-const markScraperRepoQuotaClaimed = (req: PayloadRequest): void => {
-  // Only claim compensation for a NON-transactional increment. When the create
-  // runs in a transaction (always, on Postgres), a failed/aborted create rolls
-  // the increment back on its own — so the afterError decrement would be a SECOND
-  // subtraction, letting a user push their repo count below zero with repeated
-  // deliberately-invalid creates and then exceed the limit.
-  if (req.transactionID) return;
-  if (req.user) (req as ScraperRepoQuotaRequest).scraperRepoQuotaClaimedForUser = req.user.id;
-};
-
-const clearScraperRepoQuotaClaim = (req: PayloadRequest): void => {
-  (req as ScraperRepoQuotaRequest).scraperRepoQuotaClaimedForUser = undefined;
-};
+/** Claim/clear/compensate for SCRAPER_REPOS; see createQuotaClaimLifecycle for the transaction rule. */
+const scraperRepoQuota = createQuotaClaimLifecycle({
+  contextKey: "scraperRepoQuotaClaimedForUser",
+  quotaKey: "SCRAPER_REPOS",
+});
 
 const SCRAPER_REPO_SYNC_TASK = "scraper-repo-sync" as const;
 
@@ -63,21 +54,6 @@ const maybeQueueRepoSync = async ({
 }): Promise<void> => {
   await req.payload.jobs.queue({ task: SCRAPER_REPO_SYNC_TASK, input: { scraperRepoId: repoId }, req });
   logger.info({ repoId, operation }, "Queued scraper repo sync");
-};
-
-const compensateScraperRepoQuotaOnError = async (req: PayloadRequest): Promise<void> => {
-  const marked = req as ScraperRepoQuotaRequest;
-  const userId = marked.scraperRepoQuotaClaimedForUser;
-  if (userId == null) return;
-
-  marked.scraperRepoQuotaClaimedForUser = undefined;
-
-  try {
-    const quotaService = createQuotaService(req.payload);
-    await quotaService.decrementUsage(userId, "SCRAPER_REPOS", 1, req);
-  } catch (error) {
-    logger.error({ userId, error }, "Failed to compensate scraper repo quota after create failure");
-  }
 };
 
 const validateGitRepoUrl = (value: string): string | true => {
@@ -236,10 +212,8 @@ const ScraperRepos: CollectionConfig = {
       setCreatedByHook,
       async ({ data, req, operation }) => {
         if (req.context?.seed) return data;
-        if (operation === "create" && req.user) {
-          const quotaService = createQuotaService(req.payload);
-          await quotaService.checkAndIncrementUsage(req.user, "SCRAPER_REPOS", 1, req);
-          markScraperRepoQuotaClaimed(req);
+        if (operation === "create") {
+          await scraperRepoQuota.claim(req);
         }
         return data;
       },
@@ -253,7 +227,7 @@ const ScraperRepos: CollectionConfig = {
         // back on its own. Leaving the claim set would make afterError decrement
         // a second time (double-compensation) on top of that rollback.
         if (operation === "create") {
-          clearScraperRepoQuotaClaim(req);
+          scraperRepoQuota.clear(req);
         }
 
         // Auto-trigger repo sync on create, or on update when source fields change
@@ -312,7 +286,7 @@ const ScraperRepos: CollectionConfig = {
     ],
     afterError: [
       async ({ req }) => {
-        await compensateScraperRepoQuotaOnError(req);
+        await scraperRepoQuota.compensate(req);
       },
     ],
   },

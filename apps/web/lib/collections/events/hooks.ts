@@ -8,12 +8,7 @@
  * @module
  * @category Collections
  */
-import type {
-  CollectionAfterChangeHook,
-  CollectionAfterErrorHook,
-  CollectionBeforeChangeHook,
-  PayloadRequest,
-} from "payload";
+import type { CollectionAfterChangeHook, CollectionAfterErrorHook, CollectionBeforeChangeHook } from "payload";
 import { Forbidden } from "payload";
 
 import {
@@ -22,50 +17,13 @@ import {
   safeFetchRecord,
   stripClientDenormFields,
 } from "@/lib/collections/catalog-ownership";
+import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
 import { isPrivileged } from "@/lib/collections/shared-fields";
-import { logError } from "@/lib/logger";
-import { createQuotaService } from "@/lib/services/quota-service";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import type { Event } from "@/payload-types";
 
-type EventQuotaRequest = PayloadRequest & { eventQuotaClaimedForUser?: string | number };
-
-/** Check and increment event creation quota for user */
-const checkEventQuota = async (req: PayloadRequest): Promise<void> => {
-  if (!req.user) return;
-
-  const quotaService = createQuotaService(req.payload);
-  await quotaService.checkAndIncrementUsage(req.user, "TOTAL_EVENTS", 1, req);
-
-  // Only claim compensation for a NON-transactional increment. On Postgres the create always
-  // runs in a transaction, and Payload's create op calls killTransaction() in its catch —
-  // rolling the increment back AND deleting req.transactionID before afterError fires. The
-  // compensating decrement would then run outside the (already rolled back) transaction and
-  // subtract a SECOND time. Since decrementUsage floors at 0, alternating one good create
-  // with one deliberately failing one pins the counter at 0 and defeats the limit entirely.
-  // Same guard as scraper-repos.ts, which hit this first.
-  if (req.transactionID) return;
-  (req as EventQuotaRequest).eventQuotaClaimedForUser = req.user.id;
-};
-
-const clearEventQuotaClaim = (req: PayloadRequest): void => {
-  (req as EventQuotaRequest).eventQuotaClaimedForUser = undefined;
-};
-
-const compensateEventQuotaOnError = async (req: PayloadRequest): Promise<void> => {
-  const marked = req as EventQuotaRequest;
-  const userId = marked.eventQuotaClaimedForUser;
-  if (userId == null) return;
-
-  marked.eventQuotaClaimedForUser = undefined;
-
-  try {
-    const quotaService = createQuotaService(req.payload);
-    await quotaService.decrementUsage(userId, "TOTAL_EVENTS", 1, req);
-  } catch (error) {
-    logError(error, "Failed to compensate TOTAL_EVENTS after event create failure", { userId });
-  }
-};
+/** Claim/clear/compensate for TOTAL_EVENTS; see createQuotaClaimLifecycle for the transaction rule. */
+const eventQuota = createQuotaClaimLifecycle({ contextKey: "eventQuotaClaimedForUser", quotaKey: "TOTAL_EVENTS" });
 
 /**
  * Before change hook for events.
@@ -124,7 +82,7 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
 
   // Check quotas on creation
   if (operation === "create") {
-    await checkEventQuota(req);
+    await eventQuota.claim(req);
   }
 
   return data;
@@ -137,11 +95,11 @@ export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async (
  */
 export const eventsAfterChangeHook: CollectionAfterChangeHook<Event> = ({ doc, operation, req }) => {
   if (operation === "create") {
-    clearEventQuotaClaim(req);
+    eventQuota.clear(req);
   }
   return doc;
 };
 
 export const eventsAfterErrorHook: CollectionAfterErrorHook = async ({ req }) => {
-  await compensateEventQuotaOnError(req);
+  await eventQuota.compensate(req);
 };

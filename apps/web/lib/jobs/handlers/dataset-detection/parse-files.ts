@@ -81,10 +81,13 @@ export const processExcelFile = async (filePath: string): Promise<SheetInfo[]> =
     const worksheet = workbook.Sheets[sheetName!];
     if (!worksheet) continue;
 
-    // blankrows:false to match convertSheetToCSV/getFileRowCount: a stale "!ref"
-    // pads the used range, and counting that padding reported more rows to the
-    // user than the import then actually streamed.
-    const jsonData = utils.sheet_to_json(worksheet, { header: 1, blankrows: false });
+    // Both options match convertSheetToCSV/getFileRowCount: `blankrows: false` because a
+    // stale "!ref" pads the used range and counting that padding reports more rows than the
+    // import streams, and `raw: false` because the sidecar CSV holds FORMATTED text — a
+    // header cell that is a date or number was detected as a serial/number here while the
+    // import produced the formatted string, so the detected column name did not exist in
+    // the imported rows.
+    const jsonData = utils.sheet_to_json(worksheet, { header: 1, blankrows: false, raw: false });
     if (jsonData.length > 0 && jsonData[0]) {
       sheets.push({
         name: sheetName ?? `Sheet${i}`,

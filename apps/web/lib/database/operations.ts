@@ -35,6 +35,14 @@ export interface QueryOptions {
    * @default false
    */
   rawResult?: boolean;
+
+  /**
+   * Connect to this URL instead of `DATABASE_URL`.
+   *
+   * For tooling that targets a database the app itself never connects to (the E2E database),
+   * so it does not have to grow its own psql/make execution path next to this one.
+   */
+  connectionString?: string;
 }
 
 /**
@@ -70,7 +78,9 @@ export const executeDatabaseQuery = async (
 
   // Prefer direct client connection (faster, more reliable)
   if (!options.useShell && !isCI) {
-    const client = createDatabaseClient({ database: databaseName });
+    // `connectionString` supplies host and credentials only — `databaseName` still selects the
+    // database, exactly as on the shell path (psql -d), so callers can query "postgres" with it.
+    const client = createDatabaseClient({ ...parseClientOverrides(options.connectionString), database: databaseName });
     try {
       await client.connect();
       const result = await client.query(sql);
@@ -101,7 +111,16 @@ export const executeDatabaseQuery = async (
   }
 
   // Fallback to shell-based execution
-  return executeQueryViaShell(databaseName, sql, isCI, options.description);
+  return executeQueryViaShell(databaseName, sql, isCI, options.description, options.connectionString);
+};
+
+/** Host/credential overrides from an explicit connection string, or none. */
+const parseClientOverrides = (
+  connectionString?: string
+): { host?: string; port?: number; user?: string; password?: string } => {
+  if (!connectionString) return {};
+  const { host, port, username, password } = parseDatabaseUrl(connectionString);
+  return { host, port: Number(port), user: username, password };
 };
 
 /**
@@ -109,14 +128,19 @@ export const executeDatabaseQuery = async (
  *
  * @internal
  */
-const executeQueryViaShell = (databaseName: string, sql: string, isCI: boolean, description?: string): string => {
-  // Get connection parameters from environment
-  const DATABASE_URL = getEnv().DATABASE_URL;
-  if (!DATABASE_URL) {
+const executeQueryViaShell = (
+  databaseName: string,
+  sql: string,
+  isCI: boolean,
+  description?: string,
+  connectionString?: string
+): string => {
+  const databaseUrl = connectionString ?? getEnv().DATABASE_URL;
+  if (!databaseUrl) {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
-  const { username, password, host } = parseDatabaseUrl(DATABASE_URL);
+  const { username, password, host } = parseDatabaseUrl(databaseUrl);
 
   if (isCI) {
     // In CI, use execFileSync with args array to avoid shell injection
