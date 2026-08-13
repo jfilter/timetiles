@@ -13,7 +13,9 @@
 import { cn } from "@timetiles/ui/lib/utils";
 import { Filter, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+
+import { useFocusTrap } from "@/lib/hooks/use-focus-trap";
 
 interface MobileFilterSheetProps {
   isOpen: boolean;
@@ -32,6 +34,7 @@ export const MobileFilterSheet = ({
 }: MobileFilterSheetProps) => {
   const t = useTranslations("Common");
   const sheetRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const startY = useRef(0);
@@ -82,6 +85,10 @@ export const MobileFilterSheet = ({
     return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
+  // Modal semantics need the keyboard to match the visuals: focus moves in on open,
+  // Tab cannot leave the sheet, and focus returns to the trigger on close.
+  useFocusTrap(sheetRef, isOpen);
+
   // Prevent body scroll when sheet is open
   useEffect(() => {
     if (isOpen) {
@@ -102,6 +109,8 @@ export const MobileFilterSheet = ({
       <button
         type="button"
         onClick={onOpen}
+        // Scaled to nothing while the sheet is open, so it must leave the tab order too.
+        inert={isOpen}
         className={cn(
           "fixed right-4 bottom-20 z-40 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-[transform,opacity,background-color] duration-300 md:hidden",
           "bg-primary hover:bg-primary/90 text-white",
@@ -131,6 +140,15 @@ export const MobileFilterSheet = ({
       {/* Bottom Sheet */}
       <div
         ref={sheetRef}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a native <dialog> renders in the top layer, which drops the drag offset and the slide-in transition this sheet is built on
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        // Focus target of last resort, for a sheet whose content renders no controls.
+        tabIndex={-1}
+        // Off-screen is not gone: without `inert` a closed sheet keeps every filter
+        // control in the tab order, behind the page the user is actually looking at.
+        inert={!isOpen}
         className={cn(
           "bg-background fixed inset-x-0 bottom-0 z-50 rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out md:hidden",
           isOpen ? "translate-y-0" : "translate-y-full",
@@ -150,7 +168,9 @@ export const MobileFilterSheet = ({
 
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 pt-2 pb-3">
-          <h2 className="text-foreground font-serif text-lg font-semibold">{t("filters")}</h2>
+          <h2 id={titleId} className="text-foreground font-serif text-lg font-semibold">
+            {t("filters")}
+          </h2>
           <button
             type="button"
             onClick={onClose}

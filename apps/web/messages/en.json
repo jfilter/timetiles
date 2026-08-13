@@ -593,6 +593,7 @@
     "stageCreatingEvents": "Creating events",
     "stageGeocoding": "Geocoding locations",
     "stageComplete": "Complete",
+    "stageInProgressAnnouncement": "Import step in progress: {stage}",
     "success": "Success",
     "eventsImported": "{count, plural, one {# event imported} other {# events imported}}",
     "importCouldNotBeCompleted": "Import could not be completed",

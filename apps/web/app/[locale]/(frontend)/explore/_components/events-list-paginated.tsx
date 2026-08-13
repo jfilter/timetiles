@@ -110,7 +110,7 @@ export const EventsListPaginated = ({
   return (
     <div className="space-y-4">
       {/* Header - explains what's being shown */}
-      <p className="text-muted-foreground text-sm">
+      <p aria-live="polite" className="text-muted-foreground text-sm">
         {buildEventsDescription(total, globalTotalData?.total, filterLabels, bounds != null, (k, v) =>
           (t as TranslateFn)(k, v)
         )}

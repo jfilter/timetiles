@@ -184,7 +184,8 @@ const ListExplorerContent = ({ chrome, initialViewState }: ListExplorerContentPr
             />
             <div className="overflow-hidden border-l">
               <div className="flex h-full flex-col p-6">
-                <p className="text-foreground mb-4 text-base font-medium">
+                {/* The only feedback that a filter took effect — announce it, politely. */}
+                <p aria-live="polite" className="text-foreground mb-4 text-base font-medium">
                   {buildEventsDescription(
                     eventsData?.total ?? events.length,
                     totalEventsData?.total,

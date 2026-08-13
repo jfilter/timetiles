@@ -131,7 +131,8 @@ const MapExplorerContent = ({ chrome, initialViewState }: MapExplorerContentProp
 
       <div className="min-w-0 flex-1 overflow-y-auto border-l transition-[flex,width] duration-500 ease-in-out [scrollbar-gutter:stable]">
         <div className="p-6">
-          <p className="text-foreground mb-4 text-base font-medium">
+          {/* The only feedback that a filter took effect — announce it, politely. */}
+          <p aria-live="polite" className="text-foreground mb-4 text-base font-medium">
             {buildEventsDescription(
               eventsData?.total ?? events.length,
               totalEventsData?.total,

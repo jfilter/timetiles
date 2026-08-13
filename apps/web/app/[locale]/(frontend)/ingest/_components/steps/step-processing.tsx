@@ -203,11 +203,16 @@ const STAGE_I18N_KEYS: Record<string, string> = {
   completed: "stageComplete",
 };
 
+/** Translated stage label, falling back to the server-provided display name. */
+const stageLabel = (translate: DynamicTranslate, stage: FormattedStage): string => {
+  const i18nKey = STAGE_I18N_KEYS[stage.name];
+  return i18nKey ? translate(i18nKey) : stage.displayName;
+};
+
 const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
   const t = useTranslations("Ingest");
   const duration = formatDuration(stage.startedAt, stage.completedAt);
-  const i18nKey = STAGE_I18N_KEYS[stage.name];
-  const stageName = i18nKey ? (t as DynamicTranslate)(i18nKey) : stage.displayName;
+  const stageName = stageLabel(t as DynamicTranslate, stage);
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
   const lineBelow = !isLast;
@@ -252,9 +257,18 @@ const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean })
 };
 
 const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
+  const t = useTranslations("Ingest");
   const visible = stages.filter((s) => s.status !== "skipped");
+  const current = visible.find((s) => s.status === "in_progress");
+  const currentName = current ? stageLabel(t as DynamicTranslate, current) : null;
+
   return (
     <div className="space-y-1 px-6 py-4">
+      {/* The timeline changes for minutes on end. Announcing the whole list on every poll
+          would be unusable, so only the stage the import moved on to is spoken. */}
+      <p className="sr-only" aria-live="polite">
+        {currentName != null && t("stageInProgressAnnouncement", { stage: currentName })}
+      </p>
       {visible.map((stage, index) => (
         <StageRow key={stage.name} stage={stage} isLast={index === visible.length - 1} />
       ))}
