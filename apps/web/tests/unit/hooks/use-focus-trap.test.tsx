@@ -41,7 +41,7 @@ describe("useFocusTrap", () => {
   });
 
   // fireEvent rather than userEvent.tab(): the trap IS a document keydown handler, and
-  // an await here would collide with the unit setup's deferred cleanup (issue #188).
+  // an await here would collide with the unit setup's concurrent-test cleanup (issue #180).
   it("wraps Tab from the last control back to the first", () => {
     const { container } = renderWithProviders(<Trapped isActive />);
     const scope = within(container);

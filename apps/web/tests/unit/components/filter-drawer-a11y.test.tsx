@@ -16,7 +16,7 @@ import { FilterPanel } from "../../../app/[locale]/(frontend)/explore/_component
 import { MobileFilterSheet } from "../../../app/[locale]/(frontend)/explore/_components/mobile-filter-sheet";
 import { cleanup, renderWithProviders, within } from "../../setup/unit/react-render";
 
-// The setup file's afterEach(cleanup) fires late (issue #188), so this suite unmounts
+// Concurrent tests in one file share the DOM (issue #180), so this suite unmounts
 // its own trees — a sheet left mounted keeps its focus trap listening on document.
 afterEach(() => {
   cleanup();
