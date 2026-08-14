@@ -294,22 +294,32 @@ install_h3_extension() {
     return
   fi
 
-  if ! brew list --formula cmake >/dev/null 2>&1; then
-    echo "  Installing cmake..."
-    brew install cmake
-  fi
+  for build_dep in cmake gettext; do
+    if ! brew list --formula "$build_dep" >/dev/null 2>&1; then
+      echo "  Installing $build_dep..."
+      brew install "$build_dep"
+    fi
+  done
+
+  # gettext is keg-only, so PostgreSQL's own headers cannot find <libintl.h> without
+  # this; and the bundled h3 core defaults to installing into /usr/local, which is not
+  # ours to write. Both only surface on a machine that has never built it.
+  local prefix
+  prefix="$(brew --prefix)"
+  export CPATH="$(brew --prefix gettext)/include:${CPATH:-}"
+  export LIBRARY_PATH="$(brew --prefix gettext)/lib:${LIBRARY_PATH:-}"
 
   local build_dir="${TMPDIR:-/tmp}/h3-pg-build"
   rm -rf "$build_dir"
   if git clone --depth 1 https://github.com/zachasme/h3-pg.git "$build_dir" >/dev/null 2>&1 &&
-    cmake -B "$build_dir/build" "$build_dir" >/dev/null 2>&1 &&
+    cmake -B "$build_dir/build" "$build_dir" -DCMAKE_INSTALL_PREFIX="$prefix" >/dev/null 2>&1 &&
     cmake --build "$build_dir/build" >/dev/null 2>&1 &&
     cmake --install "$build_dir/build" >/dev/null 2>&1; then
     print_success "Built and installed h3-pg"
   else
     warn "h3-pg build failed. Migrations will stop at 20260329_000000_h3_map_clustering. Build it by hand:"
     echo "    git clone https://github.com/zachasme/h3-pg && cd h3-pg"
-    echo "    cmake -B build . && cmake --build build && cmake --install build"
+    echo "    cmake -B build . -DCMAKE_INSTALL_PREFIX=$prefix && cmake --build build && cmake --install build"
   fi
   rm -rf "$build_dir"
 
