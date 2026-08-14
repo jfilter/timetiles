@@ -107,7 +107,26 @@ install_dependencies() {
 }
 
 # ============================================================================
-# Step 4: Git LFS (Required)
+# Step 4: Workspace Packages
+# ============================================================================
+build_workspace_packages() {
+    echo "🏗️  Workspace Packages"
+
+    # apps/web resolves bare `@timetiles/ui` / `@timetiles/shared` imports through the
+    # packages' `exports` field to dist/, which a fresh clone does not have — without
+    # this, the first `payload migrate` dies on a missing module.
+    if pnpm --filter "./packages/*" build >/dev/null 2>&1; then
+        print_success "Built"
+    else
+        print_error "Workspace package build failed"
+        exit 1
+    fi
+
+    echo ""
+}
+
+# ============================================================================
+# Step 5: Git LFS (Required)
 # ============================================================================
 setup_git_lfs() {
     echo "🗂️  Git LFS"
@@ -139,7 +158,7 @@ setup_git_lfs() {
 }
 
 # ============================================================================
-# Step 5: Git Commit Template (Optional - for conventional commits)
+# Step 6: Git Commit Template (Optional - for conventional commits)
 # ============================================================================
 setup_git_config() {
     echo "🔧 Git Configuration"
@@ -174,6 +193,7 @@ setup_git_config() {
 setup_env_files
 create_upload_directories
 install_dependencies
+build_workspace_packages
 setup_git_lfs
 setup_git_config
 
