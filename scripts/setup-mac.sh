@@ -2,7 +2,7 @@
 
 # TimeTiles macOS Developer Machine Setup
 # Provisions the toolchain a fresh Mac needs, then hands over to scripts/setup.sh
-# for the repo-level setup. Docker-free: PostgreSQL runs from Homebrew on port 5433.
+# for the repo-level setup. Docker-free: PostgreSQL runs from Homebrew on PG_LOCAL_PORT.
 # It is idempotent - safe to run multiple times.
 
 set -euo pipefail
@@ -27,7 +27,11 @@ warn() {
 cd "$(dirname "$0")/.."
 
 PG_FORMULA="postgresql@17"
-PG_PORT=5433
+# Mirrors the Makefile: overridable via .env, because 5433 is not free everywhere.
+# `|| true`: the setting is optional, and a failing grep would take the whole script
+# down under `set -e` without printing a thing.
+PG_LOCAL_PORT="$(grep -E '^PG_LOCAL_PORT=' .env 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '[:space:]' || true)"
+PG_PORT="${PG_LOCAL_PORT:-5433}"
 DB_NAME="timetiles"
 DB_USER="timetiles_user"
 DB_PASSWORD="timetiles_password"
@@ -162,35 +166,53 @@ setup_node() {
 }
 
 # ============================================================================
-# Step 4: PostgreSQL on port 5433
+# Step 4: PostgreSQL on the local port
 # ============================================================================
 setup_postgres() {
   echo "🐘 PostgreSQL (local, port $PG_PORT)"
 
-  local conf
-  conf="$(brew --prefix)/var/${PG_FORMULA}/postgresql.conf"
+  local conf data_dir_for_conf
+  data_dir_for_conf="$(brew --prefix)/var/${PG_FORMULA}"
+  conf="$data_dir_for_conf/postgresql.conf"
   if [ ! -f "$conf" ]; then
     warn "No config at $conf — was $PG_FORMULA initialized?"
     return
   fi
 
-  # Port 5433 keeps this cluster clear of a Docker Postgres on the default port,
-  # which is what PG_MODE distinguishes.
-  if grep -qE "^[[:space:]]*port[[:space:]]*=[[:space:]]*$PG_PORT" "$conf"; then
+  # A dedicated port keeps this cluster clear of a Docker Postgres on 5432, which is
+  # what PG_MODE distinguishes; PG_LOCAL_PORT moves it again when something else has it.
+  # The last uncommented `port` wins, so appending a new one on every change leaves a
+  # trail of contradicting lines. Rewrite in place instead, and only when it differs.
+  local effective_port
+  effective_port="$(grep -E "^[[:space:]]*port[[:space:]]*=" "$conf" | tail -1 | sed -E 's/.*=[[:space:]]*([0-9]+).*/\1/')"
+  if [ "$effective_port" = "$PG_PORT" ]; then
     print_exists "Port already $PG_PORT"
+  elif [ -n "$effective_port" ]; then
+    sed -i '' -E "s|^[[:space:]]*port[[:space:]]*=[[:space:]]*[0-9]+|port = $PG_PORT|" "$conf"
+    print_success "Changed port $effective_port -> $PG_PORT"
+    pg_ctl restart -D "$data_dir_for_conf" -l /tmp/pg.log >/dev/null 2>&1 || true
   else
-    printf '\n# TimeTiles: keep clear of a Docker Postgres on 5432\nport = %s\n' "$PG_PORT" >>"$conf"
+    printf '\nport = %s\n' "$PG_PORT" >>"$conf"
     print_success "Set port to $PG_PORT"
-    pg_ctl restart -D "$(brew --prefix)/var/${PG_FORMULA}" -l /tmp/pg.log >/dev/null 2>&1 || true
+    pg_ctl restart -D "$data_dir_for_conf" -l /tmp/pg.log >/dev/null 2>&1 || true
   fi
 
-  # pg_ctl rather than `brew services`: the latter goes through `launchctl gui/<uid>`,
-  # which does not exist in an SSH session, and this is the same call `make dev` makes.
-  if pg_isready -h localhost -p "$PG_PORT" >/dev/null 2>&1; then
+  local data_dir
+  data_dir="$(brew --prefix)/var/${PG_FORMULA}"
+
+  # postmaster.pid, not pg_isready: something answering on the port proves only that
+  # the port is taken — a Postgres container belonging to another user answers too,
+  # and treating it as ours would write this repo's roles into a stranger's database.
+  if [ -f "$data_dir/postmaster.pid" ] && pg_isready -h localhost -p "$PG_PORT" >/dev/null 2>&1; then
     print_exists "Already running"
+  elif pg_isready -h localhost -p "$PG_PORT" >/dev/null 2>&1; then
+    print_error "Port $PG_PORT answers, but it is not this cluster ($data_dir has no postmaster.pid)."
+    echo "    Something else owns that port. Pick another one:"
+    echo "    echo 'PG_LOCAL_PORT=5434' >> .env   # then re-run"
+    exit 1
   else
-    local data_dir
-    data_dir="$(brew --prefix)/var/${PG_FORMULA}"
+    # pg_ctl rather than `brew services`: the latter goes through `launchctl gui/<uid>`,
+    # which does not exist in an SSH session, and this is the same call `make dev` makes.
     if LC_ALL=en_US.UTF-8 pg_ctl start -D "$data_dir" -l /tmp/pg.log >/dev/null 2>&1; then
       print_success "Started PostgreSQL"
     else

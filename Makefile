@@ -3,10 +3,13 @@
 
 .PHONY: all selftest setup-mac status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
-# Load PG_MODE from .env (default: docker)
+# Load PG_MODE / PG_LOCAL_PORT from .env (defaults: docker, 5433)
 -include .env
 PG_MODE ?= docker
-PG_PORT := $(if $(filter local,$(PG_MODE)),5433,5432)
+# Overridable because 5433 is not always free — a Postgres container belonging to
+# another user on a shared machine takes it just as easily as a second checkout.
+PG_LOCAL_PORT ?= 5433
+PG_PORT := $(if $(filter local,$(PG_MODE)),$(PG_LOCAL_PORT),5432)
 
 all: help
 
@@ -32,10 +35,10 @@ logs:
 db-reset:
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🔄 Resetting local database..."; \
-		psql -p 5433 -d postgres -c "DROP DATABASE IF EXISTS timetiles;" && \
-		psql -p 5433 -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;" && \
-		psql -p 5433 -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;" && \
-		psql -p 5433 -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
+		psql -p $(PG_PORT) -d postgres -c "DROP DATABASE IF EXISTS timetiles;" && \
+		psql -p $(PG_PORT) -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;" && \
+		psql -p $(PG_PORT) -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;" && \
+		psql -p $(PG_PORT) -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
 	else \
 		docker compose -f docker-compose.dev.yml down -v; \
 		docker compose -f docker-compose.dev.yml up -d postgres; \
@@ -59,7 +62,7 @@ wait-db:
 # Open a PostgreSQL shell
 db-shell:
 	@if [ "$(PG_MODE)" = "local" ]; then \
-		psql -p 5433 -U timetiles_user -d timetiles; \
+		psql -p $(PG_PORT) -U timetiles_user -d timetiles; \
 	else \
 		docker exec -it timetiles-postgres psql -U timetiles_user -d timetiles; \
 	fi
@@ -73,7 +76,7 @@ db-query:
 		exit 1; \
 	fi
 	@if [ "$(PG_MODE)" = "local" ]; then \
-		PGPASSWORD=timetiles_password psql -h localhost -p 5433 -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"; \
+		PGPASSWORD=timetiles_password psql -h localhost -p $(PG_PORT) -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"; \
 	else \
 		docker exec -e PGPASSWORD=timetiles_password timetiles-postgres psql -h localhost -U timetiles_user -d $(if $(DB_NAME),$(DB_NAME),timetiles) -c "$(SQL)"; \
 	fi
@@ -111,7 +114,7 @@ db-reset-tests:
 clean:
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🧹 Cleaning local database..."; \
-		psql -p 5433 -d postgres -c "DROP DATABASE IF EXISTS timetiles;" 2>/dev/null || true; \
+		psql -p $(PG_PORT) -d postgres -c "DROP DATABASE IF EXISTS timetiles;" 2>/dev/null || true; \
 	else \
 		docker compose -f docker-compose.dev.yml down -v --remove-orphans; \
 		docker system prune -f; \
@@ -130,9 +133,9 @@ setup-mac:
 fresh: clean
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🐘 Creating local database..."; \
-		psql -p 5433 -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;"; \
-		psql -p 5433 -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"; \
-		psql -p 5433 -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
+		psql -p $(PG_PORT) -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;"; \
+		psql -p $(PG_PORT) -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"; \
+		psql -p $(PG_PORT) -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
 	else \
 		$(MAKE) up; \
 	fi
@@ -162,7 +165,7 @@ ensure-infra:
 	@if pg_isready -h localhost -p $(PG_PORT) >/dev/null 2>&1; then \
 		true; \
 	elif [ "$(PG_MODE)" = "local" ]; then \
-		echo "🐘 Starting local PostgreSQL (port 5433)..."; \
+		echo "🐘 Starting local PostgreSQL (port $(PG_PORT))..."; \
 		LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log; \
 		$(MAKE) wait-db; \
 	else \
@@ -568,7 +571,7 @@ help:
 		'  selftest    - Validate environment (prerequisites + setup completion)' \
 		'  setup       - First-time setup (deps, .env files, Git LFS, Git config)' \
 		'  setup-mac   - Provision a fresh Mac (brew toolchain + local PostgreSQL), then setup' \
-		'                Docker-free: PostgreSQL runs from Homebrew on port 5433' \
+		'                Docker-free: PostgreSQL runs from Homebrew (PG_LOCAL_PORT, default 5433)' \
 		'  init        - Complete initialization (setup + db + seed + start dev)' \
 		'  fresh       - Nuclear reset (wipes everything + rebuild)' '' \
 		'🚀 Daily Development:' \
@@ -652,7 +655,7 @@ help:
 		'                     Example: ARGS='"'"'development users catalogs'"'"'' '' \
 		'🐘 Database Mode (PG_MODE in .env):' \
 		'  docker (default) - Uses Docker PostgreSQL on port 5432' \
-		'  local            - Uses Homebrew PostgreSQL on port 5433' '' \
+		'  local            - Uses Homebrew PostgreSQL on PG_LOCAL_PORT (default 5433)' '' \
 		'💡 Quick Start:' \
 		'  make selftest   # Validate environment readiness' \
 		'  make init       # Complete initialization + start dev' \
