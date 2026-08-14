@@ -1,7 +1,7 @@
 # TimeTiles Development & Testing Commands
 # This Makefile provides commands for LOCAL DEVELOPMENT AND TESTING ONLY (not production)
 
-.PHONY: all selftest status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
+.PHONY: all selftest setup-mac status up down logs db-reset wait-db db-shell db-query db-logs db-reset-tests clean setup seed demo-data setup-site demo-berlin init ensure-infra jobs dev storybook check-cva timescrape-dev timescrape-images timescrape-test kill-dev fresh reset build lint typecheck format test test-ai test-e2e test-e2e-debug test-deploy-unit test-deploy-integration test-deploy-ci test-deploy test-coverage coverage coverage-check migrate migrate-create check check-ai check-theme images worktree worktree-rm worktree-ls worktree-setup help
 
 # Load PG_MODE from .env (default: docker)
 -include .env
@@ -121,6 +121,10 @@ clean:
 # Runs comprehensive setup: env files, dependencies, Git LFS, Git config
 setup:
 	@./scripts/setup.sh
+
+# Provision a fresh macOS dev machine (Homebrew toolchain + local PostgreSQL), then run setup
+setup-mac:
+	@./scripts/setup-mac.sh
 
 # Complete fresh start (clean slate)
 fresh: clean
@@ -563,6 +567,8 @@ help:
 		'🏁 Getting Started:' \
 		'  selftest    - Validate environment (prerequisites + setup completion)' \
 		'  setup       - First-time setup (deps, .env files, Git LFS, Git config)' \
+		'  setup-mac   - Provision a fresh Mac (brew toolchain + local PostgreSQL), then setup' \
+		'                Docker-free: PostgreSQL runs from Homebrew on port 5433' \
 		'  init        - Complete initialization (setup + db + seed + start dev)' \
 		'  fresh       - Nuclear reset (wipes everything + rebuild)' '' \
 		'🚀 Daily Development:' \

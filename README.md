@@ -73,6 +73,10 @@ If you use `mise`, this repo now pins the toolchain in `.mise.toml`:
 mise install
 ```
 
+On macOS, `make setup-mac` provisions everything below — Homebrew formulas, PostgreSQL 17 with PostGIS
+on port 5433, the pinned toolchain and the Playwright browser — and then runs `make setup`. It is
+idempotent and needs no Docker. To do it by hand instead:
+
 ```bash
 # macOS
 brew install git git-lfs node pnpm docker postgresql jq curl
