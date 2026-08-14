@@ -131,7 +131,8 @@ const EventItem = memo(({ event, eventId, onEventClick, hideDatasetBadge }: Even
       )}
       {...interactiveProps}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail — arbitrary user-imported host, rendered unoptimized per
+          the images.remotePatterns comment in next.config.mjs. */}
       {imageUrl && (
         <Image src={imageUrl} alt="" width={400} height={96} className="h-24 w-full object-cover" unoptimized />
       )}

@@ -202,6 +202,8 @@ export const EventDetailContent = ({
       {/* Event image */}
       {imageUrl && (
         <div className="overflow-hidden rounded-sm">
+          {/* Arbitrary user-imported host — rendered unoptimized per the
+              images.remotePatterns comment in next.config.mjs. */}
           <Image
             src={imageUrl}
             alt={title}
