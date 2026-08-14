@@ -310,11 +310,9 @@ py-24        /* Hero, prominent sections */
 All components follow shadcn/ui patterns:
 
 ```typescript
-// 1. Use forwardRef for proper ref handling
-const Component = React.forwardRef<HTMLElement, ComponentProps>(
-  ({ className, ...props }, ref) => {
-    return <element ref={ref} className={cn(baseStyles, className)} {...props} />
-  }
+// 1. Take `ref` as an ordinary prop — React 19 has no forwardRef
+const Component = ({ className, ref, ...props }: React.ComponentProps<"element">) => (
+  <element ref={ref} className={cn(baseStyles, className)} {...props} />
 )
 Component.displayName = "Component"
 

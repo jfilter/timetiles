@@ -399,7 +399,7 @@ export default [
       "sonarjs/max-lines": "off", // Complex config and field definitions require extensive code
     },
   },
-  // Map component uses forwardRef with complex interactive state management
+  // Map component wires many interdependent hooks and passes their results to the renderer
   { files: ["components/maps/clustered-map.tsx"], rules: { "sonarjs/max-lines-per-function": "off" } },
   // Query hooks intentionally spread query results to compose return types
   { files: ["lib/hooks/use-events-queries.ts"], rules: { "@tanstack/query/no-rest-destructuring": "off" } },

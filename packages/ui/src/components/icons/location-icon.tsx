@@ -11,7 +11,7 @@ import * as React from "react";
 
 import type { IconProps } from "./map-icon";
 
-export const LocationIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24, className, ...props }, ref) => (
+export const LocationIcon = ({ size = 24, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -37,6 +37,6 @@ export const LocationIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size =
     <line x1="9.5" y1="8" x2="10.5" y2="8" opacity="0.4" strokeWidth="1" />
     <line x1="13.5" y1="8" x2="14.5" y2="8" opacity="0.4" strokeWidth="1" />
   </svg>
-));
+);
 
 LocationIcon.displayName = "LocationIcon";

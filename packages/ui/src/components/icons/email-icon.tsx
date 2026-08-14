@@ -11,7 +11,7 @@ import * as React from "react";
 
 import type { IconProps } from "./map-icon";
 
-export const EmailIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24, className, ...props }, ref) => (
+export const EmailIcon = ({ size = 24, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -35,6 +35,6 @@ export const EmailIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24
     <line x1="8" y1="5" x2="8" y2="7" opacity="0.3" strokeWidth="1" />
     <line x1="16" y1="5" x2="16" y2="7" opacity="0.3" strokeWidth="1" />
   </svg>
-));
+);
 
 EmailIcon.displayName = "EmailIcon";

@@ -38,96 +38,90 @@ const heroVariants = cva("relative flex items-center overflow-hidden", {
   defaultVariants: { variant: "centered", size: "default", background: "grid" },
 });
 
-const Hero = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & VariantProps<typeof heroVariants>>(
-  ({ className, variant, size, background, children, ...props }, ref) => {
-    return (
-      <section ref={ref} className={cn(heroVariants({ variant, size, background, className }))} {...props}>
-        {/* Subtle grid background */}
-        {background === "grid" && (
-          <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={heroGridStyle} />
-        )}
+const Hero = ({
+  className,
+  variant,
+  size,
+  background,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"section"> & VariantProps<typeof heroVariants>) => {
+  return (
+    <section ref={ref} className={cn(heroVariants({ variant, size, background, className }))} {...props}>
+      {/* Subtle grid background */}
+      {background === "grid" && (
+        <div className="absolute inset-0 opacity-[0.06] dark:opacity-[0.08]" style={heroGridStyle} />
+      )}
 
-        {/* Content container */}
-        <div
-          className={cn("relative z-10 container mx-auto w-full px-6", variant === "split" ? "max-w-7xl" : "max-w-5xl")}
-        >
-          {children}
-        </div>
-      </section>
-    );
-  }
-);
+      {/* Content container */}
+      <div
+        className={cn("relative z-10 container mx-auto w-full px-6", variant === "split" ? "max-w-7xl" : "max-w-5xl")}
+      >
+        {children}
+      </div>
+    </section>
+  );
+};
 Hero.displayName = "Hero";
 
-const HeroLogo = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("mb-12 flex justify-center", className)} {...props}>
-      {children}
-    </div>
-  )
+const HeroLogo = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mb-12 flex justify-center", className)} {...props}>
+    {children}
+  </div>
 );
 HeroLogo.displayName = "HeroLogo";
 
-const HeroHeadline = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => (
-    <h1
-      ref={ref}
-      className={cn(
-        "text-foreground mb-8 font-serif text-6xl leading-[1.1] font-bold tracking-tight md:text-8xl",
-        "drop-shadow-sm",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </h1>
-  )
+const HeroHeadline = ({ className, children, ref, ...props }: React.ComponentProps<"h1">) => (
+  <h1
+    ref={ref}
+    className={cn(
+      "text-foreground mb-8 font-serif text-6xl leading-[1.1] font-bold tracking-tight md:text-8xl",
+      "drop-shadow-sm",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </h1>
 );
 HeroHeadline.displayName = "HeroHeadline";
 
-const HeroSubheadline = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed md:text-2xl", className)}
-      {...props}
-    >
-      {children}
-    </p>
-  )
+const HeroSubheadline = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p
+    ref={ref}
+    className={cn("text-muted-foreground mx-auto max-w-3xl text-xl leading-relaxed md:text-2xl", className)}
+    {...props}
+  >
+    {children}
+  </p>
 );
 HeroSubheadline.displayName = "HeroSubheadline";
 
-const HeroDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-muted-foreground mx-auto mt-4 max-w-2xl text-lg leading-relaxed", className)}
-      {...props}
-    >
-      {children}
-    </p>
-  )
+const HeroDescription = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p
+    ref={ref}
+    className={cn("text-muted-foreground mx-auto mt-4 max-w-2xl text-lg leading-relaxed", className)}
+    {...props}
+  >
+    {children}
+  </p>
 );
 HeroDescription.displayName = "HeroDescription";
 
-const HeroActions = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("mt-12 flex flex-wrap justify-center gap-4", className)} {...props}>
-      {children}
-    </div>
-  )
+const HeroActions = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mt-12 flex flex-wrap justify-center gap-4", className)} {...props}>
+    {children}
+  </div>
 );
 HeroActions.displayName = "HeroActions";
 
-const HeroAccent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("mt-12 flex justify-center gap-2", className)} {...props}>
-      <div className="bg-primary h-1 w-16 rounded-full" />
-      <div className="bg-secondary h-1 w-4 rounded-full" />
-      <div className="bg-accent h-1 w-8 rounded-full" />
-    </div>
-  )
+const HeroAccent = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mt-12 flex justify-center gap-2", className)} {...props}>
+    <div className="bg-primary h-1 w-16 rounded-full" />
+    <div className="bg-secondary h-1 w-4 rounded-full" />
+    <div className="bg-accent h-1 w-8 rounded-full" />
+  </div>
 );
 HeroAccent.displayName = "HeroAccent";
 

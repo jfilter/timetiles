@@ -12,7 +12,7 @@ import * as React from "react";
 
 import { cn } from "../lib/utils";
 
-export interface HeaderBrandProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface HeaderBrandProps extends React.ComponentProps<"div"> {
   /**
    * Brand content (logo, wordmark, etc.)
    */
@@ -32,7 +32,7 @@ export interface HeaderBrandProps extends React.HTMLAttributes<HTMLDivElement> {
  * </HeaderBrand>
  * ```
  */
-const HeaderBrand = React.forwardRef<HTMLDivElement, HeaderBrandProps>(({ className, children, ...props }, ref) => {
+const HeaderBrand = ({ className, children, ref, ...props }: HeaderBrandProps) => {
   return (
     <div
       ref={ref}
@@ -48,7 +48,7 @@ const HeaderBrand = React.forwardRef<HTMLDivElement, HeaderBrandProps>(({ classN
       {children}
     </div>
   );
-});
+};
 
 HeaderBrand.displayName = "HeaderBrand";
 

@@ -11,7 +11,7 @@ import * as React from "react";
 
 import type { IconProps } from "./map-icon";
 
-export const BusinessIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 24, className, ...props }, ref) => (
+export const BusinessIcon = ({ size = 24, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -37,6 +37,6 @@ export const BusinessIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size =
     {/* Horizontal division line */}
     <line x1="4" y1="13" x2="20" y2="13" opacity="0.3" strokeWidth="1" />
   </svg>
-));
+);
 
 BusinessIcon.displayName = "BusinessIcon";

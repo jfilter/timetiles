@@ -85,26 +85,23 @@ const detailsValueVariants = cva([
   "[&_a]:text-accent [&_a]:hover:underline [&_a]:transition-colors",
 ]);
 
-export interface DetailsGridProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof detailsGridVariants> {
+export interface DetailsGridProps extends React.ComponentProps<"div">, VariantProps<typeof detailsGridVariants> {
   children: React.ReactNode;
 }
 
 /**
  * DetailsGrid container component
  */
-export const DetailsGrid = React.forwardRef<HTMLDivElement, DetailsGridProps>(
-  ({ className, variant, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(detailsGridVariants({ variant }), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const DetailsGrid = ({ className, variant, children, ref, ...props }: DetailsGridProps) => {
+  return (
+    <div ref={ref} className={cn(detailsGridVariants({ variant }), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 DetailsGrid.displayName = "DetailsGrid";
 
-export interface DetailsItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DetailsItemProps extends React.ComponentProps<"div"> {
   index?: number;
   children: React.ReactNode;
 }
@@ -112,70 +109,62 @@ export interface DetailsItemProps extends React.HTMLAttributes<HTMLDivElement> {
 /**
  * Individual details card component with cartographic coordinates
  */
-export const DetailsItem = React.forwardRef<HTMLDivElement, DetailsItemProps>(
-  ({ className, index = 0, children, ...props }, ref) => {
-    // Stagger animation delays
-    const style = { animationDelay: `${index * 150}ms` };
+export const DetailsItem = ({ className, index = 0, children, ref, ...props }: DetailsItemProps) => {
+  // Stagger animation delays
+  const style = { animationDelay: `${index * 150}ms` };
 
-    return (
-      <div ref={ref} className={cn(detailsItemVariants(), className)} style={style} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={cn(detailsItemVariants(), className)} style={style} {...props}>
+      {children}
+    </div>
+  );
+};
 DetailsItem.displayName = "DetailsItem";
 
-export interface DetailsIconProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DetailsIconProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Icon wrapper component
  */
-export const DetailsIcon = React.forwardRef<HTMLDivElement, DetailsIconProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(detailsIconVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const DetailsIcon = ({ className, children, ref, ...props }: DetailsIconProps) => {
+  return (
+    <div ref={ref} className={cn(detailsIconVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 DetailsIcon.displayName = "DetailsIcon";
 
-export interface DetailsLabelProps extends React.HTMLAttributes<HTMLHeadingElement> {
+export interface DetailsLabelProps extends React.ComponentProps<"h3"> {
   children: React.ReactNode;
 }
 
 /**
  * Label (heading) component with editorial typography
  */
-export const DetailsLabel = React.forwardRef<HTMLHeadingElement, DetailsLabelProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <h3 ref={ref} className={cn(detailsLabelVariants(), className)} {...props}>
-        {children}
-      </h3>
-    );
-  }
-);
+export const DetailsLabel = ({ className, children, ref, ...props }: DetailsLabelProps) => {
+  return (
+    <h3 ref={ref} className={cn(detailsLabelVariants(), className)} {...props}>
+      {children}
+    </h3>
+  );
+};
 DetailsLabel.displayName = "DetailsLabel";
 
-export interface DetailsValueProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface DetailsValueProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Value (content) component
  */
-export const DetailsValue = React.forwardRef<HTMLDivElement, DetailsValueProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(detailsValueVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const DetailsValue = ({ className, children, ref, ...props }: DetailsValueProps) => {
+  return (
+    <div ref={ref} className={cn(detailsValueVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 DetailsValue.displayName = "DetailsValue";

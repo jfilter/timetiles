@@ -16,7 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapColors } from "@timetiles/ui/hooks/use-chart-theme";
 import type { LngLatBounds } from "maplibre-gl";
 import { useTranslations } from "next-intl";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { type Ref, useImperativeHandle, useRef, useState } from "react";
 import type { MapRef } from "react-map-gl/maplibre";
 
 import { MAP_STYLES, MAP_STYLES_BY_PRESET } from "@/lib/constants/map";
@@ -80,6 +80,7 @@ interface ClusteredMapProps {
   isLoadingBounds?: boolean;
   isError?: boolean;
   scope?: ViewScope;
+  ref?: Ref<ClusteredMapHandle>;
 }
 
 export interface ClusteredMapHandle {
@@ -101,146 +102,142 @@ const exposeMapForLocalDiagnostics = (map: MapRef): void => {
 // ---------------------------------------------------------------------------
 
 /* oxlint-disable complexity */
-export const ClusteredMap = forwardRef<ClusteredMapHandle, ClusteredMapProps>(
-  (
-    {
-      onBoundsChange,
-      onEventClick,
-      clusters = DEFAULT_CLUSTERS,
-      clusterChildren,
-      clusterSummary,
-      clusterSummaryLoading,
-      initialBounds,
-      initialViewState,
-      isLoadingBounds,
-      isError,
-      scope,
+export const ClusteredMap = ({
+  onBoundsChange,
+  onEventClick,
+  clusters = DEFAULT_CLUSTERS,
+  clusterChildren,
+  clusterSummary,
+  clusterSummaryLoading,
+  initialBounds,
+  initialViewState,
+  isLoadingBounds,
+  isError,
+  scope,
+  ref,
+}: ClusteredMapProps) => {
+  const t = useTranslations("Explore");
+  const { resolvedTheme } = useTheme();
+  const { preset } = useThemePreset();
+  const mapColors = useMapColors();
+  const mapRef = useRef<MapRef | null>(null);
+  const presetStyles = MAP_STYLES_BY_PRESET[preset] ?? MAP_STYLES;
+  const mapStyleUrl = presetStyles[resolvedTheme];
+  const [currentZoom, setCurrentZoom] = useState(INITIAL_VIEW_STATE.zoom);
+  const { popupInfo, closePopup, handleClick, handleFocusedClusterZoom, clearFocusedCluster } = useMapInteractions({
+    formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
+    onEventClick,
+    zoom: currentZoom,
+  });
+
+  const {
+    algorithm,
+    showHex,
+    hexagonMode,
+    clusterFilterCells,
+    focusedCluster,
+    highlightedCells,
+    animatedClusters,
+    geojsonData,
+    maxCount,
+  } = useClusterState(clusters);
+
+  const { isMapPositioned, isMapLoaded, handleLoad, handleMoveEnd } = useMapBounds({
+    initialBounds,
+    initialViewState,
+    onBoundsChange,
+    mapRef,
+    setCurrentZoom,
+  });
+  const handleLoadWithDiagnostics: typeof handleLoad = (event) => {
+    handleLoad(event);
+    exposeMapForLocalDiagnostics(event.target as MapRef);
+  };
+  const { hoverHexData, handleH3Hover, handleH3HoverLeave } = useH3Hover({
+    algorithm,
+    currentZoom,
+    mapRef,
+    isMapLoaded,
+    scope,
+  });
+
+  useImperativeHandle(ref, () => ({
+    resize: () => mapRef.current?.resize(),
+    fitBounds: (bounds: SimpleBounds, options = {}) => {
+      if (mapRef.current) fitMapToBounds(mapRef.current, bounds, options);
     },
-    ref
-  ) => {
-    const t = useTranslations("Explore");
-    const { resolvedTheme } = useTheme();
-    const { preset } = useThemePreset();
-    const mapColors = useMapColors();
-    const mapRef = useRef<MapRef | null>(null);
-    const presetStyles = MAP_STYLES_BY_PRESET[preset] ?? MAP_STYLES;
-    const mapStyleUrl = presetStyles[resolvedTheme];
-    const [currentZoom, setCurrentZoom] = useState(INITIAL_VIEW_STATE.zoom);
-    const { popupInfo, closePopup, handleClick, handleFocusedClusterZoom, clearFocusedCluster } = useMapInteractions({
-      formatFallbackTitle: (id) => t("eventFallbackTitle", { id }),
-      onEventClick,
-      zoom: currentZoom,
-    });
+  }));
 
-    const {
-      algorithm,
-      showHex,
-      hexagonMode,
-      clusterFilterCells,
-      focusedCluster,
-      highlightedCells,
-      animatedClusters,
-      geojsonData,
-      maxCount,
-    } = useClusterState(clusters);
+  const {
+    locationLayer,
+    locationLabelLayer,
+    clusterLayer,
+    clusterLabelLayer,
+    h3HexData,
+    mergeGroupData,
+    focusHexData,
+    focusSubcellHexData,
+  } = useClusterLayers({
+    algorithm,
+    animatedClusters,
+    mapColors,
+    maxCount,
+    highlightedCells,
+    focusedCluster,
+    clusterChildren,
+  });
+  const { handleDblClick, handleZoomInFromPanel } = useFocusHandlers({
+    focusedCluster,
+    mapRef,
+    handleFocusedClusterZoom,
+    clearFocusedCluster,
+  });
 
-    const { isMapPositioned, isMapLoaded, handleLoad, handleMoveEnd } = useMapBounds({
-      initialBounds,
-      initialViewState,
-      onBoundsChange,
-      mapRef,
-      setCurrentZoom,
-    });
-    const handleLoadWithDiagnostics: typeof handleLoad = (event) => {
-      handleLoad(event);
-      exposeMapForLocalDiagnostics(event.target as MapRef);
-    };
-    const { hoverHexData, handleH3Hover, handleH3HoverLeave } = useH3Hover({
-      algorithm,
-      currentZoom,
-      mapRef,
-      isMapLoaded,
-      scope,
-    });
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
+  const showLoading = isLoadingBounds || !isMapPositioned;
 
-    useImperativeHandle(ref, () => ({
-      resize: () => mapRef.current?.resize(),
-      fitBounds: (bounds: SimpleBounds, options = {}) => {
-        if (mapRef.current) fitMapToBounds(mapRef.current, bounds, options);
-      },
-    }));
-
-    const {
-      locationLayer,
-      locationLabelLayer,
-      clusterLayer,
-      clusterLabelLayer,
-      h3HexData,
-      mergeGroupData,
-      focusHexData,
-      focusSubcellHexData,
-    } = useClusterLayers({
-      algorithm,
-      animatedClusters,
-      mapColors,
-      maxCount,
-      highlightedCells,
-      focusedCluster,
-      clusterChildren,
-    });
-    const { handleDblClick, handleZoomInFromPanel } = useFocusHandlers({
-      focusedCluster,
-      mapRef,
-      handleFocusedClusterZoom,
-      clearFocusedCluster,
-    });
-
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- intentional: false must also fall through
-    const showLoading = isLoadingBounds || !isMapPositioned;
-
-    return (
-      <ClusteredMapRenderer
-        mapRef={mapRef}
-        mapStyleUrl={mapStyleUrl}
-        mapColors={mapColors}
-        maxCount={maxCount}
-        hexagonMode={hexagonMode}
-        algorithm={algorithm}
-        showHex={showHex}
-        clusterFilterCells={clusterFilterCells}
-        focusedCluster={focusedCluster}
-        showLoading={showLoading}
-        isError={isError}
-        geojsonData={geojsonData}
-        h3HexData={h3HexData}
-        mergeGroupData={mergeGroupData}
-        hoverHexData={hoverHexData}
-        focusHexData={focusHexData}
-        focusSubcellHexData={focusSubcellHexData}
-        locationLayer={locationLayer}
-        locationLabelLayer={locationLabelLayer}
-        clusterLayer={clusterLayer}
-        clusterLabelLayer={clusterLabelLayer}
-        popupInfo={popupInfo}
-        clusterSummary={clusterSummary}
-        clusterSummaryLoading={clusterSummaryLoading}
-        onMoveEnd={handleMoveEnd}
-        onLoad={handleLoadWithDiagnostics}
-        onClick={handleClick}
-        onDblClick={handleDblClick}
-        onMouseEnter={handleH3Hover}
-        onMouseLeave={handleH3HoverLeave}
-        onClosePopup={closePopup}
-        onZoomIn={handleZoomInFromPanel}
-        onClose={clearFocusedCluster}
-        loadingMessage={t("loadingMapData")}
-        errorTitle={t("unableToLoadMapData")}
-        errorSubtitle={t("mapLoadError")}
-        filterLabel={t("clusterFilterActive")}
-        initialViewState={initialViewState}
-      />
-    );
-  }
-);
+  return (
+    <ClusteredMapRenderer
+      mapRef={mapRef}
+      mapStyleUrl={mapStyleUrl}
+      mapColors={mapColors}
+      maxCount={maxCount}
+      hexagonMode={hexagonMode}
+      algorithm={algorithm}
+      showHex={showHex}
+      clusterFilterCells={clusterFilterCells}
+      focusedCluster={focusedCluster}
+      showLoading={showLoading}
+      isError={isError}
+      geojsonData={geojsonData}
+      h3HexData={h3HexData}
+      mergeGroupData={mergeGroupData}
+      hoverHexData={hoverHexData}
+      focusHexData={focusHexData}
+      focusSubcellHexData={focusSubcellHexData}
+      locationLayer={locationLayer}
+      locationLabelLayer={locationLabelLayer}
+      clusterLayer={clusterLayer}
+      clusterLabelLayer={clusterLabelLayer}
+      popupInfo={popupInfo}
+      clusterSummary={clusterSummary}
+      clusterSummaryLoading={clusterSummaryLoading}
+      onMoveEnd={handleMoveEnd}
+      onLoad={handleLoadWithDiagnostics}
+      onClick={handleClick}
+      onDblClick={handleDblClick}
+      onMouseEnter={handleH3Hover}
+      onMouseLeave={handleH3HoverLeave}
+      onClosePopup={closePopup}
+      onZoomIn={handleZoomInFromPanel}
+      onClose={clearFocusedCluster}
+      loadingMessage={t("loadingMapData")}
+      errorTitle={t("unableToLoadMapData")}
+      errorSubtitle={t("mapLoadError")}
+      filterLabel={t("clusterFilterActive")}
+      initialViewState={initialViewState}
+    />
+  );
+};
 
 ClusteredMap.displayName = "ClusteredMap";

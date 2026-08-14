@@ -77,7 +77,7 @@ const timelineDescriptionVariants = cva([
   "pl-4 border-l-2 border-accent/20",
 ]);
 
-export interface TimelineProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof timelineVariants> {
+export interface TimelineProps extends React.ComponentProps<"div">, VariantProps<typeof timelineVariants> {
   children: React.ReactNode;
 }
 
@@ -86,20 +86,18 @@ export interface TimelineProps extends React.HTMLAttributes<HTMLDivElement>, Var
  */
 const timelineLineStyle = { animationDuration: "800ms", animationFillMode: "both" } as const;
 
-export const Timeline = React.forwardRef<HTMLDivElement, TimelineProps>(
-  ({ className, variant, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(timelineVariants({ variant }), className)} {...props}>
-        {/* Connecting line (journey path) */}
-        <div className={cn(timelineLineVariants())} style={timelineLineStyle} />
-        {children}
-      </div>
-    );
-  }
-);
+export const Timeline = ({ className, variant, children, ref, ...props }: TimelineProps) => {
+  return (
+    <div ref={ref} className={cn(timelineVariants({ variant }), className)} {...props}>
+      {/* Connecting line (journey path) */}
+      <div className={cn(timelineLineVariants())} style={timelineLineStyle} />
+      {children}
+    </div>
+  );
+};
 Timeline.displayName = "Timeline";
 
-export interface TimelineItemProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TimelineItemProps extends React.ComponentProps<"div"> {
   index?: number;
   children: React.ReactNode;
 }
@@ -107,69 +105,61 @@ export interface TimelineItemProps extends React.HTMLAttributes<HTMLDivElement> 
 /**
  * Individual timeline item component
  */
-export const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
-  ({ className, index = 0, children, ...props }, ref) => {
-    // Stagger animation delays for each item
-    const style = { animationDelay: `${index * 150}ms` };
-    return (
-      <div ref={ref} className={cn(timelineItemVariants(), className)} style={style} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TimelineItem = ({ className, index = 0, children, ref, ...props }: TimelineItemProps) => {
+  // Stagger animation delays for each item
+  const style = { animationDelay: `${index * 150}ms` };
+  return (
+    <div ref={ref} className={cn(timelineItemVariants(), className)} style={style} {...props}>
+      {children}
+    </div>
+  );
+};
 TimelineItem.displayName = "TimelineItem";
 
-export interface TimelineDateProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TimelineDateProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Date marker component (waypoint)
  */
-export const TimelineDate = React.forwardRef<HTMLDivElement, TimelineDateProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(timelineDateVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TimelineDate = ({ className, children, ref, ...props }: TimelineDateProps) => {
+  return (
+    <div ref={ref} className={cn(timelineDateVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 TimelineDate.displayName = "TimelineDate";
 
-export interface TimelineTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+export interface TimelineTitleProps extends React.ComponentProps<"h3"> {
   children: React.ReactNode;
 }
 
 /**
  * Title component with editorial typography
  */
-export const TimelineTitle = React.forwardRef<HTMLHeadingElement, TimelineTitleProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <h3 ref={ref} className={cn(timelineTitleVariants(), className)} {...props}>
-        {children}
-      </h3>
-    );
-  }
-);
+export const TimelineTitle = ({ className, children, ref, ...props }: TimelineTitleProps) => {
+  return (
+    <h3 ref={ref} className={cn(timelineTitleVariants(), className)} {...props}>
+      {children}
+    </h3>
+  );
+};
 TimelineTitle.displayName = "TimelineTitle";
 
-export interface TimelineDescriptionProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TimelineDescriptionProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Description component
  */
-export const TimelineDescription = React.forwardRef<HTMLDivElement, TimelineDescriptionProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(timelineDescriptionVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TimelineDescription = ({ className, children, ref, ...props }: TimelineDescriptionProps) => {
+  return (
+    <div ref={ref} className={cn(timelineDescriptionVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 TimelineDescription.displayName = "TimelineDescription";

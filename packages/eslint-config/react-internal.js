@@ -66,12 +66,9 @@ export default [
       "react/no-children-prop": "error",
 
       // @eslint-react rules for modern React patterns (v5)
-      // v5 dropped `no-useless-forward-ref` (which flagged only forwardRef that ignored the ref)
-      // in favour of `no-forward-ref`, which flags EVERY use: React 19 passes ref as a normal prop,
-      // so forwardRef is obsolete. That is a stricter check than the one it replaced and ~44 files
-      // still use forwardRef, so it is a "warn" here — dropping to React-19 refs is a separate
-      // codebase migration, not part of a dependency bump.
-      "@eslint-react/no-forward-ref": "warn",
+      // React 19 passes ref as a normal prop, so forwardRef is obsolete;
+      // the codebase has migrated off it and this rule now enforces that.
+      "@eslint-react/no-forward-ref": "error",
       "@eslint-react/no-access-state-in-setstate": "error",
       "@eslint-react/no-array-index-key": "warn",
       "@eslint-react/no-children-count": "warn",

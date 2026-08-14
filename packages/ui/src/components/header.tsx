@@ -26,7 +26,7 @@ const headerVariants = cva("sticky top-0 z-50 w-full border-b backdrop-blur-sm t
   defaultVariants: { variant: "marketing", decorative: false },
 });
 
-export interface HeaderProps extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof headerVariants> {
+export interface HeaderProps extends React.ComponentProps<"header">, VariantProps<typeof headerVariants> {
   /**
    * Whether to show cartographic decorative elements
    * (grid overlay, coordinates, compass)
@@ -52,21 +52,19 @@ export interface HeaderProps extends React.HTMLAttributes<HTMLElement>, VariantP
  * </Header>
  * ```
  */
-const Header = React.forwardRef<HTMLElement, HeaderProps>(
-  ({ className, variant, decorative, children, ...props }, ref) => {
-    return (
-      <header ref={ref} className={cn(headerVariants({ variant, decorative }), className)} {...props}>
-        {/* Cartographic grid overlay (when decorative) */}
-        {decorative && (
-          <div className="absolute inset-0 opacity-100 dark:opacity-50" style={headerGridStyle} aria-hidden="true" />
-        )}
+const Header = ({ className, variant, decorative, children, ref, ...props }: HeaderProps) => {
+  return (
+    <header ref={ref} className={cn(headerVariants({ variant, decorative }), className)} {...props}>
+      {/* Cartographic grid overlay (when decorative) */}
+      {decorative && (
+        <div className="absolute inset-0 opacity-100 dark:opacity-50" style={headerGridStyle} aria-hidden="true" />
+      )}
 
-        {/* Content container */}
-        <div className="relative mx-auto flex h-12 items-center justify-between px-6 md:px-8">{children}</div>
-      </header>
-    );
-  }
-);
+      {/* Content container */}
+      <div className="relative mx-auto flex h-12 items-center justify-between px-6 md:px-8">{children}</div>
+    </header>
+  );
+};
 
 Header.displayName = "Header";
 

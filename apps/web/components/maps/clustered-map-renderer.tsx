@@ -1,10 +1,10 @@
 /**
  * Stateless render component for ClusteredMap.
  *
- * Accepts all resolved props from the ClusteredMap forwardRef wrapper and
- * renders the map canvas, hex layers, cluster circles, popup, and overlay
- * panels. Extracted to keep the ClusteredMap function body within the
- * sonarjs/max-lines-per-function limit.
+ * Accepts all resolved props from ClusteredMap and renders the map canvas,
+ * hex layers, cluster circles, popup, and overlay panels. Extracted to keep
+ * the ClusteredMap function body within the sonarjs/max-lines-per-function
+ * limit.
  *
  * @module
  * @category Components

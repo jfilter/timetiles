@@ -26,10 +26,12 @@ const MobileNavDrawer = DialogPrimitive.Root;
  * Trigger button for opening the mobile navigation drawer.
  * Renders a hamburger menu icon with cartographic styling.
  */
-const MobileNavDrawerTrigger = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+const MobileNavDrawerTrigger = ({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Trigger>) => (
   <DialogPrimitive.Trigger
     ref={ref}
     className={cn(
@@ -43,17 +45,14 @@ const MobileNavDrawerTrigger = React.forwardRef<
   >
     {children ?? <Menu className="h-5 w-5" />}
   </DialogPrimitive.Trigger>
-));
+);
 MobileNavDrawerTrigger.displayName = "MobileNavDrawerTrigger";
 
 /**
  * Overlay backdrop for the mobile navigation drawer.
  * Semi-transparent with fade animation.
  */
-const MobileNavDrawerOverlay = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+const MobileNavDrawerOverlay = ({ className, ref, ...props }: React.ComponentProps<typeof DialogPrimitive.Overlay>) => (
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
@@ -64,17 +63,19 @@ const MobileNavDrawerOverlay = React.forwardRef<
     )}
     {...props}
   />
-));
+);
 MobileNavDrawerOverlay.displayName = "MobileNavDrawerOverlay";
 
 /**
  * Content container for the mobile navigation drawer.
  * Slides in from the right with atlas index styling.
  */
-const MobileNavDrawerContent = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+const MobileNavDrawerContent = ({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Content>) => (
   <DialogPrimitive.Portal>
     <MobileNavDrawerOverlay />
     <DialogPrimitive.Content
@@ -114,10 +115,10 @@ const MobileNavDrawerContent = React.forwardRef<
       <nav className="flex-1 overflow-y-auto py-2">{children}</nav>
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-));
+);
 MobileNavDrawerContent.displayName = "MobileNavDrawerContent";
 
-interface MobileNavDrawerItemProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+interface MobileNavDrawerItemProps extends React.ComponentProps<"a"> {
   /** Whether this item represents the current page */
   active?: boolean;
   /** Component to use for rendering the link (e.g., Next.js Link) */
@@ -128,28 +129,26 @@ interface MobileNavDrawerItemProps extends React.AnchorHTMLAttributes<HTMLAnchor
  * Navigation item within the mobile drawer.
  * Styled with serif typography and terracotta active indicator.
  */
-const MobileNavDrawerItem = React.forwardRef<HTMLAnchorElement, MobileNavDrawerItemProps>(
-  ({ className, active, children, ...props }, ref) => (
-    <DialogPrimitive.Close asChild>
-      <a
-        ref={ref}
-        className={cn(
-          "block px-6 py-4 transition-colors",
-          "font-serif text-lg",
-          "text-foreground dark:text-foreground",
-          "border-primary/10 dark:border-primary/20 border-b",
-          "hover:bg-primary/5 dark:hover:bg-foreground/5",
-          "focus:ring-primary/50 focus:ring-2 focus:outline-none focus:ring-inset",
-          active && ["border-l-secondary border-l-[3px]", "bg-primary/5 dark:bg-foreground/5", "pl-[calc(1.5rem-3px)]"],
-          className
-        )}
-        aria-current={active ? "page" : undefined}
-        {...props}
-      >
-        {children}
-      </a>
-    </DialogPrimitive.Close>
-  )
+const MobileNavDrawerItem = ({ className, active, children, ref, ...props }: MobileNavDrawerItemProps) => (
+  <DialogPrimitive.Close asChild>
+    <a
+      ref={ref}
+      className={cn(
+        "block px-6 py-4 transition-colors",
+        "font-serif text-lg",
+        "text-foreground dark:text-foreground",
+        "border-primary/10 dark:border-primary/20 border-b",
+        "hover:bg-primary/5 dark:hover:bg-foreground/5",
+        "focus:ring-primary/50 focus:ring-2 focus:outline-none focus:ring-inset",
+        active && ["border-l-secondary border-l-[3px]", "bg-primary/5 dark:bg-foreground/5", "pl-[calc(1.5rem-3px)]"],
+        className
+      )}
+      aria-current={active ? "page" : undefined}
+      {...props}
+    >
+      {children}
+    </a>
+  </DialogPrimitive.Close>
 );
 MobileNavDrawerItem.displayName = "MobileNavDrawerItem";
 
@@ -158,10 +157,13 @@ MobileNavDrawerItem.displayName = "MobileNavDrawerItem";
  * Wraps children with DialogPrimitive.Close for auto-close behavior.
  * Use this when you need to use Next.js Link or other custom link components.
  */
-const MobileNavDrawerLink = React.forwardRef<
-  React.ComponentRef<typeof DialogPrimitive.Close>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Close> & { active?: boolean }
->(({ className, active, children, ...props }, ref) => (
+const MobileNavDrawerLink = ({
+  className,
+  active,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Close> & { active?: boolean }) => (
   <DialogPrimitive.Close
     ref={ref}
     asChild
@@ -179,7 +181,7 @@ const MobileNavDrawerLink = React.forwardRef<
   >
     {children}
   </DialogPrimitive.Close>
-));
+);
 MobileNavDrawerLink.displayName = "MobileNavDrawerLink";
 
 export {

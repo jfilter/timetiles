@@ -16,10 +16,11 @@ import { cn } from "../lib/utils";
 
 const Collapsible = CollapsiblePrimitive.Root;
 
-const CollapsibleTrigger = React.forwardRef<
-  React.ComponentRef<typeof CollapsiblePrimitive.CollapsibleTrigger>,
-  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleTrigger>
->(({ className, ...props }, ref) => (
+const CollapsibleTrigger = ({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleTrigger>) => (
   <CollapsiblePrimitive.CollapsibleTrigger
     ref={ref}
     className={cn(
@@ -30,13 +31,15 @@ const CollapsibleTrigger = React.forwardRef<
     )}
     {...props}
   />
-));
+);
 CollapsibleTrigger.displayName = CollapsiblePrimitive.CollapsibleTrigger.displayName;
 
-const CollapsibleContent = React.forwardRef<
-  React.ComponentRef<typeof CollapsiblePrimitive.CollapsibleContent>,
-  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.CollapsibleContent>
->(({ className, children, ...props }, ref) => (
+const CollapsibleContent = ({
+  className,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) => (
   <CollapsiblePrimitive.CollapsibleContent
     ref={ref}
     className={cn(
@@ -48,7 +51,7 @@ const CollapsibleContent = React.forwardRef<
   >
     {children}
   </CollapsiblePrimitive.CollapsibleContent>
-));
+);
 CollapsibleContent.displayName = CollapsiblePrimitive.CollapsibleContent.displayName;
 
 export { Collapsible, CollapsibleContent, CollapsibleTrigger };

@@ -27,32 +27,28 @@ const cardVariants = cva("rounded-sm border transition-all duration-200", {
   defaultVariants: { variant: "default", padding: "default" },
 });
 
-export interface CardProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {}
+export interface CardProps extends React.ComponentProps<"div">, VariantProps<typeof cardVariants> {}
 
-const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, variant, padding, ...props }, ref) => (
+const Card = ({ className, variant, padding, ref, ...props }: CardProps) => (
   <div ref={ref} className={cn(cardVariants({ variant, padding }), className)} {...props} />
-));
+);
 Card.displayName = "Card";
 
-const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn("flex flex-col space-y-2", className)} {...props} />
+const CardHeader = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("flex flex-col space-y-2", className)} {...props} />
 );
 CardHeader.displayName = "CardHeader";
 
-const CardTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => (
-    // oxlint-disable-next-line jsx-a11y/heading-has-content -- Content provided via children prop
-    <h3 ref={ref} className={cn("text-foreground font-serif text-2xl leading-tight font-bold", className)} {...props}>
-      {children}
-    </h3>
-  )
+const CardTitle = ({ className, children, ref, ...props }: React.ComponentProps<"h3">) => (
+  // oxlint-disable-next-line jsx-a11y/heading-has-content -- Content provided via children prop
+  <h3 ref={ref} className={cn("text-foreground font-serif text-2xl leading-tight font-bold", className)} {...props}>
+    {children}
+  </h3>
 );
 CardTitle.displayName = "CardTitle";
 
-const CardDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, ...props }, ref) => (
-    <p ref={ref} className={cn("text-muted-foreground leading-relaxed", className)} {...props} />
-  )
+const CardDescription = ({ className, ref, ...props }: React.ComponentProps<"p">) => (
+  <p ref={ref} className={cn("text-muted-foreground leading-relaxed", className)} {...props} />
 );
 CardDescription.displayName = "CardDescription";
 
@@ -74,29 +70,25 @@ CardDescription.displayName = "CardDescription";
  * </Card>
  * ```
  */
-const CardToolbar = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("border-border/40 flex items-center gap-2 border-b px-4 py-2 md:px-6 md:py-2.5", className)}
-      {...props}
-    />
-  )
+const CardToolbar = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div
+    ref={ref}
+    className={cn("border-border/40 flex items-center gap-2 border-b px-4 py-2 md:px-6 md:py-2.5", className)}
+    {...props}
+  />
 );
 CardToolbar.displayName = "CardToolbar";
 
 /** Flexible spacer for CardToolbar — pushes subsequent items to the right. */
 const CardToolbarSpacer = () => <div className="min-w-0 flex-1" />;
 
-const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => <div ref={ref} className={cn("", className)} {...props} />
+const CardContent = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("", className)} {...props} />
 );
 CardContent.displayName = "CardContent";
 
-const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("border-border flex items-center border-t pt-4", className)} {...props} />
-  )
+const CardFooter = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("border-border flex items-center border-t pt-4", className)} {...props} />
 );
 CardFooter.displayName = "CardFooter";
 
@@ -105,14 +97,12 @@ CardFooter.displayName = "CardFooter";
  *
  * Usage: <CardVersion>Version 1</CardVersion>
  */
-const CardVersion = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("text-ring dark:text-ring mb-2 font-mono text-xs font-bold tracking-wide uppercase", className)}
-      {...props}
-    />
-  )
+const CardVersion = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div
+    ref={ref}
+    className={cn("text-ring dark:text-ring mb-2 font-mono text-xs font-bold tracking-wide uppercase", className)}
+    {...props}
+  />
 );
 CardVersion.displayName = "CardVersion";
 
@@ -121,14 +111,12 @@ CardVersion.displayName = "CardVersion";
  *
  * Usage: <CardLabel>Light Background</CardLabel>
  */
-const CardLabel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn("text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase opacity-60", className)}
-      {...props}
-    />
-  )
+const CardLabel = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div
+    ref={ref}
+    className={cn("text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase opacity-60", className)}
+    {...props}
+  />
 );
 CardLabel.displayName = "CardLabel";
 
@@ -141,10 +129,8 @@ CardLabel.displayName = "CardLabel";
  *   <CardSpecItem label="Format">Landscape</CardSpecItem>
  * </CardSpec>
  */
-const CardSpec = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("mt-4 grid grid-cols-2 gap-3", className)} {...props} />
-  )
+const CardSpec = ({ className, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mt-4 grid grid-cols-2 gap-3", className)} {...props} />
 );
 CardSpec.displayName = "CardSpec";
 
@@ -153,24 +139,22 @@ CardSpec.displayName = "CardSpec";
  *
  * Usage: <CardSpecItem label="Dimensions">420×120px</CardSpecItem>
  */
-interface CardSpecItemProps extends React.HTMLAttributes<HTMLDivElement> {
+interface CardSpecItemProps extends React.ComponentProps<"div"> {
   label: string;
 }
 
-const CardSpecItem = React.forwardRef<HTMLDivElement, CardSpecItemProps>(
-  ({ className, label, children, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "from-background to-card dark:from-muted dark:to-muted/50 border-ring dark:border-primary rounded-sm border-l-2 bg-gradient-to-br p-3",
-        className
-      )}
-      {...props}
-    >
-      <div className="text-foreground mb-1 text-[0.625rem] font-bold tracking-wider uppercase opacity-70">{label}</div>
-      <div className="text-muted-foreground text-sm">{children}</div>
-    </div>
-  )
+const CardSpecItem = ({ className, label, children, ref, ...props }: CardSpecItemProps) => (
+  <div
+    ref={ref}
+    className={cn(
+      "from-background to-card dark:from-muted dark:to-muted/50 border-ring dark:border-primary rounded-sm border-l-2 bg-gradient-to-br p-3",
+      className
+    )}
+    {...props}
+  >
+    <div className="text-foreground mb-1 text-[0.625rem] font-bold tracking-wider uppercase opacity-70">{label}</div>
+    <div className="text-muted-foreground text-sm">{children}</div>
+  </div>
 );
 CardSpecItem.displayName = "CardSpecItem";
 

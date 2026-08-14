@@ -18,16 +18,19 @@ const callToActionVariants = cva("py-24", {
   defaultVariants: { variant: "centered" },
 });
 
-const CallToAction = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement> & VariantProps<typeof callToActionVariants>
->(({ className, variant, children, ...props }, ref) => {
+const CallToAction = ({
+  className,
+  variant,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"section"> & VariantProps<typeof callToActionVariants>) => {
   return (
     <section ref={ref} className={cn(callToActionVariants({ variant, className }))} {...props}>
       <div className="container mx-auto max-w-4xl px-6">{children}</div>
     </section>
   );
-});
+};
 CallToAction.displayName = "CallToAction";
 
 // Context for passing variant to child components
@@ -44,105 +47,97 @@ const callToActionContentVariants = cva("", {
   defaultVariants: { variant: "centered" },
 });
 
-const CallToActionContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => {
-    const context = React.useContext(CallToActionContext);
-    const variant = context?.variant ?? "centered";
+const CallToActionContent = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => {
+  const context = React.useContext(CallToActionContext);
+  const variant = context?.variant ?? "centered";
 
-    return (
-      <div ref={ref} className={cn(callToActionContentVariants({ variant, className }))} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={cn(callToActionContentVariants({ variant, className }))} {...props}>
+      {children}
+    </div>
+  );
+};
 CallToActionContent.displayName = "CallToActionContent";
 
-const CallToActionHeadline = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => {
-    const context = React.useContext(CallToActionContext);
-    const variant = context?.variant ?? "centered";
+const CallToActionHeadline = ({ className, children, ref, ...props }: React.ComponentProps<"h2">) => {
+  const context = React.useContext(CallToActionContext);
+  const variant = context?.variant ?? "centered";
 
-    const variantClasses = {
-      centered: "font-serif text-4xl md:text-5xl font-bold text-foreground mb-12 leading-tight",
-      split: "font-serif text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight",
-      banner: "font-serif text-4xl md:text-5xl font-bold text-primary-foreground mb-12 leading-tight",
-    };
+  const variantClasses = {
+    centered: "font-serif text-4xl md:text-5xl font-bold text-foreground mb-12 leading-tight",
+    split: "font-serif text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight",
+    banner: "font-serif text-4xl md:text-5xl font-bold text-primary-foreground mb-12 leading-tight",
+  };
 
-    return (
-      <h2 ref={ref} className={cn(variantClasses[variant], className)} {...props}>
-        {children}
-      </h2>
-    );
-  }
-);
+  return (
+    <h2 ref={ref} className={cn(variantClasses[variant], className)} {...props}>
+      {children}
+    </h2>
+  );
+};
 CallToActionHeadline.displayName = "CallToActionHeadline";
 
-const CallToActionDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => {
-    const context = React.useContext(CallToActionContext);
-    const variant = context?.variant ?? "centered";
+const CallToActionDescription = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => {
+  const context = React.useContext(CallToActionContext);
+  const variant = context?.variant ?? "centered";
 
-    const variantClasses = {
-      centered: "text-lg text-muted-foreground mb-8 max-w-2xl mx-auto",
-      split: "text-base text-muted-foreground mb-6",
-      banner: "text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto",
-    };
+  const variantClasses = {
+    centered: "text-lg text-muted-foreground mb-8 max-w-2xl mx-auto",
+    split: "text-base text-muted-foreground mb-6",
+    banner: "text-lg text-primary-foreground/90 mb-8 max-w-2xl mx-auto",
+  };
 
-    return (
-      <p ref={ref} className={cn(variantClasses[variant], className)} {...props}>
-        {children}
-      </p>
-    );
-  }
-);
+  return (
+    <p ref={ref} className={cn(variantClasses[variant], className)} {...props}>
+      {children}
+    </p>
+  );
+};
 CallToActionDescription.displayName = "CallToActionDescription";
 
-const CallToActionActions = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => {
-    const context = React.useContext(CallToActionContext);
-    const variant = context?.variant ?? "centered";
+const CallToActionActions = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => {
+  const context = React.useContext(CallToActionContext);
+  const variant = context?.variant ?? "centered";
 
-    const variantClasses = {
-      centered: "flex justify-center gap-4 flex-wrap",
-      split: "flex gap-4 flex-wrap",
-      banner: "flex justify-center gap-4 flex-wrap",
-    };
+  const variantClasses = {
+    centered: "flex justify-center gap-4 flex-wrap",
+    split: "flex gap-4 flex-wrap",
+    banner: "flex justify-center gap-4 flex-wrap",
+  };
 
-    return (
-      <div ref={ref} className={cn(variantClasses[variant], className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div ref={ref} className={cn(variantClasses[variant], className)} {...props}>
+      {children}
+    </div>
+  );
+};
 CallToActionActions.displayName = "CallToActionActions";
 
-const CallToActionFootnote = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => {
-    const context = React.useContext(CallToActionContext);
-    const variant = context?.variant ?? "centered";
+const CallToActionFootnote = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => {
+  const context = React.useContext(CallToActionContext);
+  const variant = context?.variant ?? "centered";
 
-    const variantClasses = {
-      centered: "mt-8 text-muted-foreground text-sm",
-      split: "mt-6 text-muted-foreground text-sm",
-      banner: "mt-8 text-primary-foreground/70 text-sm",
-    };
+  const variantClasses = {
+    centered: "mt-8 text-muted-foreground text-sm",
+    split: "mt-6 text-muted-foreground text-sm",
+    banner: "mt-8 text-primary-foreground/70 text-sm",
+  };
 
-    return (
-      <p ref={ref} className={cn(variantClasses[variant], className)} {...props}>
-        {children}
-      </p>
-    );
-  }
-);
+  return (
+    <p ref={ref} className={cn(variantClasses[variant], className)} {...props}>
+      {children}
+    </p>
+  );
+};
 CallToActionFootnote.displayName = "CallToActionFootnote";
 
 // Wrapper to provide context
-const CallToActionWithContext = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement> & VariantProps<typeof callToActionVariants>
->(({ variant = "centered", children, ...props }, ref) => {
+const CallToActionWithContext = ({
+  variant = "centered",
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"section"> & VariantProps<typeof callToActionVariants>) => {
   const resolvedVariant = variant ?? "centered";
   return (
     <CallToActionContext.Provider value={{ variant: resolvedVariant }}>
@@ -151,7 +146,7 @@ const CallToActionWithContext = React.forwardRef<
       </CallToAction>
     </CallToActionContext.Provider>
   );
-});
+};
 CallToActionWithContext.displayName = "CallToAction";
 
 export {

@@ -11,7 +11,7 @@ import * as React from "react";
 
 import type { IconProps } from "./map-icon";
 
-export const InsightsIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 64, className, ...props }, ref) => (
+export const InsightsIcon = ({ size = 64, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -73,6 +73,6 @@ export const InsightsIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size =
       <line x1="36" y1="40" x2="40" y2="36" strokeWidth="1" opacity="0.3" />
     </g>
   </svg>
-));
+);
 
 InsightsIcon.displayName = "InsightsIcon";

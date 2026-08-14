@@ -83,26 +83,23 @@ const testimonialAvatarVariants = cva([
   "group-hover:bg-accent/20 group-hover:scale-105",
 ]);
 
-export interface TestimonialsProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof testimonialsVariants> {
+export interface TestimonialsProps extends React.ComponentProps<"div">, VariantProps<typeof testimonialsVariants> {
   children: React.ReactNode;
 }
 
 /**
  * Testimonials container component
  */
-export const Testimonials = React.forwardRef<HTMLDivElement, TestimonialsProps>(
-  ({ className, variant, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(testimonialsVariants({ variant }), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const Testimonials = ({ className, variant, children, ref, ...props }: TestimonialsProps) => {
+  return (
+    <div ref={ref} className={cn(testimonialsVariants({ variant }), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 Testimonials.displayName = "Testimonials";
 
-export interface TestimonialCardProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TestimonialCardProps extends React.ComponentProps<"div"> {
   index?: number;
   children: React.ReactNode;
 }
@@ -110,97 +107,87 @@ export interface TestimonialCardProps extends React.HTMLAttributes<HTMLDivElemen
 /**
  * Individual testimonial card component with editorial number decoration
  */
-export const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
-  ({ className, index = 0, children, ...props }, ref) => {
-    // Stagger animation delays for visual interest
-    const style = { animationDelay: `${index * 200}ms` };
-    // Format index as two-digit number (01, 02, 03...)
-    const displayNumber = String(index + 1).padStart(2, "0");
+export const TestimonialCard = ({ className, index = 0, children, ref, ...props }: TestimonialCardProps) => {
+  // Stagger animation delays for visual interest
+  const style = { animationDelay: `${index * 200}ms` };
+  // Format index as two-digit number (01, 02, 03...)
+  const displayNumber = String(index + 1).padStart(2, "0");
 
-    return (
-      <div ref={ref} className={cn(testimonialCardVariants(), className)} style={style} {...props}>
-        {/* Editorial background number */}
-        <div
-          className="text-accent/[0.04] pointer-events-none absolute -top-2 -right-4 font-serif text-[120px] leading-none font-bold select-none"
-          aria-hidden="true"
-        >
-          {displayNumber}
-        </div>
-        {children}
+  return (
+    <div ref={ref} className={cn(testimonialCardVariants(), className)} style={style} {...props}>
+      {/* Editorial background number */}
+      <div
+        className="text-accent/[0.04] pointer-events-none absolute -top-2 -right-4 font-serif text-[120px] leading-none font-bold select-none"
+        aria-hidden="true"
+      >
+        {displayNumber}
       </div>
-    );
-  }
-);
+      {children}
+    </div>
+  );
+};
 TestimonialCard.displayName = "TestimonialCard";
 
-export interface TestimonialQuoteProps extends React.HTMLAttributes<HTMLQuoteElement> {
+export interface TestimonialQuoteProps extends React.ComponentProps<"blockquote"> {
   children: React.ReactNode;
 }
 
 /**
  * Quote text component with large opening quotation mark
  */
-export const TestimonialQuote = React.forwardRef<HTMLQuoteElement, TestimonialQuoteProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <blockquote ref={ref} className={cn(testimonialQuoteVariants(), className)} {...props}>
-        {children}
-      </blockquote>
-    );
-  }
-);
+export const TestimonialQuote = ({ className, children, ref, ...props }: TestimonialQuoteProps) => {
+  return (
+    <blockquote ref={ref} className={cn(testimonialQuoteVariants(), className)} {...props}>
+      {children}
+    </blockquote>
+  );
+};
 TestimonialQuote.displayName = "TestimonialQuote";
 
-export interface TestimonialAuthorProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TestimonialAuthorProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Author name component
  */
-export const TestimonialAuthor = React.forwardRef<HTMLDivElement, TestimonialAuthorProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(testimonialAuthorVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TestimonialAuthor = ({ className, children, ref, ...props }: TestimonialAuthorProps) => {
+  return (
+    <div ref={ref} className={cn(testimonialAuthorVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 TestimonialAuthor.displayName = "TestimonialAuthor";
 
-export interface TestimonialMetaProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TestimonialMetaProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Author role/meta component
  */
-export const TestimonialMeta = React.forwardRef<HTMLDivElement, TestimonialMetaProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(testimonialMetaVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TestimonialMeta = ({ className, children, ref, ...props }: TestimonialMetaProps) => {
+  return (
+    <div ref={ref} className={cn(testimonialMetaVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 TestimonialMeta.displayName = "TestimonialMeta";
 
-export interface TestimonialAvatarProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface TestimonialAvatarProps extends React.ComponentProps<"div"> {
   children: React.ReactNode;
 }
 
 /**
  * Optional avatar/icon wrapper component
  */
-export const TestimonialAvatar = React.forwardRef<HTMLDivElement, TestimonialAvatarProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <div ref={ref} className={cn(testimonialAvatarVariants(), className)} {...props}>
-        {children}
-      </div>
-    );
-  }
-);
+export const TestimonialAvatar = ({ className, children, ref, ...props }: TestimonialAvatarProps) => {
+  return (
+    <div ref={ref} className={cn(testimonialAvatarVariants(), className)} {...props}>
+      {children}
+    </div>
+  );
+};
 TestimonialAvatar.displayName = "TestimonialAvatar";

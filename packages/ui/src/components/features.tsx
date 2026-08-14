@@ -18,42 +18,39 @@ const featuresVariants = cva("py-24", {
   defaultVariants: { layout: "grid" },
 });
 
-const Features = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement> & VariantProps<typeof featuresVariants>
->(({ className, layout, children, ...props }, ref) => {
+const Features = ({
+  className,
+  layout,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"section"> & VariantProps<typeof featuresVariants>) => {
   return (
     <section ref={ref} className={cn(featuresVariants({ layout, className }))} {...props}>
       <div className="container mx-auto px-6">{children}</div>
     </section>
   );
-});
+};
 Features.displayName = "Features";
 
-const FeaturesHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("mb-16 text-center", className)} {...props}>
-      {children}
-    </div>
-  )
+const FeaturesHeader = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mb-16 text-center", className)} {...props}>
+    {children}
+  </div>
 );
 FeaturesHeader.displayName = "FeaturesHeader";
 
-const FeaturesTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => (
-    <h2 ref={ref} className={cn("text-foreground font-serif text-4xl font-bold md:text-5xl", className)} {...props}>
-      {children}
-    </h2>
-  )
+const FeaturesTitle = ({ className, children, ref, ...props }: React.ComponentProps<"h2">) => (
+  <h2 ref={ref} className={cn("text-foreground font-serif text-4xl font-bold md:text-5xl", className)} {...props}>
+    {children}
+  </h2>
 );
 FeaturesTitle.displayName = "FeaturesTitle";
 
-const FeaturesDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p ref={ref} className={cn("text-muted-foreground mx-auto mt-4 max-w-2xl text-lg", className)} {...props}>
-      {children}
-    </p>
-  )
+const FeaturesDescription = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p ref={ref} className={cn("text-muted-foreground mx-auto mt-4 max-w-2xl text-lg", className)} {...props}>
+    {children}
+  </p>
 );
 FeaturesDescription.displayName = "FeaturesDescription";
 
@@ -69,14 +66,17 @@ const featuresGridVariants = cva("", {
   defaultVariants: { columns: 3 },
 });
 
-const FeaturesGrid = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof featuresGridVariants>
->(({ className, columns, children, ...props }, ref) => (
+const FeaturesGrid = ({
+  className,
+  columns,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof featuresGridVariants>) => (
   <div ref={ref} className={cn(featuresGridVariants({ columns, className }))} {...props}>
     {children}
   </div>
-));
+);
 FeaturesGrid.displayName = "FeaturesGrid";
 
 const featureVariants = cva(
@@ -110,53 +110,50 @@ const accentColors = {
   none: "text-foreground",
 };
 
-const Feature = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof featureVariants>
->(({ className, accent = "none", children, ...props }, ref) => (
+const Feature = ({
+  className,
+  accent = "none",
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof featureVariants>) => (
   <div ref={ref} className={cn(featureVariants({ accent, className }))} data-accent={accent} {...props}>
     {children}
   </div>
-));
+);
 Feature.displayName = "Feature";
 
-const FeatureIcon = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => {
-    const parent = React.useContext(FeatureContext);
-    const accent = parent?.accent ?? "none";
+const FeatureIcon = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => {
+  const parent = React.useContext(FeatureContext);
+  const accent = parent?.accent ?? "none";
 
-    return (
-      <div
-        ref={ref}
-        className={cn(
-          "mb-6 flex justify-center text-6xl transition-transform duration-300 group-hover:scale-110",
-          accentColors[accent],
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </div>
-    );
-  }
-);
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "mb-6 flex justify-center text-6xl transition-transform duration-300 group-hover:scale-110",
+        accentColors[accent],
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
 FeatureIcon.displayName = "FeatureIcon";
 
-const FeatureTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => (
-    <h3 ref={ref} className={cn("text-foreground mb-4 font-serif text-2xl font-bold", className)} {...props}>
-      {children}
-    </h3>
-  )
+const FeatureTitle = ({ className, children, ref, ...props }: React.ComponentProps<"h3">) => (
+  <h3 ref={ref} className={cn("text-foreground mb-4 font-serif text-2xl font-bold", className)} {...props}>
+    {children}
+  </h3>
 );
 FeatureTitle.displayName = "FeatureTitle";
 
-const FeatureDescription = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p ref={ref} className={cn("text-muted-foreground leading-relaxed", className)} {...props}>
-      {children}
-    </p>
-  )
+const FeatureDescription = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p ref={ref} className={cn("text-muted-foreground leading-relaxed", className)} {...props}>
+    {children}
+  </p>
 );
 FeatureDescription.displayName = "FeatureDescription";
 
@@ -166,10 +163,12 @@ const FeatureContext = React.createContext<
 >(undefined);
 
 // Wrap Feature to provide context
-const FeatureWithContext = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof featureVariants>
->(({ accent = "none", children, ...props }, ref) => {
+const FeatureWithContext = ({
+  accent = "none",
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof featureVariants>) => {
   const resolvedAccent = accent ?? "none";
 
   return (
@@ -179,7 +178,7 @@ const FeatureWithContext = React.forwardRef<
       </Feature>
     </FeatureContext.Provider>
   );
-});
+};
 FeatureWithContext.displayName = "Feature";
 
 export {

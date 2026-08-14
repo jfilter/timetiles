@@ -12,7 +12,7 @@ import * as React from "react";
 
 import { cn } from "../lib/utils";
 
-export interface HeaderActionsProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface HeaderActionsProps extends React.ComponentProps<"div"> {
   /**
    * Action items (buttons, theme toggle, user menu, etc.)
    */
@@ -31,13 +31,13 @@ export interface HeaderActionsProps extends React.HTMLAttributes<HTMLDivElement>
  * </HeaderActions>
  * ```
  */
-const HeaderActions = React.forwardRef<HTMLDivElement, HeaderActionsProps>(({ className, children, ...props }, ref) => {
+const HeaderActions = ({ className, children, ref, ...props }: HeaderActionsProps) => {
   return (
     <div ref={ref} className={cn("flex items-center gap-4", "font-sans text-xs", className)} {...props}>
       {children}
     </div>
   );
-});
+};
 
 HeaderActions.displayName = "HeaderActions";
 

@@ -13,7 +13,7 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
   size?: number;
 }
 
-export const MapIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 64, className, ...props }, ref) => (
+export const MapIcon = ({ size = 64, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -57,6 +57,6 @@ export const MapIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 64, 
       <polygon points="0,-2.5 -0.5,-1.5 0.5,-1.5" fill="currentColor" />
     </g>
   </svg>
-));
+);
 
 MapIcon.displayName = "MapIcon";

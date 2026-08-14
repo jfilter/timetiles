@@ -34,26 +34,30 @@ const gridOverlayStyle = {
   backgroundSize: "60px 60px",
 };
 
-const Footer = React.forwardRef<HTMLElement, React.HTMLAttributes<HTMLElement> & VariantProps<typeof footerVariants>>(
-  ({ className, size, children, ...props }, ref) => {
-    return (
-      <footer ref={ref} className={cn(footerVariants({ size }), className)} {...props}>
-        {/* Subtle grid overlay for cartographic feel */}
-        <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridOverlayStyle} />
+const Footer = ({
+  className,
+  size,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"footer"> & VariantProps<typeof footerVariants>) => {
+  return (
+    <footer ref={ref} className={cn(footerVariants({ size }), className)} {...props}>
+      {/* Subtle grid overlay for cartographic feel */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.03]" style={gridOverlayStyle} />
 
-        {/* Decorative corner coordinates */}
-        <div className="text-foreground/30 pointer-events-none absolute top-8 left-8 font-mono text-[10px] tracking-widest">
-          40.7128°N, 74.0060°W
-        </div>
-        <div className="text-foreground/30 pointer-events-none absolute top-8 right-8 font-mono text-[10px] tracking-widest">
-          SCALE 1:1,000,000
-        </div>
+      {/* Decorative corner coordinates */}
+      <div className="text-foreground/30 pointer-events-none absolute top-8 left-8 font-mono text-[10px] tracking-widest">
+        40.7128°N, 74.0060°W
+      </div>
+      <div className="text-foreground/30 pointer-events-none absolute top-8 right-8 font-mono text-[10px] tracking-widest">
+        SCALE 1:1,000,000
+      </div>
 
-        <div className="relative container mx-auto max-w-7xl px-8">{children}</div>
-      </footer>
-    );
-  }
-);
+      <div className="relative container mx-auto max-w-7xl px-8">{children}</div>
+    </footer>
+  );
+};
 Footer.displayName = "Footer";
 
 const footerContentVariants = cva("mb-12", {
@@ -67,172 +71,152 @@ const footerContentVariants = cva("mb-12", {
   defaultVariants: { columns: 3 },
 });
 
-const FooterContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof footerContentVariants>
->(({ className, columns, children, ...props }, ref) => (
+const FooterContent = ({
+  className,
+  columns,
+  children,
+  ref,
+  ...props
+}: React.ComponentProps<"div"> & VariantProps<typeof footerContentVariants>) => (
   <div ref={ref} className={cn(footerContentVariants({ columns }), className)} {...props}>
     {children}
   </div>
-));
+);
 FooterContent.displayName = "FooterContent";
 
-const FooterColumn = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn(className)} {...props}>
-      {children}
-    </div>
-  )
+const FooterColumn = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn(className)} {...props}>
+    {children}
+  </div>
 );
 FooterColumn.displayName = "FooterColumn";
 
-const FooterBrand = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("relative", className)} {...props}>
-      {/* Decorative compass rose in background */}
-      <div className="pointer-events-none absolute -top-4 -left-4 h-32 w-32 opacity-[0.04]">
-        <svg viewBox="0 0 100 100" fill="currentColor">
-          <circle cx="50" cy="50" r="2" />
-          <path d="M50 10 L52 48 L50 50 L48 48 Z" />
-          <path d="M90 50 L52 52 L50 50 L52 48 Z" />
-          <path d="M50 90 L48 52 L50 50 L52 52 Z" />
-          <path d="M10 50 L48 48 L50 50 L48 52 Z" />
-          <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="0.5" />
-          <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="0.3" />
-        </svg>
-      </div>
-      {children}
+const FooterBrand = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("relative", className)} {...props}>
+    {/* Decorative compass rose in background */}
+    <div className="pointer-events-none absolute -top-4 -left-4 h-32 w-32 opacity-[0.04]">
+      <svg viewBox="0 0 100 100" fill="currentColor">
+        <circle cx="50" cy="50" r="2" />
+        <path d="M50 10 L52 48 L50 50 L48 48 Z" />
+        <path d="M90 50 L52 52 L50 50 L52 48 Z" />
+        <path d="M50 90 L48 52 L50 50 L52 52 Z" />
+        <path d="M10 50 L48 48 L50 50 L48 52 Z" />
+        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="0.5" />
+        <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" strokeWidth="0.3" />
+      </svg>
     </div>
-  )
+    {children}
+  </div>
 );
 FooterBrand.displayName = "FooterBrand";
 
-const FooterLogo = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("mb-6", className)} {...props}>
-      {children}
-    </div>
-  )
+const FooterLogo = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("mb-6", className)} {...props}>
+    {children}
+  </div>
 );
 FooterLogo.displayName = "FooterLogo";
 
-const FooterTagline = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-foreground/70 dark:text-foreground/70 max-w-md text-base leading-relaxed", className)}
-      {...props}
-    >
-      {children}
-    </p>
-  )
+const FooterTagline = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p
+    ref={ref}
+    className={cn("text-foreground/70 dark:text-foreground/70 max-w-md text-base leading-relaxed", className)}
+    {...props}
+  >
+    {children}
+  </p>
 );
 FooterTagline.displayName = "FooterTagline";
 
-const FooterSection = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn(className)} {...props}>
-      {children}
-    </div>
-  )
+// eslint-disable-next-line sonarjs/no-identical-functions -- mirrors FooterColumn; kept distinct for semantic naming in consumer JSX
+const FooterSection = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn(className)} {...props}>
+    {children}
+  </div>
 );
 FooterSection.displayName = "FooterSection";
 
-const FooterSectionTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, children, ...props }, ref) => (
-    <h3
-      ref={ref}
-      className={cn(
-        "text-primary dark:text-foreground mb-6 font-serif text-sm font-bold tracking-[0.2em] uppercase",
-        "relative pb-2",
-        "after:bg-secondary/40 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-8",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </h3>
-  )
+const FooterSectionTitle = ({ className, children, ref, ...props }: React.ComponentProps<"h3">) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-primary dark:text-foreground mb-6 font-serif text-sm font-bold tracking-[0.2em] uppercase",
+      "relative pb-2",
+      "after:bg-secondary/40 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-8",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </h3>
 );
 FooterSectionTitle.displayName = "FooterSectionTitle";
 
-const FooterLinks = React.forwardRef<HTMLUListElement, React.HTMLAttributes<HTMLUListElement>>(
-  ({ className, children, ...props }, ref) => (
-    <ul ref={ref} className={cn("space-y-3.5", className)} {...props}>
-      {children}
-    </ul>
-  )
+const FooterLinks = ({ className, children, ref, ...props }: React.ComponentProps<"ul">) => (
+  <ul ref={ref} className={cn("space-y-3.5", className)} {...props}>
+    {children}
+  </ul>
 );
 FooterLinks.displayName = "FooterLinks";
 
-const FooterLink = React.forwardRef<HTMLLIElement, React.HTMLAttributes<HTMLLIElement>>(
-  ({ className, children, ...props }, ref) => (
-    <li
-      ref={ref}
-      className={cn(
-        "text-foreground/60 text-[15px] leading-relaxed transition-all duration-200",
-        "hover:text-primary dark:text-foreground/60 dark:hover:text-foreground hover:translate-x-1",
-        "group relative",
-        className
-      )}
-      {...props}
-    >
-      <span className="absolute -left-3 opacity-0 transition-opacity group-hover:opacity-100">→</span>
-      {children}
-    </li>
-  )
+const FooterLink = ({ className, children, ref, ...props }: React.ComponentProps<"li">) => (
+  <li
+    ref={ref}
+    className={cn(
+      "text-foreground/60 text-[15px] leading-relaxed transition-all duration-200",
+      "hover:text-primary dark:text-foreground/60 dark:hover:text-foreground hover:translate-x-1",
+      "group relative",
+      className
+    )}
+    {...props}
+  >
+    <span className="absolute -left-3 opacity-0 transition-opacity group-hover:opacity-100">→</span>
+    {children}
+  </li>
 );
 FooterLink.displayName = "FooterLink";
 
-const FooterBottom = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "border-border relative mt-16 border-t pt-10",
-        "before:via-secondary/20 before:absolute before:top-0 before:left-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </div>
-  )
+const FooterBottom = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div
+    ref={ref}
+    className={cn(
+      "border-border relative mt-16 border-t pt-10",
+      "before:via-secondary/20 before:absolute before:top-0 before:left-0 before:h-[1px] before:w-full before:bg-gradient-to-r before:from-transparent before:to-transparent",
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </div>
 );
 FooterBottom.displayName = "FooterBottom";
 
-const FooterBottomContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => (
-    <div ref={ref} className={cn("flex flex-col items-center justify-between gap-6 md:flex-row", className)} {...props}>
-      {children}
-    </div>
-  )
+const FooterBottomContent = ({ className, children, ref, ...props }: React.ComponentProps<"div">) => (
+  <div ref={ref} className={cn("flex flex-col items-center justify-between gap-6 md:flex-row", className)} {...props}>
+    {children}
+  </div>
 );
 FooterBottomContent.displayName = "FooterBottomContent";
 
-const FooterCopyright = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-foreground/50 dark:text-foreground/50 text-sm", "font-mono tracking-wide", className)}
-      {...props}
-    >
-      {children}
-    </p>
-  )
+const FooterCopyright = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p
+    ref={ref}
+    className={cn("text-foreground/50 dark:text-foreground/50 text-sm", "font-mono tracking-wide", className)}
+    {...props}
+  >
+    {children}
+  </p>
 );
 FooterCopyright.displayName = "FooterCopyright";
 
-const FooterCredits = React.forwardRef<HTMLParagraphElement, React.HTMLAttributes<HTMLParagraphElement>>(
-  ({ className, children, ...props }, ref) => (
-    <p
-      ref={ref}
-      className={cn("text-foreground/40 dark:text-foreground/40 text-xs", "font-mono tracking-wider", className)}
-      {...props}
-    >
-      {children}
-    </p>
-  )
+const FooterCredits = ({ className, children, ref, ...props }: React.ComponentProps<"p">) => (
+  <p
+    ref={ref}
+    className={cn("text-foreground/40 dark:text-foreground/40 text-xs", "font-mono tracking-wider", className)}
+    {...props}
+  >
+    {children}
+  </p>
 );
 FooterCredits.displayName = "FooterCredits";
 

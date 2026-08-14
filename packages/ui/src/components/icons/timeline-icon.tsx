@@ -11,7 +11,7 @@ import * as React from "react";
 
 import type { IconProps } from "./map-icon";
 
-export const TimelineIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size = 64, className, ...props }, ref) => (
+export const TimelineIcon = ({ size = 64, className, ref, ...props }: IconProps) => (
   <svg
     ref={ref}
     width={size}
@@ -61,6 +61,6 @@ export const TimelineIcon = React.forwardRef<SVGSVGElement, IconProps>(({ size =
       <line x1="0" y1="4" x2="0" y2="13" strokeWidth="2" opacity="0.4" strokeDasharray="2,2" />
     </g>
   </svg>
-));
+);
 
 TimelineIcon.displayName = "TimelineIcon";

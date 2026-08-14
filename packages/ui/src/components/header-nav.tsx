@@ -13,7 +13,7 @@ import * as React from "react";
 
 import { cn } from "../lib/utils";
 
-export interface HeaderNavProps extends React.HTMLAttributes<HTMLElement> {
+export interface HeaderNavProps extends React.ComponentProps<"nav"> {
   /**
    * Navigation items (typically HeaderNavItem components or links)
    */
@@ -33,7 +33,7 @@ export interface HeaderNavProps extends React.HTMLAttributes<HTMLElement> {
  * </HeaderNav>
  * ```
  */
-const HeaderNav = React.forwardRef<HTMLElement, HeaderNavProps>(({ className, children, ...props }, ref) => {
+const HeaderNav = ({ className, children, ref, ...props }: HeaderNavProps) => {
   return (
     <nav
       ref={ref}
@@ -43,11 +43,11 @@ const HeaderNav = React.forwardRef<HTMLElement, HeaderNavProps>(({ className, ch
       {children}
     </nav>
   );
-});
+};
 
 HeaderNav.displayName = "HeaderNav";
 
-export interface HeaderNavItemProps extends React.AnchorHTMLAttributes<HTMLAnchorElement> {
+export interface HeaderNavItemProps extends React.ComponentProps<"a"> {
   /**
    * Whether this is the active/current page
    */
@@ -69,28 +69,26 @@ export interface HeaderNavItemProps extends React.AnchorHTMLAttributes<HTMLAncho
  * </HeaderNavItem>
  * ```
  */
-const HeaderNavItem = React.forwardRef<HTMLAnchorElement, HeaderNavItemProps>(
-  ({ className, active, asChild, children, ...props }, ref) => {
-    const Comp = asChild ? Slot : "a";
-    return (
-      <Comp
-        ref={ref}
-        className={cn(
-          "relative font-sans text-sm tracking-wide transition-colors duration-200",
-          "text-primary dark:text-foreground/80",
-          "hover:text-ring dark:hover:text-ring",
-          "dark:focus:ring-offset-background focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none",
-          active &&
-            "text-ring dark:text-ring after:bg-ring dark:after:bg-ring after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5",
-          className
-        )}
-        {...props}
-      >
-        {children}
-      </Comp>
-    );
-  }
-);
+const HeaderNavItem = ({ className, active, asChild, children, ref, ...props }: HeaderNavItemProps) => {
+  const Comp = asChild ? Slot : "a";
+  return (
+    <Comp
+      ref={ref}
+      className={cn(
+        "relative font-sans text-sm tracking-wide transition-colors duration-200",
+        "text-primary dark:text-foreground/80",
+        "hover:text-ring dark:hover:text-ring",
+        "dark:focus:ring-offset-background focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none",
+        active &&
+          "text-ring dark:text-ring after:bg-ring dark:after:bg-ring after:absolute after:right-0 after:bottom-0 after:left-0 after:h-0.5",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </Comp>
+  );
+};
 
 HeaderNavItem.displayName = "HeaderNavItem";
 
