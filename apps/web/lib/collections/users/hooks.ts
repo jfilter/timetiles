@@ -22,7 +22,6 @@ import { logError, logger } from "@/lib/logger";
 import { validatePassword } from "@/lib/security/password-policy";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
-import { AppError } from "@/lib/types/errors";
 
 /** Read the client IP from a PayloadRequest, falling back to "unknown". */
 export const getReqIp = (req: Pick<PayloadRequest, "headers">): string | undefined => {
@@ -78,11 +77,10 @@ const assertNoRestrictedAuthFieldWrites = ({
   const changesPassword = typeof data.password === "string" && data.password.length > 0;
   const changesApiKey = data.apiKey !== undefined || data.enableAPIKey !== undefined;
   if (changesEmail || changesPassword || changesApiKey) {
-    throw new AppError(
-      403,
-      "Email, password and API keys can only be changed through their dedicated endpoints.",
-      "auth-field-forbidden"
-    );
+    // Payload's own REST/GraphQL/Local API error handling reads `err.status`, not
+    // `err.statusCode` — throwing the `apiRoute()`-flavored AppError here silently
+    // downgrades every rejection to an opaque 500 (see issue #168).
+    throw new APIError("Email, password and API keys can only be changed through their dedicated endpoints.", 403);
   }
 };
 
@@ -97,7 +95,9 @@ export const usersBeforeChangeHook: CollectionBeforeChangeHook[] = [
     if (!pw) return data;
     const result = await validatePassword(pw);
     if (!result.ok) {
-      throw new AppError(400, result.message, `password-${result.code}`);
+      // Payload's APIError (reads `.status`), not AppError (`.statusCode`): this runs
+      // inside Payload's own create/update operation, not behind apiRoute().
+      throw new APIError(result.message, 400);
     }
     return data;
   },
