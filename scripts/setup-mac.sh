@@ -227,7 +227,9 @@ setup_database() {
     return
   fi
 
-  local psql_super=(psql -h localhost -p "$PG_PORT" -d postgres -tA)
+  # Unix socket, not -h localhost: a TCP connection hits the password-auth rule in
+  # pg_hba, while the socket trusts the local superuser. Same call `make db-reset` uses.
+  local psql_super=(psql -p "$PG_PORT" -d postgres -tA)
 
   if [ "$("${psql_super[@]}" -c "SELECT 1 FROM pg_roles WHERE rolname = '$DB_USER'")" = "1" ]; then
     print_exists "Role $DB_USER exists"
@@ -246,7 +248,7 @@ setup_database() {
 
   # Payload keeps its tables in their own schema; PostGIS backs every spatial query.
   # client_min_messages silences the "already exists, skipping" notices on a re-run.
-  PGOPTIONS='-c client_min_messages=warning' psql -h localhost -p "$PG_PORT" -d "$DB_NAME" -q \
+  PGOPTIONS='-c client_min_messages=warning' psql -p "$PG_PORT" -d "$DB_NAME" -q \
     -c "CREATE SCHEMA IF NOT EXISTS payload AUTHORIZATION $DB_USER" \
     -c "CREATE EXTENSION IF NOT EXISTS postgis"
   print_success "Schema 'payload' and PostGIS ready"
