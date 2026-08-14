@@ -156,84 +156,90 @@ export default [
         typescript: { alwaysTryTypes: true },
         node: { extensions: [".js", ".jsx", ".ts", ".tsx", ".d.ts"] },
       },
-      // `mode: "full"` matches each pattern against the whole file path (relative
-      // to root-path) so files directly inside a layer folder (e.g. lib/ingest/x.ts)
-      // are classified, not just files in sub-folders. The first matching element
-      // wins, so more specific layers are listed before the catch-alls.
-      //
-      // DO NOT follow boundaries v7's deprecation hint to replace this with
-      // `partialMatch: false`. It is NOT equivalent: with `partialMatch` the elements stop
-      // being classified, every layer rule finds nothing, and the architecture checks pass
-      // vacuously — no error, no warning, just silently inert. Verified empirically against a
-      // known violation (apps/web/lib/geospatial/patterns.ts), which is reported with
-      // `mode: "full"` and NOT reported with `partialMatch: false`. The deprecation warning is
-      // accepted for now; see https://github.com/jfilter/timetiles/issues/165
+      // `partialMatch: false` matches each pattern as a folder prefix (the pattern gets a
+      // `/**/*` suffix appended internally) so files directly inside a layer folder
+      // (e.g. lib/ingest/x.ts) are classified, not just files in sub-folders. The first
+      // matching element wins, so more specific layers are listed before the catch-alls.
+      // Patterns must NOT keep their own trailing `/**/*` — the plugin appends it, so a
+      // pattern that already ends in `/**/*` silently stops matching anything (doubled
+      // globstar). See https://github.com/jfilter/timetiles/issues/165.
       "boundaries/elements": [
-        // Composition root — the Payload config assembly wires collections, jobs,
-        // globals and migrations together, so it is allowed to import anything.
+        // Layer 0 — Foundation (pure functions, no service/domain deps)
         {
-          type: "web-config",
-          mode: "full",
+          type: "web-lib-foundation",
+          partialMatch: false,
+          pattern: [
+            "apps/web/lib/utils",
+            "apps/web/lib/security",
+            "apps/web/lib/types",
+            "apps/web/lib/constants",
+            "apps/web/lib/geospatial",
+            "apps/web/lib/filters",
+            "apps/web/lib/definitions",
+            "apps/web/lib/schemas",
+          ],
+        },
+        // Layer 1 — Infrastructure (cross-cutting services, DB, middleware)
+        {
+          type: "web-lib-infra",
+          partialMatch: false,
+          pattern: ["apps/web/lib/services", "apps/web/lib/database", "apps/web/lib/middleware"],
+        },
+        // Layer 2 — Domain (ingest pipeline, account, export, email, collections)
+        {
+          type: "web-lib-domain",
+          partialMatch: false,
+          pattern: [
+            "apps/web/lib/ingest",
+            "apps/web/lib/account",
+            "apps/web/lib/export",
+            "apps/web/lib/email",
+            "apps/web/lib/collections",
+            "apps/web/lib/blocks",
+          ],
+        },
+        // Layer 3 — Application (hooks, api helpers, blocks, jobs, etc.)
+        { type: "web-lib", partialMatch: false, pattern: "apps/web/lib" },
+        { type: "web-api", partialMatch: false, pattern: "apps/web/app/api" },
+        { type: "web-components", partialMatch: false, pattern: "apps/web/components" },
+        // No dedicated "web-pages" type: page.tsx files already fall through to
+        // "app-web" below, which grants the identical permission set.
+        { type: "app-web", partialMatch: false, pattern: "apps/web" },
+        { type: "app-docs", partialMatch: false, pattern: "apps/docs" },
+        // No "apps/*" catch-all for other apps (e.g. timescrape): a folder-prefix
+        // pattern would newly classify their files, and since no policy grants that
+        // type any permissions, default:"disallow" would reject every import in
+        // them. Leaving them unclassified keeps today's behavior (ignored).
+        { type: "package", partialMatch: false, pattern: "packages/*" },
+        { type: "root", partialMatch: false, pattern: "scripts" },
+      ],
+      // Files that classification-by-folder can't reach: single files living inside a
+      // higher (or unrelated) folder that still need their own layer/permission set.
+      // Orthogonal to `boundaries/elements` — a file can carry both an element type
+      // (from its folder) and a category (from here) at once.
+      "boundaries/files": [
+        {
+          category: "web-config-file",
           pattern: [
             "apps/web/payload.config.ts",
             "apps/web/lib/config/payload-config-factory.ts",
             "apps/web/lib/config/payload-shared-config.ts",
           ],
         },
-        // Layer 0 — Foundation (pure functions, no service/domain deps)
         {
-          type: "web-lib-foundation",
-          mode: "full",
+          category: "web-lib-foundation-file",
           pattern: [
-            "apps/web/lib/utils/**/*",
-            "apps/web/lib/security/**/*",
-            "apps/web/lib/types/**/*",
-            "apps/web/lib/constants/**/*",
-            "apps/web/lib/geospatial/**/*",
-            "apps/web/lib/filters/**/*",
-            "apps/web/lib/definitions/**/*",
-            "apps/web/lib/schemas/**/*",
-            // Foundational modules that live in otherwise-higher-layer folders:
             "apps/web/lib/logger.ts",
             "apps/web/lib/config/env.ts",
             "apps/web/lib/config/app-config.ts",
             "apps/web/lib/api/errors.ts",
             "apps/web/lib/api/http-error.ts",
             "apps/web/i18n/config.ts",
-            // Generated Payload artifacts — imported throughout every layer.
             "apps/web/payload-types.ts",
             "apps/web/payload-generated-schema.ts",
           ],
         },
-        // Layer 1 — Infrastructure (cross-cutting services, DB, middleware)
-        {
-          type: "web-lib-infra",
-          mode: "full",
-          pattern: ["apps/web/lib/services/**/*", "apps/web/lib/database/**/*", "apps/web/lib/middleware/**/*"],
-        },
-        // Layer 2 — Domain (ingest pipeline, account, export, email, collections)
-        {
-          type: "web-lib-domain",
-          mode: "full",
-          pattern: [
-            "apps/web/lib/ingest/**/*",
-            "apps/web/lib/account/**/*",
-            "apps/web/lib/export/**/*",
-            "apps/web/lib/email/**/*",
-            "apps/web/lib/collections/**/*",
-            "apps/web/lib/blocks/**/*",
-          ],
-        },
-        // Layer 3 — Application (hooks, api helpers, blocks, jobs, etc.)
-        { type: "web-lib", mode: "full", pattern: "apps/web/lib/**/*" },
-        { type: "web-api", mode: "full", pattern: "apps/web/app/api/**/*" },
-        { type: "web-components", mode: "full", pattern: "apps/web/components/**/*" },
-        { type: "web-pages", mode: "full", pattern: "apps/web/app/**/page.tsx" },
-        { type: "app-web", mode: "full", pattern: "apps/web/**/*" },
-        { type: "app-docs", mode: "full", pattern: "apps/docs/**/*" },
-        { type: "app", mode: "full", pattern: "apps/*" },
-        { type: "package", mode: "full", pattern: "packages/*/**/*" },
-        { type: "root", mode: "full", pattern: ["*.js", "*.ts", "*.json", "scripts/**/*"] },
+        { category: "root-config-file", pattern: ["*.js", "*.ts", "*.json"] },
       ],
     },
     rules: {
@@ -312,54 +318,121 @@ export default [
         "error",
         {
           default: "disallow",
-          // `policies` is the boundaries v7 name for what v6 called `rules`.
+          // `policies` is the boundaries v7 name for what v6 called `rules`; selectors
+          // are wrapped in `{ element: ... }` / `{ file: ... }` per the v7 selector syntax.
           policies: [
-            // Composition root assembles the whole app — it may import anything.
-            { from: "web-config", allow: "*" },
             // Apps can use their own modules and packages, but not other apps.
-            { from: "app-docs", allow: ["app-docs", "package"] },
+            { from: { element: { type: "app-docs" } }, allow: { to: { element: { types: ["app-docs", "package"] } } } },
             // Packages can only use other packages.
-            { from: "package", allow: ["package"] },
+            { from: { element: { type: "package" } }, allow: { to: { element: { type: "package" } } } },
 
             // ── Layered Architecture (lib/) — each layer imports only same-or-below ──
+            // Every "to" list below also admits the "*-file" categories from
+            // boundaries/files: those are files (e.g. lib/logger.ts, lib/config/env.ts)
+            // that live inside a higher-layer folder but belong to a lower layer, so
+            // they can't be matched by a folder pattern — see boundaries/files above.
             // Layer 0: Foundation → Foundation + packages only
-            { from: "web-lib-foundation", allow: ["web-lib-foundation", "package"] },
+            {
+              from: { element: { type: "web-lib-foundation" } },
+              allow: {
+                to: [
+                  { element: { types: ["web-lib-foundation", "package"] } },
+                  { file: { categories: "web-lib-foundation-file" } },
+                ],
+              },
+            },
             // Layer 1: Infrastructure → Foundation + Infrastructure + packages (+ config root for the Payload instance)
-            { from: "web-lib-infra", allow: ["web-lib-foundation", "web-lib-infra", "package", "web-config"] },
+            {
+              from: { element: { type: "web-lib-infra" } },
+              allow: {
+                to: [
+                  { element: { types: ["web-lib-foundation", "web-lib-infra", "package"] } },
+                  { file: { categories: ["web-lib-foundation-file", "web-config-file"] } },
+                ],
+              },
+            },
             // Layer 2: Domain → Foundation + Infrastructure + Domain + packages
-            { from: "web-lib-domain", allow: ["web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+            {
+              from: { element: { type: "web-lib-domain" } },
+              allow: {
+                to: [
+                  { element: { types: ["web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] } },
+                  { file: { categories: "web-lib-foundation-file" } },
+                ],
+              },
+            },
             // Layer 3: Application lib → all lib layers + packages (+ config root)
             {
-              from: "web-lib",
-              allow: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package", "web-config"],
+              from: { element: { type: "web-lib" } },
+              allow: {
+                to: [
+                  {
+                    element: { types: ["web-lib", "web-lib-foundation", "web-lib-infra", "web-lib-domain", "package"] },
+                  },
+                  { file: { categories: ["web-lib-foundation-file", "web-config-file"] } },
+                ],
+              },
             },
 
             // ── Web application tier (pages, route handlers, components, app shell) ──
             // One cohesive layer above lib: may use any lib layer, each other, packages,
             // and the config root — but NOT lib→app-shell (enforced by the lib rules above)
-            // and NOT other apps.
+            // and NOT other apps. Page files (app/**/page.tsx) fall under "app-web" too,
+            // since a dedicated type would need the same permissions anyway.
             {
-              from: ["app-web", "web-pages", "web-components", "web-api"],
-              allow: [
-                "app-web",
-                "web-pages",
-                "web-components",
-                "web-api",
-                "web-lib",
-                "web-lib-foundation",
-                "web-lib-infra",
-                "web-lib-domain",
-                "web-config",
-                "package",
-              ],
+              from: { element: { types: ["app-web", "web-components", "web-api"] } },
+              allow: {
+                to: [
+                  {
+                    element: {
+                      types: [
+                        "app-web",
+                        "web-components",
+                        "web-api",
+                        "web-lib",
+                        "web-lib-foundation",
+                        "web-lib-infra",
+                        "web-lib-domain",
+                        "package",
+                      ],
+                    },
+                  },
+                  { file: { categories: ["web-lib-foundation-file", "web-config-file"] } },
+                ],
+              },
             },
 
-            // Root can access everything
-            { from: "root", allow: "*" },
+            // Root-level build/config scripts can access everything.
+            { from: { element: { type: "root" } }, allow: { to: { element: { type: "*" } } } },
+
+            // ── boundaries/files exceptions (must stay last — see below) ──
+            // The composition root and bare root config files aren't a folder, so they're
+            // classified by boundaries/files instead of boundaries/elements (above). Every
+            // file below also carries a folder-based element type from its containing
+            // directory (e.g. lib/logger.ts falls under the "web-lib" catch-all), so these
+            // policies must be evaluated last: boundaries/dependencies keeps the LAST
+            // matching policy for a given pair, and these need to win over — or in the
+            // foundation-file case, narrow down from — that folder-based classification.
+            { from: { file: { categories: "web-config-file" } }, allow: { to: { element: { type: "*" } } } },
+            { from: { file: { categories: "root-config-file" } }, allow: { to: { element: { type: "*" } } } },
+            // Foundational modules living in higher-layer folders (lib/logger.ts,
+            // lib/config/env.ts, payload-types.ts, ...) must be as restricted as any other
+            // Foundation file, not as permissive as their folder's fallback type — so first
+            // revoke everything the fallback type granted, then re-grant exactly what
+            // Foundation is allowed. Order between these two matters.
+            { from: { file: { categories: "web-lib-foundation-file" } }, disallow: { to: { element: { type: "*" } } } },
+            {
+              from: { file: { categories: "web-lib-foundation-file" } },
+              allow: {
+                to: [
+                  { element: { types: ["web-lib-foundation", "package"] } },
+                  { file: { categories: "web-lib-foundation-file" } },
+                ],
+              },
+            },
           ],
         },
       ],
-      "boundaries/external": ["error", { default: "allow", policies: [] }],
 
       // Unicorn
       "unicorn/filename-case": [
