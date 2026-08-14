@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 
 import { useFocusTrap } from "@/lib/hooks/use-focus-trap";
 
-import { fireEvent, renderWithProviders, within } from "../../setup/unit/react-render";
+import { renderWithProviders, userEvent, within } from "../../setup/unit/react-render";
 
 const Trapped = ({ isActive }: { isActive: boolean }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,24 +40,22 @@ describe("useFocusTrap", () => {
     expect(document.activeElement).toBe(within(container).getByText("first"));
   });
 
-  // fireEvent rather than userEvent.tab(): the trap IS a document keydown handler, and
-  // an await here would collide with the unit setup's concurrent-test cleanup (issue #180).
-  it("wraps Tab from the last control back to the first", () => {
+  it("wraps Tab from the last control back to the first", async () => {
     const { container } = renderWithProviders(<Trapped isActive />);
     const scope = within(container);
 
     scope.getByText("last").focus();
-    fireEvent.keyDown(document, { key: "Tab" });
+    await userEvent.tab();
 
     expect(document.activeElement).toBe(scope.getByText("first"));
   });
 
-  it("wraps Shift+Tab from the first control to the last", () => {
+  it("wraps Shift+Tab from the first control to the last", async () => {
     const { container } = renderWithProviders(<Trapped isActive />);
     const scope = within(container);
 
     scope.getByText("first").focus();
-    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    await userEvent.tab({ shift: true });
 
     expect(document.activeElement).toBe(scope.getByText("last"));
   });

@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { cleanup, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 import { AggregationBarChart } from "@/components/charts/aggregation-bar-chart";
 
@@ -94,10 +94,6 @@ vi.mock("echarts-for-react", () => ({
 }));
 
 describe("AggregationBarChart - Catalog", () => {
-  beforeEach(() => {
-    cleanup();
-  });
-
   it("renders bar chart with catalog data", () => {
     render(<AggregationBarChart type="catalog" />);
 

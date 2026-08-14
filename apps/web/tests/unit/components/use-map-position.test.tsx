@@ -4,21 +4,9 @@
  * @module
  * @category Tests
  */
-import { cleanup } from "@testing-library/react";
-import { afterEach, beforeEach } from "vitest";
-
 import { useMapPosition } from "@/lib/hooks/use-filters";
 
 import { renderWithProviders } from "../../setup/unit/react-render";
-
-// Ensure DOM cleanup between tests
-beforeEach(() => {
-  cleanup();
-});
-
-afterEach(() => {
-  cleanup();
-});
 
 /**
  * Test component that exposes the useMapPosition hook state.

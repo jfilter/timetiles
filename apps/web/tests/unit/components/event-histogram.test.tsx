@@ -1,7 +1,7 @@
 /**
  * @module
  */
-import { cleanup, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
 import { EventHistogram } from "@/components/charts/event-histogram";
 
@@ -73,7 +73,6 @@ const mockUseTemporalClustersQuery = useTemporalClustersQuery as any;
 
 describe.sequential("EventHistogram", () => {
   beforeEach(() => {
-    cleanup();
     vi.clearAllMocks();
     mockUseTemporalClustersQuery.mockReturnValue({
       data: undefined,
@@ -86,7 +85,6 @@ describe.sequential("EventHistogram", () => {
   });
 
   afterEach(() => {
-    cleanup();
     vi.restoreAllMocks();
   });
 

@@ -10,17 +10,11 @@
  * @category Tests
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FilterPanel } from "../../../app/[locale]/(frontend)/explore/_components/filter-panel";
 import { MobileFilterSheet } from "../../../app/[locale]/(frontend)/explore/_components/mobile-filter-sheet";
-import { cleanup, renderWithProviders, within } from "../../setup/unit/react-render";
-
-// Concurrent tests in one file share the DOM (issue #180), so this suite unmounts
-// its own trees — a sheet left mounted keeps its focus trap listening on document.
-afterEach(() => {
-  cleanup();
-});
+import { renderWithProviders, within } from "../../setup/unit/react-render";
 
 describe("FilterPanel", () => {
   it("is inert while collapsed", () => {
