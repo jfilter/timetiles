@@ -10,7 +10,7 @@
  * @category Jobs
  */
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -83,6 +83,46 @@ const assertRepoWithinSizeLimit = async (repoDir: string): Promise<void> => {
   }
 };
 
+/**
+ * Cap for `scrapers.yml` itself, in MB.
+ *
+ * A manifest is a short list of scraper definitions; the parser holds the whole
+ * file in memory as a string and hands it to the YAML parser.
+ */
+const SCRAPER_MAX_MANIFEST_SIZE_MB = 2;
+
+const MANIFEST_FILE = "scrapers.yml";
+
+const manifestTooLarge = (sizeBytes: number): Error =>
+  new Error(
+    `Manifest ${MANIFEST_FILE} (${(sizeBytes / (1024 * 1024)).toFixed(1)}MB) exceeds the ${SCRAPER_MAX_MANIFEST_SIZE_MB}MB limit`
+  );
+
+/**
+ * Reject an oversized manifest before its blob is fetched.
+ *
+ * The repo cap only bounds the pack, and on a server that supports partial clone
+ * the pack is tiny precisely because the blobs were left behind — the sparse
+ * checkout then fetches `scrapers.yml` no matter how large it is. `ls-tree -l`
+ * reads the size out of the tree object, which the filtered clone already has,
+ * so this costs nothing and does not pull the blob down.
+ */
+const assertManifestBlobWithinSizeLimit = async (repoDir: string): Promise<void> => {
+  const { stdout } = await execFileAsync("git", ["-C", repoDir, "ls-tree", "-l", "HEAD", "--", MANIFEST_FILE], {
+    timeout: 30_000,
+  });
+
+  // Size is "-" for anything that is not a blob, and the output is empty when the
+  // repo has no manifest — neither is this check's business.
+  const sizeMatch = /^\d+\s+blob\s+\S+\s+(\d+)\s/m.exec(stdout);
+  if (sizeMatch?.[1] == null) return;
+
+  const sizeBytes = Number(sizeMatch[1]);
+  if (sizeBytes > SCRAPER_MAX_MANIFEST_SIZE_MB * 1024 * 1024) {
+    throw manifestTooLarge(sizeBytes);
+  }
+};
+
 /** Materialize only the manifest from a --no-checkout clone. */
 const checkoutManifestOnly = async (repoDir: string): Promise<void> => {
   await execFileAsync("git", ["-C", repoDir, "sparse-checkout", "set", "--no-cone", "scrapers.yml"], {
@@ -131,6 +171,7 @@ const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<st
       }
     );
     await assertRepoWithinSizeLimit(tempDir);
+    await assertManifestBlobWithinSizeLimit(tempDir);
     await checkoutManifestOnly(tempDir);
   } catch (error) {
     // The caller only sees the temp dir once the clone succeeds, so clean it
@@ -144,9 +185,20 @@ const cloneRepo = async (gitUrl: string, branch: string | undefined): Promise<st
 
 /**
  * Read the manifest YAML from a cloned repo directory.
+ *
+ * The on-disk size is checked again rather than trusted from the tree: a server
+ * that ignores the blob filter, a checkout that follows a different revision, or
+ * a manifest recorded as something other than a blob all reach `readFile` without
+ * having passed `assertManifestBlobWithinSizeLimit`.
  */
 const readManifestFromDisk = async (repoDir: string): Promise<string> => {
-  const manifestPath = path.join(repoDir, "scrapers.yml");
+  const manifestPath = path.join(repoDir, MANIFEST_FILE);
+
+  const { size } = await stat(manifestPath);
+  if (size > SCRAPER_MAX_MANIFEST_SIZE_MB * 1024 * 1024) {
+    throw manifestTooLarge(size);
+  }
+
   return readFile(manifestPath, "utf-8");
 };
 

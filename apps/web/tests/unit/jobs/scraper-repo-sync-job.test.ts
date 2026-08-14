@@ -31,6 +31,7 @@ vi.mock("node:fs/promises", () => ({
   mkdtemp: vi.fn().mockResolvedValue("/private/var/folders/scraper-repo-abc123"),
   readFile: vi.fn(),
   rm: vi.fn().mockResolvedValue(undefined),
+  stat: vi.fn().mockResolvedValue({ size: 1024 }),
 }));
 
 vi.mock("node:os", () => ({ tmpdir: () => "/tmp" }));
@@ -78,6 +79,7 @@ describe.sequential("scraperRepoSyncJob", () => {
     const fsp = await import("node:fs/promises");
     (fsp.mkdtemp as any).mockResolvedValue("/private/var/folders/scraper-repo-abc123");
     (fsp.rm as any).mockResolvedValue(undefined);
+    (fsp.stat as any).mockResolvedValue({ size: 1024 });
     mocks.execFileAsync.mockResolvedValue({ stdout: "", stderr: "" });
     mocks.validateResolvedPublicHostname.mockResolvedValue(undefined);
   });
@@ -451,6 +453,72 @@ describe.sequential("scraperRepoSyncJob", () => {
       expect.objectContaining({
         collection: "scraper-repos",
         data: expect.objectContaining({ lastSyncStatus: "success" }),
+      })
+    );
+  });
+
+  it("should reject an oversized manifest before its blob is checked out", async () => {
+    // The repo cap only bounds the pack. On a server that supports partial clone the
+    // pack is tiny *because* the blobs stayed behind, and the sparse checkout then
+    // pulls scrapers.yml onto the web host at whatever size it has.
+    const repo = {
+      id: 5,
+      sourceType: "git",
+      gitUrl: "https://github.com/test/repo.git",
+      gitBranch: "main",
+      createdBy: 100,
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const hugeBlob = 40 * 1024 * 1024;
+    mocks.execFileAsync.mockImplementation((_bin: string, args: string[]) =>
+      Promise.resolve(
+        args.includes("ls-tree")
+          ? { stdout: `100644 blob 4ae9b0244c1ba9648a99993d84b4d36875c632bc ${hugeBlob}\tscrapers.yml\n`, stderr: "" }
+          : { stdout: "", stderr: "" }
+      )
+    );
+
+    const context = createMockContext({ scraperRepoId: 5 });
+
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow(
+      "Manifest scrapers.yml (40.0MB) exceeds the 2MB limit"
+    );
+
+    const gitSubcommands = mocks.execFileAsync.mock.calls.map((call: unknown[]) => (call[1] as string[]).join(" "));
+    expect(gitSubcommands.some((args: string) => args.includes("sparse-checkout"))).toBe(false);
+    expect(gitSubcommands.some((args: string) => args.includes("ls-tree"))).toBe(true);
+
+    const fsp = await import("node:fs/promises");
+    expect(fsp.readFile).not.toHaveBeenCalled();
+  });
+
+  it("should reject an oversized manifest on disk before reading it", async () => {
+    // Backstop for the cases the tree lookup cannot answer: a server that ignored
+    // the blob filter, or a manifest that is not recorded as a blob at HEAD.
+    const repo = {
+      id: 5,
+      sourceType: "git",
+      gitUrl: "https://github.com/test/repo.git",
+      gitBranch: "main",
+      createdBy: 100,
+    };
+    mockPayload.findByID.mockResolvedValue(repo);
+
+    const fsp = await import("node:fs/promises");
+    (fsp.stat as any).mockResolvedValue({ size: 12 * 1024 * 1024 });
+
+    const context = createMockContext({ scraperRepoId: 5 });
+
+    await expect(scraperRepoSyncJob.handler(context as any)).rejects.toThrow(
+      "Manifest scrapers.yml (12.0MB) exceeds the 2MB limit"
+    );
+
+    expect(fsp.readFile).not.toHaveBeenCalled();
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scraper-repos",
+        data: expect.objectContaining({ lastSyncStatus: "failed" }),
       })
     );
   });
