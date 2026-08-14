@@ -84,6 +84,9 @@ jobs:
         run: pnpm storybook:build
         working-directory: packages/ui
 
+      # Gate only: nothing consumes this build. The E2E workflow rebuilds from
+      # source in its global setup, so uploading .next as an artifact was pure
+      # transfer cost for a directory that was overwritten on arrival.
       - name: Build web app
         timeout-minutes: 10
         run: pnpm build:compile
@@ -93,11 +96,3 @@ jobs:
           PAYLOAD_SECRET: test-secret-key
           NEXT_PUBLIC_PAYLOAD_URL: http://localhost:3000
           NODE_OPTIONS: --max-old-space-size=8192
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: web-build
-          path: apps/web/.next
-          include-hidden-files: true
-          retention-days: 1
