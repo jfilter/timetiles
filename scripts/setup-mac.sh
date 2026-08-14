@@ -110,7 +110,12 @@ setup_node() {
   fi
 
   # .mise.toml pins the exact node/pnpm the repo expects, so mise is the path that
-  # cannot drift from CI. An existing node of the right major is accepted as-is.
+  # cannot drift from CI. Install it unless a node of the right major is already here.
+  if ! command -v mise >/dev/null 2>&1 && [ "$current_major" -lt "$NODE_MAJOR" ]; then
+    echo "  Installing mise..."
+    brew install mise
+  fi
+
   if command -v mise >/dev/null 2>&1; then
     # A checkout's .mise.toml is untrusted until confirmed; running this script IS
     # that confirmation. Without it `mise install` refuses to read the pins.
@@ -121,21 +126,18 @@ setup_node() {
       warn "mise install failed — falling back to whatever node is on PATH"
     fi
     if ! mise current node >/dev/null 2>&1; then
+      # Without activation the pinned node is installed but invisible to this shell,
+      # so the steps below would silently use a different one - or none.
       warn "mise is not activated in this shell. Add it to your profile, then re-run:"
       # Printed for the user to run, not expanded here.
       # shellcheck disable=SC2016
       echo '    eval "$(mise activate zsh)"'
+      return
     fi
   elif [ "$current_major" -ge "$NODE_MAJOR" ]; then
     print_exists "node $(node -v) (repo needs >= $NODE_MAJOR); mise not installed, skipping the pin"
   else
-    echo "  Installing mise..."
-    brew install mise
-    mise install
-    warn "mise installed but not activated in this shell. Add it to your profile, then re-run:"
-    # Printed for the user to run, not expanded here.
-    # shellcheck disable=SC2016
-    echo '    eval "$(mise activate zsh)"'
+    warn "No node >= $NODE_MAJOR and mise unavailable — install one, then re-run"
     return
   fi
 
