@@ -49,7 +49,7 @@ interface MapColorPalette {
 }
 
 // Light mode color palette
-const lightMapColors: MapColorPalette = {
+export const lightMapColors: MapColorPalette = {
   land: defaultColors.parchment,
   water: "#b8dce8", // Light blue tint
   waterDark: "#9fd0e0", // Slightly darker for rivers
@@ -74,7 +74,7 @@ const lightMapColors: MapColorPalette = {
 };
 
 // Dark mode color palette
-const darkMapColors: MapColorPalette = {
+export const darkMapColors: MapColorPalette = {
   land: darkModeColors.background,
   water: "#1a3a4a", // Dark blue tint (derived from cartographic blue)
   waterDark: "#153040", // Darker blue for rivers
@@ -101,7 +101,7 @@ const darkMapColors: MapColorPalette = {
 /**
  * Creates a color replacement map for a given palette.
  */
-const createColorReplacements = (colors: MapColorPalette): Record<string, string> => ({
+export const createColorReplacements = (colors: MapColorPalette): Record<string, string> => ({
   // ===== BACKGROUND/LAND =====
   "rgb(249,244,238)": colors.land,
   "rgba(249,244,238,1)": colors.land,
@@ -160,6 +160,9 @@ const createColorReplacements = (colors: MapColorPalette): Record<string, string
   "rgba(119,119,119,1)": colors.textSecondary,
   "#ffffff": colors.textHalo,
   "#fff": colors.textHalo,
+  // VersaTiles hardcodes this literal as text-halo-color on nearly every
+  // label; unreplaced it leaves a same-polarity (light-on-light) halo in dark mode.
+  "rgba(255,255,255,0.8)": `${colors.textHalo}cc`,
   // Additional text color variants found in VersaTiles
   "rgb(51,51,68)": colors.textPrimary, // Dark blue-gray text
   "rgba(51,51,68,1)": colors.textPrimary,
@@ -477,10 +480,12 @@ const generateMapStyle = async (): Promise<void> => {
   console.log("=".repeat(50) + "\n");
 };
 
-// Run the script
-try {
-  await generateMapStyle();
-} catch (error) {
-  console.error("Failed to generate map style:", error);
-  process.exit(1);
+// Allow running as a standalone script without side effects on import (needed for unit tests).
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    await generateMapStyle();
+  } catch (error) {
+    console.error("Failed to generate map style:", error);
+    process.exit(1);
+  }
 }
