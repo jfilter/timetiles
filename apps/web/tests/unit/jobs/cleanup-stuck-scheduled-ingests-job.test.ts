@@ -25,6 +25,7 @@ vi.mock("@/lib/logger", () => ({
     child: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
   },
   logError: mockLogError,
+  createLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
   createJobLogger: vi.fn(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() })),
 }));
 
@@ -266,6 +267,138 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
     });
   });
 
+  describe("Runs that finished but never got their status written", () => {
+    const fiveHoursAgo = () => new Date(Date.now() - 5 * 60 * 60 * 1000);
+
+    const unreconciledImport = () => ({
+      id: "import-1",
+      name: "Unreconciled Import",
+      lastStatus: "running",
+      lastRun: fiveHoursAgo().toISOString(),
+      currentRetries: 2,
+      executionHistory: [],
+      statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 5000 },
+    });
+
+    it("should record a completed run as successful instead of failing it", async () => {
+      // The workflow's status write can lose a database outage outright. The run's own
+      // ingest file is the marker that separates that from a worker that died mid-import:
+      // booking a finished import as failed burns a retry towards auto-disable.
+      const completedFile = {
+        id: "file-1",
+        status: "completed",
+        createdAt: new Date(Date.now() - 4.9 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 4.5 * 60 * 60 * 1000).toISOString(),
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [unreconciledImport()], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [completedFile], totalDocs: 1 })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockPayload.update).toHaveBeenCalledTimes(1);
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "scheduled-ingests",
+        id: "import-1",
+        data: expect.objectContaining({
+          lastStatus: "success",
+          lastError: null,
+          // The run worked, so its retry budget is restored — the whole point of
+          // telling it apart from a stuck run.
+          currentRetries: 0,
+          executionHistory: expect.arrayContaining([expect.objectContaining({ status: "success", jobId: "file-1" })]),
+        }),
+      });
+      expect(result.output.stuckCount).toBe(0);
+      expect(result.output.resetCount).toBe(0);
+      expect(result.output.reconciledCount).toBe(1);
+    });
+
+    it("should record a run waiting for review as paused instead of failing it", async () => {
+      const pendingFile = {
+        id: "file-2",
+        status: "processing",
+        createdAt: new Date(Date.now() - 4.9 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 4.5 * 60 * 60 * 1000).toISOString(),
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [unreconciledImport()], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [pendingFile], totalDocs: 1 })
+        .mockResolvedValueOnce({ docs: [{ id: "ij-1", stage: "needs-review", reviewReason: "schema-drift" }] })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      // Failing it would also destroy the pending review: failStuckIngestFile fails
+      // every non-terminal ingest job it finds.
+      expect(mockPayload.update).toHaveBeenCalledTimes(1);
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "scheduled-ingests",
+        id: "import-1",
+        data: expect.objectContaining({
+          lastStatus: "paused",
+          lastError: "Scheduled ingest paused for review: schema-drift",
+        }),
+      });
+      expect(result.output.stuckCount).toBe(0);
+      expect(result.output.reconciledCount).toBe(1);
+    });
+
+    it("should still fail a run whose ingest file never reached a terminal state", async () => {
+      const abandonedFile = {
+        id: "file-3",
+        status: "processing",
+        createdAt: new Date(Date.now() - 4.9 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 4.9 * 60 * 60 * 1000).toISOString(),
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [unreconciledImport()], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [abandonedFile], totalDocs: 1 })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "scheduled-ingests",
+        id: "import-1",
+        data: expect.objectContaining({ lastStatus: "failed" }),
+      });
+      expect(result.output.stuckCount).toBe(1);
+      expect(result.output.resetCount).toBe(1);
+    });
+
+    it("should ignore a completed file that predates the stuck run", async () => {
+      const previousRunFile = {
+        id: "file-0",
+        status: "completed",
+        createdAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+        updatedAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+      };
+
+      mockPayload.find
+        .mockResolvedValueOnce({ docs: [unreconciledImport()], totalDocs: 1 })
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [previousRunFile], totalDocs: 1 })
+        .mockResolvedValue(NO_ACTIVE_JOBS);
+
+      const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
+
+      expect(mockPayload.update).toHaveBeenCalledWith({
+        collection: "scheduled-ingests",
+        id: "import-1",
+        data: expect.objectContaining({ lastStatus: "failed" }),
+      });
+      expect(result.output.resetCount).toBe(1);
+    });
+  });
+
   describe("Edge Cases", () => {
     it("should handle imports with no lastRun date", async () => {
       const stuckImport = {
@@ -359,14 +492,15 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       };
 
       mockPayload.find
-        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
-        .mockResolvedValueOnce(NO_ACTIVE_JOBS)
+        .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }) // scheduled-ingests
+        .mockResolvedValueOnce(NO_ACTIVE_JOBS) // hasActivePayloadJob
+        .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // no ingest file to reconcile from
         .mockResolvedValueOnce({ docs: [{ id: "old-workflow-job" }], totalDocs: 1 })
         .mockResolvedValue(NO_ACTIVE_JOBS);
 
       await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
-      expect(mockPayload.find).toHaveBeenNthCalledWith(3, {
+      expect(mockPayload.find).toHaveBeenNthCalledWith(4, {
         collection: "payload-jobs",
         where: {
           and: [
@@ -430,6 +564,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       mockPayload.find
         .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }) // scheduled-ingests
         .mockResolvedValueOnce(NO_ACTIVE_JOBS) // hasActivePayloadJob
+        .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // no ingest file to reconcile from
         .mockResolvedValueOnce(NO_ACTIVE_JOBS) // cancelOrphanedWorkflowJobs
         .mockResolvedValueOnce({ docs: [{ id: "file-1", status: "processing" }], totalDocs: 1 }) // stuck ingest-files
         .mockResolvedValueOnce({ docs: [{ id: "job-1", stage: "create-events" }], totalDocs: 1 }); // stuck ingest-jobs

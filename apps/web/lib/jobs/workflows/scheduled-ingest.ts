@@ -118,14 +118,32 @@ const buildScheduledIngestFailure = async (
  * Every non-failure exit must go through here: leaving `lastStatus` at "running" strands
  * the schedule in the UI, and only this path resets `currentRetries`.
  */
-const LIFECYCLE_RECONCILE_ATTEMPTS = 3;
+const LIFECYCLE_RECONCILE_ATTEMPTS = 5;
 
 /**
- * Write a non-failure lifecycle result, retrying and never rethrowing.
+ * First backoff step; each further attempt doubles it (0.5s, 1s, 2s, 4s ≈ 7.5s total).
+ *
+ * Retrying without a pause put all attempts inside the same millisecond of the
+ * same outage, so the retry loop only ever survived an error that was not going
+ * to repeat anyway.
+ */
+const LIFECYCLE_RECONCILE_BASE_DELAY_MS = 500;
+
+const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+/**
+ * Write a non-failure lifecycle result, retrying with backoff and never rethrowing.
  *
  * The import itself has already finished at this point. Letting a failed bookkeeping
  * write escape into the workflow's catch would record the run as a failure, burn a
  * retry and eventually auto-disable a schedule that is working perfectly.
+ *
+ * If every attempt fails the schedule stays at `lastStatus: "running"`. That is not
+ * lost: the stuck-schedule reaper reconstructs the outcome from the run's own ingest
+ * state (see `resolveUnreconciledOutcome` in cleanup-stuck-scheduled-ingests-job).
  */
 const reconcileLifecycle = async (
   scheduledIngestId: number,
@@ -143,6 +161,7 @@ const reconcileLifecycle = async (
         logError(error, "Scheduled ingest finished but its status could not be reconciled", context);
         return;
       }
+      await sleep(LIFECYCLE_RECONCILE_BASE_DELAY_MS * 2 ** (attempt - 1));
     }
   }
 };

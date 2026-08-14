@@ -247,6 +247,63 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(updateScheduledIngestPaused).toHaveBeenCalledOnce();
   });
 
+  it("should wait between reconciliation attempts instead of retrying inside the same outage", async () => {
+    // Three back-to-back writes all land in the same millisecond of a database
+    // outage, so the retry loop only survived errors that were not going to
+    // repeat anyway. A successful import then sat at lastStatus="running" until
+    // the reaper booked it as failed hours later.
+    vi.useFakeTimers();
+    try {
+      vi.mocked(loadScheduledIngestForLifecycle)
+        .mockRejectedValueOnce(new Error("terminating connection due to administrator command"))
+        .mockRejectedValueOnce(new Error("terminating connection due to administrator command"));
+
+      const running = handler(createWorkflowArgs(mockJob, tasks, mockReq));
+
+      // Flush everything that does not need a timer: without a backoff the whole
+      // retry loop is already through by this point.
+      await vi.advanceTimersByTimeAsync(0);
+      expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(2_000);
+      await running;
+
+      expect(loadScheduledIngestForLifecycle).toHaveBeenCalledTimes(3);
+      expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("should keep retrying the status write past the fourth failure", async () => {
+    vi.useFakeTimers();
+    try {
+      // An outage that outlives four attempts, without queueing a fixed number of
+      // rejections: a leftover queued rejection would leak into the next test.
+      let attempts = 0;
+      vi.mocked(loadScheduledIngestForLifecycle).mockImplementation(() => {
+        attempts++;
+        return attempts <= 4
+          ? Promise.reject(new Error("terminating connection due to administrator command"))
+          : Promise.resolve({ id: 42, statistics: {}, executionHistory: [] } as never);
+      });
+
+      const running = handler(createWorkflowArgs(mockJob, tasks, mockReq));
+      await vi.advanceTimersByTimeAsync(60_000);
+      await running;
+
+      expect(updateScheduledIngestSuccess).toHaveBeenCalledOnce();
+    } finally {
+      vi.useRealTimers();
+      vi.mocked(loadScheduledIngestForLifecycle).mockReset();
+      vi.mocked(loadScheduledIngestForLifecycle).mockResolvedValue({
+        id: 42,
+        statistics: {},
+        executionHistory: [],
+      } as never);
+    }
+  });
+
   it("should still fail the run when a downstream job actually failed", async () => {
     mockReq.payload.findByID.mockResolvedValueOnce({ id: "fetched-file-1", status: "processing" });
     mockReq.payload.find.mockResolvedValueOnce({

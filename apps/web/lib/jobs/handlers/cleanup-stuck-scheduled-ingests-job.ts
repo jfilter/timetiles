@@ -25,6 +25,7 @@ import type { ScheduledIngest } from "@/payload-types";
 
 import type { JobHandlerContext } from "../utils/job-context";
 import { cancelOrphanedWorkflowJobs, hasActivePayloadJob, isResourceStuck } from "../utils/stuck-detection";
+import { updateScheduledIngestPaused, updateScheduledIngestSuccess } from "./url-fetch-job/scheduled-ingest-utils";
 
 export interface CleanupStuckScheduledIngestsJobInput {
   /** Hours after which a running import is considered stuck (default: 4).
@@ -74,6 +75,94 @@ const failStuckIngestFile = async (payload: Payload, scheduledIngestId: number |
   }
 
   return stuckFiles.docs.length;
+};
+
+/** What a finished-but-unreconciled run should have written for itself. */
+interface UnreconciledOutcome {
+  status: "success" | "paused";
+  ingestFileId: number | string;
+  duration: number;
+  reason: string;
+}
+
+const getReviewReason = (reviewJob: { reviewReason?: unknown }): string =>
+  typeof reviewJob.reviewReason === "string" && reviewJob.reviewReason.length > 0
+    ? reviewJob.reviewReason
+    : "manual review required";
+
+/**
+ * Reconstruct the outcome of a run that finished but never got its status written.
+ *
+ * The workflow's `reconcileLifecycle` gives up after its backoff, so a DB outage in
+ * the last seconds of a healthy run strands the schedule at `lastStatus: "running"`
+ * with nothing actually wrong. The run's own ingest state is the marker that tells
+ * that apart from a worker that died mid-import: an ingest file from this run that
+ * reached `completed` means the import worked, and a job parked at NEEDS_REVIEW means
+ * it is waiting on a human. Recording either as failed burns a retry towards
+ * auto-disable — and for a review it also destroys the pending review, because
+ * `failStuckIngestFile` fails every non-terminal job it finds.
+ */
+const resolveUnreconciledOutcome = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  currentTime: Date
+): Promise<UnreconciledOutcome | null> => {
+  const sys = asSystem(payload);
+  const files = await sys.find({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    where: { scheduledIngest: { equals: scheduledIngest.id } },
+    sort: "-createdAt",
+    limit: 1,
+    depth: 0,
+  });
+
+  const file = files.docs[0];
+  if (!file) return null;
+
+  // Only the run that is stuck right now counts. A completed file from an earlier
+  // run says nothing about this one.
+  const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
+  const createdAt = parseDateInput(file.createdAt);
+  if (lastRunTime && createdAt && createdAt.getTime() < lastRunTime.getTime()) return null;
+
+  const finishedAt = parseDateInput(file.updatedAt) ?? currentTime;
+  const duration = lastRunTime ? Math.max(0, finishedAt.getTime() - lastRunTime.getTime()) : 0;
+
+  if (file.status === "completed") {
+    return { status: "success", ingestFileId: file.id, duration, reason: "" };
+  }
+
+  const reviewJobs = await sys.find({
+    collection: COLLECTION_NAMES.INGEST_JOBS,
+    where: { ingestFile: { equals: file.id }, stage: { equals: PROCESSING_STAGE.NEEDS_REVIEW } },
+    limit: 1,
+  });
+
+  const reviewJob = reviewJobs.docs[0];
+  if (reviewJob) {
+    return {
+      status: "paused",
+      ingestFileId: file.id,
+      duration,
+      reason: `Scheduled ingest paused for review: ${getReviewReason(reviewJob)}`,
+    };
+  }
+
+  return null;
+};
+
+/** Write the status the finished run could not write itself. */
+const applyUnreconciledOutcome = async (
+  payload: Payload,
+  scheduledIngest: ScheduledIngest,
+  outcome: UnreconciledOutcome
+): Promise<void> => {
+  if (outcome.status === "success") {
+    await updateScheduledIngestSuccess(payload, scheduledIngest, outcome.ingestFileId, outcome.duration);
+    return;
+  }
+
+  await updateScheduledIngestPaused(payload, scheduledIngest, outcome.ingestFileId, outcome.duration, outcome.reason);
 };
 
 /**
@@ -214,6 +303,9 @@ export const cleanupStuckScheduledIngestsJob = {
         totalRunning: runningImports.docs.length,
         stuckCount: processResult.stuckCount,
         resetCount: processResult.resetCount,
+        // Omitted when nothing was reconciled — the common case reports the same
+        // shape it always did.
+        reconciledCount: processResult.reconciledCount > 0 ? processResult.reconciledCount : undefined,
         dryRun,
         errors: processResult.errors.length > 0 ? processResult.errors : undefined,
       };
@@ -228,6 +320,73 @@ export const cleanupStuckScheduledIngestsJob = {
   },
 };
 
+/** What a single running schedule turned out to be. */
+type StuckImportOutcome = "not-stuck" | "active" | "reconciled" | "stuck";
+
+/**
+ * Classify one running schedule and resolve it.
+ *
+ * Reset failures propagate: the caller records them per schedule and leaves
+ * `lastStatus` alone, so the next pass revisits the same row.
+ */
+const processStuckImport = async (
+  scheduledIngest: ScheduledIngest,
+  payload: Payload,
+  currentTime: Date,
+  thresholdHours: number,
+  dryRun: boolean
+): Promise<StuckImportOutcome> => {
+  if (!isResourceStuck(scheduledIngest.lastStatus, "running", scheduledIngest.lastRun, currentTime, thresholdHours)) {
+    return "not-stuck";
+  }
+
+  const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
+  const stuckMinutes = lastRunTime ? Math.round((currentTime.getTime() - lastRunTime.getTime()) / (1000 * 60)) : -1;
+
+  // Secondary safety check: verify no Payload job is actively processing this ingest
+  const isActive = await hasActivePayloadJob(payload, "input.scheduledIngestId", scheduledIngest.id);
+  if (isActive) {
+    logger.info("Scheduled ingest appears stuck but has active Payload job, skipping reset", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+      stuckMinutes,
+    });
+    return "active";
+  }
+
+  // Not every schedule sitting at "running" is stuck: one whose run finished while
+  // the status write kept failing only lost its bookkeeping.
+  const unreconciled = await resolveUnreconciledOutcome(payload, scheduledIngest, currentTime);
+  if (unreconciled) {
+    logger.info("Scheduled ingest run had already finished; reconciling its status instead of failing it", {
+      scheduledIngestId: scheduledIngest.id,
+      name: scheduledIngest.name,
+      outcome: unreconciled.status,
+      ingestFileId: unreconciled.ingestFileId,
+      stuckMinutes,
+      dryRun,
+    });
+    if (!dryRun) {
+      await applyUnreconciledOutcome(payload, scheduledIngest, unreconciled);
+    }
+    return "reconciled";
+  }
+
+  logger.warn("Found stuck scheduled ingest", {
+    scheduledIngestId: scheduledIngest.id,
+    name: scheduledIngest.name,
+    lastRun: lastRunTime?.toISOString(),
+    stuckMinutes,
+    dryRun,
+  });
+
+  if (!dryRun) {
+    await resetStuckImport(payload, scheduledIngest, currentTime, thresholdHours);
+  }
+
+  return "stuck";
+};
+
 /**
  * Process all stuck imports.
  */
@@ -237,46 +396,25 @@ const processStuckImports = async (
   currentTime: Date,
   thresholdHours: number,
   dryRun: boolean
-): Promise<{ stuckCount: number; resetCount: number; errors: Array<{ id: string; name: string; error: string }> }> => {
+): Promise<{
+  stuckCount: number;
+  resetCount: number;
+  reconciledCount: number;
+  errors: Array<{ id: string; name: string; error: string }>;
+}> => {
   let stuckCount = 0;
   let resetCount = 0;
+  let reconciledCount = 0;
   const errors: Array<{ id: string; name: string; error: string }> = [];
 
   for (const scheduledIngest of imports) {
     try {
-      if (
-        isResourceStuck(scheduledIngest.lastStatus, "running", scheduledIngest.lastRun, currentTime, thresholdHours)
-      ) {
-        const lastRunTime = scheduledIngest.lastRun ? parseDateInput(scheduledIngest.lastRun) : null;
-        const stuckMinutes = lastRunTime
-          ? Math.round((currentTime.getTime() - lastRunTime.getTime()) / (1000 * 60))
-          : -1;
+      const outcome = await processStuckImport(scheduledIngest, payload, currentTime, thresholdHours, dryRun);
 
-        // Secondary safety check: verify no Payload job is actively processing this ingest
-        const isActive = await hasActivePayloadJob(payload, "input.scheduledIngestId", scheduledIngest.id);
-
-        if (isActive) {
-          logger.info("Scheduled ingest appears stuck but has active Payload job, skipping reset", {
-            scheduledIngestId: scheduledIngest.id,
-            name: scheduledIngest.name,
-            stuckMinutes,
-          });
-          continue;
-        }
-
+      if (outcome === "reconciled") reconciledCount++;
+      if (outcome === "stuck") {
         stuckCount++;
-        logger.warn("Found stuck scheduled ingest", {
-          scheduledIngestId: scheduledIngest.id,
-          name: scheduledIngest.name,
-          lastRun: lastRunTime?.toISOString(),
-          stuckMinutes,
-          dryRun,
-        });
-
-        if (!dryRun) {
-          await resetStuckImport(payload, scheduledIngest, currentTime, thresholdHours);
-          resetCount++;
-        }
+        if (!dryRun) resetCount++;
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -288,5 +426,5 @@ const processStuckImports = async (
     }
   }
 
-  return { stuckCount, resetCount, errors };
+  return { stuckCount, resetCount, reconciledCount, errors };
 };
