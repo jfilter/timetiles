@@ -125,7 +125,7 @@ setup_node() {
     else
       warn "mise install failed — falling back to whatever node is on PATH"
     fi
-    if ! mise current node >/dev/null 2>&1; then
+    if ! command -v node >/dev/null 2>&1; then
       # Without activation the pinned node is installed but invisible to this shell,
       # so the steps below would silently use a different one - or none.
       warn "mise is not activated in this shell. Add it to your profile, then re-run:"
@@ -181,14 +181,21 @@ setup_postgres() {
   else
     printf '\n# TimeTiles: keep clear of a Docker Postgres on 5432\nport = %s\n' "$PG_PORT" >>"$conf"
     print_success "Set port to $PG_PORT"
-    brew services restart "$PG_FORMULA" >/dev/null 2>&1 || true
+    pg_ctl restart -D "$(brew --prefix)/var/${PG_FORMULA}" -l /tmp/pg.log >/dev/null 2>&1 || true
   fi
 
-  if brew services list | grep -qE "^${PG_FORMULA}[[:space:]]+started"; then
-    print_exists "Service running"
+  # pg_ctl rather than `brew services`: the latter goes through `launchctl gui/<uid>`,
+  # which does not exist in an SSH session, and this is the same call `make dev` makes.
+  if pg_isready -h localhost -p "$PG_PORT" >/dev/null 2>&1; then
+    print_exists "Already running"
   else
-    brew services start "$PG_FORMULA" >/dev/null 2>&1
-    print_success "Started $PG_FORMULA"
+    local data_dir
+    data_dir="$(brew --prefix)/var/${PG_FORMULA}"
+    if LC_ALL=en_US.UTF-8 pg_ctl start -D "$data_dir" -l /tmp/pg.log >/dev/null 2>&1; then
+      print_success "Started PostgreSQL"
+    else
+      warn "pg_ctl could not start PostgreSQL — see /tmp/pg.log"
+    fi
   fi
 
   # pg_isready returns non-zero while the server is still coming up.
