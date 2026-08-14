@@ -279,7 +279,45 @@ setup_database() {
 }
 
 # ============================================================================
-# Step 6: Repo setup (env files, dependencies, Git LFS)
+# Step 6: h3 PostgreSQL extension
+# ============================================================================
+install_h3_extension() {
+  echo "🔷 h3 extension"
+
+  # The clustering migration runs `CREATE EXTENSION h3`. The Docker path gets it from
+  # kartoza/postgis; Homebrew has no formula for h3-pg, so it is built from source.
+  local ext_dir
+  ext_dir="$(pg_config --sharedir 2>/dev/null)/extension"
+  if [ -f "$ext_dir/h3.control" ]; then
+    print_exists "Already installed"
+    echo ""
+    return
+  fi
+
+  if ! brew list --formula cmake >/dev/null 2>&1; then
+    echo "  Installing cmake..."
+    brew install cmake
+  fi
+
+  local build_dir="${TMPDIR:-/tmp}/h3-pg-build"
+  rm -rf "$build_dir"
+  if git clone --depth 1 https://github.com/zachasme/h3-pg.git "$build_dir" >/dev/null 2>&1 &&
+    cmake -B "$build_dir/build" "$build_dir" >/dev/null 2>&1 &&
+    cmake --build "$build_dir/build" >/dev/null 2>&1 &&
+    cmake --install "$build_dir/build" >/dev/null 2>&1; then
+    print_success "Built and installed h3-pg"
+  else
+    warn "h3-pg build failed. Migrations will stop at 20260329_000000_h3_map_clustering. Build it by hand:"
+    echo "    git clone https://github.com/zachasme/h3-pg && cd h3-pg"
+    echo "    cmake -B build . && cmake --build build && cmake --install build"
+  fi
+  rm -rf "$build_dir"
+
+  echo ""
+}
+
+# ============================================================================
+# Step 7: Repo setup (env files, dependencies, Git LFS)
 # ============================================================================
 run_repo_setup() {
   echo "📦 Repository"
@@ -295,7 +333,7 @@ run_repo_setup() {
 }
 
 # ============================================================================
-# Step 7: Point the env files at the local cluster
+# Step 8: Point the env files at the local cluster
 # ============================================================================
 configure_env_for_local() {
   echo "⚙️  Environment"
@@ -326,7 +364,7 @@ configure_env_for_local() {
 }
 
 # ============================================================================
-# Step 8: Playwright browsers
+# Step 9: Playwright browsers
 # ============================================================================
 install_browsers() {
   echo "🎭 Playwright"
@@ -351,6 +389,7 @@ install_formulas
 setup_node
 setup_postgres
 setup_database
+install_h3_extension
 run_repo_setup
 configure_env_for_local
 install_browsers
