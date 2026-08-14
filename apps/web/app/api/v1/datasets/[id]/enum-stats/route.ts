@@ -84,6 +84,41 @@ const buildEnumStatsQuery = (fieldPath: string, isTag: boolean, whereClause: Sql
              GROUP BY 1 ORDER BY count DESC LIMIT ${MAX_VALUES}`;
 };
 
+/** One row of the value-count query, shared by the reporting decision and the projection. */
+type EnumStatsRow = { value: string; count: number; total_count: number | string; distinct_count: number } & Record<
+  string,
+  unknown
+>;
+
+/**
+ * Whether a field still belongs in the response.
+ *
+ * `fieldMetadata` keeps entries for columns that disappeared from the source: the per-sheet
+ * jsonb merge cannot tell "gone" from "not in this sheet" (issue #172). A field with no live
+ * values would render a filter that can never match. One the caller is actively filtering on
+ * stays regardless, or that selection loses the control that could clear it.
+ */
+const isReportableField = (rows: EnumStatsRow[], activeSelection: string[] | undefined): boolean =>
+  rows.length > 0 || (activeSelection?.length ?? 0) > 0;
+
+/** Shape one field's rows into the response entry, with percentages over the field's own total. */
+const projectFieldStats = (path: string, isTag: boolean, rows: EnumStatsRow[]) => {
+  const firstRow = rows[0];
+  const total = firstRow ? Number(firstRow.total_count) : 0;
+
+  return {
+    path,
+    label: toFieldLabel(path),
+    isTag,
+    values: rows.map((r) => ({
+      value: String(r.value),
+      count: Number(r.count),
+      percent: total > 0 ? Math.round((Number(r.count) / total) * 1000) / 10 : 0,
+    })),
+    cardinality: firstRow ? Number(firstRow.distinct_count) : 0,
+  };
+};
+
 export const GET = apiRoute({
   auth: "optional",
   params: z.object({ id: z.string().regex(/^\d+$/) }),
@@ -159,28 +194,11 @@ export const GET = apiRoute({
       const whereClause = toSqlWhereClause(filters);
       const isTag = field.isTagField === true;
 
-      const rows = await payload.db.drizzle.execute<{
-        value: string;
-        count: number;
-        total_count: number | string;
-        distinct_count: number;
-      }>(buildEnumStatsQuery(fieldPath, isTag, whereClause));
+      const rows = await payload.db.drizzle.execute<EnumStatsRow>(buildEnumStatsQuery(fieldPath, isTag, whereClause));
 
-      const firstRow = rows.rows[0];
-      const total = firstRow ? Number(firstRow.total_count) : 0;
-      const cardinality = firstRow ? Number(firstRow.distinct_count) : 0;
-
-      fields.push({
-        path: field.path,
-        label: toFieldLabel(field.path),
-        isTag,
-        values: rows.rows.map((r) => ({
-          value: String(r.value),
-          count: Number(r.count),
-          percent: total > 0 ? Math.round((Number(r.count) / total) * 1000) / 10 : 0,
-        })),
-        cardinality,
-      });
+      if (isReportableField(rows.rows, baseQuery.ff?.[field.path])) {
+        fields.push(projectFieldStats(field.path, isTag, rows.rows));
+      }
     }
 
     return { fields };

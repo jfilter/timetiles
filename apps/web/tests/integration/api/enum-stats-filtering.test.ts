@@ -77,6 +77,23 @@ describe.sequential("/api/v1/datasets/[id]/enum-stats - filtering", () => {
               { value: "Art", count: 2, percent: 25 },
             ],
           },
+          // Metadata for a column that has since disappeared from the source: the per-sheet
+          // jsonb merge cannot remove it, so the route has to leave it out of the response.
+          legacyStatus: {
+            path: "legacyStatus",
+            occurrences: 8,
+            occurrencePercent: 100,
+            nullCount: 0,
+            uniqueValues: 2,
+            uniqueSamples: ["Open", "Closed"],
+            typeDistribution: { string: 8 },
+            formats: {},
+            isEnumCandidate: true,
+            enumValues: [
+              { value: "Open", count: 5, percent: 62 },
+              { value: "Closed", count: 3, percent: 38 },
+            ],
+          },
           region: {
             path: "region",
             occurrences: 8,
@@ -179,6 +196,24 @@ describe.sequential("/api/v1/datasets/[id]/enum-stats - filtering", () => {
     expect(categories).toContain("Music");
     expect(categories).toContain("Sports");
     expect(categories).not.toContain("Art");
+  });
+
+  it("omits a field that no longer occurs in the data", async () => {
+    const fields = await fetchEnumStats(testDatasetId);
+
+    // `fieldMetadata` still describes legacyStatus; no event carries it. Offering it would
+    // put a filter in the UI that can never match anything.
+    expect(getField(fields, "legacyStatus")).toBeUndefined();
+    expect(getField(fields, "category")).toBeDefined();
+  });
+
+  it("keeps a vanished field while the caller still filters on it", async () => {
+    const ff = encodeURIComponent(JSON.stringify({ legacyStatus: ["Open"] }));
+    const fields = await fetchEnumStats(testDatasetId, `ff=${ff}`);
+
+    // Dropping it here would strand the active selection: the filter stays in the URL with
+    // no control left to clear it.
+    expect(getField(fields, "legacyStatus")).toBeDefined();
   });
 
   it("combines date range and field filters", async () => {
