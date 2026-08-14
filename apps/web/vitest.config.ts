@@ -29,7 +29,7 @@ export default defineConfig({
     execArgv: ["--no-warnings"], // Suppress Node.js warnings
     maxWorkers,
     fileParallelism: true,
-    sequence: { concurrent: true },
+    sequence: { concurrent: false },
     coverage: {
       provider: "v8",
       reportOnFailure: true, // Generate coverage even when tests fail
