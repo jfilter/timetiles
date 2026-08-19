@@ -1383,15 +1383,18 @@ EOF
             echo -e "${YELLOW}Pulling latest deployment files (${REPO_BRANCH})...${NC}"
             # fetch + reset --hard converges to remote even if a tracked file was
             # locally edited; operator state lives in .gitignored files and is
-            # untouched.
+            # untouched. Files marked assume-unchanged (the substituted nginx
+            # confs, see below) make `reset --hard` refuse with "not uptodate.
+            # Cannot merge" once upstream touches them, so drop the marks first.
+            git -C "$REPO_ROOT" ls-files -v | awk '/^h /{print $2}' \
+                | xargs -r git -C "$REPO_ROOT" update-index --no-assume-unchanged
             git -C "$REPO_ROOT" fetch --depth 1 origin "$REPO_BRANCH"
             git -C "$REPO_ROOT" reset --hard "origin/$REPO_BRANCH"
 
             # Re-apply ${DOMAIN_NAME} substitution on nginx site files
             # (mirrors deployment/bootstrap/lib/common.sh:configure_nginx).
             # Then mark the substituted files assume-unchanged so `git status`
-            # stays clean. `git reset --hard` still overwrites them on the
-            # next pull, so upstream template changes propagate normally.
+            # stays clean.
             load_env_vars DOMAIN_NAME
             if [[ -n "${DOMAIN_NAME:-}" ]] && [[ -d "$SCRIPT_DIR/nginx/sites-enabled" ]]; then
                 find "$SCRIPT_DIR/nginx/sites-enabled" -type f -name "*.conf" -print0 \

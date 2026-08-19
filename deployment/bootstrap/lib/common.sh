@@ -302,8 +302,8 @@ configure_nginx() {
 
     # Substitute ${DOMAIN_NAME} in all nginx config files. install_dir is a
     # symlink into a real working tree under .../-src; mark the substituted
-    # files assume-unchanged so `git status` stays clean. `git reset --hard`
-    # in `timetiles update` still overwrites them, so upstream template
+    # files assume-unchanged so `git status` stays clean; `timetiles update`
+    # drops the marks before its `git reset --hard`, so upstream template
     # changes propagate normally.
     # $install_dir is a SYMLINK to <src>/deployment, and bash's `cd` resolves
     # ".." logically -- against the symlink path rather than the real one. So
