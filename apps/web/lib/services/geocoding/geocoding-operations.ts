@@ -438,16 +438,13 @@ export class GeocodingOperations {
         }
       });
 
-      const batchResults = await Promise.allSettled(batchPromises);
+      const batchResults = await Promise.all(batchPromises);
 
-      for (const settledResult of batchResults) {
-        if (settledResult.status === "fulfilled") {
-          const { address, result, error } = settledResult.value;
-          if (result != null) {
-            results.set(address, result);
-          } else if (error != null) {
-            results.set(address, error);
-          }
+      for (const { address, result, error } of batchResults) {
+        if (result != null) {
+          results.set(address, result);
+        } else if (error != null) {
+          results.set(address, error);
         }
       }
     }
