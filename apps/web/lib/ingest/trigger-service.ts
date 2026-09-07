@@ -46,11 +46,15 @@ export const generateIngestName = (scheduledIngest: ScheduledIngest, currentTime
   const importName = scheduledIngest.ingestNameTemplate ?? "{{name}} - {{date}}";
   const timeString = `${currentTime.getUTCHours().toString().padStart(2, "0")}:${currentTime.getUTCMinutes().toString().padStart(2, "0")}:${currentTime.getUTCSeconds().toString().padStart(2, "0")}`;
 
-  return importName
-    .replaceAll("{{name}}", scheduledIngest.name)
-    .replaceAll("{{date}}", currentTime.toISOString().split("T")[0] ?? "")
-    .replaceAll("{{time}}", timeString)
-    .replaceAll("{{url}}", new URL(scheduledIngest.sourceUrl).hostname);
+  const values: Record<string, string> = {
+    name: scheduledIngest.name,
+    date: currentTime.toISOString().split("T")[0] ?? "",
+    time: timeString,
+    url: new URL(scheduledIngest.sourceUrl).hostname,
+  };
+
+  // Substitute once: values are literal text, not replacement syntax or templates.
+  return importName.replace(/\{\{(name|date|time|url)\}\}/g, (match, key: string) => values[key] ?? match);
 };
 
 interface TriggerOptions {

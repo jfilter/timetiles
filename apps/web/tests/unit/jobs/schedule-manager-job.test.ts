@@ -589,6 +589,19 @@ describe.sequential("scheduleManagerJob", () => {
       );
     });
 
+    it("preserves literal replacement syntax and template tokens in schedule names", () => {
+      const name = generateIngestName(
+        {
+          name: "$& {{date}} {{time}} {{url}}",
+          sourceUrl: "https://api.example.com/data.csv",
+          ingestNameTemplate: "{{name}} / {{date}} / {{unknown}}",
+        } as Parameters<typeof generateIngestName>[0],
+        new Date("2024-01-15T14:30:45.000Z")
+      );
+
+      expect(name).toBe("$& {{date}} {{time}} {{url}} / 2024-01-15 / {{unknown}}");
+    });
+
     it("should handle feature flag disabled", async () => {
       const { mockPayload, mockJob, mockReq } = createMockContext();
       const { getFeatureFlagService } = await import("@/lib/services/feature-flag-service");
