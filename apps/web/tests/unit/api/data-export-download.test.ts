@@ -1,11 +1,8 @@
 /**
  * Unit tests for GET /api/data-exports/[id]/download.
  *
- * Export archives contain the user's complete personal data. The route detects
- * a just-expired export on download and marks it "expired" — but the cleanup
- * job only sweeps records still in "ready", so leaving `filePath` populated and
- * the file on disk orphaned the ZIP forever: the 30-day record purge then
- * removed the only pointer to it.
+ * Export archives contain personal data. Keep the file path until the archive
+ * is confirmed gone so cleanup can retry after filesystem failures.
  *
  * @module
  * @category Tests
@@ -111,20 +108,27 @@ describe.sequential("GET /api/data-exports/[id]/download", () => {
     expect(payload.update).not.toHaveBeenCalledWith(expect.objectContaining({ data: { filePath: null } }));
   });
 
-  it("still returns 410 when the unlink fails", async () => {
-    // Filesystem trouble must not change the user-visible outcome.
-    setup({
+  it.each(["EACCES", "EIO"])("preserves the archive reference after a %s stat failure", async (code) => {
+    const payload = setup({
       id: EXPORT_ID,
       user: USER_ID,
       status: "ready",
       filePath: FILE_PATH,
-      expiresAt: "2020-01-01T00:00:00.000Z",
+      expiresAt: "2999-01-01T00:00:00.000Z",
     });
-    mocks.mockUnlink.mockRejectedValue(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+    mocks.mockStat.mockRejectedValueOnce(Object.assign(new Error(code), { code }));
 
     const response = await GET(createRequest(), routeParams);
 
-    expect(response.status).toBe(410);
+    expect(response.status).toBe(500);
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(payload.db.drizzle.execute).not.toHaveBeenCalled();
+    expect(mocks.mockUnlink).not.toHaveBeenCalled();
+
+    const retry = await GET(createRequest(), routeParams);
+    expect(retry.status).toBe(200);
+    await retry.arrayBuffer();
+    expect(payload.db.drizzle.execute).toHaveBeenCalledTimes(1);
   });
 
   it("clears the dangling filePath when the archive is missing from disk", async () => {

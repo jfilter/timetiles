@@ -18,6 +18,7 @@ import { z } from "zod";
 import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { logger } from "@/lib/logger";
+import { isENOENT } from "@/lib/utils/is-enoent";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { DataExport as DataExportRecord } from "@/payload-types";
 
@@ -69,7 +70,8 @@ const streamExportFile = async (
   let fileStats;
   try {
     fileStats = await stat(filePath);
-  } catch {
+  } catch (error) {
+    if (!isENOENT(error)) throw error;
     // The file is gone; drop the dangling pointer so nothing tries to serve or
     // unlink it again.
     await payload.update({
