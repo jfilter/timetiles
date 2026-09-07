@@ -669,11 +669,21 @@ case "$1" in
                 $OFFSITE && CRON_OFFSITE="--offsite"
 
                 CRON_SCRIPT="$SCRIPT_DIR/backups/auto-backup.sh"
+                if ! CURRENT_CRON=$(LC_ALL=C crontab -l 2>&1); then
+                    if [[ "$CURRENT_CRON" == "no crontab for $(id -un)" ]]; then
+                        CURRENT_CRON=""
+                    else
+                        echo "Cannot read current crontab; leaving automatic backups unchanged" >&2
+                        exit 1
+                    fi
+                fi
+                # grep returns 1 when no jobs remain, which is a valid empty crontab.
+                CURRENT_CRON=$(printf '%s\n' "$CURRENT_CRON" | grep -vF "$CRON_SCRIPT") || [[ $? -eq 1 ]]
                 mkdir -p "$SCRIPT_DIR/backups"
 
                 if $DISABLE; then
                     echo -e "${YELLOW}Disabling automatic backups...${NC}"
-                    crontab -l 2>/dev/null | grep -v "$CRON_SCRIPT" | crontab -
+                    printf '%s\n' "$CURRENT_CRON" | crontab -
                     rm -f "$CRON_SCRIPT"
                     echo -e "${GREEN}Automatic backups disabled${NC}"
                 else
@@ -691,7 +701,7 @@ EOF
 
                     # Add to crontab (daily at 2 AM)
                     CRON_CMD="0 2 * * * $CRON_SCRIPT >> /var/log/timetiles/backup.log 2>&1"
-                    (crontab -l 2>/dev/null | grep -v "$CRON_SCRIPT"; echo "$CRON_CMD") | crontab -
+                    printf '%s\n' "$CURRENT_CRON" "$CRON_CMD" | crontab -
 
                     echo -e "${GREEN}Automatic backups configured (daily at 2 AM)${NC}"
                     [[ -n "$CRON_OFFSITE" ]] && echo "Offsite sync enabled"
