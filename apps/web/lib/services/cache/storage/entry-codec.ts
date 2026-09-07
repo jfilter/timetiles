@@ -74,8 +74,14 @@ const decodeEnvelope = <T>(raw: Buffer): CacheEntry<T> => {
   const blobs: Buffer[] = [];
   let offset = headerEnd + 1;
   for (const length of header.blobs) {
+    if (!Number.isSafeInteger(length) || length < 0 || length > raw.length - offset) {
+      throw new Error("Malformed cache envelope: invalid blob length");
+    }
     blobs.push(raw.subarray(offset, offset + length));
     offset += length;
+  }
+  if (offset !== raw.length) {
+    throw new Error("Malformed cache envelope: unexpected trailing data");
   }
 
   return reviveDates(restoreBlobs(header.entry, blobs) as CacheEntry<T>);

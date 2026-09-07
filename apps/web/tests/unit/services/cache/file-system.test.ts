@@ -419,6 +419,24 @@ describe.sequential("FileSystemCacheStorage", () => {
       const newEntry = await storage.get(key);
       expect(newEntry?.value).toBe("new-value");
     });
+
+    it("rejects truncated binary cache data instead of returning a partial value", async () => {
+      const key = "truncated-binary";
+      const value = Buffer.from("complete binary payload");
+      await storage.set(key, value);
+      const index = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as {
+        index: Record<string, { file: string }>;
+      };
+      const file = index.index[key]!.file;
+      const raw = await fs.readFile(file);
+      await fs.writeFile(file, raw.subarray(0, raw.length - 1));
+
+      expect(await storage.get(key)).toBeNull();
+      expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0, hits: 0, misses: 1 });
+
+      await storage.set(key, value);
+      expect((await storage.get<Buffer>(key))?.value).toEqual(value);
+    });
   });
 
   describe("statistics", () => {
