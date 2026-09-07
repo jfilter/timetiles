@@ -197,9 +197,9 @@ export default {
         },
         "no-vague-subjects": (parsed) => {
           const vague = ["stuff", "things", "updates", "changes", "fixes"];
-          const subject = parsed.subject?.toLowerCase() || "";
+          const words = parsed.subject?.toLowerCase().match(/[a-z]+/g) || [];
           for (const word of vague) {
-            if (subject.includes(word)) {
+            if (words.includes(word)) {
               return [false, `Avoid vague terms like "${word}" in commit subjects`];
             }
           }
