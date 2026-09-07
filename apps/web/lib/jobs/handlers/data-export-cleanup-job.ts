@@ -104,19 +104,27 @@ const expireReadyExports = async (
  * only when the file is confirmed gone — a path kept after a failed unlink is what lets the
  * next run retry instead of orphaning the archive.
  */
-const unlinkPending = async (sys: SystemPayload, pending: PendingUnlink[]): Promise<number> => {
+const unlinkPending = async (
+  sys: SystemPayload,
+  pending: PendingUnlink[]
+): Promise<{ filesDeleted: number; errors: number }> => {
   let filesDeleted = 0;
+  let errors = 0;
 
   for (let i = 0; i < pending.length; i += UNLINK_CONCURRENCY) {
     const chunk = pending.slice(i, i + UNLINK_CONCURRENCY);
     const results = await Promise.all(
       chunk.map(async ({ exportId, filePath }) => {
         const outcome = await unlinkExportFile(exportId, filePath, "expiry");
-        if (outcome === "failed") return false;
+        if (outcome === "failed") {
+          errors++;
+          return false;
+        }
 
         try {
           await sys.update({ collection: DATA_EXPORTS, id: exportId, data: { filePath: null } });
         } catch (error) {
+          errors++;
           // The file is gone either way; a stale path just means one more retry next run.
           logError(error, "Failed to clear export file path", { exportId });
         }
@@ -126,7 +134,7 @@ const unlinkPending = async (sys: SystemPayload, pending: PendingUnlink[]): Prom
     filesDeleted += results.filter(Boolean).length;
   }
 
-  return filesDeleted;
+  return { filesDeleted, errors };
 };
 
 /**
@@ -156,7 +164,10 @@ const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResul
         // Deleting the record destroys the only pointer to the archive, so keep it until the
         // file is confirmed gone — the next hourly run retries. (An explicit comparison: the
         // outcome is a string now, and every string is truthy.)
-        if (outcome === "failed") continue;
+        if (outcome === "failed") {
+          errors++;
+          continue;
+        }
       }
       await sys.delete({ collection: DATA_EXPORTS, id: record.id });
       recordsDeleted++;
@@ -230,11 +241,11 @@ export const dataExportCleanupJob = {
 
       const output = {
         success: true,
-        filesDeleted: unlinked + (purge.filesDeleted ?? 0),
+        filesDeleted: unlinked.filesDeleted + (purge.filesDeleted ?? 0),
         recordsUpdated: expiry.recordsUpdated ?? 0,
         recordsDeleted: purge.recordsDeleted ?? 0,
         staleFailed: stale.staleFailed ?? 0,
-        errors: (expiry.errors ?? 0) + (purge.errors ?? 0) + (stale.errors ?? 0),
+        errors: (expiry.errors ?? 0) + unlinked.errors + (purge.errors ?? 0) + (stale.errors ?? 0),
       };
 
       logger.info({ jobId: job?.id, ...output }, "Data export cleanup job completed");

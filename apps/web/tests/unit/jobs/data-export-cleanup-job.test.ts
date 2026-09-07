@@ -113,6 +113,39 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(result.output.errors).toBe(0);
   });
 
+  it.each(["expiry", "purge"])(
+    "counts unlink failures during %s without losing the archive reference",
+    async (phase) => {
+      const docs = [
+        { id: 1, filePath: "/tmp/retry.zip", status: "expired" },
+        { id: 2, filePath: "/tmp/deleted.zip", status: "expired" },
+      ];
+      if (phase === "purge") mockPayload.find.mockResolvedValueOnce({ docs: [] });
+      mockPayload.find.mockResolvedValueOnce({ docs });
+      mockUnlink.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+
+      const result = await dataExportCleanupJob.handler(createContext());
+
+      expect(result.output.errors).toBe(1);
+      expect(result.output.filesDeleted).toBe(1);
+      expect(mockUnlink).toHaveBeenCalledTimes(2);
+      expect(mockPayload.update).not.toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+      expect(mockPayload.delete).not.toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+      if (phase === "purge") expect(result.output.recordsDeleted).toBe(1);
+    }
+  );
+
+  it("counts path-clear failures even when the archive was deleted", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [{ id: 1, filePath: "/tmp/export-1.zip", status: "expired" }] });
+    mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
+
+    const result = await dataExportCleanupJob.handler(createContext());
+
+    expect(result.output.errors).toBe(1);
+    expect(result.output.filesDeleted).toBe(1);
+    expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to clear export file path", { exportId: 1 });
+  });
+
   it("should increment errors when per-record update fails", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [{ id: 3, filePath: "/tmp/export-3.zip", status: "ready" }], totalDocs: 1 })
