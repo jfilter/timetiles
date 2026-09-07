@@ -23,7 +23,6 @@ export type { DataExport, ExportListResponse, RequestExportError, RequestExportR
 export const dataExportQueryKeys = {
   all: ["data-exports"] as const,
   list: () => [...dataExportQueryKeys.all, "list"] as const,
-  latest: () => [...dataExportQueryKeys.all, "latest"] as const,
 };
 
 /** Shape returned by the Payload REST API for the data-exports collection. */
@@ -68,30 +67,21 @@ const hasPendingExports = (data: ExportListResponse) =>
   data.exports?.some((exp) => exp.status === "pending" || exp.status === "processing") ?? false;
 
 /**
- * Hook to fetch the user's data exports.
+ * Hook to get the most recent/relevant export.
  */
-export const useDataExportsQuery = () => {
-  return useQuery({
+export const useLatestExportQuery = () => {
+  const { data, isLoading } = useQuery({
     queryKey: dataExportQueryKeys.list(),
     queryFn: fetchDataExports,
     ...QUERY_PRESETS.frequent,
     refetchInterval: createItemPollingInterval(hasPendingExports, 5000),
   });
-};
-
-/**
- * Hook to get the most recent/relevant export.
- */
-export const useLatestExportQuery = () => {
-  const query = useDataExportsQuery();
-
-  // Find the most relevant export (pending/processing first, then ready)
+  // Prefer the newest active or ready export, then fall back to the newest record.
   const latestExport =
-    query.data?.exports?.find(
-      (exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready"
-    ) ?? query.data?.exports?.[0];
+    data?.exports.find((exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready") ??
+    data?.exports[0];
 
-  return { ...query, latestExport };
+  return { latestExport, isLoading };
 };
 
 /**
