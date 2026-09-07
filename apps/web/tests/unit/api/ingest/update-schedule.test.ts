@@ -179,6 +179,34 @@ describe.sequential("PATCH /api/ingest/update-schedule", () => {
     expect(mocks.mockKillTransaction).not.toHaveBeenCalled();
   });
 
+  it("clears active JSON settings without passing null groups to Payload", async () => {
+    mocks.mockPayload.findByID.mockResolvedValue({
+      id: 10,
+      createdBy: mockUser.id,
+      advancedOptions: {
+        responseFormat: "json",
+        jsonApiConfig: { recordsPath: "data.results", pagination: { enabled: true, type: "page" } },
+      },
+      sourceUrl: "https://example.com/data.csv",
+      lastStatus: "success",
+    });
+
+    const response = await PATCH(createRequest(baseBody), routeContext);
+
+    expect(response.status).toBe(200);
+    expect(mocks.mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scheduled-ingests",
+        data: expect.objectContaining({
+          advancedOptions: {
+            responseFormat: "auto",
+            jsonApiConfig: { recordsPath: null, pagination: { enabled: false } },
+          },
+        }),
+      })
+    );
+  });
+
   it("rolls back the dataset update when the final scheduled-ingest update fails", async () => {
     // The dataset schema update succeeds, but the closing scheduled-ingest
     // update fails — without a shared transaction this would leave the

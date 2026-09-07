@@ -150,7 +150,13 @@ export const PATCH = apiRoute({
     // Otherwise, force responseFormat to "auto" to prevent Payload defaulting to "json".
     const advancedOptions = hasJsonApiConfig
       ? { ...existing.advancedOptions, responseFormat: "json" as const, jsonApiConfig: body.jsonApiConfig }
-      : { ...existing.advancedOptions, responseFormat: "auto" as const, jsonApiConfig: null };
+      : {
+          ...existing.advancedOptions,
+          responseFormat: "auto" as const,
+          // Payload traverses groups even when clearing them. Clear the active
+          // fields explicitly so previous JSON settings cannot survive its merge.
+          jsonApiConfig: { recordsPath: null, pagination: { enabled: false } },
+        };
 
     const updateData: Record<string, unknown> = {
       name: body.scheduleConfig.name,
