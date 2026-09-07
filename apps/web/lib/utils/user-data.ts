@@ -46,7 +46,8 @@ export const countUserDocs = async (
 /**
  * Find all documents in a collection that belong to a user.
  *
- * Returns all matching docs with pagination disabled by default.
+ * Returns all matching docs with pagination disabled by default. Relationships
+ * remain IDs so trashed related documents cannot null out stored references.
  *
  * @param payload - Payload instance
  * @param collection - Collection slug to search in
@@ -73,6 +74,7 @@ export const findUserDocs = async <T extends CollectionSlug>(
   const result = await payload.find({
     collection,
     where,
+    depth: 0,
     ...(limit == null ? { pagination: false } : { limit }),
     overrideAccess: true,
   });

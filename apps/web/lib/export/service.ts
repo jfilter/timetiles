@@ -221,6 +221,7 @@ export class DataExportService {
     while (true) {
       const result = await this.payload.find({
         collection: "events",
+        depth: 0,
         where: { and: [{ dataset: { in: datasetIds } }, { id: { greater_than: lastId } }] },
         limit: EVENTS_PER_CHUNK,
         sort: "id",
@@ -273,6 +274,7 @@ export class DataExportService {
 
     const result = await this.payload.find({
       collection: "ingest-jobs",
+      depth: 0,
       where: { ingestFile: { in: importFileIds } },
       pagination: false,
       overrideAccess: true,
@@ -336,6 +338,7 @@ export class DataExportService {
 
     const result = await this.payload.find({
       collection: "dataset-schemas",
+      depth: 0,
       where: { dataset: { in: datasetIds } },
       pagination: false,
       overrideAccess: true,
@@ -361,6 +364,7 @@ export class DataExportService {
   private async fetchAuditLog(userId: number): Promise<AuditLogExportData[]> {
     const result = await this.payload.find({
       collection: "audit-log",
+      depth: 0,
       where: { userId: { equals: userId } },
       pagination: false,
       overrideAccess: true,
@@ -404,6 +408,7 @@ export class DataExportService {
   private async fetchScrapers(userId: number): Promise<ScraperExportData[]> {
     const result = await this.payload.find({
       collection: "scrapers",
+      depth: 0,
       where: { repoCreatedBy: { equals: userId } },
       pagination: false,
       overrideAccess: true,
@@ -434,6 +439,7 @@ export class DataExportService {
   private async fetchScraperRuns(userId: number): Promise<ScraperRunExportData[]> {
     const result = await this.payload.find({
       collection: "scraper-runs",
+      depth: 0,
       where: { scraperOwner: { equals: userId } },
       pagination: false,
       overrideAccess: true,

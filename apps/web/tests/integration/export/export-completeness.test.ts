@@ -18,7 +18,7 @@ import type { DataExportService } from "@/lib/export/service";
 import { createDataExportService } from "@/lib/export/service";
 import type { ExportSummary } from "@/lib/export/types";
 
-import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
+import { createIntegrationTestEnvironment, withIngestFile, withUsers } from "../../setup/integration/environment";
 
 describe.sequential("GDPR Export Completeness", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -38,6 +38,50 @@ describe.sequential("GDPR Export Completeness", () => {
 
   beforeEach(() => {
     exportService = createDataExportService(payload);
+  });
+
+  it("exports dataset relationship IDs when their catalog is in the trash", async () => {
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
+    const catalog = await createCatalogForUser(users.testUser.id);
+    const dataset = await createDatasetForUser(users.testUser.id, catalog.id);
+    await payload.update({
+      collection: "catalogs",
+      id: catalog.id,
+      data: { deletedAt: new Date().toISOString() },
+      overrideAccess: true,
+    });
+
+    const populated = await payload.findByID({ collection: "datasets", id: dataset.id, depth: 1 });
+    expect(populated.catalog).toBeNull();
+
+    const data = await exportService.fetchAllUserData(users.testUser.id);
+    expect(data.datasets).toContainEqual(expect.objectContaining({ id: dataset.id, catalogId: catalog.id }));
+  });
+
+  it("exports ingest job relationship IDs when their dataset is in the trash", async () => {
+    const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
+    const catalog = await createCatalogForUser(users.testUser.id);
+    const dataset = await createDatasetForUser(users.testUser.id, catalog.id);
+    const { ingestFile } = await withIngestFile(testEnv, catalog.id, "title\nExample", { user: users.testUser.id });
+    const job = await payload.create({
+      collection: "ingest-jobs",
+      data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: "detect-schema" },
+      overrideAccess: true,
+    });
+    await payload.update({
+      collection: "datasets",
+      id: dataset.id,
+      data: { deletedAt: new Date().toISOString() },
+      overrideAccess: true,
+    });
+
+    const populated = await payload.findByID({ collection: "ingest-jobs", id: job.id, depth: 1 });
+    expect(populated.dataset).toBeNull();
+
+    const data = await exportService.fetchAllUserData(users.testUser.id);
+    expect(data.importJobs).toContainEqual(
+      expect.objectContaining({ id: job.id, ingestFileId: ingestFile.id, datasetId: dataset.id })
+    );
   });
 
   /** Helper to create a catalog owned by a specific user. */
