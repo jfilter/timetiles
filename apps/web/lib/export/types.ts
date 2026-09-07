@@ -48,15 +48,6 @@ export interface ExportSummary {
 export type DataExportStatus = DataExportRecord["status"];
 
 /**
- * Result of initiating an export request.
- */
-export interface CreateExportResult {
-  success: boolean;
-  exportId: number;
-  summary: ExportSummary;
-}
-
-/**
  * Result of executing the export job.
  */
 export interface ExecuteExportResult {
