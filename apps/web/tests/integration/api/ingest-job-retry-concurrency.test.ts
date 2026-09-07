@@ -86,7 +86,7 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
       { params: Promise.resolve({ id: String(id) }) }
     );
 
-  it("queues only one workflow for concurrent admin resets", async () => {
+  it.each(["reset", "retry"])("queues only one workflow for an admin reset concurrent with %s", async (operation) => {
     const job = await payload.create({
       collection: "ingest-jobs",
       data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.FAILED },
@@ -95,7 +95,8 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
       collection: "users",
       data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
     });
-    const responses = await Promise.all([callReset(job.id, login.token), callReset(job.id, login.token)]);
+    const second = operation === "reset" ? callReset : callRetry;
+    const responses = await Promise.all([callReset(job.id, login.token), second(job.id, login.token)]);
     expect(responses.map((response) => response.status).sort((a, b) => a - b)).toEqual([200, 400]);
     const queued = await payload.count({
       collection: "payload-jobs",
@@ -104,33 +105,38 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
     expect(queued.totalDocs).toBe(1);
   });
 
-  it("preserves the failed stage and error log when the database rejects the queued workflow", async () => {
-    const errorLog = { message: "Original ingest failure" };
-    const job = await payload.create({
-      collection: "ingest-jobs",
-      data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.FAILED, errorLog },
-    });
-    const login = await payload.login({
-      collection: "users",
-      data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
-    });
-    // Real database failure, scoped to this disposable worker database and removed in finally.
-    await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs ADD CONSTRAINT reject_reset_test
-      CHECK (workflow_slug <> 'ingest-process') NOT VALID`);
-    try {
-      expect((await callReset(job.id, login.token)).status).toBe(500);
-      const after = await payload.findByID({ collection: "ingest-jobs", id: job.id });
-      expect(after.stage).toBe(PROCESSING_STAGE.FAILED);
-      expect(after.errorLog).toEqual(errorLog);
-      const queued = await payload.count({
-        collection: "payload-jobs",
-        where: { "input.ingestJobId": { equals: String(job.id) } },
+  it.each(["reset", "retry"])(
+    "preserves failed state when queueing %s is rejected by the database",
+    async (operation) => {
+      const errorLog = { message: "Original ingest failure" };
+      const job = await payload.create({
+        collection: "ingest-jobs",
+        data: { ingestFile: ingestFile.id, dataset: dataset.id, stage: PROCESSING_STAGE.FAILED, errorLog },
       });
-      expect(queued.totalDocs).toBe(0);
-    } finally {
-      await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs DROP CONSTRAINT reject_reset_test`);
+      const login = await payload.login({
+        collection: "users",
+        data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
+      });
+      // Real database failure, scoped to this disposable worker database and removed in finally.
+      await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs ADD CONSTRAINT reject_reset_test
+      CHECK (workflow_slug <> 'ingest-process') NOT VALID`);
+      try {
+        const recover = operation === "reset" ? callReset : callRetry;
+        expect((await recover(job.id, login.token)).status).toBe(500);
+        const after = await payload.findByID({ collection: "ingest-jobs", id: job.id });
+        expect(after.stage).toBe(PROCESSING_STAGE.FAILED);
+        expect(after.errorLog).toEqual(errorLog);
+        expect(after.updatedAt).toBe(job.updatedAt);
+        const queued = await payload.count({
+          collection: "payload-jobs",
+          where: { "input.ingestJobId": { equals: String(job.id) } },
+        });
+        expect(queued.totalDocs).toBe(0);
+      } finally {
+        await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs DROP CONSTRAINT reject_reset_test`);
+      }
     }
-  });
+  );
 
   it("queues the ingest-process workflow exactly once for two concurrent retries", async () => {
     const ingestJob = await payload.create({

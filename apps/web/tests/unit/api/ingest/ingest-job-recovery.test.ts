@@ -36,8 +36,6 @@ vi.mock("@/lib/api", () => ({
   ValidationError: MockValidationError,
 }));
 
-// The routes import queueJobWithRollback straight from @/lib/api/job-helpers, so
-// the real helper runs here — mocking the barrel would have hidden the rollback.
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   logError: vi.fn(),
@@ -74,7 +72,9 @@ describe.sequential("ingest-job recovery routes", () => {
     expect(payload.jobs.queue).toHaveBeenCalledWith({
       workflow: "ingest-process",
       input: { ingestJobId: "17", resumeFrom: "analyze-duplicates" },
+      req: expect.objectContaining({ payload }),
     });
+    expect(commitTransaction).toHaveBeenCalledWith(payload.jobs.queue.mock.calls[0]?.[0].req);
   });
 
   it("admin reset maps analyze-duplicates back to a real full restart", async () => {
@@ -105,12 +105,12 @@ describe.sequential("ingest-job recovery routes", () => {
     expect(killTransaction).not.toHaveBeenCalled();
   });
 
-  it("rolls back the complete reset when queueing fails", async () => {
+  it.each(["reset", "retry"])("rolls back the complete %s when queueing fails", async (operation) => {
     mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED });
     const error = new Error("Queue unavailable");
     payload.jobs.queue.mockRejectedValue(error);
     await expect(
-      resetPost(
+      (operation === "reset" ? resetPost : retryPost)(
         {
           payload,
           user: { id: 1 },
@@ -120,8 +120,8 @@ describe.sequential("ingest-job recovery routes", () => {
         {} as never
       )
     ).rejects.toBe(error);
-    expect(killTransaction).toHaveBeenCalledWith(payload.update.mock.calls[0]?.[0].req);
+    expect(killTransaction).toHaveBeenCalledWith(payload.jobs.queue.mock.calls[0]?.[0].req);
     expect(commitTransaction).not.toHaveBeenCalled();
-    expect(payload.update).toHaveBeenCalledTimes(1);
+    expect(payload.update).toHaveBeenCalledTimes(operation === "reset" ? 1 : 0);
   });
 });
