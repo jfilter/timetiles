@@ -94,4 +94,4 @@ To check a proposed message with the same validator as the hook, from the reposi
 echo 'refactor(ingest): remove obsolete interpretation helpers' | pnpm exec commitlint
 ```
 
-Validation includes staged-file context. If no files are staged, the configuration falls back to the latest commit's changed files. The separate `scripts/validate-commit.ts` helper is not the hook's source of truth.
+Validation includes staged-file context. If no files are staged, the configuration falls back to the latest commit's changed files.
