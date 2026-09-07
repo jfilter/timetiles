@@ -25,7 +25,7 @@ import { createSlugHook } from "./slug";
 export const isPrivileged = (user?: { role?: string | null } | null): boolean =>
   user?.role === "admin" || user?.role === "editor";
 
-export const isAdmin: Access = ({ req: { user } }) => user?.role === "admin";
+export const isAdmin = (({ req: { user } }) => user?.role === "admin") satisfies Access;
 export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user);
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 

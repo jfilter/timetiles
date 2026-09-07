@@ -269,9 +269,6 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     plugins = [],
   } = options;
 
-  // Select collections based on the provided list
-  const selectedCollections = (collections ?? []).map((name) => COLLECTIONS[name]).filter(Boolean);
-
   // Build configuration
   // SECURITY: `secret` originates from `getEnv().PAYLOAD_SECRET`, which Zod-validates
   // at runtime and errors if missing. We intentionally do NOT fall back to a
@@ -296,9 +293,11 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     },
     logger: getLogger(logLevel, environment),
     debug: environment === "development",
-    collections: selectedCollections,
+    collections: collections.map((name) => COLLECTIONS[name]).filter(Boolean),
     globals: ALL_GLOBALS,
     jobs: {
+      // Native job endpoints have separate access rules; trusted Local API workers bypass them.
+      access: { run: isAdmin, queue: isAdmin, cancel: isAdmin },
       tasks: ALL_JOBS,
       workflows: ALL_WORKFLOWS,
       enableConcurrencyControl: true,
