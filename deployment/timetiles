@@ -691,8 +691,16 @@ case "$1" in
 
                     cat > "$CRON_SCRIPT" << EOF
 #!/bin/bash
-exec 200>/var/lock/timetiles-backup.lock
-flock -n 200 || { echo "Backup already running, skipping"; exit 0; }
+set -eo pipefail
+exec 200>"$SCRIPT_DIR/backups/.backup.lock"
+flock -n 200 || {
+    status=\$?
+    if [[ \$status -eq 1 ]]; then
+        echo "Backup already running, skipping"
+        exit 0
+    fi
+    exit "\$status"
+}
 cd "$SCRIPT_DIR"
 ./timetiles backup $CRON_OFFSITE
 ./timetiles backup prune

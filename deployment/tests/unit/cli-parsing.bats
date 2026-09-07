@@ -194,6 +194,68 @@ EOF
     grep -qxF '# existing fixture crontab' "$TEST_CRONTAB"
 }
 
+prepare_auto_script() {
+    setup_backup_commands
+    run "$TEST_CLI" backup auto
+    [ "$status" -eq 0 ]
+    # Relocate the old system lock path when reproducing regressions. Never
+    # open /var/lock on the test host, even when testing the unfixed generator.
+    sed "s|/var/lock/timetiles-backup.lock|$TEST_TEMP_DIR/backup.lock|" \
+        "$TEST_TEMP_DIR/deployment/backups/auto-backup.sh" > "$TEST_TEMP_DIR/run-auto.sh"
+    cat > "$TEST_CLI" << 'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$TEST_TEMP_DIR/backup-calls"
+if [[ "${2:-}" == 'prune' ]]; then
+    exit "${PRUNE_STATUS:-0}"
+fi
+exit "${BACKUP_STATUS:-0}"
+EOF
+    cat > "$TEST_TEMP_DIR/bin/flock" << 'EOF'
+#!/bin/bash
+exit "${FLOCK_STATUS:-0}"
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/flock"
+    unset BACKUP_STATUS PRUNE_STATUS FLOCK_STATUS
+}
+
+@test "automatic backup stops before pruning when backup fails" {
+    prepare_auto_script
+    export BACKUP_STATUS=23
+    run bash "$TEST_TEMP_DIR/run-auto.sh"
+    [ "$status" -eq 23 ]
+    [ "$(cat "$TEST_TEMP_DIR/backup-calls")" = 'backup' ]
+}
+
+@test "automatic backup prunes after success and reports prune failures" {
+    prepare_auto_script
+    export PRUNE_STATUS=24
+    run bash "$TEST_TEMP_DIR/run-auto.sh"
+    [ "$status" -eq 24 ]
+    [ "$(cat "$TEST_TEMP_DIR/backup-calls")" = $'backup\nbackup prune' ]
+}
+
+@test "automatic backup skips a held lock without running commands" {
+    prepare_auto_script
+    export FLOCK_STATUS=1
+    run bash "$TEST_TEMP_DIR/run-auto.sh"
+    [ "$status" -eq 0 ]
+    [ ! -e "$TEST_TEMP_DIR/backup-calls" ]
+}
+
+@test "automatic backup reports lock errors instead of claiming contention" {
+    prepare_auto_script
+    export FLOCK_STATUS=64
+    run bash "$TEST_TEMP_DIR/run-auto.sh"
+    [ "$status" -eq 64 ]
+    [ ! -e "$TEST_TEMP_DIR/backup-calls" ]
+}
+
+@test "automatic backup uses a deployment-owned lock path" {
+    prepare_auto_script
+    grep -qxF "exec 200>\"$TEST_TEMP_DIR/deployment/backups/.backup.lock\"" \
+        "$TEST_TEMP_DIR/deployment/backups/auto-backup.sh"
+}
+
 # =============================================================================
 # Restore Command
 # =============================================================================
