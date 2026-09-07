@@ -8,6 +8,7 @@
  * @category E2E Utils
  */
 
+import type { ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
 
 import { sleep } from "@/lib/utils/sleep";
@@ -16,6 +17,35 @@ const DEFAULT_PORT_TIMEOUT_MS = 10000;
 const DEFAULT_PROCESS_TIMEOUT_MS = 10000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
 const SOCKET_TIMEOUT_MS = 1000;
+
+/** Require the job worker's readiness signal rather than assuming startup succeeded. */
+export const waitForWorker = (worker: ChildProcess, timeoutMs = 15000): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const marker = "starting job loop";
+    let output = "";
+    const finish = (error?: Error) => {
+      clearTimeout(timer);
+      worker.stdout?.off("data", onData);
+      worker.off("exit", onExit);
+      worker.off("error", onError);
+      if (error) reject(error);
+      else resolve();
+    };
+    const onData = (data: Buffer) => {
+      output += data.toString();
+      if (output.includes(marker)) finish();
+      // Preserve split markers without retaining the worker's entire log.
+      output = output.slice(-(marker.length - 1));
+    };
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) =>
+      finish(new Error(`Job worker exited before readiness (code=${code}, signal=${signal})`));
+    const onError = (error: Error) => finish(error);
+    const timer = setTimeout(() => finish(new Error(`Job worker was not ready within ${timeoutMs}ms`)), timeoutMs);
+    worker.stdout?.on("data", onData);
+    worker.once("exit", onExit);
+    worker.once("error", onError);
+    if (worker.exitCode !== null || worker.signalCode !== null) onExit(worker.exitCode, worker.signalCode);
+  });
 
 /** Wait for any HTTP response, including 503, within one overall deadline. */
 export const waitForServer = async (url: string, timeout: number): Promise<void> => {

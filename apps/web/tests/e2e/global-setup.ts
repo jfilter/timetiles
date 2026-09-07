@@ -26,7 +26,7 @@ import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 
 import { seedE2ETestData } from "./seed-e2e-data";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
-import { findAvailablePort, waitForServer } from "./utils/runtime-guards";
+import { findAvailablePort, waitForServer, waitForWorker } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
 
 const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseName: string): Promise<void> => {
@@ -227,26 +227,7 @@ export default async function globalSetup(): Promise<void> {
     console.log(`[Worker] Process exited (code=${code}, signal=${signal})`);
   });
 
-  // Wait for worker to signal readiness (falls back to 15s timeout)
-  await new Promise<void>((resolve) => {
-    const timeout = setTimeout(() => {
-      console.log(`   ⚠️ Job worker readiness timeout, continuing anyway...`);
-      resolve();
-    }, 15000);
-
-    wp.stdout?.on("data", (data: Buffer) => {
-      if (data.toString().includes("starting job loop")) {
-        clearTimeout(timeout);
-        resolve();
-      }
-    });
-
-    wp.on("exit", (code) => {
-      clearTimeout(timeout);
-      if (code !== 0) console.error(`   ⚠️ Job worker exited with code ${code}`);
-      resolve();
-    });
-  });
+  await waitForWorker(wp);
   console.log(`✅ Job worker started`);
 
   // Publish the ready server URL to test workers.

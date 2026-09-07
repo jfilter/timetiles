@@ -20,6 +20,7 @@ import {
   waitForPortToBeFree,
   waitForProcessExit,
   waitForServer,
+  waitForWorker,
 } from "@/tests/e2e/utils/runtime-guards";
 
 const openServers: Server[] = [];
@@ -67,6 +68,33 @@ afterEach(async () => {
 // them, so concurrent execution would let one test's teardown close another
 // test's listener mid-probe (making an occupied port look free).
 describe.sequential("runtime guards", () => {
+  it("rejects worker spawn failures", async () => {
+    const child = spawn(process.execPath, [], { cwd: "/nonexistent-timetiles-worker-directory", stdio: "pipe" });
+    await expect(waitForWorker(child)).rejects.toMatchObject({ code: "ENOENT" });
+    expect(child.listenerCount("error")).toBe(0);
+  });
+
+  it.each([0, 1])("rejects a worker exiting with code %s before readiness", async (code) => {
+    const child = spawn(process.execPath, ["-e", `process.exit(${code})`], { stdio: ["ignore", "pipe", "ignore"] });
+    await expect(waitForWorker(child)).rejects.toThrow(`exited before readiness (code=${code}`);
+    expect(child.listenerCount("exit")).toBe(0);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+  });
+
+  it.each([false, true])("requires a readiness marker from a running worker: %s", async (ready) => {
+    const script = ready
+      ? 'process.stdout.write("starting job "); setTimeout(() => process.stdout.write("loop"), 30); setInterval(() => {}, 1000)'
+      : "setInterval(() => {}, 1000)";
+    const child = spawn(process.execPath, ["-e", script], { detached: true, stdio: ["ignore", "pipe", "ignore"] });
+    if (!child.pid) throw new Error("Expected a worker PID");
+    childPids.push(child.pid);
+    const waiting = waitForWorker(child, ready ? 2000 : 100);
+    if (ready) await expect(waiting).resolves.toBeUndefined();
+    else await expect(waiting).rejects.toThrow("not ready within 100ms");
+    expect(child.listenerCount("exit")).toBe(0);
+    expect(child.stdout.listenerCount("data")).toBe(0);
+  });
+
   it.each([false, true])(
     "bounds HTTP readiness when the server responds: %s",
     async (responds) => {
