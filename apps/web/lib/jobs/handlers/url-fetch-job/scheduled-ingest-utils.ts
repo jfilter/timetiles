@@ -260,7 +260,7 @@ export const updateScheduledIngestFailure = async (
     const retryBudgetJustExhausted = previousRetries <= maxRetries && retriesExhausted;
 
     // Update execution history
-    const executionHistory = scheduledIngest.executionHistory ?? [];
+    const executionHistory = [...(scheduledIngest.executionHistory ?? [])];
     executionHistory.unshift({ executedAt: new Date().toISOString(), status: "failed", error: error.message });
 
     // Keep only last 10 executions
@@ -304,6 +304,7 @@ export const updateScheduledIngestFailure = async (
     logError(updateError, "Failed to update scheduled ingest failure status", {
       scheduledIngestId: scheduledIngest.id,
     });
+    throw updateError;
   }
 };
 

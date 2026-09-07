@@ -106,4 +106,22 @@ describe("scheduled-ingest-utils", () => {
     expect(mocks.auditLog).not.toHaveBeenCalled();
     expect(mocks.sendRetriesExhaustedEmail).not.toHaveBeenCalled();
   });
+
+  it("propagates a failed status write without notifying or mutating the input history", async () => {
+    const updateError = new Error("database unavailable");
+    const payload = { update: vi.fn().mockRejectedValue(updateError) };
+    const scheduledIngest = {
+      id: "scheduled-1",
+      currentRetries: 3,
+      retryConfig: { maxRetries: 3 },
+      executionHistory: [],
+    };
+
+    await expect(
+      updateScheduledIngestFailure(payload as never, scheduledIngest as never, new Error("upstream failed"))
+    ).rejects.toBe(updateError);
+    expect(scheduledIngest.executionHistory).toEqual([]);
+    expect(mocks.auditLog).not.toHaveBeenCalled();
+    expect(mocks.sendRetriesExhaustedEmail).not.toHaveBeenCalled();
+  });
 });
