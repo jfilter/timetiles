@@ -78,9 +78,6 @@ export const dateOrderToLegacyDayMonth = (order: DateOrder | undefined): DayMont
   return undefined;
 };
 
-/** Map a resolved {@link CoordinateOrder} back to the free-text the extractors speak. */
-export const coordinateOrderToLegacy = (order: CoordinateOrder | undefined): "lat,lng" | "lng,lat" | undefined => order;
-
 // ---------------------------------------------------------------------------
 // Column derivation
 // ---------------------------------------------------------------------------
@@ -469,7 +466,7 @@ export const planToFieldMappings = (plan: DatasetInterpretationPlan | null): Fla
     latitudePath: roles.latitude ?? undefined,
     longitudePath: roles.longitude ?? undefined,
     coordinatePath: roles.coordinate ?? undefined,
-    coordinateFormat: coordPolicy?.kind === "coordinate-pair" ? coordinateOrderToLegacy(coordPolicy.order) : undefined,
+    coordinateFormat: coordPolicy?.kind === "coordinate-pair" ? coordPolicy.order : undefined,
     timestampOrder: tsPolicy?.kind === "date" ? dateOrderToLegacyDayMonth(tsPolicy.order) : undefined,
     endTimestampOrder: endTsPolicy?.kind === "date" ? dateOrderToLegacyDayMonth(endTsPolicy.order) : undefined,
   };

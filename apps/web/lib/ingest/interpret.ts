@@ -12,7 +12,7 @@
  * (consuming `plan.columns` policies for date/coordinate order) is layered on in
  * Phase 2; until then this is a pure structural shim guarded by the golden tests.
  *
- * The `only` projection mirrors `buildTransformsForTargetPath`: analyze-duplicates
+ * The `only` projection uses `collectTransformsForTargetPath`: analyze-duplicates
  * needs just the ops that materialize the ID path (for `external`), so it must not
  * pay for — or risk altering — unrelated columns when computing the dedup hash.
  *

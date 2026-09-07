@@ -231,9 +231,3 @@ export const collectTransformsForTargetPath = (
 
   return transforms.filter((_transform, index) => selectedIndexes.has(index));
 };
-
-/** Build only the transforms required to materialize a specific target path. */
-export const buildTransformsForTargetPath = (
-  source: TransformSource,
-  targetPath: string | null | undefined
-): IngestTransform[] => collectTransformsForTargetPath(buildTransformsFromDataset(source), targetPath);

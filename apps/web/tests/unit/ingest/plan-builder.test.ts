@@ -16,7 +16,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildDetectionPlan,
   buildPlanFromPaths,
-  coordinateOrderToLegacy,
   dateOrderToLegacyDayMonth,
   legacyDayMonthToDateOrder,
   pathsToRoles,
@@ -211,18 +210,15 @@ describe("order converters — legacy free-text <-> DateOrder/CoordinateOrder ro
     expect(dateOrderToLegacyDayMonth("YMD")).toBeUndefined();
   });
 
-  it("round-trips coordinate order legacy <-> CoordinateOrder", () => {
+  it("recognizes supported coordinate orders", () => {
     expect(toCoordinateOrder("lat,lng")).toBe("lat,lng");
     expect(toCoordinateOrder("lng,lat")).toBe("lng,lat");
-    expect(coordinateOrderToLegacy("lat,lng")).toBe("lat,lng");
-    expect(coordinateOrderToLegacy("lng,lat")).toBe("lng,lat");
   });
 
   it("normalizes undecided coordinate orders to undefined", () => {
     expect(toCoordinateOrder("ambiguous")).toBeUndefined();
     expect(toCoordinateOrder(null)).toBeUndefined();
     expect(toCoordinateOrder("")).toBeUndefined();
-    expect(coordinateOrderToLegacy(undefined)).toBeUndefined();
   });
 });
 

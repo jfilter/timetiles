@@ -4,8 +4,8 @@
  * Asserts the normalizer reproduces the legacy transform path exactly:
  * - `interpretRow(row, buildPlanFromWizard(_, transforms))` ===
  *   `applyTransforms(row, buildTransformsFromDataset({ ingestTransforms }))`
- * - `interpretRow(row, plan, { only })` ===
- *   `applyTransforms(row, buildTransformsForTargetPath({ ingestTransforms }, only))`
+ * Target-path projections are checked against explicit rows so dependency
+ * selection cannot hide a regression by sharing the expected-value builder.
  *
  * These guard the pipeline swaps against any behavioral drift.
  *
@@ -15,11 +15,7 @@ import { describe, expect, it } from "vitest";
 
 import { interpretRow, interpretRows } from "@/lib/ingest/interpret";
 import { buildPlanFromWizard } from "@/lib/ingest/plan-builder";
-import {
-  buildTransformsForTargetPath,
-  buildTransformsFromDataset,
-  type TransformSource,
-} from "@/lib/ingest/transform-builders";
+import { buildTransformsFromDataset, type TransformSource } from "@/lib/ingest/transform-builders";
 import { applyTransforms } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 
@@ -61,17 +57,15 @@ describe("interpretRow — legacy transform equivalence", () => {
     expect(actual).toEqual({ title: "ADA" });
   });
 
-  it("{ only } projection equals buildTransformsForTargetPath", () => {
-    const expected = applyTransforms(ROW, buildTransformsForTargetPath(source(FULL_CHAIN), "name"));
+  it("{ only } applies the ordered dependency chain without changing unrelated fields", () => {
     const actual = interpretRow(ROW, planOf(FULL_CHAIN), { only: "name" });
-    expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));
+    expect(actual).toEqual({ ...ROW, name: "ADA LOVELACE" });
   });
 
   it("{ only } for a path produced by a single op narrows correctly", () => {
     // "id" comes only from the extract op; concatenate/string-op/rename are irrelevant.
-    const expected = applyTransforms(ROW, buildTransformsForTargetPath(source(FULL_CHAIN), "id"));
     const actual = interpretRow(ROW, planOf(FULL_CHAIN), { only: "id" });
-    expect(JSON.stringify(actual)).toBe(JSON.stringify(expected));
+    expect(actual).toEqual({ ...ROW, id: "ev-9" });
   });
 
   it("returns the row unchanged when there are no ops", () => {
