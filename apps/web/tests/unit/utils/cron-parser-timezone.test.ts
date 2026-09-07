@@ -121,5 +121,19 @@ describe("Timezone-aware Cron Parser", () => {
       const result = calculateNextCronRun("0 0 31 2 *", undefined, "Europe/Berlin");
       expect(result).toBeNull();
     }, 30_000); // Extended timeout for exhaustive search with timezone
+
+    it("skips a nonexistent local time during the spring transition", () => {
+      const next = calculateNextCronRun("30 2 * * *", new Date("2024-03-31T00:00:00Z"), "Europe/Berlin");
+
+      // 02:30 does not exist on March 31; the next match is April 1 at 02:30 CEST.
+      expect(next?.toISOString()).toBe("2024-04-01T00:30:00.000Z");
+    });
+
+    it("includes the second occurrence of a repeated local time in autumn", () => {
+      const next = calculateNextCronRun("30 2 * * *", new Date("2024-10-27T00:31:00Z"), "Europe/Berlin");
+
+      // The first 02:30 CEST has passed, but 02:30 CET is still ahead.
+      expect(next?.toISOString()).toBe("2024-10-27T01:30:00.000Z");
+    });
   });
 });
