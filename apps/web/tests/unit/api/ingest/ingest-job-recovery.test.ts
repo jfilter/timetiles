@@ -9,14 +9,23 @@ import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 
 const mocks = vi.hoisted(() => ({ safeFindByID: vi.fn() }));
 
+vi.mock("payload", () => ({
+  createLocalReq: vi.fn(({ user }, payload) => ({ payload, user, context: {} })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
+
 /** Chainable mock for the retry route's raw `payload.db.drizzle.update(...).set(...).where(...).returning(...)` claim. */
 const makeDrizzleUpdateMock = (returning: unknown[]) => {
   const chain = {
+    from: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue(returning),
+    for: vi.fn().mockResolvedValue([{ stage: PROCESSING_STAGE.FAILED }]),
   };
-  return { update: vi.fn().mockReturnValue(chain), chain };
+  return { update: vi.fn().mockReturnValue(chain), select: vi.fn().mockReturnValue(chain), chain };
 };
 
 class MockValidationError extends Error {}
@@ -37,6 +46,7 @@ vi.mock("@/lib/logger", () => ({
 
 const { POST: retryPost } = await import("@/app/api/ingest-jobs/[id]/retry/route");
 const { POST: resetPost } = await import("@/app/api/ingest-jobs/[id]/reset/route");
+const { commitTransaction, killTransaction } = await import("payload");
 
 describe.sequential("ingest-job recovery routes", () => {
   let payload: {
@@ -84,10 +94,34 @@ describe.sequential("ingest-job recovery routes", () => {
       collection: "ingest-jobs",
       id: 42,
       data: { stage: PROCESSING_STAGE.ANALYZE_DUPLICATES, errorLog: null },
+      req: expect.objectContaining({ payload }),
     });
     expect(payload.jobs.queue).toHaveBeenCalledWith({
       workflow: "ingest-process",
       input: { ingestJobId: "42", resumeFrom: "analyze-duplicates" },
+      req: payload.update.mock.calls[0]?.[0].req,
     });
+    expect(commitTransaction).toHaveBeenCalled();
+    expect(killTransaction).not.toHaveBeenCalled();
+  });
+
+  it("rolls back the complete reset when queueing fails", async () => {
+    mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED });
+    const error = new Error("Queue unavailable");
+    payload.jobs.queue.mockRejectedValue(error);
+    await expect(
+      resetPost(
+        {
+          payload,
+          user: { id: 1 },
+          params: { id: "42" },
+          body: { targetStage: PROCESSING_STAGE.ANALYZE_DUPLICATES },
+        } as never,
+        {} as never
+      )
+    ).rejects.toBe(error);
+    expect(killTransaction).toHaveBeenCalledWith(payload.update.mock.calls[0]?.[0].req);
+    expect(commitTransaction).not.toHaveBeenCalled();
+    expect(payload.update).toHaveBeenCalledTimes(1);
   });
 });

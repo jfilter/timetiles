@@ -10,12 +10,15 @@
  * @module
  * @category API Routes
  */
+import { eq } from "@payloadcms/db-postgres/drizzle";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { z } from "zod";
 
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
-import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { logger } from "@/lib/logger";
+import { ingest_jobs } from "@/payload-generated-schema";
 
 /**
  * Valid stages an admin can reset a failed job to.
@@ -73,19 +76,32 @@ export const POST = apiRoute({
       updateData.errorLog = null;
     }
 
-    const previousStage = ingestJob.stage;
-
-    await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: updateData });
-
-    // Queue the ingest-process workflow to resume from the target stage. With
-    // rollback: a failed queue would leave the job parked in targetStage with no
-    // workflow behind it, and reset only accepts a job that is still FAILED.
     const resumeFrom = stageToResumeFrom(targetStage);
-    await queueJobWithRollback(
-      payload,
-      { workflow: "ingest-process", input: { ingestJobId: String(ingestJob.id), resumeFrom } },
-      { collection: "ingest-jobs", id: ingestJob.id, data: { stage: previousStage } }
-    );
+    const req = await createLocalReq({ user }, payload);
+    const ownsTransaction = await initTransaction(req);
+    try {
+      // Recheck under a row lock: another reset or retry may have claimed it since the access check.
+      const db = await getTransactionAwareDrizzle(payload, req);
+      const [current] = await db
+        .select({ stage: ingest_jobs.stage })
+        .from(ingest_jobs)
+        .where(eq(ingest_jobs.id, ingestJob.id))
+        .for("update");
+      if (current?.stage !== PROCESSING_STAGE.FAILED) {
+        throw new ValidationError("Ingest job is no longer in FAILED state.");
+      }
+      await payload.update({ collection: "ingest-jobs", id: ingestJob.id, data: updateData, req });
+      await payload.jobs.queue({
+        workflow: "ingest-process",
+        input: { ingestJobId: String(ingestJob.id), resumeFrom },
+        req,
+      });
+      if (ownsTransaction) await commitTransaction(req);
+    } catch (error) {
+      // Restore the whole update, including the error log, if queueing fails.
+      if (ownsTransaction) await killTransaction(req);
+      throw error;
+    }
 
     logger.info(
       {
