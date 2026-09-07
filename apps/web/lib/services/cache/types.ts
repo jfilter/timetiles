@@ -2,8 +2,7 @@
  * Type definitions for the generic caching system.
  *
  * This module defines the core interfaces and types used throughout the cache
- * implementation. The design is generic enough to support various storage backends
- * (memory, filesystem, Redis, etc.) and different types of cached data.
+ * implementation and its filesystem backend.
  *
  * @module
  * @category Services/Cache
@@ -131,32 +130,10 @@ export interface CacheStorage {
 export interface CacheConfig {
   /** Storage backend */
   storage: CacheStorage;
-  /** Cache namespace for key prefixing */
-  namespace?: string;
   /** Default TTL in seconds */
   defaultTTL?: number;
-  /** Maximum cache size in bytes */
-  maxSize?: number;
-  /** Maximum number of entries */
-  maxEntries?: number;
   /** Key prefix */
   keyPrefix?: string;
-  /** Callback when entry is evicted */
-  onEviction?: (key: string, value: unknown) => void;
-}
-
-/**
- * Options for memory cache storage
- */
-export interface MemoryCacheOptions {
-  /** Maximum number of entries */
-  maxEntries?: number;
-  /** Maximum total size in bytes */
-  maxSize?: number;
-  /** Default TTL in seconds */
-  defaultTTL?: number;
-  /** Callback when entry is evicted */
-  onEviction?: (key: string, entry: CacheEntry) => void;
 }
 
 /**

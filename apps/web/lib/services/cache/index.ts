@@ -7,7 +7,6 @@
 
 export { Cache } from "./cache";
 export { FileSystemCacheStorage } from "./storage/file-system";
-export { MemoryCacheStorage } from "./storage/memory";
 export type {
   CacheConfig,
   CacheEntry,
@@ -16,7 +15,6 @@ export type {
   CacheStats,
   CacheStorage,
   FileSystemCacheOptions,
-  MemoryCacheOptions,
   UrlFetchCacheEntry,
   UrlFetchCacheMetadata,
   UrlFetchCacheOptions,

@@ -337,9 +337,6 @@ importers:
       iconv-lite:
         specifier: ^0.7.3
         version: 0.7.3
-      lru-cache:
-        specifier: ^11.5.2
-        version: 11.5.2
       lucide-react:
         specifier: ^1.25.0
         version: 1.25.0(react@19.2.7)
