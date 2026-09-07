@@ -246,7 +246,8 @@ const toleratingOwnTerminations = async <T>(run: () => Promise<T>): Promise<T> =
 /**
  * Drop a database.
  *
- * Automatically terminates connections before dropping.
+ * Terminates connections by default. Disable this for opportunistic cleanup:
+ * PostgreSQL then rejects databases that are still in use.
  *
  * @param databaseName - Name of the database to drop
  * @param options - Drop options
@@ -257,10 +258,12 @@ const toleratingOwnTerminations = async <T>(run: () => Promise<T>): Promise<T> =
  * await dropDatabase('timetiles_test_e2e');
  * ```
  */
-export const dropDatabase = async (databaseName: string, options: { ifExists?: boolean } = {}): Promise<void> =>
+export const dropDatabase = async (
+  databaseName: string,
+  options: { ifExists?: boolean; terminateConnections?: boolean } = {}
+): Promise<void> =>
   toleratingOwnTerminations(async () => {
-    // Terminate connections first
-    await terminateConnections(databaseName);
+    if (options.terminateConnections !== false) await terminateConnections(databaseName);
 
     const client = createDatabaseClient({ database: "postgres" });
     try {

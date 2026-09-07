@@ -145,7 +145,7 @@ const pruneStaleWorkerDatabases = async (): Promise<void> => {
   let dropped = 0;
   for (const dbName of stale) {
     try {
-      await dropDatabase(dbName, { ifExists: true });
+      await dropDatabase(dbName, { ifExists: true, terminateConnections: false });
       dropped++;
     } catch {
       // A worker may have connected between the query and the drop — leave it for next run.

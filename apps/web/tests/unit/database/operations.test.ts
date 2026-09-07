@@ -376,6 +376,25 @@ describe.sequential("database operations", () => {
       expect(dropClient.query).toHaveBeenCalledWith('DROP DATABASE IF EXISTS "old_db"');
     });
 
+    it("does not terminate connections during opportunistic cleanup", async () => {
+      await dropDatabase("old_db", { ifExists: true, terminateConnections: false });
+
+      expect(allClients).toHaveLength(1);
+      expect(allClients[0]!.query).toHaveBeenCalledExactlyOnceWith('DROP DATABASE IF EXISTS "old_db"');
+      expect(allClients[0]!.end).toHaveBeenCalledOnce();
+    });
+
+    it("propagates a busy database error without retrying or terminating connections", async () => {
+      setClientFactory(failingClientAt(0, "database is being accessed by other users"));
+
+      await expect(dropDatabase("old_db", { terminateConnections: false })).rejects.toThrow(
+        "database is being accessed by other users"
+      );
+      expect(allClients).toHaveLength(1);
+      expect(allClients[0]!.query).toHaveBeenCalledExactlyOnceWith('DROP DATABASE "old_db"');
+      expect(allClients[0]!.end).toHaveBeenCalledOnce();
+    });
+
     it("always disconnects both clients even when drop fails", async () => {
       setClientFactory(failingClientAt(1, "drop failed"));
 
