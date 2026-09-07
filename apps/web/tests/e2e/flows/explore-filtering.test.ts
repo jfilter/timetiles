@@ -140,6 +140,7 @@ test.describe("Explore Page - Filtering", () => {
         const url = new URL(globalThis.location.href);
         return url.searchParams.has("startDate") && url.searchParams.has("endDate");
       },
+      undefined,
       { timeout: 5000 }
     );
 
@@ -164,6 +165,7 @@ test.describe("Explore Page - Filtering", () => {
         const url = new URL(globalThis.location.href);
         return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
       },
+      undefined,
       { timeout: 5000 }
     );
 

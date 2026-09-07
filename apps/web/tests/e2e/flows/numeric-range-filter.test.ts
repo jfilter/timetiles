@@ -64,9 +64,11 @@ test.describe("Explore Page - Numeric Range Filter", () => {
     // user-visible result instead of reading a response body through Chromium's
     // DevTools protocol, which can evict bodies under CI concurrency.
     await openListView(page, datasets!);
-    await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
-      timeout: 15000,
-    });
+    await page.waitForFunction(
+      () => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""),
+      undefined,
+      { timeout: 15000 }
+    );
 
     // A range above the domain maximum (value ∈ [0,100]) deterministically
     // excludes every event — proving the rf param flows through to the SQL range

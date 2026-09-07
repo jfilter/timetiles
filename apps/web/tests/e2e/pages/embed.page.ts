@@ -37,6 +37,7 @@ export class EmbedPage {
         const canvas = document.querySelector('[data-testid="map-container"], .maplibregl-canvas, .mapboxgl-canvas');
         return canvas !== null;
       },
+      undefined,
       { timeout: 15000 }
     );
   }

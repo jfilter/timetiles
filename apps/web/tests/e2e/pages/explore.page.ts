@@ -76,18 +76,6 @@ export class ExplorePage {
     await loadingText.waitFor({ state: "hidden", timeout: 15000 }).catch(async (err) => {
       if (await loadingText.isVisible().catch(() => false)) throw err;
     });
-
-    // Wait for map to be fully loaded and interactive
-    await this.page.waitForFunction(
-      () => {
-        // Check if map container exists and has content
-        const mapContainer = document.querySelector(
-          '[data-testid="map-container"], .maplibregl-canvas, .mapboxgl-canvas'
-        );
-        return mapContainer !== null;
-      },
-      { timeout: 15000 }
-    );
   }
 
   /**
@@ -214,7 +202,7 @@ export class ExplorePage {
     // Catalog click must push `datasets` into the URL — nuqs is `history: "replace"`
     // but still synchronous from the browser's perspective. If this times out
     // the test has found a real regression in the selection wiring.
-    await this.page.waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), {
+    await this.page.waitForFunction(() => new URL(globalThis.location.href).searchParams.has("datasets"), undefined, {
       timeout: 5000,
     });
 
@@ -382,6 +370,7 @@ export class ExplorePage {
           const url = new URL(globalThis.location.href);
           return !url.searchParams.has("startDate") && !url.searchParams.has("endDate");
         },
+        undefined,
         { timeout: 5000 }
       );
     } else {
@@ -513,6 +502,7 @@ export class ExplorePage {
 
         return null;
       },
+      undefined,
       { timeout: 15000 }
     );
 

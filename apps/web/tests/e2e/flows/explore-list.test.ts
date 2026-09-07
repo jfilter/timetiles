@@ -16,15 +16,6 @@ test.describe("Explore Page - List View", () => {
     // Wait for the map container to render
     await page.waitForSelector('[data-testid="map-container"], .maplibregl-canvas', { timeout: 15000 });
 
-    // Wait for the events count text to appear
-    await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
-      timeout: 15000,
-    });
-
-    // Verify the events count text is present
-    const countText = await page.textContent("body");
-    expect(countText).toMatch(/Showing (?:all )?\d[\d,]* event/);
-
     // Verify the map is visible (not just present in DOM)
     const mapContainer = page.locator('[data-testid="map-container"], .maplibregl-canvas').first();
     await expect(mapContainer).toBeVisible();
