@@ -1,685 +1,97 @@
 # Git & Commit Guidelines
 
-This guide covers Git setup and commit message conventions for TimeTiles.
+TimeTiles uses conventional commits. The executable rules live in `commitlint.config.mjs`; `.husky/commit-msg` runs them for each commit. Check that configuration when a rule changes instead of copying an older example.
 
-## Quick Setup
+## Setup
 
-```bash
-make setup       # Configures commit template and hooks
-```
+Run `make setup` from the repository root to configure the development environment, Git hooks, and commit template.
 
-This automatically sets up:
+## Message Format
 
-- Commit message template (`.gitmessage`)
-- Pre-commit hooks (lint, typecheck via Husky)
-- Commit message validation (commitlint)
-
-## Commit Message Format
-
-```
+```text
 <type>(<scope>): <subject>
 
-<body>
+<optional body>
 ```
 
-### Understanding Type vs Scope
+- Use a lowercase type and scope.
+- Keep the complete first line within 72 characters.
+- Give the subject at least 10 characters, use the imperative, and omit the final period.
+- Describe the concrete change. The validator rejects subjects containing `stuff`, `things`, `updates`, `changes`, or `fixes`.
+- Separate the optional body and footers with blank lines; wrap body lines at 100 characters.
+- Explain why the change is needed when the title does not make that clear.
 
-Before diving into the format, it's crucial to understand:
+The type describes **what** changed; the scope describes **where**.
 
-- **Type** = **WHAT** kind of change you're making (the nature of the change)
-  - Are you adding features? → `feat`
-  - Fixing bugs? → `fix`
-  - Adding tests? → `test`
-- **Scope** = **WHERE** in the codebase (the area affected)
-  - In which feature? → `(import)`, `(geocoding)`
-  - In which app/package? → `(web)`, `(docs)`
-  - In which layer? → `(api)`, `(db)`
+## Types
 
-Example: `fix(import): handle empty CSV files`
+| Type               | Use                                     |
+| ------------------ | --------------------------------------- |
+| `feat`             | New user functionality                  |
+| `fix`              | Bug fix                                 |
+| `refactor`         | Restructuring without changing behavior |
+| `perf`             | Performance improvement                 |
+| `test`             | Tests and test corrections              |
+| `docs`             | Documentation                           |
+| `format` / `style` | Formatting and code style               |
+| `build`            | Build system or dependencies            |
+| `ci`               | CI workflows                            |
+| `chore`            | Other maintenance                       |
+| `security`         | Security fix or improvement             |
+| `revert`           | Revert an earlier commit                |
 
-- **What**: Fixing a bug (`fix`)
-- **Where**: In the import feature (`import`)
+## Scopes
 
-### Title (Required)
+Use `ingest` for the import pipeline. **`import` is not an accepted commit scope**; “import” remains the user-facing term.
 
-The title is the first line of your commit message and must:
+| Area              | Accepted scopes                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Apps and packages | `web`, `docs`, `ui`, `assets`, `config`, `scraper`                                                                                                |
+| Features          | `explore`, `ingest`, `geocoding`, `events`, `schema`, `deploy`, `quota`, `access`, `cache`, `webhooks`, `admin`, `auth`, `media`, `charts`, `map` |
+| Technical areas   | `db`, `api`, `jobs`, `deps`, `seed`, `test`, `e2e`                                                                                                |
+| Infrastructure    | `ci`, `build`, `infra`                                                                                                                            |
 
-- Be **no more than 72 characters**
-- Start with a type and optional scope
-- Use the imperative mood ("add" not "adds" or "added")
-- Not end with a period
+The `scraper` scope covers TimeScrape and the scraper SDKs; the runner directory is `apps/timescrape/`. Use `deps` for dependency updates and `ci` or `build` for workflow/build configuration, rather than `config`.
 
-#### Type
-
-The type must be one of the following:
-
-**Feature & Fixes:**
-
-- **feat**: A new feature for the user (not a new feature for build script)
-  - Example: `feat(import): add support for Excel file uploads`
-- **fix**: A bug fix for the user (not a fix to a build script)
-  - Example: `fix(geocoding): handle addresses with special characters`
-
-**Code Quality:**
-
-- **refactor**: Code changes that neither fix bugs nor add features
-  - Example: `refactor(api): extract validation logic into middleware`
-- **format**: Code formatting changes (whitespace, missing semicolons, indentation)
-  - Example: `format(ui): fix indentation in button component`
-  - Note: This is ONLY for code formatting, not CSS/UI styling changes
-- **perf**: Performance improvements
-  - Example: `perf(import): reduce memory usage by streaming CSV files`
-
-**Testing & Documentation:**
-
-- **test**: Adding missing tests or correcting existing tests
-  - Example: `test(events): add unit tests for date validation`
-- **docs**: Documentation only changes
-  - Example: `docs(api): update endpoint examples with new fields`
-
-**Maintenance & Operations:**
-
-- **build**: Changes affecting build system or external dependencies
-  - Example: `build(deps): upgrade to Next.js 16`
-  - Example: `build: optimize webpack configuration`
-- **ci**: CI/CD pipeline and workflow changes
-  - Example: `ci: add automated security scanning`
-  - Example: `ci(web): configure E2E tests in pipeline`
-- **chore**: Other changes that don't modify src or test files
-  - Example: `chore: update seed data generation`
-
-**Special Types:**
-
-- **revert**: Reverts a previous commit
-  - Example: `revert: feat(import): add Excel support`
-  - Body should include: `This reverts commit <hash>`
-- **security**: Security fixes or improvements
-  - Example: `security(auth): fix JWT token expiration issue`
-  - Example: `security(import): add file type validation`
-
-#### Scope (Intelligently Optional)
-
-The scope provides additional context about what part of the codebase changed.
-
-**When scope can be omitted:**
-
-- When the type already indicates the scope (avoiding redundancy)
-  - `docs: update README` (when changing documentation files)
-  - `ci: fix GitHub Actions` (when changing CI/CD files)
-  - `build: update Docker config` (when changing build files)
-  - `test: add unit tests` (when changing test files)
-
-**When scope is recommended:**
-
-- When the type doesn't clearly indicate what area is affected
-  - `fix(import): handle empty CSV files` (not just `fix:`)
-  - `feat(geocoding): add address caching` (not just `feat:`)
-  - `refactor(api): extract middleware` (not just `refactor:`)
-
-Scopes are organized into categories:
-
-**Monorepo Packages & Apps** (where the code lives):
-
-- **web**: Next.js web application (apps/web)
-- **docs**: Documentation site (apps/docs)
-- **ui**: Shared UI components package
-- **assets**: Shared assets package (logos, images)
-- **config**: Configuration packages (ESLint, TypeScript, Prettier) - ONLY for packages/\*-config/
-
-**Core Features** (what functionality is affected):
-
-- **import**: File import system (CSV/Excel processing, scheduled imports, webhook triggers)
-- **geocoding**: Address geocoding and location services
-- **events**: Event data management (including catalogs and datasets)
-- **schema**: Schema detection, validation, and versioning
-- **deploy**: User deployment features (self-hosting, Docker setup)
-- **quota**: Quota management and rate limiting
-- **access**: Access control and permissions
-- **cache**: Caching systems (HTTP, URL fetch, etc.)
-- **webhooks**: Webhook functionality
-- **admin**: Admin panel features
-- **auth**: Authentication and user sessions
-- **media**: Media and file management
-
-**Technical Areas** (infrastructure & tooling):
-
-- **db**: Database operations, migrations, PostGIS
-- **api**: API endpoints (REST)
-- **jobs**: Background job processing and queues
-- **deps**: Dependencies and package management
-- **seed**: Test and development data generation
-- **test**: Testing infrastructure and test files
-
-**Infrastructure** (build & CI/CD):
-
-- **ci**: GitHub Actions, CI/CD pipelines
-- **build**: Docker, build configuration, Turbo
-- **infra**: Infrastructure and DevOps
-
-⚠️ **Important Scope Rules**:
-
-- The `config` scope is ONLY for configuration packages (packages/eslint-config, packages/prettier-config, packages/typescript-config)
-- For CI/CD files (.github/), use `ci` scope, not `config`
-- For build configuration (Dockerfile, Makefile), use `build` scope
-- The system will validate your scope matches the files you're changing
-
-#### Subject
-
-The subject contains a succinct description of the change:
-
-- Use the imperative mood
-- Start with lowercase (proper nouns allowed: GitHub, PostgreSQL, TypeScript, etc.)
-- No period at the end
-- Be clear and concise
-
-### Body (Optional but Recommended)
-
-The body should use **bullet points** to clearly describe the changes. Use verbosity scaling based on the complexity of your changes:
-
-#### When to Include a Body
-
-**Title-only commits** (no body needed):
-
-- Simple, self-explanatory changes
-- Single-file formatting fixes
-- Minor typos or corrections
-- Dependency updates without breaking changes
-- Examples: `fix(import): prevent duplicate events`, `format(ui): fix code formatting`
-
-**Commits with bodies** (bullet points recommended):
-
-- Multiple related changes in one commit
-- Complex logic changes requiring explanation
-- New features with multiple aspects
-- Bug fixes that needed investigation
-- Performance improvements with measurable impact
-- Breaking changes (always require explanation)
-
-#### Body Format Guidelines
-
-- Start each point with a dash (-)
-- Keep each bullet point concise and focused (one concept per bullet)
-- Use as many bullet points as needed to fully describe the changes
-- Include context about why changes were made when it's not obvious
-- Avoid unnecessary formatting (Git tools don't render markdown well)
-- Use plain text with minimal formatting for maximum compatibility
-- Mark breaking changes with "BREAKING CHANGE:" as a separate paragraph
-
-Wrap the body at 100 characters per line.
+The `SCOPES` array in `commitlint.config.mjs` is authoritative. A scope is optional, but usually helpful for `fix`, `feat`, and `refactor`. Omit redundant combinations such as `ci(ci)`, `build(build)`, and `test(test)`, which the validator rejects. `docs(docs)` is accepted.
 
 ## Examples
 
-### Simple Fix
-
-```
-fix(import): handle empty CSV files gracefully
-```
-
-### Feature with Description
-
-```
-feat(schema): implement smart field type detection
-
-- Added pattern recognition for common field types
-- Detects dates, coordinates, URLs automatically
-- Provides confidence scores for type suggestions
-- Reduces manual schema configuration by 80%
-- Supports incremental learning from user corrections
+```text
+feat(ingest): add support for JSON API sources
+fix(geocoding): handle addresses with special characters
+refactor(events): centralize clustering query defaults
+test(ingest): cover empty CSV uploads
+docs: clarify database setup commands
+ci: cache browser downloads
+build(deps): upgrade PostgreSQL client
 ```
 
-### Breaking Change
+For a change that needs context:
 
-```
-refactor(api): change ingest endpoint response format
+```text
+refactor(ingest): remove obsolete interpretation helpers
 
-- Changed /api/ingest/preview-schema/upload response structure
-- Now returns complete job object instead of just ingest ID
-- Includes detailed progress tracking information
-- Adds support for real-time status updates
-- Improves error reporting with structured error objects
-
-BREAKING CHANGE: API clients need to update to handle the new
-response format. The import ID is now at response.job.importId
-instead of response.importId.
+- Remove the unused legacy wrapper and identity conversion.
+- Assert expected rows directly so shared selection code cannot mask a regression.
 ```
 
-### Multiple Changes
+Use a `BREAKING CHANGE:` footer when compatibility changes, and reference relevant issues when useful. Do not add generated-with-Claude text or Claude co-author trailers; the repository validator rejects them.
 
-```
-fix(web): correct type errors and improve error handling
+## Commit Workflow
 
-- Fixed TaskStatus type in import-integration tests
-- Added proper error boundaries to import components
-- Improved error messages for failed geocoding attempts
-- Updated error logging to include more context
-- Added retry logic for transient failures
-```
+1. Inspect `git status` and `git diff`. Stage only files belonging to the change.
+2. Keep unrelated changes in separate commits.
+3. Run the relevant checks and tests. See [Development Setup](./index) and [Testing Guidelines](./testing-guidelines).
+4. Review `git diff --cached` before committing.
+5. Read hook failures, correct the cause, and retry normally.
 
-### Refactoring with Context
+The pre-commit hook checks whole-tree formatting and runs lint/typecheck for staged web, docs, and UI changes. It does not replace relevant tests. Avoid broad `pnpm format`, `make format`, or `eslint --fix` runs: they can remove lint suppressions elsewhere. Repair reported formatting with `pnpm exec oxfmt <file>`.
 
-```
-refactor(geocoding): simplify provider initialization
-
-- Extracted provider configuration to separate modules
-- Removed duplicate validation logic across providers
-- Consolidated error handling into base provider class
-- Improved type safety with stricter interfaces
-- Reduced initialization time from ~200ms to ~50ms
-```
-
-### Bug Fix with Investigation Details
-
-```
-fix(import): resolve memory leak in large file processing
-
-- Identified leak in CSV parser stream handling
-- Fixed by properly closing streams after processing
-- Added explicit garbage collection hints for large batches
-- Reduced memory usage by ~60% for files over 100MB
-- Added monitoring to detect future memory issues
-```
-
-## Writing Quality Commit Messages
-
-Good commit messages tell a story about your changes. They should be written for future maintainers (including yourself) who need to understand the reasoning behind changes.
-
-### Mechanical vs. Thoughtful Approach
-
-**❌ Mechanical (just listing what changed):**
-
-```
-fix(ingest): update ingest-jobs.ts and add validation
-
-- Modified fileParsingJob function
-- Added new validation checks
-- Updated error handling code
-- Changed batch processing logic
-```
-
-**✅ Thoughtful (explaining why and impact):**
-
-```
-fix(import): prevent memory leaks in large file processing
-
-- Added stream cleanup to prevent memory accumulation
-- Implemented batch size limits for files over 100MB
-- Enhanced error recovery to handle partial failures gracefully
-- Reduced memory usage by 60% for large CSV imports
-```
-
-### Focus on Business Value
-
-**❌ Technical details without context:**
-
-```
-refactor(geocoding): extract provider logic into separate classes
-
-- Created GoogleProvider class
-- Created NominatimProvider class
-- Updated GeocodingService to use new providers
-- Modified tests to work with new structure
-```
-
-**✅ Business value with technical context:**
-
-```
-refactor(geocoding): improve provider extensibility for future integrations
-
-- Extracted provider logic into pluggable classes
-- Enables easy addition of new geocoding services
-- Standardized error handling across all providers
-- Reduced provider initialization time by 40%
-```
-
-### Formatting and Text Styling
-
-Since Git tools (GitHub, GitLab, terminal git log, etc.) have varying markdown support, keep formatting minimal:
-
-**✅ Good formatting practices:**
-
-- Use plain text for maximum compatibility
-- Bullet points with simple dashes (-)
-- ALL CAPS for emphasis when needed (e.g., "BREAKING CHANGE:")
-- Simple parentheses for examples: (fixes #123)
-- Avoid bold, italic, or other markdown formatting in commit messages
-
-**❌ Avoid in commit messages:**
-
-- **Bold text** - not consistently rendered
-- _Italic text_ - not consistently rendered
-- `Code blocks` - can appear as plain text with backticks
-- [Links](url) - become plain text in many git tools
-- Complex formatting that relies on markdown parsing
-
-**Exception:** These guidelines (this documentation) use markdown formatting for readability, but actual commit messages should be plain text.
-
-## Choosing the Right Type
-
-When deciding between types, consider:
-
-- **feat vs fix**: Is this adding new functionality (feat) or correcting existing behavior (fix)?
-- **fix vs refactor**: Does this change user-facing behavior (fix) or just code structure (refactor)?
-- **build vs chore**: Does this affect how the project builds (build) or is it general maintenance (chore)?
-- **build vs ci**: Is this about build tooling (build) or CI/CD pipelines (ci)?
-- **format vs refactor**: Is this only formatting (format) or restructuring code logic (refactor)?
-- **security vs fix**: Is this addressing a security vulnerability (security) or a general bug (fix)?
-
-## Scope Selection Guide
-
-When choosing a scope, follow these guidelines:
-
-**❌ Avoid**: `fix(web): fix import validation`  
-**✅ Prefer**: `fix(import): fix CSV validation`
-
-Use **app/package scopes** (`web`, `docs`, `ui`, `assets`, `config`) when:
-
-- Changes are app/package-specific configuration
-- Changes don't fit any feature scope
-- Changes span multiple features
-
-Use **feature scopes** (`import`, `geocoding`, `events`, `schema`, `deploy`) when:
-
-- Working on specific feature logic
-- Fixing feature-specific bugs
-- Adding feature-specific tests
-
-Use **technical scopes** (`db`, `api`, `jobs`, `deps`, `seed`) when:
-
-- Working on infrastructure
-- Making technical improvements
-- Updating dependencies
-
-**Note**: Avoid overly granular scopes. For example:
-
-- Docker changes → use `deploy` (if user-facing) or `build` (if internal)
-- Script changes → use the scope of what the script affects
-- Type changes → use the feature scope the types belong to
-
-## Handling Type/Scope Overlaps
-
-The commitlint rules intelligently handle redundant type/scope combinations:
-
-### When scope can be omitted (type matches expected scope):
-
-- **`docs:`** - When changing documentation files
-- **`ci:`** - When changing CI/CD configuration files
-- **`build:`** - When changing build configuration files
-- **`test:`** - When changing test files
-
-### When scope is still useful:
-
-- **`docs(web):`** - Documenting the web app specifically
-- **`docs(api):`** - API documentation updates
-- **`test(import):`** - Tests for the import feature
-- **`ci(deploy):`** - CI changes for deployment workflows
-
-### Special case - docs(docs):
-
-- **`docs(docs):`** - Valid when documenting the docs app itself
-  - Example: `docs(docs): update Nextra configuration guide`
-  - This is NOT redundant because it's about the documentation site code/config
-- **`test(web)`**: Use for adding tests to web app
-  - Example: `test(web): add unit tests for import flow`
-- **`test(import)`**: Use for adding tests to specific features
-  - Example: `test(import): add CSV validation tests`
-- **`ci` type**: Use for CI/CD pipeline changes
-  - Example: `ci: update GitHub Actions workflow`
-  - Example: `ci(web): add E2E tests to deployment`
-- **`build(deps)` vs `chore(deps)`**:
-  - Use `build(deps)` for production dependencies
-  - Use `chore(deps)` for development-only dependencies
-- **`format` type**: For code formatting only, NOT CSS/visual changes
-  - CSS/visual changes: `feat(ui): update button styles`
-  - Code formatting: `format(api): fix indentation`
-
-## Best Practices
-
-1. **Atomic Commits**: Each commit should represent one logical change
-2. **Focus on "Why" Not "What"**: Explain the motivation and impact, not just what files changed
-   - ❌ Bad: "Updated GeocodingService.ts, added new provider, modified config"
-   - ✅ Good: "Add OpenCage provider for better European address coverage"
-3. **Use Bullet Points**: Structure your commit body with clear, concise bullet points
-4. **Be Specific**: Each bullet point should describe a specific change or aspect
-5. **Avoid Mechanical Descriptions**: Don't just list file changes or technical details
-   - ❌ Bad: "Modified 3 files, added 2 functions, updated 1 test"
-   - ✅ Good: "Implement rate limiting to prevent API quota exhaustion"
-6. **Choose the Right Scope**:
-   - Use app/package scopes for changes isolated to that codebase
-   - Use feature scopes for business logic changes
-   - Use technical scopes for infrastructure/tooling changes
-   - When changes span multiple areas, pick the primary scope
-7. **Test Your Changes**: Ensure tests pass before committing
-8. **Review Before Push**: Use `git diff --staged` to review changes
-9. **Amend When Needed**: Use `git commit --amend` for small fixes to the previous commit
-10. **Reference Issues**: Include issue numbers when applicable (e.g., "fixes #123")
-11. **Keep Bullets Focused**: One concept per bullet point for clarity
-
-## Enforcement and Validation
-
-The project uses Husky and commitlint to enforce commit message standards. If your commit doesn't meet the guidelines, it will be rejected with a helpful error message.
-
-### Automatic Scope Validation
-
-The commit linting system includes intelligent scope validation that:
-
-- **Detects the correct scope** based on the files you're changing
-- **Suggests appropriate scopes** if you use the wrong one
-- **Validates type-scope combinations** to prevent common mistakes
-- **Enforces scope rules** (e.g., `config` only for package configurations)
-
-### Testing Commit Messages
-
-You can test your commit messages before committing:
+To check a proposed message with the same validator as the hook, from the repository root:
 
 ```bash
-# Test a commit message
-pnpm tsx scripts/validate-commit.ts "feat(web): add new feature"
-
-# Test with specific files
-pnpm tsx scripts/validate-commit.ts --files apps/web/app/page.tsx "fix: update homepage"
-
-# Run validation test suite
-pnpm tsx scripts/validate-commit.ts --test
+echo 'refactor(ingest): remove obsolete interpretation helpers' | pnpm exec commitlint
 ```
 
-### Common Validation Errors
-
-1. **Wrong scope for CI files**:
-   - ❌ `fix(config): update CI workflow`
-   - ✅ `fix(ci): update CI workflow`
-   - ✅ `ci: update CI workflow` (when type and scope would be the same)
-
-2. **Redundant type(scope) combinations**:
-   - ❌ `ci(ci): update GitHub Actions` → Use `ci:`
-   - ❌ `test(test): add unit tests` → Use `test(web):` or `test(docs):`
-   - ❌ `build(build): update webpack` → Use `build:`
-   - ✅ `docs(docs): update README for docs app` (valid - documenting the docs app)
-
-3. **Using `config` for non-package configs**:
-   - ❌ `chore(config): update .gitignore`
-   - ✅ `chore(build): update .gitignore`
-
-4. **Missing scope when files suggest one**:
-   - ❌ `fix: update ingest validation` (when changing apps/web/app/api/ingest/)
-   - ✅ `fix(ingest): update validation`
-
-5. **Dependencies with wrong scope**:
-   - ❌ `chore(web): update dependencies` (when changing package.json)
-   - ✅ `chore(deps): update dependencies`
-
-## Quick Reference
-
-### Title-only commits (for simple, self-explanatory changes):
-
-```
-# Scope omitted when type matches the context:
-docs: update README with installation instructions
-ci: update GitHub Actions to Node 24
-build: optimize webpack configuration
-test: add unit tests for date utilities
-
-# Scope included for clarity:
-fix(import): prevent duplicate event creation
-docs(api): update geocoding endpoint examples
-format(ui): fix button component indentation
-chore(deps): update ESLint to latest version
-test(events): add unit tests for event validation
-fix(geocoding): resolve memory leak in location cache
-feat(events): add bulk export functionality
-perf(geocoding): implement request batching
-security(api): fix request validation vulnerability
-security(import): add file type validation to prevent malicious uploads
-```
-
-### When to use title-only:
-
-- Single-file changes with obvious intent
-- Formatting fixes
-- Simple dependency updates
-- Minor documentation corrections
-- Clear bug fixes that don't need explanation
-
-### Commits with bullet-point bodies:
-
-```
-feat(web): add dark mode toggle
-
-- Added theme context provider for global state
-- Implemented toggle component in header
-- Persisted user preference to localStorage
-- Updated all components to use theme-aware colors
-```
-
-```
-perf(import): optimize batch processing
-
-- Increased default batch size from 100 to 500
-- Added streaming parser for large CSV files
-- Implemented parallel processing for geocoding
-- Reduced memory allocation by reusing buffers
-- Improved overall import speed by ~40%
-```
-
-```
-feat(web): add GraphQL API with ES module support
-
-- Implemented GraphQL endpoint at /api/graphql
-- Added ES module configuration for better tree-shaking
-- Integrated with existing REST API authentication
-- Supports both HTTP POST and WebSocket connections
-```
-
-### Scope Selection Examples
-
-```
-# App/Package scope - when changes are isolated to one codebase
-fix(ui): correct button hover state in dark mode
-docs(docs): update getting started guide
-format(config): fix ESLint configuration formatting
-
-# Feature scope - when changing business logic
-feat(events): add recurring event support
-fix(geocoding): handle postal codes without city names
-perf(import): optimize CSV parsing for large files
-feat(schema): add automatic type detection for date fields
-fix(import): handle scheduled import retry logic
-feat(quota): add per-user rate limiting
-feat(access): implement role-based permissions
-refactor(cache): optimize URL fetch cache eviction
-feat(webhooks): add retry logic for failed webhook deliveries
-feat(admin): add user quota management interface
-fix(auth): resolve session timeout edge case
-feat(media): add image compression on upload
-
-# Technical scope - for infrastructure/tooling
-build: optimize production bundle size
-test(api): add integration tests for event endpoints
-ci: automate release notes generation
-ci: add automated dependency vulnerability scanning
-chore(seed): update test data with new event types
-feat(deploy): add one-click Docker deployment
-docs(deploy): document self-hosting requirements
-
-# Handling overlaps correctly
-docs(docs): update Nextra to version 3.0          # Docs app code change
-refactor(web): reorganize test utilities          # Test infrastructure
-build(deps): upgrade PostgreSQL client to v16     # Production dependency
-chore(deps): update ESLint to latest version      # Dev dependency
-security(import): add virus scanning for uploads  # Security feature
-format(config): fix TypeScript config formatting  # Code formatting
-```
-
-## Common Mistakes to Avoid
-
-### 1. Listing File Changes
-
-```
-❌ Bad: "Updated GeocodingService.ts, modified config.ts, added tests"
-✅ Good: "Add rate limiting to prevent geocoding API quota exhaustion"
-```
-
-### 2. Technical Details Without Context
-
-```
-❌ Bad: "Add new function processCoordinates() and refactor validation logic"
-✅ Good: "Improve coordinate validation to handle edge cases and malformed data"
-```
-
-### 3. Using Present Tense Instead of Imperative
-
-```
-❌ Bad: "Adding support for Excel imports"
-✅ Good: "Add support for Excel imports"
-```
-
-### 4. Vague or Generic Messages
-
-```
-❌ Bad: "Fix bug" or "Update code" or "Improvements"
-✅ Good: "Fix memory leak in CSV parser for files over 100MB"
-```
-
-### 5. Too Much Technical Detail
-
-```
-❌ Bad: "Refactor AbstractGeocodingProvider to implement IGeocoder interface with async/await pattern"
-✅ Good: "Standardize geocoding provider interface for easier testing and maintenance"
-```
-
-### 6. Missing Business Context
-
-```
-❌ Bad: "Add new provider class and update service configuration"
-✅ Good: "Add OpenCage provider to improve geocoding accuracy for European addresses"
-```
-
-Remember: Good commit messages help future maintainers (including yourself) understand why changes were made, not just what changed. Focus on business value and user impact rather than technical implementation details.
-
-## Troubleshooting
-
-### Commit Rejected
-
-Read the error message carefully. Common issues:
-
-- Subject too short (minimum 10 characters)
-- Invalid type or scope
-- Vague terms like "stuff" or "things"
-- Missing format `type(scope): subject`
-
-### Editor Not Opening
-
-Set your preferred editor:
-
-```bash
-git config --global core.editor "code --wait"  # VS Code
-git config --global core.editor "vim"          # Vim
-git config --global core.editor "nano"         # Nano
-```
-
-### Bypassing Hooks (Emergency Only)
-
-```bash
-git commit --no-verify -m "emergency: fix critical issue"
-```
-
-**Use sparingly** - hooks maintain code quality.
+Validation includes staged-file context. If no files are staged, the configuration falls back to the latest commit's changed files. The separate `scripts/validate-commit.ts` helper is not the hook's source of truth.

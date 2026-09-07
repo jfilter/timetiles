@@ -35,7 +35,7 @@ make test-e2e    # end-to-end tests (optional for non-UI changes)
 4. Commit using [conventional commits](https://docs.timetiles.io/development/contributing/commit-guidelines):
 
 ```
-feat(import): add support for JSON API sources
+feat(ingest): add support for JSON API sources
 fix(geocoding): handle addresses with special characters
 docs: update API endpoint examples
 ```
@@ -63,11 +63,11 @@ apps/
 
 packages/
   ui/            Shared UI components (shadcn/ui)
-  assets/        Logos and static assets (Git LFS)
-  payload-schema-detection/  CSV/Excel schema detection
+  assets/        SVG logo sources and static assets
+  shared/        Logic shared by web and timescrape
+  scraper/       Scraper SDK
   eslint-config/ Shared ESLint config
   typescript-config/  Shared TypeScript config
-  prettier-config/    Shared Prettier config
 ```
 
 ## Code Standards
@@ -81,7 +81,7 @@ packages/
 
 ## Testing
 
-We use real implementations, not mocks. See the [Testing Guidelines](https://docs.timetiles.io/development/contributing/testing-guidelines) for details.
+Integration tests use real PostgreSQL and Payload; unit tests may mock dependencies. See the [Testing Guidelines](https://docs.timetiles.io/development/contributing/testing-guidelines) for the external-service policy and narrow exceptions.
 
 | Type        | Location             | Framework           | What to test                                       |
 | ----------- | -------------------- | ------------------- | -------------------------------------------------- |

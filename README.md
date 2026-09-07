@@ -117,10 +117,10 @@ apps/
 packages/
   ui/               Shared UI components (shadcn/ui)
   assets/           Logos and static assets
-  payload-schema-detection/   CSV/Excel schema detection
+  shared/           Logic shared by web and timescrape
+  scraper/          Scraper SDK
   eslint-config/    Shared ESLint config
   typescript-config/ Shared TypeScript config
-  prettier-config/  Shared Prettier config
 ```
 
 ## Contributing

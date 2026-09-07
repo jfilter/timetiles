@@ -1,6 +1,6 @@
 # Testing Guidelines
 
-Unit tests for logic, integration tests for workflows, E2E tests for user journeys. **Use real implementations** — only mock external paid APIs or rate-limited services.
+Use unit tests for isolated logic, integration tests for database-backed behavior, and E2E tests for user journeys. Unit tests may mock dependencies; integration tests exercise real PostgreSQL and Payload.
 
 ## Test Types
 
@@ -31,7 +31,7 @@ Results are saved as timestamped JSON in `apps/web/.test-results/`.
 
 ## Mocking Rules
 
-### Never Mock
+### Integration Tests
 
 - Database operations — use test database
 - Payload CMS — use real Payload
@@ -39,7 +39,11 @@ Results are saved as timestamped JSON in `apps/web/.test-results/`.
 - File system — use temp directories
 - Job queues — use real handlers
 
-### Can Mock (Document Why)
+External-service fakes are narrow, documented exceptions, not the default. For example, `apps/web/tests/integration/services/all-transforms-pipeline.test.ts` substitutes a geocoder to exercise transforms without provider credentials. Keep provider integration covered separately.
+
+### Unit Tests
+
+Mock dependencies when needed to isolate the behavior under test. Prefer real pure helpers and temporary files where practical. Examples of controlled test substitutes include:
 
 - **External paid APIs** (Google Maps) — costs and rate limits
 - **Rate-limited services** — avoid CI quotas
@@ -51,28 +55,32 @@ Results are saved as timestamped JSON in `apps/web/.test-results/`.
 Use `createIntegrationTestEnvironment()` for tests that need a real database:
 
 ```typescript
-import { createIntegrationTestEnvironment, withCatalog, withDataset } from "@/tests/setup/integration-test-environment";
+import { afterAll, beforeAll, beforeEach, describe } from "vitest";
+import {
+  createIntegrationTestEnvironment,
+  IMPORT_PIPELINE_COLLECTIONS_TO_RESET,
+} from "@/tests/setup/integration/environment";
 
-let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
+describe.sequential("Import workflow", () => {
+  let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
 
-beforeAll(async () => {
-  testEnv = await createIntegrationTestEnvironment();
-});
-afterAll(async () => {
-  await testEnv.cleanup();
-});
-beforeEach(async () => {
-  await testEnv.seedManager.truncate();
-});
+  beforeAll(async () => {
+    testEnv = await createIntegrationTestEnvironment();
+  });
+  afterAll(async () => {
+    await testEnv.cleanup();
+  });
+  beforeEach(async () => {
+    await testEnv.seedManager.truncate(IMPORT_PIPELINE_COLLECTIONS_TO_RESET);
+  });
 
-it("processes import file", async () => {
-  const { catalog } = await withCatalog(testEnv);
-  const { dataset } = await withDataset(testEnv, catalog.id);
-  // Test with real database and Payload...
+  // Add tests using the real database and Payload here.
 });
 ```
 
-Databases are isolated per worker and cleaned up automatically.
+Integration databases are isolated per worker, but multiple files share a worker process. Use sequential suites and explicit cleanup scope; never close the shared Payload connection. `apps/web/vitest.config.ts` declares the separately isolated project and retry policy.
+
+E2E has a different model: Playwright workers share one server and database per run. Use distinct test data and the fixtures in `apps/web/tests/e2e/fixtures/`; do not assume worker-level database isolation.
 
 ## Unit Test Setup
 

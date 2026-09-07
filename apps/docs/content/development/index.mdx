@@ -37,7 +37,7 @@ import { Cards } from "nextra/components";
 | State     | React Query (server), Zustand (client), nuqs (URL)                |
 | UI        | Tailwind CSS, Radix UI, shadcn/ui                                 |
 | i18n      | next-intl (English, German)                                       |
-| Jobs      | Payload Workflows (4 ingest workflows, 9 system jobs, 3 queues)   |
+| Jobs      | Payload Workflows with ingest, default, and maintenance queues    |
 | Testing   | Vitest (unit/integration), Playwright (E2E)                       |
 | Build     | Turbo monorepo, pnpm workspaces                                   |
 
@@ -46,16 +46,16 @@ import { Cards } from "nextra/components";
 ```
 apps/
   web/              Next.js app, Payload CMS, API routes
-  scraper/          TimeScrape runner (optional, Podman)
+  timescrape/       TimeScrape runner (optional, Podman)
   docs/             Documentation site (Nextra)
 
 packages/
   ui/               Shared UI components (shadcn/ui)
   assets/           SVG logo sources and generated raster exports
-  payload-schema-detection/  CSV/Excel schema detection
+  shared/           Logic shared by web and timescrape
+  scraper/          Scraper SDK
   eslint-config/    Shared ESLint config
   typescript-config/ Shared TypeScript config
-  prettier-config/  Shared Prettier config
 ```
 
 ## Related

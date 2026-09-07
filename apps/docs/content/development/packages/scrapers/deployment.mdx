@@ -142,7 +142,7 @@ openssl rand -hex 32
 
 ### 5. Connect to TimeTiles
 
-Add two variables to the TimeTiles `.env` file (`apps/web/.env`):
+Add two variables to the web app's environment (`apps/web/.env.local` for local development, or `deployment/.env.production` for the production stack):
 
 ```env
 # URL where TimeTiles can reach the runner
@@ -461,7 +461,7 @@ The `SCRAPER_API_KEY` is the sole authentication mechanism between TimeTiles and
 To rotate the key:
 
 1. Generate a new key: `openssl rand -hex 32`
-2. Update `SCRAPER_API_KEY` in both `apps/timescrape/.env` and `apps/web/.env`.
+2. Update `SCRAPER_API_KEY` in the runner's environment file and the web app's environment (`apps/web/.env.local` locally or `deployment/.env.production` for the stack).
 3. Restart both the runner and the TimeTiles web app.
 
 Rotate the key periodically and whenever you suspect it may have been exposed.

@@ -238,7 +238,9 @@ Certificates auto-renew every 12 hours via the certbot container.
 
 ### Custom Certificates
 
-Place your certificate files in `deployment/nginx/ssl/`:
+The default nginx configuration reads certificates from `/etc/letsencrypt/live/${DOMAIN_NAME}/` inside the container, supplied by the `letsencrypt` volume. There is no automatic mount for a host `deployment/nginx/ssl/` directory.
+
+For custom certificates, configure a read-only bind mount in a Compose override and set nginx's `ssl_certificate` and `ssl_certificate_key` paths to match. Supply both:
 
 - `fullchain.pem` — certificate + chain
 - `privkey.pem` — private key
