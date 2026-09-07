@@ -178,11 +178,12 @@ describe.sequential("Network Error Handling Tests", () => {
       const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
-        "https://this-domain-definitely-does-not-exist-12345.com/file.csv",
+        "https://timetiles-network-test.invalid/file.csv",
         { user: testUser, name: "DNS Failure Import", frequency: "daily" }
       );
 
-      // Execute the job - real DNS will fail for non-existent domain
+      // .invalid cannot become a registered host. Real DNS can still stall until
+      // the request deadline; both outcomes must fail the job, never succeed.
       const errorMsg = await expectHandlerToThrow({
         job: { id: "test-job-2" },
         req: { payload },
@@ -197,7 +198,7 @@ describe.sequential("Network Error Handling Tests", () => {
       });
 
       {
-        expect(errorMsg).toMatch(/ENOTFOUND|getaddrinfo|network|fetch failed/i);
+        expect(errorMsg).toMatch(/ENOTFOUND|getaddrinfo|network|fetch failed|request timeout/i);
       }
     });
   });
