@@ -21,115 +21,7 @@ function getChangedFiles() {
 }
 
 /**
- * Check whether a single pattern from the scope map matches a file path.
- * Returns true if the pattern matches, false otherwise.
- */
-function patternMatchesFile(pattern, file) {
-  if (pattern.endsWith("/")) {
-    return file.startsWith(pattern);
-  }
-  if (pattern.startsWith("*.")) {
-    return file.endsWith(pattern.slice(1));
-  }
-  return file.includes(pattern);
-}
-
-/**
- * Infer a scope from a file path based on its top-level monorepo directory
- * when no explicit scope-map entry matched.
- */
-function inferScopeFromPath(file) {
-  const parts = file.split("/");
-  if (parts[0] === "apps" && parts[1]) {
-    return parts[1]; // e.g., 'web' or 'docs'
-  }
-  if (parts[0] === "packages" && parts[1]) {
-    return parts[1].includes("config") ? "config" : parts[1];
-  }
-  return null;
-}
-
-/**
- * Map file paths to expected scopes based on monorepo structure
- */
-function getExpectedScopes(files) {
-  const scopeMap = {
-    // CI/CD and infrastructure
-    ".github/": "ci",
-    ".circleci/": "ci",
-    Dockerfile: "build",
-    "docker-compose": "build",
-    ".dockerignore": "build",
-
-    // Root configuration files
-    "package.json": "deps",
-    "pnpm-lock.yaml": "deps",
-    "turbo.json": "build",
-    "commitlint.config": "build",
-    ".gitignore": "build",
-    ".gitattributes": "build",
-    Makefile: "build",
-
-    // Apps
-    "apps/web/": "web",
-    "apps/docs/": "docs",
-    "apps/scraper/": "scraper",
-
-    // Packages
-    "packages/ui/": "ui",
-    "packages/assets/": "assets",
-    "packages/eslint-config/": "config",
-    "packages/typescript-config/": "config",
-
-    // Web app specific paths
-    "apps/web/app/explore/": "explore",
-    "apps/web/app/api/ingest/": "ingest",
-    "apps/web/app/api/events/": "events",
-    "apps/web/lib/services/geocoding": "geocoding",
-    "apps/web/lib/collections/events": "events",
-    "apps/web/lib/collections/datasets": "schema",
-    "apps/web/lib/ingest/": "ingest",
-    "apps/web/lib/collections/ingest-files": "ingest",
-    "apps/web/lib/collections/ingest-jobs": "ingest",
-    "apps/web/lib/collections/scheduled-ingests": "ingest",
-    "apps/web/lib/jobs/": "jobs",
-    "apps/web/migrations/": "db",
-    "apps/web/lib/seed/": "seed",
-    "apps/web/tests/e2e/": "e2e",
-    "apps/web/tests/": "test",
-    "apps/web/app/api/": "api",
-
-    // Documentation
-    "README.md": "docs",
-    "CLAUDE.md": "docs",
-    "*.md": "docs",
-    "*.mdx": "docs",
-  };
-
-  const detectedScopes = new Set();
-  const entries = Object.entries(scopeMap);
-
-  for (const file of files) {
-    const matched = entries.find(([pattern]) => patternMatchesFile(pattern, file));
-
-    if (matched) {
-      detectedScopes.add(matched[1]);
-    } else {
-      const inferred = inferScopeFromPath(file);
-      if (inferred) {
-        detectedScopes.add(inferred);
-      }
-    }
-  }
-
-  return Array.from(detectedScopes);
-}
-
-/**
  * Single source of truth for allowed commit scopes.
- *
- * Used by both the `scope-enum` rule and the `scope-file-match` suggestion logic
- * so the two never drift out of sync.
  */
 const SCOPES = [
   // Monorepo packages & apps
@@ -138,7 +30,7 @@ const SCOPES = [
   "ui", // Shared UI components package
   "assets", // Shared assets package (logos, images)
   "config", // Configuration changes (Payload, ESLint, TypeScript, Prettier packages, etc.)
-  "scraper", // TimeScrape runner and scraper system (apps/scraper)
+  "scraper", // TimeScrape runner and scraper system (apps/timescrape)
 
   // Core features
   "explore", // Explore page and data exploration UI
@@ -203,57 +95,6 @@ export default {
               return [false, `Avoid vague terms like "${word}" in commit subjects`];
             }
           }
-          return [true];
-        },
-        "scope-file-match": (parsed) => {
-          const { scope, type } = parsed;
-
-          // Skip validation for certain types that don't need file matching
-          if (["revert", "release"].includes(type)) {
-            return [true];
-          }
-
-          // Get changed files
-          const changedFiles = getChangedFiles();
-
-          // If we can't detect files (e.g., in CI), skip validation
-          if (changedFiles.length === 0) {
-            return [true];
-          }
-
-          // Get expected scopes based on changed files
-          const expectedScopes = getExpectedScopes(changedFiles);
-
-          // If no scope is provided but files suggest one
-          if (!scope && expectedScopes.length > 0) {
-            // Allow omitting scope when type matches the expected scope (avoiding redundancy)
-            // e.g., "docs: update README" when changing docs files
-            // e.g., "ci: fix workflow" when changing CI files
-            if (expectedScopes.includes(type)) {
-              return [true]; // OK - type already indicates the scope
-            }
-
-            // For other cases, warn that scope would be helpful
-            return [
-              1, // Warning level, not error
-              `Consider adding scope. Based on changed files: ${expectedScopes.join(", ")}`,
-            ];
-          }
-
-          // If scope is provided, check if it matches expected scopes
-          if (scope && expectedScopes.length > 0 && !expectedScopes.includes(scope)) {
-            // Allow the scope if it's in our enum, but provide a suggestion
-            const validScopes = SCOPES;
-
-            if (validScopes.includes(scope) && expectedScopes.length === 1) {
-              // It's a valid scope but might not match the files
-              return [
-                1, // Warning level
-                `Scope "${scope}" might not match your changes. Consider using "${expectedScopes[0]}" based on the files modified`,
-              ];
-            }
-          }
-
           return [true];
         },
         "type-scope-combination": (parsed) => {
@@ -324,7 +165,6 @@ export default {
     "no-claude-coauthor": [2, "always"],
     "subject-min-length": [2, "always", 10],
     "no-vague-subjects": [2, "always"],
-    "scope-file-match": [2, "always"],
     "type-scope-combination": [2, "always"],
 
     // Type enum - what kind of change
@@ -351,7 +191,7 @@ export default {
     // Scope enum - what part of the codebase (see SCOPES above)
     "scope-enum": [2, "always", SCOPES],
 
-    "scope-empty": [0, "never"], // Disabled - scope-file-match handles this intelligently
+    "scope-empty": [0, "never"], // Scopes are optional.
     "subject-case": [0, "always", ["lower-case", "sentence-case"]],
     "subject-empty": [2, "never"],
     "subject-full-stop": [2, "never", "."],
