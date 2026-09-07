@@ -15,6 +15,10 @@ import { config as loadEnv } from "dotenv";
 // Load environment variables from .env.local
 loadEnv({ path: ".env.local" });
 
+// Apply test mode before global setup spawns migrations, not only when it
+// starts the app server. Otherwise migrations may use real local SMTP settings.
+Object.assign(process.env, { NODE_ENV: "test" });
+
 const isCI = process.env.CI != null && process.env.CI !== "";
 
 // Chromium launch args. GPU/WebGL flags make MapLibre GL JS render in headless
