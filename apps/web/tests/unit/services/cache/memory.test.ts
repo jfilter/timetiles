@@ -268,6 +268,28 @@ describe("MemoryCacheStorage", () => {
       sizeStorage.destroy();
     });
 
+    it("counts UTF-8 bytes in size metadata and statistics", async () => {
+      const testStorage = new MemoryCacheStorage();
+      try {
+        await testStorage.set("unicode", "Grüße 🌍");
+        expect((await testStorage.get("unicode"))?.metadata.size).toBe(14);
+        expect(await testStorage.getStats()).toMatchObject({ entries: 1, totalSize: 14 });
+      } finally {
+        testStorage.destroy();
+      }
+    });
+
+    it("rejects values whose encoded bytes exceed the size limit", async () => {
+      const testStorage = new MemoryCacheStorage({ maxSize: 10 });
+      try {
+        await testStorage.set("unicode", "Grüße 🌍");
+        expect(await testStorage.get("unicode")).toBeNull();
+        expect(await testStorage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
+      } finally {
+        testStorage.destroy();
+      }
+    });
+
     it("should track oldest and newest entries", async () => {
       const before = new Date();
       await storage.set("time-1", "value1");

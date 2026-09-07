@@ -24,10 +24,6 @@ export class MemoryCacheStorage implements CacheStorage {
     this.cache = new LRUCache<string, CacheEntry>({
       max: options.maxEntries ?? 1000,
       maxSize: options.maxSize ?? 100 * 1024 * 1024, // 100MB default
-      sizeCalculation: (entry) => {
-        // Calculate size based on serialized value
-        return entry.metadata.size ?? JSON.stringify(entry.value).length;
-      },
       ttl: options.defaultTTL ? options.defaultTTL * 1000 : undefined,
       updateAgeOnGet: true,
       updateAgeOnHas: true,
@@ -64,6 +60,7 @@ export class MemoryCacheStorage implements CacheStorage {
   private setSync<T>(key: string, value: T, options?: CacheSetOptions): void {
     const now = new Date();
     const ttl = options?.ttl === undefined ? this.cache.ttl : options.ttl * 1000;
+    const size = Buffer.byteLength(JSON.stringify(value));
     const entry: CacheEntry<T> = {
       key,
       value,
@@ -72,13 +69,13 @@ export class MemoryCacheStorage implements CacheStorage {
         expiresAt: ttl > 0 ? new Date(now.getTime() + ttl) : undefined,
         accessCount: 0,
         lastAccessedAt: now,
-        size: JSON.stringify(value).length,
+        size,
         tags: options?.tags,
         custom: options?.metadata,
       },
     };
 
-    this.cache.set(key, entry, { ttl });
+    this.cache.set(key, entry, { ttl, size });
   }
 
   delete(key: string): Promise<boolean> {
