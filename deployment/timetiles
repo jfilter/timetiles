@@ -925,9 +925,9 @@ EOF
         # Check Nginx
         echo -n "Nginx: "
         NGINX_STATUS=$($DC_CMD ps --format '{{.Status}}' nginx 2>/dev/null | head -1)
-        if [[ "$NGINX_STATUS" == *"healthy"* ]]; then
+        if [[ "$NGINX_STATUS" == *"(healthy)"* ]]; then
             echo -e "${GREEN}✓ Healthy${NC}"
-        elif [[ "$NGINX_STATUS" == *"unhealthy"* ]]; then
+        elif [[ "$NGINX_STATUS" == *"(unhealthy)"* ]]; then
             echo -e "${RED}✗ Unhealthy${NC}"
         elif [[ "$NGINX_STATUS" == *"Up"* ]]; then
             echo -e "${GREEN}✓ Running${NC}"
@@ -1148,9 +1148,9 @@ EOF
             for container in postgres web nginx; do
                 STATUS=$($DC_CMD ps --format '{{.Status}}' $container 2>/dev/null | head -1)
                 if [[ "$STATUS" == *"Up"* ]]; then
-                    if [[ "$STATUS" == *"healthy"* ]]; then
+                    if [[ "$STATUS" == *"(healthy)"* ]]; then
                         print_ok "$container container healthy"
-                    elif [[ "$STATUS" == *"unhealthy"* ]]; then
+                    elif [[ "$STATUS" == *"(unhealthy)"* ]]; then
                         print_fail "$container container unhealthy"
                     else
                         print_ok "$container container running"

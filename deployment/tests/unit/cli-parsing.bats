@@ -256,6 +256,77 @@ EOF
         "$TEST_TEMP_DIR/deployment/backups/auto-backup.sh"
 }
 
+setup_health_commands() {
+    mkdir -p "$TEST_TEMP_DIR/bin"
+    cat > "$TEST_TEMP_DIR/bin/docker" << 'EOF'
+#!/bin/bash
+if [[ "$*" == *"{{.Status}}"* ]]; then
+    printf '%s\n' "$CONTAINER_STATUS"
+fi
+EOF
+    printf '#!/bin/bash\nexit 0\n' > "$TEST_TEMP_DIR/bin/curl"
+    chmod +x "$TEST_TEMP_DIR/bin/"*
+    export PATH="$TEST_TEMP_DIR/bin:$PATH"
+}
+
+run_application_check() {
+    # Exercise the real Application section without probing host SSL, DNS,
+    # firewall, or system services from the comprehensive check command.
+    awk '/^        print_section "Application"$/ {copy=1}
+         /^        # Check scraper runner if configured$/ {exit}
+         copy {print}' "$TEST_CLI" > "$TEST_TEMP_DIR/application-check.sh"
+    [ -s "$TEST_TEMP_DIR/application-check.sh" ]
+    run bash -c '
+        print_section() { :; }
+        print_ok() { echo "OK: $*"; }
+        print_fail() { echo "FAIL: $*"; }
+        DC_CMD="docker compose"
+        ENV_FILE="$1"
+        source "$2"
+    ' _ "$TEST_TEMP_DIR/deployment/.env.production" "$TEST_TEMP_DIR/application-check.sh"
+}
+
+@test "status reports unhealthy nginx as unhealthy" {
+    setup_health_commands
+    export CONTAINER_STATUS='Up 5 minutes (unhealthy)'
+    run "$TEST_CLI" status
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ Nginx:.*'✗ Unhealthy' ]]
+}
+
+@test "status distinguishes healthy nginx from running without a healthcheck" {
+    setup_health_commands
+    export CONTAINER_STATUS='Up 5 minutes (healthy)'
+    run "$TEST_CLI" status
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ Nginx:.*'✓ Healthy' ]]
+    export CONTAINER_STATUS='Up 5 minutes'
+    run "$TEST_CLI" status
+    [ "$status" -eq 0 ]
+    [[ "$output" =~ Nginx:.*'✓ Running' ]]
+}
+
+@test "check reports unhealthy containers as failures" {
+    setup_health_commands
+    export CONTAINER_STATUS='Up 5 minutes (unhealthy)'
+    run_application_check
+    [ "$status" -eq 0 ]
+    for service in postgres web nginx; do
+        [[ "$output" == *"FAIL: $service container unhealthy"* ]]
+        [[ "$output" != *"OK: $service container healthy"* ]]
+    done
+}
+
+@test "check still recognizes healthy containers" {
+    setup_health_commands
+    export CONTAINER_STATUS='Up 5 minutes (healthy)'
+    run_application_check
+    [ "$status" -eq 0 ]
+    for service in postgres web nginx; do
+        [[ "$output" == *"OK: $service container healthy"* ]]
+    done
+}
+
 # =============================================================================
 # Restore Command
 # =============================================================================
