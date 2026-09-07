@@ -21,7 +21,7 @@ timetiles backup verify       # Verify integrity
 timetiles backup prune        # Apply retention policy
 timetiles backup auto         # Set up daily cron job
 timetiles backup auto --offsite  # Daily backups with S3 sync
-timetiles backup auto --disable  # Remove the daily cron job
+timetiles backup auto --disable  # Remove the user-crontab job created by auto
 ```
 
 Choose one subcommand (default: `full`). `--offsite` can precede or follow it;
@@ -31,6 +31,29 @@ Choose one subcommand (default: `full`). `--offsite` can precede or follow it;
   `timetiles backup` writes **two** snapshots, not one: a `db`-tagged snapshot and an `uploads`-tagged snapshot. This
   matters for recovery — see below.
 </Callout>
+
+### Scheduled Backups
+
+Bootstrap already installs these jobs in `/etc/cron.d/timetiles`, using the host's cron timezone:
+
+| Schedule                         | Operation                          |
+| -------------------------------- | ---------------------------------- |
+| Daily at 02:00                   | Database backup                    |
+| Sunday at 03:00                  | Full backup (database and uploads) |
+| First day of each month at 04:00 | Apply retention policy             |
+
+`timetiles backup auto` is a separate, optional schedule in the invoking deployment user's crontab.
+It creates `backups/auto-backup.sh` and runs a full backup followed by pruning daily at 02:00.
+`--offsite` enables S3 synchronization for that generated script. Bootstrap's backup jobs do not
+include `--offsite` just because an S3 repository is configured.
+
+Do not enable both schedules unintentionally: `backup auto` does not replace `/etc/cron.d/timetiles`,
+and `backup auto --disable` removes only its user-crontab entry and generated script. If replacing
+bootstrap's backup schedule, edit only its backup/prune entries; retain the health-check and nginx
+reload jobs in the same file. Rerunning bootstrap's monitoring step recreates that file.
+
+After upgrading the CLI, rerun `timetiles backup auto` to refresh an existing generated script,
+including `--offsite` if it was enabled. Updating the checkout alone does not rewrite that script.
 
 ### Restore
 
@@ -58,10 +81,10 @@ timetiles restore <newest-uploads-id>
 
 <Callout type="warning">
   Do **not** use `timetiles restore latest` for disaster recovery. `latest` resolves to the newest snapshot of any tag,
-  and because a full backup writes the database first and the uploads second, that is always the uploads snapshot. It
-  restores your files and leaves the database exactly as it was — which on a rebuilt host means empty. The command
-  reports which half it restored (`Restore complete! Restored: uploads`); read that line, it is the only signal that the
-  database was not touched.
+  not the newest complete backup pair. A full backup writes the database first and uploads second, so immediately
+  afterward `latest` normally selects uploads; a subsequent database-only backup changes that. Always select and restore
+  both snapshot IDs explicitly. The command reports which half it restored, for example `Restore complete! Restored:
+  uploads`.
 </Callout>
 
 `timetiles restore` with no arguments lists the available snapshots, same as `timetiles backup list`.
