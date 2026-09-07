@@ -6,11 +6,13 @@ setup() {
 
     # Create a minimal test environment
     setup_temp_dir
-    export SCRIPT_DIR="$DEPLOY_DIR"
-
-    # Create minimal env file for tests that need it
     mkdir -p "$TEST_TEMP_DIR/deployment"
-    cat > "$TEST_TEMP_DIR/.env.production" << 'EOF'
+    cp "$DEPLOY_DIR/timetiles" "$TEST_TEMP_DIR/deployment/timetiles"
+    export TEST_CLI="$TEST_TEMP_DIR/deployment/timetiles"
+    unset RESTIC_PASSWORD
+
+    # The CLI resolves configuration next to its own file, not from SCRIPT_DIR.
+    cat > "$TEST_TEMP_DIR/deployment/.env.production" << 'EOF'
 DB_PASSWORD=test
 DOMAIN_NAME=test.local
 PAYLOAD_SECRET=testsecret
@@ -26,13 +28,13 @@ teardown() {
 # =============================================================================
 
 @test "timetiles without args shows usage" {
-    run "$DEPLOY_DIR/timetiles"
+    run "$TEST_CLI"
     [[ "$output" == *"Usage"* ]]
     [[ "$output" == *"Commands"* ]]
 }
 
 @test "timetiles shows all main commands in usage" {
-    run "$DEPLOY_DIR/timetiles"
+    run "$TEST_CLI"
     [[ "$output" == *"setup"* ]]
     [[ "$output" == *"build"* ]]
     [[ "$output" == *"up"* ]]
@@ -46,7 +48,7 @@ teardown() {
 }
 
 @test "timetiles unknown command shows usage" {
-    run "$DEPLOY_DIR/timetiles" notarealcommand
+    run "$TEST_CLI" notarealcommand
     [ "$status" -eq 1 ]
     [[ "$output" == *"Usage"* ]]
 }
@@ -55,38 +57,20 @@ teardown() {
 # Backup Subcommands
 # =============================================================================
 
-@test "backup without subcommand defaults to full" {
-    # This would actually run backup, so we just check the case statement exists
-    # by verifying the help output mentions the options
-    run "$DEPLOY_DIR/timetiles"
-    [[ "$output" == *"backup"* ]]
-}
-
-@test "backup with invalid subcommand shows backup usage" {
-    # Skip if no env file (command will fail early)
-    if [[ ! -f "$DEPLOY_DIR/.env.production" ]]; then
-        skip "No .env.production file"
-    fi
-
-    run "$DEPLOY_DIR/timetiles" backup invalidsubcmd
-    # Should show usage/help OR error about missing config
-    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"full"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
+@test "backup refuses to run without a restic password" {
+    run "$TEST_CLI" backup
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"RESTIC_PASSWORD not set"* ]]
 }
 
 # =============================================================================
 # Restore Command
 # =============================================================================
 
-@test "restore without args shows available backups" {
-    # Skip if no env file
-    if [[ ! -f "$DEPLOY_DIR/.env.production" ]]; then
-        skip "No .env.production file"
-    fi
-
-    run "$DEPLOY_DIR/timetiles" restore
-    # Should show usage, snapshot info, or error about missing config
-    [[ "$output" == *"Usage"* ]] || [[ "$output" == *"snapshot"* ]] || \
-    [[ "$output" == *"backup"* ]] || [[ "$output" == *"RESTIC_PASSWORD"* ]]
+@test "restore refuses to run without a restic password" {
+    run "$TEST_CLI" restore
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"RESTIC_PASSWORD not set"* ]]
 }
 
 # =============================================================================
@@ -94,20 +78,8 @@ teardown() {
 # =============================================================================
 
 @test "commands requiring env fail gracefully without .env.production" {
-    # Temporarily rename env file if it exists (needs write permission)
-    local env_file="$DEPLOY_DIR/.env.production"
-    local backup_file="$DEPLOY_DIR/.env.production.bak.$$"
-
-    if [[ -f "$env_file" ]]; then
-        mv "$env_file" "$backup_file" 2>/dev/null || skip "Cannot move .env.production (permission denied)"
-    fi
-
-    run "$DEPLOY_DIR/timetiles" status
-
-    # Restore env file
-    if [[ -f "$backup_file" ]]; then
-        mv "$backup_file" "$env_file"
-    fi
+    rm "$TEST_TEMP_DIR/deployment/.env.production"
+    run "$TEST_CLI" status
 
     [ "$status" -eq 1 ]
     [[ "$output" == *".env.production"* ]] || [[ "$output" == *"not found"* ]]
