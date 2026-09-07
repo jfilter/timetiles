@@ -481,6 +481,11 @@ describe.sequential("Security Validation Tests", () => {
           },
         })
       ).rejects.toThrow(/owner|scheduled ingest/i);
+
+      const unchanged = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
+      expect(unchanged.lastStatus).toBe(scheduledIngest.lastStatus);
+      expect(unchanged.currentRetries).toBe(scheduledIngest.currentRetries);
+      expect(unchanged.executionHistory).toEqual(scheduledIngest.executionHistory);
     });
 
     it("should enforce import file access through user ownership", async () => {

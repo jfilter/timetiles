@@ -415,11 +415,11 @@ export const urlFetchJob = {
       throw new Error("scheduled ingest is disabled or not found");
     }
     const effectiveInput = createEffectiveInput(input, scheduledIngest);
+    // Rejected callers do not own a run whose lifecycle could be updated.
+    assertScheduledIngestInputMatches(input, scheduledIngest, context.req.user as User | null | undefined);
     let urlFetchQuotaClaim: UrlFetchQuotaClaim = null;
 
     try {
-      assertScheduledIngestInputMatches(input, scheduledIngest, context.req.user as User | null | undefined);
-
       const resolvedUserId = effectiveInput.userId;
 
       // Check and track quota (handles undefined userId gracefully)
