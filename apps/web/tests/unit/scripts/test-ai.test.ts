@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   execFileSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
+  existsSync: vi.fn(() => true),
+  readdirSync: vi.fn(() => [] as string[]),
   exit: vi.fn(),
 }));
 
@@ -18,10 +20,11 @@ vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
 vi.mock("node:fs", () => ({
   default: {
     mkdirSync: vi.fn(),
-    existsSync: vi.fn(() => true),
+    existsSync: mocks.existsSync,
     readFileSync: mocks.readFileSync,
     writeFileSync: mocks.writeFileSync,
-    readdirSync: vi.fn(() => []),
+    readdirSync: mocks.readdirSync,
+    statSync: vi.fn(() => ({ mtimeMs: Date.now() + 1000 })),
     unlinkSync: vi.fn(),
   },
 }));
@@ -104,5 +107,27 @@ describe.sequential("AI test runner exit status", () => {
         env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
       }
     );
+  });
+
+  it("fails when its own report is missing even if another run wrote a passing report", async () => {
+    mocks.existsSync.mockReturnValue(false);
+    mocks.readdirSync.mockReturnValue(["other-run.json"]);
+    mocks.readFileSync.mockImplementation((file: string) => {
+      if (file.endsWith("other-run.json")) {
+        return JSON.stringify({
+          success: true,
+          numTotalTests: 1,
+          numPassedTests: 1,
+          numFailedTests: 0,
+          testResults: [],
+        });
+      }
+      throw new Error("Report does not exist");
+    });
+
+    await import("@/scripts/test-ai");
+
+    expect(mocks.exit).toHaveBeenCalledWith(1);
+    expect(mocks.writeFileSync).not.toHaveBeenCalled();
   });
 });

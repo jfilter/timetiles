@@ -76,7 +76,7 @@ const timestamp = new Date(startTime)
   .toISOString()
   .replaceAll(":", "-")
   .replace(/\.\d+Z$/, "");
-const resultsFilename = `${timestamp}.json`;
+const resultsFilename = `${timestamp}-${process.pid}.json`;
 const resultsPath = path.join(historyDir, resultsFilename);
 
 // Build vitest command with timestamped output
@@ -105,52 +105,9 @@ try {
 const endTime = Date.now();
 const wallClockDuration = endTime - startTime;
 
-// Vitest 4 multi-project mode may write multiple JSON files (one per project)
-// instead of a single merged file. Merge all results written during this run.
-const mergeResults = (): TestSummary => {
-  // Try the expected file first (works for single-project / filtered runs)
-  if (fs.existsSync(resultsPath)) {
-    return JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
-  }
-
-  // Multi-project: find all JSON files written after our start time
-  const allFiles = fs
-    .readdirSync(historyDir)
-    .filter((f) => f.endsWith(".json"))
-    .map((f) => ({ name: f, path: path.join(historyDir, f), mtime: fs.statSync(path.join(historyDir, f)).mtimeMs }))
-    .filter((f) => f.mtime >= startTime)
-    .sort((a, b) => a.mtime - b.mtime);
-
-  if (allFiles.length === 0) {
-    throw new Error("No results files found");
-  }
-
-  // Merge all project results into a single summary
-  const merged: TestSummary = {
-    success: true,
-    numTotalTests: 0,
-    numPassedTests: 0,
-    numFailedTests: 0,
-    numSkippedTests: 0,
-    numPendingTests: 0,
-    testResults: [],
-  };
-
-  for (const file of allFiles) {
-    const partial = JSON.parse(fs.readFileSync(file.path, "utf-8")) as TestSummary;
-    merged.numTotalTests += partial.numTotalTests ?? 0;
-    merged.numPassedTests += partial.numPassedTests ?? 0;
-    merged.numFailedTests += partial.numFailedTests ?? 0;
-    merged.numSkippedTests! += partial.numSkippedTests ?? partial.numPendingTests ?? 0;
-    merged.success = merged.success && (partial.success ?? true);
-    merged.testResults.push(...(partial.testResults ?? []));
-  }
-
-  return merged;
-};
-
 try {
-  const results = mergeResults();
+  // Only the report explicitly requested from this process belongs to this run.
+  const results = JSON.parse(fs.readFileSync(resultsPath, "utf-8")) as TestSummary;
   const failedSuites = results.testResults.filter((suite) => suite.status === "failed");
   const hasFailed = childFailed || !results.success || results.numFailedTests > 0 || failedSuites.length > 0;
 
