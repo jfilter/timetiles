@@ -188,16 +188,6 @@ export default async function globalSetup(): Promise<void> {
   await waitForServer(`${baseURL}/api/health`, 30000);
   console.log(`✅ Server ready at ${baseURL}`);
 
-  // Warm up key pages to trigger on-demand compilation before tests run.
-  // Without this, the first page request from auth.setup.ts can timeout.
-  console.log(`🔥 Warming up pages...`);
-  try {
-    await fetch(`${baseURL}/import`).catch(() => {});
-    await fetch(`${baseURL}/account/schedules`).catch(() => {});
-  } catch {
-    // Non-critical — tests will still work, just slower on first load
-  }
-
   // Start job worker process
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
   console.log(`⚙️ Starting job worker...`);
