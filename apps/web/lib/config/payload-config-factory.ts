@@ -248,6 +248,17 @@ const configureEmail = async (config: Config, env: ReturnType<typeof getEnv>, en
   });
 };
 
+/** Payload appends job stats during sanitization, after plugins have run. */
+const buildConfigWithProtectedJobStats = async (config: Config) => {
+  const built = await buildConfig(config);
+  const jobStats = built.globals.find((global) => global.slug === "payload-jobs-stats");
+  if (jobStats) {
+    // This is scheduler state, not editable settings. Native scheduling writes through the DB adapter.
+    jobStats.access = { ...jobStats.access, read: isAdmin, update: () => false };
+  }
+  return built;
+};
+
 /**
  * Creates a Payload configuration with the specified options.
  * Simplified factory following Payload's own buildConfigWithDefaults pattern.
@@ -392,7 +403,7 @@ export const buildConfigWithDefaults = async (options: PayloadConfigOptions = {}
     await runAutoActivations(payload);
   };
 
-  return buildConfig(config);
+  return buildConfigWithProtectedJobStats(config);
 };
 
 /**

@@ -6,15 +6,16 @@
  * @category Integration Tests
  */
 import { createLocalReq, type Payload } from "payload";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { User } from "@/payload-types";
+import type { PayloadJobsStat, User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Native Payload job access", () => {
   let env: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Payload;
   let users: Record<string, User>;
+  let originalStats: PayloadJobsStat["stats"];
 
   beforeAll(async () => {
     env = await createIntegrationTestEnvironment({ resetDatabase: false, createTempDir: false });
@@ -28,6 +29,52 @@ describe.sequential("Native Payload job access", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  beforeEach(async () => {
+    originalStats = (await payload.findGlobal({ slug: "payload-jobs-stats" })).stats;
+  });
+
+  afterEach(async () => {
+    await payload.updateGlobal({ slug: "payload-jobs-stats", data: { stats: originalStats ?? null } });
+  });
+
+  it.each(["anonymous", "regular", "editor", "admin"])("rejects scheduler-state writes from %s", async (role) => {
+    await expect(
+      payload.updateGlobal({
+        slug: "payload-jobs-stats",
+        overrideAccess: false,
+        user: users[role],
+        data: {
+          stats: {
+            scheduledRuns: {
+              queues: { default: { tasks: { "schedule-manager": { lastScheduledRun: "2099-01-01T00:00:00.000Z" } } } },
+            },
+          },
+        },
+      })
+    ).rejects.toMatchObject({ status: 403 });
+    expect((await payload.findGlobal({ slug: "payload-jobs-stats" })).stats).toEqual(originalStats);
+  });
+
+  it.each(["anonymous", "regular", "editor"])("rejects scheduler-state reads from %s", async (role) => {
+    await expect(
+      payload.findGlobal({ slug: "payload-jobs-stats", overrideAccess: false, user: users[role] })
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("still lets Payload schedule jobs and persist its own scheduling state", async () => {
+    await payload.updateGlobal({ slug: "payload-jobs-stats", data: { stats: {} } });
+    const result = await payload.jobs.handleSchedules({ queue: "default" });
+
+    expect(result.errored).toHaveLength(0);
+    expect(result.queued.length).toBeGreaterThan(0);
+    const stored = await payload.findGlobal({ slug: "payload-jobs-stats", overrideAccess: false, user: users.admin });
+    expect(stored.stats).toMatchObject({
+      scheduledRuns: {
+        queues: { default: { tasks: { "schedule-manager": { lastScheduledRun: expect.any(String) } } } },
+      },
+    });
   });
 
   it.each(["/run", "/handle-schedules"])("restricts native %s to admins", async (path) => {

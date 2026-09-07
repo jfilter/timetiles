@@ -13,6 +13,8 @@ TimeTiles uses [Payload CMS's built-in job queue and workflow system](https://pa
 Native job execution, scheduling, queueing and cancellation are admin-only through `jobs.access`.
 The `payload-jobs` collection's CRUD permissions are separate and do not guard native job
 endpoints. Trusted server-side workers use the Local API's default access override.
+The generated `payload-jobs-stats` global is admin-readable and not manually writable, including
+by admins. It holds scheduling state; Payload's scheduler maintains it through its database adapter.
 
 ## Ingest Workflows
 
