@@ -57,20 +57,16 @@ describe.sequential("Access Control Edge Cases", () => {
   }, 60000);
 
   afterEach(async () => {
-    // Clean up test data between tests to prevent accumulation
-    // Only delete non-user collections to avoid recreating users
-    try {
-      await payload.delete({ collection: "ingest-jobs", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "ingest-files", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "events", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "datasets", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "catalogs", where: {}, overrideAccess: true });
-      await payload.delete({ collection: "scheduled-ingests", where: {}, overrideAccess: true });
-      // Clean up user-usage to reset quota counters
-      await payload.delete({ collection: "user-usage", where: {}, overrideAccess: true });
-    } catch {
-      // Ignore errors if collections are empty
-    }
+    // Reset fixtures without rerunning deletion hooks; preserve the shared test users.
+    await testEnv.seedManager.truncate([
+      "ingest-jobs",
+      "ingest-files",
+      "events",
+      "datasets",
+      "catalogs",
+      "scheduled-ingests",
+      "user-usage",
+    ]);
   }, 10000);
 
   afterAll(async () => {
