@@ -17,6 +17,26 @@ const DEFAULT_PROCESS_TIMEOUT_MS = 10000;
 const DEFAULT_POLL_INTERVAL_MS = 100;
 const SOCKET_TIMEOUT_MS = 1000;
 
+/** Wait for any HTTP response, including 503, within one overall deadline. */
+export const waitForServer = async (url: string, timeout: number): Promise<void> => {
+  const deadline = Date.now() + timeout;
+  const signal = AbortSignal.timeout(timeout);
+
+  while (Date.now() < deadline) {
+    try {
+      const response = await fetch(url, { signal });
+      await response.body?.cancel();
+      console.log(`   Server responded with status ${response.status}`);
+      return;
+    } catch {
+      if (signal.aborted) break;
+    }
+    await sleep(Math.max(0, Math.min(500, deadline - Date.now())));
+  }
+
+  throw new Error(`Server at ${url} failed to start within ${timeout}ms`);
+};
+
 const isMissingProcessError = (error: unknown): boolean =>
   typeof error === "object" && error !== null && "code" in error && (error as NodeJS.ErrnoException).code === "ESRCH";
 

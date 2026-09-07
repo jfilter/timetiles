@@ -26,37 +26,12 @@ import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
 
 import { seedE2ETestData } from "./seed-e2e-data";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
-import { findAvailablePort } from "./utils/runtime-guards";
+import { findAvailablePort, waitForServer } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
 
 // Store processes globally for teardown
 let serverProcess: ChildProcess | null = null;
 let workerProcess: ChildProcess | null = null;
-
-/**
- * Wait for a server to become available at a URL.
- * Accepts any HTTP response (not just 200 OK) to handle slow health checks.
- */
-const waitForServer = async (url: string, timeout: number): Promise<void> => {
-  const start = Date.now();
-
-  while (Date.now() - start < timeout) {
-    try {
-      const response = await fetch(url);
-      // Accept any HTTP response - server is up even if health check returns 503
-      if (response.status > 0) {
-        console.log(`   Server responded with status ${response.status}`);
-        return;
-      }
-    } catch {
-      // Server not ready yet, continue waiting
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-
-  throw new Error(`Server at ${url} failed to start within ${timeout}ms`);
-};
 
 const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseName: string): Promise<void> => {
   const staleDatabases = (await listDatabasesByPrefix(databasePrefix)).filter((name) => name !== activeDatabaseName);

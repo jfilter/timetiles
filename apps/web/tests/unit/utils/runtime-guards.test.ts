@@ -6,6 +6,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { createServer as createHttpServer } from "node:http";
 import { createServer, type Server } from "node:net";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -18,6 +19,7 @@ import {
   terminateProcess,
   waitForPortToBeFree,
   waitForProcessExit,
+  waitForServer,
 } from "@/tests/e2e/utils/runtime-guards";
 
 const openServers: Server[] = [];
@@ -65,6 +67,33 @@ afterEach(async () => {
 // them, so concurrent execution would let one test's teardown close another
 // test's listener mid-probe (making an occupied port look free).
 describe.sequential("runtime guards", () => {
+  it.each([false, true])(
+    "bounds HTTP readiness when the server responds: %s",
+    async (responds) => {
+      const server = createHttpServer((_request, response) => {
+        if (responds) {
+          response.writeHead(503);
+          response.end();
+        }
+      });
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      try {
+        const address = server.address();
+        if (!address || typeof address === "string") throw new Error("Expected an HTTP port");
+        const waiting = waitForServer(`http://127.0.0.1:${address.port}`, 200);
+        if (responds) {
+          await expect(waiting).resolves.toBeUndefined();
+        } else {
+          await expect(waiting).rejects.toThrow("failed to start within 200ms");
+        }
+      } finally {
+        server.closeAllConnections();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
+    },
+    2000
+  );
+
   it("detects ports that are already in use", async () => {
     const { port } = await startServer();
 
