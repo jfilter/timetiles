@@ -55,7 +55,6 @@ const PACKAGES = [
   { name: "packages/ui", hasLint: true, hasTypecheck: true },
   { name: "apps/timescrape", hasLint: true, hasTypecheck: true },
   { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
-  { name: "packages/typescript-config", hasLint: true, hasTypecheck: false },
 ];
 
 const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
