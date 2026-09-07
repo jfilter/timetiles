@@ -9,10 +9,14 @@
  * @module
  */
 
+import { sql } from "@payloadcms/db-postgres";
+import { NextRequest } from "next/server";
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { POST as triggerWebhook } from "@/app/api/webhooks/trigger/[token]/route";
 import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import type { User } from "@/payload-types";
 
@@ -625,6 +629,67 @@ describe.sequential("Scraper Collections Access Control", () => {
       }
     } finally {
       await killTransaction(req);
+    }
+  });
+
+  it.each(["success", "failure"])("keeps scraper webhook state consistent on queue %s", async (outcome) => {
+    await enableScrapers();
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Webhook Rollback Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: adminUser,
+    });
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "Webhook Rollback",
+        slug: "webhook-rollback",
+        repo: repo.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+        webhookEnabled: true,
+        lastRunStatus: "success",
+        lastRunAt: "2026-01-01T00:00:00.000Z",
+      },
+      overrideAccess: true,
+    });
+    const token = scraper.webhookTokenPlaintext!;
+    expect(token).toBeTruthy();
+    // Truncation reuses scraper IDs, while rate-limit state survives between cases.
+    const rateLimits = getRateLimitService(payload);
+    await rateLimits.resetRateLimit(`webhook:scraper:${scraper.id}:burst`);
+    await rateLimits.resetRateLimit(`webhook:scraper:${scraper.id}:hourly`);
+    // Fault injection in the disposable worker database; never a mock or a migration.
+    if (outcome === "failure") {
+      await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs ADD CONSTRAINT reject_scraper_webhook_test
+      CHECK (workflow_slug <> 'scraper-ingest') NOT VALID`);
+    }
+    try {
+      const response = await triggerWebhook(
+        new NextRequest(`http://localhost/api/webhooks/trigger/${token}`, { method: "POST" }),
+        { params: Promise.resolve({ token }) }
+      );
+      expect(response.status).toBe(outcome === "failure" ? 500 : 200);
+      const after = await payload.findByID({ collection: "scrapers", id: scraper.id });
+      if (outcome === "failure") {
+        expect(after.lastRunStatus).toBe(scraper.lastRunStatus);
+        expect(after.lastRunAt).toBe(scraper.lastRunAt);
+      } else {
+        expect(after.lastRunStatus).toBe("running");
+        expect(new Date(after.lastRunAt!).getTime()).toBeGreaterThan(new Date(scraper.lastRunAt!).getTime());
+        expect(await response.json()).toMatchObject({ status: "triggered", jobId: expect.any(String) });
+      }
+      const jobs = await payload.count({
+        collection: "payload-jobs",
+        where: { and: [{ workflowSlug: { equals: "scraper-ingest" } }, { "input.scraperId": { equals: scraper.id } }] },
+      });
+      expect(jobs.totalDocs).toBe(outcome === "failure" ? 0 : 1);
+    } finally {
+      if (outcome === "failure") {
+        await payload.db.drizzle.execute(
+          sql`ALTER TABLE payload.payload_jobs DROP CONSTRAINT reject_scraper_webhook_test`
+        );
+      }
     }
   });
 

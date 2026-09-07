@@ -8,6 +8,7 @@
  * @module
  * @category API
  */
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
@@ -158,36 +159,26 @@ const handleScraperTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: { id: number; name: string }
 ): Promise<Record<string, unknown>> => {
-  // Atomically claim "running" to prevent concurrent executions
-  const claimed = await claimScraperRunning(payload, target.id);
-
-  if (!claimed) {
-    logger.info({ scraperId: target.id, name: target.name }, "Webhook trigger skipped - scraper already running");
-    return { message: "Scraper already running, skipped", status: "skipped" };
-  }
-
+  const req = await createLocalReq({}, payload);
+  const ownsTransaction = await initTransaction(req);
   try {
+    // Publish the claim and workflow together, preserving the previous run on failure.
+    const claimed = await claimScraperRunning(payload, target.id, req);
+    if (!claimed) {
+      if (ownsTransaction) await commitTransaction(req);
+      logger.info({ scraperId: target.id, name: target.name }, "Webhook trigger skipped - scraper already running");
+      return { message: "Scraper already running, skipped", status: "skipped" };
+    }
     const job = await payload.jobs.queue({
       workflow: "scraper-ingest",
       input: { scraperId: target.id, triggeredBy: "webhook" },
+      req,
     });
+    if (ownsTransaction) await commitTransaction(req);
     logger.info({ scraperId: target.id, jobId: job.id }, "Scraper triggered via webhook");
     return { message: "Scraper triggered successfully", status: "triggered", jobId: String(job.id) };
   } catch {
-    // Reset status so scraper isn't permanently stuck as "running". Use
-    // "failed" (not null) to match the manual-run path's rollback — the run
-    // attempt did fail, and surfacing that consistently across trigger paths
-    // avoids a webhook failure silently masquerading as "never run".
-    try {
-      await payload.update({
-        collection: "scrapers",
-        id: target.id,
-        data: { lastRunStatus: "failed" },
-        overrideAccess: true,
-      });
-    } catch {
-      logger.error({ scraperId: target.id }, "Failed to reset scraper status after queue failure");
-    }
+    if (ownsTransaction) await killTransaction(req);
     throw new AppError(500, "Failed to queue scraper execution job");
   }
 };

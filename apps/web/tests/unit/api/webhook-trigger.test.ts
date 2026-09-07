@@ -23,7 +23,13 @@ const mocks = vi.hoisted(() => {
   return { mockPayload, mockGetPayload, mockRateLimitService, mockDrizzleUpdate };
 });
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+  createLocalReq: vi.fn().mockImplementation((_options, payload) => Promise.resolve({ payload })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn(),
+  killTransaction: vi.fn(),
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/services/rate-limit-service", () => ({
@@ -32,6 +38,7 @@ vi.mock("@/lib/services/rate-limit-service", () => ({
   RATE_LIMITS: { WEBHOOK_TRIGGER: {}, WEBHOOK_TRIGGER_ATTEMPT: {} },
 }));
 
+import { commitTransaction, killTransaction } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/webhooks/trigger/[token]/route";
@@ -141,7 +148,7 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     );
   });
 
-  it("resets scraper status to 'failed' (not null) when the queue fails, matching the manual path", async () => {
+  it.each(["success", "failure", "already-running"])("closes the scraper transaction on %s", async (outcome) => {
     // Resolve the token to a scraper, not a scheduled ingest.
     mockPayload.find.mockImplementation((args: { collection: string }) => {
       if (args.collection === "scrapers") {
@@ -151,21 +158,27 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
       }
       return Promise.resolve({ docs: [] });
     });
-    // Atomic claim succeeds (scraper was idle), then the job queue fails.
-    mockDrizzleUpdate.mockImplementation(() => createUpdateBuilder([{ id: 7 }]));
-    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue down"));
+    mockDrizzleUpdate.mockImplementation(() => createUpdateBuilder(outcome === "already-running" ? [] : [{ id: 7 }]));
+    if (outcome === "failure") mockPayload.jobs.queue.mockRejectedValue(new Error("Queue down"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
-    expect(response.status).toBe(500);
-    expect(mockPayload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "scrapers",
-        id: 7,
-        data: { lastRunStatus: "failed" },
-        overrideAccess: true,
-      })
-    );
+    expect(response.status).toBe(outcome === "failure" ? 500 : 200);
+    expect(mockPayload.update).not.toHaveBeenCalled();
+    const req = { payload: mockPayload };
+    if (outcome === "failure") {
+      expect(killTransaction).toHaveBeenCalledWith(req);
+      expect(commitTransaction).not.toHaveBeenCalled();
+    } else {
+      expect(commitTransaction).toHaveBeenCalledWith(req);
+      expect(killTransaction).not.toHaveBeenCalled();
+    }
+    if (outcome === "already-running") {
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(await response.json()).toMatchObject({ status: "skipped" });
+    } else {
+      expect(mockPayload.jobs.queue).toHaveBeenCalledWith(expect.objectContaining({ req }));
+    }
   });
 
   it("should not record premature success in execution history (Bug 23)", async () => {
