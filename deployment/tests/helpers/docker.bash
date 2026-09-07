@@ -73,19 +73,12 @@ run_in_container() {
     $DC_CMD exec -T "$container" "$@"
 }
 
-# Check if container is running
+# Check if a service in this deployment's Compose project is running.
 # Usage: if container_running "web"; then ...
 container_running() {
-    local name="$1"
-    docker ps --format '{{.Names}}' | grep -q "$name"
-}
-
-# Check if container is healthy
-container_healthy() {
-    local name="$1"
-    local status
-    status=$($DC_CMD ps --format '{{.Status}}' "$name" 2>/dev/null | head -1)
-    [[ "$status" == *"healthy"* ]]
+    local ids
+    ids=$($DC_CMD ps --status running -q "$1") || return 1
+    [[ -n "$ids" ]]
 }
 
 # Skip test if Docker is not running
