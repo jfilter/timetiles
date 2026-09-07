@@ -39,6 +39,11 @@ and records the failed run only once. Jobs marked `error.cancelled` are excluded
 cancellation must not consume the schedule's retry budget. Do not duplicate Payload's retry
 calculation in workflow catches.
 
+Stuck-run cleanup cancels old queued jobs through `payload.jobs.cancel()`, with a
+`processing: false` filter applied at cancellation time. Payload preserves completed and already
+failed jobs; cancelled jobs have `error.cancelled: true` and no completion timestamp. They are
+removed by the existing seven-day failed-job retention, not the three-day completed-job retention.
+
 ## Task Definitions and Scheduling
 
 The current task inventory is `ALL_JOBS` in `lib/jobs/ingest-jobs.ts`. Each handler owns its task slug, retry policy, and any native Payload `schedule` configuration. Inspect those definitions for exact cron expressions and queue assignments instead of copying a schedule table.

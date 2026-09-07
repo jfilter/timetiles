@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createDatabaseClient } from "@/lib/database/client";
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
 import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
+import { cancelOrphanedWorkflowJobs } from "@/lib/jobs/utils/stuck-detection";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
 
 import {
@@ -336,6 +337,46 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
   });
 
   describe.sequential("Orphaned Workflow Job Cleanup", () => {
+    it("only cancels old queued jobs for the requested resource and preserves terminal job state", async () => {
+      const now = new Date();
+      const old = new Date(now.getTime() - 5 * 60 * 60 * 1000).toISOString();
+      const fixtures = [
+        { input: { scraperId: 7 } },
+        { input: { scraperId: "7" } },
+        { input: { scraperId: 7 }, processing: true },
+        { input: { scraperId: 8 } },
+        { input: { scraperId: 7 }, createdAt: now.toISOString() },
+        { input: { scraperId: 7 }, completedAt: old },
+        { input: { scraperId: 7 }, hasError: true, error: { message: "Original failure" } },
+      ];
+      const jobs = [];
+      for (const fixture of fixtures) {
+        jobs.push(
+          await payload.create({
+            collection: "payload-jobs",
+            data: { workflowSlug: "scraper-ingest", queue: "ingest", processing: false, createdAt: old, ...fixture },
+          })
+        );
+      }
+
+      await cancelOrphanedWorkflowJobs(payload, "input.scraperId", 7, now, 4);
+
+      for (const [index, job] of jobs.entries()) {
+        const after = await payload.findByID({ collection: "payload-jobs", id: job.id });
+        if (index < 2) {
+          expect(after).toMatchObject({
+            hasError: true,
+            processing: false,
+            completedAt: null,
+            waitUntil: null,
+            error: { cancelled: true },
+          });
+        } else {
+          expect(after).toEqual(job);
+        }
+      }
+    });
+
     it("should cancel orphaned workflow jobs when resetting stuck import", async () => {
       const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
 
@@ -387,11 +428,13 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
 
       // Verify orphaned workflow jobs were cancelled
       const job1After = await payload.findByID({ collection: "payload-jobs" as const, id: orphanedJob1.id });
-      expect(job1After.completedAt).toBeTruthy();
+      expect(job1After.completedAt).toBeNull();
+      expect(job1After.error).toEqual({ cancelled: true });
       expect(job1After.hasError).toBe(true);
 
       const job2After = await payload.findByID({ collection: "payload-jobs" as const, id: orphanedJob2.id });
-      expect(job2After.completedAt).toBeTruthy();
+      expect(job2After.completedAt).toBeNull();
+      expect(job2After.error).toEqual({ cancelled: true });
       expect(job2After.hasError).toBe(true);
       expect(job2After.processing).toBe(false);
     });

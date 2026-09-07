@@ -7,7 +7,6 @@
 import type { Payload } from "payload";
 
 import { buildResourceIdMatch } from "@/lib/services/payload-job-queries";
-import { asSystem } from "@/lib/services/system-payload";
 import { parseDateInput } from "@/lib/utils/date";
 
 // Payload-jobs read helper lives in the infrastructure layer; re-exported here
@@ -54,9 +53,9 @@ export const isResourceStuck = (
 };
 
 /**
- * Cancel the workflow jobs an abandoned run left behind, so their concurrency keys are released.
+ * Cancel queued workflow jobs an abandoned run left behind using Payload's native job state.
  *
- * Errors deliberately propagate: swallowing them and returning 0 makes a transient database error
+ * Errors deliberately propagate: swallowing them makes a transient database error
  * permanent, because the caller flips the resource out of `running` on the same pass and the reaper
  * only ever revisits running resources.
  *
@@ -68,35 +67,18 @@ export const cancelOrphanedWorkflowJobs = async (
   resourceId: number | string,
   currentTime: Date,
   thresholdHours: number
-): Promise<number> => {
+): Promise<void> => {
   const orphanedJobCutoff = new Date(currentTime.getTime() - thresholdHours * 60 * 60 * 1000).toISOString();
 
-  const orphanedJobs = await asSystem(payload).find({
-    collection: "payload-jobs" as const,
+  await payload.jobs.cancel({
     where: {
       and: [
         // Job input is jsonb, so a string `equals` compiles to a JSON *string* comparison and never
         // matches a numerically-enqueued id. buildResourceIdMatch covers both representations.
         buildResourceIdMatch(inputField, resourceId),
         { processing: { equals: false } },
-        { completedAt: { exists: false } },
         { createdAt: { less_than: orphanedJobCutoff } },
       ],
     },
-    // 0 lifts the limit; a fixed number would strand everything past it, since the resource leaves
-    // `running` on the same pass (`pagination: false` does not lift an explicit limit).
-    limit: 0,
-    pagination: false,
   });
-
-  let cancelled = 0;
-  for (const job of orphanedJobs.docs) {
-    await asSystem(payload).update({
-      collection: "payload-jobs" as const,
-      id: job.id,
-      data: { completedAt: new Date().toISOString(), hasError: true, processing: false },
-    });
-    cancelled++;
-  }
-  return cancelled;
 };

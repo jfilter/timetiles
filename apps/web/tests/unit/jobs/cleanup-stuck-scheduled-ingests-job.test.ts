@@ -31,7 +31,11 @@ vi.mock("@/lib/logger", () => ({
 
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
 
-type MockPayload = { find: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+type MockPayload = {
+  find: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  jobs: { cancel: ReturnType<typeof vi.fn> };
+};
 
 /** Empty result for hasActivePayloadJob checks (no active Payload job found). */
 const NO_ACTIVE_JOBS = { docs: [], totalDocs: 0 };
@@ -45,7 +49,7 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
     vi.clearAllMocks();
 
     // Mock payload
-    mockPayload = { find: vi.fn(), update: vi.fn() };
+    mockPayload = { find: vi.fn(), update: vi.fn(), jobs: { cancel: vi.fn().mockResolvedValue(undefined) } };
 
     mockJob = { id: "job-1", input: {} };
 
@@ -495,35 +499,20 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }) // scheduled-ingests
         .mockResolvedValueOnce(NO_ACTIVE_JOBS) // hasActivePayloadJob
         .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // no ingest file to reconcile from
-        .mockResolvedValueOnce({ docs: [{ id: "old-workflow-job" }], totalDocs: 1 })
         .mockResolvedValue(NO_ACTIVE_JOBS);
 
       await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
-      expect(mockPayload.find).toHaveBeenNthCalledWith(4, {
-        collection: "payload-jobs",
+      expect(mockPayload.jobs.cancel).toHaveBeenCalledWith({
         where: {
           and: [
             // `or` over both id representations — a string-only clause never
             // matches a numerically-enqueued id in jsonb job input.
             { or: [{ "input.scheduledIngestId": { equals: "import-1" } }] },
             { processing: { equals: false } },
-            { completedAt: { exists: false } },
             { createdAt: { less_than: "2026-04-28T08:00:00.000Z" } },
           ],
         },
-        // 0, not a cap: a fixed number would strand orphaned jobs past it forever, since the
-        // schedule leaves "running" on this same pass.
-        limit: 0,
-        overrideAccess: true,
-        pagination: false,
-      });
-
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "payload-jobs",
-        id: "old-workflow-job",
-        data: { completedAt: "2026-04-28T12:00:00.000Z", hasError: true, processing: false },
-        overrideAccess: true,
       });
     });
 
@@ -540,7 +529,8 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
       mockPayload.find
         .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 })
         .mockResolvedValueOnce(NO_ACTIVE_JOBS)
-        .mockRejectedValueOnce(new Error("transient db error"));
+        .mockResolvedValue(NO_ACTIVE_JOBS);
+      mockPayload.jobs.cancel.mockRejectedValueOnce(new Error("transient db error"));
 
       const result = await cleanupStuckScheduledIngestsJob.handler({ job: mockJob, req: mockReq });
 
@@ -565,7 +555,6 @@ describe.sequential("Cleanup Stuck scheduled ingests Job", () => {
         .mockResolvedValueOnce({ docs: [stuckImport], totalDocs: 1 }) // scheduled-ingests
         .mockResolvedValueOnce(NO_ACTIVE_JOBS) // hasActivePayloadJob
         .mockResolvedValueOnce({ docs: [], totalDocs: 0 }) // no ingest file to reconcile from
-        .mockResolvedValueOnce(NO_ACTIVE_JOBS) // cancelOrphanedWorkflowJobs
         .mockResolvedValueOnce({ docs: [{ id: "file-1", status: "processing" }], totalDocs: 1 }) // stuck ingest-files
         .mockResolvedValueOnce({ docs: [{ id: "job-1", stage: "create-events" }], totalDocs: 1 }); // stuck ingest-jobs
 

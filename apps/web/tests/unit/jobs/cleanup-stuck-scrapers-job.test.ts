@@ -44,6 +44,7 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     findByID: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    jobs: { cancel: ReturnType<typeof vi.fn> };
   };
 
   const createMockContext = (input: Record<string, unknown> = {}) => ({
@@ -70,6 +71,7 @@ describe.sequential("cleanupStuckScrapersJob", () => {
       findByID: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
+      jobs: { cancel: vi.fn().mockResolvedValue(undefined) },
     };
 
     // Defaults: feature enabled, resource stuck, no active job
@@ -120,10 +122,9 @@ describe.sequential("cleanupStuckScrapersJob", () => {
 
   it("should cancel old queued scraper workflow jobs when resetting a stuck scraper", async () => {
     const scraper = createMockScraper({ id: 7 });
-    const orphanedJob = { id: "payload-job-1" };
     mockPayload.find
       .mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 })
-      .mockResolvedValueOnce({ docs: [orphanedJob], totalDocs: 1 });
+      .mockResolvedValue({ docs: [], totalDocs: 0 });
 
     const context = createMockContext({ stuckThresholdHours: 4 });
     await cleanupStuckScrapersJob.handler(context as any);
@@ -133,27 +134,14 @@ describe.sequential("cleanupStuckScrapersJob", () => {
     // postgres adapter compiles a string `equals` on a jsonb path into a JSON
     // *string* comparison — so a string-only clause matched nothing and this
     // cancellation never fired for any real job.
-    expect(mockPayload.find).toHaveBeenCalledWith({
-      collection: "payload-jobs",
-      overrideAccess: true,
+    expect(mockPayload.jobs.cancel).toHaveBeenCalledWith({
       where: {
         and: [
           { or: [{ "input.scraperId": { equals: "7" } }, { "input.scraperId": { equals: 7 } }] },
           { processing: { equals: false } },
-          { completedAt: { exists: false } },
           { createdAt: { less_than: expect.any(String) } },
         ],
       },
-      // 0, not a fixed page: the scraper leaves `running` on this same pass, so anything
-      // past a capped page would never be revisited.
-      limit: 0,
-      pagination: false,
-    });
-    expect(mockPayload.update).toHaveBeenCalledWith({
-      collection: "payload-jobs",
-      id: "payload-job-1",
-      overrideAccess: true,
-      data: { completedAt: expect.any(String), hasError: true, processing: false },
     });
   });
 
@@ -164,7 +152,8 @@ describe.sequential("cleanupStuckScrapersJob", () => {
    */
   it("leaves the scraper running when dependent cleanup fails, so the next run retries", async () => {
     const scraper = createMockScraper({ id: 9 });
-    mockPayload.find.mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 }).mockRejectedValueOnce(new Error("boom"));
+    mockPayload.find.mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 });
+    mockPayload.jobs.cancel.mockRejectedValueOnce(new Error("boom"));
 
     const context = createMockContext();
     const result = await cleanupStuckScrapersJob.handler(context as any);

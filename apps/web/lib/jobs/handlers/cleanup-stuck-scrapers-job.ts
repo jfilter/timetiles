@@ -79,23 +79,6 @@ const failStuckScraperRuns = async (payload: Payload, scraperId: number, finishe
  */
 const FORCE_RESET_THRESHOLD_MULTIPLE = 6;
 
-const cleanUpDependents = async (
-  payload: Payload,
-  scraper: Scraper,
-  currentTime: Date,
-  thresholdHours: number
-): Promise<{ cancelledJobs: number; failedRuns: number }> => {
-  const cancelledJobs = await cancelOrphanedWorkflowJobs(
-    payload,
-    "input.scraperId",
-    scraper.id,
-    currentTime,
-    thresholdHours
-  );
-  const failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
-  return { cancelledJobs, failedRuns };
-};
-
 const resetStuckScraper = async (
   payload: Payload,
   scraper: Scraper,
@@ -111,9 +94,10 @@ const resetStuckScraper = async (
   // reaper has, so releasing it before the dependents are terminal would strand an orphaned
   // job or a "running" run record with no later pass able to see it. Both steps are
   // idempotent, so retrying the whole scraper on the next hourly pass is safe.
-  let dependents: { cancelledJobs: number; failedRuns: number };
+  let failedRuns = 0;
   try {
-    dependents = await cleanUpDependents(payload, scraper, currentTime, thresholdHours);
+    await cancelOrphanedWorkflowJobs(payload, "input.scraperId", scraper.id, currentTime, thresholdHours);
+    failedRuns = await failStuckScraperRuns(payload, scraper.id, currentTime.toISOString());
   } catch (error) {
     if (!mayForce) throw error;
     // Long past the point where retrying is plausibly transient. Release the scraper anyway —
@@ -123,7 +107,6 @@ const resetStuckScraper = async (
       name: scraper.name,
       stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
     });
-    dependents = { cancelledJobs: 0, failedRuns: 0 };
   }
 
   // Update statistics (also increments totalRuns — a stuck run is still a run)
@@ -139,7 +122,7 @@ const resetStuckScraper = async (
     scraperId: scraper.id,
     name: scraper.name,
     stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
-    ...dependents,
+    failedRuns,
   });
 };
 

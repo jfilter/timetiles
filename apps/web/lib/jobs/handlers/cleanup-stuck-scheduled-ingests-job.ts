@@ -191,10 +191,9 @@ const resetStuckImport = async (
 
     // Cancel orphaned workflow jobs to release concurrency slots, and fail the run's
     // downstream ingest-file/ingest-jobs state so it isn't left dangling non-terminal.
-    let cancelledJobs = 0;
     let failedFiles = 0;
     try {
-      cancelledJobs = await cancelOrphanedWorkflowJobs(
+      await cancelOrphanedWorkflowJobs(
         payload,
         "input.scheduledIngestId",
         scheduledIngest.id,
@@ -246,7 +245,6 @@ const resetStuckImport = async (
       scheduledIngestId: scheduledIngest.id,
       name: scheduledIngest.name,
       stuckDurationMinutes: Math.round(stuckDuration / (1000 * 60)),
-      cancelledWorkflowJobs: cancelledJobs,
       failedIngestFiles: failedFiles,
     });
   } catch (error) {
