@@ -283,7 +283,7 @@ Geocoding providers are configured via the Payload CMS Settings global (`/dashbo
 
 ### Workers
 
-Background job workers run as separate processes, one per queue. In production, each queue gets a dedicated Docker container started with `pnpm payload jobs:run --cron --queue <name>`. Concurrency is controlled by the number of containers deployed, not by a configuration setting. Retry behavior is handled by Payload's built-in workflow system.
+Background job workers run as separate processes, one per queue. See [Production Workers](../background-jobs#production-workers) for the Payload commands, polling intervals, and scheduling flags used in production. Retry behavior is handled by Payload's built-in workflow system.
 
 ---
 

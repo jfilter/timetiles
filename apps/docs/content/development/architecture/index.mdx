@@ -83,7 +83,7 @@ CSV/Excel upload or scheduled URL fetch
 | `default`     | `worker-default`     | Schedule manager, webhooks              |
 | `maintenance` | `worker-maintenance` | Cleanup, cache expiry, audit rotation   |
 
-4 ingest workflows orchestrate the import pipeline. 9 system jobs run on cron schedules. See [Background Jobs](./background-jobs) for the full reference.
+Ingest workflows orchestrate the import pipeline; system jobs declare their schedules through Payload. See [Background Jobs](./background-jobs) for workflow definitions and worker configuration.
 
 ## Database
 

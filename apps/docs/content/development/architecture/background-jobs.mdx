@@ -7,7 +7,7 @@ TimeTiles uses [Payload CMS's built-in job queue and workflow system](https://pa
 - **Auto-deletion**: Completed jobs are automatically deleted (`deleteJobOnComplete: true`)
 - **Workflow-based orchestration**: The ingestion pipeline uses 4 Payload Workflows, queued by collection hooks and trigger services
 - **3-queue architecture**: `ingest` (user-facing workflows), `default` (trigger jobs), `maintenance` (scheduled system jobs)
-- **Production**: 1 Docker worker container per queue via `pnpm payload jobs:run --cron --queue <name>`
+- **Production**: One Docker worker container per queue runs Payload's `jobs:run` command; see the worker settings below
 - **Development**: Payload's `autoRun` schedules and processes all queues within the Next.js process after Payload initializes; no polling process or seeded admin login is required
 
 Native job execution, scheduling, queueing and cancellation are admin-only through `jobs.access`.
@@ -15,6 +15,28 @@ The `payload-jobs` collection's CRUD permissions are separate and do not guard n
 endpoints. Trusted server-side workers use the Local API's default access override.
 The generated `payload-jobs-stats` global is admin-readable and not manually writable, including
 by admins. It holds scheduling state; Payload's scheduler maintains it through its database adapter.
+
+### Production Workers
+
+`deployment/docker-compose.prod.yml` is the source of truth for worker commands. Each worker
+consumes exactly one queue:
+
+| Queue         | Polling cron (`--cron`)             | Batch limit (`--limit`) | `--handle-schedules` |
+| ------------- | ----------------------------------- | ----------------------- | -------------------- |
+| `ingest`      | `*/10 * * * * *` (every 10 seconds) | `10`                    | No                   |
+| `default`     | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
+| `maintenance` | `*/1 * * * *` (every minute)        | `20`                    | Yes                  |
+
+`--cron` needs a quoted cron expression. Polling consumes queued work; `--handle-schedules`
+also queues due tasks from their native Payload `schedule` definitions. Scheduling is filtered
+by `--queue`, so both `default` and `maintenance` need the flag. Enabling it only on `default`
+does not schedule maintenance tasks. The `ingest` queue receives workflows from application triggers.
+
+For example, the equivalent default-queue worker command from the repository root is:
+
+```bash
+pnpm --filter web payload jobs:run --cron '*/1 * * * *' --queue default --limit 20 --handle-schedules
+```
 
 ## Ingest Workflows
 
