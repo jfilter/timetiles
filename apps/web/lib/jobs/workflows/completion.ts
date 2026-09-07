@@ -7,10 +7,7 @@
  */
 import type { Payload } from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
-import { updateIngestFileStatusById, updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
-import { logger } from "@/lib/logger";
-import { extractRelationId } from "@/lib/utils/relation-id";
+import { updateIngestFileStatusForJob } from "@/lib/ingest/ingest-file-status";
 
 import type { SheetInfo } from "../types/task-outputs";
 
@@ -19,16 +16,6 @@ import type { SheetInfo } from "../types/task-outputs";
 export { updateIngestFileStatusForJob };
 
 export const updateIngestFileStatus = async (payload: Payload, sheets: SheetInfo[]): Promise<void> => {
-  if (sheets.length === 0) return;
-  try {
-    const firstSheet = sheets[0];
-    if (!firstSheet) return;
-    const firstJobId = firstSheet.ingestJobId;
-    const firstJob = await payload.findByID({ collection: COLLECTION_NAMES.INGEST_JOBS, id: firstJobId });
-    const ingestFileId = extractRelationId(firstJob?.ingestFile);
-    if (!ingestFileId) return;
-    await updateIngestFileStatusById(payload, ingestFileId);
-  } catch (error) {
-    logger.error("Failed to update ingest file status", { error, sheetCount: sheets.length });
-  }
+  const firstSheet = sheets[0];
+  if (firstSheet) await updateIngestFileStatusForJob(payload, firstSheet.ingestJobId);
 };
