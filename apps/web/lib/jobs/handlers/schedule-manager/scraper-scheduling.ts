@@ -125,15 +125,15 @@ export const processScheduledScrapers = async (
       }
 
       try {
+        // Persist the schedule before publishing work. A failed update must not
+        // leave a runnable workflow whose scraper is then marked as failed.
+        await advanceScraperNextRunOrDisable(payload, scraper, currentTime);
+
         // Queue scraper-ingest workflow
         await payload.jobs.queue({
           workflow: "scraper-ingest",
           input: { scraperId: scraper.id, triggeredBy: "schedule" },
         });
-
-        // Advance nextRunAt so the scheduler doesn't re-trigger on every tick;
-        // disable the scraper if its cron never matches again.
-        await advanceScraperNextRunOrDisable(payload, scraper, currentTime);
 
         logger.info("Queued scraper execution", { scraperId: scraper.id, name: scraper.name });
 

@@ -280,6 +280,28 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     );
   });
 
+  it("does not publish a workflow when advancing the schedule fails", async () => {
+    const { mockPayload, mockJob, mockReq } = createMockContext();
+    vi.setSystemTime(new Date("2026-03-15T12:05:00Z"));
+    setupScrapersOnly(mockPayload, [
+      {
+        id: 78,
+        name: "Schedule Write Error",
+        enabled: true,
+        schedule: "0 * * * *",
+        nextRunAt: "2026-03-15T12:00:00Z",
+        lastRunStatus: "success",
+      },
+    ]);
+    mockPayload.update.mockRejectedValueOnce(new Error("Schedule update failed"));
+
+    const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
+
+    expect(result.output.scraperErrors).toBe(1);
+    expect(result.output.scrapersTriggered).toBe(0);
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+  });
+
   it("should skip scrapers that are disabled", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
