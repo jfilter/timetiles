@@ -61,7 +61,8 @@ describe.sequential("AI test runner exit status", () => {
       await import("@/scripts/test-ai");
 
       expect(mocks.exit).toHaveBeenCalledWith(expected);
-      expect(JSON.parse(mocks.writeFileSync.mock.calls[0]![1] as string).success).toBe(expected === 0);
+      const report = JSON.parse(mocks.writeFileSync.mock.calls[0]![1] as string) as { success: boolean };
+      expect(report.success).toBe(expected === 0);
     }
   );
 });
