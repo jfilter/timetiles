@@ -23,32 +23,18 @@
 import { isRecord } from "@/lib/utils/is-record";
 import type { NumberFormat } from "@/lib/utils/number-parsing";
 
-/** Minimal shape of one persisted column policy needed to derive a NumberFormat. */
-interface PersistedNumberPolicy {
-  kind?: unknown;
-  decimalSeparator?: unknown;
-  thousandsSeparator?: unknown;
-}
-
-/** Minimal shape of one persisted plan column needed to match a field's number policy. */
-interface PersistedColumn {
-  field?: unknown;
-  kind?: unknown;
-  policy?: PersistedNumberPolicy | null;
-}
-
 /** Read the `columns` array off a persisted interpretation plan, or an empty list. */
-const readPlanColumns = (interpretationPlan: unknown): PersistedColumn[] => {
+const readPlanColumns = (interpretationPlan: unknown): Record<string, unknown>[] => {
   if (!isRecord(interpretationPlan)) return [];
   const columns = interpretationPlan.columns;
-  return Array.isArray(columns) ? (columns as PersistedColumn[]) : [];
+  return Array.isArray(columns) ? columns.filter(isRecord) : [];
 };
 
 /** Narrow a persisted column's separator value to the NumberFormat-allowed set. */
-const decimalSeparatorOf = (policy: PersistedNumberPolicy): NumberFormat["decimalSeparator"] =>
+const decimalSeparatorOf = (policy: Record<string, unknown>): NumberFormat["decimalSeparator"] =>
   policy.decimalSeparator === "," ? "," : ".";
 
-const thousandsSeparatorOf = (policy: PersistedNumberPolicy): NumberFormat["thousandsSeparator"] => {
+const thousandsSeparatorOf = (policy: Record<string, unknown>): NumberFormat["thousandsSeparator"] => {
   if (policy.thousandsSeparator === "." || policy.thousandsSeparator === ",") return policy.thousandsSeparator;
   return null;
 };
@@ -69,7 +55,7 @@ export const projectNumberFormats = (
   for (const key of fieldKeys) {
     const column = columns.find((c) => c.field === key && c.kind === "number");
     const policy = column?.policy;
-    if (policy?.kind !== "number") continue;
+    if (!isRecord(policy) || policy.kind !== "number") continue;
     result[key] = { decimalSeparator: decimalSeparatorOf(policy), thousandsSeparator: thousandsSeparatorOf(policy) };
   }
 

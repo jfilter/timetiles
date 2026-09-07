@@ -11,6 +11,20 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 const planWithColumns = (columns: unknown[]) => ({ ops: [], columns, roles: {}, ambiguityResolution: "strict" });
 
 describe("projectNumberFormats", () => {
+  it("ignores malformed column entries while preserving valid columns", () => {
+    const plan = planWithColumns([
+      null,
+      undefined,
+      42,
+      "price",
+      [],
+      { field: "price", kind: "number", policy: { kind: "number" } },
+    ]);
+    expect(projectNumberFormats(plan, ["price", "missing"])).toEqual({
+      price: { decimalSeparator: ".", thousandsSeparator: null },
+    });
+  });
+
   it("projects an EU number column to its NumberFormat", () => {
     const plan = planWithColumns([
       { field: "price", kind: "number", policy: { kind: "number", decimalSeparator: ",", thousandsSeparator: "." } },
