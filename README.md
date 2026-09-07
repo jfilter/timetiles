@@ -96,7 +96,7 @@ make status         # Check environment health
 make help           # Show all commands
 ```
 
-To fix reported formatting issues, run `pnpm exec oxfmt <file>` on the named files. Avoid broad format/fix commands, which can strip lint suppressions elsewhere.
+To fix reported formatting issues, run `pnpm exec oxfmt <file>` on the named files. `pnpm format` formats all workspace packages without lint autofixes; prefer named files to avoid unrelated changes.
 
 ### Database Mode
 

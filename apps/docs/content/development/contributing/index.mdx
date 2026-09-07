@@ -34,7 +34,7 @@ See [Quick Start](/quick-start) for prerequisites and database mode options.
 | `make fresh`             | Full reset: database + migrate + seed   |
 | `make status`            | Check environment health                |
 
-Avoid broad `make format`, `pnpm format`, and `eslint --fix` runs: they can strip lint suppressions in unrelated files. `make check-ai` reports whole-tree formatting failures even when other checks are scoped.
+`make format` and `pnpm format` run only the formatter, without lint autofixes. Prefer named files to avoid unrelated formatting changes. Avoid broad `eslint --fix` runs: they can strip suppressions for oxlint-owned rules. `make check-ai` reports whole-tree formatting failures even when other checks are scoped.
 
 ### Database Seeding
 

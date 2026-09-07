@@ -86,7 +86,7 @@ Use a `BREAKING CHANGE:` footer when compatibility changes, and reference releva
 4. Review `git diff --cached` before committing.
 5. Read hook failures, correct the cause, and retry normally.
 
-The pre-commit hook checks whole-tree formatting and runs lint/typecheck for staged web, docs, and UI changes. It does not replace relevant tests. Avoid broad `pnpm format`, `make format`, or `eslint --fix` runs: they can remove lint suppressions elsewhere. Repair reported formatting with `pnpm exec oxfmt <file>`.
+The pre-commit hook checks whole-tree formatting and runs lint/typecheck for staged web, docs, and UI changes. It does not replace relevant tests. Repair reported formatting with `pnpm exec oxfmt <file>` to avoid unrelated changes. `pnpm format` and `make format` run only the formatter. Avoid broad `eslint --fix` runs: they can remove suppressions for oxlint-owned rules.
 
 To check a proposed message with the same validator as the hook, from the repository root:
 

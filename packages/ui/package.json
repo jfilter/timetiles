@@ -320,7 +320,7 @@
     "build:watch": "tsup --watch",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "lint": "mkdir -p .lint-results && eslint . --cache --format json --output-file .lint-results/latest.json; eslint . --cache",
-    "format": "eslint . --fix --quiet --cache && oxfmt --write .",
+    "format": "oxfmt --write .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "tsup",

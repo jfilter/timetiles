@@ -12,7 +12,7 @@
     "lint": "oxlint --config ../../.oxlintrc.json . && eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
     "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
-    "format": "eslint app content scripts --cache --fix --quiet && oxfmt --write ."
+    "format": "oxfmt --write ."
   },
   "dependencies": {
     "@timetiles/assets": "workspace:*",

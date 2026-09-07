@@ -12,7 +12,7 @@
   },
   "scripts": {
     "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache",
-    "format": "eslint . --ext .ts,.tsx,.js,.jsx --cache --fix --quiet && oxfmt --write ."
+    "format": "oxfmt --write ."
   },
   "dependencies": {
     "@eslint/js": "^9.39.5"
