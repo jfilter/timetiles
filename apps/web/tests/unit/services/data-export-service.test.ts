@@ -4,13 +4,17 @@
 import "@/tests/mocks/services/logger";
 
 import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ countUserDocs: vi.fn(), findUserDocs: vi.fn() }));
+const mocks = vi.hoisted(() => ({ countUserDocs: vi.fn(), findUserDocs: vi.fn(), uploadDir: "" }));
 
-vi.mock("@/lib/config/env", () => ({ getEnv: () => ({ DATA_EXPORT_DIR: ".exports-test" }) }));
+vi.mock("@/lib/config/env", () => ({
+  getEnv: () => ({ DATA_EXPORT_DIR: ".exports-test", UPLOAD_DIR: mocks.uploadDir }),
+}));
 
 vi.mock("@/lib/utils/user-data", () => ({ countUserDocs: mocks.countUserDocs, findUserDocs: mocks.findUserDocs }));
 
@@ -233,6 +237,54 @@ describe.sequential("DataExportService", () => {
     expect(payload.find).toHaveBeenCalledWith(
       expect.objectContaining({ collection: "scraper-runs", pagination: false, overrideAccess: true })
     );
+  });
+
+  it.each(["file", "missing", "directory"])("handles media stored as %s", async (kind) => {
+    const uploadDir = await mkdtemp(path.join(tmpdir(), "timetiles-export-media-"));
+    mocks.uploadDir = uploadDir;
+    const mediaPath = path.join(uploadDir, "media", "example.txt");
+    const exportId = 987_655;
+    const userId = 4242;
+    const expectedPath = path.join(
+      process.cwd(),
+      ".exports-test",
+      `timetiles-export-${userId}-${new Date().toISOString().split("T")[0]}-${exportId}.zip`
+    );
+    try {
+      await mkdir(path.dirname(mediaPath));
+      if (kind === "file") await writeFile(mediaPath, "Exported media");
+      if (kind === "directory") await mkdir(mediaPath);
+
+      const baseData = {
+        exportedAt: new Date().toISOString(),
+        version: "1.0",
+        user: {},
+        catalogs: [],
+        datasets: [],
+        importFiles: [],
+        importJobs: [],
+        scheduledIngests: [],
+        media: [{ id: 123, filename: "example.txt" }],
+        datasetSchemas: [],
+        auditLog: [],
+        scraperRepos: [],
+        scrapers: [],
+        scraperRuns: [],
+      } as any;
+      const service = createDataExportService({} as any);
+      const result = service.createArchive(exportId, userId, baseData, {} as any);
+      if (kind === "directory") {
+        await expect(result).rejects.toMatchObject({ code: "EISDIR" });
+        expect(existsSync(expectedPath)).toBe(false);
+      } else {
+        await expect(result).resolves.toMatchObject({ filePath: expectedPath });
+        const archive = await readFile(expectedPath);
+        expect(archive.includes(Buffer.from("media/files/example.txt"))).toBe(kind === "file");
+      }
+    } finally {
+      await rm(uploadDir, { recursive: true, force: true });
+      await rm(expectedPath, { force: true });
+    }
   });
 
   it("should delete the partial archive when createArchive fails mid-write", async () => {

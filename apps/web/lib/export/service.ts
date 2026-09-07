@@ -8,13 +8,14 @@
  * @module
  * @category Services
  */
-import { mkdir, readFile, stat } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { Archiver } from "archiver";
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
+import { isENOENT } from "@/lib/utils/is-enoent";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type {
@@ -568,13 +569,10 @@ export class DataExportService {
         const uploadDir = getEnv().UPLOAD_DIR;
         const baseDir = path.isAbsolute(uploadDir) ? uploadDir : path.join(process.cwd(), uploadDir);
         const mediaPath = path.join(baseDir, "media", mediaItem.filename);
-        const fileExists = await stat(mediaPath).catch(() => null);
-
-        if (fileExists) {
-          const fileContent = await readFile(mediaPath);
-          archive.append(fileContent, { name: `media/files/${mediaItem.filename}` });
-        }
-      } catch {
+        const fileContent = await readFile(mediaPath);
+        archive.append(fileContent, { name: `media/files/${mediaItem.filename}` });
+      } catch (error) {
+        if (!isENOENT(error)) throw error;
         // Log but continue - missing files shouldn't fail the export
         logger.warn({ mediaId: mediaItem.id, filename: mediaItem.filename }, "Media file not found");
       }
