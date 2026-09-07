@@ -1,8 +1,7 @@
 /**
  * Main cache service that provides high-level caching operations.
  *
- * This service wraps the storage backend and provides a convenient API for caching
- * operations including cache-aside pattern, tag-based invalidation, and namespacing.
+ * Wraps storage operations with key prefixing, TTL defaults, and best-effort error handling.
  *
  * @module
  * @category Services/Cache
@@ -10,7 +9,7 @@
 
 import { logger } from "@/lib/logger";
 
-import type { CacheConfig, CacheEntry, CacheSetOptions, CacheStorage } from "./types";
+import type { CacheConfig, CacheSetOptions, CacheStorage } from "./types";
 
 /**
  * Main cache service that provides high-level caching operations
@@ -45,19 +44,6 @@ export class Cache {
   }
 
   /**
-   * Get full cache entry with metadata
-   */
-  async getEntry<T>(key: string): Promise<CacheEntry<T> | null> {
-    const fullKey = this.makeKey(key);
-    try {
-      return await this.storage.get<T>(fullKey);
-    } catch (error) {
-      logger.error("Cache getEntry error", { key: fullKey, error });
-      return null;
-    }
-  }
-
-  /**
    * Set a value in cache
    */
   async set<T>(key: string, value: T, options?: CacheSetOptions): Promise<void> {
@@ -79,19 +65,6 @@ export class Cache {
       return await this.storage.delete(fullKey);
     } catch (error) {
       logger.error("Cache delete error", { key: fullKey, error });
-      return false;
-    }
-  }
-
-  /**
-   * Check if key exists
-   */
-  async has(key: string): Promise<boolean> {
-    const fullKey = this.makeKey(key);
-    try {
-      return await this.storage.has(fullKey);
-    } catch (error) {
-      logger.error("Cache has error", { key: fullKey, error });
       return false;
     }
   }
@@ -127,49 +100,6 @@ export class Cache {
   }
 
   /**
-   * Get multiple values at once
-   */
-  async getMany<T>(keys: string[]): Promise<Map<string, T>> {
-    const fullKeys = keys.map((k) => this.makeKey(k));
-    try {
-      const entries = await this.storage.getMany<T>(fullKeys);
-
-      // Convert back to original keys
-      const result = new Map<string, T>();
-      const prefixLength = this.keyPrefix.length;
-      for (const [fullKey, entry] of entries) {
-        const key = fullKey.substring(prefixLength);
-        if (entry?.value != null) {
-          result.set(key, entry.value);
-        }
-      }
-      return result;
-    } catch (error) {
-      logger.error("Cache getMany error", { keys: fullKeys, error });
-      return new Map();
-    }
-  }
-
-  /**
-   * Set multiple values at once
-   */
-  async setMany<T>(entries: Map<string, T> | Record<string, T>, options?: CacheSetOptions): Promise<void> {
-    const map = entries instanceof Map ? entries : new Map(Object.entries(entries));
-    const fullEntries = new Map<string, T>();
-
-    for (const [key, value] of map) {
-      fullEntries.set(this.makeKey(key), value);
-    }
-
-    try {
-      // Same defaulting as set(): without it a batch write ignores the configured TTL.
-      await this.storage.setMany(fullEntries, { ...options, ttl: options?.ttl ?? this.config.defaultTTL });
-    } catch (error) {
-      logger.error("Cache setMany error", { error });
-    }
-  }
-
-  /**
    * Get cache statistics
    */
   async getStats() {
@@ -194,22 +124,6 @@ export class Cache {
     } catch (error) {
       logger.error("Cache cleanup error", { error });
       return 0;
-    }
-  }
-
-  /**
-   * Create a namespaced cache instance
-   */
-  namespace(namespace: string): Cache {
-    return new Cache({ ...this.config, keyPrefix: this.keyPrefix + namespace + ":" });
-  }
-
-  /**
-   * Destroy the cache (cleanup resources)
-   */
-  destroy(): void {
-    if (this.storage.destroy) {
-      this.storage.destroy();
     }
   }
 }
