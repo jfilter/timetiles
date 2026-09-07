@@ -77,7 +77,7 @@ X-RateLimit-Reset: 2025-10-06T15:30:00.000Z
 
 ## HTTP Caching
 
-URL fetch caching for scheduled imports (outgoing requests). Respects RFC 7234 Cache-Control headers from external APIs. Configure in `config/timetiles.yml`:
+URL fetch caching for scheduled imports (outgoing requests). Uses supported Cache-Control headers from external APIs. Configure in `config/timetiles.yml`:
 
 ```yaml
 cache:
@@ -89,7 +89,9 @@ cache:
     respectCacheControl: true
 ```
 
-**Troubleshooting**: High cache misses — increase TTL or size. Stale data — reduce TTL or clear cache (`rm -rf $URL_FETCH_CACHE_DIR/*`). Disk space — reduce max size.
+**Troubleshooting**: For high cache misses, check origin cache headers before increasing TTL or size. For stale data, reduce TTL; for disk pressure, reduce `maxSizeBytes`.
+
+If a manual reset is necessary, stop the processes using the cache, resolve `cache.urlFetch.dir` from the effective configuration, and verify that it is a dedicated cache directory. Move that exact directory aside before restarting; the cache is recreated on demand. Do not use an unset environment variable or wildcard to select a deletion target. The default `/tmp` location is temporary; use a dedicated persistent volume if cache data should survive container replacement.
 
 ## Related
 

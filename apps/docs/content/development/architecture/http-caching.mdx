@@ -1,6 +1,6 @@
 # HTTP Caching
 
-How TimeTiles implements HTTP caching for scheduled URL imports using RFC 7234 standards.
+How TimeTiles caches outgoing HTTP responses for scheduled URL imports.
 
 ## Purpose
 
@@ -9,9 +9,8 @@ The URL fetch cache reduces redundant network requests when importing data from 
 - Avoids re-downloading unchanged data
 - Respects API rate limits
 - Saves bandwidth and improves performance
-- Reduces quota consumption
 
-## HTTP Caching Standards (RFC 7234)
+## Supported HTTP Cache Headers
 
 ### ETag (Entity Tag)
 
@@ -38,7 +37,7 @@ Server Response: 304 Not Modified (if unchanged)
 Server specifies caching behavior:
 
 - `max-age=N` - Cache for N seconds
-- `no-cache` - Revalidate before using cached response
+- `no-cache` - Do not retain the response; the next import fetches it again
 - `no-store` - Never cache
 - `private` - Not cacheable (response is rejected by the cacheability check, same effect as `no-store`)
 
@@ -72,7 +71,9 @@ The cache determines Time-To-Live using this priority order:
 2. **`Cache-Control: no-cache`** → Don't cache (TTL = 0)
 3. **`Cache-Control: max-age=N`** → Use N seconds
 4. **`Expires` header** → Calculate from expiration date
-5. **Default TTL** → Use `URL_FETCH_CACHE_TTL` environment variable
+5. **Default TTL** → Use `cache.urlFetch.defaultTtlSeconds` from `config/timetiles.yml`
+
+Positive TTLs are capped by `cache.urlFetch.maxTtlSeconds`. With `respectCacheControl: false`, freshness uses the configured default TTL (still capped by the maximum); responses marked `no-store` or `private` remain excluded by the cacheability check.
 
 ## Cache Key Generation
 
@@ -93,12 +94,13 @@ Original: https://API.Example.com:443/events/?limit=100&format=json#top
 Normalized: https://api.example.com/events?format=json&limit=100
 ```
 
-These URLs cache as the same entry:
+For the same user and authentication identity, these URLs cache as the same entry:
 
 - `https://api.example.com/data`
 - `https://API.Example.com/data/`
 - `https://api.example.com:443/data`
-- `https://api.example.com/data?b=2&a=1`
+
+Query parameters remain part of the key: `/data?b=2&a=1` matches `/data?a=1&b=2`, but not `/data`. Keys also include the HTTP method, user ID (or an anonymous marker), and an authentication fingerprint when supplied by the caller.
 
 ## Storage Architecture
 
@@ -111,26 +113,24 @@ The cache uses **persistent disk storage**:
 ```
 /tmp/url-fetch-cache/
 ├── index.json          # Cache metadata and key index
-└── entries/
-    ├── abc123.cache    # Individual cache entries
-    └── def456.cache
+├── ab/
+│   └── ab….cache       # SHA-256 key hash, first two characters select directory
+└── de/
+    └── de….cache
 ```
 
 **Characteristics:**
 
-- Survives server restarts and deployments
-- Configurable size limits (`URL_FETCH_CACHE_MAX_SIZE`)
+- Persists while the configured directory exists; surviving container replacement requires a persistent volume
+- Configurable directory and size limits (`cache.urlFetch.dir` and `cache.urlFetch.maxSizeBytes`)
 - Automatic cleanup every 6 hours via background job
 - Lazy eviction (expired entries removed on next access)
+- Binary response bodies are stored as raw bytes behind a JSON metadata header; incomplete binary payloads are rejected
+- Index writes are serialized and atomically renamed within one storage instance; the directory must not be shared by independently initialized instances
 
-### Why Not Generic Cache?
+### Relationship to the Generic Cache
 
-TimeTiles has a separate generic cache system (`CacheManager`) used by other components, but URL fetch cache is standalone because:
-
-- HTTP-specific features (ETags, 304 responses, Cache-Control)
-- Requires persistent storage (filesystem only)
-- Different configuration needs
-- Dedicated cleanup schedule
+`UrlFetchCache` adds HTTP-specific behavior on top of the shared `Cache` wrapper and `FileSystemCacheStorage`. It owns conditional requests, response metadata, and URL/user/authentication cache keys; the storage backend owns serialization, disk accounting, expiration, and eviction.
 
 ## Cache Headers
 
@@ -158,15 +158,9 @@ The cache adds `X-Cache` header for debugging:
 
 ### Why Filesystem Only?
 
-- Persistence required across deployments
+- Responses can survive process restarts when the cache directory is retained
 - Large response bodies don't fit well in memory
 - Disk space more scalable than RAM for caching
-
-### Why Separate from Generic Cache?
-
-- HTTP-specific features (conditional requests, 304 responses)
-- Different lifecycle management (cleanup schedule)
-- Configuration independence from generic caching
 
 ### Why Not Use CDN?
 
@@ -176,5 +170,5 @@ The cache adds `X-Cache` header for debugging:
 
 ## Related Documentation
 
-- [Usage Limits Configuration](/self-hosting/usage-limits) - HTTP cache environment variables
+- [Usage Limits Configuration](/self-hosting/usage-limits) - HTTP cache YAML settings
 - [Resource Protection](/development/architecture/resource-protection) - How caching affects quotas
