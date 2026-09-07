@@ -148,12 +148,26 @@ describe("event schemas", () => {
       }
     });
 
-    it("should default zoom to 10", () => {
+    it("should supply clustering defaults when options are omitted", () => {
       const result = MapClustersQuerySchema.safeParse({ bounds: '{"north":52,"south":50,"east":14,"west":12}' });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.zoom).toBe(10);
+        expect(result.data).toMatchObject({
+          zoom: 10,
+          targetClusters: 25,
+          clusterAlgorithm: "h3",
+          minPoints: 2,
+          mergeOverlapping: true,
+          h3ResolutionScale: 0.6,
+          useHexCenter: false,
+        });
       }
+    });
+
+    it("should preserve explicit boolean options", () => {
+      const result = MapClustersQuerySchema.parse({ mergeOverlapping: "false", useHexCenter: "true" });
+      expect(result.mergeOverlapping).toBe(false);
+      expect(result.useHexCenter).toBe(true);
     });
 
     it("should reject invalid bounds JSON instead of dropping it", () => {

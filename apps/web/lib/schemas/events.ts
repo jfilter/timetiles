@@ -186,18 +186,12 @@ export type ClusterAlgorithm = z.infer<typeof ClusterAlgorithmSchema>;
 
 export const MapClustersQuerySchema = EventFiltersSchema.extend({
   zoom: z.coerce.number().int().min(0).max(28).default(10),
-  targetClusters: z.coerce.number().int().min(5).max(500).default(25).optional(),
-  clusterAlgorithm: ClusterAlgorithmSchema.optional(),
-  minPoints: z.coerce.number().int().min(2).max(20).default(2).optional(),
-  mergeOverlapping: z
-    .preprocess((v) => v === "true" || v === true, z.boolean())
-    .default(true)
-    .optional(),
-  h3ResolutionScale: z.coerce.number().min(0.3).max(1.2).default(0.6).optional(),
-  useHexCenter: z
-    .preprocess((v) => v === "true" || v === true, z.boolean())
-    .default(false)
-    .optional(),
+  targetClusters: z.coerce.number().int().min(5).max(500).default(25),
+  clusterAlgorithm: ClusterAlgorithmSchema,
+  minPoints: z.coerce.number().int().min(2).max(20).default(2),
+  mergeOverlapping: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(true),
+  h3ResolutionScale: z.coerce.number().min(0.3).max(1.2).default(0.6),
+  useHexCenter: z.preprocess((v) => v === "true" || v === true, z.boolean()).default(false),
   parentCells: z.string().optional(),
 }).openapi("MapClustersQuery");
 
