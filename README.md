@@ -89,13 +89,14 @@ make dev            # Start dev server (auto-starts database)
 make check          # Lint + typecheck
 make test           # Run tests
 make test-e2e       # Run E2E tests
-make format         # Format code
 make migrate        # Run database migrations
 make seed           # Seed database
 make fresh          # Clean reset: database + migrate + seed
 make status         # Check environment health
 make help           # Show all commands
 ```
+
+To fix reported formatting issues, run `pnpm exec oxfmt <file>` on the named files. Avoid broad format/fix commands, which can strip lint suppressions elsewhere.
 
 ### Database Mode
 

@@ -78,7 +78,6 @@ See the [Getting Started Guide](/guide/getting-started) for a detailed walkthrou
 | `make check`    | Lint and typecheck all packages                        |
 | `make test`     | Run unit and integration tests                         |
 | `make test-e2e` | Run Playwright E2E tests                               |
-| `make format`   | Format code                                            |
 | `make migrate`  | Run pending database migrations                        |
 | `make seed`     | Seed the database with sample data                     |
 | `make fresh`    | Full reset: stop, clean, start database, migrate, seed |
@@ -86,6 +85,8 @@ See the [Getting Started Guide](/guide/getting-started) for a detailed walkthrou
 | `make db-shell` | Open a PostgreSQL shell                                |
 | `make status`   | Check environment health                               |
 | `make help`     | List all available commands                            |
+
+Fix reported formatting issues with `pnpm exec oxfmt <file>` on the named files. Avoid broad format/fix commands, which can strip lint suppressions elsewhere.
 
 ## Database Mode
 

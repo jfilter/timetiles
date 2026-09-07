@@ -388,9 +388,6 @@ console.log("SUMMARY:");
 console.log(`  oxlint: ${oxlintResults.errorCount} errors, ${oxlintResults.warningCount} warnings`);
 console.log(`  ESLint: ${lintResults.errorCount} errors, ${lintResults.warningCount} warnings`);
 console.log(`  TypeScript: ${typecheckResults.errorCount} errors`);
-if (lintResults.fixableCount > 0) {
-  console.log(`\n💡 Run 'pnpm format' to auto-fix ${lintResults.fixableCount} issues`);
-}
 console.log("\nResults saved to:");
 console.log("  .lint-results/");
 console.log("  .typecheck-results/");
