@@ -28,7 +28,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn(() => Prom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { apiRoute, handleError, ValidationError } from "@/lib/api";
+import { apiRoute, AppError, handleError, ValidationError } from "@/lib/api";
 import { mockLogger } from "@/tests/mocks/services/logger";
 
 const routeContext = { params: Promise.resolve({}) };
@@ -38,19 +38,13 @@ describe.sequential("handleError", () => {
     vi.resetAllMocks();
   });
 
-  it("returns 500 with generic body for unhandled errors (no stack leak)", () => {
-    const err = new Error("boom — internal db connection failed");
-    const response = handleError(err);
-
-    expect(response.status).toBe(500);
-  });
-
-  it("does NOT include stack or original message in the response body", async () => {
+  it("returns a generic 500 without the original message or stack", async () => {
     const err = new Error("boom — internal db connection failed");
     err.stack = "Error: boom\n    at handler.ts:42";
     const response = handleError(err);
     const body = await response.json();
 
+    expect(response.status).toBe(500);
     // Generic shape only — no leakage
     expect(body).toEqual({ error: "Internal server error", code: "INTERNAL_ERROR" });
     expect(JSON.stringify(body)).not.toContain("boom");
@@ -87,13 +81,25 @@ describe.sequential("handleError", () => {
     );
   });
 
-  it("AppError responses still pass through unchanged (not logged as 500)", () => {
-    const err = new ValidationError("preview missing");
+  it("preserves actionable validation details without logging a server error", async () => {
+    const details = { field: "previewId", reason: "required" };
+    const err = new ValidationError("preview missing", details);
     const response = handleError(err);
 
     expect(response.status).toBe(400);
-    // Domain errors don't get the unhandled-error log — they're expected outcomes.
+    expect(await response.json()).toEqual({ error: "preview missing", code: "BAD_REQUEST", details });
     expect(mockLogger.logError).not.toHaveBeenCalled();
+  });
+
+  it.each([500, 503])("keeps AppError details server-side for HTTP %i", async (status) => {
+    const details = { reason: "EACCES: permission denied, open '/srv/private/export.zip'" };
+    const err = new AppError(status, "Export unavailable", "EXPORT_FAILED", details);
+
+    const response = handleError(err);
+
+    expect(response.status).toBe(status);
+    expect(await response.json()).toEqual({ error: "Export unavailable", code: "EXPORT_FAILED" });
+    expect(mockLogger.logError).toHaveBeenCalledExactlyOnceWith(err, "AppError (5xx) in API route", undefined);
   });
 
   it("rethrows Next.js control-flow errors (redirect/notFound) instead of returning 500", () => {
