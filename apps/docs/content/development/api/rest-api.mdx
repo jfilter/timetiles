@@ -1,6 +1,6 @@
 # REST API
 
-The TimeTiles REST API provides programmatic access to event data, geospatial clustering, temporal histograms, and ingest progress tracking. All endpoints return JSON responses and support filtering by catalog, dataset, date range, and geographic bounds.
+The TimeTiles REST API provides programmatic access to event data, geospatial clustering, temporal histograms, and ingest progress tracking. Event read endpoints return JSON and share filters for catalog, dataset, date range, and geographic bounds; other routes have their own contracts.
 
 ## Base URL
 
@@ -68,7 +68,7 @@ TimeTiles uses two categories of API endpoints with different purposes:
 
 ### Payload CMS REST API (`/api/{collection}`)
 
-Payload CMS auto-generates REST endpoints for all collections (e.g., `/api/users`, `/api/events`). These are used by the admin panel and require authentication with collection-level access control.
+Payload CMS auto-generates REST endpoints for all collections (e.g., `/api/users`, `/api/events`). These are used by the admin panel and enforce collection-level access control; whether authentication is required depends on the collection and operation.
 
 For external integrations, prefer the versioned APIs (`/api/v1/`) which have stable response formats.
 
@@ -80,19 +80,21 @@ TimeTiles uses **Payload CMS session-based authentication**. To access protected
 2. **Session cookie** is automatically included in subsequent requests
 3. **User permissions** are enforced based on your account's trust level and role
 
-There is currently no standalone API key system. All API access requires an authenticated session through the Payload CMS authentication system.
+Public event reads allow anonymous access to public data. A session enables access to additional data permitted by the caller's account; it does not bypass collection or route access controls.
 
 ## Common Query Parameters
 
 Many endpoints share common filtering parameters:
 
-| Parameter   | Type        | Description                        | Example                                                          |
-| ----------- | ----------- | ---------------------------------- | ---------------------------------------------------------------- |
-| `catalog`   | string      | Filter by catalog slug             | `catalog=my-catalog`                                             |
-| `datasets`  | string[]    | Filter by dataset slugs (multiple) | `datasets=dataset-1&datasets=dataset-2`                          |
-| `bounds`    | JSON string | Geographic bounding box            | `bounds={"north":37.8,"south":37.7,"east":-122.3,"west":-122.5}` |
-| `startDate` | ISO 8601    | Filter events after this date      | `startDate=2024-01-01`                                           |
-| `endDate`   | ISO 8601    | Filter events before this date     | `endDate=2024-12-31`                                             |
+| Parameter   | Type        | Description                         | Example                                                          |
+| ----------- | ----------- | ----------------------------------- | ---------------------------------------------------------------- |
+| `catalog`   | integer     | Filter by numeric catalog ID        | `catalog=1`                                                      |
+| `datasets`  | string      | Comma-separated numeric dataset IDs | `datasets=2,3`                                                   |
+| `bounds`    | JSON string | Geographic bounding box             | `bounds={"north":37.8,"south":37.7,"east":-122.3,"west":-122.5}` |
+| `startDate` | ISO 8601    | Filter events after this date       | `startDate=2024-01-01`                                           |
+| `endDate`   | ISO 8601    | Filter events before this date      | `endDate=2024-12-31`                                             |
+
+Categorical (`ff`) and numeric range (`rf`) filters are JSON-encoded query parameters; see [Dynamic Filters](/development/features/dynamic-filters) for their wire formats. The shared contract is `EventFiltersSchema` in `apps/web/lib/schemas/events.ts`.
 
 ## Rate Limiting & Quotas
 
@@ -120,8 +122,8 @@ GET /api/v1/events
 
 | Parameter   | Type     | Required | Description                                          |
 | ----------- | -------- | -------- | ---------------------------------------------------- |
-| `catalog`   | string   | No       | Filter by catalog slug                               |
-| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `catalog`   | integer  | No       | Filter by numeric catalog ID                         |
+| `datasets`  | string   | No       | Comma-separated numeric dataset IDs                  |
 | `bounds`    | JSON     | No       | Geographic bounding box `{north, south, east, west}` |
 | `startDate` | ISO 8601 | No       | Filter events after this date                        |
 | `endDate`   | ISO 8601 | No       | Filter events before this date                       |
@@ -138,8 +140,8 @@ GET /api/v1/events
       id: number,
       dataset: {
         id: number,
-        title: string,
-        catalog: string
+        name?: string,
+        catalog?: string
       },
       data: Record<string, unknown>,  // Event-specific data
       location: {
@@ -167,7 +169,7 @@ GET /api/v1/events
 
 ```bash
 curl "https://your-instance.com/api/v1/events?\
-catalog=tech-events&\
+catalog=1&\
 startDate=2024-01-01&\
 endDate=2024-12-31&\
 page=1&\
@@ -192,8 +194,8 @@ GET /api/v1/events/geo
 | ----------- | -------- | -------- | ---------------------------------------------------- |
 | `bounds`    | JSON     | **Yes**  | Geographic bounding box `{north, south, east, west}` |
 | `zoom`      | integer  | No       | Map zoom level (default: 10, affects clustering)     |
-| `catalog`   | string   | No       | Filter by catalog slug                               |
-| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `catalog`   | integer  | No       | Filter by numeric catalog ID                         |
+| `datasets`  | string   | No       | Comma-separated numeric dataset IDs                  |
 | `startDate` | ISO 8601 | No       | Filter events after this date                        |
 | `endDate`   | ISO 8601 | No       | Filter events before this date                       |
 
@@ -207,16 +209,18 @@ Returns a GeoJSON `FeatureCollection` with cluster and point features:
   features: [
     {
       type: "Feature",
+      id: number | string,
       geometry: {
         type: "Point",
         coordinates: [longitude, latitude]
       },
       properties: {
-        id: number | string,
-        type: "event-cluster" | "event-point",
-        count?: number,              // For clusters only
+        type: "event-cluster" | "event-location",
+        count?: number,              // Events represented by the feature
         title?: string,              // For individual events
-        eventIds?: number[]          // For small clusters (≤10 events)
+        eventId?: number,            // When the location represents one event
+        sourceCells?: string[],      // H3 cells represented by a cluster
+        h3Cell?: string
       }
     }
   ]
@@ -225,10 +229,9 @@ Returns a GeoJSON `FeatureCollection` with cluster and point features:
 
 **Clustering Behavior:**
 
-- **High zoom (≥16)**: Individual events returned (no clustering)
-- **Medium zoom (10-15)**: Events clustered within ~100-1000m radius
-- **Low zoom (&lt;10)**: Aggressive clustering for performance
-- **Cluster threshold**: 2+ events at same location
+The default algorithm is H3; `clusterAlgorithm` also accepts `grid-k` and `dbscan`. Resolution depends on zoom and the clustering parameters, not a fixed zoom cutoff. At the finest H3 resolution, co-located events remain grouped as `event-location` features.
+
+See `MapClustersQuerySchema` and `ClusterFeatureSchema` in `apps/web/lib/schemas/events.ts` for the full parameter and response contracts.
 
 **Example:**
 
@@ -236,7 +239,7 @@ Returns a GeoJSON `FeatureCollection` with cluster and point features:
 curl "https://your-instance.com/api/v1/events/geo?\
 bounds=%7B%22north%22%3A37.8%2C%22south%22%3A37.7%2C%22east%22%3A-122.3%2C%22west%22%3A-122.5%7D&\
 zoom=12&\
-catalog=sf-events"
+catalog=1"
 ```
 
 **Implementation:** `apps/web/app/api/v1/events/geo/route.ts`
@@ -255,8 +258,8 @@ GET /api/v1/events/temporal
 
 | Parameter       | Type     | Required | Description                                                |
 | --------------- | -------- | -------- | ---------------------------------------------------------- |
-| `catalog`       | string   | No       | Filter by catalog slug                                     |
-| `datasets`      | string[] | No       | Filter by dataset slugs                                    |
+| `catalog`       | integer  | No       | Filter by numeric catalog ID                               |
+| `datasets`      | string   | No       | Comma-separated numeric dataset IDs                        |
 | `bounds`        | JSON     | No       | Geographic bounding box `{north, south, east, west}`       |
 | `startDate`     | ISO 8601 | No       | Filter events after this date                              |
 | `endDate`       | ISO 8601 | No       | Filter events before this date                             |
@@ -301,7 +304,7 @@ The PostgreSQL function `calculate_event_histogram` automatically determines opt
 
 ```bash
 curl "https://your-instance.com/api/v1/events/temporal?\
-catalog=tech-events&\
+catalog=1&\
 startDate=2024-01-01&\
 endDate=2024-12-31"
 ```
@@ -323,8 +326,8 @@ GET /api/v1/events/stats
 | Parameter   | Type     | Required | Description                                          |
 | ----------- | -------- | -------- | ---------------------------------------------------- |
 | `groupBy`   | string   | **Yes**  | Group results by `catalog` or `dataset`              |
-| `catalog`   | string   | No       | Filter by catalog slug                               |
-| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `catalog`   | integer  | No       | Filter by numeric catalog ID                         |
+| `datasets`  | string   | No       | Comma-separated numeric dataset IDs                  |
 | `bounds`    | JSON     | No       | Geographic bounding box `{north, south, east, west}` |
 | `startDate` | ISO 8601 | No       | Filter events after this date                        |
 | `endDate`   | ISO 8601 | No       | Filter events before this date                       |
@@ -350,7 +353,7 @@ GET /api/v1/events/stats
 ```bash
 curl "https://your-instance.com/api/v1/events/stats?\
 groupBy=dataset&\
-catalog=tech-events"
+catalog=1"
 ```
 
 **Implementation:** `apps/web/app/api/v1/events/stats/route.ts`
@@ -369,8 +372,8 @@ GET /api/v1/events/geo/stats
 
 | Parameter   | Type     | Required | Description                                          |
 | ----------- | -------- | -------- | ---------------------------------------------------- |
-| `catalog`   | string   | No       | Filter by catalog slug                               |
-| `datasets`  | string[] | No       | Filter by dataset slugs                              |
+| `catalog`   | integer  | No       | Filter by numeric catalog ID                         |
+| `datasets`  | string   | No       | Comma-separated numeric dataset IDs                  |
 | `bounds`    | JSON     | No       | Geographic bounding box `{north, south, east, west}` |
 | `startDate` | ISO 8601 | No       | Filter events after this date                        |
 | `endDate`   | ISO 8601 | No       | Filter events before this date                       |
@@ -391,7 +394,7 @@ GET /api/v1/events/geo/stats
 
 ```bash
 curl "https://your-instance.com/api/v1/events/geo/stats?\
-catalog=tech-events"
+catalog=1"
 ```
 
 **Implementation:** `apps/web/app/api/v1/events/geo/stats/route.ts`
@@ -796,7 +799,7 @@ async function pollIngestProgress(ingestId: string) {
 ```typescript
 const response = await fetch(
   "https://your-instance.com/api/v1/events/temporal?" +
-    new URLSearchParams({ catalog: "my-catalog", startDate: "2024-01-01", endDate: "2024-12-31" })
+    new URLSearchParams({ catalog: "1", startDate: "2024-01-01", endDate: "2024-12-31" })
 );
 
 const { histogram, metadata } = await response.json();
