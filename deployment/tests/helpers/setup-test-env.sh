@@ -50,14 +50,11 @@ cp "$DEPLOY_DIR/.env.production.example" "$ENV_FILE"
 # across too or the restored URL would only buy an auth failure instead.
 if [[ -f "$ENV_FILE.pre-test-backup" ]]; then
     for key in SCRAPER_RUNNER_URL SCRAPER_API_KEY; do
-        line=$(grep "^${key}=" "$ENV_FILE.pre-test-backup" 2>/dev/null | tail -1)
+        line=$(awk -v key="$key" 'index($0, key "=") == 1 {line=$0} END {print line}' "$ENV_FILE.pre-test-backup")
         if [[ -n "$line" ]]; then
-            # Replace the commented template line if present, else append.
-            if grep -q "^#\? *${key}=" "$ENV_FILE"; then
-                sed -i.bak "s|^#\? *${key}=.*|${line}|" "$ENV_FILE"
-            else
-                echo "$line" >> "$ENV_FILE"
-            fi
+            # The template leaves these commented out. Append the literal value
+            # instead of interpreting its characters as a sed replacement.
+            printf '%s\n' "$line" >> "$ENV_FILE"
             echo "Preserved $key from the bootstrapped environment"
         fi
     done
