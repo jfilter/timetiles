@@ -8,7 +8,7 @@
  * @module
  * @category Database
  */
-import { aliasedTable, and, count, inArray, isNotNull, type SQL, sql } from "@payloadcms/db-postgres/drizzle";
+import { aliasedTable, and, count, inArray, isNotNull, isNull, type SQL, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filters";
@@ -65,7 +65,7 @@ export const fetchDatasetEventCounts = async (payload: Payload, datasetIds: numb
   const rows = await payload.db.drizzle
     .select({ datasetId: events.dataset, count: count() })
     .from(events)
-    .where(inArray(events.dataset, datasetIds))
+    .where(and(inArray(events.dataset, datasetIds), isNull(events.deletedAt)))
     .groupBy(events.dataset);
 
   return rows.reduce<Map<number, number>>((acc, row) => {
