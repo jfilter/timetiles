@@ -27,13 +27,13 @@ bootstrap_env_value() {
 
 require_bootstrap_env() {
     if [[ ! -f "$BOOTSTRAP_ENV" ]]; then
-        if [[ "${DEPLOYMENT_EXPECTED:-}" == "1" ]]; then
+        if [[ "${BOOTSTRAP_EXPECTED:-}" == "1" ]]; then
             echo "Expected bootstrap's .env.production to have been backed up to:" >&2
             echo "  $BOOTSTRAP_ENV" >&2
             echo "Either bootstrap never wrote one, or setup-test-env.sh stopped backing it up." >&2
             return 1
         fi
-        skip "No bootstrap .env.production backup (harness did not run setup-test-env.sh)"
+        skip "No bootstrap .env.production backup (bootstrap was not run)"
     fi
 }
 

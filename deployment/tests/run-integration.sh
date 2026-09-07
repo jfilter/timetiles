@@ -24,10 +24,9 @@ if ! docker info &>/dev/null; then
     exit 1
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q "postgres"; then
-    print_info "Services not running. Setting up test environment..."
-    "$SCRIPT_DIR/helpers/setup-test-env.sh"
-fi
+# Test an already provisioned disposable stack. Never reset a deployment just
+# because its services are stopped, and never skip a missing stack green.
+export DEPLOYMENT_EXPECTED=1
 
 cd "$SCRIPT_DIR"
 

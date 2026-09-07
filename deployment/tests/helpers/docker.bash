@@ -97,7 +97,7 @@ skip_if_no_docker() {
 # and run-vm.sh would exit 0 over a completely dead deployment. A green run has
 # to mean something was checked.
 #
-# run-vm.sh exports DEPLOYMENT_EXPECTED=1 to say "the stack must be up here".
+# run-integration.sh exports DEPLOYMENT_EXPECTED=1: its stack must be up.
 skip_if_services_not_running() {
     if container_running "postgres" && container_running "web"; then
         return 0

@@ -360,12 +360,11 @@ echo -e "${GREEN}✓ Post-bootstrap setup${NC}"
 # bootstrap does not apply to an existing session.
 print_header "Running Tests"
 
-# DEPLOYMENT_EXPECTED=1: bootstrap just built a live stack here, so a test that
-# cannot find the containers is a failure, not a reason to skip. Without it the
-# integration suite skips itself green over a dead deployment.
+# Explicitly reset only the VM's disposable deployment. The integration runner
+# requires its services to be running and does not provision or reset them.
 TEST_EXIT=0
 if ! limactl shell -y --workdir / "$VM_NAME" \
-    sudo -u timetiles sg docker -c "cd /opt/timetiles/tests && DEPLOYMENT_EXPECTED=1 ./run-all.sh"; then
+    sudo -u timetiles sg docker -c "cd /opt/timetiles/tests && DEPLOYMENT_TEST_DISPOSABLE=1 ./helpers/setup-test-env.sh && BOOTSTRAP_EXPECTED=1 ./run-all.sh"; then
     TEST_EXIT=1
 fi
 

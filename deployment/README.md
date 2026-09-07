@@ -91,6 +91,27 @@ Configuration in `.env.production`:
 - `RESTIC_REPOSITORY` - Local repo path
 - `RESTIC_OFFSITE_REPOSITORY` - S3 URL (optional)
 
+## Deployment Tests
+
+Run `make test-deploy-unit` from the repository root for non-destructive unit tests.
+Use `make test-deploy` for the full suite in a disposable Lima VM.
+
+Integration tests exercise backup/restore and change application data: never run
+them against production. `make test-deploy-integration` and `make test-deploy-ci`
+require an already provisioned disposable stack; they do not set one up automatically.
+
+On a dedicated disposable Ubuntu host or CI runner, prepare that stack explicitly:
+
+```bash
+DEPLOYMENT_TEST_DISPOSABLE=1 deployment/tests/helpers/setup-test-env.sh
+make test-deploy-ci
+```
+
+Setup replaces `.env.production`, deletes existing backup data and Compose volumes,
+and rewrites test configuration. The flag acknowledges those destructive operations;
+it does not isolate Docker or make an existing production checkout safe. CI and the
+Lima harness set it only for their disposable environments.
+
 ## Troubleshooting
 
 ### PostgreSQL Connection Issues

@@ -131,6 +131,7 @@ jobs:
           SKIP_IMAGE_BUILD: "true"
         run: |
           cd deployment/tests
+          DEPLOYMENT_TEST_DISPOSABLE=1 ./helpers/setup-test-env.sh
           ./run-all.sh
 
       - name: Collect logs on failure

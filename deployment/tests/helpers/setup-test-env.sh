@@ -4,6 +4,12 @@
 
 set -eo pipefail
 
+if [[ "${DEPLOYMENT_TEST_DISPOSABLE:-}" != "1" ]]; then
+    echo "ERROR: Test setup replaces deployment secrets and deletes backup data and Docker volumes." >&2
+    echo "Use DEPLOYMENT_TEST_DISPOSABLE=1 only in a disposable checkout and Docker environment." >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
