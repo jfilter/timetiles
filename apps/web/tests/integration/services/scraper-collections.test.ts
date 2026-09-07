@@ -9,9 +9,11 @@
  * @module
  */
 
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
+import { claimScraperRunning } from "@/lib/services/webhook-registry";
 import type { User } from "@/payload-types";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
@@ -573,6 +575,57 @@ describe.sequential("Scraper Collections Access Control", () => {
     });
 
     expect(updated.repoCreatedBy).toBe(adminUser.id);
+  });
+
+  it.each(["commit", "rollback"])("keeps scraper claim and workflow atomic on %s", async (outcome) => {
+    await enableScrapers();
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Atomic Trigger Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: adminUser,
+    });
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "Atomic Trigger",
+        slug: "atomic-trigger",
+        repo: repo.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+      },
+      overrideAccess: true,
+    });
+    const req = await createLocalReq({}, payload);
+    expect(await initTransaction(req)).toBe(true);
+    try {
+      expect(await claimScraperRunning(payload, scraper.id, req)).toBe(true);
+      const job = await payload.jobs.queue({
+        workflow: "scraper-ingest",
+        input: { scraperId: scraper.id, triggeredBy: "manual" },
+        req,
+      });
+      const before = await payload.findByID({ collection: "scrapers", id: scraper.id });
+      expect(before.lastRunStatus).toBe(scraper.lastRunStatus);
+      expect(before.lastRunAt).toBe(scraper.lastRunAt);
+      const countJobs = () => payload.count({ collection: "payload-jobs", where: { id: { equals: job.id } } });
+      expect((await countJobs()).totalDocs).toBe(0);
+
+      if (outcome === "commit") await commitTransaction(req);
+      else await killTransaction(req);
+
+      const after = await payload.findByID({ collection: "scrapers", id: scraper.id });
+      if (outcome === "commit") {
+        expect(after.lastRunStatus).toBe("running");
+        expect(after.lastRunAt).toBeTruthy();
+        expect((await countJobs()).totalDocs).toBe(1);
+      } else {
+        expect(after.lastRunStatus).toBe(scraper.lastRunStatus);
+        expect(after.lastRunAt).toBe(scraper.lastRunAt);
+        expect((await countJobs()).totalDocs).toBe(0);
+      }
+    } finally {
+      await killTransaction(req);
+    }
   });
 
   it("should queue scraper-repo-sync job when creating a scraper-repo", async () => {

@@ -19,7 +19,13 @@ const mocks = vi.hoisted(() => ({
   mockCheckRateLimit: vi.fn(),
 }));
 
-vi.mock("payload", () => ({ getPayload: mocks.mockGetPayload }));
+vi.mock("payload", () => ({
+  getPayload: mocks.mockGetPayload,
+  createLocalReq: vi.fn(({ user }, payload) => ({ payload, user, context: {} })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@payload-config", () => ({ default: {} }));
 vi.mock("@/payload.config", () => ({ default: {} }));
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: mocks.mockCheckRateLimit }));
@@ -29,7 +35,7 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
 vi.mock("@/lib/services/webhook-registry", () => ({ claimScraperRunning: mocks.mockClaimScraperRunning }));
 
 import { NextRequest } from "next/server";
-import { getPayload } from "payload";
+import { commitTransaction, getPayload, killTransaction } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { POST } = await import("@/app/api/scrapers/[id]/run/route");
@@ -172,7 +178,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 
-  it("queues scraper-execution job with correct input on success", async () => {
+  it("queues the scraper workflow in the claim transaction", async () => {
     const response = await POST(createRequest(), createParams("10"));
 
     expect(response.status).toBe(200);
@@ -182,7 +188,9 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(mockPayload.jobs.queue).toHaveBeenCalledWith({
       workflow: "scraper-ingest",
       input: { scraperId: 10, triggeredBy: "manual" },
+      req: mocks.mockClaimScraperRunning.mock.calls[0]?.[2],
     });
+    expect(commitTransaction).toHaveBeenCalledWith(mocks.mockClaimScraperRunning.mock.calls[0]?.[2]);
   });
 
   it("returns 422 for non-numeric ID", async () => {
@@ -204,21 +212,15 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(data.error).toBe("Authentication required");
   });
 
-  it("reverts scraper status to failed when job queue fails", async () => {
+  it("rolls back the scraper claim when job queue fails", async () => {
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
 
     const response = await POST(createRequest(), createParams("10"));
 
     expect(response.status).toBe(500);
 
-    // Verify rollback was called to revert scraper status
-    expect(mockPayload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "scrapers",
-        id: 10,
-        data: { lastRunStatus: "failed" },
-        overrideAccess: true,
-      })
-    );
+    expect(killTransaction).toHaveBeenCalledWith(mocks.mockClaimScraperRunning.mock.calls[0]?.[2]);
+    expect(commitTransaction).not.toHaveBeenCalled();
+    expect(mockPayload.update).not.toHaveBeenCalled();
   });
 });

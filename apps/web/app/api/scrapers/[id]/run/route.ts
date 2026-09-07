@@ -1,16 +1,16 @@
 /**
  * Manual trigger endpoint for scraper execution.
  *
- * Queues a scraper-execution job for the given scraper ID.
+ * Queues a scraper-ingest workflow for the given scraper ID.
  * Requires authentication and ownership of the scraper's repo.
  *
  * @module
  * @category API
  */
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { z } from "zod";
 
 import { apiRoute, ConflictError } from "@/lib/api";
-import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { loadManageableScraper } from "@/lib/api/scraper-helpers";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
@@ -51,20 +51,22 @@ export const POST = apiRoute({
     });
     if (rateLimited) return rateLimited;
 
-    // Atomically claim running status to guard against a concurrent trigger
-    // that slipped past the read above.
-    const claimed = await claimScraperRunning(payload, scraper.id);
-    if (!claimed) {
-      throw new ConflictError("Scraper is already running");
+    const jobReq = await createLocalReq({ user }, payload);
+    const ownsTransaction = await initTransaction(jobReq);
+    try {
+      // Publish the atomic claim and workflow together, preserving the old status/time on failure.
+      const claimed = await claimScraperRunning(payload, scraper.id, jobReq);
+      if (!claimed) throw new ConflictError("Scraper is already running");
+      await payload.jobs.queue({
+        workflow: "scraper-ingest",
+        input: { scraperId: scraper.id, triggeredBy: "manual" },
+        req: jobReq,
+      });
+      if (ownsTransaction) await commitTransaction(jobReq);
+    } catch (error) {
+      if (ownsTransaction) await killTransaction(jobReq);
+      throw error;
     }
-
-    // Queue scraper-ingest workflow (execution + auto-import pipeline).
-    // Previously queued standalone task which skipped the import pipeline.
-    await queueJobWithRollback(
-      payload,
-      { workflow: "scraper-ingest", input: { scraperId: scraper.id, triggeredBy: "manual" } },
-      { collection: "scrapers", id: scraper.id, data: { lastRunStatus: "failed" } }
-    );
 
     return { message: "Scraper run queued" };
   },

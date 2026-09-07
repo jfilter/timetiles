@@ -11,8 +11,9 @@
 import { randomBytes } from "node:crypto";
 
 import { and, eq, isNull, ne, or } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
+import type { Payload, PayloadRequest } from "payload";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { createLogger } from "@/lib/logger";
 import { hashOpaqueValue } from "@/lib/security/hash";
 import { getBaseUrl } from "@/lib/utils/base-url";
@@ -213,8 +214,13 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
  * healthy run that had merely been claimed looked hours stale and was killed on
  * the spot. Matches triggerScheduledIngest, which sets `last_run` at claim time.
  */
-export const claimScraperRunning = async (payload: Payload, scraperId: number): Promise<boolean> => {
-  const result = await payload.db.drizzle
+export const claimScraperRunning = async (
+  payload: Payload,
+  scraperId: number,
+  req?: Pick<PayloadRequest, "transactionID">
+): Promise<boolean> => {
+  const db = await getTransactionAwareDrizzle(payload, req);
+  const result = await db
     .update(scrapers)
     .set({ lastRunStatus: "running", lastRunAt: new Date().toISOString() })
     .where(and(eq(scrapers.id, scraperId), or(isNull(scrapers.lastRunStatus), ne(scrapers.lastRunStatus, "running"))))
