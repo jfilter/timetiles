@@ -482,15 +482,15 @@ verify_docker_group() {
 }
 
 verify_backup_cron() {
+    local backup_command='^[^#]*(^|[[:space:]/])(timetiles[[:space:]]+backup|backups/auto-backup[.]sh)([[:space:]]|$)'
     # Step 09 writes /etc/cron.d/timetiles (system cron drop-in) — not the
     # calling user's crontab. Check the canonical drop locations first;
-    # fall through to `crontab -l` for non-standard setups so any matching
-    # entry still passes the check.
-    if grep -lq "timetiles backup" /etc/cron.d/* /etc/cron.daily/* 2>/dev/null; then
+    # then inspect the user's crontab for backup auto or manually scheduled jobs.
+    if grep -Eq "$backup_command" /etc/cron.d/* /etc/cron.daily/* 2>/dev/null; then
         CHECK_MSG="Backup cron configured"
         return 0
     fi
-    if crontab -l 2>/dev/null | grep -q "timetiles backup"; then
+    if crontab -l 2>/dev/null | grep -Eq "$backup_command"; then
         CHECK_MSG="Backup cron configured"
         return 0
     fi

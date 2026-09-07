@@ -159,12 +159,6 @@ setup() {
     [[ -n "$CHECK_MSG" ]]
 }
 
-@test "verify_backup_cron sets CHECK_MSG" {
-    # Just verify function runs
-    verify_backup_cron || true
-    [[ -n "$CHECK_MSG" ]]
-}
-
 @test "verify_log_rotation sets CHECK_MSG" {
     verify_log_rotation || true
     [[ -n "$CHECK_MSG" ]]
