@@ -151,31 +151,6 @@ export interface FileSystemCacheOptions {
 }
 
 /**
- * URL fetch cache entry (for scheduled URL imports)
- */
-export interface UrlFetchCacheEntry {
-  url: string;
-  method: string;
-  data: Buffer;
-  headers: Record<string, string>;
-  statusCode: number;
-  metadata: UrlFetchCacheMetadata;
-}
-
-/**
- * URL fetch cache metadata
- */
-export interface UrlFetchCacheMetadata {
-  etag?: string;
-  lastModified?: string;
-  expires?: Date;
-  maxAge?: number;
-  fetchedAt: Date;
-  contentHash: string;
-  size: number;
-}
-
-/**
  * Options for URL fetch cache
  */
 export interface UrlFetchCacheOptions {
@@ -187,8 +162,4 @@ export interface UrlFetchCacheOptions {
   respectCacheControl?: boolean;
   /** Force revalidation */
   forceRevalidate?: boolean;
-  /** Return stale cache on network error */
-  returnStaleOnError?: boolean;
-  /** Cache mode (similar to fetch cache option) */
-  cache?: "default" | "no-cache" | "force-cache" | "only-if-cached";
 }

@@ -15,8 +15,6 @@ export type {
   CacheStats,
   CacheStorage,
   FileSystemCacheOptions,
-  UrlFetchCacheEntry,
-  UrlFetchCacheMetadata,
   UrlFetchCacheOptions,
 } from "./types";
 export { getUrlFetchCache, UrlFetchCache } from "./url-fetch-cache";
