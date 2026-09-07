@@ -523,5 +523,5 @@ export default [
   },
   // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
   // Uses buildFromOxlintConfigFile to only disable rules actually enabled in .oxlintrc.json
-  ...oxlint.buildFromOxlintConfigFile("../../.oxlintrc.json"),
+  ...oxlint.buildFromOxlintConfigFile(resolve(MONOREPO_ROOT, ".oxlintrc.json")),
 ];

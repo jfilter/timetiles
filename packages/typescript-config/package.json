@@ -7,7 +7,7 @@
     "access": "public"
   },
   "scripts": {
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint packages/typescript-config --cache --cache-location packages/typescript-config/.eslintcache",
     "format": "oxfmt --write ."
   },
   "devDependencies": {

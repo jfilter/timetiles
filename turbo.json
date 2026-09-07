@@ -72,7 +72,9 @@
         "eslint.config.js",
         ".eslintrc*",
         ".eslintignore",
-        "../../.oxlintrc.json"
+        "../../.oxlintrc.json",
+        "../../package.json",
+        "../../pnpm-workspace.yaml"
       ]
     },
     "format": { "inputs": ["**/*.{ts,tsx,js,jsx,md,json,yml,yaml}"] },

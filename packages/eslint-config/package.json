@@ -11,7 +11,7 @@
     "./vitest": "./vitest.js"
   },
   "scripts": {
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint packages/eslint-config --cache --cache-location packages/eslint-config/.eslintcache",
     "format": "oxfmt --write ."
   },
   "dependencies": {

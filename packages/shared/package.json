@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsgo --noEmit",
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache"
+    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint packages/shared --cache --cache-location packages/shared/.eslintcache"
   },
   "devDependencies": {
     "@timetiles/eslint-config": "workspace:*",

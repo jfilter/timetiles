@@ -41,7 +41,7 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsgo --noEmit",
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint . --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint packages/scraper --cache --cache-location packages/scraper/.eslintcache",
     "prepublishOnly": "tsup"
   },
   "devDependencies": {

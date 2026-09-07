@@ -31,6 +31,8 @@ export default [
     "next-env.d.ts",
   ]),
   ...baseConfig,
+  // Next's route discovery must stay in this app when ESLint runs from the root.
+  { settings: { next: { rootDir: import.meta.dirname } } },
   // i18n: Warn on hardcoded user-facing strings in frontend components
   {
     files: ["components/**/*.tsx", "app/[locale]/**/*.tsx", "app/_components/**/*.tsx"],
@@ -387,11 +389,7 @@ export default [
   // Complex wizard/service files - allow higher limits
   {
     files: [
-      "app/(frontend)/import/_components/steps/step-field-mapping.tsx",
-      "app/(frontend)/import/_components/wizard-store.ts",
-      "app/(frontend)/import/_components/transforms/transform-editor.tsx",
       "**/ingest/_components/transforms/transform-editor.tsx",
-      "lib/services/schema-builder/field-mapping-detection.ts",
       "lib/collections/scheduled-ingests/fields/runtime-fields.ts",
       "lib/config/app-config.ts",
     ],

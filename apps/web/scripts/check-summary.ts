@@ -1,5 +1,4 @@
 #!/usr/bin/env tsx
-/* eslint-disable sonarjs/os-command */
 /**
  * Combined code quality check summary script.
  *
@@ -9,7 +8,7 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -143,9 +142,27 @@ const runLintCheck = (): CheckResults["lint"] => {
   const resultsPath = path.join(historyDir, `${ts}.json`);
 
   try {
-    // Run ESLint with JSON output (resultsPath is derived from a timestamp, not user input)
-    execSync(
-      `pnpm exec eslint app lib components tests scripts --ext .ts,.tsx,.js,.jsx --cache --format json --output-file ${resultsPath}`,
+    // Use the shared root invocation so SonarJS can resolve pnpm catalogs.
+    execFileSync(
+      "pnpm",
+      [
+        "-w",
+        "lint:eslint",
+        "apps/web/app",
+        "apps/web/lib",
+        "apps/web/components",
+        "apps/web/tests",
+        "apps/web/scripts",
+        "--ext",
+        ".ts,.tsx,.js,.jsx",
+        "--cache",
+        "--cache-location",
+        "apps/web/.eslintcache",
+        "--format",
+        "json",
+        "--output-file",
+        resultsPath,
+      ],
       { stdio: "pipe" }
     );
   } catch {

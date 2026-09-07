@@ -9,8 +9,8 @@
     "build": "next build --webpack && pnpm build:search-index",
     "build:search-index": "pagefind --site out --output-path out/_pagefind && tsx scripts/verify-search-index.ts",
     "start": "next start --port 3001",
-    "lint": "oxlint --config ../../.oxlintrc.json . && eslint app content scripts --cache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
-    "lint:all": "eslint app content scripts --cache && tsx scripts/check-links.ts",
+    "lint": "oxlint --config ../../.oxlintrc.json . && pnpm -w lint:eslint apps/docs/app apps/docs/content apps/docs/scripts --cache --cache-location apps/docs/.eslintcache && SKIP_EXTERNAL=1 tsx scripts/check-links.ts",
+    "lint:all": "pnpm -w lint:eslint apps/docs/app apps/docs/content apps/docs/scripts --cache --cache-location apps/docs/.eslintcache && tsx scripts/check-links.ts",
     "typecheck": "tsx ../../scripts/typecheck-with-json.ts",
     "format": "oxfmt --write ."
   },

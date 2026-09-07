@@ -8,7 +8,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --dts && cp src/security/seccomp-profile.json dist/seccomp-profile.json",
     "start": "node dist/index.js",
-    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**' && eslint . --cache",
+    "lint": "oxlint --config ../../.oxlintrc.json . --ignore-pattern 'examples/**' && pnpm -w lint:eslint apps/timescrape --cache --cache-location apps/timescrape/.eslintcache",
     "typecheck": "tsgo --noEmit",
     "test": "vitest run",
     "test:ai": "vitest run --reporter=json --outputFile=.test-results/latest.json"
