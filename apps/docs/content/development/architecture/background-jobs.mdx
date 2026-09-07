@@ -8,7 +8,7 @@ TimeTiles uses [Payload CMS's built-in job queue and workflow system](https://pa
 - **Workflow-based orchestration**: The ingestion pipeline uses 4 Payload Workflows, queued by collection hooks and trigger services
 - **3-queue architecture**: `ingest` (user-facing workflows), `default` (trigger jobs), `maintenance` (scheduled system jobs)
 - **Production**: 1 Docker worker container per queue via `pnpm payload jobs:run --cron --queue <name>`
-- **Development**: `autoRun` processes all queues within the Next.js process
+- **Development**: Payload's `autoRun` schedules and processes all queues within the Next.js process after Payload initializes; no polling process or seeded admin login is required
 
 ## Ingest Workflows
 

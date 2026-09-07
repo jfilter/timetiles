@@ -5,7 +5,7 @@
   "description": "The web application for TimeTiles, providing the main user interface and data exploration features.",
   "type": "module",
   "scripts": {
-    "dev": "./scripts/job-runner.sh & next dev --turbopack",
+    "dev": "next dev --turbopack",
     "dev:debug": "LOG_LEVEL=debug next dev --turbopack",
     "build": "payload generate:types --silent && next build",
     "build:compile": "payload generate:types --silent && payload generate:importmap --silent && next build --experimental-build-mode compile",

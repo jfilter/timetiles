@@ -1,5 +1,5 @@
 /**
- * Unit tests for Payload config factory test email behavior.
+ * Unit tests for Payload config factory email and job execution behavior.
  *
  * @module
  * @category Tests
@@ -66,5 +66,21 @@ describe("createTestConfig", () => {
         transport: expect.objectContaining({ transportOptions: { jsonTransport: true } }),
       })
     );
+  });
+
+  it("uses native job scheduling for every development queue", async () => {
+    const config = await createTestConfig({ environment: "development" });
+
+    expect(config.jobs?.autoRun).toEqual([
+      { cron: "*/10 * * * * *", queue: "ingest", limit: 10 },
+      { cron: "* * * * *", queue: "default", limit: 10 },
+      { cron: "* * * * *", queue: "maintenance", limit: 10 },
+    ]);
+  });
+
+  it.each(["test", "production"] as const)("does not start in-process workers in %s", async (environment) => {
+    const config = await createTestConfig({ environment });
+
+    expect(config.jobs?.autoRun).toBeUndefined();
   });
 });
