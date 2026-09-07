@@ -85,9 +85,8 @@ export const resolveEventQueryContext = async ({
  *   compare against the array's JSON text matches nothing.
  * - Range formats: each range key's number-kind column policy is projected to
  *   a {@link NumberFormat}. A range key with no number column policy is
- *   dropped: without a known format we cannot safely normalize stored text to
- *   `::numeric`. With anything other than exactly one dataset, all range
- *   filters are dropped.
+ *   denied: without a known format we cannot safely normalize stored text to
+ *   `::numeric`. Range filters also require exactly one dataset.
  */
 /**
  * Resolve dataset-scoped filter context (tag-field containment + number formats
@@ -114,8 +113,8 @@ export const resolveDatasetFieldContext = async (
   }
 
   const datasetId = filters.datasets[0]!;
-  // disableErrors: a missing/inaccessible dataset yields null (range filters are
-  // then dropped) rather than throwing and 500ing the whole list request.
+  // disableErrors: a missing/inaccessible dataset yields null; range-filtered
+  // queries are then denied rather than returning a broader result or a 500.
   const dataset = await payload.findByID({
     collection: "datasets",
     id: datasetId,
@@ -136,16 +135,11 @@ export const resolveDatasetFieldContext = async (
 
   if (!hasRangeFilters) return;
 
-  // Project each requested range key to its resolved NumberFormat. Keys whose
-  // column has no number policy are omitted by the projector; drop those from
-  // the range filter (cannot ::numeric-normalize without a known format).
+  // Every requested range must be enforceable. Dropping even one unknown key
+  // broadens the result beyond the caller's requested constraints.
   const numberFormats = projectNumberFormats(dataset?.interpretationPlan, Object.keys(filters.rangeFilters!));
-  for (const key of Object.keys(filters.rangeFilters!)) {
-    if (!(key in numberFormats)) delete filters.rangeFilters![key];
-  }
-
-  if (Object.keys(filters.rangeFilters!).length === 0) {
-    delete filters.rangeFilters;
+  if (Object.keys(filters.rangeFilters!).some((key) => !(key in numberFormats))) {
+    filters.denyResults = true;
     return;
   }
   filters.numberFormats = numberFormats;
