@@ -503,8 +503,8 @@ describe.sequential("database operations", () => {
       const result = await listDatabasesByPrefix("timetiles_test_e2e_");
 
       expect(result).toEqual(["timetiles_test_e2e_100", "timetiles_test_e2e_200"]);
-      expect(allClients[0]!.query).toHaveBeenCalledWith(expect.stringContaining("datname LIKE $1"), [
-        "timetiles_test_e2e_%",
+      expect(allClients[0]!.query).toHaveBeenCalledWith(expect.stringContaining("starts_with(datname, $1)"), [
+        "timetiles_test_e2e_",
       ]);
     });
 

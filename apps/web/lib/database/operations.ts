@@ -344,10 +344,10 @@ export const listDatabasesByPrefix = async (prefix: string): Promise<string[]> =
         SELECT datname
         FROM pg_database
         WHERE datistemplate = false
-          AND datname LIKE $1
+          AND starts_with(datname, $1)
         ORDER BY datname
       `,
-      [`${prefix}%`]
+      [prefix]
     );
 
     return result.rows.map((row) => row.datname);
