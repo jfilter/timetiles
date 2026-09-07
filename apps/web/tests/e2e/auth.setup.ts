@@ -7,6 +7,7 @@
  * @module
  * @category E2E Setup
  */
+import { TEST_CREDENTIALS, TEST_EMAILS } from "../constants/test-credentials";
 import { test as setup } from "./fixtures";
 
 const AUTH_FILE = "test-results/.auth/admin.json";
@@ -20,7 +21,7 @@ setup("authenticate as admin", async ({ page, baseURL }) => {
   const apiLogin = await page
     .context()
     .request.post(`${baseURL}/api/users/login`, {
-      data: { email: "admin@example.com", password: "admin123" },
+      data: { email: TEST_EMAILS.admin, password: TEST_CREDENTIALS.seed.admin },
       headers: { "Content-Type": "application/json" },
     });
   if (apiLogin.status() !== 200) {
