@@ -8,7 +8,7 @@
  * @category E2E Setup
  */
 
-import { type ChildProcess, execSync, spawn } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,10 +28,6 @@ import { seedE2ETestData } from "./seed-e2e-data";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
 import { findAvailablePort, waitForServer } from "./utils/runtime-guards";
 import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
-
-// Store processes globally for teardown
-let serverProcess: ChildProcess | null = null;
-let workerProcess: ChildProcess | null = null;
 
 const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseName: string): Promise<void> => {
   const staleDatabases = (await listDatabasesByPrefix(databasePrefix)).filter((name) => name !== activeDatabaseName);
@@ -159,11 +155,17 @@ export default async function globalSetup(): Promise<void> {
   console.log(`🚀 Starting ${useStandalone ? "standalone" : "production"} server on port ${serverPort}...`);
 
   // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running pnpm in controlled test setup environment
-  serverProcess = spawn("sh", ["-c", serverCommand], {
+  const serverProcess = spawn("sh", ["-c", serverCommand], {
     env: serverEnv,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
   });
+
+  // Register ownership before readiness checks can fail.
+  /* eslint-disable turbo/no-undeclared-env-vars -- E2E teardown metadata */
+  process.env.E2E_SERVER_PORT = String(serverPort);
+  process.env.E2E_SERVER_PID = String(serverProcess.pid ?? "");
+  /* eslint-enable turbo/no-undeclared-env-vars */
 
   // Log server output
   if (serverProcess) {
@@ -208,7 +210,8 @@ export default async function globalSetup(): Promise<void> {
     cwd: webDir,
   });
 
-  workerProcess = wp;
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown metadata
+  process.env.E2E_WORKER_PID = String(wp.pid ?? "");
 
   wp.stdout?.on("data", (data: Buffer) => {
     const message = data.toString().trim();
@@ -246,11 +249,8 @@ export default async function globalSetup(): Promise<void> {
   });
   console.log(`✅ Job worker started`);
 
-  // Store server info for teardown and workers
+  // Publish the ready server URL to test workers.
   /* eslint-disable turbo/no-undeclared-env-vars -- E2E test environment variables set dynamically */
-  process.env.E2E_SERVER_PORT = String(serverPort);
-  process.env.E2E_SERVER_PID = String(serverProcess?.pid ?? "");
-  process.env.E2E_WORKER_PID = String(workerProcess?.pid ?? "");
   process.env.E2E_BASE_URL = baseURL;
   /* eslint-enable turbo/no-undeclared-env-vars */
 }
