@@ -69,10 +69,6 @@ export class FileSystemCacheStorage implements CacheStorage {
     this.defaultTTL = options.defaultTTL ?? 3600; // 1 hour default
     this.stats = { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
 
-    // Initialize cache directory and index lazily
-    // Initialization will happen on first use via ensureInitialized()
-    this.initPromise = null;
-
     // Setup periodic cleanup
     if (options.cleanupIntervalMs) {
       this.cleanupInterval = setInterval(() => {
@@ -251,26 +247,11 @@ export class FileSystemCacheStorage implements CacheStorage {
   }
 
   async clear(pattern?: string): Promise<number> {
-    await this.ensureInitialized();
-
+    const keys = await this.keys(pattern);
     let cleared = 0;
-
-    if (pattern) {
-      // Clear by pattern
-      const regex = new RegExp(pattern);
-      const keys = Array.from(this.index.keys());
-      for (const key of keys) {
-        if (regex.test(key) && (await this.delete(key))) {
-          cleared++;
-        }
-      }
-    } else {
-      // Clear everything
-      const keys = Array.from(this.index.keys());
-      for (const key of keys) {
-        if (await this.delete(key)) {
-          cleared++;
-        }
+    for (const key of keys) {
+      if (await this.delete(key)) {
+        cleared++;
       }
     }
 
@@ -308,8 +289,6 @@ export class FileSystemCacheStorage implements CacheStorage {
   async setMany<T>(entries: Map<string, T>, options?: CacheSetOptions): Promise<void> {
     await this.ensureInitialized();
 
-    // Sequential: every set() rewrites the single index file, so concurrent
-    // writes can interleave and leave a truncated index behind.
     for (const [key, value] of entries) {
       await this.set(key, value, options);
     }
