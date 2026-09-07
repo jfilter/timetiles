@@ -73,6 +73,7 @@
         ".eslintrc*",
         ".eslintignore",
         "../../.oxlintrc.json",
+        "../../eslint.config.mjs",
         "../../package.json",
         "../../pnpm-workspace.yaml"
       ]
