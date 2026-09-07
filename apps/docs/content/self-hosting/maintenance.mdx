@@ -208,14 +208,16 @@ Returns `200` when the system is healthy. Use this for Docker health checks or u
 
 ## Troubleshooting
 
-| Problem         | Diagnosis                       | Solution                                                                                        |
-| --------------- | ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| App won't start | `timetiles logs web`            | Check DATABASE_URL and PAYLOAD_SECRET in .env.production                                        |
-| Imports stuck   | Check `/dashboard/payload-jobs` | Workers may be down — `timetiles restart worker-ingest`                                         |
-| High memory     | `docker stats`                  | Restart: `timetiles restart web`. If persistent, set `NODE_OPTIONS="--max-old-space-size=4096"` |
-| SSL expired     | `timetiles logs certbot`        | DNS must resolve to your server. Force renewal (see above)                                      |
-| Disk full       | `df -h` and `docker system df`  | Prune Docker: `docker system prune`. Prune backups: `timetiles backup prune`                    |
-| Slow queries    | Enable `pg_stat_statements`     | Add indexes, run `VACUUM ANALYZE`, check PostGIS query plans                                    |
+| Problem         | Diagnosis                       | Solution                                                                                                                              |
+| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| App won't start | `timetiles logs web`            | Check DATABASE_URL and PAYLOAD_SECRET in .env.production                                                                              |
+| Imports stuck   | Check `/dashboard/payload-jobs` | Workers may be down — `timetiles restart worker-ingest`                                                                               |
+| High memory     | `docker stats` and service logs | Identify the affected service and workload before restarting it; do not blindly increase the JavaScript heap limit                    |
+| SSL expired     | `timetiles logs certbot`        | DNS must resolve to your server. Force renewal (see above)                                                                            |
+| Disk full       | `df -h` and `docker system df`  | Review unused Docker data and backup retention before removing anything; use `timetiles backup prune` for configured backup retention |
+| Slow queries    | Enable `pg_stat_statements`     | Add indexes, run `VACUUM ANALYZE`, check PostGIS query plans                                                                          |
+
+`docker system prune` affects the entire Docker host, not just the TimeTiles Compose project. Review what other applications use before pruning. Likewise, adding `NODE_OPTIONS` to `.env.production` does not automatically pass it into containers: any deliberate heap tuning needs an explicit service environment override and enough memory left for PostgreSQL, workers, buffers, and the operating system.
 
 ### Debug Mode
 
