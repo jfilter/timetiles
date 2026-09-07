@@ -386,11 +386,10 @@ const createImportFromFetchResult = async (
 export const urlFetchJob = {
   slug: "url-fetch",
   // Retry transient infrastructure failures (DNS not ready at container cold-start,
-  // upstream blips, brief network flaps). The handler defers lifecycle updates to
-  // the scheduled-ingest workflow's catch via `deferLifecycleUpdates`, so retries
-  // here do NOT bump the application-level `currentRetries` counter — only the
-  // final failure does. Quota claims are compensated in the catch on every attempt
-  // before re-throw, so retries don't leak quota.
+  // upstream blips, brief network flaps). `deferLifecycleUpdates` prevents attempts
+  // inside a workflow from bumping `currentRetries`. The schedule manager records
+  // Payload's final failed job once. Quota claims are compensated in the catch on
+  // every attempt before re-throw, so retries don't leak quota.
   retries: { attempts: 3, backoff: { type: "exponential" as const, delay: 5000 } },
   handler: async (context: JobHandlerContext) => {
     const { payload } = context.req;

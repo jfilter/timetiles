@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateIngestName } from "@/lib/ingest/trigger-service";
+import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
 import {
   calculateNextRun,
   getNextExecutionTime,
@@ -15,6 +16,10 @@ import {
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies
+vi.mock("@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests", () => ({
+  reconcileFailedScheduledIngests: vi.fn().mockResolvedValue(0),
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: vi.fn(() => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() })),
@@ -93,6 +98,11 @@ describe.sequential("scheduleManagerJob", () => {
       vi.setSystemTime(new Date("2024-01-15 00:30:00"));
 
       const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
+
+      expect(reconcileFailedScheduledIngests).toHaveBeenCalledWith(mockPayload);
+      expect(vi.mocked(reconcileFailedScheduledIngests).mock.invocationCallOrder[0]).toBeLessThan(
+        mockPayload.find.mock.invocationCallOrder[0]!
+      );
 
       expect(mockPayload.find).toHaveBeenCalledWith({
         collection: "scheduled-ingests",

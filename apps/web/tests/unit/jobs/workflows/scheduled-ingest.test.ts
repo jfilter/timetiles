@@ -147,7 +147,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
     expect(processSheets).not.toHaveBeenCalled();
-    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
   // ── 3. Fetch returns no ingestFileId — no detection ───────────────────
@@ -162,7 +162,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).not.toHaveBeenCalled();
     expect(processSheets).not.toHaveBeenCalled();
-    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
   // ── 4. Detection fails — no sheets processed ─────────────────────────
@@ -175,7 +175,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
     expect(processSheets).not.toHaveBeenCalled();
-    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
   // ── 5. Detection returns empty sheets — no sheets processed ───────────
@@ -190,7 +190,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
     expect(tasks["url-fetch"]).toHaveBeenCalledOnce();
     expect(tasks["dataset-detection"]).toHaveBeenCalledOnce();
     expect(processSheets).not.toHaveBeenCalled();
-    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
   });
 
   // ── 6. Verify concurrency key format ──────────────────────────────────
@@ -314,7 +314,7 @@ describe.sequential("scheduledIngestWorkflow", () => {
       "geocoding provider unreachable"
     );
 
-    expect(updateScheduledIngestFailure).toHaveBeenCalledOnce();
+    expect(updateScheduledIngestFailure).not.toHaveBeenCalled();
     expect(updateScheduledIngestSuccess).not.toHaveBeenCalled();
   });
 });

@@ -68,7 +68,7 @@ export const loadScheduledIngestConfig = async (
 /**
  * Load a scheduled ingest regardless of whether it is currently enabled.
  *
- * Used by workflow-level success/failure reconciliation after a run has already
+ * Used by workflow-level success/review reconciliation after a run has already
  * been claimed as "running". This avoids leaving the schedule stuck if a user
  * disables it mid-run.
  */

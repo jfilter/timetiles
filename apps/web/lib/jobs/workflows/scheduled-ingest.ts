@@ -16,12 +16,10 @@ import type { ScheduledIngest } from "@/payload-types";
 
 import {
   loadScheduledIngestForLifecycle,
-  updateScheduledIngestFailure,
   updateScheduledIngestPaused,
   updateScheduledIngestSuccess,
 } from "../handlers/url-fetch-job/scheduled-ingest-utils";
 import type { DatasetDetectionOutput, UrlFetchOutput } from "../types/task-outputs";
-import { taskErrorWillRetry } from "../utils/task-retry";
 import { updateIngestFileStatus } from "./completion";
 import { processSheets } from "./process-sheets";
 
@@ -138,7 +136,7 @@ const sleep = (ms: number): Promise<void> =>
  * Write a non-failure lifecycle result, retrying with backoff and never rethrowing.
  *
  * The import itself has already finished at this point. Letting a failed bookkeeping
- * write escape into the workflow's catch would record the run as a failure, burn a
+ * write escape to Payload would record the run as a failure, burn a
  * retry and eventually auto-disable a schedule that is working perfectly.
  *
  * If every attempt fails the schedule stays at `lastStatus: "running"`. That is not
@@ -197,112 +195,90 @@ export const scheduledIngestWorkflow: WorkflowConfig<"scheduled-ingest"> = {
   handler: async ({ job, tasks, req }) => {
     const { scheduledIngestId, sourceUrl } = job.input;
     const workflowStart = Date.now();
-    let ingestFileId: string | number | undefined;
     logger.info("scheduled-ingest workflow started", { scheduledIngestId, sourceUrl });
 
-    try {
-      const fetchResult = (await tasks["url-fetch"]("fetch-url", {
-        input: {
-          scheduledIngestId: job.input.scheduledIngestId,
-          sourceUrl: job.input.sourceUrl,
-          authConfig: job.input.authConfig,
-          catalogId: job.input.catalogId,
-          originalName: job.input.originalName,
-          userId: job.input.userId,
-          triggeredBy: job.input.triggeredBy,
-          deferLifecycleUpdates: true,
-        },
-      })) as UrlFetchOutput;
+    const fetchResult = (await tasks["url-fetch"]("fetch-url", {
+      input: {
+        scheduledIngestId: job.input.scheduledIngestId,
+        sourceUrl: job.input.sourceUrl,
+        authConfig: job.input.authConfig,
+        catalogId: job.input.catalogId,
+        originalName: job.input.originalName,
+        userId: job.input.userId,
+        triggeredBy: job.input.triggeredBy,
+        deferLifecycleUpdates: true,
+      },
+    })) as UrlFetchOutput;
 
-      // A source with nothing to report is a successful run, not a failure — failing here
-      // burned a retry per empty day until the schedule auto-disabled itself.
-      if (fetchResult.noRecords) {
-        await recordRunSuccess(req.payload, scheduledIngestId, undefined, workflowStart);
-        logger.info("scheduled-ingest: source returned no records, nothing to import", { scheduledIngestId });
-        return;
-      }
-
-      if (!fetchResult.ingestFileId) {
-        throw new Error("Scheduled ingest did not create an ingest file.");
-      }
-
-      ingestFileId = fetchResult.ingestFileId;
-
-      if (fetchResult.isDuplicate) {
-        await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
-        logger.info("scheduled-ingest: duplicate content detected, skipping downstream processing", {
-          scheduledIngestId,
-          ingestFileId,
-        });
-        return;
-      }
-
-      logger.info("scheduled-ingest: URL fetched, detecting sheets", { scheduledIngestId, ingestFileId });
-
-      const detection = (await tasks["dataset-detection"]("detect-sheets", {
-        input: { ingestFileId: String(ingestFileId) },
-      })) as DatasetDetectionOutput;
-
-      if (!detection.sheets?.length) {
-        throw new Error("Scheduled ingest detected no sheets to process.");
-      }
-
-      await processSheets(tasks, detection.sheets, req);
-      await updateIngestFileStatus(req.payload, detection.sheets);
-
-      const terminalFailure = await buildScheduledIngestFailure(req.payload, ingestFileId);
-
-      // A review pause resolves the run instead of failing it. `lastStatus` must not be
-      // left at "running", and `currentRetries` must not climb — the pending review is
-      // surfaced through the ingest job's NEEDS_REVIEW stage, which is the right channel.
-      if (terminalFailure instanceof ScheduledIngestPausedError) {
-        await reconcileLifecycle(
-          scheduledIngestId,
-          { scheduledIngestId, ingestFileId, outcome: "paused" },
-          (paused) =>
-            updateScheduledIngestPaused(
-              req.payload,
-              paused,
-              ingestFileId,
-              Date.now() - workflowStart,
-              terminalFailure.message
-            ),
-          req.payload
-        );
-        logger.info("scheduled-ingest: paused for review", {
-          scheduledIngestId,
-          ingestFileId,
-          reason: terminalFailure.message,
-        });
-        return;
-      }
-
-      if (terminalFailure) {
-        throw terminalFailure;
-      }
-
-      await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
-
-      logger.info("scheduled-ingest workflow completed", { scheduledIngestId, ingestFileId });
-    } catch (error) {
-      // A TaskError with attempts remaining means Payload requeues the job and
-      // re-runs this workflow from the top — this catch fires on EVERY attempt.
-      // Only the FINAL failure may touch the app-level lifecycle
-      // (currentRetries / executionHistory / auto-disable); otherwise one
-      // transient outage burns the entire retry budget within a single run and
-      // records N failed runs for what the owner perceives as one.
-      if (!taskErrorWillRetry(error)) {
-        const scheduledIngest = await loadScheduledIngestForLifecycle(req.payload, scheduledIngestId);
-        if (scheduledIngest) {
-          await updateScheduledIngestFailure(
-            req.payload,
-            scheduledIngest,
-            error instanceof Error ? error : new Error(String(error)),
-            req
-          );
-        }
-      }
-      throw error;
+    // A source with nothing to report is a successful run, not a failure — failing here
+    // burned a retry per empty day until the schedule auto-disabled itself.
+    if (fetchResult.noRecords) {
+      await recordRunSuccess(req.payload, scheduledIngestId, undefined, workflowStart);
+      logger.info("scheduled-ingest: source returned no records, nothing to import", { scheduledIngestId });
+      return;
     }
+
+    if (!fetchResult.ingestFileId) {
+      throw new Error("Scheduled ingest did not create an ingest file.");
+    }
+
+    const ingestFileId = fetchResult.ingestFileId;
+
+    if (fetchResult.isDuplicate) {
+      await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
+      logger.info("scheduled-ingest: duplicate content detected, skipping downstream processing", {
+        scheduledIngestId,
+        ingestFileId,
+      });
+      return;
+    }
+
+    logger.info("scheduled-ingest: URL fetched, detecting sheets", { scheduledIngestId, ingestFileId });
+
+    const detection = (await tasks["dataset-detection"]("detect-sheets", {
+      input: { ingestFileId: String(ingestFileId) },
+    })) as DatasetDetectionOutput;
+
+    if (!detection.sheets?.length) {
+      throw new Error("Scheduled ingest detected no sheets to process.");
+    }
+
+    await processSheets(tasks, detection.sheets, req);
+    await updateIngestFileStatus(req.payload, detection.sheets);
+
+    const terminalFailure = await buildScheduledIngestFailure(req.payload, ingestFileId);
+
+    // A review pause resolves the run instead of failing it. `lastStatus` must not be
+    // left at "running", and `currentRetries` must not climb — the pending review is
+    // surfaced through the ingest job's NEEDS_REVIEW stage, which is the right channel.
+    if (terminalFailure instanceof ScheduledIngestPausedError) {
+      await reconcileLifecycle(
+        scheduledIngestId,
+        { scheduledIngestId, ingestFileId, outcome: "paused" },
+        (paused) =>
+          updateScheduledIngestPaused(
+            req.payload,
+            paused,
+            ingestFileId,
+            Date.now() - workflowStart,
+            terminalFailure.message
+          ),
+        req.payload
+      );
+      logger.info("scheduled-ingest: paused for review", {
+        scheduledIngestId,
+        ingestFileId,
+        reason: terminalFailure.message,
+      });
+      return;
+    }
+
+    if (terminalFailure) {
+      throw terminalFailure;
+    }
+
+    await recordRunSuccess(req.payload, scheduledIngestId, ingestFileId, workflowStart);
+
+    logger.info("scheduled-ingest workflow completed", { scheduledIngestId, ingestFileId });
   },
 };

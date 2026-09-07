@@ -9,6 +9,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createDatabaseClient } from "@/lib/database/client";
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
+import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
 
 import {
@@ -53,6 +54,113 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
     } finally {
       await client.end();
     }
+  });
+
+  describe.sequential("Payload final failure reconciliation", () => {
+    const createRunningSchedule = async () => {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalog.id, "https://example.com/data.csv", {
+        user: testUser,
+        frequency: "daily",
+        additionalData: {
+          lastStatus: "running",
+          lastRun: new Date(Date.now() - 60_000).toISOString(),
+          currentRetries: 0,
+        },
+      });
+      return scheduledIngest;
+    };
+
+    const createJob = (id: number | string, overrides: Record<string, unknown> = {}) =>
+      payload.create({
+        collection: "payload-jobs",
+        data: {
+          workflowSlug: "scheduled-ingest",
+          queue: "ingest",
+          input: { scheduledIngestId: id },
+          hasError: true,
+          processing: false,
+          error: { message: "Source unavailable after final retry" },
+          ...overrides,
+        },
+      });
+
+    it.each([false, true])("records the current final failure once (string id: %s)", async (stringId) => {
+      const schedule = await createRunningSchedule();
+      await createJob(stringId ? String(schedule.id) : schedule.id);
+
+      expect(await reconcileFailedScheduledIngests(payload)).toBe(1);
+      expect(await reconcileFailedScheduledIngests(payload)).toBe(0);
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(updated.lastStatus).toBe("failed");
+      expect(updated.lastError).toBe("Source unavailable after final retry");
+      expect(updated.currentRetries).toBe(1);
+      expect(updated.executionHistory).toHaveLength(1);
+    });
+
+    it("ignores failed jobs from an earlier run", async () => {
+      const schedule = await createRunningSchedule();
+      await createJob(schedule.id, { createdAt: new Date(Date.now() - 120_000).toISOString() });
+      expect(await reconcileFailedScheduledIngests(payload)).toBe(0);
+      const unchanged = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(unchanged.lastStatus).toBe("running");
+      expect(unchanged.currentRetries).toBe(0);
+    });
+
+    it.each([{ hasError: false }, { processing: true }, { completedAt: new Date().toISOString() }])(
+      "does not replace the latest non-terminal or completed job with an older failure: %j",
+      async (state) => {
+        const schedule = await createRunningSchedule();
+        await createJob(schedule.id);
+        await createJob(schedule.id, state);
+        expect(await reconcileFailedScheduledIngests(payload)).toBe(0);
+      }
+    );
+
+    it("serializes concurrent reconciliation of the same final failure", async () => {
+      const schedule = await createRunningSchedule();
+      await createJob(schedule.id);
+      const results = await Promise.all([
+        reconcileFailedScheduledIngests(payload),
+        reconcileFailedScheduledIngests(payload),
+      ]);
+      expect(results.reduce((sum, count) => sum + count, 0)).toBe(1);
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(updated.currentRetries).toBe(1);
+      expect(updated.executionHistory).toHaveLength(1);
+    });
+
+    it("lets Payload finish task retries before recording one failed run", async () => {
+      const schedule = await createRunningSchedule();
+      const job = await payload.jobs.queue({
+        workflow: "scheduled-ingest",
+        input: {
+          scheduledIngestId: schedule.id,
+          sourceUrl: schedule.sourceUrl,
+          originalName: "failure.csv",
+          catalogId: String(testCatalog.id),
+          // Reject deterministically before any network request; Payload still owns task retries.
+          userId: String(testUser.id + 1),
+        },
+      });
+      let finalFailure = false;
+      let attempts = 0;
+      for (; attempts < 5; attempts++) {
+        // Running this exact job bypasses its backoff clock, not Payload's retry decision.
+        await payload.jobs.runByID({ id: job.id });
+        const storedJob = await payload.findByID({ collection: "payload-jobs", id: job.id });
+        finalFailure = storedJob.hasError === true;
+        const beforeReconciliation = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+        expect(beforeReconciliation.lastStatus).toBe("running");
+        expect(beforeReconciliation.currentRetries).toBe(0);
+        expect(await reconcileFailedScheduledIngests(payload)).toBe(finalFailure ? 1 : 0);
+        if (finalFailure) break;
+      }
+      expect(attempts).toBeGreaterThan(0);
+      expect(finalFailure).toBe(true);
+      const updated = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(updated.currentRetries).toBe(1);
+      expect(updated.executionHistory).toHaveLength(1);
+    });
   });
 
   describe.sequential("Finding Stuck Imports", () => {

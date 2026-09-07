@@ -30,6 +30,13 @@ All ingest workflows run on the `ingest` queue with per-resource concurrency key
 - **Return data** for success -- pipeline continues to next task
 - Multi-sheet files use `Promise.allSettled` with per-sheet try/catch; individual sheet failures do not block other sheets
 
+For `scheduled-ingest`, Payload owns the retry decision. The workflow propagates failures without
+incrementing the schedule's failure counter. On its next pass, `schedule-manager` reconciles the
+current run's latest Payload job when `hasError` is final, then plans new runs. This normally happens
+on the next minute tick while scheduled execution is enabled and workers are processing the queue.
+The reconciliation locks and re-reads the schedule, ignores jobs older than its current `lastRun`,
+and records the failed run only once. Do not duplicate Payload's retry calculation in workflow catches.
+
 ## Task Definitions and Scheduling
 
 The current task inventory is `ALL_JOBS` in `lib/jobs/ingest-jobs.ts`. Each handler owns its task slug, retry policy, and any native Payload `schedule` configuration. Inspect those definitions for exact cron expressions and queue assignments instead of copying a schedule table.
@@ -51,6 +58,6 @@ Post-review processing is not always a schema-version restart. `ingest-process` 
 See [Integration Testing Patterns](/development/contributing/testing-guidelines) for job testing. Key points:
 
 - Query pending jobs **before** running (`completedAt: { exists: false }`)
-- Verify **side effects** after running (not job records -- they're deleted)
+- Verify **side effects** after successful runs (completed job records are deleted). Final failures remain in `payload-jobs` and can be inspected.
 - Use `describe.sequential()` for tests that interact with the job queue
 - Use a bounded drain loop with `payload.jobs.run({ allQueues: true })` to process chained workflow tasks in tests

@@ -2,7 +2,7 @@
  * Background job handler for managing scheduled ingests.
  *
  * Runs periodically to check for scheduled ingests that are due for execution.
- * Creates new import-files records for scheduled URLs and triggers URL fetch jobs.
+ * Reconciles final Payload failures and queues due scheduled-ingest workflows.
  * Implements a cron-like scheduler using Payload's job system with support for
  * various frequency patterns and retry logic.
  *
@@ -22,6 +22,7 @@ import { extractRelationId } from "@/lib/utils/relation-id";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
+import { reconcileFailedScheduledIngests } from "./schedule-manager/reconcile-failed-ingests";
 import { calculateNextRun, shouldRunNow } from "./schedule-manager/schedule-evaluation";
 import { processScheduledScrapers } from "./schedule-manager/scraper-scheduling";
 
@@ -206,6 +207,10 @@ export const scheduleManagerJob = {
       }
 
       logger.info("Starting schedule manager job", { jobId: job?.id });
+
+      // Payload has already decided whether these runs exhausted their retries.
+      // Reconcile before planning another run, including schedules disabled mid-run.
+      await reconcileFailedScheduledIngests(payload);
 
       const currentTime = new Date();
 
