@@ -7,7 +7,7 @@
  * @module
  * @category Services
  */
-import { count, desc, eq } from "@payloadcms/db-postgres/drizzle";
+import { and, count, desc, eq, isNotNull } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { createFilteredEventCatalogScope, createFilteredEventDatasetScope } from "@/lib/database/filtered-events-query";
@@ -20,6 +20,47 @@ import type { User } from "@/payload-types";
  * Supported groupBy field types.
  */
 export type GroupByField = "catalog" | "dataset";
+
+/** Source counts and rankings for timestamped events matching a histogram. */
+export const executeTemporalSourceStats = async (payload: Payload, filters: CanonicalEventFilters) => {
+  const { eventTable, datasetTable, catalogTable, whereClause } = createFilteredEventCatalogScope(filters);
+  const rows = await payload.db.drizzle
+    .select({
+      id: datasetTable.id,
+      name: datasetTable.name,
+      catalogId: catalogTable.id,
+      catalogName: catalogTable.name,
+      count: count(),
+    })
+    .from(eventTable)
+    .innerJoin(datasetTable, eq(eventTable.dataset, datasetTable.id))
+    .innerJoin(catalogTable, eq(datasetTable.catalog, catalogTable.id))
+    .where(and(whereClause, isNotNull(eventTable.eventTimestamp)))
+    .groupBy(datasetTable.id, datasetTable.name, catalogTable.id, catalogTable.name);
+
+  const catalogs = new Map<number, AggregationItem>();
+  const datasets = rows.map((row) => {
+    const eventCount = Number(row.count);
+    const catalog = catalogs.get(row.catalogId) ?? {
+      id: row.catalogId,
+      name: row.catalogName ?? `Catalog ${row.catalogId}`,
+      count: 0,
+    };
+    catalog.count += eventCount;
+    catalogs.set(row.catalogId, catalog);
+    return { id: row.id, name: row.name ?? `Dataset ${row.id}`, count: eventCount };
+  });
+  const ranked = (items: AggregationItem[]) => {
+    items.sort((a, b) => b.count - a.count || Number(a.id) - Number(b.id));
+    return items.slice(0, 5);
+  };
+
+  return {
+    counts: { datasets: datasets.length, catalogs: catalogs.size },
+    topDatasets: ranked(datasets),
+    topCatalogs: ranked(Array.from(catalogs.values())),
+  };
+};
 
 /**
  * Execute PostgreSQL aggregation query.

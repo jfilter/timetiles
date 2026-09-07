@@ -45,7 +45,7 @@ export type EventFilters = z.infer<typeof EventFiltersSchema>;
 // =============================================================================
 
 /**
- * Query parameters for GET /api/events/list
+ * Query parameters for GET /api/v1/events
  */
 export const EventListQuerySchema = EventFiltersSchema.extend({
   ...PaginationSchema.shape,
@@ -72,7 +72,7 @@ export const EventItemSchema = z
   .openapi("EventItem");
 
 /**
- * Response for GET /api/events/list
+ * Response for GET /api/v1/events
  */
 export const EventListResponseSchema = z
   .object({
@@ -100,7 +100,7 @@ export type EventListItem = z.infer<typeof EventItemSchema>;
 // =============================================================================
 
 /**
- * Query parameters for GET /api/events/aggregate
+ * Query parameters for GET /api/v1/events/stats
  */
 export const AggregateQuerySchema = EventFiltersSchema.extend({ groupBy: z.enum(["catalog", "dataset"]) }).openapi(
   "AggregateQuery"
@@ -118,7 +118,7 @@ export const AggregationItemSchema = z
 export type AggregationItem = z.infer<typeof AggregationItemSchema>;
 
 /**
- * Response for GET /api/events/aggregate
+ * Response for GET /api/v1/events/stats
  */
 export const AggregateResponseSchema = z
   .object({ items: z.array(AggregationItemSchema), total: z.number().int(), groupedBy: z.string() })
@@ -131,7 +131,7 @@ export type AggregateResponse = z.infer<typeof AggregateResponseSchema>;
 // =============================================================================
 
 /**
- * Query parameters for GET /api/events/histogram
+ * Query parameters for GET /api/v1/events/temporal
  */
 export const HistogramQuerySchema = EventFiltersSchema.extend({
   targetBuckets: z.coerce.number().int().min(1).max(500).default(30),
@@ -155,7 +155,7 @@ export const HistogramBucketSchema = z
 export type HistogramBucket = z.infer<typeof HistogramBucketSchema>;
 
 /**
- * Response for GET /api/events/histogram
+ * Response for GET /api/v1/events/temporal
  */
 export const HistogramResponseSchema = z
   .object({
@@ -166,8 +166,8 @@ export const HistogramResponseSchema = z
       bucketSizeSeconds: z.number().nullable(),
       bucketCount: z.number().int(),
       counts: z.object({ datasets: z.number().int(), catalogs: z.number().int() }),
-      topDatasets: z.array(z.unknown()),
-      topCatalogs: z.array(z.unknown()),
+      topDatasets: z.array(AggregationItemSchema),
+      topCatalogs: z.array(AggregationItemSchema),
     }),
   })
   .openapi("HistogramResponse");
@@ -179,7 +179,7 @@ export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
 // =============================================================================
 
 /**
- * Query parameters for GET /api/events/map-clusters
+ * Query parameters for GET /api/v1/events/geo
  */
 export const ClusterAlgorithmSchema = z.enum(["h3", "grid-k", "dbscan"]).default("h3");
 export type ClusterAlgorithm = z.infer<typeof ClusterAlgorithmSchema>;
@@ -223,7 +223,7 @@ export const ClusterFeatureSchema = z
   .openapi("ClusterFeature");
 
 /**
- * Response for GET /api/events/map-clusters
+ * Response for GET /api/v1/events/geo
  */
 export const MapClustersResponseSchema = z
   .object({ type: z.literal("FeatureCollection"), features: z.array(ClusterFeatureSchema) })
@@ -236,14 +236,14 @@ export type MapClustersResponse = z.infer<typeof MapClustersResponseSchema>;
 // =============================================================================
 
 /**
- * Query parameters for GET /api/events/cluster-stats
+ * Query parameters for GET /api/v1/events/geo/stats
  */
 export const ClusterStatsQuerySchema = EventFiltersSchema.openapi("ClusterStatsQuery");
 
 export type ClusterStatsQuery = z.infer<typeof ClusterStatsQuerySchema>;
 
 /**
- * Response for GET /api/events/cluster-stats
+ * Response for GET /api/v1/events/geo/stats
  */
 export const ClusterStatsResponseSchema = z
   .object({ p20: z.number(), p40: z.number(), p60: z.number(), p80: z.number(), p100: z.number() })

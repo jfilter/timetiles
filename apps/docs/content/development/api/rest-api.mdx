@@ -290,8 +290,8 @@ GET /api/v1/events/temporal
       datasets: number,
       catalogs: number
     },
-    topDatasets: string[],
-    topCatalogs: string[]
+    topDatasets: Array<{ id: number, name: string, count: number }>,
+    topCatalogs: Array<{ id: number, name: string, count: number }>
   }
 }
 ```
@@ -299,6 +299,8 @@ GET /api/v1/events/temporal
 **Bucket Sizing:**
 
 The PostgreSQL function `calculate_event_histogram` automatically determines optimal bucket sizes based on the data range and the `targetBuckets`/`minBuckets`/`maxBuckets` parameters. The actual bucket size used is returned in `metadata.bucketSizeSeconds`.
+
+If `minBuckets` exceeds `maxBuckets`, the route clamps it to `maxBuckets`. Source counts represent distinct datasets and catalogs with matching timestamped events. `topDatasets` and `topCatalogs` contain up to five sources ranked by event count (ties use ascending ID), under the same access controls and filters as the histogram.
 
 **Example:**
 

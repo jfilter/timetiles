@@ -24,6 +24,7 @@ import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filter
 import { toHistogramJsonb } from "@/lib/filters/to-jsonb-payload";
 import type { HistogramQuery } from "@/lib/schemas/events";
 import { HistogramQuerySchema } from "@/lib/schemas/events";
+import { executeTemporalSourceStats } from "@/lib/services/aggregation-service";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 
 export const GET = apiRoute({
@@ -35,8 +36,12 @@ export const GET = apiRoute({
       return buildEmptyHistogramResponse();
     }
 
-    const histogramResult = await executeHistogramQuery(payload, query, ctx.filters);
-    return buildHistogramResponse(histogramResult.rows);
+    const [histogramResult, sourceStats] = await Promise.all([
+      executeHistogramQuery(payload, query, ctx.filters),
+      executeTemporalSourceStats(payload, ctx.filters),
+    ]);
+    const response = buildHistogramResponse(histogramResult.rows);
+    return { ...response, metadata: { ...response.metadata, ...sourceStats } };
   },
 });
 
@@ -99,9 +104,6 @@ const buildHistogramResponse = (
       dateRange: { min: rows[0]?.bucket_start ?? null, max: rows.at(-1)?.bucket_end ?? null },
       bucketSizeSeconds: rows[0] ? Number(rows[0].bucket_size_seconds) : null,
       bucketCount: rows.length,
-      counts: { datasets: 0, catalogs: 0 },
-      topDatasets: [],
-      topCatalogs: [],
     },
   };
 };

@@ -13,6 +13,8 @@ import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type { User } from "@/payload-types";
+
 import { GET } from "../../../app/api/v1/events/temporal/route";
 
 /**
@@ -32,6 +34,8 @@ interface HistogramBucket {
 describe.sequential("/api/v1/events/temporal", () => {
   let payload: Payload;
   let testDatasetId: string;
+  let testCatalogId: number;
+  let testUser: User;
   const testEventIds: string[] = [];
   let testEnv: any;
 
@@ -46,6 +50,7 @@ describe.sequential("/api/v1/events/temporal", () => {
 
     // Create test user
     const { users } = await withUsers(testEnv, { testUser: { role: "user" } });
+    testUser = users.testUser;
 
     // Create test catalog (make it public so unauthenticated requests can access it)
     const { catalog } = await withCatalog(testEnv, {
@@ -54,6 +59,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       isPublic: true,
       user: users.testUser,
     });
+    testCatalogId = catalog.id;
 
     // Create test dataset (must be public since catalog is public)
     const { dataset } = await withDataset(testEnv, catalog.id, { name: "Test Dataset for Histogram", isPublic: true });
@@ -111,6 +117,31 @@ describe.sequential("/api/v1/events/temporal", () => {
         // Cleanup error (non-critical) - silently continue
       }
     }
+  });
+
+  it("returns real source metadata under the histogram's field filters", async () => {
+    const params = new URLSearchParams({ datasets: testDatasetId, ff: JSON.stringify({ "venue.city": ["Berlin"] }) });
+    const response = await GET(new NextRequest(`http://localhost:3000/api/v1/events/temporal?${params}`), {
+      params: Promise.resolve({}),
+    });
+    expect(response.status).toBe(200);
+    const { metadata } = await response.json();
+    expect(metadata.total).toBe(3);
+    expect(metadata.counts).toEqual({ datasets: 1, catalogs: 1 });
+    expect(metadata.topDatasets).toEqual([{ id: Number(testDatasetId), name: "Test Dataset for Histogram", count: 3 }]);
+    expect(metadata.topCatalogs).toEqual([{ id: testCatalogId, name: "Test Catalog for Histogram", count: 3 }]);
+  });
+
+  it("returns empty source metadata when no events match", async () => {
+    const params = new URLSearchParams({ datasets: testDatasetId, startDate: "2100-01-01" });
+    const response = await GET(new NextRequest(`http://localhost:3000/api/v1/events/temporal?${params}`), {
+      params: Promise.resolve({}),
+    });
+    expect(response.status).toBe(200);
+    const { metadata } = await response.json();
+    expect(metadata.counts).toEqual({ datasets: 0, catalogs: 0 });
+    expect(metadata.topDatasets).toEqual([]);
+    expect(metadata.topCatalogs).toEqual([]);
   });
 
   it("should return histogram data with auto granularity", async () => {
@@ -173,9 +204,9 @@ describe.sequential("/api/v1/events/temporal", () => {
     // Total should include our test events
     expect(data.metadata.total).toBeGreaterThanOrEqual(testEventIds.length);
 
-    // topDatasets is not implemented yet - currently returns empty array
-    // See route.ts:242 where topDatasets is hardcoded to []
-    expect(data.metadata.topDatasets).toEqual([]);
+    expect(data.metadata.topDatasets).toEqual([
+      { id: Number(testDatasetId), name: "Test Dataset for Histogram", count: data.metadata.total },
+    ]);
   });
 
   it("should filter histogram data by deeply nested field path", async () => {
@@ -455,5 +486,43 @@ describe.sequential("/api/v1/events/temporal", () => {
     expect(data.metadata.bucketCount).toBeLessThanOrEqual(50);
     const totalCount = data.histogram.reduce((sum: number, b: HistogramBucket) => sum + b.count, 0);
     expect(totalCount).toBe(2);
+  });
+  it("ranks matching sources and excludes private and timeless events", async () => {
+    const { withCatalog, withDataset } = await import("../../setup/integration/environment");
+    const { catalog: privateCatalog } = await withCatalog(testEnv, { isPublic: false, user: testUser });
+    const attemptId = randomUUID();
+    const sourceIds: number[] = [];
+    const expected: Array<{ id: number; name: string; count: number }> = [];
+    for (let source = 0; source < 8; source++) {
+      const { dataset } = await withDataset(testEnv, source === 6 ? privateCatalog.id : testCatalogId, {
+        name: `Ranked source ${source} ${attemptId}`,
+        isPublic: source !== 6,
+      });
+      sourceIds.push(dataset.id);
+      if (source < 6) expected.push({ id: dataset.id, name: dataset.name, count: source + 1 });
+      for (let event = 0; event <= source; event++) {
+        await payload.create({
+          collection: "events",
+          data: {
+            uniqueId: `ranked-${randomUUID()}`,
+            dataset: dataset.id,
+            sourceData: { title: "Ranked event" },
+            transformedData: { title: "Ranked event" },
+            eventTimestamp: source === 7 ? null : "2030-01-01T00:00:00.000Z",
+          },
+        });
+      }
+    }
+    const params = new URLSearchParams({ datasets: sourceIds.join(",") });
+    const response = await GET(new NextRequest(`http://localhost:3000/api/v1/events/temporal?${params}`), {
+      params: Promise.resolve({}),
+    });
+    expect(response.status).toBe(200);
+    const { metadata } = await response.json();
+    expect(metadata.total).toBe(21);
+    expect(metadata.counts).toEqual({ datasets: 6, catalogs: 1 });
+    expected.reverse();
+    expect(metadata.topDatasets).toEqual(expected.slice(0, 5));
+    expect(metadata.topCatalogs).toEqual([{ id: testCatalogId, name: "Test Catalog for Histogram", count: 21 }]);
   });
 });
