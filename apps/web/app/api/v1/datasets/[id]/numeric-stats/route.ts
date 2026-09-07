@@ -91,9 +91,8 @@ export const GET = apiRoute({
 
     // Resolve each numeric path's NumberFormat from the dataset's interpretation
     // plan. A path with NO number-kind policy is dropped rather than defaulted:
-    // `resolveDatasetFieldContext` deletes exactly those keys from `rf` on every
-    // event endpoint and `buildRangeFilterConditions` skips them, so advertising
-    // a slider for them offered the user a control that silently does nothing.
+    // Event queries deny active ranges without a resolved policy, so advertising
+    // a slider for these paths would offer a control that cannot be applied.
     // The two sides must agree on one rule, and the query side owns it ("never
     // cast blind" — an unknown convention cannot be safely ::numeric-normalized).
     const planFormats = projectNumberFormats(dataset.interpretationPlan, numberPaths);

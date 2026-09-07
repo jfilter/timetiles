@@ -119,17 +119,26 @@ describe("buildRangeFilterConditions", () => {
     expect(chunks.some((c) => c.includes("',', '.'"))).toBe(true);
   });
 
-  it("skips fields with no resolved NumberFormat (never casts blind)", () => {
+  it("denies fields with no resolved NumberFormat (never casts blind)", () => {
     const conditions = buildRangeFilterConditions({ price: { min: 1 } }, {});
-    expect(conditions).toEqual([]);
+    expect(collectQueryStrings(conditions)).toEqual(["sql", "FALSE"]);
   });
 
-  it("skips invalid field keys", () => {
+  it("denies invalid field keys", () => {
     const conditions = buildRangeFilterConditions(
       { "invalid key with spaces": { min: 1 } },
       { "invalid key with spaces": PLAIN }
     );
-    expect(conditions).toEqual([]);
+    expect(collectQueryStrings(conditions)).toEqual(["sql", "FALSE"]);
+  });
+
+  it("denies the whole conjunction when only some range formats resolve", () => {
+    const conditions = buildRangeFilterConditions({ price: { min: 10 }, missing: { max: 20 } }, { price: PLAIN });
+    expect(collectQueryStrings(conditions)).toEqual(["sql", "FALSE"]);
+  });
+
+  it("ignores an empty range even without a format", () => {
+    expect(buildRangeFilterConditions({ missing: { min: null, max: null } }, {})).toEqual([]);
   });
 
   it("skips ranges with neither finite min nor max", () => {

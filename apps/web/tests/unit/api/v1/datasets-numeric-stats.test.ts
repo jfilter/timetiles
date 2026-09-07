@@ -5,10 +5,8 @@
  *
  * 1. It advertised a range slider for every path in detection's
  *    `fieldTypes.number`, falling back to a US number format when the column had
- *    no number-kind plan policy. The query path does the opposite:
- *    `resolveDatasetFieldContext` deletes exactly those keys from `rf` and
- *    `buildRangeFilterConditions` skips them, so the filter was accepted, shown
- *    as active in the UI, and never applied.
+ *    no number-kind plan policy. Such fields cannot support range filtering;
+ *    active ranges without a resolved policy now deny results.
  * 2. It built ONE shared WHERE clause from the full query (including `rf`) and
  *    reused it for every field's MIN/MAX, so a field's reported bounds were
  *    constrained by its own range filter — dragging a handle progressively
@@ -93,11 +91,10 @@ describe.sequential("GET /api/v1/datasets/[id]/numeric-stats", () => {
     });
   });
 
-  it("omits fields whose column has no number-kind policy — the event endpoints drop their range filter", async () => {
+  it("omits fields whose column has no number-kind policy", async () => {
     // `qty` is classified numeric by detection but has no plan policy, so
-    // `projectNumberFormats` omits it and every event endpoint silently
-    // discards a `qty` range filter. Advertising a slider for it offers a
-    // control that does nothing.
+    // `projectNumberFormats` omits it. Advertising a slider for it would offer
+    // a range that the query layer cannot enforce.
     mocks.mockFindByID.mockResolvedValue({
       id: DATASET_ID,
       fieldMetadata: fieldMeta(["price", "qty"]),

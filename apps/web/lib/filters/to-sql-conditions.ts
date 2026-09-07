@@ -217,16 +217,15 @@ export const buildRangeFilterConditions = (
 
   const conditions: SqlFragment[] = [];
   for (const [fieldKey, range] of Object.entries(rangeFilters)) {
-    // Defense-in-depth: re-validate even though sanitizeRangeFilters ran at construction
-    if (!isValidFieldKey(fieldKey)) continue;
-
-    // No resolved NumberFormat → not range-filterable. Never cast blind.
-    const format = numberFormats?.[fieldKey];
-    if (!format) continue;
-
     const hasMin = range.min != null && Number.isFinite(range.min);
     const hasMax = range.max != null && Number.isFinite(range.max);
     if (!hasMin && !hasMax) continue;
+
+    // Never omit an active constraint just because it cannot be enforced.
+    // This also protects stats routes that resolve formats without the shared
+    // event-query resolver. An empty range above remains a harmless no-op.
+    const format = numberFormats?.[fieldKey];
+    if (!isValidFieldKey(fieldKey) || !format) return [sql`FALSE`];
 
     const safeNumeric = buildNormalizedNumericExpr(fieldKey, format);
     if (hasMin) conditions.push(sql`${safeNumeric} >= ${range.min}`);

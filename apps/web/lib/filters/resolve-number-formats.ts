@@ -12,7 +12,8 @@
  *
  * A field whose column has no number-kind policy is intentionally OMITTED — we
  * cannot safely `::numeric`-normalize without a known format, so such a field is
- * dropped upstream rather than guessed. Missing `decimalSeparator` defaults to
+ * excluded from filter controls rather than guessed. Active filters for such
+ * fields must deny results, not be silently discarded. Missing `decimalSeparator` defaults to
  * `"."` and missing `thousandsSeparator` to `null` (the US default that
  * `decideNumberFormat` returns for plain/ambiguous/native-number columns).
  *
@@ -56,7 +57,7 @@ const thousandsSeparatorOf = (policy: PersistedNumberPolicy): NumberFormat["thou
  * Project the requested field paths to their resolved {@link NumberFormat}.
  *
  * Only fields backed by a `kind: "number"` column with a `kind: "number"` policy
- * are included; all others are omitted (caller drops them from the range filter).
+ * are included; callers must reject or deny active ranges for omitted fields.
  */
 export const projectNumberFormats = (
   interpretationPlan: unknown,
