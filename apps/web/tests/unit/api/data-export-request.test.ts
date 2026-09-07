@@ -19,7 +19,7 @@ vi.mock("payload", () => ({
   getPayload: mocks.mockGetPayload,
   // The route wraps check-then-create in a transaction with an advisory lock;
   // stub so it runs without a real transaction.
-  initTransaction: vi.fn().mockResolvedValue(false),
+  initTransaction: vi.fn().mockResolvedValue(true),
   commitTransaction: vi.fn().mockResolvedValue(undefined),
   killTransaction: vi.fn().mockResolvedValue(undefined),
 }));
@@ -32,7 +32,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 vi.mock("@/lib/export/service", () => ({ createDataExportService: mocks.mockCreateDataExportService }));
 
 import { NextRequest } from "next/server";
-import { getPayload } from "payload";
+import { commitTransaction, getPayload, killTransaction } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { POST } = await import("@/app/api/data-exports/request/route");
@@ -100,10 +100,15 @@ describe.sequential("POST /api/data-exports/request", () => {
     expect(data.exportId).toBe(42);
     expect(data.summary).toEqual(mockSummary);
 
-    expect(mockPayload.jobs.queue).toHaveBeenCalledWith({ task: "data-export", input: { exportId: 42 } });
+    const req = mockPayload.create.mock.calls[0]?.[0].req;
+    expect(mockPayload.jobs.queue).toHaveBeenCalledWith({ task: "data-export", input: { exportId: 42 }, req });
+    expect(commitTransaction).toHaveBeenCalledWith(req);
+    expect(mockPayload.jobs.queue.mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(commitTransaction).mock.invocationCallOrder[0]!
+    );
   });
 
-  it("reverts export status to failed when job queue fails", async () => {
+  it("rolls back the export transaction when job queue fails", async () => {
     mockPayload.find.mockResolvedValue({ docs: [] });
     mockPayload.create.mockResolvedValue({ id: 42 });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
@@ -111,15 +116,9 @@ describe.sequential("POST /api/data-exports/request", () => {
     const response = await POST(createRequest(), emptyParams);
     expect(response.status).toBe(500);
 
-    // Verify rollback marked the export as failed
-    expect(mockPayload.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        collection: "data-exports",
-        id: 42,
-        data: { status: "failed", errorLog: "Failed to queue export job" },
-        overrideAccess: true,
-      })
-    );
+    expect(killTransaction).toHaveBeenCalledWith(mockPayload.create.mock.calls[0]?.[0].req);
+    expect(commitTransaction).not.toHaveBeenCalled();
+    expect(mockPayload.update).not.toHaveBeenCalled();
   });
 
   it("acquires the per-user advisory lock before checking for an active export", async () => {

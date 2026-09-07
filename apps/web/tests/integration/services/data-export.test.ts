@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { DataExportService } from "@/lib/export/service";
@@ -317,29 +318,38 @@ describe.sequential("Data Export Service", () => {
   });
 
   describe("Export Job Queue", () => {
-    it("should queue data-export job", async () => {
+    it.each(["commit", "rollback"])("keeps the export record and queued job atomic on %s", async (outcome) => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      // Create export record
-      const exportRecord = await payload.create({
-        collection: "data-exports",
-        data: { user: users.testUser.id, status: "pending", requestedAt: new Date().toISOString() },
-        overrideAccess: true,
-      });
+      const req = await createLocalReq({}, payload);
+      expect(await initTransaction(req)).toBe(true);
+      try {
+        const exportRecord = await payload.create({
+          collection: "data-exports",
+          data: { user: users.testUser.id, status: "pending", requestedAt: new Date().toISOString() },
+          overrideAccess: true,
+          req,
+        });
+        const job = await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id }, req });
+        expect(job.input.exportId).toBe(exportRecord.id);
 
-      // Queue job
-      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id } });
+        // Other connections, including workers, must see neither row before commit.
+        const countRows = async () =>
+          Promise.all([
+            payload.count({ collection: "data-exports", where: { id: { equals: exportRecord.id } } }),
+            payload.count({ collection: "payload-jobs", where: { id: { equals: job.id } } }),
+          ]);
+        expect((await countRows()).map((result) => result.totalDocs)).toEqual([0, 0]);
 
-      // Verify job was queued
-      const pendingJobs = await payload.find({
-        collection: "payload-jobs",
-        where: { taskSlug: { equals: "data-export" }, completedAt: { exists: false } },
-        overrideAccess: true,
-      });
+        if (outcome === "commit") await commitTransaction(req);
+        else await killTransaction(req);
 
-      expect(pendingJobs.docs).toHaveLength(1);
-      expect(pendingJobs.docs[0].input.exportId).toBe(exportRecord.id);
+        const expected = outcome === "commit" ? 1 : 0;
+        expect((await countRows()).map((result) => result.totalDocs)).toEqual([expected, expected]);
+      } finally {
+        await killTransaction(req);
+      }
     });
   });
 });

@@ -12,7 +12,6 @@ import { sql } from "@payloadcms/db-postgres";
 import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { apiRoute, ConflictError } from "@/lib/api";
-import { queueJobWithRollback } from "@/lib/api/job-helpers";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { RequestExportResponse } from "@/lib/export/api-types";
 import { ACTIVE_DATA_EXPORT_STATUSES } from "@/lib/export/data-export-statuses";
@@ -84,22 +83,13 @@ export const POST = apiRoute({
         req,
       });
 
+      // Publish the request and its job atomically; a queue failure rolls back both.
+      await payload.jobs.queue({ task: "data-export", input: { exportId: exportRecord.id }, req });
       if (ownsTransaction) await commitTransaction(req);
     } catch (error) {
       if (ownsTransaction) await killTransaction(req);
       throw error;
     }
-
-    // Queue background job -- if queueing fails, mark the record as failed
-    await queueJobWithRollback(
-      payload,
-      { task: "data-export", input: { exportId: exportRecord.id } },
-      {
-        collection: DATA_EXPORTS_COLLECTION,
-        id: exportRecord.id,
-        data: { status: "failed", errorLog: "Failed to queue export job" },
-      }
-    );
 
     logger.info({ userId: user.id, exportId: exportRecord.id }, "Data export requested");
 
