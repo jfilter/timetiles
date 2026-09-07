@@ -56,7 +56,16 @@ describe.sequential("event list sorting by a transformedData field", () => {
       isPublic: true,
       user: users.testUser,
     });
-    const { dataset } = await withDataset(testEnv, catalog.id, { name: "Sort Parity Dataset", isPublic: true });
+    const { dataset } = await withDataset(testEnv, catalog.id, {
+      name: "Sort Parity Dataset",
+      isPublic: true,
+      interpretationPlan: {
+        ops: [],
+        columns: [{ field: "price", kind: "number", policy: { kind: "number", decimalSeparator: "." } }],
+        roles: {},
+        ambiguityResolution: "strict",
+      },
+    });
     datasetId = dataset.id;
 
     for (const [index, row] of ROWS.entries()) {

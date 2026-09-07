@@ -188,10 +188,10 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
     expect(data.pagination.totalDocs).toBe(0);
   });
 
-  it("ignores a range filter on a field with no resolved number policy", async () => {
-    // `title` is not a number-kind column → format unresolved → filter dropped.
+  it("denies a range filter on a field with no resolved number policy", async () => {
+    // `title` is not numeric; silently dropping the constraint broadens the query.
     const data = await requestRange(usDatasetId, { title: { min: 0, max: 1 } });
-    // All 5 US events returned (range filter ignored, not applied).
-    expect(data.pagination.totalDocs).toBe(5);
+    expect(data.pagination.totalDocs).toBe(0);
+    expect(data.events).toEqual([]);
   });
 });
