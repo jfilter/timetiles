@@ -158,7 +158,7 @@ print_usage() {
     echo "  logs --web      - View web app logs only"
     echo "  logs --scraper  - View scraper logs only"
     echo "  logs --files    - Tail persistent log files (/var/log/timetiles/)"
-    echo "  backup       - Backup management (full|db|uploads|auto|list|prune|verify|clean)"
+    echo "  backup       - Backup management (full|db|uploads|auto|list|prune|verify)"
     echo "  restore   - Restore from backup"
     echo "  status    - Check service status"
     echo "  create-admin <email> - Create an admin user (needed once after install)"
@@ -473,22 +473,36 @@ case "$1" in
         ;;
         
     backup)
-        check_env
-        load_restic_config
-
         OFFSITE=false
-        WHAT="full"
+        DISABLE=false
+        WHAT=""
 
-        # Parse arguments
-        while [[ $# -gt 1 ]]; do
-            case "$2" in
-                --offsite) OFFSITE=true; shift ;;
-                db|database) WHAT="db"; shift ;;
-                uploads) WHAT="uploads"; shift ;;
-                list|prune|verify|auto) WHAT="$2"; shift; break ;;
-                *) shift ;;
+        for arg in "${@:2}"; do
+            case "$arg" in
+                --offsite) OFFSITE=true ;;
+                --disable) DISABLE=true ;;
+                full|db|database|uploads|list|prune|verify|auto)
+                    if [[ -n "$WHAT" ]]; then
+                        echo "Specify only one backup subcommand" >&2
+                        exit 1
+                    fi
+                    WHAT="$arg"
+                    ;;
+                *)
+                    echo "Unknown backup argument: $arg" >&2
+                    echo "Usage: $0 backup [full|db|uploads|list|prune|verify|auto] [--offsite]" >&2
+                    exit 1
+                    ;;
             esac
         done
+        WHAT="${WHAT:-full}"
+        if $DISABLE && [[ "$WHAT" != "auto" ]]; then
+            echo "--disable requires backup auto" >&2
+            exit 1
+        fi
+
+        check_env
+        load_restic_config
 
         case "$WHAT" in
             db|database)
@@ -580,12 +594,6 @@ case "$1" in
 
             list)
                 REPO="$RESTIC_REPOSITORY"
-                # Use the flag the argument loop already parsed. Testing "$2"
-                # here read a positional that the loop's own `shift`s had long
-                # since consumed, so `backup --offsite list` silently listed the
-                # LOCAL repository while printing nothing to say so -- an
-                # operator verifying their offsite backups saw local snapshots
-                # and concluded the offsite copy was fine.
                 if $OFFSITE; then
                     if [[ -z "$RESTIC_OFFSITE_REPOSITORY" ]]; then
                         echo -e "${RED}No offsite repository configured${NC}"
@@ -658,14 +666,7 @@ case "$1" in
 
             auto)
                 CRON_OFFSITE=""
-                DISABLE=false
-
-                for arg in "${@:2}"; do
-                    case "$arg" in
-                        --offsite) CRON_OFFSITE="--offsite" ;;
-                        --disable) DISABLE=true ;;
-                    esac
-                done
+                $OFFSITE && CRON_OFFSITE="--offsite"
 
                 CRON_SCRIPT="$SCRIPT_DIR/backups/auto-backup.sh"
                 mkdir -p "$SCRIPT_DIR/backups"
@@ -699,27 +700,6 @@ EOF
                 fi
                 ;;
 
-            *)
-                echo "Usage: $0 backup [--offsite] [db|uploads|full]"
-                echo "       $0 backup list [--offsite]"
-                echo "       $0 backup prune"
-                echo "       $0 backup verify"
-                echo "       $0 backup auto [--offsite] [--disable]"
-                echo ""
-                echo "Commands:"
-                echo "  full      - Backup database and uploads (default)"
-                echo "  db        - Backup database only"
-                echo "  uploads   - Backup uploads only"
-                echo "  list      - List snapshots"
-                echo "  prune     - Apply retention policy"
-                echo "  verify    - Check repository integrity"
-                echo "  auto      - Setup automatic daily backups"
-                echo ""
-                echo "Options:"
-                echo "  --offsite - Also sync to S3 (for backup/auto)"
-                echo "            - List from S3 (for list)"
-                exit 1
-                ;;
         esac
         ;;
         

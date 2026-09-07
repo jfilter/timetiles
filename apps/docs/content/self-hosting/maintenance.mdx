@@ -16,10 +16,16 @@ timetiles backup --offsite    # Full backup with S3 sync
 timetiles backup db           # Database only
 timetiles backup uploads      # Uploads only
 timetiles backup list         # List snapshots
+timetiles backup list --offsite  # List S3 snapshots
 timetiles backup verify       # Verify integrity
 timetiles backup prune        # Apply retention policy
 timetiles backup auto         # Set up daily cron job
+timetiles backup auto --offsite  # Daily backups with S3 sync
+timetiles backup auto --disable  # Remove the daily cron job
 ```
+
+Choose one subcommand (default: `full`). `--offsite` can precede or follow it;
+`--disable` is only valid with `auto`. Unknown arguments are rejected before backup work starts.
 
 <Callout type="warning">
   `timetiles backup` writes **two** snapshots, not one: a `db`-tagged snapshot and an `uploads`-tagged snapshot. This
