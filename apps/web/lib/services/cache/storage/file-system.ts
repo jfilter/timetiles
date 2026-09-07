@@ -14,6 +14,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { logger } from "@/lib/logger";
+import { isENOENT } from "@/lib/utils/is-enoent";
 
 import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, FileSystemCacheOptions } from "../types";
 import { decodeEntry, encodeEntry } from "./entry-codec";
@@ -221,17 +222,17 @@ export class FileSystemCacheStorage implements CacheStorage {
     const indexEntry = this.index.get(key);
     if (!indexEntry) return false;
 
+    let deleted = true;
     try {
       await fs.unlink(indexEntry.file);
-      this.releaseIndexEntry(key);
-      await this.saveIndex();
-      return true;
-    } catch {
-      // File might already be deleted
-      this.releaseIndexEntry(key);
-      await this.saveIndex();
-      return false;
+    } catch (error) {
+      // Only a missing file releases accounting; other failures must remain retryable.
+      if (!isENOENT(error)) throw error;
+      deleted = false;
     }
+    this.releaseIndexEntry(key);
+    await this.saveIndex();
+    return deleted;
   }
 
   async has(key: string): Promise<boolean> {
