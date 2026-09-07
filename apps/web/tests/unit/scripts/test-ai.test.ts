@@ -7,9 +7,14 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ execSync: vi.fn(), readFileSync: vi.fn(), writeFileSync: vi.fn(), exit: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  execFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  exit: vi.fn(),
+}));
 
-vi.mock("node:child_process", () => ({ execSync: mocks.execSync }));
+vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
 vi.mock("node:fs", () => ({
   default: {
     mkdirSync: vi.fn(),
@@ -22,7 +27,10 @@ vi.mock("node:fs", () => ({
 }));
 
 describe.sequential("AI test runner exit status", () => {
+  const originalArgv = process.argv;
+
   beforeEach(() => {
+    process.argv = ["node", "test-ai.ts"];
     vi.resetModules();
     vi.resetAllMocks();
     vi.spyOn(console, "log").mockImplementation(() => {});
@@ -34,6 +42,7 @@ describe.sequential("AI test runner exit status", () => {
   });
 
   afterEach(() => {
+    process.argv = originalArgv;
     vi.restoreAllMocks();
   });
 
@@ -54,7 +63,7 @@ describe.sequential("AI test runner exit status", () => {
         })
       );
       if (childFailed)
-        mocks.execSync.mockImplementation(() => {
+        mocks.execFileSync.mockImplementation(() => {
           throw new Error("Vitest exited with an error");
         });
 
@@ -65,4 +74,35 @@ describe.sequential("AI test runner exit status", () => {
       expect(report.success).toBe(expected === 0);
     }
   );
+
+  it("passes filters as literal arguments without invoking a shell", async () => {
+    process.argv.push("(date|store)", "geo jobs", "tests/[locale]/name;literal.test.ts");
+    mocks.readFileSync.mockReturnValue(
+      JSON.stringify({ success: true, numTotalTests: 0, numPassedTests: 0, numFailedTests: 0, testResults: [] })
+    );
+
+    await import("@/scripts/test-ai");
+
+    expect(mocks.execFileSync).toHaveBeenCalledWith(
+      "pnpm",
+      [
+        "exec",
+        "vitest",
+        "run",
+        "date",
+        "store",
+        "geo",
+        "jobs",
+        "tests/[locale]/name;literal.test.ts",
+        "--reporter=json",
+        expect.stringContaining("--outputFile.json="),
+        "--silent",
+      ],
+      {
+        stdio: "pipe",
+        cwd: process.cwd(),
+        env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
+      }
+    );
+  });
 });

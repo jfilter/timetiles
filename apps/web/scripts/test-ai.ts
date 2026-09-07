@@ -32,7 +32,7 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -62,18 +62,11 @@ interface TestSummary {
 // Get filter arguments (everything after script name, excluding flags and --)
 const filters = process.argv.slice(2).filter((arg) => !arg.startsWith("-") && arg !== "--");
 
-// Support both space-separated AND pipe-separated patterns
-// Examples:
-//   "date store geo"           -> "date store geo"
-//   "date|store|geo"           -> "date store geo"
-//   "(date|store|geo)"         -> "date store geo"
+// Support the documented space- and pipe-separated filter lists.
 const processedFilters = filters.flatMap((filter): string[] => {
-  // Remove optional wrapping parentheses and split by pipe
   const cleaned = filter.replace(/^\(/, "").replace(/\)$/, "");
-  return cleaned.includes("|") ? cleaned.split("|") : [filter];
+  return cleaned.split(/[|\s]+/).filter(Boolean);
 });
-
-const filterArg = processedFilters.length > 0 ? processedFilters.join(" ") : "";
 
 // Prepare timestamped output path
 const startTime = Date.now();
@@ -87,28 +80,23 @@ const resultsFilename = `${timestamp}.json`;
 const resultsPath = path.join(historyDir, resultsFilename);
 
 // Build vitest command with timestamped output
-const vitestCmd = [
-  'NODE_OPTIONS="--no-warnings"',
-  "DOTENV_CONFIG_SILENT=true",
-  "pnpm exec vitest",
+const vitestArgs = [
+  "exec",
+  "vitest",
   "run",
-  filterArg,
+  ...processedFilters,
   "--reporter=json",
   `--outputFile.json=.test-results/${resultsFilename}`,
   "--silent",
-  "2>/dev/null",
-]
-  .filter(Boolean)
-  .join(" ");
+];
 
 // Run vitest and track wall-clock time
 let childFailed = false;
 try {
-  // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
-  execSync(vitestCmd, {
+  execFileSync("pnpm", vitestArgs, {
     stdio: "pipe",
     cwd: process.cwd(),
-    shell: "/bin/bash", // Required for shell operators like 2>/dev/null
+    env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
   });
 } catch {
   // Still read the report for diagnostics, but never hide a process failure.
