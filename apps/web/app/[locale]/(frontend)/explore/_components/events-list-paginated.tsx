@@ -15,7 +15,7 @@ import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { parseH3ClusterFilter } from "@/lib/geospatial";
-import { useEventsInfiniteFlattened, useEventsTotalQuery } from "@/lib/hooks/use-events-queries";
+import { useEventsInfiniteQuery, useEventsTotalQuery } from "@/lib/hooks/use-events-list-queries";
 import type { FilterState } from "@/lib/hooks/use-filters";
 import { useViewScope } from "@/lib/hooks/use-view-scope";
 import { useUIStore } from "@/lib/store";
@@ -56,8 +56,16 @@ export const EventsListPaginated = ({
   const clusterFilterCells = useUIStore((s) => s.ui.clusterFilterCells);
   const clusterFilter = useMemo(() => parseH3ClusterFilter(clusterFilterCells), [clusterFilterCells]);
 
-  const { events, total, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } =
-    useEventsInfiniteFlattened(filters, bounds, 20, true, scope, clusterFilter);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, isError, error } = useEventsInfiniteQuery(
+    filters,
+    bounds,
+    20,
+    true,
+    scope,
+    clusterFilter
+  );
+  const events = data?.pages.flatMap((page) => page.events) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
 
   // Get global total (without bounds filter) to show "X of Y" when map limits results
   const { data: globalTotalData } = useEventsTotalQuery(filters, true, scope);

@@ -14,12 +14,7 @@ export type { ClusterDensitySettings, ClusterFilter, TemporalClusterOptions } fr
 export { eventsQueryKeys } from "./events-query-keys";
 export { useEventDetailQuery } from "./use-events-detail-queries";
 export type { EventsListResponse } from "./use-events-list-queries";
-export {
-  useEventsInfiniteFlattened,
-  useEventsInfiniteQuery,
-  useEventsListQuery,
-  useEventsTotalQuery,
-} from "./use-events-list-queries";
+export { useEventsInfiniteQuery, useEventsListQuery, useEventsTotalQuery } from "./use-events-list-queries";
 export type { H3HoverChildFeature } from "./use-events-map-queries";
 export {
   useBoundsQuery,

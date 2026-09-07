@@ -49,6 +49,11 @@ test.describe("Explore Page - List View", () => {
     const PAGE_SIZE = 20;
     await expect(eventCards).toHaveCount(Math.min(total, PAGE_SIZE));
 
+    // Seeded events span multiple pages. Loading more must append to the first page.
+    expect(total).toBeGreaterThan(PAGE_SIZE);
+    await page.getByRole("button", { name: "Load More", exact: true }).click();
+    await expect(eventCards).toHaveCount(Math.min(total, PAGE_SIZE * 2), { timeout: 15000 });
+
     // Verify page loaded — check for any navigation or header element
     const header = page.locator("header, nav, [role='banner']").first();
     await expect(header).toBeVisible({ timeout: 10000 });

@@ -129,23 +129,3 @@ export const useEventsInfiniteQuery = (
     enabled: enabled && bounds != null,
     ...QUERY_PRESETS.standard,
   });
-
-// Helper hook that flattens paginated data for easier consumption
-export const useEventsInfiniteFlattened = (
-  filters: FilterState,
-  bounds: BoundsType,
-  limit: number = 20,
-  enabled: boolean = true,
-  scope?: ViewScope,
-  clusterFilter?: ClusterFilter
-) => {
-  const query = useEventsInfiniteQuery(filters, bounds, limit, enabled, scope, clusterFilter);
-
-  // Flatten all pages into a single array
-  const events = query.data?.pages ? query.data.pages.flatMap((page) => page.events) : [];
-
-  // Get total from first page (all pages have same total)
-  const total = query.data?.pages[0]?.total ?? 0;
-
-  return { ...query, events, total, loadedCount: events.length };
-};
