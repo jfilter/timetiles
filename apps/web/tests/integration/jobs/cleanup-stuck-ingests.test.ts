@@ -129,6 +129,21 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       expect(updated.executionHistory).toHaveLength(1);
     });
 
+    it("does not count a Payload cancellation as exhausted retries", async () => {
+      const schedule = await createRunningSchedule();
+      const job = await createJob(schedule.id, { hasError: false });
+      await payload.jobs.cancelByID({ id: job.id });
+
+      const cancelled = await payload.findByID({ collection: "payload-jobs", id: job.id });
+      expect(cancelled.hasError).toBe(true);
+      expect(cancelled.error).toMatchObject({ cancelled: true });
+      expect(await reconcileFailedScheduledIngests(payload)).toBe(0);
+      const unchanged = await payload.findByID({ collection: "scheduled-ingests", id: schedule.id });
+      expect(unchanged.lastStatus).toBe("running");
+      expect(unchanged.currentRetries).toBe(0);
+      expect(unchanged.executionHistory ?? []).toHaveLength(0);
+    });
+
     it("lets Payload finish task retries before recording one failed run", async () => {
       const schedule = await createRunningSchedule();
       const job = await payload.jobs.queue({

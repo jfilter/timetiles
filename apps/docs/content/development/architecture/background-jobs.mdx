@@ -35,7 +35,9 @@ incrementing the schedule's failure counter. On its next pass, `schedule-manager
 current run's latest Payload job when `hasError` is final, then plans new runs. This normally happens
 on the next minute tick while scheduled execution is enabled and workers are processing the queue.
 The reconciliation locks and re-reads the schedule, ignores jobs older than its current `lastRun`,
-and records the failed run only once. Do not duplicate Payload's retry calculation in workflow catches.
+and records the failed run only once. Jobs marked `error.cancelled` are excluded: an explicit
+cancellation must not consume the schedule's retry budget. Do not duplicate Payload's retry
+calculation in workflow catches.
 
 ## Task Definitions and Scheduling
 

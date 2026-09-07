@@ -49,6 +49,8 @@ const recordLockedFailure = async (payload: Payload, id: number, req: ReconcileR
   if (!latest?.hasError || latest.processing === true || latest.completedAt != null) return false;
 
   const error = latest.error;
+  // Payload uses hasError for cancellation too; it is not an exhausted retry budget.
+  if (error && typeof error === "object" && "cancelled" in error && error.cancelled === true) return false;
   const message =
     error && typeof error === "object" && "message" in error && typeof error.message === "string"
       ? error.message
