@@ -35,7 +35,7 @@ export interface CacheEntryMetadata {
  * Options for setting a cache value
  */
 export interface CacheSetOptions {
-  /** Time to live in seconds */
+  /** Time to live in seconds; 0 disables expiration, omitted uses the backend default. */
   ttl?: number;
   /** Tags for grouping related entries */
   tags?: string[];

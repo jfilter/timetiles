@@ -71,6 +71,30 @@ describe("MemoryCacheStorage", () => {
   });
 
   describe("TTL and expiration", () => {
+    it("allows zero TTL to override an expiring default", async () => {
+      const testStorage = new MemoryCacheStorage({ defaultTTL: 0.05 });
+      try {
+        await testStorage.set("no-expiry", "value", { ttl: 0 });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        const entry = await testStorage.get("no-expiry");
+        expect(entry?.value).toBe("value");
+        expect(entry?.metadata.expiresAt).toBeUndefined();
+      } finally {
+        testStorage.destroy();
+      }
+    });
+
+    it("records the default TTL in entry metadata", async () => {
+      const testStorage = new MemoryCacheStorage({ defaultTTL: 60 });
+      try {
+        await testStorage.set("default-expiry", "value");
+        const entry = await testStorage.get("default-expiry");
+        expect(entry?.metadata.expiresAt?.getTime()).toBe(entry!.metadata.createdAt.getTime() + 60_000);
+      } finally {
+        testStorage.destroy();
+      }
+    });
+
     it("should expire entries after TTL", async () => {
       const key = "ttl-test-key";
       const value = "test-value";

@@ -63,12 +63,13 @@ export class MemoryCacheStorage implements CacheStorage {
 
   private setSync<T>(key: string, value: T, options?: CacheSetOptions): void {
     const now = new Date();
+    const ttl = options?.ttl === undefined ? this.cache.ttl : options.ttl * 1000;
     const entry: CacheEntry<T> = {
       key,
       value,
       metadata: {
         createdAt: now,
-        expiresAt: options?.ttl ? new Date(now.getTime() + options.ttl * 1000) : undefined,
+        expiresAt: ttl > 0 ? new Date(now.getTime() + ttl) : undefined,
         accessCount: 0,
         lastAccessedAt: now,
         size: JSON.stringify(value).length,
@@ -77,7 +78,6 @@ export class MemoryCacheStorage implements CacheStorage {
       },
     };
 
-    const ttl = options?.ttl ? options.ttl * 1000 : undefined;
     this.cache.set(key, entry, { ttl });
   }
 
