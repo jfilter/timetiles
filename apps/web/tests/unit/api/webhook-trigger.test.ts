@@ -90,62 +90,17 @@ describe.sequential("POST /api/webhooks/trigger/[token]", () => {
     mockPayload.jobs.queue.mockResolvedValue({ id: "job-456" });
   });
 
-  it("should revert lastStatus when job queue fails (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: "success" }] });
+  it.each(["success", "failed", undefined])("rolls back a failed import trigger from %s", async (lastStatus) => {
+    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus, currentRetries: 2 }] });
     mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
 
     const response = await POST(createRequest() as never, createContext("test-token-abc"));
 
     expect(response.status).toBe(500);
-
-    // Atomic claim happens via the Drizzle update builder, not payload.update.
     expect(mockDrizzleUpdate).toHaveBeenCalledOnce();
-
-    // payload.update calls: [0] = metadata update (alreadyClaimed), [1] = revert
-    const updateCalls = mockPayload.update.mock.calls;
-    expect(updateCalls).toHaveLength(2);
-    // First call: triggerScheduledIngest updates metadata (status already claimed via SQL)
-    expect(updateCalls[0]![0]).toEqual(
-      expect.objectContaining({ data: expect.objectContaining({ currentRetries: 0 }) })
-    );
-    // Second call: queueWebhookImport reverts to previous status "success"
-    expect(updateCalls[1]![0]).toEqual(
-      expect.objectContaining({ data: expect.objectContaining({ lastStatus: "success" }) })
-    );
-  });
-
-  it("reverts lastRun and currentRetries alongside the status when queueing fails", async () => {
-    const previousRun = "2026-01-01T00:00:00.000Z";
-    mockPayload.find.mockResolvedValue({
-      docs: [{ ...mockScheduledIngest, lastStatus: "success", lastRun: previousRun, currentRetries: 2 }],
-    });
-    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue connection failed"));
-
-    await POST(createRequest() as never, createContext("test-token-abc"));
-
-    // The claim stamps lastRun and resets currentRetries, so reverting only the status would
-    // leave the previous outcome wearing the timestamp of a run that never started.
-    const revert = mockPayload.update.mock.calls[1]![0] as { data: Record<string, unknown> };
-    expect(revert.data).toEqual(
-      expect.objectContaining({ lastStatus: "success", lastRun: previousRun, currentRetries: 2 })
-    );
-  });
-
-  it("should revert to null when lastStatus was undefined (Bug 22)", async () => {
-    mockPayload.find.mockResolvedValue({ docs: [{ ...mockScheduledIngest, lastStatus: undefined }] });
-    mockPayload.jobs.queue.mockRejectedValue(new Error("Queue error"));
-
-    const response = await POST(createRequest() as never, createContext("test-token-abc"));
-
-    expect(response.status).toBe(500);
-
-    const updateCalls = mockPayload.update.mock.calls;
-    // [0] = pre-queue running guard, [1] = revert
-    expect(updateCalls).toHaveLength(2);
-    // Second call should revert to null (the fallback for undefined)
-    expect(updateCalls[1]![0]).toEqual(
-      expect.objectContaining({ data: expect.objectContaining({ lastStatus: null }) })
-    );
+    expect(mockPayload.update).not.toHaveBeenCalled();
+    expect(killTransaction).toHaveBeenCalledWith({ payload: mockPayload });
+    expect(commitTransaction).not.toHaveBeenCalled();
   });
 
   it.each(["success", "failure", "already-running"])("closes the scraper transaction on %s", async (outcome) => {

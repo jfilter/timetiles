@@ -9,9 +9,16 @@
  * @category Services
  */
 import { and, eq, isNull, ne, or } from "@payloadcms/db-postgres/drizzle";
-import type { Payload } from "payload";
+import {
+  commitTransaction,
+  createLocalReq,
+  initTransaction,
+  killTransaction,
+  type Payload,
+  type PayloadRequest,
+} from "payload";
 
-import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { logError, logger } from "@/lib/logger";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { scheduled_ingests } from "@/payload-generated-schema";
@@ -60,10 +67,10 @@ export const generateIngestName = (scheduledIngest: ScheduledIngest, currentTime
 interface TriggerOptions {
   /** Which code path triggered this import. */
   triggeredBy: "webhook" | "schedule" | "manual";
-  /** If provided, nextRun will be set in the post-queue update. */
+  /** If provided, nextRun will be set in the atomic claim. */
   nextRun?: string;
-  /** When true, skip the atomic status claim (caller already claimed "running"). */
-  alreadyClaimed?: boolean;
+  /** Request owning the claim and queue transaction, when rollback is required. */
+  req?: PayloadRequest;
 }
 
 /**
@@ -103,46 +110,31 @@ export const triggerScheduledIngest = async (
   // Atomically claim "running" status to prevent overlapping triggers.
   // Uses a single UPDATE with a WHERE guard — PostgreSQL row-level locking
   // ensures only one concurrent caller succeeds even under `read committed`.
-  // For webhooks, the route already claimed "running" before calling this helper,
-  // so we skip the claim and only update metadata.
-  if (options.alreadyClaimed) {
-    // Caller already claimed "running". Re-assert it here so the Payload ORM
-    // write doesn't overwrite the claimed value.
-    await payload.update({
-      collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
-      id: scheduledIngest.id,
-      data: {
-        lastStatus: "running",
-        lastRun: currentTime.toISOString(),
-        ...(shouldResetRetries ? { currentRetries: 0 } : {}),
-        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
-      },
-    });
-  } else {
-    const claimResult = await payload.db.drizzle
-      .update(scheduled_ingests)
-      .set({
-        lastStatus: "running",
-        lastRun: currentTime.toISOString(),
-        ...(shouldResetRetries ? { currentRetries: 0 } : {}),
-        ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
-      })
-      .where(
-        and(
-          eq(scheduled_ingests.id, scheduledIngest.id),
-          or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
-        )
+  const db = await getTransactionAwareDrizzle(payload, options.req);
+  const claimResult = await db
+    .update(scheduled_ingests)
+    .set({
+      lastStatus: "running",
+      lastRun: currentTime.toISOString(),
+      ...(shouldResetRetries ? { currentRetries: 0 } : {}),
+      ...(options.nextRun != null ? { nextRun: options.nextRun } : {}),
+    })
+    .where(
+      and(
+        eq(scheduled_ingests.id, scheduledIngest.id),
+        or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
       )
-      .returning({ id: scheduled_ingests.id });
+    )
+    .returning({ id: scheduled_ingests.id });
 
-    if (claimResult.length === 0) {
-      throw new ScheduledIngestBusyError(scheduledIngest.id);
-    }
+  if (claimResult.length === 0) {
+    throw new ScheduledIngestBusyError(scheduledIngest.id);
   }
 
   // Queue scheduled-ingest workflow
   const urlFetchJob = await payload.jobs.queue({
     workflow: "scheduled-ingest",
+    req: options.req,
     input: {
       scheduledIngestId: scheduledIngest.id,
       sourceUrl: scheduledIngest.sourceUrl,
@@ -172,35 +164,6 @@ export const triggerScheduledIngest = async (
   return { jobId: urlFetchJob.id };
 };
 
-/** The fields the atomic claim overwrites, captured before the claim. */
-export interface TriggerClaimSnapshot {
-  lastStatus: ScheduledIngest["lastStatus"];
-  lastRun: string | null;
-  currentRetries: number;
-}
-
-/**
- * Capture the state the claim is about to overwrite.
- *
- * All three fields matter: the claim stamps `lastRun` and resets `currentRetries` alongside
- * the status, so reverting the status alone leaves the previous outcome wearing the timestamp
- * of a run that never started and silently restores the retry budget.
- */
-export const captureTriggerClaim = (scheduledIngest: ScheduledIngest): TriggerClaimSnapshot => ({
-  lastStatus: scheduledIngest.lastStatus ?? null,
-  lastRun: scheduledIngest.lastRun ?? null,
-  currentRetries: scheduledIngest.currentRetries ?? 0,
-});
-
-/** Restore a captured claim after the queue step failed, so the schedule is not stuck "running". */
-export const revertTriggerClaim = async (
-  payload: Payload,
-  id: number | string,
-  snapshot: TriggerClaimSnapshot
-): Promise<void> => {
-  await payload.update({ collection: COLLECTION_NAMES.SCHEDULED_INGESTS, id, data: snapshot, overrideAccess: true });
-};
-
 /**
  * What a failed queue step leaves behind.
  *
@@ -228,15 +191,17 @@ export const claimAndQueueScheduledIngest = async (
   currentTime: Date,
   options: TriggerOptions & { onQueueFailure: TriggerFailurePolicy }
 ): Promise<{ jobId: number }> => {
-  const snapshot = captureTriggerClaim(scheduledIngest);
-
+  if (options.onQueueFailure === "record-failure") {
+    return triggerScheduledIngest(payload, scheduledIngest, currentTime, options);
+  }
+  const req = options.req ?? (await createLocalReq({}, payload));
+  const ownsTransaction = await initTransaction(req);
   try {
-    return await triggerScheduledIngest(payload, scheduledIngest, currentTime, options);
+    const result = await triggerScheduledIngest(payload, scheduledIngest, currentTime, { ...options, req });
+    if (ownsTransaction) await commitTransaction(req);
+    return result;
   } catch (error) {
-    if (isScheduledIngestBusyError(error)) throw error;
-    if (options.onQueueFailure === "rollback") {
-      await revertTriggerClaim(payload, scheduledIngest.id, snapshot);
-    }
+    if (ownsTransaction) await killTransaction(req);
     throw error;
   }
 };
@@ -260,10 +225,10 @@ export const queueWebhookImport = async (
   try {
     return await claimAndQueueScheduledIngest(payload, scheduledIngest, currentTime, {
       triggeredBy: "webhook",
-      alreadyClaimed: true,
       onQueueFailure: "rollback",
     });
   } catch (queueError) {
+    if (isScheduledIngestBusyError(queueError)) throw queueError;
     logError(queueError, "Failed to queue webhook job, claim reverted", { scheduledIngestId: scheduledIngest.id });
     throw new Error("Failed to queue import job");
   }

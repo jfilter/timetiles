@@ -2,8 +2,7 @@
  * Unit tests for webhook token resolution and atomic claim logic.
  *
  * Tests resolveWebhookToken (lookup across scheduled-ingests and scrapers),
- * claimScraperRunning, and claimScheduledIngestRunning (atomic running-status
- * claims via raw SQL).
+ * and claimScraperRunning (atomic running-status claims via raw SQL).
  *
  * @module
  * @category Tests
@@ -12,12 +11,7 @@ import "@/tests/mocks/services/logger";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  claimScheduledIngestRunning,
-  claimScraperRunning,
-  hashWebhookToken,
-  resolveWebhookToken,
-} from "@/lib/services/webhook-registry";
+import { claimScraperRunning, hashWebhookToken, resolveWebhookToken } from "@/lib/services/webhook-registry";
 
 const createUpdateBuilder = (result: unknown[]) => {
   const builder = {
@@ -202,26 +196,6 @@ describe.sequential("claimScraperRunning", () => {
     mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([]));
 
     const result = await claimScraperRunning(mockPayload as any, 5);
-
-    expect(result).toBe(false);
-    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe.sequential("claimScheduledIngestRunning", () => {
-  it("returns true when claim succeeds (rows returned)", async () => {
-    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([{ id: 10 }]));
-
-    const result = await claimScheduledIngestRunning(mockPayload as any, 10);
-
-    expect(result).toBe(true);
-    expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns false when already running (no rows)", async () => {
-    mockPayload.db.drizzle.update.mockImplementationOnce(() => createUpdateBuilder([]));
-
-    const result = await claimScheduledIngestRunning(mockPayload as any, 10);
 
     expect(result).toBe(false);
     expect(mockPayload.db.drizzle.update).toHaveBeenCalledTimes(1);

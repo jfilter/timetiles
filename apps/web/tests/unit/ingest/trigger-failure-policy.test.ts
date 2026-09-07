@@ -10,6 +10,14 @@
  */
 import "@/tests/mocks/services/logger";
 
+vi.mock("payload", () => ({
+  createLocalReq: vi.fn().mockImplementation((_options, payload) => Promise.resolve({ payload })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn(),
+  killTransaction: vi.fn(),
+}));
+
+import { commitTransaction, initTransaction, killTransaction } from "payload";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { claimAndQueueScheduledIngest, ScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
@@ -34,10 +42,6 @@ const createPayload = (queueError?: Error) => ({
   },
 });
 
-/** The `update` call that restores the pre-claim state, if any. */
-const revertCall = (payload: ReturnType<typeof createPayload>) =>
-  payload.update.mock.calls.find((call) => (call[0] as { data?: Record<string, unknown> }).data?.lastRun !== undefined);
-
 describe.sequential("claimAndQueueScheduledIngest failure policies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,12 +57,10 @@ describe.sequential("claimAndQueueScheduledIngest failure policies", () => {
       })
     ).rejects.toThrow("Queue connection failed");
 
-    // All three, not just lastStatus: keeping the claim's lastRun would date a run that never
-    // started, and keeping currentRetries: 0 would silently restore the retry budget.
-    expect(revertCall(payload)?.[0]).toMatchObject({
-      id: SCHEDULE.id,
-      data: { lastStatus: "success", lastRun: "2026-08-01T03:00:00.000Z", currentRetries: 2 },
-    });
+    expect(killTransaction).toHaveBeenCalledWith({ payload });
+    expect(commitTransaction).not.toHaveBeenCalled();
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(payload.jobs.queue).toHaveBeenCalledWith(expect.objectContaining({ req: { payload } }));
   });
 
   it("leaves the claim in place under the record-failure policy", async () => {
@@ -74,7 +76,9 @@ describe.sequential("claimAndQueueScheduledIngest failure policies", () => {
 
     // The scheduler turns the surviving claim into a recorded failure with an advanced
     // nextRun; undoing it here would make it re-fire on the same broken import every minute.
-    expect(revertCall(payload)).toBeUndefined();
+    expect(payload.update).not.toHaveBeenCalled();
+    expect(initTransaction).not.toHaveBeenCalled();
+    expect(killTransaction).not.toHaveBeenCalled();
   });
 
   it("re-throws a lost claim untouched under either policy", async () => {
@@ -87,7 +91,7 @@ describe.sequential("claimAndQueueScheduledIngest failure policies", () => {
       ).rejects.toBeInstanceOf(ScheduledIngestBusyError);
 
       // Nothing was claimed, so there is nothing to undo — and no job was queued.
-      expect(revertCall(payload)).toBeUndefined();
+      expect(payload.update).not.toHaveBeenCalled();
       expect(payload.jobs.queue).not.toHaveBeenCalled();
     }
   });

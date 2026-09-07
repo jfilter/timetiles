@@ -13,17 +13,12 @@ import { z } from "zod";
 
 import { apiRoute, AppError } from "@/lib/api";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
-import { queueWebhookImport } from "@/lib/ingest/trigger-service";
+import { isScheduledIngestBusyError, queueWebhookImport } from "@/lib/ingest/trigger-service";
 import { logger } from "@/lib/logger";
 import { hashOpaqueValue } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
-import {
-  claimScheduledIngestRunning,
-  claimScraperRunning,
-  resolveWebhookToken,
-  type WebhookTarget,
-} from "@/lib/services/webhook-registry";
+import { claimScraperRunning, resolveWebhookToken, type WebhookTarget } from "@/lib/services/webhook-registry";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 interface RateLimitResponse {
@@ -135,21 +130,13 @@ const handleScheduledIngestTrigger = async (
   payload: Parameters<typeof queueWebhookImport>[0],
   target: Extract<WebhookTarget, { type: "scheduled-ingest" }>
 ): Promise<Record<string, unknown>> => {
-  // Atomically claim "running" status to prevent concurrent executions
-  const claimed = await claimScheduledIngestRunning(payload, target.id);
-
-  if (!claimed) {
-    logger.info(
-      { scheduledIngestId: target.id, name: target.name },
-      "Webhook trigger skipped - import already running"
-    );
-    return { message: "Import already running, skipped", status: "skipped" };
-  }
-
   try {
     const { jobId } = await queueWebhookImport(payload, target.record);
     return { message: "Import triggered successfully", status: "triggered", jobId: jobId.toString() };
-  } catch {
+  } catch (error) {
+    if (isScheduledIngestBusyError(error)) {
+      return { message: "Import already running, skipped", status: "skipped" };
+    }
     throw new AppError(500, "Failed to queue import job");
   }
 };

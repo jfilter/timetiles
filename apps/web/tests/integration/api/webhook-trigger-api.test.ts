@@ -4,12 +4,14 @@
  * @module
  */
 
+import { sql } from "@payloadcms/db-postgres";
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET, POST } from "@/app/api/webhooks/trigger/[token]/route";
 import { resetEnv } from "@/lib/config/env";
+import { claimAndQueueScheduledIngest } from "@/lib/ingest/trigger-service";
 import * as RateLimitModule from "@/lib/services/rate-limit-service";
 import { RateLimitService } from "@/lib/services/rate-limit-service";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
@@ -92,6 +94,57 @@ describe.sequential("Webhook Trigger API Integration", () => {
     await rateLimitService.resetRateLimit("WEBHOOK_TRIGGER_ATTEMPT:unknown:burst");
     await rateLimitService.resetRateLimit("WEBHOOK_TRIGGER_ATTEMPT:unknown:hourly");
   });
+
+  it.each(["manual", "webhook"] as const)(
+    "rolls back the complete claim after %s queue failure",
+    async (triggeredBy) => {
+      const before = await payload.update({
+        collection: "scheduled-ingests",
+        id: testScheduledIngest.id,
+        data: { lastStatus: "failed", lastRun: "2026-01-01T00:00:00.000Z", currentRetries: 2 },
+      });
+      await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs ADD CONSTRAINT reject_scheduled_trigger_test
+      CHECK (workflow_slug <> 'scheduled-ingest') NOT VALID`);
+      try {
+        if (triggeredBy === "webhook") {
+          expect((await callWebhook(testScheduledIngest.webhookTokenPlaintext!)).status).toBe(500);
+        } else {
+          await expect(
+            claimAndQueueScheduledIngest(payload, before, new Date(), {
+              triggeredBy,
+              nextRun: "2030-01-01T00:00:00.000Z",
+              onQueueFailure: "rollback",
+            })
+          ).rejects.toThrow();
+        }
+        const after = await payload.findByID({ collection: "scheduled-ingests", id: before.id });
+        expect(after).toMatchObject({
+          lastStatus: before.lastStatus,
+          lastRun: before.lastRun,
+          currentRetries: before.currentRetries,
+          nextRun: before.nextRun,
+          updatedAt: before.updatedAt,
+        });
+        expect(
+          (
+            await payload.count({
+              collection: "payload-jobs",
+              where: {
+                and: [
+                  { workflowSlug: { equals: "scheduled-ingest" } },
+                  { "input.scheduledIngestId": { equals: before.id } },
+                ],
+              },
+            })
+          ).totalDocs
+        ).toBe(0);
+      } finally {
+        await payload.db.drizzle.execute(
+          sql`ALTER TABLE payload.payload_jobs DROP CONSTRAINT reject_scheduled_trigger_test`
+        );
+      }
+    }
+  );
 
   describe("Successful Webhook Trigger", () => {
     it("should trigger import and create job in database", async () => {

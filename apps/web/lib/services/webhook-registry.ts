@@ -17,7 +17,7 @@ import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { createLogger } from "@/lib/logger";
 import { hashOpaqueValue } from "@/lib/security/hash";
 import { getBaseUrl } from "@/lib/utils/base-url";
-import { scheduled_ingests, scrapers } from "@/payload-generated-schema";
+import { scrapers } from "@/payload-generated-schema";
 import type { ScheduledIngest, Scraper } from "@/payload-types";
 
 const logger = createLogger("webhook-registry");
@@ -225,32 +225,6 @@ export const claimScraperRunning = async (
     .set({ lastRunStatus: "running", lastRunAt: new Date().toISOString() })
     .where(and(eq(scrapers.id, scraperId), or(isNull(scrapers.lastRunStatus), ne(scrapers.lastRunStatus, "running"))))
     .returning({ id: scrapers.id });
-
-  return result.length > 0;
-};
-
-/**
- * Atomically claim "running" status on a scheduled ingest to prevent concurrent triggers.
- * Returns true if the claim succeeded, false if already running.
- *
- * Uses a single SQL UPDATE with a WHERE guard so that PostgreSQL row-level
- * locking prevents two concurrent callers from both succeeding.
- *
- * Only sets `last_status` to "running". Callers that need to set additional
- * fields (last_run, current_retries, next_run) atomically should use the
- * dedicated SQL in {@link triggerScheduledIngest} instead.
- */
-export const claimScheduledIngestRunning = async (payload: Payload, scheduledIngestId: number): Promise<boolean> => {
-  const result = await payload.db.drizzle
-    .update(scheduled_ingests)
-    .set({ lastStatus: "running" })
-    .where(
-      and(
-        eq(scheduled_ingests.id, scheduledIngestId),
-        or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
-      )
-    )
-    .returning({ id: scheduled_ingests.id });
 
   return result.length > 0;
 };
