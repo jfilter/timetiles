@@ -434,16 +434,14 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     expect(result.output.scrapersTriggered).toBe(0);
   });
 
-  it("should handle nextRunAt calculation returning null after trigger", async () => {
+  it("advances an annual schedule to the following year", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 
     vi.setSystemTime(new Date("2026-03-15T12:05:00Z"));
 
-    // A scraper with a cron schedule that causes calculateNextCronRun to return null
-    // after triggering would still update but with empty data
     const scraper = {
       id: 16,
-      name: "Null NextRun Scraper",
+      name: "Annual Scraper",
       enabled: true,
       schedule: "0 12 15 3 *", // Very specific: March 15 at 12:00
       nextRunAt: "2026-03-15T12:00:00Z",
@@ -454,7 +452,8 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
     expect(result.output.scrapersTriggered).toBe(1);
-    // The update call should still happen (with nextRunAt or empty data)
-    expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ collection: "scrapers", id: 16 }));
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ collection: "scrapers", id: 16, data: { nextRunAt: "2027-03-15T12:00:00.000Z" } })
+    );
   });
 });
