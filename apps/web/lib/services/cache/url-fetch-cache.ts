@@ -362,12 +362,10 @@ export class UrlFetchCache {
             fetchedAt: new Date(),
           },
         };
-        // A TTL of 0 means "not cacheable" — the same guard cacheResponse applies.
-        // Writing it through would store the entry with NO expiry at all (the
-        // storage treats ttl<=0 as "never expires"), so an origin that starts
-        // answering revalidations with no-cache would freeze this body forever.
+        // Apply the same cacheability policy as a fresh response. A zero TTL
+        // must not reach storage, where it means "never expires".
         const revalidatedTtl = this.calculateTTL(updatedCached.headers, respectCacheControl);
-        if (revalidatedTtl === 0) {
+        if (revalidatedTtl === 0 || !this.isCacheable(updatedCached.status, updatedCached.headers)) {
           await this.cache.delete(cacheKey);
         } else {
           await this.cache.set(cacheKey, updatedCached, { ttl: revalidatedTtl });

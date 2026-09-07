@@ -329,6 +329,35 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(validators).toEqual([undefined, etag]);
     });
 
+    it.each(["private", "no-store", "no-cache"])(
+      "discards cached content when a 304 changes policy to %s",
+      async (policy) => {
+        const url = `${serverUrl}/etag-policy`;
+        const etag = '"policy-etag"';
+        const validators: Array<string | undefined> = [];
+        testServer.route("/etag-policy", (req: IncomingMessage, res: ServerResponse) => {
+          const validator = req.headers["if-none-match"];
+          validators.push(validator);
+          const unchanged = validator === etag;
+          res.writeHead(unchanged ? 304 : 200, {
+            ETag: etag,
+            "Content-Type": "text/plain",
+            "Cache-Control": unchanged ? policy : "max-age=60",
+          });
+          res.end(unchanged ? undefined : "Policy response");
+        });
+
+        await fetchWithRetry(url);
+        const revalidated = await fetchWithRetry(url, { cacheOptions: { forceRevalidate: true } });
+        expect(revalidated.cacheStatus).toBe("REVALIDATED");
+        expect(revalidated.data.toString()).toBe("Policy response");
+
+        const next = await fetchWithRetry(url);
+        expect(next.cacheStatus).toBe("MISS");
+        expect(validators).toEqual([undefined, etag, undefined]);
+      }
+    );
+
     it("should respect Cache-Control max-age", async () => {
       const cacheUrl = `${serverUrl}/cache-control`; // 2 second cache
 
