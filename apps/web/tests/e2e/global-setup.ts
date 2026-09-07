@@ -113,6 +113,10 @@ export default async function globalSetup(): Promise<void> {
   console.log(`📦 Creating test database: ${databaseName}`);
   await cleanupStaleE2EDatabases(dbPrefix, databaseName);
 
+  // Teardown must know the exact database even if migrations or startup fail.
+  // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E teardown ownership
+  process.env.E2E_DATABASE_NAME = databaseName;
+
   // Create database with migrations
   await setupDatabase({
     databaseName,
@@ -267,7 +271,6 @@ export default async function globalSetup(): Promise<void> {
   process.env.E2E_SERVER_PORT = String(serverPort);
   process.env.E2E_SERVER_PID = String(serverProcess?.pid ?? "");
   process.env.E2E_WORKER_PID = String(workerProcess?.pid ?? "");
-  process.env.E2E_DATABASE_NAME = databaseName;
   process.env.E2E_BASE_URL = baseURL;
   /* eslint-enable turbo/no-undeclared-env-vars */
 }

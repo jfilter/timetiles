@@ -14,10 +14,10 @@ import { config as loadEnv } from "dotenv";
 // Load environment variables
 loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
-import { dropDatabase, listDatabasesByPrefix } from "@/lib/database/operations";
+import { dropDatabase } from "@/lib/database/operations";
 
 import { terminateProcess, waitForPortToBeFree } from "./utils/runtime-guards";
-import { getWorktreeBasePort, getWorktreeDatabasePrefix } from "./utils/worktree-id";
+import { getWorktreeBasePort } from "./utils/worktree-id";
 
 /**
  * Playwright global teardown function.
@@ -31,7 +31,6 @@ export default async function globalTeardown(): Promise<void> {
   const databaseName = process.env.E2E_DATABASE_NAME;
   // eslint-disable-next-line turbo/no-undeclared-env-vars -- E2E test environment variable set by global-setup
   const serverPort = Number(process.env.E2E_SERVER_PORT ?? getWorktreeBasePort());
-  const databasePrefix = getWorktreeDatabasePrefix();
 
   // Note: the geocoding stub server (in-process http.Server started by
   // global-setup) is released automatically when this teardown module's
@@ -65,20 +64,16 @@ export default async function globalTeardown(): Promise<void> {
     }
   }
 
-  // Clean up database
-  const databasesToDrop = databaseName ? [databaseName] : await listDatabasesByPrefix(databasePrefix);
-
-  if (databasesToDrop.length === 0) {
-    console.log(`🧹 No E2E databases found for prefix: ${databasePrefix}`);
+  // Only this run's database belongs to teardown. A prefix does not prove ownership.
+  if (!databaseName) {
+    console.log("🧹 No E2E database recorded for this run; skipping database cleanup");
   } else {
-    for (const name of databasesToDrop) {
-      console.log(`🧹 Cleaning up test database: ${name}`);
-      try {
-        await dropDatabase(name, { ifExists: true });
-        console.log(`   ✓ Dropped ${name}`);
-      } catch (error) {
-        console.warn(`   ⚠ Could not drop ${name}:`, error);
-      }
+    console.log(`🧹 Cleaning up test database: ${databaseName}`);
+    try {
+      await dropDatabase(databaseName, { ifExists: true });
+      console.log(`   ✓ Dropped ${databaseName}`);
+    } catch (error) {
+      console.warn(`   ⚠ Could not drop ${databaseName}:`, error);
     }
   }
 
