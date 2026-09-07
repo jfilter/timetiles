@@ -102,6 +102,7 @@ const vitestCmd = [
   .join(" ");
 
 // Run vitest and track wall-clock time
+let childFailed = false;
 try {
   // eslint-disable-next-line sonarjs/os-command -- vitestCmd is constructed from safe, controlled values only (no user input)
   execSync(vitestCmd, {
@@ -110,8 +111,8 @@ try {
     shell: "/bin/bash", // Required for shell operators like 2>/dev/null
   });
 } catch {
-  // Vitest exits non-zero on test failures, that's expected
-  // We'll check the results JSON for actual status
+  // Still read the report for diagnostics, but never hide a process failure.
+  childFailed = true;
 }
 const endTime = Date.now();
 const wallClockDuration = endTime - startTime;
@@ -162,12 +163,14 @@ const mergeResults = (): TestSummary => {
 
 try {
   const results = mergeResults();
+  const failedSuites = results.testResults.filter((suite) => suite.status === "failed");
+  const hasFailed = childFailed || !results.success || results.numFailedTests > 0 || failedSuites.length > 0;
 
   // Add wall-clock duration to results and save back
-  const enhancedResults = { ...results, wallClockDuration, startTime, endTime };
+  const enhancedResults = { ...results, success: !hasFailed, wallClockDuration, startTime, endTime };
   fs.writeFileSync(resultsPath, JSON.stringify(enhancedResults, null, 2));
 
-  const status = results.success ? "✅" : "❌";
+  const status = hasFailed ? "❌" : "✅";
   const skipped = results.numSkippedTests ?? results.numPendingTests ?? 0;
 
   // Format duration as Xm Ys or just Xs
@@ -183,11 +186,6 @@ try {
     `${status} ${results.numPassedTests} passed, ${results.numFailedTests} failed${skippedStr}${durationStr}`
   );
 
-  // A suite can fail without any individual test failing (compile error, bad
-  // import, collection error) — numFailedTests stays 0 in that case, so the
-  // suite status must be checked independently.
-  const failedSuites = results.testResults.filter((suite) => suite.status === "failed");
-
   // List failed test files if any
   if (results.numFailedTests > 0 || failedSuites.length > 0) {
     console.log(`Failed: ${failedSuites.map((suite) => suite.name).join(", ")}`);
@@ -196,7 +194,7 @@ try {
   // JSON location
   console.log(`→ .test-results/${resultsFilename}`);
 
-  // Prune old results (keep last 20)
+  // Prune old results to the configured retention limit.
   const historyFiles = fs
     .readdirSync(historyDir)
     .filter((f) => f.endsWith(".json"))
@@ -205,20 +203,9 @@ try {
     fs.unlinkSync(path.join(historyDir, file));
   }
 
-  // Exit with appropriate code.
-  // Use numFailedTests + failed suites instead of the `success` flag — vitest
-  // may mark success:false due to worker segfaults during teardown
-  // (node-postgres pool cleanup) even when all tests pass. In that case all
-  // suites report "passed", so the suite check keeps the workaround intact
-  // while still failing on suites that never loaded.
-  const hasFailed = results.numFailedTests > 0 || failedSuites.length > 0;
   process.exit(hasFailed ? 1 : 0);
 } catch {
-  // JSON wasn't written — vitest worker likely segfaulted during teardown.
-  // This is a known issue with node-postgres pool cleanup in forked processes.
-  // Check if vitest exited cleanly (no test failures) by looking at the exit code.
   console.error(`❌ Could not read .test-results/${resultsFilename}`);
-  console.error("   Worker may have crashed during teardown (segfault in pg pool cleanup).");
   console.error("   Run individual test suites to verify: make test-ai FILTER=<pattern>");
   process.exit(1);
 }
