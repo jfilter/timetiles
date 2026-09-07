@@ -1,8 +1,8 @@
 /**
  * E2E tests for the list-based explore view.
  *
- * Verifies the /explore/list route loads, displays events,
- * and supports catalog filtering.
+ * Verifies the /explore/list route loads and displays event cards.
+ * Shared dataset selection is covered by explore-filtering.test.ts.
  *
  * @module
  * @category E2E Tests
@@ -52,27 +52,5 @@ test.describe("Explore Page - List View", () => {
     // Verify page loaded — check for any navigation or header element
     const header = page.locator("header, nav, [role='banner']").first();
     await expect(header).toBeVisible({ timeout: 10000 });
-  });
-
-  test("should filter events when selecting a catalog", async ({ page }) => {
-    // Use waitUntil: "domcontentloaded" to avoid waiting for i18n middleware
-    await page.goto("/explore/list", { timeout: 30000, waitUntil: "domcontentloaded" });
-
-    // Wait for catalog buttons to load
-    await page.waitForSelector('button:has-text("datasets")', { timeout: 30000 });
-
-    // Click "Environmental Data" catalog
-    const catalogButton = page.getByRole("button", { name: /Environmental Data/i }).first();
-    await catalogButton.waitFor({ state: "visible", timeout: 5000 });
-    await catalogButton.click({ force: true });
-
-    // Wait for filtered events to load
-    await page.waitForFunction(() => /Showing (?:all )?\d[\d,]* event/.test(document.body.textContent ?? ""), {
-      timeout: 15000,
-    });
-
-    // The page should show environmental data context
-    const bodyText = await page.textContent("body");
-    expect(bodyText).toContain("Environmental Data");
   });
 });
