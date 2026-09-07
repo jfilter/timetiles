@@ -358,6 +358,37 @@ describe.sequential("HTTP Cache Integration", () => {
       }
     );
 
+    it.each([
+      ["private", false],
+      ["no-store", false],
+      ["no-cache", false],
+      ["private", true],
+      ["no-store", true],
+      ["no-cache", true],
+    ] as const)("removes superseded content after a 200 with %s (bypass: %s)", async (policy, bypassCache) => {
+      const url = `${serverUrl}/replacement-policy`;
+      let requests = 0;
+      testServer.route("/replacement-policy", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(200, {
+          ETag: '"replacement-etag"',
+          "Content-Type": "text/plain",
+          "Cache-Control": requests === 1 ? "max-age=60" : policy,
+        });
+        res.end(`Version ${requests}`);
+      });
+
+      expect((await fetchWithRetry(url)).data.toString()).toBe("Version 1");
+      const replacement = await fetchWithRetry(url, { cacheOptions: { bypassCache, forceRevalidate: true } });
+      expect(replacement.data.toString()).toBe("Version 2");
+      expect(replacement.cacheStatus).toBe("MISS");
+
+      const next = await fetchWithRetry(url);
+      expect(next.cacheStatus).toBe("MISS");
+      expect(next.data.toString()).toBe("Version 3");
+      expect(requests).toBe(3);
+    });
+
     it("should respect Cache-Control max-age", async () => {
       const cacheUrl = `${serverUrl}/cache-control`; // 2 second cache
 

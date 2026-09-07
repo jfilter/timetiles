@@ -388,7 +388,7 @@ export class UrlFetchCache {
       }
 
       // Got new content, cache and return it
-      return await this.fetchAndCache(url, cacheKey, response, maxSize, respectCacheControl);
+      return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
     } catch (error) {
       // On error during revalidation, return stale cache
       logger.warn("Revalidation failed, returning stale cache", { url, error });
@@ -400,7 +400,6 @@ export class UrlFetchCache {
    * Helper to fetch and cache response
    */
   private async fetchAndCache(
-    _url: string,
     cacheKey: string,
     response: Response,
     maxSize?: number,
@@ -408,9 +407,8 @@ export class UrlFetchCache {
   ): Promise<CachedResponse> {
     const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
-    // Same guard as fetchFresh: only cache OK, cacheable responses (the
-    // revalidation path was previously caching error bodies unconditionally).
-    if (response.ok && this.isCacheable(response.status, respHeaders)) {
+    // Error responses must not replace a previously successful cached body.
+    if (response.ok) {
       await this.cacheResponse(cacheKey, data, respHeaders, response.status, respectCacheControl);
     }
 
@@ -439,14 +437,7 @@ export class UrlFetchCache {
     } = options ?? {};
     const response = await safeFetch(url, fetchOptions);
 
-    const { data, headers } = await this.readResponseBody(response, maxSize);
-
-    // Cache successful GET responses
-    if (response.ok && this.isCacheable(response.status, headers)) {
-      await this.cacheResponse(cacheKey, data, headers, response.status, respectCacheControl);
-    }
-
-    return { data, headers: { ...headers, "X-Cache": "MISS" }, status: response.status };
+    return this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
   }
 
   /**
@@ -550,8 +541,9 @@ export class UrlFetchCache {
   ): Promise<void> {
     const ttl = this.calculateTTL(headers, respectCacheControl);
 
-    // Don't cache if TTL is 0
-    if (ttl === 0) {
+    // A successful replacement supersedes old content even when it cannot be cached.
+    if (ttl === 0 || !this.isCacheable(status, headers)) {
+      await this.cache.delete(cacheKey);
       logger.debug("Response not cacheable", { cacheKey });
       return;
     }
