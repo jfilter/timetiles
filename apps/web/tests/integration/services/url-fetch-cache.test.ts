@@ -46,7 +46,6 @@ describe.sequential("HTTP Cache Integration", () => {
       .respond("/post", { status: 200, body: "POST response" })
       .respond("/headers", { headers: { "X-Custom-Header": "test" }, body: "Headers response" })
       .respond("/delay", { body: "Delayed response", delay: 100 })
-      .respond("/etag", { headers: { ETag: '"test-etag"' }, body: "ETag response" })
       .respond("/cache-control", { headers: { "Cache-Control": "max-age=2" }, body: "Cache control response" })
       .setDefaultHandler((req: IncomingMessage, res: ServerResponse) => {
         // Handle /get with query parameters
@@ -299,6 +298,19 @@ describe.sequential("HTTP Cache Integration", () => {
   describe("Advanced caching features", () => {
     it("should handle ETag and conditional requests", async () => {
       const etagUrl = `${serverUrl}/etag`;
+      const etag = '"test-etag"';
+      const validators: Array<string | undefined> = [];
+      testServer.route("/etag", (req: IncomingMessage, res: ServerResponse) => {
+        const validator = req.headers["if-none-match"];
+        validators.push(validator);
+        const unchanged = validator === etag;
+        res.writeHead(unchanged ? 304 : 200, {
+          ETag: etag,
+          "Content-Type": "text/plain",
+          "Cache-Control": "max-age=60",
+        });
+        res.end(unchanged ? undefined : "ETag response");
+      });
 
       // First fetch - cache with ETag
       const result1 = await fetchWithRetry(etagUrl, { cacheOptions: { useCache: true } });
@@ -307,8 +319,14 @@ describe.sequential("HTTP Cache Integration", () => {
       // Force revalidation
       const result2 = await fetchWithRetry(etagUrl, { cacheOptions: { useCache: true, forceRevalidate: true } });
 
-      // Should either be REVALIDATED (304) or MISS
-      expect(["REVALIDATED", "MISS"]).toContain(result2.cacheStatus);
+      expect(result2.cacheStatus).toBe("REVALIDATED");
+      expect(result2.data.toString()).toBe("ETag response");
+
+      // The bodyless 304 must leave a reusable cached response behind.
+      const result3 = await fetchWithRetry(etagUrl, { cacheOptions: { useCache: true } });
+      expect(result3.cacheStatus).toBe("HIT");
+      expect(result3.data).toEqual(result1.data);
+      expect(validators).toEqual([undefined, etag]);
     });
 
     it("should respect Cache-Control max-age", async () => {
