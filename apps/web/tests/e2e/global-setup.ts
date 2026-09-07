@@ -65,10 +65,15 @@ const cleanupStaleE2EDatabases = async (databasePrefix: string, activeDatabaseNa
     return;
   }
 
-  console.log(`🧹 Dropping ${staleDatabases.length} stale E2E database(s)...`);
+  console.log(`🧹 Checking ${staleDatabases.length} older E2E database(s) for cleanup...`);
   for (const databaseName of staleDatabases) {
-    console.log(`   Dropping ${databaseName}...`);
-    await dropDatabase(databaseName, { ifExists: true });
+    try {
+      // Another run can share this prefix. Never disconnect it to reclaim its database.
+      await dropDatabase(databaseName, { ifExists: true, terminateConnections: false });
+      console.log(`   Dropped ${databaseName}`);
+    } catch (error) {
+      console.warn(`   Keeping ${databaseName}; cleanup could not remove it:`, error);
+    }
   }
 };
 
