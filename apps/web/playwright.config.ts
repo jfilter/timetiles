@@ -4,7 +4,8 @@
  * Configures Playwright for end-to-end testing with:
  * - Auth setup project to save login state for reuse
  * - Fully parallel test execution (serial where needed via test config)
- * - Global setup for template database creation
+ * - Global setup/teardown for one shared server, job worker, and test database
+ * - Fixtures expose the shared server URL; browser workers share data
  * - Worktree isolation for simultaneous test runs
  *
  * @module
@@ -63,16 +64,11 @@ export default defineConfig({
   /* Expect timeout - shorter expect assertions timeout */
   expect: { timeout: isCI ? 10000 : 5000 },
 
-  /* Global setup creates template database with migrations and seed data */
   globalSetup: "./tests/e2e/global-setup.ts",
-
-  /* Global teardown cleans up template and worker databases */
   globalTeardown: "./tests/e2e/global-teardown.ts",
 
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* baseURL is set per-worker via fixture - don't set here */
-
     /* Collect trace on failure for better debugging. See https://playwright.dev/docs/trace-viewer */
     trace: "retain-on-failure",
 
@@ -142,6 +138,4 @@ export default defineConfig({
             dependencies: ["setup"],
           },
         ],
-
-  /* webServer is managed per-worker via fixtures - don't configure here */
 });
