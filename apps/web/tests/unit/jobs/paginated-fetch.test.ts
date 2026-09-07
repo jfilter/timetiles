@@ -18,7 +18,7 @@ vi.mock("@/lib/ingest/url-fetch/fetch-utils", () => ({ fetchWithRetry: mocks.fet
 
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 
-// sequential: both tests reconfigure the single hoisted fetchWithRetry mock —
+// sequential: tests reconfigure the single hoisted fetchWithRetry mock —
 // the config-wide `sequence.concurrent` would interleave their implementations.
 describe.sequential("fetchPaginated", () => {
   beforeEach(() => {
@@ -28,6 +28,37 @@ describe.sequential("fetchPaginated", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  it.each(["next$&page", 'next"page\\cursor\n', "{{today}}-{{days_ago_1}}"])(
+    "preserves the opaque POST cursor %s",
+    async (cursor) => {
+      let page = 0;
+      mocks.fetchWithRetry.mockImplementation(() => ({
+        data: Buffer.from(JSON.stringify({ items: [{ id: ++page }], next: page === 1 ? cursor : null })),
+        contentType: "application/json",
+        attempts: 1,
+      }));
+
+      const result = await fetchPaginated(
+        "https://example.test/events",
+        {
+          enabled: true,
+          type: "cursor",
+          nextCursorPath: "next",
+          method: "POST",
+          bodyTemplate: '{"cursor":"{{cursor}}","limit":{{limit}}}',
+          maxPages: 3,
+        },
+        "items",
+        {}
+      );
+
+      expect(result.totalRecords).toBe(2);
+      expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(2);
+      const body = mocks.fetchWithRetry.mock.calls[1]![1].body as string;
+      expect(JSON.parse(body)).toEqual({ cursor, limit: 100 });
+    }
+  );
 
   it("enforces the overall timeout across the page loop", async () => {
     vi.useFakeTimers();

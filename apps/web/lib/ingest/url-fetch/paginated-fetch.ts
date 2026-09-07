@@ -108,13 +108,13 @@ const buildPageBody = (
   state: { page: number; offset: number; cursor: string },
   limitValue: number
 ): string =>
-  resolveDynamicDates(
-    template
-      .replace(/\{\{offset\}\}/g, String(state.offset))
-      .replace(/\{\{limit\}\}/g, String(limitValue))
-      .replace(/\{\{page\}\}/g, String(state.page))
-      .replace(/\{\{cursor\}\}/g, state.cursor)
-  );
+  resolveDynamicDates(template)
+    .replace(/\{\{offset\}\}/g, String(state.offset))
+    .replace(/\{\{limit\}\}/g, String(limitValue))
+    .replace(/\{\{page\}\}/g, String(state.page))
+    // Cursor tokens belong inside a JSON string. Escape the opaque value and
+    // use a callback so replacement syntax and template tokens stay literal.
+    .replace(/\{\{cursor\}\}/g, () => JSON.stringify(state.cursor).slice(1, -1));
 
 /**
  * Builds the URL for a specific page by appending or replacing pagination
