@@ -11,7 +11,7 @@ import { createDatabaseClient } from "@/lib/database/client";
 import { cleanupStuckScheduledIngestsJob } from "@/lib/jobs/handlers/cleanup-stuck-scheduled-ingests-job";
 import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
 import { cancelOrphanedWorkflowJobs } from "@/lib/jobs/utils/stuck-detection";
-import type { Catalog, ScheduledIngest, User } from "@/payload-types";
+import type { Catalog, User } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
@@ -248,48 +248,8 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
       expect(unchangedImport.lastError).toBeNull(); // or toBeUndefined()
     });
 
-    it("should handle multiple stuck imports", async () => {
+    it("resets all 105 stuck schedules in one pass", async () => {
       const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000);
-      const stuckImports: ScheduledIngest[] = [];
-
-      // Create multiple stuck imports
-      for (let i = 0; i < 5; i++) {
-        const imp = await payload.create({
-          collection: "scheduled-ingests",
-          data: {
-            sourceUrl: "https://example.com/test-data.csv",
-            enabled: true,
-            scheduleType: "frequency",
-            frequency: "daily",
-            name: `Stuck Import ${i}`,
-            catalog: testCatalog.id,
-            createdBy: testUser.id,
-            lastStatus: "running",
-            lastRun: fourHoursAgo.toISOString(),
-          },
-        });
-        stuckImports.push(imp);
-      }
-
-      // Run cleanup job
-      const result = await cleanupStuckScheduledIngestsJob.handler({
-        req: { payload },
-        job: { id: "cleanup-job-3", task: "cleanup-stuck-scheduled-ingests" },
-      });
-
-      expect(result.output.resetCount).toBe(5);
-      expect(result.output.totalRunning).toBe(5);
-
-      // Verify all were reset
-      for (const imp of stuckImports) {
-        const resetImport = await payload.findByID({ collection: "scheduled-ingests", id: imp.id });
-        expect(resetImport.lastStatus).toBe("failed");
-        expect(resetImport.lastError).toContain("stuck");
-      }
-    });
-
-    it("should respect the 1000 import limit per run", async () => {
-      const fiveHoursAgo = new Date(Date.now() - 5 * 60 * 60 * 1000);
       // Create 105 stuck imports
       for (let i = 0; i < 105; i++) {
         await payload.create({
@@ -303,7 +263,7 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
             catalog: testCatalog.id,
             createdBy: testUser.id,
             lastStatus: "running",
-            lastRun: fiveHoursAgo.toISOString(),
+            lastRun: fourHoursAgo.toISOString(),
           },
         });
       }
@@ -314,7 +274,6 @@ describe.sequential("Cleanup Stuck Imports Job Integration", () => {
         job: { id: "cleanup-job-4", task: "cleanup-stuck-scheduled-ingests" },
       });
 
-      // Should process all 105 (under the 1000 limit)
       expect(result.output.resetCount).toBe(105);
       expect(result.output.totalRunning).toBe(105);
 
