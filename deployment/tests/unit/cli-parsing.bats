@@ -55,6 +55,53 @@ teardown() {
 }
 
 # =============================================================================
+# Restart Behavior
+# =============================================================================
+
+setup_restart_commands() {
+    mkdir -p "$TEST_TEMP_DIR/bin"
+    cat > "$TEST_TEMP_DIR/bin/docker" << 'EOF'
+#!/bin/bash
+[[ "$1" == "info" ]] && exit 0
+printf '%s\n' "$*" >> "$TEST_TEMP_DIR/docker-calls"
+if [[ "$*" == *" up -d"* ]]; then
+    exit "${RECONCILE_STATUS:-0}"
+fi
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/docker"
+    export PATH="$TEST_TEMP_DIR/bin:$PATH"
+    unset RECONCILE_STATUS
+}
+
+@test "restart reconciles configuration before restarting the whole stack" {
+    setup_restart_commands
+    run "$TEST_CLI" restart
+    [ "$status" -eq 0 ]
+    local prefix="compose -f $TEST_TEMP_DIR/deployment/docker-compose.prod.yml --env-file $TEST_TEMP_DIR/deployment/.env.production"
+    [ "$(sed -n '1p' "$TEST_TEMP_DIR/docker-calls")" = "$prefix up -d" ]
+    [ "$(sed -n '2p' "$TEST_TEMP_DIR/docker-calls")" = "$prefix restart" ]
+    [ "$(wc -l < "$TEST_TEMP_DIR/docker-calls" | tr -d ' ')" -eq 2 ]
+}
+
+@test "restart preserves the selected service in both Docker calls" {
+    setup_restart_commands
+    run "$TEST_CLI" restart worker-ingest
+    [ "$status" -eq 0 ]
+    [[ "$(sed -n '1p' "$TEST_TEMP_DIR/docker-calls")" == *" up -d worker-ingest" ]]
+    [[ "$(sed -n '2p' "$TEST_TEMP_DIR/docker-calls")" == *" restart worker-ingest" ]]
+    [ "$(wc -l < "$TEST_TEMP_DIR/docker-calls" | tr -d ' ')" -eq 2 ]
+}
+
+@test "restart stops when configuration reconciliation fails" {
+    setup_restart_commands
+    export RECONCILE_STATUS=7
+    run "$TEST_CLI" restart web
+    [ "$status" -eq 7 ]
+    [ "$(wc -l < "$TEST_TEMP_DIR/docker-calls" | tr -d ' ')" -eq 1 ]
+    [[ "$output" != *"Services restarted!"* ]]
+}
+
+# =============================================================================
 # Backup Subcommands
 # =============================================================================
 
