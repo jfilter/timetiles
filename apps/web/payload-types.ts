@@ -1649,7 +1649,7 @@ export interface ScheduledIngest {
        */
       duplicateRateThreshold?: number | null;
       /**
-       * Override geocoding failure rate threshold (0–1). Leave blank for global default.
+       * Override geocoding failure threshold (0–1). Leave blank for global default.
        */
       geocodingFailureThreshold?: number | null;
     };
