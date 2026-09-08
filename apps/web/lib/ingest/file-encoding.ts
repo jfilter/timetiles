@@ -16,6 +16,14 @@ import { logger } from "@/lib/logger";
 /** Bytes sampled from the start of the file for charset detection. */
 const DETECTION_SAMPLE_BYTES = 65536;
 
+/** Prefer unambiguous ASCII text over statistical guesses on short samples. */
+const detectSampleEncoding = (sample: Buffer): string => {
+  // Exclude NUL and escape controls: they may identify UTF-16/32 or ISO-2022.
+  if (/^[\t\r\n\x20-\x7e]*$/.test(sample.toString("latin1"))) return "utf-8";
+  const detected = chardet.detect(sample);
+  return detected && iconv.encodingExists(detected) ? detected : "utf-8";
+};
+
 /**
  * Detect the encoding of a file from a leading byte sample.
  * Falls back to utf-8 when detection is inconclusive or unsupported by iconv-lite.
@@ -26,12 +34,7 @@ export const detectFileEncoding = (filePath: string): string => {
     const buffer = Buffer.alloc(DETECTION_SAMPLE_BYTES);
     const bytesRead = fs.readSync(fd, buffer, 0, DETECTION_SAMPLE_BYTES, 0);
     const sample = buffer.subarray(0, bytesRead);
-    const detected = chardet.detect(sample);
-
-    if (detected && iconv.encodingExists(detected)) {
-      return detected;
-    }
-    return "utf-8";
+    return detectSampleEncoding(sample);
   } finally {
     fs.closeSync(fd);
   }
@@ -43,8 +46,7 @@ export const detectFileEncoding = (filePath: string): string => {
  */
 export const decodeBufferToUtf8 = (buffer: Buffer): string => {
   const sample = buffer.subarray(0, DETECTION_SAMPLE_BYTES);
-  const detected = chardet.detect(sample);
-  const encoding = detected && iconv.encodingExists(detected) ? detected : "utf-8";
+  const encoding = detectSampleEncoding(sample);
 
   if (encoding.toLowerCase() === "utf-8" || encoding.toLowerCase() === "ascii") {
     return buffer.toString("utf-8");

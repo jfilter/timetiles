@@ -46,4 +46,22 @@ describe("dataset detection parse-files", () => {
       { name: "CSV Data", index: 0, rowCount: 1, columnCount: 2, headers: ["id", "event\nname"] },
     ]);
   });
+
+  it.each([
+    { content: "name,date\n", headers: ["name", "date"], rowCount: 0 },
+    { content: "\n\nname,date\nExample,2024-01-01\n", headers: ["name", "date"], rowCount: 1 },
+    { content: " name , date \nExample,2024-01-01\n", headers: ["name", "date"], rowCount: 1 },
+  ])("should handle CSV boundary case $content", async ({ content, headers, rowCount }) => {
+    const filePath = path.join(tempDir, "boundary.csv");
+    fs.writeFileSync(filePath, content, "utf-8");
+    expect(await processCSVFile(filePath)).toEqual([
+      { name: "CSV Data", index: 0, rowCount, columnCount: headers.length, headers },
+    ]);
+  });
+
+  it.each(["", "\n\n", "   \n"])("should reject an empty CSV %j", async (content) => {
+    const filePath = path.join(tempDir, "empty.csv");
+    fs.writeFileSync(filePath, content, "utf-8");
+    await expect(processCSVFile(filePath)).rejects.toThrow("No data rows found in file");
+  });
 });

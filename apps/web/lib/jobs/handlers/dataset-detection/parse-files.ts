@@ -44,7 +44,7 @@ export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => 
     });
   });
 
-  if (!headers?.length) {
+  if (!headers?.some((header) => header.length > 0)) {
     throw new Error("No data rows found in file");
   }
 
