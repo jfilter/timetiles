@@ -18,47 +18,15 @@ import React from "react";
 /** Editor-state shape the official converter accepts (derived from the component). */
 type LexicalEditorState = Parameters<typeof LexicalRichText>[0]["data"];
 
-interface RichTextNode {
-  type?: string;
-  children?: RichTextNode[];
-  [key: string]: unknown;
-}
-
-interface RootContent {
-  root: { children: RichTextNode[] };
-}
-
 interface RichTextProps {
-  content: RootContent | RichTextNode[] | null | undefined;
+  content: LexicalEditorState | null | undefined;
 }
 
 const PROSE_CLASS = "prose prose-lg dark:prose-invert mx-auto max-w-none";
 
-/**
- * Coerce the shapes callers pass — a full Lexical editor state (`{ root }`) or a
- * legacy bare children array — into the editor state the converter expects.
- * Returns null when there is nothing renderable.
- */
-const toEditorState = (content: RichTextProps["content"]): LexicalEditorState | null => {
-  if (!content) return null;
-
-  if (typeof content === "object" && "root" in content && content.root?.children != null) {
-    return content as unknown as LexicalEditorState;
-  }
-
-  if (Array.isArray(content)) {
-    return {
-      root: { type: "root", children: content, direction: null, format: "", indent: 0, version: 1 },
-    } as unknown as LexicalEditorState;
-  }
-
-  return null;
-};
-
 export const RichText = ({ content }: RichTextProps) => {
-  const data = toEditorState(content);
-  if (!data) {
+  if (!content) {
     return <div />;
   }
-  return <LexicalRichText className={PROSE_CLASS} data={data} />;
+  return <LexicalRichText className={PROSE_CLASS} data={content} />;
 };
