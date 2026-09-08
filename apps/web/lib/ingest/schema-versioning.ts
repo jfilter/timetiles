@@ -76,17 +76,6 @@ const isUniqueViolation = (error: unknown): boolean => {
  * and ensure consistent version numbering across auto and manual approval flows.
  */
 export class SchemaVersioningService {
-  private static normalizeRequiredId(value: string | number, label: string): number {
-    return requireStrictInteger(value, label);
-  }
-
-  private static normalizeOptionalId(
-    value: string | number | null | undefined,
-    label: string
-  ): number | null | undefined {
-    return optionalStrictInteger(value, label);
-  }
-
   /**
    * Acquire a per-dataset transaction-scoped advisory lock. Released when the
    * caller's Payload transaction commits or rolls back. No-op if `req` doesn't
@@ -119,7 +108,7 @@ export class SchemaVersioningService {
     datasetId: string | number,
     req?: PayloadRequest
   ): Promise<number> {
-    const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
+    const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
 
     const existingSchemas = await payload.find({
       collection: COLLECTION_NAMES.DATASET_SCHEMAS,
@@ -169,7 +158,7 @@ export class SchemaVersioningService {
     }
   ): Promise<DatasetSchema> {
     const datasetId = requireRelationId(dataset, "schema.dataset");
-    const normalizedDatasetId = this.normalizeRequiredId(datasetId, "dataset");
+    const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
 
     await this.acquireDatasetLock(payload, normalizedDatasetId, req);
 
@@ -185,10 +174,10 @@ export class SchemaVersioningService {
         fieldMetadata,
         fieldMappings,
         autoApproved,
-        approvedBy: this.normalizeOptionalId(approvedBy, "approvedBy"),
+        approvedBy: optionalStrictInteger(approvedBy, "approvedBy"),
         ingestSources: ingestSources.map((source) => ({
           ...source,
-          ingestJob: this.normalizeRequiredId(source.ingestJob, "ingest source"),
+          ingestJob: requireStrictInteger(source.ingestJob, "ingest source"),
         })),
         eventCountAtCreation,
         _status: "published" as const,
@@ -249,8 +238,8 @@ export class SchemaVersioningService {
     schemaVersionId: string | number,
     req?: PayloadRequest
   ): Promise<void> {
-    const normalizedIngestJobId = this.normalizeRequiredId(ingestJobId, "import job");
-    const normalizedSchemaVersionId = this.normalizeRequiredId(schemaVersionId, "schema version");
+    const normalizedIngestJobId = requireStrictInteger(ingestJobId, "import job");
+    const normalizedSchemaVersionId = requireStrictInteger(schemaVersionId, "schema version");
 
     await payload.update({
       collection: COLLECTION_NAMES.INGEST_JOBS,
