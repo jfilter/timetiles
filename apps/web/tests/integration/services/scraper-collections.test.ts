@@ -92,6 +92,35 @@ describe.sequential("Scraper Collections Access Control", () => {
     resetFeatureFlagService();
   };
 
+  it("creates a scraper for a repo created in the same transaction", async () => {
+    await enableScrapers();
+    const req = await createLocalReq({ user: trustedUser }, payload);
+    expect(await initTransaction(req)).toBe(true);
+    try {
+      const repo = await payload.create({
+        collection: "scraper-repos",
+        data: { name: "Transactional Repo", sourceType: "git", gitUrl: "https://github.com/example/repo.git" },
+        req,
+        overrideAccess: false,
+      });
+      const scraper = await payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Transactional Scraper",
+          slug: "transactional",
+          runtime: "python",
+          repo: repo.id,
+          entrypoint: "main.py",
+        },
+        req,
+        overrideAccess: false,
+      });
+      expect(scraper.repoCreatedBy).toBe(trustedUser.id);
+    } finally {
+      await killTransaction(req);
+    }
+  });
+
   it("should allow admin to create scraper-repo when feature is enabled", async () => {
     await enableScrapers();
 

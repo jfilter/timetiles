@@ -7,6 +7,7 @@
  * @module
  */
 import { isSafeRelativeEntrypoint } from "@timetiles/shared";
+import type { PayloadRequest } from "payload";
 
 import { isPrivileged } from "@/lib/collections/shared-fields";
 import { extractRelationId } from "@/lib/utils/relation-id";
@@ -68,24 +69,15 @@ export const validateEnvVars = (value: unknown): string | true => {
  * and returns the repo owner's ID for denormalized storage.
  */
 export const resolveRepoOwner = async (
-  payload: {
-    findByID: (args: {
-      collection: "scraper-repos";
-      id: number;
-      overrideAccess: boolean;
-    }) => Promise<{ createdBy?: unknown }>;
-  },
+  req: PayloadRequest,
   repoId: number,
-  user: { id: number; role?: string | null } | undefined,
   errorMessage: string
 ): Promise<number | null> => {
-  const repo = await payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true });
-  if (!repo) {
-    throw new Error("Scraper repo not found");
-  }
+  const { user } = req;
+  const repo = await req.payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true, req });
   // null, never undefined: an ownerless repo has to CLEAR the denormalized owner,
   // and Payload drops undefined from a write, leaving the previous owner in place.
-  const repoOwnerId = extractRelationId<number>(repo.createdBy as number | { id: number } | null | undefined) ?? null;
+  const repoOwnerId = extractRelationId(repo.createdBy) ?? null;
   if (user && !isPrivileged(user) && repoOwnerId !== user.id) {
     throw new Error(errorMessage);
   }

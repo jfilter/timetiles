@@ -35,12 +35,7 @@ export const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({
   if (operation === "create") {
     const repoId = extractRelationId(data.repo);
     if (repoId) {
-      repoCreatedBy = await resolveRepoOwner(
-        req.payload,
-        repoId,
-        req.user ?? undefined,
-        "You can only create scrapers for your own scraper repos"
-      );
+      repoCreatedBy = await resolveRepoOwner(req, repoId, "You can only create scrapers for your own scraper repos");
     }
   }
 
@@ -53,12 +48,7 @@ export const validateAndSetRepoOwnership: CollectionBeforeChangeHook = async ({
     const newRepoId = data.repo !== undefined ? extractRelationId(data.repo) : undefined;
     const originalRepoId = extractRelationId(originalDoc?.repo);
     if (newRepoId && newRepoId !== originalRepoId) {
-      repoCreatedBy = await resolveRepoOwner(
-        req.payload,
-        newRepoId,
-        req.user ?? undefined,
-        "You can only assign scrapers to your own scraper repos"
-      );
+      repoCreatedBy = await resolveRepoOwner(req, newRepoId, "You can only assign scrapers to your own scraper repos");
       shouldDeleteRepoCreatedBy = false; // override: we have a new value
     }
   }
