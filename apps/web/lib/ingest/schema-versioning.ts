@@ -62,7 +62,8 @@ const isUniqueViolation = (error: unknown): boolean => {
     return true;
   }
 
-  const message = error instanceof Error ? error.message : JSON.stringify(error);
+  const candidate = typeof error === "string" ? error : (error as { message?: unknown }).message;
+  const message = typeof candidate === "string" ? candidate : "";
   return (
     message.includes("23505") ||
     message.includes("dataset_schemas_dataset_version_unique") ||
