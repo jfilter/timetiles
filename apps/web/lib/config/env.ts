@@ -1,15 +1,13 @@
 /**
  * Centralized environment variable validation using Zod.
  *
- * Provides type-safe access to all environment variables with fail-fast
- * validation at startup. Follows the lazy singleton pattern from
+ * Provides type-safe access to declared environment variables with validation
+ * on first access. Follows the lazy singleton pattern from
  * {@link apps/timescrape/src/config.ts}.
  *
- * All `process.env` reads in `apps/web/lib/` must go through `getEnv()` to
- * ensure validation and central documentation. The single known exception is
- * `ALLOW_PRIVATE_URLS` in `lib/security/url-validation.ts`, which is read via
- * bracket notation (`process.env["ALLOW_PRIVATE_URLS"]`) to prevent webpack
- * from inlining the value at build time — see that file for details.
+ * Use `getEnv()` for runtime configuration in `apps/web/lib/`. Direct reads
+ * needed for initialization, uncached database URLs, health diagnostics, or
+ * build-time inlining constraints are documented at their call sites.
  *
  * Flag-style variables that the runtime compares to the string `"true"` (e.g.
  * `CI`, `GITHUB_ACTIONS`, `VITEST`) are intentionally kept as `z.string()` to

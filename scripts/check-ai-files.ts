@@ -3,8 +3,9 @@
 /**
  * File-scoped code quality check with AI-friendly output.
  *
- * Runs format (oxfmt) and lint (oxlint) on specified files only, and runs
- * typecheck (tsgo) on the full project but filters output to the specified files.
+ * Checks formatting (oxfmt) repo-wide and lints (oxlint) specified files only.
+ * Runs typecheck (tsgo) on the full project but filters output to those files.
+ * This scoped check does not run ESLint; use pnpm lint for full lint coverage.
  *
  * Usage: tsx scripts/check-ai-files.ts <package> <file1> [file2] ...
  * Example: tsx scripts/check-ai-files.ts apps/web lib/services/foo.ts components/bar.tsx
