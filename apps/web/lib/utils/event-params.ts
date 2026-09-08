@@ -53,9 +53,6 @@ export const optionalStrictInteger = (
   return requireStrictInteger(value, label);
 };
 
-export const normalizeStrictIntegerList = (values: Array<string | number>): number[] =>
-  values.map((value) => parseStrictInteger(value)).filter((value): value is number => value != null);
-
 // ============================================================================
 // Client-side Parameter Building
 // ============================================================================

@@ -7,12 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ViewScope } from "@/lib/utils/event-params";
-import {
-  buildBaseEventParams,
-  buildEventParams,
-  normalizeStrictIntegerList,
-  parseStrictInteger,
-} from "@/lib/utils/event-params";
+import { buildBaseEventParams, buildEventParams, parseStrictInteger } from "@/lib/utils/event-params";
 
 describe("event-params", () => {
   describe("parseStrictInteger", () => {
@@ -33,12 +28,6 @@ describe("event-params", () => {
       { label: "negative infinity", value: Number.NEGATIVE_INFINITY },
     ])("rejects $label", ({ value }) => {
       expect(parseStrictInteger(value)).toBeNull();
-    });
-  });
-
-  describe("normalizeStrictIntegerList", () => {
-    it("keeps only fully numeric values", () => {
-      expect(normalizeStrictIntegerList(["10", "20oops", 30])).toEqual([10, 30]);
     });
   });
 
