@@ -28,6 +28,25 @@ describe.sequential("fetchPaginated", () => {
     vi.useRealTimers();
   });
 
+  it("rejects a malformed later page instead of returning partial records", async () => {
+    let page = 0;
+    mocks.fetchWithRetry.mockImplementation(() => ({
+      data: Buffer.from(JSON.stringify(++page === 1 ? { items: [{ id: 1 }], next: "page-2" } : { items: "invalid" })),
+      contentType: "application/json",
+      attempts: 1,
+    }));
+
+    await expect(
+      fetchPaginated(
+        "https://example.test/events",
+        { enabled: true, type: "cursor", nextCursorPath: "next" },
+        "items",
+        {}
+      )
+    ).rejects.toThrow('recordsPath "items" did not resolve to an array.');
+    expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(2);
+  });
+
   it.each(["offset", "page", "cursor"] as const)("stops %s pagination on an empty page", async (type) => {
     mocks.fetchWithRetry.mockImplementation(() => ({
       data: Buffer.from(JSON.stringify({ items: [], next: "another-page", total: 100 })),
