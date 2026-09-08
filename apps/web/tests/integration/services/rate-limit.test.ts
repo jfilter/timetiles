@@ -46,27 +46,30 @@ describe.sequential("RateLimitService", () => {
     resetRateLimitService();
   });
 
-  it("does not let client seed metadata bypass upload rate limits", async () => {
-    vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("DATABASE_URL", "postgresql://localhost/timetiles");
-    resetEnv();
-    resetAppConfig();
-    resetRateLimitService();
-    const req = await createLocalReq({}, payload);
-    req.headers = new Headers({ "x-forwarded-for": "192.0.2.41" });
-    const hook = beforeChangeHooks[0]!;
-    const run = () =>
-      hook({
-        data: { metadata: { source: "seed-data" } },
-        req,
-        operation: "create",
-        context: req.context,
-        collection: payload.collections["ingest-files"].config,
-      });
+  it.each(["timetiles", "timetiles_test"])(
+    "enforces upload limits with client seed metadata on database %s",
+    async (database) => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("DATABASE_URL", `postgresql://localhost/${database}`);
+      resetEnv();
+      resetAppConfig();
+      resetRateLimitService();
+      const req = await createLocalReq({}, payload);
+      req.headers = new Headers({ "x-forwarded-for": "192.0.2.41" });
+      const hook = beforeChangeHooks[0]!;
+      const run = () =>
+        hook({
+          data: { metadata: { source: "seed-data" } },
+          req,
+          operation: "create",
+          context: req.context,
+          collection: payload.collections["ingest-files"].config,
+        });
 
-    await run();
-    await expect(run()).rejects.toThrow("Too many import requests");
-  });
+      await run();
+      await expect(run()).rejects.toThrow("Too many import requests");
+    }
+  );
 
   describe.sequential("checkRateLimit", () => {
     const testIdentifier = "test-client-123";

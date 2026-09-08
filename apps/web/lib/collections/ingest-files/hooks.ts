@@ -29,10 +29,7 @@ export const enforceUploadRateLimit = async (
   req: { payload: Payload; user?: User | null; headers?: Headers },
   hookLogger: ReturnType<typeof createRequestLogger>
 ): Promise<string | undefined> => {
-  const env = getEnv();
-  const isTestEnv = env.NODE_ENV === "test" || env.DATABASE_URL?.includes("_test");
-
-  if (isTestEnv) return undefined;
+  if (getEnv().NODE_ENV === "test") return undefined;
 
   const rateLimitService = getRateLimitService(req.payload);
   const clientId = getClientIdentifier(req as unknown as Request);
