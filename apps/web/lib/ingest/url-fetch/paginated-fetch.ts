@@ -48,7 +48,7 @@ export interface PaginationConfig {
   maxPagesPath?: string;
   /** Safety limit on pages fetched. Default: 50, hard cap: 500. */
   maxPages?: number;
-  /** Maximum total records across all pages. Default: 100,000. */
+  /** Maximum total records across all pages. Default and hard cap: 100,000. */
   maxRecords?: number;
   /** HTTP method for pagination requests. Default: "GET". */
   method?: "GET" | "POST";
@@ -331,7 +331,7 @@ export const fetchPaginated = async (
   options: PaginatedFetchOptions
 ): Promise<PaginatedFetchResult> => {
   const maxPages = Math.min(paginationConfig.maxPages ?? DEFAULT_MAX_PAGES, ABSOLUTE_MAX_PAGES);
-  const maxRecords = paginationConfig.maxRecords ?? MAX_TOTAL_RECORDS;
+  const maxRecords = Math.min(paginationConfig.maxRecords ?? MAX_TOTAL_RECORDS, MAX_TOTAL_RECORDS);
   const allRecords: Record<string, unknown>[] = [];
   let pagesProcessed = 0;
   const startedAt = Date.now();

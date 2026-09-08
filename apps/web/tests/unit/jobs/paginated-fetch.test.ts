@@ -110,6 +110,26 @@ describe.sequential("fetchPaginated", () => {
     }
   });
 
+  it("caps configured record limits at the hard ceiling", async () => {
+    mocks.fetchWithRetry.mockImplementation(() => ({
+      data: Buffer.from(JSON.stringify({ items: Array.from({ length: 10_000 }, (_, id) => ({ id })) })),
+      contentType: "application/json",
+      attempts: 1,
+    }));
+
+    const result = await fetchPaginated(
+      "https://example.test/events",
+      { enabled: true, type: "page", limitValue: 10_000, maxPages: 12, maxRecords: 110_000 },
+      "items",
+      {}
+    );
+
+    expect(result.totalRecords).toBe(100_000);
+    expect(result.allRecords).toHaveLength(100_000);
+    expect(result.pagesProcessed).toBe(10);
+    expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(10);
+  });
+
   // Regression: a page was appended in full before the maxRecords check, so a
   // large page could push totalRecords well past the configured ceiling.
   it("truncates a page's records to stay within maxRecords", async () => {
