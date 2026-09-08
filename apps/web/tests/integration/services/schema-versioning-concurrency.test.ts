@@ -78,34 +78,42 @@ describe.sequential("SchemaVersioningService — concurrent creation", () => {
     datasetId = dataset.id;
   });
 
-  it("assigns distinct, monotonic version numbers under parallel creation", async () => {
-    const CONCURRENT_CALLS = 5;
-    const schema = {
-      type: "object",
-      properties: { id: { type: "string" }, title: { type: "string" } },
-      required: ["id", "title"],
-    };
+  it.each([true, false])(
+    "assigns distinct versions under parallel creation (caller transaction: %s)",
+    async (transactional) => {
+      const CONCURRENT_CALLS = 5;
+      const schema = {
+        type: "object",
+        properties: { id: { type: "string" }, title: { type: "string" } },
+        required: ["id", "title"],
+      };
 
-    const results = await Promise.all(
-      Array.from({ length: CONCURRENT_CALLS }, () =>
-        withTransaction(payload, (req) =>
-          SchemaVersioningService.createSchemaVersion(payload, { dataset: datasetId, schema, autoApproved: true, req })
-        )
-      )
-    );
+      const results = await Promise.all(
+        Array.from({ length: CONCURRENT_CALLS }, () => {
+          const create = (req?: PayloadRequest) =>
+            SchemaVersioningService.createSchemaVersion(payload, {
+              dataset: datasetId,
+              schema,
+              autoApproved: true,
+              req,
+            });
+          return transactional ? withTransaction(payload, create) : create();
+        })
+      );
 
-    const versions = results.map((r) => r.versionNumber).sort((a, b) => a - b);
-    expect(versions).toEqual([1, 2, 3, 4, 5]);
-    expect(new Set(versions).size).toBe(CONCURRENT_CALLS);
+      const versions = results.map((r) => r.versionNumber).sort((a, b) => a - b);
+      expect(versions).toEqual([1, 2, 3, 4, 5]);
+      expect(new Set(versions).size).toBe(CONCURRENT_CALLS);
 
-    const persisted = await payload.find({
-      collection: "dataset-schemas",
-      where: { dataset: { equals: datasetId } },
-      sort: "versionNumber",
-      limit: CONCURRENT_CALLS + 1,
-    });
-    expect(persisted.docs.map((d) => d.versionNumber)).toEqual([1, 2, 3, 4, 5]);
-  });
+      const persisted = await payload.find({
+        collection: "dataset-schemas",
+        where: { dataset: { equals: datasetId } },
+        sort: "versionNumber",
+        limit: CONCURRENT_CALLS + 1,
+      });
+      expect(persisted.docs.map((d) => d.versionNumber)).toEqual([1, 2, 3, 4, 5]);
+    }
+  );
 
   it("enforces DB-level uniqueness if app-level lock is bypassed", async () => {
     await SchemaVersioningService.createSchemaVersion(payload, {
