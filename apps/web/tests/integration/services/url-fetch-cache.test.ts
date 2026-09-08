@@ -399,7 +399,7 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(validators).toEqual([undefined, etag]);
     });
 
-    it.each(["private", "no-store", "no-cache"])(
+    it.each(["private", "no-store", "no-cache", "Private", "No-Store", "No-Cache"])(
       "discards cached content when a 304 changes policy to %s",
       async (policy) => {
         const url = `${serverUrl}/etag-policy`;
@@ -435,6 +435,12 @@ describe.sequential("HTTP Cache Integration", () => {
       ["private", true],
       ["no-store", true],
       ["no-cache", true],
+      ["Private", false],
+      ["No-Store", false],
+      ["No-Cache", false],
+      ["Private", true],
+      ["No-Store", true],
+      ["No-Cache", true],
     ] as const)("removes superseded content after a 200 with %s (bypass: %s)", async (policy, bypassCache) => {
       const url = `${serverUrl}/replacement-policy`;
       let requests = 0;
