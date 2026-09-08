@@ -11,7 +11,7 @@
 import { flattenGeoJsonFeature, isGeoJson } from "@/lib/ingest/geojson-to-csv";
 import { extractRecordsFromHtml, type HtmlExtractionConfig } from "@/lib/ingest/html-to-records";
 import { extractRecordsFromJson } from "@/lib/ingest/json-to-csv";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { getByPath } from "@/lib/utils/object-path";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
@@ -215,29 +215,20 @@ const extractPageRecords = (
   recordsPath: string | undefined,
   options: PaginatedFetchOptions
 ): Record<string, unknown>[] => {
-  try {
-    if (options.htmlExtractConfig) {
-      return extractRecordsFromHtml(json, options.htmlExtractConfig);
-    }
-    if (isGeoJson(json)) {
-      // isGeoJson() also accepts a bare Feature (no `features` array), so normalize
-      // it to a single-element list — otherwise `.map` on undefined throws and
-      // fails the whole paginated run (matches convertGeoJsonToCsv's wrapping).
-      const obj = json as { type?: string; features?: Array<Record<string, unknown>> };
-      let features: Array<Record<string, unknown>> = [];
-      if (Array.isArray(obj.features)) features = obj.features;
-      else if (obj.type === "Feature") features = [obj];
-      return features.map((f) => flattenGeoJsonFeature(f as never));
-    }
-    return extractRecordsFromJson(json, recordsPath).records;
-  } catch (error) {
-    // Do NOT swallow extraction errors: returning [] here made `hasMorePages`
-    // treat the page as "0 records" and stop pagination, turning a parser error
-    // on page N into a silent, truncated import reported as success. Surface it
-    // so the scheduled-ingest run fails loudly (and is retried) instead.
-    logError(error, "Failed to extract records from paginated response page");
-    throw error;
+  if (options.htmlExtractConfig) {
+    return extractRecordsFromHtml(json, options.htmlExtractConfig);
   }
+  if (isGeoJson(json)) {
+    // isGeoJson() also accepts a bare Feature (no `features` array), so normalize
+    // it to a single-element list — otherwise `.map` on undefined throws and
+    // fails the whole paginated run (matches convertGeoJsonToCsv's wrapping).
+    const obj = json as { type?: string; features?: Array<Record<string, unknown>> };
+    let features: Array<Record<string, unknown>> = [];
+    if (Array.isArray(obj.features)) features = obj.features;
+    else if (obj.type === "Feature") features = [obj];
+    return features.map((f) => flattenGeoJsonFeature(f as never));
+  }
+  return extractRecordsFromJson(json, recordsPath).records;
 };
 
 /**
