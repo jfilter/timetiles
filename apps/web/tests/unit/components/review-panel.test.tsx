@@ -5,7 +5,7 @@
  * @category Tests
  */
 
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { ReviewPanel } from "@/components/ingest/review-panel";
 import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
@@ -14,47 +14,22 @@ import { renderWithProviders, userEvent, within } from "../../setup/unit/react-r
 
 const approveMutate = vi.fn();
 
+// jsdom does not implement pointer capture or layout scrolling.
+beforeAll(() => {
+  Object.defineProperties(HTMLElement.prototype, {
+    hasPointerCapture: { configurable: true, value: () => false },
+    scrollIntoView: { configurable: true, value: () => undefined },
+  });
+});
+
+afterAll(() => {
+  Reflect.deleteProperty(HTMLElement.prototype, "hasPointerCapture");
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+});
+
 vi.mock("@/lib/hooks/use-ingest-approval", () => ({
   useApproveIngestJobMutation: () => ({ mutate: approveMutate, isPending: false, isError: false, error: null }),
 }));
-
-vi.mock("@timetiles/ui/components/select", async () => {
-  const React = await import("react");
-
-  type SelectContextValue = { value: string; onValueChange: (value: string) => void };
-
-  const SelectContext = React.createContext<SelectContextValue>({ value: "", onValueChange: () => undefined });
-
-  return {
-    Select: ({
-      children,
-      onValueChange,
-      value,
-    }: {
-      children: React.ReactNode;
-      onValueChange?: (value: string) => void;
-      value?: string;
-    }) => (
-      <SelectContext.Provider value={{ value: value ?? "", onValueChange: onValueChange ?? (() => undefined) }}>
-        {children}
-      </SelectContext.Provider>
-    ),
-    SelectTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectValue: ({ placeholder }: { placeholder?: string }) => {
-      const { value } = React.useContext(SelectContext);
-      return <span>{value || placeholder}</span>;
-    },
-    SelectContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => {
-      const { onValueChange } = React.useContext(SelectContext);
-      return (
-        <button type="button" onClick={() => onValueChange(value)}>
-          {children}
-        </button>
-      );
-    },
-  };
-});
 
 const createJob = () => ({
   id: "job-123",
@@ -66,7 +41,7 @@ const createJob = () => ({
   errors: 0,
   duplicates: { internal: 0, external: 0 },
   reviewReason: REVIEW_REASONS.NO_LOCATION_DETECTED,
-  reviewDetails: { message: "No location fields detected.", availableColumns: ["venue_name"] },
+  reviewDetails: { message: "No location fields detected.", availableColumns: ["", "venue_name"] },
   schemaValidation: null,
   results: null,
 });
@@ -93,20 +68,17 @@ const createStartDateOrderJob = () => ({
   },
 });
 
-// Sequential: these tests share a module-level `approveMutate` mock and the
-// jsdom document, so they must not run concurrently (the global vitest config
-// sets `sequence.concurrent: true`).
+// These tests share the approval mock and query dropdown portals in the document.
 describe.sequential("ReviewPanel", () => {
   it("approves no-location reviews with both location and locationName overrides", async () => {
     approveMutate.mockReset();
     const user = userEvent.setup();
 
-    // Scope queries to this render's container — tests in this file run
-    // concurrently and share the document, so the global `screen` would match
-    // sibling renders.
     const { container } = renderWithProviders(<ReviewPanel job={createJob()} />);
 
-    await user.click(within(container).getByRole("button", { name: "venue_name" }));
+    await user.click(within(container).getByRole("combobox"));
+    await user.keyboard("{ArrowDown}");
+    await user.click(await within(document.body).findByRole("option", { name: "venue_name" }));
     await user.click(within(container).getByRole("button", { name: "Use selected column" }));
 
     expect(approveMutate).toHaveBeenCalledWith({
@@ -122,7 +94,9 @@ describe.sequential("ReviewPanel", () => {
 
     const { container } = renderWithProviders(<ReviewPanel job={createEndDateOrderJob()} />);
 
-    await user.click(within(container).getByRole("button", { name: "D/M" }));
+    await user.click(within(container).getByRole("combobox"));
+    await user.keyboard("{ArrowDown}");
+    await user.click(await within(document.body).findByRole("option", { name: "D/M" }));
     await user.click(within(container).getByRole("button", { name: "Use selected order" }));
 
     expect(approveMutate).toHaveBeenCalledWith({ ingestJobId: "job-123", endTimestampOrder: "D/M" });
@@ -134,7 +108,9 @@ describe.sequential("ReviewPanel", () => {
 
     const { container } = renderWithProviders(<ReviewPanel job={createStartDateOrderJob()} />);
 
-    await user.click(within(container).getByRole("button", { name: "M/D" }));
+    await user.click(within(container).getByRole("combobox"));
+    await user.keyboard("{ArrowDown}");
+    await user.click(await within(document.body).findByRole("option", { name: "M/D" }));
     await user.click(within(container).getByRole("button", { name: "Use selected order" }));
 
     expect(approveMutate).toHaveBeenCalledWith({ ingestJobId: "job-123", timestampOrder: "M/D" });
