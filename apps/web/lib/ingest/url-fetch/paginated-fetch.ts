@@ -371,11 +371,6 @@ export const fetchPaginated = async (
       break;
     }
 
-    if (pageRecords.length === 0) {
-      logger.info("Page returned 0 records, stopping pagination", { pagesProcessed, totalRecords: allRecords.length });
-      break;
-    }
-
     const { more, nextCursor } = hasMorePages(
       paginationConfig,
       pageRecords.length,

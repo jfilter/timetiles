@@ -28,6 +28,24 @@ describe.sequential("fetchPaginated", () => {
     vi.useRealTimers();
   });
 
+  it.each(["offset", "page", "cursor"] as const)("stops %s pagination on an empty page", async (type) => {
+    mocks.fetchWithRetry.mockImplementation(() => ({
+      data: Buffer.from(JSON.stringify({ items: [], next: "another-page", total: 100 })),
+      contentType: "application/json",
+      attempts: 1,
+    }));
+
+    const result = await fetchPaginated(
+      "https://example.test/events",
+      { enabled: true, type, nextCursorPath: "next", totalPath: "total" },
+      "items",
+      {}
+    );
+
+    expect(result).toEqual({ allRecords: [], pagesProcessed: 1, totalRecords: 0 });
+    expect(mocks.fetchWithRetry).toHaveBeenCalledTimes(1);
+  });
+
   it.each(["next$&page", 'next"page\\cursor\n', "{{today}}-{{days_ago_1}}"])(
     "preserves the opaque POST cursor %s",
     async (cursor) => {
