@@ -247,7 +247,10 @@ const Datasets: CollectionConfig = {
     {
       name: "deduplicationConfig",
       type: "group",
-      admin: { condition: (data) => editorOrAdminCondition(data) && data?.idStrategy?.type !== "auto-generate" },
+      admin: {
+        condition: (data, siblingData, context) =>
+          editorOrAdminCondition(data, siblingData, context) && data?.idStrategy?.type !== "auto-generate",
+      },
       fields: [
         {
           name: "enabled",

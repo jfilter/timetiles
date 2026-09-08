@@ -12,7 +12,7 @@
  * @module
  */
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
-import type { Access, CollectionBeforeChangeHook, Field, Where } from "payload";
+import type { Access, CollectionBeforeChangeHook, Condition, Field, Where } from "payload";
 
 import type { FeatureFlags } from "@/lib/services/feature-flag-service";
 import type { Config } from "@/payload-types";
@@ -181,8 +181,7 @@ export const createIsPublicField = (options?: {
 });
 
 /** Admin condition: only show field to editors and admins. */
-export const editorOrAdminCondition = ({ req }: { req?: { user?: { role?: string } | null } }): boolean =>
-  isPrivileged(req?.user);
+export const editorOrAdminCondition: Condition = (_data, _siblingData, { user }) => isPrivileged(user);
 
 // Generic metadata JSON field
 export const metadataField: Field = {
