@@ -59,13 +59,12 @@ const convertTablesToUnlogged = async (templateUrl: string): Promise<void> => {
       return;
     }
 
-    // Multi-pass conversion: tables with FK dependencies must be converted
-    // after the tables they reference. Retry failed tables until all succeed.
+    // Referencing tables must become unlogged before their referenced tables.
+    // Retry only while conversions unlock further progress; FK cycles cannot
+    // be resolved by repeating the same ALTER statements.
     let remaining = result.rows.map((r) => r.tablename as string);
     let pass = 0;
-    const maxPasses = 5;
-
-    while (remaining.length > 0 && pass < maxPasses) {
+    while (remaining.length > 0) {
       pass++;
       const failed: string[] = [];
 
@@ -77,6 +76,7 @@ const convertTablesToUnlogged = async (templateUrl: string): Promise<void> => {
         }
       }
 
+      if (failed.length === remaining.length) break;
       remaining = failed;
     }
 
