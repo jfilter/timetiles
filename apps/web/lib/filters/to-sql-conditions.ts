@@ -76,12 +76,10 @@ export const toSqlConditions = (filters: CanonicalEventFilters): SqlFragment[] =
 /**
  * Convert canonical filters to a single SQL WHERE clause.
  *
- * Joins all conditions with AND. Returns `TRUE` if no conditions.
+ * Joins all conditions with AND, including the mandatory access restrictions.
  */
 export const toSqlWhereClause = (filters: CanonicalEventFilters): SqlFragment => {
-  const conditions = toSqlConditions(filters);
-  if (conditions.length === 0) return sql`TRUE`;
-  return sql.join(conditions, sql` AND `);
+  return sql.join(toSqlConditions(filters), sql` AND `);
 };
 
 // --- Internal builders ---
