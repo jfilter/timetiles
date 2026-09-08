@@ -1,6 +1,6 @@
 # Usage Limits
 
-Trust levels, quotas, rate limiting, and HTTP caching configuration. All values shown are the defaults — customize them in `config/timetiles.yml` (see [Configuration](./configuration#config-file-timetilesyml)).
+Trust levels, quotas, rate limiting, and HTTP caching configuration. Unless marked as a fixed technical limit, values shown are defaults — customize them in `config/timetiles.yml` (see [Configuration](./configuration#config-file-timetilesyml)).
 
 ## Trust Levels
 
@@ -13,7 +13,7 @@ Each user is assigned a trust level that determines their quotas and rate limits
 | 2     | Regular    | Standard operational limits     |
 | 3     | Trusted    | Enhanced access, scraper access |
 | 4     | Power User | Generous allowances             |
-| 5     | Unlimited  | No restrictions (admins)        |
+| 5     | Unlimited  | Most quotas unlimited (admins)  |
 
 ## Quotas
 
@@ -31,6 +31,12 @@ Each user is assigned a trust level that determines their quotas and rate limits
 | Scraper runs/day  | 0    | 0     | 0     | 10     | 50     | -    |
 
 **-** = unlimited. Scraper access requires trust level 3+.
+
+### Import Preview Limit
+
+The import wizard's file and URL previews have a **fixed technical ceiling of 50 MB**, because preview parsing loads the file into memory. The effective preview limit is the smaller of this ceiling and the user's file-size quota. An unlimited quota does not remove the preview ceiling.
+
+This is separate from the import quotas above: a higher file-size quota does not make the wizard accept previews larger than 50 MB. Per-user overrides and `config/timetiles.yml` do not raise this ceiling.
 
 ### Custom Quotas
 
