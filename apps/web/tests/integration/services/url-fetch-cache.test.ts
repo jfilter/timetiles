@@ -309,6 +309,38 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   describe("Advanced caching features", () => {
+    it.each([
+      ["must-revalidate", false],
+      ["MUST-REVALIDATE", false],
+      ["must-revalidate", true],
+      ["", false],
+    ] as const)("respects the revalidation failure policy (%s, disconnected: %s)", async (directive, disconnected) => {
+      let requests = 0;
+      testServer.route("/mandatory-revalidation", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        if (requests > 1 && disconnected) {
+          res.destroy();
+          return;
+        }
+        res.writeHead(requests === 1 ? 200 : 503, { ETag: '"mandatory"', "Cache-Control": `max-age=1, ${directive}` });
+        res.end(requests === 1 ? "Old response" : "Unavailable");
+      });
+
+      const url = `${serverUrl}/mandatory-revalidation`;
+      expect((await fetchWithRetry(url)).data.toString()).toBe("Old response");
+      await new Promise((resolve) => setTimeout(resolve, 1100));
+
+      const result = fetchWithRetry(url, { retryConfig: { maxRetries: 0 } });
+      if (directive) {
+        await expect(result).rejects.toThrow();
+      } else {
+        const fallback = await result;
+        expect(fallback.cacheStatus).toBe("STALE");
+        expect(fallback.data.toString()).toBe("Old response");
+      }
+      expect(requests).toBe(2);
+    });
+
     it.each(["etag", "last-modified"] as const)(
       "automatically revalidates an expired response with %s",
       async (header) => {

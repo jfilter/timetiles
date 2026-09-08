@@ -285,6 +285,9 @@ export class UrlFetchCache {
     }
   ): Promise<CachedResponse> {
     logger.debug("HTTP cache stale, attempting revalidation");
+    const mustRevalidate = cached.headers["cache-control"]
+      ?.split(",")
+      .some((directive) => directive.trim().toLowerCase() === "must-revalidate");
     const headers = new Headers(options?.headers);
 
     if (cached.metadata.etag) {
@@ -336,23 +339,22 @@ export class UrlFetchCache {
         return this.buildCacheResponse(updatedCached, "REVALIDATED");
       }
 
-      // An error status on revalidation must never overwrite the valid cached
-      // body — treat it like a failed revalidation and serve the stale entry
-      // (safeFetch does not throw on non-2xx, so this needs an explicit check).
+      // safeFetch does not throw on non-2xx. Route these failures through the
+      // same fallback policy as network errors without retaining their bodies.
       if (!response.ok) {
-        logger.warn("Revalidation returned error status, returning stale cache", { status: response.status });
         // Release the connection — an unconsumed body keeps the socket reserved.
         try {
           await response.body?.cancel();
         } catch {
-          // Ignore: cancellation is best-effort; the stale entry is returned regardless.
+          // Cancellation is best-effort and must not mask the HTTP status.
         }
-        return this.buildCacheResponse(cached, "STALE");
+        throw new Error(`HTTP ${response.status}: cache revalidation failed`);
       }
 
       // Got new content, cache and return it
       return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
-    } catch {
+    } catch (error) {
+      if (mustRevalidate && this.isStale(cached)) throw error;
       // On error during revalidation, return stale cache
       logger.warn("Revalidation failed, returning stale cache");
       return this.buildCacheResponse(cached, "STALE");

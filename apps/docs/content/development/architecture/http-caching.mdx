@@ -40,6 +40,7 @@ Server specifies caching behavior:
 - `no-cache` - Do not retain the response; the next import fetches it again
 - `no-store` - Never cache
 - `private` - Not cacheable (response is rejected by the cacheability check, same effect as `no-store`)
+- `must-revalidate` - Once stale, reuse requires successful validation; HTTP or network failures are propagated instead of returning old content
 
 ## Cache Flow
 
