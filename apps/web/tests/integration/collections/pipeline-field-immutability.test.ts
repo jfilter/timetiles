@@ -9,6 +9,7 @@
  * @module
  */
 
+import { createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { User } from "@/payload-types";
@@ -36,6 +37,36 @@ describe.sequential("Pipeline field immutability", () => {
 
   afterAll(async () => {
     await cleanup();
+  });
+
+  it("validates a scheduled ingest's catalog in the caller's transaction", async () => {
+    const req = await createLocalReq({ user: owner }, payload);
+    expect(await initTransaction(req)).toBe(true);
+    try {
+      const catalog = await payload.create({
+        collection: "catalogs",
+        data: { name: "Transactional Catalog", isPublic: false },
+        req,
+        overrideAccess: false,
+      });
+      const schedule = await payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          name: "Transactional Schedule",
+          createdBy: owner.id,
+          sourceUrl: "https://example.com/data.csv",
+          catalog: catalog.id,
+          scheduleType: "frequency",
+          frequency: "daily",
+        },
+        req,
+        overrideAccess: false,
+        depth: 0,
+      });
+      expect(schedule.catalog).toBe(catalog.id);
+    } finally {
+      await killTransaction(req);
+    }
   });
 
   it("ignores a client-supplied nextRun and lastStatus on a scheduled ingest", async () => {

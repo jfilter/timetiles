@@ -185,6 +185,7 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
       collection: "catalogs",
       id: catalogId as string | number,
       overrideAccess: true,
+      req,
     });
 
     if (catalog.createdBy) {
