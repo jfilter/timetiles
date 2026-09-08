@@ -271,7 +271,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
     it("should skip when import is already running", async () => {
       // Set import to running state
-      await payload.update({
+      const running = await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
         data: { lastStatus: "running", lastRun: new Date().toISOString() },
@@ -287,8 +287,19 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const data = await response.json();
       expect(data).toMatchObject({ message: "Import already running, skipped", status: "skipped" });
 
-      // Cannot verify job creation directly as jobs are internal to Payload
-      // The skipped status confirms no job was created
+      const after = await payload.findByID({ collection: "scheduled-ingests", id: running.id });
+      expect(after).toMatchObject({
+        lastStatus: running.lastStatus,
+        lastRun: running.lastRun,
+        nextRun: running.nextRun,
+        currentRetries: running.currentRetries,
+        updatedAt: running.updatedAt,
+      });
+      const jobs = await payload.count({
+        collection: "payload-jobs",
+        where: { "input.scheduledIngestId": { equals: running.id } },
+      });
+      expect(jobs.totalDocs).toBe(0);
     });
 
     it("should handle deleted import gracefully", async () => {

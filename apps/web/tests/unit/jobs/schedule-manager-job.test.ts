@@ -549,6 +549,9 @@ describe.sequential("scheduleManagerJob", () => {
 
       // Should handle gracefully without counting as an error
       expect(result.output.errors).toBe(0);
+      expect(result.output.triggered).toBe(0);
+      expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+      expect(mockPayload.update).not.toHaveBeenCalled();
     });
 
     it("should handle import name template replacements", async () => {
