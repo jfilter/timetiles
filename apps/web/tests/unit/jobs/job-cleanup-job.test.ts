@@ -186,7 +186,12 @@ describe.sequential("jobCleanupJob", () => {
 
     expect(mockPayload.find).toHaveBeenCalledWith({
       collection: "payload-jobs",
-      where: { and: [{ hasError: { equals: true } }, { updatedAt: { less_than: expectedCutoff } }] },
+      where: {
+        and: [
+          { and: [{ hasError: { equals: true } }, { updatedAt: { less_than: expectedCutoff } }] },
+          { processing: { not_equals: true } },
+        ],
+      },
       limit: 500,
       // Only the id is used to delete; depth 0 keeps the drain from hydrating each job.
       depth: 0,
@@ -208,7 +213,12 @@ describe.sequential("jobCleanupJob", () => {
 
     expect(mockPayload.find).toHaveBeenCalledWith({
       collection: "payload-jobs",
-      where: { and: [{ completedAt: { exists: true } }, { completedAt: { less_than: expectedCutoff } }] },
+      where: {
+        and: [
+          { and: [{ completedAt: { exists: true } }, { completedAt: { less_than: expectedCutoff } }] },
+          { processing: { not_equals: true } },
+        ],
+      },
       limit: 500,
       // Only the id is used to delete; depth 0 keeps the drain from hydrating each job.
       depth: 0,

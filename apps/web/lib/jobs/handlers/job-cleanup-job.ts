@@ -71,7 +71,12 @@ const drainJobs = async (sys: ReturnType<typeof asSystem>, where: Where, label: 
   let hasMore = false;
 
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const batch = await sys.find({ collection: "payload-jobs", where, limit: PAGE_SIZE, depth: 0 });
+    const batch = await sys.find({
+      collection: "payload-jobs",
+      where: { and: [where, { processing: { not_equals: true } }] },
+      limit: PAGE_SIZE,
+      depth: 0,
+    });
     if (batch.docs.length === 0) break;
 
     let deletedThisPage = 0;

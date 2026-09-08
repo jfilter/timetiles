@@ -22,6 +22,29 @@ describe.sequential("Job cleanup retries", () => {
     await env.cleanup();
   });
 
+  it("does not let a full page of processing jobs hide removable jobs", async () => {
+    const { payload } = env;
+    const removable = await payload.jobs.queue({ task: "cache-cleanup", input: {} });
+    await payload.db.drizzle.execute(sql`UPDATE payload.payload_jobs
+      SET has_error = true, updated_at = NOW() - INTERVAL '8 days'
+      WHERE id = ${removable.id}`);
+    // Newer processing rows occupy the default descending-createdAt first page.
+    await payload.db.drizzle.execute(sql`INSERT INTO payload.payload_jobs
+      (task_slug, input, has_error, processing, updated_at, created_at)
+      SELECT 'cache-cleanup', '{}'::jsonb, true, true,
+        NOW() - INTERVAL '8 days', NOW() + INTERVAL '1 minute'
+      FROM generate_series(1, 500)`);
+
+    await jobCleanupJob.handler({ req: { payload } });
+
+    expect(
+      (await payload.count({ collection: "payload-jobs", where: { id: { equals: removable.id } } })).totalDocs
+    ).toBe(0);
+    expect(
+      (await payload.count({ collection: "payload-jobs", where: { processing: { equals: true } } })).totalDocs
+    ).toBe(500);
+  });
+
   it.each(["failed", "completed"])("preserves a %s job restarted after cleanup selected it", async (state) => {
     const { payload } = env;
     const job = await payload.jobs.queue({ task: "cache-cleanup", input: {} });
