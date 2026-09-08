@@ -27,13 +27,19 @@
  */
 import { readdir, stat, unlink } from "node:fs/promises";
 
+import { eq } from "@payloadcms/db-postgres/drizzle";
+import type { Where } from "payload";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
+
 import { getEnv } from "@/lib/config/env";
-import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { getIngestFilePath, getIngestFilesDir } from "@/lib/ingest/upload-path";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem, type SystemPayload } from "@/lib/services/system-payload";
 import { isENOENT } from "@/lib/utils/is-enoent";
+import { ingest_files } from "@/payload-generated-schema";
 
 /** Max concurrent `unlink()` calls per chunk. Bounded to avoid overwhelming the FS. */
 const UNLINK_CONCURRENCY = 10;
@@ -49,7 +55,7 @@ const HOUR_MS = 60 * 60 * 1000;
 
 /** A row narrowed to the fields the cleanup scans select. */
 interface IngestFileRow {
-  id: number | string;
+  id: number;
   filename?: string | null;
 }
 
@@ -77,34 +83,76 @@ const unlinkPaths = async (paths: string[]): Promise<{ deleted: number; errors: 
   return { deleted, errors };
 };
 
+/** Recovery takes the same file lock before changing a job stage or queueing work. */
+const reclaimEligibleFile = async (sys: SystemPayload, doc: IngestFileRow, where: Where): Promise<boolean> => {
+  if (!doc.filename) return false;
+  const req = await createLocalReq({}, sys.payload);
+  if (!(await initTransaction(req))) throw new Error("Ingest file cleanup requires a database transaction");
+  try {
+    const db = await getTransactionAwareDrizzle(sys.payload, req);
+    await db.select({ id: ingest_files.id }).from(ingest_files).where(eq(ingest_files.id, doc.id)).for("update");
+    const eligible = await sys.count({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      where: { and: [where, { id: { equals: doc.id } }, { filename: { equals: doc.filename } }] },
+      req,
+    });
+    // Also protect active/review jobs left with an outdated aggregate file status.
+    const active = await sys.count({
+      collection: COLLECTION_NAMES.INGEST_JOBS,
+      where: {
+        and: [
+          { ingestFile: { equals: doc.id } },
+          { stage: { not_in: [PROCESSING_STAGE.COMPLETED, PROCESSING_STAGE.FAILED] } },
+        ],
+      },
+      req,
+    });
+    const reclaim = eligible.totalDocs > 0 && active.totalDocs === 0;
+    if (reclaim)
+      await sys.update({
+        collection: COLLECTION_NAMES.INGEST_FILES,
+        id: doc.id,
+        data: { filename: null, filesize: null, mimeType: null },
+        context: { skipIngestFileHooks: true },
+        req,
+      });
+    await commitTransaction(req);
+    return reclaim;
+  } catch (error) {
+    await killTransaction(req);
+    throw error;
+  }
+};
+
 /**
  * Pass A — reclaim disk space from processed ingests.
  *
- * Collects terminal-status candidates first (stable pagination — no mutation
- * during the scan), then nulls each file reference and unlinks the file.
+ * Collects terminal-status candidates before this pass mutates them, then
+ * rechecks each under a row lock before nulling its reference and unlinking.
  */
 const reclaimProcessedFiles = async (
   sys: SystemPayload,
   nowMs: number
 ): Promise<{ recordsReclaimed: number; filesDeleted: number; errors: number }> => {
   const cutoff = new Date(nowMs - getEnv().INGEST_FILE_RETENTION_HOURS * HOUR_MS).toISOString();
+  const where: Where = {
+    and: [
+      { filename: { not_equals: null } },
+      {
+        or: [
+          { and: [{ status: { equals: "completed" } }, { completedAt: { less_than: cutoff } }] },
+          { and: [{ status: { equals: "failed" } }, { updatedAt: { less_than: cutoff } }] },
+        ],
+      },
+    ],
+  };
 
-  // Stable scan: gather candidates before mutating anything.
+  // Gather candidates first; concurrent recoveries are checked again below.
   const candidates: IngestFileRow[] = [];
   for (let page = 1; page <= MAX_RECLAIM_PAGES; page++) {
     const res = await sys.find({
       collection: COLLECTION_NAMES.INGEST_FILES,
-      where: {
-        and: [
-          { filename: { not_equals: null } },
-          {
-            or: [
-              { and: [{ status: { equals: "completed" } }, { completedAt: { less_than: cutoff } }] },
-              { and: [{ status: { equals: "failed" } }, { updatedAt: { less_than: cutoff } }] },
-            ],
-          },
-        ],
-      },
+      where,
       select: { filename: true, status: true },
       depth: 0,
       limit: RECLAIM_PAGE_SIZE,
@@ -122,12 +170,7 @@ const reclaimProcessedFiles = async (
     try {
       // DB first: null the file reference. A crash before the unlink leaves a
       // true orphan that Pass B reclaims — never a row pointing at a gone file.
-      await sys.update({
-        collection: COLLECTION_NAMES.INGEST_FILES,
-        id: doc.id,
-        data: { filename: null, filesize: null, mimeType: null },
-        context: { skipIngestFileHooks: true },
-      });
+      if (!(await reclaimEligibleFile(sys, doc, where))) continue;
       recordsReclaimed++;
       if (doc.filename) pendingPaths.push(getIngestFilePath(doc.filename));
     } catch (error) {

@@ -23,7 +23,7 @@ const makeDrizzleUpdateMock = (returning: unknown[]) => {
     set: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue(returning),
-    for: vi.fn().mockResolvedValue([{ stage: PROCESSING_STAGE.FAILED }]),
+    for: vi.fn().mockResolvedValue([{ stage: PROCESSING_STAGE.FAILED, filename: "source.csv" }]),
   };
   return { update: vi.fn().mockReturnValue(chain), select: vi.fn().mockReturnValue(chain), chain };
 };
@@ -65,7 +65,7 @@ describe.sequential("ingest-job recovery routes", () => {
   });
 
   it("retries failed jobs from analyze-duplicates instead of detect-schema", async () => {
-    mocks.safeFindByID.mockResolvedValue({ id: 17, stage: PROCESSING_STAGE.FAILED });
+    mocks.safeFindByID.mockResolvedValue({ id: 17, stage: PROCESSING_STAGE.FAILED, ingestFile: 1 });
 
     await retryPost({ payload, user: { id: 99 }, params: { id: "17" } } as never, {} as never);
 
@@ -78,7 +78,7 @@ describe.sequential("ingest-job recovery routes", () => {
   });
 
   it("admin reset maps analyze-duplicates back to a real full restart", async () => {
-    mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED });
+    mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED, ingestFile: 1 });
 
     await resetPost(
       {
@@ -99,14 +99,14 @@ describe.sequential("ingest-job recovery routes", () => {
     expect(payload.jobs.queue).toHaveBeenCalledWith({
       workflow: "ingest-process",
       input: { ingestJobId: "42", resumeFrom: "analyze-duplicates" },
-      req: payload.update.mock.calls[0]?.[0].req,
+      req: payload.update.mock.calls[1]?.[0].req,
     });
     expect(commitTransaction).toHaveBeenCalled();
     expect(killTransaction).not.toHaveBeenCalled();
   });
 
   it.each(["reset", "retry"])("rolls back the complete %s when queueing fails", async (operation) => {
-    mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED });
+    mocks.safeFindByID.mockResolvedValue({ id: 42, stage: PROCESSING_STAGE.FAILED, ingestFile: 1 });
     const error = new Error("Queue unavailable");
     payload.jobs.queue.mockRejectedValue(error);
     await expect(
@@ -122,6 +122,6 @@ describe.sequential("ingest-job recovery routes", () => {
     ).rejects.toBe(error);
     expect(killTransaction).toHaveBeenCalledWith(payload.jobs.queue.mock.calls[0]?.[0].req);
     expect(commitTransaction).not.toHaveBeenCalled();
-    expect(payload.update).toHaveBeenCalledTimes(operation === "reset" ? 1 : 0);
+    expect(payload.update).toHaveBeenCalledTimes(operation === "reset" ? 2 : 1);
   });
 });

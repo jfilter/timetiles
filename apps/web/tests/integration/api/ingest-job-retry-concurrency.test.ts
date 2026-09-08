@@ -18,6 +18,7 @@ vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockReso
 
 import { POST as resetPOST } from "@/app/api/ingest-jobs/[id]/reset/route";
 import { POST as retryPOST } from "@/app/api/ingest-jobs/[id]/retry/route";
+import { getEnv } from "@/lib/config/env";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import type { Catalog, Dataset, IngestFile, User } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
@@ -53,7 +54,7 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
     cleanup = testEnv.cleanup;
 
     const { users } = await withUsers(testEnv, {
-      owner: { role: "user", _verified: true },
+      owner: { role: "user", _verified: true, trustLevel: "5" },
       admin: { role: "admin", _verified: true },
     });
     owner = users.owner;
@@ -86,6 +87,54 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
       { params: Promise.resolve({ id: String(id) }) }
     );
 
+  it.each(["reset", "retry"])("protects the source file from cleanup after %s", async (operation) => {
+    const { ingestFile: source } = await withIngestFile(testEnv, catalog.id, "name\nRetry source\n", {
+      user: owner.id,
+      status: "failed",
+    });
+    const job = await payload.create({
+      collection: "ingest-jobs",
+      data: { ingestFile: source.id, dataset: dataset.id, stage: PROCESSING_STAGE.FAILED },
+    });
+    const old = new Date(Date.now() - (getEnv().INGEST_FILE_RETENTION_HOURS + 1) * 60 * 60 * 1000);
+    await payload.db.drizzle.execute(sql`UPDATE payload.ingest_files SET updated_at = ${old.toISOString()}
+      WHERE id = ${source.id}`);
+    const login = await payload.login({
+      collection: "users",
+      data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
+    });
+    const recover = operation === "reset" ? callReset : callRetry;
+    expect((await recover(job.id, login.token)).status).toBe(200);
+    const cleanupJob = await payload.jobs.queue({ task: "ingest-files-cleanup", queue: "maintenance", input: {} });
+    await payload.jobs.run({ queue: "maintenance", where: { id: { equals: cleanupJob.id } } });
+    const after = await payload.findByID({ collection: "ingest-files", id: source.id });
+    expect(after.filename).toBe(source.filename);
+    expect(after.status).toBe("processing");
+  });
+
+  it.each(["reset", "retry"])("rejects %s after the source file was reclaimed", async (operation) => {
+    const { ingestFile: source } = await withIngestFile(testEnv, catalog.id, "name\nReclaimed source\n", {
+      user: owner.id,
+      status: "failed",
+    });
+    const job = await payload.create({
+      collection: "ingest-jobs",
+      data: { ingestFile: source.id, dataset: dataset.id, stage: PROCESSING_STAGE.FAILED },
+    });
+    await payload.update({ collection: "ingest-files", id: source.id, data: { filename: null } });
+    const login = await payload.login({
+      collection: "users",
+      data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
+    });
+    const recover = operation === "reset" ? callReset : callRetry;
+    expect((await recover(job.id, login.token)).status).toBe(400);
+    expect((await payload.findByID({ collection: "ingest-jobs", id: job.id })).stage).toBe(PROCESSING_STAGE.FAILED);
+    expect(
+      (await payload.count({ collection: "payload-jobs", where: { "input.ingestJobId": { equals: String(job.id) } } }))
+        .totalDocs
+    ).toBe(0);
+  });
+
   it.each(["reset", "retry"])("queues only one workflow for an admin reset concurrent with %s", async (operation) => {
     const job = await payload.create({
       collection: "ingest-jobs",
@@ -117,6 +166,7 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
         collection: "users",
         data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
       });
+      const fileBefore = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
       // Real database failure, scoped to this disposable worker database and removed in finally.
       await payload.db.drizzle.execute(sql`ALTER TABLE payload.payload_jobs ADD CONSTRAINT reject_reset_test
       CHECK (workflow_slug <> 'ingest-process') NOT VALID`);
@@ -127,6 +177,10 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
         expect(after.stage).toBe(PROCESSING_STAGE.FAILED);
         expect(after.errorLog).toEqual(errorLog);
         expect(after.updatedAt).toBe(job.updatedAt);
+        const fileAfter = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+        expect(fileAfter.status).toBe(fileBefore.status);
+        expect(fileAfter.completedAt).toBe(fileBefore.completedAt);
+        expect(fileAfter.updatedAt).toBe(fileBefore.updatedAt);
         const queued = await payload.count({
           collection: "payload-jobs",
           where: { "input.ingestJobId": { equals: String(job.id) } },

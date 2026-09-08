@@ -9,6 +9,20 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("payload", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  createLocalReq: vi.fn((_options, payload) => Promise.resolve({ payload })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/database/drizzle-transaction", () => ({
+  getTransactionAwareDrizzle: vi
+    .fn()
+    .mockResolvedValue({ select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve([]) }) }) }) }),
+}));
+
 vi.mock("node:fs/promises", () => ({
   unlink: vi.fn().mockResolvedValue(undefined),
   readdir: vi.fn().mockResolvedValue([]),
@@ -71,7 +85,9 @@ describe.sequential("ingestFilesCleanupJob", () => {
 
     mockPayload = {
       find: vi.fn().mockResolvedValue({ docs: [] }),
-      count: vi.fn().mockResolvedValue({ totalDocs: 0 }),
+      count: vi.fn((args: any) =>
+        Promise.resolve({ totalDocs: args.req && args.collection === "ingest-files" ? 1 : 0 })
+      ),
       update: vi.fn().mockResolvedValue({}),
     };
   });
@@ -100,6 +116,7 @@ describe.sequential("ingestFilesCleanupJob", () => {
       data: { filename: null, filesize: null, mimeType: null },
       context: { skipIngestFileHooks: true },
       overrideAccess: true,
+      req: expect.objectContaining({ payload: mockPayload }),
     });
     expect(mockUnlink).toHaveBeenCalledWith(getIngestFilePath("url-import-a.csv"));
     expect(result.output.recordsReclaimed).toBe(1);

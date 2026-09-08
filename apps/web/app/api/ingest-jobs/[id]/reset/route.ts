@@ -17,7 +17,9 @@ import { z } from "zod";
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { prepareIngestFileRecovery } from "@/lib/ingest/ingest-file-status";
 import { logger } from "@/lib/logger";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import { ingest_jobs } from "@/payload-generated-schema";
 
 /**
@@ -78,8 +80,9 @@ export const POST = apiRoute({
 
     const resumeFrom = stageToResumeFrom(targetStage);
     const req = await createLocalReq({ user }, payload);
-    const ownsTransaction = await initTransaction(req);
+    if (!(await initTransaction(req))) throw new Error("Ingest recovery requires a database transaction");
     try {
+      await prepareIngestFileRecovery(req, requireRelationId(ingestJob.ingestFile));
       // Recheck under a row lock: another reset or retry may have claimed it since the access check.
       const db = await getTransactionAwareDrizzle(payload, req);
       const [current] = await db
@@ -96,10 +99,10 @@ export const POST = apiRoute({
         input: { ingestJobId: String(ingestJob.id), resumeFrom },
         req,
       });
-      if (ownsTransaction) await commitTransaction(req);
+      await commitTransaction(req);
     } catch (error) {
       // Restore the whole update, including the error log, if queueing fails.
-      if (ownsTransaction) await killTransaction(req);
+      await killTransaction(req);
       throw error;
     }
 

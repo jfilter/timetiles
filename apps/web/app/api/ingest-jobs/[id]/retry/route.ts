@@ -16,7 +16,9 @@ import { z } from "zod";
 import { apiRoute, safeFindByID, ValidationError } from "@/lib/api";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { prepareIngestFileRecovery } from "@/lib/ingest/ingest-file-status";
 import { logger } from "@/lib/logger";
+import { requireRelationId } from "@/lib/utils/relation-id";
 import { ingest_jobs } from "@/payload-generated-schema";
 
 export const POST = apiRoute({
@@ -36,8 +38,9 @@ export const POST = apiRoute({
     }
 
     const req = await createLocalReq({ user }, payload);
-    const ownsTransaction = await initTransaction(req);
+    if (!(await initTransaction(req))) throw new Error("Ingest recovery requires a database transaction");
     try {
+      await prepareIngestFileRecovery(req, requireRelationId(ingestJob.ingestFile));
       // Payload's bulk update is find-then-update, not compare-and-swap. Keep the
       // conditional SQL claim, but publish it and the workflow in one transaction.
       const db = await getTransactionAwareDrizzle(payload, req);
@@ -54,9 +57,9 @@ export const POST = apiRoute({
         input: { ingestJobId: String(ingestJob.id), resumeFrom: "analyze-duplicates" },
         req,
       });
-      if (ownsTransaction) await commitTransaction(req);
+      await commitTransaction(req);
     } catch (error) {
-      if (ownsTransaction) await killTransaction(req);
+      await killTransaction(req);
       throw error;
     }
 
