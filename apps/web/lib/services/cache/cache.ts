@@ -39,10 +39,10 @@ export class Cache {
   /**
    * Get a value from cache
    */
-  async get<T>(key: string): Promise<T | null> {
+  async get<T>(key: string, options?: { allowExpired?: boolean }): Promise<T | null> {
     const fullKey = this.makeKey(key);
     try {
-      const entry = await this.storage.get<T>(fullKey);
+      const entry = await this.storage.get<T>(fullKey, options);
       return entry?.value ?? null;
     } catch {
       logger.error("Cache get error");

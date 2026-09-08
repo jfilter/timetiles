@@ -69,7 +69,7 @@ export interface CacheStorage {
   /**
    * Get a value from cache
    */
-  get<T = unknown>(key: string): Promise<CacheEntry<T> | null>;
+  get<T = unknown>(key: string, options?: { allowExpired?: boolean }): Promise<CacheEntry<T> | null>;
 
   /**
    * Set a value in cache

@@ -33,9 +33,8 @@ interface CachedEntry {
   metadata: {
     etag?: string;
     lastModified?: string;
-    expires?: Date;
-    maxAge?: number;
-    fetchedAt: Date;
+    /** Absolute freshness deadline; absent on legacy entries, which must be revalidated. */
+    freshUntil?: number;
     contentHash: string;
   };
 }
@@ -129,25 +128,8 @@ export class UrlFetchCache {
   /**
    * Check if cached entry is stale
    */
-  private isStale(entry: CachedEntry, respectCacheControl?: boolean): boolean {
-    if (!(respectCacheControl ?? this.respectCacheControl)) return false;
-
-    const metadata = entry.metadata;
-
-    // Check explicit expiration
-    if (metadata.expires && metadata.expires < new Date()) {
-      return true;
-    }
-
-    // Check max-age
-    if (metadata.maxAge !== undefined) {
-      const age = (Date.now() - metadata.fetchedAt.getTime()) / 1000;
-      if (age > metadata.maxAge) {
-        return true;
-      }
-    }
-
-    return false;
+  private isStale(entry: CachedEntry): boolean {
+    return entry.metadata.freshUntil === undefined || entry.metadata.freshUntil <= Date.now();
   }
 
   private collectResponseHeaders(response: Response): Record<string, string> {
@@ -242,20 +224,6 @@ export class UrlFetchCache {
   }
 
   /**
-   * Helper to normalize cached data
-   */
-  private normalizeCachedEntry(cached: CachedEntry): CachedEntry {
-    // Ensure dates are Date objects (deserialization might return strings)
-    if (cached.metadata.fetchedAt && typeof cached.metadata.fetchedAt === "string") {
-      cached.metadata.fetchedAt = parseDateInput(cached.metadata.fetchedAt) ?? new Date();
-    }
-    if (cached.metadata.expires && typeof cached.metadata.expires === "string") {
-      cached.metadata.expires = parseDateInput(cached.metadata.expires) ?? undefined;
-    }
-    return cached;
-  }
-
-  /**
    * Helper to build cache response
    */
   private buildCacheResponse(cached: CachedEntry, cacheStatus: string): CachedResponse {
@@ -285,18 +253,17 @@ export class UrlFetchCache {
       maxSize?: number;
     }
   ): Promise<CachedResponse> {
-    const normalizedCached = this.normalizeCachedEntry(cached);
-    const isStale = this.isStale(normalizedCached, options?.respectCacheControl);
+    const isStale = this.isStale(cached);
 
     // If not stale and not forced revalidation, return cached
     if (!isStale && !options?.forceRevalidate) {
       logger.debug("HTTP cache hit");
-      return this.buildCacheResponse(normalizedCached, "HIT");
+      return this.buildCacheResponse(cached, "HIT");
     }
 
     // Try revalidation with conditional request
-    if (normalizedCached.metadata.etag ?? normalizedCached.metadata.lastModified) {
-      return this.revalidateCachedEntry(url, cacheKey, normalizedCached, options);
+    if (cached.metadata.etag ?? cached.metadata.lastModified) {
+      return this.revalidateCachedEntry(url, cacheKey, cached, options);
     }
 
     // Stale without revalidation headers - fetch fresh
@@ -355,16 +322,12 @@ export class UrlFetchCache {
             ...cached.metadata,
             etag: mergedHeaders["etag"] ?? cached.metadata.etag,
             lastModified: mergedHeaders["last-modified"] ?? cached.metadata.lastModified,
-            expires: mergedHeaders["expires"]
-              ? (parseDateInput(mergedHeaders["expires"]) ?? undefined)
-              : cached.metadata.expires,
-            maxAge: this.parseMaxAge(mergedHeaders["cache-control"]) ?? cached.metadata.maxAge,
-            fetchedAt: new Date(),
           },
         };
         // Apply the same cacheability policy as a fresh response. A zero TTL
         // must not reach storage, where it means "never expires".
         const revalidatedTtl = this.calculateTTL(updatedCached.headers, respectCacheControl);
+        updatedCached.metadata.freshUntil = Date.now() + revalidatedTtl * 1000;
         if (revalidatedTtl === 0 || !this.isCacheable(updatedCached.status, updatedCached.headers)) {
           await this.cache.delete(cacheKey);
         } else {
@@ -519,7 +482,9 @@ export class UrlFetchCache {
 
     // Check cache first (unless bypassed)
     if (!options?.bypassCache) {
-      const cached = await this.cache.get<CachedEntry>(cacheKey);
+      // Expiration ends freshness, not the usefulness of validators. Cleanup and
+      // size-based eviction still bound retention of these expired entries.
+      const cached = await this.cache.get<CachedEntry>(cacheKey, { allowExpired: true });
       if (cached) {
         return this.handleCachedEntry(url, cacheKey, cached, options);
       }
@@ -548,7 +513,6 @@ export class UrlFetchCache {
       return;
     }
 
-    const now = new Date();
     const entry: CachedEntry = {
       data,
       headers,
@@ -556,9 +520,7 @@ export class UrlFetchCache {
       metadata: {
         etag: headers["etag"],
         lastModified: headers["last-modified"],
-        expires: headers["expires"] ? (parseDateInput(headers["expires"]) ?? undefined) : undefined,
-        maxAge: this.parseMaxAge(headers["cache-control"]),
-        fetchedAt: now,
+        freshUntil: Date.now() + ttl * 1000,
         contentHash: crypto.createHash("sha256").update(data).digest("hex"),
       },
     };

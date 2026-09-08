@@ -24,6 +24,15 @@ describe("UrlFetchCache", () => {
     delete process.env.URL_FETCH_CACHE_TTL;
   });
 
+  it("uses the stored freshness deadline and treats legacy entries as stale", () => {
+    const cache = new UrlFetchCache() as unknown as {
+      isStale: (entry: { metadata: { freshUntil?: number } }) => boolean;
+    };
+    expect(cache.isStale({ metadata: {} })).toBe(true);
+    expect(cache.isStale({ metadata: { freshUntil: Date.now() - 1 } })).toBe(true);
+    expect(cache.isStale({ metadata: { freshUntil: Date.now() + 60_000 } })).toBe(false);
+  });
+
   it("does not log invalid URL input or the parser's error object", () => {
     const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
     const url = `invalid-${TEST_SECRETS.payloadSecret}`;

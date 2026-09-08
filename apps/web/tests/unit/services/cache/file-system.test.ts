@@ -54,6 +54,15 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("basic operations", () => {
+    it("allows revalidation reads of expired entries without exempting them from cleanup", async () => {
+      await storage.set("expired", "validator source", { ttl: 0.01 });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      expect((await storage.get("expired", { allowExpired: true }))?.value).toBe("validator source");
+      expect(await storage.cleanup()).toBe(1);
+      expect(await storage.get("expired", { allowExpired: true })).toBeNull();
+    });
+
     it("isolates listing and clearing between cache namespaces", async () => {
       const cache = new Cache({ storage, keyPrefix: "http:v2:" });
       await storage.set("http:legacy", "old");

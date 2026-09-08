@@ -110,7 +110,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     return path.join(this.cacheDir, subdir, `${hash}.cache`);
   }
 
-  async get<T>(key: string): Promise<CacheEntry<T> | null> {
+  async get<T>(key: string, options?: { allowExpired?: boolean }): Promise<CacheEntry<T> | null> {
     await this.ensureInitialized();
 
     const indexEntry = this.index.get(key);
@@ -120,7 +120,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     }
 
     // Check expiration
-    if (indexEntry.expires && indexEntry.expires < Date.now()) {
+    if (!options?.allowExpired && indexEntry.expires && indexEntry.expires <= Date.now()) {
       await this.delete(key);
       this.stats.misses++;
       return null;

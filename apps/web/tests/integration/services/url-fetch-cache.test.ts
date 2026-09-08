@@ -309,6 +309,31 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   describe("Advanced caching features", () => {
+    it.each(["etag", "last-modified"] as const)(
+      "automatically revalidates an expired response with %s",
+      async (header) => {
+        const conditionalHeaders: Array<string | undefined> = [];
+        const validator = header === "etag" ? '"automatic-revalidation"' : "Wed, 01 Jan 2025 00:00:00 GMT";
+        const requestHeader = header === "etag" ? "if-none-match" : "if-modified-since";
+        testServer.route("/automatic-revalidation", (req: IncomingMessage, res: ServerResponse) => {
+          const conditional = req.headers[requestHeader];
+          conditionalHeaders.push(conditional);
+          res.writeHead(conditional === validator ? 304 : 200, { [header]: validator, "Cache-Control": "max-age=1" });
+          res.end(conditional === validator ? undefined : "Unchanged response");
+        });
+
+        const url = `${serverUrl}/automatic-revalidation`;
+        expect((await fetchWithRetry(url)).cacheStatus).toBe("MISS");
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+
+        const result = await fetchWithRetry(url);
+        expect(result.data.toString()).toBe("Unchanged response");
+        expect(conditionalHeaders).toEqual([undefined, validator]);
+        expect(result.cacheStatus).toBe("REVALIDATED");
+        expect((await fetchWithRetry(url)).cacheStatus).toBe("HIT");
+      }
+    );
+
     it("should handle ETag and conditional requests", async () => {
       const etagUrl = `${serverUrl}/etag`;
       const etag = '"test-etag"';
