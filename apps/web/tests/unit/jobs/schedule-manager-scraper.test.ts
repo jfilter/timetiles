@@ -24,8 +24,6 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: (...args: unknown[]) => mockIsEnabled(...args) }),
 }));
 
-vi.mock("@/lib/ingest/trigger-service", () => ({ triggerScheduledIngest: vi.fn().mockResolvedValue(undefined) }));
-
 const mockClaimScraperRunning = vi.fn();
 
 vi.mock("@/lib/services/webhook-registry", () => ({

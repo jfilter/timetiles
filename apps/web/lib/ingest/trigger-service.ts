@@ -97,7 +97,7 @@ interface TriggerOptions {
  * @throws If the job cannot be queued. The caller is responsible for
  *   error recovery (e.g. reverting status or recording failure).
  */
-export const triggerScheduledIngest = async (
+const triggerScheduledIngest = async (
   payload: Payload,
   scheduledIngest: ScheduledIngest,
   currentTime: Date,

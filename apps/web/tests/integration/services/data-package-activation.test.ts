@@ -909,18 +909,15 @@ describe.sequential("Data Package Activation", () => {
     testServer.reset();
     testServer.respondWithCSV("/conflict-reimport.csv", updatedCsv);
 
-    // Trigger re-import manually via triggerScheduledIngest
-    const { triggerScheduledIngest } = await import("@/lib/ingest/trigger-service");
+    // Re-import through the same transactional entrypoint as manual triggers.
+    const { claimAndQueueScheduledIngest } = await import("@/lib/ingest/trigger-service");
     const fullIngest = await payload.findByID({ collection: "scheduled-ingests", id: result.scheduledIngestId });
 
-    // Reset status so it can be triggered again
-    await payload.update({
-      collection: "scheduled-ingests",
-      id: result.scheduledIngestId,
-      data: { lastStatus: "success" },
+    expect(fullIngest.lastStatus).toBe("success");
+    await claimAndQueueScheduledIngest(payload, fullIngest, new Date(), {
+      triggeredBy: "manual",
+      onQueueFailure: "rollback",
     });
-
-    await triggerScheduledIngest(payload, fullIngest, new Date(), { triggeredBy: "manual" });
 
     // Find the new ingest file
     let secondIngestFileId: IngestFileId;

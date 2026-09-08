@@ -195,7 +195,7 @@ export const PATCH = apiRoute({
       "Updated scheduled ingest from wizard"
     );
 
-    // Optionally trigger a run. Route through triggerScheduledIngest — the same
+    // Optionally trigger a run. Route through claimAndQueueScheduledIngest — the same
     // path manual triggers, webhooks, and the scheduler use — so the FULL
     // scheduled-ingest WORKFLOW runs (url-fetch → dataset-detection → per-sheet
     // pipeline). Queueing the raw `url-fetch` task alone created the ingest file
