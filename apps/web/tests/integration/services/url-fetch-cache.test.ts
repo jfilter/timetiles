@@ -451,6 +451,39 @@ describe.sequential("HTTP Cache Integration", () => {
       expect((await urlFetchCache.fetch(url)).status).toBe(203);
     });
 
+    it("keeps range responses separate from complete cached responses", async () => {
+      let requests = 0;
+      testServer.route("/range-response", (req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        const partial = req.headers.range !== undefined;
+        res.writeHead(partial ? 206 : 200, {
+          "Cache-Control": "max-age=60",
+          ...(partial ? { "Content-Range": "bytes 0-2/6" } : {}),
+        });
+        res.end(partial ? "abc" : "abcdef");
+      });
+      const url = `${serverUrl}/range-response`;
+      const rangeOptions = { headers: { Range: "bytes=0-2" } };
+      expect((await urlFetchCache.fetch(url, rangeOptions)).data.toString()).toBe("abc");
+      expect((await urlFetchCache.fetch(url)).data.toString()).toBe("abcdef");
+      expect((await urlFetchCache.fetch(url, rangeOptions)).data.toString()).toBe("abc");
+      expect((await urlFetchCache.fetch(url)).headers["X-Cache"]).toBe("HIT");
+      expect(requests).toBe(3);
+    });
+
+    it("does not cache unsolicited partial responses", async () => {
+      let requests = 0;
+      testServer.route("/unsolicited-partial", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(206, { "Cache-Control": "max-age=60", "Content-Range": "bytes 0-2/6" });
+        res.end("abc");
+      });
+      const url = `${serverUrl}/unsolicited-partial`;
+      await urlFetchCache.fetch(url);
+      await urlFetchCache.fetch(url);
+      expect(requests).toBe(2);
+    });
+
     it.each(["private", "no-store", "no-cache", "Private", "No-Store", "No-Cache"])(
       "discards cached content when a 304 changes policy to %s",
       async (policy) => {

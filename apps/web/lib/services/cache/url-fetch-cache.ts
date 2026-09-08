@@ -447,9 +447,9 @@ export class UrlFetchCache {
     const userId = options?.userId;
     const cacheKey = this.getCacheKey(url, method, userId, options?.authFingerprint);
 
-    // Only cache GET requests
-    if (method !== "GET") {
-      logger.debug("Bypassing cache for non-GET request", { method });
+    // This cache stores complete GET responses, not byte-range representations.
+    if (method !== "GET" || new Headers(options?.headers).has("range")) {
+      logger.debug("Bypassing cache for non-cacheable request", { method });
       const {
         bypassCache: _bypassCache,
         forceRevalidate: _forceRevalidate,
@@ -464,7 +464,8 @@ export class UrlFetchCache {
       // Expiration ends freshness, not the usefulness of validators. Cleanup and
       // size-based eviction still bound retention of these expired entries.
       const cached = await this.cache.get<CachedEntry>(cacheKey, { allowExpired: true });
-      if (cached) {
+      // Older versions could store partial responses as complete entries.
+      if (cached && cached.status !== 206) {
         return this.handleCachedEntry(url, cacheKey, cached, options);
       }
     }
@@ -549,7 +550,7 @@ export class UrlFetchCache {
       if (cacheControl.includes("no-store")) return false;
       if (cacheControl.includes("private")) return false;
     }
-    return status >= 200 && status < 300;
+    return status >= 200 && status < 300 && status !== 206;
   }
 
   async clear(): Promise<number> {
