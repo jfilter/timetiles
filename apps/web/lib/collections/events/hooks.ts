@@ -8,6 +8,8 @@
  * @module
  * @category Collections
  */
+import { isDeepStrictEqual } from "node:util";
+
 import type { CollectionAfterChangeHook, CollectionAfterErrorHook, CollectionBeforeChangeHook } from "payload";
 import { Forbidden } from "payload";
 
@@ -33,11 +35,29 @@ const eventQuota = createQuotaClaimLifecycle({ contextKey: "eventQuotaClaimedFor
 /** Denormalized access-control fields on events — derived here, never client-supplied. */
 const EVENT_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
 
-export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({ data: incoming, operation, req }) => {
+export const eventsBeforeChangeHook: CollectionBeforeChangeHook<Event> = async ({
+  data: incoming,
+  operation,
+  originalDoc,
+  req,
+}) => {
   // A client PATCH that omits `dataset` skips the derivation below, so without
   // this the caller's own datasetIsPublic/catalogOwnerId would be stored —
   // publishing a single event out of a private dataset.
   const data = stripClientDenormFields(incoming, req, EVENT_DENORM_FIELDS);
+
+  // Imports omit sourceData when it equals transformedData. Materialize that
+  // original row before an edit replaces the only stored copy.
+  if (
+    operation === "update" &&
+    originalDoc &&
+    originalDoc.sourceData == null &&
+    data?.transformedData !== undefined &&
+    data.sourceData == null &&
+    !isDeepStrictEqual(data.transformedData, originalDoc.transformedData)
+  ) {
+    data.sourceData = originalDoc.transformedData;
+  }
 
   // Set denormalized access control fields.
   // Skipped for an internal resync: those writes carry the authoritative values,

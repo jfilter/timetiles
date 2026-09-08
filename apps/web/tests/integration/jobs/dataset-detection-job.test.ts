@@ -203,6 +203,14 @@ describe.sequential("Dataset Detection Job", () => {
       data: { locationName: "Updated location" },
     });
     expect(updatedEvent.locationName).toBe("Updated location");
+    expect(updatedEvent.sourceData).toBeNull();
+    const editedEvent = await payload.update({
+      collection: "events",
+      id: updatedEvent.id,
+      data: { transformedData: { ...updatedEvent.transformedData, name: "Edited event" } },
+    });
+    expect(editedEvent.sourceData).toEqual(events.docs[0].transformedData);
+    expect(editedEvent.transformedData.name).toBe("Edited event");
   });
 
   it("should create new dataset when originalName is missing", async () => {
