@@ -14,7 +14,6 @@ import crypto from "node:crypto";
 import { getAppConfig } from "@/lib/config/app-config";
 import { logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
-import { compareCodeUnits } from "@/lib/utils/compare";
 import { parseDateInput } from "@/lib/utils/date";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
@@ -70,7 +69,8 @@ export class UrlFetchCache {
 
     const storage = new FileSystemCacheStorage({ cacheDir, maxSize, defaultTTL: this.defaultTTL });
 
-    this.cache = new Cache({ storage, keyPrefix: "http:" });
+    // Do not reuse legacy entries that conflated paths and reordered query strings.
+    this.cache = new Cache({ storage, keyPrefix: "http:v2:" });
   }
 
   /**
@@ -579,33 +579,8 @@ export class UrlFetchCache {
     try {
       const parsed = new URL(url);
 
-      // Lowercase hostname
-      parsed.hostname = parsed.hostname.toLowerCase();
-
-      // Remove default ports
-      if (
-        (parsed.protocol === "http:" && parsed.port === "80") ||
-        (parsed.protocol === "https:" && parsed.port === "443")
-      ) {
-        parsed.port = "";
-      }
-
-      // Remove trailing slash from pathname (but keep "/" for root)
-      if (parsed.pathname !== "/" && parsed.pathname.endsWith("/")) {
-        parsed.pathname = parsed.pathname.slice(0, -1);
-      }
-
-      // Sort query parameters by UTF-16 code unit (NOT localeCompare) so the
-      // cache key is identical across machines regardless of runtime locale/ICU.
-      if (parsed.search) {
-        const params = new URLSearchParams(parsed.search);
-        const sortedParams = new URLSearchParams(
-          Array.from(params.entries()).sort(([a], [b]) => compareCodeUnits(a, b))
-        );
-        parsed.search = sortedParams.toString();
-      }
-
-      // Remove fragment (hash)
+      // URL already normalizes host casing and default ports. Only fragments are
+      // omitted from HTTP requests; path, query order and encoding remain significant.
       parsed.hash = "";
 
       return parsed.toString();

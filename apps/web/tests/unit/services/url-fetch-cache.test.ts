@@ -139,39 +139,24 @@ describe("UrlFetchCache", () => {
     await expect(cache.readResponseBody(response, 1000)).resolves.toMatchObject({ data: Buffer.from("hello world") });
   });
 
-  it("normalizes query params identically regardless of input order", () => {
+  it("keeps different query parameter orders distinct", () => {
     process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
 
     const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
 
-    expect(cache.normalizeUrl("https://example.com/p?b=2&a=1")).toBe(
+    expect(cache.normalizeUrl("https://example.com/p?b=2&a=1")).not.toBe(
       cache.normalizeUrl("https://example.com/p?a=1&b=2")
     );
   });
 
-  it("sorts query params locale-independently so the cache key is stable across environments", () => {
-    // Regression: query params were sorted with String.prototype.localeCompare,
-    // whose ordering depends on the runtime locale/ICU. The cache key is persisted,
-    // so two machines could key the same URL differently. Ordering must not depend
-    // on localeCompare.
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
+  it.each([
+    "https://example.com/p/",
+    "https://example.com/p?b=2&a=1",
+    "https://example.com/p?q=a%20b",
+    "https://example.com/p?q=a+b",
+    "https://example.com/p?a=2&a=1",
+  ])("preserves request identity for %s", (url) => {
     const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
-    const url = "https://example.com/p?a=1&b=2";
-    const expected = cache.normalizeUrl(url);
-
-    const spy = vi.spyOn(String.prototype, "localeCompare").mockImplementation(function (
-      this: string,
-      that: string
-    ): number {
-      if (this < that) return 1;
-      if (this > that) return -1;
-      return 0;
-    });
-    try {
-      expect(cache.normalizeUrl(url)).toBe(expected);
-    } finally {
-      spy.mockRestore();
-    }
+    expect(cache.normalizeUrl(url)).toBe(url);
   });
 });

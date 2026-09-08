@@ -34,6 +34,7 @@ describe.sequential("HTTP Cache Integration", () => {
     // Setup test endpoints
     testServer
       .respondWithJSON("/json", { slideshow: { title: "Sample" } })
+      .respondWithJSON("/json/", { slideshow: { title: "Different endpoint" } })
       .respond("/status/404", { status: 404, body: "Not Found" })
       .respond("/status/500", { status: 500, body: "Server Error" })
       .route("/uuid", (_req: IncomingMessage, res: ServerResponse) => {
@@ -423,28 +424,28 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(result2.cacheStatus).toBe("HIT");
     });
 
-    it("should normalize URLs with trailing slashes", async () => {
+    it("keeps distinct trailing-slash endpoints separate", async () => {
       const url1 = `${serverUrl}/json`;
       const url2 = `${serverUrl}/json/`;
 
       const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
-      // URL with trailing slash should hit same cache entry
       const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
-      expect(result2.cacheStatus).toBe("HIT");
+      expect(result2.cacheStatus).toBe("MISS");
+      expect(result2.data).not.toEqual(result1.data);
     });
 
-    it("should normalize query parameters in different order", async () => {
+    it("preserves query parameter order in cache identity", async () => {
       const url1 = `${serverUrl}/get?b=2&a=1`;
       const url2 = `${serverUrl}/get?a=1&b=2`;
 
       const result1 = await fetchWithRetry(url1, { cacheOptions: { useCache: true } });
       expect(result1.cacheStatus).toBe("MISS");
 
-      // Different param order should hit same cache entry
       const result2 = await fetchWithRetry(url2, { cacheOptions: { useCache: true } });
-      expect(result2.cacheStatus).toBe("HIT");
+      expect(result2.cacheStatus).toBe("MISS");
+      expect(result2.data).not.toEqual(result1.data);
     });
 
     it("should ignore URL fragments", async () => {

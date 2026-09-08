@@ -77,30 +77,30 @@ Positive TTLs are capped by `cache.urlFetch.maxTtlSeconds`. With `respectCacheCo
 
 ## Cache Key Generation
 
-Cache keys are generated from normalized URLs to maximize hit rate:
+Cache keys preserve the URL sent to the server:
 
 **Normalization steps:**
 
 1. Hostname lowercased (`API.Example.com` → `api.example.com`)
 2. Default ports removed (`:80` and `:443` stripped)
-3. Trailing slashes removed
-4. Query parameters sorted alphabetically
-5. Fragments removed (`#section`)
+3. Fragments removed (`#section`, not sent in HTTP requests)
+
+Paths (including trailing slashes), query parameter order, and query encoding remain unchanged. Servers can return different responses for these differences.
 
 **Example:**
 
 ```
 Original: https://API.Example.com:443/events/?limit=100&format=json#top
-Normalized: https://api.example.com/events?format=json&limit=100
+Normalized: https://api.example.com/events/?limit=100&format=json
 ```
 
 For the same user and authentication identity, these URLs cache as the same entry:
 
 - `https://api.example.com/data`
-- `https://API.Example.com/data/`
+- `https://API.Example.com/data`
 - `https://api.example.com:443/data`
 
-Query parameters remain part of the key: `/data?b=2&a=1` matches `/data?a=1&b=2`, but not `/data`. Keys also include the HTTP method, user ID (or an anonymous marker), and an authentication fingerprint when supplied by the caller.
+`/data`, `/data/`, `/data?b=2&a=1`, and `/data?a=1&b=2` are distinct cache identities. Keys also include the HTTP method, user ID (or an anonymous marker), and an authentication fingerprint when supplied by the caller. The `http:v2:` storage namespace prevents reuse of older entries whose normalization conflated these URLs; old entries remain subject to normal cache cleanup.
 
 ## Storage Architecture
 
