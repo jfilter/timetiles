@@ -29,6 +29,9 @@ export const previewCleanupJob = {
 
     try {
       const result = sweepExpiredPreviews();
+      if (result.errors > 0) {
+        throw new Error(`Preview cleanup failed for ${result.errors} entries`);
+      }
       const duration = Date.now() - startTime;
 
       logger.info("Preview cleanup completed", {

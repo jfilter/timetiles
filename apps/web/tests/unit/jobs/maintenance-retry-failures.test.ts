@@ -53,6 +53,20 @@ describe("maintenance job retry behavior", () => {
     );
   });
 
+  it("fails preview cleanup when the sweep reports partial errors", async () => {
+    mocks.sweepExpiredPreviews.mockReturnValue({ scanned: 4, removed: 2, orphanedRemoved: 1, errors: 1 });
+
+    await expect(previewCleanupJob.handler()).rejects.toThrow("Preview cleanup failed for 1 entries");
+  });
+
+  it("completes preview cleanup when the sweep reports no errors", async () => {
+    mocks.sweepExpiredPreviews.mockReturnValue({ scanned: 4, removed: 2, orphanedRemoved: 1, errors: 0 });
+
+    await expect(previewCleanupJob.handler()).resolves.toMatchObject({
+      output: { success: true, scanned: 4, removed: 2, orphanedRemoved: 1, errors: 0 },
+    });
+  });
+
   it("throws schema maintenance setup failures so Payload retries the job", async () => {
     const payload = { find: vi.fn().mockRejectedValue(new Error("datasets table unavailable")) };
 

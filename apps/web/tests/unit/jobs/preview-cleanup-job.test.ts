@@ -192,6 +192,18 @@ describe.sequential("sweepExpiredPreviews", () => {
 
     expect(result).toEqual({ scanned: 0, removed: 0, orphanedRemoved: 0, errors: 0 });
   });
+
+  it("reports an error when the preview path cannot be read as a directory", () => {
+    const blockedPath = path.join(testDir, "not-a-directory");
+    fs.writeFileSync(blockedPath, "file");
+
+    expect(sweepExpiredPreviews(new Date(), blockedPath)).toEqual({
+      scanned: 0,
+      removed: 0,
+      orphanedRemoved: 0,
+      errors: 1,
+    });
+  });
 });
 
 describe.sequential("previewCleanupJob", () => {
