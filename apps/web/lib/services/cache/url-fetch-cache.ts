@@ -246,15 +246,10 @@ export class UrlFetchCache {
    * Helper to build cache response
    */
   private buildCacheResponse(cached: CachedEntry, cacheStatus: string): CachedResponse {
-    let status = cached.status;
-    if (cacheStatus === "REVALIDATED") {
-      status = 200;
-    }
-
     return {
       data: Buffer.isBuffer(cached.data) ? cached.data : Buffer.from(cached.data),
       headers: { ...cached.headers, "X-Cache": cacheStatus },
-      status,
+      status: cached.status,
     };
   }
 
@@ -319,7 +314,7 @@ export class UrlFetchCache {
       // Handle 304 Not Modified
       if (response.status === 304) {
         logger.info("HTTP cache revalidated (304)");
-        // Per RFC 7234 §4.3.4, freshen the stored response from the 304's headers:
+        // Per RFC 9111 §4.3.4, freshen the stored response from the 304's headers:
         // merge updated freshness/validator headers while preserving the original
         // body, status, and contentHash.
         const respHeaders = this.collectResponseHeaders(response);

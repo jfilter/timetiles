@@ -434,6 +434,23 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(validators).toEqual([undefined, etag]);
     });
 
+    it("preserves the stored success status after revalidation", async () => {
+      const etag = '"status-preservation"';
+      testServer.route("/revalidated-status", (req: IncomingMessage, res: ServerResponse) => {
+        const unchanged = req.headers["if-none-match"] === etag;
+        res.writeHead(unchanged ? 304 : 203, { ETag: etag, "Cache-Control": "max-age=60" });
+        res.end(unchanged ? undefined : "Unchanged response");
+      });
+      const url = `${serverUrl}/revalidated-status`;
+      expect((await urlFetchCache.fetch(url)).status).toBe(203);
+
+      const revalidated = await urlFetchCache.fetch(url, { forceRevalidate: true });
+      expect(revalidated.headers["X-Cache"]).toBe("REVALIDATED");
+      expect(revalidated.status).toBe(203);
+      expect(revalidated.data.toString()).toBe("Unchanged response");
+      expect((await urlFetchCache.fetch(url)).status).toBe(203);
+    });
+
     it.each(["private", "no-store", "no-cache", "Private", "No-Store", "No-Cache"])(
       "discards cached content when a 304 changes policy to %s",
       async (policy) => {
