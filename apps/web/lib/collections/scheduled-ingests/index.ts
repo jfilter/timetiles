@@ -188,11 +188,9 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
       req,
     });
 
-    if (catalog.createdBy) {
-      const createdById = extractRelationId(catalog.createdBy);
-      if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
-        throw new Error("You do not have permission to access this catalog");
-      }
+    const createdById = extractRelationId(catalog.createdBy);
+    if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
+      throw new Error("You do not have permission to access this catalog");
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
