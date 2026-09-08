@@ -59,7 +59,10 @@ describe.sequential("Performance and Concurrency Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.performance } });
+    // Large schedule batches exercise concurrency without an unrelated quota cap.
+    const { users } = await withUsers(envWithServer, {
+      testUser: { role: "admin", email: TEST_EMAILS.performance, customQuotas: { maxActiveSchedules: -1 } },
+    });
     testUser = users.testUser;
 
     // Create test catalog

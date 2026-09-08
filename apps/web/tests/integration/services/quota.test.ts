@@ -56,6 +56,40 @@ describe.sequential("Quota System", () => {
   let testUser: User;
   let adminUser: User;
 
+  it("enforces active schedule limits through the collection hooks", async () => {
+    const { payload } = testEnv;
+    const { users } = await withUsers(testEnv, {
+      scheduleOwner: { role: "user", trustLevel: "3", customQuotas: { maxActiveSchedules: 1 } },
+    });
+    const user = users.scheduleOwner;
+    const catalog = await payload.create({
+      collection: "catalogs",
+      data: { name: "Schedule quota catalog", isPublic: false },
+      user,
+      overrideAccess: false,
+    });
+    const create = () =>
+      payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          name: "Limited schedule",
+          createdBy: user.id,
+          catalog: catalog.id,
+          sourceUrl: "https://example.com/data.csv",
+          scheduleType: "frequency",
+          frequency: "daily",
+        },
+        user,
+        overrideAccess: false,
+      });
+    await create();
+    await expect(create()).rejects.toThrow(/Maximum active schedules reached/);
+    expect((await getUserUsage(payload, user.id))?.currentActiveSchedules).toBe(1);
+    expect(
+      (await payload.count({ collection: "scheduled-ingests", where: { createdBy: { equals: user.id } } })).totalDocs
+    ).toBe(1);
+  });
+
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
 

@@ -44,7 +44,10 @@ describe.sequential("Data Integrity Tests", () => {
     testServerUrl = envWithServer.testServerUrl;
 
     // Create test user
-    const { users } = await withUsers(envWithServer, { testUser: { role: "admin", email: TEST_EMAILS.integrity } });
+    // This suite accumulates schedules to test data integrity, not quota limits.
+    const { users } = await withUsers(envWithServer, {
+      testUser: { role: "admin", email: TEST_EMAILS.integrity, customQuotas: { maxActiveSchedules: -1 } },
+    });
     testUser = users.testUser;
 
     // Create test catalog

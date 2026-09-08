@@ -70,10 +70,10 @@ describe.sequential("Security Validation Tests", () => {
     testServer = envWithServer.testServer;
     testServerUrl = envWithServer.testServerUrl;
 
-    // Create admin and regular users
+    // Preserve roles while allowing this suite's accumulated schedule fixtures.
     const { users } = await withUsers(envWithServer, {
-      adminUser: { role: "admin", email: "admin@example.com" },
-      regularUser: { role: "user", email: "user@example.com" },
+      adminUser: { role: "admin", email: "admin@example.com", customQuotas: { maxActiveSchedules: -1 } },
+      regularUser: { role: "user", email: "user@example.com", customQuotas: { maxActiveSchedules: -1 } },
     });
     adminUser = users.adminUser;
     regularUser = users.regularUser;

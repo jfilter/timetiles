@@ -22,7 +22,6 @@
 import type { CollectionAfterErrorHook, CollectionConfig, Payload, PayloadRequest } from "payload";
 
 import { validateDatasetCatalogOwnership } from "@/lib/collections/catalog-ownership";
-import { getEnv } from "@/lib/config/env";
 import { logger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -40,11 +39,7 @@ import { validateCronExpression, validateScheduleConfig, validateUrl } from "./v
 const shouldSkipQuotaChecks = (
   req: { user?: User | null; context?: Record<string, unknown> },
   context?: Record<string, unknown>
-): boolean =>
-  getEnv().NODE_ENV === "test" ||
-  getEnv().VITEST === "true" ||
-  !req.user ||
-  Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);
+): boolean => !req.user || Boolean(context?.skipQuotaChecks ?? req.context?.skipQuotaChecks);
 
 const shouldSkipQuotaSideEffects = (req: { context?: Record<string, unknown> }): boolean =>
   req.context?.skipQuotaChecks === true || req.context?.seed === true;
