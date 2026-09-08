@@ -46,10 +46,17 @@ describe.sequential("SystemUserService", () => {
   });
 
   describe("isSystemUser", () => {
-    it("rejects partially numeric user ids before loading the user", async () => {
+    it.each([
+      "123abc",
+      1.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+      Number.MAX_SAFE_INTEGER + 1,
+    ])("rejects invalid user ID %s before loading the user", async (userId) => {
       const service = new SystemUserService(mockPayload);
 
-      const result = await service.isSystemUser("123abc");
+      const result = await service.isSystemUser(userId);
 
       expect(result).toBe(false);
       expect(mockPayload.findByID).not.toHaveBeenCalled();

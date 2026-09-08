@@ -147,7 +147,7 @@ export class SystemUserService {
    * @returns True if the ID belongs to the system user
    */
   async isSystemUser(userId: number | string): Promise<boolean> {
-    const numericId = typeof userId === "string" ? parseStrictInteger(userId) : userId;
+    const numericId = parseStrictInteger(userId);
     if (numericId == null) {
       return false;
     }
