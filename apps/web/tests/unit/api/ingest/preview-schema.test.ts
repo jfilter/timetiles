@@ -229,9 +229,11 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
         location: "San Francisco",
       };
 
-      mocks.mockPapaParse
-        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
-        .mockReturnValueOnce({ data: [csvRow, csvRow, csvRow], meta: { fields: csvHeaders }, errors: [] });
+      mocks.mockPapaParse.mockReturnValueOnce({
+        data: [csvRow, csvRow, csvRow],
+        meta: { fields: csvHeaders },
+        errors: [],
+      });
 
       mocks.mockReadFileSync.mockReturnValue(
         "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
@@ -250,7 +252,8 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       const sheet = body.sheets[0];
       expect(sheet.name).toBe("Sheet1");
       expect(sheet.headers).toEqual(csvHeaders);
-      expect(sheet.sampleData).toEqual([csvRow]);
+      expect(sheet.sampleData).toEqual([csvRow, csvRow, csvRow]);
+      expect(mocks.mockPapaParse).toHaveBeenCalledTimes(1);
       expect(sheet.rowCount).toBe(3);
 
       // Verify suggested mappings were generated
@@ -270,9 +273,7 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       const csvHeaders = ["title", "date"];
       const csvRow = { title: "Event 1", date: "2024-01-01" };
 
-      mocks.mockPapaParse
-        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
-        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] });
+      mocks.mockPapaParse.mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] });
       mocks.mockReadFileSync.mockReturnValue("title,date\nEvent 1,2024-01-01");
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
@@ -453,17 +454,11 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
       });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
-      mocks.mockPapaParse
-        .mockReturnValueOnce({
-          data: [{ title: "Event 1", date: "2024-01-01" }],
-          meta: { fields: ["title", "date"] },
-          errors: [],
-        })
-        .mockReturnValueOnce({
-          data: [{ title: "Event 1", date: "2024-01-01" }],
-          meta: { fields: ["title", "date"] },
-          errors: [],
-        });
+      mocks.mockPapaParse.mockReturnValueOnce({
+        data: [{ title: "Event 1", date: "2024-01-01" }],
+        meta: { fields: ["title", "date"] },
+        errors: [],
+      });
 
       const request = createUrlRequest({ sourceUrl: "https://example.com/events.csv" });
 
@@ -492,17 +487,11 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
       });
 
       mocks.mockReadFileSync.mockReturnValue(csvContent);
-      mocks.mockPapaParse
-        .mockReturnValueOnce({
-          data: [{ title: "Event 1", date: "2024-01-01" }],
-          meta: { fields: ["title", "date"] },
-          errors: [],
-        })
-        .mockReturnValueOnce({
-          data: [{ title: "Event 1", date: "2024-01-01" }],
-          meta: { fields: ["title", "date"] },
-          errors: [],
-        });
+      mocks.mockPapaParse.mockReturnValueOnce({
+        data: [{ title: "Event 1", date: "2024-01-01" }],
+        meta: { fields: ["title", "date"] },
+        errors: [],
+      });
 
       const request = createUrlRequest({
         sourceUrl: "https://example.com/events.csv",

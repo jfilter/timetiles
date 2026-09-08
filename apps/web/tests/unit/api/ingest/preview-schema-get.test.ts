@@ -188,9 +188,11 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
         return "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco";
       });
 
-      mocks.mockPapaParse
-        .mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] })
-        .mockReturnValueOnce({ data: [csvRow, csvRow, csvRow], meta: { fields: csvHeaders }, errors: [] });
+      mocks.mockPapaParse.mockReturnValueOnce({
+        data: [csvRow, csvRow, csvRow],
+        meta: { fields: csvHeaders },
+        errors: [],
+      });
 
       const request = createGetRequest(VALID_UUID);
       const response = await GET(request, {} as never);
@@ -201,7 +203,8 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
 
       const sheet = body.sheets[0];
       expect(sheet.headers).toEqual(csvHeaders);
-      expect(sheet.sampleData).toEqual([csvRow]);
+      expect(sheet.sampleData).toEqual([csvRow, csvRow, csvRow]);
+      expect(mocks.mockPapaParse).toHaveBeenCalledTimes(1);
       expect(sheet.rowCount).toBe(3);
       expect(sheet.suggestedMappings).toBeDefined();
       expect(sheet.suggestedMappings.mappings.titlePath.path).toBe("title");

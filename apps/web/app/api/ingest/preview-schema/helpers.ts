@@ -235,15 +235,6 @@ export const detectSuggestedMappings = (
 export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   const fileContent = fs.readFileSync(filePath, "utf-8");
 
-  const result = Papa.parse(fileContent, {
-    header: true,
-    skipEmptyLines: true,
-    transform: (value) => value.trim(),
-    transformHeader: (header) => header.trim(),
-    preview: SAMPLE_ROW_COUNT + 1, // +1 for header detection verification
-  });
-
-  // Get full row count (need to parse separately)
   const fullResult = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
@@ -251,9 +242,9 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
     transformHeader: (header) => header.trim(),
   });
 
-  const headers = result.meta.fields ?? [];
+  const headers = fullResult.meta.fields ?? [];
   const allRows = fullResult.data as Record<string, unknown>[];
-  const sampleData = (result.data as Record<string, unknown>[]).slice(0, SAMPLE_ROW_COUNT);
+  const sampleData = allRows.slice(0, SAMPLE_ROW_COUNT);
 
   // Detect suggested field mappings
   const suggestedMappings = detectSuggestedMappings(headers, sampleData, allRows);
