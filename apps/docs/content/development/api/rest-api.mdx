@@ -491,13 +491,15 @@ GET /api/ingest/:ingestId/progress
           }
         }
       ],
-      errors: number,
+      errors: number,                     // Count of retained error details, not all row failures
       duplicates: { internal: number, external: number },
       schemaValidation?: {...},
+      reviewReason: string | null,
+      reviewDetails: Record<string, unknown> | null,
       results?: {...}
     }
   ],
-  errorLog?: string[],
+  errorLog?: string | null,
   completedAt?: string,
   createdAt: string
 }
@@ -508,7 +510,7 @@ GET /api/ingest/:ingestId/progress
 1. `analyze-duplicates` - Finding duplicate rows
 2. `detect-schema` - Analyzing file structure and field types
 3. `validate-schema` - Comparing detected schema with existing dataset schema
-4. `needs-review` - Schema drift detected, user must review (automated imports only)
+4. `needs-review` - Paused for user review in manual or automated imports; `reviewReason` and `reviewDetails` identify the data-quality or configuration issue
 5. `create-schema-version` - Persisting approved schema
 6. `geocode-batch` - Geocoding location fields
 7. `create-events` - Creating event records in database
