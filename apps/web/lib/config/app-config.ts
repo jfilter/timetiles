@@ -31,7 +31,15 @@ const rateLimitWindowSchema = z.object({
   name: z.string().optional(),
 });
 
-const rateLimitConfigSchema = z.object({ windows: z.array(rateLimitWindowSchema).min(1) });
+const rateLimitConfigSchema = z.object({
+  windows: z
+    .array(rateLimitWindowSchema)
+    .min(1)
+    .refine(
+      (windows) => new Set(windows.map((window) => window.name ?? `${window.windowMs}ms`)).size === windows.length,
+      "Rate-limit window identifiers must be unique (name, or windowMs followed by 'ms')"
+    ),
+});
 
 const userQuotasSchema = z.object({
   maxActiveSchedules: z.number().int(),

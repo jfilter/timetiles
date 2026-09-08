@@ -101,7 +101,9 @@ Do not change it to `./config`. That path inside the image holds more than your 
 
 ### Rate Limits
 
-Per-endpoint rate limiting with burst, hourly, and daily windows. `windowMs` is in milliseconds.
+Per-endpoint rate limiting with burst, hourly, and daily windows. `limit` must be a positive integer; `windowMs` is in milliseconds.
+
+Window identifiers must be unique within each `windows` list, including trust-level overrides. The identifier is `name` when supplied, otherwise `<windowMs>ms` (for example, `1000ms`). Duplicate identifiers are rejected because they would share a counter instead of enforcing independent limits.
 
 ```yaml
 rateLimits:

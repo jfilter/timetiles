@@ -291,6 +291,46 @@ batchSizes:
   });
 
   describe("YAML validation (strict mode)", () => {
+    describe.each(["endpoint", "trust-level"])("%s window identifiers", (scope) => {
+      const configureWindows = (windows: { limit: number; windowMs: number; name?: string }[]) => {
+        existsSyncSpy.mockReturnValue(true);
+        const fileUpload = { FILE_UPLOAD: { windows } };
+        readFileSyncSpy.mockReturnValue(
+          JSON.stringify(
+            scope === "endpoint" ? { rateLimits: fileUpload } : { trustLevelRateLimits: { "2": fileUpload } }
+          )
+        );
+      };
+
+      it.each([
+        [
+          { limit: 1, windowMs: 1000, name: "burst" },
+          { limit: 10, windowMs: 60000, name: "burst" },
+        ],
+        [
+          { limit: 1, windowMs: 1000 },
+          { limit: 10, windowMs: 1000 },
+        ],
+        [
+          { limit: 1, windowMs: 1000 },
+          { limit: 10, windowMs: 60000, name: "1000ms" },
+        ],
+      ])("rejects colliding window identifiers (%j, %j)", (first, second) => {
+        configureWindows([first, second]);
+
+        expect(() => getAppConfig()).toThrow(/window/i);
+      });
+
+      it("accepts distinct automatic and explicit identifiers", () => {
+        configureWindows([
+          { limit: 1, windowMs: 1000 },
+          { limit: 10, windowMs: 60000, name: "minute" },
+        ]);
+
+        expect(() => getAppConfig()).not.toThrow();
+      });
+    });
+
     it.each([0.5, 1.5])("rejects fractional endpoint rate limits (%s)", (limit) => {
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockReturnValue(
