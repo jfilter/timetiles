@@ -15,7 +15,13 @@ import "@/tests/mocks/services/logger";
 // 2. Vitest imports and source code
 import { describe, expect, it } from "vitest";
 
-import { convertJsonToCsv, extractRecordsFromJson, flattenObject, recordsToCsv } from "@/lib/ingest/json-to-csv";
+import {
+  convertJsonToCsv,
+  extractRecordsFromJson,
+  flattenObject,
+  recordsToCsv,
+  stripExcludedFieldsFromRecords,
+} from "@/lib/ingest/json-to-csv";
 
 /** Helper to create a JSON Buffer from a value. */
 const toBuffer = (value: unknown): Buffer => Buffer.from(JSON.stringify(value), "utf-8");
@@ -24,6 +30,12 @@ const toBuffer = (value: unknown): Buffer => Buffer.from(JSON.stringify(value), 
 const csvString = (buf: Buffer): string => buf.toString("utf-8");
 
 describe("convertJsonToCsv", () => {
+  it("does not mutate nested source records when excluding fields", () => {
+    const records = [{ details: { internal: "remove", name: "keep" } }];
+    expect(stripExcludedFieldsFromRecords(records, ["details.internal"])).toEqual([{ details: { name: "keep" } }]);
+    expect(records).toEqual([{ details: { internal: "remove", name: "keep" } }]);
+  });
+
   describe("Record Detection", () => {
     it("should convert a top-level array to CSV with headers", () => {
       const json = [

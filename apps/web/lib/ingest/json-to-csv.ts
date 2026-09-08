@@ -154,7 +154,7 @@ export const stripExcludedFieldsFromRecords = (
   if (!excludeFields?.length) return records;
 
   return records.map((record) => {
-    const copy = { ...record };
+    const copy = structuredClone(record);
     for (const field of excludeFields) {
       deleteByPathOrKey(copy, field);
     }
