@@ -68,12 +68,12 @@ import type {
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
 
-const renderHero = (block: HeroBlock, key: string) => {
+const renderHero = (block: HeroBlock) => {
   // Both CMS options must reach the Hero unchanged. Collapsing "gradient" onto
   // "grid" made the select a no-op — the two options rendered identically.
   const heroBackground = block.background ?? "grid";
   return (
-    <Hero key={key} background={heroBackground}>
+    <Hero background={heroBackground}>
       <HeroHeadline>{block.title}</HeroHeadline>
       {block.subtitle && <HeroSubheadline>{block.subtitle}</HeroSubheadline>}
       {block.description && <HeroDescription>{block.description}</HeroDescription>}
@@ -90,10 +90,10 @@ const renderHero = (block: HeroBlock, key: string) => {
   );
 };
 
-const renderFeatures = (block: FeaturesBlock, key: string) => {
+const renderFeatures = (block: FeaturesBlock) => {
   const columnCount = (block.columns ? Number.parseInt(block.columns, 10) : 3) as 1 | 2 | 3 | 4;
   return (
-    <Features key={key}>
+    <Features>
       {(block.sectionTitle ?? block.sectionDescription) && (
         <FeaturesHeader>
           {block.sectionTitle && <FeaturesTitle>{block.sectionTitle}</FeaturesTitle>}
@@ -115,8 +115,8 @@ const renderFeatures = (block: FeaturesBlock, key: string) => {
   );
 };
 
-const renderStats = (block: StatsBlock, key: string) => (
-  <div key={key} className="bg-muted/30 py-16">
+const renderStats = (block: StatsBlock) => (
+  <div className="bg-muted/30 py-16">
     <div className="container mx-auto max-w-6xl px-6">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
         {block.stats.map((stat, statIndex) => (
@@ -135,8 +135,8 @@ const renderStats = (block: StatsBlock, key: string) => (
   </div>
 );
 
-const renderDetailsGrid = (block: DetailsGridBlock, key: string) => (
-  <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+const renderDetailsGrid = (block: DetailsGridBlock) => (
+  <div className="container mx-auto max-w-6xl px-6 py-12">
     {block.sectionTitle && (
       <h2 className="text-foreground mb-8 font-serif text-3xl font-bold md:text-4xl">{block.sectionTitle}</h2>
     )}
@@ -162,8 +162,8 @@ const renderDetailsGrid = (block: DetailsGridBlock, key: string) => (
   </div>
 );
 
-const renderTimeline = (block: TimelineBlock, key: string) => (
-  <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+const renderTimeline = (block: TimelineBlock) => (
+  <div className="container mx-auto max-w-6xl px-6 py-12">
     {block.sectionTitle && (
       <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">{block.sectionTitle}</h2>
     )}
@@ -179,8 +179,8 @@ const renderTimeline = (block: TimelineBlock, key: string) => (
   </div>
 );
 
-const renderTestimonials = (block: TestimonialsBlock, key: string) => (
-  <div key={key} className="container mx-auto max-w-6xl px-6 py-12">
+const renderTestimonials = (block: TestimonialsBlock) => (
+  <div className="container mx-auto max-w-6xl px-6 py-12">
     {block.sectionTitle && (
       <h2 className="text-foreground mb-12 font-serif text-3xl font-bold md:text-4xl">{block.sectionTitle}</h2>
     )}
@@ -291,14 +291,14 @@ const BlockStyleWrapper = ({ block, children }: { block: Block; children: React.
   );
 };
 
-const renderRichText = (block: RichTextBlock, key: string) => (
-  <div key={key} className="container mx-auto max-w-4xl px-6 py-12">
+const renderRichText = (block: RichTextBlock) => (
+  <div className="container mx-auto max-w-4xl px-6 py-12">
     <RichText content={block.content as Parameters<typeof RichText>[0]["content"]} />
   </div>
 );
 
-const renderCTA = (block: CTABlock, key: string) => (
-  <div key={key} className="bg-primary/5 py-16">
+const renderCTA = (block: CTABlock) => (
+  <div className="bg-primary/5 py-16">
     <div className="container mx-auto max-w-4xl px-6 text-center">
       <h2 className="text-foreground mb-4 font-serif text-3xl font-bold md:text-4xl">{block.headline}</h2>
       {block.description && <p className="text-muted-foreground mb-8 text-lg">{block.description}</p>}
@@ -314,8 +314,8 @@ interface NewsletterLabels {
   buttonLabels: NewsletterButtonLabels;
 }
 
-const renderNewsletterForm = (block: NewsletterFormBlock, key: string, newsletter: NewsletterLabels) => (
-  <div key={key} className="container mx-auto max-w-xl px-6 py-8">
+const renderNewsletterForm = (block: NewsletterFormBlock, newsletter: NewsletterLabels) => (
+  <div className="container mx-auto max-w-xl px-6 py-8">
     <NewsletterFormClient
       headline={block.headline ?? undefined}
       placeholder={block.placeholder ?? undefined}
@@ -326,9 +326,8 @@ const renderNewsletterForm = (block: NewsletterFormBlock, key: string, newslette
   </div>
 );
 
-const renderNewsletterCTA = (block: NewsletterCTABlock, key: string, newsletter: NewsletterLabels) => (
+const renderNewsletterCTA = (block: NewsletterCTABlock, newsletter: NewsletterLabels) => (
   <NewsletterCTAClient
-    key={key}
     headline={block.headline ?? undefined}
     description={block.description ?? undefined}
     placeholder={block.placeholder ?? undefined}
@@ -341,28 +340,28 @@ const renderNewsletterCTA = (block: NewsletterCTABlock, key: string, newsletter:
 );
 
 /** Render a single block using discriminated union narrowing (no unsafe casts). */
-const renderBlock = (block: Block, key: string, newsletter: NewsletterLabels): React.ReactElement | null => {
+const renderBlock = (block: Block, newsletter: NewsletterLabels): React.ReactElement | null => {
   switch (block.blockType) {
     case "hero":
-      return renderHero(block, key);
+      return renderHero(block);
     case "features":
-      return renderFeatures(block, key);
+      return renderFeatures(block);
     case "stats":
-      return renderStats(block, key);
+      return renderStats(block);
     case "detailsGrid":
-      return renderDetailsGrid(block, key);
+      return renderDetailsGrid(block);
     case "timeline":
-      return renderTimeline(block, key);
+      return renderTimeline(block);
     case "testimonials":
-      return renderTestimonials(block, key);
+      return renderTestimonials(block);
     case "richText":
-      return renderRichText(block, key);
+      return renderRichText(block);
     case "cta":
-      return renderCTA(block, key);
+      return renderCTA(block);
     case "newsletterForm":
-      return renderNewsletterForm(block, key, newsletter);
+      return renderNewsletterForm(block, newsletter);
     case "newsletterCTA":
-      return renderNewsletterCTA(block, key, newsletter);
+      return renderNewsletterCTA(block, newsletter);
     default:
       return null;
   }
@@ -383,7 +382,7 @@ export const BlockRenderer: React.FC<BlockRendererProps> = ({ blocks }) => {
     <>
       {(blocks ?? []).map((block, index) => {
         const key = block.id ?? `${block.blockType}-${index}`;
-        const rendered = renderBlock(block, key, newsletter);
+        const rendered = renderBlock(block, newsletter);
         if (!rendered) return null;
         return (
           <BlockStyleWrapper key={key} block={block}>

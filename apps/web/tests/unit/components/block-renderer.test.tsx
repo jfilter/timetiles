@@ -100,6 +100,20 @@ describe("BlockRenderer block style padding", () => {
 });
 
 describe("BlockRenderer hero background", () => {
+  it("preserves block elements when CMS IDs are reordered", () => {
+    const first = heroBlock({ id: "first", title: "First block" });
+    const second = heroBlock({ id: "second", title: "Second block" });
+    const { container, rerender } = renderWithProviders(<BlockRenderer blocks={[first, second]} />);
+    const original = Array.from(container.querySelectorAll("section"));
+    expect(original).toHaveLength(2);
+
+    rerender(<BlockRenderer blocks={[second, first]} />);
+
+    const reordered = container.querySelectorAll("section");
+    expect(reordered[0]).toBe(original[1]);
+    expect(reordered[1]).toBe(original[0]);
+  });
+
   it("renders the gradient and grid options differently", () => {
     const gradient = renderWithProviders(<BlockRenderer blocks={[heroBlock({ background: "gradient" })]} />);
     const gradientClass = gradient.container.querySelector("section")?.className ?? "";
