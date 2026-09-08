@@ -39,6 +39,19 @@ interface ExportStatus {
   isFailed: boolean;
 }
 
+const getExportStatus = (latestExport: DataExport | undefined, now: Date) => {
+  const expiry = parseDateInput(latestExport?.expiresAt);
+  const isExpired =
+    latestExport?.status === "expired" || (latestExport?.status === "ready" && expiry !== null && expiry <= now);
+  return {
+    expiry,
+    isExpired,
+    isPending: latestExport?.status === "pending" || latestExport?.status === "processing",
+    isReady: latestExport?.status === "ready" && !isExpired,
+    isFailed: latestExport?.status === "failed",
+  };
+};
+
 /**
  * Info box showing what's included in the export.
  */
@@ -80,12 +93,18 @@ const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) =>
 /**
  * Ready state display with download info.
  */
-const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => {
+const ExportReadyState = ({
+  latestExport,
+  expiry,
+  now,
+}: {
+  latestExport: DataExport;
+  expiry: Date | null;
+  now: Date;
+}) => {
   const t = useTranslations("DataExport");
   const format = useFormatter();
-  const now = useNow({ updateInterval: 60_000 });
   const completedDate = useExportDate(latestExport.completedAt);
-  const expiry = parseDateInput(latestExport.expiresAt);
   return (
     <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950">
       <div className="flex items-start gap-3">
@@ -102,7 +121,7 @@ const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => {
             {expiry && (
               <p className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
-                <span>{expiry <= now ? t("expired") : t("expiresIn", { time: format.relativeTime(expiry, now) })}</span>
+                <span>{t("expiresIn", { time: format.relativeTime(expiry, now) })}</span>
               </p>
             )}
           </div>
@@ -190,6 +209,8 @@ export const DataExportCard = () => {
   const t = useTranslations("DataExport");
   const { latestExport, isLoading } = useLatestExportQuery();
   const requestExport = useRequestDataExportMutation();
+  const now = useNow({ updateInterval: 60_000 });
+  const { expiry, isExpired, ...status } = getExportStatus(latestExport, now);
 
   const handleRequestExport = () => {
     requestExport.mutate();
@@ -199,12 +220,6 @@ export const DataExportCard = () => {
     if (latestExport?.id) {
       globalThis.location.href = getExportDownloadUrl(latestExport.id);
     }
-  };
-
-  const status: ExportStatus = {
-    isPending: latestExport?.status === "pending" || latestExport?.status === "processing",
-    isReady: latestExport?.status === "ready",
-    isFailed: latestExport?.status === "failed",
   };
 
   const showInfoBox = !status.isPending && !status.isReady && !status.isFailed;
@@ -220,8 +235,9 @@ export const DataExportCard = () => {
       </CardHeader>
       <CardContent className="space-y-4">
         {showInfoBox && <ExportInfoBox />}
+        {isExpired && <output>{t("expired")}</output>}
         {status.isPending && <ExportPendingState requestedAt={latestExport?.requestedAt} />}
-        {status.isReady && latestExport && <ExportReadyState latestExport={latestExport} />}
+        {status.isReady && latestExport && <ExportReadyState latestExport={latestExport} expiry={expiry} now={now} />}
         {status.isFailed && <ExportFailedState errorLog={latestExport?.errorLog} />}
 
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">

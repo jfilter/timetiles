@@ -62,6 +62,7 @@ describe.each([
 
   it("localizes the completion date and time remaining", () => {
     renderExport();
+    expect(screen.getByRole("button", { name: messages.DataExport.downloadExport })).toBeEnabled();
     expect(screen.getByText(new RegExp(`15.*${month}|${month}.*15`))).toBeInTheDocument();
     expect(screen.getByText(expiry)).toBeInTheDocument();
   });
@@ -90,14 +91,26 @@ describe.each([
   it.each(["2024-05-15T11:59:00Z", "2024-05-15T12:00:00Z"])("labels expired timestamps: %s", (expiresAt) => {
     renderExport({ expiresAt });
     expect(screen.getByText(expired)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: messages.DataExport.downloadExport })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.DataExport.requestDataExport })).toBeEnabled();
+    expect(screen.queryByText(messages.DataExport.ready)).not.toBeInTheDocument();
+  });
+
+  it("honors an expired server status even with a future expiry timestamp", () => {
+    renderExport({ status: "expired" });
+    expect(screen.getByText(expired)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: messages.DataExport.downloadExport })).not.toBeInTheDocument();
   });
 
   it("updates the expiry display without another network response", () => {
     renderExport({ expiresAt: "2024-05-15T12:00:30Z" });
+    expect(screen.getByRole("button", { name: messages.DataExport.downloadExport })).toBeEnabled();
     expect(screen.queryByText(expired)).not.toBeInTheDocument();
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
     expect(screen.getByText(expired)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: messages.DataExport.downloadExport })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: messages.DataExport.requestDataExport })).toBeEnabled();
   });
 });
