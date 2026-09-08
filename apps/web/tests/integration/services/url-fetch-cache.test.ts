@@ -288,6 +288,22 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(result.data.toString("utf-8")).toContain("id,name");
     });
 
+    it("enforces a smaller size limit on a fresh cache hit without retrying", async () => {
+      let requests = 0;
+      testServer.route("/cached-size-limit", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(200, { "Content-Type": "text/csv", "Cache-Control": "max-age=60" });
+        res.end("id,name\n1,test");
+      });
+      const url = `${serverUrl}/cached-size-limit`;
+      await fetchWithRetry(url);
+
+      await expect(fetchWithRetry(url, { maxSize: 1, retryConfig: { maxRetries: 3 } })).rejects.toThrow(
+        "File too large"
+      );
+      expect(requests).toBe(1);
+    });
+
     it("should not retry deterministic file-size failures", async () => {
       let requestCount = 0;
       testServer.route("/too-large-counted", (_req: IncomingMessage, res: ServerResponse) => {
