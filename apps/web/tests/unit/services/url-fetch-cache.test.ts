@@ -65,6 +65,21 @@ describe("UrlFetchCache", () => {
     }
   });
 
+  it.each(["No-Store", "No-Cache", "Private"])("does not retain responses with %s", async (directive) => {
+    const set = vi.spyOn(Cache.prototype, "set").mockResolvedValue();
+    vi.spyOn(Cache.prototype, "delete").mockResolvedValue(true);
+    const cache = new UrlFetchCache() as unknown as {
+      cacheResponse: (key: string, data: Buffer, headers: Record<string, string>, status: number) => Promise<void>;
+    };
+    await cache.cacheResponse("case-test", Buffer.from("data"), { "cache-control": directive }, 200);
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it("accepts mixed-case max-age directives", () => {
+    const cache = new UrlFetchCache() as unknown as { parseMaxAge: (value: string) => number | undefined };
+    expect(cache.parseMaxAge("public, MAX-AGE=60")).toBe(60);
+  });
+
   it("ignores malformed Cache-Control max-age directives", () => {
     process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
 

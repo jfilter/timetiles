@@ -79,7 +79,7 @@ export class UrlFetchCache {
     if (!cacheControl) return undefined;
     const maxAgeDirective = cacheControl
       .split(",")
-      .map((directive) => directive.trim())
+      .map((directive) => directive.trim().toLowerCase())
       .find((directive) => directive.startsWith("max-age="));
 
     if (!maxAgeDirective) {
@@ -98,7 +98,7 @@ export class UrlFetchCache {
       return Math.min(this.defaultTTL, this.maxTTL);
     }
 
-    const cacheControl = headers["cache-control"];
+    const cacheControl = headers["cache-control"]?.toLowerCase();
     if (cacheControl) {
       // Check for no-store or no-cache
       if (cacheControl.includes("no-store") || cacheControl.includes("no-cache")) {
@@ -567,7 +567,7 @@ export class UrlFetchCache {
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {
-    const cacheControl = headers["cache-control"];
+    const cacheControl = headers["cache-control"]?.toLowerCase();
     if (cacheControl) {
       if (cacheControl.includes("no-store")) return false;
       if (cacheControl.includes("private")) return false;
