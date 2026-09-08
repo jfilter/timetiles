@@ -6,7 +6,7 @@
  * @module
  */
 import fs from "node:fs";
-import type { Readable } from "node:stream";
+import { compose, type Readable } from "node:stream";
 
 import chardet from "chardet";
 import iconv from "iconv-lite";
@@ -69,5 +69,5 @@ export const createDecodedTextStream = (filePath: string): Readable => {
   }
 
   logger.info("Transcoding non-UTF-8 ingest file", { filePath, encoding });
-  return rawStream.pipe(iconv.decodeStream(encoding)) as unknown as Readable;
+  return compose(rawStream, iconv.decodeStream(encoding));
 };
