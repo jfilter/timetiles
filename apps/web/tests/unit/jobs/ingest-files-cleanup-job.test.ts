@@ -121,12 +121,12 @@ describe.sequential("ingestFilesCleanupJob", () => {
     expect(calls).toEqual(["update", "unlink"]);
   });
 
-  it("counts an update failure as an error and skips that unlink", async () => {
+  it("throws on an update failure and skips that unlink", async () => {
     setupFind({ reclaimDocs: [{ id: 2, filename: "url-import-b.csv" }] });
     mockPayload.update.mockRejectedValueOnce(new Error("write conflict"));
-    const result = await ingestFilesCleanupJob.handler(createContext());
-    expect(result.output.errors).toBe(1);
-    expect(result.output.recordsReclaimed).toBe(0);
+    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow(
+      "Ingest file cleanup failed for 1 operations"
+    );
     expect(mockUnlink).not.toHaveBeenCalled();
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to reclaim ingest-file record", {
       ingestFileId: 2,
@@ -140,6 +140,43 @@ describe.sequential("ingestFilesCleanupJob", () => {
     expect(result.output.recordsReclaimed).toBe(1);
     expect(result.output.filesDeleted).toBe(0);
     expect(result.output.errors).toBe(0);
+  });
+
+  it.each(["reclaim", "sweep"])("reports unlink errors during %s after processing the other files", async (phase) => {
+    if (phase === "reclaim") {
+      setupFind({
+        reclaimDocs: [
+          { id: 1, filename: "blocked.csv" },
+          { id: 2, filename: "removed.csv" },
+        ],
+      });
+    } else {
+      setupFind({});
+      mockReaddir.mockResolvedValue([dirent("blocked.csv"), dirent("removed.csv")]);
+      mockStat.mockResolvedValue({ mtimeMs: now - 48 * HOUR });
+    }
+    mockUnlink.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }));
+
+    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow(
+      "Ingest file cleanup failed for 1 operations"
+    );
+
+    expect(mockUnlink).toHaveBeenCalledTimes(2);
+    expect(mockUnlink).toHaveBeenCalledWith(getIngestFilePath("removed.csv"));
+  });
+
+  it.each(["EACCES", "ENOENT"])("handles stat failure %s without deleting the unchecked file", async (code) => {
+    setupFind({});
+    mockReaddir.mockResolvedValue([dirent("unchecked.csv"), dirent("removed.csv")]);
+    mockStat
+      .mockRejectedValueOnce(Object.assign(new Error(code), { code }))
+      .mockResolvedValue({ mtimeMs: now - 48 * HOUR });
+
+    const result = ingestFilesCleanupJob.handler(createContext());
+    if (code === "ENOENT") await expect(result).resolves.toMatchObject({ output: { orphansDeleted: 1, errors: 0 } });
+    else await expect(result).rejects.toThrow("Ingest file cleanup failed for 1 operations");
+
+    expect(mockUnlink).toHaveBeenCalledExactlyOnceWith(getIngestFilePath("removed.csv"));
   });
 
   it("sweeps aged orphans, keeps referenced files, and skips too-new orphans", async () => {

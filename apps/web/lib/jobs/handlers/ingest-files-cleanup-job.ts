@@ -54,13 +54,13 @@ interface IngestFileRow {
 }
 
 /**
- * Unlink absolute paths in bounded-concurrency chunks. One failing unlink (e.g.
- * already deleted) must not block the others. ENOENT and other rejections are
- * logged but not fatal — the DB reference is already gone, so there is no orphan
- * risk. Returns the count actually removed.
+ * Unlink absolute paths in bounded-concurrency chunks without blocking other files
+ * on one failure. Missing files are already cleaned; other errors fail the job.
+ * A failed deletion after reclaim leaves an orphan for a later sweep.
  */
-const unlinkPaths = async (paths: string[]): Promise<number> => {
+const unlinkPaths = async (paths: string[]): Promise<{ deleted: number; errors: number }> => {
   let deleted = 0;
+  let errors = 0;
   for (let i = 0; i < paths.length; i += UNLINK_CONCURRENCY) {
     const chunk = paths.slice(i, i + UNLINK_CONCURRENCY);
     const results = await Promise.allSettled(chunk.map((p) => unlink(p)));
@@ -68,12 +68,13 @@ const unlinkPaths = async (paths: string[]): Promise<number> => {
       const result = results[j]!;
       if (result.status === "fulfilled") {
         deleted++;
-      } else {
-        logger.warn({ path: chunk[j], error: result.reason }, "Could not delete ingest file (may already be deleted)");
+      } else if (!isENOENT(result.reason)) {
+        errors++;
+        logger.warn({ path: chunk[j], error: result.reason }, "Could not delete ingest file");
       }
     }
   }
-  return deleted;
+  return { deleted, errors };
 };
 
 /**
@@ -135,8 +136,8 @@ const reclaimProcessedFiles = async (
     }
   }
 
-  const filesDeleted = await unlinkPaths(pendingPaths);
-  return { recordsReclaimed, filesDeleted, errors };
+  const unlinked = await unlinkPaths(pendingPaths);
+  return { recordsReclaimed, filesDeleted: unlinked.deleted, errors: errors + unlinked.errors };
 };
 
 /**
@@ -181,7 +182,7 @@ const loadReferencedFilenames = async (sys: SystemPayload): Promise<Set<string>>
 const sweepOrphans = async (
   sys: SystemPayload,
   nowMs: number
-): Promise<{ orphansDeleted: number; orphansSkippedTooNew: number }> => {
+): Promise<{ orphansDeleted: number; orphansSkippedTooNew: number; errors: number }> => {
   const referenced = await loadReferencedFilenames(sys);
 
   const graceCutoff = nowMs - getEnv().INGEST_FILE_ORPHAN_GRACE_HOURS * HOUR_MS;
@@ -191,11 +192,12 @@ const sweepOrphans = async (
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch (error) {
-    if (isENOENT(error)) return { orphansDeleted: 0, orphansSkippedTooNew: 0 };
+    if (isENOENT(error)) return { orphansDeleted: 0, orphansSkippedTooNew: 0, errors: 0 };
     throw error;
   }
 
   let orphansSkippedTooNew = 0;
+  let errors = 0;
   const orphanPaths: string[] = [];
   for (const entry of entries) {
     if (!entry.isFile()) continue;
@@ -209,12 +211,15 @@ const sweepOrphans = async (
         orphansSkippedTooNew++;
       }
     } catch (error) {
-      if (!isENOENT(error)) logger.warn({ path: full, error }, "Could not stat ingest file during sweep");
+      if (!isENOENT(error)) {
+        errors++;
+        logger.warn({ path: full, error }, "Could not stat ingest file during sweep");
+      }
     }
   }
 
-  const orphansDeleted = await unlinkPaths(orphanPaths);
-  return { orphansDeleted, orphansSkippedTooNew };
+  const unlinked = await unlinkPaths(orphanPaths);
+  return { orphansDeleted: unlinked.deleted, orphansSkippedTooNew, errors: errors + unlinked.errors };
 };
 
 /**
@@ -240,8 +245,11 @@ export const ingestFilesCleanupJob = {
         filesDeleted: reclaim.filesDeleted,
         orphansDeleted: sweep.orphansDeleted,
         orphansSkippedTooNew: sweep.orphansSkippedTooNew,
-        errors: reclaim.errors,
+        errors: reclaim.errors + sweep.errors,
       };
+      if (output.errors > 0) {
+        throw new Error(`Ingest file cleanup failed for ${output.errors} operations`);
+      }
       logger.info({ jobId: job?.id, ...output }, "Ingest-files cleanup job completed");
       return { output };
     } catch (error) {
