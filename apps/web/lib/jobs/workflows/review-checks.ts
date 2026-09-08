@@ -21,6 +21,7 @@ import { PER_SHEET_REVIEW_CHECKS_KEY } from "@/lib/constants/review-reasons";
 import type { AmbiguityResolution } from "@/lib/ingest/types/interpretation";
 import { logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
+import { isRecord } from "@/lib/utils/is-record";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 /**
@@ -56,9 +57,9 @@ export type ReviewChecksConfig = z.infer<typeof ReviewChecksConfigSchema>;
  * namespace) and the raw `perSheet` map from the stored JSON.
  */
 const splitReviewChecks = (raw: unknown): { fileLevel: unknown; perSheet: Record<string, unknown> } => {
-  if (raw == null || typeof raw !== "object") return { fileLevel: raw, perSheet: {} };
+  if (!isRecord(raw)) return { fileLevel: raw, perSheet: {} };
 
-  const { [PER_SHEET_REVIEW_CHECKS_KEY]: perSheetRaw, ...fileLevel } = raw as Record<string, unknown>;
+  const { [PER_SHEET_REVIEW_CHECKS_KEY]: perSheetRaw, ...fileLevel } = raw;
   const perSheet =
     perSheetRaw != null && typeof perSheetRaw === "object" ? (perSheetRaw as Record<string, unknown>) : {};
 
@@ -92,9 +93,7 @@ export const parseReviewChecksConfig = (
   // Merge file-level config with this sheet's approval flags. The sheet override
   // can only ever ADD skip flags (approvals), so a shallow merge is sufficient.
   const merged =
-    sheetOverride != null && typeof fileLevel === "object" && fileLevel != null
-      ? { ...(fileLevel as Record<string, unknown>), ...(sheetOverride as Record<string, unknown>) }
-      : (sheetOverride ?? fileLevel);
+    isRecord(sheetOverride) && isRecord(fileLevel) ? { ...fileLevel, ...sheetOverride } : (sheetOverride ?? fileLevel);
 
   const result = ReviewChecksConfigSchema.safeParse(merged);
   if (result.success) return { config: result.data };

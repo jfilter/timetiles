@@ -585,6 +585,23 @@ describe.sequential("review-checks", () => {
       expect(error).toContain("Invalid reviewChecks override");
     });
 
+    it.each([[], true, 42, "invalid"].map((raw) => ({ raw })))("rejects invalid config shape $raw", ({ raw }) => {
+      const { config, error } = parseReviewChecksConfig(raw);
+      expect(config).toBeUndefined();
+      expect(error).toContain("Invalid reviewChecks override");
+    });
+
+    it.each([[], true, 42, "invalid"].map((override) => ({ override })))(
+      "rejects invalid sheet override $override",
+      ({ override }) => {
+        const raw = { skipLocationCheck: true, perSheet: { "0": override } };
+        const { config, error } = parseReviewChecksConfig(raw, 0);
+        expect(config).toBeUndefined();
+        expect(error).toContain("Invalid reviewChecks override");
+        expect(parseReviewChecksConfig(raw, 1).config).toEqual({ skipLocationCheck: true });
+      }
+    );
+
     it("rejects out-of-range thresholds", () => {
       const raw = { duplicateRateThreshold: 2.5 };
       const { config, error } = parseReviewChecksConfig(raw);
