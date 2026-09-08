@@ -197,6 +197,12 @@ describe.sequential("Dataset Detection Job", () => {
     const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
     expect(events.docs).toHaveLength(1);
     expect(events.docs[0].transformedData.name).toBe(`Event from sheet ${sheetIndex}`);
+    const updatedEvent = await payload.update({
+      collection: "events",
+      id: events.docs[0].id,
+      data: { locationName: "Updated location" },
+    });
+    expect(updatedEvent.locationName).toBe("Updated location");
   });
 
   it("should create new dataset when originalName is missing", async () => {

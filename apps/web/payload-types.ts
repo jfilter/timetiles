@@ -2116,9 +2116,9 @@ export interface Event {
    */
   ingestJob?: (number | null) | IngestJob;
   /**
-   * Raw source data as received from the import source, before any transforms
+   * Raw data before transforms; when absent, identical to transformedData
    */
-  sourceData:
+  sourceData?:
     | {
         [k: string]: unknown;
       }

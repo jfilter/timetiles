@@ -99,8 +99,7 @@ const Events: CollectionConfig = {
     {
       name: "sourceData",
       type: "json",
-      required: true,
-      admin: { description: "Raw source data as received from the import source, before any transforms" },
+      admin: { description: "Raw data before transforms; when absent, identical to transformedData" },
     },
     {
       name: "transformedData",
