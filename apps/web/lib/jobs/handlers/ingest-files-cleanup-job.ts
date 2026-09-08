@@ -19,15 +19,15 @@
  *   dedup/audit still work). DB is updated before the unlink so a crash leaves a
  *   true orphan that Pass B later collects — never a row pointing at a missing file.
  * - **Pass B (orphan sweep):** unlinks files on disk referenced by no row and
- *   older than a grace window. A safety guard aborts the sweep if the referenced
- *   set looks inconsistent, so a transient DB error can never mass-delete files.
+ *   older than a grace window. Each filename is checked through Payload before
+ *   processing it; a database error aborts the sweep rather than implying absence.
  *
  * @module
  * @category Jobs
  */
 import { readdir, stat, unlink } from "node:fs/promises";
 
-import { eq } from "@payloadcms/db-postgres/drizzle";
+import { eq, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Where } from "payload";
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 
@@ -45,12 +45,8 @@ import { ingest_files } from "@/payload-generated-schema";
 const UNLINK_CONCURRENCY = 10;
 /** Page size for the reclaim candidate scan. */
 const RECLAIM_PAGE_SIZE = 200;
-/** Page size for loading referenced filenames in the orphan sweep. */
-const REF_PAGE_SIZE = 500;
 /** Cap reclaim candidate pages per run so the first run can't block the queue. */
 const MAX_RECLAIM_PAGES = 25;
-/** Below this fraction of the counted referenced rows, treat the set as suspect and abort the sweep. */
-const REF_LOAD_MIN_FRACTION = 0.5;
 const HOUR_MS = 60 * 60 * 1000;
 
 /** A row narrowed to the fields the cleanup scans select. */
@@ -184,50 +180,35 @@ const reclaimProcessedFiles = async (
 };
 
 /**
- * Load the set of filenames still referenced by a row. Throw on a DB error or
- * a suspiciously incomplete set before starting the orphan sweep, so a
- * transient failure can never make every file look like an orphan.
- */
-const loadReferencedFilenames = async (sys: SystemPayload): Promise<Set<string>> => {
-  const { totalDocs: refCount } = await sys.count({
-    collection: COLLECTION_NAMES.INGEST_FILES,
-    where: { filename: { not_equals: null } },
-  });
-
-  const referenced = new Set<string>();
-  for (let page = 1; ; page++) {
-    const res = await sys.find({
-      collection: COLLECTION_NAMES.INGEST_FILES,
-      where: { filename: { not_equals: null } },
-      select: { filename: true },
-      depth: 0,
-      limit: REF_PAGE_SIZE,
-      page,
-    });
-    const docs = res.docs as IngestFileRow[];
-    for (const doc of docs) if (doc.filename) referenced.add(doc.filename);
-    if (docs.length < REF_PAGE_SIZE) break;
-  }
-
-  // Guard: refCount==0 with an empty set is the legitimate "everything
-  // reclaimed, only orphans remain" state (and is exactly how legacy orphans
-  // get cleared) — allow it. Abort only when rows exist but we failed to load
-  // (most of) them.
-  if (refCount > 0 && referenced.size < refCount * REF_LOAD_MIN_FRACTION) {
-    throw new Error("Orphan sweep aborted: referenced set looks incomplete");
-  }
-  return referenced;
-};
-
-/**
  * Pass B — sweep physical files no row references and older than the grace window.
  */
+const unlinkOrphan = async (sys: SystemPayload, filename: string): Promise<{ deleted: number; errors: number }> => {
+  const req = await createLocalReq({}, sys.payload);
+  if (!(await initTransaction(req))) throw new Error("Orphan cleanup requires a database transaction");
+  try {
+    const db = await getTransactionAwareDrizzle(sys.payload, req);
+    // An absent row cannot be row-locked. Only for aged orphan candidates,
+    // briefly exclude table writes through the final check and filesystem unlink.
+    // This also waits for references being committed by an in-flight writer.
+    await db.execute(sql`LOCK TABLE ${ingest_files} IN SHARE MODE`);
+    const { totalDocs } = await sys.count({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      where: { filename: { equals: filename } },
+      req,
+    });
+    const result = totalDocs === 0 ? await unlinkPaths([getIngestFilePath(filename)]) : { deleted: 0, errors: 0 };
+    await commitTransaction(req);
+    return result;
+  } catch (error) {
+    await killTransaction(req);
+    throw error;
+  }
+};
+
 const sweepOrphans = async (
   sys: SystemPayload,
   nowMs: number
 ): Promise<{ orphansDeleted: number; orphansSkippedTooNew: number; errors: number }> => {
-  const referenced = await loadReferencedFilenames(sys);
-
   const graceCutoff = nowMs - getEnv().INGEST_FILE_ORPHAN_GRACE_HOURS * HOUR_MS;
   const dir = getIngestFilesDir();
 
@@ -241,28 +222,37 @@ const sweepOrphans = async (
 
   let orphansSkippedTooNew = 0;
   let errors = 0;
-  const orphanPaths: string[] = [];
+  let orphansDeleted = 0;
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    if (referenced.has(entry.name)) continue;
+    // Do not infer absence from a paginated snapshot: concurrent writes can
+    // shift its pages or publish references after the snapshot was loaded.
+    const { totalDocs } = await sys.count({
+      collection: COLLECTION_NAMES.INGEST_FILES,
+      where: { filename: { equals: entry.name } },
+    });
+    if (totalDocs > 0) continue;
     const full = getIngestFilePath(entry.name);
+    let st;
     try {
-      const st = await stat(full);
-      if (st.mtimeMs < graceCutoff) {
-        orphanPaths.push(full);
-      } else {
-        orphansSkippedTooNew++;
-      }
+      st = await stat(full);
     } catch (error) {
       if (!isENOENT(error)) {
         errors++;
         logger.warn({ path: full, error }, "Could not stat ingest file during sweep");
       }
+      continue;
+    }
+    if (st.mtimeMs < graceCutoff) {
+      const unlinked = await unlinkOrphan(sys, entry.name);
+      orphansDeleted += unlinked.deleted;
+      errors += unlinked.errors;
+    } else {
+      orphansSkippedTooNew++;
     }
   }
 
-  const unlinked = await unlinkPaths(orphanPaths);
-  return { orphansDeleted: unlinked.deleted, orphansSkippedTooNew, errors: errors + unlinked.errors };
+  return { orphansDeleted, orphansSkippedTooNew, errors };
 };
 
 /**

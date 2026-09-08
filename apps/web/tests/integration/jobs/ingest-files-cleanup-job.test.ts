@@ -33,6 +33,43 @@ describe.sequential("Ingest file cleanup retries", () => {
     await env.cleanup();
   });
 
+  it("waits for an in-flight reference before deleting an apparent orphan", async () => {
+    const { payload } = env;
+    const { ingestFile } = await withIngestFile(env, null, "name\nLate reference\n");
+    const path = getIngestFilePath(ingestFile.filename);
+    const old = new Date(Date.now() - (getEnv().INGEST_FILE_ORPHAN_GRACE_HOURS + 1) * 60 * 60 * 1000);
+    await utimes(path, old, old);
+    await payload.db.drizzle.execute(sql`UPDATE payload.ingest_files SET filename = NULL WHERE id = ${ingestFile.id}`);
+
+    const req = await createLocalReq({}, payload);
+    await initTransaction(req);
+    const db = await getTransactionAwareDrizzle(payload, req);
+    await db.execute(
+      sql`UPDATE payload.ingest_files SET filename = ${ingestFile.filename} WHERE id = ${ingestFile.id}`
+    );
+    const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
+    const cleanup = ingestFilesCleanupJob.handler({ req: { payload } });
+    try {
+      await vi.waitFor(
+        async () => {
+          const { rows } = await payload.db.drizzle.execute(sql`SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity WHERE ${owners[0].pid} = ANY(pg_blocking_pids(pid))
+        ) AS blocked`);
+          expect(rows[0]?.blocked).toBe(true);
+        },
+        { timeout: 5000, interval: 20 }
+      );
+      await commitTransaction(req);
+    } finally {
+      await killTransaction(req);
+      await cleanup;
+    }
+    expect(existsSync(path)).toBe(true);
+    expect((await payload.findByID({ collection: "ingest-files", id: ingestFile.id })).filename).toBe(
+      ingestFile.filename
+    );
+  });
+
   it.each([PROCESSING_STAGE.ANALYZE_DUPLICATES, PROCESSING_STAGE.NEEDS_REVIEW])(
     "preserves a stale terminal file with a %s child job",
     async (stage) => {

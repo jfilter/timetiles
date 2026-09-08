@@ -2,8 +2,8 @@
  * Unit tests for the Ingest Files Cleanup Job Handler.
  *
  * Covers both passes: reclaiming processed files (terminal status past
- * retention) and sweeping unreferenced orphan files, including the safety
- * guard that aborts the sweep when the referenced set looks inconsistent.
+ * retention) and sweeping unreferenced orphan files, including fresh reference
+ * checks and fail-closed handling of database errors.
  *
  * @module
  */
@@ -20,7 +20,10 @@ vi.mock("payload", async (importOriginal) => ({
 vi.mock("@/lib/database/drizzle-transaction", () => ({
   getTransactionAwareDrizzle: vi
     .fn()
-    .mockResolvedValue({ select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve([]) }) }) }) }),
+    .mockResolvedValue({
+      select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve([]) }) }) }),
+      execute: vi.fn().mockResolvedValue({}),
+    }),
 }));
 
 vi.mock("node:fs/promises", () => ({
@@ -55,22 +58,9 @@ describe.sequential("ingestFilesCleanupJob", () => {
 
   const createContext = () => ({ job: { id: "ingest-cleanup-1" }, req: { payload: mockPayload } });
 
-  // Configure the shared `find` mock to branch on the query: the reclaim scan
-  // selects `status`, the referenced-filenames scan does not.
-  const setupFind = (opts: {
-    reclaimDocs?: any[];
-    referencedDocs?: any[];
-    reclaimThrows?: boolean;
-    referencedThrows?: boolean;
-  }) => {
-    mockPayload.find = vi.fn((args: any) => {
-      if (args.select?.status) {
-        if (opts.reclaimThrows) return Promise.reject(new Error("DB down (reclaim)"));
-        return Promise.resolve({ docs: opts.reclaimDocs ?? [] });
-      }
-      if (opts.referencedThrows) return Promise.reject(new Error("DB down (referenced)"));
-      return Promise.resolve({ docs: opts.referencedDocs ?? [] });
-    });
+  const setupFind = (opts: { reclaimDocs?: any[]; reclaimThrows?: boolean }) => {
+    if (opts.reclaimThrows) mockPayload.find.mockRejectedValue(new Error("DB down (reclaim)"));
+    else mockPayload.find.mockResolvedValue({ docs: opts.reclaimDocs ?? [] });
   };
 
   beforeEach(async () => {
@@ -86,7 +76,7 @@ describe.sequential("ingestFilesCleanupJob", () => {
     mockPayload = {
       find: vi.fn().mockResolvedValue({ docs: [] }),
       count: vi.fn((args: any) =>
-        Promise.resolve({ totalDocs: args.req && args.collection === "ingest-files" ? 1 : 0 })
+        Promise.resolve({ totalDocs: args.req && args.where.and && args.collection === "ingest-files" ? 1 : 0 })
       ),
       update: vi.fn().mockResolvedValue({}),
     };
@@ -197,8 +187,10 @@ describe.sequential("ingestFilesCleanupJob", () => {
   });
 
   it("sweeps aged orphans, keeps referenced files, and skips too-new orphans", async () => {
-    setupFind({ referencedDocs: [{ filename: "keep.csv" }] });
-    mockPayload.count.mockResolvedValue({ totalDocs: 1 });
+    setupFind({});
+    mockPayload.count.mockImplementation((args: any) =>
+      Promise.resolve({ totalDocs: args.where.filename.equals === "keep.csv" ? 1 : 0 })
+    );
     mockReaddir.mockResolvedValue([dirent("keep.csv"), dirent("old-orphan.csv"), dirent("new-orphan.csv")]);
     mockStat.mockImplementation((p: string) => {
       const name = p.split("/").pop();
@@ -224,9 +216,42 @@ describe.sequential("ingestFilesCleanupJob", () => {
     expect(result.output.orphansDeleted).toBe(1);
   });
 
+  it("preserves a reference that becomes visible when the directory is read", async () => {
+    setupFind({});
+    mockReaddir.mockImplementation(() => {
+      mockPayload.count.mockResolvedValue({ totalDocs: 1 });
+      return Promise.resolve([dirent("newly-referenced.csv")]);
+    });
+    mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
+
+    const result = await ingestFilesCleanupJob.handler(createContext());
+
+    expect(mockUnlink).not.toHaveBeenCalled();
+    expect(result.output.orphansDeleted).toBe(0);
+    expect(mockPayload.count).toHaveBeenCalledWith({
+      collection: "ingest-files",
+      where: { filename: { equals: "newly-referenced.csv" } },
+      overrideAccess: true,
+    });
+  });
+
+  it("rechecks the next file after processing the previous one", async () => {
+    setupFind({});
+    mockReaddir.mockResolvedValue([dirent("orphan.csv"), dirent("now-referenced.csv")]);
+    mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
+    mockUnlink.mockImplementation(() => {
+      mockPayload.count.mockResolvedValue({ totalDocs: 1 });
+      return Promise.resolve();
+    });
+
+    await ingestFilesCleanupJob.handler(createContext());
+
+    expect(mockUnlink).toHaveBeenCalledExactlyOnceWith(getIngestFilePath("orphan.csv"));
+  });
+
   it("clears legacy orphans when no rows reference any file (count 0)", async () => {
     // The 1031-file scenario: all rows reclaimed already, only orphans remain.
-    setupFind({ referencedDocs: [] });
+    setupFind({});
     mockPayload.count.mockResolvedValue({ totalDocs: 0 });
     mockReaddir.mockResolvedValue([dirent("a.csv"), dirent("b.csv"), dirent("c.csv")]);
     mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
@@ -235,34 +260,16 @@ describe.sequential("ingestFilesCleanupJob", () => {
     expect(result.output.orphansDeleted).toBe(3);
   });
 
-  it("aborts the sweep when the referenced set looks incomplete (DB inconsistency)", async () => {
-    setupFind({ referencedDocs: [] }); // loaded 0 ...
-    mockPayload.count.mockResolvedValue({ totalDocs: 5 }); // ... but 5 rows exist
-    mockReaddir.mockResolvedValue([dirent("a.csv")]);
-    mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
-    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow(
-      "Orphan sweep aborted: referenced set looks incomplete"
-    );
-    expect(mockReaddir).not.toHaveBeenCalled();
-    expect(mockUnlink).not.toHaveBeenCalled();
-  });
-
-  it("aborts the sweep when loading referenced filenames throws", async () => {
-    setupFind({ referencedThrows: true });
-    mockPayload.count.mockResolvedValue({ totalDocs: 5 });
-    mockReaddir.mockResolvedValue([dirent("a.csv")]);
-    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow("DB down (referenced)");
-    expect(mockReaddir).not.toHaveBeenCalled();
-    expect(mockUnlink).not.toHaveBeenCalled();
-  });
-
-  it("aborts before reading files if the reference count fails", async () => {
+  it.each(["initial", "locked"])("aborts deletion if the %s reference check fails", async (phase) => {
     setupFind({});
+    mockReaddir.mockResolvedValue([dirent("unchecked.csv")]);
+    mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
+    if (phase === "locked") mockPayload.count.mockResolvedValueOnce({ totalDocs: 0 });
     mockPayload.count.mockRejectedValueOnce(new Error("Reference count unavailable"));
 
     await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow("Reference count unavailable");
 
-    expect(mockReaddir).not.toHaveBeenCalled();
+    if (phase === "initial") expect(mockStat).not.toHaveBeenCalled();
     expect(mockUnlink).not.toHaveBeenCalled();
   });
 
