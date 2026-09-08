@@ -1,9 +1,10 @@
 /**
  * Defines the Payload CMS collection for Audit Logs.
  *
- * This collection stores immutable records of sensitive account actions for
- * compliance and security auditing. Records cannot be edited or deleted by
- * anyone, ensuring a tamper-proof audit trail.
+ * This collection records sensitive account actions for security auditing.
+ * API clients cannot create, edit or delete records. Trusted internal services
+ * use Payload's access override to append entries and clear expired raw IPs;
+ * these access rules do not provide tamper-proof storage.
  *
  * Tracked actions include email changes, password changes, account deletion
  * lifecycle events, and failed password verification attempts.
@@ -19,19 +20,19 @@ const AuditLog: CollectionConfig = {
     group: "System",
     useAsTitle: "action",
     defaultColumns: ["action", "userId", "timestamp", "userEmailHash"],
-    description: "Immutable audit trail of sensitive account actions",
+    description: "Audit trail of sensitive account actions; read-only to API and admin clients",
   },
   access: {
     // Only admins can read audit logs
     read: ({ req: { user } }) => user?.role === "admin",
     // No one can create via API - only via internal service with overrideAccess
     create: () => false,
-    // Immutable - no updates allowed via API
+    // No updates allowed via API; internal IP retention cleanup uses overrideAccess
     update: () => false,
-    // Immutable - no deletes allowed
+    // No deletes allowed via API
     delete: () => false,
   },
-  // Disable versioning for audit logs - they are immutable
+  // Do not retain versions containing raw IPs after retention cleanup.
   versions: false,
   timestamps: true,
   fields: [

@@ -1,5 +1,5 @@
 /**
- * Service for creating immutable audit log entries.
+ * Service for appending audit log entries protected from client edits.
  *
  * Provides a single function to record sensitive account actions. PII (email,
  * IP address) is hashed automatically. Errors are caught and logged — audit
@@ -80,7 +80,7 @@ export interface AuditLogEntry {
 }
 
 /**
- * Create an immutable audit log entry. Hashes PII internally.
+ * Append an audit log entry using internal access. Hashes PII internally.
  *
  * This function catches all errors and logs them — it never throws.
  * Audit logging must not prevent the primary operation from completing.
