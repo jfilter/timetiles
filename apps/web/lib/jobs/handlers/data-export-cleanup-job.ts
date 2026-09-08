@@ -226,6 +226,7 @@ export const dataExportCleanupJob = {
   slug: "data-export-cleanup",
   schedule: [{ cron: "0 * * * *", queue: "maintenance" as const }],
   concurrency: () => "data-export-cleanup",
+  retries: 2,
   handler: async ({ job, req }: JobHandlerContext) => {
     const sys = asSystem(req.payload);
 
@@ -247,6 +248,12 @@ export const dataExportCleanupJob = {
         staleFailed: stale.staleFailed ?? 0,
         errors: (expiry.errors ?? 0) + unlinked.errors + (purge.errors ?? 0) + (stale.errors ?? 0),
       };
+
+      // Successful operations remove themselves from the next scan. Failed file deletions
+      // retain their path, so Payload can retry without orphaning the archive.
+      if (output.errors > 0) {
+        throw new Error(`Data export cleanup failed for ${output.errors} operations`);
+      }
 
       logger.info({ jobId: job?.id, ...output }, "Data export cleanup job completed");
 

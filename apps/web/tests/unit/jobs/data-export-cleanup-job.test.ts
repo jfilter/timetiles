@@ -114,7 +114,7 @@ describe.sequential("dataExportCleanupJob", () => {
   });
 
   it.each(["expiry", "purge"])(
-    "counts unlink failures during %s without losing the archive reference",
+    "throws on unlink failures during %s without losing the archive reference",
     async (phase) => {
       const docs = [
         { id: 1, filePath: "/tmp/retry.zip", status: "expired" },
@@ -124,38 +124,39 @@ describe.sequential("dataExportCleanupJob", () => {
       mockPayload.find.mockResolvedValueOnce({ docs });
       mockUnlink.mockRejectedValueOnce(Object.assign(new Error("EACCES"), { code: "EACCES" }));
 
-      const result = await dataExportCleanupJob.handler(createContext());
-
-      expect(result.output.errors).toBe(1);
-      expect(result.output.filesDeleted).toBe(1);
+      await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow(
+        "Data export cleanup failed for 1 operations"
+      );
       expect(mockUnlink).toHaveBeenCalledTimes(2);
       expect(mockPayload.update).not.toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
       expect(mockPayload.delete).not.toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
-      if (phase === "purge") expect(result.output.recordsDeleted).toBe(1);
+      if (phase === "purge") expect(mockPayload.delete).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+      else
+        expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ id: 2, data: { filePath: null } }));
     }
   );
 
-  it("counts path-clear failures even when the archive was deleted", async () => {
+  it("throws on path-clear failures even when the archive was deleted", async () => {
     mockPayload.find.mockResolvedValueOnce({ docs: [{ id: 1, filePath: "/tmp/export-1.zip", status: "expired" }] });
     mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
 
-    const result = await dataExportCleanupJob.handler(createContext());
-
-    expect(result.output.errors).toBe(1);
-    expect(result.output.filesDeleted).toBe(1);
+    await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow(
+      "Data export cleanup failed for 1 operations"
+    );
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-1.zip");
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to clear export file path", { exportId: 1 });
   });
 
-  it("should increment errors when per-record update fails", async () => {
+  it("throws when per-record update fails", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [{ id: 3, filePath: "/tmp/export-3.zip", status: "ready" }], totalDocs: 1 })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 });
 
     mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
 
-    const result = await dataExportCleanupJob.handler(createContext());
-
-    expect(result.output.errors).toBe(1);
+    await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow(
+      "Data export cleanup failed for 1 operations"
+    );
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to clean up export", { exportId: 3 });
   });
 
@@ -176,7 +177,7 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(result.output.recordsDeleted).toBe(2);
   });
 
-  it("should increment errors and continue when old record delete fails", async () => {
+  it("finishes other deletions before throwing when an old record delete fails", async () => {
     mockPayload.find.mockResolvedValueOnce({ docs: [], totalDocs: 0 }).mockResolvedValueOnce({
       docs: [
         { id: 20, status: "expired" },
@@ -187,10 +188,10 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Delete failed")).mockResolvedValueOnce({});
 
-    const result = await dataExportCleanupJob.handler(createContext());
-
-    expect(result.output.recordsDeleted).toBe(1);
-    expect(result.output.errors).toBe(1);
+    await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow(
+      "Data export cleanup failed for 1 operations"
+    );
+    expect(mockPayload.delete).toHaveBeenCalledWith(expect.objectContaining({ id: 21 }));
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete old export record", { exportId: 20 });
   });
 
@@ -340,7 +341,7 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(cutoff).toBeLessThan(Date.now());
   });
 
-  it("should increment errors and continue when a stale-export update fails", async () => {
+  it("finishes other stale-export updates before throwing on a failure", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
       .mockResolvedValueOnce({ docs: [], totalDocs: 0 })
@@ -354,10 +355,12 @@ describe.sequential("dataExportCleanupJob", () => {
 
     mockPayload.update.mockRejectedValueOnce(new Error("DB connection lost"));
 
-    const result = await dataExportCleanupJob.handler(createContext());
-
-    expect(result.output.staleFailed).toBe(1);
-    expect(result.output.errors).toBe(1);
+    await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow(
+      "Data export cleanup failed for 1 operations"
+    );
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 51, data: expect.objectContaining({ status: "failed" }) })
+    );
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to reap stale export", { exportId: 50 });
   });
 });
