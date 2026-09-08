@@ -43,28 +43,6 @@ export const escapeCsvFormula = (value: unknown): unknown => {
   return FORMULA_PREFIXES.test(value) ? `'${value}` : value;
 };
 
-/**
- * Apply {@link escapeCsvFormula} to every string cell in a flat row.
- *
- * Only scalar string values on the row are rewritten — nested objects and
- * arrays are left alone because the CSV writer will serialize them via
- * `JSON.stringify`, which produces leading `{` / `[` (not dangerous).
- */
-export const escapeRowFormulas = (row: Record<string, unknown>): Record<string, unknown> => {
-  const out: Record<string, unknown> = {};
-  for (const key of Object.keys(row)) {
-    out[key] = escapeCsvFormula(row[key]);
-  }
-  return out;
-};
-
-/**
- * Apply {@link escapeRowFormulas} across an array of rows. Convenience helper
- * for the common `rows.map(escapeRowFormulas)` pattern at call sites.
- */
-export const escapeRowsFormulas = (rows: readonly Record<string, unknown>[]): Record<string, unknown>[] =>
-  rows.map((row) => escapeRowFormulas(row));
-
 // Characters a spreadsheet evaluates as a formula when they lead a cell.
 const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
 // A spreadsheet may split the file on any of these depending on locale/config, so
@@ -187,8 +165,8 @@ export const escapeCsvFormulasInText = (csvText: string): string => {
  * later rows. Heterogeneous records — optional JSON-API fields, GeoJSON feature
  * properties, or a first feature missing geometry (which would drop lat/lng for
  * every row) — therefore lose columns and data. Compute the union of keys across
- * all rows, preserving first-seen order, so nothing is dropped. Pass rows that
- * have already been formula-escaped (see {@link escapeRowsFormulas}).
+ * all rows, preserving first-seen order, so nothing is dropped. This serializer
+ * does not escape formulas; apply escaping at the user-facing download boundary.
  */
 export const unparseRowsToCsv = (rows: readonly Record<string, unknown>[]): string => {
   const columns: string[] = [];

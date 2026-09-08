@@ -13,8 +13,6 @@ import {
   escapeCsvFormula,
   escapeCsvFormulaBoundaries,
   escapeCsvFormulasInText,
-  escapeRowFormulas,
-  escapeRowsFormulas,
   unparseRowsToCsv,
   UTF8_BOM,
 } from "@/lib/utils/csv-escape";
@@ -112,82 +110,6 @@ describe("escapeCsvFormula", () => {
       const arr = [1, 2, 3];
       expect(escapeCsvFormula(arr)).toBe(arr);
     });
-  });
-});
-
-describe("escapeRowFormulas", () => {
-  it("escapes every dangerous string cell and passes others through", () => {
-    const row = {
-      name: "Berlin",
-      formula: "=SUM(A1)",
-      cmd: "+cmd|'/C calc'!A0",
-      minus: "-1+1",
-      at: "@SUM",
-      tab: "\tfoo",
-      cr: "\rfoo",
-      population: 3_500_000,
-      active: true,
-      missing: null,
-      nested: { city: "Berlin" },
-    };
-
-    const out = escapeRowFormulas(row);
-
-    expect(out.name).toBe("Berlin");
-    expect(out.formula).toBe("'=SUM(A1)");
-    expect(out.cmd).toBe("'+cmd|'/C calc'!A0");
-    expect(out.minus).toBe("'-1+1");
-    expect(out.at).toBe("'@SUM");
-    expect(out.tab).toBe("'\tfoo");
-    expect(out.cr).toBe("'\rfoo");
-    expect(out.population).toBe(3_500_000);
-    expect(out.active).toBe(true);
-    expect(out.missing).toBeNull();
-    expect(out.nested).toEqual({ city: "Berlin" });
-  });
-
-  it("returns a new object (does not mutate input)", () => {
-    const row = { a: "=BAD" };
-    const out = escapeRowFormulas(row);
-    expect(row.a).toBe("=BAD");
-    expect(out.a).toBe("'=BAD");
-    expect(out).not.toBe(row);
-  });
-
-  it("handles empty row", () => {
-    expect(escapeRowFormulas({})).toEqual({});
-  });
-
-  it("preserves key order", () => {
-    const row = { c: "1", a: "=BAD", b: "2" };
-    expect(Object.keys(escapeRowFormulas(row))).toEqual(["c", "a", "b"]);
-  });
-});
-
-describe("escapeRowsFormulas", () => {
-  it("applies escaping across an array of rows", () => {
-    const rows = [
-      { name: "A", note: "=SUM(1)" },
-      { name: "B", note: "safe" },
-      { name: "C", note: "+cmd" },
-    ];
-
-    const out = escapeRowsFormulas(rows);
-
-    expect(out).toHaveLength(3);
-    expect(out[0]!.note).toBe("'=SUM(1)");
-    expect(out[1]!.note).toBe("safe");
-    expect(out[2]!.note).toBe("'+cmd");
-  });
-
-  it("returns empty array for empty input", () => {
-    expect(escapeRowsFormulas([])).toEqual([]);
-  });
-
-  it("does not mutate input rows", () => {
-    const rows = [{ v: "=BAD" }];
-    escapeRowsFormulas(rows);
-    expect(rows[0]!.v).toBe("=BAD");
   });
 });
 
