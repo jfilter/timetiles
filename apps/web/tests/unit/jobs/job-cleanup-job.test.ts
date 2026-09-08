@@ -9,6 +9,20 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("payload", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  createLocalReq: vi.fn((_options, payload) => Promise.resolve({ payload })),
+  initTransaction: vi.fn().mockResolvedValue(true),
+  commitTransaction: vi.fn().mockResolvedValue(undefined),
+  killTransaction: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/database/drizzle-transaction", () => ({
+  getTransactionAwareDrizzle: vi
+    .fn()
+    .mockResolvedValue({ select: () => ({ from: () => ({ where: () => ({ for: () => Promise.resolve([]) }) }) }) }),
+}));
+
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
   createLogger: () => ({ info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() }),
@@ -29,6 +43,7 @@ describe.sequential("jobCleanupJob", () => {
     mockPayload = {
       findByID: vi.fn(),
       find: vi.fn(),
+      count: vi.fn().mockResolvedValue({ totalDocs: 1 }),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn().mockResolvedValue({}),
@@ -64,16 +79,19 @@ describe.sequential("jobCleanupJob", () => {
     expect(mockPayload.delete).toHaveBeenCalledWith({
       collection: "payload-jobs",
       id: "failed-1",
+      req: expect.objectContaining({ payload: mockPayload }),
       overrideAccess: true,
     });
     expect(mockPayload.delete).toHaveBeenCalledWith({
       collection: "payload-jobs",
       id: "failed-2",
+      req: expect.objectContaining({ payload: mockPayload }),
       overrideAccess: true,
     });
     expect(mockPayload.delete).toHaveBeenCalledWith({
       collection: "payload-jobs",
       id: "failed-3",
+      req: expect.objectContaining({ payload: mockPayload }),
       overrideAccess: true,
     });
     expect(result.output).toEqual({ success: true, failedDeleted: 3, completedDeleted: 0, errors: 0, hasMore: false });
@@ -90,11 +108,13 @@ describe.sequential("jobCleanupJob", () => {
     expect(mockPayload.delete).toHaveBeenCalledWith({
       collection: "payload-jobs",
       id: "completed-1",
+      req: expect.objectContaining({ payload: mockPayload }),
       overrideAccess: true,
     });
     expect(mockPayload.delete).toHaveBeenCalledWith({
       collection: "payload-jobs",
       id: "completed-2",
+      req: expect.objectContaining({ payload: mockPayload }),
       overrideAccess: true,
     });
     expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 2, errors: 0, hasMore: false });
@@ -109,6 +129,22 @@ describe.sequential("jobCleanupJob", () => {
 
     expect(mockPayload.delete).toHaveBeenCalledTimes(2);
     expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 1, errors: 0, hasMore: false });
+  });
+
+  it("does not delete or count a job that no longer matches the retention filter", async () => {
+    mockPayload.find.mockResolvedValueOnce({ docs: [{ id: 1 }] }).mockResolvedValueOnce({ docs: [] });
+    mockPayload.count.mockResolvedValueOnce({ totalDocs: 0 });
+
+    const result = await jobCleanupJob.handler(createContext());
+
+    expect(mockPayload.delete).not.toHaveBeenCalled();
+    expect(result.output.failedDeleted).toBe(0);
+    expect(mockPayload.count).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { and: [expect.any(Object), { id: { equals: 1 } }, { processing: { not_equals: true } }] },
+        req: expect.objectContaining({ payload: mockPayload }),
+      })
+    );
   });
 
   /**

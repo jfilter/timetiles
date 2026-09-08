@@ -4,8 +4,11 @@
  * @category Tests
  */
 import { sql } from "@payloadcms/db-postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { jobCleanupJob } from "@/lib/jobs/handlers/job-cleanup-job";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
 describe.sequential("Job cleanup retries", () => {
@@ -17,6 +20,46 @@ describe.sequential("Job cleanup retries", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  it.each(["failed", "completed"])("preserves a %s job restarted after cleanup selected it", async (state) => {
+    const { payload } = env;
+    const job = await payload.jobs.queue({ task: "cache-cleanup", input: {} });
+    await payload.db.drizzle.execute(sql`UPDATE payload.payload_jobs
+      SET has_error = ${state === "failed"}, updated_at = NOW() - INTERVAL '8 days',
+        completed_at = CASE WHEN ${state === "completed"} THEN NOW() - INTERVAL '8 days' ELSE NULL END
+      WHERE id = ${job.id}`);
+
+    const req = await createLocalReq({}, payload);
+    await initTransaction(req);
+    const db = await getTransactionAwareDrizzle(payload, req);
+    await db.execute(sql`SELECT id FROM payload.payload_jobs WHERE id = ${job.id} FOR UPDATE`);
+    const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
+    const cleanup = jobCleanupJob.handler({ req: { payload } });
+    try {
+      // Observe actual lock contention, not a sleep that guesses when cleanup selected the row.
+      await vi.waitFor(
+        async () => {
+          const { rows } = await payload.db.drizzle.execute(sql`SELECT EXISTS (
+          SELECT 1 FROM pg_stat_activity WHERE ${owners[0].pid} = ANY(pg_blocking_pids(pid))
+        ) AS blocked`);
+          expect(rows[0]?.blocked).toBe(true);
+        },
+        { timeout: 5000, interval: 20 }
+      );
+      await db.execute(sql`UPDATE payload.payload_jobs
+        SET has_error = false, completed_at = NULL, processing = true, updated_at = NOW()
+        WHERE id = ${job.id}`);
+      await commitTransaction(req);
+    } finally {
+      await killTransaction(req);
+      await cleanup;
+    }
+
+    const restarted = await payload.findByID({ collection: "payload-jobs", id: job.id });
+    expect(restarted.hasError).toBe(false);
+    expect(restarted.completedAt).toBeNull();
+    expect(restarted.processing).toBe(true);
   });
 
   it("retains blocked jobs and deletes them after the database failure is resolved", async () => {

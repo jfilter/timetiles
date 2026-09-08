@@ -8,9 +8,15 @@
  * @module
  * @category Jobs
  */
+import { eq } from "@payloadcms/db-postgres/drizzle";
+import type { Where } from "payload";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
+
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import { payload_jobs } from "@/payload-generated-schema";
 
 /** Delete failed jobs older than this many days. */
 const FAILED_RETENTION_DAYS = 7;
@@ -30,6 +36,27 @@ interface DrainResult {
   hasMore: boolean;
 }
 
+/** Recheck eligibility under a row lock; Payload's delete itself only filters by ID. */
+const deleteEligibleJob = async (sys: ReturnType<typeof asSystem>, id: number, where: Where): Promise<boolean> => {
+  const req = await createLocalReq({}, sys.payload);
+  if (!(await initTransaction(req))) throw new Error("Job cleanup requires a database transaction");
+  try {
+    const db = await getTransactionAwareDrizzle(sys.payload, req);
+    await db.select({ id: payload_jobs.id }).from(payload_jobs).where(eq(payload_jobs.id, id)).for("update");
+    const eligible = await sys.count({
+      collection: "payload-jobs",
+      where: { and: [where, { id: { equals: id } }, { processing: { not_equals: true } }] },
+      req,
+    });
+    if (eligible.totalDocs > 0) await sys.delete({ collection: "payload-jobs", id, req });
+    await commitTransaction(req);
+    return eligible.totalDocs > 0;
+  } catch (error) {
+    await killTransaction(req);
+    throw error;
+  }
+};
+
 /**
  * Delete every matching job, not just the first page.
  *
@@ -38,25 +65,22 @@ interface DrainResult {
  * windows this job exists to enforce were quietly exceeded. Always re-reads page 1: each pass
  * removes the rows it just matched.
  */
-const drainJobs = async (
-  sys: ReturnType<typeof asSystem>,
-  where: Record<string, unknown>,
-  label: string
-): Promise<DrainResult> => {
+const drainJobs = async (sys: ReturnType<typeof asSystem>, where: Where, label: string): Promise<DrainResult> => {
   let deleted = 0;
   let errors = 0;
   let hasMore = false;
 
   for (let page = 1; page <= MAX_PAGES; page++) {
-    const batch = await sys.find({ collection: "payload-jobs", where: where as never, limit: PAGE_SIZE, depth: 0 });
+    const batch = await sys.find({ collection: "payload-jobs", where, limit: PAGE_SIZE, depth: 0 });
     if (batch.docs.length === 0) break;
 
     let deletedThisPage = 0;
     for (const doc of batch.docs) {
       try {
-        await sys.delete({ collection: "payload-jobs", id: doc.id });
-        deleted++;
-        deletedThisPage++;
+        if (await deleteEligibleJob(sys, doc.id, where)) {
+          deleted++;
+          deletedThisPage++;
+        }
       } catch (error) {
         errors++;
         logError(error, `Failed to delete ${label} job`, { payloadJobId: doc.id });
