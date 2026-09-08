@@ -25,6 +25,15 @@ describe("event-params", () => {
       expect(parseStrictInteger("42abc")).toBeNull();
       expect(parseStrictInteger("abc42")).toBeNull();
     });
+
+    it.each([
+      { label: "positive string overflow", value: "9".repeat(400) },
+      { label: "negative string overflow", value: `-${"9".repeat(400)}` },
+      { label: "positive infinity", value: Number.POSITIVE_INFINITY },
+      { label: "negative infinity", value: Number.NEGATIVE_INFINITY },
+    ])("rejects $label", ({ value }) => {
+      expect(parseStrictInteger(value)).toBeNull();
+    });
   });
 
   describe("normalizeStrictIntegerList", () => {
