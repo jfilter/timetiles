@@ -45,13 +45,13 @@ interface CachedEntry {
  * Whether a cache key belongs to exactly this user.
  *
  * Keys are `GET:<url>:user:<id>` with an optional `:auth:<fingerprint>` suffix, so the user id
- * is a whole segment. A plain `includes(":user:1")` also matched ":user:10", ":user:100" and
- * so on — invalidating one user threw away nine other users' entries, forcing them to re-fetch
- * their external sources and burn URL_FETCHES_PER_DAY doing it.
+ * is a whole segment at the end, not arbitrary URL text. Matching inside the URL can
+ * invalidate another user's entries and force unnecessary external fetches.
  */
 export const belongsToUser = (key: string, userId: string): boolean => {
-  const segment = `:user:${userId}`;
-  return key.endsWith(segment) || key.includes(`${segment}:`);
+  const segments = key.split(":");
+  if (segments.at(-2) === "auth") segments.splice(-2);
+  return segments.at(-2) === "user" && segments.at(-1) === userId;
 };
 
 export class UrlFetchCache {

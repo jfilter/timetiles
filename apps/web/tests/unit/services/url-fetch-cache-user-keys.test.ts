@@ -28,4 +28,16 @@ describe("belongsToUser", () => {
   it("is not fooled by the id appearing inside the URL", () => {
     expect(belongsToUser("GET:https://a.example/user/1:user:7", "1")).toBe(false);
   });
+
+  it.each([
+    "GET:https://a.example/:user:1:/data:user:7",
+    "GET:https://a.example/?value=:user:1:auth:abc:user:7:auth:def",
+    "GET:https://a.example/:user:1:auth:abc:anonymous",
+  ])("ignores ownership-like URL text in %s", (key) => {
+    expect(belongsToUser(key, "1")).toBe(false);
+  });
+
+  it("uses the final owner even when the URL contains another owner segment", () => {
+    expect(belongsToUser("GET:https://a.example/:user:1:/data:user:7:auth:abc", "7")).toBe(true);
+  });
 });
