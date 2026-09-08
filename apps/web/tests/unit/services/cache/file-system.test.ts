@@ -508,6 +508,21 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("statistics", () => {
+    it("reports the replacement entry's creation time rather than the file's birth time", async () => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2024-01-01T00:00:00Z"));
+        await storage.set("replaced", "original", { ttl: 0 });
+        const replacementTime = new Date("2024-02-01T00:00:00Z");
+        vi.setSystemTime(replacementTime);
+        await storage.set("replaced", "replacement", { ttl: 0 });
+
+        expect(await storage.getStats()).toMatchObject({ oldestEntry: replacementTime, newestEntry: replacementTime });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("should track hits and misses", async () => {
       // Create fresh storage for accurate stats
       const statsStorage = new FileSystemCacheStorage({ cacheDir: path.join(tempDir, "stats") });

@@ -303,8 +303,9 @@ export class FileSystemCacheStorage implements CacheStorage {
     // Get creation dates from index
     for (const [, indexEntry] of this.index) {
       try {
-        const stats = await fs.stat(indexEntry.file);
-        const created = stats.birthtime;
+        // Older indexes lack createdAt; only those need a filesystem fallback.
+        const created =
+          indexEntry.createdAt != null ? new Date(indexEntry.createdAt) : (await fs.stat(indexEntry.file)).birthtime;
         if (!oldestDate || created < oldestDate) {
           oldestDate = created;
         }
