@@ -39,9 +39,7 @@ describe("maintenance job retry behavior", () => {
       throw new Error("preview directory unavailable");
     });
 
-    await expect(previewCleanupJob.handler({ req: { payload: {} }, input: {} } as never)).rejects.toThrow(
-      "preview directory unavailable"
-    );
+    await expect(previewCleanupJob.handler()).rejects.toThrow("preview directory unavailable");
   });
 
   it("throws PostgreSQL rate-limit cleanup failures so Payload retries the job", async () => {

@@ -9,14 +9,8 @@
  * @category Jobs
  */
 
-import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { getUrlFetchCache } from "@/lib/services/cache";
-
-export interface CacheCleanupJobInput {
-  // Optional: force cleanup even if recently cleaned
-  force?: boolean;
-}
 
 /**
  * Cache cleanup job handler
@@ -34,11 +28,9 @@ export const cacheCleanupJob = {
     },
   ],
   retries: 2,
-  handler: async (context: JobHandlerContext) => {
-    const input = ((context.input ?? context.job?.input) as CacheCleanupJobInput | undefined) ?? {};
-
+  handler: async () => {
     const startTime = Date.now();
-    logger.info("Starting cache cleanup job", { force: input.force });
+    logger.info("Starting cache cleanup job");
 
     try {
       // Clean URL fetch cache (the only concrete cache instance)

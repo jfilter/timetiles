@@ -11,13 +11,7 @@
  */
 
 import { sweepExpiredPreviews } from "@/lib/ingest/preview-store";
-import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
-
-export interface PreviewCleanupJobInput {
-  /** Optional: force cleanup (currently a no-op flag — kept for symmetry with cache-cleanup). */
-  force?: boolean;
-}
 
 /**
  * Scheduled job for cleaning up expired import-wizard preview files.
@@ -29,11 +23,9 @@ export const previewCleanupJob = {
   retries: 2,
   // Sync handler — sweepExpiredPreviews is synchronous but Payload still
   // awaits the returned object, so we return a resolved value directly.
-  handler: (context: JobHandlerContext) => {
-    const input = (context.input ?? context.job?.input ?? {}) as PreviewCleanupJobInput;
-
+  handler: () => {
     const startTime = Date.now();
-    logger.info("Starting preview cleanup job", { force: input.force });
+    logger.info("Starting preview cleanup job");
 
     try {
       const result = sweepExpiredPreviews();

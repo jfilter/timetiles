@@ -24,25 +24,15 @@ const mockGetStats = vi.fn();
 vi.mock("@/lib/services/cache", () => ({ getUrlFetchCache: () => ({ cleanup: mockCleanup, getStats: mockGetStats }) }));
 
 describe.sequential("cacheCleanupJob", () => {
-  let mockPayload: any;
-
-  const createContext = (input: { force?: boolean } = {}) => ({
-    input,
-    job: { id: "job-1" },
-    req: { payload: mockPayload },
-  });
-
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockPayload = { findByID: vi.fn(), find: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() };
   });
 
   it("should clean cache and return success output", async () => {
     mockCleanup.mockResolvedValue(5);
     mockGetStats.mockResolvedValue({ size: 10 });
 
-    const result = await cacheCleanupJob.handler(createContext({ force: false }));
+    const result = await cacheCleanupJob.handler();
 
     expect(result.output.success).toBe(true);
     expect(result.output.totalCleaned).toBe(5);
@@ -54,12 +44,12 @@ describe.sequential("cacheCleanupJob", () => {
   it("should throw when cleanup fails so Payload can retry the job", async () => {
     mockCleanup.mockRejectedValue(new Error("Cache storage unavailable"));
 
-    await expect(cacheCleanupJob.handler(createContext({ force: true }))).rejects.toThrow("Cache storage unavailable");
+    await expect(cacheCleanupJob.handler()).rejects.toThrow("Cache storage unavailable");
   });
 
   it("should rethrow non-Error cleanup failures", async () => {
     mockCleanup.mockRejectedValue("something went wrong");
 
-    await expect(cacheCleanupJob.handler(createContext())).rejects.toBe("something went wrong");
+    await expect(cacheCleanupJob.handler()).rejects.toBe("something went wrong");
   });
 });
