@@ -11,6 +11,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import {
@@ -132,25 +133,38 @@ describe.sequential("Dataset Detection Job", () => {
     expect(usedDataset.language).toBe("deu");
   });
 
-  it("should use wizard fast-path and skip file re-parsing", async () => {
-    const csvContent = "name,date\nEvent 1,2024-01-01\n";
+  it.each([0, 2])("should import selected workbook sheet %i through the wizard fast-path", async (sheetIndex) => {
+    const { utils, write } = await loadXlsx();
+    const workbook = utils.book_new();
+    for (let index = 0; index < 3; index++) {
+      utils.book_append_sheet(
+        workbook,
+        utils.aoa_to_sheet([
+          ["name", "date", "lat", "lng"],
+          [`Event from sheet ${index}`, "2024-01-01", 52.52, 13.405],
+        ]),
+        `Sheet ${index + 1}`
+      );
+    }
+    const workbookContent = write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
 
     // Pre-create a dataset that the wizard has already configured
     const { dataset: wizardDataset } = await withDataset(testEnv, testCatalogId, {
       name: "Wizard Events",
       language: "eng",
+      schemaConfig: { locked: false, autoGrow: true, autoApproveNonBreaking: true },
     });
 
     // Create import file with wizard metadata including datasetMapping
-    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
-      filename: "wizard-test.csv",
-      mimeType: "text/csv",
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), workbookContent, {
+      filename: "wizard-test.xlsx",
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       user: uploadUserId,
       additionalData: {
         metadata: {
           source: "import-wizard",
           datasetMapping: { mappingType: "single", singleDataset: wizardDataset.id },
-          wizardConfig: { sheetMappings: [{ sheetIndex: 0, newDatasetName: "Wizard Events" }], fieldMappings: [] },
+          wizardConfig: { sheetMappings: [{ sheetIndex, newDatasetName: "Wizard Events" }], fieldMappings: [] },
         },
       },
       triggerWorkflow: true,
@@ -175,6 +189,14 @@ describe.sequential("Dataset Detection Job", () => {
     // Should use the dataset the wizard configured, not auto-create a new one
     const datasetId = extractRelationId(ingestJob.dataset);
     expect(datasetId).toBe(wizardDataset.id);
+    expect(ingestJob.sheetIndex).toBe(sheetIndex);
+    expect({ stage: ingestJob.stage, reviewReason: ingestJob.reviewReason }).toEqual({
+      stage: "completed",
+      reviewReason: null,
+    });
+    const events = await payload.find({ collection: "events", where: { ingestJob: { equals: ingestJob.id } } });
+    expect(events.docs).toHaveLength(1);
+    expect(events.docs[0].transformedData.name).toBe(`Event from sheet ${sheetIndex}`);
   });
 
   it("should create new dataset when originalName is missing", async () => {
