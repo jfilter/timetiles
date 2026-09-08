@@ -2,7 +2,7 @@
  * Defines the Payload CMS collection configuration for scheduled ingests.
  *
  * This collection manages scheduled URL-based imports that run automatically at specified intervals.
- * Each document represents a schedule configuration that triggers import-files records when due.
+ * Each document represents a schedule configuration that triggers ingest-files records when due.
  *
  * Key features:
  * - Cron-based scheduling with timezone support
@@ -13,7 +13,7 @@
  *
  * ⚠️ Payload CMS Deadlock Prevention
  * This file uses complex hooks with nested Payload operations.
- * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ * See: apps/docs/content/development/contributing/payload-deadlocks.mdx
  *
  * @module
  * @category Collections
@@ -57,7 +57,6 @@ type ActiveScheduleQuotaRequest = PayloadRequest & { activeScheduleQuotaClaim?: 
 const sameOwner = (left: OptionalOwnerId, right: OptionalOwnerId): boolean =>
   left != null && right != null && String(left) === String(right);
 
-/* eslint-disable sonarjs/function-return-type -- Relation IDs are intentionally nullable until ownership is known. */
 const getRelationValue = (value: unknown): OwnerId | null => {
   let relationId: OwnerId | null = null;
   if (value != null) {
@@ -76,7 +75,6 @@ const getScheduleOwnerId = (
     operation === "create" ? (data.createdBy ?? req.user?.id) : (originalDoc?.createdBy ?? data.createdBy);
   return getRelationValue(ownerSource);
 };
-/* eslint-enable sonarjs/function-return-type */
 
 const getQuotaUser = async (req: PayloadRequest, ownerId: OwnerId): Promise<User> => {
   if (sameOwner(req.user?.id, ownerId)) return req.user as User;
