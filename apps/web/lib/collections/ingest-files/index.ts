@@ -12,6 +12,8 @@
  *
  * An `afterChange` hook is used to automatically queue the `manual-ingest` workflow
  * as soon as a new file is uploaded and created in this collection.
+ * API/admin clients cannot update an existing source; internal Local API
+ * writers alone maintain its processing state. New bytes require a new upload.
  *
  * @module
  */
@@ -20,7 +22,6 @@ import type { CollectionConfig } from "payload";
 import { getEnv } from "@/lib/config/env";
 
 import { createCommonConfig } from "../shared-fields";
-import { preserveUploadMetadata } from "../upload-metadata-hooks";
 import { ingestFilesAccess } from "./access";
 import { ingestFileDownloadHandler } from "./download-handler";
 import { ingestFileFields } from "./fields";
@@ -54,7 +55,7 @@ const IngestFiles: CollectionConfig = {
   fields: ingestFileFields,
   hooks: {
     beforeOperation: beforeOperationHooks,
-    beforeValidate: [preserveUploadMetadata, ...beforeValidateHooks],
+    beforeValidate: beforeValidateHooks,
     beforeChange: beforeChangeHooks,
     afterChange: afterChangeHooks,
     afterError: afterErrorHooks,

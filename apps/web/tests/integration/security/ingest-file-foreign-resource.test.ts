@@ -11,8 +11,11 @@
  * @module
  */
 
+import { readFile } from "node:fs/promises";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import type { Catalog, User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
@@ -41,7 +44,7 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
 
     const { users } = await withUsers(testEnv, {
       adminUser: { role: "admin" },
-      ownerUser: { role: "user" },
+      ownerUser: { role: "user", trustLevel: "5" },
       attackerUser: { role: "user" },
     });
     adminUser = users.adminUser;
@@ -93,20 +96,42 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
   });
 
   describe("Legitimate access after fix", () => {
-    it("ignores owner-supplied storage metadata on update", async () => {
+    it("rejects owner-supplied storage metadata updates", async () => {
       const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, "name\nOriginal\n", {
         user: ownerUser.id,
       });
-      const updated = await payload.update({
-        collection: "ingest-files",
-        id: ingestFile.id,
-        data: { filename: "../unrelated.csv", filesize: 1, mimeType: "text/plain" },
-        user: ownerUser,
-        overrideAccess: false,
-      });
+      await expect(
+        payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: { filename: "../unrelated.csv", filesize: 1, mimeType: "text/plain" },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/not allowed/i);
+      const updated = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
       expect(updated.filename).toBe(ingestFile.filename);
       expect(updated.filesize).toBe(ingestFile.filesize);
       expect(updated.mimeType).toBe(ingestFile.mimeType);
+    });
+
+    it.each(["owner", "admin"])("rejects source replacement by %s before touching the stored file", async (role) => {
+      const original = "name\nOriginal source\n";
+      const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, original, { user: ownerUser.id });
+      const replacement = Buffer.from("name\nReplacement source\n");
+      await expect(
+        payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: {},
+          file: { data: replacement, mimetype: "text/csv", name: "replacement.csv", size: replacement.length },
+          user: role === "owner" ? ownerUser : adminUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(/not allowed/i);
+      const after = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+      expect(after.filename).toBe(ingestFile.filename);
+      expect(await readFile(getIngestFilePath(ingestFile.filename), "utf8")).toBe(original);
     });
 
     it("owner can create ingest-file with their own private catalog", async () => {

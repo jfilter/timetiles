@@ -34,9 +34,7 @@ export const prepareIngestFileRecovery = async (req: PayloadRequest, ingestFileI
     id: ingestFileId,
     data: { status: "processing", completedAt: null },
     context: { skipIngestFileHooks: true },
-    // Status is client-immutable. Keep the recovery transaction, but perform
-    // this internal write without changing the caller's user/audit context.
-    req: { ...req, user: null },
+    req,
   });
 };
 

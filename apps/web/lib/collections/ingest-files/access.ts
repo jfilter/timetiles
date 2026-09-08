@@ -7,12 +7,7 @@ import type { Access, Where } from "payload";
 
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import {
-  createFeatureFlaggedCreateAccess,
-  createOwnershipAccess,
-  isEditorOrAdmin,
-  isPrivileged,
-} from "../shared-fields";
+import { createFeatureFlaggedCreateAccess, isEditorOrAdmin, isPrivileged } from "../shared-fields";
 
 export const ingestFilesAccess = {
   // Import files can be read by their owner or admins
@@ -50,8 +45,10 @@ export const ingestFilesAccess = {
   // Only authenticated users can upload files (denied for pending-deletion accounts, feature flag must be enabled)
   create: createFeatureFlaggedCreateAccess("enableImportCreation"),
 
-  // Only file owner, editors, or admins can update
-  update: createOwnershipAccess("user"),
+  // Sources and pipeline state are immutable to API/admin clients. Replacing
+  // bytes bypasses create-time quotas and invalidates queued work and sidecars.
+  // Internal pipeline/recovery/cleanup writers use Payload's Local API override.
+  update: () => false,
 
   // Only admins and editors can delete
   delete: isEditorOrAdmin,

@@ -8,7 +8,7 @@
  *
  * @module
  */
-import type { CollectionConfig } from "payload";
+import type { CollectionBeforeValidateHook, CollectionConfig } from "payload";
 
 import { getEnv } from "@/lib/config/env";
 
@@ -20,7 +20,19 @@ import {
   isEditorOrAdmin,
   setCreatedByHook,
 } from "./shared-fields";
-import { preserveUploadMetadata } from "./upload-metadata-hooks";
+
+const STORAGE_FIELDS = ["filename", "mimeType", "url", "thumbnailURL", "filesize", "width", "height", "sizes"] as const;
+
+// Keep Payload's original upload fields/validators: redeclaring them can replace
+// its MIME validator with the default text validator during config sanitization.
+const preserveUploadMetadata: CollectionBeforeValidateHook = ({ data, operation, originalDoc, req }) => {
+  if (operation !== "update" || !req.user || Boolean(req.file) || !data) return data;
+  const restored = { ...data };
+  for (const field of STORAGE_FIELDS) {
+    if (field in restored) restored[field] = originalDoc?.[field];
+  }
+  return restored;
+};
 
 const Media: CollectionConfig = {
   slug: "media",
