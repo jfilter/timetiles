@@ -238,7 +238,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     if (!indexEntry) return false;
 
     // Check expiration
-    if (indexEntry.expires && indexEntry.expires < Date.now()) {
+    if (indexEntry.expires && indexEntry.expires <= Date.now()) {
       await this.delete(key);
       return false;
     }
@@ -342,7 +342,7 @@ export class FileSystemCacheStorage implements CacheStorage {
     const expiredKeys: string[] = [];
 
     for (const [key, indexEntry] of this.index) {
-      if (indexEntry.expires && indexEntry.expires < now) {
+      if (indexEntry.expires && indexEntry.expires <= now) {
         expiredKeys.push(key);
       }
     }

@@ -230,6 +230,27 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("TTL and expiration", () => {
+    it("expires has() and cleanup() entries exactly at their deadline", async () => {
+      await storage.set("has-deadline", "value", { ttl: 60 });
+      const entry = await storage.get("has-deadline");
+      const clock = vi.spyOn(Date, "now").mockReturnValue(entry!.metadata.expiresAt!.getTime());
+      try {
+        expect(await storage.has("has-deadline")).toBe(false);
+      } finally {
+        clock.mockRestore();
+      }
+
+      await storage.set("cleanup-deadline", "value", { ttl: 60 });
+      const cleanupEntry = await storage.get("cleanup-deadline");
+      const cleanupClock = vi.spyOn(Date, "now").mockReturnValue(cleanupEntry!.metadata.expiresAt!.getTime());
+      try {
+        expect(await storage.cleanup()).toBe(1);
+        expect(await storage.get("cleanup-deadline", { allowExpired: true })).toBeNull();
+      } finally {
+        cleanupClock.mockRestore();
+      }
+    });
+
     it("should expire entries after TTL", async () => {
       const key = "fs-ttl-key";
       const value = "test-value";
