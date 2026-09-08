@@ -180,9 +180,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200);
 
-      // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
       // Execution history should NOT be recorded at trigger time.
@@ -190,7 +187,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
       expect(updatedImport.executionHistory ?? []).toHaveLength(0);
     });
 
-    it("should increment statistics", async () => {
+    it("does not increment run statistics before the queued workflow completes", async () => {
       // Set initial statistics
       await payload.update({
         collection: "scheduled-ingests",
@@ -198,10 +195,7 @@ describe.sequential("Webhook Trigger API Integration", () => {
         data: { statistics: { totalRuns: 5, successfulRuns: 4, failedRuns: 1, averageDuration: 1000 } },
       });
 
-      await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
-
-      // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect((await callWebhook(testScheduledIngest.webhookTokenPlaintext!)).status).toBe(200);
 
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
@@ -467,9 +461,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
       const response = await callWebhook(testScheduledIngest.webhookTokenPlaintext!);
       expect(response.status).toBe(200);
 
-      // Wait a moment for the update to complete
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: testScheduledIngest.id });
 
       // Webhook trigger should not add entries to execution history.
@@ -507,7 +498,6 @@ describe.sequential("Webhook Trigger API Integration", () => {
 
       // Execution history is NOT recorded at trigger time - it's managed by the
       // job handler on completion. Verify the import status is set to "running".
-      await new Promise((resolve) => setTimeout(resolve, 10));
       const updatedImport = await payload.findByID({ collection: "scheduled-ingests", id: invalidImport.id });
 
       expect(updatedImport.lastStatus).toBe("running");
