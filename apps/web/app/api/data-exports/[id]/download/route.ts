@@ -40,7 +40,7 @@ const streamExportFile = async (
   // actually gone. Clearing it first meant a failed unlink stranded a ZIP of personal data on
   // disk with nothing pointing at it; the cleanup job now re-sweeps expired records that still
   // carry a path, so leaving it set is what lets that retry find the file.
-  if (exportRecord.expiresAt && new Date(exportRecord.expiresAt) < new Date()) {
+  if (exportRecord.expiresAt && new Date(exportRecord.expiresAt) <= new Date()) {
     await payload.update({
       collection: DATA_EXPORTS_COLLECTION,
       id: normalizedExportId,

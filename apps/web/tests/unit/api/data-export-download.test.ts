@@ -27,7 +27,7 @@ vi.mock("node:fs", async () => {
 
 import { NextRequest } from "next/server";
 import { getPayload } from "payload";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { GET } = await import("@/app/api/data-exports/[id]/download/route");
 
@@ -69,28 +69,31 @@ describe.sequential("GET /api/data-exports/[id]/download", () => {
     mocks.mockStat.mockResolvedValue({ size: 1024 });
   });
 
-  it("clears filePath and unlinks the archive when the export has just expired", async () => {
-    const payload = setup({
-      id: EXPORT_ID,
-      user: USER_ID,
-      status: "ready",
-      filePath: FILE_PATH,
-      expiresAt: "2020-01-01T00:00:00.000Z",
-    });
-
-    const response = await GET(createRequest(), routeParams);
-
-    expect(response.status).toBe(410);
-    // Two writes, in this order: retire the record, unlink, and only then forget the path.
-    // Clearing it in the first write stranded the archive whenever the unlink failed.
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { status: "expired" } })
-    );
-    expect(mocks.mockUnlink).toHaveBeenCalledWith(FILE_PATH);
-    expect(payload.update).toHaveBeenCalledWith(
-      expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { filePath: null } })
-    );
+  afterEach(() => {
+    vi.useRealTimers();
   });
+
+  it.each(["2020-01-01T00:00:00.000Z", "2026-09-08T12:00:00.000Z"])(
+    "retires the archive at or after expiry: %s",
+    async (expiresAt) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-08T12:00:00.000Z"));
+      const payload = setup({ id: EXPORT_ID, user: USER_ID, status: "ready", filePath: FILE_PATH, expiresAt });
+
+      const response = await GET(createRequest(), routeParams);
+
+      expect(response.status).toBe(410);
+      // Two writes, in this order: retire the record, unlink, and only then forget the path.
+      // Clearing it in the first write stranded the archive whenever the unlink failed.
+      expect(payload.update).toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { status: "expired" } })
+      );
+      expect(mocks.mockUnlink).toHaveBeenCalledWith(FILE_PATH);
+      expect(payload.update).toHaveBeenCalledWith(
+        expect.objectContaining({ collection: "data-exports", id: EXPORT_ID, data: { filePath: null } })
+      );
+    }
+  );
 
   it("keeps filePath when the unlink fails so the cleanup job can retry", async () => {
     const payload = setup({
