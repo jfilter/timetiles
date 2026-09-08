@@ -180,21 +180,16 @@ const validateCatalogAccess = async (data: unknown, req: PayloadRequest): Promis
 
   const catalogId = extractRelationId(typedData.catalog as { id: string | number } | string | number);
 
-  try {
-    const catalog = await req.payload.findByID({
-      collection: "catalogs",
-      id: catalogId as string | number,
-      overrideAccess: true,
-      req,
-    });
+  const catalog = await req.payload.findByID({
+    collection: "catalogs",
+    id: catalogId as string | number,
+    overrideAccess: true,
+    req,
+  });
 
-    const createdById = extractRelationId(catalog.createdBy);
-    if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
-      throw new Error("You do not have permission to access this catalog");
-    }
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "You do not have permission to access this catalog";
-    throw new Error(message);
+  const createdById = extractRelationId(catalog.createdBy);
+  if (req.user.role !== "admin" && createdById !== req.user.id && !catalog.isPublic) {
+    throw new Error("You do not have permission to access this catalog");
   }
 };
 
