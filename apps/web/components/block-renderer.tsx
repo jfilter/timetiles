@@ -293,7 +293,7 @@ const BlockStyleWrapper = ({ block, children }: { block: Block; children: React.
 
 const renderRichText = (block: RichTextBlock) => (
   <div className="container mx-auto max-w-4xl px-6 py-12">
-    <RichText content={block.content as Parameters<typeof RichText>[0]["content"]} />
+    <RichText content={block.content} />
   </div>
 );
 
