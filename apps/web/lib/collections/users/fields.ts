@@ -3,9 +3,67 @@
  *
  * @module
  */
-import type { Field } from "payload";
+import type { Field, NumberField } from "payload";
 
 import { TRUST_LEVEL_DESCRIPTIONS, TRUST_LEVEL_LABELS, TRUST_LEVELS } from "@/lib/constants/quota-constants";
+
+const quotaFields = [
+  {
+    name: "maxActiveSchedules",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum number of active scheduled ingests (-1 for unlimited)" },
+  },
+  {
+    name: "maxUrlFetchesPerDay",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum URL fetches per day (-1 for unlimited)" },
+  },
+  {
+    name: "maxFileUploadsPerDay",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum file uploads per day (-1 for unlimited)" },
+  },
+  {
+    name: "maxEventsPerImport",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum events per single import (-1 for unlimited)" },
+  },
+  {
+    name: "maxTotalEvents",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum total events allowed (-1 for unlimited)" },
+  },
+  {
+    name: "maxIngestJobsPerDay",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum import jobs per day (-1 for unlimited)" },
+  },
+  { name: "maxFileSizeMB", type: "number", min: 1, admin: { description: "Maximum file size in MB for uploads" } },
+  {
+    name: "maxCatalogsPerUser",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum number of catalogs per user (-1 for unlimited)" },
+  },
+  {
+    name: "maxScraperRepos",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum number of scraper repos (-1 for unlimited)" },
+  },
+  {
+    name: "maxScraperRunsPerDay",
+    type: "number",
+    min: -1,
+    admin: { description: "Maximum scraper runs per day (-1 for unlimited)" },
+  },
+] satisfies NumberField[];
 
 export const usersFields: Field[] = [
   { name: "firstName", type: "text", maxLength: 100 },
@@ -79,73 +137,25 @@ export const usersFields: Field[] = [
       create: ({ req: { user } }) => user?.role === "admin",
       update: ({ req: { user } }) => user?.role === "admin",
     },
-    fields: [
-      {
-        name: "maxActiveSchedules",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum number of active scheduled ingests (-1 for unlimited)" },
-      },
-      {
-        name: "maxUrlFetchesPerDay",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum URL fetches per day (-1 for unlimited)" },
-      },
-      {
-        name: "maxFileUploadsPerDay",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum file uploads per day (-1 for unlimited)" },
-      },
-      {
-        name: "maxEventsPerImport",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum events per single import (-1 for unlimited)" },
-      },
-      {
-        name: "maxTotalEvents",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum total events allowed (-1 for unlimited)" },
-      },
-      {
-        name: "maxIngestJobsPerDay",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum import jobs per day (-1 for unlimited)" },
-      },
-      { name: "maxFileSizeMB", type: "number", min: 1, admin: { description: "Maximum file size in MB for uploads" } },
-      {
-        name: "maxCatalogsPerUser",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum number of catalogs per user (-1 for unlimited)" },
-      },
-      {
-        name: "maxScraperRepos",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum number of scraper repos (-1 for unlimited)" },
-      },
-      {
-        name: "maxScraperRunsPerDay",
-        type: "number",
-        min: -1,
-        admin: { description: "Maximum scraper runs per day (-1 for unlimited)" },
-      },
-    ],
+    fields: quotaFields,
   },
   // Note: usage tracking has been moved to the separate 'user-usage' collection
   // to avoid session-clearing issues when updating user records
   {
     name: "customQuotas",
     type: "json",
-    admin: {
-      description: "Custom quota overrides (JSON format) - overrides trust level defaults",
-      condition: ({ data }) => data?.role === "admin",
+    jsonSchema: {
+      uri: "urn:timetiles:custom-quotas",
+      fileMatch: ["*"],
+      schema: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        properties: Object.fromEntries(
+          quotaFields.map((field) => [field.name, { type: "integer", minimum: field.min }])
+        ),
+      },
     },
+    admin: { description: "Custom quota overrides (JSON format) - overrides trust level defaults" },
     access: {
       read: ({ req: { user } }) => user?.role === "admin",
       // Admin-only for create too — otherwise a create payload could inject

@@ -384,18 +384,18 @@ export interface User {
      */
     maxScraperRunsPerDay?: number | null;
   };
-  /**
-   * Custom quota overrides (JSON format) - overrides trust level defaults
-   */
-  customQuotas?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
+  customQuotas?: {
+    maxActiveSchedules?: number;
+    maxUrlFetchesPerDay?: number;
+    maxFileUploadsPerDay?: number;
+    maxEventsPerImport?: number;
+    maxTotalEvents?: number;
+    maxIngestJobsPerDay?: number;
+    maxFileSizeMB?: number;
+    maxCatalogsPerUser?: number;
+    maxScraperRepos?: number;
+    maxScraperRunsPerDay?: number;
+  } | null;
   /**
    * Account deletion status
    */
