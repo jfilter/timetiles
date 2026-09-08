@@ -24,23 +24,15 @@ import { getClientIdentifier, getRateLimitService } from "../../services/rate-li
 
 const logger = createRequestLogger("ingest-files");
 
-/** Check upload rate limits unless seed/test context. Returns clientId if rate-limited. */
+/** Check upload rate limits outside tests. Seeding is handled by the caller's request context. */
 export const enforceUploadRateLimit = async (
-  data: Record<string, unknown>,
   req: { payload: Payload; user?: User | null; headers?: Headers },
   hookLogger: ReturnType<typeof createRequestLogger>
 ): Promise<string | undefined> => {
-  const isSeedData =
-    data.metadata &&
-    typeof data.metadata === "object" &&
-    "source" in data.metadata &&
-    data.metadata.source === "seed-data";
-
   const env = getEnv();
   const isTestEnv = env.NODE_ENV === "test" || env.DATABASE_URL?.includes("_test");
 
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- logical OR is intentional
-  if (isSeedData || isTestEnv) return undefined;
+  if (isTestEnv) return undefined;
 
   const rateLimitService = getRateLimitService(req.payload);
   const clientId = getClientIdentifier(req as unknown as Request);
@@ -207,7 +199,7 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
     if (req.context?.seed) return data;
 
     const changeLogger = createRequestLogger("import-files-beforechange");
-    const clientId = await enforceUploadRateLimit(data, req, changeLogger);
+    const clientId = await enforceUploadRateLimit(req, changeLogger);
 
     // Extract custom metadata from the request
     const userAgent = req.headers?.get?.("user-agent") ?? null;
