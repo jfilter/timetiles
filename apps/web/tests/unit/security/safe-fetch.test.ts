@@ -99,6 +99,25 @@ describe.sequential("safeFetch", () => {
   });
 
   describe("redirect validation", () => {
+    it.each(["https://cdn.example.com/data", "http://[invalid"])(
+      "releases the redirect body before processing Location %s",
+      async (location) => {
+        const redirect = new Response("unused redirect body", { status: 302, headers: { location } });
+        const cancel = vi.spyOn(redirect.body!, "cancel");
+        mockFetch.mockResolvedValueOnce(redirect).mockImplementationOnce(() => {
+          expect(cancel).toHaveBeenCalledOnce();
+          return createResponse(200);
+        });
+
+        if (location === "http://[invalid") {
+          await expect(safeFetch("https://example.com/data")).rejects.toThrow();
+        } else {
+          await expect(safeFetch("https://example.com/data")).resolves.toHaveProperty("status", 200);
+        }
+        expect(cancel).toHaveBeenCalledOnce();
+      }
+    );
+
     it("keeps redirect URLs out of diagnostics", async () => {
       const source = `https://example.com/${TEST_SECRETS.payloadSecret}?key=${TEST_SECRETS.payloadSecret}`;
       const target = `https://cdn.example.com/${TEST_SECRETS.payloadSecret}?key=${TEST_SECRETS.payloadSecret}`;

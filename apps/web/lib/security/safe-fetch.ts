@@ -141,10 +141,16 @@ export const fetchWithDispatcher = async (
 };
 
 /** Determine the next redirect target URL, or null when no further redirect. */
-const nextRedirectUrl = (response: Response, currentUrl: string): string | null => {
+const nextRedirectUrl = async (response: Response, currentUrl: string): Promise<string | null> => {
   if (!REDIRECT_STATUSES.has(response.status)) return null;
   const location = response.headers.get("location");
   if (!location) return null;
+  // This response is not returned to the caller. Release it even if Location is invalid.
+  try {
+    await response.body?.cancel();
+  } catch {
+    // Cleanup failure must not mask redirect validation or expose response details.
+  }
   return new URL(location, currentUrl).toString();
 };
 
@@ -263,7 +269,7 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
       if (pinnedDispatcher) void closeSilently(pinnedDispatcher);
     }
 
-    const nextUrl = nextRedirectUrl(response, currentUrl);
+    const nextUrl = await nextRedirectUrl(response, currentUrl);
     if (nextUrl === null) return response;
 
     // Cross-origin redirects must not carry credential-bearing headers OR a
