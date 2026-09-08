@@ -451,7 +451,12 @@ export class UrlFetchCache {
       try {
         return await this.fetchInner(url, optionsWithSignal);
       } catch (error) {
-        if ((error as Error).name === "AbortError") {
+        if (
+          error instanceof Error &&
+          error.name === "AbortError" &&
+          controller.signal.aborted &&
+          optionsWithSignal.signal?.reason === controller.signal.reason
+        ) {
           throw new Error(`Request timeout after ${timeout}ms`);
         }
         throw error;

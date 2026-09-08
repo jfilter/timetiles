@@ -243,7 +243,26 @@ describe.sequential("HTTP Cache Integration", () => {
           cacheOptions: { useCache: true },
           retryConfig: { maxRetries: 0 },
         })
-      ).rejects.toThrow();
+      ).rejects.toThrow("Request timeout after 500ms");
+    });
+
+    it("preserves a caller abort when the request timeout has not elapsed", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        urlFetchCache.fetch(`${serverUrl}/delay`, { signal: controller.signal, timeout: 60000, bypassCache: true })
+      ).rejects.toMatchObject({ name: "AbortError" });
+    });
+
+    it("preserves a null caller abort reason", async () => {
+      await expect(
+        urlFetchCache.fetch(`${serverUrl}/delay`, {
+          signal: AbortSignal.abort(null),
+          timeout: 60000,
+          bypassCache: true,
+        })
+      ).rejects.toBeNull();
     });
 
     it("should not retry terminal HTTP errors", async () => {
