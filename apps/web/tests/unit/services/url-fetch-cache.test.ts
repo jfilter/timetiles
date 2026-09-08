@@ -4,14 +4,56 @@
  * @module
  * @category Tests
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import "@/tests/mocks/services/logger";
 
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { Cache } from "@/lib/services/cache/cache";
 import { UrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
+import { TEST_SECRETS } from "@/tests/constants/test-credentials";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 describe("UrlFetchCache", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   afterEach(() => {
+    vi.restoreAllMocks();
     delete process.env.URL_FETCH_CACHE_DIR;
     delete process.env.URL_FETCH_CACHE_TTL;
+  });
+
+  it("does not log invalid URL input or the parser's error object", () => {
+    const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
+    const url = `invalid-${TEST_SECRETS.payloadSecret}`;
+
+    expect(cache.normalizeUrl(url)).toBe(url);
+    expect(mockLogger.logger.warn).toHaveBeenCalledWith("Failed to normalize URL, using original");
+  });
+
+  it.each(["public, max-age=60", "no-store"])("does not log cache keys (%s)", async (cacheControl) => {
+    vi.spyOn(Cache.prototype, "set").mockResolvedValue();
+    vi.spyOn(Cache.prototype, "delete").mockResolvedValue(true);
+    const cache = new UrlFetchCache() as unknown as {
+      cacheResponse: (key: string, data: Buffer, headers: Record<string, string>, status: number) => Promise<void>;
+    };
+    const key = `GET:https://example.com/${TEST_SECRETS.payloadSecret}?key=${TEST_SECRETS.payloadSecret}:anonymous`;
+
+    await cache.cacheResponse(key, Buffer.from("data"), { "cache-control": cacheControl }, 200);
+
+    expect(JSON.stringify(mockLogger.logger.info.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
+    expect(JSON.stringify(mockLogger.logger.debug.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
+    if (cacheControl === "no-store") {
+      expect(mockLogger.logger.debug).toHaveBeenCalledWith("Response not cacheable");
+    } else {
+      expect(mockLogger.logger.info).toHaveBeenCalledWith("HTTP response cached", {
+        size: 4,
+        ttl: 60,
+        hasEtag: false,
+        hasLastModified: false,
+      });
+    }
   });
 
   it("ignores malformed Cache-Control max-age directives", () => {

@@ -290,7 +290,7 @@ export class UrlFetchCache {
 
     // If not stale and not forced revalidation, return cached
     if (!isStale && !options?.forceRevalidate) {
-      logger.debug("HTTP cache hit", { url });
+      logger.debug("HTTP cache hit");
       return this.buildCacheResponse(normalizedCached, "HIT");
     }
 
@@ -317,7 +317,7 @@ export class UrlFetchCache {
       maxSize?: number;
     }
   ): Promise<CachedResponse> {
-    logger.debug("HTTP cache stale, attempting revalidation", { url });
+    logger.debug("HTTP cache stale, attempting revalidation");
     const headers = new Headers(options?.headers);
 
     if (cached.metadata.etag) {
@@ -339,7 +339,7 @@ export class UrlFetchCache {
 
       // Handle 304 Not Modified
       if (response.status === 304) {
-        logger.info("HTTP cache revalidated (304)", { url });
+        logger.info("HTTP cache revalidated (304)");
         // Per RFC 7234 §4.3.4, freshen the stored response from the 304's headers:
         // merge updated freshness/validator headers while preserving the original
         // body, status, and contentHash.
@@ -377,7 +377,7 @@ export class UrlFetchCache {
       // body — treat it like a failed revalidation and serve the stale entry
       // (safeFetch does not throw on non-2xx, so this needs an explicit check).
       if (!response.ok) {
-        logger.warn("Revalidation returned error status, returning stale cache", { url, status: response.status });
+        logger.warn("Revalidation returned error status, returning stale cache", { status: response.status });
         // Release the connection — an unconsumed body keeps the socket reserved.
         try {
           await response.body?.cancel();
@@ -389,9 +389,9 @@ export class UrlFetchCache {
 
       // Got new content, cache and return it
       return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
-    } catch (error) {
+    } catch {
       // On error during revalidation, return stale cache
-      logger.warn("Revalidation failed, returning stale cache", { url, error });
+      logger.warn("Revalidation failed, returning stale cache");
       return this.buildCacheResponse(cached, "STALE");
     }
   }
@@ -507,7 +507,7 @@ export class UrlFetchCache {
 
     // Only cache GET requests
     if (method !== "GET") {
-      logger.debug("Bypassing cache for non-GET request", { url, method });
+      logger.debug("Bypassing cache for non-GET request", { method });
       const {
         bypassCache: _bypassCache,
         forceRevalidate: _forceRevalidate,
@@ -525,7 +525,7 @@ export class UrlFetchCache {
       }
     }
 
-    logger.debug("HTTP cache miss", { url });
+    logger.debug("HTTP cache miss");
     return this.fetchFresh(url, cacheKey, options);
   }
 
@@ -544,7 +544,7 @@ export class UrlFetchCache {
     // A successful replacement supersedes old content even when it cannot be cached.
     if (ttl === 0 || !this.isCacheable(status, headers)) {
       await this.cache.delete(cacheKey);
-      logger.debug("Response not cacheable", { cacheKey });
+      logger.debug("Response not cacheable");
       return;
     }
 
@@ -565,7 +565,6 @@ export class UrlFetchCache {
 
     await this.cache.set(cacheKey, entry, { ttl });
     logger.info("HTTP response cached", {
-      url: cacheKey.replace(/^GET:/, ""),
       size: data.length,
       ttl,
       hasEtag: !!entry.metadata.etag,
@@ -610,9 +609,9 @@ export class UrlFetchCache {
       parsed.hash = "";
 
       return parsed.toString();
-    } catch (error) {
+    } catch {
       // If URL parsing fails, return original URL
-      logger.warn("Failed to normalize URL, using original", { url, error });
+      logger.warn("Failed to normalize URL, using original");
       return url;
     }
   }
