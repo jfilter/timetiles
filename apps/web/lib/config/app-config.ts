@@ -26,7 +26,7 @@ import { TRUST_LEVELS } from "@/lib/constants/trust-levels";
 // ---------------------------------------------------------------------------
 
 const rateLimitWindowSchema = z.object({
-  limit: z.number().positive(),
+  limit: z.number().int().positive(),
   windowMs: z.number().positive(),
   name: z.string().optional(),
 });

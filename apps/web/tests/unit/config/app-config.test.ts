@@ -291,6 +291,24 @@ batchSizes:
   });
 
   describe("YAML validation (strict mode)", () => {
+    it.each([0.5, 1.5])("rejects fractional endpoint rate limits (%s)", (limit) => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(
+        JSON.stringify({ rateLimits: { FILE_UPLOAD: { windows: [{ limit, windowMs: 1000 }] } } })
+      );
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it.each([0.5, 1.5])("rejects fractional trust-level rate limits (%s)", (limit) => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(
+        JSON.stringify({ trustLevelRateLimits: { "2": { FILE_UPLOAD: { windows: [{ limit, windowMs: 1000 }] } } } })
+      );
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
     it("rejects YAML with unknown top-level key", () => {
       existsSyncSpy.mockReturnValue(true);
       readFileSyncSpy.mockReturnValue(`
