@@ -20,7 +20,7 @@ import { COLLECTION_NAMES, JOB_TYPES, PROCESSING_STAGE } from "@/lib/constants/i
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
-import { parseStrictInteger } from "@/lib/utils/event-params";
+import { requireStrictInteger } from "@/lib/utils/event-params";
 import { extractRelationId, requireRelationId } from "@/lib/utils/relation-id";
 
 import type { DatasetDetectionJobInput } from "../types/job-inputs";
@@ -109,14 +109,6 @@ const resolveDatasetMapping = (ingestFile: {
   return undefined;
 };
 
-const normalizeIngestFileRelationId = (ingestFileId: string | number): number => {
-  const normalizedIngestFileId = typeof ingestFileId === "number" ? ingestFileId : parseStrictInteger(ingestFileId);
-  if (normalizedIngestFileId == null) {
-    throw new Error("Invalid import file ID");
-  }
-  return normalizedIngestFileId;
-};
-
 /**
  * Look up an existing ingest job for a (ingestFile, sheetIndex).
  *
@@ -184,7 +176,7 @@ const handleSingleSheet = async (
   return payload.create({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     data: {
-      ingestFile: normalizeIngestFileRelationId(ingestFile.id),
+      ingestFile: requireStrictInteger(ingestFile.id, "import file"),
       dataset: dataset.id,
       sheetIndex,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,
@@ -301,7 +293,7 @@ const processSheetWithMapping = async (
   return payload.create({
     collection: COLLECTION_NAMES.INGEST_JOBS,
     data: {
-      ingestFile: normalizeIngestFileRelationId(ingestFile.id),
+      ingestFile: requireStrictInteger(ingestFile.id, "import file"),
       dataset: dataset.id,
       sheetIndex: sheet.index,
       stage: PROCESSING_STAGE.ANALYZE_DUPLICATES,

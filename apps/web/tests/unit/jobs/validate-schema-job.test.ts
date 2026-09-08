@@ -92,14 +92,17 @@ describe.sequential("ValidateSchemaJob Handler", () => {
   });
 
   describe("Success Cases", () => {
-    it("should reject partially numeric import job ids before loading resources", async () => {
-      mockContext = createMockContext(mockPayload, { ingestJobId: "123abc" });
+    it.each(["123abc", 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+      "rejects invalid import job ID %s before loading resources",
+      async (ingestJobId) => {
+        mockContext = createMockContext(mockPayload, { ingestJobId });
 
-      await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Invalid import job ID");
+        await expect(validateSchemaJob.handler(mockContext)).rejects.toThrow("Invalid import job ID");
 
-      expect(mockPayload.findByID).not.toHaveBeenCalled();
-      expect(mockPayload.update).not.toHaveBeenCalled();
-    });
+        expect(mockPayload.findByID).not.toHaveBeenCalled();
+        expect(mockPayload.update).not.toHaveBeenCalled();
+      }
+    );
 
     it("should auto-approve schema with only non-breaking changes", async () => {
       // Create mock data using factories

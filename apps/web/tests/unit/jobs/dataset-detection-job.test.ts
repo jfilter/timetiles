@@ -357,36 +357,39 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   });
 
   describe("Error Handling", () => {
-    it("should reject partially numeric import file relation ids before creating jobs", async () => {
-      const mockIngestFile = {
-        id: "123abc",
-        filename: "test.csv",
-        filePath: "/tmp/test.csv",
-        catalog: 456,
-        originalName: "test.csv",
-      };
+    it.each(["123abc", 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+      "rejects invalid import file relation %s before creating jobs",
+      async (id) => {
+        const mockIngestFile = {
+          id,
+          filename: "test.csv",
+          filePath: "/tmp/test.csv",
+          catalog: 456,
+          originalName: "test.csv",
+        };
 
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
-      mockPayload.find.mockResolvedValue({ docs: [] });
-      // eslint-disable promise/prefer-await-to-then -- Conditional mock
-      mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
-        Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
-      );
-      // eslint-enable promise/prefer-await-to-then
+        mockPayload.findByID.mockResolvedValueOnce(mockIngestFile).mockResolvedValueOnce({ id: 456, name: "Catalog" });
+        mockPayload.find.mockResolvedValue({ docs: [] });
+        // eslint-disable promise/prefer-await-to-then -- Conditional mock
+        mockPayload.create.mockImplementation(({ collection }: { collection: string }) =>
+          Promise.resolve({ id: collection === "datasets" ? "dataset-1" : "import-job-1" })
+        );
+        // eslint-enable promise/prefer-await-to-then
 
-      await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
+        await expect(datasetDetectionJob.handler(mockContext)).rejects.toThrow("Invalid import file ID");
 
-      expect(mockPayload.create).toHaveBeenCalledTimes(1);
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "datasets",
-        data: expect.objectContaining({ name: "test.csv", catalog: 456 }),
-      });
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-files",
-        id: "ingest-file-123",
-        data: expect.objectContaining({ status: "failed", errorLog: "Invalid import file ID" }),
-      });
-    });
+        expect(mockPayload.create).toHaveBeenCalledTimes(1);
+        expect(mockPayload.create).toHaveBeenCalledWith({
+          collection: "datasets",
+          data: expect.objectContaining({ name: "test.csv", catalog: 456 }),
+        });
+        expect(mockPayload.update).toHaveBeenCalledWith({
+          collection: "ingest-files",
+          id: "ingest-file-123",
+          data: expect.objectContaining({ status: "failed", errorLog: "Invalid import file ID" }),
+        });
+      }
+    );
 
     it("should reject partially numeric catalog ids before loading datasets", async () => {
       const mockIngestFile = {

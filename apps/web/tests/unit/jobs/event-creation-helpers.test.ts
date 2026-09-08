@@ -540,21 +540,24 @@ describe("extractEndTimestamp", () => {
 });
 
 describe("createEventData", () => {
-  it("does not coerce partially numeric import job ids into event relations", () => {
-    const row = { title: "Test Event", date: "2024-06-15T10:30:00Z" };
-    const result = createEventData(
-      row,
-      row,
-      { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
-      "123abc",
-      {},
-      {},
-      { transformationChanges: null }
-    );
+  it.each(["123abc", 1.5, Number.NaN, Number.POSITIVE_INFINITY, Number.MAX_SAFE_INTEGER + 1])(
+    "does not create an event relation from invalid job ID %s",
+    (ingestJobId) => {
+      const row = { title: "Test Event", date: "2024-06-15T10:30:00Z" };
+      const result = createEventData(
+        row,
+        row,
+        { id: 42, idStrategy: { type: "content-hash", duplicateStrategy: "skip" } } as any,
+        ingestJobId,
+        {},
+        {},
+        { transformationChanges: null }
+      );
 
-    expect(result.ingestJob).toBeUndefined();
-    expect(result.uniqueId).toBe("generated-id");
-  });
+      expect(result.ingestJob).toBeUndefined();
+      expect(result.uniqueId).toBe("generated-id");
+    }
+  );
 
   it("drops redundant sourceData when it matches transformedData", () => {
     const row = { title: "Test Event", date: "2024-06-15T10:30:00Z" };

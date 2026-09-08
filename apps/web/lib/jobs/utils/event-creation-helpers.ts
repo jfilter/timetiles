@@ -428,7 +428,7 @@ export const createEventData = (
   { transformationChanges, fieldMappings }: CreateEventDataExtras
 ) => {
   const uniqueId = generateUniqueId(row, dataset);
-  const ingestJobNum = typeof ingestJobId === "string" ? parseStrictInteger(ingestJobId) : ingestJobId;
+  const ingestJobNum = parseStrictInteger(ingestJobId);
 
   const schemaVersionData = job.datasetSchemaVersion;
   let schemaVersion: number | undefined;

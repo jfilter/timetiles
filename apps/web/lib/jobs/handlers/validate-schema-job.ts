@@ -22,7 +22,7 @@ import { createJobLogger, logError, logPerformance } from "@/lib/logger";
 import { ProgressiveSchemaBuilder } from "@/lib/services/schema-builder";
 import { compareSchemas, detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 import { getSchemaBuilderState } from "@/lib/types/schema-detection";
-import { parseStrictInteger } from "@/lib/utils/event-params";
+import { normalizeJobId } from "@/lib/utils/event-params";
 
 import type { ValidateSchemaJobInput } from "../types/job-inputs";
 import type { JobHandlerContext } from "../utils/job-context";
@@ -101,10 +101,7 @@ export const validateSchemaJob = {
     const input = (context.input ?? context.job?.input) as ValidateSchemaJobInput["input"];
     const { ingestJobId } = input;
 
-    const jobIdTyped = typeof ingestJobId === "number" ? ingestJobId : parseStrictInteger(ingestJobId);
-    if (jobIdTyped == null) {
-      throw new Error("Invalid import job ID");
-    }
+    const jobIdTyped = normalizeJobId(ingestJobId);
     const jobId = context.job?.id ?? "unknown";
     const logger = createJobLogger(jobId, "validate-schema");
     logger.info("Starting schema validation", { ingestJobId });
