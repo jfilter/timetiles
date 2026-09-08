@@ -95,6 +95,15 @@ describe("ProgressiveSchemaBuilder", () => {
       expect(state.fieldStats["level1.level2.level3"]).toBeUndefined(); // Beyond max depth
     });
 
+    it("keeps the newest samples from a large batch without argument overflow", () => {
+      const smallBufferBuilder = new ProgressiveSchemaBuilder(undefined, { maxSamples: 3 });
+      const records = Array.from({ length: 200_000 }, (_, id) => ({ id }));
+
+      smallBufferBuilder.processBatch(records);
+
+      expect(smallBufferBuilder.getState().dataSamples).toEqual(records.slice(-3));
+    });
+
     it("maintains rotating sample buffer", () => {
       const smallBufferBuilder = new ProgressiveSchemaBuilder(undefined, { maxSamples: 3 });
 

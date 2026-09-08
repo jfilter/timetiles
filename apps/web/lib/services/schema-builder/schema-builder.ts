@@ -268,14 +268,8 @@ export class ProgressiveSchemaBuilder {
   }
 
   private updateSamples(records: DataRecord[]): void {
-    // Add new records
-    this.state.dataSamples.push(...records);
-
     // Keep only the last maxSamples records (FIFO)
-    if (this.state.dataSamples.length > this.config.maxSamples) {
-      // Remove oldest records from the beginning
-      this.state.dataSamples = this.state.dataSamples.slice(-this.config.maxSamples);
-    }
+    this.state.dataSamples = this.state.dataSamples.concat(records).slice(-this.config.maxSamples);
   }
 
   async getSchema(): Promise<SchemaProperty> {
