@@ -20,10 +20,8 @@ export const getExportDownloadUrl = (exportId: number): string => {
  * Format date in a user-friendly way.
  */
 export const formatExportDate = (dateString: string | null | undefined): string => {
-  if (!dateString) return "Unknown";
-
-  const formattedDate = formatDate(dateString);
-  return formattedDate === "N/A" ? "Unknown" : formattedDate;
+  const date = parseDateInput(dateString);
+  return date ? formatDate(date) : "Unknown";
 };
 
 /**

@@ -50,11 +50,7 @@ describe("Export Formatting Utilities", () => {
     });
 
     it("returns 'Unknown' for an invalid date string", () => {
-      // formatDate returns "Invalid date" for unparseable strings,
-      // but formatExportDate only maps "N/A" to "Unknown"
-      const result = formatExportDate("not-a-date");
-      // "Invalid date" is not "N/A", so it passes through as-is
-      expect(result).toBe("Invalid date");
+      expect(formatExportDate("not-a-date")).toBe("Unknown");
     });
   });
 
