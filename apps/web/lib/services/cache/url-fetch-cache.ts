@@ -616,3 +616,8 @@ export const getUrlFetchCache = (): UrlFetchCache => {
   instance ??= new UrlFetchCache();
   return instance;
 };
+
+/** Drop the singleton so a subsequent caller uses the current application configuration. */
+export const resetUrlFetchCache = (): void => {
+  instance = null;
+};

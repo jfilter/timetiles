@@ -5,10 +5,8 @@
  * Tests fetchRemoteData (unified fetch service), json-to-csv conversion,
  * and paginated API fetching against a real HTTP server (TestServer).
  *
- * Uses the real HTTP stack -- no mocking of fetchWithRetry. The only mocks
- * are the logger (noise reduction) and the URL fetch cache (filesystem
- * side-effect avoidance -- replaced with a pass-through that still uses
- * real HTTP fetch under the hood).
+ * Uses the real HTTP stack and file-backed cache in a suite-owned temporary
+ * directory. Only the logger is mocked for noise reduction.
  *
  * @module
  * @category Tests
@@ -18,83 +16,40 @@ process.env.ALLOW_PRIVATE_URLS = "true";
 
 import "@/tests/mocks/services/logger";
 
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ---------------------------------------------------------------------------
-// Mock the URL fetch cache with a pass-through that uses real HTTP fetch
-// but avoids filesystem caching.
-// ---------------------------------------------------------------------------
-vi.mock("@/lib/services/cache/url-fetch-cache", () => {
-  /**
-   * Minimal UrlFetchCache replacement that delegates to the real `fetch()`
-   * without writing to the filesystem.
-   */
-  const createPassThroughCache = () => ({
-    fetch: async (
-      url: string,
-      options?: RequestInit & { bypassCache?: boolean; forceRevalidate?: boolean; userId?: string; timeout?: number }
-    ) => {
-      const { bypassCache: _b, forceRevalidate: _f, userId: _u, timeout, ...fetchOpts } = options ?? {};
-
-      // Support timeout via AbortController
-      let controller: AbortController | undefined;
-      let timeoutId: ReturnType<typeof setTimeout> | undefined;
-      if (timeout && timeout > 0) {
-        controller = new AbortController();
-        timeoutId = setTimeout(() => controller!.abort(), timeout);
-        fetchOpts.signal = controller.signal;
-      }
-
-      try {
-        const response = await fetch(url, fetchOpts);
-        const data = Buffer.from(await response.arrayBuffer());
-        const headers: Record<string, string> = {};
-        response.headers.forEach((value, key) => {
-          headers[key.toLowerCase()] = value;
-        });
-        return { data, headers, status: response.status };
-      } catch (error) {
-        if ((error as Error).name === "AbortError") {
-          throw new Error(`Request timeout after ${timeout}ms`);
-        }
-        throw error;
-      } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-      }
-    },
-    get: vi.fn().mockResolvedValue(null),
-    set: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(0),
-    cleanup: vi.fn().mockResolvedValue(0),
-    getStats: vi.fn().mockResolvedValue({}),
-  });
-
-  return {
-    UrlFetchCache: vi.fn().mockImplementation(createPassThroughCache),
-    getUrlFetchCache: vi.fn(() => createPassThroughCache()),
-  };
-});
-
-// ---------------------------------------------------------------------------
-// Imports under test (must come AFTER vi.mock calls)
-// ---------------------------------------------------------------------------
+import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
+import { getUrlFetchCache, resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TestServer } from "@/tests/setup/integration/http-server";
 
 describe.sequential("JSON fetch integration", () => {
   let server: TestServer;
+  let cacheDir: string;
 
   beforeAll(async () => {
+    cacheDir = await mkdtemp(join(tmpdir(), "timetiles-json-fetch-"));
+    getAppConfig().cache.urlFetch.dir = cacheDir;
+    resetUrlFetchCache();
+    getUrlFetchCache();
     server = new TestServer();
     await server.start();
   });
 
   afterAll(async () => {
     await server.stop();
+    resetUrlFetchCache();
+    resetAppConfig();
+    await rm(cacheDir, { recursive: true, force: true });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await getUrlFetchCache().clear();
     server.reset();
     vi.clearAllMocks();
   });
