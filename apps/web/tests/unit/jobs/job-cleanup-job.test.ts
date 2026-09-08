@@ -182,29 +182,27 @@ describe.sequential("jobCleanupJob", () => {
     vi.spyOn(Date, "now").mockRestore();
   });
 
-  it("should increment errors and continue when a failed job delete throws", async () => {
+  it("continues deleting failed jobs before reporting partial failure", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [{ id: "fail-1" }, { id: "fail-2" }] })
       .mockResolvedValueOnce({ docs: [] });
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Delete failed")).mockResolvedValueOnce({});
 
-    const result = await jobCleanupJob.handler(createContext());
-
-    expect(result.output).toEqual({ success: true, failedDeleted: 1, completedDeleted: 0, errors: 1, hasMore: false });
+    await expect(jobCleanupJob.handler(createContext())).rejects.toThrow("Job cleanup failed for 1 deletions");
+    expect(mockPayload.delete).toHaveBeenCalledWith(expect.objectContaining({ id: "fail-2" }));
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete failed job", { payloadJobId: "fail-1" });
   });
 
-  it("should increment errors and continue when a completed job delete throws", async () => {
+  it("continues deleting completed jobs before reporting partial failure", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [] })
       .mockResolvedValueOnce({ docs: [{ id: "comp-1" }, { id: "comp-2" }] });
 
     mockPayload.delete.mockRejectedValueOnce(new Error("DB error")).mockResolvedValueOnce({});
 
-    const result = await jobCleanupJob.handler(createContext());
-
-    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 1, errors: 1, hasMore: false });
+    await expect(jobCleanupJob.handler(createContext())).rejects.toThrow("Job cleanup failed for 1 deletions");
+    expect(mockPayload.delete).toHaveBeenCalledWith(expect.objectContaining({ id: "comp-2" }));
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to delete completed job", {
       payloadJobId: "comp-1",
     });
@@ -217,10 +215,8 @@ describe.sequential("jobCleanupJob", () => {
 
     mockPayload.delete.mockRejectedValueOnce(new Error("Error 1")).mockRejectedValueOnce(new Error("Error 2"));
 
-    const result = await jobCleanupJob.handler(createContext());
-
-    expect(result.output).toEqual({ success: true, failedDeleted: 0, completedDeleted: 0, errors: 2, hasMore: false });
-    expect(logError).toHaveBeenCalledTimes(2);
+    await expect(jobCleanupJob.handler(createContext())).rejects.toThrow("Job cleanup failed for 2 deletions");
+    expect(logError).toHaveBeenCalledTimes(3);
   });
 
   it("should throw when the initial find query fails", async () => {

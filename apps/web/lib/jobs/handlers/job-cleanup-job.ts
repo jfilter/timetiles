@@ -80,6 +80,7 @@ export const jobCleanupJob = {
   slug: "job-cleanup",
   schedule: [{ cron: "0 5 * * *", queue: "maintenance" as const }],
   concurrency: () => "job-cleanup",
+  retries: 2,
   handler: async ({ job, req }: JobHandlerContext) => {
     const sys = asSystem(req.payload);
 
@@ -107,6 +108,10 @@ export const jobCleanupJob = {
       const completedDeleted = completed.deleted;
       const errors = failed.errors + completed.errors;
       const hasMore = failed.hasMore || completed.hasMore;
+
+      if (errors > 0) {
+        throw new Error(`Job cleanup failed for ${errors} deletions`);
+      }
 
       if (hasMore) {
         logger.warn(
