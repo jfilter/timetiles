@@ -70,6 +70,20 @@ const createStartDateOrderJob = () => ({
 
 // These tests share the approval mock and query dropdown portals in the document.
 describe.sequential("ReviewPanel", () => {
+  it("shows the full row error count and rate rather than the retained detail count", () => {
+    const job = {
+      ...createJob(),
+      errors: 500,
+      reviewReason: REVIEW_REASONS.HIGH_ROW_ERROR_RATE,
+      reviewDetails: { errorCount: 600, totalEvents: 200, errorRate: 0.75 },
+    };
+    const { container } = renderWithProviders(<ReviewPanel job={job} />);
+
+    expect(within(container).getByText("600")).toBeInTheDocument();
+    expect(within(container).getByText("75%")).toBeInTheDocument();
+    expect(within(container).queryByText("500")).not.toBeInTheDocument();
+  });
+
   it("approves no-location reviews with both location and locationName overrides", async () => {
     approveMutate.mockReset();
     const user = userEvent.setup();
