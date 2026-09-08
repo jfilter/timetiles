@@ -78,6 +78,14 @@ describe("shared-schemas", () => {
   });
 
   describe("jsonApiPaginationSchema — field naming consistency", () => {
+    it.each(["limitValue", "maxPages", "maxRecords"])("rejects fractional %s", (field) => {
+      expect(jsonApiPaginationSchema.safeParse({ enabled: true, [field]: 1.5 }).success).toBe(false);
+    });
+
+    it.each(["limitValue", "maxPages", "maxRecords"])("accepts a single unit for %s", (field) => {
+      expect(jsonApiPaginationSchema.safeParse({ enabled: true, [field]: 1 }).success).toBe(true);
+    });
+
     it("accepts limitParam and limitValue (not pageSizeParam/pageSize)", () => {
       const result = jsonApiPaginationSchema.safeParse({
         enabled: true,
