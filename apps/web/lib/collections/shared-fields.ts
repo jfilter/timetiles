@@ -19,6 +19,96 @@ import type { Config } from "@/payload-types";
 
 import { createSlugHook } from "./slug";
 
+/** Fresh Payload review fields shared by scraper and scheduled-ingest sources. */
+export const createReviewCheckFields = (): Field[] => [
+  {
+    name: "skipTimestampCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'no timestamp' check",
+    admin: { description: "Don't pause when no date/time field is detected", width: "50%" },
+  },
+  {
+    name: "skipLocationCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'no location' check",
+    admin: { description: "Don't pause when no location field is detected", width: "50%" },
+  },
+  {
+    name: "skipEmptyRowCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'high empty rows' check",
+    admin: { description: "Don't pause when many rows are empty", width: "50%" },
+  },
+  {
+    name: "skipRowErrorCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'high row errors' check",
+    admin: { description: "Don't pause when many rows fail during creation", width: "50%" },
+  },
+  {
+    name: "skipDuplicateRateCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'high duplicates' check",
+    admin: { description: "Don't pause when most rows are duplicates", width: "50%" },
+  },
+  {
+    name: "skipGeocodingCheck",
+    type: "checkbox",
+    defaultValue: false,
+    label: "Skip 'geocoding failure' check",
+    admin: { description: "Don't pause when geocoding has a high failure rate", width: "50%" },
+  },
+  {
+    name: "emptyRowThreshold",
+    type: "number",
+    min: 0,
+    max: 1,
+    admin: {
+      description: "Override empty row rate threshold (0–1). Leave blank for global default.",
+      step: 0.05,
+      width: "50%",
+    },
+  },
+  {
+    name: "rowErrorThreshold",
+    type: "number",
+    min: 0,
+    max: 1,
+    admin: {
+      description: "Override row error rate threshold (0–1). Leave blank for global default.",
+      step: 0.05,
+      width: "50%",
+    },
+  },
+  {
+    name: "duplicateRateThreshold",
+    type: "number",
+    min: 0,
+    max: 1,
+    admin: {
+      description: "Override duplicate rate threshold (0–1). Leave blank for global default.",
+      step: 0.05,
+      width: "50%",
+    },
+  },
+  {
+    name: "geocodingFailureThreshold",
+    type: "number",
+    min: 0,
+    max: 1,
+    admin: {
+      description: "Override geocoding failure threshold (0–1). Leave blank for global default.",
+      step: 0.05,
+      width: "50%",
+    },
+  },
+];
+
 // Access control helpers for role-based permissions
 
 /** Plain boolean helper for checking admin or editor role outside Payload Access context. */
