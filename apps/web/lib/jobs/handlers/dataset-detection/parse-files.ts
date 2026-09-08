@@ -8,12 +8,10 @@
  * @category Jobs
  */
 import fs from "node:fs";
-import readline from "node:readline";
 
 import Papa from "papaparse";
 
 import { createDecodedTextStream } from "@/lib/ingest/file-encoding";
-import { countCsvRecords } from "@/lib/ingest/file-readers";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
 import { logger } from "@/lib/logger";
 
@@ -26,43 +24,27 @@ export interface SheetInfo {
 }
 
 /**
- * Read the first line of a CSV to extract headers, then stream-count remaining data rows.
- * Avoids loading the entire file into memory (the previous implementation used readFileSync
- * + Papa.parse which buffered everything).
+ * Stream CSV records once to extract headers and count data rows.
  */
 export const processCSVFile = async (filePath: string): Promise<SheetInfo[]> => {
   logger.info("Processing CSV file", { filePath });
 
-  // Read only the first line to get headers
-  const headerLine = await new Promise<string>((resolve, reject) => {
-    const stream = createDecodedTextStream(filePath);
-    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
-    let resolved = false;
-
-    rl.once("line", (line) => {
-      resolved = true;
-      rl.close();
-      stream.destroy();
-      resolve(line);
-    });
-    rl.once("error", reject);
-    // Guard: only resolve empty if "line" never fired (truly empty file)
-    rl.once("close", () => {
-      if (!resolved) resolve("");
+  let headers: string[] | undefined;
+  let rowCount = 0;
+  await new Promise<void>((resolve, reject) => {
+    Papa.parse<string[]>(createDecodedTextStream(filePath), {
+      header: false,
+      skipEmptyLines: true,
+      step: ({ data }) => {
+        if (headers === undefined) headers = data.map((header) => header.trim());
+        else rowCount++;
+      },
+      complete: () => resolve(),
+      error: reject,
     });
   });
 
-  if (!headerLine.trim()) {
-    throw new Error("No data rows found in file");
-  }
-
-  // Parse the header line with Papa to handle quoted fields, commas in values, etc.
-  const headerResult = Papa.parse(headerLine, { header: false, skipEmptyLines: true });
-  const headers = (headerResult.data[0] as string[]) ?? [];
-
-  const rowCount = await countCsvRecords(filePath);
-
-  if (rowCount === 0 && headers.length === 0) {
+  if (!headers?.length) {
     throw new Error("No data rows found in file");
   }
 

@@ -38,4 +38,12 @@ describe("dataset detection parse-files", () => {
       { name: "CSV Data", index: 0, rowCount: 2, columnCount: 2, headers: ["id", "description"] },
     ]);
   });
+
+  it("should preserve quoted multiline column names", async () => {
+    const filePath = path.join(tempDir, "multiline-header.csv");
+    fs.writeFileSync(filePath, 'id,"event\nname"\n1,Example\n', "utf-8");
+    expect(await processCSVFile(filePath)).toEqual([
+      { name: "CSV Data", index: 0, rowCount: 1, columnCount: 2, headers: ["id", "event\nname"] },
+    ]);
+  });
 });
