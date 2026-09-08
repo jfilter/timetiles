@@ -94,7 +94,9 @@ const vitestArgs = [
 let childFailed = false;
 try {
   execFileSync("pnpm", vitestArgs, {
-    stdio: "pipe",
+    // The report is written to a file. Do not buffer unused stdout or swallow
+    // stderr: worker crashes and startup failures may leave no usable report.
+    stdio: ["ignore", "ignore", "inherit"],
     cwd: process.cwd(),
     env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
   });

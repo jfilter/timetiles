@@ -102,7 +102,7 @@ describe.sequential("AI test runner exit status", () => {
         "--silent",
       ],
       {
-        stdio: "pipe",
+        stdio: ["ignore", "ignore", "inherit"],
         cwd: process.cwd(),
         env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
       }
@@ -127,6 +127,25 @@ describe.sequential("AI test runner exit status", () => {
 
     await import("@/scripts/test-ai");
 
+    expect(mocks.exit).toHaveBeenCalledWith(1);
+    expect(mocks.writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it("keeps process diagnostics visible when a crash leaves no report", async () => {
+    mocks.execFileSync.mockImplementation(() => {
+      throw Object.assign(new Error("Worker terminated"), { signal: "SIGABRT", status: null });
+    });
+    mocks.readFileSync.mockImplementation(() => {
+      throw new Error("Report does not exist");
+    });
+
+    await import("@/scripts/test-ai");
+
+    expect(mocks.execFileSync).toHaveBeenCalledWith(
+      "pnpm",
+      expect.any(Array),
+      expect.objectContaining({ stdio: ["ignore", "ignore", "inherit"] })
+    );
     expect(mocks.exit).toHaveBeenCalledWith(1);
     expect(mocks.writeFileSync).not.toHaveBeenCalled();
   });
