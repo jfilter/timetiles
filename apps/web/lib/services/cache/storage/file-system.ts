@@ -73,8 +73,8 @@ export class FileSystemCacheStorage implements CacheStorage {
     if (options.cleanupIntervalMs) {
       this.cleanupInterval = setInterval(() => {
         // oxlint-disable-next-line promise/prefer-await-to-then
-        void this.cleanup().catch((err: unknown) => {
-          logger.error("Cache cleanup error", { error: err });
+        void this.cleanup().catch(() => {
+          logger.error("Cache cleanup error");
         });
       }, options.cleanupIntervalMs);
     }
@@ -141,12 +141,12 @@ export class FileSystemCacheStorage implements CacheStorage {
 
       this.stats.hits++;
       return entry;
-    } catch (error) {
+    } catch {
       // File might be corrupted or deleted. Release its accounting too: dropping the
       // index entry alone left `totalSize` (and `entries`) counting bytes that are gone,
       // and phantom size above `maxSize` makes cleanupLRU evict on every subsequent set()
       // — including the entry just written, pinning the hit rate at zero across restarts.
-      logger.debug("Failed to read cache file", { key, error });
+      logger.debug("Failed to read cache file");
       this.releaseIndexEntry(key);
       await this.saveIndex();
       this.stats.misses++;

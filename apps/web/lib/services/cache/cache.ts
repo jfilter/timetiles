@@ -37,8 +37,8 @@ export class Cache {
     try {
       const entry = await this.storage.get<T>(fullKey);
       return entry?.value ?? null;
-    } catch (error) {
-      logger.error("Cache get error", { key: fullKey, error });
+    } catch {
+      logger.error("Cache get error");
       return null;
     }
   }
@@ -51,8 +51,8 @@ export class Cache {
     const ttl = options?.ttl ?? this.config.defaultTTL;
     try {
       await this.storage.set(fullKey, value, { ...options, ttl });
-    } catch (error) {
-      logger.error("Cache set error", { key: fullKey, error });
+    } catch {
+      logger.error("Cache set error");
     }
   }
 
@@ -63,8 +63,8 @@ export class Cache {
     const fullKey = this.makeKey(key);
     try {
       return await this.storage.delete(fullKey);
-    } catch (error) {
-      logger.error("Cache delete error", { key: fullKey, error });
+    } catch {
+      logger.error("Cache delete error");
       return false;
     }
   }
@@ -76,8 +76,8 @@ export class Cache {
     const fullPattern = pattern ? this.makeKey(pattern) : undefined;
     try {
       return await this.storage.clear(fullPattern);
-    } catch (error) {
-      logger.error("Cache clear error", { pattern: fullPattern, error });
+    } catch {
+      logger.error("Cache clear error");
       return 0;
     }
   }
@@ -93,8 +93,8 @@ export class Cache {
       // Remove prefix from keys
       const prefixLength = this.keyPrefix.length;
       return keys.map((k) => k.substring(prefixLength));
-    } catch (error) {
-      logger.error("Cache keys error", { pattern: fullPattern, error });
+    } catch {
+      logger.error("Cache keys error");
       return [];
     }
   }
@@ -105,8 +105,8 @@ export class Cache {
   async getStats() {
     try {
       return await this.storage.getStats();
-    } catch (error) {
-      logger.error("Cache getStats error", { error });
+    } catch {
+      logger.error("Cache getStats error");
       return { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 };
     }
   }
@@ -121,8 +121,8 @@ export class Cache {
         logger.info("Cache cleanup completed", { cleaned });
       }
       return cleaned;
-    } catch (error) {
-      logger.error("Cache cleanup error", { error });
+    } catch {
+      logger.error("Cache cleanup error");
       return 0;
     }
   }

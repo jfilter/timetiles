@@ -5,19 +5,24 @@
  * @category Services/Cache/Tests
  */
 
+import "@/tests/mocks/services/logger";
+
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
+import { TEST_SECRETS } from "@/tests/constants/test-credentials";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 describe.sequential("FileSystemCacheStorage", () => {
   let storage: FileSystemCacheStorage;
   let tempDir: string;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     // Create a unique temp directory for each test
     tempDir = path.join(os.tmpdir(), `cache-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
@@ -399,7 +404,7 @@ describe.sequential("FileSystemCacheStorage", () => {
     });
 
     it("should handle corrupted cache files gracefully", async () => {
-      const key = "corrupted-key";
+      const key = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
       await storage.set(key, "valid-value");
 
       // Corrupt the cache file - match the actual implementation
@@ -413,6 +418,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       // Should return null for corrupted entry
       const entry = await storage.get(key);
       expect(entry).toBeNull();
+      expect(mockLogger.logger.debug).toHaveBeenCalledWith("Failed to read cache file");
 
       // Should be able to overwrite corrupted entry
       await storage.set(key, "new-value");
