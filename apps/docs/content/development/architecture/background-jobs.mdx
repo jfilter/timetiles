@@ -42,12 +42,12 @@ pnpm --filter web payload jobs:run --cron '*/1 * * * *' --queue default --limit 
 
 The ingestion pipeline is orchestrated by 4 Payload Workflows. Each workflow sequences multiple task handlers into a linear pipeline. See [Data Ingestion Pipeline](./data-processing-pipeline) for detailed stage documentation.
 
-| Workflow           | Trigger                                                | Pipeline                                                                                                           |
-| ------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `manual-ingest`    | `ingest-files` afterChange hook                        | dataset-detection, then per-sheet: analyze, detect-schema, validate, create-schema-version, geocode, create-events |
-| `scheduled-ingest` | `schedule-manager` job                                 | url-fetch, dataset-detection, then per-sheet pipeline                                                              |
-| `scraper-ingest`   | `schedule-manager` job                                 | scraper-execution, dataset-detection, then per-sheet pipeline                                                      |
-| `ingest-process`   | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | Resume from the stage selected by the review decision                                                              |
+| Workflow           | Trigger                                                                                    | Pipeline                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `manual-ingest`    | `ingest-files` afterChange hook                                                            | dataset-detection, then per-sheet: analyze, detect-schema, validate, create-schema-version, geocode, create-events |
+| `scheduled-ingest` | Shared trigger service: scheduler, webhook, manual run, wizard, or data-package activation | url-fetch, dataset-detection, then per-sheet pipeline                                                              |
+| `scraper-ingest`   | Scheduler, webhook, or manual run                                                          | scraper-execution, dataset-detection, then per-sheet pipeline                                                      |
+| `ingest-process`   | Review approval hook or retry/reset routes                                                 | Resume from the selected stage                                                                                     |
 
 All ingest workflows run on the `ingest` queue with per-resource concurrency keys (e.g., `ingest:manual:{id}`, `ingest:scheduled:{id}`).
 

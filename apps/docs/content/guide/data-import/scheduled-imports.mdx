@@ -23,12 +23,13 @@ If a schedule has invalid timing settings or keeps failing until it exhausts its
 
 Scheduled imports support several methods for protected URLs:
 
-| Method       | Description                            |
-| ------------ | -------------------------------------- |
-| None         | Public URLs, no authentication         |
-| API Key      | Sent as a header or query parameter    |
-| Bearer Token | `Authorization: Bearer <token>` header |
-| Basic Auth   | HTTP Basic authentication              |
+| Method       | Description                                                        |
+| ------------ | ------------------------------------------------------------------ |
+| None         | Public URLs, no authentication                                     |
+| API Key      | Sent in the configured HTTP header (default: `X-API-Key`)          |
+| Bearer Token | `Authorization: Bearer <token>` header                             |
+| Basic Auth   | HTTP Basic authentication                                          |
+| OAuth 2.0    | Password-grant token exchange; access token sent as a Bearer token |
 
 ## Managing Schedules
 
