@@ -1,7 +1,7 @@
 /**
  * Integration tests for data quality review checks in the import pipeline.
  *
- * Tests that the pipeline correctly pauses at NEEDS_REVIEW for all 8 reasons,
+ * Tests that the pipeline correctly pauses at NEEDS_REVIEW for covered reasons,
  * and that approval correctly resumes the pipeline without loops.
  *
  * Uses low threshold overrides via processingOptions.reviewChecks to trigger
@@ -120,6 +120,39 @@ describe.sequential("Review Checks Pipeline", () => {
   });
 
   // ── Trigger tests: verify each check fires ─────────────────────────
+
+  it("retains 500 error details while reviewing all failed rows", async () => {
+    // This source has no addresses, so exercise the real pipeline without the suite's geocoder stub.
+    vi.restoreAllMocks();
+    const { dataset } = await withDataset(testEnv, Number.parseInt(testCatalogId, 10), {
+      name: "Missing external identifiers",
+      idStrategy: { type: "external", externalIdPath: "id" },
+      schemaConfig: { autoGrow: true, autoApproveNonBreaking: true, locked: false },
+    });
+    const csvContent = ["id,name", ...Array.from({ length: 600 }, (_, i) => `,Event ${i}`), ""].join("\n");
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "missing-identifiers.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+      additionalData: {
+        metadata: { source: "import-wizard", datasetMapping: { mappingType: "single", singleDataset: dataset.id } },
+        processingOptions: { reviewChecks: { skipTimestampCheck: true, skipLocationCheck: true } },
+      },
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+
+    const jobs = await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } });
+    expect(jobs.docs).toHaveLength(1);
+    const job = jobs.docs[0];
+    expect(job.stage).toBe("needs-review");
+    expect(job.reviewReason).toBe("high-row-errors");
+    expect(job.reviewDetails).toMatchObject({ errorCount: 600, errorRate: 1, totalEvents: 0 });
+    expect(job.errors).toHaveLength(500);
+    const events = await payload.count({ collection: "events", where: { dataset: { equals: dataset.id } } });
+    expect(events.totalDocs).toBe(0);
+  });
 
   it("should pause for no-timestamp when no date column exists", async () => {
     const csvContent = "name,location\nConference,Berlin\nWorkshop,Munich\n";
