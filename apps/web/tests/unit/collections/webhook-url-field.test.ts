@@ -41,7 +41,6 @@ describe.sequential("webhookUrl field", () => {
 
   describe.each(CASES)("$label", ({ fields }) => {
     const field = findWebhookUrlField(fields);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Payload field hook/admin shapes are loosely typed here
     const anyField = field as any;
 
     it("is visible only while the one-shot plaintext is available", () => {

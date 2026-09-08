@@ -75,7 +75,6 @@ describe("findExternalIdMoveAway", () => {
 
 describe("validateExternalIdTransforms", () => {
   const run = (data: Record<string, unknown>, operation: "create" | "update" | "read" = "create") =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validateExternalIdTransforms({ data, operation } as any);
 
   /** Wrap an ops array in the interpretation-plan shape the hooks now read. */
@@ -108,26 +107,22 @@ describe("validateExternalIdTransforms", () => {
 
   it("detects a move-away on a partial update where idStrategy lives in originalDoc", () => {
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdTransforms({
         data: { interpretationPlan: planWith([{ type: "rename", from: "ref", to: "archived", active: true }]) },
         operation: "update",
         originalDoc: { idStrategy: external("ref") },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/moves the external ID field "ref" to "archived"/);
   });
 
   it("detects a move-away on a partial update where the plan lives in originalDoc", () => {
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdTransforms({
         data: { idStrategy: external("location") },
         operation: "update",
         originalDoc: {
           interpretationPlan: planWith([{ type: "rename", from: "location", to: "archived", active: true }]),
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/moves the external ID field "location" to "archived"/);
   });
@@ -227,9 +222,7 @@ describe("collectProtectedMappingPaths", () => {
 });
 
 describe("validateExternalIdPresent", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const run = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validateExternalIdPresent({ data, operation: "create", originalDoc } as any);
 
   it("throws when external strategy has no externalIdPath", () => {
@@ -254,21 +247,17 @@ describe("validateExternalIdPresent", () => {
 
   it("validates the merged config on a partial update (idStrategy only in originalDoc)", () => {
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateExternalIdPresent({
         data: { name: "Renamed" },
         operation: "update",
         originalDoc: { idStrategy: { type: "external" } },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/requires an External ID Path/);
   });
 });
 
 describe("validateMappingOverrideTransforms", () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const run = (data: Record<string, unknown>, originalDoc?: Record<string, unknown>) =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     validateMappingOverrideTransforms({ data, operation: "create", originalDoc } as any);
 
   /** Wrap ops + roles in the interpretation-plan shape the hook now reads. */
@@ -302,7 +291,6 @@ describe("validateMappingOverrideTransforms", () => {
     // Payload replaces the whole `interpretationPlan` JSON value on write; a PATCH
     // that omits it falls back to originalDoc's plan (validated via mergedConfigValue).
     expect(() =>
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       validateMappingOverrideTransforms({
         data: { name: "Renamed" },
         operation: "update",
@@ -311,7 +299,6 @@ describe("validateMappingOverrideTransforms", () => {
             location: "place",
           }),
         },
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
     ).toThrow(/the location mapping points at "place"/);
   });
