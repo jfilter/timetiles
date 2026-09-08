@@ -13,8 +13,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { type Cache, getUrlFetchCache } from "@/lib/services/cache";
+import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
 describe.sequential("HTTP Cache Integration", () => {
@@ -499,6 +501,35 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(changed.data.toString()).toBe("de");
       expect(changed.headers["X-Cache"]).toBe("MISS");
       expect(requests).toBe(2);
+    });
+
+    it("isolates authenticated and anonymous responses without Vary", async () => {
+      const firstToken = TEST_CREDENTIALS.bearer.token;
+      const secondToken = TEST_CREDENTIALS.bearer.alternateToken;
+      let requests = 0;
+      testServer.route("/auth-cache-isolation", (req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        const identities = new Map([
+          [`Bearer ${firstToken}`, "first"],
+          [`Bearer ${secondToken}`, "second"],
+        ]);
+        res.writeHead(200, { "Content-Type": "text/csv", "Cache-Control": "public, max-age=60" });
+        res.end(`identity\n${identities.get(req.headers.authorization ?? "") ?? "anonymous"}`);
+      });
+      const url = `${serverUrl}/auth-cache-isolation`;
+      const callers = [
+        { expected: "first", authHeaders: await buildAuthHeaders({ type: "bearer", bearerToken: firstToken }) },
+        { expected: "second", authHeaders: await buildAuthHeaders({ type: "bearer", bearerToken: secondToken }) },
+        { expected: "anonymous", authHeaders: await buildAuthHeaders({ type: "none" }) },
+      ];
+      for (const cacheStatus of ["MISS", "HIT"]) {
+        for (const { expected, authHeaders } of callers) {
+          const result = await fetchWithRetry(url, { authHeaders, retryConfig: { maxRetries: 0 } });
+          expect(result.data.toString()).toBe(`identity\n${expected}`);
+          expect(result.cacheStatus).toBe(cacheStatus);
+        }
+      }
+      expect(requests).toBe(3);
     });
 
     it("distinguishes absent and empty Vary request headers", async () => {
