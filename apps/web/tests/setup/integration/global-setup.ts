@@ -273,8 +273,8 @@ afterAll(async () => {
     }
   });
 
-  // Don't drop the database - leave it for debugging if needed
-  // The next test run will reuse it
+  // Keep the worker database for debugging. The next global setup prunes
+  // leftover worker databases without open connections; it retains the template.
 });
 
 // Import centralized mocks only for non-E2E tests
