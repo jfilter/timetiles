@@ -28,10 +28,7 @@ describe("checkRateLimit", () => {
     vi.clearAllMocks();
 
     mocks.getPayload.mockResolvedValue({});
-    // Tests in this file run concurrently (vitest sequence.concurrent) and share
-    // this module-level mock, so the client IP must be derived from each call's
-    // own request (via `?ip=`) rather than mutated as shared state — otherwise
-    // one test's IP override races into another. Defaults to a fixed IP.
+    // Derive the client IP from each request, with a fixed default.
     mocks.getClientIdentifier.mockImplementation(
       (req: Request) => new URL(req.url).searchParams.get("ip") ?? "203.0.113.1"
     );

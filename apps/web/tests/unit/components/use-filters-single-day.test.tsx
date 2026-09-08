@@ -34,9 +34,7 @@ const flushUrlUpdates = async () => {
   });
 };
 
-// Sequential: the root config sets `sequence.concurrent`, and a concurrent
-// sibling's cleanup unmounts this test's hook mid-await (see
-// use-selected-event.test.tsx for the same fix).
+// Keep tests sequential: they share the timezone setting and Testing Library cleanup.
 describe.sequential("useFilters.setBucketRangeFilter timezone handling", () => {
   beforeAll(() => {
     // Negative-offset zone so a small-hours-UTC instant falls on the previous

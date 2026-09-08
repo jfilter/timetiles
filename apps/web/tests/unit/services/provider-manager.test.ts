@@ -25,10 +25,7 @@ vi.stubGlobal("fetch", mockFetch);
 
 const mockPayload = { find: vi.fn() } as any;
 
-/**
- * Tests run sequentially because they share a global mockFetch mock.
- * The vitest config enables concurrent execution (sequence.concurrent: true).
- */
+// Keep tests sequential because they share the mockFetch global.
 describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
   beforeEach(() => {
     vi.clearAllMocks();

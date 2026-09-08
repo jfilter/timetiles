@@ -39,11 +39,7 @@ const photonFeature = (overrides: Record<string, unknown> = {}) => {
   };
 };
 
-/**
- * All tests run sequentially because they share a single mockFetch global.
- * The vitest config enables concurrent test execution (sequence.concurrent: true),
- * which causes mock state to interleave between tests sharing the same mock.
- */
+// Keep tests sequential because they share the mockFetch global.
 describe.sequential("Photon Geocoder", () => {
   beforeEach(() => {
     vi.clearAllMocks();

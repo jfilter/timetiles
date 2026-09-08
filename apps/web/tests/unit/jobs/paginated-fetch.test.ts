@@ -18,8 +18,7 @@ vi.mock("@/lib/ingest/url-fetch/fetch-utils", () => ({ fetchWithRetry: mocks.fet
 
 import { fetchPaginated } from "@/lib/ingest/url-fetch/paginated-fetch";
 
-// sequential: tests reconfigure the single hoisted fetchWithRetry mock —
-// the config-wide `sequence.concurrent` would interleave their implementations.
+// Keep tests sequential because they reconfigure the single hoisted fetchWithRetry mock.
 describe.sequential("fetchPaginated", () => {
   beforeEach(() => {
     vi.clearAllMocks();

@@ -75,10 +75,7 @@ const createMockPool = (lockedSequence: boolean[], opts: MockPoolOptions = {}) =
 // A fake payload — never used because we always inject a mock pool.
 const fakePayload = {} as never;
 
-// NOTE: no vi.clearAllMocks() in a beforeEach here. Tests in this file run
-// concurrently (sequence.concurrent), and a global clear fired by one test's
-// hook would wipe the call records of another test mid-poll. Each test owns its
-// mock pool with fresh spies, so there is nothing shared to clear.
+// Each test owns its mock pool with fresh spies; there is no shared state to clear.
 describe("acquireDatasetImportLease", () => {
   it("acquires immediately when the lock is free and holds the connection", async () => {
     const { pool, clients, getConnectCount } = createMockPool([true]);

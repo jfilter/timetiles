@@ -36,11 +36,7 @@ const flushUrlUpdates = async () => {
   });
 };
 
-// Sequential: the root config sets `sequence.concurrent`, and vitest only reads
-// that from the root (a project-level override is ignored). Testing Library
-// renders into one shared document and runs a global cleanup() after each test,
-// so a concurrent sibling's cleanup unmounts this test's hook mid-await and
-// `result.current` becomes null.
+// Keep tests sequential so Testing Library cleanup cannot unmount a sibling's hook.
 describe.sequential("useSelectedEvent", () => {
   beforeEach(() => {
     vi.clearAllMocks();

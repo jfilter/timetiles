@@ -38,8 +38,7 @@ const restArgs = (error: Error, email = "victim@example.test") =>
     collection: undefined,
   }) as unknown as Parameters<typeof hook>[0];
 
-// Sequential: the repo runs tests concurrently by default (vitest.config.ts
-// `sequence.concurrent: true`), and these assertions share one module-level audit mock.
+// Keep tests sequential because they share the module-level audit mock.
 describe.sequential("usersAfterErrorHook", () => {
   beforeEach(() => {
     // Explicit: the shared vi.hoisted mock is module-level, so relying on a global

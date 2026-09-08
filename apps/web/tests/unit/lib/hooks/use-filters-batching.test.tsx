@@ -50,8 +50,7 @@ const setNuqsState = (state: Record<string, unknown>): void => {
   nuqsState.pending = { ...nuqsState.rendered };
 };
 
-// Sequential: the tests share the nuqs stub's module-level state, and this project runs
-// tests inside a file concurrently by default (`sequence.concurrent`).
+// Keep tests sequential because they share the nuqs stub's module-level state.
 describe.sequential("useFilters setters within one tick", () => {
   beforeEach(() => {
     setNuqsState({});
