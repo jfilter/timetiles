@@ -1,7 +1,8 @@
 /**
  * Main cache service that provides high-level caching operations.
  *
- * Wraps storage operations with key prefixing, TTL defaults, and best-effort error handling.
+ * Wraps storage operations with key prefixing and TTL defaults. Request-path operations
+ * are best-effort; maintenance failures propagate so the job runner can retry.
  *
  * @module
  * @category Services/Cache
@@ -129,8 +130,9 @@ export class Cache {
       }
       return cleaned;
     } catch {
-      logger.error("Cache cleanup error");
-      return 0;
+      // Storage errors can include sensitive cache keys. Fail the maintenance
+      // job without copying those details into Payload's persisted job error.
+      throw new Error("Cache cleanup failed");
     }
   }
 }

@@ -34,7 +34,7 @@ describe.sequential("Cache", () => {
     cache = new Cache({ storage, keyPrefix: "p:", defaultTTL: 1234 });
   });
 
-  it.each(["get", "set", "delete", "clear", "keys", "getStats", "cleanup"] as const)(
+  it.each(["get", "set", "delete", "clear", "keys", "getStats"] as const)(
     "keeps %s failures secret-safe and preserves the fallback",
     async (operation) => {
       const key = `https://example.com/?token=${TEST_SECRETS.payloadSecret}`;
@@ -48,12 +48,17 @@ describe.sequential("Cache", () => {
         clear: 0,
         keys: [],
         getStats: { entries: 0, totalSize: 0, hits: 0, misses: 0, evictions: 0 },
-        cleanup: 0,
       };
       expect(result).toEqual(fallbacks[operation]);
       expect(mockLogger.logger.error).toHaveBeenCalledWith(`Cache ${operation} error`);
     }
   );
+
+  it("propagates maintenance failure without exposing storage details", async () => {
+    vi.spyOn(storage, "cleanup").mockRejectedValueOnce(new Error(TEST_SECRETS.payloadSecret));
+
+    await expect(cache.cleanup()).rejects.toEqual(new Error("Cache cleanup failed"));
+  });
 
   it("applies the configured defaultTTL on set", async () => {
     await cache.set("a", 1);

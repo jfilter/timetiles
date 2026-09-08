@@ -54,6 +54,15 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("basic operations", () => {
+    it("does not report successful maintenance when the cache directory is unusable", async () => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const blockedPath = path.join(tempDir, "not-a-directory");
+      await fs.writeFile(blockedPath, "file");
+      const cache = new Cache({ storage: new FileSystemCacheStorage({ cacheDir: blockedPath }) });
+
+      await expect(cache.cleanup()).rejects.toEqual(new Error("Cache cleanup failed"));
+    });
+
     it("allows revalidation reads of expired entries without exempting them from cleanup", async () => {
       await storage.set("expired", "validator source", { ttl: 0.01 });
       await new Promise((resolve) => setTimeout(resolve, 20));
