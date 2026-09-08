@@ -15,6 +15,7 @@ import Papa from "papaparse";
 import type { Payload } from "payload";
 
 import { ValidationError } from "@/lib/api";
+import { decodeBufferToUtf8 } from "@/lib/ingest/file-encoding";
 import { getPreviewDir, savePreviewMetadata } from "@/lib/ingest/preview-store";
 import type { ConfidenceLevel, FieldMappingSuggestion, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
 import { loadXlsx } from "@/lib/ingest/xlsx-loader";
@@ -49,7 +50,7 @@ export const ALLOWED_MIME_TYPES = [
 /**
  * Technical ceiling for a preview, independent of any user's quota.
  *
- * The preview reads the file into memory, and CSV twice, so it cannot simply
+ * The preview reads the file into memory, so it cannot simply
  * follow an unlimited quota. This bounds that regardless of trust level.
  */
 export const MAX_PREVIEW_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -233,7 +234,7 @@ export const detectSuggestedMappings = (
 };
 
 export const parseCSVPreview = (filePath: string): SheetInfo[] => {
-  const fileContent = fs.readFileSync(filePath, "utf-8");
+  const fileContent = decodeBufferToUtf8(fs.readFileSync(filePath));
 
   const fullResult = Papa.parse(fileContent, {
     header: true,

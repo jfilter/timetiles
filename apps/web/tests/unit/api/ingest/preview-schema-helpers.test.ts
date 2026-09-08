@@ -92,6 +92,19 @@ describe("parseCSVPreview", () => {
     }
   });
 
+  it.each(["utf-8", "utf-16le", "windows-1252"])("decodes %s CSV headers and values", async (encoding) => {
+    const { default: iconv } = await import("iconv-lite");
+    tempDir = mkdtempSync(join(tmpdir(), "preview-schema-"));
+    const filePath = join(tempDir, "events.csv");
+    writeFileSync(filePath, iconv.encode("title,Größe\nKöln,groß\n", encoding, { addBOM: true }));
+
+    const [sheet] = parseCSVPreview(filePath);
+
+    expect(sheet?.headers).toEqual(["title", "Größe"]);
+    expect(sheet?.sampleData).toEqual([{ title: "Köln", Größe: "groß" }]);
+    expect(sheet?.rowCount).toBe(1);
+  });
+
   it("keeps CSV preview values as raw strings", () => {
     tempDir = mkdtempSync(join(tmpdir(), "preview-schema-"));
     const filePath = join(tempDir, "events.csv");

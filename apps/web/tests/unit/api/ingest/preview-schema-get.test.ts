@@ -181,12 +181,13 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
       };
 
       mocks.mockExistsSync.mockReturnValue(true);
-      mocks.mockReadFileSync.mockImplementation((filePath: string) => {
-        if (String(filePath).endsWith(".meta.json")) {
-          return mockMetadata();
-        }
-        return "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco";
-      });
+      mocks.mockReadFileSync
+        .mockReturnValueOnce(mockMetadata())
+        .mockReturnValueOnce(
+          Buffer.from(
+            "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
+          )
+        );
 
       mocks.mockPapaParse.mockReturnValueOnce({
         data: [csvRow, csvRow, csvRow],

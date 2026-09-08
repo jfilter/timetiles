@@ -201,7 +201,7 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
     });
 
     it("should return 400 when file parsing fails", async () => {
-      mocks.mockReadFileSync.mockReturnValue("bad content");
+      mocks.mockReadFileSync.mockReturnValue(Buffer.from("bad content"));
       mocks.mockPapaParse.mockImplementation(() => {
         throw new Error("Parse error");
       });
@@ -236,7 +236,9 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       });
 
       mocks.mockReadFileSync.mockReturnValue(
-        "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
+        Buffer.from(
+          "title,description,date,lat,lng,location\nEvent 1,A test event,2024-01-01,37.7749,-122.4194,San Francisco"
+        )
       );
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
@@ -274,7 +276,7 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       const csvRow = { title: "Event 1", date: "2024-01-01" };
 
       mocks.mockPapaParse.mockReturnValueOnce({ data: [csvRow], meta: { fields: csvHeaders }, errors: [] });
-      mocks.mockReadFileSync.mockReturnValue("title,date\nEvent 1,2024-01-01");
+      mocks.mockReadFileSync.mockReturnValue(Buffer.from("title,date\nEvent 1,2024-01-01"));
 
       const formData = createFileFormData("events.csv", "csv-content", "text/csv");
       const request = createUploadRequest(formData);
@@ -453,7 +455,7 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
         wasConverted: false,
       });
 
-      mocks.mockReadFileSync.mockReturnValue(csvContent);
+      mocks.mockReadFileSync.mockReturnValue(Buffer.from(csvContent));
       mocks.mockPapaParse.mockReturnValueOnce({
         data: [{ title: "Event 1", date: "2024-01-01" }],
         meta: { fields: ["title", "date"] },
@@ -486,7 +488,7 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
         wasConverted: false,
       });
 
-      mocks.mockReadFileSync.mockReturnValue(csvContent);
+      mocks.mockReadFileSync.mockReturnValue(Buffer.from(csvContent));
       mocks.mockPapaParse.mockReturnValueOnce({
         data: [{ title: "Event 1", date: "2024-01-01" }],
         meta: { fields: ["title", "date"] },
