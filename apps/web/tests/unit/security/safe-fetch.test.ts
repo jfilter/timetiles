@@ -5,6 +5,8 @@
  * @module
  * @category Tests
  */
+import "@/tests/mocks/services/logger";
+
 import dns from "node:dns";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetEnv } from "@/lib/config/env";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
+import { mockLogger } from "@/tests/mocks/services/logger";
 
 // Mock dns.promises.lookup
 vi.mock("node:dns", () => ({ default: { promises: { lookup: vi.fn() } }, promises: { lookup: vi.fn() } }));
@@ -37,6 +40,7 @@ describe.sequential("safeFetch", () => {
   let mockFetch: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     originalFetch = global.fetch;
     mockFetch = vi.fn();
     global.fetch = mockFetch as unknown as typeof fetch;
@@ -95,6 +99,40 @@ describe.sequential("safeFetch", () => {
   });
 
   describe("redirect validation", () => {
+    it("keeps redirect URLs out of diagnostics", async () => {
+      const source = `https://example.com/${TEST_SECRETS.payloadSecret}?key=${TEST_SECRETS.payloadSecret}`;
+      const target = `https://cdn.example.com/${TEST_SECRETS.payloadSecret}?key=${TEST_SECRETS.payloadSecret}`;
+      mockFetch
+        .mockResolvedValueOnce(createResponse(302, { location: target }))
+        .mockResolvedValueOnce(createResponse(200));
+
+      await safeFetch(source);
+
+      expect(mockLogger.logger.debug).toHaveBeenCalledWith("Following redirect with SSRF validation", {
+        status: 302,
+        redirect: 1,
+        crossOrigin: true,
+        method: "GET",
+      });
+    });
+
+    it("does not expose the URL when rejecting a redirect loop", async () => {
+      const url = `https://example.com/data?key=${TEST_SECRETS.payloadSecret}`;
+      mockFetch.mockResolvedValueOnce(createResponse(302, { location: url }));
+
+      await expect(safeFetch(url)).rejects.toEqual(new Error("SSRF blocked: redirect loop detected"));
+    });
+
+    it("does not expose the URL when rejecting a private redirect target", async () => {
+      mockFetch.mockResolvedValueOnce(
+        createResponse(302, { location: `http://127.0.0.1/data?key=${TEST_SECRETS.payloadSecret}` })
+      );
+
+      await expect(safeFetch("https://example.com/data")).rejects.toEqual(
+        new Error("SSRF blocked: URL targets a private/internal address")
+      );
+    });
+
     it("follows safe redirects", async () => {
       mockFetch
         .mockResolvedValueOnce(createResponse(301, { location: "https://cdn.example.com/data.csv" }))

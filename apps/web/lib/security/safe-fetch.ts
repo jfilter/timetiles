@@ -93,7 +93,7 @@ const prepareHop = async (
     throw new Error(`SSRF blocked: unsupported protocol ${parsed.protocol}`);
   }
   if (isPrivateUrl(currentUrl)) {
-    throw new Error(`SSRF blocked: URL targets a private/internal address: ${currentUrl}`);
+    throw new Error("SSRF blocked: URL targets a private/internal address");
   }
 
   let pinnedDispatcher: Agent | undefined;
@@ -250,7 +250,7 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
 
     if (visited.has(currentUrl)) {
       if (pinnedDispatcher) await pinnedDispatcher.close();
-      throw new Error(`SSRF blocked: redirect loop detected at ${currentUrl}`);
+      throw new Error("SSRF blocked: redirect loop detected");
     }
     visited.add(currentUrl);
 
@@ -273,8 +273,6 @@ export const safeFetch = async (url: string, options?: SafeFetchOptions): Promis
     fetchOptions = rewriteForRedirect(fetchOptions, response.status, crossOrigin);
 
     logger.debug("Following redirect with SSRF validation", {
-      from: currentUrl,
-      to: nextUrl,
       status: response.status,
       redirect: redirectCount + 1,
       crossOrigin,
