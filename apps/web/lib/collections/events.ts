@@ -15,7 +15,7 @@
  *
  * ⚠️ Payload CMS Deadlock Prevention
  * This file uses complex hooks with nested Payload operations.
- * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ * See: apps/docs/content/development/contributing/payload-deadlocks.mdx
  *
  * @module
  */

@@ -21,7 +21,7 @@
  *
  * ⚠️ Payload CMS Deadlock Prevention
  * This service uses nested Payload operations and must receive the `req` parameter.
- * See: apps/docs/content/developer-guide/development/payload-deadlocks.mdx
+ * See: apps/docs/content/development/contributing/payload-deadlocks.mdx
  *
  * @module
  */
