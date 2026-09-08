@@ -233,9 +233,7 @@ export const detectSuggestedMappings = (
   return { language, mappings };
 };
 
-export const parseCSVPreview = (filePath: string): SheetInfo[] => {
-  const fileContent = decodeBufferToUtf8(fs.readFileSync(filePath));
-
+const parseCSVSheet = (fileContent: string, index: number, name: string): SheetInfo => {
   const fullResult = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
@@ -250,8 +248,12 @@ export const parseCSVPreview = (filePath: string): SheetInfo[] => {
   // Detect suggested field mappings
   const suggestedMappings = detectSuggestedMappings(headers, sampleData, allRows);
 
-  return [{ index: 0, name: "Sheet1", rowCount: fullResult.data.length, headers, sampleData, suggestedMappings }];
+  return { index, name, rowCount: allRows.length, headers, sampleData, suggestedMappings };
 };
+
+export const parseCSVPreview = (filePath: string): SheetInfo[] => [
+  parseCSVSheet(decodeBufferToUtf8(fs.readFileSync(filePath)), 0, "Sheet1"),
+];
 
 export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> => {
   const { read, utils } = await loadXlsx();
@@ -264,61 +266,8 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
     const worksheet = workbook.Sheets[sheetName];
     if (!worksheet) return;
 
-    // Both options mirror the import path's `sheet_to_csv({ blankrows: false })`:
-    // `raw: false` yields the same FORMATTED cell text (not date serials), and
-    // `blankrows: false` drops the all-empty rows a padded `!ref` leaves behind —
-    // counting those made the preview promise more rows than the import created.
-    const jsonData: unknown[][] = utils.sheet_to_json(worksheet, {
-      header: 1,
-      defval: null,
-      raw: false,
-      blankrows: false,
-    });
-
-    if (jsonData.length === 0) {
-      sheets.push({
-        index,
-        name: sheetName,
-        rowCount: 0,
-        headers: [],
-        sampleData: [],
-        suggestedMappings: detectSuggestedMappings([], []),
-      });
-      return;
-    }
-
-    const rawHeaders = jsonData[0] as (string | null)[];
-    const headerEntries: Array<{ header: string; originalIndex: number }> = [];
-    rawHeaders.forEach((h, i) => {
-      if (h !== null && h !== "") {
-        headerEntries.push({ header: String(h).trim(), originalIndex: i });
-      }
-    });
-    const headers = headerEntries.map((e) => e.header);
-
-    const rowCount = Math.max(0, jsonData.length - 1);
-    const allRows: Record<string, unknown>[] = [];
-    const sampleData: Record<string, unknown>[] = [];
-
-    for (let i = 1; i <= rowCount; i++) {
-      const row = jsonData[i];
-      if (!row || !Array.isArray(row)) continue;
-
-      const obj: Record<string, unknown> = {};
-      headerEntries.forEach(({ header, originalIndex }) => {
-        if (header === "__proto__" || header === "constructor" || header === "prototype") return;
-        obj[header] = row[originalIndex] ?? null;
-      });
-      allRows.push(obj);
-      if (sampleData.length < SAMPLE_ROW_COUNT) {
-        sampleData.push(obj);
-      }
-    }
-
-    // Detect suggested field mappings
-    const suggestedMappings = detectSuggestedMappings(headers, sampleData, allRows);
-
-    sheets.push({ index, name: sheetName, rowCount, headers, sampleData, suggestedMappings });
+    // Use the import path's conversion and parser, including duplicate-header handling.
+    sheets.push(parseCSVSheet(utils.sheet_to_csv(worksheet, { blankrows: false }), index, sheetName));
   });
 
   return sheets;

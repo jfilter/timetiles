@@ -71,6 +71,28 @@ describe.sequential("Excel reader parity", () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
+  it("preserves duplicate column names and their distinct values in the preview", async () => {
+    const workbook = utils.book_new();
+    utils.book_append_sheet(
+      workbook,
+      utils.aoa_to_sheet([
+        ["title", "title", "title_1"],
+        [" First ", "Second", "Third"],
+      ]),
+      "Duplicates"
+    );
+    const filePath = path.join(tempDir, "duplicates.xlsx");
+    fs.writeFileSync(filePath, write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer);
+
+    const imported = await readImported(filePath);
+    const [previewSheet] = await parseExcelPreview(filePath);
+
+    expect(imported).toHaveLength(1);
+    expect(Object.values(imported[0] ?? {})).toEqual(["First", "Second", "Third"]);
+    expect(previewSheet?.headers).toEqual(Object.keys(imported[0] ?? {}));
+    expect(previewSheet?.sampleData).toEqual(imported);
+  });
+
   it("preview, detection and import agree on the row count", async () => {
     const filePath = writeTrickyWorkbook();
 

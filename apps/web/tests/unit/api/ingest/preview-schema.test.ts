@@ -13,6 +13,8 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
+import type * as Papa from "papaparse";
+
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => {
   const mockGetPayloadFn = vi.fn();
@@ -20,7 +22,7 @@ const mocks = vi.hoisted(() => {
     mockGetPayload: mockGetPayloadFn,
     mockPapaParse: vi.fn(),
     mockXlsxRead: vi.fn(),
-    mockSheetToJson: vi.fn(),
+    mockSheetToCsv: vi.fn(),
     mockFetchWithRetry: vi.fn(),
     mockDetectFileTypeFromResponse: vi.fn(),
     mockBuildAuthHeaders: vi.fn(),
@@ -61,7 +63,7 @@ vi.mock("node:fs", () => ({
 
 vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
 
-vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
+vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_csv: mocks.mockSheetToCsv } }));
 
 vi.mock("uuid", () => ({ v4: vi.fn().mockReturnValue("test-uuid") }));
 
@@ -296,12 +298,14 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
   });
 
   describe("Excel blank-column header mapping", () => {
+    beforeEach(async () => {
+      const { default: papa } = await vi.importActual<{ default: typeof Papa }>("papaparse");
+      mocks.mockPapaParse.mockImplementation(papa.parse);
+    });
+
     it("should map data to correct columns when blank headers exist", async () => {
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
-      mocks.mockSheetToJson.mockReturnValue([
-        ["Name", "", "Age"],
-        ["Alice", "BLANK_DATA", 30],
-      ]);
+      mocks.mockSheetToCsv.mockReturnValue("Name,,Age\nAlice,BLANK_DATA,30");
       const formData = createFileFormData(
         "test.xlsx",
         "excel-content",
@@ -313,16 +317,13 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       expect(response.status).toBe(200);
       expect(body.sheets).toHaveLength(1);
       const sheet = body.sheets[0];
-      expect(sheet.headers).toEqual(["Name", "Age"]);
+      expect(sheet.headers).toEqual(["Name", "", "Age"]);
       expect(sheet.sampleData).toHaveLength(1);
-      expect(sheet.sampleData[0]).toEqual({ Name: "Alice", Age: 30 });
+      expect(sheet.sampleData[0]).toEqual({ Name: "Alice", "": "BLANK_DATA", Age: "30" });
     });
     it("should handle multiple blank columns in Excel headers", async () => {
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Sheet1"], Sheets: { Sheet1: {} } });
-      mocks.mockSheetToJson.mockReturnValue([
-        ["ID", "", "Name", null, "Value"],
-        [1, "skip1", "Alice", "skip2", 100],
-      ]);
+      mocks.mockSheetToCsv.mockReturnValue("ID,,Name,,Value\n1,first,Alice,second,100");
       const formData = createFileFormData(
         "test.xlsx",
         "excel-content",
@@ -333,8 +334,8 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
       const body = await response.json();
       expect(response.status).toBe(200);
       const sheet = body.sheets[0];
-      expect(sheet.headers).toEqual(["ID", "Name", "Value"]);
-      expect(sheet.sampleData[0]).toEqual({ ID: 1, Name: "Alice", Value: 100 });
+      expect(sheet.headers).toEqual(["ID", "", "Name", "_1", "Value"]);
+      expect(sheet.sampleData[0]).toEqual({ ID: "1", "": "first", Name: "Alice", _1: "second", Value: "100" });
     });
   });
 });

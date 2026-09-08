@@ -13,12 +13,14 @@
 import "@/tests/mocks/services/logger";
 import "@/tests/mocks/services/site-resolver";
 
+import type * as Papa from "papaparse";
+
 // 2. vi.hoisted for values needed in vi.mock factories
 const mocks = vi.hoisted(() => ({
   mockGetPayload: vi.fn(),
   mockPapaParse: vi.fn(),
   mockXlsxRead: vi.fn(),
-  mockSheetToJson: vi.fn(),
+  mockSheetToCsv: vi.fn(),
   mockDetectLanguage: vi.fn(),
   mockExistsSync: vi.fn(),
   mockMkdirSync: vi.fn(),
@@ -52,7 +54,7 @@ vi.mock("@/lib/config/app-config", () => ({
 }));
 
 vi.mock("papaparse", () => ({ default: { parse: mocks.mockPapaParse } }));
-vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_json: mocks.mockSheetToJson } }));
+vi.mock("xlsx", () => ({ read: mocks.mockXlsxRead, utils: { sheet_to_csv: mocks.mockSheetToCsv } }));
 
 // Only language detection is stubbed (it is non-deterministic on short samples);
 // the real pattern table and matcher run, so this exercises production matching
@@ -227,15 +229,11 @@ describe.sequential("GET /api/ingest/preview-schema", () => {
 
       mocks.mockXlsxRead.mockReturnValue({ SheetNames: ["Events", "Venues"], Sheets: { Events: {}, Venues: {} } });
 
-      mocks.mockSheetToJson
-        .mockReturnValueOnce([
-          ["title", "date"],
-          ["Event 1", "2024-01-01"],
-        ])
-        .mockReturnValueOnce([
-          ["venue", "location"],
-          ["Hall A", "123 Main St"],
-        ]);
+      const { default: papa } = await vi.importActual<{ default: typeof Papa }>("papaparse");
+      mocks.mockPapaParse.mockImplementation(papa.parse);
+      mocks.mockSheetToCsv
+        .mockReturnValueOnce("title,date\nEvent 1,2024-01-01")
+        .mockReturnValueOnce("venue,location\nHall A,123 Main St");
 
       const request = createGetRequest(VALID_UUID);
       const response = await GET(request, {} as never);
