@@ -2,10 +2,9 @@
 /**
  * Integration tests: pipeline/runtime state is not client-writable.
  *
- * Owners hold generic PATCH rights on scheduled-ingests and ingest-files, so
- * fields that steer the scheduler (`nextRun`, `lastStatus`, `currentRetries`)
- * or anchor ownership (`ingest-files.user`, `.catalog`) need protection beyond
- * `admin.readOnly`, which is UI-only.
+ * Scheduled-ingest owners cannot change scheduler state through PATCH.
+ * Ingest files reject client updates entirely, protecting source ownership,
+ * catalog and pipeline state beyond `admin.readOnly`, which is UI-only.
  *
  * @module
  */
@@ -97,12 +96,21 @@ describe.sequential("Pipeline field immutability", () => {
       overrideAccess: false,
     });
 
-    const updated = await payload.update({
+    await expect(
+      payload.update({
+        collection: "ingest-files",
+        id: file.id,
+        // Repointing catalog makes the (user-less) detection job create datasets
+        // in the victim's catalog; repointing user hands over the file entirely.
+        data: { catalog: victimCatalog.id, user: other.id, status: "completed" },
+        user: owner,
+        overrideAccess: false,
+      })
+    ).rejects.toThrow(/not allowed/i);
+
+    const updated = await payload.findByID({
       collection: "ingest-files",
       id: file.id,
-      // Repointing catalog makes the (user-less) detection job create datasets
-      // in the victim's catalog; repointing user hands over the file entirely.
-      data: { catalog: victimCatalog.id, user: other.id, status: "completed" },
       user: owner,
       overrideAccess: false,
     });

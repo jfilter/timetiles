@@ -347,27 +347,38 @@ describe.sequential("Access Control Edge Cases", () => {
         })
       ).rejects.toThrow(FORBIDDEN);
 
-      // ownerUser should be able to update it
-      const updated = await payload.update({
-        collection: "ingest-files",
-        id: ingestFile.id,
-        data: { metadata: { note: "owner" } },
-        user: ownerUser,
-        overrideAccess: false,
-      });
-      expect((updated.metadata as { note?: string } | null)?.note).toBe("owner");
+      // Owners can read sources, but only the internal pipeline can update them.
+      await expect(
+        payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: { metadata: { note: "owner" } },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(FORBIDDEN);
 
       // ...but `status` is pipeline state derived from the ingest jobs, so even
       // the owner cannot drive it from a client PATCH (a forged "completed"
       // makes the cleanup job reclaim the source file mid-import).
-      const statusAttempt = await payload.update({
+      await expect(
+        payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: { status: "completed" },
+          user: ownerUser,
+          overrideAccess: false,
+        })
+      ).rejects.toThrow(FORBIDDEN);
+
+      const unchanged = await payload.findByID({
         collection: "ingest-files",
         id: ingestFile.id,
-        data: { status: "completed" },
         user: ownerUser,
         overrideAccess: false,
       });
-      expect(statusAttempt.status).not.toBe("completed");
+      expect(unchanged.metadata).toEqual(ownerFile.metadata);
+      expect(unchanged.status).toBe(ownerFile.status);
     });
   });
 
