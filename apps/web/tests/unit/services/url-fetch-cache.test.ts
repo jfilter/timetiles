@@ -84,6 +84,11 @@ describe("UrlFetchCache", () => {
     expect(cache.parseMaxAge("public, max-age=60abc")).toBeUndefined();
   });
 
+  it.each([0, 60])("honors quoted max-age=%s instead of the default TTL", (seconds) => {
+    const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
+    expect(cache.calculateTTL({ "cache-control": `max-age="${seconds}"` })).toBe(seconds);
+  });
+
   it("uses the default TTL when freshness headers are absent", () => {
     const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
 

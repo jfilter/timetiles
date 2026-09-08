@@ -86,7 +86,9 @@ export class UrlFetchCache {
       return undefined;
     }
 
-    const parsedMaxAge = parseStrictInteger(maxAgeDirective.slice("max-age=".length));
+    const argument = maxAgeDirective.slice("max-age=".length);
+    const value = argument.startsWith('"') && argument.endsWith('"') ? argument.slice(1, -1) : argument;
+    const parsedMaxAge = parseStrictInteger(value);
     return parsedMaxAge ?? undefined;
   }
 
