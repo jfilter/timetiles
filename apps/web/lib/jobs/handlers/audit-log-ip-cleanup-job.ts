@@ -33,6 +33,7 @@ export const auditLogIpCleanupJob = {
 
       const cutoffDate = new Date(Date.now() - IP_RETENTION_DAYS * 24 * 60 * 60 * 1000);
       let cleared = 0;
+      let errors = 0;
       let totalEligible = 0;
       let hasMore = false;
 
@@ -65,6 +66,7 @@ export const auditLogIpCleanupJob = {
             cleared++;
             clearedThisPage++;
           } catch (error) {
+            errors++;
             logError(error, "Failed to clear IP from audit entry", { entryId: entry.id });
           }
         }
@@ -72,6 +74,10 @@ export const auditLogIpCleanupJob = {
         // Every row on this page failed to update — retrying the same page would spin.
         if (clearedThisPage === 0) break;
         if (page === MAX_PAGES && entries.docs.length === PAGE_SIZE) hasMore = true;
+      }
+
+      if (errors > 0) {
+        throw new Error(`Audit IP cleanup failed for ${errors} updates`);
       }
 
       if (hasMore) {

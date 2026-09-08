@@ -93,7 +93,7 @@ describe.sequential("auditLogIpCleanupJob", () => {
     expect(result.output).toEqual({ success: true, cleared: 3, totalEligible: 3, hasMore: false });
   });
 
-  it("should log error and continue when a per-entry update throws", async () => {
+  it("finishes other entries before throwing on a per-entry failure", async () => {
     mockPayload.find.mockResolvedValueOnce({
       docs: [
         { id: 10, ipAddress: "192.168.1.1" },
@@ -105,12 +105,10 @@ describe.sequential("auditLogIpCleanupJob", () => {
 
     mockPayload.update.mockRejectedValueOnce(new Error("Update failed for entry 10")).mockResolvedValueOnce({});
 
-    const result = await auditLogIpCleanupJob.handler(createContext());
-
-    // First entry failed, second succeeded
-    expect(result.output.cleared).toBe(1);
-    expect(result.output.totalEligible).toBe(2);
-    expect(result.output.success).toBe(true);
+    await expect(auditLogIpCleanupJob.handler(createContext())).rejects.toThrow(
+      "Audit IP cleanup failed for 1 updates"
+    );
+    expect(mockPayload.update).toHaveBeenCalledWith(expect.objectContaining({ id: 11, data: { ipAddress: null } }));
 
     expect(logError).toHaveBeenCalledWith(expect.any(Error), "Failed to clear IP from audit entry", { entryId: 10 });
   });
