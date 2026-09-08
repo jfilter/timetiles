@@ -108,22 +108,6 @@ export const escapeCsvFormulaBoundaries = (
 };
 
 /**
- * Formula-escape a whole CSV string at the DOWNLOAD boundary (CWE-1236).
- *
- * Canonical ingest CSVs are stored raw (the pipeline re-parses them and a leading
- * apostrophe would corrupt real values), so this runs only when a human downloads
- * the file into a spreadsheet application. Delimiter-agnostic (see
- * {@link escapeCsvFormulaBoundaries}); an empty input yields "".
- */
-export const escapeCsvFormulasInText = (csvText: string): string => {
-  const hasBom = csvText.startsWith(UTF8_BOM);
-  const body = hasBom ? csvText.slice(UTF8_BOM.length) : csvText;
-  const extraDelimiter = detectSepDirective(body);
-  const escaped = escapeCsvFormulaBoundaries(neutralizeSylkMagic(body), "", extraDelimiter).output;
-  return hasBom ? UTF8_BOM + escaped : escaped;
-};
-
-/**
  * Serialize rows to a CSV string with EVERY field as a column.
  *
  * `Papa.unparse(rows)` without an explicit `columns` derives the header from the

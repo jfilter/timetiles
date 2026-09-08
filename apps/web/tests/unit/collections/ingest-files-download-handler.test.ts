@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({ getIngestFilePath: vi.fn() }));
 vi.mock("@/lib/ingest/upload-path", () => ({ getIngestFilePath: mocks.getIngestFilePath }));
 
 import { ingestFileDownloadHandler } from "@/lib/collections/ingest-files/download-handler";
+import { UTF8_BOM } from "@/lib/utils/csv-escape";
 
 type HandlerDoc = { id: number; mimeType?: string; filename?: string; originalName?: string };
 
@@ -51,6 +52,132 @@ describe.sequential("ingestFileDownloadHandler", () => {
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   });
 
+  /** Exercise the real download stream with byte-preserving input and output. */
+  const downloadCsv = async (content: string): Promise<string> => {
+    const filename = "formula-cases.csv";
+    const filePath = path.join(tmpDir, filename);
+    await fsPromises.writeFile(filePath, Buffer.from(content, "latin1"));
+    mocks.getIngestFilePath.mockReturnValue(filePath);
+    const response = (await callHandler({ id: 1, mimeType: "text/csv", filename }, filename)) as Response;
+    return Buffer.from(await response.arrayBuffer()).toString("latin1");
+  };
+
+  describe("CSV formula safety cases", () => {
+    const rowsOf = (csv: string): string[] => csv.split(/\r?\n/);
+
+    it("prefixes an apostrophe to formula cells while leaving safe cells untouched", async () => {
+      const input = 'name,note\nAlice,=HYPERLINK("http://evil")\nBob,hello';
+      const out = await downloadCsv(input);
+      // The dangerous cell is neutralized without reserializing the CSV.
+      expect(out).toContain("'=HYPERLINK");
+      // Header and benign values are unchanged.
+      expect(rowsOf(out)[0]).toBe("name,note");
+      expect(out).toContain("Bob");
+      expect(out).toContain("hello");
+    });
+
+    it("escapes the classic OWASP formula-trigger characters", async () => {
+      const input = "v\n=1+1\n+1\n-1\n@SUM\nplain";
+      const out = await downloadCsv(input);
+      expect(out).toContain("'=1+1");
+      expect(out).toContain("'+1");
+      expect(out).toContain("'-1");
+      expect(out).toContain("'@SUM");
+      // A plain value keeps no apostrophe.
+      expect(rowsOf(out).at(-1)).toBe("plain");
+    });
+
+    it("preserves row/column structure and returns '' for empty input", async () => {
+      const input = "a,b,c\n1,2,3\n4,5,6";
+      const out = await downloadCsv(input);
+      expect(rowsOf(out)).toEqual(["a,b,c", "1,2,3", "4,5,6"]);
+      expect(await downloadCsv("")).toBe("");
+    });
+
+    it("escapes a formula in a SEMICOLON-delimited file (EU locale)", async () => {
+      const out = await downloadCsv("name;value\nx;=1+1\n");
+      expect(out).toContain("x;'=1+1");
+      // Structure preserved verbatim (only an apostrophe inserted).
+      expect(out).not.toContain("x,");
+    });
+
+    it("escapes a formula in a TAB-delimited file", async () => {
+      const out = await downloadCsv("a\tb\nx\t=SUM(A1)\n");
+      expect(out).toContain("\t'=SUM(A1)");
+    });
+
+    it("escapes an ambiguous file that both ',' and ';' could split (delimiter-agnostic)", async () => {
+      // Commas in the first field make ',' and ';' equally plausible; a delimiter
+      // heuristic would pick ',' and miss the `;`-cell formula. The boundary scan
+      // escapes the `=` because it follows a `;` regardless.
+      const out = await downloadCsv("first,last;formula\nx,y;=1+1\n");
+      expect(out).toContain(";'=1+1");
+    });
+
+    it("escapes a formula that follows a boundary inside a quoted value (safe over-escape)", async () => {
+      // "x,=y" is technically one cell starting with 'x', but a semicolon/other
+      // locale could still split it; the boundary scan escapes conservatively.
+      const out = await downloadCsv('a,b\n"x,=y",ok\n');
+      expect(out).toContain(",'=y");
+    });
+
+    it("preserves a leading UTF-8 BOM at the file start", async () => {
+      const out = await downloadCsv(`${UTF8_BOM}name,value\nx,=1+1\n`);
+      expect(out.startsWith(`${UTF8_BOM}name,value`)).toBe(true);
+      expect(out).toContain(",'=1+1");
+    });
+
+    it("escapes a formula that a stripped BOM would expose as the first cell", async () => {
+      // A spreadsheet drops the leading BOM, so `<BOM>=1+1` becomes cell A1 = =1+1.
+      expect(await downloadCsv(`${UTF8_BOM}=1+1,x`)).toBe(`${UTF8_BOM}'=1+1,x`);
+      expect(await downloadCsv(`${UTF8_BOM}"=1+1",x`)).toBe(`${UTF8_BOM}"'=1+1",x`);
+    });
+
+    it("escapes a formula after an embedded NUL that spreadsheets strip", async () => {
+      // Excel/Calc drop embedded NULs, so `x,\0=1+1` becomes a `=1+1` cell.
+      expect(await downloadCsv("name,value\nx,\x00=1+1")).toContain(",\x00'=1+1");
+    });
+
+    it("escapes formulas after RS/US separators that Papa also auto-detects", async () => {
+      expect(await downloadCsv("name\x1fvalue\nx\x1f=1+1")).toContain("\x1f'=1+1");
+      expect(await downloadCsv("a\x1e=b")).toBe("a\x1e'=b");
+    });
+
+    it("honors an Excel sep= directive declaring an arbitrary delimiter", async () => {
+      // sep=: makes ':' the delimiter; the formula after it must be escaped.
+      const out = await downloadCsv('sep=:\nname:value\nx:"=HYPERLINK(""http://evil"")"');
+      expect(out).toContain(":\"'=HYPERLINK");
+      // A column named "separator..." must NOT be misread as a sep= directive.
+      expect(await downloadCsv("separator,x\n=1,y")).toContain("\n'=1,y");
+    });
+
+    it("escapes a formula opened with an apostrophe text-qualifier", async () => {
+      // Excel supports ' as a text qualifier and strips it → cell becomes =1+1.
+      expect(await downloadCsv("name,value\nx,'=1+1'")).toContain(",''=1+1");
+    });
+
+    it("honors a QUOTED sep= directive (LibreOffice Calc)", async () => {
+      const out = await downloadCsv('"sep=:"\nname:value\nx:"=WEBSERVICE(""http://evil"")"');
+      expect(out).toContain(":\"'=WEBSERVICE");
+    });
+
+    it("does NOT escape a trigger char that is itself the declared sep= separator", async () => {
+      // Empty fields and the directive must survive intact when sep is a trigger.
+      expect(await downloadCsv("sep=+\na++b")).toBe("sep=+\na++b");
+      expect(await downloadCsv("sep==\na==b")).toBe("sep==\na==b");
+      // A real formula cell (trigger != separator) is still escaped.
+      expect(await downloadCsv("sep=+\na+=x")).toContain("+'=x");
+    });
+
+    it("neutralizes a SYLK-magic file (leading uppercase ID) that Excel would run", async () => {
+      const out = await downloadCsv("ID;PSheetJS;N;E\nC;X1;K0;EWEBSERVICE(x)");
+      expect(out.startsWith("'ID;")).toBe(true);
+      // BOM is kept before the neutralizer.
+      expect((await downloadCsv(`${UTF8_BOM}ID;X`)).startsWith(`${UTF8_BOM}'ID;`)).toBe(true);
+      // A normal file NOT starting with ID is untouched.
+      expect((await downloadCsv("name,id\n1,2")).startsWith("'")).toBe(false);
+    });
+  });
   it("formula-escapes CSV cells and forces an attachment download", async () => {
     await stageFile("data.csv", 'name,note\nAlice,=HYPERLINK("http://evil")\nBob,ok');
 
