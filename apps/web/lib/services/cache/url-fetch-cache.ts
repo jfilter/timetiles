@@ -43,6 +43,8 @@ interface CachedEntry {
     lastModified?: string;
     /** Absolute freshness deadline; absent on legacy entries, which must be revalidated. */
     freshUntil?: number;
+    /** Fingerprint of the request headers selected by Vary; absent on legacy entries. */
+    varyFingerprint?: string;
     contentHash: string;
   };
 }
@@ -148,6 +150,20 @@ export class UrlFetchCache {
       headers[key.toLowerCase()] = value;
     });
     return headers;
+  }
+
+  private getVaryFingerprint(vary?: string, requestHeaders?: HeadersInit): string | null | undefined {
+    const fields =
+      vary
+        ?.split(",")
+        .map((field) => field.trim().toLowerCase())
+        .filter(Boolean) ?? [];
+    if (fields.includes("*")) return null;
+    if (fields.length === 0) return undefined;
+
+    const headers = new Map(new Headers(requestHeaders));
+    const values = fields.map((field) => [field, headers.get(field) ?? null]);
+    return crypto.createHash("sha256").update(JSON.stringify(values)).digest("hex");
   }
 
   private assertCompleteResponseBody(data: Buffer, headers: Record<string, string>, status: number): void {
@@ -319,28 +335,19 @@ export class UrlFetchCache {
         // body, status, and contentHash.
         const respHeaders = this.collectResponseHeaders(response);
         const mergedHeaders = { ...cached.headers };
-        for (const key of ["cache-control", "expires", "etag", "last-modified"]) {
+        for (const key of ["cache-control", "expires", "etag", "last-modified", "vary"]) {
           if (respHeaders[key] !== undefined) mergedHeaders[key] = respHeaders[key];
         }
-        const updatedCached: CachedEntry = {
-          ...cached,
-          headers: mergedHeaders,
-          metadata: {
-            ...cached.metadata,
-            etag: mergedHeaders["etag"] ?? cached.metadata.etag,
-            lastModified: mergedHeaders["last-modified"] ?? cached.metadata.lastModified,
-          },
-        };
-        // Apply the same cacheability policy as a fresh response. A zero TTL
-        // must not reach storage, where it means "never expires".
-        const revalidatedTtl = this.calculateTTL(updatedCached.headers, respectCacheControl);
-        updatedCached.metadata.freshUntil = Date.now() + revalidatedTtl * 1000;
-        if (revalidatedTtl === 0 || !this.isCacheable(updatedCached.status, updatedCached.headers)) {
-          await this.cache.delete(cacheKey);
-        } else {
-          await this.cache.set(cacheKey, updatedCached, { ttl: revalidatedTtl });
-        }
-        return this.buildCacheResponse(updatedCached, "REVALIDATED");
+        const revalidated = this.buildCacheResponse({ ...cached, headers: mergedHeaders }, "REVALIDATED");
+        await this.cacheResponse(
+          cacheKey,
+          revalidated.data,
+          mergedHeaders,
+          revalidated.status,
+          respectCacheControl,
+          headers
+        );
+        return revalidated;
       }
 
       // safeFetch does not throw on non-2xx. Route these failures through the
@@ -356,7 +363,7 @@ export class UrlFetchCache {
       }
 
       // Got new content, cache and return it
-      return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
+      return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, headers);
     } catch (error) {
       if (mustRevalidate && this.isStale(cached)) throw error;
       // On error during revalidation, return stale cache
@@ -372,13 +379,14 @@ export class UrlFetchCache {
     cacheKey: string,
     response: Response,
     maxSize?: number,
-    respectCacheControl?: boolean
+    respectCacheControl?: boolean,
+    requestHeaders?: HeadersInit
   ): Promise<CachedResponse> {
     const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
     // Error responses must not replace a previously successful cached body.
     if (response.ok) {
-      await this.cacheResponse(cacheKey, data, respHeaders, response.status, respectCacheControl);
+      await this.cacheResponse(cacheKey, data, respHeaders, response.status, respectCacheControl, requestHeaders);
     }
 
     return { data, headers: { ...respHeaders, "X-Cache": "MISS" }, status: response.status };
@@ -397,7 +405,7 @@ export class UrlFetchCache {
     } = options ?? {};
     const response = await safeFetch(url, fetchOptions);
 
-    return this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl);
+    return this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, fetchOptions.headers);
   }
 
   /**
@@ -466,7 +474,10 @@ export class UrlFetchCache {
       const cached = await this.cache.get<CachedEntry>(cacheKey, { allowExpired: true });
       // Older versions could store partial responses as complete entries.
       if (cached && cached.status !== 206) {
-        return this.handleCachedEntry(url, cacheKey, cached, options);
+        const varyFingerprint = this.getVaryFingerprint(cached.headers["vary"], options?.headers);
+        if (varyFingerprint !== null && varyFingerprint === cached.metadata.varyFingerprint) {
+          return this.handleCachedEntry(url, cacheKey, cached, options);
+        }
       }
     }
 
@@ -482,12 +493,14 @@ export class UrlFetchCache {
     data: Buffer,
     headers: Record<string, string>,
     status: number,
-    respectCacheControl?: boolean
+    respectCacheControl?: boolean,
+    requestHeaders?: HeadersInit
   ): Promise<void> {
     const ttl = this.calculateTTL(headers, respectCacheControl);
+    const varyFingerprint = this.getVaryFingerprint(headers["vary"], requestHeaders);
 
     // A successful replacement supersedes old content even when it cannot be cached.
-    if (ttl === 0 || !this.isCacheable(status, headers)) {
+    if (ttl === 0 || varyFingerprint === null || !this.isCacheable(status, headers)) {
       await this.cache.delete(cacheKey);
       logger.debug("Response not cacheable");
       return;
@@ -501,6 +514,7 @@ export class UrlFetchCache {
         etag: headers["etag"],
         lastModified: headers["last-modified"],
         freshUntil: Date.now() + ttl * 1000,
+        varyFingerprint,
         contentHash: crypto.createHash("sha256").update(data).digest("hex"),
       },
     };

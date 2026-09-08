@@ -14,7 +14,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
-import { getUrlFetchCache } from "@/lib/services/cache";
+import { type Cache, getUrlFetchCache } from "@/lib/services/cache";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
 describe.sequential("HTTP Cache Integration", () => {
@@ -482,6 +482,97 @@ describe.sequential("HTTP Cache Integration", () => {
       await urlFetchCache.fetch(url);
       await urlFetchCache.fetch(url);
       expect(requests).toBe(2);
+    });
+
+    it("matches only the request headers selected by Vary", async () => {
+      let requests = 0;
+      testServer.route("/vary-language", (req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(200, { Vary: "Accept-Language", "Cache-Control": "max-age=60" });
+        res.end(req.headers["accept-language"]);
+      });
+      const url = `${serverUrl}/vary-language`;
+      await urlFetchCache.fetch(url, { headers: { "Accept-Language": "en" } });
+      const hit = await urlFetchCache.fetch(url, { headers: { "accept-language": "en", "X-Unrelated": "changed" } });
+      expect(hit.headers["X-Cache"]).toBe("HIT");
+      const changed = await urlFetchCache.fetch(url, { headers: { "Accept-Language": "de" } });
+      expect(changed.data.toString()).toBe("de");
+      expect(changed.headers["X-Cache"]).toBe("MISS");
+      expect(requests).toBe(2);
+    });
+
+    it("distinguishes absent and empty Vary request headers", async () => {
+      testServer.route("/vary-empty", (req: IncomingMessage, res: ServerResponse) => {
+        res.writeHead(200, { Vary: "X-Variant", "Cache-Control": "max-age=60" });
+        res.end(req.headers["x-variant"] === undefined ? "absent" : "present");
+      });
+      const url = `${serverUrl}/vary-empty`;
+      expect((await urlFetchCache.fetch(url)).data.toString()).toBe("absent");
+      const changed = await urlFetchCache.fetch(url, { headers: { "X-Variant": "" } });
+      expect(changed.data.toString()).toBe("present");
+    });
+
+    it("refetches legacy Vary entries without a request fingerprint", async () => {
+      let requests = 0;
+      testServer.route("/vary-legacy", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(200, { Vary: "Accept-Language", "Cache-Control": "max-age=60" });
+        res.end("response");
+      });
+      const url = `${serverUrl}/vary-legacy`;
+      await urlFetchCache.fetch(url);
+
+      // Recreate the old on-disk metadata using the real cache storage.
+      const internals = urlFetchCache as unknown as {
+        cache: Cache;
+        getCacheKey: (url: string, method: string) => string;
+      };
+      const key = internals.getCacheKey(url, "GET");
+      const entry = await internals.cache.get<{ metadata: { varyFingerprint?: string } }>(key);
+      expect(entry?.metadata.varyFingerprint).toMatch(/^[a-f0-9]{64}$/);
+      delete entry!.metadata.varyFingerprint;
+      await internals.cache.set(key, entry, { ttl: 60 });
+
+      expect((await urlFetchCache.fetch(url)).headers["X-Cache"]).toBe("MISS");
+      expect(requests).toBe(2);
+    });
+
+    it("does not reuse Vary star responses even when cache-control is ignored", async () => {
+      let requests = 0;
+      testServer.route("/vary-star", (_req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        res.writeHead(200, { Vary: "*", "Cache-Control": "max-age=60" });
+        res.end("response");
+      });
+      const url = `${serverUrl}/vary-star`;
+      await urlFetchCache.fetch(url, { respectCacheControl: false });
+      await urlFetchCache.fetch(url, { respectCacheControl: false });
+      expect(requests).toBe(2);
+    });
+
+    it.each(["Accept-Language", "*"])("honors Vary changed to %s by a 304", async (vary) => {
+      let requests = 0;
+      testServer.route("/vary-revalidated", (req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        const unchanged = req.headers["if-none-match"] === '"vary-response"';
+        res.writeHead(unchanged ? 304 : 200, {
+          ETag: '"vary-response"',
+          "Cache-Control": "max-age=60",
+          ...(unchanged ? { Vary: vary } : {}),
+        });
+        res.end(unchanged ? undefined : req.headers["accept-language"]);
+      });
+      const url = `${serverUrl}/vary-revalidated`;
+      const headers = { "Accept-Language": "en" };
+      await urlFetchCache.fetch(url, { headers });
+      expect((await urlFetchCache.fetch(url, { headers, forceRevalidate: true })).headers["X-Cache"]).toBe(
+        "REVALIDATED"
+      );
+      const language = vary === "*" ? "en" : "de";
+      const result = await urlFetchCache.fetch(url, { headers: { "Accept-Language": language } });
+      expect(result.headers["X-Cache"]).toBe("MISS");
+      expect(result.data.toString()).toBe(language);
+      expect(requests).toBe(3);
     });
 
     it.each(["private", "no-store", "no-cache", "Private", "No-Store", "No-Cache"])(
