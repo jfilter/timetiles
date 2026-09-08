@@ -10,6 +10,8 @@ The URL fetch cache reduces redundant network requests when importing data from 
 - Respects API rate limits
 - Saves bandwidth and improves performance
 
+The cache stores complete GET responses. Other methods and requests with a `Range` header bypass it. `206 Partial Content` responses are not stored, and partial responses retained by older versions are not reused.
+
 ## Supported HTTP Cache Headers
 
 ### ETag (Entity Tag)
@@ -42,12 +44,20 @@ Server specifies caching behavior:
 - `private` - Not cacheable (response is rejected by the cacheability check, same effect as `no-store`)
 - `must-revalidate` - Once stale, reuse requires successful validation; HTTP or network failures are propagated instead of returning old content
 
+### Vary
+
+`Vary` selects the request headers that must match before a stored response can be reused. For example, `Vary: Accept-Language` prevents an English response from being reused for a German request. Header names are case-insensitive; an absent header differs from an explicitly empty one. Headers not named by `Vary` do not affect this comparison.
+
+The cache stores a fingerprint of the selected header values, not an additional plaintext copy. A mismatch fetches a new response and replaces the single entry for that URL/user/authentication key; multiple variants are not retained simultaneously. Legacy entries with `Vary` but without a fingerprint are fetched again.
+
+`Vary: *` responses are not retained, even when `respectCacheControl` is disabled. Changes to `Vary` supplied by a `304` response are applied before the response is stored again.
+
 ## Cache Flow
 
 ### Cache Hit
 
 ```
-Request → Check cache → Found & valid → Return cached response ✓
+Request → Check cache → Fresh & Vary matches → Return cached response ✓
 ```
 
 ### Cache Miss
@@ -65,6 +75,8 @@ Request → Check cache → Found but stale → Send conditional request with ET
 ```
 
 HTTP freshness uses the deadline calculated when storing or revalidating the response. Expired entries may still be read for ETag or Last-Modified revalidation until regular cleanup or size-based eviction removes them. Entries without validators are fetched again. Older entries without a freshness deadline are treated as stale, never as fresh hits.
+
+A `304` reuses the stored body and original success status, rather than rewriting the status to `200`. Revalidated responses use the same storage policy as fresh responses, including TTL, `Vary`, and cacheability checks.
 
 ## TTL Calculation
 
