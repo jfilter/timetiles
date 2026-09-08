@@ -14,7 +14,7 @@ import type { CanonicalBounds, CanonicalEventFilters } from "./canonical-event-f
 /**
  * Convert canonical filters to a Payload CMS Where object.
  *
- * Includes catalog access control and field key validation.
+ * Includes event access restrictions and catalog, dataset, date, and location filters.
  */
 export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
   if (filters.denyResults) {
@@ -33,7 +33,7 @@ export const toPayloadWhere = (filters: CanonicalEventFilters): Where => {
     ...(filters.requireLocation ? buildLocationWhere() : []),
   ];
 
-  return and.length > 0 ? { and } : {};
+  return { and };
 };
 
 // Mirrors buildEventAccessCondition in to-sql-conditions.ts: public events are
