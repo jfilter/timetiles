@@ -48,7 +48,9 @@ const restoreBlobs = (value: unknown, blobs: Buffer[]): unknown => {
     const record = value as Record<string, unknown>;
     const marker = record[BUFFER_MARKER];
     if (typeof marker === "number") {
-      return blobs[marker] ?? Buffer.alloc(0);
+      const blob = blobs[marker];
+      if (!blob) throw new Error("Malformed cache envelope: invalid blob reference");
+      return blob;
     }
     return Object.fromEntries(Object.entries(record).map(([k, v]) => [k, restoreBlobs(v, blobs)]));
   }

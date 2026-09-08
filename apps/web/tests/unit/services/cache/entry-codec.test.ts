@@ -37,4 +37,10 @@ describe("cache entry codec", () => {
     const malformed = Buffer.concat([encodeEntry(entry), Buffer.from("extra")]);
     expect(() => decodeEntry(malformed)).toThrow("unexpected trailing data");
   });
+
+  it.each([0, -1, 0.5])("rejects a reference to an absent blob %s", (marker) => {
+    const header = { entry: { ...entry, value: { __cacheBuffer__: marker } }, blobs: [] };
+    const malformed = Buffer.from(`TTCACHE1\n${JSON.stringify(header)}\n`);
+    expect(() => decodeEntry(malformed)).toThrow("invalid blob reference");
+  });
 });
