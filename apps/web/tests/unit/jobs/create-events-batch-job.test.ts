@@ -207,6 +207,43 @@ describe.sequential("CreateEventsBatchJob Handler", () => {
   });
 
   describe("Success Cases", () => {
+    it("bounds retained error details while counting failures across every batch", async () => {
+      const completion = await import("@/lib/jobs/handlers/create-events-batch/job-completion");
+      const review = await import("@/lib/jobs/workflows/review-checks");
+      const persistErrors = vi.spyOn(completion, "updateJobErrors");
+      const job = createMockIngestJob({
+        progress: { stages: {}, overallPercentage: 0, estimatedCompletionTime: null },
+        overrides: { duplicates: { internal: [], external: [], summary: { uniqueRows: 600 } } },
+      });
+      const dataset = { id: "dataset-456", idStrategy: { type: "external", externalIdPath: "id" } };
+      const file = createMockIngestFile();
+      mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
+        if (collection === "ingest-jobs") return Promise.resolve(job);
+        if (collection === "datasets") return Promise.resolve(dataset);
+        return Promise.resolve(file);
+      });
+      mockPayload.find.mockResolvedValue({ docs: [] });
+      mockPayload.update.mockResolvedValue(job);
+      const rows = Array.from({ length: 600 }, (_, id) => ({ id: String(id) }));
+      mocks.streamBatchesFromFile.mockReturnValueOnce(mockAsyncGenerator([rows.slice(0, 300), rows.slice(300)]));
+      mocks.generateUniqueId.mockImplementation(() => {
+        throw new Error("Invalid source identifier");
+      });
+      mocks.getIngestGeocodingResults.mockReturnValue(new Map());
+      mocks.getGeocodingResultForRow.mockReturnValue(null);
+
+      try {
+        await createEventsBatchJob.handler(mockContext);
+
+        expect(persistErrors.mock.calls[0]?.[3]).toHaveLength(completion.MAX_STORED_ERRORS);
+        expect(persistErrors.mock.calls[0]?.[3].at(-1)).toMatchObject({ row: 499 });
+        expect(review.shouldReviewHighRowErrors).toHaveBeenCalledWith(0, 600, undefined);
+      } finally {
+        persistErrors.mockRestore();
+        mocks.generateUniqueId.mockReset();
+      }
+    });
+
     it("should create events successfully from streamed data", async () => {
       // Mock import job - needs to be mutable to track updates (using const with Object.assign)
       const mockIngestJob: any = createMockIngestJob({

@@ -46,6 +46,7 @@ import {
   checkEventQuotaBeforeProcessing,
   cleanupPriorAttempt,
   markJobCompleted,
+  MAX_STORED_ERRORS,
   releaseReservedEventQuota,
   updateJobErrors,
 } from "./create-events-batch/job-completion";
@@ -209,7 +210,8 @@ const streamAndProcessBatches = async (params: {
     totals.totalEventsSkipped += eventsSkipped;
     totals.totalEventsUpdated += eventsUpdated;
     totals.totalErrors += errors.length;
-    if (errors.length > 0) totals.allErrors.push(...errors);
+    const remainingErrorSlots = MAX_STORED_ERRORS - totals.allErrors.length;
+    if (remainingErrorSlots > 0) totals.allErrors.push(...errors.slice(0, remainingErrorSlots));
 
     totals.batchNumber++;
 
