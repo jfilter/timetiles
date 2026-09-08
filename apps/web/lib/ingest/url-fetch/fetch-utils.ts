@@ -276,7 +276,7 @@ const processFetchResponse = async (
 
   const cacheStatus = getCacheStatus(cachedResponse.headers);
   if (cacheStatus) {
-    logger.info("Cache status", { url: sourceUrl, status: cacheStatus });
+    logger.info("Cache status", { url: sanitizeUrlForLogging(sourceUrl), status: cacheStatus });
   }
 
   validateResponse(cachedResponse, fetchOptions.maxSize);
