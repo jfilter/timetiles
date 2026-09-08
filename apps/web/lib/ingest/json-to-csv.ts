@@ -107,6 +107,12 @@ const autoDetectRecords = (json: unknown): { records: Record<string, unknown>[];
   return null;
 };
 
+const validateRecords = (records: unknown[]): Record<string, unknown>[] => {
+  const invalidIndex = records.findIndex((record) => !isRecord(record));
+  if (invalidIndex !== -1) throw new Error(`Record ${invalidIndex + 1} must be an object.`);
+  return records as Record<string, unknown>[];
+};
+
 /**
  * Extract an array of records from a parsed JSON value.
  *
@@ -125,14 +131,14 @@ export const extractRecordsFromJson = (
     if (!Array.isArray(value)) {
       throw new Error(`recordsPath "${recordsPath}" did not resolve to an array.`);
     }
-    return { records: value as Record<string, unknown>[], detectedPath: recordsPath };
+    return { records: validateRecords(value), detectedPath: recordsPath };
   }
 
   const detected = autoDetectRecords(json);
   if (!detected) {
     throw new Error("Could not find records array in JSON response. Specify recordsPath in JSON API configuration.");
   }
-  return { records: detected.records, detectedPath: detected.path };
+  return { records: validateRecords(detected.records), detectedPath: detected.path };
 };
 
 /**

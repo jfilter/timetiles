@@ -160,6 +160,15 @@ describe("convertJsonToCsv", () => {
       expect(() => convertJsonToCsv(toBuffer(json))).toThrow("Could not find records array");
     });
 
+    it.each([{ invalid: null }, { invalid: 42 }, { invalid: "invalid" }, { invalid: [] }])(
+      "rejects a non-object later record $invalid",
+      ({ invalid }) => {
+        const records = [{ id: 1 }, invalid];
+        expect(() => extractRecordsFromJson(records)).toThrow("Record 2 must be an object");
+        expect(() => extractRecordsFromJson({ items: records }, "items")).toThrow("Record 2 must be an object");
+      }
+    );
+
     it("should return zero records for an empty top-level array", () => {
       // An empty array IS the records array — it just has no records today. Treating it as
       // "could not find records array" turned a quiet upstream into a scheduled-ingest
