@@ -16,7 +16,7 @@ const INTEGER_PATTERN = /^-?\d+$/;
 
 export const parseStrictInteger = (value: string | number | null | undefined): number | null => {
   if (typeof value === "number") {
-    return Number.isInteger(value) ? value : null;
+    return Number.isSafeInteger(value) ? value : null;
   }
 
   if (typeof value !== "string") {
@@ -29,7 +29,7 @@ export const parseStrictInteger = (value: string | number | null | undefined): n
   }
 
   const parsed = Number.parseInt(trimmedValue, 10);
-  return Number.isInteger(parsed) ? parsed : null;
+  return Number.isSafeInteger(parsed) ? parsed : null;
 };
 
 /** Parse a value as a strict integer, throwing with context if invalid. */

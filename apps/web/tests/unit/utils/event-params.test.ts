@@ -11,6 +11,18 @@ import { buildBaseEventParams, buildEventParams, parseStrictInteger } from "@/li
 
 describe("event-params", () => {
   describe("parseStrictInteger", () => {
+    it.each([Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER])("preserves the safe integer boundary %s", (value) => {
+      expect(parseStrictInteger(value)).toBe(value);
+      expect(parseStrictInteger(String(value))).toBe(value);
+    });
+
+    it.each(["9007199254740993", "-9007199254740993", Number.MAX_SAFE_INTEGER + 1, Number.MIN_SAFE_INTEGER - 1])(
+      "rejects values outside the safe integer range: %s",
+      (value) => {
+        expect(parseStrictInteger(value)).toBeNull();
+      }
+    );
+
     it("parses fully numeric strings", () => {
       expect(parseStrictInteger("42")).toBe(42);
       expect(parseStrictInteger("  -7 ")).toBe(-7);
