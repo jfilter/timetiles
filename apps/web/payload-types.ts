@@ -1810,7 +1810,7 @@ export interface ScheduledIngest {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * Immutable audit trail of sensitive account actions
+ * Audit trail of sensitive account actions; read-only to API and admin clients
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-log".
