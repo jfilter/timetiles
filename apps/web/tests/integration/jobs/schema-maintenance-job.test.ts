@@ -6,6 +6,7 @@
  */
 import { randomUUID } from "node:crypto";
 
+import { sql } from "@payloadcms/db-postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { schemaMaintenanceJob } from "@/lib/jobs/handlers/schema-maintenance-job";
@@ -181,6 +182,66 @@ describe.sequential("Schema Maintenance Job", () => {
     // No events + no schema = fresh (no schema needed)
     expect(result.output.details?.[0]?.reason).toBe("Schema is up-to-date");
   });
+
+  it.each([false, true])(
+    "retries partial failures without repeating successful work (legacy force: %s)",
+    async (forceRegenerate) => {
+      const { dataset: failingDataset } = await withDataset(testEnv, testCatalogId, {
+        name: "Temporarily failing dataset",
+      });
+      const datasetIds = [testDatasetId, failingDataset.id];
+      for (const datasetId of datasetIds) {
+        await payload.create({
+          collection: "events",
+          data: {
+            dataset: datasetId,
+            uniqueId: generateUniqueId(datasetId),
+            sourceData: { name: "Event" },
+            transformedData: { name: "Event" },
+            eventTimestamp: new Date().toISOString(),
+          },
+          overrideAccess: true,
+        });
+      }
+
+      // Include the obsolete flag to cover already queued jobs as well as normal runs.
+      const job = await payload.jobs.queue({
+        task: "schema-maintenance",
+        queue: "maintenance",
+        input: { datasetIds, forceRegenerate },
+      });
+      // Real write failure in this disposable worker database; always remove the constraint.
+      await payload.db.drizzle.execute(sql`ALTER TABLE payload.dataset_schemas
+      ADD CONSTRAINT reject_schema_maintenance_test
+      CHECK (dataset_id <> ${sql.raw(String(failingDataset.id))}) NOT VALID`);
+      try {
+        await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
+        const successfulSchemas = await payload.count({
+          collection: "dataset-schemas",
+          where: { dataset: { equals: testDatasetId } },
+        });
+        expect(successfulSchemas.totalDocs).toBe(1);
+        const retryingJob = await payload.findByID({ collection: "payload-jobs", id: job.id });
+        expect(retryingJob.totalTried).toBe(1);
+        expect(retryingJob.hasError).toBe(false);
+        expect(retryingJob.completedAt).toBeFalsy();
+      } finally {
+        await payload.db.drizzle.execute(sql`ALTER TABLE payload.dataset_schemas
+        DROP CONSTRAINT reject_schema_maintenance_test`);
+      }
+
+      await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
+      const schemas = await payload.find({
+        collection: "dataset-schemas",
+        where: { dataset: { in: datasetIds } },
+        sort: "dataset",
+      });
+      expect(schemas.docs.map((schema) => schema.versionNumber)).toEqual([1, 1]);
+      expect((await payload.count({ collection: "payload-jobs", where: { id: { equals: job.id } } })).totalDocs).toBe(
+        0
+      );
+    }
+  );
 
   /**
    * The scan used to stop at `maxDatasets` datasets ordered by id, with no cursor and no

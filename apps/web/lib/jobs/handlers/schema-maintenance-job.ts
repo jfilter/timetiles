@@ -23,8 +23,6 @@ import { asSystem } from "@/lib/services/system-payload";
 export interface SchemaMaintenanceJobInput {
   /** Optional: specific dataset IDs to check (if omitted, checks all) */
   datasetIds?: number[];
-  /** Optional: force regeneration even if schemas appear fresh */
-  forceRegenerate?: boolean;
   /** Optional: maximum schemas to REGENERATE in one run (default: 100) */
   maxDatasets?: number;
 }
@@ -63,7 +61,7 @@ export interface SchemaMaintenanceResult {
   schemasFailed: number;
   duration: number;
   details?: ProcessingResult[];
-  /** True when `details` omits some routine skips (see MAX_ROUTINE_DETAIL_ENTRIES) */
+  /** True when `details` exceeds MAX_DETAIL_ENTRIES */
   detailsTruncated?: boolean;
 }
 
@@ -90,11 +88,8 @@ const getDatasetsToCheck = async (payload: Payload, specificIds: number[] | unde
 };
 
 /** Check if a dataset needs schema regeneration */
-const shouldSkipDataset = (
-  freshness: SchemaFreshnessResult,
-  forceRegenerate: boolean
-): { skip: boolean; reason?: string } => {
-  if (!freshness.stale && !forceRegenerate) {
+const shouldSkipDataset = (freshness: SchemaFreshnessResult): { skip: boolean; reason?: string } => {
+  if (!freshness.stale) {
     return { skip: true, reason: "Schema is up-to-date" };
   }
   if (freshness.currentEventCount === 0) {
@@ -107,7 +102,6 @@ const shouldSkipDataset = (
 const evaluateDataset = async (
   payload: Payload,
   dataset: DatasetInfo,
-  forceRegenerate: boolean,
   eventCounts: Map<number, number>
 ): Promise<Candidate | ProcessingResult> => {
   const latestSchema = await SchemaInferenceService.getLatestSchema(payload, dataset.id);
@@ -120,7 +114,7 @@ const evaluateDataset = async (
     eventCounts.get(dataset.id) ?? 0
   );
 
-  const skipCheck = shouldSkipDataset(freshness, forceRegenerate);
+  const skipCheck = shouldSkipDataset(freshness);
   if (skipCheck.skip) {
     return { datasetId: dataset.id, datasetName: dataset.name, action: "skipped", reason: skipCheck.reason };
   }
@@ -132,10 +126,9 @@ const evaluateDataset = async (
 const regenerateDataset = async (
   payload: Payload,
   dataset: DatasetInfo,
-  freshness: SchemaFreshnessResult,
-  forceRegenerate: boolean
+  freshness: SchemaFreshnessResult
 ): Promise<ProcessingResult> => {
-  const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id, { forceRegenerate });
+  const result = await SchemaInferenceService.inferSchemaFromEvents(payload, dataset.id);
 
   if (result.generated) {
     logger.info("Schema regenerated for dataset", {
@@ -148,7 +141,7 @@ const regenerateDataset = async (
       datasetId: dataset.id,
       datasetName: dataset.name,
       action: "generated",
-      reason: `Generated from ${result.eventsSampled} events (${freshness.reason ?? "forced"})`,
+      reason: `Generated from ${result.eventsSampled} events (${freshness.reason})`,
     };
   }
 
@@ -195,7 +188,6 @@ const byStalestFirst = (a: Candidate, b: Candidate): number => {
 const processAllDatasets = async (
   payload: Payload,
   datasets: DatasetInfo[],
-  forceRegenerate: boolean,
   maxDatasets: number
 ): Promise<{ details: ProcessingResult[]; stats: ProcessingStats }> => {
   const details: ProcessingResult[] = [];
@@ -209,7 +201,7 @@ const processAllDatasets = async (
 
   for (const dataset of datasets) {
     try {
-      const outcome = await evaluateDataset(payload, dataset, forceRegenerate, eventCounts);
+      const outcome = await evaluateDataset(payload, dataset, eventCounts);
       if (isCandidate(outcome)) {
         candidates.push(outcome);
       } else {
@@ -237,7 +229,7 @@ const processAllDatasets = async (
     }
 
     try {
-      const result = await regenerateDataset(payload, candidate.dataset, candidate.freshness, forceRegenerate);
+      const result = await regenerateDataset(payload, candidate.dataset, candidate.freshness);
       details.push(result);
       stats[result.action === "generated" ? "generated" : "skipped"]++;
     } catch (error) {
@@ -271,14 +263,19 @@ export const schemaMaintenanceJob = {
     const startTime = Date.now();
 
     const maxDatasets = input?.maxDatasets ?? 100;
-    const forceRegenerate = input?.forceRegenerate ?? false;
 
-    logger.info("Starting schema maintenance job", { datasetIds: input?.datasetIds, forceRegenerate, maxDatasets });
+    logger.info("Starting schema maintenance job", { datasetIds: input?.datasetIds, maxDatasets });
 
     try {
       const datasets = await getDatasetsToCheck(payload, input?.datasetIds);
-      const { details, stats } = await processAllDatasets(payload, datasets, forceRegenerate, maxDatasets);
+      const { details, stats } = await processAllDatasets(payload, datasets, maxDatasets);
       const duration = Date.now() - startTime;
+
+      // Let Payload retry partial failures. Successful datasets are now fresh and skipped
+      // on the next attempt; maintenance never forces another version of a fresh schema.
+      if (stats.failed > 0) {
+        throw new Error(`Schema maintenance failed for ${stats.failed} datasets`);
+      }
 
       const cappedDetails = capDetails(details);
 
