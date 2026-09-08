@@ -96,13 +96,19 @@ const fetchMediaBuffer = async (
 
     const response = await safeFetch(url);
     if (!response.ok) {
-      logger.warn({ url, status: response.status }, "Failed to fetch media file");
+      try {
+        await response.body?.cancel();
+      } catch {
+        // Cleanup errors may contain the signed URL; preserve the original HTTP status.
+      }
+      logger.warn({ mediaId, status: response.status }, "Failed to fetch media file");
       return null;
     }
 
     return Buffer.from(await response.arrayBuffer());
-  } catch (error) {
-    logError(error, "Failed to fetch media for favicon generation");
+  } catch {
+    // Transport and storage errors may contain signed URLs or private filesystem paths.
+    logger.warn({ mediaId }, "Failed to fetch media for favicon generation");
     return null;
   }
 };
