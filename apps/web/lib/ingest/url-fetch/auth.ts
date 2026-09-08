@@ -19,7 +19,7 @@ const logger = createLogger("url-fetch-auth");
  * Exchange OAuth credentials for an access token via Resource Owner Password Grant.
  *
  * Uses `safeFetch` to prevent SSRF — `tokenUrl` is user-controlled via
- * `scheduledIngest.authConfig.oauthTokenUrl`.
+ * `scheduledIngest.authConfig.tokenUrl`.
  */
 const fetchOAuthToken = async (
   tokenUrl: string,
@@ -34,10 +34,13 @@ const fetchOAuthToken = async (
   });
 
   if (!response.ok) {
-    // Only read the body on 4xx/5xx — safeFetch already validated the URL and
-    // all redirects, so any response we see here came from an approved host.
-    const body = await response.text().catch(() => "");
-    throw new Error(`OAuth token request failed (${response.status}): ${body.slice(0, 200)}`);
+    // The provider may echo credentials in its response; never persist that body in job errors.
+    try {
+      await response.body?.cancel();
+    } catch {
+      // Release the connection best-effort without exposing response or cancellation errors.
+    }
+    throw new Error(`OAuth token request failed (${response.status})`);
   }
 
   const data = (await response.json()) as { access_token?: string };
@@ -45,7 +48,6 @@ const fetchOAuthToken = async (
     throw new Error("OAuth response missing access_token");
   }
 
-  logger.debug("OAuth token obtained", { tokenUrl });
   return data.access_token;
 };
 
