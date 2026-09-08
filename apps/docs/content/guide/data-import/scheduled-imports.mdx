@@ -31,6 +31,16 @@ Scheduled imports support several methods for protected URLs:
 | Basic Auth   | HTTP Basic authentication                                          |
 | OAuth 2.0    | Password-grant token exchange; access token sent as a Bearer token |
 
+## JSON API Pagination
+
+For paginated JSON sources, the scheduled import's JSON API configuration controls page size and stopping limits:
+
+- `limitValue`: records requested per page (default 100).
+- `maxPages`: maximum pages fetched per run (default 50, hard cap 500).
+- `maxRecords`: maximum records collected across pages (default 100,000). You can explicitly raise this for larger sources; it is not a fixed ceiling.
+
+These counts must be positive integers. Reaching a configured limit stops the fetch; if the final page exceeds the remaining record allowance, only the records that fit are retained. Choose limits large enough for the intended source, otherwise the run imports only a prefix of it. User quotas still apply separately.
+
 ## Managing Schedules
 
 From the **Scheduled Imports** section in your account:

@@ -101,6 +101,7 @@ Open the ingest job in the admin interface and navigate to the "Versions" tab. E
 
 ### Error Logs
 
+- `ingestJob.errors` -- up to 500 retained row-error details. Event creation counts all row failures separately; for a `high-row-errors` review, `reviewDetails.errorCount` contains the full count, not the length of this array.
 - `ingestJob.errorLog` -- the last failure context (message, context, timestamp), set by `markSheetFailed`
 - `ingestJob.reviewReason` and `ingestJob.reviewDetails` -- why NEEDS_REVIEW was triggered
 - Application logs filtered by ingest job ID show the full processing trace
