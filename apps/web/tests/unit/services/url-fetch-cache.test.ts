@@ -160,6 +160,23 @@ describe("UrlFetchCache", () => {
     await expect(cache.readResponseBody(response, 1000)).resolves.toMatchObject({ data: Buffer.from("hello world") });
   });
 
+  it.each([false, true])("preserves the size error when cancellation fails (declared length: %s)", async (declared) => {
+    const cache = new UrlFetchCache() as unknown as ReadResponseBody;
+    const cancel = vi.fn(() => {
+      throw new Error("Cancellation failed");
+    });
+    const body = new ReadableStream<Uint8Array>({
+      start: (controller) => {
+        controller.enqueue(new Uint8Array(5000));
+      },
+      cancel,
+    });
+    const response = new Response(body, { headers: declared ? { "Content-Length": "5000" } : {} });
+
+    await expect(cache.readResponseBody(response, 1000)).rejects.toThrow("File too large: 5000 bytes (max: 1000)");
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
   it("keeps different query parameter orders distinct", () => {
     const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
 

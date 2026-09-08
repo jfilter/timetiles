@@ -212,7 +212,11 @@ export class UrlFetchCache {
       if (!value) continue;
       total += value.byteLength;
       if (total > maxSize) {
-        await reader.cancel(`File too large (max: ${maxSize})`);
+        try {
+          await reader.cancel(`File too large (max: ${maxSize})`);
+        } catch {
+          // Releasing the connection must not mask the deterministic size error.
+        }
         throw new Error(`File too large: ${total} bytes (max: ${maxSize})`);
       }
       chunks.push(Buffer.from(value));
