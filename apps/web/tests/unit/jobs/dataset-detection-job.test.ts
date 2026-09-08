@@ -699,7 +699,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
   });
 
   describe("Wizard Fast-Path", () => {
-    it("should skip file parsing for wizard single-sheet import", async () => {
+    it.each([0, 2])("should preserve selected sheet %i for wizard single-sheet import", async (sheetIndex) => {
       const mockIngestFile = {
         id: 123,
         filename: "test.csv",
@@ -709,7 +709,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         metadata: {
           source: "import-wizard",
           datasetMapping: { mappingType: "single", singleDataset: "dataset-42" },
-          wizardConfig: { sheetMappings: [{ sheetIndex: 0, newDatasetName: "Events" }], fieldMappings: [] },
+          wizardConfig: { sheetMappings: [{ sheetIndex, newDatasetName: "Events" }], fieldMappings: [] },
         },
       };
 
@@ -734,7 +734,7 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         data: expect.objectContaining({
           dataset: "dataset-42",
           ingestFile: 123,
-          sheetIndex: 0,
+          sheetIndex,
           stage: "analyze-duplicates",
         }),
       });

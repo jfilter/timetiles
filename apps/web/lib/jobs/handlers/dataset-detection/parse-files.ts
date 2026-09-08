@@ -114,13 +114,14 @@ export const buildSheetsFromWizardMetadata = (metadata: Record<string, unknown>)
     | undefined;
   if (!datasetMapping) return null;
 
-  if (datasetMapping.mappingType === "single") {
-    return [{ name: "Sheet 1", index: 0, rowCount: 0 }];
-  }
-
   const wizardConfig = metadata.wizardConfig as
     | { sheetMappings?: Array<{ sheetIndex: number; newDatasetName?: string }> }
     | undefined;
+
+  if (datasetMapping.mappingType === "single") {
+    const index = wizardConfig?.sheetMappings?.[0]?.sheetIndex ?? 0;
+    return [{ name: `Sheet ${index + 1}`, index, rowCount: 0 }];
+  }
 
   if (datasetMapping.mappingType === "multiple" && wizardConfig?.sheetMappings?.length) {
     return wizardConfig.sheetMappings.map((sm) => ({
