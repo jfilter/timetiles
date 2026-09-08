@@ -20,8 +20,6 @@ describe("UrlFetchCache", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    delete process.env.URL_FETCH_CACHE_DIR;
-    delete process.env.URL_FETCH_CACHE_TTL;
   });
 
   it("uses the stored freshness deadline and treats legacy entries as stale", () => {
@@ -81,25 +79,18 @@ describe("UrlFetchCache", () => {
   });
 
   it("ignores malformed Cache-Control max-age directives", () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as { parseMaxAge: (cacheControl?: string) => number | undefined };
 
     expect(cache.parseMaxAge("public, max-age=60abc")).toBeUndefined();
   });
 
-  it("falls back to the default TTL when env TTL is malformed", () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-    process.env.URL_FETCH_CACHE_TTL = "60abc";
-
+  it("uses the default TTL when freshness headers are absent", () => {
     const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
 
     expect(cache.calculateTTL({})).toBe(3600);
   });
 
   it("uses RFC-1123 Expires headers to calculate cache TTL", () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
 
     expect(cache.calculateTTL({ expires: "Wed, 21 Oct 2030 07:28:00 GMT" })).toBe(2_592_000);
@@ -112,8 +103,6 @@ describe("UrlFetchCache", () => {
   });
 
   it("rejects truncated successful responses", async () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as {
       readResponseBody: (response: Response) => Promise<{ data: Buffer; headers: Record<string, string> }>;
     };
@@ -123,8 +112,6 @@ describe("UrlFetchCache", () => {
   });
 
   it("preserves HTTP error status even when error body is truncated", async () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as {
       readResponseBody: (response: Response) => Promise<{ data: Buffer; headers: Record<string, string> }>;
     };
@@ -141,8 +128,6 @@ describe("UrlFetchCache", () => {
   };
 
   it("rejects an oversized declared Content-Length before reading the body", async () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as ReadResponseBody;
     const response = new Response("x", { status: 200, headers: { "Content-Length": "100000" } });
 
@@ -150,8 +135,6 @@ describe("UrlFetchCache", () => {
   });
 
   it("aborts a streamed body once it exceeds the size limit", async () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as ReadResponseBody;
     // No Content-Length header: the cap must be enforced during streaming.
     const body = new Uint8Array(5000);
@@ -161,8 +144,6 @@ describe("UrlFetchCache", () => {
   });
 
   it("returns the body unchanged when it is within the size limit", async () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as ReadResponseBody;
     const response = new Response("hello world", { status: 200 });
 
@@ -170,8 +151,6 @@ describe("UrlFetchCache", () => {
   });
 
   it("keeps different query parameter orders distinct", () => {
-    process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
-
     const cache = new UrlFetchCache() as unknown as { normalizeUrl: (url: string) => string };
 
     expect(cache.normalizeUrl("https://example.com/p?b=2&a=1")).not.toBe(
