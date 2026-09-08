@@ -48,7 +48,8 @@ export interface JsonToCsvResult {
 const MAX_FLATTEN_DEPTH = 20;
 
 export const flattenObject = (obj: Record<string, unknown>, prefix?: string, depth = 0): Record<string, unknown> => {
-  const result: Record<string, unknown> = {};
+  // Source field names are data, including __proto__; avoid inherited setters.
+  const result = Object.create(null) as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;

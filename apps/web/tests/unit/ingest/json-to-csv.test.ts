@@ -80,6 +80,12 @@ describe("convertJsonToCsv", () => {
   });
 
   describe("Flattening and Serialization", () => {
+    it("preserves a literal __proto__ field as a CSV column", () => {
+      const result = convertJsonToCsv(Buffer.from('[{"__proto__":"kept","name":"A"}]'));
+
+      expect(csvString(result.csv)).toBe("__proto__,name\r\nkept,A");
+    });
+
     it("should flatten nested objects into dot-separated columns", () => {
       const json = [{ user: { name: "John", age: 30 }, city: "NYC" }];
 
