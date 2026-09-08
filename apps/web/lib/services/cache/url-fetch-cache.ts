@@ -119,7 +119,7 @@ export class UrlFetchCache {
       const expires = parseDateInput(headers["expires"]);
       if (expires) {
         const ttl = Math.floor((expires.getTime() - Date.now()) / 1000);
-        if (ttl > 0) return Math.min(ttl, this.maxTTL);
+        return Math.max(0, Math.min(ttl, this.maxTTL));
       }
     }
 

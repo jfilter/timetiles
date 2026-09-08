@@ -81,6 +81,12 @@ describe("UrlFetchCache", () => {
     expect(cache.calculateTTL({ expires: "Wed, 21 Oct 2030 07:28:00 GMT" })).toBe(2_592_000);
   });
 
+  it("does not assign a fresh default TTL to an already expired response", () => {
+    const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
+
+    expect(cache.calculateTTL({ expires: "Thu, 01 Jan 1970 00:00:00 GMT" })).toBe(0);
+  });
+
   it("rejects truncated successful responses", async () => {
     process.env.URL_FETCH_CACHE_DIR = "./node_modules/.cache/timetiles-url-fetch-cache-unit";
 

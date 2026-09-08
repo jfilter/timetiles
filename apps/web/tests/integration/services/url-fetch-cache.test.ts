@@ -48,6 +48,7 @@ describe.sequential("HTTP Cache Integration", () => {
       .respond("/headers", { headers: { "X-Custom-Header": "test" }, body: "Headers response" })
       .respond("/delay", { body: "Delayed response", delay: 100 })
       .respond("/cache-control", { headers: { "Cache-Control": "max-age=2" }, body: "Cache control response" })
+      .respond("/expired", { headers: { Expires: "Thu, 01 Jan 1970 00:00:00 GMT" }, body: "Expired response" })
       .setDefaultHandler((req: IncomingMessage, res: ServerResponse) => {
         // Handle /get with query parameters
         if (req.url?.startsWith("/get")) {
@@ -84,6 +85,17 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   describe("Real HTTP requests", () => {
+    it("does not retain responses whose Expires date is already past", async () => {
+      const url = `${serverUrl}/expired`;
+      const first = await fetchWithRetry(url, { cacheOptions: { useCache: true } });
+      const second = await fetchWithRetry(url, { cacheOptions: { useCache: true } });
+
+      expect(first.data.toString()).toBe("Expired response");
+      expect(second.data.toString()).toBe("Expired response");
+      expect(first.cacheStatus).toBe("MISS");
+      expect(second.cacheStatus).toBe("MISS");
+    });
+
     it("should cache a successful HTTP response", async () => {
       const testUrl = `${serverUrl}/json`;
 

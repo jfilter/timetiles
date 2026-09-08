@@ -70,7 +70,7 @@ The cache determines Time-To-Live using this priority order:
 1. **`Cache-Control: no-store`** → Don't cache (TTL = 0)
 2. **`Cache-Control: no-cache`** → Don't cache (TTL = 0)
 3. **`Cache-Control: max-age=N`** → Use N seconds
-4. **`Expires` header** → Calculate from expiration date
+4. **`Expires` header** → Calculate from expiration date; an already expired response gets TTL = 0
 5. **Default TTL** → Use `cache.urlFetch.defaultTtlSeconds` from `config/timetiles.yml`
 
 Positive TTLs are capped by `cache.urlFetch.maxTtlSeconds`. With `respectCacheControl: false`, freshness uses the configured default TTL (still capped by the maximum); responses marked `no-store` or `private` remain excluded by the cacheability check.
