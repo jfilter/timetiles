@@ -13,7 +13,6 @@ import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 
 import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
-import { getExportDownloadUrl } from "@/lib/export/formatting";
 import type { DataExport } from "@/lib/hooks/use-data-export";
 import { useLatestExportQuery, useRequestDataExportMutation } from "@/lib/hooks/use-data-export";
 import { parseDateInput } from "@/lib/utils/date";
@@ -155,13 +154,13 @@ const ExportFailedState = ({ errorLog }: { errorLog?: string }) => {
  */
 const ExportActions = ({
   status,
-  onDownload,
+  downloadUrl,
   onRequestExport,
   isRequesting,
   isLoading,
 }: {
   status: ExportStatus;
-  onDownload: () => void;
+  downloadUrl?: string;
   onRequestExport: () => void;
   isRequesting: boolean;
   isLoading: boolean;
@@ -173,9 +172,11 @@ const ExportActions = ({
   if (isReady) {
     return (
       <>
-        <Button onClick={onDownload} className="w-full sm:w-auto">
-          <Download className="mr-2 h-4 w-4" />
-          {t("downloadExport")}
+        <Button asChild className="w-full sm:w-auto">
+          <a href={downloadUrl}>
+            <Download className="mr-2 h-4 w-4" />
+            {t("downloadExport")}
+          </a>
         </Button>
         <Button variant="outline" onClick={onRequestExport} disabled={isRequesting} className="w-full sm:w-auto">
           {isRequesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -216,12 +217,6 @@ export const DataExportCard = () => {
     requestExport.mutate();
   };
 
-  const handleDownload = () => {
-    if (latestExport?.id) {
-      globalThis.location.href = getExportDownloadUrl(latestExport.id);
-    }
-  };
-
   const showInfoBox = !status.isPending && !status.isReady && !status.isFailed;
 
   return (
@@ -243,7 +238,7 @@ export const DataExportCard = () => {
         <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
           <ExportActions
             status={status}
-            onDownload={handleDownload}
+            downloadUrl={latestExport ? `/api/data-exports/${latestExport.id}/download` : undefined}
             onRequestExport={handleRequestExport}
             isRequesting={requestExport.isPending}
             isLoading={isLoading}
