@@ -4,9 +4,9 @@
  * This job is the first step in the import process after a file is uploaded. It performs the following actions:
  * - Reads the uploaded file (supports CSV and Excel formats).
  * - Identifies all the individual sheets (for Excel) or the single data table (for CSV).
- * - For each detected sheet, it creates a corresponding `import-jobs` document.
+ * - For each detected sheet, it creates or reuses a corresponding `ingest-jobs` document.
  * - It either matches the sheet to an existing dataset in the specified catalog or creates a new dataset.
- * - It populates the `import-jobs` with initial metadata like row count and sets the first processing stage to `DEDUPLICATION`.
+ * - Initializes sheet metadata and the `analyze-duplicates` stage; the workflow runs the per-sheet tasks.
  *
  * @module
  * @category Jobs

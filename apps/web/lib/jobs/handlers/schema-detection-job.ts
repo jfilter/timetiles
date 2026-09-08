@@ -7,9 +7,9 @@
  * Key responsibilities include:
  * - Using a `ProgressiveSchemaBuilder` to infer data types and properties for each column.
  * - Detecting fields that could be used for geocoding (e.g., address, latitude, longitude).
- * - Storing the evolving schema and the builder's state in the `import-jobs` document.
+ * - Storing the evolving schema and the builder's state in the `ingest-jobs` document.
  *
- * After processing all batches, the import job transitions to the `SCHEMA_VALIDATION` stage.
+ * Returns results or a review pause to the workflow, which runs schema validation next.
  *
  * @module
  */

@@ -5,9 +5,8 @@
  * 1.  **Internal Duplicates:** Identifies rows within the same import file that are duplicates of each other based on the dataset's unique ID strategy.
  * 2.  **External Duplicates:** Checks for rows in the import file that are duplicates of existing events already in the database for the same dataset.
  *
- * The results, including lists of duplicate rows and a summary, are stored in the corresponding `import-jobs` document.
- * If deduplication is disabled for the dataset, the job skips the analysis and proceeds to the next stage.
- * Upon completion, it transitions the import job to the `SCHEMA_DETECTION` stage.
+ * Stores duplicate rows and summary counts on `ingest-jobs`. Returns results or
+ * a review pause to the workflow, which owns the subsequent task sequence.
  *
  * @module
  */
