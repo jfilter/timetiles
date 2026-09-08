@@ -35,6 +35,7 @@ const createMediaForUser = (payload: any, user: User, alt: string): Promise<Medi
       size: 68,
     },
     user,
+    overrideAccess: false,
   });
 };
 
@@ -95,6 +96,43 @@ describe.sequential("Media Ownership Bypass Vulnerability", () => {
   });
 
   describe("Legitimate access after fix", () => {
+    it("ignores client-supplied storage metadata while allowing alt text updates", async () => {
+      const updated = await payload.update({
+        collection: "media",
+        id: ownerMedia.id,
+        data: {
+          alt: "updated description",
+          filename: "../unrelated.png",
+          mimeType: "image/jpeg",
+          filesize: 1,
+          sizes: { thumbnail: { filename: "../unrelated-thumbnail.png" } },
+        },
+        user: ownerUser,
+        overrideAccess: false,
+      });
+      expect(updated.alt).toBe("updated description");
+      expect(updated.filename).toBe(ownerMedia.filename);
+      expect(updated.mimeType).toBe(ownerMedia.mimeType);
+      expect(updated.filesize).toBe(ownerMedia.filesize);
+      expect(updated.sizes).toEqual(ownerMedia.sizes);
+    });
+
+    it("still lets an owner replace their uploaded image", async () => {
+      const data = createTestImageBuffer();
+      const updated = await payload.update({
+        collection: "media",
+        id: ownerMedia.id,
+        data: { alt: "replacement" },
+        file: { data, mimetype: "image/png", name: `replacement-${ownerMedia.id}.png`, size: data.length },
+        user: ownerUser,
+        overrideAccess: false,
+      });
+      expect(updated.filename).not.toBe(ownerMedia.filename);
+      expect(updated.filename).toContain("replacement-");
+      expect(updated.mimeType).toBe("image/png");
+      expect(updated.filesize).toBeGreaterThan(0);
+    });
+
     it("owner can update their own media", async () => {
       const updated = await payload.update({
         collection: "media",

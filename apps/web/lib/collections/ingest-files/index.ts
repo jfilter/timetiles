@@ -20,6 +20,7 @@ import type { CollectionConfig } from "payload";
 import { getEnv } from "@/lib/config/env";
 
 import { createCommonConfig } from "../shared-fields";
+import { preserveUploadMetadata } from "../upload-metadata-hooks";
 import { ingestFilesAccess } from "./access";
 import { ingestFileDownloadHandler } from "./download-handler";
 import { ingestFileFields } from "./fields";
@@ -53,7 +54,7 @@ const IngestFiles: CollectionConfig = {
   fields: ingestFileFields,
   hooks: {
     beforeOperation: beforeOperationHooks,
-    beforeValidate: beforeValidateHooks,
+    beforeValidate: [preserveUploadMetadata, ...beforeValidateHooks],
     beforeChange: beforeChangeHooks,
     afterChange: afterChangeHooks,
     afterError: afterErrorHooks,

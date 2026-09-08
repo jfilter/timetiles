@@ -20,6 +20,7 @@ import {
   isEditorOrAdmin,
   setCreatedByHook,
 } from "./shared-fields";
+import { preserveUploadMetadata } from "./upload-metadata-hooks";
 
 const Media: CollectionConfig = {
   slug: "media",
@@ -66,7 +67,7 @@ const Media: CollectionConfig = {
     createCreatedByField("User who uploaded this media"),
     { name: "alt", type: "text", admin: { description: "Alternative text for accessibility" } },
   ],
-  hooks: { beforeChange: [setCreatedByHook] },
+  hooks: { beforeValidate: [preserveUploadMetadata], beforeChange: [setCreatedByHook] },
 };
 
 export default Media;

@@ -14,7 +14,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Catalog, User } from "@/payload-types";
-import { createIntegrationTestEnvironment, withCatalog, withUsers } from "@/tests/setup/integration/environment";
+import {
+  createIntegrationTestEnvironment,
+  withCatalog,
+  withIngestFile,
+  withUsers,
+} from "@/tests/setup/integration/environment";
 
 describe.sequential("Import File Foreign Resource Vulnerability", () => {
   let payload: any;
@@ -88,6 +93,22 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
   });
 
   describe("Legitimate access after fix", () => {
+    it("ignores owner-supplied storage metadata on update", async () => {
+      const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, "name\nOriginal\n", {
+        user: ownerUser.id,
+      });
+      const updated = await payload.update({
+        collection: "ingest-files",
+        id: ingestFile.id,
+        data: { filename: "../unrelated.csv", filesize: 1, mimeType: "text/plain" },
+        user: ownerUser,
+        overrideAccess: false,
+      });
+      expect(updated.filename).toBe(ingestFile.filename);
+      expect(updated.filesize).toBe(ingestFile.filesize);
+      expect(updated.mimeType).toBe(ingestFile.mimeType);
+    });
+
     it("owner can create ingest-file with their own private catalog", async () => {
       const result = await payload.create({
         collection: "ingest-files",

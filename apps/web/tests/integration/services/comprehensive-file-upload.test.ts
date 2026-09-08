@@ -349,25 +349,16 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       for (const fileTest of invalidFiles) {
         logger.debug(`  Testing ${fileTest.name}...`);
 
-        try {
-          // Try to create import file record with invalid MIME type
-          // This should fail during creation due to MIME type validation
-          await expect(
-            withIngestFile(testEnv, testCatalogId, fileTest.content, {
-              filename: fileTest.name,
-              mimeType: fileTest.mimeType,
-              user: approverUser.id,
-            })
-          ).rejects.toThrow();
-
-          logger.debug(`  ✓ ${fileTest.name} correctly rejected during upload (MIME type validation)`);
-        } catch (error) {
-          // If the test framework error handling doesn't work, check manually
-          if (!(error instanceof Error) || !error.message.includes("Invalid file type")) {
-            throw error;
-          }
-          logger.debug(`  ✓ ${fileTest.name} correctly rejected (Invalid file type)`);
-        }
+        // Return void so a regression cannot make Vitest format the enormous
+        // Payload environment returned by withIngestFile and exhaust the heap.
+        const upload = async () => {
+          await withIngestFile(testEnv, testCatalogId, fileTest.content, {
+            filename: fileTest.name,
+            mimeType: fileTest.mimeType,
+            user: approverUser.id,
+          });
+        };
+        await expect(upload()).rejects.toThrow();
       }
 
       logger.debug("✓ All invalid file types rejected correctly");
