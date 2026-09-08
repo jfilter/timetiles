@@ -50,7 +50,7 @@ const userQuotasSchema = z.object({
   maxEventsPerImport: countQuotaSchema,
   maxTotalEvents: countQuotaSchema,
   maxIngestJobsPerDay: countQuotaSchema,
-  maxFileSizeMB: z.number().int(),
+  maxFileSizeMB: z.number().int().positive(),
   maxCatalogsPerUser: countQuotaSchema,
   maxScraperRepos: countQuotaSchema,
   maxScraperRunsPerDay: countQuotaSchema,

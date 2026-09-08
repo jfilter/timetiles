@@ -127,7 +127,7 @@ Available endpoint names: `FILE_UPLOAD`, `PROGRESS_CHECK`, `IMPORT_RETRY`, `ADMI
 
 ### Quotas by Trust Level
 
-Override the default quotas per trust level. Use `-1` for unlimited. You only need to include the values you want to change.
+Override the default quotas per trust level. Count quotas accept `-1` for unlimited or a nonnegative integer. The file-size quota `maxFileSizeMB` must be a positive integer; it does not support `-1` or `0`. You only need to include the values you want to change.
 
 ```yaml
 quotas:

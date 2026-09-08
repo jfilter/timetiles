@@ -291,6 +291,20 @@ batchSizes:
   });
 
   describe("YAML validation (strict mode)", () => {
+    it.each([-2, -1, 0])("rejects unsupported file-size quota %s", (maxFileSizeMB) => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(JSON.stringify({ quotas: { "2": { maxFileSizeMB } } }));
+
+      expect(() => getAppConfig()).toThrow();
+    });
+
+    it("accepts a one-megabyte file-size quota", () => {
+      existsSyncSpy.mockReturnValue(true);
+      readFileSyncSpy.mockReturnValue(JSON.stringify({ quotas: { "2": { maxFileSizeMB: 1 } } }));
+
+      expect(getAppConfig().quotas[2]?.maxFileSizeMB).toBe(1);
+    });
+
     describe.each([
       "maxActiveSchedules",
       "maxUrlFetchesPerDay",
