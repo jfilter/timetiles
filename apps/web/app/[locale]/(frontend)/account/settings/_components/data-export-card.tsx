@@ -10,13 +10,28 @@
 
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "@timetiles/ui";
 import { AlertTriangle, Check, Clock, Download, Loader2 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 
 import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
-import { formatExportDate, getExportDownloadUrl, getTimeUntilExpiry } from "@/lib/export/formatting";
+import { getExportDownloadUrl } from "@/lib/export/formatting";
 import type { DataExport } from "@/lib/hooks/use-data-export";
 import { useLatestExportQuery, useRequestDataExportMutation } from "@/lib/hooks/use-data-export";
+import { parseDateInput } from "@/lib/utils/date";
 import { formatFileSize } from "@/lib/utils/format";
+
+const useExportDate = (value: string | null | undefined): string => {
+  const format = useFormatter();
+  const t = useTranslations("DataExport");
+  const date = parseDateInput(value);
+  return date
+    ? format.dateTime(date, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        // Preserve the existing display in the viewer's local time zone.
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      })
+    : t("unknownDate");
+};
 
 interface ExportStatus {
   isPending: boolean;
@@ -47,15 +62,14 @@ const ExportInfoBox = () => {
  */
 const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) => {
   const t = useTranslations("DataExport");
+  const requestedDate = useExportDate(requestedAt);
   return (
     <div className="rounded-md border-l-4 border-blue-500 bg-blue-50 p-4 dark:bg-blue-950">
       <div className="flex items-start gap-3">
         <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
         <div>
           <p className="font-medium text-blue-700 dark:text-blue-300">{t("inProgress")}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t("requestedOn", { date: formatExportDate(requestedAt) })}
-          </p>
+          <p className="text-muted-foreground mt-1 text-sm">{t("requestedOn", { date: requestedDate })}</p>
           <p className="text-muted-foreground mt-1 text-sm">{t("emailWhenReady")}</p>
         </div>
       </div>
@@ -68,6 +82,10 @@ const ExportPendingState = ({ requestedAt }: { requestedAt?: string | null }) =>
  */
 const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => {
   const t = useTranslations("DataExport");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const completedDate = useExportDate(latestExport.completedAt);
+  const expiry = parseDateInput(latestExport.expiresAt);
   return (
     <div className="rounded-md border-l-4 border-green-500 bg-green-50 p-4 dark:bg-green-950">
       <div className="flex items-start gap-3">
@@ -76,15 +94,15 @@ const ExportReadyState = ({ latestExport }: { latestExport: DataExport }) => {
           <p className="font-medium text-green-700 dark:text-green-300">{t("ready")}</p>
           <div className="text-muted-foreground mt-2 space-y-1 text-sm">
             <p>
-              <span className="font-medium">{t("createdLabel")}</span> {formatExportDate(latestExport.completedAt)}
+              <span className="font-medium">{t("createdLabel")}</span> {completedDate}
             </p>
             <p>
               <span className="font-medium">{t("sizeLabel")}</span> {formatFileSize(latestExport.fileSize)}
             </p>
-            {latestExport.expiresAt && (
+            {expiry && (
               <p className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
-                <span>{getTimeUntilExpiry(latestExport.expiresAt)}</span>
+                <span>{expiry <= now ? t("expired") : t("expiresIn", { time: format.relativeTime(expiry, now) })}</span>
               </p>
             )}
           </div>
