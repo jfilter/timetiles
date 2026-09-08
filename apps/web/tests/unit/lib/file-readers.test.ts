@@ -298,9 +298,11 @@ describe.sequential("File Readers", () => {
       expect(rows[0]!.name).toBe("Doe, Jane");
     });
 
-    it("should not deadlock when consumer breaks early", async () => {
-      const rows = Array.from({ length: 20 }, (_, i) => `${i + 1},Item ${i + 1}`);
-      const csvPath = writeTempCSV("early-break.csv", `id,name\n${rows.join("\n")}\n`);
+    it.each(["utf-8", "windows-1252"])("should close a %s import when the consumer breaks early", async (encoding) => {
+      const iconv = await import("iconv-lite");
+      const rows = Array.from({ length: 20000 }, (_, i) => `${i + 1},Köln ${i + 1}`);
+      const csvPath = path.join(tempDir, "early-break.csv");
+      fs.writeFileSync(csvPath, iconv.default.encode(`id,name\n${rows.join("\n")}\n`, encoding));
 
       const collected: Record<string, unknown>[][] = [];
       for await (const batch of streamBatchesFromFile(csvPath, { batchSize: 3 })) {
@@ -312,6 +314,7 @@ describe.sequential("File Readers", () => {
       expect(collected).toHaveLength(2);
       expect(collected[0]).toHaveLength(3);
       expect(collected[1]).toHaveLength(3);
+      expect(collected[0]![0]!.name).toBe("Köln 1");
     });
 
     it("should not deadlock when consumer throws mid-stream", async () => {
