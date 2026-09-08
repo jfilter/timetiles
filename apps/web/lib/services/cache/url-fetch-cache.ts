@@ -186,6 +186,11 @@ export class UrlFetchCache {
 
     const declaredLength = parseStrictInteger(response.headers.get("content-length") ?? undefined);
     if (declaredLength != null && declaredLength > maxSize) {
+      try {
+        await response.body?.cancel();
+      } catch {
+        // Releasing the connection must not mask the deterministic size error.
+      }
       throw new Error(`File too large: ${declaredLength} bytes (max: ${maxSize})`);
     }
 

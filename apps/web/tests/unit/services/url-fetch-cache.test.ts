@@ -134,9 +134,14 @@ describe("UrlFetchCache", () => {
 
   it("rejects an oversized declared Content-Length before reading the body", async () => {
     const cache = new UrlFetchCache() as unknown as ReadResponseBody;
-    const response = new Response("x", { status: 200, headers: { "Content-Length": "100000" } });
+    const cancel = vi.fn();
+    const response = new Response(new ReadableStream({ cancel }), {
+      status: 200,
+      headers: { "Content-Length": "100000" },
+    });
 
     await expect(cache.readResponseBody(response, 100)).rejects.toThrow(/File too large/);
+    expect(cancel).toHaveBeenCalledOnce();
   });
 
   it("aborts a streamed body once it exceeds the size limit", async () => {
