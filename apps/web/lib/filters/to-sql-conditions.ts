@@ -194,14 +194,14 @@ export const buildFieldFilterConditions = (
 /**
  * Build SQL conditions for numeric range filters.
  *
- * Each range key's stored text (at `transformed_data #>> path`) is normalized
+ * Each range key's stored text (literal key first, then nested path) is normalized
  * with the column's resolved {@link NumberFormat}: strip the thousands separator
  * (first, so a `.`-thousands EU column does not collide with decimal conversion),
  * then convert a `,` decimal separator to `.`. A regex-guarded CASE then yields a
  * `::numeric` ONLY for cleanly-formed US-canonical text and `NULL` otherwise, so
  * the cast NEVER throws on non-numeric/empty cells. Because `NULL >= x` /
  * `NULL <= x` are `NULL` (not TRUE), out-of-format rows are excluded by WHERE —
- * identical semantics to the PG-function copy that Phase 3 must mirror.
+ * matching the range predicates in the PostgreSQL aggregation functions.
  *
  * The `^-?[0-9]+(\.[0-9]+)?$` pattern matches `parseLocaleNumber`'s final
  * canonical-form check so the TS builder, the PG functions, and the in-app

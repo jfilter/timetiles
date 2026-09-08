@@ -26,7 +26,7 @@ export interface BuildCanonicalFiltersOptions {
   ownerId?: number | null;
   /** Whether the requested catalog is accessible to the caller */
   hasRequestedCatalogAccess?: boolean;
-  /** Require events to have geocoded locations (default: false) */
+  /** Require events to have both latitude and longitude (default: false) */
   requireLocation?: boolean;
 }
 
@@ -143,7 +143,7 @@ const applyDataFieldFilters = (filters: CanonicalEventFilters, parameters: Event
 };
 
 /**
- * Apply the start/end date range, normalizing the end to the full day.
+ * Apply the start/end date range, expanding date-only ends to the full UTC day.
  *
  * An inverted pair (start after end) describes an EMPTY interval, so it must match nothing.
  * Dropping both bounds instead made the request fail OPEN: `?startDate=2026-06-01&
@@ -213,10 +213,10 @@ const applyDatasetScope = (filters: CanonicalEventFilters, scopeDatasets: number
 };
 
 /**
- * Normalize end date to include the full day (23:59:59.999Z).
+ * Expand a date-only end to the full UTC day (23:59:59.999Z), preserving datetimes.
  *
  * @param endDate - ISO date string (e.g., "2024-12-31") or datetime string
- * @returns ISO datetime string with time set to end of day, or null
+ * @returns The supplied datetime, the expanded date, or null for empty input
  */
 export const normalizeEndDate = (endDate: string | null): string | null => {
   if (!endDate) return null;

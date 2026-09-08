@@ -35,11 +35,11 @@ export interface CanonicalEventFilters {
   datasets?: number[];
   /** Start date for temporal filtering (ISO 8601) */
   startDate?: string | null;
-  /** End date for temporal filtering — always normalized with end-of-day */
+  /** Inclusive end datetime; date-only inputs expand to the end of the UTC day */
   endDate?: string | null;
   /** Geographic bounds for spatial filtering */
   bounds?: CanonicalBounds | null;
-  /** Only include events with geocoded locations */
+  /** Only include events with both latitude and longitude, regardless of their source */
   requireLocation?: boolean;
   /** Field filters for categorical filtering (keys always validated) */
   fieldFilters?: Record<string, string[]>;
