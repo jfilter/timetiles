@@ -85,7 +85,6 @@ describe.sequential("ingestFilesCleanupJob", () => {
       filesDeleted: 0,
       orphansDeleted: 0,
       orphansSkippedTooNew: 0,
-      swept: true,
       errors: 0,
     });
     expect(mockUnlink).not.toHaveBeenCalled();
@@ -159,7 +158,6 @@ describe.sequential("ingestFilesCleanupJob", () => {
     expect(mockUnlink).toHaveBeenCalledWith(getIngestFilePath("old-orphan.csv"));
     expect(result.output.orphansDeleted).toBe(1);
     expect(result.output.orphansSkippedTooNew).toBe(1);
-    expect(result.output.swept).toBe(true);
   });
 
   it("ignores subdirectories during the sweep", async () => {
@@ -181,7 +179,6 @@ describe.sequential("ingestFilesCleanupJob", () => {
     const result = await ingestFilesCleanupJob.handler(createContext());
     expect(mockUnlink).toHaveBeenCalledTimes(3);
     expect(result.output.orphansDeleted).toBe(3);
-    expect(result.output.swept).toBe(true);
   });
 
   it("aborts the sweep when the referenced set looks incomplete (DB inconsistency)", async () => {
@@ -189,9 +186,9 @@ describe.sequential("ingestFilesCleanupJob", () => {
     mockPayload.count.mockResolvedValue({ totalDocs: 5 }); // ... but 5 rows exist
     mockReaddir.mockResolvedValue([dirent("a.csv")]);
     mockStat.mockResolvedValue({ mtimeMs: now - 72 * HOUR });
-    const result = await ingestFilesCleanupJob.handler(createContext());
-    expect(result.output.swept).toBe(false);
-    expect(result.output.orphansDeleted).toBe(0);
+    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow(
+      "Orphan sweep aborted: referenced set looks incomplete"
+    );
     expect(mockReaddir).not.toHaveBeenCalled();
     expect(mockUnlink).not.toHaveBeenCalled();
   });
@@ -200,8 +197,17 @@ describe.sequential("ingestFilesCleanupJob", () => {
     setupFind({ referencedThrows: true });
     mockPayload.count.mockResolvedValue({ totalDocs: 5 });
     mockReaddir.mockResolvedValue([dirent("a.csv")]);
-    const result = await ingestFilesCleanupJob.handler(createContext());
-    expect(result.output.swept).toBe(false);
+    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow("DB down (referenced)");
+    expect(mockReaddir).not.toHaveBeenCalled();
+    expect(mockUnlink).not.toHaveBeenCalled();
+  });
+
+  it("aborts before reading files if the reference count fails", async () => {
+    setupFind({});
+    mockPayload.count.mockRejectedValueOnce(new Error("Reference count unavailable"));
+
+    await expect(ingestFilesCleanupJob.handler(createContext())).rejects.toThrow("Reference count unavailable");
+
     expect(mockReaddir).not.toHaveBeenCalled();
     expect(mockUnlink).not.toHaveBeenCalled();
   });
@@ -210,7 +216,6 @@ describe.sequential("ingestFilesCleanupJob", () => {
     setupFind({});
     mockReaddir.mockRejectedValueOnce(Object.assign(new Error("ENOENT"), { code: "ENOENT" }));
     const result = await ingestFilesCleanupJob.handler(createContext());
-    expect(result.output.swept).toBe(true);
     expect(result.output.orphansDeleted).toBe(0);
   });
 

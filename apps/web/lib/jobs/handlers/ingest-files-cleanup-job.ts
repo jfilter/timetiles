@@ -140,48 +140,39 @@ const reclaimProcessedFiles = async (
 };
 
 /**
- * Load the set of filenames still referenced by a row. Returns `null` to signal
- * the orphan sweep must abort (DB error or a suspiciously incomplete set), so a
+ * Load the set of filenames still referenced by a row. Throw on a DB error or
+ * a suspiciously incomplete set before starting the orphan sweep, so a
  * transient failure can never make every file look like an orphan.
  */
-const loadReferencedFilenames = async (sys: SystemPayload): Promise<Set<string> | null> => {
-  try {
-    const { totalDocs: refCount } = await sys.count({
+const loadReferencedFilenames = async (sys: SystemPayload): Promise<Set<string>> => {
+  const { totalDocs: refCount } = await sys.count({
+    collection: COLLECTION_NAMES.INGEST_FILES,
+    where: { filename: { not_equals: null } },
+  });
+
+  const referenced = new Set<string>();
+  for (let page = 1; ; page++) {
+    const res = await sys.find({
       collection: COLLECTION_NAMES.INGEST_FILES,
       where: { filename: { not_equals: null } },
+      select: { filename: true },
+      depth: 0,
+      limit: REF_PAGE_SIZE,
+      page,
     });
-
-    const referenced = new Set<string>();
-    for (let page = 1; ; page++) {
-      const res = await sys.find({
-        collection: COLLECTION_NAMES.INGEST_FILES,
-        where: { filename: { not_equals: null } },
-        select: { filename: true },
-        depth: 0,
-        limit: REF_PAGE_SIZE,
-        page,
-      });
-      const docs = res.docs as IngestFileRow[];
-      for (const doc of docs) if (doc.filename) referenced.add(doc.filename);
-      if (docs.length < REF_PAGE_SIZE) break;
-    }
-
-    // Guard: refCount==0 with an empty set is the legitimate "everything
-    // reclaimed, only orphans remain" state (and is exactly how legacy orphans
-    // get cleared) — allow it. Abort only when rows exist but we failed to load
-    // (most of) them.
-    if (refCount > 0 && referenced.size < refCount * REF_LOAD_MIN_FRACTION) {
-      logger.warn(
-        { refCount, referencedLoaded: referenced.size },
-        "Orphan sweep aborted: referenced set looks incomplete"
-      );
-      return null;
-    }
-    return referenced;
-  } catch (error) {
-    logError(error, "Orphan sweep aborted: failed to load referenced filenames");
-    return null;
+    const docs = res.docs as IngestFileRow[];
+    for (const doc of docs) if (doc.filename) referenced.add(doc.filename);
+    if (docs.length < REF_PAGE_SIZE) break;
   }
+
+  // Guard: refCount==0 with an empty set is the legitimate "everything
+  // reclaimed, only orphans remain" state (and is exactly how legacy orphans
+  // get cleared) — allow it. Abort only when rows exist but we failed to load
+  // (most of) them.
+  if (refCount > 0 && referenced.size < refCount * REF_LOAD_MIN_FRACTION) {
+    throw new Error("Orphan sweep aborted: referenced set looks incomplete");
+  }
+  return referenced;
 };
 
 /**
@@ -190,9 +181,8 @@ const loadReferencedFilenames = async (sys: SystemPayload): Promise<Set<string> 
 const sweepOrphans = async (
   sys: SystemPayload,
   nowMs: number
-): Promise<{ orphansDeleted: number; orphansSkippedTooNew: number; swept: boolean }> => {
+): Promise<{ orphansDeleted: number; orphansSkippedTooNew: number }> => {
   const referenced = await loadReferencedFilenames(sys);
-  if (referenced === null) return { orphansDeleted: 0, orphansSkippedTooNew: 0, swept: false };
 
   const graceCutoff = nowMs - getEnv().INGEST_FILE_ORPHAN_GRACE_HOURS * HOUR_MS;
   const dir = getIngestFilesDir();
@@ -201,7 +191,7 @@ const sweepOrphans = async (
   try {
     entries = await readdir(dir, { withFileTypes: true });
   } catch (error) {
-    if (isENOENT(error)) return { orphansDeleted: 0, orphansSkippedTooNew: 0, swept: true };
+    if (isENOENT(error)) return { orphansDeleted: 0, orphansSkippedTooNew: 0 };
     throw error;
   }
 
@@ -224,7 +214,7 @@ const sweepOrphans = async (
   }
 
   const orphansDeleted = await unlinkPaths(orphanPaths);
-  return { orphansDeleted, orphansSkippedTooNew, swept: true };
+  return { orphansDeleted, orphansSkippedTooNew };
 };
 
 /**
@@ -250,7 +240,6 @@ export const ingestFilesCleanupJob = {
         filesDeleted: reclaim.filesDeleted,
         orphansDeleted: sweep.orphansDeleted,
         orphansSkippedTooNew: sweep.orphansSkippedTooNew,
-        swept: sweep.swept,
         errors: reclaim.errors,
       };
       logger.info({ jobId: job?.id, ...output }, "Ingest-files cleanup job completed");
