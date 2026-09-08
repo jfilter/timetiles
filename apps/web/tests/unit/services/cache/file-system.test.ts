@@ -13,6 +13,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { Cache } from "@/lib/services/cache/cache";
 import { FileSystemCacheStorage } from "@/lib/services/cache/storage/file-system";
 import { TEST_SECRETS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
@@ -53,6 +54,28 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("basic operations", () => {
+    it("isolates listing and clearing between cache namespaces", async () => {
+      const cache = new Cache({ storage, keyPrefix: "http:v2:" });
+      await storage.set("http:legacy", "old");
+      await storage.set("other:http:v2:embedded", "foreign");
+      await cache.set("current", "new");
+
+      expect(await cache.keys()).toEqual(["current"]);
+      expect(await cache.clear()).toBe(1);
+      expect(await storage.keys()).toEqual(["http:legacy", "other:http:v2:embedded"]);
+    });
+
+    it("treats namespace characters literally when applying patterns", async () => {
+      const cache = new Cache({ storage, keyPrefix: "v2.:" });
+      await storage.set("v2x:entry", "foreign");
+      await cache.set("entry", "own");
+      await cache.set("keep", "own");
+
+      expect(await cache.keys("entry")).toEqual(["entry"]);
+      expect(await cache.clear("entry")).toBe(1);
+      expect(await storage.keys()).toEqual(["v2x:entry", "v2.:keep"]);
+    });
+
     it("should store and retrieve a value", async () => {
       const key = "fs-test-key";
       const value = { data: "test-value" };

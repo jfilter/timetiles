@@ -29,6 +29,13 @@ export class Cache {
     return this.keyPrefix + key;
   }
 
+  private makePattern(pattern?: string): string | undefined {
+    if (!this.keyPrefix) return pattern;
+    const prefix = this.keyPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const suffix = pattern ? `(?:${pattern})` : "";
+    return `^${prefix}${suffix}`;
+  }
+
   /**
    * Get a value from cache
    */
@@ -73,7 +80,7 @@ export class Cache {
    * Clear cache entries matching pattern
    */
   async clear(pattern?: string): Promise<number> {
-    const fullPattern = pattern ? this.makeKey(pattern) : undefined;
+    const fullPattern = this.makePattern(pattern);
     try {
       return await this.storage.clear(fullPattern);
     } catch {
@@ -86,7 +93,7 @@ export class Cache {
    * Get all keys matching pattern
    */
   async keys(pattern?: string): Promise<string[]> {
-    const fullPattern = pattern ? this.makeKey(pattern) : undefined;
+    const fullPattern = this.makePattern(pattern);
     try {
       const keys = await this.storage.keys(fullPattern);
 
