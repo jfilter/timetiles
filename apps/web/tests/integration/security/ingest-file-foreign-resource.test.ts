@@ -13,6 +13,7 @@
 
 import { readFile } from "node:fs/promises";
 
+import { createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
@@ -96,6 +97,42 @@ describe.sequential("Import File Foreign Resource Vulnerability", () => {
   });
 
   describe("Legitimate access after fix", () => {
+    it("checks ownership in the caller's transaction", async () => {
+      const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, "name\nOriginal\n", {
+        user: ownerUser.id,
+      });
+      const req = await createLocalReq({ user: attackerUser }, payload);
+      expect(await initTransaction(req)).toBe(true);
+      try {
+        // Internal ownership changes must be visible to access checks before commit.
+        await payload.update({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          data: { user: attackerUser.id },
+          overrideAccess: true,
+          req,
+        });
+        const visible = await payload.findByID({
+          collection: "ingest-files",
+          id: ingestFile.id,
+          overrideAccess: false,
+          depth: 0,
+          req,
+        });
+        expect(visible.user).toBe(attackerUser.id);
+        await expect(
+          payload.findByID({
+            collection: "ingest-files",
+            id: ingestFile.id,
+            overrideAccess: false,
+            req: { ...req, user: ownerUser },
+          })
+        ).rejects.toThrow(/not allowed|not found/i);
+      } finally {
+        await killTransaction(req);
+      }
+    });
+
     it("rejects owner-supplied storage metadata updates", async () => {
       const { ingestFile } = await withIngestFile(testEnv, ownerPrivateCatalog.id, "name\nOriginal\n", {
         user: ownerUser.id,
