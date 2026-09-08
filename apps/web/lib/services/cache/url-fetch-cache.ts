@@ -19,6 +19,14 @@ import { parseStrictInteger } from "@/lib/utils/event-params";
 
 import { Cache } from "./cache";
 import { FileSystemCacheStorage } from "./storage/file-system";
+import type { UrlFetchCacheOptions } from "./types";
+
+interface CacheRequestOptions extends RequestInit, Omit<UrlFetchCacheOptions, "useCache"> {
+  userId?: string;
+  /** Fingerprint of credential-bearing request headers; isolates cached responses per auth identity. */
+  authFingerprint?: string;
+  maxSize?: number;
+}
 
 interface CachedResponse {
   data: Buffer;
@@ -257,12 +265,7 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & {
-      bypassCache?: boolean;
-      forceRevalidate?: boolean;
-      respectCacheControl?: boolean;
-      maxSize?: number;
-    }
+    options?: CacheRequestOptions
   ): Promise<CachedResponse> {
     const isStale = this.isStale(cached);
 
@@ -288,12 +291,7 @@ export class UrlFetchCache {
     url: string,
     cacheKey: string,
     cached: CachedEntry,
-    options?: RequestInit & {
-      bypassCache?: boolean;
-      forceRevalidate?: boolean;
-      respectCacheControl?: boolean;
-      maxSize?: number;
-    }
+    options?: CacheRequestOptions
   ): Promise<CachedResponse> {
     logger.debug("HTTP cache stale, attempting revalidation");
     const mustRevalidate = cached.headers["cache-control"]
@@ -394,16 +392,7 @@ export class UrlFetchCache {
   /**
    * Helper to fetch fresh content
    */
-  private async fetchFresh(
-    url: string,
-    cacheKey: string,
-    options?: RequestInit & {
-      bypassCache?: boolean;
-      forceRevalidate?: boolean;
-      respectCacheControl?: boolean;
-      maxSize?: number;
-    }
-  ): Promise<CachedResponse> {
+  private async fetchFresh(url: string, cacheKey: string, options?: CacheRequestOptions): Promise<CachedResponse> {
     const {
       bypassCache: _bypassCache,
       forceRevalidate: _forceRevalidate,
@@ -423,20 +412,7 @@ export class UrlFetchCache {
    * underlying `fetch` calls so that the request aborts after the
    * specified number of milliseconds.
    */
-  async fetch(
-    url: string,
-    options?: RequestInit & {
-      bypassCache?: boolean;
-      forceRevalidate?: boolean;
-      /** Per-request override of the global cache.urlFetch.respectCacheControl config. */
-      respectCacheControl?: boolean;
-      userId?: string;
-      /** Fingerprint of credential-bearing request headers; isolates cached responses per auth identity. */
-      authFingerprint?: string;
-      timeout?: number;
-      maxSize?: number;
-    }
-  ): Promise<CachedResponse> {
+  async fetch(url: string, options?: CacheRequestOptions & { timeout?: number }): Promise<CachedResponse> {
     const { timeout, ...rest } = options ?? {};
 
     // Wrap the real work so we can apply a timeout uniformly
@@ -471,17 +447,7 @@ export class UrlFetchCache {
   /**
    * Core fetch implementation (timeout handling is in the public `fetch` method).
    */
-  private async fetchInner(
-    url: string,
-    options?: RequestInit & {
-      bypassCache?: boolean;
-      forceRevalidate?: boolean;
-      respectCacheControl?: boolean;
-      userId?: string;
-      authFingerprint?: string;
-      maxSize?: number;
-    }
-  ): Promise<CachedResponse> {
+  private async fetchInner(url: string, options?: CacheRequestOptions): Promise<CachedResponse> {
     const method = options?.method ?? "GET";
     const userId = options?.userId;
     const cacheKey = this.getCacheKey(url, method, userId, options?.authFingerprint);
