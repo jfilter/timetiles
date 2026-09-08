@@ -312,7 +312,7 @@ export const convertGeoJsonToCsv = (buffer: Buffer, options?: GeoJsonToCsvOption
   // No formula-escaping: this is canonical ingest data that the pipeline
   // re-parses into events (an apostrophe would become literal data, not
   // display). Formula-injection escaping (CWE-1236) belongs at the user-facing
-  // export boundary — see escapeCsvFormula in lib/utils/csv-escape.ts.
+  // export boundary — see escapeCsvFormulaBoundaries in lib/utils/csv-escape.ts.
   const strippedRows = stripExcludedFieldsFromRecords(rows, options?.excludeFields);
   const csvString = unparseRowsToCsv(strippedRows);
   const csv = Buffer.from(csvString, "utf-8");

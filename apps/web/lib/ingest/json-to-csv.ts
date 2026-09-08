@@ -203,7 +203,7 @@ export const recordsToCsv = (records: Record<string, unknown>[]): Buffer => {
   // so escaping corrupts real values ("-42" -> "'-42", "@venue", "+1-555…", and
   // numeric strings stop parsing as numbers). Formula-injection escaping
   // (CWE-1236) belongs at the user-facing CSV/XLSX *export* boundary — see
-  // escapeCsvFormula in lib/utils/csv-escape.ts — not at ingest.
+  // escapeCsvFormulaBoundaries in lib/utils/csv-escape.ts — not at ingest.
   const flattened = records.map((record) => flattenObject(record));
   const csvString = unparseRowsToCsv(flattened);
   return Buffer.from(csvString, "utf-8");

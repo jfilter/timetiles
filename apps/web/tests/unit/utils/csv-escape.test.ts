@@ -1,8 +1,8 @@
 /**
  * Unit tests for CSV formula-injection escaping.
  *
- * Covers every OWASP-flagged leading character (=, +, -, @, TAB, CR) plus
- * negative cases (non-string values, empty strings, ISO dates, safe prefixes).
+ * Covers CSV column preservation, delimiter boundaries, streaming chunks,
+ * BOM handling, separator directives, and SYLK neutralization.
  *
  * @module
  * @category Tests
@@ -10,108 +10,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  escapeCsvFormula,
   escapeCsvFormulaBoundaries,
   escapeCsvFormulasInText,
   unparseRowsToCsv,
   UTF8_BOM,
 } from "@/lib/utils/csv-escape";
-
-describe("escapeCsvFormula", () => {
-  describe("escapes dangerous leading characters", () => {
-    it.each([
-      ["= formula", "=SUM(A1)", "'=SUM(A1)"],
-      ["+ formula", "+cmd|'/C calc'!A0", "'+cmd|'/C calc'!A0"],
-      ["- formula", "-1+1", "'-1+1"],
-      ["@ formula", "@SUM(A1)", "'@SUM(A1)"],
-      ["TAB prefix", "\tfoo", "'\tfoo"],
-      ["CR prefix", "\rfoo", "'\rfoo"],
-      ["bare =", "=", "'="],
-      ["bare +", "+", "'+"],
-      ["bare -", "-", "'-"],
-      ["bare @", "@", "'@"],
-      ["bare TAB", "\t", "'\t"],
-      ["bare CR", "\r", "'\r"],
-    ])("escapes %s", (_label, input, expected) => {
-      expect(escapeCsvFormula(input)).toBe(expected);
-    });
-
-    it("escapes DDE payload", () => {
-      // Classic DDE injection payload (CVE-2014-3524 family)
-      const payload = '=cmd|"/c calc"!A0';
-      expect(escapeCsvFormula(payload)).toBe(`'${payload}`);
-    });
-
-    it("escapes string '-42' (cannot distinguish from formula)", () => {
-      // This is expected defensive behavior. Numeric fields should be typed
-      // as numbers, not strings, to avoid the escape.
-      expect(escapeCsvFormula("-42")).toBe("'-42");
-    });
-  });
-
-  describe("passes through safe values", () => {
-    it("leaves plain strings alone", () => {
-      expect(escapeCsvFormula("hello world")).toBe("hello world");
-    });
-
-    it("leaves ISO dates alone (start with digit)", () => {
-      expect(escapeCsvFormula("2024-01-15")).toBe("2024-01-15");
-    });
-
-    it("leaves ISO timestamps alone", () => {
-      expect(escapeCsvFormula("2024-01-15T10:30:00Z")).toBe("2024-01-15T10:30:00Z");
-    });
-
-    it("leaves empty string alone", () => {
-      expect(escapeCsvFormula("")).toBe("");
-    });
-
-    it("leaves string starting with whitespace alone", () => {
-      // A single space is not in the formula-prefix set
-      expect(escapeCsvFormula(" =SUM(A1)")).toBe(" =SUM(A1)");
-    });
-
-    it("leaves quoted strings alone", () => {
-      expect(escapeCsvFormula('"hello"')).toBe('"hello"');
-    });
-
-    it("leaves strings starting with letters alone", () => {
-      expect(escapeCsvFormula("Excel")).toBe("Excel");
-    });
-  });
-
-  describe("passes through non-string values unchanged", () => {
-    it("passes numbers through", () => {
-      expect(escapeCsvFormula(42)).toBe(42);
-      expect(escapeCsvFormula(-42)).toBe(-42);
-      expect(escapeCsvFormula(0)).toBe(0);
-      expect(escapeCsvFormula(3.14)).toBe(3.14);
-    });
-
-    it("passes booleans through", () => {
-      expect(escapeCsvFormula(true)).toBe(true);
-      expect(escapeCsvFormula(false)).toBe(false);
-    });
-
-    it("passes null through", () => {
-      expect(escapeCsvFormula(null)).toBeNull();
-    });
-
-    it("passes undefined through", () => {
-      expect(escapeCsvFormula(undefined)).toBeUndefined();
-    });
-
-    it("passes objects through", () => {
-      const obj = { a: 1 };
-      expect(escapeCsvFormula(obj)).toBe(obj);
-    });
-
-    it("passes arrays through", () => {
-      const arr = [1, 2, 3];
-      expect(escapeCsvFormula(arr)).toBe(arr);
-    });
-  });
-});
 
 describe("unparseRowsToCsv", () => {
   const headerOf = (csv: string): string => csv.split(/\r?\n/)[0] ?? "";

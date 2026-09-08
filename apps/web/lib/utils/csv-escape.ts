@@ -1,47 +1,14 @@
 /**
- * CSV / spreadsheet formula-injection escaping utilities.
+ * CSV serialization and download-boundary formula escaping.
  *
- * Papa Parse's default `unparse()` (and most CSV/XLSX writers) does NOT escape
- * cells whose first character could cause a spreadsheet application to
- * interpret the cell as a formula. If a recipient opens the file in Excel /
- * LibreOffice Calc / Google Sheets, those cells execute as formulas and can
- * exfiltrate data, hit URLs, or run local commands — the classic
- * "CSV injection" / "formula injection" class (CWE-1236).
- *
- * The defensive fix is to prefix such cells with a single apostrophe (`'`).
- * Spreadsheet applications strip the apostrophe on display but refuse to
- * evaluate the cell as a formula.
- *
- * Dangerous leading characters per OWASP guidance:
- *   `=`, `+`, `-`, `@`, TAB (`\t`), CR (`\r`).
- *
- * Apply this BEFORE handing rows to `Papa.unparse()` or any other CSV/XLSX
- * writer that does not offer its own `escapeFormula` option.
+ * Canonical ingest CSVs preserve source values. The ingest-files download
+ * handler applies the streaming escape helpers when serving CSVs to users.
  *
  * @module
  * @category Utils
  */
 
 import Papa from "papaparse";
-
-const FORMULA_PREFIXES = /^[=+\-@\t\r]/;
-
-/**
- * Prefix a single quote to a cell value if it would otherwise be interpreted
- * as a formula by a spreadsheet application. Non-string values pass through
- * unchanged (numbers, booleans, null, undefined, objects).
- *
- * Note: legitimate string values that happen to start with `-` (e.g. `-42`,
- * or a negative reading like `-0.5`) are also escaped. This is the correct
- * defensive behavior: the escape is cosmetic (spreadsheets strip the
- * apostrophe on display) and we cannot distinguish "user-provided negative
- * number as a string" from "formula payload" at this layer. Callers that
- * know they have a numeric field should pass a `number`, not a `string`.
- */
-export const escapeCsvFormula = (value: unknown): unknown => {
-  if (typeof value !== "string") return value;
-  return FORMULA_PREFIXES.test(value) ? `'${value}` : value;
-};
 
 // Characters a spreadsheet evaluates as a formula when they lead a cell.
 const FORMULA_TRIGGERS = new Set(["=", "+", "-", "@"]);
@@ -107,8 +74,7 @@ export const neutralizeSylkMagic = (text: string): string => (text.startsWith("I
  * It only ever INSERTS apostrophes, so the file structure (delimiters, quotes,
  * line breaks, a leading BOM) is preserved exactly; the only cost is occasionally
  * over-escaping a `<boundary><trigger>` sequence inside a quoted value, which is
- * cosmetic and safe (matches {@link escapeCsvFormula}, which likewise escapes e.g.
- * a leading `-5`).
+ * intentional, as is escaping negative numeric strings such as `-5`.
  *
  * Streaming: pass the previous call's returned `carry` (its last two raw chars)
  * back in as `carry` so boundary detection is correct across chunks, and pass the
