@@ -55,5 +55,4 @@ export const quotaResetJobConfig = {
     },
   ],
   retries: 3,
-  waitUntil: 120000, // 2 minutes timeout
 };

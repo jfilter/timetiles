@@ -83,4 +83,13 @@ describe("createTestConfig", () => {
 
     expect(config.jobs?.autoRun).toBeUndefined();
   });
+
+  it("does not register queue delays as unsupported task timeouts", async () => {
+    const config = await createTestConfig();
+
+    expect(config.jobs?.tasks?.length).toBeGreaterThan(0);
+    for (const task of config.jobs?.tasks ?? []) {
+      expect(task).not.toHaveProperty("waitUntil");
+    }
+  });
 });

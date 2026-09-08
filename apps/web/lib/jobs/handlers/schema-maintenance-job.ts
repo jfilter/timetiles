@@ -265,7 +265,6 @@ export const schemaMaintenanceJob = {
     },
   ],
   retries: 2,
-  waitUntil: 600000, // 10 minutes timeout
   handler: async (context: JobHandlerContext): Promise<{ output: SchemaMaintenanceResult }> => {
     const input = (context.input ?? context.job?.input) as SchemaMaintenanceJobInput | undefined;
     const { payload } = context.req;

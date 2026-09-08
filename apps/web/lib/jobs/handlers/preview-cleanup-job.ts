@@ -27,7 +27,6 @@ export const previewCleanupJob = {
   /** Run every 6 hours. Preview TTL is 1 hour, so even at the extremes nothing sits older than 7 hours on disk. */
   schedule: [{ cron: "0 */6 * * *", queue: "maintenance" as const }],
   retries: 2,
-  waitUntil: 300000, // 5 minutes timeout
   // Sync handler — sweepExpiredPreviews is synchronous but Payload still
   // awaits the returned object, so we return a resolved value directly.
   handler: (context: JobHandlerContext) => {

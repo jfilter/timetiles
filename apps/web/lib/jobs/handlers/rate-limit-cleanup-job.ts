@@ -24,7 +24,6 @@ export const rateLimitCleanupJob = {
     },
   ],
   retries: 2,
-  waitUntil: 120000, // 2 minutes timeout
   handler: async ({ req }: JobHandlerContext) => {
     const { backend, store } = createRateLimitStore(req.payload);
 

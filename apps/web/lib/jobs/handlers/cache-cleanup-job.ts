@@ -34,7 +34,6 @@ export const cacheCleanupJob = {
     },
   ],
   retries: 2,
-  waitUntil: 300000, // 5 minutes timeout
   handler: async (context: JobHandlerContext) => {
     const input = ((context.input ?? context.job?.input) as CacheCleanupJobInput | undefined) ?? {};
 
