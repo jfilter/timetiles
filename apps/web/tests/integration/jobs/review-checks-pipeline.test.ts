@@ -152,6 +152,17 @@ describe.sequential("Review Checks Pipeline", () => {
     expect(job.errors).toHaveLength(500);
     const events = await payload.count({ collection: "events", where: { dataset: { equals: dataset.id } } });
     expect(events.totalDocs).toBe(0);
+
+    await approveAndResume(payload, ingestFile.id, job.id, job.schemaValidation, uploadUserId);
+
+    const approvedJob = await payload.findByID({ collection: "ingest-jobs", id: job.id });
+    expect(approvedJob.stage).toBe("completed");
+    expect(approvedJob.errors).toHaveLength(500);
+    const eventsAfterApproval = await payload.count({
+      collection: "events",
+      where: { dataset: { equals: dataset.id } },
+    });
+    expect(eventsAfterApproval.totalDocs).toBe(0);
   });
 
   it("should pause for no-timestamp when no date column exists", async () => {
