@@ -10,8 +10,6 @@
  */
 import type { ReactNode } from "react";
 
-/* eslint-disable sonarjs/function-return-type -- Root layout must return children directly */
 export default function RootLayout({ children }: { children: ReactNode }): ReactNode {
   return children;
 }
-/* eslint-enable sonarjs/function-return-type */

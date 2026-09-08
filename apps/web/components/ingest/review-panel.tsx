@@ -68,11 +68,9 @@ const getReasonConfig = (t: ReturnType<typeof useTranslations>): Record<string, 
 });
 
 /** Axis-order options for the ambiguous combined-coordinate picker. */
-// eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
 const COORDINATE_ORDER_OPTIONS = ["lat,lng", "lng,lat"];
 
 /** Day/month order options for the ambiguous date-order picker. */
-// eslint-disable-next-line i18next/no-literal-string -- canonical format tokens, not display copy
 const DATE_ORDER_OPTIONS = ["D/M", "M/D"];
 
 /**
