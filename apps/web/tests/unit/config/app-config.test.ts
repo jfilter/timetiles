@@ -291,6 +291,32 @@ batchSizes:
   });
 
   describe("YAML validation (strict mode)", () => {
+    describe.each([
+      "maxActiveSchedules",
+      "maxUrlFetchesPerDay",
+      "maxFileUploadsPerDay",
+      "maxEventsPerImport",
+      "maxTotalEvents",
+      "maxIngestJobsPerDay",
+      "maxCatalogsPerUser",
+      "maxScraperRepos",
+      "maxScraperRunsPerDay",
+    ])("count quota %s", (field) => {
+      it("rejects values below the unlimited sentinel", () => {
+        existsSyncSpy.mockReturnValue(true);
+        readFileSyncSpy.mockReturnValue(JSON.stringify({ quotas: { "2": { [field]: -2 } } }));
+
+        expect(() => getAppConfig()).toThrow();
+      });
+
+      it.each([-1, 0])("preserves the supported boundary value %s", (value) => {
+        existsSyncSpy.mockReturnValue(true);
+        readFileSyncSpy.mockReturnValue(JSON.stringify({ quotas: { "2": { [field]: value } } }));
+
+        expect(getAppConfig().quotas[2]).toHaveProperty(field, value);
+      });
+    });
+
     describe.each(["endpoint", "trust-level"])("%s window identifiers", (scope) => {
       const configureWindows = (windows: { limit: number; windowMs: number; name?: string }[]) => {
         existsSyncSpy.mockReturnValue(true);

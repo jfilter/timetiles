@@ -41,17 +41,19 @@ const rateLimitConfigSchema = z.object({
     ),
 });
 
+const countQuotaSchema = z.number().int().min(-1);
+
 const userQuotasSchema = z.object({
-  maxActiveSchedules: z.number().int(),
-  maxUrlFetchesPerDay: z.number().int(),
-  maxFileUploadsPerDay: z.number().int(),
-  maxEventsPerImport: z.number().int(),
-  maxTotalEvents: z.number().int(),
-  maxIngestJobsPerDay: z.number().int(),
+  maxActiveSchedules: countQuotaSchema,
+  maxUrlFetchesPerDay: countQuotaSchema,
+  maxFileUploadsPerDay: countQuotaSchema,
+  maxEventsPerImport: countQuotaSchema,
+  maxTotalEvents: countQuotaSchema,
+  maxIngestJobsPerDay: countQuotaSchema,
   maxFileSizeMB: z.number().int(),
-  maxCatalogsPerUser: z.number().int(),
-  maxScraperRepos: z.number().int(),
-  maxScraperRunsPerDay: z.number().int(),
+  maxCatalogsPerUser: countQuotaSchema,
+  maxScraperRepos: countQuotaSchema,
+  maxScraperRunsPerDay: countQuotaSchema,
 });
 
 const trustLevelRateLimitsSchema = z.object({ FILE_UPLOAD: rateLimitConfigSchema, API_GENERAL: rateLimitConfigSchema });
