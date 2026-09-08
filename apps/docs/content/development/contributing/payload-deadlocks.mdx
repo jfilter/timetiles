@@ -1,256 +1,85 @@
-# Payload CMS Deadlock Prevention
+# Payload Transactions and Deadlock Prevention
 
-import { Callout } from "nextra/components";
+Nested Payload operations must receive the caller's `req` to participate in its
+transaction. This applies to reads as well as writes, including operations inside
+validation and access helpers.
 
-## Overview
+## Keep nested operations in the same transaction
 
-When working with Payload CMS hooks that perform nested database operations, you may encounter **deadlocks** or **timeout errors**. This guide explains the root causes and provides proven patterns to prevent them.
+Without `req`, a nested read may not see an uncommitted record or ownership change.
+A nested write may wait for a lock held by the outer transaction while the outer
+operation waits for that write. Not every missing request causes a deadlock, but
+it breaks the intended transaction boundary.
 
-<Callout type="error">
-  **Critical Issue**: Calling `payload.update()`, `payload.create()`, or `payload.findByID()` inside hooks without
-  proper configuration can cause database transactions to hang indefinitely, resulting in 60-second timeouts in tests
-  and production failures.
-</Callout>
-
-## The Problem
-
-### Symptoms
-
-- Tests timing out at 60+ seconds
-- Hooks hanging during execution
-- Database operations never completing
-- Error messages like: `Hook timed out in 60000ms`
-
-### Root Cause
-
-Payload CMS 3.x uses PostgreSQL transactions to ensure data consistency. When you call Payload methods inside hooks (like `beforeChange`, `afterChange`, etc.) without proper configuration, the nested operation tries to start a **new transaction** instead of reusing the existing one, causing a deadlock.
+For example, a scraper's ownership hook reads its repository this way:
 
 ```typescript
-// ❌ WRONG - This will deadlock!
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      // This starts a NEW transaction, causing deadlock
-      await req.payload.update({ collection: "users", id: doc.userId, data: { lastUpdated: new Date() } });
-    },
-  ];
-}
+const repo = await req.payload.findByID({ collection: "scraper-repos", id: repoId, overrideAccess: true, req });
 ```
 
-## The Solution
+The helper receives the original request, not just `req.payload` or `req.user`.
+See `apps/web/lib/collections/scrapers/validation.ts` and
+`apps/web/lib/collections/scheduled-ingests/index.ts` for ownership checks that
+must see records created earlier in the same transaction.
 
-### Core Pattern: Pass `req` and Use `context` Flags
+Passing `req` shares an existing transaction; it does not guarantee that every
+caller has started one. Code that owns a multi-operation transaction must use
+Payload's `initTransaction`, `commitTransaction`, and `killTransaction`, and must
+not commit a transaction owned by its caller. Raw SQL must use
+`getTransactionAwareDrizzle` with that request rather than the root connection.
 
-To prevent deadlocks, **always** pass the `req` object and use `context` flags when performing nested Payload operations:
+## Access control and recursion are separate concerns
 
-```typescript
-// ✅ CORRECT - Stays in same transaction
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      await req.payload.update({
-        collection: "users",
-        id: doc.userId,
-        req, // Pass req to stay in same transaction
-        data: { lastUpdated: new Date() },
-        context: {
-          ...(req.context || {}),
-          skipCustomHooks: true, // Prevent infinite recursion
-        },
-        overrideAccess: true, // Skip access control if needed
-      });
-    },
-  ];
-}
+- `overrideAccess` controls authorization, not transaction reuse. Payload's Local
+  API bypasses access checks by default. Use `overrideAccess: false` when enforcing
+  client permissions; use internal access deliberately, not as a deadlock fix.
+- Context flags work only when the affected hook explicitly checks them. Do not
+  add an arbitrary `skipYourHooks` flag and assume Payload interprets it.
+- Reuse an established context flag only when the nested operation should skip
+  that specific behavior. Do not suppress validation, quota enforcement, or all
+  hooks merely to make a test finish.
+- Prefer Payload ownership filters over a separate authorization lookup when
+  the permission can be expressed as a `Where` condition.
+
+## Quotas require current database state
+
+Usage lives in the `user-usage` collection, not in a cached `user.usage` property.
+The quota service reads and updates that state through the caller's transaction.
+For an atomic limit check and reservation, use its `checkAndIncrementUsage`
+operation rather than a separate check followed by an increment. A cached count
+cannot prevent two concurrent requests from both consuming the remaining quota.
+
+See `apps/web/lib/services/quota-service.ts` and the scheduled-ingest quota hooks
+for the current signatures and rollback handling. Do not replace these operations
+with in-memory checks to avoid database queries.
+
+## Diagnose the actual wait
+
+A timeout is a symptom, not proof of a deadlock. PostgreSQL lock waits, recursive
+hooks, a missing database connection, and slow setup require different fixes.
+
+1. Trace the original `req` through helpers and nested Payload operations.
+2. Check whether a transaction is active and whether raw SQL uses its connection.
+3. Inspect database lock waits with `pg_stat_activity` and `pg_blocking_pids`.
+4. Check that any recursion flag is read by the hook it is supposed to affect.
+5. Use structured logging around the operation without logging credentials or
+   sensitive record contents.
+
+Do not fix a lock wait by increasing timeouts or disabling authorization.
+
+## Verify with real transactions
+
+Run focused integration tests against PostgreSQL, for example:
+
+```bash
+make test-ai FILTER="pipeline-field-immutability scraper-collections"
 ```
 
-### Key Components Explained
+The regression tests create related records within one uncommitted transaction
+and verify that nested ownership checks can read them. Cleanup rolls the
+transaction back. Concurrency tests should observe actual lock contention and
+verify committed effects, rather than relying on a sleep to guess execution order.
 
-1. **`req` parameter**: Ensures the operation uses the same database transaction
-2. **`context` flags**: Prevents infinite loops by skipping hooks on nested operations
-3. **`overrideAccess: true`**: Skips access control to avoid nested authorization checks
-
-## Common Deadlock Scenarios
-
-### Scenario 1: Usage Tracking in Hooks
-
-**Problem**: Tracking user quota usage after creating a record causes deadlock.
-
-```typescript
-// ❌ WRONG
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      if (req.user) {
-        const quotaService = createQuotaService(req.payload);
-        // Missing req parameter causes deadlock
-        await quotaService.incrementUsage(req.user.id, "FILE_UPLOADS", 1);
-      }
-    },
-  ];
-}
-```
-
-**Solution**: Pass `req` to service methods and ensure they pass it to nested operations.
-
-```typescript
-// ✅ CORRECT
-hooks: {
-  afterChange: [
-    async ({ doc, req }) => {
-      if (req.user) {
-        const quotaService = createQuotaService(req.payload);
-        // Pass req to service method
-        await quotaService.incrementUsage(req.user.id, 'FILE_UPLOADS', 1, req);
-      }
-    }
-  ]
-}
-
-// In quota-service.ts
-async incrementUsage(userId: number, usageType: string, amount: number, req?: any) {
-  await this.payload.update({
-    collection: "users",
-    id: userId,
-    req, // Use passed req
-    data: { usage: newUsage },
-    context: {
-      ...(req?.context || {}),
-      skipUsageHooks: true // Custom flag to prevent recursion
-    },
-    overrideAccess: true
-  });
-}
-```
-
-### Scenario 2: Quota Checks in `beforeChange`
-
-**Problem**: Checking quotas before creating records requires reading user data.
-
-```typescript
-// ❌ WRONG
-hooks: {
-  beforeChange: [
-    async ({ req, operation }) => {
-      if (operation === "create" && req.user) {
-        const quotaService = createQuotaService(req.payload);
-        // Reading user during transaction without overrideAccess
-        const check = await quotaService.checkQuota(req.user, "FILE_UPLOADS", 1);
-        if (!check.allowed) throw new Error("Quota exceeded");
-      }
-    },
-  ];
-}
-```
-
-**Solution**: Read from cached user object instead of querying database.
-
-```typescript
-// ✅ CORRECT
-async checkQuota(user: User, quotaType: string, amount: number, req?: any) {
-  // Read usage directly from user object (already loaded in memory)
-  const usage = (user as any).usage as UserUsage | undefined;
-
-  // Calculate quota without database queries
-  const limit = this.getEffectiveQuotas(user)[quotaType];
-  const current = usage?.[quotaType] || 0;
-
-  return {
-    allowed: current + amount <= limit,
-    current,
-    limit
-  };
-}
-```
-
-## Testing for Deadlocks
-
-Tests will timeout (60+ seconds) if deadlocks occur. Use short timeouts (10-15s) to detect issues quickly:
-
-```typescript
-test("should create schedule without hanging", async () => {
-  const result = await payload.create({
-    collection: "scheduled-ingests",
-    data: { name: "Test", enabled: true },
-    user: testUser,
-  });
-  expect(result).toBeDefined();
-}, 10000); // Should complete quickly
-```
-
-## Best Practices Checklist
-
-<Callout type="info">Use this checklist when writing Payload hooks to prevent deadlocks:</Callout>
-
-- [ ] **Pass `req` parameter** to all nested `payload.update()`, `payload.create()`, `payload.findByID()` calls
-- [ ] **Use `context` flags** to prevent infinite hook recursion
-  - Common flags: `skipUsageHooks`, `skipQuotaChecks`, `skipIngestFileHooks`
-- [ ] **Add `overrideAccess: true`** to skip nested access control checks
-- [ ] **Avoid database queries** in access control functions when possible
-- [ ] **Read from memory** instead of querying when data is already available
-- [ ] **Skip complex operations** in test environment if they're not being tested
-- [ ] **Use structured logging** (`logger.debug()`) instead of `console.log()`
-- [ ] **Test with short timeouts** (10-15 seconds) to detect deadlocks quickly
-
-## Debugging Tips
-
-If you suspect a deadlock:
-
-1. Add `logger.debug()` before and after nested Payload operations
-2. Check that `req` is being passed to all nested operations
-3. Verify `context` flags are present and prevent hook recursion
-4. Ensure `overrideAccess: true` is used
-5. Test with short timeouts (10-15s) to detect hangs quickly
-
-## Real-World Examples
-
-### Example 1: Scheduled Imports Collection
-
-See `apps/web/lib/collections/scheduled-ingests/index.ts` for a complete example of:
-
-- Quota checking in `beforeChange`
-- Usage tracking in `afterChange`
-- Decrement tracking in `afterDelete`
-- All following the deadlock prevention pattern
-
-### Example 2: Quota Service
-
-See `apps/web/lib/services/quota-service.ts` for:
-
-- `incrementUsage()` with `req` parameter
-- `decrementUsage()` with `req` parameter
-- `checkQuota()` reading from memory instead of database
-
-### Example 3: Import Files Collection
-
-See `apps/web/lib/collections/ingest-files/hooks.ts` for:
-
-- Multiple nested `payload.update()` calls in `afterChange`
-- Context flags preventing hook recursion
-- Error handling with transaction consistency
-
-## Additional Resources
-
-- [Payload CMS Hooks Documentation](https://payloadcms.com/docs/hooks/overview)
-- [Payload CMS Access Control](https://payloadcms.com/docs/access-control/overview)
-- Article: "How to Safely Manipulate Payload CMS Data in Hooks Without Hanging or Recursion"
-
-## Summary
-
-**Key Takeaway**: When performing nested Payload operations in hooks, always use this pattern:
-
-```typescript
-await req.payload.update({
-  collection: "your-collection",
-  id: docId,
-  req, // ← Stay in same transaction
-  data: { your: "data" },
-  context: {
-    ...(req.context || {}),
-    skipYourHooks: true, // ← Prevent recursion
-  },
-  overrideAccess: true, // ← Skip nested access control
-});
-```
-
-Following this pattern prevents deadlocks, ensures transaction consistency, and keeps your application responsive.
+Passing the request prevents accidental transaction splitting; it does not remove
+every possible deadlock. Transactions acquiring multiple locks still need a
+consistent lock order and appropriate failure handling.
