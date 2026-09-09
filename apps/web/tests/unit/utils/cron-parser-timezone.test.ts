@@ -6,10 +6,16 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { calculateNextCronRun } from "@/lib/ingest/cron-parser";
+import { calculateNextCronRun, createCronSchedule } from "@/lib/ingest/cron-parser";
 
 describe("Timezone-aware Cron Parser", () => {
   describe("calculateNextCronRun with timezone", () => {
+    it("normalizes an empty timezone to UTC instead of the server timezone", () => {
+      const schedule = createCronSchedule("0 12 * * *", "");
+      expect(schedule.options.timezone).toBe("UTC");
+      expect(schedule.nextRun(new Date("2024-01-15T10:00:00Z"))?.toISOString()).toBe("2024-01-15T12:00:00.000Z");
+    });
+
     it.each([
       ["Pacific/Kiritimati", "2025-01-31T10:00:00.000Z"],
       ["Pacific/Pago_Pago", "2025-02-01T11:00:00.000Z"],

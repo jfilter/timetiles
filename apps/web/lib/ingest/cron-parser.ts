@@ -15,6 +15,8 @@
 
 import { Cron } from "croner";
 
+import { defaultIfEmpty } from "@/lib/utils/strings";
+
 export interface CronParts {
   minute: string;
   hour: string;
@@ -165,7 +167,7 @@ const getOrdinalSuffix = (n: number): string => {
  */
 export const createCronSchedule = (cronExpression: string, timezone = "UTC"): Cron => {
   parseCronExpression(cronExpression);
-  return new Cron(cronExpression, { timezone, mode: "5-part", paused: true });
+  return new Cron(cronExpression, { timezone: defaultIfEmpty(timezone, "UTC"), mode: "5-part", paused: true });
 };
 
 export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, timezone?: string): Date | null => {
