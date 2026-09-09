@@ -26,18 +26,13 @@ interface ManualImportsTableProps {
   readonly initialData: IngestFile[];
 }
 
-const STATUS_VARIANT_MAP: Record<string, StatusVariant> = {
-  pending: "muted",
-  parsing: "info",
-  processing: "info",
-  completed: "success",
-  failed: "error",
-};
-
-const getStatusVariant = (status: string | null | undefined): StatusVariant => {
-  if (!status) return "muted";
-  return STATUS_VARIANT_MAP[status] ?? "muted";
-};
+const STATUS_DISPLAY = {
+  pending: { variant: "muted", label: "statusPending" },
+  parsing: { variant: "info", label: "statusParsing" },
+  processing: { variant: "info", label: "statusProcessing" },
+  completed: { variant: "success", label: "statusCompleted" },
+  failed: { variant: "error", label: "statusFailed" },
+} as const satisfies Record<NonNullable<IngestFile["status"]>, { variant: StatusVariant; label: string }>;
 
 const isAwaitingReview = (ingestFile: IngestFile): boolean => {
   const total = ingestFile.datasetsCount ?? 0;
@@ -66,12 +61,12 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
         accessorKey: "status",
         header: t("status"),
         cell: ({ row }) => {
-          const status = row.original.status;
+          const status = STATUS_DISPLAY[row.original.status ?? "pending"];
           const awaitingReview = isAwaitingReview(row.original);
           return (
             <StatusBadge
-              variant={awaitingReview ? "warning" : getStatusVariant(status)}
-              label={awaitingReview ? tIngest("reviewRequired") : (status ?? t("statusPending"))}
+              variant={awaitingReview ? "warning" : status.variant}
+              label={awaitingReview ? tIngest("reviewRequired") : t(status.label)}
             />
           );
         },
