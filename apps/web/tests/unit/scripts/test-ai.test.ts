@@ -78,6 +78,24 @@ describe.sequential("AI test runner exit status", () => {
     }
   );
 
+  it("reports suite failures even when no test assertion failed", async () => {
+    mocks.readFileSync.mockReturnValue(
+      JSON.stringify({
+        success: false,
+        numPassedTests: 0,
+        numFailedTests: 0,
+        numPendingTests: 19,
+        testResults: [
+          { name: "setup.test.ts", status: "failed", message: "Hook timed out in 45000ms.", assertionResults: [] },
+        ],
+      })
+    );
+    await import("@/scripts/test-ai");
+    expect(mocks.exit).toHaveBeenCalledWith(1);
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining("19 skipped, failed suites: 1"));
+    expect(console.log).toHaveBeenCalledWith("setup.test.ts: Hook timed out in 45000ms.");
+  });
+
   it("passes filters as literal arguments without invoking a shell", async () => {
     process.argv.push("(date|store)", "geo jobs", "tests/[locale]/name;literal.test.ts");
     mocks.readFileSync.mockReturnValue(

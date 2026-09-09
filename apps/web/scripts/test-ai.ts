@@ -41,6 +41,7 @@ const MAX_RESULT_FILES = 50;
 interface TestResult {
   name: string;
   status: string;
+  message?: string;
   duration?: number;
   assertionResults: Array<{ status: string; title: string; failureMessages?: string[] }>;
 }
@@ -129,13 +130,17 @@ try {
 
   // Single line summary
   const skippedStr = skipped > 0 ? `, ${skipped} skipped` : "";
+  const failedSuitesStr = failedSuites.length > 0 ? `, failed suites: ${failedSuites.length}` : "";
   console.log(
-    `${status} ${results.numPassedTests} passed, ${results.numFailedTests} failed${skippedStr}${durationStr}`
+    `${status} ${results.numPassedTests} passed, ${results.numFailedTests} failed${skippedStr}${failedSuitesStr}${durationStr}`
   );
 
   // List failed test files if any
   if (results.numFailedTests > 0 || failedSuites.length > 0) {
     console.log(`Failed: ${failedSuites.map((suite) => suite.name).join(", ")}`);
+    for (const suite of failedSuites) {
+      if (suite.message) console.log(`${suite.name}: ${suite.message}`);
+    }
   }
 
   // JSON location
