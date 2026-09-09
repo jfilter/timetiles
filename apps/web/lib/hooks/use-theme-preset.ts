@@ -54,8 +54,12 @@ const useThemePresetStore = create<ThemePresetStore>((set) => ({
   preset: DEFAULT_PRESET,
   setPreset: (newPreset: ThemePresetId) => {
     set({ preset: newPreset });
-    localStorage.setItem(STORAGE_KEY, newPreset);
     applyPresetClass(newPreset);
+    try {
+      localStorage.setItem(STORAGE_KEY, newPreset);
+    } catch {
+      // Persistence is optional when browser storage is blocked or full.
+    }
   },
 }));
 
@@ -73,10 +77,14 @@ export const useThemePreset = (): UseThemePresetReturn => {
 
   // Hydrate from localStorage on mount and keep in sync across tabs.
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (isValidPreset(stored)) {
-      useThemePresetStore.setState({ preset: stored });
-      applyPresetClass(stored);
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (isValidPreset(stored)) {
+        useThemePresetStore.setState({ preset: stored });
+        applyPresetClass(stored);
+      }
+    } catch {
+      // Keep the in-memory preset when browser storage is unavailable.
     }
 
     const handleStorage = (event: StorageEvent) => {

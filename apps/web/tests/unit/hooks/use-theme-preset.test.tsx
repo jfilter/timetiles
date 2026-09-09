@@ -4,7 +4,7 @@
  * @category Tests
  */
 import { act, cleanup, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useThemePreset } from "@/lib/hooks/use-theme-preset";
 
@@ -13,10 +13,33 @@ const STORAGE_KEY = "timetiles-theme-preset";
 describe("useThemePreset storage synchronization", () => {
   beforeEach(() => localStorage.setItem(STORAGE_KEY, "modern"));
   afterEach(() => {
+    vi.restoreAllMocks();
     cleanup();
     localStorage.removeItem(STORAGE_KEY);
     document.documentElement.classList.remove("theme-modern");
     document.body.classList.remove("theme-modern");
+  });
+
+  it("keeps the selected theme usable when persistence fails", () => {
+    const { result } = renderHook(() => useThemePreset());
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("Storage unavailable", "QuotaExceededError");
+    });
+    act(() => result.current.setPreset("cartographic"));
+    expect(result.current.preset).toBe("cartographic");
+    expect(document.documentElement.classList.contains("theme-modern")).toBe(false);
+    expect(document.body.classList.contains("theme-modern")).toBe(false);
+  });
+
+  it("can mount and change themes when reading storage is denied", () => {
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("Storage unavailable", "SecurityError");
+    });
+    const { result } = renderHook(() => useThemePreset());
+    act(() => result.current.setPreset("modern"));
+    expect(result.current.preset).toBe("modern");
+    expect(document.documentElement.classList.contains("theme-modern")).toBe(true);
+    expect(document.body.classList.contains("theme-modern")).toBe(true);
   });
 
   it.each([STORAGE_KEY, null])("resets the preset when storage key %s is cleared", (key) => {
