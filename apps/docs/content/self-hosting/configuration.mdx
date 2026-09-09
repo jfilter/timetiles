@@ -36,7 +36,7 @@ Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as
 ### File Paths
 
 ```bash
-UPLOAD_DIR=uploads               # Base directory (subfolders: /media, /import-files)
+UPLOAD_DIR=uploads               # Base directory (includes media/ and ingest-files/)
 UPLOAD_TEMP_DIR=/tmp             # Temporary files during upload
 DATA_EXPORT_DIR=.exports         # User data export output
 ```
@@ -50,7 +50,9 @@ LOG_FILE=/var/log/timetiles/app.log  # Optional file logging
 
 ### Email (SMTP)
 
-Without SMTP settings, emails are logged to console in development (via ethereal.email).
+In production, omitting `EMAIL_SMTP_HOST` disables outgoing email and logs a warning. Account verification and password-reset messages are not delivered; configure SMTP before relying on those flows.
+
+In development, missing SMTP settings use an Ethereal test inbox rather than delivering messages to recipients. Tests and production builds use an in-memory JSON transport and do not send email.
 
 ```bash
 EMAIL_SMTP_HOST=smtp.example.com
