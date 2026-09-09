@@ -12,8 +12,6 @@ export interface ImportProgress {
   status: IngestFileStatus;
   progress: number;
   currentStage: string | null;
-  eventsCreated: number;
-  eventsTotal: number;
   error?: string;
   completedAt?: string;
   catalogId?: number;
@@ -25,7 +23,6 @@ export interface ImportProgress {
 
 // Transform API response to internal progress state
 export const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
-  const totalEventsCreated = data.jobs.reduce((sum, job) => sum + (job.results?.totalEvents ?? 0), 0);
   const currentJob = data.jobs.find((job) => job.overallProgress < 100) ?? data.jobs[0];
   // Null (not the literal "Processing") when no stage is known: the render maps
   // known stages through STAGE_I18N_KEYS and falls back to the translated
@@ -44,8 +41,6 @@ export const transformProgressResponse = (data: ProgressApiResponse): ImportProg
     status: data.status,
     progress: data.overallProgress,
     currentStage,
-    eventsCreated: totalEventsCreated,
-    eventsTotal: 0, // Not used during processing - we show percentage instead
     error: data.errorLog ?? undefined,
     completedAt: data.completedAt ?? undefined,
     catalogId: data.catalogId ?? undefined,

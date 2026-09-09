@@ -41,6 +41,11 @@ describe("transformProgressResponse", () => {
     ...overrides,
   });
 
+  it("uses the server's overall progress independently of event counts", () => {
+    const result = transformProgressResponse(createMockApiResponse({ status: "processing", overallProgress: 37 }));
+    expect(result.progress).toBe(37);
+  });
+
   it("should read totalEvents from results (not eventsCreated)", () => {
     const apiResponse = createMockApiResponse({
       jobs: [
@@ -63,7 +68,6 @@ describe("transformProgressResponse", () => {
     const { datasets } = result;
 
     // This test documents the fix: we read totalEvents, not eventsCreated
-    expect(result.eventsCreated).toBe(10);
     expect(datasets).toBeDefined();
     expect(datasets?.[0]?.eventsCount).toBe(10);
   });
@@ -98,7 +102,7 @@ describe("transformProgressResponse", () => {
     expect(result.stages).toEqual(job.stages);
   });
 
-  it("should sum totalEvents across multiple jobs", () => {
+  it("preserves event counts for each dataset", () => {
     const apiResponse = createMockApiResponse({
       jobs: [
         {
@@ -131,7 +135,6 @@ describe("transformProgressResponse", () => {
     const result = transformProgressResponse(apiResponse);
     const { datasets } = result;
 
-    expect(result.eventsCreated).toBe(20);
     expect(datasets).toHaveLength(2);
     expect(datasets?.[0]?.eventsCount).toBe(5);
     expect(datasets?.[1]?.eventsCount).toBe(15);
@@ -188,7 +191,6 @@ describe("transformProgressResponse", () => {
     const result = transformProgressResponse(apiResponse);
     const { datasets } = result;
 
-    expect(result.eventsCreated).toBe(0);
     expect(datasets).toBeDefined();
     expect(datasets?.[0]?.eventsCount).toBe(0);
   });
@@ -213,7 +215,7 @@ describe("transformProgressResponse", () => {
 
     const result = transformProgressResponse(apiResponse);
 
-    expect(result.eventsCreated).toBe(0);
+    expect(result.datasets?.[0]?.eventsCount).toBe(0);
   });
 
   it("should not include datasets when status is not completed", () => {

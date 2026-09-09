@@ -29,7 +29,7 @@ import { ReviewPanel } from "@/components/ingest/review-panel";
 import { Link, useRouter } from "@/i18n/navigation";
 import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
 import { useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
-import { type ImportProgress, transformProgressResponse } from "@/lib/ingest/processing-progress";
+import { transformProgressResponse } from "@/lib/ingest/processing-progress";
 import type { FormattedStage, StageStatus } from "@/lib/ingest/types/progress-tracking";
 
 import { useWizardStore } from "../wizard-store";
@@ -60,14 +60,6 @@ const formatTimeRemaining = (seconds: number | null): string | null => {
 };
 
 type ProcessingStatus = "completed" | "failed" | "processing" | "needs-review";
-
-const calculateProgressPercent = (progress: ImportProgress | null): number => {
-  if (!progress) return 0;
-  if (progress.eventsTotal > 0) {
-    return Math.round((progress.eventsCreated / progress.eventsTotal) * 100);
-  }
-  return progress.progress;
-};
 
 // --- Stage timeline components ---
 
@@ -300,7 +292,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   })();
 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
-  const progressPercent = calculateProgressPercent(progress);
+  const progressPercent = progress?.progress ?? 0;
   const currentStageKey = STAGE_I18N_KEYS[progress?.currentStage ?? ""];
   const stageLabel = currentStageKey
     ? (t as DynamicTranslate)(currentStageKey)
