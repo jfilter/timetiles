@@ -18,12 +18,12 @@ import { useLocale, useTranslations } from "next-intl";
 import { formatDateLocale, formatDuration } from "@/lib/utils/date";
 import type { ScheduledIngest } from "@/payload-types";
 
+import { RunStatus } from "./run-status";
+
 interface ScheduleRunHistoryProps {
   readonly scheduleId: number;
   readonly executionHistory: ScheduledIngest["executionHistory"];
 }
-
-const statusDotClass: Record<string, string> = { success: "bg-green-500", failed: "bg-red-500" };
 
 type HistoryEntry = NonNullable<ScheduledIngest["executionHistory"]>[number];
 
@@ -33,10 +33,7 @@ const HistoryRow = ({ entry }: { readonly entry: HistoryEntry }) => {
 
   return (
     <div className="border-border flex flex-wrap items-center gap-2 border-b py-1.5 text-xs last:border-b-0">
-      <span
-        className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${statusDotClass[entry.status] ?? "bg-gray-400"}`}
-        aria-label={entry.status}
-      />
+      <RunStatus status={entry.status} />
       <span className="text-muted-foreground">{formatDateLocale(entry.executedAt, locale)}</span>
       <span className="text-muted-foreground">{formatDuration(entry.duration)}</span>
       {entry.recordsImported != null && (

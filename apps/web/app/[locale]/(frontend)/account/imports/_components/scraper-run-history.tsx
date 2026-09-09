@@ -19,17 +19,11 @@ import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
 import { formatDateLocale, formatDuration } from "@/lib/utils/date";
 import type { ScraperRun } from "@/payload-types";
 
+import { RunStatus } from "./run-status";
+
 interface ScraperRunHistoryProps {
   readonly scraperId: number;
 }
-
-const statusColors: Record<string, string> = {
-  success: "bg-green-500",
-  failed: "bg-red-500",
-  timeout: "bg-amber-500",
-  running: "bg-blue-500",
-  queued: "bg-gray-400",
-};
 
 const RunRow = ({ run }: { readonly run: ScraperRun }) => {
   const t = useTranslations("ImportActivity");
@@ -38,11 +32,7 @@ const RunRow = ({ run }: { readonly run: ScraperRun }) => {
   return (
     <div className="border-border border-b py-1.5 last:border-b-0">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span
-          className={`inline-block h-2 w-2 flex-shrink-0 rounded-full ${statusColors[run.status] ?? "bg-gray-400"}`}
-          aria-label={run.status}
-        />
-        <span className="font-medium">{run.status}</span>
+        <RunStatus status={run.status} />
         <span className="text-muted-foreground">{formatDateLocale(run.startedAt ?? run.createdAt, locale)}</span>
         <span className="text-muted-foreground">{formatDuration(run.durationMs)}</span>
         {run.triggeredBy && (
