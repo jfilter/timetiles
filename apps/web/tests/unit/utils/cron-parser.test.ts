@@ -424,6 +424,21 @@ describe("Cron Parser Utilities", () => {
   });
 
   describe("calculateNextCronRun", () => {
+    it("finds a leap-day run more than one year in the future", () => {
+      const next = calculateNextCronRun("0 0 29 2 *", new Date("2025-03-01T00:00:00Z"));
+      expect(next?.toISOString()).toBe("2028-02-29T00:00:00.000Z");
+    });
+
+    it("finds the next leap day across a non-leap century", () => {
+      const next = calculateNextCronRun("0 0 29 2 *", new Date("2096-03-01T00:00:00Z"));
+      expect(next?.toISOString()).toBe("2104-02-29T00:00:00.000Z");
+    });
+
+    it("keeps weekday alternatives when the month-day cannot exist", () => {
+      const next = calculateNextCronRun("0 0 31 2 1", new Date("2025-02-01T00:00:00Z"));
+      expect(next?.toISOString()).toBe("2025-02-03T00:00:00.000Z");
+    });
+
     it("should calculate next run for daily cron", () => {
       const from = new Date("2026-03-15T10:00:00Z");
       const next = calculateNextCronRun("0 12 * * *", from);

@@ -241,9 +241,25 @@ export const matchesCronDate = (date: Date, parts: CronParts, tzFormatter?: Intl
   return true;
 };
 
+/** Reject impossible fields/dates without an exhaustive timezone search. */
+const hasPossibleCronDate = (parts: CronParts): boolean => {
+  const minute = Array.from({ length: 60 }, (_, value) => value).find((value) => matchesCronField(parts.minute, value));
+  const hour = Array.from({ length: 24 }, (_, value) => value).find((value) => matchesCronField(parts.hour, value));
+  if (minute === undefined || hour === undefined) return false;
+
+  // A leap year contains every possible month/day and every weekday in every month.
+  // This is sufficient because restricted month-day and weekday fields use OR, not AND.
+  const date = new Date(Date.UTC(2024, 0, 1, hour, minute));
+  while (date.getUTCFullYear() === 2024) {
+    if (matchesCronDate(date, parts)) return true;
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return false;
+};
+
 /**
  * Calculate the next time a cron expression matches after fromDate.
- * Returns null if no match found within ~1 year.
+ * Returns null if no match is found within eight years.
  *
  * When timezone is provided, cron fields are matched against wall-clock time
  * in that timezone. The returned Date is always a UTC Date object.
@@ -257,8 +273,10 @@ export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, ti
 
   // Create formatter once for the entire search (avoids O(n) Intl construction)
   const tzFormatter = timezone && timezone !== "UTC" ? createTimezoneFormatter(timezone) : undefined;
+  if (!hasPossibleCronDate(parts)) return null;
 
-  const maxIterations = 366 * 24 * 60;
+  // February 29 can be eight years away across a non-leap century (e.g. 2100).
+  const maxIterations = 8 * 366 * 24 * 60;
   for (let i = 0; i < maxIterations; i++) {
     if (matchesCronDate(next, parts, tzFormatter)) {
       return next;
