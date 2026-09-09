@@ -10,7 +10,7 @@
  * - Managing the current processing `stage` of the import.
  * - Storing detailed results from each stage, such as duplicate analysis, schema detection, and validation.
  * - Tracking progress, errors, and final results.
- * - Orchestrating the pipeline by triggering the next job in the sequence via `afterChange` hooks.
+ * - Queuing a resume workflow after review approval; workflows own task sequencing.
  * - Enforcing valid stage transitions to maintain pipeline integrity.
  *
  * ⚠️ Payload CMS Deadlock Prevention

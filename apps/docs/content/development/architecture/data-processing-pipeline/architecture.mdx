@@ -302,7 +302,6 @@ The pipeline provides extensive observability:
 - ✅ Per-resource concurrency control
 - ✅ One workflow per import type (clear separation)
 - ❌ Slight overhead for single-sheet imports (workflow wrapper job)
-- ❌ Sequential sheet processing within a workflow
 
 ### Batch vs Stream Processing
 
@@ -317,12 +316,6 @@ The pipeline provides extensive observability:
 - ❌ Batch size tuning required
 
 ## Development Guidelines
-
-### Respect Workflow Architecture
-
-- Let `afterChange` hooks on collections queue workflows -- never queue workflows manually from task handlers or tests
-- Each task handler does its work and returns structured output; the workflow handler sequences tasks and inspects results
-- This prevents double-queueing and maintains exactly-once semantics
 
 ### Task Handler Focus
 
