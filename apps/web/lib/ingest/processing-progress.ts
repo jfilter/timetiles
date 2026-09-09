@@ -26,12 +26,12 @@ export interface ImportProgress {
 // Transform API response to internal progress state
 export const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
   const totalEventsCreated = data.jobs.reduce((sum, job) => sum + (job.results?.totalEvents ?? 0), 0);
-  const currentJob = data.jobs.find((job) => job.overallProgress < 100);
+  const currentJob = data.jobs.find((job) => job.overallProgress < 100) ?? data.jobs[0];
   // Null (not the literal "Processing") when no stage is known: the render maps
   // known stages through STAGE_I18N_KEYS and falls back to the translated
   // t("processingLabel") on a nullish value — a literal here would leak raw
   // English past that mapping.
-  const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? null;
+  const currentStage = currentJob?.currentStage ?? null;
 
   const datasets = data.jobs.map((job) => ({
     id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
@@ -39,9 +39,6 @@ export const transformProgressResponse = (data: ProgressApiResponse): ImportProg
     name: job.datasetName ?? null,
     eventsCount: job.results?.totalEvents ?? 0,
   }));
-
-  const firstJob = data.jobs[0];
-  const stages = firstJob?.stages ?? [];
 
   return {
     status: data.status,
@@ -53,7 +50,7 @@ export const transformProgressResponse = (data: ProgressApiResponse): ImportProg
     completedAt: data.completedAt ?? undefined,
     catalogId: data.catalogId ?? undefined,
     datasets: data.status === "completed" ? datasets : undefined,
-    stages,
+    stages: currentJob?.stages ?? [],
     needsReviewJob: data.jobs.find((job) => job.reviewReason) ?? null,
   };
 };

@@ -137,6 +137,36 @@ describe("transformProgressResponse", () => {
     expect(datasets?.[1]?.eventsCount).toBe(15);
   });
 
+  it("uses the active job for both the current stage and timeline", () => {
+    const response = createMockApiResponse({ status: "processing" });
+    const finished = response.jobs[0]!;
+    const active = {
+      ...finished,
+      id: 2,
+      datasetId: 4,
+      currentStage: "geocode-batch",
+      overallProgress: 50,
+      stages: [
+        {
+          name: "geocode-batch",
+          displayName: "Geocoding",
+          status: "in_progress" as const,
+          progress: 50,
+          weight: 1,
+          startedAt: null,
+          completedAt: null,
+          batches: { current: 1, total: 2 },
+          currentBatch: { rowsProcessed: 5, rowsTotal: 10, percentage: 50 },
+          performance: { rowsPerSecond: null, estimatedSecondsRemaining: null },
+        },
+      ],
+    };
+    response.jobs = [finished, active];
+    const result = transformProgressResponse(response);
+    expect(result.currentStage).toBe("geocode-batch");
+    expect(result.stages).toEqual(active.stages);
+  });
+
   it("should default to 0 when results is undefined", () => {
     const apiResponse = createMockApiResponse({
       jobs: [
