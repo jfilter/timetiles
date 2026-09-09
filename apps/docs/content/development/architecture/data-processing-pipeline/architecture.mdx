@@ -120,30 +120,25 @@ The pipeline orchestrates processing across five main Payload CMS collections:
 
 The pipeline uses Payload CMS Workflows to define linear task pipelines. Each workflow sequences multiple task handlers, with automatic retry and caching of completed tasks on re-run.
 
-| Workflow           | Trigger                                                | Purpose                              |
-| ------------------ | ------------------------------------------------------ | ------------------------------------ |
-| `manual-ingest`    | `ingest-files` afterChange hook                        | Full pipeline for user uploads       |
-| `scheduled-ingest` | `schedule-manager` job                                 | URL fetch + full pipeline            |
-| `scraper-ingest`   | `schedule-manager` job                                 | Scraper execution + full pipeline    |
-| `ingest-process`   | `ingest-jobs` afterChange hook (NEEDS_REVIEW approval) | Resume after schema drift resolution |
+| Workflow           | Trigger                                      | Purpose                              |
+| ------------------ | -------------------------------------------- | ------------------------------------ |
+| `manual-ingest`    | `ingest-files` afterChange hook              | Full pipeline for user uploads       |
+| `scheduled-ingest` | `lib/ingest/trigger-service.ts`              | URL fetch + full pipeline            |
+| `scraper-ingest`   | `schedule-manager` job                       | Scraper execution + full pipeline    |
+| `ingest-process`   | Review approval hook or retry/reset endpoint | Resume or retry a sheet's processing |
 
-### Hook-Driven Workflow Queueing
+### Workflow Queueing
 
-Collection `afterChange` hooks queue workflows automatically:
+Collection `afterChange` hooks own upload and review-approval triggers:
 
 - **`ingest-files` afterChange**: Queues `manual-ingest` workflow when a file is uploaded
 - **`ingest-jobs` afterChange**: Queues `ingest-process` workflow when a NEEDS_REVIEW job is approved
 
-Workflows are never queued manually from task handlers or tests. The hooks ensure exactly-once execution.
+Other entry points queue workflows directly: `lib/ingest/trigger-service.ts` queues scheduled URL imports, the schedule manager queues scraper runs, and the ingest-job retry/reset endpoints queue `ingest-process`. Reuse the entry point that owns the action rather than also queueing a second workflow. Hooks alone do not guarantee exactly-once execution.
 
 ### Concurrency Control
 
-Each workflow uses a per-resource concurrency key to prevent duplicate processing:
-
-- `manual-ingest`: `file:{importFileId}`
-- `scheduled-ingest`: `sched:{scheduledImportId}`
-- `scraper-ingest`: `scraper:{scraperId}`
-- `ingest-process`: `ingest:{ingestJobId}`
+Each workflow defines a resource-specific `concurrency` key in `apps/web/lib/jobs/workflows/`. These keys coordinate concurrent execution; they do not replace the entry points' queueing guards or make repeated requests exactly-once. Consult the workflow definitions for the current key formats.
 
 ### Error Model
 
@@ -159,7 +154,7 @@ Multi-sheet workflows process sheets via `Promise.allSettled` with per-sheet try
 
 Payload CMS deletes completed jobs by default. This has important implications:
 
-- **No Double-Queueing**: Workflows are queued by hooks, not by task handlers
+- **No Double-Queueing**: Respect the existing trigger owner, whether a hook, service, scheduled handler, or API endpoint
 - **Testing Implications**: Tests must check side effects (events created, data changed) rather than job records
 - **Drain Loop**: Tests use `payload.jobs.run()` in a loop to process chained workflow tasks
 

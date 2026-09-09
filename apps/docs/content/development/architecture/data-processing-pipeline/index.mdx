@@ -6,7 +6,7 @@ asIndexPage: true
 
 > **Terminology**: The ingestion pipeline is called "Import" in the UI and `ingest-*` in the codebase.
 
-The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform uploaded files into structured events. Four workflows orchestrate task handlers into linear pipelines, with collection `afterChange` hooks triggering workflow execution.
+The TimeTiles data ingestion pipeline uses Payload CMS Workflows to transform uploaded files into structured events. Four workflows orchestrate task handlers into linear pipelines. Collection hooks, trigger services, scheduled handlers, and retry/reset endpoints queue workflows for their respective entry points.
 
 ## Quick Links
 
@@ -40,12 +40,12 @@ graph TD
 
 ## Four Workflows
 
-| Workflow           | Trigger                                                       | Purpose                              |
-| ------------------ | ------------------------------------------------------------- | ------------------------------------ |
-| `manual-ingest`    | File upload (`ingest-files` afterChange hook)                 | Full pipeline for user uploads       |
-| `scheduled-ingest` | `schedule-manager` job                                        | URL fetch + full pipeline            |
-| `scraper-ingest`   | `schedule-manager` job                                        | Scraper execution + full pipeline    |
-| `ingest-process`   | Approval of NEEDS_REVIEW job (`ingest-jobs` afterChange hook) | Resume after schema drift resolution |
+| Workflow           | Trigger                                       | Purpose                              |
+| ------------------ | --------------------------------------------- | ------------------------------------ |
+| `manual-ingest`    | File upload (`ingest-files` afterChange hook) | Full pipeline for user uploads       |
+| `scheduled-ingest` | `lib/ingest/trigger-service.ts`               | URL fetch + full pipeline            |
+| `scraper-ingest`   | `schedule-manager` job                        | Scraper execution + full pipeline    |
+| `ingest-process`   | Review approval hook or retry/reset endpoint  | Resume or retry a sheet's processing |
 
 ## Per-Sheet Task Pipeline
 
