@@ -48,6 +48,7 @@ import { Providers } from "@/components/providers";
 import { SiteBranding } from "@/components/site-branding";
 import type { Locale } from "@/i18n/config";
 import { Link } from "@/i18n/navigation";
+import { THEME_PRESET_INIT_SCRIPT } from "@/lib/constants/theme-presets";
 import { SiteProvider } from "@/lib/context/site-context";
 import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
 import { buildCustomHeadElements } from "@/lib/security/head-html";
@@ -280,10 +281,9 @@ export default async function FrontendLayout({ children }: Readonly<{ children: 
       >
         {/* Apply theme preset classes before paint to prevent FOUC.
             Uses next/script beforeInteractive inside <body> as recommended for App Router. */}
-        <Script
-          id="theme-preset"
-          strategy="beforeInteractive"
-        >{`(function(){try{var p=localStorage.getItem("timetiles-theme-preset");if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p);document.body.classList.add("theme-"+p)}}catch(e){}})()`}</Script>
+        <Script id="theme-preset" strategy="beforeInteractive">
+          {THEME_PRESET_INIT_SCRIPT}
+        </Script>
         {bodyStartHtmlContent && <div dangerouslySetInnerHTML={bodyStartHtmlContent} />}
         <NextIntlClientProvider messages={messages}>
           <Providers>

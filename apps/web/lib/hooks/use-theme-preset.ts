@@ -13,17 +13,14 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 
-const STORAGE_KEY = "timetiles-theme-preset";
-const DEFAULT_PRESET = "cartographic";
+import {
+  DEFAULT_THEME_PRESET as DEFAULT_PRESET,
+  THEME_PRESET_STORAGE_KEY as STORAGE_KEY,
+  THEME_PRESETS,
+  type ThemePresetId,
+} from "@/lib/constants/theme-presets";
+
 let hasHydratedPreset = false;
-
-/** Available theme presets. Each maps to a CSS class `.theme-{name}` (except the default). */
-export const THEME_PRESETS = [
-  { id: "cartographic", label: "Cartographic", description: "Earth-tone palette inspired by vintage maps" },
-  { id: "modern", label: "Modern", description: "Clean, contemporary design with cool blue-gray tones" },
-] as const;
-
-export type ThemePresetId = (typeof THEME_PRESETS)[number]["id"];
 
 interface UseThemePresetReturn {
   /** Currently active preset ID */

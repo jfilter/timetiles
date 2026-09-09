@@ -1,15 +1,21 @@
 /**
- * Chart and map color definitions for each theme preset.
- *
- * The default (cartographic) preset uses the built-in defaults from
- * the UI package and needs no overrides. Only non-default presets
- * are defined here.
+ * Shared theme presets, chart/map colors, and pre-paint initialization.
  *
  * @module
  * @category Constants
  */
 import type { ChartTheme } from "@timetiles/ui/components/charts/types";
 import type { MapColors } from "@timetiles/ui/lib/chart-themes";
+
+export const THEME_PRESET_STORAGE_KEY = "timetiles-theme-preset";
+export const DEFAULT_THEME_PRESET = "cartographic";
+
+export const THEME_PRESETS = [
+  { id: "cartographic", label: "Cartographic", description: "Earth-tone palette inspired by vintage maps" },
+  { id: "modern", label: "Modern", description: "Clean, contemporary design with cool blue-gray tones" },
+] as const;
+
+export type ThemePresetId = (typeof THEME_PRESETS)[number]["id"];
 
 interface PresetThemeConfig {
   light: ChartTheme;
@@ -47,3 +53,5 @@ export const PRESET_THEMES: Record<string, PresetThemeConfig> = {
     },
   },
 };
+
+export const THEME_PRESET_INIT_SCRIPT = `(function(){try{var p=localStorage.getItem(${JSON.stringify(THEME_PRESET_STORAGE_KEY)});if(${JSON.stringify(THEME_PRESETS.filter((preset) => preset.id !== DEFAULT_THEME_PRESET).map((preset) => preset.id))}.includes(p)){document.documentElement.classList.add("theme-"+p);document.body.classList.add("theme-"+p)}}catch(e){}})()`;
