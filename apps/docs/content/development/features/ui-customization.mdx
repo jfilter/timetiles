@@ -215,15 +215,14 @@ The `<body>` element receives `data-site="site-slug"`, enabling site-scoped CSS.
 
 ### Database Name Compression
 
-Block style fields use short `dbName` values to avoid exceeding PostgreSQL's 63-character identifier limit when nested inside blocks with long slugs (e.g., `newsletterCTA`):
+The select fields in `lib/blocks/block-style-fields.ts` use short `dbName` values for their PostgreSQL enum types. The `blockStyle` group has no `dbName` override; generated column names retain the `block_style_` prefix (for example, `block_style_padding_top`).
 
-| Field                | dbName |
-| -------------------- | ------ |
-| `blockStyle` (group) | `bs`   |
-| `paddingTop`         | `pt`   |
-| `paddingBottom`      | `pb`   |
-| `maxWidth`           | `mw`   |
-| `separator`          | `sep`  |
+| Field           | dbName |
+| --------------- | ------ |
+| `paddingTop`    | `pt`   |
+| `paddingBottom` | `pb`   |
+| `maxWidth`      | `mw`   |
+| `separator`     | `sep`  |
 
 ---
 
