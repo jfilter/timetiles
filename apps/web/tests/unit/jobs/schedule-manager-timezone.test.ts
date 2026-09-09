@@ -145,7 +145,9 @@ describe.sequential("scheduleManagerJob timezone support", () => {
 
       // The nextRun (08:00 Berlin = 07:00 UTC on 2024-01-16) is embedded
       // in the guarded Drizzle update claim.
-      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockPayload.db.drizzle.update.mock.results[0]!.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ nextRun: "2024-01-16T07:00:00.000Z" })
+      );
     });
   });
 
@@ -182,7 +184,9 @@ describe.sequential("scheduleManagerJob timezone support", () => {
 
       // The nextRun (midnight Berlin Jan 17 = 2024-01-16 23:00 UTC) is embedded
       // in the guarded Drizzle update claim.
-      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockPayload.db.drizzle.update.mock.results[0]!.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ nextRun: "2024-01-16T23:00:00.000Z" })
+      );
     });
 
     it("should calculate hourly next run at top-of-hour in user timezone", async () => {
@@ -217,7 +221,9 @@ describe.sequential("scheduleManagerJob timezone support", () => {
 
       // The nextRun (07:00 EST = 12:00 UTC) is embedded
       // in the guarded Drizzle update claim.
-      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockPayload.db.drizzle.update.mock.results[0]!.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ nextRun: "2024-01-15T12:00:00.000Z" })
+      );
     });
   });
 
@@ -249,7 +255,9 @@ describe.sequential("scheduleManagerJob timezone support", () => {
       expect(mockPayload.jobs.queue).toHaveBeenCalledTimes(1);
 
       // The nextRun (11:00 UTC) is embedded in the guarded Drizzle update claim.
-      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockPayload.db.drizzle.update.mock.results[0]!.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ nextRun: "2024-01-15T11:00:00.000Z" })
+      );
     });
 
     it("should handle timezone: null as UTC", async () => {
@@ -317,7 +325,9 @@ describe.sequential("scheduleManagerJob timezone support", () => {
 
       // The nextRun (2024-04-01 06:00 UTC = 08:00 CEST) is embedded
       // in the guarded Drizzle update claim.
-      expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+      expect(mockPayload.db.drizzle.update.mock.results[0]!.value.set).toHaveBeenCalledWith(
+        expect.objectContaining({ nextRun: "2024-04-01T06:00:00.000Z" })
+      );
     });
   });
 });
