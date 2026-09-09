@@ -82,6 +82,7 @@ describe("transformProgressResponse", () => {
   it("preserves the review job and its stage progress", () => {
     const response = createMockApiResponse();
     const job = response.jobs[0]!;
+    job.currentStage = "needs-review";
     job.reviewReason = "schema-change";
     job.stages = [
       {
@@ -101,6 +102,16 @@ describe("transformProgressResponse", () => {
     expect(result.needsReviewJob).toBe(job);
     expect(result.stages).toEqual(job.stages);
   });
+
+  it.each(["create-schema-version", "geocode-batch", "completed", "failed"])(
+    "does not reopen a historical review while the job is %s",
+    (currentStage) => {
+      const response = createMockApiResponse({ status: "processing" });
+      response.jobs[0]!.currentStage = currentStage;
+      response.jobs[0]!.reviewReason = "schema-change";
+      expect(transformProgressResponse(response).needsReviewJob).toBeNull();
+    }
+  );
 
   it("preserves event counts for each dataset", () => {
     const apiResponse = createMockApiResponse({

@@ -46,6 +46,6 @@ export const transformProgressResponse = (data: ProgressApiResponse): ImportProg
     catalogId: data.catalogId ?? undefined,
     datasets: data.status === "completed" ? datasets : undefined,
     stages: currentJob?.stages ?? [],
-    needsReviewJob: data.jobs.find((job) => job.reviewReason) ?? null,
+    needsReviewJob: data.jobs.find((job) => job.currentStage === "needs-review" && job.reviewReason) ?? null,
   };
 };
