@@ -157,6 +157,6 @@ Approval sets `schemaValidation.approved = true`. The collection hook normally q
 
 ### Scheduled Import Failures
 
-Each scheduled run creates an independent workflow instance. Failed workflows do not block future scheduled runs. The next scheduled trigger creates a fresh workflow from scratch (URL fetch, schema detection, full pipeline).
+Each scheduled run creates an independent workflow instance rather than resuming the previous workflow's task cache. Future automatic runs still require an enabled, valid schedule. Failures increment `currentRetries`; when it exceeds `retryConfig.maxRetries`, the scheduled import is disabled. A successful run resets the counter, while a run paused for review does not increment it.
 
-If a scheduled import consistently fails, check the source URL, API keys, and schema configuration rather than retrying the failed workflow.
+If a scheduled import consistently fails, check its last error, source URL, API keys, and schema configuration. If the retry budget has disabled the schedule, fix the cause before re-enabling it; waiting for the next scheduled time alone will not restart it.
