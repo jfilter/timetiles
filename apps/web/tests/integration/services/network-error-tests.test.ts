@@ -249,15 +249,12 @@ describe.sequential("Network Error Handling Tests", () => {
             name: "Timeout Import",
             frequency: "daily",
             maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-            retryDelayMinutes: 1, // Minimum allowed
             additionalData: {
               advancedOptions: {
                 timeoutMinutes: 1, // Minimum allowed (overridden to 300ms for this test)
               },
               retryConfig: {
                 maxRetries: 0, // No retries for timeout test to avoid exceeding test timeout
-                retryDelayMinutes: 1, // Minimum allowed
-                exponentialBackoff: false,
               },
             },
           }

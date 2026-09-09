@@ -23,7 +23,7 @@ const executionFields: Field[] = [
   {
     name: "retryConfig",
     type: "group",
-    admin: { description: "Retry behavior configuration" },
+    admin: { description: "Failed-run budget. Task retries and backoff are managed by Payload." },
     fields: [
       {
         name: "maxRetries",
@@ -31,21 +31,9 @@ const executionFields: Field[] = [
         defaultValue: 3,
         min: 0,
         max: 10,
-        admin: { description: "Maximum failed scheduled runs before disabling this ingest" },
-      },
-      {
-        name: "retryDelayMinutes",
-        type: "number",
-        defaultValue: 5,
-        min: 1,
-        max: 60,
-        admin: { description: "Delay between retries in minutes" },
-      },
-      {
-        name: "exponentialBackoff",
-        type: "checkbox",
-        defaultValue: true,
-        admin: { description: "Use exponential backoff for retries" },
+        admin: {
+          description: "Allowed failed runs after the first failure; exceeding this budget disables the ingest",
+        },
       },
     ],
   },

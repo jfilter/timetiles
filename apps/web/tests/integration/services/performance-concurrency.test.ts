@@ -391,7 +391,7 @@ describe.sequential("Performance and Concurrency Tests", () => {
         testEnv,
         testCatalogId,
         `${testServerUrl}/rate-limited.csv`,
-        { user: testUser, name: "Rate Limited Import", frequency: "hourly", maxRetries: 3, retryDelayMinutes: 1 }
+        { user: testUser, name: "Rate Limited Import", frequency: "hourly", maxRetries: 3 }
       );
 
       // Set up test server endpoint with rate limiting

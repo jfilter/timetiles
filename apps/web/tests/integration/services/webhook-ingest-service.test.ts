@@ -903,14 +903,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
-        data: {
-          sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
-          retryConfig: {
-            maxRetries: 2,
-            retryDelayMinutes: 1, // Minimum valid value is 1
-            exponentialBackoff: true,
-          },
-        },
+        data: { sourceUrl: `http://localhost:${testServerPort}/500-error.csv`, retryConfig: { maxRetries: 2 } },
       });
 
       // Handler throws on error — Payload handles retries
@@ -937,10 +930,7 @@ describe.sequential("Webhook Import Service Integration", () => {
       await payload.update({
         collection: "scheduled-ingests",
         id: testScheduledIngest.id,
-        data: {
-          sourceUrl: `http://localhost:${testServerPort}/500-error.csv`,
-          retryConfig: { maxRetries: 1, retryDelayMinutes: 1, exponentialBackoff: false },
-        },
+        data: { sourceUrl: `http://localhost:${testServerPort}/500-error.csv`, retryConfig: { maxRetries: 1 } },
       });
 
       // Handler throws — Payload retries up to maxRetries, then onFail marks failed

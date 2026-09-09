@@ -1474,21 +1474,13 @@ export interface ScheduledIngest {
       | null;
   };
   /**
-   * Retry behavior configuration
+   * Failed-run budget. Task retries and backoff are managed by Payload.
    */
   retryConfig?: {
     /**
-     * Maximum failed scheduled runs before disabling this ingest
+     * Allowed failed runs after the first failure; exceeding this budget disables the ingest
      */
     maxRetries?: number | null;
-    /**
-     * Delay between retries in minutes
-     */
-    retryDelayMinutes?: number | null;
-    /**
-     * Use exponential backoff for retries
-     */
-    exponentialBackoff?: boolean | null;
   };
   /**
    * Advanced import options
@@ -4486,8 +4478,6 @@ export interface ScheduledIngestsSelect<T extends boolean = true> {
     | T
     | {
         maxRetries?: T;
-        retryDelayMinutes?: T;
-        exponentialBackoff?: T;
       };
   advancedOptions?:
     | T

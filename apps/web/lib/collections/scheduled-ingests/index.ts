@@ -7,7 +7,7 @@
  * Key features:
  * - Cron-based scheduling with timezone support
  * - Authentication configuration for secure URLs
- * - Automatic retry handling with exponential backoff
+ * - Failed-run budget tracking; task retries are managed by Payload
  * - Execution history tracking
  * - Integration with existing import pipeline.
  *

@@ -73,6 +73,7 @@ import * as migration_20260731_210000_widen_bucket_size_to_bigint from './202607
 import * as migration_20260813_180000_pg_functions_skip_trashed_events from './20260813_180000_pg_functions_skip_trashed_events';
 import * as migration_20260813_181000_drop_duplicate_dataset_name_index from './20260813_181000_drop_duplicate_dataset_name_index';
 import * as migration_20260813_200000_pg_functions_literal_key_first from './20260813_200000_pg_functions_literal_key_first';
+import * as migration_20260909_093926 from './20260909_093926';
 
 export const migrations = [
   {
@@ -408,46 +409,51 @@ export const migrations = [
   {
     up: migration_20260730_192628.up,
     down: migration_20260730_192628.down,
-    name: '20260730_192628'
+    name: '20260730_192628',
   },
   {
     up: migration_20260730_231500_revoke_inactive_user_credentials.up,
     down: migration_20260730_231500_revoke_inactive_user_credentials.down,
-    name: '20260730_231500_revoke_inactive_user_credentials'
+    name: '20260730_231500_revoke_inactive_user_credentials',
   },
   {
     up: migration_20260731_120000_fix_cluster_and_histogram_math.up,
     down: migration_20260731_120000_fix_cluster_and_histogram_math.down,
-    name: '20260731_120000_fix_cluster_and_histogram_math'
+    name: '20260731_120000_fix_cluster_and_histogram_math',
   },
   {
     up: migration_20260731_170000_fix_histogram_bucket_count.up,
     down: migration_20260731_170000_fix_histogram_bucket_count.down,
-    name: '20260731_170000_fix_histogram_bucket_count'
+    name: '20260731_170000_fix_histogram_bucket_count',
   },
   {
     up: migration_20260731_200000_title_resolution_skips_empty.up,
     down: migration_20260731_200000_title_resolution_skips_empty.down,
-    name: '20260731_200000_title_resolution_skips_empty'
+    name: '20260731_200000_title_resolution_skips_empty',
   },
   {
     up: migration_20260731_210000_widen_bucket_size_to_bigint.up,
     down: migration_20260731_210000_widen_bucket_size_to_bigint.down,
-    name: '20260731_210000_widen_bucket_size_to_bigint'
+    name: '20260731_210000_widen_bucket_size_to_bigint',
   },
   {
     up: migration_20260813_180000_pg_functions_skip_trashed_events.up,
     down: migration_20260813_180000_pg_functions_skip_trashed_events.down,
-    name: '20260813_180000_pg_functions_skip_trashed_events'
+    name: '20260813_180000_pg_functions_skip_trashed_events',
   },
   {
     up: migration_20260813_181000_drop_duplicate_dataset_name_index.up,
     down: migration_20260813_181000_drop_duplicate_dataset_name_index.down,
-    name: '20260813_181000_drop_duplicate_dataset_name_index'
+    name: '20260813_181000_drop_duplicate_dataset_name_index',
   },
   {
     up: migration_20260813_200000_pg_functions_literal_key_first.up,
     down: migration_20260813_200000_pg_functions_literal_key_first.down,
-    name: '20260813_200000_pg_functions_literal_key_first'
+    name: '20260813_200000_pg_functions_literal_key_first',
+  },
+  {
+    up: migration_20260909_093926.up,
+    down: migration_20260909_093926.down,
+    name: '20260909_093926'
   },
 ];

@@ -666,14 +666,7 @@ describe.sequential("Data Integrity Tests", () => {
           name: "Retry Consistency Import",
           frequency: "daily",
           maxRetries: 1,
-          retryDelayMinutes: 1, // Will use 100ms in test env
-          additionalData: {
-            retryConfig: {
-              maxRetries: 1,
-              retryDelayMinutes: 1, // Will use 100ms in test env
-              exponentialBackoff: false,
-            },
-          },
+          additionalData: { retryConfig: { maxRetries: 1 } },
         }
       );
 

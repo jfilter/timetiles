@@ -865,10 +865,7 @@ describe.sequential("scheduled ingests Integration", () => {
           catalog: testCatalog.id,
           scheduleType: "frequency",
           frequency: "daily",
-          retryConfig: {
-            maxRetries: 3,
-            retryDelayMinutes: 1, // Minimum allowed value
-          },
+          retryConfig: { maxRetries: 3 },
         },
         user: testUser,
       });

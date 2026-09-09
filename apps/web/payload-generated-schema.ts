@@ -2829,12 +2829,6 @@ export const scheduled_ingests = db_schema.table(
     retryConfig_maxRetries: numeric("retry_config_max_retries", {
       mode: "number",
     }).default(3),
-    retryConfig_retryDelayMinutes: numeric("retry_config_retry_delay_minutes", {
-      mode: "number",
-    }).default(5),
-    retryConfig_exponentialBackoff: boolean(
-      "retry_config_exponential_backoff",
-    ).default(true),
     advancedOptions_timeoutMinutes: numeric(
       "advanced_options_timeout_minutes",
       { mode: "number" },
@@ -3172,13 +3166,6 @@ export const _scheduled_ingests_v = db_schema.table(
       "version_retry_config_max_retries",
       { mode: "number" },
     ).default(3),
-    version_retryConfig_retryDelayMinutes: numeric(
-      "version_retry_config_retry_delay_minutes",
-      { mode: "number" },
-    ).default(5),
-    version_retryConfig_exponentialBackoff: boolean(
-      "version_retry_config_exponential_backoff",
-    ).default(true),
     version_advancedOptions_timeoutMinutes: numeric(
       "version_advanced_options_timeout_minutes",
       { mode: "number" },

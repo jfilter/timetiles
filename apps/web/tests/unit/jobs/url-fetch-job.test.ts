@@ -366,7 +366,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
-        retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 0 },
         statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
       });
       mockPayload.update.mockResolvedValue({});
@@ -391,7 +391,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
-        retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 0 },
         statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
       });
       mockPayload.update.mockResolvedValue({});
@@ -418,7 +418,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
-        retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 0 },
         statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
       });
       mockPayload.update.mockResolvedValue({});
@@ -482,7 +482,7 @@ describe.sequential("urlFetchJob", () => {
       mockPayload.findByID.mockResolvedValue({
         id: "scheduled-123",
         enabled: true,
-        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 1 },
         statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
       });
       mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
@@ -532,7 +532,7 @@ describe.sequential("urlFetchJob", () => {
             enabled: true,
             createdBy: "user-123",
             catalog: "catalog-123",
-            retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+            retryConfig: { maxRetries: 0 },
             statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
           });
         }
@@ -576,7 +576,7 @@ describe.sequential("urlFetchJob", () => {
             enabled: true,
             createdBy: "user-123",
             catalog: "catalog-123",
-            retryConfig: { maxRetries: 3, retryDelayMinutes: 0.0001 },
+            retryConfig: { maxRetries: 3 },
             statistics: { totalRuns: 0, successfulRuns: 0, failedRuns: 0, averageDuration: 0 },
           });
         }
@@ -622,7 +622,7 @@ describe.sequential("urlFetchJob", () => {
         name: "Test Schedule",
         enabled: true,
         advancedOptions: { skipDuplicateChecking: false },
-        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 1 },
       });
 
       // Add find method to mockPayload if it doesn't exist
@@ -673,7 +673,7 @@ describe.sequential("urlFetchJob", () => {
           name: "Test Schedule",
           enabled: true,
           advancedOptions: { skipDuplicateChecking: true },
-          retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+          retryConfig: { maxRetries: 1 },
           createdBy: "user-123",
           catalog: "catalog-123",
         })
@@ -722,7 +722,7 @@ describe.sequential("urlFetchJob", () => {
         .mockResolvedValueOnce({
           id: "scheduled-123",
           enabled: true,
-          retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+          retryConfig: { maxRetries: 0 },
           createdBy: "user-123",
           catalog: "catalog-123",
         })
@@ -817,7 +817,7 @@ describe.sequential("urlFetchJob", () => {
         advancedOptions: {
           timeoutMinutes: 0.0001, // Very short timeout
         },
-        retryConfig: { maxRetries: 0, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 0 },
       });
 
       // Mock a timeout error directly
@@ -853,7 +853,7 @@ describe.sequential("urlFetchJob", () => {
           }),
         },
         advancedOptions: {},
-        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 1 },
       });
       mockPayload.find.mockResolvedValue({ docs: [] }); // No previous imports
 
@@ -896,7 +896,7 @@ describe.sequential("urlFetchJob", () => {
         .mockResolvedValueOnce({
           id: "scheduled-123",
           enabled: true,
-          retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+          retryConfig: { maxRetries: 1 },
           statistics: {
             totalRuns: 2,
             successfulRuns: 2,
@@ -1032,7 +1032,7 @@ describe.sequential("urlFetchJob", () => {
         id: "scheduled-123",
         enabled: true,
         advancedOptions: { skipDuplicateChecking: false },
-        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 1 },
         statistics: {
           totalRuns: 1,
           successfulRuns: 1,
@@ -1098,7 +1098,7 @@ describe.sequential("urlFetchJob", () => {
             name: "Deferred Lifecycle Schedule",
             enabled: true,
             advancedOptions: { skipDuplicateChecking: true },
-            retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+            retryConfig: { maxRetries: 1 },
             statistics: { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1000 },
             createdBy: "user-123",
             catalog: "catalog-123",
@@ -1135,7 +1135,7 @@ describe.sequential("urlFetchJob", () => {
         name: "Deferred Duplicate Schedule",
         enabled: true,
         advancedOptions: { skipDuplicateChecking: false },
-        retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+        retryConfig: { maxRetries: 1 },
         statistics: { totalRuns: 1, successfulRuns: 1, failedRuns: 0, averageDuration: 1000 },
         catalog: "catalog-123",
         createdBy: "user-123",
@@ -1186,7 +1186,7 @@ describe.sequential("urlFetchJob", () => {
           id: "scheduled-123",
           name: "Dataset Mapping Import",
           enabled: true,
-          retryConfig: { maxRetries: 1, retryDelayMinutes: 0.0001 },
+          retryConfig: { maxRetries: 1 },
           multiSheetConfig,
           createdBy: "user-123",
           catalog: "catalog-123",

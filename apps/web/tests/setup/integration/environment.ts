@@ -1088,7 +1088,6 @@ export const withIngestFile = async (
  * @param options.authConfig - Authentication configuration
  * @param options.datasetMapping - Dataset mapping configuration
  * @param options.maxRetries - Maximum retry attempts (default: 3)
- * @param options.retryDelayMinutes - Delay between retries in minutes (default: 5)
  * @param options.timeoutSeconds - Request timeout in seconds (default: 300)
  * @param options.ingestNameTemplate - Template for import file names
  * @param options.user - User to associate with the import
@@ -1147,7 +1146,6 @@ export const withScheduledIngest = async (
     };
     datasetMapping?: any;
     maxRetries?: number;
-    retryDelayMinutes?: number;
     timeoutSeconds?: number;
     ingestNameTemplate?: string;
     additionalData?: Record<string, any>;
@@ -1175,7 +1173,6 @@ export const withScheduledIngest = async (
     "authConfig",
     "datasetMapping",
     "maxRetries",
-    "retryDelayMinutes",
     "timeoutSeconds",
     "ingestNameTemplate",
   ];
