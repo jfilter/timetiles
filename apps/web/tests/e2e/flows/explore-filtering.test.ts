@@ -28,14 +28,6 @@ const waitForEventsListResponse = (page: Page, expectedParams: Record<string, st
     { timeout: 15000 }
   );
 
-/**
- * Ranges derived from today, not hard-coded.
- *
- * The environmental seed timestamps events at `Date.now() - index * 1h`, so the data always
- * sits in the current month. Fixed 2024 windows matched it only while "now" was in 2024 —
- * these assertions had been failing on every run since, for a reason that had nothing to do
- * with filtering.
- */
 const pad = (value: number): string => String(value).padStart(2, "0");
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
@@ -226,10 +218,8 @@ test.describe("Explore Page - Filtering", () => {
   });
 
   test("should handle edge cases in date filtering", async ({ page }) => {
-    // The month has to come from the data, not from the calendar: the seed spreads events
-    // over the past year, so any fixed month is a coin flip on whether it contains any — and
-    // an empty result would fail this test for a reason that has nothing to do with
-    // filtering. Take the month of an event that actually exists.
+    // Sample a month containing an actual event so an empty fixture cannot masquerade
+    // as a date-filtering failure.
     // Ignore global requests still in flight, including the limit=1 probe.
     // The sample must come from the selected dataset in the visible map area.
     const unfilteredPromise = page.waitForResponse((response) => {
