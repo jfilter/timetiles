@@ -171,7 +171,6 @@ export const createCronSchedule = (cronExpression: string, timezone = "UTC"): Cr
 };
 
 export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, timezone?: string): Date | null => {
-  parseCronExpression(cronExpression);
   try {
     const cron = createCronSchedule(cronExpression, timezone);
     return cron.nextRun(fromDate ?? new Date());
