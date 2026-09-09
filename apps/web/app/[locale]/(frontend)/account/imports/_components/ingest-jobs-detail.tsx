@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
+import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
 import { useIngestJobsByFileQuery } from "@/lib/hooks/use-ingest-jobs-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import type { Dataset, IngestJob } from "@/payload-types";
@@ -49,6 +50,7 @@ const MAX_VISIBLE_ERRORS = 3;
 
 const JobRow = ({ job }: { readonly job: IngestJob }) => {
   const t = useTranslations("ImportActivity");
+  const tIngest = useTranslations("Ingest");
   const locale = useLocale();
   const errorCount = job.errors?.length ?? 0;
 
@@ -56,7 +58,7 @@ const JobRow = ({ job }: { readonly job: IngestJob }) => {
     <div className="border-border border-b py-2 last:border-b-0">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="font-medium">{getDatasetLabel(job.dataset)}</span>
-        <StatusBadge variant={getStageVariant(job.stage)} label={job.stage} />
+        <StatusBadge variant={getStageVariant(job.stage)} label={tIngest(STAGE_I18N_KEYS[job.stage])} />
         {errorCount > 0 && <span className="text-destructive text-xs">{t("errorCount", { count: errorCount })}</span>}
         <span className="text-muted-foreground ml-auto flex items-center gap-2">
           {formatDateLocale(job.createdAt, locale)}

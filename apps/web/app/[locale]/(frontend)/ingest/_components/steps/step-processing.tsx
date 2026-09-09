@@ -28,6 +28,7 @@ import { useEffect, useRef } from "react";
 import { ReviewPanel } from "@/components/ingest/review-panel";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
+import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
 import { type ProgressApiResponse, useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
 import type { StageStatus } from "@/lib/ingest/types/progress-tracking";
 
@@ -190,18 +191,6 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
       )}
     </div>
   );
-};
-
-/** Map API stage names (lowercase-kebab from DB) to i18n keys for display. */
-const STAGE_I18N_KEYS: Record<string, string> = {
-  "analyze-duplicates": "stageAnalyzingDuplicates",
-  "detect-schema": "stageDetectingSchema",
-  "validate-schema": "stageValidating",
-  "needs-review": "stageAwaitingApproval",
-  "create-schema-version": "stageSettingUpDataset",
-  "geocode-batch": "stageGeocoding",
-  "create-events": "stageCreatingEvents",
-  completed: "stageComplete",
 };
 
 /** Translated stage label, falling back to the server-provided display name. */
