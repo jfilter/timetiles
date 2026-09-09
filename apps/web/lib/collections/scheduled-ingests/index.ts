@@ -368,7 +368,7 @@ const ScheduledIngests: CollectionConfig = {
       },
     ],
     beforeValidate: [
-      async ({ data, operation, req }) => {
+      async ({ data, operation, originalDoc, req }) => {
         if (!data) return data;
 
         // Set createdBy on create operation (before validation runs)
@@ -389,7 +389,9 @@ const ScheduledIngests: CollectionConfig = {
         }
 
         // Validate cron expression if using cron schedule
-        if (data.scheduleType === "cron" && data.cronExpression) {
+        const preservesDisabledCron =
+          operation === "update" && data.enabled === false && data.cronExpression === originalDoc?.cronExpression;
+        if (data.scheduleType === "cron" && data.cronExpression && !preservesDisabledCron) {
           const cronResult = validateCronExpression(data.cronExpression as string);
           if (cronResult !== true) throw new Error(cronResult);
         }

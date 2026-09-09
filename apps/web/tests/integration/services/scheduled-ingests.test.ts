@@ -9,6 +9,7 @@
 
 import type { IncomingMessage, ServerResponse } from "node:http";
 
+import { sql } from "@payloadcms/db-postgres";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
@@ -168,6 +169,29 @@ describe.sequential("scheduled ingests Integration", () => {
           id: scheduledIngest.id,
           data: { cronExpression: "invalid-cron" },
         })
+      ).rejects.toThrow(/cron/i);
+    });
+
+    it("allows disabling an unchanged invalid legacy cron schedule", async () => {
+      const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalog.id, `${testServerUrl}/data.csv`, {
+        scheduleType: "cron",
+        cronExpression: "0 0 * * *",
+        user: testUser,
+      });
+      await testEnv.payload.db.drizzle.execute(
+        sql`UPDATE payload.scheduled_ingests SET cron_expression = 'invalid-cron' WHERE id = ${scheduledIngest.id}`
+      );
+      await testEnv.payload.db.drizzle.execute(
+        sql`UPDATE payload._scheduled_ingests_v SET version_cron_expression = 'invalid-cron' WHERE parent_id = ${scheduledIngest.id}`
+      );
+      const disabled = await payload.update({
+        collection: "scheduled-ingests",
+        id: scheduledIngest.id,
+        data: { enabled: false },
+      });
+      expect(disabled).toMatchObject({ enabled: false, cronExpression: "invalid-cron" });
+      await expect(
+        payload.update({ collection: "scheduled-ingests", id: scheduledIngest.id, data: { enabled: true } })
       ).rejects.toThrow(/cron/i);
     });
 
