@@ -214,12 +214,13 @@ export class DataExportService {
    *
    * @yields {EventExportData[]} Batch of exported event data
    */
-  private async *fetchEventsBatched(datasetIds: number[]): AsyncGenerator<EventExportData[]> {
+  private async *fetchEventsBatched(datasetIds: number[], signal: AbortSignal): AsyncGenerator<EventExportData[]> {
     if (datasetIds.length === 0) return;
 
     let lastId = 0;
 
     while (true) {
+      signal.throwIfAborted();
       const result = await this.payload.find({
         collection: "events",
         depth: 0,
@@ -230,6 +231,7 @@ export class DataExportService {
         overrideAccess: true,
       });
 
+      signal.throwIfAborted();
       if (result.docs.length === 0) break;
 
       const events: EventExportData[] = result.docs.map((e: Event) => ({
@@ -544,20 +546,24 @@ export class DataExportService {
       userId,
       baseData,
       summary,
-      addEventsAndMedia: (archive, data) => this.addEventsAndMediaToArchive(archive, data),
+      addEventsAndMedia: (archive, data, signal) => this.addEventsAndMediaToArchive(archive, data, signal),
     });
   }
 
   /**
    * Add events and media files to archive.
    */
-  private async addEventsAndMediaToArchive(archive: Archiver, baseData: Omit<ExportData, "events">): Promise<void> {
+  private async addEventsAndMediaToArchive(
+    archive: Archiver,
+    baseData: Omit<ExportData, "events">,
+    signal: AbortSignal
+  ): Promise<void> {
     // Get dataset IDs for events
     const datasetIds = baseData.datasets.map((d) => d.id);
 
     // Add events in chunks
     let chunkIndex = 1;
-    for await (const eventChunk of this.fetchEventsBatched(datasetIds)) {
+    for await (const eventChunk of this.fetchEventsBatched(datasetIds, signal)) {
       const chunkName = `events/events-${String(chunkIndex).padStart(4, "0")}.json`;
       archive.append(JSON.stringify(eventChunk, null, 2), { name: chunkName });
       chunkIndex++;
@@ -565,12 +571,14 @@ export class DataExportService {
 
     // Add actual media files if they exist
     for (const mediaItem of baseData.media) {
+      signal.throwIfAborted();
       try {
         // Media files are stored in the uploads directory (respect UPLOAD_DIR env var)
         const uploadDir = getEnv().UPLOAD_DIR;
         const baseDir = path.isAbsolute(uploadDir) ? uploadDir : path.join(process.cwd(), uploadDir);
         const mediaPath = path.join(baseDir, "media", mediaItem.filename);
-        const fileContent = await readFile(mediaPath);
+        const fileContent = await readFile(mediaPath, { signal });
+        signal.throwIfAborted();
         archive.append(fileContent, { name: `media/files/${mediaItem.filename}` });
       } catch (error) {
         if (!isENOENT(error)) throw error;

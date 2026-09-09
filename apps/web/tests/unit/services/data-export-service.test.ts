@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { setImmediate } from "node:timers/promises";
 
 import { ZipArchive } from "archiver";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -250,7 +251,7 @@ describe.sequential("DataExportService", () => {
     };
     const service = createDataExportService(payload as any);
     const ids: number[] = [];
-    for await (const batch of (service as any).fetchEventsBatched([42])) {
+    for await (const batch of (service as any).fetchEventsBatched([42], new AbortController().signal)) {
       expect(batch.length).toBeLessThanOrEqual(10000);
       ids.push(...batch.map((event: { id: number }) => event.id));
     }
@@ -360,6 +361,53 @@ describe.sequential("DataExportService", () => {
       expect(existsSync(expectedPath), `partial archive left behind at ${expectedPath}`).toBe(false);
     } finally {
       abort.mockRestore();
+    }
+  });
+
+  it("stops fetching event batches after the output stream fails", async () => {
+    const exportId = 987_656;
+    const userId = 4242;
+    const outputPath = path.join(
+      process.cwd(),
+      ".exports-test",
+      `timetiles-export-${userId}-${new Date().toISOString().split("T")[0]}-${exportId}.zip`
+    );
+    let resolveQuery!: (result: { docs: unknown[] }) => void;
+    const pending = new Promise<{ docs: unknown[] }>((resolve) => {
+      resolveQuery = resolve;
+    });
+    const payload = { find: vi.fn().mockReturnValueOnce(pending).mockResolvedValue({ docs: [] }) };
+    const service = createDataExportService(payload as any);
+    const baseData = {
+      exportedAt: new Date().toISOString(),
+      version: "1.0",
+      user: {},
+      catalogs: [],
+      datasets: [{ id: 42 }],
+      importFiles: [],
+      importJobs: [],
+      scheduledIngests: [],
+      media: [],
+      datasetSchemas: [],
+      auditLog: [],
+      scraperRepos: [],
+      scrapers: [],
+      scraperRuns: [],
+    } as any;
+    // A directory at the output path causes a real asynchronous EISDIR error.
+    await mkdir(outputPath, { recursive: true });
+    try {
+      await expect(service.createArchive(exportId, userId, baseData, {} as any)).rejects.toMatchObject({
+        code: "EISDIR",
+      });
+      expect(payload.find).toHaveBeenCalledOnce();
+      resolveQuery({ docs: createRecords(10000, (index) => ({ id: index + 1, dataset: 42 })) });
+      // Let the in-flight query resume and all resulting promise callbacks drain.
+      await setImmediate();
+      expect(payload.find).toHaveBeenCalledOnce();
+    } finally {
+      resolveQuery({ docs: [] });
+      await rm(outputPath, { recursive: true, force: true });
     }
   });
 });

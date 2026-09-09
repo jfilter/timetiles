@@ -19,7 +19,11 @@ import type { ExportData, ExportManifest, ExportSummary } from "./types";
 const logger = createLogger("data-export-archive");
 
 /** Adds the event chunks and media blobs; supplied by the service (needs Payload). */
-export type AddEventsAndMedia = (archive: Archiver, baseData: Omit<ExportData, "events">) => Promise<void>;
+export type AddEventsAndMedia = (
+  archive: Archiver,
+  baseData: Omit<ExportData, "events">,
+  signal: AbortSignal
+) => Promise<void>;
 
 export interface ArchiveResult {
   filePath: string;
@@ -38,7 +42,8 @@ interface WriteArchiveOptions {
 const appendCollections = (
   archive: Archiver,
   { userId, baseData, summary, addEventsAndMedia }: WriteArchiveOptions,
-  fail: (err: unknown) => void
+  fail: (err: unknown) => void,
+  signal: AbortSignal
 ): void => {
   const manifest: ExportManifest = {
     exportedAt: baseData.exportedAt,
@@ -63,7 +68,8 @@ const appendCollections = (
   // Process events and media asynchronously, then finalize
   void (async () => {
     try {
-      await addEventsAndMedia(archive, baseData);
+      await addEventsAndMedia(archive, baseData, signal);
+      signal.throwIfAborted();
       await archive.finalize();
     } catch (err) {
       fail(err);
@@ -78,7 +84,7 @@ const writeArchive = (options: WriteArchiveOptions): Promise<ArchiveResult> => {
   return new Promise((resolve, reject) => {
     const output = createWriteStream(outputPath);
     const archive = new ZipArchive({ zlib: { level: 6 } });
-    let failed = false;
+    const controller = new AbortController();
 
     /**
      * Reject only once the write stream is fully closed.
@@ -89,10 +95,10 @@ const writeArchive = (options: WriteArchiveOptions): Promise<ArchiveResult> => {
      * file. Destroying and waiting for 'close' makes the cleanup deterministic.
      */
     const fail = (err: unknown): void => {
-      if (failed) return;
-      failed = true;
-      archive.abort();
+      if (controller.signal.aborted) return;
       const error = err instanceof Error ? err : new Error(String(err));
+      controller.abort(error);
+      archive.abort();
       if (output.closed) {
         reject(error);
         return;
@@ -102,7 +108,7 @@ const writeArchive = (options: WriteArchiveOptions): Promise<ArchiveResult> => {
     };
 
     output.on("close", () => {
-      if (failed) return;
+      if (controller.signal.aborted) return;
       void (async () => {
         try {
           const stats = await stat(outputPath);
@@ -124,7 +130,7 @@ const writeArchive = (options: WriteArchiveOptions): Promise<ArchiveResult> => {
     // record) would otherwise reject the Promise directly, skipping `fail` and
     // leaving the write stream open over a partial file.
     try {
-      appendCollections(archive, options, fail);
+      appendCollections(archive, options, fail, controller.signal);
     } catch (err) {
       fail(err);
     }
