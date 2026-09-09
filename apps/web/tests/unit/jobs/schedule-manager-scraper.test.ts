@@ -343,6 +343,24 @@ describe.sequential("scheduleManagerJob — scraper scheduling", () => {
     expect(result.output.scrapersTriggered).toBe(0);
   });
 
+  it("does not queue a scraper after disabling its non-matching schedule", async () => {
+    const { mockPayload, mockJob, mockReq } = createMockContext();
+    vi.setSystemTime(new Date("2026-03-15T12:05:00Z"));
+    setupScrapersOnly(mockPayload, [{ id: 12, name: "Invalid date", enabled: true, schedule: "0 0 31 2 *" }]);
+
+    const result = await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
+
+    expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
+    expect(result.output.scrapersTriggered).toBe(0);
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        collection: "scrapers",
+        id: 12,
+        data: expect.objectContaining({ enabled: false, lastRunStatus: "failed" }),
+      })
+    );
+  });
+
   it("should trigger scrapers on first run (no lastRunAt, no nextRunAt)", async () => {
     const { mockPayload, mockJob, mockReq } = createMockContext();
 

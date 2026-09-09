@@ -59,7 +59,7 @@ const advanceScraperNextRunOrDisable = async (
   scraper: Scraper,
   currentTime: Date,
   extraData: Partial<Scraper> = {}
-): Promise<void> => {
+): Promise<boolean> => {
   const nextRun = calculateNextCronRun(scraper.schedule!, currentTime);
 
   if (!nextRun) {
@@ -68,8 +68,12 @@ const advanceScraperNextRunOrDisable = async (
       name: scraper.name,
       schedule: scraper.schedule,
     });
-    await asSystem(payload).update({ collection: "scrapers", id: scraper.id, data: { ...extraData, enabled: false } });
-    return;
+    await asSystem(payload).update({
+      collection: "scrapers",
+      id: scraper.id,
+      data: { ...extraData, enabled: false, lastRunStatus: "failed" },
+    });
+    return false;
   }
 
   await asSystem(payload).update({
@@ -77,6 +81,7 @@ const advanceScraperNextRunOrDisable = async (
     id: scraper.id,
     data: { ...extraData, nextRunAt: nextRun.toISOString() },
   });
+  return true;
 };
 
 /**
@@ -127,7 +132,10 @@ export const processScheduledScrapers = async (
       try {
         // Persist the schedule before publishing work. A failed update must not
         // leave a runnable workflow whose scraper is then marked as failed.
-        await advanceScraperNextRunOrDisable(payload, scraper, currentTime);
+        if (!(await advanceScraperNextRunOrDisable(payload, scraper, currentTime))) {
+          errors++;
+          continue;
+        }
 
         // Queue scraper-ingest workflow
         await payload.jobs.queue({
