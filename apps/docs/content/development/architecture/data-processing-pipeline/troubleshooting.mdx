@@ -120,7 +120,7 @@ Direct inspection via the admin interface or database:
 
 **Endpoint**: `POST /api/ingest-jobs/{id}/retry`
 
-Re-queues the `ingest-process` workflow starting from `detect-schema`. Only works when the job is in `FAILED` state. Previously completed tasks return cached output, so no work is repeated.
+Requires authentication and read access to the ingest job. Queues a new `ingest-process` workflow starting from `analyze-duplicates`, rebuilding duplicate and quota-review state before downstream processing. Only works when the job is in `FAILED` state. Unlike an automatic retry within an existing workflow, this new workflow does not inherit the previous workflow's completed-task cache.
 
 **When to use**: After fixing the underlying issue (API key, permissions, network) for a job that exhausted automatic retries.
 
@@ -132,9 +132,18 @@ Re-queues the `ingest-process` workflow starting from `detect-schema`. Only work
 
 **Body**: `{ "targetStage": "detect-schema" | "analyze-duplicates" | "validate-schema" | "geocode-batch" | "create-events", "clearRetries": true }`
 
-Resets the job stage and queues `ingest-process` from the corresponding resume point. The `clearRetries` flag (default `true`) clears the error log.
+Only works for failed jobs. Resets the job stage and queues a new `ingest-process` workflow. The `clearRetries` flag (default `true`) clears the error log.
 
-**Cautions**: Resetting clears progress from later stages. Does not delete already-created events. Ensure idempotency before resetting to a stage that writes data.
+The workflow resume points are coarser than the accepted target stages:
+
+| Target stage                       | Workflow resumes from   |
+| ---------------------------------- | ----------------------- |
+| `analyze-duplicates`               | `analyze-duplicates`    |
+| `detect-schema`, `validate-schema` | `detect-schema`         |
+| `geocode-batch`                    | `create-schema-version` |
+| `create-events`                    | `create-events`         |
+
+**Cautions**: Reset does not delete already-created events. Ensure idempotency before resetting to a stage that writes data. Both retry and reset require the retained source-file reference; if cleanup has reclaimed it, upload the file again. Recovery updates and workflow queueing share a transaction, so a queueing failure rolls back the recovery changes.
 
 ### NEEDS_REVIEW Resolution
 
