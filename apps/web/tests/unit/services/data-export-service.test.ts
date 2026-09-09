@@ -8,6 +8,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { ZipArchive } from "archiver";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ countUserDocs: vi.fn(), findUserDocs: vi.fn(), uploadDir: "" }));
@@ -352,8 +353,13 @@ describe.sequential("DataExportService", () => {
       scraperRuns: [],
     } as any;
 
-    await expect(service.createArchive(exportId, userId, baseData, {} as any)).rejects.toThrow();
-
-    expect(existsSync(expectedPath), `partial archive left behind at ${expectedPath}`).toBe(false);
+    const abort = vi.spyOn(ZipArchive.prototype, "abort");
+    try {
+      await expect(service.createArchive(exportId, userId, baseData, {} as any)).rejects.toThrow();
+      expect(abort).toHaveBeenCalledOnce();
+      expect(existsSync(expectedPath), `partial archive left behind at ${expectedPath}`).toBe(false);
+    } finally {
+      abort.mockRestore();
+    }
   });
 });

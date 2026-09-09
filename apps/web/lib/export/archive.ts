@@ -91,6 +91,7 @@ const writeArchive = (options: WriteArchiveOptions): Promise<ArchiveResult> => {
     const fail = (err: unknown): void => {
       if (failed) return;
       failed = true;
+      archive.abort();
       const error = err instanceof Error ? err : new Error(String(err));
       if (output.closed) {
         reject(error);
