@@ -14,6 +14,11 @@ import { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
 describe("getNextFrequencyExecution", () => {
   const from = new Date("2024-01-15T10:30:00.000Z");
 
+  it("moves a nonexistent midnight forward instead of scheduling on the previous day", () => {
+    const next = getNextFrequencyExecution("daily", new Date("2018-11-03T12:00:00Z"), "America/Sao_Paulo");
+    expect(next.toISOString()).toBe("2018-11-04T03:00:00.000Z");
+  });
+
   it.each([
     ["hourly", "2024-12-31T23:00:00Z", "2025-01-01T00:00:00.000Z"],
     ["daily", "2024-02-28T00:00:00Z", "2024-02-29T00:00:00.000Z"],

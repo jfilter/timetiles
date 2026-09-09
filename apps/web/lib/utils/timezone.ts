@@ -112,5 +112,8 @@ export const wallClockToUtc = (
 
   const firstPass = wantedMs - offsetMs(wantedMs);
   const corrected = wantedMs - offsetMs(firstPass);
-  return new Date(corrected);
+  // A nonexistent wall-clock time oscillates between offsets across the gap.
+  // Choose the later instant so the schedule moves forward, not into the prior day.
+  const converged = corrected + offsetMs(corrected) === wantedMs;
+  return new Date(converged ? corrected : Math.max(firstPass, corrected));
 };
