@@ -149,6 +149,28 @@ describe.sequential("scheduled ingests Integration", () => {
       ).rejects.toThrow(/The following field is invalid: Cron/);
     });
 
+    it("rejects malformed cron expressions in partial updates", async () => {
+      const scheduledIngest = await payload.create({
+        collection: "scheduled-ingests",
+        data: {
+          name: "Partial cron validation",
+          sourceUrl: `${testServerUrl}/data.csv`,
+          catalog: testCatalog.id,
+          createdBy: testUser.id,
+          scheduleType: "cron",
+          cronExpression: "0 0 * * *",
+          enabled: false,
+        },
+      });
+      await expect(
+        payload.update({
+          collection: "scheduled-ingests",
+          id: scheduledIngest.id,
+          data: { cronExpression: "invalid-cron" },
+        })
+      ).rejects.toThrow(/cron/i);
+    });
+
     it("should validate source URL", async () => {
       await expect(
         payload.create({
