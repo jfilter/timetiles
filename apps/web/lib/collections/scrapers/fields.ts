@@ -13,11 +13,12 @@ import {
   SCRAPER_TIMEOUT_MAX_SECONDS,
   SCRAPER_TIMEOUT_MIN_SECONDS,
 } from "@timetiles/shared";
-import type { Field } from "payload";
+import type { Field, TextField, Validate } from "payload";
 
 import { validateCronExpression } from "@/lib/collections/scheduled-ingests/validation";
 import { createReviewCheckFields } from "@/lib/collections/shared-fields";
 import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
+import type { Scraper } from "@/payload-types";
 
 import { validateEntrypoint, validateEnvVars } from "./validation";
 
@@ -76,7 +77,11 @@ export const scraperFields: Field[] = [
   {
     name: "schedule",
     type: "text",
-    validate: validateCronExpression,
+    validate: ((value, { operation, previousValue, siblingData }) => {
+      // Allow disabling invalid legacy schedules without discarding the expression.
+      if (operation === "update" && siblingData.enabled === false && value === previousValue) return true;
+      return validateCronExpression(value);
+    }) satisfies Validate<string, Scraper, Scraper, TextField>,
     admin: { description: "Cron expression (e.g., 0 6 * * *). Leave empty for manual-only." },
   },
   { name: "enabled", type: "checkbox", defaultValue: true },

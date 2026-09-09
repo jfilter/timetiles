@@ -15,6 +15,7 @@ import { commitTransaction, createLocalReq, initTransaction, killTransaction } f
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { POST as triggerWebhook } from "@/app/api/webhooks/trigger/[token]/route";
+import { processScheduledScrapers } from "@/lib/jobs/handlers/schedule-manager/scraper-scheduling";
 import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 import { getRateLimitService } from "@/lib/services/rate-limit-service";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
@@ -628,6 +629,53 @@ describe.sequential("Scraper Collections Access Control", () => {
           entrypoint: "scraper.py",
           schedule: "0 1-5/2/3 * * *",
         },
+        overrideAccess: true,
+      })
+    ).rejects.toThrow(/schedule/i);
+  });
+
+  it("disables a legacy malformed schedule and releases its running claim", async () => {
+    await enableScrapers();
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Legacy Schedule Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: adminUser,
+    });
+    const scraper = await payload.create({
+      collection: "scrapers",
+      data: {
+        name: "Legacy Schedule",
+        slug: "legacy-schedule",
+        repo: repo.id,
+        runtime: "python",
+        entrypoint: "scraper.py",
+        enabled: true,
+        schedule: "0 12 * * *",
+      },
+      overrideAccess: true,
+    });
+    // Simulate data saved before schedule validation was introduced.
+    await payload.db.drizzle.execute(
+      sql`UPDATE payload.scrapers SET schedule = 'invalid cron' WHERE id = ${scraper.id}`
+    );
+
+    expect(await processScheduledScrapers(payload, new Date())).toEqual({ triggered: 0, errors: 1 });
+    const updated = await payload.findByID({ collection: "scrapers", id: scraper.id, overrideAccess: true });
+    expect(updated).toMatchObject({ enabled: false, lastRunStatus: "failed", schedule: "invalid cron" });
+    const jobs = await payload.find({
+      collection: "payload-jobs",
+      where: { workflowSlug: { equals: "scraper-ingest" } },
+      overrideAccess: true,
+    });
+    expect(jobs.totalDocs).toBe(0);
+    await expect(
+      payload.update({ collection: "scrapers", id: scraper.id, data: { enabled: true }, overrideAccess: true })
+    ).rejects.toThrow(/schedule/i);
+    await expect(
+      payload.update({
+        collection: "scrapers",
+        id: scraper.id,
+        data: { schedule: "another invalid cron" },
         overrideAccess: true,
       })
     ).rejects.toThrow(/schedule/i);
