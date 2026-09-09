@@ -8,67 +8,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-// API response structure from /api/ingest/[ingestId]/progress
-interface ProgressApiResponse {
-  type: string;
-  id: number;
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
-  originalName: string;
-  catalogId: number | null;
-  datasetsCount: number;
-  datasetsProcessed: number;
-  overallProgress: number;
-  estimatedCompletionTime: string | null;
-  jobs: Array<{
-    id: string | number;
-    datasetId: string | number;
-    datasetName?: string;
-    currentStage: string;
-    overallProgress: number;
-    results?: { totalEvents?: number };
-  }>;
-  errorLog?: string | null;
-  completedAt?: string | null;
-}
-
-// Internal progress state
-interface ImportProgress {
-  status: "pending" | "parsing" | "processing" | "completed" | "failed";
-  progress: number;
-  currentStage: string;
-  eventsCreated: number;
-  eventsTotal: number;
-  error?: string;
-  completedAt?: string;
-  catalogId?: number;
-  datasets?: Array<{ id: number; name: string; eventsCount: number }>;
-}
-
-// Copy of the transformation function for testing
-// This ensures the test documents the expected behavior
-const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
-  const totalEventsCreated = data.jobs.reduce((sum, job) => sum + (job.results?.totalEvents ?? 0), 0);
-  const currentJob = data.jobs.find((job) => job.overallProgress < 100);
-  const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? "Processing";
-
-  const datasets = data.jobs.map((job) => ({
-    id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
-    name: job.datasetName ?? `Dataset ${job.datasetId}`,
-    eventsCount: job.results?.totalEvents ?? 0,
-  }));
-
-  return {
-    status: data.status,
-    progress: data.overallProgress,
-    currentStage,
-    eventsCreated: totalEventsCreated,
-    eventsTotal: 0, // Not used during processing - we show percentage instead
-    error: data.errorLog ?? undefined,
-    completedAt: data.completedAt ?? undefined,
-    catalogId: data.catalogId ?? undefined,
-    datasets: data.status === "completed" ? datasets : undefined,
-  };
-};
+import { transformProgressResponse } from "@/lib/ingest/processing-progress";
+import type { ProgressApiResponse } from "@/lib/ingest/types/progress-tracking";
 
 describe("transformProgressResponse", () => {
   const createMockApiResponse = (overrides: Partial<ProgressApiResponse> = {}): ProgressApiResponse => ({
@@ -86,7 +27,11 @@ describe("transformProgressResponse", () => {
         id: 1,
         datasetId: 3,
         datasetName: "Test Dataset",
-        currentStage: "COMPLETED",
+        currentStage: "completed",
+        estimatedCompletionTime: null,
+        stages: [],
+        errors: 0,
+        duplicates: { internal: 0, external: 0 },
         overallProgress: 100,
         results: { totalEvents: 10 },
       },
@@ -103,7 +48,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: 3,
           datasetName: "Dataset 3",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: { totalEvents: 10 },
         },
@@ -119,6 +68,36 @@ describe("transformProgressResponse", () => {
     expect(datasets?.[0]?.eventsCount).toBe(10);
   });
 
+  it("leaves unknown stage and dataset names for localized rendering", () => {
+    expect(transformProgressResponse(createMockApiResponse({ jobs: [] })).currentStage).toBeNull();
+    const response = createMockApiResponse();
+    response.jobs[0]!.datasetName = undefined;
+    expect(transformProgressResponse(response).datasets?.[0]?.name).toBeNull();
+  });
+
+  it("preserves the review job and its stage progress", () => {
+    const response = createMockApiResponse();
+    const job = response.jobs[0]!;
+    job.reviewReason = "schema-change";
+    job.stages = [
+      {
+        name: "detect-schema",
+        displayName: "Detect schema",
+        status: "completed",
+        progress: 100,
+        weight: 1,
+        startedAt: null,
+        completedAt: null,
+        batches: { current: 1, total: 1 },
+        currentBatch: { rowsProcessed: 10, rowsTotal: 10, percentage: 100 },
+        performance: { rowsPerSecond: null, estimatedSecondsRemaining: null },
+      },
+    ];
+    const result = transformProgressResponse(response);
+    expect(result.needsReviewJob).toBe(job);
+    expect(result.stages).toEqual(job.stages);
+  });
+
   it("should sum totalEvents across multiple jobs", () => {
     const apiResponse = createMockApiResponse({
       jobs: [
@@ -126,7 +105,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: 1,
           datasetName: "Dataset 1",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: { totalEvents: 5 },
         },
@@ -134,7 +117,11 @@ describe("transformProgressResponse", () => {
           id: 2,
           datasetId: 2,
           datasetName: "Dataset 2",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: { totalEvents: 15 },
         },
@@ -157,7 +144,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: 3,
           datasetName: "Dataset 3",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: undefined,
         },
@@ -179,7 +170,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: 3,
           datasetName: "Dataset 3",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: { totalEvents: undefined },
         },
@@ -199,7 +194,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: 3,
           datasetName: "Dataset 3",
-          currentStage: "CREATE_EVENTS",
+          currentStage: "create-events",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 50,
           results: { totalEvents: 5 },
         },
@@ -219,7 +218,11 @@ describe("transformProgressResponse", () => {
           id: 1,
           datasetId: "42",
           datasetName: "Dataset 42",
-          currentStage: "COMPLETED",
+          currentStage: "completed",
+          estimatedCompletionTime: null,
+          stages: [],
+          errors: 0,
+          duplicates: { internal: 0, external: 0 },
           overallProgress: 100,
           results: { totalEvents: 10 },
         },

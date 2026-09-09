@@ -27,10 +27,10 @@ import { useEffect, useRef } from "react";
 
 import { ReviewPanel } from "@/components/ingest/review-panel";
 import { Link, useRouter } from "@/i18n/navigation";
-import type { IngestFileStatus } from "@/lib/constants/ingest-constants";
 import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
-import { type ProgressApiResponse, useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
-import type { StageStatus } from "@/lib/ingest/types/progress-tracking";
+import { useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
+import { type ImportProgress, transformProgressResponse } from "@/lib/ingest/processing-progress";
+import type { FormattedStage, StageStatus } from "@/lib/ingest/types/progress-tracking";
 
 import { useWizardStore } from "../wizard-store";
 
@@ -39,34 +39,6 @@ type DynamicTranslate = (key: string) => string;
 
 export interface StepProcessingProps {
   className?: string;
-}
-
-interface FormattedStage {
-  name: string;
-  displayName: string;
-  status: StageStatus;
-  progress: number;
-  startedAt: string | null;
-  completedAt: string | null;
-  batches: { current: number; total: number };
-  currentBatch: { rowsProcessed: number; rowsTotal: number; percentage: number };
-  performance: { rowsPerSecond: number | null; estimatedSecondsRemaining: number | null };
-}
-
-// Internal progress state
-interface ImportProgress {
-  status: IngestFileStatus;
-  progress: number;
-  currentStage: string | null;
-  eventsCreated: number;
-  eventsTotal: number;
-  error?: string;
-  completedAt?: string;
-  catalogId?: number;
-  datasets?: Array<{ id: number; name: string | null; eventsCount: number }>;
-  stages: FormattedStage[];
-  /** Job requiring review (if any). */
-  needsReviewJob?: ProgressApiResponse["jobs"][0] | null;
 }
 
 const formatDuration = (startedAt: string | null, completedAt: string | null): string | null => {
@@ -85,51 +57,6 @@ const formatTimeRemaining = (seconds: number | null): string | null => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.round(seconds % 60);
   return `~${mins}m ${secs}s`;
-};
-
-// Transform API response to internal progress state
-const transformProgressResponse = (data: ProgressApiResponse): ImportProgress => {
-  const totalEventsCreated = data.jobs.reduce((sum, job) => sum + (job.results?.totalEvents ?? 0), 0);
-  const currentJob = data.jobs.find((job) => job.overallProgress < 100);
-  // Null (not the literal "Processing") when no stage is known: the render maps
-  // known stages through STAGE_I18N_KEYS and falls back to the translated
-  // t("processingLabel") on a nullish value — a literal here would leak raw
-  // English past that mapping.
-  const currentStage = currentJob?.currentStage ?? data.jobs[0]?.currentStage ?? null;
-
-  const datasets = data.jobs.map((job) => ({
-    id: typeof job.datasetId === "string" ? Number.parseInt(job.datasetId, 10) : job.datasetId,
-    // Null rather than an English fallback: only the render knows the viewer's locale.
-    name: job.datasetName ?? null,
-    eventsCount: job.results?.totalEvents ?? 0,
-  }));
-
-  const firstJob = data.jobs[0];
-  const stages: FormattedStage[] = (firstJob?.stages ?? []).map((s) => ({
-    name: s.name,
-    displayName: s.displayName,
-    status: s.status,
-    progress: s.progress,
-    startedAt: s.startedAt,
-    completedAt: s.completedAt,
-    batches: s.batches,
-    currentBatch: s.currentBatch,
-    performance: s.performance,
-  }));
-
-  return {
-    status: data.status,
-    progress: data.overallProgress,
-    currentStage,
-    eventsCreated: totalEventsCreated,
-    eventsTotal: 0, // Not used during processing - we show percentage instead
-    error: data.errorLog ?? undefined,
-    completedAt: data.completedAt ?? undefined,
-    catalogId: data.catalogId ?? undefined,
-    datasets: data.status === "completed" ? datasets : undefined,
-    stages,
-    needsReviewJob: data.jobs.find((job) => job.reviewReason) ?? null,
-  };
 };
 
 type ProcessingStatus = "completed" | "failed" | "processing" | "needs-review";
