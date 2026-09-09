@@ -3,7 +3,7 @@
  * @module
  * @category Tests
  */
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
@@ -37,6 +37,15 @@ describe.each([
   it("localizes the control and cycles the preset", () => {
     localStorage.setItem("timetiles-theme-preset", "cartographic");
     const { getByRole } = render(picker());
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: "timetiles-theme-preset",
+          newValue: "cartographic",
+          storageArea: localStorage,
+        })
+      );
+    });
     const button = getByRole("button", { name: messages.Common.toggleTheme });
     expect(button).toHaveAttribute("title", `${messages.Common.theme}: Cartographic`);
     fireEvent.click(button);

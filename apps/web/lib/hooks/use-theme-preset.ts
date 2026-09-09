@@ -15,6 +15,7 @@ import { create } from "zustand";
 
 const STORAGE_KEY = "timetiles-theme-preset";
 const DEFAULT_PRESET = "cartographic";
+let hasHydratedPreset = false;
 
 /** Available theme presets. Each maps to a CSS class `.theme-{name}` (except the default). */
 export const THEME_PRESETS = [
@@ -75,16 +76,19 @@ export const useThemePreset = (): UseThemePresetReturn => {
   const preset = useThemePresetStore((state) => state.preset);
   const setPreset = useThemePresetStore((state) => state.setPreset);
 
-  // Hydrate from localStorage on mount and keep in sync across tabs.
+  // Hydrate the shared store once; later mounts must not overwrite unsaved choices.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (isValidPreset(stored)) {
-        useThemePresetStore.setState({ preset: stored });
-        applyPresetClass(stored);
+    if (!hasHydratedPreset) {
+      hasHydratedPreset = true;
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (isValidPreset(stored)) {
+          useThemePresetStore.setState({ preset: stored });
+          applyPresetClass(stored);
+        }
+      } catch {
+        // Keep the in-memory preset when browser storage is unavailable.
       }
-    } catch {
-      // Keep the in-memory preset when browser storage is unavailable.
     }
 
     const handleStorage = (event: StorageEvent) => {

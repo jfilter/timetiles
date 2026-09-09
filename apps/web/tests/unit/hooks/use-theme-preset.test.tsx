@@ -6,12 +6,18 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useThemePreset } from "@/lib/hooks/use-theme-preset";
+import type { useThemePreset as UseThemePreset } from "@/lib/hooks/use-theme-preset";
+
+let useThemePreset: typeof UseThemePreset;
 
 const STORAGE_KEY = "timetiles-theme-preset";
 
 describe("useThemePreset storage synchronization", () => {
-  beforeEach(() => localStorage.setItem(STORAGE_KEY, "modern"));
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ useThemePreset } = await import("@/lib/hooks/use-theme-preset"));
+    localStorage.setItem(STORAGE_KEY, "modern");
+  });
   afterEach(() => {
     vi.restoreAllMocks();
     cleanup();
@@ -29,6 +35,10 @@ describe("useThemePreset storage synchronization", () => {
     expect(result.current.preset).toBe("cartographic");
     expect(document.documentElement.classList.contains("theme-modern")).toBe(false);
     expect(document.body.classList.contains("theme-modern")).toBe(false);
+    const later = renderHook(() => useThemePreset());
+    expect(later.result.current.preset).toBe("cartographic");
+    expect(result.current.preset).toBe("cartographic");
+    expect(document.documentElement.classList.contains("theme-modern")).toBe(false);
   });
 
   it("can mount and change themes when reading storage is denied", () => {
