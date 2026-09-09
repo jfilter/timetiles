@@ -6,62 +6,24 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { calculateNextCronRun, matchesCronDate, parseCronExpression } from "@/lib/ingest/cron-parser";
-import { createTimezoneFormatter } from "@/lib/utils/timezone";
+import { calculateNextCronRun } from "@/lib/ingest/cron-parser";
 
 describe("Timezone-aware Cron Parser", () => {
-  describe("matchesCronDate with timezone formatter", () => {
-    it("should match using UTC when no formatter provided", () => {
-      const date = new Date("2024-01-15T12:30:00Z");
-      const parts = parseCronExpression("30 12 * * *");
-      expect(matchesCronDate(date, parts)).toBe(true);
-    });
-
-    it("should match against wall-clock time in Europe/Berlin", () => {
-      // 2024-01-15 07:00 UTC = 08:00 CET (Europe/Berlin, winter)
-      const date = new Date("2024-01-15T07:00:00Z");
-      const parts = parseCronExpression("0 8 * * *");
-      const berlinFmt = createTimezoneFormatter("Europe/Berlin");
-
-      // Should NOT match in UTC (it's 07:00 UTC, not 08:00)
-      expect(matchesCronDate(date, parts)).toBe(false);
-
-      // Should match in Europe/Berlin (it's 08:00 CET)
-      expect(matchesCronDate(date, parts, berlinFmt)).toBe(true);
-    });
-
-    it("should match against wall-clock time in America/New_York", () => {
-      // 2024-01-15 13:00 UTC = 08:00 EST (America/New_York, winter)
-      const date = new Date("2024-01-15T13:00:00Z");
-      const parts = parseCronExpression("0 8 * * *");
-      const nyFmt = createTimezoneFormatter("America/New_York");
-
-      expect(matchesCronDate(date, parts, nyFmt)).toBe(true);
-      expect(matchesCronDate(date, parts)).toBe(false); // Not 08:00 in UTC
-    });
-
-    it("should match day-of-week correctly across timezone boundary", () => {
-      // 2024-01-14 23:00 UTC (Sunday) = 2024-01-15 00:00 CET (Monday) in Berlin
-      const date = new Date("2024-01-14T23:00:00Z");
-      const mondayParts = parseCronExpression("0 0 * * 1"); // Monday at 00:00
-      const berlinFmt = createTimezoneFormatter("Europe/Berlin");
-
-      expect(matchesCronDate(date, mondayParts)).toBe(false); // Sunday in UTC
-      expect(matchesCronDate(date, mondayParts, berlinFmt)).toBe(true); // Monday in Berlin
-    });
-
-    it("should match month correctly across timezone boundary", () => {
-      // 2024-01-31 23:30 UTC = 2024-02-01 00:30 CET in Berlin
-      const date = new Date("2024-01-31T23:30:00Z");
-      const febParts = parseCronExpression("30 0 1 2 *"); // Feb 1st at 00:30
-      const berlinFmt = createTimezoneFormatter("Europe/Berlin");
-
-      expect(matchesCronDate(date, febParts)).toBe(false); // Still January in UTC
-      expect(matchesCronDate(date, febParts, berlinFmt)).toBe(true); // February in Berlin
-    });
-  });
-
   describe("calculateNextCronRun with timezone", () => {
+    it.each([
+      ["Pacific/Kiritimati", "2025-01-31T10:00:00.000Z"],
+      ["Pacific/Pago_Pago", "2025-02-01T11:00:00.000Z"],
+      ["Asia/Kathmandu", "2025-01-31T18:15:00.000Z"],
+    ])("keeps month-boundary matches in %s", (timezone, expected) => {
+      const next = calculateNextCronRun("0 0 1 2 *", new Date("2025-01-01T00:00:00Z"), timezone);
+      expect(next?.toISOString()).toBe(expected);
+    });
+
+    it("finds a distant leap day in local time", () => {
+      const next = calculateNextCronRun("0 0 29 2 *", new Date("2025-03-01T00:00:00Z"), "Europe/Berlin");
+      expect(next?.toISOString()).toBe("2028-02-28T23:00:00.000Z");
+    }, 30_000);
+
     it("should calculate next run in UTC by default", () => {
       const from = new Date("2024-01-15T10:00:00Z");
       const next = calculateNextCronRun("0 12 * * *", from);
@@ -122,18 +84,18 @@ describe("Timezone-aware Cron Parser", () => {
       expect(result).toBeNull();
     }, 30_000); // Extended timeout for exhaustive search with timezone
 
-    it("skips a nonexistent local time during the spring transition", () => {
+    it("shifts a nonexistent local time forward during the spring transition", () => {
       const next = calculateNextCronRun("30 2 * * *", new Date("2024-03-31T00:00:00Z"), "Europe/Berlin");
 
-      // 02:30 does not exist on March 31; the next match is April 1 at 02:30 CEST.
-      expect(next?.toISOString()).toBe("2024-04-01T00:30:00.000Z");
+      // Croner shifts the nonexistent 02:30 to 03:30 CEST on the same day.
+      expect(next?.toISOString()).toBe("2024-03-31T01:30:00.000Z");
     });
 
-    it("includes the second occurrence of a repeated local time in autumn", () => {
+    it("does not repeat a local time during the autumn transition", () => {
       const next = calculateNextCronRun("30 2 * * *", new Date("2024-10-27T00:31:00Z"), "Europe/Berlin");
 
-      // The first 02:30 CEST has passed, but 02:30 CET is still ahead.
-      expect(next?.toISOString()).toBe("2024-10-27T01:30:00.000Z");
+      // The first 02:30 has passed; Croner schedules the next day, not the repeated hour.
+      expect(next?.toISOString()).toBe("2024-10-28T01:30:00.000Z");
     });
   });
 });

@@ -19,6 +19,14 @@ If the source schema has changed between runs, you may be asked to approve the n
 
 If a schedule has invalid timing settings or keeps failing until it exhausts its retry budget, TimeTiles disables it, records the error, and emails the owner. Fix the schedule and re-enable it to resume automatic runs.
 
+## Cron Timezones and Daylight Saving
+
+Custom five-field cron schedules use Croner, the same engine used by Payload. They use the configured timezone, defaulting to UTC. UTC schedules have no daylight-saving transitions.
+
+For local-time schedules, Croner shifts a nonexistent spring-transition time forward by the clock change. For example, `30 2 * * *` in `Europe/Berlin` runs at 03:30 on the spring-transition day. During the autumn transition, the repeated hour does not produce a second occurrence: after the first 02:30 has passed, the next scheduled 02:30 is on the following day.
+
+This replaces TimeTiles' earlier custom cron behavior, which skipped nonexistent spring times and included the second occurrence of repeated autumn times. Use UTC if the schedule should be independent of these local clock changes.
+
 ## Authentication
 
 Scheduled imports support several methods for protected URLs:

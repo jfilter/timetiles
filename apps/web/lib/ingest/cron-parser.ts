@@ -13,8 +13,7 @@
  * @category Utilities
  */
 
-import { parseDigits } from "@/lib/utils/number-parsing";
-import { createTimezoneFormatter, getDatePartsWithFormatter } from "@/lib/utils/timezone";
+import { Cron } from "croner";
 
 export interface CronParts {
   minute: string;
@@ -161,128 +160,15 @@ const getOrdinalSuffix = (n: number): string => {
 };
 
 /**
- * Test if a cron field matches a specific value.
- * Supports wildcards (*), steps (asterisk/N and A-B/N), ranges (A-B), and lists (A,B,C).
- *
- * `fieldMin` is the field's lowest valid value (0 for minute/hour/day-of-week,
- * 1 for day-of-month/month): standard cron counts `*\/N` steps from the
- * field's minimum, so `*\/2` in day-of-month means 1,3,5,… — not even days.
- */
-export const matchesCronField = (field: string, value: number, fieldMin = 0): boolean => {
-  if (field === "*") return true;
-
-  return field.split(",").some((part) => {
-    if (part.startsWith("*/")) {
-      const step = parseDigits(part.slice(2));
-      return step != null && step > 0 && (value - fieldMin) % step === 0;
-    }
-    if (part.includes("-")) {
-      const [rangeRaw, stepRaw] = part.split("/");
-      const [startRaw, endRaw] = (rangeRaw ?? "").split("-");
-      const start = parseDigits(startRaw ?? "");
-      const end = parseDigits(endRaw ?? "");
-      if (start == null || end == null) return false;
-      const step = stepRaw === undefined ? 1 : parseDigits(stepRaw);
-      if (step == null || step <= 0) return false;
-      // Ranges with steps count from the range start: 1-30/2 → 1,3,…,29.
-      return value >= start && value <= end && (value - start) % step === 0;
-    }
-    const parsed = parseDigits(part);
-    return parsed != null && parsed === value;
-  });
-};
-
-/**
- * Test if a date matches a cron expression's parts.
- *
- * When a timezone formatter is provided, the cron fields are matched against
- * wall-clock time in that timezone. Pass `undefined` or omit for UTC (backward compatible).
- *
- * Accepts an Intl.DateTimeFormat for performance in tight loops; use
- * {@link createTimezoneFormatter} from `@/lib/utils/timezone` to create one.
- */
-export const matchesCronDate = (date: Date, parts: CronParts, tzFormatter?: Intl.DateTimeFormat): boolean => {
-  let minute: number;
-  let hour: number;
-  let month: number;
-  let dayOfMonthValue: number;
-  let dayOfWeek: number;
-
-  if (tzFormatter) {
-    const tz = getDatePartsWithFormatter(date, tzFormatter);
-    minute = tz.minute;
-    hour = tz.hour;
-    month = tz.month;
-    dayOfMonthValue = tz.day;
-    dayOfWeek = tz.dayOfWeek;
-  } else {
-    minute = date.getUTCMinutes();
-    hour = date.getUTCHours();
-    month = date.getUTCMonth() + 1;
-    dayOfMonthValue = date.getUTCDate();
-    dayOfWeek = date.getUTCDay();
-  }
-
-  if (!matchesCronField(parts.minute, minute)) return false;
-  if (!matchesCronField(parts.hour, hour)) return false;
-  if (!matchesCronField(parts.month, month, 1)) return false;
-
-  const dayOfMonthMatches = matchesCronField(parts.dayOfMonth, dayOfMonthValue, 1);
-  const dayOfWeekMatches =
-    parts.dayOfWeek === "*" ||
-    matchesCronField(parts.dayOfWeek, dayOfWeek) ||
-    (dayOfWeek === 0 && matchesCronField(parts.dayOfWeek, 7));
-  const usesDayOfMonth = parts.dayOfMonth !== "*";
-  const usesDayOfWeek = parts.dayOfWeek !== "*";
-
-  if (usesDayOfMonth && usesDayOfWeek) return dayOfMonthMatches || dayOfWeekMatches;
-  if (usesDayOfMonth) return dayOfMonthMatches;
-  if (usesDayOfWeek) return dayOfWeekMatches;
-  return true;
-};
-
-/** Reject impossible fields/dates without an exhaustive timezone search. */
-const hasPossibleCronDate = (parts: CronParts): boolean => {
-  const minute = Array.from({ length: 60 }, (_, value) => value).find((value) => matchesCronField(parts.minute, value));
-  const hour = Array.from({ length: 24 }, (_, value) => value).find((value) => matchesCronField(parts.hour, value));
-  if (minute === undefined || hour === undefined) return false;
-
-  // A leap year contains every possible month/day and every weekday in every month.
-  // This is sufficient because restricted month-day and weekday fields use OR, not AND.
-  const date = new Date(Date.UTC(2024, 0, 1, hour, minute));
-  while (date.getUTCFullYear() === 2024) {
-    if (matchesCronDate(date, parts)) return true;
-    date.setUTCDate(date.getUTCDate() + 1);
-  }
-  return false;
-};
-
-/**
- * Calculate the next time a cron expression matches after fromDate.
- * Returns null if no match is found within eight years.
- *
- * When timezone is provided, cron fields are matched against wall-clock time
- * in that timezone. The returned Date is always a UTC Date object.
+ * Calculate the next matching instant using Payload's cron engine.
+ * Uses five-field cron syntax and UTC unless a timezone is supplied.
  */
 export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, timezone?: string): Date | null => {
-  const parts = parseCronExpression(cronExpression);
-  const next = new Date(fromDate ?? new Date());
-  next.setUTCSeconds(0);
-  next.setUTCMilliseconds(0);
-  next.setUTCMinutes(next.getUTCMinutes() + 1);
-
-  // Create formatter once for the entire search (avoids O(n) Intl construction)
-  const tzFormatter = timezone && timezone !== "UTC" ? createTimezoneFormatter(timezone) : undefined;
-  if (!hasPossibleCronDate(parts)) return null;
-
-  // February 29 can be eight years away across a non-leap century (e.g. 2100).
-  const maxIterations = 8 * 366 * 24 * 60;
-  for (let i = 0; i < maxIterations; i++) {
-    if (matchesCronDate(next, parts, tzFormatter)) {
-      return next;
-    }
-    next.setUTCMinutes(next.getUTCMinutes() + 1);
+  parseCronExpression(cronExpression);
+  try {
+    const cron = new Cron(cronExpression, { timezone: timezone ?? "UTC", mode: "5-part", paused: true });
+    return cron.nextRun(fromDate ?? new Date());
+  } catch {
+    return null;
   }
-
-  return null;
 };
