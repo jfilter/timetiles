@@ -75,8 +75,9 @@ export const parseRangeFilters = (raw: string | null): Record<string, RangeBound
     for (const [key, value] of Object.entries(parsed)) {
       if (value == null || typeof value !== "object" || Array.isArray(value)) continue;
       const bound = value as Record<string, unknown>;
-      const min = typeof bound.min === "number" ? bound.min : null;
-      const max = typeof bound.max === "number" ? bound.max : null;
+      const min = typeof bound.min === "number" && Number.isFinite(bound.min) ? bound.min : null;
+      const max = typeof bound.max === "number" && Number.isFinite(bound.max) ? bound.max : null;
+      if (min !== null && max !== null && min > max) continue;
       if (min !== null || max !== null) result[key] = { min, max };
     }
     return result;

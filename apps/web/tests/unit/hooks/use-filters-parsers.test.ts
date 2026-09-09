@@ -45,6 +45,17 @@ describe("parseRangeFilters", () => {
     expect(parseRangeFilters('{"price":{"min":10}}')).toEqual({ price: { min: 10, max: null } });
   });
 
+  it("discards overflowing bounds while preserving finite bounds", () => {
+    expect(parseRangeFilters('{"price":{"min":-1e400,"max":1e400}}')).toEqual({});
+    expect(parseRangeFilters('{"price":{"min":10,"max":1e400}}')).toEqual({ price: { min: 10, max: null } });
+    expect(parseRangeFilters('{"price":{"min":-1e400,"max":20}}')).toEqual({ price: { min: null, max: 20 } });
+  });
+
+  it("discards reversed ranges but preserves equal bounds", () => {
+    expect(parseRangeFilters('{"price":{"min":20,"max":10}}')).toEqual({});
+    expect(parseRangeFilters('{"price":{"min":10,"max":10}}')).toEqual({ price: { min: 10, max: 10 } });
+  });
+
   it("drops wrong-shape entries instead of throwing", () => {
     expect(parseRangeFilters('{"x":null}')).toEqual({});
     expect(parseRangeFilters('{"x":5}')).toEqual({});
