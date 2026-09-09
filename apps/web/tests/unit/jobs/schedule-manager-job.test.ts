@@ -758,10 +758,10 @@ describe("schedule-evaluation — direct function tests", () => {
     });
 
     it("throws when cron expression returns null next run", () => {
-      // This is hard to trigger with real cron parser, but the code path exists.
-      // A frequency type with missing frequency field also goes to the throw.
-      const invalid: any = { scheduleType: "frequency", frequency: undefined };
-      expect(() => getNextExecutionTime(invalid)).toThrow("Invalid schedule configuration");
+      const invalid: any = { scheduleType: "cron", cronExpression: "0 0 31 2 *" };
+      expect(() => getNextExecutionTime(invalid)).toThrow(
+        "Unable to calculate next run for cron expression: 0 0 31 2 *"
+      );
     });
 
     it("uses timezone from scheduledIngest", () => {
