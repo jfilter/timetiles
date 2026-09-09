@@ -122,6 +122,8 @@ const triggerScheduledIngest = async (
     .where(
       and(
         eq(scheduled_ingests.id, scheduledIngest.id),
+        // Recheck persisted state: an operator may disable the schedule after the scheduler's read.
+        options.triggeredBy === "schedule" ? eq(scheduled_ingests.enabled, true) : undefined,
         or(isNull(scheduled_ingests.lastStatus), ne(scheduled_ingests.lastStatus, "running"))
       )
     )

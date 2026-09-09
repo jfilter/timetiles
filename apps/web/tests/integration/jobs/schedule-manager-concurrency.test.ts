@@ -5,6 +5,7 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { claimAndQueueScheduledIngest, ScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { Catalog, ScheduledIngest, User } from "@/payload-types";
 
@@ -63,6 +64,32 @@ describe.sequential("Schedule Manager Concurrency Updates", () => {
       }
     );
     testImport = scheduledIngest;
+  });
+
+  it("does not queue a scheduled run after the persisted schedule was disabled", async () => {
+    await payload.update({ collection: "scheduled-ingests", id: testImport.id, data: { enabled: false } });
+
+    await expect(
+      claimAndQueueScheduledIngest(payload, testImport, new Date(), {
+        triggeredBy: "schedule",
+        onQueueFailure: "record-failure",
+      })
+    ).rejects.toThrow(ScheduledIngestBusyError);
+
+    const jobs = await payload.find({ collection: "payload-jobs", pagination: false, limit: 0 });
+    expect(jobs.docs.filter((job: { workflowSlug?: string }) => job.workflowSlug === "scheduled-ingest")).toHaveLength(
+      0
+    );
+  });
+
+  it("still allows an explicit manual run of a disabled schedule", async () => {
+    await payload.update({ collection: "scheduled-ingests", id: testImport.id, data: { enabled: false } });
+    const result = await claimAndQueueScheduledIngest(payload, testImport, new Date(), {
+      triggeredBy: "manual",
+      onQueueFailure: "rollback",
+    });
+    const job = await payload.findByID({ collection: "payload-jobs", id: result.jobId });
+    expect(job.workflowSlug).toBe("scheduled-ingest");
   });
 
   it("should create test scheduled ingest successfully", () => {
