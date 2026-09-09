@@ -251,7 +251,7 @@ Each theme file defines a base palette and maps it to semantic tokens (`--primar
 | Cartographic | `themes/cartographic.css` | `:root` / `.dark`                      | Default — warm earth tones           |
 | Modern       | `themes/modern.css`       | `.theme-modern` / `.theme-modern.dark` | Vibrant, high-contrast, system fonts |
 
-The Cartographic theme uses `:root` so it applies by default. The Modern theme is scoped to `.theme-modern` and activates when that class is added to `<html>` and `<body>`.
+The Cartographic theme uses `:root` so it applies by default. The web app additionally imports `@timetiles/ui/themes/modern.css` in `apps/web/app/styles/app.css`. The Modern theme is scoped to `.theme-modern` and activates when that class is added to `<html>` and `<body>`; switching presets does not replace stylesheet imports at runtime.
 
 ### Runtime Theme Switching
 
@@ -266,19 +266,9 @@ The `ThemePresetPicker` component renders the Palette icon in the header. It cyc
 
 ### Flash Prevention
 
-A blocking `<script>` in `<head>` reads `localStorage` and applies the theme class before the first paint, preventing a flash of the wrong theme:
+The frontend layout (`app/[locale]/(frontend)/layout.tsx`) declares a single `next/script` component with `id="theme-preset"` and `strategy="beforeInteractive"`. It reads the stored preset and applies its class to both `<html>` and `<body>`. Both elements need the class because `next/font` defines font variables on `<body>`.
 
-```tsx
-// In app/[locale]/(frontend)/layout.tsx — <head>
-<script
-  dangerouslySetInnerHTML={{
-    __html: `(function(){try{var p=localStorage.getItem("timetiles-theme-preset");
-    if(p&&p!=="cartographic"){document.documentElement.classList.add("theme-"+p)}}catch(e){}})()`,
-  }}
-/>
-```
-
-A matching script runs at the start of `<body>` to apply the class there too, because `next/font` sets font CSS variables on `<body>`.
+Keep initialization in that layout script aligned with `useThemePreset()`; do not add separate head/body scripts.
 
 ### UIProvider
 
