@@ -83,8 +83,6 @@ interface BlockPlugin {
   labels: { singular: string; plural: string };
   /** Payload CMS field definitions */
   fields: PayloadBlock["fields"];
-  /** Optional React render function */
-  render?: (block: Record<string, unknown>, key: string) => React.ReactElement;
 }
 ```
 
@@ -94,8 +92,6 @@ Create a new file in `lib/blocks/`:
 
 ```typescript
 // lib/blocks/pricing-table.ts
-import type { Field } from "payload";
-
 import { registerBlock } from "./registry";
 
 registerBlock({
@@ -138,56 +134,30 @@ import "./pricing-table";
    - Returns Payload-compatible `Block[]` definitions
 4. The block style fields (`paddingTop`, `paddingBottom`, `maxWidth`, etc.) are added automatically — you don't need to include them in your block definition.
 
-### Adding a Renderer
-
-To render your custom block, add it to the `blockRenderers` map in `components/block-renderer.tsx`:
-
-```typescript
-import type { Block } from "@/lib/types/cms-blocks";
-
-// Add to the blockRenderers map
-const blockRenderers: Record<string, (block: Block, key: string) => React.ReactElement> = {
-  // ... existing renderers
-  pricingTable: (block, key) => {
-    const b = block as Record<string, unknown>;
-    return <PricingTable key={key} tiers={b.tiers as Tier[]} title={b.title as string} />;
-  },
-};
-```
-
 ### Adding Types
 
-Add a TypeScript interface for your block to `lib/types/cms-blocks.ts`:
+After registering the block, regenerate Payload's types from the repository root:
 
-```typescript
-export interface PricingTableBlock {
-  blockType: "pricingTable";
-  title: string;
-  tiers: Array<{
-    name: string;
-    price: string;
-    description?: string | null;
-    features?: Array<{ text: string; id?: string | null }> | null;
-    ctaText?: string | null;
-    ctaLink: string;
-    highlighted?: boolean | null;
-    id?: string | null;
-  }>;
-  blockStyle?: BlockStyle | null;
-  id?: string | null;
-  blockName?: string | null;
-}
+```bash
+pnpm --filter web exec payload generate:types
 ```
 
-Add it to the `Block` union type:
+The `Block` union in `lib/types/cms-blocks.ts` derives from `Page["pageBuilder"][number]`, so the new variant is included automatically. Do not duplicate its fields in a hand-written interface. If a renderer needs a named type, add an alias:
 
 ```typescript
-export type Block =
-  | HeroBlock
-  | FeaturesBlock
-  // ...existing types
-  | PricingTableBlock;
+export type PricingTableBlock = Extract<Block, { blockType: "pricingTable" }>;
 ```
+
+### Adding a Renderer
+
+Add a case to the `renderBlock` switch in `components/block-renderer.tsx`:
+
+```tsx
+case "pricingTable":
+  return <PricingTable tiers={block.tiers} title={block.title} />;
+```
+
+The switch narrows the generated union to your block's type; no casts are needed. The outer `BlockStyleWrapper` already owns the React list key and applies the block's style settings, so do not pass a key through the renderer helpers.
 
 ### Registry API
 
@@ -195,9 +165,7 @@ export type Block =
 import {
   registerBlock, // Register a new block plugin
   getRegisteredBlocks, // Get all registered BlockPlugin[]
-  getBlock, // Get a single plugin by slug
   getPayloadBlocks, // Get Payload Block[] with style fields
-  getBlockRenderers, // Get render map from plugins with renderers
 } from "@/lib/blocks/registry";
 ```
 
