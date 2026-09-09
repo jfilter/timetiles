@@ -230,9 +230,23 @@ test.describe("Explore Page - Filtering", () => {
     // over the past year, so any fixed month is a coin flip on whether it contains any — and
     // an empty result would fail this test for a reason that has nothing to do with
     // filtering. Take the month of an event that actually exists.
-    const unfilteredPromise = waitForEventsListResponse(page, {});
+    // Ignore global requests still in flight, including the limit=1 probe.
+    // The sample must come from the selected dataset in the visible map area.
+    const unfilteredPromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        response.request().method() === "GET" &&
+        url.pathname === "/api/v1/events" &&
+        url.searchParams.has("datasets") &&
+        url.searchParams.has("bounds")
+      );
+    });
     await explorePage.toggleDataset("Air Quality Measurements");
     const unfiltered = await unfilteredPromise;
+    expect(unfiltered.status()).toBe(200);
+    expect(new URL(unfiltered.url()).searchParams.get("datasets")).toBe(
+      (await explorePage.getUrlParams()).get("datasets")
+    );
 
     const body = (await unfiltered.json()) as { events?: Array<{ eventTimestamp?: string | null }> };
     const sample = body.events?.find((event) => Boolean(event.eventTimestamp))?.eventTimestamp;
