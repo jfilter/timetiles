@@ -86,9 +86,6 @@ export const getNextFrequencyExecution = (frequency: string, fromDate?: Date, ti
     case "hourly": {
       next.setUTCMinutes(0);
       next.setUTCHours(next.getUTCHours() + 1);
-      while (next <= now) {
-        next.setUTCHours(next.getUTCHours() + 1);
-      }
       break;
     }
 
@@ -96,21 +93,13 @@ export const getNextFrequencyExecution = (frequency: string, fromDate?: Date, ti
       next.setUTCMinutes(0);
       next.setUTCHours(0);
       next.setUTCDate(next.getUTCDate() + 1);
-      while (next <= now) {
-        next.setUTCDate(next.getUTCDate() + 1);
-      }
       break;
 
     case "weekly": {
       next.setUTCMinutes(0);
       next.setUTCHours(0);
-      const daysUntilSunday = 7 - next.getUTCDay() || 7;
+      const daysUntilSunday = 7 - next.getUTCDay();
       next.setUTCDate(next.getUTCDate() + daysUntilSunday);
-      // Guard for parity with the other branches: always return a future
-      // instant even if upstream normalization of `now` ever changes.
-      while (next <= now) {
-        next.setUTCDate(next.getUTCDate() + 7);
-      }
       break;
     }
 
