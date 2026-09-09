@@ -5,14 +5,10 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
 import { generateIngestName } from "@/lib/ingest/trigger-service";
 import { reconcileFailedScheduledIngests } from "@/lib/jobs/handlers/schedule-manager/reconcile-failed-ingests";
-import {
-  calculateNextRun,
-  getNextExecutionTime,
-  getNextFrequencyExecution,
-  shouldRunNow,
-} from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
+import { getNextExecutionTime, shouldRunNow } from "@/lib/jobs/handlers/schedule-manager/schedule-evaluation";
 import { scheduleManagerJob } from "@/lib/jobs/handlers/schedule-manager-job";
 
 // Mock dependencies
@@ -860,16 +856,16 @@ describe("schedule-evaluation — direct function tests", () => {
     });
   });
 
-  describe("calculateNextRun", () => {
+  describe("next-run error propagation", () => {
     it("returns expected next run for valid schedule", () => {
       const sched: any = { scheduleType: "frequency", frequency: "hourly" };
       const currentTime = new Date("2024-01-01T09:30:00Z");
-      const result = calculateNextRun(sched, currentTime);
+      const result = getNextExecutionTime(sched, currentTime);
       expect(result).toEqual(new Date("2024-01-01T10:00:00Z"));
     });
 
     it("throws on invalid schedule configuration (regression)", () => {
-      // Regression: `calculateNextRun` used to swallow parse errors and return
+      // Regression: `getNextExecutionTime` used to swallow parse errors and return
       // `currentTime + 24h`, masking broken cron expressions as "runs once per
       // day." It now throws so callers can disable the ingest and audit-log.
       const sched: any = {
@@ -878,7 +874,7 @@ describe("schedule-evaluation — direct function tests", () => {
         cronExpression: undefined, // invalid
       };
       const currentTime = new Date("2024-01-01T09:30:00Z");
-      expect(() => calculateNextRun(sched, currentTime)).toThrow();
+      expect(() => getNextExecutionTime(sched, currentTime)).toThrow();
     });
   });
 });

@@ -23,13 +23,13 @@ import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 import type { ScheduledIngest } from "@/payload-types";
 
 import { reconcileFailedScheduledIngests } from "./schedule-manager/reconcile-failed-ingests";
-import { calculateNextRun, shouldRunNow } from "./schedule-manager/schedule-evaluation";
+import { getNextExecutionTime, shouldRunNow } from "./schedule-manager/schedule-evaluation";
 import { processScheduledScrapers } from "./schedule-manager/scraper-scheduling";
 
 /**
  * Disable a scheduled ingest after detecting an invalid schedule configuration.
  *
- * Previously `calculateNextRun` swallowed parse errors and silently rescheduled
+ * Previously `getNextExecutionTime` swallowed parse errors and silently rescheduled
  * for 24 hours from now, making broken cron expressions look like "runs once
  * per day." Now the scheduler disables the ingest, stamps a readable
  * `lastError`, and emits an audit entry so operators notice and re-enable
@@ -100,7 +100,7 @@ const processScheduledIngest = async (
 
   let nextRun: Date;
   try {
-    nextRun = calculateNextRun(scheduledIngest, currentTime);
+    nextRun = getNextExecutionTime(scheduledIngest, currentTime);
   } catch (scheduleError) {
     const message = scheduleError instanceof Error ? scheduleError.message : "Unknown schedule error";
     logError(scheduleError, "Invalid schedule configuration — disabling scheduled ingest", {
@@ -153,7 +153,7 @@ const handleImportError = async (
   // nextRun in the past and re-trigger on every scheduler tick.
   let nextRun: Date | null = null;
   try {
-    nextRun = calculateNextRun(scheduledIngest, currentTime);
+    nextRun = getNextExecutionTime(scheduledIngest, currentTime);
   } catch (scheduleError) {
     // Both the trigger and the schedule parse failed — disable the ingest
     // so we stop re-trying a broken config and surface it in the audit log.

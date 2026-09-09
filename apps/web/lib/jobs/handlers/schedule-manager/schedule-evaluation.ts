@@ -13,8 +13,6 @@ import { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
 import { logger } from "@/lib/logger";
 import type { ScheduledIngest } from "@/payload-types";
 
-export { getNextFrequencyExecution } from "@/lib/ingest/schedule-utils";
-
 /**
  * Gets the next execution time based on schedule type.
  *
@@ -93,13 +91,3 @@ export const shouldRunNow = (scheduledIngest: ScheduledIngest, currentTime: Date
     return false;
   }
 };
-
-/**
- * Calculate next run time. Throws on invalid schedule configuration — callers
- * must catch and decide how to surface the error (typically by disabling the
- * scheduled ingest and emitting an audit log entry). The previous 24-hour
- * silent fallback masked invalid configs as "runs once per day," making
- * broken schedules look functional to operators.
- */
-export const calculateNextRun = (scheduledIngest: ScheduledIngest, currentTime: Date): Date =>
-  getNextExecutionTime(scheduledIngest, currentTime);
