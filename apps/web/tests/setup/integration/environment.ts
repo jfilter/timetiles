@@ -1087,8 +1087,6 @@ export const withIngestFile = async (
  * @param options.cronExpression - Cron expression (for cron type)
  * @param options.authConfig - Authentication configuration
  * @param options.datasetMapping - Dataset mapping configuration
- * @param options.maxRetries - Maximum retry attempts (default: 3)
- * @param options.timeoutSeconds - Request timeout in seconds (default: 300)
  * @param options.ingestNameTemplate - Template for import file names
  * @param options.user - User to associate with the import
  *
@@ -1145,8 +1143,6 @@ export const withScheduledIngest = async (
       customHeaders?: Record<string, any>;
     };
     datasetMapping?: any;
-    maxRetries?: number;
-    timeoutSeconds?: number;
     ingestNameTemplate?: string;
     additionalData?: Record<string, any>;
     user?: any;
@@ -1172,8 +1168,6 @@ export const withScheduledIngest = async (
     "cronExpression",
     "authConfig",
     "datasetMapping",
-    "maxRetries",
-    "timeoutSeconds",
     "ingestNameTemplate",
   ];
 

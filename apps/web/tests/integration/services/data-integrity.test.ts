@@ -665,7 +665,6 @@ describe.sequential("Data Integrity Tests", () => {
           user: testUser,
           name: "Retry Consistency Import",
           frequency: "daily",
-          maxRetries: 1,
           additionalData: { retryConfig: { maxRetries: 1 } },
         }
       );

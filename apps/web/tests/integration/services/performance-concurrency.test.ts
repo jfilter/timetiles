@@ -391,7 +391,12 @@ describe.sequential("Performance and Concurrency Tests", () => {
         testEnv,
         testCatalogId,
         `${testServerUrl}/rate-limited.csv`,
-        { user: testUser, name: "Rate Limited Import", frequency: "hourly", maxRetries: 3 }
+        {
+          user: testUser,
+          name: "Rate Limited Import",
+          frequency: "hourly",
+          additionalData: { retryConfig: { maxRetries: 3 } },
+        }
       );
 
       // Set up test server endpoint with rate limiting
@@ -449,8 +454,9 @@ describe.sequential("Performance and Concurrency Tests", () => {
         user: testUser,
         name: "Slow Response Import",
         frequency: "daily",
-        timeoutSeconds: 30, // 30 second timeout (minimum allowed)
+        additionalData: { advancedOptions: { timeoutMinutes: 1 } },
       });
+      expect(scheduledIngest.advancedOptions.timeoutMinutes).toBe(1);
 
       // Set up test server endpoint with slow response
       testServer.respond("/slow.csv", {
