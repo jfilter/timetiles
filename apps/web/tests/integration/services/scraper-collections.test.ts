@@ -610,7 +610,7 @@ describe.sequential("Scraper Collections Access Control", () => {
     expect(updated.repoCreatedBy).toBe(adminUser.id);
   });
 
-  it.each(["commit", "rollback"])("keeps scraper claim and workflow atomic on %s", async (outcome) => {
+  it.each(["commit", "rollback", "disabled"])("handles scraper claims on %s", async (outcome) => {
     await enableScrapers();
     const repo = await payload.create({
       collection: "scraper-repos",
@@ -628,6 +628,14 @@ describe.sequential("Scraper Collections Access Control", () => {
       },
       overrideAccess: true,
     });
+    if (outcome === "disabled") {
+      await payload.update({ collection: "scrapers", id: scraper.id, data: { enabled: false } });
+      expect(await claimScraperRunning(payload, scraper.id)).toBe(false);
+      const unchanged = await payload.findByID({ collection: "scrapers", id: scraper.id });
+      expect(unchanged.lastRunStatus).toBe(scraper.lastRunStatus);
+      expect(unchanged.lastRunAt).toBe(scraper.lastRunAt);
+      return;
+    }
     const req = await createLocalReq({}, payload);
     expect(await initTransaction(req)).toBe(true);
     try {

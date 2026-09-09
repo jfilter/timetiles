@@ -200,7 +200,7 @@ export const resolveWebhookToken = async (payload: Payload, token: string): Prom
 
 /**
  * Atomically claim "running" status on a scraper to prevent concurrent triggers.
- * Returns true if the claim succeeded, false if already running.
+ * Returns true if the claim succeeded, false if disabled, missing, or already running.
  *
  * Uses a single SQL UPDATE with a WHERE guard so that PostgreSQL row-level
  * locking prevents two concurrent callers from both succeeding.
@@ -223,7 +223,13 @@ export const claimScraperRunning = async (
   const result = await db
     .update(scrapers)
     .set({ lastRunStatus: "running", lastRunAt: new Date().toISOString() })
-    .where(and(eq(scrapers.id, scraperId), or(isNull(scrapers.lastRunStatus), ne(scrapers.lastRunStatus, "running"))))
+    .where(
+      and(
+        eq(scrapers.id, scraperId),
+        eq(scrapers.enabled, true),
+        or(isNull(scrapers.lastRunStatus), ne(scrapers.lastRunStatus, "running"))
+      )
+    )
     .returning({ id: scrapers.id });
 
   return result.length > 0;
