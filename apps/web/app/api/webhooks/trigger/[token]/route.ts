@@ -153,8 +153,8 @@ const handleScraperTrigger = async (
     const claimed = await claimScraperRunning(payload, target.id, req);
     if (!claimed) {
       if (ownsTransaction) await commitTransaction(req);
-      logger.info({ scraperId: target.id, name: target.name }, "Webhook trigger skipped - scraper already running");
-      return { message: "Scraper already running, skipped", status: "skipped" };
+      logger.info({ scraperId: target.id, name: target.name }, "Webhook trigger skipped - scraper claim rejected");
+      return { message: "Scraper unavailable for triggering, skipped", status: "skipped" };
     }
     const job = await payload.jobs.queue({
       workflow: "scraper-ingest",

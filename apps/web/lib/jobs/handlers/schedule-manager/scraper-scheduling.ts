@@ -120,7 +120,7 @@ export const processScheduledScrapers = async (
       // Atomic concurrency guard: claim "running" status to prevent concurrent triggers
       const claimed = await claimScraperRunning(payload, scraper.id);
       if (!claimed) {
-        logger.info("Skipping scraper - already running", { scraperId: scraper.id, name: scraper.name });
+        logger.info("Skipping scraper - claim rejected", { scraperId: scraper.id, name: scraper.name });
         continue;
       }
 

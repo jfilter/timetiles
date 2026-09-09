@@ -56,7 +56,7 @@ export const POST = apiRoute({
     try {
       // Publish the atomic claim and workflow together, preserving the old status/time on failure.
       const claimed = await claimScraperRunning(payload, scraper.id, jobReq);
-      if (!claimed) throw new ConflictError("Scraper is already running");
+      if (!claimed) throw new ConflictError("Scraper is no longer available for triggering");
       await payload.jobs.queue({
         workflow: "scraper-ingest",
         input: { scraperId: scraper.id, triggeredBy: "manual" },

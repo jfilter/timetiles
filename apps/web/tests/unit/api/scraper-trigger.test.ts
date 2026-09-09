@@ -161,7 +161,7 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
 
     expect(response.status).toBe(409);
     const data = await response.json();
-    expect(data.error).toBe("Scraper is already running");
+    expect(data.error).toBe("Scraper is no longer available for triggering");
     expect(mockPayload.jobs.queue).not.toHaveBeenCalled();
   });
 

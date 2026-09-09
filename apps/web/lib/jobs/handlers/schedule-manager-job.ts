@@ -121,9 +121,9 @@ const processScheduledIngest = async (
       onQueueFailure: "record-failure",
     });
   } catch (error) {
-    // Another worker won the claim. Expected, not an error.
+    // Another worker won the claim, or the schedule was disabled since our read.
     if (isScheduledIngestBusyError(error)) {
-      logger.info("Skipping scheduled ingest - claimed by another worker", {
+      logger.info("Skipping scheduled ingest - claim rejected", {
         scheduledIngestId: scheduledIngest.id,
         name: scheduledIngest.name,
       });
