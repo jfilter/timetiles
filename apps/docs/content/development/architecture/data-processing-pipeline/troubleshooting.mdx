@@ -147,12 +147,13 @@ The workflow resume points are coarser than the accepted target stages:
 
 ### NEEDS_REVIEW Resolution
 
-1. User reviews the issue in the admin interface (schema changes, duplicate rates, quota)
-2. User approves (sets `schemaValidation.approved = true`)
-3. The `ingest-jobs` afterChange hook queues the `ingest-process` workflow automatically
-4. The workflow resumes from the appropriate point based on `reviewReason`
+Review the issue in the import wizard. Its review panel submits to `POST /api/ingest-jobs/{id}/approve`, which checks access and requires the job to be in `needs-review`. Do not bypass this endpoint with a generic job update: ordinary owners have read access to jobs, but no generic update access.
 
-Quota-exceeded approvals require admin role.
+Approval sets `schemaValidation.approved = true`. The collection hook normally queues `ingest-process` from the resume point associated with `reviewReason`, with these exceptions:
+
+- **`high-row-error-rate`**: Events already exist. Approval marks the job completed and updates the parent file's status without queueing another workflow.
+- **`file-too-large`**: Approval is rejected because duplicate analysis stopped before producing complete results. Split the source into smaller files and upload again.
+- **`quota-exceeded`**: Approval requires an admin; owners cannot approve their own quota exception.
 
 ### Scheduled Import Failures
 
