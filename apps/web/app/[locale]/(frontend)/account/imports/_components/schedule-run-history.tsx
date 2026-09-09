@@ -44,8 +44,12 @@ const HistoryRow = ({ entry }: { readonly entry: HistoryEntry }) => {
           {entry.triggeredBy}
         </span>
       )}
-      {entry.status === "failed" && entry.error && (
-        <span className="text-destructive ml-auto max-w-[300px] truncate">{entry.error}</span>
+      {entry.error && (
+        <span
+          className={`ml-auto max-w-[300px] ${entry.status === "failed" ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {entry.error}
+        </span>
       )}
     </div>
   );

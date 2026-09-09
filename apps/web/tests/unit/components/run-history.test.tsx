@@ -24,6 +24,19 @@ describe.each([
   { locale: "en", messages: en },
   { locale: "de", messages: de },
 ])("run history ($locale)", ({ locale, messages }) => {
+  it.each(["failed", "paused"] as const)("shows the stored reason for a %s schedule run", (status) => {
+    const reason = "Schema changes require approval";
+    render(
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <ScheduleRunHistory
+          scheduleId={1}
+          executionHistory={[{ status, executedAt: "2024-05-15T12:00:00Z", error: reason }]}
+        />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByText(reason)).toBeVisible();
+  });
+
   it.each([
     ["success", "statusSuccess"],
     ["failed", "statusFailed"],
