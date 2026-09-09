@@ -8,11 +8,11 @@ Events appear as markers on an interactive map powered by MapLibre GL JS. When z
 
 Click any individual marker to see the full event details: title, date, location, description, and all metadata fields from your data.
 
-Pan, zoom, and rotate the map freely. The URL updates as you move — bookmark it to save your exact view.
+Pan, zoom, and rotate the map freely. The URL stores the map center and zoom level — bookmark it to return to that area.
 
 ## Timeline
 
-A histogram at the bottom of the screen shows event density over time. Each bar represents a time period — taller bars mean more events.
+For datasets with dates, a histogram shows event density over time. Each bar represents a time period — taller bars mean more events. Time controls are hidden when none of the visible datasets has temporal data.
 
 Drag the handles to narrow the time range. Only events within the selected range appear on the map. This lets you watch how patterns shift over time — useful for spotting escalation, seasonal trends, or quiet periods.
 
@@ -21,15 +21,17 @@ Drag the handles to narrow the time range. Only events within the selected range
 Sidebar filters are generated automatically from your data schema:
 
 - **Data source** — filter by dataset when a catalog contains multiple
-- **Category fields** — fields with a small number of distinct values become checkbox filters
-- **Date range** — restrict to a specific time window
-- **Search** — find events by text across all fields
+- **Category fields** — select values from dropdowns with checkboxes
+- **Numeric ranges** — restrict numeric fields to a range
+- **Date range** — restrict temporal data to a specific time window
+
+Category and numeric range filters appear only when exactly one dataset is selected and suitable fields are available.
 
 Combine multiple filters to drill down. All active filters are reflected in the URL.
 
 ## Sharing
 
-Every view has a unique URL. Filters, map position, time range, and selected datasets are all encoded in the link. When you share it, recipients see exactly what you see.
+Filters, map center, zoom level, time range, and selected datasets are encoded in the URL. Sharing the link preserves these settings; it does not grant access to private data.
 
 You can also export all your data as a ZIP archive from Account Settings — includes catalogs, datasets, events, and import history.
 
@@ -37,5 +39,5 @@ You can also export all your data as a ZIP archive from Account Settings — inc
 
 - **Use the timeline to tell a story** — narrow the range to a specific period and share the URL
 - **Combine filters** — category + time range reveals patterns that aren't visible in the full dataset
-- **Bookmark views** — the URL captures your exact state, so you can return to it anytime
+- **Bookmark views** — return to the same filters, map center, and zoom level
 - **Click clusters** — zoom into dense areas to see individual events
