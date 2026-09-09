@@ -38,6 +38,30 @@ describe("useThemePreset storage synchronization", () => {
     expect(result.current.preset).toBe("modern");
   });
 
+  it.each([
+    { stored: "modern", expected: "modern" },
+    { stored: "cartographic", expected: "cartographic" },
+    { stored: "unknown-preset", expected: "cartographic" },
+  ])("synchronizes stored value $stored across consumers", ({ stored, expected }) => {
+    localStorage.setItem(STORAGE_KEY, "cartographic");
+    const first = renderHook(() => useThemePreset());
+    const second = renderHook(() => useThemePreset());
+    act(() => first.result.current.setPreset("modern"));
+    expect(second.result.current.preset).toBe("modern");
+
+    act(() => {
+      localStorage.setItem(STORAGE_KEY, stored);
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: STORAGE_KEY, newValue: stored, storageArea: localStorage })
+      );
+    });
+
+    expect(first.result.current.preset).toBe(expected);
+    expect(second.result.current.preset).toBe(expected);
+    expect(document.documentElement.classList.contains("theme-modern")).toBe(expected === "modern");
+    expect(document.body.classList.contains("theme-modern")).toBe(expected === "modern");
+  });
+
   it("ignores sessionStorage events for the same key", () => {
     const { result } = renderHook(() => useThemePreset());
     act(() => {
