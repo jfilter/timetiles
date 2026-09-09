@@ -80,7 +80,7 @@ export const useThemePreset = (): UseThemePresetReturn => {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY) return;
+      if (event.storageArea !== localStorage || (event.key !== null && event.key !== STORAGE_KEY)) return;
       const next = isValidPreset(event.newValue) ? event.newValue : DEFAULT_PRESET;
       useThemePresetStore.setState({ preset: next });
       applyPresetClass(next);
