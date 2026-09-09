@@ -35,9 +35,6 @@ import type { FormattedStage, StageStatus } from "@/lib/ingest/types/progress-tr
 
 import { useWizardStore } from "../wizard-store";
 
-/** Loosened translate function for dynamic i18n keys not known at compile time. */
-type DynamicTranslate = (key: string) => string;
-
 export interface StepProcessingProps {
   className?: string;
 }
@@ -96,7 +93,7 @@ const StageDetails = ({ stage }: { stage: FormattedStage }) => {
 };
 
 /** Translated stage label, falling back to the server-provided display name. */
-const stageLabel = (translate: DynamicTranslate, stage: FormattedStage): string => {
+const stageLabel = (translate: ReturnType<typeof useTranslations<"Ingest">>, stage: FormattedStage): string => {
   const i18nKey = STAGE_I18N_KEYS[stage.name];
   return i18nKey ? translate(i18nKey) : stage.displayName;
 };
@@ -104,7 +101,7 @@ const stageLabel = (translate: DynamicTranslate, stage: FormattedStage): string 
 const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
   const t = useTranslations("Ingest");
   const duration = formatStageDuration(stage.startedAt, stage.completedAt);
-  const stageName = stageLabel(t as DynamicTranslate, stage);
+  const stageName = stageLabel(t, stage);
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
   const lineBelow = !isLast;
@@ -152,7 +149,7 @@ const StageTimeline = ({ stages }: { stages: FormattedStage[] }) => {
   const t = useTranslations("Ingest");
   const visible = stages.filter((s) => s.status !== "skipped");
   const current = visible.find((s) => s.status === "in_progress");
-  const currentName = current ? stageLabel(t as DynamicTranslate, current) : null;
+  const currentName = current ? stageLabel(t, current) : null;
 
   return (
     <div className="space-y-1 px-6 py-4">
@@ -277,9 +274,7 @@ export const StepProcessing = ({ className }: Readonly<StepProcessingProps>) => 
   const errorMessage = progress?.error ?? wizardError ?? pollError;
   const progressPercent = progress?.progress ?? 0;
   const currentStageKey = STAGE_I18N_KEYS[progress?.currentStage ?? ""];
-  const stageLabel = currentStageKey
-    ? (t as DynamicTranslate)(currentStageKey)
-    : (progress?.currentStage ?? t("processingLabel"));
+  const stageLabel = currentStageKey ? t(currentStageKey) : (progress?.currentStage ?? t("processingLabel"));
   const progressBarStyle = { width: `${progressPercent}%` };
 
   return (
