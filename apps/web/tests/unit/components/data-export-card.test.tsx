@@ -83,6 +83,17 @@ describe.each([
     expect(screen.getByText(new RegExp(`15.*${month}|${month}.*15`))).toBeInTheDocument();
   });
 
+  it.each([null, undefined])("shows a neutral placeholder for missing file size %s", (fileSize) => {
+    renderExport({ fileSize });
+    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.queryByText("Unknown size")).not.toBeInTheDocument();
+  });
+
+  it("distinguishes an empty file from missing size metadata", () => {
+    renderExport({ fileSize: 0 });
+    expect(screen.getByText("0 B")).toBeInTheDocument();
+  });
+
   it.each([null, undefined, "", "not-a-date"])("uses a localized fallback for completion date %s", (completedAt) => {
     renderExport({ completedAt });
     expect(screen.getByText(new RegExp(unknown))).toBeInTheDocument();

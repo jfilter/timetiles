@@ -64,7 +64,7 @@ export const formatCompactNumber = (n: number, locale?: string): string => {
  * Format a byte count as a human-readable file size string.
  */
 export const formatFileSize = (bytes: number | null | undefined): string => {
-  if (bytes == null) return "Unknown size";
+  if (bytes == null) return "—";
 
   // Each threshold is checked against the value as it will be PRINTED, so a size that
   // rounds up to a full unit steps up instead of printing "1024.0 KB".
