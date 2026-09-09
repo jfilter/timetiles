@@ -225,6 +225,7 @@ export class DataExportService {
         depth: 0,
         where: { and: [{ dataset: { in: datasetIds } }, { id: { greater_than: lastId } }] },
         limit: EVENTS_PER_CHUNK,
+        pagination: false,
         sort: "id",
         overrideAccess: true,
       });

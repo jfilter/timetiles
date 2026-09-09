@@ -239,6 +239,33 @@ describe.sequential("DataExportService", () => {
     );
   });
 
+  it.each([10000, 10001])("exports %i events with bounded cursor queries and no total count", async (count) => {
+    const records = createRecords(count, (index) => ({ id: index + 1, dataset: 42 }));
+    const payload = {
+      find: vi
+        .fn()
+        .mockResolvedValueOnce({ docs: records.slice(0, 10000) })
+        .mockResolvedValueOnce({ docs: records.slice(10000) }),
+    };
+    const service = createDataExportService(payload as any);
+    const ids: number[] = [];
+    for await (const batch of (service as any).fetchEventsBatched([42])) {
+      expect(batch.length).toBeLessThanOrEqual(10000);
+      ids.push(...batch.map((event: { id: number }) => event.id));
+    }
+    expect(ids).toEqual(records.map((record) => record.id));
+    expect(payload.find).toHaveBeenCalledTimes(2);
+    for (const [index, [query]] of payload.find.mock.calls.entries()) {
+      expect(query).toMatchObject({
+        collection: "events",
+        pagination: false,
+        limit: 10000,
+        sort: "id",
+        where: { and: [{ dataset: { in: [42] } }, { id: { greater_than: index * 10000 } }] },
+      });
+    }
+  });
+
   it.each(["file", "missing", "directory"])("handles media stored as %s", async (kind) => {
     const uploadDir = await mkdtemp(path.join(tmpdir(), "timetiles-export-media-"));
     mocks.uploadDir = uploadDir;
