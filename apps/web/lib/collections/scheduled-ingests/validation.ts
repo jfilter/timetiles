@@ -9,10 +9,9 @@
  * @category Collections/ScheduledIngests
  */
 
-import { parseCronExpression } from "@/lib/ingest/cron-parser";
+import { createCronSchedule } from "@/lib/ingest/cron-parser";
 import { validateExtractPattern } from "@/lib/ingest/safe-regex";
 import { validateExternalHttpUrl } from "@/lib/security/url-validation";
-import { parseDigits } from "@/lib/utils/number-parsing";
 
 /**
  * Validates a URL string for Payload field validation.
@@ -27,127 +26,15 @@ export const validateUrl = (val: string | null | undefined): string | true => {
   return true;
 };
 
-/**
- * Validates a cron expression field range.
- */
-const parseStrictCronNumber = (value: string): number | null => parseDigits(value.trim());
-
-const validateRange = (field: string, min: number, max: number, name: string): string | true => {
-  // Ranges may carry a step (A-B/N) — validate it, then the bare range.
-  const [rangePart, stepPart] = field.split("/");
-  if (stepPart !== undefined) {
-    const step = parseStrictCronNumber(stepPart);
-    if (step == null || step <= 0) {
-      return `Invalid ${name} step value in cron expression`;
-    }
-  }
-  const parts = (rangePart ?? "").split("-");
-  if (parts.length !== 2) {
-    return `Invalid ${name} range in cron expression`;
-  }
-  const [start, end] = parts.map((p) => parseStrictCronNumber(p));
-  if (start == null || end == null || start < min || end > max || start > end) {
-    return `Invalid ${name} range in cron expression (must be ${min}-${max})`;
-  }
-  return true;
-};
-
-/**
- * Validates a cron expression step value.
- */
-const validateStep = (field: string, name: string): string | true => {
-  const step = parseStrictCronNumber(field.substring(2));
-  if (step == null || step <= 0) {
-    return `Invalid ${name} step value in cron expression`;
-  }
-  return true;
-};
-
-/**
- * Validates a single comma-list member, which may itself be a range (with optional step).
- */
-const validateListMember = (member: string, min: number, max: number, name: string): string | true => {
-  if (member.includes("-")) {
-    return validateRange(member, min, max, name);
-  }
-  const num = parseStrictCronNumber(member);
-  if (num == null || num < min || num > max) {
-    return `Invalid ${name} value ${member} in cron expression (must be ${min}-${max})`;
-  }
-  return true;
-};
-
-/**
- * Validates a list of cron expression values, each of which may be a plain
- * number or a range (e.g. "1-5,10").
- */
-const validateList = (field: string, min: number, max: number, name: string): string | true => {
-  const values = field.split(",");
-  for (const v of values) {
-    const result = validateListMember(v, min, max, name);
-    if (result !== true) return result;
-  }
-  return true;
-};
-
-/**
- * Validates a single cron expression field.
- */
-const validateField = (field: string, min: number, max: number, name: string): string | true => {
-  if (field === "*") return true;
-
-  // Handle different cron patterns — comma lists first, since a list member
-  // may itself contain a range (e.g. "1-5,10").
-  if (field.includes(",")) {
-    return validateList(field, min, max, name);
-  }
-  if (field.includes("-")) {
-    return validateRange(field, min, max, name);
-  }
-  if (field.startsWith("*/")) {
-    return validateStep(field, name);
-  }
-
-  // Simple numeric value
-  const num = parseStrictCronNumber(field);
-  if (num == null || num < min || num > max) {
-    return `The following field is invalid: Cron expression - invalid ${name} value (must be ${min}-${max})`;
-  }
-  return true;
-};
-
-/**
- * Validates a complete cron expression.
- */
+/** Validates optional cron input with the same engine used for execution. */
 export const validateCronExpression = (value: string | null | undefined): string | true => {
-  if (!value) return true; // Not required
-
-  let cronParts;
+  if (!value) return true;
   try {
-    cronParts = parseCronExpression(value);
-  } catch {
-    return "The following field is invalid: Cron expression must have exactly 5 fields (minute hour day month weekday)";
+    createCronSchedule(value);
+    return true;
+  } catch (error) {
+    return `The following field is invalid: Cron expression - ${error instanceof Error ? error.message : "Invalid expression"}`;
   }
-
-  const { minute, hour, dayOfMonth, month, dayOfWeek } = cronParts;
-
-  // Validate each field
-  const minuteValid = validateField(minute, 0, 59, "minute");
-  if (minuteValid !== true) return minuteValid;
-
-  const hourValid = validateField(hour, 0, 23, "hour");
-  if (hourValid !== true) return hourValid;
-
-  const dayValid = validateField(dayOfMonth, 1, 31, "day of month");
-  if (dayValid !== true) return dayValid;
-
-  const monthValid = validateField(month, 1, 12, "month");
-  if (monthValid !== true) return monthValid;
-
-  const weekdayValid = validateField(dayOfWeek, 0, 7, "day of week");
-  if (weekdayValid !== true) return weekdayValid;
-
-  return true;
 };
 
 /** Valid frequency values accepted by the schedule system. */

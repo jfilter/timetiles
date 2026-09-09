@@ -160,13 +160,18 @@ const getOrdinalSuffix = (n: number): string => {
 };
 
 /**
- * Calculate the next matching instant using Payload's cron engine.
+ * Create an inert schedule for validation or next-run calculation with Payload's cron engine.
  * Uses five-field cron syntax and UTC unless a timezone is supplied.
  */
+export const createCronSchedule = (cronExpression: string, timezone = "UTC"): Cron => {
+  parseCronExpression(cronExpression);
+  return new Cron(cronExpression, { timezone, mode: "5-part", paused: true });
+};
+
 export const calculateNextCronRun = (cronExpression: string, fromDate?: Date, timezone?: string): Date | null => {
   parseCronExpression(cronExpression);
   try {
-    const cron = new Cron(cronExpression, { timezone: timezone ?? "UTC", mode: "5-part", paused: true });
+    const cron = createCronSchedule(cronExpression, timezone);
     return cron.nextRun(fromDate ?? new Date());
   } catch {
     return null;
