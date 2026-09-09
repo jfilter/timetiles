@@ -30,7 +30,7 @@ Configured in `i18n/config.ts` and `payload-config-factory.ts`.
 └──────────────────────┬──────────────────────────────┘
                        │
               ┌────────▼────────┐
-              │   middleware.ts  │  Detects locale from URL/cookie/header
+              │    proxy.ts     │  Detects locale from URL/cookie/header
               │   (next-intl)   │  Sets locale for the request
               └────────┬────────┘
                        │
@@ -203,7 +203,7 @@ To add a third locale (e.g., French):
 | `i18n/routing.ts`                      | URL routing strategy (`localePrefix: "as-needed"`)      |
 | `i18n/request.ts`                      | Per-request message loading                             |
 | `i18n/navigation.ts`                   | Locale-aware `Link`, `useRouter`, etc.                  |
-| `middleware.ts`                        | Locale detection and routing                            |
+| `proxy.ts`                             | Locale detection and routing                            |
 | `messages/en.json`                     | English UI strings                                      |
 | `messages/de.json`                     | German UI strings                                       |
 | `lib/config/payload-config-factory.ts` | Payload localization config                             |

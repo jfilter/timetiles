@@ -14,7 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("next-intl/middleware", () => ({ default: vi.fn() }));
 
 // Now safe to import — the default export is mocked, only config is real
-const { config } = await import("../../../middleware");
+const { config } = await import("../../../proxy");
 
 describe("i18n middleware config", () => {
   it("exports a matcher config", () => {

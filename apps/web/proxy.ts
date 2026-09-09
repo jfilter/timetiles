@@ -1,5 +1,5 @@
 /**
- * Middleware for locale detection, routing, and iframe security headers.
+ * Next.js proxy for locale detection, routing, and iframe security headers.
  *
  * Detects the user's locale from the URL prefix, cookie, or Accept-Language header.
  * The default locale has no URL prefix; non-default locales get a prefix (e.g., /de/explore).
@@ -19,7 +19,7 @@ import createMiddleware from "next-intl/middleware";
 import { routing } from "./i18n/routing";
 
 /** Matches `/embed`, `/{locale}/embed`, and any sub-paths. */
-const EMBED_ROUTE_PATTERN = /^\/(?:[a-z]{2}\/)?embed(?:\/|$)/;
+const EMBED_ROUTE_PATTERN = /^\/(?:embed|[a-z]{2}\/embed)(?:\/|$)/;
 const API_ROUTE_PATTERN = /^\/api(?:\/|$)/;
 /** Payload serves uploaded files from `/api/{collection}/file/{filename}`. */
 const UPLOADED_FILE_PATTERN = /^\/api\/[^/]+\/file\//;
@@ -68,7 +68,7 @@ const applyFrameHeaders = (request: NextRequest, response: Response) => {
   return response;
 };
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   if (API_ROUTE_PATTERN.test(request.nextUrl.pathname)) {
     return applyFrameHeaders(request, NextResponse.next());
   }

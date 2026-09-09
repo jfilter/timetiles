@@ -36,7 +36,7 @@ const createMockRequest = (pathname: string) => {
 
 // The middleware wraps createMiddleware, so we need to import the default
 // export which is the actual middleware function.
-const { default: middleware } = await import("../../../middleware");
+const { default: middleware } = await import("../../../proxy");
 
 describe("middleware embed headers", () => {
   // Reset the mock response headers before each test
