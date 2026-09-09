@@ -8,6 +8,7 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
+import { Linter } from "eslint";
 import { describe, expect, it } from "vitest";
 
 const runLint = (args: string[]) => {
@@ -24,6 +25,34 @@ const runLint = (args: string[]) => {
 };
 
 describe.sequential("root ESLint invocation", () => {
+  it("preserves Payload's generated migration conventions", () => {
+    const file = "apps/web/migrations/20260909_093926.ts";
+    const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", file]);
+    const config = JSON.parse(result.stdout) as Linter.Config;
+    expect(config.rules?.["@typescript-eslint/consistent-type-imports"]).toEqual([0]);
+    expect(config.rules?.["@typescript-eslint/no-duplicate-type-constituents"]).toEqual([0]);
+    expect(config.rules?.["no-restricted-syntax"]).toEqual(expect.arrayContaining([0]));
+  }, 60000);
+
+  it.each(["proxy.ts", "lib/services/cache/storage/file-system.ts"])(
+    "distinguishes static SQL from interpolation in %s",
+    (file) => {
+      const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", `apps/web/${file}`]);
+      const config = JSON.parse(result.stdout) as Linter.Config;
+      const linter = new Linter();
+      const rules = { "no-restricted-syntax": config.rules!["no-restricted-syntax"]! };
+      for (const [source, errors] of [
+        ['sql.raw("SELECT 1")', 0],
+        ["sql.raw(`SELECT 1`)", 0],
+        ["sql.raw(`SELECT ${value}`)", 1],
+        ['sql.raw("SELECT " + value)', 1],
+      ] as const) {
+        expect(linter.verify(source, { rules }), source).toHaveLength(errors);
+      }
+    },
+    60000
+  );
+
   it("loads the shared root configuration as explicit ESM", () => {
     const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", "packages/eslint-config/base.js"]);
     expect(result.stderr).not.toContain("MODULE_TYPELESS_PACKAGE_JSON");

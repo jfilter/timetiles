@@ -148,11 +148,7 @@ const runLintCheck = (): CheckResults["lint"] => {
       [
         "-w",
         "lint:eslint",
-        "apps/web/app",
-        "apps/web/lib",
-        "apps/web/components",
-        "apps/web/tests",
-        "apps/web/scripts",
+        "apps/web",
         "--ext",
         ".ts,.tsx,.js,.jsx",
         "--cache",

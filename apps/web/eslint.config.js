@@ -174,9 +174,10 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector: "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral",
+          selector:
+            "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral[expressions.length>0]",
           message:
-            "Do not pass template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+            "Do not pass interpolated template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
         },
         {
           selector:
@@ -207,11 +208,14 @@ export default [
       "sonarjs/max-lines": "off", // Migration files can be very long
       "sonarjs/no-duplicate-string": "off", // SQL strings often repeat
       "@typescript-eslint/require-await": "off", // Migration functions may not use await
-      // Enforce type imports for interfaces and types to prevent runtime issues
-      "@typescript-eslint/consistent-type-imports": [
-        "error",
-        { prefer: "type-imports", disallowTypeAnnotations: false, fixStyle: "separate-type-imports" },
-      ],
+      // Payload's getMigrationTemplate emits ordinary imports for MigrateUpArgs/DownArgs.
+      // Preserve generated migrations; TypeScript erases these type-only uses at build time.
+      "@typescript-eslint/consistent-type-imports": "off",
+      // Historical helpers name both migration directions even when Payload's DB types coincide.
+      "@typescript-eslint/no-duplicate-type-constituents": "off",
+      // Versioned DDL rewrites use trusted SQL fragments and function identifiers, including
+      // DO blocks that cannot accept query parameters. Keep the runtime SQL guard outside migrations.
+      "no-restricted-syntax": "off",
       // Disable other style/convention rules for migrations
       "prefer-arrow-functions/prefer-arrow-functions": "off", // Payload migration convention uses regular functions
       "@typescript-eslint/no-unused-vars": "off", // Migration args often unused
@@ -366,9 +370,10 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector: "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral",
+          selector:
+            "CallExpression[callee.object.name='sql'][callee.property.name='raw'] > TemplateLiteral[expressions.length>0]",
           message:
-            "Do not pass template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
+            "Do not pass interpolated template literals to sql.raw() — use parameterized sql`` template tags instead to prevent SQL injection.",
         },
         {
           selector:
