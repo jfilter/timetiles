@@ -610,6 +610,29 @@ describe.sequential("Scraper Collections Access Control", () => {
     expect(updated.repoCreatedBy).toBe(adminUser.id);
   });
 
+  it("rejects an invalid schedule on a direct Payload create", async () => {
+    await enableScrapers();
+    const repo = await payload.create({
+      collection: "scraper-repos",
+      data: { name: "Schedule Validation Repo", sourceType: "upload", code: { "scraper.py": "pass" } },
+      user: adminUser,
+    });
+    await expect(
+      payload.create({
+        collection: "scrapers",
+        data: {
+          name: "Invalid Schedule",
+          slug: "invalid-schedule",
+          repo: repo.id,
+          runtime: "python",
+          entrypoint: "scraper.py",
+          schedule: "0 1-5/2/3 * * *",
+        },
+        overrideAccess: true,
+      })
+    ).rejects.toThrow(/schedule/i);
+  });
+
   it.each(["commit", "rollback", "disabled"])("handles scraper claims on %s", async (outcome) => {
     await enableScrapers();
     const repo = await payload.create({

@@ -26,6 +26,8 @@ import { z } from "zod";
 
 import { createLogger } from "@/lib/logger";
 
+import { createCronSchedule } from "./cron-parser";
+
 const logger = createLogger("manifest-parser");
 
 // ---------------------------------------------------------------------------
@@ -75,8 +77,8 @@ const scraperEntrySchema = z.object({
     .string()
     .refine((v) => {
       try {
-        const parts = v.trim().split(/\s+/);
-        return parts.length === 5;
+        createCronSchedule(v);
+        return true;
       } catch {
         return false;
       }

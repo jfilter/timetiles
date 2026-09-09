@@ -15,6 +15,7 @@ import {
 } from "@timetiles/shared";
 import type { Field } from "payload";
 
+import { validateCronExpression } from "@/lib/collections/scheduled-ingests/validation";
 import { createReviewCheckFields } from "@/lib/collections/shared-fields";
 import { computeWebhookUrl, readWebhookTokenPlaintext } from "@/lib/services/webhook-registry";
 
@@ -75,6 +76,7 @@ export const scraperFields: Field[] = [
   {
     name: "schedule",
     type: "text",
+    validate: validateCronExpression,
     admin: { description: "Cron expression (e.g., 0 6 * * *). Leave empty for manual-only." },
   },
   { name: "enabled", type: "checkbox", defaultValue: true },

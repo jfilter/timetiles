@@ -129,7 +129,7 @@ scrapers:
   });
 
   describe("Schedule Field", () => {
-    it("accepts any string as a schedule (no cron validation at parser level)", () => {
+    it("rejects five-field text that is not a valid cron expression", () => {
       const yaml = `
 scrapers:
   - name: Flexible Schedule
@@ -140,8 +140,10 @@ scrapers:
 
       const result = parseManifest(yaml) as ManifestParseResult;
 
-      expect(result.success).toBe(true);
-      expect(result.scrapers[0]?.schedule).toBe("not a real cron expression");
+      expect(result).toMatchObject({
+        success: false,
+        error: expect.stringMatching(/Schedule must be a valid 5-field cron expression/),
+      });
     });
   });
 
