@@ -30,6 +30,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { STAGE_I18N_KEYS } from "@/lib/constants/ingest-stage-labels";
 import { useIngestProgressQuery } from "@/lib/hooks/use-ingest-progress-query";
 import { transformProgressResponse } from "@/lib/ingest/processing-progress";
+import { formatStageDuration, formatTimeRemaining } from "@/lib/ingest/processing-time";
 import type { FormattedStage, StageStatus } from "@/lib/ingest/types/progress-tracking";
 
 import { useWizardStore } from "../wizard-store";
@@ -40,24 +41,6 @@ type DynamicTranslate = (key: string) => string;
 export interface StepProcessingProps {
   className?: string;
 }
-
-const formatDuration = (startedAt: string | null, completedAt: string | null): string | null => {
-  if (!startedAt || !completedAt) return null;
-  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  const mins = Math.floor(ms / 60000);
-  const secs = Math.round((ms % 60000) / 1000);
-  return `${mins}m ${secs}s`;
-};
-
-const formatTimeRemaining = (seconds: number | null): string | null => {
-  if (seconds == null || seconds <= 0) return null;
-  if (seconds < 60) return `~${Math.round(seconds)}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.round(seconds % 60);
-  return `~${mins}m ${secs}s`;
-};
 
 type ProcessingStatus = "completed" | "failed" | "processing" | "needs-review";
 
@@ -120,7 +103,7 @@ const stageLabel = (translate: DynamicTranslate, stage: FormattedStage): string 
 
 const StageRow = ({ stage, isLast }: { stage: FormattedStage; isLast: boolean }) => {
   const t = useTranslations("Ingest");
-  const duration = formatDuration(stage.startedAt, stage.completedAt);
+  const duration = formatStageDuration(stage.startedAt, stage.completedAt);
   const stageName = stageLabel(t as DynamicTranslate, stage);
 
   // Determine the line segment style: solid for completed/in_progress, dashed for pending
