@@ -7,7 +7,8 @@
  *
  * Thresholds are configurable at two levels:
  * - Global defaults via `timetiles.yml` → `reviewThresholds`
- * - Per-source overrides via `scheduled-ingests` / `scrapers` → `advancedOptions.reviewChecks`
+ * - Per-source overrides via `scheduled-ingests.advancedOptions.reviewChecks`
+ *   or `scrapers.reviewChecks`
  *
  * @module
  * @category Jobs
