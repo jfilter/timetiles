@@ -52,13 +52,8 @@ const parseParts = (formatter: Intl.DateTimeFormat, utcDate: Date): DateParts =>
   };
 };
 
-/**
- * Create a reusable Intl.DateTimeFormat for the given timezone.
- *
- * This avoids the overhead of constructing a new formatter on every call,
- * which is critical when iterating minute-by-minute (e.g. cron matching).
- */
-export const createTimezoneFormatter = (timezone: string): Intl.DateTimeFormat =>
+/** Create a formatter that can be reused during wall-clock conversion. */
+const createTimezoneFormatter = (timezone: string): Intl.DateTimeFormat =>
   new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
     year: "numeric",
@@ -80,17 +75,7 @@ export const createTimezoneFormatter = (timezone: string): Intl.DateTimeFormat =
  * because it is already January 16 00:30 in Berlin.
  */
 export const getDatePartsInTimezone = (utcDate: Date, timezone: string): DateParts => {
-  return getDatePartsWithFormatter(utcDate, createTimezoneFormatter(timezone));
-};
-
-/**
- * Fast version of getDatePartsInTimezone that reuses a pre-created formatter.
- *
- * Use this in tight loops (e.g. cron matching) where the same timezone is
- * checked for many different dates.
- */
-export const getDatePartsWithFormatter = (utcDate: Date, formatter: Intl.DateTimeFormat): DateParts => {
-  return parseParts(formatter, utcDate);
+  return parseParts(createTimezoneFormatter(timezone), utcDate);
 };
 
 /**
@@ -121,7 +106,7 @@ export const wallClockToUtc = (
   // The zone's offset at instant `t`: (local wall-clock of `t`, expressed as a
   // UTC epoch) minus `t`.
   const offsetMs = (t: number): number => {
-    const o = getDatePartsWithFormatter(new Date(t), formatter);
+    const o = parseParts(formatter, new Date(t));
     return Date.UTC(o.year, o.month - 1, o.day, o.hour, o.minute, o.second, 0) - t;
   };
 
