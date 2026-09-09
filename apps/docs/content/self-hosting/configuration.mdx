@@ -17,17 +17,19 @@ The config file and all environment variables (except `DATABASE_URL`, `PAYLOAD_S
 ```bash
 DATABASE_URL=postgresql://user:password@localhost:5432/timetiles
 PAYLOAD_SECRET=your-secret-key   # openssl rand -base64 32
-NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com
 ```
 
 ### Infrastructure
 
 ```bash
 NODE_ENV=production              # development, production, test
+NEXT_PUBLIC_PAYLOAD_URL=https://your-domain.com  # Defaults to http://localhost:3000
 NEXT_PUBLIC_SITE_URL=https://...  # If different from NEXT_PUBLIC_PAYLOAD_URL
 DEFAULT_LOCALE=en                # en or de — BUILD-time only, see below
 RATE_LIMIT_BACKEND=memory        # memory or pg
 ```
+
+Set `NEXT_PUBLIC_PAYLOAD_URL` to the public URL of your deployment; the localhost default is only suitable for local use.
 
 Use `RATE_LIMIT_BACKEND=pg` for horizontally scaled web deployments. Leave it as `memory` for local development, tests, and explicitly single-process deployments.
 
@@ -66,9 +68,11 @@ EMAIL_FROM_NAME=TimeTiles
 ### Security
 
 ```bash
-SSRF_DNS_CHECK=true              # DNS validation for SSRF protection (recommended in production)
-ALLOW_PRIVATE_URLS=true          # Allow RFC 1918 addresses (development only!)
+SSRF_DNS_CHECK=false             # Opt in to DNS validation outside production
+ALLOW_PRIVATE_URLS=false        # Keep private/internal URL targets blocked
 ```
+
+Production always enforces DNS-based SSRF checks, even when `SSRF_DNS_CHECK=false`. `ALLOW_PRIVATE_URLS=true` is a bypass for development, tests, and the explicit E2E runtime; it does not enable private targets in normal production deployments.
 
 ### Scraper Integration
 
