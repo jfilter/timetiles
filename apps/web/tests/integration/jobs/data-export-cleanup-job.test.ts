@@ -42,7 +42,9 @@ describe.sequential("Data export cleanup retries", () => {
     const db = await getTransactionAwareDrizzle(payload, req);
     await db.execute(sql`SELECT id FROM payload.data_exports WHERE id = ${record.id} FOR UPDATE`);
     const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
-    const deletion = createAccountDeletionService(payload).executeDeletion(users.departing.id);
+    const deletion = createAccountDeletionService(payload).executeDeletion(users.departing.id, {
+      deletionType: "self",
+    });
     try {
       await vi.waitFor(
         async () => {
@@ -162,7 +164,9 @@ describe.sequential("Data export cleanup retries", () => {
         collection: "data-exports",
         data: { user: users.departing.id, status: "ready", requestedAt: new Date().toISOString(), filePath },
       });
-      const result = await createAccountDeletionService(payload).executeDeletion(users.departing.id);
+      const result = await createAccountDeletionService(payload).executeDeletion(users.departing.id, {
+        deletionType: "self",
+      });
       expect(result.success).toBe(true);
       expect(existsSync(successfulPath)).toBe(false);
       expect(

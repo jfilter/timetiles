@@ -9,7 +9,7 @@
  * @category Services
  */
 import { sql } from "@payloadcms/db-postgres";
-import type { Payload, PayloadRequest } from "payload";
+import type { Payload } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
 import { getAppConfig } from "@/lib/config/app-config";
@@ -24,18 +24,12 @@ import { createLogger, logError } from "../logger";
 import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
 import { disposeOfPrivateCatalog } from "./deletion-catalog-disposal";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
+import type { DeletionRequest as TransactionReq } from "./deletion-state";
+import { cancelPendingDeletion, lockDeletionUser } from "./deletion-state";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
 
 const DATA_EXPORTS = "data-exports";
-
-/**
- * Minimal request object for Payload transaction management.
- *
- * Includes `context` because Payload's internal operations destructure
- * `req.context` in hooks. An empty object is safe and prevents errors.
- */
-type TransactionReq = Pick<PayloadRequest, "payload" | "transactionID" | "context">;
 
 export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult };
 
@@ -251,18 +245,7 @@ export class AccountDeletionService {
    * Cancel a scheduled deletion.
    */
   async cancelDeletion(userId: number): Promise<void> {
-    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
-
-    if (user.deletionStatus !== "pending_deletion") {
-      throw new Error("No pending deletion to cancel");
-    }
-
-    await this.payload.update({
-      collection: "users",
-      id: userId,
-      data: { deletionStatus: "active", deletionRequestedAt: null, deletionScheduledAt: null },
-      overrideAccess: true,
-    });
+    const user = await cancelPendingDeletion(this.payload, userId);
 
     logger.info({ userId }, "Account deletion cancelled");
 
@@ -290,19 +273,9 @@ export class AccountDeletionService {
   ): Promise<ExecuteDeletionResult> {
     const { deletedBy, deletionType = "scheduled", ipAddress } = options;
 
-    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
+    let user: User;
 
-    // Re-validate eligibility at execution time: the 30-day grace window can
-    // invalidate the schedule-time check (the other admin got demoted, new
-    // imports are in flight) — executing on the stale check could erase the
-    // last admin or delete datasets with running jobs. The deletion stays
-    // pending and the maintenance job retries on its next run.
-    const canDelete = await this.canDeleteUser(userId);
-    if (!canDelete.allowed) {
-      throw new Error(`Deletion aborted: ${canDelete.reason}`);
-    }
-
-    // Get system user for public data transfer (outside transaction — read-only)
+    // Create the transfer destination independently of the deletion transaction.
     const systemUserService = createSystemUserService(this.payload);
     const systemUser = await systemUserService.getOrCreateSystemUser();
 
@@ -337,6 +310,18 @@ export class AccountDeletionService {
       const ownsTransaction = await initTransaction(req);
 
       try {
+        user = await lockDeletionUser(this.payload, userId, req);
+        const scheduledAt = user.deletionScheduledAt ? Date.parse(user.deletionScheduledAt) : NaN;
+        if (
+          deletionType === "scheduled" &&
+          (user.deletionStatus !== "pending_deletion" || !Number.isFinite(scheduledAt) || scheduledAt > Date.now())
+        ) {
+          throw new Error("Scheduled deletion is no longer due");
+        }
+        // Eligibility and cancellation may have changed since scheduling or enumeration.
+        const canDelete = await this.canDeleteUser(userId);
+        if (!canDelete.allowed) throw new Error(`Deletion aborted: ${canDelete.reason}`);
+
         // Transfer public data to system user
         await this.transferPublicData(userId, systemUser.id, user.email, result, req);
 

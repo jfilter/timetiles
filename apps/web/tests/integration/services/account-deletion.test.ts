@@ -13,11 +13,14 @@
  * @module
  */
 
+import { sql } from "@payloadcms/db-postgres";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountDeletionService } from "@/lib/account/deletion-service";
 import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
@@ -239,6 +242,83 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("executeDeletion", () => {
+    it("should execute a due scheduled deletion", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      await payload.update({
+        collection: "users",
+        id: users.testUser.id,
+        data: { deletionStatus: "pending_deletion", deletionScheduledAt: new Date(0).toISOString() },
+        overrideAccess: true,
+      });
+      expect((await deletionService.executeDeletion(users.testUser.id)).success).toBe(true);
+      const user = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
+      expect(user.deletionStatus).toBe("deleted");
+    });
+
+    it.each(["execute", "cancel"])("should recheck the user after waiting to %s", async (action) => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const userId = users.testUser.id;
+      await payload.update({
+        collection: "users",
+        id: userId,
+        data: { deletionStatus: "pending_deletion", deletionScheduledAt: new Date(0).toISOString() },
+        overrideAccess: true,
+      });
+      const req = await createLocalReq({}, payload);
+      await initTransaction(req);
+      const db = await getTransactionAwareDrizzle(payload, req);
+      await db.execute(sql`SELECT id FROM payload.users WHERE id = ${userId} FOR UPDATE`);
+      const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
+      const operation =
+        action === "execute" ? deletionService.executeDeletion(userId) : deletionService.cancelDeletion(userId);
+      const outcome = (async () => {
+        try {
+          await operation;
+          return null;
+        } catch (error) {
+          return error;
+        }
+      })();
+      const status = action === "execute" ? "active" : "deleted";
+      try {
+        await vi.waitFor(
+          async () => {
+            const { rows } = await payload.db.drizzle.execute(sql`SELECT EXISTS (
+            SELECT 1 FROM pg_stat_activity WHERE ${owners[0].pid} = ANY(pg_blocking_pids(pid))
+          ) AS blocked`);
+            expect(rows[0]?.blocked).toBe(true);
+          },
+          { timeout: 5000, interval: 20 }
+        );
+        await db.execute(sql`UPDATE payload.users SET deletion_status = ${status} WHERE id = ${userId}`);
+        await commitTransaction(req);
+        expect(await outcome).toBeInstanceOf(Error);
+        const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true });
+        expect(user.deletionStatus).toBe(status);
+        expect(user.email).toBe(users.testUser.email);
+      } finally {
+        await killTransaction(req);
+        await outcome;
+      }
+    });
+
+    it.each(["cancelled", "future"])("should reject a %s scheduled deletion", async (state) => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      await deletionService.scheduleDeletion(users.testUser.id);
+      if (state === "cancelled") await deletionService.cancelDeletion(users.testUser.id);
+
+      await expect(deletionService.executeDeletion(users.testUser.id)).rejects.toThrow(
+        "Scheduled deletion is no longer due"
+      );
+
+      const user = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
+      expect(user.email).toBe(users.testUser.email);
+      expect(user.deletionStatus).toBe(state === "cancelled" ? "active" : "pending_deletion");
+    });
+
     it("should transfer public data to system user", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
@@ -258,7 +338,7 @@ describe.sequential("Account Deletion Service", () => {
       });
 
       // Execute deletion
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
       expect(result.dataTransferred.catalogs).toBe(1);
@@ -307,7 +387,7 @@ describe.sequential("Account Deletion Service", () => {
         user: users.testUser,
       });
 
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
       expect(result.success).toBe(true);
 
       // The catalog survives, owned by the system user, so the dataset keeps a valid parent.
@@ -365,7 +445,7 @@ describe.sequential("Account Deletion Service", () => {
         overrideAccess: true,
       });
 
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
       expect(result.success).toBe(true);
 
       const keptCatalog = await payload.findByID({
@@ -403,7 +483,7 @@ describe.sequential("Account Deletion Service", () => {
       });
 
       // Execute deletion
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
       expect(result.dataDeleted.catalogs).toBe(1);
@@ -448,7 +528,7 @@ describe.sequential("Account Deletion Service", () => {
       // During the grace period, B gets demoted; A becomes the last admin.
       await payload.update({ collection: "users", id: users.adminB.id, data: { role: "user" }, overrideAccess: true });
 
-      await expect(deletionService.executeDeletion(users.adminA.id)).rejects.toThrow(
+      await expect(deletionService.executeDeletion(users.adminA.id, { deletionType: "self" })).rejects.toThrow(
         "Cannot delete the last admin user"
       );
 
@@ -494,7 +574,7 @@ describe.sequential("Account Deletion Service", () => {
         overrideAccess: true,
       });
 
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
       expect(result.dataDeleted.scraperRepos).toBe(1);
@@ -549,7 +629,7 @@ describe.sequential("Account Deletion Service", () => {
         `UPDATE payload.scrapers SET last_run_status = 'running' WHERE id = ${scraper.id}`
       );
 
-      const result = await deletionService.executeDeletion(users.testUser.id);
+      const result = await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       expect(result.success).toBe(true);
       expect(result.dataDeleted.scraperRepos).toBe(1);
@@ -568,7 +648,7 @@ describe.sequential("Account Deletion Service", () => {
 
       const originalEmail = users.testUser.email;
 
-      await deletionService.executeDeletion(users.testUser.id);
+      await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       const deletedUser = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
 
@@ -582,7 +662,7 @@ describe.sequential("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      await deletionService.executeDeletion(users.testUser.id);
+      await deletionService.executeDeletion(users.testUser.id, { deletionType: "self" });
 
       const auditLogs = await payload.find({
         collection: "audit-log",
@@ -595,7 +675,7 @@ describe.sequential("Account Deletion Service", () => {
       expect(auditLogs.docs).toHaveLength(1);
       expect(auditLogs.docs[0].userId).toBe(users.testUser.id);
       expect(auditLogs.docs[0].userEmailHash).toBeDefined();
-      expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("scheduled");
+      expect((auditLogs.docs[0].details as Record<string, unknown>).deletionType).toBe("self");
     });
 
     it("should roll back all changes when an error occurs mid-deletion", async () => {
@@ -634,7 +714,7 @@ describe.sequential("Account Deletion Service", () => {
       });
 
       try {
-        await expect(deletionService.executeDeletion(users.testUser.id)).rejects.toThrow(
+        await expect(deletionService.executeDeletion(users.testUser.id, { deletionType: "self" })).rejects.toThrow(
           "Simulated database failure during user anonymization"
         );
       } finally {
