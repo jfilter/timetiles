@@ -156,6 +156,30 @@ describe("Wizard Store", () => {
       expect(useWizardStore.getState().fieldMappings[0]).toMatchObject({ titleField: null, dateField: "date" });
     });
 
+    it("preserves new editor mappings and other sheets when replacing transforms", () => {
+      resetStore();
+      useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
+      const oldTransform = {
+        id: "rename",
+        type: "rename" as const,
+        from: "title",
+        to: "old_title",
+        active: true,
+        autoDetected: false,
+      };
+      useWizardStore.getState().setTransforms(0, [oldTransform]);
+      useWizardStore.getState().setFieldMapping(0, { titleField: "old_title" });
+      useWizardStore.getState().setFieldMapping(1, { titleField: "name" });
+      const otherSheet = useWizardStore.getState().fieldMappings[1];
+
+      // Match FlowEditorClient.handleSave: publish mapping before transforms.
+      useWizardStore.getState().setFieldMapping(0, { titleField: "new_title" });
+      useWizardStore.getState().setTransforms(0, [{ ...oldTransform, to: "new_title" }]);
+
+      expect(useWizardStore.getState().fieldMappings[0]?.titleField).toBe("new_title");
+      expect(useWizardStore.getState().fieldMappings[1]).toBe(otherSheet);
+    });
+
     it("loadFile sets file, sheets, and previewId", () => {
       resetStore();
       useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
