@@ -92,19 +92,23 @@ export const dataExportJob = {
     try {
       logger.info({ jobId: job?.id, exportId }, "Starting data export job");
 
-      // Update status to processing
-      await asSystem(payload).update({
-        collection: DATA_EXPORTS_COLLECTION,
-        id: exportId,
-        data: { status: "processing" },
-      });
-
       // Fetch export record to get user
       const exportRecord = await asSystem(payload).findByID({ collection: DATA_EXPORTS_COLLECTION, id: exportId });
 
       if (!exportRecord) {
         throw new Error(`Export record not found: ${exportId}`);
       }
+
+      // Delayed or repeated jobs must not overwrite a published archive or revive an expired one.
+      if (exportRecord.status === "ready" || exportRecord.status === "expired") {
+        return { output: { success: true, exportId, skipped: true } };
+      }
+
+      await asSystem(payload).update({
+        collection: DATA_EXPORTS_COLLECTION,
+        id: exportId,
+        data: { status: "processing" },
+      });
 
       const userId = requireRelationId(exportRecord.user, "exportRecord.user");
 

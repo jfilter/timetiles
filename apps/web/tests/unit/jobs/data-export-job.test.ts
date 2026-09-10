@@ -95,6 +95,15 @@ describe.sequential("dataExportJob", () => {
     await expect(dataExportJob.handler(context as any)).rejects.toThrow("Export ID not provided");
   });
 
+  it.each(["ready", "expired"])("does not regenerate an export with status %s", async (status) => {
+    mockPayload.findByID.mockResolvedValue({ id: 42, user: 100, status });
+    const result = await dataExportJob.handler(createContext({ exportId: 42 }) as any);
+    expect(result.output).toMatchObject({ success: true, exportId: 42, skipped: true });
+    expect(mockPayload.update).not.toHaveBeenCalled();
+    expect(mockExecuteExport).not.toHaveBeenCalled();
+    expect(sendExportReadyEmail).not.toHaveBeenCalled();
+  });
+
   it("should throw when payload is not available", async () => {
     const context = {
       input: { exportId: 42 },
