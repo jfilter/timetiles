@@ -616,6 +616,8 @@ export class AccountDeletionService {
     }
 
     // Delete data exports for this user
+    const drizzle = await getTransactionAwareDrizzle(this.payload, req);
+    await drizzle.execute(sql`SELECT id FROM payload.data_exports WHERE user_id = ${userId} FOR UPDATE`);
     const dataExports = await this.payload.find({
       collection: DATA_EXPORTS,
       where: { user: { equals: userId } },

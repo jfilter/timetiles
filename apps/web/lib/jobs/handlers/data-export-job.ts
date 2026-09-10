@@ -14,6 +14,7 @@ import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
 import { createDataExportService } from "@/lib/export/service";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
+import { updateExportStatus } from "@/lib/export/update-export-status";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
@@ -43,16 +44,18 @@ const handleExportFailure = async (
     const userId = requireRelationId(exportRecord.user, "exportRecord.user");
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
-    await asSystem(payload).update({
-      collection: DATA_EXPORTS_COLLECTION,
-      id: exportId,
-      data: {
+    const updated = await updateExportStatus(
+      payload,
+      exportId,
+      {
         status: "failed",
         completedAt: new Date().toISOString(),
         errorLog: errorMessage,
         ...(retainedFilePath ? { filePath: retainedFilePath } : {}),
       },
-    });
+      ["pending", "processing", "failed"]
+    );
+    if (!updated) return;
 
     // Send failure notification. The raw errorMessage is stored only in the
     // admin-only `errorLog` field above — never email it to the user, since it
@@ -99,16 +102,11 @@ export const dataExportJob = {
         throw new Error(`Export record not found: ${exportId}`);
       }
 
-      // Delayed or repeated jobs must not overwrite a published archive or revive an expired one.
-      if (exportRecord.status === "ready" || exportRecord.status === "expired") {
+      if (
+        !(await updateExportStatus(payload, exportId, { status: "processing" }, ["pending", "processing", "failed"]))
+      ) {
         return { output: { success: true, exportId, skipped: true } };
       }
-
-      await asSystem(payload).update({
-        collection: DATA_EXPORTS_COLLECTION,
-        id: exportId,
-        data: { status: "processing" },
-      });
 
       const userId = requireRelationId(exportRecord.user, "exportRecord.user");
 
@@ -128,10 +126,10 @@ export const dataExportJob = {
       const expiresAt = new Date(Date.now() + EXPORT_EXPIRY_MS);
 
       // Update record with results
-      await asSystem(payload).update({
-        collection: DATA_EXPORTS_COLLECTION,
-        id: exportId,
-        data: {
+      const published = await updateExportStatus(
+        payload,
+        exportId,
+        {
           status: "ready",
           completedAt: new Date().toISOString(),
           expiresAt: expiresAt.toISOString(),
@@ -139,7 +137,14 @@ export const dataExportJob = {
           fileSize: result.fileSize,
           summary: result.recordCounts as unknown as Record<string, unknown>,
         },
-      });
+        ["processing"]
+      );
+      if (!published) {
+        if ((await unlinkExportFile(exportId, unpublishedArchive, "export-retired")) === "failed") {
+          throw new Error("Could not remove archive for retired export");
+        }
+        return { output: { success: true, exportId, skipped: true } };
+      }
 
       unpublishedArchive = undefined;
 

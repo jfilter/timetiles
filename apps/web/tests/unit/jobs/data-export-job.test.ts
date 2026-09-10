@@ -17,6 +17,8 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 const mockExecuteExport = vi.fn();
+const { mockUpdateExportStatus } = vi.hoisted(() => ({ mockUpdateExportStatus: vi.fn() }));
+vi.mock("@/lib/export/update-export-status", () => ({ updateExportStatus: mockUpdateExportStatus }));
 
 vi.mock("@/lib/config/env", () => ({
   getEnv: () => ({ NEXT_PUBLIC_SITE_URL: "https://example.com", NEXT_PUBLIC_PAYLOAD_URL: "https://example.com" }),
@@ -76,6 +78,10 @@ describe.sequential("dataExportJob", () => {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn(),
     };
+    mockUpdateExportStatus.mockImplementation(async (payload: typeof mockPayload, id: number, data: object) => {
+      await payload.update({ collection: "data-exports", id, data, overrideAccess: true });
+      return true;
+    });
 
     // Default: findByID returns export record then user
     mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) => {
@@ -97,11 +103,38 @@ describe.sequential("dataExportJob", () => {
 
   it.each(["ready", "expired"])("does not regenerate an export with status %s", async (status) => {
     mockPayload.findByID.mockResolvedValue({ id: 42, user: 100, status });
+    mockUpdateExportStatus.mockResolvedValueOnce(false);
     const result = await dataExportJob.handler(createContext({ exportId: 42 }) as any);
     expect(result.output).toMatchObject({ success: true, exportId: 42, skipped: true });
     expect(mockPayload.update).not.toHaveBeenCalled();
     expect(mockExecuteExport).not.toHaveBeenCalled();
     expect(sendExportReadyEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not publish an export retired while its archive was being generated", async () => {
+    let status = "pending";
+    mockPayload.findByID.mockImplementation(({ collection }: { collection: string }) =>
+      Promise.resolve(
+        collection === "data-exports"
+          ? { id: 42, user: 100, status }
+          : { id: 100, email: "test@example.com", firstName: "Test", locale: "en" }
+      )
+    );
+    mockPayload.update.mockImplementation(({ data }: { data: { status?: string } }) => {
+      if (data.status) status = data.status;
+      return Promise.resolve({});
+    });
+    mockExecuteExport.mockImplementationOnce(() => {
+      status = "expired";
+      mockUpdateExportStatus.mockResolvedValueOnce(false);
+      return Promise.resolve({ filePath: "/tmp/exports/export-42.zip", fileSize: 100, recordCounts: {} });
+    });
+
+    await dataExportJob.handler(createContext({ exportId: 42 }) as any);
+
+    expect(status).toBe("expired");
+    expect(sendExportReadyEmail).not.toHaveBeenCalled();
+    expect(unlinkExportFile).toHaveBeenCalledWith(42, "/tmp/exports/export-42.zip", expect.any(String));
   });
 
   it("should throw when payload is not available", async () => {

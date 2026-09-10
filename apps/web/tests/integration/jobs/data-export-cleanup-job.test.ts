@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
+import { updateExportStatus } from "@/lib/export/update-export-status";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Data export cleanup retries", () => {
@@ -22,6 +23,20 @@ describe.sequential("Data export cleanup retries", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  it("does not publish a retired or deleted export", async () => {
+    const { payload } = env;
+    const { users } = await withUsers(env, { owner: { role: "user" } });
+    const record = await payload.create({
+      collection: "data-exports",
+      data: { user: users.owner.id, status: "processing", requestedAt: new Date().toISOString() },
+    });
+    expect(await updateExportStatus(payload, record.id, { status: "expired" }, ["processing"])).toBe(true);
+    expect(await updateExportStatus(payload, record.id, { status: "ready" }, ["processing"])).toBe(false);
+    expect((await payload.findByID({ collection: "data-exports", id: record.id })).status).toBe("expired");
+    await payload.delete({ collection: "data-exports", id: record.id });
+    expect(await updateExportStatus(payload, record.id, { status: "ready" }, ["processing"])).toBe(false);
   });
 
   it("purges more than 100 old export records in one run", async () => {
