@@ -14,6 +14,18 @@ import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
 
 describe("activation transform validation", () => {
+  it.each([{ parameters: [] }, { parameters: [{ name: "city", label: "City", required: false }] }])(
+    "rejects undeclared parameters before database access (%j)",
+    async ({ parameters }) => {
+      const payload = { find: vi.fn().mockRejectedValue(new Error("Unexpected database access")) };
+      const manifest = { slug: "parameter-boundary", parameters } as DataPackageManifest;
+      await expect(
+        activateDataPackage(payload as never, manifest, { id: 1 } as User, { parameters: { offset: "100" } })
+      ).rejects.toThrow(ValidationError);
+      expect(payload.find).not.toHaveBeenCalled();
+    }
+  );
+
   it.each([false, true])("rejects empty parameters before database access (required: %s)", async (required) => {
     const payload = { find: vi.fn().mockRejectedValue(new Error("Unexpected database access")), create: vi.fn() };
     const manifest = {

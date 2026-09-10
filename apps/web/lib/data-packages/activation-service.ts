@@ -50,6 +50,12 @@ const resolveManifestParameters = (
   manifest: DataPackageManifest,
   params: Record<string, string>
 ): DataPackageManifest => {
+  const declaredParameters = new Set((manifest.parameters ?? []).map((parameter) => parameter.name));
+  for (const name of Object.keys(params)) {
+    if (!declaredParameters.has(name)) {
+      throw new ValidationError(`Unknown parameter: "${name}"`);
+    }
+  }
   for (const p of manifest.parameters ?? []) {
     if (p.required && !params[p.name]) {
       throw new ValidationError(`Missing required parameter: "${p.name}" (${p.label})`);
@@ -447,8 +453,7 @@ export const activateDataPackage = async (
 ): Promise<ActivateResult> => {
   const { triggerFirstImport = true, parameters = {}, req } = options;
 
-  // Resolve template parameters if the manifest defines any
-  const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
+  const resolved = resolveManifestParameters(manifest, parameters);
   for (const [index, transform] of (resolved.transforms ?? []).entries()) {
     if (
       buildTransformsFromDataset({ ingestTransforms: [{ ...transform, id: "activation-validation", active: true }] })
