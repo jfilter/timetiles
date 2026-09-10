@@ -92,7 +92,7 @@ Positive TTLs are capped by `cache.urlFetch.maxTtlSeconds`. With `respectCacheCo
 
 ## Cache Key Generation
 
-Cache keys preserve the URL sent to the server:
+Cache identity preserves the URL sent to the server:
 
 **Normalization steps:**
 
@@ -117,6 +117,8 @@ For the same user and authentication identity, these URLs cache as the same entr
 
 `/data`, `/data/`, `/data?b=2&a=1`, and `/data?a=1&b=2` are distinct cache identities. Keys also include the HTTP method, user ID (or an anonymous marker), and an authentication fingerprint when supplied by the caller. The `http:v2:` storage namespace prevents reuse of older entries whose normalization conflated these URLs; old entries remain subject to normal cache cleanup.
 
+The normalized URL is hashed with SHA-256 before it becomes part of a stored key. This avoids copying URL credentials into the index and payload metadata. It does not encrypt cached response bodies or headers, and existing entries with plaintext URL keys are not rewritten by this change.
+
 ## Storage Architecture
 
 ### File System Backend
@@ -138,7 +140,7 @@ The cache uses **persistent disk storage**:
 
 - Persists while the configured directory exists; surviving container replacement requires a persistent volume
 - Configurable directory and size limits (`cache.urlFetch.dir` and `cache.urlFetch.maxSizeBytes`)
-- Automatic cleanup every 6 hours via background job
+- The `cache-cleanup` maintenance job runs every 6 hours, but only cleans the cache directory visible to its process. In the production Compose stack, the ingest and maintenance containers have separate `/tmp` directories, so this job does not clean the ingest container's default cache. Size-based eviction still runs when entries are written.
 - Ordinary cache reads remove expired entries; HTTP revalidation reads may use them until cleanup or eviction
 - Binary response bodies are stored as raw bytes behind a JSON metadata header; incomplete binary payloads are rejected
 - Index writes are serialized and atomically renamed within one storage instance; the directory must not be shared by independently initialized instances
