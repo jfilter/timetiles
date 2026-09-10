@@ -95,7 +95,7 @@ export class IngestPage {
     this.newDatasetInput = page.getByLabel(/New Dataset Name/i);
 
     // Field mapping step
-    this.fieldMappingStep = page.locator('[data-testid="step-field-mapping"]');
+    this.fieldMappingStep = page.getByRole("heading", { name: "Map your fields", exact: true });
     this.titleFieldSelect = page.getByLabel(/Title Field/i);
     this.dateFieldSelect = page.getByLabel(/Date Field/i);
     this.locationFieldSelect = page.getByLabel(/Location/i);

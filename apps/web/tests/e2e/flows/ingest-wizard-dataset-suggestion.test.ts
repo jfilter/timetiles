@@ -8,6 +8,7 @@
  * @module
  * @category E2E Tests
  */
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -28,7 +29,7 @@ const parseCreatedDoc = async <T extends { id: number }>(response: APIResponse):
   return (body.doc ?? body) as T;
 };
 
-const seedDatasetSuggestion = async (request: APIRequestContext): Promise<void> => {
+const seedDatasetSuggestion = async (request: APIRequestContext, renameTitle = false): Promise<void> => {
   const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const catalog = await parseCreatedDoc<{ id: number }>(
@@ -45,10 +46,21 @@ const seedDatasetSuggestion = async (request: APIRequestContext): Promise<void> 
         // Canonical interpretation plan (ADR 0040): roles replace the removed
         // fieldMappingOverrides group. The config-suggestion matcher reads role paths.
         interpretationPlan: {
-          ops: [],
+          ops: renameTitle
+            ? [
+                {
+                  id: "rename-title",
+                  type: "rename",
+                  from: "source_title",
+                  to: "generated_title",
+                  active: true,
+                  autoDetected: false,
+                },
+              ]
+            : [],
           columns: [],
           roles: {
-            title: "title",
+            title: renameTitle ? "generated_title" : "title",
             description: "description",
             timestamp: "date",
             locationName: "location",
@@ -189,6 +201,36 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(catalogDropdown).toBeVisible();
     const catalogText = await catalogDropdown.textContent();
     expect(catalogText?.trim().length).toBeGreaterThan(0);
+  });
+
+  test("generated title mapping remains editable after applying a config suggestion", async ({ page, request }) => {
+    await seedDatasetSuggestion(request, true);
+    await importPage.goto();
+    await importPage.waitForWizardLoad();
+    const csv = readFileSync(path.join(FIXTURES_PATH, "valid-events.csv"), "utf8").replace(/^title,/, "source_title,");
+    await importPage.fileInput.setInputFiles({
+      name: "generated-title.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv),
+    });
+    await importPage.clickNext();
+    await page
+      .getByTestId("dataset-suggestion-banner")
+      .getByRole("button", { name: /use this config/i })
+      .click();
+    await importPage.clickNext();
+    await expect(importPage.fieldMappingStep).toBeVisible();
+    await page
+      .getByTestId("config-suggestion-banner")
+      .getByRole("button", { name: /use this config/i })
+      .click();
+
+    const target = page.getByTestId("column-row-generated_title").getByRole("combobox");
+    await expect(target).toHaveValue("titleField");
+    await target.selectOption("__none__");
+    await expect(target).toHaveValue("__none__");
+    await target.selectOption("titleField");
+    await expect(target).toHaveValue("titleField");
   });
 
   test("should show Continue button on Step 3", async ({ page }) => {
