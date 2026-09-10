@@ -423,7 +423,7 @@
     "flowEditorTitle": "Visuelle Feldzuordnung",
     "flowEditorMetaDescription": "Ordnen Sie Felder aus Ihrer Importdatei visuell den Ereigniseigenschaften zu",
     "errorTitle": "Etwas ist schiefgelaufen",
-    "errorDescription": "Der Import-Assistent hat einen Fehler festgestellt. Ihre hochgeladenen Daten sind sicher -- versuchen Sie es erneut oder beginnen Sie von vorne.",
+    "errorDescription": "Der Import-Assistent hat einen Fehler festgestellt. Versuchen Sie es erneut oder beginnen Sie von vorne. Möglicherweise müssen Sie Ihre Datei erneut hochladen.",
     "importData": "Daten importieren",
     "startImport": "Import starten",
     "updateSchedule": "Zeitplan aktualisieren",
