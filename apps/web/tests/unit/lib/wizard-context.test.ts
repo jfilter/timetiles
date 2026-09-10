@@ -131,6 +131,31 @@ describe("Wizard Store", () => {
       expect(useWizardStore.getState().fieldMappings[0]?.titleField).toBe("title");
     });
 
+    it.each(["removed", "disabled"])("clears generated mappings when their transform is %s", (change) => {
+      resetStore();
+      useWizardStore
+        .getState()
+        .loadFile({
+          file: mockFile,
+          sheets: [{ index: 0, name: "Sheet1", rowCount: 1, headers: ["raw", "date"], sampleData: [] }],
+          previewId: "preview-123",
+        });
+      const transform = {
+        id: "rename",
+        type: "rename" as const,
+        from: "raw",
+        to: "title",
+        active: true,
+        autoDetected: false,
+      };
+      useWizardStore.getState().setTransforms(0, [transform]);
+      useWizardStore.getState().setFieldMapping(0, { titleField: "title", dateField: "date" });
+
+      useWizardStore.getState().setTransforms(0, change === "removed" ? [] : [{ ...transform, active: false }]);
+
+      expect(useWizardStore.getState().fieldMappings[0]).toMatchObject({ titleField: null, dateField: "date" });
+    });
+
     it("loadFile sets file, sheets, and previewId", () => {
       resetStore();
       useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });

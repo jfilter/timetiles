@@ -20,7 +20,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 
-import { getMappingColumnNames } from "@/lib/ingest/column-view";
+import { FIELD_MAPPING_STRING_KEYS, getMappingColumnNames } from "@/lib/ingest/column-view";
 import { createFieldMappingFromSuggestions } from "@/lib/ingest/field-mapping-utils";
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -393,7 +393,21 @@ export const useWizardStore = create<WizardStore>()(
           set((s) => ({ fieldMappings: updateBySheetIndex(s.fieldMappings, sheetIndex, mapping) })),
 
         setTransforms: (sheetIndex, transforms) =>
-          set((s) => ({ transforms: { ...s.transforms, [sheetIndex]: transforms } })),
+          set((s) => {
+            const headers = s.sheets.find((sheet) => sheet.index === sheetIndex)?.headers ?? [];
+            const previousColumns = new Set(getMappingColumnNames(headers, s.transforms[sheetIndex] ?? []));
+            const nextColumns = new Set(getMappingColumnNames(headers, transforms));
+            const fieldMappings = s.fieldMappings.map((mapping) => {
+              if (mapping.sheetIndex !== sheetIndex) return mapping;
+              const updated = { ...mapping };
+              for (const key of FIELD_MAPPING_STRING_KEYS) {
+                const path = updated[key];
+                if (path && previousColumns.has(path) && !nextColumns.has(path)) updated[key] = null;
+              }
+              return updated;
+            });
+            return { transforms: { ...s.transforms, [sheetIndex]: transforms }, fieldMappings };
+          }),
 
         setImportOptions: (options) =>
           set((s) => ({
