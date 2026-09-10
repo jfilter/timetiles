@@ -8,8 +8,26 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { buildActivationKey, deactivateDataPackage } from "@/lib/data-packages/activation-service";
+import { activateDataPackage, buildActivationKey, deactivateDataPackage } from "@/lib/data-packages/activation-service";
+import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
+
+describe("activation transform validation", () => {
+  it("rejects a transform emptied by parameter substitution before database access", async () => {
+    const payload = { find: vi.fn().mockRejectedValue(new Error("Unexpected database access")), create: vi.fn() };
+    const manifest = {
+      slug: "parameterized-transform",
+      parameters: [{ name: "target", label: "Target", required: false }],
+      transforms: [{ type: "rename", from: "title", to: "{{target}}" }],
+    } as DataPackageManifest;
+
+    await expect(
+      activateDataPackage(payload as never, manifest, { id: 1 } as User, { parameters: { target: "" } })
+    ).rejects.toThrow("Incomplete transform configuration");
+    expect(payload.find).not.toHaveBeenCalled();
+    expect(payload.create).not.toHaveBeenCalled();
+  });
+});
 
 describe("buildActivationKey", () => {
   it("returns the bare slug when there are no parameters", () => {

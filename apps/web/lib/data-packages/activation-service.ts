@@ -14,6 +14,7 @@ import type { DataPackageActivation, DataPackageManifest, DataPackageTransform }
 import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { translateSchemaMode } from "@/lib/ingest/configure-service";
 import { buildPlanFromPaths } from "@/lib/ingest/plan-builder";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import { claimAndQueueScheduledIngest } from "@/lib/ingest/trigger-service";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import { createLogger } from "@/lib/logger";
@@ -447,6 +448,14 @@ export const activateDataPackage = async (
 
   // Resolve template parameters if the manifest defines any
   const resolved = manifest.parameters?.length ? resolveManifestParameters(manifest, parameters) : manifest;
+  for (const [index, transform] of (resolved.transforms ?? []).entries()) {
+    if (
+      buildTransformsFromDataset({ ingestTransforms: [{ ...transform, id: "activation-validation", active: true }] })
+        .length !== 1
+    ) {
+      throw new Error(`Incomplete transform configuration at index ${index}`);
+    }
+  }
   const activationKey = buildActivationKey(manifest.slug, parameters);
 
   // Deliberately GLOBAL, matching the unique index on dataPackageSlug: an activation is one
