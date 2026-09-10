@@ -25,6 +25,11 @@ const runLint = (args: string[]) => {
 };
 
 describe.sequential("root ESLint invocation", () => {
+  it("ignores temporary export artifacts", () => {
+    const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", "apps/web/.exports-test/fixture.ts"]);
+    expect(result.stdout.trim()).toBe("undefined");
+  }, 60000);
+
   it("preserves Payload's generated migration conventions", () => {
     const file = "apps/web/migrations/20260909_093926.ts";
     const result = runLint(["--silent", "-w", "lint:eslint", "--print-config", file]);

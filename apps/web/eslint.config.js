@@ -24,6 +24,7 @@ export default [
   globalIgnores([
     "**/playwright-report/**",
     "**/test-results/**",
+    ".exports-test/**",
     "**/uploads/**",
     "**/*.min.js",
     "**/*.bundle.js",
