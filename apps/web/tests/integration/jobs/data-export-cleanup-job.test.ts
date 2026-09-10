@@ -24,6 +24,25 @@ describe.sequential("Data export cleanup retries", () => {
     await env.cleanup();
   });
 
+  it("purges more than 100 old export records in one run", async () => {
+    const { payload } = env;
+    const { users } = await withUsers(env, { owner: { role: "user" } });
+    const requestedAt = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+    for (let index = 0; index < 101; index++) {
+      await payload.create({
+        collection: "data-exports",
+        data: { user: users.owner.id, status: "expired", requestedAt },
+      });
+    }
+    const where = { user: { equals: users.owner.id } };
+    expect((await payload.count({ collection: "data-exports", where })).totalDocs).toBe(101);
+
+    const job = await payload.jobs.queue({ task: "data-export-cleanup", queue: "maintenance", input: {} });
+    await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
+
+    expect((await payload.count({ collection: "data-exports", where })).totalDocs).toBe(0);
+  });
+
   it("retries an archive that could not be removed during account deletion", async () => {
     const { payload } = env;
     const { users } = await withUsers(env, { departing: { role: "user" } });
