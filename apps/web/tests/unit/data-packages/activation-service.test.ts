@@ -9,7 +9,12 @@ import "@/tests/mocks/services/logger";
 import { describe, expect, it, vi } from "vitest";
 
 import { ValidationError } from "@/lib/api/errors";
-import { activateDataPackage, buildActivationKey, deactivateDataPackage } from "@/lib/data-packages/activation-service";
+import {
+  activateDataPackage,
+  buildActivationKey,
+  deactivateDataPackage,
+  getActivationStatus,
+} from "@/lib/data-packages/activation-service";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
 
@@ -54,6 +59,18 @@ describe("activation transform validation", () => {
     ).rejects.toThrow(ValidationError);
     expect(payload.find).not.toHaveBeenCalled();
     expect(payload.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("getActivationStatus", () => {
+  it.each([false, true])("prefers the caller's active variant regardless of result order (%s)", async (reverse) => {
+    const docs = [
+      { id: 10, dataPackageSlug: "events:city=Berlin", enabled: true, createdBy: 2 },
+      { id: 11, dataPackageSlug: "events:city=Bonn", enabled: true, createdBy: 1 },
+    ];
+    const payload = { find: vi.fn().mockResolvedValue({ docs: reverse ? [...docs].reverse() : docs }) };
+    const result = await getActivationStatus(payload as never, ["events"], 1);
+    expect(result.get("events")).toMatchObject({ enabled: true, ownedByCaller: true, scheduledIngestId: 11 });
   });
 });
 

@@ -682,9 +682,13 @@ export const getActivationStatus = async (
           }
         : {}),
     };
-    // Prefer an enabled activation when a slug has multiple parameter sets.
+    // Prefer an enabled activation, then one the caller can manage.
     const current = statusMap.get(bareSlug);
-    if (!current || (!current.enabled && activation.enabled)) {
+    if (
+      !current ||
+      (!current.enabled && activation.enabled) ||
+      (current.enabled === activation.enabled && !current.ownedByCaller && activation.ownedByCaller)
+    ) {
       statusMap.set(bareSlug, activation);
     }
   }
