@@ -75,6 +75,16 @@ describe("validateFieldMappingPaths", () => {
     ).not.toThrow();
   });
 
+  it("rejects paths produced only by an inactive transform", () => {
+    const mapping: FieldMapping = { ...baseFieldMapping, titleField: "generated_title" };
+    const transforms: IngestTransform[] = [
+      { id: "inactive", type: "rename", from: "title", to: "generated_title", active: false, autoDetected: false },
+    ];
+    expect(() =>
+      validateFieldMappingPaths([baseSheet], [baseSheetMapping], [mapping], [{ sheetIndex: 0, transforms }])
+    ).toThrow(ValidationError);
+  });
+
   it("accepts paths produced by a concatenate transform", () => {
     const mapping: FieldMapping = { ...baseFieldMapping, titleField: "combined" };
     const transforms: IngestTransform[] = [

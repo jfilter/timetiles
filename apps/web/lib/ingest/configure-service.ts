@@ -17,6 +17,7 @@ import type { Payload, PayloadRequest } from "payload";
 
 import { ForbiddenError, ValidationError } from "@/lib/api/errors";
 import { buildPlanFromWizard } from "@/lib/ingest/plan-builder";
+import { buildTransformsFromDataset, getTransformOutputPaths } from "@/lib/ingest/transform-builders";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type {
   ConfigureIngestRequest,
@@ -296,37 +297,8 @@ type FieldMappingPathKey = (typeof FIELD_MAPPING_PATH_KEYS)[number];
  * field paths even if they are not present in the raw headers — they will be
  * materialized at import time.
  */
-const collectTransformOutputPaths = (transforms: IngestTransform[] | undefined): Set<string> => {
-  const outputs = new Set<string>();
-  if (!transforms) return outputs;
-
-  for (const t of transforms) {
-    switch (t.type) {
-      case "rename":
-      case "concatenate":
-      case "extract":
-        if (t.to) outputs.add(t.to);
-        break;
-      case "string-op":
-      case "parse-json-array":
-      case "split-to-array":
-        if (t.to) outputs.add(t.to);
-        // These can write back to `from` when `to` is omitted — `from` is already
-        // a raw-header path, so no extra output needs registering.
-        break;
-      case "split":
-        for (const to of t.toFields ?? []) {
-          if (to) outputs.add(to);
-        }
-        break;
-      case "date-parse":
-        // Rewrites the value in-place on `from`; no new output path.
-        break;
-    }
-  }
-
-  return outputs;
-};
+const collectTransformOutputPaths = (transforms: IngestTransform[] | undefined): Set<string> =>
+  new Set(buildTransformsFromDataset({ ingestTransforms: transforms }).flatMap(getTransformOutputPaths));
 
 /**
  * Validate that every user-supplied field-mapping path exists in the detected
