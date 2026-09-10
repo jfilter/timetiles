@@ -77,6 +77,7 @@ const handleExportFailure = async (
  */
 export const dataExportJob = {
   slug: "data-export",
+  concurrency: ({ input }: { input: { exportId: number } }) => `data-export:${input.exportId}`,
   handler: async (context: JobHandlerContext<{ exportId: number }>) => {
     const { job, req } = context;
     const payload = req?.payload;
