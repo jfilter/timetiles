@@ -17,8 +17,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  ConfirmDialog,
   ContentState,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
 } from "@timetiles/ui";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -76,14 +83,16 @@ const formatNumber = (n: number): string => {
 
 const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
   const t = useTranslations("DataPackages");
+  const tCommon = useTranslations("Common");
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [parameters, setParameters] = useState<Record<string, string>>({});
   const activateMutation = useActivateDataPackageMutation();
   const deactivateMutation = useDeactivateDataPackageMutation();
 
   const isPending = activateMutation.isPending || deactivateMutation.isPending;
 
   const handleActivate = () => {
-    activateMutation.mutate({ slug: pkg.slug }, { onSuccess: () => setConfirmOpen(false) });
+    activateMutation.mutate({ slug: pkg.slug, parameters }, { onSuccess: () => setConfirmOpen(false) });
   };
 
   const handleDeactivate = () => {
@@ -138,14 +147,50 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
         </CardFooter>
       </Card>
 
-      <ConfirmDialog
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title={t("confirmActivateTitle")}
-        description={t("confirmActivateDescription")}
-        confirmLabel={t("activate")}
-        onConfirm={handleActivate}
-      />
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("confirmActivateTitle")}</DialogTitle>
+            <DialogDescription>{t("confirmActivateDescription")}</DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!isPending) handleActivate();
+            }}
+            className="space-y-4"
+          >
+            {pkg.parameters?.map((parameter) => (
+              <div key={parameter.name} className="space-y-2">
+                <Label htmlFor={`${pkg.slug}-${parameter.name}`}>{parameter.label}</Label>
+                <Input
+                  id={`${pkg.slug}-${parameter.name}`}
+                  value={Object.hasOwn(parameters, parameter.name) ? parameters[parameter.name] : ""}
+                  onChange={(event) =>
+                    setParameters((current) => ({ ...current, [parameter.name]: event.target.value }))
+                  }
+                  placeholder={parameter.example}
+                  required={parameter.required}
+                  disabled={isPending}
+                />
+              </div>
+            ))}
+            {activateMutation.error && (
+              <p role="alert" className="text-destructive text-sm">
+                {activateMutation.error.message}
+              </p>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setConfirmOpen(false)}>
+                {tCommon("cancel")}
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {t("activate")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

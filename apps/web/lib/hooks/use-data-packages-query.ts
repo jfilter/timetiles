@@ -38,12 +38,20 @@ export const useActivateDataPackageMutation = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ slug, triggerFirstImport = true }: { slug: string; triggerFirstImport?: boolean }) => {
+    mutationFn: async ({
+      slug,
+      triggerFirstImport = true,
+      parameters,
+    }: {
+      slug: string;
+      triggerFirstImport?: boolean;
+      parameters?: Record<string, string>;
+    }) => {
       return fetchJson<ActivateResult>(`/api/data-packages/${slug}/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ triggerFirstImport }),
+        body: JSON.stringify({ triggerFirstImport, parameters }),
       });
     },
     onSuccess: () => {
