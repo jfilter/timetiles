@@ -422,6 +422,8 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FILE: /var/log/timetiles/worker-maintenance.log
+      INGEST_FILE_RETENTION_HOURS: ${INGEST_FILE_RETENTION_HOURS:-24}
+      INGEST_FILE_ORPHAN_GRACE_HOURS: ${INGEST_FILE_ORPHAN_GRACE_HOURS:-12}
       # See worker-ingest: only web migrates, and this container waits for it.
       RUN_MIGRATIONS: "false"
       # Without this the value in .env.production never reaches the container:

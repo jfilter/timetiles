@@ -169,6 +169,8 @@ The hourly `ingest-files-cleanup` job reclaims files from `UPLOAD_DIR/ingest-fil
 
 Files without a database reference are removed only after the orphan grace period (12 hours by default). Generated sheet CSVs remain protected while their source file is referenced. Temporary files left by interrupted CSV writes are eligible for the same age-based orphan sweep.
 
+For Compose deployments, set `INGEST_FILE_RETENTION_HOURS` and `INGEST_FILE_ORPHAN_GRACE_HOURS` in `.env.production` to override these defaults. Both require positive whole hours. Recreate the maintenance worker after changing them so it receives the new environment.
+
 Do not clear the upload directory as if it were a cache: active or paused imports may still need its contents. Check the maintenance worker's logs for cleanup failures before manually removing files.
 
 ## Database Maintenance
