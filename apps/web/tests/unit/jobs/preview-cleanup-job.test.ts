@@ -19,6 +19,7 @@ import os from "node:os";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 
 import { getPreviewDirPath, PREVIEW_EXPIRY_MS, sweepExpiredPreviews } from "@/lib/ingest/preview-store";
 import { previewCleanupJob } from "@/lib/jobs/handlers/preview-cleanup-job";
@@ -75,6 +76,20 @@ describe.sequential("sweepExpiredPreviews", () => {
 
   it("exposes getPreviewDirPath() pointing inside os.tmpdir()", () => {
     expect(getPreviewDirPath()).toBe(path.join(os.tmpdir(), "timetiles-wizard-preview"));
+  });
+
+  it("shares only preview storage between web and the maintenance worker", () => {
+    const compose = parse(
+      fs.readFileSync(new URL("../../../../../deployment/docker-compose.prod.yml", import.meta.url), "utf8")
+    );
+    const mount = "wizard-previews:/tmp/timetiles-wizard-preview";
+    expect(compose.services.web.volumes).toContain(mount);
+    expect(compose.services["worker-maintenance"].volumes).toContain(mount);
+    expect(compose.services["worker-ingest"].volumes).not.toContain(mount);
+    expect(compose.volumes["wizard-previews"]).toEqual({
+      driver: "local",
+      driver_opts: { type: "tmpfs", device: "tmpfs", o: "uid=1001,gid=1001,mode=0700" },
+    });
   });
 
   it("removes metadata + data file pairs older than PREVIEW_EXPIRY_MS", () => {

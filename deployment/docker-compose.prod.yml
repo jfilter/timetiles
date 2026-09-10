@@ -163,6 +163,7 @@ services:
     volumes:
       # Persist uploaded files on host for easy backup/restore
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
+      - wizard-previews:/tmp/timetiles-wizard-preview
       - ${EXPORT_HOST_DIR:-./exports}:/app/apps/web/exports
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
       # Application config (optional — all values have defaults)
@@ -367,8 +368,6 @@ services:
     healthcheck:
       disable: true
 
-  # Nginx reverse proxy with SSL support
-
   # Maintenance worker — cleanup and retention jobs
   #
   # Separate from worker-general because --queue takes exactly one value:
@@ -459,6 +458,7 @@ services:
       web:
         condition: service_healthy
     volumes:
+      - wizard-previews:/tmp/timetiles-wizard-preview
       - ${UPLOAD_HOST_DIR:-./uploads}:/app/apps/web/uploads
       - ${EXPORT_HOST_DIR:-./exports}:/app/apps/web/exports
       - ${LOG_HOST_DIR:-./logs}:/var/log/timetiles
@@ -533,6 +533,14 @@ services:
       - nginx
 
 volumes:
+  # Web writes wizard previews; maintenance removes abandoned sessions.
+  # Share only this temp directory, with the app user's private permissions.
+  wizard-previews:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: uid=1001,gid=1001,mode=0700
   postgres_data:
     driver: local
   letsencrypt:

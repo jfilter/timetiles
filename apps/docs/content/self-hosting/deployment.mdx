@@ -304,6 +304,7 @@ A manual install just keeps the `deployment/` directory in your repo checkout an
 - PostgreSQL is on an internal Docker network — not accessible from outside
 - The Next.js app runs as a non-root user in a read-only container
 - Containers have dropped capabilities and tmpfs `/tmp`
+- Import-wizard previews use a separate tmpfs volume shared only by web and the maintenance worker, so abandoned previews can be removed every six hours. It is writable only by the app user (UID/GID 1001) and is not persistent storage: unmounting the volume or restarting the Docker host discards active previews.
 - Nginx enforces HTTPS and sets security headers
 - Auth endpoints are rate-limited at the Nginx level (5 req/min per IP)
 
