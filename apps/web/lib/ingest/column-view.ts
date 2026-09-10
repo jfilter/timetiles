@@ -7,6 +7,7 @@
  * @module
  * @category Import
  */
+import { getTransformOutputPaths } from "@/lib/ingest/transform-builders";
 import type {
   ConfidenceLevel,
   FieldMapping,
@@ -83,6 +84,17 @@ export const getSampleValue = (columnName: string, sampleData: Record<string, un
   return sampleData[0]?.[columnName] ?? null;
 };
 
+/** Raw and generated paths available for wizard field assignments. */
+export const getMappingColumnNames = (headers: readonly string[], transforms: IngestTransform[]): string[] => [
+  ...headers,
+  ...new Set(
+    transforms
+      .filter((t) => t.active)
+      .flatMap(getTransformOutputPaths)
+      .filter((path) => !headers.includes(path))
+  ),
+];
+
 /** Build the column-centric view from field mapping + transforms. */
 export const buildColumnView = (
   headers: string[],
@@ -91,64 +103,75 @@ export const buildColumnView = (
   transforms: IngestTransform[],
   suggestedMappings?: SuggestedMappings
 ): ColumnViewRow[] =>
-  headers.map((columnName) => {
-    const targetField = findTargetForColumn(columnName, fieldMapping);
+  getMappingColumnNames(headers, transforms)
+    .filter(
+      (columnName) =>
+        headers.includes(columnName) ||
+        !transforms.some(
+          (t) =>
+            t.active &&
+            (t.type === "split" || t.type === "concatenate") &&
+            getTransformOutputPaths(t).includes(columnName)
+        )
+    )
+    .map((columnName) => {
+      const targetField = findTargetForColumn(columnName, fieldMapping);
 
-    // Find transforms that reference this column
-    const columnTransforms = transforms.filter((t) => {
-      if ("from" in t) return t.from === columnName;
-      if ("fromFields" in t) return (t as { fromFields: string[] }).fromFields.includes(columnName);
-      return false;
-    });
+      // Find transforms that reference this column
+      const columnTransforms = transforms.filter((t) => {
+        if ("from" in t) return t.from === columnName;
+        if ("fromFields" in t) return (t as { fromFields: string[] }).fromFields.includes(columnName);
+        return false;
+      });
 
-    // Check auto-detection
-    let isAutoDetected = false;
-    let confidenceLevel: ConfidenceLevel = "none";
+      // Check auto-detection
+      let isAutoDetected = false;
+      let confidenceLevel: ConfidenceLevel = "none";
 
-    if (targetField && suggestedMappings) {
-      const suggestionKey = FIELD_TO_SUGGESTION_KEY[targetField];
-      if (suggestionKey) {
-        const suggestion = suggestedMappings.mappings[suggestionKey];
-        if (suggestion?.path === columnName) {
-          isAutoDetected = true;
-          confidenceLevel = suggestion.confidenceLevel;
+      if (targetField && suggestedMappings) {
+        const suggestionKey = FIELD_TO_SUGGESTION_KEY[targetField];
+        if (suggestionKey) {
+          const suggestion = suggestedMappings.mappings[suggestionKey];
+          if (suggestion?.path === columnName) {
+            isAutoDetected = true;
+            confidenceLevel = suggestion.confidenceLevel;
+          }
         }
       }
-    }
 
-    // Check for split transforms
-    const splitTransform = columnTransforms.find((t) => t.type === "split");
-    const isSplitParent = Boolean(splitTransform);
-    const splitChildren = splitTransform?.type === "split" ? splitTransform.toFields : undefined;
+      // Check for split transforms
+      const splitTransform = columnTransforms.find((t) => t.type === "split");
+      const isSplitParent = Boolean(splitTransform);
+      const splitChildren = splitTransform?.type === "split" ? splitTransform.toFields : undefined;
 
-    // Compute transforms and targets for each split child field
-    const splitChildTransforms =
-      splitTransform?.type === "split"
-        ? Object.fromEntries(
-            splitTransform.toFields.map((childName) => [
-              childName,
-              transforms.filter((t) => "from" in t && t.from === childName && t.type !== "split"),
-            ])
-          )
-        : undefined;
+      // Compute transforms and targets for each split child field
+      const splitChildTransforms =
+        splitTransform?.type === "split"
+          ? Object.fromEntries(
+              splitTransform.toFields.map((childName) => [
+                childName,
+                transforms.filter((t) => "from" in t && t.from === childName && t.type !== "split"),
+              ])
+            )
+          : undefined;
 
-    const splitChildTargets =
-      splitTransform?.type === "split"
-        ? Object.fromEntries(
-            splitTransform.toFields.map((childName) => [childName, findTargetForColumn(childName, fieldMapping)])
-          )
-        : undefined;
+      const splitChildTargets =
+        splitTransform?.type === "split"
+          ? Object.fromEntries(
+              splitTransform.toFields.map((childName) => [childName, findTargetForColumn(childName, fieldMapping)])
+            )
+          : undefined;
 
-    return {
-      columnName,
-      sampleValue: getSampleValue(columnName, sampleData),
-      targetField,
-      transforms: columnTransforms,
-      isAutoDetected,
-      confidenceLevel,
-      isSplitParent,
-      splitChildren,
-      splitChildTransforms,
-      splitChildTargets,
-    };
-  });
+      return {
+        columnName,
+        sampleValue: getSampleValue(columnName, sampleData),
+        targetField,
+        transforms: columnTransforms,
+        isAutoDetected,
+        confidenceLevel,
+        isSplitParent,
+        splitChildren,
+        splitChildTransforms,
+        splitChildTargets,
+      };
+    });

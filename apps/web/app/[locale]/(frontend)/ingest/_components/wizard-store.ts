@@ -20,6 +20,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 
+import { getMappingColumnNames } from "@/lib/ingest/column-view";
 import { createFieldMappingFromSuggestions } from "@/lib/ingest/field-mapping-utils";
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -211,7 +212,7 @@ const updateBySheetIndex = <T extends { sheetIndex: number }>(
 
 /**
  * Merge a suggested dataset plan's roles into a sheet's field mapping, keeping
- * only roles whose source column exists in that sheet.
+ * only roles whose raw or generated column exists in that sheet's mapping view.
  *
  * Copying a role path whose column isn't in the target sheet leaves
  * `fieldMapping.titleField = "title"` pointing at a column that doesn't
@@ -224,7 +225,7 @@ const mergeFieldMappingOverrides = (
   idStrategy: ConfigSuggestion["config"]["idStrategy"],
   sheetHeaders: readonly string[]
 ): FieldMapping => {
-  const headerSet = new Set(sheetHeaders);
+  const headerSet = new Set(getMappingColumnNames(sheetHeaders, plan?.ops ?? []));
   const keepIfPresent = (path: string | undefined | null): string | undefined =>
     path != null && headerSet.has(path) ? path : undefined;
   const roles = plan?.roles ?? {};

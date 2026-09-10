@@ -420,6 +420,20 @@ describe("applyPreviewTransforms", () => {
 // ---------------------------------------------------------------------------
 
 describe("buildColumnView", () => {
+  it("exposes a generated rename target as an editable mapping row", () => {
+    const rows = buildColumnView(["raw"], [{ raw: "Event" }], createFieldMapping({ titleField: "title" }), [
+      { id: "rename", type: "rename", from: "raw", to: "title", active: true, autoDetected: false },
+    ]);
+    expect(rows.find((row) => row.columnName === "title")?.targetField).toBe("titleField");
+  });
+
+  it("does not expose outputs from inactive transforms", () => {
+    const rows = buildColumnView(["raw"], [], createFieldMapping(), [
+      { id: "rename", type: "rename", from: "raw", to: "title", active: false, autoDetected: false },
+    ]);
+    expect(rows.map((row) => row.columnName)).toEqual(["raw"]);
+  });
+
   it("should build rows from headers", () => {
     const headers = ["name", "date", "location"];
     const sampleData = [{ name: "Test Event", date: "2024-01-01", location: "Berlin" }];

@@ -108,6 +108,29 @@ describe("Wizard Store", () => {
       { index: 1, name: "Sheet2", rowCount: 50, headers: ["name", "location"], sampleData: [] },
     ];
 
+    it("applies a suggested role pointing at a generated transform column", () => {
+      resetStore();
+      useWizardStore
+        .getState()
+        .loadFile({
+          file: mockFile,
+          sheets: [{ index: 0, name: "Sheet1", rowCount: 1, headers: ["raw"], sampleData: [{ raw: "Event" }] }],
+          previewId: "preview-123",
+        });
+      const ops = [
+        { id: "rename-title", type: "rename" as const, from: "raw", to: "title", active: true, autoDetected: false },
+      ];
+
+      useWizardStore
+        .getState()
+        .applyFieldMappingSuggestion(0, {
+          interpretationPlan: { ops, columns: [], roles: { title: "title" }, ambiguityResolution: "strict" },
+        });
+
+      expect(useWizardStore.getState().transforms[0]).toEqual(ops);
+      expect(useWizardStore.getState().fieldMappings[0]?.titleField).toBe("title");
+    });
+
     it("loadFile sets file, sheets, and previewId", () => {
       resetStore();
       useWizardStore.getState().loadFile({ file: mockFile, sheets: mockSheets, previewId: "preview-123" });
