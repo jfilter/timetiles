@@ -24,7 +24,8 @@ export const cacheCleanupJob = {
   schedule: [
     {
       cron: "0 */6 * * *", // Every 6 hours at minute 0
-      queue: "maintenance",
+      // The cache is process-local; a separate maintenance worker cannot clean it.
+      queue: "ingest",
     },
   ],
   retries: 2,

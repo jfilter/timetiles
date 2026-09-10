@@ -215,8 +215,7 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    command:
-      [
+    command: [
         "node",
         "/app/node_modules/.pnpm/node_modules/payload/bin.js",
         "jobs:run",
@@ -226,6 +225,8 @@ services:
         "ingest",
         "--limit",
         "10",
+        # Schedule cache cleanup in the process that owns the ingest cache.
+        "--handle-schedules",
       ]
     environment:
       DATABASE_URL: postgresql://${DB_USER:-timetiles_user}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-timetiles}
@@ -409,9 +410,9 @@ services:
         "20",
         # Each worker schedules only its OWN queue: handleSchedules skips any
         # schedule whose queue differs from --queue (handleSchedules/index.js:36).
-        # A single scheduler on `default` therefore left all twelve maintenance
+        # A single scheduler on `default` therefore left the maintenance
         # schedules unqueued -- this worker consumed a queue nobody filled.
-        # Two schedulers are safe precisely because the filter makes their work
+        # Separate schedulers are safe because the filter makes their work
         # disjoint; they would only double-queue if they shared a queue.
         "--handle-schedules",
       ]

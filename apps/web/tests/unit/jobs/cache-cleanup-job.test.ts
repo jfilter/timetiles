@@ -7,7 +7,10 @@
  * @module
  */
 
+import { readFileSync } from "node:fs";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { parse } from "yaml";
 
 import { cacheCleanupJob } from "@/lib/jobs/handlers/cache-cleanup-job";
 
@@ -26,6 +29,17 @@ vi.mock("@/lib/services/cache", () => ({ getUrlFetchCache: () => ({ cleanup: moc
 describe.sequential("cacheCleanupJob", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("schedules cleanup in the worker that owns the ingest cache", () => {
+    const compose = parse(
+      readFileSync(new URL("../../../../../deployment/docker-compose.prod.yml", import.meta.url), "utf8")
+    );
+    const command: string[] = compose.services["worker-ingest"].command;
+
+    expect(cacheCleanupJob.schedule).toEqual([{ cron: "0 */6 * * *", queue: "ingest" }]);
+    expect(command[command.indexOf("--queue") + 1]).toBe("ingest");
+    expect(command).toContain("--handle-schedules");
   });
 
   it("should clean cache and return success output", async () => {
