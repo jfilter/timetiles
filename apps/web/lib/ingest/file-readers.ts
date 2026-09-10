@@ -8,6 +8,7 @@
  *
  * @module
  */
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 
 import Papa from "papaparse";
@@ -247,7 +248,19 @@ const convertSheetToCSV = async (filePath: string, sheetIndex: number, csvPath: 
   // delete rows but keep formatting leave stale "!ref" bounds) — otherwise they'd
   // become phantom all-comma CSV rows downstream.
   const csvContent = utils.sheet_to_csv(worksheet, { blankrows: false });
-  fs.writeFileSync(csvPath, csvContent, "utf-8");
+  // Only publish complete sidecars: existence is the reader's cache-validity check.
+  const tempPath = `${csvPath}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(tempPath, csvContent, "utf-8");
+    fs.renameSync(tempPath, csvPath);
+  } catch (error) {
+    try {
+      fs.rmSync(tempPath, { force: true });
+    } catch {
+      // Preserve the write error; the orphan sweep can remove the temp file later.
+    }
+    throw error;
+  }
 
   logger.info("Converted Excel/ODS sheet to CSV sidecar", { filePath, sheetIndex, csvPath });
 };

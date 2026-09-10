@@ -220,6 +220,29 @@ describe.sequential("File Readers", () => {
       expect(stat1.mtimeMs).toBe(stat2.mtimeMs);
     });
 
+    it("does not reuse a partial sidecar after a failed write", async () => {
+      const xlsxPath = copyFixtureToTemp("events.xlsx");
+      const sidecarPath = getSidecarPath(xlsxPath, 0);
+      const writeFile = fs.writeFileSync.bind(fs);
+      const write = vi.spyOn(fs, "writeFileSync").mockImplementationOnce((file) => {
+        writeFile(file, "title\npartial");
+        throw new Error("Simulated disk full");
+      });
+      try {
+        await expect(flattenBatches(streamBatchesFromFile(xlsxPath, { batchSize: 10 }))).rejects.toThrow(
+          "Simulated disk full"
+        );
+      } finally {
+        write.mockRestore();
+      }
+      expect(fs.existsSync(sidecarPath)).toBe(false);
+      expect(fs.readdirSync(tempDir)).toEqual(["events.xlsx"]);
+
+      const rows = await flattenBatches(streamBatchesFromFile(xlsxPath, { batchSize: 10 }));
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows[0]?.title).not.toBe("partial");
+    });
+
     it("should stream ODS via sidecar CSV", async () => {
       const odsPath = copyFixtureToTemp("events.ods");
 
