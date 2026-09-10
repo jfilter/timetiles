@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { STRING_OPERATIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import { createLogger } from "@/lib/logger";
 
 const logger = createLogger("data-packages");
@@ -213,28 +214,36 @@ const manifestSchema = z.object({
 
   transforms: z
     .array(
-      z.object({
-        type: z.enum(TRANSFORM_TYPES),
-        from: z.string().optional(),
-        to: z.string().optional(),
-        // split
-        delimiter: z.string().optional(),
-        toFields: z.array(z.string()).optional(),
-        // date-parse
-        inputFormat: z.string().optional(),
-        outputFormat: z.string().optional(),
-        timezone: z.string().optional(),
-        // string-op
-        operation: z.enum(STRING_OPERATIONS).optional(),
-        pattern: z.string().optional(),
-        replacement: z.string().optional(),
-        // extract
-        group: z.number().int().optional(),
-        expression: z.string().optional(),
-        // concatenate
-        fromFields: z.array(z.string()).optional(),
-        separator: z.string().optional(),
-      })
+      z
+        .object({
+          type: z.enum(TRANSFORM_TYPES),
+          from: z.string().optional(),
+          to: z.string().optional(),
+          // split
+          delimiter: z.string().optional(),
+          toFields: z.array(z.string()).optional(),
+          // date-parse
+          inputFormat: z.string().optional(),
+          outputFormat: z.string().optional(),
+          timezone: z.string().optional(),
+          // string-op
+          operation: z.enum(STRING_OPERATIONS).optional(),
+          pattern: z.string().optional(),
+          replacement: z.string().optional(),
+          // extract
+          group: z.number().int().optional(),
+          expression: z.string().optional(),
+          // concatenate
+          fromFields: z.array(z.string()).optional(),
+          separator: z.string().optional(),
+        })
+        .refine(
+          (transform) =>
+            buildTransformsFromDataset({
+              ingestTransforms: [{ ...transform, id: "manifest-validation", active: true }],
+            }).length === 1,
+          { message: "Incomplete transform configuration" }
+        )
     )
     .optional(),
 

@@ -382,7 +382,7 @@ describe("manifest-loader", () => {
           minimalManifest({
             transforms: [
               { type: "rename", from: "old_field", to: "new_field" },
-              { type: "date-parse", from: "date_str", inputFormat: "DD/MM/YYYY" },
+              { type: "date-parse", from: "date_str", inputFormat: "DD/MM/YYYY", outputFormat: "YYYY-MM-DD" },
               { type: "string-op", from: "name", operation: "trim" },
               { type: "parse-json-array", from: "tags" },
             ],
@@ -393,6 +393,18 @@ describe("manifest-loader", () => {
 
         expect(result).toHaveLength(1);
         expect(result[0]!.transforms).toHaveLength(4);
+      });
+
+      it.each([
+        { type: "rename", from: "title" },
+        { type: "date-parse", from: "date", inputFormat: "DD/MM/YYYY" },
+        { type: "concatenate", fromFields: ["title"], to: "combined" },
+        { type: "extract", from: "url", to: "id" },
+      ])("rejects incomplete transform %j", (transform) => {
+        existsSyncSpy.mockReturnValue(true);
+        readdirSyncSpy.mockReturnValue(["incomplete.yml"] as any);
+        readFileSyncSpy.mockReturnValue(minimalManifest({ transforms: [transform] }));
+        expect(loadAllManifests()).toEqual([]);
       });
 
       it("rejects transforms with invalid type", () => {
