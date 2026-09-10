@@ -161,6 +161,13 @@ if (lintRun.error) {
     });
   }
 
+  if (lintRun.status !== 0 && lintErrors === 0) {
+    lintRan = false;
+    toolFailures.push(
+      `oxlint exited ${lintRun.status ?? "with signal " + lintRun.signal} without reporting lint errors.`
+    );
+  }
+
   if (lintResult.number_of_files !== undefined && lintResult.number_of_files < relativeToPackage.length) {
     console.log(
       `\n⚠  oxlint linted ${lintResult.number_of_files} of ${relativeToPackage.length} requested files ` +
@@ -221,7 +228,7 @@ console.log("\n" + "-".repeat(70));
 console.log("LINT:");
 console.log("-".repeat(70));
 if (!lintRan) {
-  console.log("❌ oxlint did not run — see TOOL FAILURES below");
+  console.log("❌ oxlint did not complete successfully — see TOOL FAILURES below");
 } else if (lintErrors === 0 && lintWarnings === 0) {
   console.log("✅ No lint issues");
 } else {
