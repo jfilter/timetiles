@@ -63,6 +63,29 @@ describe.sequential("dataExportCleanupJob", () => {
     });
   });
 
+  it("reaches later exports even when the first 100 files cannot be deleted", async () => {
+    const docs = Array.from({ length: 101 }, (_, index) => ({
+      id: index + 1,
+      status: "expired",
+      filePath: `/tmp/export-${index + 1}.zip`,
+    }));
+    mockPayload.find.mockImplementationOnce(({ limit }: { limit?: number }) =>
+      Promise.resolve({ docs: limit ? docs.slice(0, limit) : docs, totalDocs: docs.length })
+    );
+    mockUnlink.mockImplementation((filePath: string) =>
+      filePath === "/tmp/export-101.zip" ? Promise.resolve() : Promise.reject(new Error("File is locked"))
+    );
+
+    await expect(dataExportCleanupJob.handler(createContext())).rejects.toThrow();
+    expect(mockUnlink).toHaveBeenCalledWith("/tmp/export-101.zip");
+    expect(mockPayload.update).toHaveBeenCalledWith({
+      collection: "data-exports",
+      id: 101,
+      data: { filePath: null },
+      overrideAccess: true,
+    });
+  });
+
   it("should update expired exports and delete their files", async () => {
     mockPayload.find
       .mockResolvedValueOnce({ docs: [{ id: 1, filePath: "/tmp/export-1.zip", status: "ready" }], totalDocs: 1 })

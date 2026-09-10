@@ -74,7 +74,8 @@ const expireReadyExports = async (
         { and: [{ status: { equals: "expired" } }, { filePath: { exists: true } }] },
       ],
     },
-    limit: 100,
+    // Failed unlinks remain eligible; a fixed first page could starve later records forever.
+    pagination: false,
   });
 
   const pending: PendingUnlink[] = [];
@@ -149,7 +150,7 @@ const purgeOldRecords = async (sys: SystemPayload, now: Date): Promise<PassResul
   const old = await sys.find({
     collection: DATA_EXPORTS,
     where: { and: [{ status: { in: ["failed", "expired"] } }, { requestedAt: { less_than: cutoff.toISOString() } }] },
-    limit: 100,
+    pagination: false,
   });
 
   let recordsDeleted = 0;
@@ -191,7 +192,7 @@ const reapStaleExports = async (sys: SystemPayload, now: Date): Promise<PassResu
     where: {
       and: [{ status: { in: [...ACTIVE_DATA_EXPORT_STATUSES] } }, { requestedAt: { less_than: cutoff.toISOString() } }],
     },
-    limit: 100,
+    pagination: false,
   });
 
   let staleFailed = 0;
