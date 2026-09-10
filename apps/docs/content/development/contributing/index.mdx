@@ -36,6 +36,8 @@ See [Quick Start](/quick-start) for prerequisites and database mode options.
 
 `make format` and `pnpm format` run only the formatter, without lint autofixes. Prefer named files to avoid unrelated formatting changes. Avoid broad `eslint --fix` runs: they can strip suppressions for oxlint-owned rules. `make check-ai` reports whole-tree formatting failures even when other checks are scoped.
 
+`make check-ai` without arguments runs fast Oxlint and TypeScript checks across the packages, including Shared and the scraper SDK. It does not run ESLint; use `pnpm lint` for the full workspace lint gate. `PACKAGE=web` also runs ESLint, while `FILES="..."` uses Oxlint and filters TypeScript diagnostics to the requested files. Package selectors are `web`, `docs`, `ui`, and `timescrape`; the legacy `scraper` alias selects the TimeScrape runner, not the SDK.
+
 ESLint runs from the repository root so SonarJS can resolve dependency versions from `pnpm-workspace.yaml`. The shared `pnpm -w lint:eslint <root-relative paths>` command uses ESLint's file-based configuration lookup, preserving each package's rules and ignores. Package lint scripts keep separate cache files; use those scripts or `pnpm lint` for normal checks. The Oxlint bridge resolves its configuration relative to the repository, not the current working directory.
 
 ### Database Seeding

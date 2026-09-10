@@ -587,7 +587,7 @@ help:
 		'  check       - Run lint + typecheck' \
 		'  check-ai    - Run code quality checks with AI-friendly output' \
 		'                (oxfmt format check is always repo-wide, matching CI)' \
-		'                Usage: make check-ai [PACKAGE=web|docs|ui|scraper] [FILES="..."]' \
+		'                Usage: make check-ai [PACKAGE=web|docs|ui|timescrape] [FILES="..."]' \
 		'  check-cva   - Check for duplicate/empty CVA variant values' \
 		'  format      - Format code with oxfmt' '' \
 		'🧪 Testing:' \
@@ -643,7 +643,7 @@ help:
 		'  FILTER=pattern   - Filter tests by pattern (use with test-ai)' \
 		'                     Examples: FILTER=date.test, FILTER=tests/unit' \
 		'  PACKAGE=name     - Target specific package (use with check-ai)' \
-		'                     Options: web, docs, ui, scraper' \
+		'                     Options: web, docs, ui, timescrape (scraper is a runner alias)' \
 		'  FILES="..."      - Check specific files only (use with check-ai)' \
 		'                     Paths relative to package dir, defaults to PACKAGE=web' \
 		'                     Example: FILES="lib/foo.ts components/bar.tsx"' \
