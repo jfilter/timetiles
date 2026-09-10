@@ -317,10 +317,7 @@ describe.sequential("dataExportJob", () => {
   });
 
   it("should keep the export ready when only the notification email fails", async () => {
-    // The archive is written and the record is already committed as "ready" by
-    // the time the email is sent. A failure loading branding/translations (or an
-    // SMTP outage) must not flip the record to "failed": that lies to the user
-    // and orphans the ZIP, which no cleanup pass can then find.
+    // Notification errors must not invalidate an already-published archive.
     (sendExportReadyEmail as any).mockRejectedValueOnce(new Error("Email branding unavailable"));
 
     const context = createContext({ exportId: 42 });

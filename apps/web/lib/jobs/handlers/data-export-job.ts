@@ -157,11 +157,8 @@ export const dataExportJob = {
       // Calculate file size in MB for email
       const fileSizeMB = result.fileSize / (1024 * 1024);
 
-      // Send notification email. The record is already committed as "ready" and
-      // the archive is on disk, so the export HAS succeeded — a failure here
-      // (email branding/translations, SMTP) must not flip the record back to
-      // "failed", which would both lie to the user and orphan the ZIP (the
-      // cleanup job only sweeps records still in "ready").
+      // The archive and ready status are already persisted. Notification failures
+      // must not turn a successful export into a failed one.
       try {
         await sendExportReadyEmail(
           payload,
