@@ -8,9 +8,12 @@ import { mkdir, mkdtemp, rm, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { sql } from "@payloadcms/db-postgres";
+import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
+import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { updateExportStatus } from "@/lib/export/update-export-status";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -23,6 +26,44 @@ describe.sequential("Data export cleanup retries", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  it.each(["expired", "deleted"])("waits for concurrent retirement (%s) before deciding to publish", async (state) => {
+    const { payload } = env;
+    const { users } = await withUsers(env, { owner: { role: "user" } });
+    const record = await payload.create({
+      collection: "data-exports",
+      data: { user: users.owner.id, status: "processing", requestedAt: new Date().toISOString() },
+    });
+    const req = await createLocalReq({}, payload);
+    await initTransaction(req);
+    const db = await getTransactionAwareDrizzle(payload, req);
+    await db.execute(sql`SELECT id FROM payload.data_exports WHERE id = ${record.id} FOR UPDATE`);
+    const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
+    const publication = updateExportStatus(payload, record.id, { status: "ready" }, ["processing"]);
+    try {
+      await vi.waitFor(
+        async () => {
+          const { rows } = await payload.db.drizzle.execute(sql`SELECT EXISTS (
+            SELECT 1 FROM pg_stat_activity WHERE ${owners[0].pid} = ANY(pg_blocking_pids(pid))
+          ) AS blocked`);
+          expect(rows[0]?.blocked).toBe(true);
+        },
+        { timeout: 5000, interval: 20 }
+      );
+      if (state === "expired") {
+        await db.execute(sql`UPDATE payload.data_exports SET status = 'expired' WHERE id = ${record.id}`);
+      } else {
+        await db.execute(sql`DELETE FROM payload.data_exports WHERE id = ${record.id}`);
+      }
+      await commitTransaction(req);
+    } finally {
+      await killTransaction(req);
+      await publication;
+    }
+    expect(await publication).toBe(false);
+    const remaining = await payload.findByID({ collection: "data-exports", id: record.id, disableErrors: true });
+    expect(remaining?.status ?? "deleted").toBe(state);
   });
 
   it("does not publish a retired or deleted export", async () => {
