@@ -8,7 +8,7 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { ValidationError } from "@/lib/api/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
 import {
   activateDataPackage,
   buildActivationKey,
@@ -168,9 +168,7 @@ describe.sequential("deactivateDataPackage", () => {
   it("rejects when the caller owns none of the matches", async () => {
     const payload = payloadWith([activation(1, "pkg:a=1", 999), activation(2, "pkg:a=2", 999)]);
 
-    await expect(deactivateDataPackage(payload, "pkg", owner)).rejects.toThrow(
-      "You can only deactivate data packages you activated"
-    );
+    await expect(deactivateDataPackage(payload, "pkg", owner)).rejects.toThrow(ForbiddenError);
     expect((payload as unknown as { update: ReturnType<typeof vi.fn> }).update).not.toHaveBeenCalled();
   });
 
@@ -185,6 +183,6 @@ describe.sequential("deactivateDataPackage", () => {
   it("throws when the package is not activated at all", async () => {
     const payload = payloadWith([]);
 
-    await expect(deactivateDataPackage(payload, "pkg", owner)).rejects.toThrow('Data package "pkg" is not activated');
+    await expect(deactivateDataPackage(payload, "pkg", owner)).rejects.toThrow(NotFoundError);
   });
 });

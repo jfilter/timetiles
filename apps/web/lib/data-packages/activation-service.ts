@@ -9,7 +9,7 @@
  */
 import type { Payload, Where } from "payload";
 
-import { ValidationError } from "@/lib/api/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { DataPackageActivation, DataPackageManifest, DataPackageTransform } from "@/lib/data-packages/types";
 import { isUniqueViolation } from "@/lib/database/unique-violation";
@@ -594,7 +594,7 @@ export const deactivateDataPackage = async (
     (doc) => doc.dataPackageSlug === slug || doc.dataPackageSlug?.startsWith(`${slug}:`) === true
   );
   if (matches.length === 0) {
-    throw new Error(`Data package "${slug}" is not activated`);
+    throw new NotFoundError(`Data package "${slug}" is not activated`);
   }
 
   // Ownership is enforced per document. A non-admin who owns none of the
@@ -602,7 +602,7 @@ export const deactivateDataPackage = async (
   // their own activations.
   const owned = matches.filter((doc) => user.role === "admin" || extractRelationId(doc.createdBy) === user.id);
   if (owned.length === 0) {
-    throw new Error("You can only deactivate data packages you activated");
+    throw new ForbiddenError("You can only deactivate data packages you activated");
   }
 
   for (const scheduledIngest of owned) {
