@@ -75,6 +75,24 @@ describe("validateFieldMappingPaths", () => {
     ).not.toThrow();
   });
 
+  it("does not treat an in-place date transform as creating a missing column", () => {
+    const mapping: FieldMapping = { ...baseFieldMapping, dateField: "missing_date" };
+    const transforms: IngestTransform[] = [
+      {
+        id: "date",
+        type: "date-parse",
+        from: "missing_date",
+        inputFormat: "DD/MM/YYYY",
+        outputFormat: "YYYY-MM-DD",
+        active: true,
+        autoDetected: false,
+      },
+    ];
+    expect(() =>
+      validateFieldMappingPaths([baseSheet], [baseSheetMapping], [mapping], [{ sheetIndex: 0, transforms }])
+    ).toThrow(ValidationError);
+  });
+
   it("rejects paths produced only by an inactive transform", () => {
     const mapping: FieldMapping = { ...baseFieldMapping, titleField: "generated_title" };
     const transforms: IngestTransform[] = [

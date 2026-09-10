@@ -298,7 +298,12 @@ type FieldMappingPathKey = (typeof FIELD_MAPPING_PATH_KEYS)[number];
  * materialized at import time.
  */
 const collectTransformOutputPaths = (transforms: IngestTransform[] | undefined): Set<string> =>
-  new Set(buildTransformsFromDataset({ ingestTransforms: transforms }).flatMap(getTransformOutputPaths));
+  new Set(
+    buildTransformsFromDataset({ ingestTransforms: transforms }).flatMap((transform) =>
+      // In-place writes require an existing header or an earlier generated output.
+      getTransformOutputPaths(transform).filter((output) => !("from" in transform) || output !== transform.from)
+    )
+  );
 
 /**
  * Validate that every user-supplied field-mapping path exists in the detected
