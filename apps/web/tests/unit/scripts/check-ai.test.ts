@@ -5,14 +5,21 @@
  * @module
  * @category Tests
  */
+import { resolve } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ execFileSync: vi.fn(), readdirSync: vi.fn(), readFileSync: vi.fn(), exit: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  execFileSync: vi.fn(),
+  existsSync: vi.fn(),
+  readdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  exit: vi.fn(),
+}));
 vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
 vi.mock("node:fs", () => ({
   default: {
-    existsSync: (file: string) =>
-      file.endsWith("apps/web") || file.endsWith(".lint-results") || file.endsWith(".typecheck-results"),
+    existsSync: mocks.existsSync,
     readdirSync: mocks.readdirSync,
     statSync: () => ({ mtimeMs: 1 }),
     readFileSync: mocks.readFileSync,
@@ -27,6 +34,10 @@ describe("quality runner subprocess failures", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.resetAllMocks();
+    mocks.existsSync.mockImplementation(
+      (file: string) =>
+        file.endsWith("apps/web") || file.endsWith(".lint-results") || file.endsWith(".typecheck-results")
+    );
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(process, "exit").mockImplementation((code) => {
       mocks.exit(code);
@@ -51,6 +62,22 @@ describe("quality runner subprocess failures", () => {
       [expect.stringContaining("/scripts/typecheck-with-json.ts")],
       expect.objectContaining({ stdio: "pipe" })
     );
+  });
+
+  it.each(["shared", "scraper"])("runs lint and typecheck for packages/%s", async (pkg) => {
+    mocks.existsSync.mockImplementation(
+      (file: string) =>
+        file.endsWith(`packages/${pkg}`) || file.endsWith(".lint-results") || file.endsWith(".typecheck-results")
+    );
+    await import("../../../../../scripts/check-ai");
+    for (const script of ["lint-fast-with-json.ts", "typecheck-with-json.ts"]) {
+      expect(mocks.execFileSync).toHaveBeenCalledWith(
+        "tsx",
+        [expect.stringContaining(`/scripts/${script}`)],
+        expect.objectContaining({ cwd: resolve(process.cwd(), "packages", pkg) })
+      );
+    }
+    expect(mocks.exit).toHaveBeenCalledWith(0);
   });
 
   it.each(["lint", "typecheck"])("fails if %s exits unsuccessfully despite a clean fresh report", async (check) => {

@@ -55,6 +55,8 @@ const PACKAGES = [
   { name: "apps/web", hasLint: true, hasTypecheck: true },
   { name: "apps/docs", hasLint: true, hasTypecheck: true },
   { name: "packages/ui", hasLint: true, hasTypecheck: true },
+  { name: "packages/shared", hasLint: true, hasTypecheck: true },
+  { name: "packages/scraper", hasLint: true, hasTypecheck: true },
   { name: "apps/timescrape", hasLint: true, hasTypecheck: true },
   { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
 ];
