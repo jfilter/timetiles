@@ -8,7 +8,7 @@ import "@/tests/mocks/services/logger";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
 import {
   activateDataPackage,
   buildActivationKey,
@@ -19,6 +19,13 @@ import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
 
 describe("activation transform validation", () => {
+  it("reports an already active package as a typed conflict", async () => {
+    const payload = { find: vi.fn().mockResolvedValue({ docs: [{ id: 1, enabled: true, createdBy: 1 }] }) };
+    await expect(
+      activateDataPackage(payload as never, { slug: "active-package" } as DataPackageManifest, { id: 1 } as User)
+    ).rejects.toThrow(ConflictError);
+  });
+
   it.each(["constructor", "toString", "__proto__"])(
     "rejects missing required parameter %s without using inherited properties",
     async (name) => {

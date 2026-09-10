@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 
-import { apiRoute, ConflictError, NotFoundError, requireFeatureEnabled } from "@/lib/api";
+import { apiRoute, NotFoundError, requireFeatureEnabled } from "@/lib/api";
 import { activateDataPackage } from "@/lib/data-packages/activation-service";
 import { loadManifest } from "@/lib/data-packages/manifest-loader";
 
@@ -27,21 +27,14 @@ export const POST = apiRoute({
     // creation. Even admins cannot activate when the feature is disabled.
     await requireFeatureEnabled(payload, "enableScheduledIngests", "Scheduled imports are currently disabled.");
 
-    try {
-      // Pass `req` so the acting user is threaded into the scheduled-ingest
-      // create — this makes the maxActiveSchedules quota hook fire (it skips
-      // when there is no `req.user`) instead of being bypassed by overrideAccess.
-      const result = await activateDataPackage(payload, manifest, user, {
-        triggerFirstImport: body.triggerFirstImport,
-        parameters: body.parameters,
-        req,
-      });
-      return { ...result };
-    } catch (error) {
-      if (error instanceof Error && error.message.includes("already activated")) {
-        throw new ConflictError(error.message);
-      }
-      throw error;
-    }
+    // Pass `req` so the acting user is threaded into the scheduled-ingest
+    // create — this makes the maxActiveSchedules quota hook fire (it skips
+    // when there is no `req.user`) instead of being bypassed by overrideAccess.
+    const result = await activateDataPackage(payload, manifest, user, {
+      triggerFirstImport: body.triggerFirstImport,
+      parameters: body.parameters,
+      req,
+    });
+    return { ...result };
   },
 });

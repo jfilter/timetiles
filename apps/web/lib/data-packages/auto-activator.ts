@@ -26,6 +26,7 @@ import { parse as parseYaml } from "yaml";
 import { z } from "zod";
 
 import { createSystemUserService } from "@/lib/account/system-user";
+import { ConflictError } from "@/lib/api/errors";
 import { getEnv } from "@/lib/config/env";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { createLogger } from "@/lib/logger";
@@ -85,8 +86,6 @@ const loadActivationsFile = (): ReturnType<typeof activationsSchema.parse> | nul
 // Activation runner
 // ---------------------------------------------------------------------------
 
-const ALREADY_ACTIVE_PATTERN = /already activated/i;
-
 interface RunResult {
   newlyActivated: number;
   alreadyActive: number;
@@ -106,8 +105,7 @@ const activateOne = async (
     await activateDataPackage(payload, manifest, user, { parameters: entry.params, triggerFirstImport: true });
     return "new";
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    if (ALREADY_ACTIVE_PATTERN.test(msg)) {
+    if (err instanceof ConflictError) {
       return "exists";
     }
     logger.error({ err, slug: entry.slug, params: entry.params }, "Auto-activation failed");

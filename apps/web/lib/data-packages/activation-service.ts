@@ -9,7 +9,7 @@
  */
 import type { Payload, Where } from "payload";
 
-import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/lib/api/errors";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { DataPackageActivation, DataPackageManifest, DataPackageTransform } from "@/lib/data-packages/types";
 import { isUniqueViolation } from "@/lib/database/unique-violation";
@@ -395,7 +395,7 @@ const createActivationScheduledIngest = async (
     await deleteOrphanDataset(payload, orphanDatasetId);
 
     if (isUniqueViolation(error)) {
-      throw new Error(`Data package "${activationKey}" is already activated`);
+      throw new ConflictError(`Data package "${activationKey}" is already activated`);
     }
     throw error;
   }
@@ -419,7 +419,7 @@ const reactivateOrReject = async (
   const ownsExisting = user.role === "admin" || extractRelationId(existingDoc.createdBy) === user.id;
 
   if (existingDoc.enabled !== false || !ownsExisting) {
-    throw new Error(`Data package "${activationKey}" is already activated`);
+    throw new ConflictError(`Data package "${activationKey}" is already activated`);
   }
 
   if (req?.user) {
@@ -504,7 +504,7 @@ export const activateDataPackage = async (
     dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
   } catch (error) {
     if (isUniqueViolation(error)) {
-      throw new Error(`Data package "${activationKey}" is already activated`);
+      throw new ConflictError(`Data package "${activationKey}" is already activated`);
     }
     throw error;
   }
