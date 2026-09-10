@@ -18,6 +18,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
+import { parseTscOutput, type TypeScriptError } from "./shared/typecheck-utils";
 
 /**
  * Fatal problems with the checking tools themselves (crashed, missing, or ran
@@ -169,15 +170,6 @@ if (lintRun.error) {
 }
 
 // --- Typecheck: run tsgo on full project, filter to specified files ---
-interface TypeScriptError {
-  file: string;
-  line: number;
-  column: number;
-  code: string;
-  message: string;
-  severity: "error" | "warning";
-}
-
 let typecheckErrors = 0;
 /** True unless tsgo failed to start or died without parseable diagnostics. */
 let typecheckRan = true;
@@ -196,54 +188,21 @@ if (typecheckRun.error) {
   toolFailures.push(`tsgo could not be started: ${typecheckRun.error.message}`);
 } else if (typecheckRun.status !== 0) {
   const output = (typecheckRun.stdout ?? "") + "\n" + (typecheckRun.stderr ?? "");
-  const lines = output.split("\n");
   // Diagnostics anywhere in the project, before filtering down to our files.
   // Used to tell "tsgo reported real errors elsewhere" apart from "tsgo broke".
-  let sawAnyDiagnostic = false;
-
-  // eslint-disable-next-line sonarjs/slow-regex, regexp/no-super-linear-backtracking
-  const diagnosticPattern = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(TS\d+):\s+(.*)$/;
-  let currentError: TypeScriptError | null = null;
-
-  for (const line of lines) {
-    const match = diagnosticPattern.exec(line);
-    if (match?.[1] && match[2] && match[3] && match[4] && match[5] && match[6]) {
-      sawAnyDiagnostic = true;
-      // Save previous error if it matches our files
-      if (currentError) {
-        const absPath = path.resolve(pkgPath, currentError.file);
-        if (targetFilesSet.has(absPath)) {
-          typecheckIssues.push(currentError);
-          if (currentError.severity === "error") typecheckErrors++;
-        }
-      }
-
-      currentError = {
-        file: match[1],
-        line: Number.parseInt(match[2], 10),
-        column: Number.parseInt(match[3], 10),
-        code: match[5],
-        message: match[6],
-        severity: match[4] as "error" | "warning",
-      };
-    } else if (currentError && line.trim() && !/^\s*$/.test(line)) {
-      currentError.message += " " + line.trim();
-    }
-  }
-
-  // Don't forget the last error
-  if (currentError) {
-    const absPath = path.resolve(pkgPath, currentError.file);
+  const diagnostics = parseTscOutput(output);
+  for (const diagnostic of diagnostics) {
+    const absPath = path.resolve(pkgPath, diagnostic.file);
     if (targetFilesSet.has(absPath)) {
-      typecheckIssues.push(currentError);
-      if (currentError.severity === "error") typecheckErrors++;
+      typecheckIssues.push(diagnostic);
+      if (diagnostic.severity === "error") typecheckErrors++;
     }
   }
 
   // tsgo failed but emitted nothing we could parse — a bad tsconfig, a crash, or
   // an OOM. Treating that as "no type errors in specified files" turned a broken
   // typechecker into a green gate.
-  if (!sawAnyDiagnostic) {
+  if (diagnostics.length === 0) {
     typecheckRan = false;
     toolFailures.push(
       `tsgo exited ${typecheckRun.status} without any parseable diagnostics.\n` +
