@@ -40,8 +40,11 @@ vi.mock("@/lib/utils/relation-id", () => ({
 }));
 
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
+import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { dataExportJob } from "@/lib/jobs/handlers/data-export-job";
 import { logError } from "@/lib/logger";
+
+vi.mock("@/lib/export/unlink-export-file", () => ({ unlinkExportFile: vi.fn().mockResolvedValue("deleted") }));
 
 describe.sequential("dataExportJob", () => {
   let mockPayload: any;
@@ -249,6 +252,28 @@ describe.sequential("dataExportJob", () => {
     });
   });
 
+  it("removes a completed archive when publishing its result fails", async () => {
+    mockPayload.update.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Result could not be saved"));
+    await expect(dataExportJob.handler(createContext({ exportId: 42 }) as any)).rejects.toThrow(
+      "Result could not be saved"
+    );
+    expect(unlinkExportFile).toHaveBeenCalledWith(42, "/tmp/exports/export-42.zip", "export-job-failure");
+    expect(sendExportReadyEmail).not.toHaveBeenCalled();
+  });
+
+  it("retains the archive path for cleanup when deletion also fails", async () => {
+    vi.mocked(unlinkExportFile).mockResolvedValueOnce("failed");
+    mockPayload.update.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Result could not be saved"));
+    await expect(dataExportJob.handler(createContext({ exportId: 42 }) as any)).rejects.toThrow(
+      "Result could not be saved"
+    );
+    expect(mockPayload.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "failed", filePath: "/tmp/exports/export-42.zip" }),
+      })
+    );
+  });
+
   it("should keep the export ready when only the notification email fails", async () => {
     // The archive is written and the record is already committed as "ready" by
     // the time the email is sent. A failure loading branding/translations (or an
@@ -267,6 +292,7 @@ describe.sequential("dataExportJob", () => {
     expect(mockPayload.update).not.toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "failed" }) })
     );
+    expect(unlinkExportFile).not.toHaveBeenCalled();
     expect(sendExportFailedEmail).not.toHaveBeenCalled();
 
     // But the notification failure is still recorded.

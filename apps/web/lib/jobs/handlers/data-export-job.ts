@@ -13,6 +13,7 @@ import { getEnv } from "@/lib/config/env";
 import { EXPORT_EXPIRY_DAYS } from "@/lib/constants/account-constants";
 import { sendExportFailedEmail, sendExportReadyEmail } from "@/lib/export/emails";
 import { createDataExportService } from "@/lib/export/service";
+import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
@@ -28,7 +29,12 @@ const DATA_EXPORTS_COLLECTION = "data-exports";
 /**
  * Handle export failure - update status and send notification.
  */
-const handleExportFailure = async (payload: Payload, exportId: number, error: unknown): Promise<void> => {
+const handleExportFailure = async (
+  payload: Payload,
+  exportId: number,
+  error: unknown,
+  retainedFilePath?: string
+): Promise<void> => {
   try {
     const exportRecord = await asSystem(payload).findByID({ collection: DATA_EXPORTS_COLLECTION, id: exportId });
 
@@ -40,7 +46,12 @@ const handleExportFailure = async (payload: Payload, exportId: number, error: un
     await asSystem(payload).update({
       collection: DATA_EXPORTS_COLLECTION,
       id: exportId,
-      data: { status: "failed", completedAt: new Date().toISOString(), errorLog: errorMessage },
+      data: {
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        errorLog: errorMessage,
+        ...(retainedFilePath ? { filePath: retainedFilePath } : {}),
+      },
     });
 
     // Send failure notification. The raw errorMessage is stored only in the
@@ -77,6 +88,7 @@ export const dataExportJob = {
       throw new Error("Export ID not provided in job input");
     }
 
+    let unpublishedArchive: string | undefined;
     try {
       logger.info({ jobId: job?.id, exportId }, "Starting data export job");
 
@@ -106,6 +118,7 @@ export const dataExportJob = {
       // Execute export
       const exportService = createDataExportService(payload);
       const result = await exportService.executeExport(exportId);
+      unpublishedArchive = result.filePath;
 
       // Calculate expiry (7 days from now)
       const expiresAt = new Date(Date.now() + EXPORT_EXPIRY_MS);
@@ -123,6 +136,8 @@ export const dataExportJob = {
           summary: result.recordCounts as unknown as Record<string, unknown>,
         },
       });
+
+      unpublishedArchive = undefined;
 
       // Generate download URL
       const env = getEnv();
@@ -156,7 +171,15 @@ export const dataExportJob = {
       return { output: { success: true, exportId, fileSize: result.fileSize, recordCounts: result.recordCounts } };
     } catch (error) {
       logError(error, "Data export job failed", { exportId });
-      await handleExportFailure(payload, exportId, error);
+      // Archive generation can succeed before publishing its database record fails.
+      // Preserve the path for the cleanup job if the filesystem also rejects deletion.
+      if (
+        unpublishedArchive &&
+        (await unlinkExportFile(exportId, unpublishedArchive, "export-job-failure")) !== "failed"
+      ) {
+        unpublishedArchive = undefined;
+      }
+      await handleExportFailure(payload, exportId, error, unpublishedArchive);
       throw error;
     }
   },
