@@ -52,7 +52,8 @@ interface CachedEntry {
 /**
  * Whether a cache key belongs to exactly this user.
  *
- * Keys are `GET:<url>:user:<id>` with an optional `:auth:<fingerprint>` suffix, so the user id
+ * Keys are `GET:<url hash>:user:<id>` (legacy keys contain the URL) with an optional
+ * `:auth:<fingerprint>` suffix, so the user id
  * is a whole segment at the end, not arbitrary URL text. Matching inside the URL can
  * invalidate another user's entries and force unnecessary external fetches.
  */
@@ -549,13 +550,16 @@ export class UrlFetchCache {
 
   private getCacheKey(url: string, method: string, userId?: string, authFingerprint?: string): string {
     const normalizedUrl = this.normalizeUrl(url);
+    // Keys are persisted in both the index and payload metadata. Do not retain
+    // source URLs there: their paths and query parameters can contain credentials.
+    const urlHash = crypto.createHash("sha256").update(normalizedUrl).digest("hex");
     const userSegment = userId ? `:user:${userId}` : ":anonymous";
     // Auth identity is part of the key: without it, two callers fetching the same
     // URL with DIFFERENT credentials (e.g. two scheduled ingests owned by
     // different users) would share one cache entry and leak each other's
     // authenticated responses. No-auth requests share a single bucket (correct).
     const authSegment = authFingerprint ? `:auth:${authFingerprint}` : "";
-    return `${method}:${normalizedUrl}${userSegment}${authSegment}`;
+    return `${method}:${urlHash}${userSegment}${authSegment}`;
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {

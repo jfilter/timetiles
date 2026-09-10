@@ -22,6 +22,21 @@ describe("UrlFetchCache", () => {
     vi.restoreAllMocks();
   });
 
+  it("hashes URL credentials while preserving URL identity and user isolation", () => {
+    const cache = new UrlFetchCache() as unknown as {
+      getCacheKey: (url: string, method: string, userId?: string, authFingerprint?: string) => string;
+    };
+    const url = `https://example.com/feed?token=${TEST_SECRETS.payloadSecret}`;
+    const key = cache.getCacheKey(url, "GET", "7", "auth-fingerprint");
+
+    expect(key).toMatch(/^GET:[a-f0-9]{64}:user:7:auth:auth-fingerprint$/);
+    expect(key).not.toContain(TEST_SECRETS.payloadSecret);
+    expect(cache.getCacheKey(`${url}#fragment`, "GET", "7", "auth-fingerprint")).toBe(key);
+    expect(cache.getCacheKey(`${url}&page=2`, "GET", "7", "auth-fingerprint")).not.toBe(key);
+    expect(cache.getCacheKey(url, "GET", "8", "auth-fingerprint")).not.toBe(key);
+    expect(cache.getCacheKey(url, "GET", "7", "other-fingerprint")).not.toBe(key);
+  });
+
   it("uses the stored freshness deadline and treats legacy entries as stale", () => {
     const cache = new UrlFetchCache() as unknown as {
       isStale: (entry: { metadata: { freshUntil?: number } }) => boolean;
