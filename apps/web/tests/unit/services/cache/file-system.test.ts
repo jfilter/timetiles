@@ -440,6 +440,25 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("cleanup", () => {
+    it("counts missing files toward the space released during LRU cleanup", async () => {
+      storage = new FileSystemCacheStorage({ cacheDir: tempDir, maxSize: 4000 });
+      const value = Buffer.alloc(1000);
+      for (const key of ["oldest", "older", "recent"]) {
+        await storage.set(key, value);
+      }
+      const index = JSON.parse(await fs.readFile(path.join(tempDir, "index.json"), "utf8")) as {
+        index: Record<string, { file: string }>;
+      };
+      await fs.unlink(index.index.oldest!.file);
+
+      await storage.set("newest", value);
+
+      expect(await storage.keys()).toEqual(["recent", "newest"]);
+      expect(await storage.getStats()).toMatchObject({ entries: 2, evictions: 1 });
+      expect((await storage.get<Buffer>("recent"))?.value).toEqual(value);
+      expect((await storage.get<Buffer>("newest"))?.value).toEqual(value);
+    });
+
     it("should cleanup stale entries", async () => {
       await storage.set("fs-stale-1", "value1", { ttl: 0.1 }); // Expires in 100ms
       await storage.set("fs-stale-2", "value2", { ttl: 10 }); // Expires in 10s

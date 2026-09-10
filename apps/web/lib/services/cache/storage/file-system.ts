@@ -359,30 +359,25 @@ export class FileSystemCacheStorage implements CacheStorage {
 
   private async cleanupLRU(): Promise<number> {
     let cleaned = 0;
-    const entries: Array<{ key: string; lastAccessed: number; size: number }> = [];
+    const entries: Array<{ key: string; lastAccessed: number }> = [];
 
     // Access times come from the index — reading every payload here loaded the whole cache
     // into memory just to sort it.
     for (const [key, indexEntry] of this.index) {
-      entries.push({
-        key,
-        lastAccessed: indexEntry.lastAccessedAt ?? indexEntry.createdAt ?? 0,
-        size: indexEntry.size,
-      });
+      entries.push({ key, lastAccessed: indexEntry.lastAccessedAt ?? indexEntry.createdAt ?? 0 });
     }
 
     // Sort by last accessed (oldest first)
     entries.sort((a, b) => a.lastAccessed - b.lastAccessed);
 
     // Remove until under 80% of max size
-    let currentSize = this.stats.totalSize;
     const targetSize = this.maxSize * 0.8;
 
     for (const entry of entries) {
-      if (currentSize <= targetSize) break;
+      // delete() releases accounting even when the file was already removed.
+      if (this.stats.totalSize <= targetSize) break;
 
       if (await this.delete(entry.key)) {
-        currentSize -= entry.size;
         cleaned++;
         this.stats.evictions++;
       }
