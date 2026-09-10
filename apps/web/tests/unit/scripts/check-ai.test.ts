@@ -55,4 +55,21 @@ describe("quality runner subprocess failures", () => {
     await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(1);
   });
+
+  it.each(["lint", "typecheck"])("counts ordinary %s diagnostics without a duplicate runner failure", async (check) => {
+    mocks.execSync.mockImplementation((command: string) => {
+      if (command.includes(`${check}-fast`)) throw new Error("Diagnostics found");
+    });
+    mocks.readFileSync.mockImplementation((file: string) =>
+      JSON.stringify(
+        file.includes(".lint-results")
+          ? [{ filePath: "example.ts", errorCount: check === "lint" ? 1 : 0, warningCount: 0, messages: [] }]
+          : { success: check !== "typecheck", errorCount: check === "typecheck" ? 1 : 0, errors: [] }
+      )
+    );
+    await import("../../../../../scripts/check-ai");
+    expect(mocks.exit).toHaveBeenCalledWith(1);
+    expect(console.log).toHaveBeenCalledWith(expect.stringContaining("1 errors"));
+    expect(console.log).not.toHaveBeenCalledWith(expect.stringContaining("runner failures"));
+  });
 });
