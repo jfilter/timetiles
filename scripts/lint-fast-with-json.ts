@@ -5,7 +5,7 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -105,7 +105,10 @@ const createConfigErrorResults = (message: string): ESLintFileResult[] => [
 let exitCode = 0;
 
 try {
-  const output = execSync(`pnpm exec oxlint --config ${configPath} --format=json . 2>&1`, { encoding: "utf-8" });
+  const output = execFileSync("pnpm", ["exec", "oxlint", "--config", configPath, "--format=json", "."], {
+    encoding: "utf-8",
+    stdio: "pipe",
+  });
   const oxlintResult: OxlintOutput = JSON.parse(output);
   const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
   const totalErrors = writeResults(eslintResults);

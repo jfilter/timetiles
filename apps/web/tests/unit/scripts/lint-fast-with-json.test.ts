@@ -7,8 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ execSync: vi.fn(), writeFileSync: vi.fn(), exit: vi.fn() }));
-vi.mock("node:child_process", () => ({ execSync: mocks.execSync }));
+const mocks = vi.hoisted(() => ({ execFileSync: vi.fn(), writeFileSync: vi.fn(), exit: vi.fn() }));
+vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
 vi.mock("node:fs", () => ({ default: { mkdirSync: vi.fn(), writeFileSync: mocks.writeFileSync } }));
 vi.mock("../../../../../scripts/shared/typecheck-utils", () => ({
   createTimestamp: () => "test-run",
@@ -28,11 +28,16 @@ describe("oxlint wrapper exit status", () => {
 
   it.each([false, true])("preserves process failure=%s with empty diagnostics", async (failed) => {
     const output = JSON.stringify({ diagnostics: [] });
-    mocks.execSync.mockImplementation(() => {
+    mocks.execFileSync.mockImplementation(() => {
       if (failed) throw Object.assign(new Error("oxlint failed"), { stdout: output, status: 1 });
       return output;
     });
     await import("../../../../../scripts/lint-fast-with-json");
+    expect(mocks.execFileSync).toHaveBeenCalledWith(
+      "pnpm",
+      ["exec", "oxlint", "--config", expect.stringContaining(".oxlintrc.json"), "--format=json", "."],
+      { encoding: "utf-8", stdio: "pipe" }
+    );
     expect(mocks.exit).toHaveBeenCalledWith(failed ? 1 : 0);
     expect(mocks.writeFileSync).toHaveBeenCalledWith(expect.stringContaining("test-run.json"), "[]");
   });
