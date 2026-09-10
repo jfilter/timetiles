@@ -13,19 +13,34 @@ import type { User } from "@/payload-types";
 
 export type DeletionRequest = Pick<PayloadRequest, "payload" | "transactionID" | "context">;
 
-/** Read the current user only after acquiring the lock shared by execution and cancellation. */
+/** Read current state under the lock shared by scheduling, execution and cancellation. */
 export const lockDeletionUser = async (payload: Payload, userId: number, req: DeletionRequest): Promise<User> => {
   const db = await getTransactionAwareDrizzle(payload, req);
   await db.execute(sql`SELECT id FROM payload.users WHERE id = ${userId} FOR UPDATE`);
   return payload.findByID({ collection: "users", id: userId, overrideAccess: true, req });
 };
 
-/** Commit cancellation before the caller sends its best-effort notification. */
-export const cancelPendingDeletion = async (payload: Payload, userId: number): Promise<User> => {
+/** Commit a state change before the caller sends its best-effort notification. */
+export const withLockedDeletionUser = async (
+  payload: Payload,
+  userId: number,
+  change: (user: User, req: DeletionRequest) => Promise<void>
+): Promise<User> => {
   const req = { payload, context: {} } as DeletionRequest;
   const ownsTransaction = await initTransaction(req);
   try {
     const user = await lockDeletionUser(payload, userId, req);
+    await change(user, req);
+    if (ownsTransaction) await commitTransaction(req);
+    return user;
+  } catch (error) {
+    if (ownsTransaction) await killTransaction(req);
+    throw error;
+  }
+};
+
+export const cancelPendingDeletion = (payload: Payload, userId: number): Promise<User> =>
+  withLockedDeletionUser(payload, userId, async (user, req) => {
     if (user.deletionStatus !== "pending_deletion") throw new Error("No pending deletion to cancel");
     await payload.update({
       collection: "users",
@@ -34,10 +49,4 @@ export const cancelPendingDeletion = async (payload: Payload, userId: number): P
       overrideAccess: true,
       req,
     });
-    if (ownsTransaction) await commitTransaction(req);
-    return user;
-  } catch (error) {
-    if (ownsTransaction) await killTransaction(req);
-    throw error;
-  }
-};
+  });

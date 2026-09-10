@@ -25,7 +25,7 @@ import { AUDIT_ACTIONS, auditLog } from "../services/audit-log-service";
 import { disposeOfPrivateCatalog } from "./deletion-catalog-disposal";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
 import type { DeletionRequest as TransactionReq } from "./deletion-state";
-import { cancelPendingDeletion, lockDeletionUser } from "./deletion-state";
+import { cancelPendingDeletion, lockDeletionUser, withLockedDeletionUser } from "./deletion-state";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
 
@@ -53,10 +53,10 @@ export class AccountDeletionService {
   /**
    * Check if a user can be deleted.
    */
-  async canDeleteUser(userId: number): Promise<CanDeleteResult> {
+  async canDeleteUser(userId: number, req?: TransactionReq): Promise<CanDeleteResult> {
     let user;
     try {
-      user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
+      user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true, req });
     } catch {
       return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
     }
@@ -79,6 +79,7 @@ export class AccountDeletionService {
     if (user.role === "admin") {
       const adminCount = await this.payload.count({
         collection: "users",
+        req,
         where: {
           and: [
             { role: { equals: "admin" } },
@@ -104,6 +105,7 @@ export class AccountDeletionService {
     // the user could not delete their account without an admin.
     const activeJobs = await this.payload.find({
       collection: "ingest-jobs",
+      req,
       where: {
         and: [
           { "dataset.createdBy": { equals: userId } },
@@ -197,27 +199,25 @@ export class AccountDeletionService {
    * Schedule account deletion with grace period.
    */
   async scheduleDeletion(userId: number): Promise<ScheduleDeletionResult> {
-    const canDelete = await this.canDeleteUser(userId);
-    if (!canDelete.allowed) {
-      throw new Error(canDelete.reason);
-    }
-
-    const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
-
     const summary = await this.getDeletionSummary(userId);
     const now = new Date();
     const gracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
     const deletionDate = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000);
 
-    await this.payload.update({
-      collection: "users",
-      id: userId,
-      data: {
-        deletionStatus: "pending_deletion",
-        deletionRequestedAt: now.toISOString(),
-        deletionScheduledAt: deletionDate.toISOString(),
-      },
-      overrideAccess: true,
+    const user = await withLockedDeletionUser(this.payload, userId, async (_user, req) => {
+      const canDelete = await this.canDeleteUser(userId, req);
+      if (!canDelete.allowed) throw new Error(canDelete.reason);
+      await this.payload.update({
+        collection: "users",
+        id: userId,
+        data: {
+          deletionStatus: "pending_deletion",
+          deletionRequestedAt: now.toISOString(),
+          deletionScheduledAt: deletionDate.toISOString(),
+        },
+        overrideAccess: true,
+        req,
+      });
     });
 
     logger.info({ userId, deletionScheduledAt: deletionDate.toISOString() }, "Account deletion scheduled");
@@ -319,7 +319,7 @@ export class AccountDeletionService {
           throw new Error("Scheduled deletion is no longer due");
         }
         // Eligibility and cancellation may have changed since scheduling or enumeration.
-        const canDelete = await this.canDeleteUser(userId);
+        const canDelete = await this.canDeleteUser(userId, req);
         if (!canDelete.allowed) throw new Error(`Deletion aborted: ${canDelete.reason}`);
 
         // Transfer public data to system user

@@ -256,7 +256,7 @@ describe.sequential("Account Deletion Service", () => {
       expect(user.deletionStatus).toBe("deleted");
     });
 
-    it.each(["execute", "cancel"])("should recheck the user after waiting to %s", async (action) => {
+    it.each(["execute", "cancel", "schedule"])("should recheck the user after waiting to %s", async (action) => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
       const userId = users.testUser.id;
@@ -271,8 +271,12 @@ describe.sequential("Account Deletion Service", () => {
       const db = await getTransactionAwareDrizzle(payload, req);
       await db.execute(sql`SELECT id FROM payload.users WHERE id = ${userId} FOR UPDATE`);
       const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
-      const operation =
-        action === "execute" ? deletionService.executeDeletion(userId) : deletionService.cancelDeletion(userId);
+      const operations = {
+        execute: () => deletionService.executeDeletion(userId),
+        cancel: () => deletionService.cancelDeletion(userId),
+        schedule: () => deletionService.scheduleDeletion(userId),
+      };
+      const operation = operations[action as keyof typeof operations]();
       const outcome = (async () => {
         try {
           await operation;
