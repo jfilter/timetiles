@@ -124,7 +124,6 @@ const fetchMediaBuffer = async (
  *
  * `lib/metadata/favicon-icons.ts` references these exact names.
  */
-// eslint-disable-next-line sonarjs/no-invariant-returns -- Payload hook pattern requires returning doc
 export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previousDoc, req }) => {
   const currentLightId = getMediaId(doc.faviconSourceLight);
   const previousLightId = getMediaId(previousDoc?.faviconSourceLight);

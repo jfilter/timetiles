@@ -193,7 +193,6 @@ const PREVIEW_DATA_FILE_NAME_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][
  * @param now - Override "current time" for deterministic testing.
  * @param dirOverride - Optional directory override (for isolated testing).
  */
-// eslint-disable-next-line sonarjs/no-invariant-returns -- Accumulator pattern: same object reference, different content
 export const sweepExpiredPreviews = (now: Date = new Date(), dirOverride?: string): PreviewCleanupResult => {
   const result: PreviewCleanupResult = { scanned: 0, removed: 0, orphanedRemoved: 0, errors: 0 };
   const previewDir = dirOverride ?? resolvePreviewDir();
