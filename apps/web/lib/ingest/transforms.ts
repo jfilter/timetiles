@@ -484,31 +484,3 @@ const runCustomTransform = (value: unknown, expression: string): unknown => {
     throw new Error(`Custom transform failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
-
-/**
- * Apply transforms to an array of data objects.
- *
- * Convenience function for batch processing.
- * Each object is transformed independently.
- *
- * @param dataArray - Array of data objects to transform
- * @param transforms - Array of transform rules to apply
- * @returns Array of transformed data objects
- *
- * @example
- * ```typescript
- * const rows = [
- *   { date: "2024-01-15", name: "Event 1" },
- *   { date: "2024-01-16", name: "Event 2" }
- * ];
- * const transforms = [
- *   { type: "rename", from: "date", to: "start_date", active: true }
- * ];
- * const result = applyTransformsBatch(rows, transforms);
- * // Returns array with start_date instead of date
- * ```
- */
-export const applyTransformsBatch = (
-  dataArray: Record<string, unknown>[],
-  transforms: IngestTransform[]
-): Record<string, unknown>[] => dataArray.map((data) => applyTransforms(data, transforms));

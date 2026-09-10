@@ -53,10 +53,8 @@ export const readInterpretationPlan = (record: { interpretationPlan?: unknown })
  * Wrap an already-built ordered transform list as a minimal plan (ops only).
  *
  * Transitional helper for call sites that still receive `transforms` rather than
- * a full plan. `interpretRows(rows, planFromOps(transforms))` is byte-identical to
- * the legacy `applyTransformsBatch(rows, transforms)`. The typed `columns`/`roles`
- * are populated by the plan-builder; sites using this shim only need the
- * structural step, which the ops carry.
+ * a full plan. The typed `columns`/`roles` are populated by the plan-builder;
+ * sites using this helper only need the structural step, which the ops carry.
  */
 export const planFromOps = (ops: IngestTransform[]): DatasetInterpretationPlan => ({
   ops,

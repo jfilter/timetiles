@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
+import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
+import { applyTransforms } from "@/lib/ingest/transforms";
 import type {
   ConcatenateTransform,
   DateParseTransform,
@@ -318,7 +319,7 @@ describe("applyTransforms", () => {
   });
 });
 
-describe("applyTransformsBatch (existing cases)", () => {
+describe("interpretRows batch transforms", () => {
   it("should apply transforms to array of objects", () => {
     const data = [
       { date: "2024-01-15", name: "Event 1" },
@@ -328,7 +329,7 @@ describe("applyTransformsBatch (existing cases)", () => {
 
     const transforms: IngestTransform[] = [rename("date", "start_date")];
 
-    const result = applyTransformsBatch(data, transforms);
+    const result = interpretRows(data, planFromOps(transforms));
     expect(result).toHaveLength(3);
     expect(result[0]).toEqual({ start_date: "2024-01-15", name: "Event 1" });
     expect(result[1]).toEqual({ start_date: "2024-01-16", name: "Event 2" });
@@ -336,7 +337,7 @@ describe("applyTransformsBatch (existing cases)", () => {
   });
 
   it("should handle empty array", () => {
-    const result = applyTransformsBatch([], []);
+    const result = interpretRows([], planFromOps([]));
     expect(result).toEqual([]);
   });
 
@@ -346,7 +347,7 @@ describe("applyTransformsBatch (existing cases)", () => {
 
     const transforms: IngestTransform[] = [rename("date", "start_date")];
 
-    applyTransformsBatch(data, transforms);
+    interpretRows(data, planFromOps(transforms));
     expect(data).toEqual(original);
   });
 });

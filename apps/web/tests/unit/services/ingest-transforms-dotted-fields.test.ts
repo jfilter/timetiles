@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { applyPreviewTransforms, applyTransforms, applyTransformsBatch } from "@/lib/ingest/transforms";
+import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
+import { applyPreviewTransforms, applyTransforms } from "@/lib/ingest/transforms";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 
 describe("dotted field transform regressions", () => {
@@ -39,7 +40,7 @@ describe("dotted field transform regressions", () => {
       { id: "1", type: "string-op", from: "user.name", operation: "uppercase", active: true, autoDetected: false },
     ];
 
-    expect(applyTransformsBatch(rows, transforms)).toEqual([{ "user.name": "ALPHA" }, { "user.name": "BETA" }]);
+    expect(interpretRows(rows, planFromOps(transforms))).toEqual([{ "user.name": "ALPHA" }, { "user.name": "BETA" }]);
   });
 
   it("should transform flattened dotted headers in preview mode", () => {
