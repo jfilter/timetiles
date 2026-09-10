@@ -111,6 +111,7 @@ try {
   const totalErrors = writeResults(eslintResults);
   exitCode = totalErrors > 0 ? 1 : 0;
 } catch (error) {
+  exitCode = 1;
   const errorWithOutput = error as { stdout?: string | Buffer; stderr?: string | Buffer };
   const stdout = errorWithOutput.stdout?.toString() ?? "";
   const stderr = errorWithOutput.stderr?.toString() ?? "";
@@ -119,11 +120,9 @@ try {
   try {
     const oxlintResult: OxlintOutput = JSON.parse(stdout || commandOutput);
     const eslintResults = transformOxlintToEslint(oxlintResult.diagnostics);
-    const totalErrors = writeResults(eslintResults);
-    exitCode = totalErrors > 0 ? 1 : 0;
+    writeResults(eslintResults);
   } catch {
     writeResults(createConfigErrorResults(commandOutput));
-    exitCode = 1;
   }
 }
 
