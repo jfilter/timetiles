@@ -142,13 +142,10 @@ export class FileSystemCacheStorage implements CacheStorage {
       this.stats.hits++;
       return entry;
     } catch {
-      // File might be corrupted or deleted. Release its accounting too: dropping the
-      // index entry alone left `totalSize` (and `entries`) counting bytes that are gone,
-      // and phantom size above `maxSize` makes cleanupLRU evict on every subsequent set()
-      // — including the entry just written, pinning the hit rate at zero across restarts.
+      // Remove unreadable payloads before releasing their accounting. If deletion
+      // fails, retain the index so maintenance can retry instead of orphaning files.
       logger.debug("Failed to read cache file");
-      this.releaseIndexEntry(key);
-      await this.saveIndex();
+      await this.delete(key);
       this.stats.misses++;
       return null;
     }

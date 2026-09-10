@@ -134,28 +134,31 @@ describe.sequential("FileSystemCacheStorage", () => {
       expect(hasNonExistent).toBe(false);
     });
 
-    it("retains the index and size when a cache file cannot be deleted", async () => {
-      const key = "unlink-failure";
-      await storage.set(key, "value");
-      const before = await storage.getStats();
-      const indexFile = path.join(tempDir, "index.json");
-      const indexBefore = await fs.readFile(indexFile, "utf8");
-      const index = JSON.parse(indexBefore) as { index: Record<string, { file: string }> };
-      const file = index.index[key]!.file;
-      // unlink cannot remove a directory, even when tests run as root.
-      await fs.unlink(file);
-      await fs.mkdir(file);
+    it.each(["delete", "get"] as const)(
+      "retains the index and size when %s cannot remove a cache file",
+      async (action) => {
+        const key = "unlink-failure";
+        await storage.set(key, "value");
+        const before = await storage.getStats();
+        const indexFile = path.join(tempDir, "index.json");
+        const indexBefore = await fs.readFile(indexFile, "utf8");
+        const index = JSON.parse(indexBefore) as { index: Record<string, { file: string }> };
+        const file = index.index[key]!.file;
+        // unlink cannot remove a directory, even when tests run as root.
+        await fs.unlink(file);
+        await fs.mkdir(file);
 
-      await expect(storage.delete(key)).rejects.toThrow();
-      expect(await storage.keys()).toContain(key);
-      expect(await storage.getStats()).toMatchObject({ entries: 1, totalSize: before.totalSize });
-      expect(await fs.readFile(indexFile, "utf8")).toBe(indexBefore);
+        await expect(storage[action](key)).rejects.toThrow();
+        expect(await storage.keys()).toContain(key);
+        expect(await storage.getStats()).toMatchObject({ entries: 1, totalSize: before.totalSize });
+        expect(await fs.readFile(indexFile, "utf8")).toBe(indexBefore);
 
-      await fs.rmdir(file);
-      await fs.writeFile(file, "restored");
-      expect(await storage.delete(key)).toBe(true);
-      expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
-    });
+        await fs.rmdir(file);
+        await fs.writeFile(file, "restored");
+        expect(await storage.delete(key)).toBe(true);
+        expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
+      }
+    );
 
     it("releases accounting when a cache file is already missing", async () => {
       const key = "missing-file";
@@ -499,6 +502,7 @@ describe.sequential("FileSystemCacheStorage", () => {
       // Should return null for corrupted entry
       const entry = await storage.get(key);
       expect(entry).toBeNull();
+      await expect(fs.access(cacheFile)).rejects.toMatchObject({ code: "ENOENT" });
       expect(mockLogger.logger.debug).toHaveBeenCalledWith("Failed to read cache file");
 
       // Should be able to overwrite corrupted entry
