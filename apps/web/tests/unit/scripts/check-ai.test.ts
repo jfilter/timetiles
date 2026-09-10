@@ -7,8 +7,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ execSync: vi.fn(), readdirSync: vi.fn(), readFileSync: vi.fn(), exit: vi.fn() }));
-vi.mock("node:child_process", () => ({ execSync: mocks.execSync }));
+const mocks = vi.hoisted(() => ({ execFileSync: vi.fn(), readdirSync: vi.fn(), readFileSync: vi.fn(), exit: vi.fn() }));
+vi.mock("node:child_process", () => ({ execFileSync: mocks.execFileSync }));
 vi.mock("node:fs", () => ({
   default: {
     existsSync: (file: string) =>
@@ -46,19 +46,24 @@ describe("quality runner subprocess failures", () => {
   it("passes when both subprocesses and reports are successful", async () => {
     await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(0);
+    expect(mocks.execFileSync).toHaveBeenCalledWith(
+      "tsx",
+      [expect.stringContaining("/scripts/typecheck-with-json.ts")],
+      expect.objectContaining({ stdio: "pipe" })
+    );
   });
 
   it.each(["lint", "typecheck"])("fails if %s exits unsuccessfully despite a clean fresh report", async (check) => {
-    mocks.execSync.mockImplementation((command: string) => {
-      if (command.includes(`${check}-`)) throw new Error("Subprocess failed");
+    mocks.execFileSync.mockImplementation((_command: string, args: string[]) => {
+      if (args[0]?.includes(`${check}-`)) throw new Error("Subprocess failed");
     });
     await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(1);
   });
 
   it.each(["lint", "typecheck"])("counts ordinary %s diagnostics without a duplicate runner failure", async (check) => {
-    mocks.execSync.mockImplementation((command: string) => {
-      if (command.includes(`${check}-`)) throw new Error("Diagnostics found");
+    mocks.execFileSync.mockImplementation((_command: string, args: string[]) => {
+      if (args[0]?.includes(`${check}-`)) throw new Error("Diagnostics found");
     });
     mocks.readFileSync.mockImplementation((file: string) =>
       JSON.stringify(

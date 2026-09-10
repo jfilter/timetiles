@@ -9,9 +9,10 @@
  * @module
  * @category Scripts
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { reportFormatSection, runFormatCheck } from "./shared/format-utils";
 
@@ -58,7 +59,7 @@ const PACKAGES = [
   { name: "packages/eslint-config", hasLint: true, hasTypecheck: false },
 ];
 
-const scriptsDir = path.dirname(new URL(import.meta.url).pathname);
+const scriptsDir = path.dirname(fileURLToPath(import.meta.url));
 
 /** Find the latest JSON file in a results directory with its modification time. */
 function getLatestResultInfo(dir: string): ResultFileInfo {
@@ -97,12 +98,12 @@ function truncateMessage(message: string, maxLength = 80): string {
   return message.length > maxLength ? `${message.substring(0, maxLength)}...` : message;
 }
 
-function runCheckWithFreshResults(command: string, cwd: string, resultDir: string): CheckRunResult {
+function runCheckWithFreshResults(scriptPath: string, cwd: string, resultDir: string): CheckRunResult {
   const before = getLatestResultInfo(resultDir);
   let failureSummary: string | null = null;
 
   try {
-    execSync(command, { cwd, stdio: "pipe" });
+    execFileSync("tsx", [scriptPath], { cwd, stdio: "pipe" });
   } catch (error) {
     // Expected to fail when a check reports errors, but still useful for runner failures.
     failureSummary = summarizeCommandFailure(error);
@@ -145,7 +146,7 @@ for (const pkg of PACKAGES) {
 
   if (pkg.hasLint) {
     packageRunResults.lint = runCheckWithFreshResults(
-      `tsx ${path.join(scriptsDir, "lint-fast-with-json.ts")}`,
+      path.join(scriptsDir, "lint-fast-with-json.ts"),
       pkgPath,
       path.join(pkgPath, ".lint-results")
     );
@@ -153,7 +154,7 @@ for (const pkg of PACKAGES) {
 
   if (pkg.hasTypecheck) {
     packageRunResults.typecheck = runCheckWithFreshResults(
-      `tsx ${path.join(scriptsDir, "typecheck-with-json.ts")}`,
+      path.join(scriptsDir, "typecheck-with-json.ts"),
       pkgPath,
       path.join(pkgPath, ".typecheck-results")
     );
