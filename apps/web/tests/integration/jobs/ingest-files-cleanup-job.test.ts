@@ -13,6 +13,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getEnv } from "@/lib/config/env";
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { getSidecarPath } from "@/lib/ingest/file-readers";
 import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { ingestFilesCleanupJob } from "@/lib/jobs/handlers/ingest-files-cleanup-job";
 import {
@@ -31,6 +32,32 @@ describe.sequential("Ingest file cleanup retries", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  it("removes abandoned sheet CSVs but preserves fresh sidecars and their referenced source", async () => {
+    const { payload } = env;
+    const { ingestFile } = await withIngestFile(env, null, "name\nSource\n");
+    const source = getIngestFilePath(ingestFile.filename);
+    const abandoned = getSidecarPath(source, 0);
+    const fresh = getSidecarPath(source, 1);
+    try {
+      await writeFile(abandoned, "name\nAbandoned\n");
+      await writeFile(fresh, "name\nFresh\n");
+      const old = new Date(Date.now() - (getEnv().INGEST_FILE_ORPHAN_GRACE_HOURS + 1) * 60 * 60 * 1000);
+      await utimes(abandoned, old, old);
+      const job = await payload.jobs.queue({ task: "ingest-files-cleanup", queue: "maintenance", input: {} });
+      await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
+
+      expect(existsSync(abandoned)).toBe(false);
+      expect(existsSync(fresh)).toBe(true);
+      expect(existsSync(source)).toBe(true);
+      expect((await payload.count({ collection: "payload-jobs", where: { id: { equals: job.id } } })).totalDocs).toBe(
+        0
+      );
+    } finally {
+      await rm(abandoned, { force: true });
+      await rm(fresh, { force: true });
+    }
   });
 
   it("waits for an in-flight reference before deleting an apparent orphan", async () => {
