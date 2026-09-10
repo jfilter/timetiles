@@ -115,6 +115,34 @@ transforms:
 
 **After:** `["Sport", "Kultur", "Erwachsene"]` (native array, rendered as tag chips)
 
+### Split to Array
+
+Split a delimited string into one array-valued field, rather than the multiple output columns created by **Split**. Whitespace around entries and empty entries are removed. The delimiter defaults to a comma; optional `to` writes to a different field.
+
+```yaml
+transforms:
+  - type: split-to-array
+    from: categories
+    delimiter: ";"
+```
+
+For example, `"Music; Theatre; ; Sport"` becomes `["Music", "Theatre", "Sport"]`.
+
+### Extract
+
+Extract part of a string into another field using a regular expression. `group` selects the capture group (default: `1`); the source field is unchanged. If the pattern does not match, no output is written. Unsafe regex patterns are rejected.
+
+```yaml
+transforms:
+  - type: extract
+    from: source_url
+    to: event_id
+    pattern: "/events/([0-9]+)"
+    group: 1
+```
+
+For example, `/events/12345` produces `event_id: "12345"`.
+
 ## Pre-Processing
 
 For JSON API sources, you can group records before they enter the import pipeline. This is useful when an API returns repeated entries for recurring events — one row per day instead of a single event with a date range.
