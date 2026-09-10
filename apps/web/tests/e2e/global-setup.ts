@@ -192,8 +192,8 @@ export default async function globalSetup(): Promise<void> {
   const workerPath = path.join(__dirname, "utils", "job-worker.ts");
   console.log(`⚙️ Starting job worker...`);
 
-  // eslint-disable-next-line sonarjs/no-os-command-from-path -- Running tsx in controlled test setup environment
-  const wp = spawn("npx", ["tsx", workerPath], {
+  // Start the worker directly so teardown waits for its PID, not a package-manager wrapper.
+  const wp = spawn(process.execPath, ["--import", "tsx", workerPath], {
     env: serverEnv,
     stdio: ["ignore", "pipe", "pipe"],
     detached: true,
