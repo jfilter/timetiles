@@ -9,6 +9,7 @@
  */
 
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
+import { getTransformOutputPaths } from "@/lib/ingest/transform-builders";
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
 import type { ConfigSuggestion } from "@/lib/ingest/types/wizard";
 import type { Dataset } from "@/payload-types";
@@ -16,9 +17,11 @@ import type { Dataset } from "@/payload-types";
 const MIN_SCORE = 40;
 const MAX_RESULTS = 3;
 
-/** Collect the input column names referenced by a plan's ops (rename/string-op `from`, concatenate `fromFields`, …). */
+/** Trace post-transform columns back to file inputs, undoing generated paths in reverse operation order. */
 const collectPlanInputColumns = (plan: DatasetInterpretationPlan, columns: Set<string>): void => {
-  for (const t of plan.ops) {
+  for (const t of [...plan.ops].reverse()) {
+    if (!t.active) continue;
+    for (const output of getTransformOutputPaths(t)) columns.delete(output);
     if ("from" in t && typeof t.from === "string") columns.add(t.from);
     if (t.type === "concatenate") {
       for (const f of t.fromFields) columns.add(f);
@@ -41,7 +44,7 @@ const getDatasetKnownColumns = (dataset: Dataset & { schemaColumns?: string[] })
     for (const path of Object.values(plan.roles)) {
       if (typeof path === "string" && path) columns.add(path);
     }
-    // Fallback: input columns referenced by the authored ops
+    // Schema and role paths describe transformed rows; compare their source columns.
     collectPlanInputColumns(plan, columns);
   }
 

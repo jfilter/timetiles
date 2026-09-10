@@ -45,6 +45,23 @@ const makeDataset = (overrides: {
 };
 
 describe("findConfigSuggestions", () => {
+  it("matches source headers through chained renames without requiring generated columns", () => {
+    const dataset = makeDataset({
+      id: 1,
+      name: "Chained rename",
+      schemaColumns: ["title"],
+      roles: { titlePath: "title" },
+      transforms: [
+        { id: "1", type: "rename", from: "raw", to: "middle", active: true, autoDetected: false },
+        { id: "2", type: "rename", from: "middle", to: "title", active: true, autoDetected: false },
+      ],
+    });
+
+    const results = findConfigSuggestions(["raw"], [dataset]);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ score: 100, matchedColumns: ["raw"] });
+  });
+
   it("returns a match when headers overlap above threshold", () => {
     const headers = ["title", "date", "location", "extra"];
     const datasets = [
@@ -173,9 +190,8 @@ describe("findConfigSuggestions", () => {
     const results = findConfigSuggestions(headers, datasets);
 
     expect(results).toHaveLength(1);
-    // 'name' from roles + 'raw_date' and 'raw_name' from transforms = 3 known
-    // 2 of 3 known match the 3 headers: raw_date, raw_name
-    // score = 2 / max(3 headers, 3 known) * 100 = 67
+    // Generated 'name' is replaced by its input; the two source columns match.
+    // score = 2 / max(3 headers, 2 known) * 100 = 67
     expect(results[0]!.matchedColumns).toEqual(expect.arrayContaining(["raw_date", "raw_name"]));
     expect(results[0]!.score).toBe(67);
   });
