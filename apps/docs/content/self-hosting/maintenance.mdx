@@ -163,6 +163,14 @@ timetiles logs postgres         # Database logs
 timetiles logs nginx            # Reverse proxy logs
 ```
 
+### Import Working Files
+
+The hourly `ingest-files-cleanup` job reclaims files from `UPLOAD_DIR/ingest-files` after their import has completed or failed and the retention window has elapsed (24 hours by default). It retains the database records and protects files with active or review-stage ingest jobs.
+
+Files without a database reference are removed only after the orphan grace period (12 hours by default). Generated sheet CSVs remain protected while their source file is referenced. Temporary files left by interrupted CSV writes are eligible for the same age-based orphan sweep.
+
+Do not clear the upload directory as if it were a cache: active or paused imports may still need its contents. Check the maintenance worker's logs for cleanup failures before manually removing files.
+
 ## Database Maintenance
 
 Run weekly for optimal performance:
