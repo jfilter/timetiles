@@ -55,10 +55,11 @@ git commit -m "chore: bump @timetiles/ui to v0.2.0"
 
 ```bash
 git tag ui-v0.2.0
-git push origin main --tags
+git push origin main
+git push origin tag ui-v0.2.0
 ```
 
-The matching workflow triggers automatically on the tag push.
+The matching workflow triggers automatically on the tag push. Push only the intended release tag; `--tags` also publishes unrelated local tags and can trigger other release workflows.
 
 **Tag naming convention:**
 
