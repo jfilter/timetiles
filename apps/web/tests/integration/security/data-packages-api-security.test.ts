@@ -99,13 +99,13 @@ describe.sequential("Data package API security", () => {
     return listGET(request, { params: Promise.resolve({}) });
   };
 
-  const callActivate = async (slug: string, token?: string): Promise<Response> => {
+  const callActivate = async (slug: string, token?: string, parameters?: Record<string, string>): Promise<Response> => {
     const headers = new Headers({ "Content-Type": "application/json" });
     if (token != null) headers.set("Authorization", `Bearer ${token}`);
     const request = new NextRequest(`http://localhost:3000/api/data-packages/${slug}/activate`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ triggerFirstImport: false }),
+      body: JSON.stringify({ triggerFirstImport: false, parameters }),
     });
     return activatePOST(request, { params: Promise.resolve({ slug }) });
   };
@@ -225,6 +225,28 @@ describe.sequential("Data package API security", () => {
       });
 
       expect(schedules.docs).toHaveLength(0);
+    });
+
+    it.each([false, true])("returns 400 for empty activation parameters (required: %s)", async (required) => {
+      await setScheduledIngestsEnabled(true);
+      const token = await loginToken(adminUser.email);
+      fs.writeFileSync(
+        manifestPath,
+        `${MANIFEST_YAML}\nparameters:\n  - name: target\n    label: Target\n    required: ${required}\ntransforms:\n  - type: rename\n    from: title\n    to: '{{target}}'\n`,
+        "utf8"
+      );
+      try {
+        const response = await callActivate(PACKAGE_SLUG, token, { target: "" });
+        expect(response.status).toBe(400);
+        const schedules = await payload.find({
+          collection: "scheduled-ingests",
+          where: { dataPackageSlug: { contains: PACKAGE_SLUG } },
+          overrideAccess: true,
+        });
+        expect(schedules.docs).toHaveLength(0);
+      } finally {
+        fs.writeFileSync(manifestPath, MANIFEST_YAML, "utf8");
+      }
     });
 
     it("allows activation once the flag is on", async () => {
