@@ -687,6 +687,28 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("findDueDeletions", () => {
+    it("should include all due users beyond the first hundred", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const configs = Object.fromEntries(
+        Array.from({ length: 101 }, (_, index) => [`due${index}`, { role: "user" as const }])
+      );
+      const { users } = await withUsers(env, configs);
+      const ids = Object.values(users).map((user) => user.id);
+      await payload.update({
+        collection: "users",
+        where: { id: { in: ids } },
+        data: {
+          deletionStatus: "pending_deletion",
+          deletionScheduledAt: new Date(Date.now() - 86_400_000).toISOString(),
+        },
+        overrideAccess: true,
+      });
+
+      const dueDeletions = await deletionService.findDueDeletions();
+
+      expect(new Set(dueDeletions.map((user) => user.id))).toEqual(new Set(ids));
+    });
+
     it("should find users with past due deletion dates", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });

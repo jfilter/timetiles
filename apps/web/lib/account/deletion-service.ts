@@ -739,7 +739,7 @@ export class AccountDeletionService {
           { deletionScheduledAt: { less_than_equal: now.toISOString() } },
         ],
       },
-      limit: 100,
+      pagination: false,
       overrideAccess: true,
     });
 
