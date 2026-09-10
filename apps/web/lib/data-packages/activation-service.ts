@@ -9,6 +9,7 @@
  */
 import type { Payload, Where } from "payload";
 
+import { ValidationError } from "@/lib/api/errors";
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
 import type { DataPackageActivation, DataPackageManifest, DataPackageTransform } from "@/lib/data-packages/types";
 import { isUniqueViolation } from "@/lib/database/unique-violation";
@@ -51,7 +52,7 @@ const resolveManifestParameters = (
 ): DataPackageManifest => {
   for (const p of manifest.parameters ?? []) {
     if (p.required && !params[p.name]) {
-      throw new Error(`Missing required parameter: "${p.name}" (${p.label})`);
+      throw new ValidationError(`Missing required parameter: "${p.name}" (${p.label})`);
     }
   }
   return deepSubstitute(manifest, params) as DataPackageManifest;
@@ -453,7 +454,7 @@ export const activateDataPackage = async (
       buildTransformsFromDataset({ ingestTransforms: [{ ...transform, id: "activation-validation", active: true }] })
         .length !== 1
     ) {
-      throw new Error(`Incomplete transform configuration at index ${index}`);
+      throw new ValidationError(`Incomplete transform configuration at index ${index}`);
     }
   }
   const activationKey = buildActivationKey(manifest.slug, parameters);
