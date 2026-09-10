@@ -34,7 +34,7 @@ describe.sequential("Ingest file cleanup retries", () => {
     await env.cleanup();
   });
 
-  it("removes abandoned sheet CSVs but preserves fresh sidecars and their referenced source", async () => {
+  it("retains old sidecars until their source is unreferenced, then respects the orphan grace period", async () => {
     const { payload } = env;
     const { ingestFile } = await withIngestFile(env, null, "name\nSource\n");
     const source = getIngestFilePath(ingestFile.filename);
@@ -48,15 +48,27 @@ describe.sequential("Ingest file cleanup retries", () => {
       const job = await payload.jobs.queue({ task: "ingest-files-cleanup", queue: "maintenance", input: {} });
       await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
 
-      expect(existsSync(abandoned)).toBe(false);
+      expect(existsSync(abandoned)).toBe(true);
       expect(existsSync(fresh)).toBe(true);
       expect(existsSync(source)).toBe(true);
       expect((await payload.count({ collection: "payload-jobs", where: { id: { equals: job.id } } })).totalDocs).toBe(
         0
       );
+
+      await payload.update({
+        collection: "ingest-files",
+        id: ingestFile.id,
+        data: { filename: null },
+        context: { skipIngestFileHooks: true },
+      });
+      const sweep = await payload.jobs.queue({ task: "ingest-files-cleanup", queue: "maintenance", input: {} });
+      await payload.jobs.run({ queue: "maintenance", where: { id: { equals: sweep.id } } });
+      expect(existsSync(abandoned)).toBe(false);
+      expect(existsSync(fresh)).toBe(true);
     } finally {
       await rm(abandoned, { force: true });
       await rm(fresh, { force: true });
+      await rm(source, { force: true });
     }
   });
 

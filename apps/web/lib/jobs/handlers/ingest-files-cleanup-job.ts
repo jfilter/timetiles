@@ -179,6 +179,12 @@ const reclaimProcessedFiles = async (
   return { recordsReclaimed, filesDeleted: unlinked.deleted, errors: errors + unlinked.errors };
 };
 
+/** Sidecar CSVs remain owned by the row referencing their source file. */
+const fileReferenceWhere = (filename: string): Where => {
+  const source = filename.replace(/\.sheet\d+\.csv$/, "");
+  return source === filename ? { filename: { equals: filename } } : { filename: { in: [filename, source] } };
+};
+
 /**
  * Pass B — sweep physical files no row references and older than the grace window.
  */
@@ -193,7 +199,7 @@ const unlinkOrphan = async (sys: SystemPayload, filename: string): Promise<{ del
     await db.execute(sql`LOCK TABLE ${ingest_files} IN SHARE MODE`);
     const { totalDocs } = await sys.count({
       collection: COLLECTION_NAMES.INGEST_FILES,
-      where: { filename: { equals: filename } },
+      where: fileReferenceWhere(filename),
       req,
     });
     const result = totalDocs === 0 ? await unlinkPaths([getIngestFilePath(filename)]) : { deleted: 0, errors: 0 };
@@ -229,7 +235,7 @@ const sweepOrphans = async (
     // shift its pages or publish references after the snapshot was loaded.
     const { totalDocs } = await sys.count({
       collection: COLLECTION_NAMES.INGEST_FILES,
-      where: { filename: { equals: entry.name } },
+      where: fileReferenceWhere(entry.name),
     });
     if (totalDocs > 0) continue;
     const full = getIngestFilePath(entry.name);
