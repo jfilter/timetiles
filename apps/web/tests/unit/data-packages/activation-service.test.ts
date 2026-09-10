@@ -14,6 +14,21 @@ import type { DataPackageManifest } from "@/lib/data-packages/types";
 import type { User } from "@/payload-types";
 
 describe("activation transform validation", () => {
+  it.each(["constructor", "toString", "__proto__"])(
+    "rejects missing required parameter %s without using inherited properties",
+    async (name) => {
+      const payload = { find: vi.fn().mockRejectedValue(new Error("Unexpected database access")) };
+      const manifest = {
+        slug: "parameter-boundary",
+        parameters: [{ name, label: name, required: true }],
+      } as DataPackageManifest;
+      await expect(activateDataPackage(payload as never, manifest, { id: 1 } as User)).rejects.toThrow(
+        `Missing required parameter: "${name}"`
+      );
+      expect(payload.find).not.toHaveBeenCalled();
+    }
+  );
+
   it.each([{ parameters: [] }, { parameters: [{ name: "city", label: "City", required: false }] }])(
     "rejects undeclared parameters before database access (%j)",
     async ({ parameters }) => {

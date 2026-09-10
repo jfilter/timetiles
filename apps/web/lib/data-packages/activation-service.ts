@@ -33,7 +33,7 @@ const logger = createLogger("data-packages");
 
 /** Substitute `{{key}}` placeholders in a string with parameter values. */
 const substituteTemplate = (s: string, params: Record<string, string>): string =>
-  s.replace(/\{\{(\w+)\}\}/g, (match, key: string) => params[key] ?? match);
+  s.replace(/\{\{(\w+)\}\}/g, (match, key: string) => (Object.hasOwn(params, key) ? params[key]! : match));
 
 /** Recursively substitute `{{param}}` placeholders in all strings within a value. */
 const deepSubstitute = (value: unknown, params: Record<string, string>): unknown => {
@@ -57,7 +57,7 @@ const resolveManifestParameters = (
     }
   }
   for (const p of manifest.parameters ?? []) {
-    if (p.required && !params[p.name]) {
+    if (p.required && (!Object.hasOwn(params, p.name) || !params[p.name])) {
       throw new ValidationError(`Missing required parameter: "${p.name}" (${p.label})`);
     }
   }
