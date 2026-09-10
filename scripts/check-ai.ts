@@ -34,6 +34,7 @@ interface ResultFileInfo {
 interface CheckRunResult {
   resultPath: string | null;
   runnerError: string | null;
+  commandFailure?: string | null;
 }
 
 interface PackageResults {
@@ -111,7 +112,7 @@ function runCheckWithFreshResults(command: string, cwd: string, resultDir: strin
   const hasFreshResult = after.path !== null && (after.path !== before.path || after.mtimeMs > before.mtimeMs);
 
   if (hasFreshResult) {
-    return { resultPath: after.path, runnerError: null };
+    return { resultPath: after.path, runnerError: null, commandFailure: failureSummary };
   }
 
   const relativeDir = path.relative(process.cwd(), resultDir);
@@ -205,6 +206,11 @@ for (const pkg of PACKAGES) {
       typecheckRunnerError ??= `Could not parse typecheck results from ${path.relative(process.cwd(), typecheckPath)}.`;
     }
   }
+
+  // A fresh report cannot override a failed command. Ordinary diagnostic
+  // failures are already counted above; otherwise surface the process failure.
+  if (lintErrors === 0) lintRunnerError ??= packageRunResults?.lint?.commandFailure ?? null;
+  if (typecheckSuccess) typecheckRunnerError ??= packageRunResults?.typecheck?.commandFailure ?? null;
 
   if (lintRunnerError) {
     lintErrors = Math.max(lintErrors, 1);
