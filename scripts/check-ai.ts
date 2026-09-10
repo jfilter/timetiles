@@ -351,36 +351,12 @@ if (totalPackageErrors > 0) {
   }
 }
 
-// Show jq commands
-console.log("\n" + "=".repeat(70));
-console.log("💡 View all details with jq:");
-console.log("=".repeat(70));
-
-if (failedPackages.length > 0) {
-  failedPackages.forEach((pkg) => {
-    const pkgName = pkg.package.replace(/^(apps|packages)\//, "");
-    if (pkg.lintErrors > 0 && pkg.lintResultPath) {
-      console.log(`\n# ${pkgName} lint errors:`);
-      console.log(
-        `  cat ${pkg.package}/.lint-results/$(ls -t ${pkg.package}/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0)'`
-      );
-    }
-    if (pkg.typecheckErrors > 0 && pkg.typecheckResultPath) {
-      console.log(`\n# ${pkgName} typecheck errors:`);
-      console.log(
-        `  cat ${pkg.package}/.typecheck-results/$(ls -t ${pkg.package}/.typecheck-results/ | head -1) | jq '.errors[]'`
-      );
-    }
-  });
-} else {
-  console.log("\n# Inspect any package:");
-  console.log(
-    `  cat apps/web/.lint-results/$(ls -t apps/web/.lint-results/ | head -1) | jq '.[] | select(.errorCount > 0)'`
-  );
-  console.log(`  cat apps/web/.typecheck-results/$(ls -t apps/web/.typecheck-results/ | head -1) | jq '.errors[]'`);
+console.log("\nReport files from this run:");
+for (const pkg of results) {
+  for (const resultPath of [pkg.lintResultPath, pkg.typecheckResultPath]) {
+    if (resultPath) console.log(`  ${path.relative(process.cwd(), resultPath)}`);
+  }
 }
-
-console.log("\n" + "=".repeat(70));
 
 // Exit with appropriate code
 process.exit(allPassed ? 0 : 1);
