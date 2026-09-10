@@ -53,7 +53,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
   // can't "Apply / Ignore" a missing file. Resetting to the upload step
   // is the only correct behaviour.
   useEffect(() => {
-    if (validationData && !validationData.valid) {
+    if (validationEnabled && validationData && !validationData.valid) {
       const store = useWizardStore.getState();
       store.unloadFile();
       if (currentStep > 2) {
@@ -61,7 +61,7 @@ export const useWizardEffects = (initialAuth: InitialAuth): void => {
       }
       useWizardStore.persist.clearStorage();
     }
-  }, [validationData, currentStep, startedAuthenticated]);
+  }, [validationEnabled, validationData, currentStep, startedAuthenticated]);
 };
 
 /**

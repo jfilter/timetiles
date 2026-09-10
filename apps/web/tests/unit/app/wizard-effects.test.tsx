@@ -54,4 +54,17 @@ describe("wizard preview recovery", () => {
     expect(useWizardStore.getState()).toMatchObject({ currentStep: 4, previewId: "restored-preview" });
     expect(clearStorage).not.toHaveBeenCalled();
   });
+
+  it.each([{ currentStep: 7 as const }, { ingestFileId: 123 }])(
+    "ignores cached invalidity after processing has started (%j)",
+    (processing) => {
+      useWizardStore.setState(processing);
+      mocks.validation = { valid: false };
+      const clearStorage = vi.spyOn(useWizardStore.persist, "clearStorage");
+      renderHook(() => useWizardEffects(auth));
+
+      expect(useWizardStore.getState()).toMatchObject({ ...processing, previewId: "restored-preview" });
+      expect(clearStorage).not.toHaveBeenCalled();
+    }
+  );
 });
