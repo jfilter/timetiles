@@ -8,14 +8,13 @@
  * @module
  * @category Services
  */
-import { unlink } from "node:fs/promises";
-
 import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
 import { getAppConfig } from "@/lib/config/app-config";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { getBaseUrl } from "@/lib/utils/base-url";
 import { countUserDocs, findUserDocs } from "@/lib/utils/user-data";
 import type { User } from "@/payload-types";
@@ -27,6 +26,8 @@ import { disposeOfPrivateCatalog } from "./deletion-catalog-disposal";
 import { sendDeletionCancelledEmail, sendDeletionCompletedEmail, sendDeletionScheduledEmail } from "./deletion-emails";
 import type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleDeletionResult } from "./deletion-types";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "./system-user";
+
+const DATA_EXPORTS = "data-exports";
 
 /**
  * Minimal request object for Payload transaction management.
@@ -181,7 +182,7 @@ export class AccountDeletionService {
       countUserDocs(this.payload, "ingest-files", userId, { userField: "user" }),
       countUserDocs(this.payload, "media", userId),
       countUserDocs(this.payload, "views", userId),
-      countUserDocs(this.payload, "data-exports", userId, { userField: "user" }),
+      countUserDocs(this.payload, DATA_EXPORTS, userId, { userField: "user" }),
       countUserDocs(this.payload, "scraper-repos", userId),
     ]);
 
@@ -208,10 +209,6 @@ export class AccountDeletionService {
     }
 
     const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
-
-    if (!user) {
-      throw new Error(USER_NOT_FOUND);
-    }
 
     const summary = await this.getDeletionSummary(userId);
     const now = new Date();
@@ -256,10 +253,6 @@ export class AccountDeletionService {
   async cancelDeletion(userId: number): Promise<void> {
     const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
 
-    if (!user) {
-      throw new Error(USER_NOT_FOUND);
-    }
-
     if (user.deletionStatus !== "pending_deletion") {
       throw new Error("No pending deletion to cancel");
     }
@@ -298,10 +291,6 @@ export class AccountDeletionService {
     const { deletedBy, deletionType = "scheduled", ipAddress } = options;
 
     const user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true });
-
-    if (!user) {
-      throw new Error(USER_NOT_FOUND);
-    }
 
     // Re-validate eligibility at execution time: the 30-day grace window can
     // invalidate the schedule-time check (the other admin got demoted, new
@@ -374,12 +363,15 @@ export class AccountDeletionService {
 
       result.success = true;
 
-      // Safe now that the transaction is committed: the rows these files belonged to are
-      // gone for good, so an unlink can no longer contradict a rolled-back database.
+      // Expired records retain the path until unlink succeeds. A failed unlink or
+      // interrupted process remains discoverable by the existing export cleanup job.
       for (const { exportId, filePath } of pendingUnlinks) {
-        await unlink(filePath).catch((error: unknown) => {
-          logError(error, "Failed to unlink data export file during account deletion", { exportId, filePath });
-        });
+        if ((await unlinkExportFile(exportId, filePath, "account-deletion")) === "failed") continue;
+        try {
+          await this.payload.delete({ collection: DATA_EXPORTS, id: exportId, overrideAccess: true });
+        } catch (error) {
+          logError(error, "Failed to retire data export record after account deletion", { exportId });
+        }
       }
 
       // Best-effort and post-commit, for the same reason. A failure here leaves an orphaned
@@ -625,7 +617,7 @@ export class AccountDeletionService {
 
     // Delete data exports for this user
     const dataExports = await this.payload.find({
-      collection: "data-exports",
+      collection: DATA_EXPORTS,
       where: { user: { equals: userId } },
       pagination: false,
       overrideAccess: true,
@@ -633,23 +625,25 @@ export class AccountDeletionService {
     });
 
     for (const exportRecord of dataExports.docs) {
-      // Capture the on-disk path before deleting the row. The data-exports collection is
-      // not a Payload upload collection and has no delete hook, so the ZIP — which contains
-      // the user's full PII — must be unlinked or it orphans on disk indefinitely.
-      //
-      // The unlink is DEFERRED to after the commit. Doing it here mixed an irreversible
-      // filesystem effect into an open transaction: a later failure in finalizeAndAudit
-      // rolls the rows back, and the restored data-exports would point at files that are
-      // already gone (the download route then flips them to "failed").
+      // Revoke downloads transactionally, but keep the archive pointer for cleanup
+      // retries. Unlink only after commit so rollback cannot restore a missing file.
       const { filePath } = exportRecord;
-      await this.payload.delete({ collection: "data-exports", id: exportRecord.id, overrideAccess: true, req });
-      if (filePath != null && filePath !== "") {
+      if (filePath) {
+        await this.payload.update({
+          collection: DATA_EXPORTS,
+          id: exportRecord.id,
+          data: { status: "expired" },
+          overrideAccess: true,
+          req,
+        });
         pendingUnlinks.push({ exportId: exportRecord.id, filePath });
+      } else {
+        await this.payload.delete({ collection: DATA_EXPORTS, id: exportRecord.id, overrideAccess: true, req });
       }
     }
 
     if (dataExports.docs.length > 0) {
-      logger.info({ userId, exportsDeleted: dataExports.docs.length }, "Deleted user data exports");
+      logger.info({ userId, exportsRetired: dataExports.docs.length }, "Retired user data exports");
     }
   }
 
@@ -720,17 +714,13 @@ export class AccountDeletionService {
    */
   private async invalidateAllSessions(userId: number, req?: TransactionReq): Promise<void> {
     try {
-      const drizzle = await this.getTransactionAwareDrizzle(req);
+      const drizzle = await getTransactionAwareDrizzle(this.payload, req);
       await drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${userId}`);
       logger.debug({ userId }, "All user sessions invalidated");
     } catch (error) {
       logError(error, "Failed to invalidate sessions", { userId });
       // Don't throw - session invalidation failure shouldn't block deletion
     }
-  }
-
-  private getTransactionAwareDrizzle(req?: TransactionReq) {
-    return getTransactionAwareDrizzle(this.payload, req);
   }
 
   /**

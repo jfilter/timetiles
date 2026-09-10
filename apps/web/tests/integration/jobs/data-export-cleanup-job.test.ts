@@ -10,6 +10,7 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
 describe.sequential("Data export cleanup retries", () => {
@@ -21,6 +22,49 @@ describe.sequential("Data export cleanup retries", () => {
 
   afterAll(async () => {
     await env.cleanup();
+  });
+
+  it("retries an archive that could not be removed during account deletion", async () => {
+    const { payload } = env;
+    const { users } = await withUsers(env, { departing: { role: "user" } });
+    const directory = await mkdtemp(join(tmpdir(), "account-export-cleanup-"));
+    const filePath = join(directory, "blocked.zip");
+    const successfulPath = join(directory, "successful.zip");
+    try {
+      await mkdir(filePath);
+      await writeFile(successfulPath, "export fixture");
+      const successful = await payload.create({
+        collection: "data-exports",
+        data: {
+          user: users.departing.id,
+          status: "ready",
+          requestedAt: new Date().toISOString(),
+          filePath: successfulPath,
+        },
+      });
+      const record = await payload.create({
+        collection: "data-exports",
+        data: { user: users.departing.id, status: "ready", requestedAt: new Date().toISOString(), filePath },
+      });
+      const result = await createAccountDeletionService(payload).executeDeletion(users.departing.id);
+      expect(result.success).toBe(true);
+      expect(existsSync(successfulPath)).toBe(false);
+      expect(
+        (await payload.count({ collection: "data-exports", where: { id: { equals: successful.id } } })).totalDocs
+      ).toBe(0);
+      const retained = await payload.findByID({ collection: "data-exports", id: record.id });
+      expect(retained.status).toBe("expired");
+      expect(retained.filePath).toBe(filePath);
+
+      await rmdir(filePath);
+      await writeFile(filePath, "recovered export fixture");
+      const job = await payload.jobs.queue({ task: "data-export-cleanup", queue: "maintenance", input: {} });
+      await payload.jobs.run({ queue: "maintenance", where: { id: { equals: job.id } } });
+      expect(existsSync(filePath)).toBe(false);
+      expect((await payload.findByID({ collection: "data-exports", id: record.id })).filePath).toBeNull();
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("keeps failed archive references and finishes them on a native retry", async () => {
