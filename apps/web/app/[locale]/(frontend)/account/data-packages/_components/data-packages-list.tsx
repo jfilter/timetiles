@@ -136,7 +136,7 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
           </div>
         </CardContent>
 
-        <CardFooter>
+        <CardFooter className="flex-col items-start gap-2">
           {renderPackageAction({
             pkg,
             isPending,
@@ -144,6 +144,11 @@ const PackageCard = ({ pkg }: { pkg: DataPackageListItem }) => {
             onDeactivate: handleDeactivate,
             onActivate: () => setConfirmOpen(true),
           })}
+          {deactivateMutation.error && (
+            <p role="alert" className="text-destructive text-sm">
+              {deactivateMutation.error.message}
+            </p>
+          )}
         </CardFooter>
       </Card>
 

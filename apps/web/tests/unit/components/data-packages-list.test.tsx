@@ -39,7 +39,7 @@ describe("data package activation form", () => {
   });
   afterEach(cleanup);
 
-  const openForm = async () => {
+  const renderPackages = () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -48,9 +48,39 @@ describe("data package activation form", () => {
         </NextIntlClientProvider>
       </QueryClientProvider>
     );
+  };
+
+  const openForm = async () => {
+    renderPackages();
     fireEvent.click(await screen.findByRole("button", { name: "Activate" }));
     return screen.getByRole("dialog");
   };
+
+  it("shows deactivation errors and allows a retry", async () => {
+    mocks.fetchJson.mockResolvedValueOnce({
+      packages: [
+        {
+          slug: "regional-events",
+          title: "Regional events",
+          summary: "Events",
+          tags: [],
+          activated: true,
+          activation: { enabled: true, ownedByCaller: true },
+        },
+      ],
+    });
+    renderPackages();
+    const deactivate = await screen.findByRole("button", { name: "Deactivate" });
+    mocks.fetchJson.mockRejectedValueOnce(new Error("Deactivation rejected"));
+    fireEvent.click(deactivate);
+    expect(await screen.findByRole("alert")).toHaveTextContent("Deactivation rejected");
+    await waitFor(() => expect(deactivate).toBeEnabled());
+    fireEvent.click(deactivate);
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(
+      mocks.fetchJson.mock.calls.filter(([url]) => url === "/api/data-packages/regional-events/deactivate")
+    ).toHaveLength(2);
+  });
 
   it("requires declared values and sends them through the activation hook", async () => {
     const dialog = await openForm();
