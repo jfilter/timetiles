@@ -28,6 +28,47 @@ describe.sequential("Data export cleanup retries", () => {
     await env.cleanup();
   });
 
+  it("account deletion sees an archive published while it waited for the export lock", async () => {
+    const { payload } = env;
+    const { users } = await withUsers(env, { departing: { role: "user" } });
+    const record = await payload.create({
+      collection: "data-exports",
+      data: { user: users.departing.id, status: "processing", requestedAt: new Date().toISOString() },
+    });
+    const directory = await mkdtemp(join(tmpdir(), "concurrent-export-deletion-"));
+    const filePath = join(directory, "archive.zip");
+    const req = await createLocalReq({}, payload);
+    await initTransaction(req);
+    const db = await getTransactionAwareDrizzle(payload, req);
+    await db.execute(sql`SELECT id FROM payload.data_exports WHERE id = ${record.id} FOR UPDATE`);
+    const { rows: owners } = await db.execute(sql`SELECT pg_backend_pid() AS pid`);
+    const deletion = createAccountDeletionService(payload).executeDeletion(users.departing.id);
+    try {
+      await vi.waitFor(
+        async () => {
+          const { rows } = await payload.db.drizzle.execute(sql`SELECT EXISTS (
+            SELECT 1 FROM pg_stat_activity WHERE ${owners[0].pid} = ANY(pg_blocking_pids(pid))
+          ) AS blocked`);
+          expect(rows[0]?.blocked).toBe(true);
+        },
+        { timeout: 5000, interval: 20 }
+      );
+      await writeFile(filePath, "published export fixture");
+      await db.execute(sql`UPDATE payload.data_exports
+        SET status = 'ready', file_path = ${filePath} WHERE id = ${record.id}`);
+      await commitTransaction(req);
+      expect((await deletion).success).toBe(true);
+      expect(existsSync(filePath)).toBe(false);
+      expect(
+        (await payload.count({ collection: "data-exports", where: { id: { equals: record.id } } })).totalDocs
+      ).toBe(0);
+    } finally {
+      await killTransaction(req);
+      await deletion;
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it.each(["expired", "deleted"])("waits for concurrent retirement (%s) before deciding to publish", async (state) => {
     const { payload } = env;
     const { users } = await withUsers(env, { owner: { role: "user" } });
