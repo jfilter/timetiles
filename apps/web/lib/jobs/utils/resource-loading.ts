@@ -170,7 +170,6 @@ export const failIngestJob = async (
 /**
  * Extract ingestJobId from task callback args, returning null if missing or wrong type.
  */
-// eslint-disable-next-line sonarjs/function-return-type -- ingestJobId can be string or number from Payload
 export const extractIngestJobId = (args: TaskCallbackArgs): string | number | null => {
   const ingestJobId = (args.input as Record<string, unknown> | undefined)?.ingestJobId;
   if (typeof ingestJobId !== "string" && typeof ingestJobId !== "number") return null;
