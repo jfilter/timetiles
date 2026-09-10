@@ -153,7 +153,7 @@ for (const pkg of PACKAGES) {
 
   if (pkg.hasTypecheck) {
     packageRunResults.typecheck = runCheckWithFreshResults(
-      `tsx ${path.join(scriptsDir, "typecheck-fast-with-json.ts")}`,
+      `tsx ${path.join(scriptsDir, "typecheck-with-json.ts")}`,
       pkgPath,
       path.join(pkgPath, ".typecheck-results")
     );

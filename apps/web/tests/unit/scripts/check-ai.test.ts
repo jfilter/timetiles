@@ -50,7 +50,7 @@ describe("quality runner subprocess failures", () => {
 
   it.each(["lint", "typecheck"])("fails if %s exits unsuccessfully despite a clean fresh report", async (check) => {
     mocks.execSync.mockImplementation((command: string) => {
-      if (command.includes(`${check}-fast`)) throw new Error("Subprocess failed");
+      if (command.includes(`${check}-`)) throw new Error("Subprocess failed");
     });
     await import("../../../../../scripts/check-ai");
     expect(mocks.exit).toHaveBeenCalledWith(1);
@@ -58,7 +58,7 @@ describe("quality runner subprocess failures", () => {
 
   it.each(["lint", "typecheck"])("counts ordinary %s diagnostics without a duplicate runner failure", async (check) => {
     mocks.execSync.mockImplementation((command: string) => {
-      if (command.includes(`${check}-fast`)) throw new Error("Diagnostics found");
+      if (command.includes(`${check}-`)) throw new Error("Diagnostics found");
     });
     mocks.readFileSync.mockImplementation((file: string) =>
       JSON.stringify(
