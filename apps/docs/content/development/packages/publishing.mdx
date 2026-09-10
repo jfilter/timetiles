@@ -155,7 +155,7 @@ To modify a Trusted Publisher, go to the package's access settings on npmjs.com 
 
 **"403 Forbidden" on npm publish** -- Verify the Trusted Publisher configuration on npmjs.com matches the exact workflow filename. The organization, repository, and workflow must all match.
 
-**Build fails** -- Run `pnpm exec tsup` locally in the package directory to debug. Check for TypeScript errors with `make check-ai PACKAGE=ui` (or `PACKAGE=scraper`).
+**Build fails** -- Run `pnpm exec tsup` locally in the package directory to debug. From the repository root, check the UI package with `make check-ai PACKAGE=ui` and the scraper SDK with `pnpm --filter @timetiles/scraper typecheck`. `make check-ai PACKAGE=scraper` is an alias for the TimeScrape runner, not the SDK.
 
 **"--provenance requires a supported CI/CD provider"** -- The `--provenance` flag only works inside GitHub Actions. For local publishes, omit `--provenance`.
 
