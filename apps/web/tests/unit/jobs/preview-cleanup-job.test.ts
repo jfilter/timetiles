@@ -104,6 +104,26 @@ describe.sequential("sweepExpiredPreviews", () => {
     expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(false);
   });
 
+  it.each([false, true])("cleans malformed metadata only after the grace period (expired=%s)", (expired) => {
+    const id = uuid("99");
+    const metaPath = path.join(testDir, `${id}.meta.json`);
+    fs.writeFileSync(metaPath, "{unfinished");
+    writeData(id);
+    backdateData(id);
+    if (expired) {
+      const past = new Date(Date.now() - 2 * PREVIEW_EXPIRY_MS);
+      fs.utimesSync(metaPath, past, past);
+    }
+
+    expect(sweepExpiredPreviews(new Date(), testDir)).toMatchObject({
+      removed: expired ? 1 : 0,
+      orphanedRemoved: 0,
+      errors: 0,
+    });
+    expect(fs.existsSync(metaPath)).toBe(!expired);
+    expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(!expired);
+  });
+
   it("keeps entries younger than PREVIEW_EXPIRY_MS", () => {
     const id = uuid("2");
     // Created 5 minutes ago — well within 1-hour TTL

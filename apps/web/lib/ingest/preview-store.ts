@@ -160,7 +160,16 @@ const readMetadataExpiry = (metaPath: string, now: Date): { expired: boolean } |
     // Missing / unparseable createdAt is treated as stale.
     const expired = !Number.isFinite(createdAt) || now.getTime() - createdAt > PREVIEW_EXPIRY_MS;
     return { expired };
-  } catch {
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      // A writer may still be finishing the JSON. Retain fresh files, but do not
+      // let interrupted writes leave malformed metadata on disk forever.
+      try {
+        return { expired: now.getTime() - fs.statSync(metaPath).mtimeMs > PREVIEW_EXPIRY_MS };
+      } catch {
+        return { error: true };
+      }
+    }
     return { error: true };
   }
 };
