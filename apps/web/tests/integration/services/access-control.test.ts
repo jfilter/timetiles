@@ -11,6 +11,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { safeFindByID } from "@/lib/api/errors";
 import type { Catalog, Dataset, Event, User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -30,6 +31,19 @@ describe.sequential("Hierarchical Access Control", () => {
   let privateDatasetInPublicCatalog: Dataset;
   let publicDatasetInPrivateCatalog: Dataset;
   let privateDatasetInPrivateCatalog: Dataset;
+
+  it("should preserve access checks through safeFindByID", async () => {
+    const options = { collection: "catalogs" as const, id: privateCatalog.id };
+    expect((await safeFindByID(payload, { ...options, user: ownerUser })).id).toBe(privateCatalog.id);
+    await expect(safeFindByID(payload, { ...options, user: otherUser })).rejects.toMatchObject({
+      statusCode: 404,
+      message: "catalogs not found or access denied",
+    });
+    await expect(safeFindByID(payload, { ...options, id: 2147483647, user: ownerUser })).rejects.toMatchObject({
+      statusCode: 404,
+      message: "catalogs not found or access denied",
+    });
+  });
 
   beforeAll(async () => {
     const env = await createIntegrationTestEnvironment();

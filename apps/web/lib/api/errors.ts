@@ -72,7 +72,7 @@ export const safeFindByID = async <TSlug extends CollectionSlug>(
   options: { collection: TSlug; id: string | number; user?: User; depth?: number; overrideAccess?: boolean }
 ): Promise<CollectionDoc<TSlug>> => {
   const { collection, id, user, depth = 0, overrideAccess = false } = options;
-  const record = await payload.findByID({ collection, id, depth, user, overrideAccess }).catch(() => null);
+  const record = await payload.findByID({ collection, id, depth, user, overrideAccess, disableErrors: true });
 
   if (!record) {
     throw new NotFoundError(`${collection.replaceAll("-", " ")} not found or access denied`);
