@@ -20,6 +20,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logger } from "@/lib/logger";
 import * as geocodingModule from "@/lib/services/geocoding";
+import type { IngestJob } from "@/payload-types";
 
 import {
   createIntegrationTestEnvironment,
@@ -207,35 +208,18 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       // Check the final status and debug if needed
       const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
-      if (finalIngestFile.status !== "completed") {
-        logger.debug(`Import file status: ${finalIngestFile.status}`);
-        if (finalIngestFile.errorLog) {
-          logger.debug(`Error log: ${finalIngestFile.errorLog}`);
-        }
-
-        // Check import jobs for more details
-        const importJobs = await payload.find({
-          collection: "ingest-jobs",
-          where: { ingestFile: { equals: ingestFile.id } },
-        });
-
-        importJobs.docs.forEach((job: any, index: number) => {
-          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length ?? 0}`);
-          if (job.errors?.length > 0) {
-            logger.debug(`  Errors:`, job.errors);
-          }
-        });
-      }
-
-      expect(completed).toBe(true);
-      expect(finalIngestFile.status).toBe("completed");
-
       // Verify multiple import jobs were created (one per sheet)
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
       });
 
+      const diagnostics = JSON.stringify({
+        errorLog: finalIngestFile.errorLog,
+        jobs: importJobs.docs.map((job: IngestJob) => ({ id: job.id, stage: job.stage, errors: job.errors })),
+      });
+      expect(completed, diagnostics).toBe(true);
+      expect(finalIngestFile.status, diagnostics).toBe("completed");
       expect(importJobs.docs.length).toBeGreaterThan(0); // At least one sheet
       logger.debug(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
 
@@ -278,35 +262,18 @@ describe.sequential("Comprehensive File Upload Tests", () => {
       // Check the final status
       const finalIngestFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
 
-      if (finalIngestFile.status !== "completed") {
-        logger.debug(`Import file status: ${finalIngestFile.status}`);
-        if (finalIngestFile.errorLog) {
-          logger.debug(`Error log: ${finalIngestFile.errorLog}`);
-        }
-
-        // Check import jobs for more details
-        const importJobs = await payload.find({
-          collection: "ingest-jobs",
-          where: { ingestFile: { equals: ingestFile.id } },
-        });
-
-        importJobs.docs.forEach((job: any, index: number) => {
-          logger.debug(`Job ${index + 1}: stage=${job.stage}, errors=${job.errors?.length ?? 0}`);
-          if (job.errors?.length > 0) {
-            logger.debug(`  Errors:`, job.errors);
-          }
-        });
-      }
-
-      expect(completed).toBe(true);
-      expect(finalIngestFile.status).toBe("completed");
-
       // Verify import jobs were created
       const importJobs = await payload.find({
         collection: "ingest-jobs",
         where: { ingestFile: { equals: ingestFile.id } },
       });
 
+      const diagnostics = JSON.stringify({
+        errorLog: finalIngestFile.errorLog,
+        jobs: importJobs.docs.map((job: IngestJob) => ({ id: job.id, stage: job.stage, errors: job.errors })),
+      });
+      expect(completed, diagnostics).toBe(true);
+      expect(finalIngestFile.status, diagnostics).toBe("completed");
       expect(importJobs.docs).toHaveLength(1); // ODS file has one sheet
       logger.debug(`✓ Created ${importJobs.docs.length} import job for ODS sheet`);
 
