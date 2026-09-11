@@ -379,7 +379,7 @@ curl -X POST https://your-timetiles-instance/api/scrapers/{id}/run \
 Enable webhook triggers on a scraper to get a unique URL that starts a run when called:
 
 1. In the scraper settings, enable **Webhook Enabled**.
-2. A unique webhook URL is generated automatically.
+2. A unique webhook URL is generated automatically. Copy it immediately: the plaintext token is returned only when created or rotated; only its hash is stored.
 3. POST to that URL to trigger a run:
 
 ```bash
@@ -401,12 +401,12 @@ When a scraper has `autoImport` enabled and a `targetDataset` configured, succes
 ### How It Works
 
 1. Scraper runs and produces CSV output.
-2. The `scraper-execution-job` decodes the base64-encoded CSV from the runner response.
+2. The `scraper-execution` task downloads the CSV from the runner's output URL, using the configured runner API key when required.
 3. An `ingest-files` record is created from the CSV data.
 4. The standard import pipeline takes over: schema detection, validation, geocoding, event creation.
 5. Events appear on the map.
 
-The entire existing import pipeline is reused with zero changes. Scraper output is treated exactly like a manually uploaded CSV file.
+The `scraper-ingest` workflow processes the resulting file through the shared import pipeline.
 
 ### Configuration
 
