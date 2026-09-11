@@ -19,7 +19,8 @@ beforeEach(() => {
   directory = mkdtempSync(resolve(tmpdir(), "timetiles-make-database-"));
   mkdirSync(resolve(directory, "scripts"));
   writeFileSync(resolve(directory, "scripts/setup.sh"), "#!/bin/sh\nprintf 'setup complete\\n'\n", { mode: 0o755 });
-  for (const command of ["psql", "docker", "make"]) {
+  writeFileSync(resolve(directory, "pg_isready"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+  for (const command of ["psql", "docker", "make", "pg_ctl"]) {
     writeFileSync(
       resolve(directory, command),
       `#!/bin/sh
@@ -57,6 +58,13 @@ const runMake = (target: string, mode: string, failure = "__never__") =>
   );
 
 describe("development database commands", () => {
+  it("ensure-infra stops when local PostgreSQL cannot start", () => {
+    const result = runMake("ensure-infra", "local", "start -D");
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("simulated command failure");
+    expect(result.stdout).not.toContain("call:wait-db");
+  });
+
   it.each(["local", "docker"])("init uses mode-aware infrastructure after setup in %s mode", (mode) => {
     const result = runMake("init", mode);
     expect(result.status).toBe(0);

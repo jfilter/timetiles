@@ -159,7 +159,7 @@ ensure-infra:
 		true; \
 	elif [ "$(PG_MODE)" = "local" ]; then \
 		echo "🐘 Starting local PostgreSQL (port $(PG_PORT))..."; \
-		LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log; \
+		LC_ALL=en_US.UTF-8 pg_ctl start -D /opt/homebrew/var/postgresql@17 -l /tmp/pg.log && \
 		$(MAKE) wait-db; \
 	else \
 		echo "🐳 Starting Docker PostgreSQL (port 5432)..."; \
