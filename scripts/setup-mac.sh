@@ -309,8 +309,8 @@ install_h3_extension() {
   export CPATH="$(brew --prefix gettext)/include:${CPATH:-}"
   export LIBRARY_PATH="$(brew --prefix gettext)/lib:${LIBRARY_PATH:-}"
 
-  local build_dir="${TMPDIR:-/tmp}/h3-pg-build"
-  rm -rf "$build_dir"
+  local build_dir
+  build_dir="$(mktemp -d "${TMPDIR:-/tmp}/h3-pg-build.XXXXXX")"
   if git clone --depth 1 https://github.com/zachasme/h3-pg.git "$build_dir" >/dev/null 2>&1 &&
     cmake -B "$build_dir/build" "$build_dir" -DCMAKE_INSTALL_PREFIX="$prefix" >/dev/null 2>&1 &&
     cmake --build "$build_dir/build" >/dev/null 2>&1 &&
