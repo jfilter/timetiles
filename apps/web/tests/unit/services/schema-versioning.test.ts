@@ -36,6 +36,22 @@ describe.sequential("SchemaVersioningService", () => {
     expect(mockPayload.create).toHaveBeenCalledTimes(1);
   });
 
+  it("does not retry a different database error mentioning the schema constraint", async () => {
+    const failure = Object.assign(new Error('constraint "dataset_schemas_dataset_version_unique" does not exist'), {
+      code: "42704",
+    });
+    mockPayload.find.mockResolvedValue({ docs: [] });
+    mockPayload.create.mockRejectedValueOnce(failure).mockResolvedValue({ id: 1, versionNumber: 1 });
+
+    await expect(
+      SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+        dataset: 123,
+        schema: { type: "object" },
+      })
+    ).rejects.toBe(failure);
+    expect(mockPayload.create).toHaveBeenCalledTimes(1);
+  });
+
   describe("getNextSchemaVersion", () => {
     it("should return 1 for first schema version when no existing schemas", async () => {
       mockPayload.find.mockResolvedValueOnce({ docs: [] });

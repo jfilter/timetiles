@@ -49,7 +49,7 @@ const MAX_CREATE_ATTEMPTS = 5;
 const isUniqueViolation = (error: unknown): boolean => {
   if (!error) return false;
   const code = (error as { code?: string } | null)?.code;
-  if (code === "23505") return true;
+  if (typeof code === "string") return code === "23505";
 
   const errors = (error as { data?: { errors?: Array<{ message?: string; path?: string }> } } | null)?.data?.errors;
   if (
