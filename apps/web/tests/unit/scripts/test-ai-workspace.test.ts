@@ -18,12 +18,14 @@ interface Task {
 }
 
 describe("workspace test coverage", () => {
-  it.each(["test", "test:coverage"])("includes Makefile in %s cache inputs", (taskName) => {
+  it.each(["test", "test:ai", "test:coverage"])("includes tested root files in %s cache inputs", (taskName) => {
     const graph = JSON.parse(run("pnpm", ["turbo", "run", taskName, "--filter=web", "--dry=json"])) as {
       tasks: Task[];
     };
     const task = graph.tasks.find((entry) => entry.taskId === `web#${taskName}`)!;
     expect(Object.keys(task.inputs)).toContain("../../Makefile");
+    expect(Object.keys(task.inputs)).toContain("../../scripts/selftest.sh");
+    expect(Object.keys(task.inputs)).toContain("../../scripts/status.sh");
   });
 
   it("includes UI tests in the full make test-ai task graph", () => {

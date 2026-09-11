@@ -91,18 +91,18 @@
     "storybook:build": { "dependsOn": ["^build"], "outputs": ["storybook-static/**"] },
     "test": {
       "dependsOn": ["transit"],
-      "inputs": ["$TURBO_DEFAULT$", "../../Makefile"],
+      "inputs": ["$TURBO_DEFAULT$", "../../Makefile", "../../scripts/**"],
       "outputs": [".test-results/**", "coverage/**"]
     },
     "test:ai": {
       "dependsOn": ["transit"],
-      "inputs": ["$TURBO_DEFAULT$", "../../Makefile"],
+      "inputs": ["$TURBO_DEFAULT$", "../../Makefile", "../../scripts/**"],
       "outputs": [".test-results/**"]
     },
     "test:coverage": {
       "dependsOn": ["transit"],
       "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*", "../../Makefile"]
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "../../Makefile", "../../scripts/**"]
     }
   }
 }
