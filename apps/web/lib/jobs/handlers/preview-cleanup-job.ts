@@ -18,7 +18,7 @@ import { logError, logger } from "@/lib/logger";
  */
 export const previewCleanupJob = {
   slug: "preview-cleanup",
-  /** Run every 6 hours. Preview TTL is 1 hour, so even at the extremes nothing sits older than 7 hours on disk. */
+  /** Run every 6 hours; previews expire after 1 hour. Worker delays or cleanup failures extend retention. */
   schedule: [{ cron: "0 */6 * * *", queue: "maintenance" as const }],
   retries: 2,
   // Sync handler — sweepExpiredPreviews is synchronous but Payload still
