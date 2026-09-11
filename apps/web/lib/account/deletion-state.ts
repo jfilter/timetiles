@@ -8,6 +8,7 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
+import { ValidationError } from "@/lib/api/errors";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import type { User } from "@/payload-types";
 
@@ -41,7 +42,7 @@ export const withLockedDeletionUser = async (
 
 export const cancelPendingDeletion = (payload: Payload, userId: number): Promise<User> =>
   withLockedDeletionUser(payload, userId, async (user, req) => {
-    if (user.deletionStatus !== "pending_deletion") throw new Error("No pending deletion to cancel");
+    if (user.deletionStatus !== "pending_deletion") throw new ValidationError("No pending deletion to cancel");
     await payload.update({
       collection: "users",
       id: userId,

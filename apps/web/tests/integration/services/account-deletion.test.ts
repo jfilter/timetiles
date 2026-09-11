@@ -185,6 +185,22 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("scheduleDeletion", () => {
+    it("should accept only one concurrent deletion request", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { testUser: { role: "user" } });
+      const results = await Promise.allSettled([
+        deletionService.scheduleDeletion(users.testUser.id),
+        deletionService.scheduleDeletion(users.testUser.id),
+      ]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.find((result) => result.status === "rejected")).toMatchObject({
+        reason: { statusCode: 400, message: "Deletion already scheduled" },
+      });
+      const successful = results.find((result) => result.status === "fulfilled")!;
+      const user = await payload.findByID({ collection: "users", id: users.testUser.id, overrideAccess: true });
+      expect(user.deletionScheduledAt).toBe(successful.value.deletionScheduledAt);
+    });
+
     it("should schedule deletion with grace period", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
@@ -213,7 +229,7 @@ describe.sequential("Account Deletion Service", () => {
       const systemUserService = createSystemUserService(payload);
       const systemUser = await systemUserService.getOrCreateSystemUser();
 
-      await expect(deletionService.scheduleDeletion(systemUser.id)).rejects.toThrow();
+      await expect(deletionService.scheduleDeletion(systemUser.id)).rejects.toMatchObject({ statusCode: 400 });
     });
   });
 
@@ -239,7 +255,10 @@ describe.sequential("Account Deletion Service", () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
 
-      await expect(deletionService.cancelDeletion(users.testUser.id)).rejects.toThrow("No pending deletion");
+      await expect(deletionService.cancelDeletion(users.testUser.id)).rejects.toMatchObject({
+        statusCode: 400,
+        message: "No pending deletion to cancel",
+      });
     });
   });
 

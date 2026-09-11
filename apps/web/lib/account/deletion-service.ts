@@ -12,6 +12,7 @@ import { sql } from "@payloadcms/db-postgres";
 import type { Payload } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 
+import { ValidationError } from "@/lib/api/errors";
 import { getAppConfig } from "@/lib/config/app-config";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
@@ -202,9 +203,10 @@ export class AccountDeletionService {
     const gracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
     const deletionDate = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000);
 
-    const user = await withLockedDeletionUser(this.payload, userId, async (_user, req) => {
+    const user = await withLockedDeletionUser(this.payload, userId, async (currentUser, req) => {
+      if (currentUser.deletionStatus === "pending_deletion") throw new ValidationError("Deletion already scheduled");
       const canDelete = await this.canDeleteUser(userId, req);
-      if (!canDelete.allowed) throw new Error(canDelete.reason);
+      if (!canDelete.allowed) throw new ValidationError(canDelete.reason ?? "Account cannot be deleted");
       await this.payload.update({
         collection: "users",
         id: userId,
