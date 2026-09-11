@@ -55,20 +55,17 @@ describe("encryption", () => {
   });
 
   describe("tamper detection", () => {
-    it("should reject modified ciphertext", () => {
+    it.each([
+      ["ciphertext", 2],
+      ["auth tag", 1],
+    ] as const)("should reject modified %s", (_field, index) => {
       const encrypted = encryptField("secret", TEST_SECRET);
       const parts = encrypted.split(":");
-      // Flip a character in the ciphertext
-      const tampered = `${parts[0]}:${parts[1]}:ff${parts[2]!.slice(2)}`;
+      const original = parts[index]!;
+      parts[index] = (original.startsWith("0") ? "1" : "0") + original.slice(1);
+      const tampered = parts.join(":");
 
-      expect(() => decryptField(tampered, TEST_SECRET)).toThrow();
-    });
-
-    it("should reject modified auth tag", () => {
-      const encrypted = encryptField("secret", TEST_SECRET);
-      const parts = encrypted.split(":");
-      const tampered = `${parts[0]}:${"0".repeat(32)}:${parts[2]}`;
-
+      expect(tampered).not.toBe(encrypted);
       expect(() => decryptField(tampered, TEST_SECRET)).toThrow();
     });
 
