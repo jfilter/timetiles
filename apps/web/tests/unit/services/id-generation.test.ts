@@ -119,6 +119,11 @@ describe("id-generation", () => {
         idStrategy: { type: "content-hash", duplicateStrategy: "skip" },
       };
 
+      it("preserves persisted legacy IDs for prototype-named fields", () => {
+        const data: unknown = JSON.parse('{"__proto__":{"x":1},"a":2}');
+        expect(generateEventId(data, mockDataset as Dataset).uniqueId).toBe("123:hash:7e8059f495589fcd");
+      });
+
       it("generates hash from all fields", () => {
         const data = { title: "Test Event", date: "2024-03-15", description: "Included in hash" };
 

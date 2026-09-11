@@ -24,15 +24,14 @@ export const compareCodeUnits = (a: string, b: string): number => {
  * output only depends on the data — not on insertion order, locale, or ICU version.
  * Use for dedup keys, cache keys, and content hashes.
  */
-export const stableStringify = (value: unknown): string =>
+export const stableStringify = (value: unknown, { legacyContentHash = false } = {}): string =>
   JSON.stringify(value, (_key: string, entry: unknown): unknown => {
     if (entry !== null && typeof entry === "object" && !Array.isArray(entry)) {
       return Object.fromEntries(
         Object.entries(entry as Record<string, unknown>)
-          // A literal "__proto__" key is dropped: it can only exist via JSON.parse or
-          // defineProperty, never via assignment, so including it would make the output
-          // depend on how the object was built — and would change existing content hashes.
-          .filter(([key]) => key !== "__proto__")
+          // Persisted content-hash IDs historically omitted this key. Only that
+          // caller opts in; filter identities must include every own data field.
+          .filter(([key]) => !legacyContentHash || key !== "__proto__")
           .sort(([a], [b]) => compareCodeUnits(a, b))
       );
     }

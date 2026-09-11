@@ -5,6 +5,7 @@
  * - `external`: Uses a unique ID from a field in the source data.
  * - `content-hash`: Generates a deterministic SHA-256 hash from all fields (optionally excluding some).
  *    Used for dedup — identical rows produce the same ID.
+ *    Retains the legacy omission of `__proto__` keys to preserve persisted IDs.
  * - `auto-generate`: Generates a random unique ID per row. Dedup is not supported with this strategy.
  *
  * @module
@@ -125,4 +126,7 @@ const generateAutoId = (datasetId: string): { uniqueId: string; strategy: string
   };
 };
 
-const generateContentHash = (data: unknown): string => createHash("sha256").update(stableStringify(data)).digest("hex");
+const generateContentHash = (data: unknown): string =>
+  createHash("sha256")
+    .update(stableStringify(data, { legacyContentHash: true }))
+    .digest("hex");

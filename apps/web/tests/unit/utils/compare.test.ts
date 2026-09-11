@@ -28,12 +28,12 @@ describe("stableStringify", () => {
     expect(stableStringify({ outer: { z: 1, a: [3, 1, 2] } })).toBe('{"outer":{"a":[3,1,2],"z":1}}');
   });
 
-  it("drops a literal __proto__ key so the output does not depend on how the object was built", () => {
+  it("preserves literal __proto__ keys except in the persisted legacy hash format", () => {
     const parsed: unknown = JSON.parse('{"__proto__":{"x":1},"a":2}');
     const assigned: Record<string, unknown> = { a: 2 };
 
-    expect(stableStringify(parsed)).toBe('{"a":2}');
-    expect(stableStringify(parsed)).toBe(stableStringify(assigned));
+    expect(stableStringify(parsed)).toBe('{"__proto__":{"x":1},"a":2}');
+    expect(stableStringify(parsed, { legacyContentHash: true })).toBe(stableStringify(assigned));
   });
 
   it("keeps other reserved-looking keys", () => {

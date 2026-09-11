@@ -22,6 +22,13 @@ describe("serializeFilterKey", () => {
     expect(serializeFilterKey(filters)).toBe(serializeFilterKey(reordered));
   });
 
+  it("distinguishes changes to prototype-named filters", () => {
+    const first = { ...filters, fieldFilters: Object.fromEntries([["__proto__", ["first"]]]) };
+    const second = { ...filters, fieldFilters: Object.fromEntries([["__proto__", ["second"]]]) };
+    expect(serializeFilterKey(first)).not.toBe(serializeFilterKey(second));
+    expect(serializeFilterKey(first)).not.toBe(serializeFilterKey({ ...filters, fieldFilters: {} }));
+  });
+
   it("sorts keys locale-independently so the key is stable across environments", () => {
     // Regression: keys were sorted with String.prototype.localeCompare, whose
     // ordering depends on the runtime locale/ICU. The serialized key must not
