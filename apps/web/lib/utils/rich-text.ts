@@ -5,22 +5,8 @@
  * @category Utils
  */
 
-interface LexicalNode {
-  type?: string;
-  text?: string;
-  children?: LexicalNode[];
-}
-
-interface LexicalRoot {
-  root?: LexicalNode;
-}
-
-/** Recursively extract text content from a Lexical node tree. */
-const extractNodeText = (node: LexicalNode): string => {
-  if (node.text) return node.text;
-  if (!node.children) return "";
-  return node.children.map(extractNodeText).join(" ");
-};
+import type { SerializedEditorState } from "@payloadcms/richtext-lexical/lexical";
+import { convertLexicalToPlaintext } from "@payloadcms/richtext-lexical/plaintext";
 
 /**
  * Extract plain text from a Payload CMS Lexical rich text field.
@@ -30,12 +16,12 @@ const extractNodeText = (node: LexicalNode): string => {
  * @returns Plain text string, or undefined if empty/null
  */
 export const richTextToPlainText = (
-  richText: LexicalRoot | null | undefined,
+  richText: SerializedEditorState | null | undefined,
   maxLength?: number
 ): string | undefined => {
-  if (!richText?.root?.children) return undefined;
+  if (!richText) return undefined;
 
-  const text = extractNodeText(richText.root).trim();
+  const text = convertLexicalToPlaintext({ data: richText }).trim();
   if (!text) return undefined;
 
   if (maxLength && text.length > maxLength) {
