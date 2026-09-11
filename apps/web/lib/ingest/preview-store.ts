@@ -217,6 +217,8 @@ export const sweepExpiredPreviews = (now: Date = new Date(), dirOverride?: strin
 
     const expiryResult = readMetadataExpiry(metaPath, now);
     if ("error" in expiryResult) {
+      // An unreadable companion is not a missing companion; retry on the next sweep.
+      claimFreshDataFiles(previewId, dataFileSet);
       result.errors++;
       continue;
     }

@@ -138,6 +138,21 @@ describe.sequential("sweepExpiredPreviews", () => {
     expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(true);
   });
 
+  it("retains companion data when metadata cannot be read", () => {
+    const id = uuid("98");
+    fs.mkdirSync(path.join(testDir, `${id}.meta.json`));
+    writeData(id);
+    backdateData(id);
+
+    expect(sweepExpiredPreviews(new Date(), testDir)).toEqual({
+      scanned: 1,
+      removed: 0,
+      orphanedRemoved: 0,
+      errors: 1,
+    });
+    expect(fs.existsSync(path.join(testDir, `${id}.csv`))).toBe(true);
+  });
+
   it("removes orphan data files with no companion meta.json", () => {
     const id = uuid("3");
     writeData(id);
