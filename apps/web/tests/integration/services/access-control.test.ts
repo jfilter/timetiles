@@ -45,6 +45,25 @@ describe.sequential("Hierarchical Access Control", () => {
     });
   });
 
+  it("should preserve read hook failures through safeFindByID", async () => {
+    const hooks = payload.collections.catalogs.config.hooks;
+    const original = hooks.beforeRead;
+    const failure = new Error("Catalog read hook failed");
+    hooks.beforeRead = [
+      ...original,
+      () => {
+        throw failure;
+      },
+    ];
+    try {
+      await expect(
+        safeFindByID(payload, { collection: "catalogs", id: privateCatalog.id, user: ownerUser })
+      ).rejects.toBe(failure);
+    } finally {
+      hooks.beforeRead = original;
+    }
+  });
+
   beforeAll(async () => {
     const env = await createIntegrationTestEnvironment();
     payload = env.payload;
