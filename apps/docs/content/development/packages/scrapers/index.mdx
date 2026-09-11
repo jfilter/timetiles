@@ -396,7 +396,7 @@ If you disable and re-enable the webhook, the token is rotated for security.
 
 ## Auto-Import
 
-When a scraper has `autoImport` enabled and a `targetDataset` configured, successful runs feed directly into the TimeTiles import pipeline.
+When a scraper has `autoImport` enabled, successful runs with a downloadable CSV containing at least one data row feed into the TimeTiles import pipeline. A `targetDataset` is optional.
 
 ### How It Works
 
@@ -412,10 +412,10 @@ The `scraper-ingest` workflow processes the resulting file through the shared im
 
 Set these fields on the scraper record (via the manifest or the admin UI):
 
-- **targetDataset**: The dataset to import events into.
+- **targetDataset**: Optional existing dataset to import events into. When omitted, the import pipeline uses its normal dataset detection.
 - **autoImport**: Must be `true` to enable the pipeline.
 
-If either field is missing, the CSV is still saved to the run record but not imported automatically.
+When `autoImport` is disabled, no ingest file is created automatically. Successful zero-row runs are recorded as successful but skip the import pipeline.
 
 ---
 
@@ -427,7 +427,7 @@ Trigger a manual scraper run.
 
 **Authentication**: Bearer token (authenticated user with access to the scraper).
 
-**Response**: `200 OK` with the queued job details.
+**Response**: `200 OK` with `{ "message": "Scraper run queued" }`.
 
 ### POST /api/scraper-repos/\{id\}/sync
 
