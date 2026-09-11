@@ -40,7 +40,7 @@ db-reset:
 		psql -p $(PG_PORT) -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;" && \
 		psql -p $(PG_PORT) -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
 	else \
-		docker compose -f docker-compose.dev.yml down -v; \
+		docker compose -f docker-compose.dev.yml down -v && \
 		docker compose -f docker-compose.dev.yml up -d postgres; \
 	fi
 	@echo "🔄 Database reset complete!"
@@ -114,7 +114,7 @@ db-reset-tests:
 clean:
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🧹 Cleaning local database..."; \
-		psql -p $(PG_PORT) -d postgres -c "DROP DATABASE IF EXISTS timetiles;" 2>/dev/null || true; \
+		psql -p $(PG_PORT) -d postgres -c "DROP DATABASE IF EXISTS timetiles;"; \
 	else \
 		docker compose -f docker-compose.dev.yml down -v --remove-orphans; \
 	fi
