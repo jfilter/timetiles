@@ -12,10 +12,24 @@ import {
   CatalogParamSchema,
   DatasetsParamSchema,
   ErrorResponseSchema,
+  NumericIdParamSchema,
   PaginationSchema,
 } from "@/lib/schemas/common";
 
 describe("common schemas", () => {
+  describe("NumericIdParamSchema", () => {
+    it.each(["0", "42", "0042", "9007199254740991"])("accepts decimal ID %s", (id) => {
+      expect(NumericIdParamSchema.parse(id)).toBe(Number(id));
+    });
+
+    it.each(["", "-1", "1.5", "1e2", " 42", "9007199254740993", "9".repeat(400)])(
+      "rejects invalid or unsafe ID %s",
+      (id) => {
+        expect(NumericIdParamSchema.safeParse(id).success).toBe(false);
+      }
+    );
+  });
+
   describe("BoundsSchema", () => {
     it("should accept valid bounds", () => {
       const result = BoundsSchema.safeParse({ north: 52.5, south: 52.3, east: 13.5, west: 13.3 });

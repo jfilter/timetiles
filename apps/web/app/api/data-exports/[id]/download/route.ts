@@ -18,6 +18,7 @@ import { z } from "zod";
 import { apiRoute, AppError, NotFoundError, requireOwnerOrAdmin } from "@/lib/api";
 import { unlinkExportFile } from "@/lib/export/unlink-export-file";
 import { logger } from "@/lib/logger";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { isENOENT } from "@/lib/utils/is-enoent";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { DataExport as DataExportRecord } from "@/payload-types";
@@ -117,7 +118,7 @@ const streamExportFile = async (
 
 export const GET = apiRoute({
   auth: "required",
-  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
+  params: z.object({ id: NumericIdParamSchema }),
   handler: async ({ payload, user, params }) => {
     const normalizedExportId = params.id;
     const exportId = String(normalizedExportId);

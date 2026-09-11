@@ -13,6 +13,7 @@ import { z } from "zod";
 import { apiRoute, ConflictError } from "@/lib/api";
 import { loadManageableScraper } from "@/lib/api/scraper-helpers";
 import { checkRateLimit } from "@/lib/middleware/rate-limit";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { claimScraperRunning } from "@/lib/services/webhook-registry";
 
 export const POST = apiRoute({
@@ -20,7 +21,7 @@ export const POST = apiRoute({
   site: "default",
   // Rate limiting is applied inside the handler (after the "already running"
   // check) rather than declaratively here, so a 409 takes precedence over a 429.
-  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
+  params: z.object({ id: NumericIdParamSchema }),
   handler: async ({ req, user, payload, params }) => {
     const scraper = await loadManageableScraper(payload, user, params.id);
 

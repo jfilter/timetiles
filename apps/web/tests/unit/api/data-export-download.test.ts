@@ -73,6 +73,13 @@ describe.sequential("GET /api/data-exports/[id]/download", () => {
     vi.useRealTimers();
   });
 
+  it.each(["9007199254740993", "9".repeat(400)])("rejects an unrepresentable export ID", async (id) => {
+    const payload = setup(null);
+    const response = await GET(createRequest(), { params: Promise.resolve({ id }) });
+    expect(response.status).toBe(422);
+    expect(payload.findByID).not.toHaveBeenCalled();
+  });
+
   it.each(["2020-01-01T00:00:00.000Z", "2026-09-08T12:00:00.000Z"])(
     "retires the archive at or after expiry: %s",
     async (expiresAt) => {

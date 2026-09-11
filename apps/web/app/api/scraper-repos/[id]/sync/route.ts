@@ -11,12 +11,13 @@ import { z } from "zod";
 
 import { apiRoute } from "@/lib/api";
 import { loadManageableScraperRepo, queueScraperRepoSync } from "@/lib/api/scraper-helpers";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 
 export const POST = apiRoute({
   auth: "required",
   site: "default",
   rateLimit: { configName: "SCRAPER_TRIGGER", keyPrefix: (u) => `scraper-sync:${u!.id}` },
-  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
+  params: z.object({ id: NumericIdParamSchema }),
   handler: async ({ user, payload, params }) => {
     const repo = await loadManageableScraperRepo(payload, user, params.id);
 

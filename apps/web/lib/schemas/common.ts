@@ -13,6 +13,9 @@ import { z } from "zod";
 // Extend Zod with OpenAPI methods
 extendZodWithOpenApi(z);
 
+/** Decimal route ID, converted without precision loss or numeric overflow. */
+export const NumericIdParamSchema = z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int());
+
 /**
  * Geographic bounding box for spatial queries.
  */

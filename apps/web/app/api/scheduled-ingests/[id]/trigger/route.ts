@@ -14,11 +14,12 @@ import { z } from "zod";
 import { apiRoute, ConflictError, safeFindByID } from "@/lib/api";
 import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import { logError } from "@/lib/logger";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 
 export const POST = apiRoute({
   auth: "required",
   site: "default",
-  params: z.object({ id: z.string().regex(/^\d+$/).transform(Number) }),
+  params: z.object({ id: NumericIdParamSchema }),
   handler: async ({ payload, user, params }) => {
     const schedule = await safeFindByID(payload, { collection: "scheduled-ingests", id: params.id, depth: 1, user });
 
