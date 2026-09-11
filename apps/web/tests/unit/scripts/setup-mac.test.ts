@@ -82,6 +82,31 @@ install_formulas`,
   expect(readdirSync(directory)).toContain("jq");
 });
 
+it("stops when Homebrew cannot resolve gettext", () => {
+  expect(buildFunction).toBeDefined();
+  const result = spawnSync(
+    "/bin/bash",
+    [
+      "-c",
+      `set -euo pipefail
+pg_config() { printf '%s\\n' "$TMPDIR/missing"; }
+brew() {
+  if [ "$1" = "--prefix" ] && [ "\${2:-}" = "gettext" ]; then return 1; fi
+  printf '%s\\n' "$TMPDIR/prefix"
+}
+git() { return 0; }
+cmake() { return 0; }
+print_success() { :; }
+print_exists() { :; }
+warn() { :; }
+${buildFunction}
+install_h3_extension`,
+    ],
+    { encoding: "utf8", timeout: 10000, env: { NODE_ENV: "test", PATH: "/usr/bin:/bin", TMPDIR: directory } }
+  );
+  expect(result.status).toBe(1);
+});
+
 it.each([0, 1])("preserves existing build directories when cloning exits %s", (cloneStatus) => {
   expect(buildFunction).toBeDefined();
   const result = spawnSync(

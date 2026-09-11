@@ -304,10 +304,11 @@ install_h3_extension() {
   # gettext is keg-only, so PostgreSQL's own headers cannot find <libintl.h> without
   # this; and the bundled h3 core defaults to installing into /usr/local, which is not
   # ours to write. Both only surface on a machine that has never built it.
-  local prefix
+  local prefix gettext_prefix
   prefix="$(brew --prefix)"
-  export CPATH="$(brew --prefix gettext)/include:${CPATH:-}"
-  export LIBRARY_PATH="$(brew --prefix gettext)/lib:${LIBRARY_PATH:-}"
+  gettext_prefix="$(brew --prefix gettext)"
+  export CPATH="$gettext_prefix/include:${CPATH:-}"
+  export LIBRARY_PATH="$gettext_prefix/lib:${LIBRARY_PATH:-}"
 
   local build_dir
   build_dir="$(mktemp -d "${TMPDIR:-/tmp}/h3-pg-build.XXXXXX")"
