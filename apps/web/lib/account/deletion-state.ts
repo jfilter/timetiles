@@ -18,7 +18,12 @@ export type DeletionRequest = Pick<PayloadRequest, "payload" | "transactionID" |
 export const lockDeletionUser = async (payload: Payload, userId: number, req: DeletionRequest): Promise<User> => {
   const db = await getTransactionAwareDrizzle(payload, req);
   await db.execute(sql`SELECT id FROM payload.users WHERE id = ${userId} FOR UPDATE`);
-  return payload.findByID({ collection: "users", id: userId, overrideAccess: true, req });
+  const user = await payload.findByID({ collection: "users", id: userId, overrideAccess: true, req });
+  if (user.role === "admin") {
+    // Different admin accounts share the last-admin invariant until this transaction commits.
+    await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext('timetiles:account-deletion:admins'))`);
+  }
+  return user;
 };
 
 /** Commit a state change before the caller sends its best-effort notification. */

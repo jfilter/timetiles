@@ -197,6 +197,19 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("scheduleDeletion", () => {
+    it("should retain an active admin when both admins schedule deletion concurrently", async () => {
+      const env = { payload, seedManager: { truncate } } as any;
+      const { users } = await withUsers(env, { adminA: { role: "admin" }, adminB: { role: "admin" } });
+      const results = await Promise.allSettled([
+        deletionService.scheduleDeletion(users.adminA.id),
+        deletionService.scheduleDeletion(users.adminB.id),
+      ]);
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(results.find((result) => result.status === "rejected")).toMatchObject({
+        reason: { message: "Cannot delete the last admin user" },
+      });
+    });
+
     it("should accept only one concurrent deletion request", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });
