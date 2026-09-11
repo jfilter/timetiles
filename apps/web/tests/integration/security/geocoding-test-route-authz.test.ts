@@ -39,7 +39,7 @@ describe.sequential("Geocoding test endpoint authorization", () => {
 
   const callGeocodingTest = async (token?: string, address: unknown = "1 Test Street"): Promise<Response> => {
     const headers = new Headers({ "Content-Type": "application/json" });
-    if (token != null) headers.set("Authorization", `Bearer ${token}`);
+    if (typeof token === "string") headers.set("Authorization", `Bearer ${token}`);
     const request = new NextRequest("http://localhost:3000/api/geocoding/test", {
       method: "POST",
       headers,

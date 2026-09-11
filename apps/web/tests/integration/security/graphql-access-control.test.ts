@@ -74,7 +74,7 @@ describe.sequential("GraphQL endpoint access control", () => {
   /** Drive the real GraphQL route handler, optionally authenticated. */
   const graphqlRequest = (query: string, token?: string): NextRequest => {
     const headers = new Headers({ "Content-Type": "application/json" });
-    if (token != null) headers.set("Authorization", `Bearer ${token}`);
+    if (typeof token === "string") headers.set("Authorization", `Bearer ${token}`);
     return new NextRequest("http://localhost:3000/api/graphql", {
       method: "POST",
       headers,

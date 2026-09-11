@@ -94,14 +94,14 @@ describe.sequential("Data package API security", () => {
 
   const callList = async (token?: string): Promise<Response> => {
     const headers = new Headers();
-    if (token != null) headers.set("Authorization", `Bearer ${token}`);
+    if (typeof token === "string") headers.set("Authorization", `Bearer ${token}`);
     const request = new NextRequest("http://localhost:3000/api/data-packages", { headers });
     return listGET(request, { params: Promise.resolve({}) });
   };
 
   const callActivate = async (slug: string, token?: string, parameters?: Record<string, string>): Promise<Response> => {
     const headers = new Headers({ "Content-Type": "application/json" });
-    if (token != null) headers.set("Authorization", `Bearer ${token}`);
+    if (typeof token === "string") headers.set("Authorization", `Bearer ${token}`);
     const request = new NextRequest(`http://localhost:3000/api/data-packages/${slug}/activate`, {
       method: "POST",
       headers,
