@@ -31,7 +31,7 @@ export const valueToString = (value: unknown): string => {
   if (value == null) return "";
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value instanceof Date) return value.toISOString();
+  if (value instanceof Date) return value.toJSON() ?? "";
   if (typeof value === "object") return JSON.stringify(value);
   return "";
 };

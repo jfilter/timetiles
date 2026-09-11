@@ -52,6 +52,13 @@ describe("valueToString", () => {
     expect(valueToString(date)).toBe("2024-01-15T10:30:00.000Z");
   });
 
+  it("treats invalid Date objects as missing values", () => {
+    const invalid = new Date(Number.NaN);
+    expect(valueToString(invalid)).toBe("");
+    expect(formatDateRange(invalid, null)).toBeNull();
+    expect(formatDateRange(invalid, "2024-01-15")).toBe(formatDateRange(null, "2024-01-15"));
+  });
+
   it("should JSON.stringify objects and arrays", () => {
     expect(valueToString({ foo: "bar" })).toBe('{"foo":"bar"}');
     expect(valueToString([])).toBe("[]");
