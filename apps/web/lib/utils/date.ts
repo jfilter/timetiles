@@ -169,18 +169,16 @@ export const parseISODate = (dateStr: string): number => {
 
 /** Format start/end dates into a locale-aware range string using Intl.DateTimeFormat */
 export const formatDateRange = (startDate: unknown, endDate: unknown, locale: string = "en-US"): string | null => {
-  const hasStart = startDate != null && valueToString(startDate) !== "";
-  const hasEnd = endDate != null && valueToString(endDate) !== "";
+  const startStr = valueToString(startDate);
+  const endStr = valueToString(endDate);
 
-  if (!hasStart && !hasEnd) return null;
+  if (!startStr && !endStr) return null;
 
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const startStr = hasStart ? valueToString(startDate) : null;
-  const endStr = hasEnd ? valueToString(endDate) : null;
   // An unparseable value (e.g. a malformed query param) yields an Invalid Date,
   // and Intl.format/formatRange THROW on those — treat it as absent.
-  const startParsed = startStr != null ? new Date(startStr) : null;
-  const endParsed = endStr != null ? new Date(endStr) : null;
+  const startParsed = startStr ? new Date(startStr) : null;
+  const endParsed = endStr ? new Date(endStr) : null;
   const start = startParsed != null && isValidDate(startParsed) ? startParsed : null;
   const end = endParsed != null && isValidDate(endParsed) ? endParsed : null;
 
