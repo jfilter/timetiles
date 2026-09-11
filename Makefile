@@ -96,16 +96,10 @@ db-reset-tests:
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		PSQL="psql -p $(PG_PORT) -U timetiles_user -d postgres"; \
 	else \
-		PSQL="docker exec timetiles-postgres psql -U timetiles_user -d postgres"; \
+		PSQL="docker exec -i timetiles-postgres psql -U timetiles_user -d postgres"; \
 	fi; \
-	set -o pipefail; \
-	$$PSQL -t -c "SELECT datname FROM pg_database WHERE datname LIKE 'timetiles_test_%'" | \
-		while read db; do \
-			if [ -n "$$db" ]; then \
-				echo "  Dropping $$db..."; \
-				$$PSQL -c "DROP DATABASE \"$$db\"" 2>/dev/null || true; \
-			fi; \
-		done
+	printf '%s\n' "SELECT format('DROP DATABASE %I', datname) FROM pg_database WHERE datname ~ '^timetiles_test_'" '\gexec' | \
+		$$PSQL -X -v ON_ERROR_STOP=1
 	@echo "🔄 Recreating E2E test database..."
 	@cd apps/web && pnpm exec dotenv -e ../../.env -e .env.local -- tsx scripts/e2e-setup-database.ts
 	@echo "✅ Test databases reset complete"

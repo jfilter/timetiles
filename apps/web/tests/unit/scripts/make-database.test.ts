@@ -21,8 +21,13 @@ beforeEach(() => {
     writeFileSync(
       resolve(directory, command),
       `#!/bin/sh
-printf 'call:%s\\n' "$*"
+input=""
 case "$*" in
+  *ON_ERROR_STOP*) while IFS= read -r line; do input="$input$line"; done ;;
+esac
+printf 'call:%s\\n' "$*"
+printf 'input:%s\\n' "$input"
+case "$*$input" in
   *"$FAIL_PATTERN"*) printf 'simulated command failure\\n' >&2; exit 42 ;;
 esac
 exit 0
@@ -46,6 +51,18 @@ const runMake = (target: string, mode: string, failure = "__never__") =>
   });
 
 describe("development database commands", () => {
+  it.each(["local", "docker"])("db-reset-tests stops on SQL errors in %s mode", (mode) => {
+    const result = runMake("db-reset-tests", mode, "DROP DATABASE");
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("simulated command failure");
+    expect(result.stdout).not.toContain("Recreating E2E");
+    expect(result.stdout).toContain("format('DROP DATABASE %I', datname)");
+    expect(result.stdout).toContain("datname ~ '^timetiles_test_'");
+    expect(result.stdout).toContain("\\gexec");
+    expect(result.stdout).toContain("-X -v ON_ERROR_STOP=1");
+    if (mode === "docker") expect(result.stdout).toContain("exec -i timetiles-postgres");
+  });
+
   it.each(["local", "docker"])("clean succeeds in %s mode", (mode) => {
     const result = runMake("clean", mode);
     expect(result.status).toBe(0);
