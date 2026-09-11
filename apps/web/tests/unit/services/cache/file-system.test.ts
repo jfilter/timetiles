@@ -566,13 +566,30 @@ describe.sequential("FileSystemCacheStorage", () => {
       statsStorage.destroy();
     });
 
-    it("should track total size", async () => {
-      await storage.set("fs-size-1", { data: "small" });
-      await storage.set("fs-size-2", { data: "a".repeat(1000) });
+    it("tracks exact file bytes across UTF-8 writes, replacements, and deletion", async () => {
+      const fileSize = async (key: string) => {
+        const hash = (await import("node:crypto")).createHash("sha256").update(key).digest("hex");
+        return (await fs.stat(path.join(tempDir, hash.substring(0, 2), `${hash}.cache`))).size;
+      };
 
-      const stats = await storage.getStats();
-      expect(stats.totalSize).toBeGreaterThan(0);
-      expect(stats.entries).toBe(2);
+      await storage.set("fs-size-1", { data: "Grüße 🌍" });
+      await storage.set("fs-size-2", { data: Buffer.alloc(1000) });
+      const secondSize = await fileSize("fs-size-2");
+      expect(await storage.getStats()).toMatchObject({
+        totalSize: (await fileSize("fs-size-1")) + secondSize,
+        entries: 2,
+      });
+
+      await storage.set("fs-size-1", { data: "東京".repeat(1000) });
+      expect(await storage.getStats()).toMatchObject({
+        totalSize: (await fileSize("fs-size-1")) + secondSize,
+        entries: 2,
+      });
+
+      await storage.delete("fs-size-1");
+      expect(await storage.getStats()).toMatchObject({ totalSize: secondSize, entries: 1 });
+      await storage.delete("fs-size-2");
+      expect(await storage.getStats()).toMatchObject({ totalSize: 0, entries: 0 });
     });
   });
 
