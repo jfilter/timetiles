@@ -21,6 +21,50 @@ describe.sequential("Audit log transaction failures", () => {
     await testEnv?.cleanup();
   });
 
+  it("rolls back user fields and earlier audit entries when a later audit fails", async () => {
+    const { payload } = testEnv;
+    const { users } = await withUsers(testEnv, { admin: { role: "admin" }, target: { role: "user", trustLevel: "1" } });
+    const hooks = payload.collections["audit-log"].config.hooks;
+    const originalHooks = hooks.beforeChange;
+    const failure = new Error("Role audit failed");
+    const actions: string[] = [];
+    hooks.beforeChange = [
+      ...(originalHooks ?? []),
+      ({ data }) => {
+        actions.push(data.action);
+        if (data.action === AUDIT_ACTIONS.ROLE_CHANGED) throw failure;
+        return data;
+      },
+    ];
+    try {
+      await expect(
+        payload.update({
+          collection: "users",
+          id: users.target.id,
+          data: { role: "admin", trustLevel: "3" },
+          user: users.admin,
+          overrideAccess: false,
+        })
+      ).rejects.toBe(failure);
+      expect(actions).toEqual([AUDIT_ACTIONS.TRUST_LEVEL_CHANGED, AUDIT_ACTIONS.ROLE_CHANGED]);
+      const target = await payload.findByID({ collection: "users", id: users.target.id, overrideAccess: true });
+      expect(target).toMatchObject({ role: "user", trustLevel: "1" });
+      const auditEntries = await payload.count({
+        collection: "audit-log",
+        where: {
+          and: [
+            { userId: { equals: users.target.id } },
+            { action: { in: [AUDIT_ACTIONS.TRUST_LEVEL_CHANGED, AUDIT_ACTIONS.ROLE_CHANGED] } },
+          ],
+        },
+        overrideAccess: true,
+      });
+      expect(auditEntries.totalDocs).toBe(0);
+    } finally {
+      hooks.beforeChange = originalHooks;
+    }
+  });
+
   it("does not start another field audit after a transactional write fails", async () => {
     const { payload } = testEnv;
     const { users } = await withUsers(testEnv, ["admin"]);
