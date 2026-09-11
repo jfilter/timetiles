@@ -57,9 +57,13 @@ describe("findConfigSuggestions", () => {
       ],
     });
 
+    const original = structuredClone(dataset);
     const results = findConfigSuggestions(["raw"], [dataset]);
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ score: 100, matchedColumns: ["raw"] });
+    expect(findConfigSuggestions(["unrelated"], [dataset])).toEqual([]);
+    expect(findConfigSuggestions(["raw"], [dataset])).toEqual(results);
+    expect(dataset).toEqual(original);
   });
 
   it("returns a match when headers overlap above threshold", () => {
