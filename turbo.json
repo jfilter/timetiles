@@ -102,7 +102,7 @@
     "test:coverage": {
       "dependsOn": ["transit"],
       "outputs": ["coverage/**", ".nyc_output/**", "coverage.json"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"]
+      "inputs": ["$TURBO_DEFAULT$", ".env*", "../../Makefile"]
     }
   }
 }
