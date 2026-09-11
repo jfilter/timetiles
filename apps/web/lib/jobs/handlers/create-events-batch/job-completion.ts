@@ -11,6 +11,7 @@ import { and, eq, gte, inArray } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
 import { getIngestGeocodingResults } from "@/lib/ingest/types/geocoding";
 import { createJobLogger, logger } from "@/lib/logger";
 import { createQuotaService } from "@/lib/services/quota-service";
@@ -20,7 +21,6 @@ import type { IngestFile, IngestJob, User } from "@/payload-types";
 
 import { getDuplicateSummary, getNewEventCountForQuota, getUniqueRowsForQuota } from "../../utils/resource-loading";
 import { EventSnapshotStore } from "./event-snapshots";
-import { normalizeIngestErrorMessage } from "./process-batch";
 
 /** Maximum number of individual errors stored on an import job. */
 export const MAX_STORED_ERRORS = 500;

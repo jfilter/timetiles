@@ -45,11 +45,9 @@ vi.mock("@/lib/ingest/upload-path", () => ({
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MAX_INGEST_ERROR_MESSAGE_LENGTH } from "@/lib/ingest/error-message";
 import type { ProcessBatchContext } from "@/lib/jobs/handlers/create-events-batch/process-batch";
-import {
-  MAX_INGEST_ERROR_MESSAGE_LENGTH,
-  processEventBatch,
-} from "@/lib/jobs/handlers/create-events-batch/process-batch";
+import { processEventBatch } from "@/lib/jobs/handlers/create-events-batch/process-batch";
 import { getEventCreationDuplicates, getNewEventCountForQuota } from "@/lib/jobs/utils/resource-loading";
 import type { IngestJob } from "@/payload-types";
 import { createMockLogger } from "@/tests/mocks/services/logger";

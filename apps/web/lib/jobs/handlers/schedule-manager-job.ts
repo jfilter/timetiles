@@ -12,6 +12,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES } from "@/lib/constants/ingest-constants";
+import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
 import { sendScheduledIngestConfigInvalidEmail } from "@/lib/ingest/scheduled-ingest-emails";
 import { claimAndQueueScheduledIngest, isScheduledIngestBusyError } from "@/lib/ingest/trigger-service";
 import type { JobHandlerContext } from "@/lib/jobs/utils/job-context";
@@ -158,7 +159,7 @@ const handleImportError = async (
     // Both the trigger and the schedule parse failed — disable the ingest
     // so we stop re-trying a broken config and surface it in the audit log.
     const scheduleMessage = scheduleError instanceof Error ? scheduleError.message : "Unknown schedule error";
-    const outerMessage = error instanceof Error ? error.message : "Unknown error";
+    const outerMessage = normalizeIngestErrorMessage(error);
     logError(scheduleError, "Invalid schedule configuration in error path — disabling scheduled ingest", {
       scheduledIngestId: scheduledIngest.id,
       name: scheduledIngest.name,
@@ -176,11 +177,7 @@ const handleImportError = async (
     await payload.update({
       collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
       id: scheduledIngest.id,
-      data: {
-        lastStatus: "failed",
-        lastError: error instanceof Error ? error.message : "Unknown error",
-        nextRun: nextRun.toISOString(),
-      },
+      data: { lastStatus: "failed", lastError: normalizeIngestErrorMessage(error), nextRun: nextRun.toISOString() },
     });
   } catch (updateError) {
     logError(updateError, "Failed to update scheduled ingest error status");

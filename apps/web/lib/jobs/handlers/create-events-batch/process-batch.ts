@@ -11,6 +11,7 @@ import { and, eq, inArray } from "@payloadcms/db-postgres/drizzle";
 import { commitTransaction, initTransaction, killTransaction, type Payload, type PayloadRequest } from "payload";
 
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
+import { normalizeIngestErrorMessage } from "@/lib/ingest/error-message";
 import { interpretRow, planFromOps, readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { FlatPlanFieldMappings } from "@/lib/ingest/plan-builder";
 import { planToFieldMappings } from "@/lib/ingest/plan-builder";
@@ -20,7 +21,6 @@ import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretatio
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
 import type { createJobLogger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
-import { isRecord } from "@/lib/utils/is-record";
 import { getByPathOrKey } from "@/lib/utils/object-path";
 import { events as eventsTable } from "@/payload-generated-schema";
 import type { Dataset, Event, IngestJob } from "@/payload-types";
@@ -32,64 +32,6 @@ import { getEventCreationDuplicates, readDuplicateStrategy } from "../../utils/r
 import type { EventSnapshotStore } from "./event-snapshots";
 
 type TransformationChange = { path: string; oldValue: unknown; newValue: unknown };
-
-export const MAX_INGEST_ERROR_MESSAGE_LENGTH = 500;
-
-const getStringProperty = (value: unknown, key: string): string | undefined => {
-  if (!isRecord(value)) return undefined;
-  const property = value[key];
-  return typeof property === "string" && property.trim() !== "" ? property.trim() : undefined;
-};
-
-const truncateErrorMessage = (message: string): string =>
-  message.length > MAX_INGEST_ERROR_MESSAGE_LENGTH
-    ? `${message.slice(0, MAX_INGEST_ERROR_MESSAGE_LENGTH - 1)}…`
-    : message;
-
-const formatCauseDetails = (cause: unknown): string[] => {
-  const details: string[] = [];
-  const code = getStringProperty(cause, "code");
-  const detail = getStringProperty(cause, "detail");
-  const constraint = getStringProperty(cause, "constraint");
-  const table = getStringProperty(cause, "table");
-  const column = getStringProperty(cause, "column");
-
-  if (code) details.push(`code ${code}`);
-  if (detail) details.push(`detail: ${detail}`);
-  if (constraint) details.push(`constraint: ${constraint}`);
-  if (table) details.push(`table: ${table}`);
-  if (column) details.push(`column: ${column}`);
-
-  return details;
-};
-
-/** Convert DB/row errors into short, non-empty messages safe for ingest job storage. */
-export const normalizeIngestErrorMessage = (error: unknown, fallback = "Unknown error"): string => {
-  const cause = isRecord(error) ? error.cause : undefined;
-  const causeMessage = getStringProperty(cause, "message");
-  if (causeMessage) {
-    const details = formatCauseDetails(cause);
-    const message = details.length > 0 ? `${causeMessage} (${details.join("; ")})` : causeMessage;
-    return truncateErrorMessage(message);
-  }
-
-  let message = "";
-  if (error instanceof Error) {
-    message = error.message.trim();
-  } else if (typeof error === "string") {
-    message = error.trim();
-  }
-  if (!message) return fallback;
-
-  // Drizzle wraps database failures with the full generated SQL and params in
-  // `error.message`. Store/log the structured error for operators, but keep
-  // row-level import errors concise and free of giant SQL strings.
-  if (message.startsWith("Failed query:")) {
-    return fallback;
-  }
-
-  return truncateErrorMessage(message);
-};
 
 const valuesEqual = (left: unknown, right: unknown): boolean => {
   if (Object.is(left, right)) return true;

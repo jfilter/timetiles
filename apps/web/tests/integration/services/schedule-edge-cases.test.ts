@@ -12,6 +12,7 @@
  * - Schedule modifications during execution
  */
 
+import { sql } from "@payloadcms/db-postgres";
 import type { CollectionBeforeOperationHook } from "payload";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -387,16 +388,21 @@ describe.sequential("Schedule Edge Case Tests", () => {
         { user: testUser, name: "Another Success Import", frequency: "hourly" }
       );
 
-      let queuedJobId = 1;
-      const queueSpy = vi.spyOn(payload.jobs, "queue").mockImplementation((job: any) => {
-        if (String(job.input?.sourceUrl ?? "").includes("/error.csv")) {
-          throw new Error("Queue unavailable for error import");
-        }
-
-        return { id: queuedJobId++ };
-      });
+      const db = payload.db.drizzle;
+      await db.execute(sql`
+        CREATE FUNCTION payload.test_fail_schedule_queue() RETURNS trigger AS $$
+        BEGIN
+          RAISE EXCEPTION 'Queue unavailable for error import';
+        END;
+        $$ LANGUAGE plpgsql
+      `);
 
       try {
+        await db.execute(sql`
+          CREATE TRIGGER test_fail_schedule_queue BEFORE INSERT ON payload.payload_jobs
+          FOR EACH ROW WHEN (NEW.input->>'sourceUrl' = 'https://example.com/error.csv')
+          EXECUTE FUNCTION payload.test_fail_schedule_queue()
+        `);
         // Move to next hour
         vi.setSystemTime(new Date("2024-01-01T13:00:00.000Z"));
 
@@ -408,7 +414,16 @@ describe.sequential("Schedule Edge Case Tests", () => {
         });
 
         expect(result.output).toMatchObject({ success: true, triggered: 2, errors: 1 });
-        expect(queueSpy).toHaveBeenCalledTimes(3);
+        const queued = await payload.find({
+          collection: "payload-jobs",
+          where: { workflowSlug: { equals: "scheduled-ingest" } },
+          pagination: false,
+          overrideAccess: true,
+        });
+        expect(queued.docs).toHaveLength(2);
+        expect(queued.docs.map((job: { input: { scheduledIngestId: number } }) => job.input.scheduledIngestId)).toEqual(
+          expect.arrayContaining([firstSuccess.id, secondSuccess.id])
+        );
 
         const [firstAfter, failedAfter, secondAfter] = await Promise.all([
           payload.findByID({ collection: "scheduled-ingests", id: firstSuccess.id }),
@@ -421,7 +436,8 @@ describe.sequential("Schedule Edge Case Tests", () => {
         expect(failedAfter.lastStatus).toBe("failed");
         expect(failedAfter.lastError).toContain("Queue unavailable for error import");
       } finally {
-        queueSpy.mockRestore();
+        await db.execute(sql`DROP TRIGGER IF EXISTS test_fail_schedule_queue ON payload.payload_jobs`);
+        await db.execute(sql`DROP FUNCTION payload.test_fail_schedule_queue()`);
       }
     });
   });
