@@ -22,7 +22,7 @@ const linkPatterns = [
   // Build-time link checker over this repo's own content/ files; it never sees untrusted
   // input, so the quadratic worst case is unreachable.
   // eslint-disable-next-line sonarjs/super-linear-regex -- see above
-  /\[([^\]]+)\]\(([^)]+)\)/g,
+  /\[([^\]]+)\]\((<[^>\n]+>|[^)]+)\)/g,
   // MDX imports
   /import\s+\S[^\n]*?from\s+['"]([^'"]+)['"]/g,
   // Next.js Link component href
@@ -64,7 +64,7 @@ const extractLinks = (content: string): string[] => {
   const links = new Set<string>();
 
   // Remove code blocks (both fenced and inline) to avoid checking example code
-  const contentWithoutCode = content
+  let contentWithoutCode = content
     // Remove fenced code blocks (```...```)
     .replace(/```[\s\S]*?```/g, "")
     // Remove inline code (`...`)
@@ -77,11 +77,14 @@ const extractLinks = (content: string): string[] => {
       // The bare-URL pattern has no capture group, so match[1]/match[2] are both
       // undefined and the whole match IS the URL. Without the match[0] fallback
       // every plain-text URL was silently dropped and never checked.
-      const url = match[2] || match[1] || match[0];
+      const destination = match[2] || match[1] || match[0];
+      const url = destination.startsWith("<") && destination.endsWith(">") ? destination.slice(1, -1) : destination;
       if (url && !ignorePatterns.some((ignore) => ignore.test(url))) {
         links.add(url);
       }
     }
+    // Do not rediscover truncated bare URLs inside already parsed links/imports.
+    contentWithoutCode = contentWithoutCode.replace(pattern, "");
   });
 
   return Array.from(links);

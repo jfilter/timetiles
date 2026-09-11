@@ -26,6 +26,7 @@ describe("workspace test coverage", () => {
     expect(Object.keys(task.inputs)).toContain("../../Makefile");
     expect(Object.keys(task.inputs)).toContain("../../scripts/selftest.sh");
     expect(Object.keys(task.inputs)).toContain("../../scripts/status.sh");
+    expect(Object.keys(task.inputs)).toContain("../docs/scripts/check-links.ts");
   });
 
   it("includes UI tests in the full make test-ai task graph", () => {
