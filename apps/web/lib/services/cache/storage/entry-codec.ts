@@ -1,14 +1,14 @@
 /**
  * Binary-safe serialization for file-system cache entries.
  *
- * Binary payloads (Buffer / typed arrays) are stored as raw bytes appended after a JSON
- * header instead of being embedded as `{"type":"Buffer","data":[...]}` — that expansion
- * costs ~11 characters per source byte and throws `RangeError: Invalid string length`
- * for bodies past ~48 MB.
+ * Node's native serializer preserves binary values without JSON expansion or
+ * reserved user-data keys. Legacy JSON and version-one envelopes remain readable.
  *
  * @module
  * @category Services/Cache/Storage
  */
+
+import { deserialize, serialize } from "node:v8";
 
 import type { CacheEntry } from "../types";
 
@@ -17,28 +17,12 @@ const BUFFER_MARKER = "__cacheBuffer__";
 
 /** Distinguishes the binary envelope from legacy plain-JSON cache files. */
 const MAGIC = Buffer.from("TTCACHE1\n", "utf-8");
+const NATIVE_MAGIC = Buffer.from("TTCACHE2\n", "utf-8");
 
 interface EnvelopeHeader {
   entry: unknown;
   blobs: number[];
 }
-
-const toBuffer = (value: Buffer | Uint8Array): Buffer =>
-  Buffer.isBuffer(value) ? value : Buffer.from(value.buffer, value.byteOffset, value.byteLength);
-
-const extractBlobs = (value: unknown, blobs: Buffer[]): unknown => {
-  if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
-    blobs.push(toBuffer(value));
-    return { [BUFFER_MARKER]: blobs.length - 1 };
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => extractBlobs(item, blobs));
-  }
-  if (value !== null && typeof value === "object" && !(value instanceof Date)) {
-    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, extractBlobs(v, blobs)]));
-  }
-  return value;
-};
 
 const restoreBlobs = (value: unknown, blobs: Buffer[]): unknown => {
   if (Array.isArray(value)) {
@@ -57,13 +41,12 @@ const restoreBlobs = (value: unknown, blobs: Buffer[]): unknown => {
   return value;
 };
 
-/** Serialize a cache entry into a binary envelope: magic + JSON header + raw blobs. */
+/** Serialize with an explicit byte length to reject truncated or appended data. */
 export const encodeEntry = <T>(entry: CacheEntry<T>): Buffer => {
-  const blobs: Buffer[] = [];
-  const header: EnvelopeHeader = { entry: extractBlobs(entry, blobs), blobs: blobs.map((blob) => blob.length) };
-  // JSON never contains a raw newline, so "\n" safely terminates the header.
-  const headerBuffer = Buffer.from(`${JSON.stringify(header)}\n`, "utf-8");
-  return Buffer.concat([MAGIC, headerBuffer, ...blobs]);
+  const body = serialize(entry);
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(body.length);
+  return Buffer.concat([NATIVE_MAGIC, length, body]);
 };
 
 const decodeEnvelope = <T>(raw: Buffer): CacheEntry<T> => {
@@ -99,6 +82,13 @@ const reviveDates = <T>(entry: CacheEntry<T>): CacheEntry<T> => {
 
 /** Parse a cache file, accepting both the binary envelope and legacy plain-JSON files. */
 export const decodeEntry = <T>(raw: Buffer): CacheEntry<T> => {
+  if (raw.subarray(0, NATIVE_MAGIC.length).equals(NATIVE_MAGIC)) {
+    const offset = NATIVE_MAGIC.length + 4;
+    if (raw.length < offset || raw.readUInt32BE(NATIVE_MAGIC.length) !== raw.length - offset) {
+      throw new Error("Malformed cache envelope: invalid payload length");
+    }
+    return deserialize(raw.subarray(offset)) as CacheEntry<T>;
+  }
   if (raw.subarray(0, MAGIC.length).equals(MAGIC)) {
     return decodeEnvelope<T>(raw);
   }
