@@ -18,6 +18,7 @@ import {
   createIntegrationTestEnvironment,
   withCatalog,
   withDataset,
+  withSchemaVersion,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -56,6 +57,28 @@ describe.sequential("Config Suggestions - Integration", () => {
     expect(findConfigSuggestions(["title", "date"], candidates).map((suggestion) => suggestion.datasetId)).toEqual([
       ownDataset.id,
     ]);
+  });
+
+  it("uses the highest schema version rather than the last created record", async () => {
+    const { catalog } = await withCatalog(testEnv, { user: testUser });
+    const { dataset } = await withDataset(testEnv, catalog.id);
+    await withSchemaVersion(testEnv, dataset.id, {
+      versionNumber: 2,
+      status: "published",
+      schemaProperties: { current_column: { type: "string" } },
+      required: [],
+    });
+    await withSchemaVersion(testEnv, dataset.id, {
+      versionNumber: 1,
+      status: "published",
+      schemaProperties: { old_column: { type: "string" } },
+      required: [],
+    });
+
+    const candidates = await loadConfigSuggestionDatasets(payload, testUser.id);
+    expect(candidates.find((candidate) => candidate.id === dataset.id)?.schemaColumns).toEqual(["current_column"]);
+    expect(findConfigSuggestions(["current_column"], candidates)).toHaveLength(1);
+    expect(findConfigSuggestions(["old_column"], candidates)).toEqual([]);
   });
 
   it("should return matching suggestions for similar headers", async () => {
