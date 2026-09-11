@@ -2,8 +2,8 @@
  * Service for appending audit log entries protected from client edits.
  *
  * Provides a single function to record sensitive account actions. PII (email,
- * IP address) is hashed automatically. Errors are caught and logged — audit
- * logging never blocks the primary action.
+ * IP address) is hashed automatically. Standalone failures are logged; failures
+ * inside a caller transaction propagate because Payload rolls that transaction back.
  *
  * @module
  * @category Services
@@ -82,8 +82,8 @@ export interface AuditLogEntry {
 /**
  * Append an audit log entry using internal access. Hashes PII internally.
  *
- * This function catches all errors and logs them — it never throws.
- * Audit logging must not prevent the primary operation from completing.
+ * Standalone failures are logged without throwing. Inside a caller transaction,
+ * failures propagate so rolled-back primary writes cannot be reported as successful.
  *
  * @param payload - Payload instance
  * @param entry - Audit log entry data
@@ -95,6 +95,7 @@ export const auditLog = async (
   entry: AuditLogEntry,
   options?: { req?: { transactionID?: number | string | Promise<number | string>; context?: Record<string, unknown> } }
 ): Promise<void> => {
+  const hasCallerTransaction = Boolean(options?.req?.transactionID);
   try {
     await payload.create({
       collection: "audit-log",
@@ -109,12 +110,11 @@ export const auditLog = async (
         details: entry.details ?? undefined,
       },
       overrideAccess: true,
-      // Clone req: on error Payload deletes req.transactionID, which would
-      // silently strip the caller's transaction from later writes.
-      ...(options?.req && { req: { ...options.req } }),
+      ...(options?.req && { req: options.req }),
     });
   } catch (error) {
     logger.error({ error, action: entry.action, userId: entry.userId }, "Failed to create audit log entry");
+    if (hasCallerTransaction) throw error;
   }
 };
 

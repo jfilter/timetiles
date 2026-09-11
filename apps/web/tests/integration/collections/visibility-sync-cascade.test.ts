@@ -90,7 +90,7 @@ describe.sequential("Visibility and ownership sync cascade", () => {
   const readDataset = async (datasetId: number) =>
     payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
 
-  it("rolls back visibility changes when the audit owner lookup fails", async () => {
+  it.each(["owner lookup", "write"])("rolls back visibility changes when the audit %s fails", async (stage) => {
     const catalog = await createCatalog(`Audit failure ${crypto.randomUUID()}`, false, ownerUser.id);
     const dataset = await payload.create({
       collection: "datasets",
@@ -104,19 +104,20 @@ describe.sequential("Visibility and ownership sync cascade", () => {
       overrideAccess: true,
     });
     const event = await createEvent(dataset.id, "audit-failure");
-    const hooks = payload.collections.users.config.hooks;
-    const originalHooks = hooks.beforeRead;
-    const failure = new Error("Audit owner lookup failed");
+    const hooks =
+      stage === "write" ? payload.collections["audit-log"].config.hooks : payload.collections.users.config.hooks;
+    const originalBeforeChange = hooks.beforeChange;
+    const originalBeforeRead = hooks.beforeRead;
+    const failure = new Error(`Audit ${stage} failed`);
     let failed = false;
-    hooks.beforeRead = [
-      ...(originalHooks ?? []),
-      () => {
-        if (!failed) {
-          failed = true;
-          throw failure;
-        }
-      },
-    ];
+    const failOnce = () => {
+      if (!failed) {
+        failed = true;
+        throw failure;
+      }
+    };
+    if (stage === "write") hooks.beforeChange = [...(originalBeforeChange ?? []), failOnce];
+    else hooks.beforeRead = [...(originalBeforeRead ?? []), failOnce];
     try {
       await expect(
         payload.update({
@@ -128,7 +129,8 @@ describe.sequential("Visibility and ownership sync cascade", () => {
         })
       ).rejects.toBe(failure);
     } finally {
-      hooks.beforeRead = originalHooks;
+      hooks.beforeChange = originalBeforeChange;
+      hooks.beforeRead = originalBeforeRead;
     }
     expect((await readDataset(dataset.id)).isPublic).toBe(true);
     expect((await readEvent(event.id)).datasetIsPublic).toBe(false);
