@@ -20,6 +20,7 @@ import type { CollectionBeforeChangeHook } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
+import { ConflictError } from "@/lib/api/errors";
 import { resetAppConfig } from "@/lib/config/app-config";
 import { resetEnv } from "@/lib/config/env";
 import { activateDataPackage, deactivateDataPackage } from "@/lib/data-packages/activation-service";
@@ -665,6 +666,82 @@ describe.sequential("Data Package Activation", () => {
       expect(failures).toHaveLength(1);
       expect(failures[0]?.reason).toSatisfy(isUniqueViolation);
       expect((await payload.count({ collection: "scheduled-ingests" })).totalDocs).toBe(1);
+    } finally {
+      hooks.beforeChange = originalHooks;
+    }
+  });
+
+  it("should preserve unrelated unique failures while creating the schedule", async () => {
+    const manifest = buildTestManifest(`${testServerUrl}/data.csv`);
+    const hooks = payload.collections["scheduled-ingests"].config.hooks;
+    const originalHooks = hooks.beforeChange;
+    let originalError: unknown;
+    const createDuplicateSchema: CollectionBeforeChangeHook = async ({ req, data }) => {
+      try {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          await payload.create({
+            collection: "dataset-schemas",
+            data: {
+              dataset: data.dataset,
+              versionNumber: 1,
+              schema: { type: "object" },
+              fieldMetadata: {},
+              autoApproved: true,
+              _status: "published",
+            },
+            req,
+            overrideAccess: true,
+          });
+        }
+      } catch (error) {
+        originalError = error;
+        throw error;
+      }
+      return data;
+    };
+    hooks.beforeChange = [...(originalHooks ?? []), createDuplicateSchema];
+    try {
+      const result = await Promise.allSettled([
+        activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: false }),
+      ]);
+      expect(originalError).toSatisfy(isUniqueViolation);
+      expect(result[0]?.status).toBe("rejected");
+      if (result[0]?.status === "rejected") expect(result[0].reason).toBe(originalError);
+      expect((await payload.count({ collection: "scheduled-ingests" })).totalDocs).toBe(0);
+      expect((await payload.count({ collection: "datasets" })).totalDocs).toBe(0);
+    } finally {
+      hooks.beforeChange = originalHooks;
+    }
+  });
+
+  it("should report a competing activation that wins after the existence check", async () => {
+    const manifest = buildTestManifest(`${testServerUrl}/data.csv`);
+    const hooks = payload.collections["scheduled-ingests"].config.hooks;
+    const originalHooks = hooks.beforeChange;
+    let winner: Awaited<ReturnType<typeof activateDataPackage>> | undefined;
+    let competing = false;
+    const activateCompetitor: CollectionBeforeChangeHook = async ({ data }) => {
+      if (!competing) {
+        competing = true;
+        winner = await activateDataPackage(
+          payload,
+          { ...manifest, catalog: { ...manifest.catalog, name: "Competing activation catalog" } },
+          adminUser,
+          { triggerFirstImport: false }
+        );
+      }
+      return data;
+    };
+    hooks.beforeChange = [...(originalHooks ?? []), activateCompetitor];
+    try {
+      await expect(activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: false })).rejects.toThrow(
+        ConflictError
+      );
+      expect(winner).toBeDefined();
+      expect((await payload.count({ collection: "scheduled-ingests" })).totalDocs).toBe(1);
+      const datasets = await payload.find({ collection: "datasets", depth: 0 });
+      expect(datasets.docs).toHaveLength(1);
+      expect(datasets.docs[0].id).toBe(winner?.datasetId);
     } finally {
       hooks.beforeChange = originalHooks;
     }

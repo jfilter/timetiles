@@ -395,7 +395,16 @@ const createActivationScheduledIngest = async (
     await deleteOrphanDataset(payload, orphanDatasetId);
 
     if (isUniqueViolation(error)) {
-      throw new ConflictError(`Data package "${activationKey}" is already activated`);
+      // A nested hook can violate an unrelated unique constraint. Confirm the
+      // winner outside the failed transaction before reporting an activation race.
+      const existing = await payload.count({
+        collection: COLLECTION_NAMES.SCHEDULED_INGESTS,
+        where: { dataPackageSlug: { equals: activationKey } },
+        overrideAccess: true,
+      });
+      if (existing.totalDocs > 0) {
+        throw new ConflictError(`Data package "${activationKey}" is already activated`);
+      }
     }
     throw error;
   }
