@@ -35,6 +35,7 @@ describe("encryption", () => {
       const decrypted = decryptField(encrypted, TEST_SECRET);
 
       expect(decrypted).toBe("");
+      expect(isEncrypted(encrypted)).toBe(true);
     });
 
     it("should handle unicode content", () => {
@@ -95,7 +96,7 @@ describe("encryption", () => {
 
     it("should reject partial matches", () => {
       expect(isEncrypted("abc:def:ghi")).toBe(false); // not hex
-      expect(isEncrypted("abcdef123456789012345678:abcdef12345678901234567890123456:")).toBe(false); // empty ciphertext
+      expect(isEncrypted("abcdef12345678901234567:abcdef12345678901234567890123456:")).toBe(false); // invalid IV length
     });
   });
 });
