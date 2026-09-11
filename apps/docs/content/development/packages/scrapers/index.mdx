@@ -356,7 +356,7 @@ Common patterns:
 
 ### How Scheduling Works
 
-The existing `schedule-manager-job` (which also handles scheduled URL imports) checks enabled scrapers every 60 seconds. When a scraper is due, it queues a `scraper-execution-job` via the Payload job queue.
+The `schedule-manager` job (which also handles scheduled URL imports) checks enabled scrapers every minute. When a scraper is due, it queues the `scraper-ingest` workflow on the `ingest` queue. The workflow runs the `scraper-execution` task and, when auto-import produces an ingest file, detects its sheets and runs the import pipeline.
 
 Guards prevent duplicate runs:
 
