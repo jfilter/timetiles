@@ -29,13 +29,12 @@ import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hook
 interface DeleteAccountModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onDeletionScheduled: () => void;
 }
 
 type Step = "summary" | "confirm";
 
 // oxlint-disable-next-line complexity -- multi-step modal with inherent branching
-export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: DeleteAccountModalProps) => {
+export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalProps) => {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
@@ -96,16 +95,8 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only reset on open change
 
-  // When closing from success step, notify parent to refresh user data
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && step === "success") {
-      onDeletionScheduled();
-    }
-    onOpenChange(newOpen);
-  };
-
   const handleClose = () => {
-    handleOpenChange(false);
+    onOpenChange(false);
   };
 
   const handleSetStepConfirm = () => {
@@ -128,7 +119,7 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   const error = step === "summary" ? summaryDisplayError : scheduleDeletionMutation.error?.message;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

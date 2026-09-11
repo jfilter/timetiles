@@ -3,6 +3,8 @@
  * @module
  * @category Tests
  */
+import "@/tests/mocks/external/next-navigation";
+
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
@@ -10,14 +12,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { DeleteAccountModal } from "@/app/[locale]/(frontend)/account/settings/_components/delete-account-modal";
 import type * as HttpError from "@/lib/api/http-error";
+import { accountKeys } from "@/lib/hooks/use-account-mutations";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
+import { mockNextNavigation } from "@/tests/mocks/external/next-navigation";
 
 import en from "../../../messages/en.json";
 
-const mocks = vi.hoisted(() => ({ fetchJson: vi.fn(), postJson: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetchJson: vi.fn(), postJson: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/api/http-error", async (importOriginal) => ({
   ...(await importOriginal<typeof HttpError>()),
-  ...mocks,
+  fetchJson: mocks.fetchJson,
+  postJson: mocks.postJson,
 }));
 
 const summary = {
@@ -32,22 +37,23 @@ const rejectionMessage = "Scheduling rejected";
 describe("DeleteAccountModal", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockNextNavigation.useRouter.mockReturnValue({ refresh: mocks.refresh });
     mocks.fetchJson.mockResolvedValue({ summary, canDelete: true, gracePeriodDays: 5 });
   });
   afterEach(cleanup);
 
   const renderModal = () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    const onDeletionScheduled = vi.fn();
+    const onOpenChange = vi.fn();
     const modal = (open: boolean) => (
       <QueryClientProvider client={client}>
         <NextIntlClientProvider locale="en" messages={en} timeZone="UTC">
-          <DeleteAccountModal open={open} onOpenChange={vi.fn()} onDeletionScheduled={onDeletionScheduled} />
+          <DeleteAccountModal open={open} onOpenChange={onOpenChange} />
         </NextIntlClientProvider>
       </QueryClientProvider>
     );
     const view = render(modal(true));
-    return { ...view, setOpen: (open: boolean) => view.rerender(modal(open)), onDeletionScheduled };
+    return { ...view, client, setOpen: (open: boolean) => view.rerender(modal(open)), onOpenChange };
   };
 
   const confirmDeletion = async () => {
@@ -66,8 +72,9 @@ describe("DeleteAccountModal", () => {
     expect(
       await screen.findByText(new Date(response.deletionScheduledAt).toLocaleDateString("en"))
     ).toBeInTheDocument();
+    expect(mocks.refresh).toHaveBeenCalledOnce();
     fireEvent.click(screen.getAllByRole("button", { name: en.Common.close })[0]!);
-    expect(view.onDeletionScheduled).toHaveBeenCalledOnce();
+    expect(view.onOpenChange).toHaveBeenCalledWith(false);
   });
 
   it("shows mutation errors on the confirmation step", async () => {
@@ -90,6 +97,8 @@ describe("DeleteAccountModal", () => {
       complete();
       await request.catch(() => undefined);
     });
+    expect(mocks.refresh).toHaveBeenCalledTimes(outcome === "success" ? 1 : 0);
+    expect(view.client.getQueryState(accountKeys.deletionSummary())?.isInvalidated).toBe(outcome === "success");
     view.setOpen(true);
     expect(await screen.findByText(en.Account.dataSummary)).toBeInTheDocument();
     expect(screen.queryByText(en.Account.deletionScheduled)).not.toBeInTheDocument();

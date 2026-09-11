@@ -32,11 +32,6 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
   const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  const handleDeletionScheduled = () => {
-    setShowDeleteModal(false);
-    router.refresh();
-  };
-
   const handleEmailChanged = () => {
     router.refresh();
   };
@@ -116,11 +111,7 @@ export const AccountSettingsClient = ({ user }: AccountSettingsClientProps) => {
       </Card>
 
       {/* Delete Account Modal */}
-      <DeleteAccountModal
-        open={showDeleteModal}
-        onOpenChange={setShowDeleteModal}
-        onDeletionScheduled={handleDeletionScheduled}
-      />
+      <DeleteAccountModal open={showDeleteModal} onOpenChange={setShowDeleteModal} />
     </div>
   );
 };

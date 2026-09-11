@@ -10,6 +10,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import type { CannotDeleteReasonCode, DeletionSummary } from "../account/deletion-types";
 import { fetchJson, postJson } from "../api/http-error";
@@ -130,8 +131,14 @@ export const useCancelDeletionMutation = () => {
  * Schedule account deletion via `/api/users/schedule-deletion`.
  */
 export const useScheduleDeletionMutation = () => {
+  const queryClient = useQueryClient();
+  const router = useRouter();
   return useMutation({
     mutationFn: (input: ScheduleDeletionInput) =>
       postJson<ScheduleDeletionResponse>("/api/users/schedule-deletion", input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: accountKeys.deletionSummary() });
+      router.refresh();
+    },
   });
 };
