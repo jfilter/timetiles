@@ -496,18 +496,7 @@ export const activateDataPackage = async (
     reused ? "Reusing existing catalog" : "Created catalog for data package"
   );
 
-  // Create dataset. A concurrent activation reusing the same catalog can lose
-  // the datasets_catalog_name_unique race here; translate it to the same
-  // "already activated" signal (nothing to roll back — our create is what failed).
-  let dataset: Dataset;
-  try {
-    dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
-  } catch (error) {
-    if (isUniqueViolation(error)) {
-      throw new ConflictError(`Data package "${activationKey}" is already activated`);
-    }
-    throw error;
-  }
+  const dataset = await createDatasetFromManifest(payload, resolved, catalog.id, user.id);
 
   logger.info({ datasetId: dataset.id, name: resolved.dataset.name }, "Created dataset for data package");
 

@@ -16,6 +16,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import type { CollectionBeforeChangeHook } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
@@ -24,6 +25,7 @@ import { resetEnv } from "@/lib/config/env";
 import { activateDataPackage, deactivateDataPackage } from "@/lib/data-packages/activation-service";
 import { runAutoActivations } from "@/lib/data-packages/auto-activator";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
+import { isUniqueViolation } from "@/lib/database/unique-violation";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { User } from "@/payload-types";
 
@@ -630,6 +632,42 @@ describe.sequential("Data Package Activation", () => {
     await expect(activateDataPackage(payload, manifest, adminUser, { triggerFirstImport: false })).rejects.toThrow(
       /already activated/
     );
+  });
+
+  it("should preserve dataset name collisions instead of reporting an unrelated package as activated", async () => {
+    const manifest = buildTestManifest(`${testServerUrl}/data.csv`);
+    await payload.create({
+      collection: "catalogs",
+      data: { name: manifest.catalog.name, createdBy: adminUser.id, _status: "published" },
+    });
+    const hooks = payload.collections.datasets.config.hooks;
+    const originalHooks = hooks.beforeChange;
+    let release: () => void = () => {};
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let arrivals = 0;
+    const synchronizeInserts: CollectionBeforeChangeHook = async ({ data }) => {
+      // Let both real uniqueness checks finish before either INSERT starts.
+      if (++arrivals === 2) release();
+      await barrier;
+      return data;
+    };
+    hooks.beforeChange = [...(originalHooks ?? []), synchronizeInserts];
+    try {
+      const results = await Promise.allSettled(
+        [manifest, { ...manifest, slug: "another-package" }].map((candidate) =>
+          activateDataPackage(payload, candidate, adminUser, { triggerFirstImport: false })
+        )
+      );
+      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      const failures = results.filter((result) => result.status === "rejected");
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.reason).toSatisfy(isUniqueViolation);
+      expect((await payload.count({ collection: "scheduled-ingests" })).totalDocs).toBe(1);
+    } finally {
+      hooks.beforeChange = originalHooks;
+    }
   });
 
   it("should deactivate a data package", async () => {
