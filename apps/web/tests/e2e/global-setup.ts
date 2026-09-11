@@ -104,9 +104,6 @@ export default async function globalSetup(): Promise<void> {
   });
   console.log(`✅ setupDatabase completed`);
 
-  // NOTE: Seed AFTER build — `next build` connects to the DB for Payload
-  // migration generation, which can reset seeded data.
-
   // Build and start production server
   const webDir = path.resolve(__dirname, "../..");
   const serverEnv: NodeJS.ProcessEnv = {
@@ -134,11 +131,9 @@ export default async function globalSetup(): Promise<void> {
   execSync(`cd "${webDir}" && pnpm --filter @timetiles/ui build`, { env: serverEnv, stdio: "inherit" });
 
   console.log(`🔨 Building application...`);
-  // Use build:compile which runs payload generate:types (applies migrations as side effect)
-  // then next build with compile mode (no static generation, no DB connection needed)
+  // Generate Payload types and the import map, then compile Next.js without static generation.
   execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
 
-  // Seed AFTER build — `next build` connects to the DB and can wipe seeded data
   await seedE2ETestData(databaseUrl);
 
   // Check if standalone build exists (used for production/Docker deployments)
