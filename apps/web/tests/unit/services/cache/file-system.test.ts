@@ -175,6 +175,22 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("persistence", () => {
+    it("recovers the index write queue after a failed rename", async () => {
+      await storage.set("before", "first");
+      const indexFile = path.join(tempDir, "index.json");
+      await fs.unlink(indexFile);
+      await fs.mkdir(indexFile);
+
+      await expect(storage.set("failed", "second")).rejects.toThrow();
+      expect((await fs.readdir(tempDir)).filter((name) => name.endsWith(".tmp"))).toEqual([]);
+
+      await fs.rmdir(indexFile);
+      await storage.set("after", "third");
+
+      const persisted = JSON.parse(await fs.readFile(indexFile, "utf8")) as { index: Record<string, unknown> };
+      expect(new Set(Object.keys(persisted.index))).toEqual(new Set(["after", "before", "failed"]));
+    });
+
     it("should persist data across instances", async () => {
       const key = "persist-key";
       const value = { data: "persistent-value" };
