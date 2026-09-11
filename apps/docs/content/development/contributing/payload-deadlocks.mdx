@@ -28,6 +28,20 @@ Payload's `initTransaction`, `commitTransaction`, and `killTransaction`, and mus
 not commit a transaction owned by its caller. Raw SQL must use
 `getTransactionAwareDrizzle` with that request rather than the root connection.
 
+## Retry the whole transaction after a failed write
+
+Payload rolls back a failed `create` and removes `req.transactionID`, including
+when the transaction belongs to the caller. Catching that error and retrying
+with the same `req` can therefore commit a new write outside the original
+transaction while its earlier writes remain rolled back.
+
+When a caller supplied a transaction, propagate the failure so it can retry the
+whole operation. Capture transaction ownership before the failing operation;
+checking `req.transactionID` in the catch block is too late. Local retries are
+appropriate only when the operation is independent of an outer transaction.
+See `apps/web/lib/ingest/schema-versioning.ts` and its regression test in
+`apps/web/tests/integration/services/schema-versioning-concurrency.test.ts`.
+
 ## Access control and recursion are separate concerns
 
 - `overrideAccess` controls authorization, not transaction reuse. Payload's Local
