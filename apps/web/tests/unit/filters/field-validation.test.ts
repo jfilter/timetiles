@@ -11,7 +11,28 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { isValidFieldKey, MAX_FIELD_KEY_LENGTH } from "@/lib/filters/field-validation";
+import {
+  isValidFieldKey,
+  MAX_FIELD_KEY_LENGTH,
+  sanitizeFieldFilters,
+  sanitizeRangeFilters,
+} from "@/lib/filters/field-validation";
+
+describe("filter dictionary keys", () => {
+  it("preserves __proto__ as an own field filter without changing the prototype", () => {
+    const result = sanitizeFieldFilters(Object.fromEntries([["__proto__", ["selected"]]]));
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.entries(result)).toEqual([["__proto__", ["selected"]]]);
+  });
+
+  it("preserves __proto__ as an own range filter without changing the prototype", () => {
+    const result = sanitizeRangeFilters(Object.fromEntries([["__proto__", { min: 1, max: 5 }]]));
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.entries(result)).toEqual([["__proto__", { min: 1, max: 5 }]]);
+  });
+});
 
 describe("isValidFieldKey", () => {
   it("accepts ASCII keys and nested dot-paths", () => {

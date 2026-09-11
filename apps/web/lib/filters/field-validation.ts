@@ -47,13 +47,11 @@ export const isValidFieldKey = (fieldKey: string): boolean => {
  * @returns A new object containing only entries with valid field keys
  */
 export const sanitizeFieldFilters = (fieldFilters: Record<string, string[]>): Record<string, string[]> => {
-  const result: Record<string, string[]> = {};
-  for (const [key, values] of Object.entries(fieldFilters)) {
-    if (isValidFieldKey(key) && Array.isArray(values) && values.length > 0) {
-      result[key] = values;
-    }
-  }
-  return result;
+  return Object.fromEntries(
+    Object.entries(fieldFilters).filter(
+      ([key, values]) => isValidFieldKey(key) && Array.isArray(values) && values.length > 0
+    )
+  );
 };
 
 /** A single numeric range bound (either end may be open). */
@@ -72,14 +70,14 @@ export interface RangeFilterValue {
 export const sanitizeRangeFilters = (
   rangeFilters: Record<string, RangeFilterValue>
 ): Record<string, RangeFilterValue> => {
-  const result: Record<string, RangeFilterValue> = {};
+  const entries: Array<[string, RangeFilterValue]> = [];
   for (const [key, range] of Object.entries(rangeFilters)) {
     if (!isValidFieldKey(key) || range == null) continue;
     const hasMin = range.min != null && Number.isFinite(range.min);
     const hasMax = range.max != null && Number.isFinite(range.max);
     if (!hasMin && !hasMax) continue;
     if (hasMin && hasMax && (range.min as number) > (range.max as number)) continue;
-    result[key] = { min: hasMin ? range.min : null, max: hasMax ? range.max : null };
+    entries.push([key, { min: hasMin ? range.min : null, max: hasMax ? range.max : null }]);
   }
-  return result;
+  return Object.fromEntries(entries);
 };
