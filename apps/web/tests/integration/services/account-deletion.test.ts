@@ -14,6 +14,7 @@
  */
 
 import { sql } from "@payloadcms/db-postgres";
+import type { CollectionAfterChangeHook } from "payload";
 import { commitTransaction, createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -764,22 +765,23 @@ describe.sequential("Account Deletion Service", () => {
         user: users.testUser,
       });
 
-      // Intercept payload.update to throw during user anonymization (the last update in the flow)
-      const originalUpdate = payload.update.bind(payload);
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises -- mock must return Promise to match payload.update signature
-      const updateSpy = vi.spyOn(payload, "update").mockImplementation((args: any) => {
-        if (args.collection === "users" && args.data?.deletionStatus === "deleted") {
-          return Promise.reject(new Error("Simulated database failure during user anonymization"));
+      // Fail after the real anonymization write and its normal hooks have run.
+      const hooks = payload.collections.users.config.hooks;
+      const originalAfterChange = hooks.afterChange;
+      const failAfterAnonymization: CollectionAfterChangeHook = ({ doc }) => {
+        if (doc.id === users.testUser.id && doc.deletionStatus === "deleted") {
+          throw new Error("User anonymization regression");
         }
-        return originalUpdate(args) as Promise<any>;
-      });
+        return doc;
+      };
+      hooks.afterChange = [...(originalAfterChange ?? []), failAfterAnonymization];
 
       try {
         await expect(deletionService.executeDeletion(users.testUser.id, { deletionType: "self" })).rejects.toThrow(
-          "Simulated database failure during user anonymization"
+          "User anonymization regression"
         );
       } finally {
-        updateSpy.mockRestore();
+        hooks.afterChange = originalAfterChange;
       }
 
       // Verify public catalog ownership was NOT transferred (rolled back)
