@@ -110,6 +110,28 @@ describe("UrlFetchCache", () => {
     expect(cache.calculateTTL({})).toBe(3600);
   });
 
+  it.each([
+    ["45", 15],
+    ["60", 0],
+    ["120", 0],
+  ])("subtracts upstream Age=%s from max-age", (age, remaining) => {
+    const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
+    expect(cache.calculateTTL({ "cache-control": "max-age=60", age })).toBe(remaining);
+  });
+
+  it("accounts for server dates, request duration, and Expires using the same response age", () => {
+    const now = Date.UTC(2026, 0, 1);
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const cache = new UrlFetchCache() as unknown as {
+      calculateTTL: (headers: Record<string, string>, respect?: boolean, requestTime?: number) => number;
+    };
+    const date = new Date(now - 40_000).toUTCString();
+    expect(cache.calculateTTL({ "cache-control": "max-age=60", date, age: "10" })).toBe(20);
+    expect(cache.calculateTTL({ "cache-control": "max-age=60", age: "45" }, true, now - 5000)).toBe(10);
+    expect(cache.calculateTTL({ date, expires: new Date(now + 20_000).toUTCString(), age: "50" })).toBe(10);
+    expect(cache.calculateTTL({ age: "45" }, false, now - 5000)).toBe(3600);
+  });
+
   it("uses RFC-1123 Expires headers to calculate cache TTL", () => {
     const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
 

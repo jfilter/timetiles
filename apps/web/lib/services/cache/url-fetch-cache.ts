@@ -106,11 +106,25 @@ export class UrlFetchCache {
   /**
    * Calculate TTL from response headers
    */
-  private calculateTTL(headers: Record<string, string>, respectCacheControl?: boolean): number {
+  private calculateTTL(
+    headers: Record<string, string>,
+    respectCacheControl?: boolean,
+    requestTime = Date.now()
+  ): number {
     if (!(respectCacheControl ?? this.respectCacheControl)) {
       return Math.min(this.defaultTTL, this.maxTTL);
     }
 
+    const now = Date.now();
+    const date = headers["date"] ? parseDateInput(headers["date"])?.getTime() : undefined;
+    const age = Math.max(0, parseStrictInteger(headers["age"]) ?? 0);
+    // Include transfer/body-reading time; never grant an upstream response a new full lifetime.
+    const currentAge = Math.max(
+      0,
+      date === undefined ? 0 : (now - date) / 1000,
+      age + Math.max(0, now - requestTime) / 1000
+    );
+    const remaining = (lifetime: number) => Math.max(0, Math.min(lifetime - currentAge, this.maxTTL));
     const cacheControl = headers["cache-control"]?.toLowerCase();
     if (cacheControl) {
       // Check for no-store or no-cache
@@ -122,7 +136,7 @@ export class UrlFetchCache {
       const maxAge = this.parseMaxAge(cacheControl);
       if (maxAge !== undefined) {
         // Enforce maximum TTL to prevent indefinite caching
-        return Math.min(maxAge, this.maxTTL);
+        return remaining(maxAge);
       }
     }
 
@@ -130,12 +144,11 @@ export class UrlFetchCache {
     if (headers["expires"]) {
       const expires = parseDateInput(headers["expires"]);
       if (expires) {
-        const ttl = Math.floor((expires.getTime() - Date.now()) / 1000);
-        return Math.max(0, Math.min(ttl, this.maxTTL));
+        return remaining((expires.getTime() - (date ?? now)) / 1000);
       }
     }
 
-    return Math.min(this.defaultTTL, this.maxTTL);
+    return remaining(this.defaultTTL);
   }
 
   /**
@@ -326,6 +339,7 @@ export class UrlFetchCache {
         maxSize,
         ...fetchOptions
       } = options ?? {};
+      const requestTime = Date.now();
       const response = await safeFetch(url, { ...fetchOptions, headers });
 
       // Handle 304 Not Modified
@@ -336,7 +350,9 @@ export class UrlFetchCache {
         // body, status, and contentHash.
         const respHeaders = this.collectResponseHeaders(response);
         const mergedHeaders = { ...cached.headers };
-        for (const key of ["cache-control", "expires", "etag", "last-modified", "vary"]) {
+        delete mergedHeaders["age"];
+        delete mergedHeaders["date"];
+        for (const key of ["cache-control", "expires", "etag", "last-modified", "vary", "age", "date"]) {
           if (respHeaders[key] !== undefined) mergedHeaders[key] = respHeaders[key];
         }
         const revalidated = this.buildCacheResponse({ ...cached, headers: mergedHeaders }, "REVALIDATED");
@@ -346,7 +362,8 @@ export class UrlFetchCache {
           mergedHeaders,
           revalidated.status,
           respectCacheControl,
-          headers
+          headers,
+          requestTime
         );
         return revalidated;
       }
@@ -364,7 +381,7 @@ export class UrlFetchCache {
       }
 
       // Got new content, cache and return it
-      return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, headers);
+      return await this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, headers, requestTime);
     } catch (error) {
       if (mustRevalidate && this.isStale(cached)) throw error;
       // On error during revalidation, return stale cache
@@ -381,13 +398,22 @@ export class UrlFetchCache {
     response: Response,
     maxSize?: number,
     respectCacheControl?: boolean,
-    requestHeaders?: HeadersInit
+    requestHeaders?: HeadersInit,
+    requestTime?: number
   ): Promise<CachedResponse> {
     const { data, headers: respHeaders } = await this.readResponseBody(response, maxSize);
 
     // Error responses must not replace a previously successful cached body.
     if (response.ok) {
-      await this.cacheResponse(cacheKey, data, respHeaders, response.status, respectCacheControl, requestHeaders);
+      await this.cacheResponse(
+        cacheKey,
+        data,
+        respHeaders,
+        response.status,
+        respectCacheControl,
+        requestHeaders,
+        requestTime
+      );
     }
 
     return { data, headers: { ...respHeaders, "X-Cache": "MISS" }, status: response.status };
@@ -404,9 +430,10 @@ export class UrlFetchCache {
       maxSize,
       ...fetchOptions
     } = options ?? {};
+    const requestTime = Date.now();
     const response = await safeFetch(url, fetchOptions);
 
-    return this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, fetchOptions.headers);
+    return this.fetchAndCache(cacheKey, response, maxSize, respectCacheControl, fetchOptions.headers, requestTime);
   }
 
   /**
@@ -495,9 +522,10 @@ export class UrlFetchCache {
     headers: Record<string, string>,
     status: number,
     respectCacheControl?: boolean,
-    requestHeaders?: HeadersInit
+    requestHeaders?: HeadersInit,
+    requestTime?: number
   ): Promise<void> {
-    const ttl = this.calculateTTL(headers, respectCacheControl);
+    const ttl = this.calculateTTL(headers, respectCacheControl, requestTime);
     const varyFingerprint = this.getVaryFingerprint(headers["vary"], requestHeaders);
 
     // A successful replacement supersedes old content even when it cannot be cached.

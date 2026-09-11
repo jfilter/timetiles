@@ -436,6 +436,32 @@ describe.sequential("HTTP Cache Integration", () => {
       expect(validators).toEqual([undefined, etag]);
     });
 
+    it.each([undefined, "0", "60"])("uses only the new response age after a 304 (Age: %s)", async (age) => {
+      const etag = '"age-revalidation"';
+      let requests = 0;
+      testServer.route("/age-revalidation", (req: IncomingMessage, res: ServerResponse) => {
+        requests++;
+        const unchanged = req.headers["if-none-match"] === etag;
+        res.sendDate = false;
+        res.writeHead(unchanged ? 304 : 200, {
+          ETag: etag,
+          "Cache-Control": unchanged ? "max-age=60" : "max-age=3600",
+          ...(!unchanged ? { Age: "120", Date: new Date(Date.now() - 120_000).toUTCString() } : {}),
+          ...(unchanged && age !== undefined ? { Age: age } : {}),
+        });
+        res.end(unchanged ? undefined : "Age response");
+      });
+      const url = `${serverUrl}/age-revalidation`;
+      expect((await urlFetchCache.fetch(url)).headers["X-Cache"]).toBe("MISS");
+      const revalidated = await urlFetchCache.fetch(url, { forceRevalidate: true });
+      expect(revalidated.headers["X-Cache"]).toBe("REVALIDATED");
+      expect(revalidated.headers["age"]).toBe(age);
+      expect(revalidated.headers["date"]).toBeUndefined();
+      expect(revalidated.data.toString()).toBe("Age response");
+      expect((await urlFetchCache.fetch(url)).headers["X-Cache"]).toBe(age === "60" ? "MISS" : "HIT");
+      expect(requests).toBe(age === "60" ? 3 : 2);
+    });
+
     it("preserves the stored success status after revalidation", async () => {
       const etag = '"status-preservation"';
       testServer.route("/revalidated-status", (req: IncomingMessage, res: ServerResponse) => {
