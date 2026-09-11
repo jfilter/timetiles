@@ -6,14 +6,16 @@
  * but did not check `catalogIsPublic: true` and had no user context, leaking
  * dataset metadata that the real access rules would hide.
  *
- * These tests verify at the Payload level that queries with `overrideAccess: false`
- * correctly enforce the collection access rules used by the fixed endpoint.
+ * Verifies both collection access rules and the anonymous API response.
  *
  * @module
  */
 
+import { NextRequest } from "next/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { GET } from "@/app/api/v1/data-sources/route";
+import type { DataSourcesResponse } from "@/lib/types/data-sources";
 import type { User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
@@ -29,6 +31,8 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
 
   let adminUser: User;
   let ownerUser: User;
+  let publicCatalogId: number;
+  let publicDatasetId: number;
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -39,14 +43,14 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
     adminUser = users.adminUser;
     ownerUser = users.ownerUser;
 
-    // Create a private catalog with a public dataset inside it
+    // Create a private catalog with a private dataset inside it.
     const privateCatResult = await withCatalog(testEnv, {
       name: "Owner Private Catalog",
       isPublic: false,
       user: ownerUser,
     });
 
-    // This dataset is "public" but in a PRIVATE catalog — should be hidden from non-owners
+    // Private metadata must remain hidden from non-owners.
     await withDataset(testEnv, privateCatResult.catalog.id, {
       name: "Leaked Dataset In Private Catalog",
       isPublic: false,
@@ -55,7 +59,39 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
     // Create a public catalog with a public dataset — should be visible to everyone
     const publicCatResult = await withCatalog(testEnv, { name: "Public Catalog", isPublic: true, user: ownerUser });
 
-    await withDataset(testEnv, publicCatResult.catalog.id, { name: "Visible Public Dataset", isPublic: true });
+    publicCatalogId = publicCatResult.catalog.id;
+    const publicDataset = await withDataset(testEnv, publicCatalogId, {
+      name: "Visible Public Dataset",
+      isPublic: true,
+      description: {
+        root: {
+          type: "root",
+          version: 1,
+          direction: null,
+          format: "",
+          indent: 0,
+          children: [
+            {
+              type: "paragraph",
+              version: 1,
+              direction: null,
+              format: "",
+              indent: 0,
+              children: ["Time", "Tiles!"].map((text, format) => ({
+                type: "text",
+                version: 1,
+                text,
+                format,
+                detail: 0,
+                mode: "normal",
+                style: "",
+              })),
+            },
+          ],
+        },
+      },
+    });
+    publicDatasetId = publicDataset.dataset.id;
   }, 60000);
 
   afterAll(async () => {
@@ -63,6 +99,19 @@ describe.sequential("Data Sources Metadata Leak Vulnerability", () => {
   });
 
   describe("Vulnerability: private catalog datasets leaked", () => {
+    it("anonymous API responses expose only accessible metadata with intact descriptions", async () => {
+      const response = await GET(new NextRequest("http://localhost:3000/api/v1/data-sources"), {
+        params: Promise.resolve({}),
+      });
+      expect(response.status).toBe(200);
+      const data = (await response.json()) as DataSourcesResponse;
+      expect(data.catalogs.map((catalog) => catalog.name)).not.toContain("Owner Private Catalog");
+      expect(data.datasets.map((dataset) => dataset.name)).not.toContain("Leaked Dataset In Private Catalog");
+      expect(data.datasets).toContainEqual(
+        expect.objectContaining({ id: publicDatasetId, catalogId: publicCatalogId, description: "TimeTiles!" })
+      );
+    });
+
     it("anonymous user should not see datasets in private catalogs", async () => {
       // Query datasets without user context (anonymous), enforcing access rules
       const result = await payload.find({
