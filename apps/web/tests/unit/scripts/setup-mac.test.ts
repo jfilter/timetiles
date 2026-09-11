@@ -23,6 +23,37 @@ beforeEach(() => {
 
 afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
+it.each(["#port = 5432\n", "port = 6543\n"])("handles PostgreSQL config %s", (config) => {
+  const postgresFunction = /^setup_postgres\(\) \{\n[\s\S]*?^\}/m.exec(source)?.[0];
+  expect(postgresFunction).toBeDefined();
+  const cluster = resolve(directory, "var/postgresql@17");
+  mkdirSync(cluster, { recursive: true });
+  const configPath = resolve(cluster, "postgresql.conf");
+  writeFileSync(configPath, config);
+  writeFileSync(resolve(cluster, "postmaster.pid"), "test fixture");
+  const result = spawnSync(
+    "/bin/bash",
+    [
+      "-c",
+      `set -euo pipefail
+PG_FORMULA=postgresql@17
+PG_PORT=6543
+brew() { printf '%s\\n' "$TMPDIR"; }
+pg_ctl() { return 0; }
+pg_isready() { return 0; }
+print_success() { :; }
+print_exists() { :; }
+print_error() { :; }
+warn() { :; }
+${postgresFunction}
+setup_postgres`,
+    ],
+    { encoding: "utf8", timeout: 10000, env: { NODE_ENV: "test", PATH: "/usr/bin:/bin", TMPDIR: directory } }
+  );
+  expect(result.status, result.stderr).toBe(0);
+  expect(readFileSync(configPath, "utf8")).toBe(config.startsWith("#") ? `${config}\nport = 6543\n` : config);
+});
+
 it("installs jq required by the environment selftest", () => {
   const installFunction = /^install_formulas\(\) \{\n[\s\S]*?^\}/m.exec(source)?.[0];
   expect(installFunction).toBeDefined();

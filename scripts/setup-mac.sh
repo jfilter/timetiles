@@ -184,7 +184,7 @@ setup_postgres() {
   # The last uncommented `port` wins, so appending a new one on every change leaves a
   # trail of contradicting lines. Rewrite in place instead, and only when it differs.
   local effective_port
-  effective_port="$(grep -E "^[[:space:]]*port[[:space:]]*=" "$conf" | tail -1 | sed -E 's/.*=[[:space:]]*([0-9]+).*/\1/')"
+  effective_port="$(sed -nE 's/^[[:space:]]*port[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' "$conf" | tail -1)"
   if [ "$effective_port" = "$PG_PORT" ]; then
     print_exists "Port already $PG_PORT"
   elif [ -n "$effective_port" ]; then
