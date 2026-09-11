@@ -184,9 +184,9 @@ const revokeCredentialsOnDeactivation: CollectionAfterChangeHook = async ({ doc,
   if (previousDoc.isActive !== true || doc.isActive !== false) return doc;
 
   try {
-    // Deliberately raw SQL rather than payload.update(): a nested Payload write on the SAME
-    // collection from its own afterChange re-enters this hook and opens a second transaction,
-    // which deadlocks (see docs/development/contributing/payload-deadlocks).
+    // Raw SQL avoids re-entering the users update hooks just to revoke credentials.
+    // A nested payload.update({ req }) could share this transaction, but would still
+    // rerun the collection's hooks. Omitting req would use a separate transaction.
     //
     // It MUST go through getTransactionAwareDrizzle: account deletion flips isActive inside an
     // open transaction that already holds a row lock on this user, so issuing these statements
