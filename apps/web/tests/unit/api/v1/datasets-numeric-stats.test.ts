@@ -91,6 +91,23 @@ describe.sequential("GET /api/v1/datasets/[id]/numeric-stats", () => {
     });
   });
 
+  it("formats the display label without changing the numeric field path", async () => {
+    const path = "ticket-price";
+    mocks.mockFindByID.mockResolvedValue({
+      id: DATASET_ID,
+      fieldMetadata: fieldMeta([path]),
+      fieldTypes: { number: [path] },
+      interpretationPlan: planWithNumberColumns([path]),
+    });
+
+    const response = await callRoute();
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      fields: [{ path, label: "Ticket Price", min: 1, max: 100, isInteger: true }],
+    });
+    expect(collectParams(mocks.mockExecute.mock.calls[0]?.[0])).toContain(path);
+  });
+
   it("omits fields whose column has no number-kind policy", async () => {
     // `qty` is classified numeric by detection but has no plan policy, so
     // `projectNumberFormats` omits it. Advertising a slider for it would offer
