@@ -24,7 +24,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
 import type { CannotDeleteReasonCode } from "@/lib/account/deletion-types";
-import { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
 import { useDeletionSummaryQuery, useScheduleDeletionMutation } from "@/lib/hooks/use-account-mutations";
 
 interface DeleteAccountModalProps {
@@ -33,17 +32,17 @@ interface DeleteAccountModalProps {
   onDeletionScheduled: () => void;
 }
 
-type Step = "summary" | "confirm" | "success";
+type Step = "summary" | "confirm";
 
 // oxlint-disable-next-line complexity -- multi-step modal with inherent branching
 export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: DeleteAccountModalProps) => {
   const t = useTranslations("Account");
   const tCommon = useTranslations("Common");
   const locale = useLocale();
-  const [step, setStep] = useState<Step>("summary");
+  const [formStep, setStep] = useState<Step>("summary");
   const [password, setPassword] = useState("");
-  const [deletionScheduledAt, setDeletionScheduledAt] = useState<string | null>(null);
-  const [deletionError, setDeletionError] = useState<string | null>(null);
+  const scheduleDeletionMutation = useScheduleDeletionMutation();
+  const step = scheduleDeletionMutation.isSuccess ? "success" : formStep;
 
   // Fetch deletion summary when modal is open and on the summary step
   const {
@@ -51,8 +50,6 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     isLoading: isSummaryLoading,
     error: summaryError,
   } = useDeletionSummaryQuery({ enabled: open && step === "summary" });
-
-  const scheduleDeletionMutation = useScheduleDeletionMutation();
 
   // Derive summary and error from query data
   const summary = summaryData?.canDelete ? summaryData.summary : null;
@@ -95,8 +92,6 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
     if (!open) {
       setStep("summary");
       setPassword("");
-      setDeletionScheduledAt(null);
-      setDeletionError(null);
       scheduleDeletionMutation.reset();
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps -- only reset on open change
@@ -126,26 +121,11 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
   };
 
   const handleScheduleDeletion = () => {
-    if (!password) {
-      setDeletionError(t("passwordRequired"));
-      return;
-    }
-
-    setDeletionError(null);
-
-    void (async () => {
-      try {
-        const data = await scheduleDeletionMutation.mutateAsync({ password });
-        setDeletionScheduledAt(data.deletionScheduledAt);
-        setStep("success");
-      } catch (err) {
-        setDeletionError(err instanceof Error ? err.message : t("failedToScheduleDeletion"));
-      }
-    })();
+    if (password) scheduleDeletionMutation.mutate({ password });
   };
 
   const loading = step === "summary" ? isSummaryLoading : scheduleDeletionMutation.isPending;
-  const error = step === "summary" ? summaryDisplayError : deletionError;
+  const error = step === "summary" ? summaryDisplayError : scheduleDeletionMutation.error?.message;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -293,13 +273,11 @@ export const DeleteAccountModal = ({ open, onOpenChange, onDeletionScheduled }: 
           </div>
         )}
 
-        {step === "success" && (
+        {scheduleDeletionMutation.isSuccess && (
           <div className="space-y-4">
             <p className="text-muted-foreground">
               {t.rich("deletionScheduledFor", {
-                date: new Date(
-                  deletionScheduledAt ?? Date.now() + DELETION_GRACE_PERIOD_DAYS * 86_400_000
-                ).toLocaleDateString(locale),
+                date: new Date(scheduleDeletionMutation.data.deletionScheduledAt).toLocaleDateString(locale),
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </p>
