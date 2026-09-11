@@ -16,16 +16,15 @@
 /**
  * Returns true when `error` is a Postgres unique-constraint violation.
  *
- * Pass one or more `constraints` (index/constraint names) to additionally match
- * them in the error message — useful when a code path can hit several unique
- * indexes and only some should be treated as a recoverable race.
+ * Constraint names are additional message fallbacks when no structured code
+ * is available, not a filter restricting which unique violations match.
  */
 export const isUniqueViolation = (error: unknown, ...constraints: string[]): boolean => {
   if (!error) return false;
 
-  // 1. Raw pg error.
+  // 1. A structured error code takes precedence over incidental message text.
   const code = (error as { code?: string } | null)?.code;
-  if (code === "23505") return true;
+  if (typeof code === "string") return code === "23505";
 
   // 2. Payload ValidationError wrapping the pg error.
   const errors = (error as { data?: { errors?: Array<{ message?: string }> } } | null)?.data?.errors;

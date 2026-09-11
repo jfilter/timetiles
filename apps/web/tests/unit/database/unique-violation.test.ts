@@ -13,6 +13,20 @@ describe("isUniqueViolation", () => {
     expect(isUniqueViolation({ code: "23505" })).toBe(true);
   });
 
+  it("does not mistake a foreign-key value for a SQLSTATE code", () => {
+    const error = Object.assign(new Error("Key (catalog_id)=(23505) is not present in table catalogs."), {
+      code: "23503",
+    });
+    expect(isUniqueViolation(error)).toBe(false);
+  });
+
+  it("does not mistake a missing constraint for a uniqueness violation", () => {
+    const error = Object.assign(new Error('constraint "datasets_catalog_name_unique" does not exist'), {
+      code: "42704",
+    });
+    expect(isUniqueViolation(error, "datasets_catalog_name_unique")).toBe(false);
+  });
+
   it("detects a Payload ValidationError wrapping the pg error", () => {
     const err = { data: { errors: [{ message: "Value must be unique", path: "dataPackageSlug" }] } };
     expect(isUniqueViolation(err)).toBe(true);
