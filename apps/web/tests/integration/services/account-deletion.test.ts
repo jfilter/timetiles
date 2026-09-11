@@ -84,6 +84,18 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("canDeleteUser", () => {
+    it("should propagate database failures instead of reporting a missing user", async () => {
+      const req = await createLocalReq({}, payload);
+      await initTransaction(req);
+      try {
+        const db = await getTransactionAwareDrizzle(payload, req);
+        await expect(db.execute(sql`SELECT 1 / 0`)).rejects.toThrow();
+        await expect(deletionService.canDeleteUser(99999, req)).rejects.toThrow();
+      } finally {
+        await killTransaction(req);
+      }
+    });
+
     it("should allow deleting a regular user", async () => {
       const env = { payload, seedManager: { truncate } } as any;
       const { users } = await withUsers(env, { testUser: { role: "user" } });

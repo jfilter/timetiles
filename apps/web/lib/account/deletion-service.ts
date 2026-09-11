@@ -53,12 +53,13 @@ export class AccountDeletionService {
    * Check if a user can be deleted.
    */
   async canDeleteUser(userId: number, req?: TransactionReq): Promise<CanDeleteResult> {
-    let user;
-    try {
-      user = await this.payload.findByID({ collection: "users", id: userId, overrideAccess: true, req });
-    } catch {
-      return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
-    }
+    const user = await this.payload.findByID({
+      collection: "users",
+      id: userId,
+      overrideAccess: true,
+      disableErrors: true,
+      req,
+    });
 
     if (!user) {
       return { allowed: false, reason: USER_NOT_FOUND, reasonCode: "userNotFound" };
