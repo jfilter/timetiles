@@ -294,19 +294,15 @@ export const parseFileSheets = async (filePath: string, fileExtension: string): 
 import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
 import type { SavePreviewMetadataOpts } from "@/lib/ingest/preview-store";
 import type { ConfigSuggestion } from "@/lib/ingest/types/wizard";
-import { logError, logger } from "@/lib/logger";
+import { logError } from "@/lib/logger";
 
 /**
- * Query the user's datasets and find config suggestions matching the given headers.
- *
- * Fetches datasets owned by the user (via catalog.createdBy) and delegates
- * matching to the pure `findConfigSuggestions` function.
+ * Load the user's datasets and latest schemas once for all sheets in a preview.
  */
-export const findConfigSuggestionsForUser = async (
+export const loadConfigSuggestionDatasets = async (
   payload: Payload,
-  userId: number,
-  headers: string[]
-): Promise<ConfigSuggestion[]> => {
+  userId: number
+): Promise<Parameters<typeof findConfigSuggestions>[1]> => {
   const datasetsResult = await payload.find({
     collection: "datasets",
     where: { "catalog.createdBy": { equals: userId } },
@@ -325,7 +321,7 @@ export const findConfigSuggestionsForUser = async (
   });
 
   // Get schema columns for each dataset (all field names from latest schema version)
-  const datasets = await Promise.all(
+  return Promise.all(
     datasetsResult.docs.map(async (ds) => {
       const schemaResult = await payload.find({
         collection: "dataset-schemas",
@@ -348,22 +344,6 @@ export const findConfigSuggestionsForUser = async (
       };
     })
   );
-
-  const suggestions = findConfigSuggestions(headers, datasets);
-
-  logger.info(
-    {
-      userId,
-      headers: headers.length,
-      datasets: datasets.length,
-      withSchema: datasets.filter((d) => d.schemaColumns).length,
-      results: suggestions.length,
-    },
-    "Config suggestions: %s",
-    suggestions.map((s) => `${s.datasetName}(${s.score}%, cat=${s.catalogId})`).join(", ") || "none"
-  );
-
-  return suggestions;
 };
 
 // ---------------------------------------------------------------------------
@@ -405,9 +385,8 @@ export const buildPreviewResult = async ({
   savePreviewMetadata(metadata);
 
   // Match per-sheet headers against existing datasets
-  const perSheetSuggestions = await Promise.all(
-    sheets.map((s) => findConfigSuggestionsForUser(payload, userId, s.headers))
-  );
+  const datasets = sheets.length > 0 ? await loadConfigSuggestionDatasets(payload, userId) : [];
+  const perSheetSuggestions = sheets.map((s) => findConfigSuggestions(s.headers, datasets));
   // Deduplicate: keep highest-scoring suggestion per dataset NAME (not ID),
   // so we get one suggestion per unique dataset type even if imported multiple times
   const seen = new Map<string, (typeof perSheetSuggestions)[0][0]>();

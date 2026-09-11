@@ -1,8 +1,7 @@
 /**
  * Integration tests for config suggestions feature.
  *
- * Tests `findConfigSuggestionsForUser` which queries a user's datasets and
- * returns matching config suggestions based on column header overlap. This
+ * Tests dataset loading and config suggestions based on column header overlap. This
  * validates the full flow from real database queries through the pure matching
  * logic.
  *
@@ -11,7 +10,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import { findConfigSuggestionsForUser } from "@/app/api/ingest/preview-schema/helpers";
+import { loadConfigSuggestionDatasets } from "@/app/api/ingest/preview-schema/helpers";
+import { findConfigSuggestions } from "@/lib/ingest/config-matcher";
 
 import {
   buildTestInterpretationPlan,
@@ -61,7 +61,7 @@ describe.sequential("Config Suggestions - Integration", () => {
     });
 
     const headers = ["title", "date", "location", "extra_col"];
-    const suggestions = await findConfigSuggestionsForUser(payload, testUser.id, headers);
+    const suggestions = findConfigSuggestions(headers, await loadConfigSuggestionDatasets(payload, testUser.id));
 
     expect(suggestions.length).toBeGreaterThanOrEqual(1);
 
@@ -93,7 +93,7 @@ describe.sequential("Config Suggestions - Integration", () => {
     });
 
     const headers = ["x_col", "y_col", "z_col"];
-    const suggestions = await findConfigSuggestionsForUser(payload, testUser.id, headers);
+    const suggestions = findConfigSuggestions(headers, await loadConfigSuggestionDatasets(payload, testUser.id));
 
     // No dataset's known columns overlap with these headers above the threshold
     const matchingOurDataset = suggestions.filter((s) =>
@@ -141,7 +141,7 @@ describe.sequential("Config Suggestions - Integration", () => {
 
     // Use headers that match known columns: "name" from roles, "raw_date" and "raw_name" from transforms
     const headers = ["raw_date", "raw_name", "location"];
-    const suggestions = await findConfigSuggestionsForUser(payload, testUser.id, headers);
+    const suggestions = findConfigSuggestions(headers, await loadConfigSuggestionDatasets(payload, testUser.id));
 
     const match = suggestions.find((s) => s.matchedColumns.includes("raw_date"));
     expect(match).toBeDefined();
@@ -182,7 +182,7 @@ describe.sequential("Config Suggestions - Integration", () => {
     });
 
     const headers = ["title", "date", "location", "description"];
-    const suggestions = await findConfigSuggestionsForUser(payload, testUser.id, headers);
+    const suggestions = findConfigSuggestions(headers, await loadConfigSuggestionDatasets(payload, testUser.id));
 
     // Filter to only suggestions from this test's datasets (scoped by catalog)
     const catalogSuggestions = suggestions.filter((s) => s.catalogName === catalog.name);
