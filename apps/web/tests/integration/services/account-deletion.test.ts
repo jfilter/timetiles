@@ -197,18 +197,35 @@ describe.sequential("Account Deletion Service", () => {
   });
 
   describe("scheduleDeletion", () => {
-    it("should retain an active admin when both admins schedule deletion concurrently", async () => {
-      const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, { adminA: { role: "admin" }, adminB: { role: "admin" } });
-      const results = await Promise.allSettled([
-        deletionService.scheduleDeletion(users.adminA.id),
-        deletionService.scheduleDeletion(users.adminB.id),
-      ]);
-      expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
-      expect(results.find((result) => result.status === "rejected")).toMatchObject({
-        reason: { message: "Cannot delete the last admin user" },
-      });
-    });
+    it.each(["schedule", "execute"])(
+      "should retain an active admin when both admins %s deletion concurrently",
+      async (action) => {
+        const env = { payload, seedManager: { truncate } } as any;
+        const { users } = await withUsers(env, { adminA: { role: "admin" }, adminB: { role: "admin" } });
+        await createSystemUserService(payload).getOrCreateSystemUser();
+        const remove = (id: number) =>
+          action === "schedule"
+            ? deletionService.scheduleDeletion(id)
+            : deletionService.executeDeletion(id, { deletionType: "self" });
+        const results = await Promise.allSettled([remove(users.adminA.id), remove(users.adminB.id)]);
+        expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+        expect(results.find((result) => result.status === "rejected")).toMatchObject({
+          reason: { message: expect.stringContaining("Cannot delete the last admin user") },
+        });
+        const remaining = await payload.count({
+          collection: "users",
+          where: {
+            and: [
+              { id: { in: [users.adminA.id, users.adminB.id] } },
+              { role: { equals: "admin" } },
+              { deletionStatus: { equals: "active" } },
+            ],
+          },
+          overrideAccess: true,
+        });
+        expect(remaining.totalDocs).toBe(1);
+      }
+    );
 
     it("should accept only one concurrent deletion request", async () => {
       const env = { payload, seedManager: { truncate } } as any;
