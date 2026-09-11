@@ -7,7 +7,7 @@
  * @module
  * @category Schemas
  */
-import { extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
+import { extendZodWithOpenApi, OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 
 // Extend Zod with OpenAPI methods
@@ -87,34 +87,38 @@ export const DateParamSchema = z.preprocess(
 );
 
 /**
- * Field filters parameter (JSON-encoded record of field paths to value arrays).
- *
- * Parses `?ff={"category":["A","B"]}` into `Record<string, string[]>`.
- *
- * An absent parameter defaults to an empty object. Malformed JSON does NOT — it
- * fails validation, because silently substituting `{}` made a broken filter
- * return the full, unfiltered result set with HTTP 200.
- *
- * Keys are capped at MAX_FIELD_KEY_LENGTH (64, mirrored here to keep this module
- * dependency-free) so an over-long key is rejected rather than dropped later by
- * `sanitizeFieldFilters` — same reason.
+ * Parse JSON filter records without z.record's silent omission of __proto__.
+ * Validate every key/value pair before safely rebuilding the object. Absent
+ * parameters default to empty; malformed JSON must never become an empty filter.
+ * OpenAPI describes the wire object using the same value schema.
  */
-export const FieldFiltersParamSchema = z.preprocess(
-  (val) => {
-    if (val == null) return {};
-    if (typeof val !== "string") return val;
-    try {
-      return JSON.parse(val) as Record<string, unknown>;
-    } catch {
-      // Surface as a validation error rather than an empty (fail-open) filter.
-      return val;
-    }
-  },
+const filterRecord = <T extends z.ZodType>(valueSchema: T) =>
   z
-    .record(z.string().max(64), z.array(z.string().max(500)).max(100))
-    .default({})
-    .refine((rec) => Object.keys(rec).length <= 20, { message: "Field filters may contain at most 20 keys" })
-);
+    .preprocess(
+      (input) => {
+        let value: unknown = input ?? {};
+        if (typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch {
+            return null;
+          }
+        }
+        return value !== null && typeof value === "object" && !Array.isArray(value) ? Object.entries(value) : null;
+      },
+      z.array(z.tuple([z.string().max(64), valueSchema])).max(20)
+    )
+    .transform((entries) => Object.fromEntries(entries))
+    .openapi({
+      type: "object",
+      additionalProperties: new OpenApiGeneratorV3([
+        { type: "schema", schema: valueSchema.openapi("FilterValue") },
+      ]).generateComponents().components?.schemas?.FilterValue,
+      maxProperties: 20,
+    });
+
+/** Field-path/value-array filters; at most 20 keys of at most 64 characters. */
+export const FieldFiltersParamSchema = filterRecord(z.array(z.string().max(500)).max(100));
 
 /**
  * Numeric range filters parameter (JSON-encoded record of field paths to min/max).
@@ -129,27 +133,11 @@ export const FieldFiltersParamSchema = z.preprocess(
  * Keys are capped at 64 chars (matching MAX_FIELD_KEY_LENGTH) and the record at
  * 20 entries.
  */
-export const RangeFiltersParamSchema = z.preprocess(
-  (val) => {
-    if (val == null) return {};
-    if (typeof val !== "string") return val;
-    try {
-      return JSON.parse(val) as Record<string, unknown>;
-    } catch {
-      // See FieldFiltersParamSchema: an empty fallback here silently returns unfiltered data.
-      return val;
-    }
-  },
+export const RangeFiltersParamSchema = filterRecord(
   z
-    .record(
-      z.string().max(64),
-      z
-        // z.number() already rejects NaN/Infinity in Zod 4, so no explicit .finite() needed.
-        .object({ min: z.number().nullable().optional(), max: z.number().nullable().optional() })
-        .refine((r) => r.min == null || r.max == null || r.min <= r.max, { message: "min must be ≤ max" })
-    )
-    .default({})
-    .refine((rec) => Object.keys(rec).length <= 20, { message: "Range filters may contain at most 20 keys" })
+    // z.number() already rejects NaN/Infinity in Zod 4, so no explicit .finite() needed.
+    .object({ min: z.number().nullable().optional(), max: z.number().nullable().optional() })
+    .refine((r) => r.min == null || r.max == null || r.min <= r.max, { message: "min must be ≤ max" })
 );
 
 /** Degrees a zero-height viewport is widened by — about 1 cm, far below any display precision. */

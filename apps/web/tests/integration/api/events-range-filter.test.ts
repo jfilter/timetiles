@@ -9,11 +9,13 @@
  * @module
  * @category Integration Tests
  */
+import { sql } from "@payloadcms/db-postgres";
 import { NextRequest } from "next/server";
 import type { Payload } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { DatasetInterpretationPlan } from "@/lib/ingest/types/interpretation";
+import { bulkInsertEvents } from "@/lib/jobs/utils/bulk-event-insert";
 
 import { GET } from "../../../app/api/v1/events/route";
 import type { TestEnvironment } from "../../setup/integration/environment";
@@ -28,12 +30,16 @@ const usPlan: DatasetInterpretationPlan = {
   ambiguityResolution: "strict",
 };
 
-/** Plan with a single EU-format ("," decimal, "." thousands) number column `betrag`. */
+const prototypeFieldKeys = ["__proto__", "constructor", "toString"];
+
+/** EU-format columns, including names inherited by ordinary JavaScript objects. */
 const euPlan: DatasetInterpretationPlan = {
   ops: [],
-  columns: [
-    { field: "betrag", kind: "number", policy: { kind: "number", decimalSeparator: ",", thousandsSeparator: "." } },
-  ],
+  columns: ["betrag", ...prototypeFieldKeys].map((field) => ({
+    field,
+    kind: "number",
+    policy: { kind: "number", decimalSeparator: ",", thousandsSeparator: "." },
+  })),
   roles: {},
   ambiguityResolution: "strict",
 };
@@ -91,17 +97,25 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
       { price: "n/a" }, // non-numeric → must not throw, must be excluded
     ];
     for (let i = 0; i < usRows.length; i++) {
-      await payload.create({
-        collection: "events",
-        data: {
+      const inserted = await bulkInsertEvents(payload, [
+        {
+          coordinateSource: { type: "manual" },
+          validationStatus: "valid",
+          datasetIsPublic: true,
+          catalogOwnerId: users.testUser.id,
           uniqueId: `us-range-${i + 1}`,
           dataset: usDatasetId,
           sourceData: { title: `US Event ${i + 1}`, price: usRows[i]!.price },
-          transformedData: { title: `US Event ${i + 1}`, price: usRows[i]!.price },
+          transformedData: {
+            title: `US Event ${i + 1}`,
+            price: usRows[i]!.price,
+            ...Object.fromEntries(prototypeFieldKeys.map((key) => [key, usRows[i]!.price])),
+          },
           location: { latitude: 40 + i * 0.01, longitude: -74 + i * 0.01 },
           eventTimestamp: new Date(2024, 0, 1 + i).toISOString(),
         },
-      });
+      ]);
+      expect(inserted.created).toBe(1);
     }
 
     // EU dataset: comma-decimal, dot-thousands raw values.
@@ -111,22 +125,46 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
       { betrag: "99,99" }, // 99.99
     ];
     for (let i = 0; i < euRows.length; i++) {
-      await payload.create({
-        collection: "events",
-        data: {
+      const inserted = await bulkInsertEvents(payload, [
+        {
+          coordinateSource: { type: "manual" },
+          validationStatus: "valid",
+          datasetIsPublic: true,
+          catalogOwnerId: users.testUser.id,
           uniqueId: `eu-range-${i + 1}`,
           dataset: euDatasetId,
           sourceData: { title: `EU Event ${i + 1}`, betrag: euRows[i]!.betrag },
-          transformedData: { title: `EU Event ${i + 1}`, betrag: euRows[i]!.betrag },
+          transformedData: {
+            title: `EU Event ${i + 1}`,
+            betrag: euRows[i]!.betrag,
+            ...Object.fromEntries(prototypeFieldKeys.map((key) => [key, euRows[i]!.betrag])),
+          },
           location: { latitude: 41 + i * 0.01, longitude: -73 + i * 0.01 },
           eventTimestamp: new Date(2024, 1, 1 + i).toISOString(),
         },
-      });
+      ]);
+      expect(inserted.created).toBe(1);
     }
   });
 
   afterAll(async () => {
     if (testEnv?.cleanup) await testEnv.cleanup();
+  });
+
+  it.each(prototypeFieldKeys)("filters %s using its persisted EU number policy", async (key) => {
+    const stored = await payload.db.drizzle.execute(sql`
+      SELECT transformed_data ? ${key} AS has_key FROM payload.events WHERE dataset_id = ${euDatasetId}
+    `);
+    expect(stored.rows.map((event) => event.has_key)).toEqual([true, true, true]);
+    const data = await requestRange(euDatasetId, Object.fromEntries([[key, { min: 100, max: 1500 }]]));
+    expect(data.pagination.totalDocs).toBe(1);
+    expect(data.events.map((event) => event.data[key])).toEqual(["1.234,56"]);
+  });
+
+  it.each(prototypeFieldKeys)("denies %s when stored values have no number policy", async (key) => {
+    const data = await requestRange(usDatasetId, Object.fromEntries([[key, { min: 0, max: 100 }]]));
+    expect(data.pagination.totalDocs).toBe(0);
+    expect(data.events).toEqual([]);
   });
 
   it("filters a US column by a min/max range (inclusive), excluding non-numeric cells", async () => {

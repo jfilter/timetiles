@@ -4,6 +4,7 @@
  * @module
  * @category Tests
  */
+import { OpenApiGeneratorV3 } from "@asteasolutions/zod-to-openapi";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -18,6 +19,28 @@ import {
 
 describe("event schemas", () => {
   describe("EventFiltersSchema", () => {
+    it.each(["rf", "ff"])("rejects entry arrays for %s", (parameter) => {
+      expect(EventFiltersSchema.safeParse({ [parameter]: "[]" }).success).toBe(false);
+    });
+
+    it("validates prototype-named filter values", () => {
+      expect(EventFiltersSchema.safeParse({ rf: '{"__proto__":{"min":50,"max":10}}' }).success).toBe(false);
+      expect(EventFiltersSchema.safeParse({ ff: '{"__proto__":[42]}' }).success).toBe(false);
+    });
+
+    it("describes filter records as objects in OpenAPI", () => {
+      const generated = new OpenApiGeneratorV3([
+        { type: "schema", schema: EventFiltersSchema.openapi("Filters") },
+      ]).generateComponents();
+      const schema = generated.components?.schemas?.Filters;
+      expect(schema).toMatchObject({
+        properties: {
+          ff: { type: "object", maxProperties: 20, additionalProperties: { type: "array", maxItems: 100 } },
+          rf: { type: "object", maxProperties: 20, additionalProperties: { type: "object" } },
+        },
+      });
+    });
+
     it("should accept empty filters", () => {
       const result = EventFiltersSchema.safeParse({});
       expect(result.success).toBe(true);
@@ -34,6 +57,17 @@ describe("event schemas", () => {
       if (result.success) {
         expect(result.data.rf).toEqual({ price: { min: 10, max: 50 } });
       }
+    });
+
+    it.each([
+      ["rf", { min: 10, max: 50 }],
+      ["ff", ["selected"]],
+    ])("preserves the __proto__ key in %s", (parameter, value) => {
+      const filters = Object.fromEntries([["__proto__", value]]);
+      const result = EventFiltersSchema.parse({ [parameter]: JSON.stringify(filters) });
+      const parsed = parameter === "rf" ? result.rf : result.ff;
+      expect(Object.entries(parsed)).toEqual(Object.entries(filters));
+      expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
     });
 
     it("defaults rf to an empty object when absent", () => {
