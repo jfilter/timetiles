@@ -9,9 +9,11 @@
  * @module
  */
 
+import { createLocalReq } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { safeFindByID } from "@/lib/api/errors";
+import { safeFetchRecord } from "@/lib/collections/catalog-ownership";
 import type { Catalog, Dataset, Event, User } from "@/payload-types";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -45,7 +47,13 @@ describe.sequential("Hierarchical Access Control", () => {
     });
   });
 
-  it("should preserve read hook failures through safeFindByID", async () => {
+  it("should return null only for missing records in trusted hook lookups", async () => {
+    const req = await createLocalReq({ user: otherUser }, payload);
+    expect((await safeFetchRecord(req, "catalogs", privateCatalog.id))?.id).toBe(privateCatalog.id);
+    expect(await safeFetchRecord(req, "catalogs", 2147483647)).toBeNull();
+  });
+
+  it.each(["safeFindByID", "safeFetchRecord"])("should preserve read hook failures through %s", async (helper) => {
     const hooks = payload.collections.catalogs.config.hooks;
     const original = hooks.beforeRead;
     const failure = new Error("Catalog read hook failed");
@@ -56,9 +64,12 @@ describe.sequential("Hierarchical Access Control", () => {
       },
     ];
     try {
-      await expect(
-        safeFindByID(payload, { collection: "catalogs", id: privateCatalog.id, user: ownerUser })
-      ).rejects.toBe(failure);
+      const req = await createLocalReq({ user: ownerUser }, payload);
+      const lookup =
+        helper === "safeFetchRecord"
+          ? safeFetchRecord(req, "catalogs", privateCatalog.id)
+          : safeFindByID(payload, { collection: "catalogs", id: privateCatalog.id, user: ownerUser });
+      await expect(lookup).rejects.toBe(failure);
     } finally {
       hooks.beforeRead = original;
     }

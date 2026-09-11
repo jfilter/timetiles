@@ -84,8 +84,7 @@ const processCatalogValidation = async (
   const catalog = await safeFetchRecord(req, "catalogs", catalogId);
 
   if (!catalog) {
-    // Fail closed. safeFetchRecord swallows a transient DB error the same as a
-    // missing row, and both of the alternatives are worse than refusing the write:
+    // Fail closed on a missing catalog. Both alternatives are worse than refusing the write:
     // omitting catalogCreatorId keeps the previous owner readable (Payload drops
     // undefined), writing null strips the real owner out of their own dataset —
     // catalogCreatorId is what `access.update` filters on. The FK guarantees the

@@ -90,7 +90,7 @@ export const validateDatasetCatalogOwnership = async (
 
 /**
  * Safe fetch by ID in a Payload hook context (uses `req` for transaction sharing).
- * Returns null instead of throwing on not-found or permission errors.
+ * Trusted internal lookup: returns null for missing records and propagates other errors.
  */
 export const safeFetchRecord = async <TSlug extends CollectionSlug>(
   req: PayloadRequest,
@@ -98,11 +98,7 @@ export const safeFetchRecord = async <TSlug extends CollectionSlug>(
   id: number | string,
   depth = 0
 ): Promise<CollectionDoc<TSlug> | null> => {
-  try {
-    return await req.payload.findByID({ collection, id, depth, overrideAccess: true, req });
-  } catch {
-    return null;
-  }
+  return req.payload.findByID({ collection, id, depth, overrideAccess: true, disableErrors: true, req });
 };
 
 /**
