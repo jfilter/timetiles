@@ -119,9 +119,21 @@ describe("buildRangeFilterConditions", () => {
     expect(chunks.some((c) => c.includes("',', '.'"))).toBe(true);
   });
 
-  it("denies fields with no resolved NumberFormat (never casts blind)", () => {
-    const conditions = buildRangeFilterConditions({ price: { min: 1 } }, {});
+  it.each(["price", "__proto__", "constructor", "toString"])("denies %s without an own NumberFormat", (key) => {
+    const conditions = buildRangeFilterConditions(Object.fromEntries([[key, { min: 1 }]]), {});
     expect(collectQueryStrings(conditions)).toEqual(["sql", "FALSE"]);
+  });
+
+  it.each(["__proto__", "constructor", "toString"])("enforces %s with an own NumberFormat", (key) => {
+    const conditions = buildRangeFilterConditions(
+      Object.fromEntries([[key, { min: 1 }]]),
+      Object.fromEntries([[key, EU]])
+    );
+    expect(conditions).toHaveLength(1);
+    expect(collectInterpolatedStrings(conditions)).toContain(key);
+    expect(collectInterpolatedStrings(conditions)).toContain(".");
+    expect(collectQueryStrings(conditions).join(" ")).toContain("',', '.'");
+    expect(collectNumbers(conditions)).toEqual([1]);
   });
 
   it("denies invalid field keys", () => {

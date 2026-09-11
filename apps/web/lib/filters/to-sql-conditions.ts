@@ -222,7 +222,7 @@ export const buildRangeFilterConditions = (
     // Never omit an active constraint just because it cannot be enforced.
     // This also protects stats routes that resolve formats without the shared
     // event-query resolver. An empty range above remains a harmless no-op.
-    const format = numberFormats?.[fieldKey];
+    const format = numberFormats && Object.hasOwn(numberFormats, fieldKey) ? numberFormats[fieldKey] : undefined;
     if (!isValidFieldKey(fieldKey) || !format) return [sql`FALSE`];
 
     const safeNumeric = buildNormalizedNumericExpr(fieldKey, format);
