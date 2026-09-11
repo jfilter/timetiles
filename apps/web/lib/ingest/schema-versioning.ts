@@ -164,8 +164,7 @@ export class SchemaVersioningService {
     const hasCallerTransaction = Boolean(req?.transactionID);
     await this.acquireDatasetLock(payload, normalizedDatasetId, req);
 
-    let lastError: unknown;
-    for (let attempt = 1; attempt <= MAX_CREATE_ATTEMPTS; attempt++) {
+    for (let attempt = 1; ; attempt++) {
       logger.info("Getting next schema version", { datasetId, attempt });
       const nextVersion = await this.getNextSchemaVersion(payload, normalizedDatasetId, req);
 
@@ -207,7 +206,6 @@ export class SchemaVersioningService {
 
         return schemaVersion;
       } catch (error) {
-        lastError = error;
         // Payload rolls back and clears req.transactionID on create failure.
         // Retrying here would silently commit outside the caller's transaction.
         if (!hasCallerTransaction && isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
@@ -229,8 +227,6 @@ export class SchemaVersioningService {
         throw error;
       }
     }
-
-    throw lastError instanceof Error ? lastError : new Error("Failed to create schema version after retries");
   }
 
   /**

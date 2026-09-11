@@ -52,6 +52,21 @@ describe.sequential("SchemaVersioningService", () => {
     expect(mockPayload.create).toHaveBeenCalledTimes(1);
   });
 
+  it("stops after five standalone unique conflicts and preserves the final error", async () => {
+    const failure = { code: "23505" };
+    mockPayload.find.mockResolvedValue({ docs: [] });
+    mockPayload.create.mockRejectedValue(failure);
+
+    await expect(
+      SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+        dataset: 123,
+        schema: { type: "object" },
+      })
+    ).rejects.toBe(failure);
+    expect(mockPayload.create).toHaveBeenCalledTimes(5);
+    expect(mockPayload.find).toHaveBeenCalledTimes(5);
+  });
+
   describe("getNextSchemaVersion", () => {
     it("should return 1 for first schema version when no existing schemas", async () => {
       mockPayload.find.mockResolvedValueOnce({ docs: [] });
