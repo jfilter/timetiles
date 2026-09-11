@@ -388,8 +388,7 @@
     "cannotDeleteSystemUser": "System accounts cannot be deleted.",
     "cannotDeleteAlreadyDeleted": "This account is already deleted.",
     "cannotDeleteLastAdmin": "You are the last administrator and cannot delete your account. Assign another admin first.",
-    "cannotDeleteActiveJobs": "You have active imports running. Please wait for them to finish before deleting your account.",
-    "failedToScheduleDeletion": "Failed to schedule deletion"
+    "cannotDeleteActiveJobs": "You have active imports running. Please wait for them to finish before deleting your account."
   },
   "DataExport": {
     "title": "Download My Data",

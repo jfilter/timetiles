@@ -18,8 +18,9 @@ import { commitTransaction, createLocalReq, initTransaction, killTransaction } f
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AccountDeletionService } from "@/lib/account/deletion-service";
-import { createAccountDeletionService, DELETION_GRACE_PERIOD_DAYS } from "@/lib/account/deletion-service";
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { createSystemUserService, SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
+import { getAppConfig } from "@/lib/config/app-config";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { User } from "@/payload-types";
@@ -199,12 +200,13 @@ describe.sequential("Account Deletion Service", () => {
       expect(updatedUser.deletionStatus).toBe("pending_deletion");
       expect(updatedUser.deletionScheduledAt).toBe(result.deletionScheduledAt);
 
-      // Verify grace period is approximately 7 days
+      const gracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
+      expect(result.gracePeriodDays).toBe(gracePeriodDays);
       const scheduledDate = new Date(result.deletionScheduledAt);
       const now = new Date();
       const daysDiff = (scheduledDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      expect(daysDiff).toBeGreaterThan(DELETION_GRACE_PERIOD_DAYS - 0.1);
-      expect(daysDiff).toBeLessThan(DELETION_GRACE_PERIOD_DAYS + 0.1);
+      expect(daysDiff).toBeGreaterThan(gracePeriodDays - 0.1);
+      expect(daysDiff).toBeLessThan(gracePeriodDays + 0.1);
     });
 
     it("should throw if user cannot be deleted", async () => {

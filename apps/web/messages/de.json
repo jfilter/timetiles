@@ -388,8 +388,7 @@
     "cannotDeleteSystemUser": "Systemkonten können nicht gelöscht werden.",
     "cannotDeleteAlreadyDeleted": "Dieses Konto ist bereits gelöscht.",
     "cannotDeleteLastAdmin": "Sie sind der letzte Administrator und können Ihr Konto nicht löschen. Bestimmen Sie zuerst einen anderen Administrator.",
-    "cannotDeleteActiveJobs": "Es laufen noch aktive Importe. Bitte warten Sie, bis diese abgeschlossen sind, bevor Sie Ihr Konto löschen.",
-    "failedToScheduleDeletion": "Löschung konnte nicht geplant werden"
+    "cannotDeleteActiveJobs": "Es laufen noch aktive Importe. Bitte warten Sie, bis diese abgeschlossen sind, bevor Sie Ihr Konto löschen."
   },
   "DataExport": {
     "title": "Meine Daten herunterladen",

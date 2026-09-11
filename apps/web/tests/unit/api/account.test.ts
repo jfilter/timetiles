@@ -76,7 +76,6 @@ vi.mock("@/lib/account/deletion-service", () => ({
       cancelDeletion: mocks.mockCancelDeletion,
       getDeletionSummary: mocks.mockGetDeletionSummary,
     }),
-  DELETION_GRACE_PERIOD_DAYS: 7,
 }));
 
 import type { NextRequest } from "next/server";

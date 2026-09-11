@@ -12,14 +12,7 @@ import { getAppConfig } from "@/lib/config/app-config";
 import { IP_RETENTION_DAYS } from "@/lib/constants/account-constants";
 import type { Page } from "@/payload-types";
 
-/**
- * Grace period the deployment actually enforces.
- *
- * `DELETION_GRACE_PERIOD_DAYS` is the client-side display default; the deletion
- * service schedules against `getAppConfig().account.deletionGracePeriodDays`.
- * Seeding the privacy policy from the constant made the published policy
- * contradict the configured behaviour whenever an operator changed it.
- */
+/** Grace period enforced by this deployment and reflected in its seeded privacy policies. */
 const deletionGracePeriodDays = getAppConfig().account.deletionGracePeriodDays;
 
 /** Seed data type for Pages. Allows string slugs for relationship fields (resolved at seed time). */

@@ -35,8 +35,6 @@ export type { CanDeleteResult, DeletionSummary, ExecuteDeletionResult, ScheduleD
 
 const logger = createLogger("account-deletion-service");
 
-export { DELETION_GRACE_PERIOD_DAYS } from "@/lib/constants/account-constants";
-
 /** Error message for user not found. */
 const USER_NOT_FOUND = "User not found";
 
