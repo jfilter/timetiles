@@ -10,7 +10,7 @@ import { Cards } from "nextra/components";
 
 <Cards num={2}>
   <Cards.Card title="File Upload" href="./file-upload" arrow>
-    Upload CSV, Excel, or ODS files manually.
+    Upload CSV, Excel, ODS, JSON, or GeoJSON files manually.
   </Cards.Card>
   <Cards.Card title="Scheduled Imports" href="./scheduled-imports" arrow>
     Fetch data from a URL on a recurring schedule.
@@ -39,12 +39,13 @@ Source (file, URL, or scraper output)
 
 ## Supported Formats
 
-| Format       | Extensions      | Notes                                                                                                                                          |
-| ------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| CSV          | `.csv`          | Comma, semicolon, or tab delimited — auto-detected                                                                                             |
-| Excel        | `.xlsx`, `.xls` | Multi-sheet files create one dataset per sheet                                                                                                 |
-| OpenDocument | `.ods`          | Spreadsheet format                                                                                                                             |
-| JSON API     | URL             | Available via [Scheduled Imports](./scheduled-imports) only (not direct upload). Fetched from a remote endpoint and converted to tabular data. |
+| Format       | Extensions          | Notes                                                                                                                                 |
+| ------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV          | `.csv`              | Comma, semicolon, or tab delimited — auto-detected                                                                                    |
+| Excel        | `.xlsx`, `.xls`     | Multi-sheet files create one dataset per sheet                                                                                        |
+| OpenDocument | `.ods`              | Spreadsheet format                                                                                                                    |
+| JSON         | `.json`             | Uploaded records are converted to tabular data. Remote JSON APIs are also supported through [Scheduled Imports](./scheduled-imports). |
+| GeoJSON      | `.geojson`, `.json` | Feature or FeatureCollection, converted to tabular data before preview.                                                               |
 
 ## Schema Detection
 
