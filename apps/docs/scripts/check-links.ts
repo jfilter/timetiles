@@ -141,6 +141,7 @@ const checkExternalLink = async (url: string): Promise<{ valid: boolean; error?:
     });
 
     clearTimeout(timeout);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return { valid: response.ok };
   } catch {
     // Try GET if HEAD fails
