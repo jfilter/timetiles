@@ -5,6 +5,7 @@
  * @module
  */
 
+import { createLocalReq, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { Catalog, User } from "@/payload-types";
@@ -69,6 +70,36 @@ describe.sequential("Dataset name uniqueness per catalog", () => {
     await expect(
       payload.update({ collection: "datasets", id: datasetB.id, data: { name: nameA }, overrideAccess: true })
     ).rejects.toThrow("A dataset with this name already exists in this catalog.");
+  });
+
+  it("sees a name freed by an earlier rename in the same transaction", async () => {
+    const nameA = `Original A ${crypto.randomUUID()}`;
+    const nameB = `Original B ${crypto.randomUUID()}`;
+    const { dataset: datasetA } = await withDataset(testEnv, catalogA.id, { name: nameA });
+    const { dataset: datasetB } = await withDataset(testEnv, catalogA.id, { name: nameB });
+    const req = await createLocalReq({ user }, payload);
+    expect(await initTransaction(req)).toBe(true);
+    try {
+      await payload.update({
+        collection: "datasets",
+        id: datasetA.id,
+        data: { name: `${nameA} renamed` },
+        overrideAccess: true,
+        req,
+      });
+      const renamed = await payload.update({
+        collection: "datasets",
+        id: datasetB.id,
+        data: { name: nameA },
+        overrideAccess: true,
+        req,
+      });
+      expect(renamed.name).toBe(nameA);
+    } finally {
+      await killTransaction(req);
+    }
+    expect((await payload.findByID({ collection: "datasets", id: datasetA.id })).name).toBe(nameA);
+    expect((await payload.findByID({ collection: "datasets", id: datasetB.id })).name).toBe(nameB);
   });
 
   it("allows updating a dataset while keeping its own name", async () => {

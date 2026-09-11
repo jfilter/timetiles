@@ -448,6 +448,7 @@ export const validateDatasetNameUniqueness: CollectionBeforeChangeHook = async (
     limit: 1,
     overrideAccess: true,
     depth: 0,
+    req,
   });
 
   if (existing.docs.length > 0) {
