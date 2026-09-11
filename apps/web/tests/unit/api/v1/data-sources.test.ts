@@ -76,6 +76,22 @@ describe.sequential("GET /api/v1/data-sources", () => {
     });
   });
 
+  it.each([
+    { catalog: 7, expected: 7 },
+    { catalog: { id: 7 }, expected: 7 },
+    { catalog: null, expected: null },
+    { catalog: undefined, expected: null },
+  ])("normalizes catalog relationship $catalog", async ({ catalog, expected }) => {
+    mocks.mockPayloadFind
+      .mockResolvedValueOnce({ docs: [] })
+      .mockResolvedValueOnce({ docs: [{ id: 10, name: "Dataset", catalog }] });
+
+    const response = await GET(createRequest(), { params: Promise.resolve({}) });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.datasets[0].catalogId).toBe(expected);
+  });
+
   it("validates the dataset page size", async () => {
     const response = await GET(createRequest("?limit=501"), { params: Promise.resolve({}) });
 

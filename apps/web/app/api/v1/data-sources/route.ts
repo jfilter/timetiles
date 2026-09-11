@@ -31,18 +31,6 @@ const DataSourcesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(MAX_DATASET_LIMIT).default(DEFAULT_DATASET_LIMIT),
 });
 
-const resolveCatalogId = (catalog: number | { id: number } | null | undefined): number | null => {
-  if (typeof catalog === "number") {
-    return catalog;
-  }
-
-  if (catalog && typeof catalog === "object") {
-    return catalog.id;
-  }
-
-  return null;
-};
-
 export const GET = apiRoute({
   auth: "optional",
   query: DataSourcesQuerySchema,
@@ -87,7 +75,7 @@ export const GET = apiRoute({
     const datasets: DataSourceDataset[] = datasetsResult.docs.map((d) => ({
       id: d.id,
       name: d.name,
-      catalogId: resolveCatalogId(d.catalog),
+      catalogId: extractRelationId(d.catalog) ?? null,
       hasTemporalData: d.hasTemporalData ?? true,
       description: richTextToPlainText(d.description, DESCRIPTION_MAX_LENGTH),
       language: d.language ?? undefined,
