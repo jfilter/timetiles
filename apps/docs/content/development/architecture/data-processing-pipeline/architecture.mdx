@@ -25,7 +25,7 @@ Data flows through the system in a carefully controlled path:
 
 This approach provides several benefits:
 
-- **Memory efficiency**: Batch processing prevents memory exhaustion on large files
+- **Memory efficiency**: Batch processing limits the rows buffered for each processing step
 - **Database efficiency**: Minimal database writes during processing
 - **Clean separation**: Processing logic is independent of storage
 - **Recovery support**: Workflows retry failed tasks and resume reviewed sheets at defined processing stages
@@ -179,11 +179,13 @@ Many stages build up results progressively across batches:
 
 This approach enables:
 
-- Processing files larger than available memory
+- Processing files without loading all source rows into memory at once
 - Incremental progress tracking
 - Partial recovery from failures
 
 Batch progress is not a durable resume cursor. Review approval and manual recovery select a workflow stage; a restarted duplicate-analysis task reads the file again from the beginning.
+
+Batching does not bound all memory usage. Duplicate analysis retains a map of unique IDs and a list of duplicate rows across batches. The unique-row limit stops oversized sheets, but batch size alone is not a guarantee against memory exhaustion.
 
 ## Data Flow Principles
 
@@ -228,8 +230,8 @@ The architecture scales effectively across multiple dimensions:
 
 **Memory Efficiency**:
 
-- Batch processing prevents memory exhaustion
-- Configurable batch sizes tune memory usage
+- Batch processing limits per-batch row buffers
+- Configurable batch sizes tune buffer usage, not the accumulated duplicate-analysis state
 - Progressive processing reduces peak memory
 
 **Database Efficiency**:
