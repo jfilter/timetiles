@@ -63,6 +63,31 @@ export const belongsToUser = (key: string, userId: string): boolean => {
   return segments.at(-2) === "user" && segments.at(-1) === userId;
 };
 
+/** Split directives without interpreting commas inside quoted extension values. */
+const parseCacheControl = (header = ""): Map<string, string> => {
+  const directives = new Map<string, string>();
+  let start = 0;
+  let quoted = false;
+  for (let index = 0; index <= header.length; index++) {
+    const character = header[index];
+    if (quoted && character === "\\") {
+      index++;
+      continue;
+    }
+    if (character === '"') quoted = !quoted;
+    if (index !== header.length && (character !== "," || quoted)) continue;
+
+    const directive = header.slice(start, index).trim();
+    start = index + 1;
+    const separator = directive.indexOf("=");
+    const name = (separator < 0 ? directive : directive.slice(0, separator)).trim().toLowerCase();
+    let value = separator < 0 ? "" : directive.slice(separator + 1).trim();
+    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+    if (name && !directives.has(name)) directives.set(name, value);
+  }
+  return directives;
+};
+
 export class UrlFetchCache {
   private readonly cache: Cache;
   private readonly defaultTTL: number;
@@ -87,19 +112,7 @@ export class UrlFetchCache {
    * Parse Cache-Control header for max-age
    */
   private parseMaxAge(cacheControl?: string): number | undefined {
-    if (!cacheControl) return undefined;
-    const maxAgeDirective = cacheControl
-      .split(",")
-      .map((directive) => directive.trim().toLowerCase())
-      .find((directive) => directive.startsWith("max-age="));
-
-    if (!maxAgeDirective) {
-      return undefined;
-    }
-
-    const argument = maxAgeDirective.slice("max-age=".length);
-    const value = argument.startsWith('"') && argument.endsWith('"') ? argument.slice(1, -1) : argument;
-    const parsedMaxAge = parseStrictInteger(value);
+    const parsedMaxAge = parseStrictInteger(parseCacheControl(cacheControl).get("max-age"));
     return parsedMaxAge ?? undefined;
   }
 
@@ -127,10 +140,11 @@ export class UrlFetchCache {
       age + Math.max(0, now - requestTime) / 1000
     );
     const remaining = (lifetime: number) => Math.max(0, Math.min(lifetime - currentAge, this.maxTTL));
-    const cacheControl = headers["cache-control"]?.toLowerCase();
+    const cacheControl = headers["cache-control"];
     if (cacheControl) {
       // Check for no-store or no-cache
-      if (cacheControl.includes("no-store") || cacheControl.includes("no-cache")) {
+      const directives = parseCacheControl(cacheControl);
+      if (directives.has("no-store") || directives.has("no-cache")) {
         return 0; // Don't cache
       }
 
@@ -321,9 +335,7 @@ export class UrlFetchCache {
     options?: CacheRequestOptions
   ): Promise<CachedResponse> {
     logger.debug("HTTP cache stale, attempting revalidation");
-    const mustRevalidate = cached.headers["cache-control"]
-      ?.split(",")
-      .some((directive) => directive.trim().toLowerCase() === "must-revalidate");
+    const mustRevalidate = parseCacheControl(cached.headers["cache-control"]).has("must-revalidate");
     const headers = new Headers(options?.headers);
 
     if (cached.metadata.etag) {
@@ -593,11 +605,8 @@ export class UrlFetchCache {
   }
 
   private isCacheable(status: number, headers: Record<string, string>): boolean {
-    const cacheControl = headers["cache-control"]?.toLowerCase();
-    if (cacheControl) {
-      if (cacheControl.includes("no-store")) return false;
-      if (cacheControl.includes("private")) return false;
-    }
+    const directives = parseCacheControl(headers["cache-control"]);
+    if (directives.has("no-store") || directives.has("private")) return false;
     return status >= 200 && status < 300 && status !== 206;
   }
 

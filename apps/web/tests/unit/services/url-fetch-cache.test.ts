@@ -88,9 +88,31 @@ describe("UrlFetchCache", () => {
     expect(set).not.toHaveBeenCalled();
   });
 
+  it.each([
+    "x-no-store",
+    "x-no-cache",
+    "x-private",
+    'extension="no-store, no-cache, private"',
+    String.raw`extension="escaped \" , no-store"`,
+  ])("does not treat extension %s as a standard directive", async (extension) => {
+    const set = vi.spyOn(Cache.prototype, "set").mockResolvedValue();
+    vi.spyOn(Cache.prototype, "delete").mockResolvedValue(true);
+    const cache = new UrlFetchCache() as unknown as {
+      cacheResponse: (key: string, data: Buffer, headers: Record<string, string>, status: number) => Promise<void>;
+    };
+    await cache.cacheResponse(
+      "extension-test",
+      Buffer.from("data"),
+      { "cache-control": `${extension}, max-age=60` },
+      200
+    );
+    expect(set).toHaveBeenCalledOnce();
+  });
+
   it("accepts mixed-case max-age directives", () => {
     const cache = new UrlFetchCache() as unknown as { parseMaxAge: (value: string) => number | undefined };
     expect(cache.parseMaxAge("public, MAX-AGE=60")).toBe(60);
+    expect(cache.parseMaxAge('extension="value, max-age=0", max-age="60"')).toBe(60);
   });
 
   it("ignores malformed Cache-Control max-age directives", () => {
