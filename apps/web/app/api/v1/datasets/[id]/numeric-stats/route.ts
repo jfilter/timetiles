@@ -34,6 +34,7 @@ import { buildCanonicalFilters } from "@/lib/filters/build-canonical-filters";
 import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { buildNormalizedNumericExpr, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
 import { formatFieldLabel } from "@/lib/utils/format";
@@ -57,10 +58,10 @@ const readNumberFieldTypes = (fieldTypes: unknown): string[] => {
 
 export const GET = apiRoute({
   auth: "optional",
-  params: z.object({ id: z.string().regex(/^\d+$/) }),
+  params: z.object({ id: NumericIdParamSchema }),
   query: EventFiltersSchema,
   handler: async ({ payload, params, query, user }) => {
-    const datasetId = Number(params.id);
+    const datasetId = params.id;
 
     // Use Payload's built-in access control instead of overrideAccess.
     const dataset = await payload.findByID({
