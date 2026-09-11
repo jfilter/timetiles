@@ -30,14 +30,23 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ============================================================================
-# Docker Infrastructure Status
+# Database Infrastructure Status
 # ============================================================================
-echo "🐳 Docker Infrastructure:"
-
-if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
-    print_success "PostgreSQL container is running"
+if [ "${PG_MODE:-docker}" = "local" ]; then
+    echo "🐘 Local PostgreSQL:"
+    if pg_isready -h localhost -p "${PG_PORT:-5433}" >/dev/null 2>&1; then
+        print_success "PostgreSQL is ready on port ${PG_PORT:-5433}"
+    else
+        print_missing "PostgreSQL is not ready (run 'make ensure-infra')"
+    fi
 else
-    print_missing "PostgreSQL is not running (run 'make up')"
+    echo "🐳 Docker Infrastructure:"
+
+    if docker compose -f docker-compose.dev.yml ps --services --filter status=running 2>/dev/null | grep -q postgres; then
+        print_success "PostgreSQL container is running"
+    else
+        print_missing "PostgreSQL is not running (run 'make up')"
+    fi
 fi
 
 echo ""

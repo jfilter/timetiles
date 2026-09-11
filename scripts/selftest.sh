@@ -87,20 +87,31 @@ check_prerequisites() {
         print_missing "pnpm not found"
     fi
 
-    # Docker
-    if command -v docker >/dev/null 2>&1; then
-        VERSION=$(docker --version | cut -d' ' -f3 | tr -d ',')
-        print_success "docker ($VERSION)"
-    else
-        print_missing "docker not found"
+    # Docker is optional when using local PostgreSQL.
+    if [ "${PG_MODE:-docker}" = "docker" ]; then
+        if command -v docker >/dev/null 2>&1; then
+            VERSION=$(docker --version | cut -d' ' -f3 | tr -d ',')
+            print_success "docker ($VERSION)"
+        else
+            print_missing "docker not found"
+        fi
+
+        # Docker Compose
+        if docker compose version >/dev/null 2>&1; then
+            print_success "docker compose"
+        else
+            print_missing "docker compose not found"
+        fi
     fi
 
-    # Docker Compose
-    if docker compose version >/dev/null 2>&1; then
-        print_success "docker compose"
-    else
-        print_missing "docker compose not found"
-    fi
+    # These clients are used by Make targets in both database modes.
+    for client in psql pg_isready; do
+        if command -v "$client" >/dev/null 2>&1; then
+            print_success "$client"
+        else
+            print_missing "$client not found (install PostgreSQL client tools)"
+        fi
+    done
 
     # jq (JSON processor for scripts)
     if command -v jq >/dev/null 2>&1; then

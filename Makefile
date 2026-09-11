@@ -15,7 +15,7 @@ all: help
 
 # Validate environment prerequisites and setup completion
 selftest:
-	@./scripts/selftest.sh
+	@PG_MODE="$(PG_MODE)" ./scripts/selftest.sh
 
 # Start the development environment
 up:
@@ -168,7 +168,7 @@ ensure-infra:
 
 # Check development environment status
 status:
-	@./scripts/status.sh
+	@PG_MODE="$(PG_MODE)" PG_PORT="$(PG_PORT)" ./scripts/status.sh
 
 # Run background job worker (alternative to autoRun for testing worker isolation)
 jobs: ensure-infra
