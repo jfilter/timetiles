@@ -1,8 +1,7 @@
 /**
  * Account settings page.
  *
- * Allows users to view their profile information and manage account settings,
- * including scheduling account deletion with a 7-day grace period.
+ * Allows users to view their profile information and manage account settings.
  *
  * @module
  * @category Pages
