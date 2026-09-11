@@ -30,6 +30,7 @@ import { ConflictError } from "@/lib/api/errors";
 import { getEnv } from "@/lib/config/env";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { createLogger } from "@/lib/logger";
+import type { User } from "@/payload-types";
 
 import { activateDataPackage } from "./activation-service";
 import { loadAllManifests } from "./manifest-loader";
@@ -96,11 +97,8 @@ const activateOne = async (
   payload: Payload,
   entry: ActivationEntry,
   manifest: DataPackageManifest,
-  userId: number
+  user: User
 ): Promise<"new" | "exists" | "fail"> => {
-  // activateDataPackage takes the full User object but only reads .id
-  // for createdBy / updatedBy fields — pass a minimal stub.
-  const user = { id: userId } as Parameters<typeof activateDataPackage>[2];
   try {
     await activateDataPackage(payload, manifest, user, { parameters: entry.params, triggerFirstImport: true });
     return "new";
@@ -150,7 +148,7 @@ export const runAutoActivations = async (payload: Payload): Promise<void> => {
       result.failed += 1;
       continue;
     }
-    const outcome = await activateOne(payload, entry, manifest, systemUser.id);
+    const outcome = await activateOne(payload, entry, manifest, systemUser);
     if (outcome === "new") result.newlyActivated += 1;
     else if (outcome === "exists") result.alreadyActive += 1;
     else result.failed += 1;
