@@ -188,8 +188,7 @@ export const patchPlanFromBody = (
 const applyFieldMappingOverrides = async (
   payload: Parameters<Parameters<typeof apiRoute>[0]["handler"]>[0]["payload"],
   ingestJob: IngestJob,
-  body: ApproveBody,
-  ingestJobId: string
+  body: ApproveBody
 ): Promise<boolean> => {
   if (!hasOverridePicks(body)) return false;
 
@@ -223,14 +222,17 @@ const applyFieldMappingOverrides = async (
 
   await payload.update({
     collection: COLLECTION_NAMES.INGEST_JOBS,
-    id: ingestJobId,
+    id: ingestJob.id,
     data: {
       ...(jobPlan ? { interpretationPlan: jobPlan as unknown as Record<string, unknown> } : {}),
       ...configSnapshotUpdate,
     },
   });
 
-  logger.info("Resolved interpretation plan from column picker before approval", { datasetId, ingestJobId });
+  logger.info("Resolved interpretation plan from column picker before approval", {
+    datasetId,
+    ingestJobId: ingestJob.id,
+  });
 
   return true;
 };
@@ -268,7 +270,7 @@ export const POST = apiRoute({
     }
 
     // If user provided field mapping overrides (column picker), set them on the dataset
-    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, String(id));
+    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body);
 
     // Approve by setting schemaValidation.approved = true
     // The afterChange hook handles: skip flags, workflow queueing, or marking completed
