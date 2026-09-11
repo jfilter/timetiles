@@ -466,7 +466,7 @@ describe.sequential("scraperExecutionJob", () => {
       (createIngestFile as any).mockResolvedValue({ ingestFileId: 42 });
     });
 
-    it("should trigger auto-import when autoImport=true and run succeeds with download_url", async () => {
+    it("should trigger auto-import without a target dataset when a successful run has output", async () => {
       setupAutoImportFetch();
 
       const context = createMockContext({ scraperId: 10, triggeredBy: "manual" });
@@ -491,6 +491,19 @@ describe.sequential("scraperExecutionJob", () => {
         return arg.collection === "scraper-runs" && arg.data?.resultFile === 42;
       });
       expect(linkCalls).toHaveLength(1);
+    });
+
+    it("should keep a zero-row run successful without downloading or importing its output", async () => {
+      setupAutoImportFetch({ output: { rows: 0, bytes: 9, download_url: "/output/test-uuid-1234/data.csv" } });
+
+      const result = await scraperExecutionJob.handler(createMockContext({ scraperId: 10, triggeredBy: "manual" }));
+
+      expect(result.output.status).toBe("success");
+      expect(result.output.ingestFileId).toBeUndefined();
+      expect(result.output.autoImportError).toBeUndefined();
+      expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+      const { createIngestFile } = await import("@/lib/ingest/create-ingest-file");
+      expect(createIngestFile).not.toHaveBeenCalled();
     });
 
     it("should still succeed when auto-import fails", async () => {
