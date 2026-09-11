@@ -23,7 +23,7 @@ import type { RunnerResponse } from "./runner-api";
 const log = createLogger("scraper-execution-job");
 
 /**
- * Create an import-files record from scraper CSV output, following
+ * Create an ingest-files record from scraper CSV output, following
  * the same pattern as the url-fetch-job.
  */
 export const triggerAutoImport = async (
@@ -31,8 +31,7 @@ export const triggerAutoImport = async (
   scraper: Scraper,
   repo: ScraperRepo,
   runId: number,
-  downloadUrl: string,
-  outputBytes: number
+  downloadUrl: string
 ): Promise<number | string> => {
   const { payload } = context.req;
   const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
@@ -97,19 +96,19 @@ export const triggerAutoImport = async (
     },
   };
 
-  // Create import file, queue detection, and mark as parsing
+  // Create the ingest file; the parent workflow continues processing it.
   const { ingestFileId } = await createIngestFile({
     payload,
     importFileData,
-    file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: outputBytes },
+    file: { data: csvBuffer, mimetype: "text/csv", name: filename, size: csvBuffer.length },
     user,
   });
 
-  // Link import file to the scraper run (import-files IDs are always numeric)
+  // Link ingest file to the scraper run (ingest-files IDs are always numeric)
   await payload.update({ collection: "scraper-runs", id: runId, data: { resultFile: ingestFileId as number } });
 
   log.info(
-    { ingestFileId, scraperId: scraper.id, scraperRunId: runId, filename, size: outputBytes },
+    { ingestFileId, scraperId: scraper.id, scraperRunId: runId, filename, size: csvBuffer.length },
     "Auto-import triggered from scraper output"
   );
 
@@ -194,14 +193,7 @@ export const handleRunSuccess = async (
   const hasRowsToImport = (result.output?.rows ?? 0) > 0;
   if (scraper.autoImport && result.status === "success" && result.output?.download_url && hasRowsToImport) {
     try {
-      ingestFileId = await triggerAutoImport(
-        context,
-        scraper,
-        repo,
-        runId,
-        result.output.download_url,
-        result.output.bytes
-      );
+      ingestFileId = await triggerAutoImport(context, scraper, repo, runId, result.output.download_url);
 
       // Clean up output on runner (best-effort)
       try {

@@ -420,7 +420,7 @@ describe.sequential("scraperExecutionJob", () => {
   });
 
   describe("auto-import", () => {
-    const csvData = "id,title\n1,Event 1";
+    const csvData = "id,title\n1,Évent 1";
 
     /**
      * Set up the fetch mock to handle multiple calls:
@@ -481,7 +481,7 @@ describe.sequential("scraperExecutionJob", () => {
         expect.objectContaining({
           payload: mockPayload,
           importFileData: expect.objectContaining({ status: "pending", catalog: 100, user: 200 }),
-          file: expect.objectContaining({ mimetype: "text/csv", size: 2048 }),
+          file: expect.objectContaining({ mimetype: "text/csv", size: Buffer.byteLength(csvData) }),
         })
       );
 
