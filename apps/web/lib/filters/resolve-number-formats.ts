@@ -50,14 +50,17 @@ export const projectNumberFormats = (
   fieldKeys: readonly string[]
 ): Record<string, NumberFormat> => {
   const columns = readPlanColumns(interpretationPlan);
-  const result: Record<string, NumberFormat> = {};
+  const entries: Array<[string, NumberFormat]> = [];
 
   for (const key of fieldKeys) {
     const column = columns.find((c) => c.field === key && c.kind === "number");
     const policy = column?.policy;
     if (!isRecord(policy) || policy.kind !== "number") continue;
-    result[key] = { decimalSeparator: decimalSeparatorOf(policy), thousandsSeparator: thousandsSeparatorOf(policy) };
+    entries.push([
+      key,
+      { decimalSeparator: decimalSeparatorOf(policy), thousandsSeparator: thousandsSeparatorOf(policy) },
+    ]);
   }
 
-  return result;
+  return Object.fromEntries(entries);
 };

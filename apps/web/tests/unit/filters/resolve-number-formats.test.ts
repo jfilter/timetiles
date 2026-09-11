@@ -11,6 +11,14 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 const planWithColumns = (columns: unknown[]) => ({ ops: [], columns, roles: {}, ambiguityResolution: "strict" });
 
 describe("projectNumberFormats", () => {
+  it("preserves a prototype-named column as an own format entry", () => {
+    const plan = planWithColumns([{ field: "__proto__", kind: "number", policy: { kind: "number" } }]);
+    const result = projectNumberFormats(plan, ["__proto__"]);
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.entries(result)).toEqual([["__proto__", { decimalSeparator: ".", thousandsSeparator: null }]]);
+  });
+
   it("ignores malformed column entries while preserving valid columns", () => {
     const plan = planWithColumns([
       null,
