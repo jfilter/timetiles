@@ -48,22 +48,8 @@ vi.mock("pg", () => {
 });
 
 vi.mock("@/lib/config/env", () => ({
-  getEnv: vi.fn(() => ({ DATABASE_URL: process.env.DATABASE_URL })),
+  getEnv: vi.fn(() => ({ DATABASE_URL: "postgresql://localhost/testdb" })),
   resetEnv: vi.fn(),
-}));
-
-vi.mock("@/lib/database/url", () => ({
-  parseDatabaseUrl: vi.fn((url: string) => {
-    const parsed = new URL(url);
-    return {
-      username: parsed.username,
-      password: parsed.password,
-      host: parsed.hostname,
-      port: parsed.port || "5432",
-      database: parsed.pathname.slice(1),
-      fullUrl: url,
-    };
-  }),
 }));
 
 // ─── Source imports ──────────────────────────────────────────────────
@@ -108,8 +94,6 @@ describe.sequential("database operations", () => {
     vi.clearAllMocks();
     pgState.allClients.length = 0;
     pgState.clientFactory = null;
-
-    delete process.env.DATABASE_URL;
   });
 
   // ─── executeDatabaseQuery ─────────────────────────────────────────

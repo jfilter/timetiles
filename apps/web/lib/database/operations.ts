@@ -27,9 +27,7 @@ export const executeDatabaseQuery = async (
   sql: string,
   options: QueryOptions = {}
 ): Promise<string> => {
-  const connectionUrl = options.connectionString ? new URL(options.connectionString) : undefined;
-  if (connectionUrl) connectionUrl.pathname = `/${encodeURIComponent(databaseName)}`;
-  const client = createDatabaseClient({ connectionString: connectionUrl?.toString(), database: databaseName });
+  const client = createDatabaseClient({ connectionString: options.connectionString, database: databaseName });
   try {
     await client.connect();
     const result = await client.query(sql);

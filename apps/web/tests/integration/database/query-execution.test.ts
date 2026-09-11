@@ -28,6 +28,27 @@ describe.sequential("Database query execution", () => {
     await testEnv?.cleanup();
   });
 
+  it("preserves connection options from the current environment", async () => {
+    try {
+      for (const application of ["timetiles-query-first", "timetiles-query-second"]) {
+        const url = new URL(connectionString);
+        url.searchParams.set("application_name", application);
+        vi.stubEnv("DATABASE_URL", url.toString());
+        resetEnv();
+        resetAppConfig();
+        const result = await executeDatabaseQuery(
+          testEnv.dbName,
+          "SELECT current_database() AS db, current_setting('application_name') AS application"
+        );
+        expect(JSON.parse(result)).toEqual([{ db: testEnv.dbName, application }]);
+      }
+    } finally {
+      vi.unstubAllEnvs();
+      resetEnv();
+      resetAppConfig();
+    }
+  });
+
   it.each(["local", "CI", "GITHUB_ACTIONS"])("uses the same connection and result format in %s", async (mode) => {
     vi.stubEnv("CI", mode === "CI" ? "true" : "false");
     vi.stubEnv("GITHUB_ACTIONS", mode === "GITHUB_ACTIONS" ? "true" : "false");
