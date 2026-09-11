@@ -36,7 +36,7 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { buildNormalizedNumericExpr, toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import { toFieldLabel } from "@/lib/utils/strings";
+import { formatFieldLabel } from "@/lib/utils/format";
 
 interface NumericBoundsRow extends Record<string, unknown> {
   min: number | null;
@@ -163,7 +163,7 @@ export const GET = apiRoute({
 
           return {
             path,
-            label: toFieldLabel(path),
+            label: formatFieldLabel(path),
             min: Number(row.min),
             max: Number(row.max),
             isInteger: knownIsInteger ?? row.is_integer ?? false,

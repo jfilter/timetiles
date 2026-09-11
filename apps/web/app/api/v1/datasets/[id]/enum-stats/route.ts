@@ -22,7 +22,7 @@ import { projectNumberFormats } from "@/lib/filters/resolve-number-formats";
 import { toSqlWhereClause } from "@/lib/filters/to-sql-conditions";
 import { EventFiltersSchema } from "@/lib/schemas/events";
 import type { FieldStatistics } from "@/lib/types/schema-detection";
-import { toFieldLabel } from "@/lib/utils/strings";
+import { formatFieldLabel } from "@/lib/utils/format";
 
 /** A composable SQL fragment, matching the alias used in lib/filters/to-sql-conditions. */
 type SqlFragment = ReturnType<typeof sql>;
@@ -108,7 +108,7 @@ const projectFieldStats = (path: string, isTag: boolean, rows: EnumStatsRow[]) =
 
   return {
     path,
-    label: toFieldLabel(path),
+    label: formatFieldLabel(path),
     isTag,
     values: rows.map((r) => ({
       value: String(r.value),
