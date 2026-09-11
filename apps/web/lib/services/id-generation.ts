@@ -96,10 +96,7 @@ const generateContentHashId = (
 ): { uniqueId: string; strategy: string } => {
   let hashData = data;
   if (strategy.excludeFields && strategy.excludeFields.length > 0 && data && typeof data === "object") {
-    const filtered =
-      typeof structuredClone === "function"
-        ? structuredClone(data as Record<string, unknown>)
-        : (JSON.parse(JSON.stringify(data)) as Record<string, unknown>);
+    const filtered = structuredClone(data as Record<string, unknown>);
 
     for (const field of strategy.excludeFields) {
       if (field.fieldPath) {
