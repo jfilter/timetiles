@@ -38,7 +38,7 @@ Server Response: 304 Not Modified (if unchanged)
 
 Server specifies caching behavior:
 
-- `max-age=N` - Cache for N seconds
+- `max-age=N` - Freshness lifetime of N seconds, reduced by the response's age
 - `no-cache` - Do not retain the response; the next import fetches it again
 - `no-store` - Never cache
 - `private` - Not cacheable (response is rejected by the cacheability check, same effect as `no-store`)
@@ -76,7 +76,7 @@ Request → Check cache → Found but stale → Send conditional request with ET
 
 HTTP freshness uses the deadline calculated when storing or revalidating the response. Expired entries may still be read for ETag or Last-Modified revalidation until regular cleanup or size-based eviction removes them. Entries without validators are fetched again. Older entries without a freshness deadline are treated as stale, never as fresh hits.
 
-A `304` reuses the stored body and original success status, rather than rewriting the status to `200`. Revalidated responses use the same storage policy as fresh responses, including TTL, `Vary`, and cacheability checks.
+A `304` reuses the stored body and original success status, rather than rewriting the status to `200`. Revalidated responses use the same storage policy as fresh responses, including TTL, `Vary`, and cacheability checks. Its `Age` and `Date` replace the old response's age information; absent values are not inherited from the old response.
 
 ## TTL Calculation
 
@@ -84,9 +84,11 @@ The cache determines Time-To-Live using this priority order:
 
 1. **`Cache-Control: no-store`** → Don't cache (TTL = 0)
 2. **`Cache-Control: no-cache`** → Don't cache (TTL = 0)
-3. **`Cache-Control: max-age=N`** → Use N seconds
-4. **`Expires` header** → Calculate from expiration date; an already expired response gets TTL = 0
-5. **Default TTL** → Use `cache.urlFetch.defaultTtlSeconds` from `config/timetiles.yml`
+3. **`Cache-Control: max-age=N`** → Use N seconds minus the response's current age
+4. **`Expires` header** → Derive the lifetime from `Expires - Date` (using the current time when `Date` is absent), then subtract the response's current age
+5. **Default TTL** → Use `cache.urlFetch.defaultTtlSeconds` from `config/timetiles.yml`, minus the response's current age
+
+The current age is the greater of the apparent age from `Date` and the upstream `Age` plus elapsed request/body-transfer time, never below zero. For example, `max-age=60` with `Age: 45` leaves at most 15 seconds of freshness, not another minute. Non-positive remaining lifetimes produce TTL = 0 and are not retained.
 
 Positive TTLs are capped by `cache.urlFetch.maxTtlSeconds`. With `respectCacheControl: false`, freshness uses the configured default TTL (still capped by the maximum); responses marked `no-store` or `private` remain excluded by the cacheability check.
 
