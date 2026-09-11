@@ -82,7 +82,7 @@ describe.sequential("POST /api/scraper-repos/[id]/sync", () => {
   });
 
   it("returns 404 when repo not found", async () => {
-    mockPayload.findByID.mockRejectedValue(new Error("Not Found"));
+    mockPayload.findByID.mockResolvedValue(null);
 
     const response = await POST(createRequest(), createParams("5"));
 

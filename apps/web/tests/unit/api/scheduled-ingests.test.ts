@@ -98,7 +98,7 @@ describe.sequential("POST /api/scheduled-ingests/[id]/trigger", () => {
 
   it("should return 404 when schedule not found or access denied", async () => {
     const mockPayload = createMockPayload();
-    mockPayload.findByID.mockRejectedValue(new Error("Not Found"));
+    mockPayload.findByID.mockResolvedValue(null);
     mocks.mockGetPayload.mockResolvedValue(mockPayload);
 
     const response = await POST(createRequest(), { params: Promise.resolve({ id: "1" }) });

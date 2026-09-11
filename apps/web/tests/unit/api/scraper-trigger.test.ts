@@ -87,8 +87,8 @@ describe.sequential("POST /api/scrapers/[id]/run", () => {
     expect(mockPayload.findByID).not.toHaveBeenCalled();
   });
 
-  it("returns 404 when scraper not found (findByID throws)", async () => {
-    mockPayload.findByID.mockRejectedValue(new Error("Not Found"));
+  it("returns 404 when scraper not found", async () => {
+    mockPayload.findByID.mockResolvedValue(null);
 
     const response = await POST(createRequest(), createParams("10"));
 
