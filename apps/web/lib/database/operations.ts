@@ -167,7 +167,6 @@ const executeQueryViaShell = (
   const command = `cd ../.. && make db-query DB_NAME=${databaseName} SQL="${escapedSql}"`;
 
   try {
-    // eslint-disable-next-line sonarjs/os-command -- Local dev path: command built from trusted make targets, not user input
     const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
     return result.trim();
   } catch (error) {

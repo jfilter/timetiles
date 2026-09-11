@@ -4,7 +4,6 @@
  * @module
  * @category Email
  */
-/* eslint-disable sonarjs/no-hardcoded-passwords -- translation keys referencing "password" are not credentials */
 const en = {
   // Shared layout
   footer: "This is an automated message from {siteName}. If you have questions, please contact support.",

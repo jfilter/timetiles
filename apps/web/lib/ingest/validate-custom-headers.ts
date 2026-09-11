@@ -26,7 +26,7 @@ const HEADER_NAME_REGEX = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
  *
  * The regex deliberately matches control chars: that's what we're blocking.
  */
-// eslint-disable-next-line sonarjs/no-control-regex -- Intentional: reject C0 control chars in header values
+// oxlint-disable-next-line no-control-regex -- reject control characters in header values
 const HEADER_VALUE_FORBIDDEN = /[\x00-\x08\x0A-\x1F\x7F]/;
 
 /** Hop-by-hop / connection-control headers a user must not set directly. */

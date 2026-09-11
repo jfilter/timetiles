@@ -27,7 +27,7 @@ const CACHE_TTL = 5 * 60 * 1000;
  */
 const sanitizeHeaderString = (value: string): string =>
   value
-    // eslint-disable-next-line sonarjs/no-control-regex -- intentional: strip control characters including CR/LF
+    // oxlint-disable-next-line no-control-regex -- strip control characters from email headers
     .replace(/[\u0000-\u001F\u007F]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

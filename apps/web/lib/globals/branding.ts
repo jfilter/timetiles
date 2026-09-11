@@ -16,7 +16,7 @@ import { generateFaviconsHook } from "./branding-hooks";
 
 // Reject control characters (CR/LF/NULL/tabs, etc.) so values safely flow into
 // email headers/subjects. Complements runtime sanitization in lib/email/branding.ts.
-// eslint-disable-next-line sonarjs/no-control-regex -- intentional: reject control characters including CR/LF
+// oxlint-disable-next-line no-control-regex -- reject control characters in email headers
 const CONTROL_CHAR_REGEX = /[\u0000-\u001F\u007F]/;
 
 const validateNoControlChars = (value: string | null | undefined): true | string => {

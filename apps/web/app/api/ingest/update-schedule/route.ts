@@ -62,7 +62,8 @@ export const PATCH = apiRoute({
   auth: "required",
   site: "default",
   body: UpdateScheduleBodySchema,
-  // eslint-disable-next-line sonarjs/max-lines-per-function, sonarjs/cognitive-complexity, complexity -- orchestration handler with sequential steps
+  // oxlint-disable complexity -- sequential orchestration handler
+  // eslint-disable-next-line sonarjs/max-lines-per-function, sonarjs/cognitive-complexity -- orchestration handler with sequential steps
   handler: async ({ body, req, user, payload }) => {
     // Verify the scheduled ingest exists and belongs to the user
     const existing = await payload.findByID({
@@ -232,4 +233,5 @@ export const PATCH = apiRoute({
 
     return { success: true, scheduledIngestId: body.scheduledIngestId };
   },
+  // oxlint-enable complexity
 });

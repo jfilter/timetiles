@@ -4,7 +4,6 @@
  * @module
  * @category Email
  */
-/* eslint-disable sonarjs/no-hardcoded-passwords -- translation keys referencing "password" are not credentials */
 import type en from "./en";
 
 const de: Record<keyof typeof en, string> = {

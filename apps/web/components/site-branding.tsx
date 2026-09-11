@@ -108,6 +108,5 @@ export const SiteBranding = () => {
     return null;
   }
 
-  // eslint-disable-next-line react/no-danger -- sanitized via sanitizeCSS above
   return <style dangerouslySetInnerHTML={{ __html: combinedCSS }} />;
 };

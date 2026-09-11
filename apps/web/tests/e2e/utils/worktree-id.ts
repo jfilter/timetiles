@@ -37,7 +37,7 @@ export const getWorktreeId = (): string => {
     }).trim();
 
     // Create short hash of the path
-    // eslint-disable-next-line sonarjs/hashing -- Safe: MD5 used only for non-cryptographic identifier generation in tests
+    // MD5 is only a non-cryptographic identifier here.
     const hash = createHash("md5").update(worktreeRoot).digest("hex");
     return hash.slice(0, 5); // e.g., "a1b2c"
   } catch {

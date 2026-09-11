@@ -132,13 +132,11 @@ export default async function globalSetup(): Promise<void> {
   // a fresh worktree/clone never has. Rebuilding here also keeps the UI dist in
   // sync with current source (same "always rebuild" intent as the app build).
   console.log(`📦 Building @timetiles/ui (workspace package)...`);
-  // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
   execSync(`cd "${webDir}" && pnpm --filter @timetiles/ui build`, { env: serverEnv, stdio: "inherit" });
 
   console.log(`🔨 Building application...`);
   // Use build:compile which runs payload generate:types (applies migrations as side effect)
   // then next build with compile mode (no static generation, no DB connection needed)
-  // eslint-disable-next-line sonarjs/os-command -- Controlled build command in test setup with validated directory path
   execSync(`cd "${webDir}" && pnpm build:compile`, { env: serverEnv, stdio: "inherit" });
 
   // Seed AFTER build — `next build` connects to the DB and can wipe seeded data

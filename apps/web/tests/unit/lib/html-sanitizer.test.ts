@@ -127,7 +127,6 @@ describe("sanitizeHTML", () => {
       const input = '<a href="javascript:void(0)">click me</a>';
       const result = sanitizeHTML(input);
       expect(result).not.toContain("<a");
-      // eslint-disable-next-line sonarjs/code-eval -- Testing that javascript: protocol is blocked
       expect(result).not.toContain("javascript:");
     });
 

@@ -211,7 +211,6 @@ export const findAvailablePort = async (basePort: number, label: string, maxAtte
   for (let port = basePort; port < basePort + maxAttempts; port += 1) {
     let inUse: boolean;
     try {
-      // eslint-disable-next-line no-await-in-loop -- intentional: probe ports in order, lowest free wins
       inUse = await isPortInUse(port);
     } catch {
       // Ambiguous probe failure (e.g. connection reset by an occupant): treat as
