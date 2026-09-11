@@ -114,6 +114,8 @@ describe("UrlFetchCache", () => {
     ["45", 15],
     ["60", 0],
     ["120", 0],
+    ["9007199254740992", 0],
+    ["9".repeat(400), 0],
   ])("subtracts upstream Age=%s from max-age", (age, remaining) => {
     const cache = new UrlFetchCache() as unknown as { calculateTTL: (headers: Record<string, string>) => number };
     expect(cache.calculateTTL({ "cache-control": "max-age=60", age })).toBe(remaining);

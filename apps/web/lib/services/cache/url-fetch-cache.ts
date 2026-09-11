@@ -117,7 +117,9 @@ export class UrlFetchCache {
 
     const now = Date.now();
     const date = headers["date"] ? parseDateInput(headers["date"])?.getTime() : undefined;
-    const age = Math.max(0, parseStrictInteger(headers["age"]) ?? 0);
+    const ageValue = headers["age"]?.trim() ?? "";
+    // HTTP delta-seconds overflow must saturate, not make an old response fresh again.
+    const age = /^\d+$/.test(ageValue) ? Math.min(Number(ageValue), Number.MAX_SAFE_INTEGER) : 0;
     // Include transfer/body-reading time; never grant an upstream response a new full lifetime.
     const currentAge = Math.max(
       0,
