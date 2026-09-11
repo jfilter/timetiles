@@ -86,6 +86,9 @@
         "@theguild/remark-mermaid>react": "^19",
         "@typescript-eslint/utils>eslint": "^9"
       }
+    },
+    "patchedDependencies": {
+      "payload@3.86.0": "patches/payload@3.86.0.patch"
     }
   }
 }

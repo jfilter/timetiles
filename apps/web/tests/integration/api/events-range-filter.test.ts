@@ -243,4 +243,37 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
     expect(data.pagination.totalDocs).toBe(0);
     expect(data.events).toEqual([]);
   });
+
+  it("preserves prototype-named imported values when updating event data", async () => {
+    const uniqueId = `prototype-update-${crypto.randomUUID()}`;
+    const transformedData = Object.fromEntries([
+      ["__proto__", "10,5"],
+      ["title", "Original event"],
+    ]);
+    const inserted = await bulkInsertEvents(payload, [
+      {
+        dataset: euDatasetId,
+        uniqueId,
+        transformedData,
+        eventTimestamp: "2024-01-01T00:00:00.000Z",
+        coordinateSource: { type: "manual" },
+        validationStatus: "valid",
+      },
+    ]);
+    expect(inserted.created).toBe(1);
+    const stored = await payload.db.drizzle.execute(sql`
+      SELECT id, transformed_data FROM payload.events WHERE unique_id = ${uniqueId}
+    `);
+    const event = stored.rows[0]!;
+    expect(event.transformed_data).toEqual(transformedData);
+    await payload.update({
+      collection: "events",
+      id: Number(event.id),
+      data: { transformedData: { ...transformedData, title: "Updated event" } },
+    });
+    const updated = await payload.db.drizzle.execute(sql`
+      SELECT transformed_data FROM payload.events WHERE id = ${Number(event.id)}
+    `);
+    expect(updated.rows[0]?.transformed_data).toEqual({ ...transformedData, title: "Updated event" });
+  });
 });
