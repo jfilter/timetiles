@@ -42,6 +42,21 @@ appropriate only when the operation is independent of an outer transaction.
 See `apps/web/lib/ingest/schema-versioning.ts` and its regression test in
 `apps/web/tests/integration/services/schema-versioning-concurrency.test.ts`.
 
+## Audit failures follow the transaction boundary
+
+`auditLog` logs and suppresses failures only when called without an active caller
+transaction. When an audit write joins an existing transaction through `options.req`,
+its failure propagates: Payload has rolled back the primary writes too, so the
+caller must not report success or continue writing with that request.
+
+Pass the original request rather than a copy. Preserving a transaction ID on a
+copied object cannot preserve a database transaction that Payload has rolled back.
+Collection hooks must also propagate failures from audit-related owner lookups,
+not catch the entire audit path as best-effort.
+
+See `apps/web/lib/services/audit-log-service.ts` and the rollback regression tests
+in `apps/web/tests/integration/collections/visibility-sync-cascade.test.ts`.
+
 ## Access control and recursion are separate concerns
 
 - `overrideAccess` controls authorization, not transaction reuse. Payload's Local
