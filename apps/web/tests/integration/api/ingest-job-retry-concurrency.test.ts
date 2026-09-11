@@ -16,6 +16,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 // limit of 1/min would otherwise 429 the second concurrent call regardless).
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
 
+import { POST as approvePOST } from "@/app/api/ingest-jobs/[id]/approve/route";
 import { POST as resetPOST } from "@/app/api/ingest-jobs/[id]/reset/route";
 import { POST as retryPOST } from "@/app/api/ingest-jobs/[id]/retry/route";
 import { getEnv } from "@/lib/config/env";
@@ -75,6 +76,32 @@ describe.sequential("Ingest job recovery — concurrency and rollback", () => {
 
   afterAll(async () => {
     await cleanup();
+  });
+
+  it.each([
+    ["approve", approvePOST],
+    ["reset", resetPOST],
+    ["retry", retryPOST],
+  ] as const)("rejects invalid IDs at the %s route boundary", async (action, handler) => {
+    const login = await payload.login({
+      collection: "users",
+      data: { email: admin.email, password: TEST_CREDENTIALS.basic.strongPassword },
+    });
+    for (const id of ["not-a-number", "9007199254740993", "9".repeat(400)]) {
+      const response = await handler(
+        new NextRequest(`http://localhost:3000/api/ingest-jobs/${id}/${action}`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${login.token}`, "Content-Type": "application/json" },
+          body: JSON.stringify(action === "reset" ? { targetStage: PROCESSING_STAGE.ANALYZE_DUPLICATES } : {}),
+        }),
+        { params: Promise.resolve({ id }) }
+      );
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({
+        code: "VALIDATION_ERROR",
+        details: expect.arrayContaining([expect.objectContaining({ path: ["id"] })]),
+      });
+    }
   });
 
   const callReset = async (id: number, token: string) =>
