@@ -67,19 +67,13 @@ describe.sequential("Account Deletion Service", () => {
       expect(first.id).toBe(second.id);
     });
 
-    it("should identify system user correctly", async () => {
-      const systemUserService = createSystemUserService(payload);
-      const systemUser = await systemUserService.getOrCreateSystemUser();
-
-      const isSystem = await systemUserService.isSystemUser(systemUser.id);
-      expect(isSystem).toBe(true);
-
-      // Create a regular user
-      const env = { payload, seedManager: { truncate } } as any;
-      const { users } = await withUsers(env, { regular: { role: "user" } });
-
-      const isRegularSystem = await systemUserService.isSystemUser(users.regular.id);
-      expect(isRegularSystem).toBe(false);
+    it("should share the same system user across concurrent creators", async () => {
+      const [first, second] = await Promise.all([
+        createSystemUserService(payload).getOrCreateSystemUser(),
+        createSystemUserService(payload).getOrCreateSystemUser(),
+      ]);
+      expect(first.id).toBe(second.id);
+      expect(first.email).toBe(SYSTEM_USER_EMAIL);
     });
   });
 

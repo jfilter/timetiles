@@ -12,7 +12,6 @@
 import type { Payload } from "payload";
 
 import { isUniqueViolation } from "@/lib/database/unique-violation";
-import { parseStrictInteger } from "@/lib/utils/event-params";
 import type { User } from "@/payload-types";
 
 import { createLogger } from "../logger";
@@ -58,7 +57,6 @@ const getSystemUserConfig = () => ({
  */
 export class SystemUserService {
   private readonly payload: Payload;
-  private cachedSystemUserId: number | null = null;
 
   constructor(payload: Payload) {
     this.payload = payload;
@@ -73,20 +71,6 @@ export class SystemUserService {
    * @returns The system user record
    */
   async getOrCreateSystemUser(): Promise<User> {
-    // Check cache first
-    if (this.cachedSystemUserId !== null) {
-      const user = await this.payload.findByID({
-        collection: "users",
-        id: this.cachedSystemUserId,
-        overrideAccess: true,
-      });
-      if (user) {
-        return user;
-      }
-      // Cache was stale, clear it
-      this.cachedSystemUserId = null;
-    }
-
     // Try to find existing system user
     const existing = await this.payload.find({
       collection: "users",
@@ -97,7 +81,6 @@ export class SystemUserService {
 
     if (existing.docs.length > 0 && existing.docs[0]) {
       const user = existing.docs[0];
-      this.cachedSystemUserId = user.id;
       logger.debug({ userId: user.id }, "Found existing system user");
       return user;
     }
@@ -106,7 +89,6 @@ export class SystemUserService {
     logger.info("Creating system user");
     const user = await this.createSystemUser();
 
-    this.cachedSystemUserId = user.id;
     logger.info({ userId: user.id }, "System user created");
     return user;
   }
@@ -139,46 +121,11 @@ export class SystemUserService {
       return user;
     }
   }
-
-  /**
-   * Check if a user ID belongs to the system user.
-   *
-   * @param userId - The user ID to check
-   * @returns True if the ID belongs to the system user
-   */
-  async isSystemUser(userId: number | string): Promise<boolean> {
-    const numericId = parseStrictInteger(userId);
-    if (numericId == null) {
-      return false;
-    }
-
-    // Fast path: check cache
-    if (this.cachedSystemUserId !== null) {
-      return this.cachedSystemUserId === numericId;
-    }
-
-    // Slow path: look up the user
-    const user = await this.payload.findByID({ collection: "users", id: numericId, overrideAccess: true });
-
-    if (!user) {
-      return false;
-    }
-
-    const isSystem = user.email === SYSTEM_USER_EMAIL;
-
-    // Cache if this is the system user
-    if (isSystem) {
-      this.cachedSystemUserId = numericId;
-    }
-
-    return isSystem;
-  }
 }
 
 /**
  * Create a system user service instance.
  *
- * Returns a fresh instance each call. The service is stateless apart from
- * a trivial in-class cache that works within a single usage flow.
+ * Returns a fresh instance each call.
  */
 export const createSystemUserService = (payload: Payload): SystemUserService => new SystemUserService(payload);
