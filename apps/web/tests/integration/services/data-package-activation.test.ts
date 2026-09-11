@@ -12,9 +12,17 @@
 
 process.env.ALLOW_PRIVATE_URLS = "true";
 
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { SYSTEM_USER_EMAIL } from "@/lib/account/system-user";
+import { resetAppConfig } from "@/lib/config/app-config";
+import { resetEnv } from "@/lib/config/env";
 import { activateDataPackage, deactivateDataPackage } from "@/lib/data-packages/activation-service";
+import { runAutoActivations } from "@/lib/data-packages/auto-activator";
 import type { DataPackageManifest } from "@/lib/data-packages/types";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import type { User } from "@/payload-types";
@@ -466,6 +474,48 @@ describe.sequential("Data Package Activation", () => {
   // -------------------------------------------------------------------------
   // Activation: resource creation
   // -------------------------------------------------------------------------
+
+  it("should auto-activate configured packages once under the system account", async () => {
+    const previousCwd = process.cwd();
+    const directory = await mkdtemp(join(tmpdir(), "timetiles-auto-activation-"));
+    const manifest = buildTestManifest(`${testServerUrl}/data.csv`);
+    try {
+      await mkdir(join(directory, "config/data-packages"), { recursive: true });
+      await writeFile(join(directory, "config/data-packages/test.yml"), JSON.stringify(manifest));
+      await writeFile(
+        join(directory, "config/data-packages.activations.yml"),
+        JSON.stringify({ development: [{ slug: manifest.slug }], production: [{ slug: "not-selected" }] })
+      );
+      process.chdir(directory);
+      vi.stubEnv("RUN_AUTO_ACTIVATIONS", "true");
+      vi.stubEnv("DEPLOYMENT_ENVIRONMENT", "development");
+      resetEnv();
+      resetAppConfig();
+      await runAutoActivations(payload);
+      await runAutoActivations(payload);
+
+      const schedules = await payload.find({
+        collection: "scheduled-ingests",
+        where: { dataPackageSlug: { equals: manifest.slug } },
+        depth: 0,
+        overrideAccess: true,
+      });
+      expect(schedules.docs).toHaveLength(1);
+      const owner = await payload.findByID({ collection: "users", id: schedules.docs[0].createdBy });
+      expect(owner.email).toBe(SYSTEM_USER_EMAIL);
+      expect(owner.isActive).toBe(false);
+      const catalogs = await payload.count({ collection: "catalogs", where: { createdBy: { equals: owner.id } } });
+      const datasets = await payload.count({ collection: "datasets", where: { createdBy: { equals: owner.id } } });
+      expect(catalogs.totalDocs).toBe(1);
+      expect(datasets.totalDocs).toBe(1);
+    } finally {
+      process.chdir(previousCwd);
+      vi.unstubAllEnvs();
+      resetEnv();
+      resetAppConfig();
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
 
   it("should create catalog, dataset, and scheduled ingest on activation", async () => {
     testServer.respondWithCSV("/data.csv", MOCK_CSV);
