@@ -14,7 +14,7 @@ export type { Coordinates, CoordinateSample, CoordinateStats, MapBounds } from "
 export { EARTH_RADIUS_KM } from "./types";
 
 // Validation
-export { areValidCoordinates, isValidCoordinate, valueToString } from "./validation";
+export { areValidCoordinates, isValidCoordinate } from "./validation";
 
 // Distance calculations
 export { calculateCentroid, calculateDistance, findMaxDistance } from "./distance";

@@ -10,9 +10,6 @@
 
 import type { Coordinates } from "./types";
 
-// Re-export valueToString so geospatial/parsing.ts can still import from here
-export { valueToString } from "@/lib/utils/format";
-
 /**
  * Check if coordinates are valid (includes NaN and (0,0) checks).
  *

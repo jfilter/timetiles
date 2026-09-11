@@ -14,7 +14,7 @@
  * @category Geospatial
  */
 
-import { valueToString } from "./validation";
+import { valueToString } from "@/lib/utils/format";
 
 const applyDirectionToValue = (value: number, direction: string): number => {
   const normalizedDirection = direction.toUpperCase();
