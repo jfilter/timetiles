@@ -11,7 +11,7 @@
 import { z } from "zod";
 
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
-import { apiRoute, AppError, ValidationError } from "@/lib/api";
+import { apiRoute, AppError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
@@ -55,19 +55,7 @@ export const POST = apiRoute({
       // Verify password
       await verifyPasswordWithAudit(payload, user, password, clientId, "account_deletion", "Invalid password");
 
-      // Check if user can be deleted
       const deletionService = createAccountDeletionService(payload);
-      const canDelete = await deletionService.canDeleteUser(user.id);
-
-      if (!canDelete.allowed) {
-        throw new ValidationError(canDelete.reason ?? "Account cannot be deleted");
-      }
-
-      // Check if already pending deletion
-      if (user.deletionStatus === "pending_deletion") {
-        throw new ValidationError("Deletion already scheduled");
-      }
-
       // Schedule deletion
       const result = await deletionService.scheduleDeletion(user.id);
 

@@ -88,6 +88,7 @@ import { POST as cancelDeletionPOST } from "@/app/api/users/cancel-deletion/rout
 import { POST as changeEmailPOST } from "@/app/api/users/change-email/route";
 import { POST as changePasswordPOST } from "@/app/api/users/change-password/route";
 import { POST as scheduleDeletionPOST } from "@/app/api/users/schedule-deletion/route";
+import { ValidationError } from "@/lib/api/errors";
 import { maskEmail } from "@/lib/security/masking";
 
 const {
@@ -426,12 +427,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
   });
 
   it("should return 400 when already pending deletion", async () => {
-    const pendingUser = {
-      ...mockUser,
-      deletionStatus: "pending_deletion",
-      deletionScheduledAt: new Date().toISOString(),
-    };
-    mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
+    mockScheduleDeletion.mockRejectedValueOnce(new ValidationError("Deletion already scheduled"));
 
     const req = createJsonRequest("http://localhost/api/users/schedule-deletion", {
       password: TEST_CREDENTIALS.basic.password,
@@ -445,6 +441,7 @@ describe.sequential("POST /api/users/schedule-deletion", () => {
   });
 
   it("should successfully schedule deletion", async () => {
+    mockPayload.auth.mockResolvedValueOnce({ user: { ...mockUser, deletionStatus: "pending_deletion" } });
     const scheduledAt = new Date().toISOString();
     mockScheduleDeletion.mockResolvedValue({
       deletionScheduledAt: scheduledAt,
@@ -494,6 +491,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
   });
 
   it("should return 400 when no pending deletion", async () => {
+    mockCancelDeletion.mockRejectedValueOnce(new ValidationError("No pending deletion to cancel"));
     const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
       password: TEST_CREDENTIALS.basic.password,
     });
@@ -526,13 +524,6 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
   });
 
   it("should successfully cancel deletion", async () => {
-    const pendingUser = {
-      ...mockUser,
-      deletionStatus: "pending_deletion",
-      deletionScheduledAt: new Date().toISOString(),
-    };
-    mockPayload.auth.mockResolvedValueOnce({ user: pendingUser });
-
     const req = createJsonRequest("http://localhost/api/users/cancel-deletion", {
       password: TEST_CREDENTIALS.basic.password,
     });
@@ -542,7 +533,7 @@ describe.sequential("POST /api/users/cancel-deletion", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.message).toContain("cancelled");
-    expect(mockCancelDeletion).toHaveBeenCalledWith(pendingUser.id);
+    expect(mockCancelDeletion).toHaveBeenCalledWith(mockUser.id);
   });
 });
 

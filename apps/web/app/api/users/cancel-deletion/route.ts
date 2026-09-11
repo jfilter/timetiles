@@ -11,7 +11,7 @@
 import { z } from "zod";
 
 import { createAccountDeletionService } from "@/lib/account/deletion-service";
-import { apiRoute, AppError, ValidationError } from "@/lib/api";
+import { apiRoute, AppError } from "@/lib/api";
 import { verifyPasswordWithAudit } from "@/lib/api/auth-helpers";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { logger } from "@/lib/logger";
@@ -23,11 +23,6 @@ export const POST = apiRoute({
   auth: "required",
   body: z.object({ password: z.string().min(1) }),
   handler: async ({ payload, user, req, body }) => {
-    // Check if deletion is pending before we spend time verifying the password.
-    if (user.deletionStatus !== "pending_deletion") {
-      throw new ValidationError("No pending deletion to cancel");
-    }
-
     const clientId = getClientIdentifier(req);
     const { password } = body;
 
