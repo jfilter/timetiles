@@ -183,6 +183,7 @@ describe.sequential("Security Validation Tests", () => {
 
   describe("Authentication Credential Security", () => {
     it("should encrypt credentials at rest and decrypt on read", async () => {
+      const customHeaders = { "X-Empty": "", "X-Token": TEST_CREDENTIALS.bearer.superSecretToken };
       const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
@@ -191,13 +192,14 @@ describe.sequential("Security Validation Tests", () => {
           user: adminUser,
           name: "Secure Auth Import",
           frequency: "daily",
-          authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.superSecretToken },
+          authConfig: { type: "bearer", bearerToken: TEST_CREDENTIALS.bearer.superSecretToken, customHeaders },
         }
       );
 
       // Fetch via Payload API — afterRead hooks should decrypt
       const fetched = await payload.findByID({ collection: "scheduled-ingests", id: scheduledIngest.id });
       expect(fetched.authConfig.bearerToken).toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+      expect(fetched.authConfig.customHeaders).toEqual(customHeaders);
 
       // Verify the raw database value is NOT plaintext (encrypted at rest)
       const { createDatabaseClient } = await import("@/lib/database/client");
@@ -205,15 +207,17 @@ describe.sequential("Security Validation Tests", () => {
       try {
         await client.connect();
         const rawResult = await client.query(
-          `SELECT auth_config_bearer_token FROM payload."scheduled_ingests" WHERE id = $1`,
+          `SELECT auth_config_bearer_token, auth_config_custom_headers FROM payload."scheduled_ingests" WHERE id = $1`,
           [scheduledIngest.id]
         );
-        if (rawResult.rows.length > 0) {
-          const rawToken = rawResult.rows[0].auth_config_bearer_token;
-          if (rawToken) {
-            expect(rawToken).not.toBe(TEST_CREDENTIALS.bearer.superSecretToken);
-          }
-        }
+        expect(rawResult.rows).toHaveLength(1);
+        const { isEncrypted } = await import("@/lib/security/encryption");
+        const raw = rawResult.rows[0];
+        expect(isEncrypted(raw.auth_config_bearer_token)).toBe(true);
+        expect(isEncrypted(raw.auth_config_custom_headers["X-Empty"])).toBe(true);
+        expect(isEncrypted(raw.auth_config_custom_headers["X-Token"])).toBe(true);
+        expect(raw.auth_config_bearer_token).not.toBe(TEST_CREDENTIALS.bearer.superSecretToken);
+        expect(raw.auth_config_custom_headers["X-Token"]).not.toBe(customHeaders["X-Token"]);
       } finally {
         await client.end();
       }
