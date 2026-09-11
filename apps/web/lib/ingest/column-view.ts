@@ -20,6 +20,23 @@ import type {
 // Types
 // ---------------------------------------------------------------------------
 
+/** Clear mappings only when replacing transforms removes their previously available column. */
+export const clearRemovedColumns = (
+  mapping: FieldMapping,
+  headers: string[],
+  previousTransforms: IngestTransform[],
+  nextTransforms: IngestTransform[]
+): FieldMapping => {
+  const previousColumns = new Set(getMappingColumnNames(headers, previousTransforms));
+  const nextColumns = new Set(getMappingColumnNames(headers, nextTransforms));
+  const updated = { ...mapping };
+  for (const key of FIELD_MAPPING_STRING_KEYS) {
+    const path = updated[key];
+    if (path && previousColumns.has(path) && !nextColumns.has(path)) updated[key] = null;
+  }
+  return updated;
+};
+
 export interface ColumnViewRow {
   columnName: string;
   sampleValue: unknown;

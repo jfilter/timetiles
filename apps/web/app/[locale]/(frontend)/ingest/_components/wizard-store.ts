@@ -20,7 +20,7 @@ import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
 
-import { FIELD_MAPPING_STRING_KEYS, getMappingColumnNames } from "@/lib/ingest/column-view";
+import { clearRemovedColumns, getMappingColumnNames } from "@/lib/ingest/column-view";
 import { createFieldMappingFromSuggestions } from "@/lib/ingest/field-mapping-utils";
 import { humanizeFileName } from "@/lib/ingest/humanize-file-name";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
@@ -395,16 +395,9 @@ export const useWizardStore = create<WizardStore>()(
         setTransforms: (sheetIndex, transforms) =>
           set((s) => {
             const headers = s.sheets.find((sheet) => sheet.index === sheetIndex)?.headers ?? [];
-            const previousColumns = new Set(getMappingColumnNames(headers, s.transforms[sheetIndex] ?? []));
-            const nextColumns = new Set(getMappingColumnNames(headers, transforms));
             const fieldMappings = s.fieldMappings.map((mapping) => {
               if (mapping.sheetIndex !== sheetIndex) return mapping;
-              const updated = { ...mapping };
-              for (const key of FIELD_MAPPING_STRING_KEYS) {
-                const path = updated[key];
-                if (path && previousColumns.has(path) && !nextColumns.has(path)) updated[key] = null;
-              }
-              return updated;
+              return clearRemovedColumns(mapping, headers, s.transforms[sheetIndex] ?? [], transforms);
             });
             return { transforms: { ...s.transforms, [sheetIndex]: transforms }, fieldMappings };
           }),
@@ -426,18 +419,22 @@ export const useWizardStore = create<WizardStore>()(
             const fmIndex = updatedFieldMappings.findIndex((m) => m.sheetIndex === sheetIndex);
             const currentFm = updatedFieldMappings[fmIndex];
             const sheet = s.sheets.find((sh) => sh.index === sheetIndex);
+            const headers = sheet?.headers ?? [];
+            const planOps = config.interpretationPlan?.ops;
 
             if (fmIndex >= 0 && currentFm) {
+              const retainedMapping = planOps
+                ? clearRemovedColumns(currentFm, headers, s.transforms[sheetIndex] ?? [], planOps)
+                : currentFm;
               updatedFieldMappings[fmIndex] = mergeFieldMappingOverrides(
-                currentFm,
+                retainedMapping,
                 config.interpretationPlan,
                 config.idStrategy,
-                sheet?.headers ?? []
+                headers
               );
             }
 
             const updatedTransforms = { ...s.transforms };
-            const planOps = config.interpretationPlan?.ops;
             if (planOps != null) {
               updatedTransforms[sheetIndex] = planOps;
             }

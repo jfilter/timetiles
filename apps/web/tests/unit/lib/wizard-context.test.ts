@@ -129,6 +129,12 @@ describe("Wizard Store", () => {
 
       expect(useWizardStore.getState().transforms[0]).toEqual(ops);
       expect(useWizardStore.getState().fieldMappings[0]?.titleField).toBe("title");
+      useWizardStore
+        .getState()
+        .applyFieldMappingSuggestion(0, {
+          interpretationPlan: { ops: [], columns: [], roles: {}, ambiguityResolution: "strict" },
+        });
+      expect(useWizardStore.getState().fieldMappings[0]?.titleField).toBeNull();
     });
 
     it.each(["removed", "disabled"])("clears generated mappings when their transform is %s", (change) => {
