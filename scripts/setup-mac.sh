@@ -81,7 +81,7 @@ install_formulas() {
 
   # postgis pulls its own postgresql; install it after the pinned server so the
   # extension is built against the version we actually run.
-  for formula in git-lfs "$PG_FORMULA" postgis; do
+  for formula in git-lfs jq "$PG_FORMULA" postgis; do
     if brew list --formula "$formula" >/dev/null 2>&1; then
       print_exists "$formula already installed"
     else

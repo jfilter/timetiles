@@ -23,6 +23,34 @@ beforeEach(() => {
 
 afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
+it("installs jq required by the environment selftest", () => {
+  const installFunction = /^install_formulas\(\) \{\n[\s\S]*?^\}/m.exec(source)?.[0];
+  expect(installFunction).toBeDefined();
+  const result = spawnSync(
+    "/bin/bash",
+    [
+      "-c",
+      `set -eu
+PG_FORMULA=postgresql@17
+brew() {
+  case "$1" in
+    list) test -f "$TMPDIR/$3" ;;
+    install) touch "$TMPDIR/$2" ;;
+    *) return 1 ;;
+  esac
+}
+print_success() { :; }
+print_exists() { :; }
+print_error() { :; }
+${installFunction}
+install_formulas`,
+    ],
+    { encoding: "utf8", timeout: 10000, env: { NODE_ENV: "test", PATH: "/usr/bin:/bin", TMPDIR: directory } }
+  );
+  expect(result.status, result.stderr).toBe(0);
+  expect(readdirSync(directory)).toContain("jq");
+});
+
 it.each([0, 1])("preserves existing build directories when cloning exits %s", (cloneStatus) => {
   expect(buildFunction).toBeDefined();
   const result = spawnSync(
