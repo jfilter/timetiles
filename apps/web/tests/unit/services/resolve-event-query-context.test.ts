@@ -17,6 +17,15 @@ import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-con
 const payloadStub = { findByID: vi.fn() } as never;
 
 describe("resolveEventQueryContext", () => {
+  it.each(["__proto__", "constructor", "toString"])("denies %s without an own number policy", async (key) => {
+    const payload = { findByID: vi.fn().mockResolvedValue({ interpretationPlan: { columns: [] } }) } as never;
+    const result = await resolveEventQueryContext({
+      payload,
+      query: { datasets: [1], ff: {}, rf: Object.fromEntries([[key, { min: 10 }]]) },
+    });
+    expect(result.denied).toBe(true);
+  });
+
   it.each<{ name: string; dataset: unknown; rf: Record<string, { min?: number; max?: number }> }>([
     { name: "missing dataset", dataset: null, rf: { price: { min: 10 } } },
     { name: "missing plan", dataset: {}, rf: { price: { min: 10 } } },
@@ -39,14 +48,14 @@ describe("resolveEventQueryContext", () => {
     expect(result.denied).toBe(true);
   });
 
-  it("preserves a numeric filter with a resolved number policy", async () => {
+  it.each(["price", "__proto__", "constructor", "toString"])("preserves %s with an own number policy", async (key) => {
     const payload = {
       findByID: vi
         .fn()
         .mockResolvedValue({
           interpretationPlan: {
             ops: [],
-            columns: [{ field: "price", kind: "number", policy: { kind: "number" } }],
+            columns: [{ field: key, kind: "number", policy: { kind: "number" } }],
             roles: {},
             ambiguityResolution: "strict",
           },
@@ -54,13 +63,15 @@ describe("resolveEventQueryContext", () => {
     } as never;
     const result = await resolveEventQueryContext({
       payload,
-      query: { datasets: [1], ff: {}, rf: { price: { min: 10 } } },
+      query: { datasets: [1], ff: {}, rf: Object.fromEntries([[key, { min: 10 }]]) },
     });
 
     expect(result.denied).toBe(false);
     if (!result.denied) {
-      expect(result.filters.rangeFilters).toEqual({ price: { min: 10, max: null } });
-      expect(result.filters.numberFormats).toEqual({ price: { decimalSeparator: ".", thousandsSeparator: null } });
+      expect(Object.entries(result.filters.rangeFilters!)).toEqual([[key, { min: 10, max: null }]]);
+      expect(Object.entries(result.filters.numberFormats!)).toEqual([
+        [key, { decimalSeparator: ".", thousandsSeparator: null }],
+      ]);
     }
   });
 

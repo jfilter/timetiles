@@ -126,11 +126,11 @@ describe.sequential("GET /api/v1/datasets/[id]/numeric-stats", () => {
     expect(mocks.mockExecute).toHaveBeenCalledTimes(1);
   });
 
-  it("returns no fields when no numeric column has a resolved format", async () => {
+  it.each(["price", "__proto__", "constructor", "toString"])("omits %s without a resolved format", async (path) => {
     mocks.mockFindByID.mockResolvedValue({
       id: DATASET_ID,
-      fieldMetadata: fieldMeta(["price"]),
-      fieldTypes: { number: ["price"] },
+      fieldMetadata: fieldMeta([path]),
+      fieldTypes: { number: [path] },
       interpretationPlan: { columns: [] },
     });
 

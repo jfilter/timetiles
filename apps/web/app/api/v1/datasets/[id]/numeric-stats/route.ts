@@ -96,7 +96,7 @@ export const GET = apiRoute({
     // The two sides must agree on one rule, and the query side owns it ("never
     // cast blind" — an unknown convention cannot be safely ::numeric-normalized).
     const planFormats = projectNumberFormats(dataset.interpretationPlan, numberPaths);
-    const filterablePaths = numberPaths.filter((path) => path in planFormats);
+    const filterablePaths = numberPaths.filter((path) => Object.hasOwn(planFormats, path));
     if (filterablePaths.length === 0) return { fields: [] };
 
     // Force dataset filter to this dataset (regardless of URL params).

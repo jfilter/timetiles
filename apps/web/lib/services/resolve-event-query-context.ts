@@ -138,7 +138,7 @@ export const resolveDatasetFieldContext = async (
   // Every requested range must be enforceable. Dropping even one unknown key
   // broadens the result beyond the caller's requested constraints.
   const numberFormats = projectNumberFormats(dataset?.interpretationPlan, Object.keys(filters.rangeFilters!));
-  if (Object.keys(filters.rangeFilters!).some((key) => !(key in numberFormats))) {
+  if (Object.keys(filters.rangeFilters!).some((key) => !Object.hasOwn(numberFormats, key))) {
     filters.denyResults = true;
     return;
   }
