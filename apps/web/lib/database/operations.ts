@@ -1,180 +1,50 @@
 /**
  * Database operation utilities.
  *
- * Provides common database operations like querying, creating, dropping,
- * and managing connections. Auto-detects CI vs local environment.
+ * Provides common database operations through the shared PostgreSQL client
+ * in both local and CI environments.
  *
  * @module
  * @category Utils
  */
 
-import { execFileSync, execSync } from "node:child_process";
-
-import { getEnv } from "@/lib/config/env";
-
 import { createDatabaseClient } from "./client";
-import { parseDatabaseUrl } from "./url";
 
-/**
- * Options for database query execution
- */
 export interface QueryOptions {
-  /**
-   * Description of the query (for logging)
-   */
-  description?: string;
-
-  /**
-   * Force shell-based execution instead of direct client
-   * @default false
-   */
-  useShell?: boolean;
-
-  /**
-   * Return raw result instead of stringified
-   * @default false
-   */
-  rawResult?: boolean;
-
-  /**
-   * Connect to this URL instead of `DATABASE_URL`.
-   *
-   * For tooling that targets a database the app itself never connects to (the E2E database),
-   * so it does not have to grow its own psql/make execution path next to this one.
-   */
+  /** Connection settings for tooling that targets a separate database. */
   connectionString?: string;
 }
 
 /**
- * Execute a SQL query against a database.
+ * Execute a SQL query through the shared PostgreSQL client.
  *
- * Auto-detects CI vs local environment and uses appropriate method:
- * - CI: Direct psql commands
- * - Local: Docker-based make commands (unless useShell is true)
- * - Direct client: Fastest, preferred method
- *
- * @param databaseName - Name of the database to query
- * @param sql - SQL query to execute
- * @param options - Query execution options
- * @returns Query result as string (or rows if rawResult=true)
- *
- * @example
- * ```typescript
- * // Check if database exists
- * const result = await executeDatabaseQuery(
- *   'postgres',
- *   "SELECT 1 FROM pg_database WHERE datname = 'my_db'",
- *   { description: 'Check database exists' }
- * );
- * ```
+ * The database argument selects the target, including when a connection URL
+ * points to another database. Single-column results are newline-separated;
+ * multi-column results are JSON. Empty results return an empty string.
  */
 export const executeDatabaseQuery = async (
   databaseName: string,
   sql: string,
   options: QueryOptions = {}
 ): Promise<string> => {
-  const env = getEnv();
-  const isCI = env.CI === "true" || env.GITHUB_ACTIONS === "true";
-
-  // Prefer direct client connection (faster, more reliable)
-  if (!options.useShell && !isCI) {
-    // `connectionString` supplies host and credentials only — `databaseName` still selects the
-    // database, exactly as on the shell path (psql -d), so callers can query "postgres" with it.
-    const client = createDatabaseClient({ ...parseClientOverrides(options.connectionString), database: databaseName });
-    try {
-      await client.connect();
-      const result = await client.query(sql);
-
-      if (options.rawResult) {
-        return result.rows as unknown as string;
-      }
-
-      // Return formatted result similar to psql output
-      if (result.rows.length === 0) {
-        return "";
-      }
-
-      // For single column results, return just the values
-      const firstRow = result.rows[0];
-      const columns = Object.keys(firstRow ?? {});
-
-      if (columns.length === 1 && columns[0]) {
-        const columnName = columns[0];
-        return result.rows.map((row) => String(row[columnName])).join("\n");
-      }
-
-      // For multi-column, return JSON
-      return JSON.stringify(result.rows, null, 2);
-    } finally {
-      await client.end();
-    }
-  }
-
-  // Fallback to shell-based execution
-  return executeQueryViaShell(databaseName, sql, isCI, options.description, options.connectionString);
-};
-
-/** Host/credential overrides from an explicit connection string, or none. */
-const parseClientOverrides = (
-  connectionString?: string
-): { host?: string; port?: number; user?: string; password?: string } => {
-  if (!connectionString) return {};
-  const { host, port, username, password } = parseDatabaseUrl(connectionString);
-  return { host, port: Number(port), user: username, password };
-};
-
-/**
- * Execute SQL query via shell (psql or make command)
- *
- * @internal
- */
-const executeQueryViaShell = (
-  databaseName: string,
-  sql: string,
-  isCI: boolean,
-  description?: string,
-  connectionString?: string
-): string => {
-  const databaseUrl = connectionString ?? getEnv().DATABASE_URL;
-  if (!databaseUrl) {
-    throw new Error("DATABASE_URL environment variable is required");
-  }
-
-  const { username, password, host } = parseDatabaseUrl(databaseUrl);
-
-  if (isCI) {
-    // In CI, use execFileSync with args array to avoid shell injection
-    try {
-      // eslint-disable-next-line sonarjs/no-os-command-from-path -- psql is a trusted system binary
-      const result = execFileSync("psql", ["-h", host, "-U", username, "-d", databaseName, "-t", "-c", sql], {
-        stdio: "pipe",
-        encoding: "utf8",
-        env: { ...process.env, PGPASSWORD: password },
-      });
-      return result.trim();
-    } catch (error) {
-      if (description) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`${description} failed: ${message}`);
-      }
-      throw error;
-    }
-  }
-
-  // Local development - use make commands with Docker
-  // Escape SQL for shell
-  const escapedSql = sql.replaceAll('"', String.raw`\"`);
-  const command = `cd ../.. && make db-query DB_NAME=${databaseName} SQL="${escapedSql}"`;
-
+  const connectionUrl = options.connectionString ? new URL(options.connectionString) : undefined;
+  if (connectionUrl) connectionUrl.pathname = `/${encodeURIComponent(databaseName)}`;
+  const client = createDatabaseClient({ connectionString: connectionUrl?.toString(), database: databaseName });
   try {
-    const result = execSync(command, { stdio: "pipe", encoding: "utf8" });
-    return result.trim();
-  } catch (error) {
-    if (description) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`${description} failed: ${message}`);
+    await client.connect();
+    const result = await client.query(sql);
+
+    if (result.rows.length === 0) return "";
+
+    const columns = Object.keys(result.rows[0] ?? {});
+    if (columns.length === 1 && columns[0]) {
+      const columnName = columns[0];
+      return result.rows.map((row) => String(row[columnName])).join("\n");
     }
-    throw error;
+
+    return JSON.stringify(result.rows, null, 2);
+  } finally {
+    await client.end();
   }
 };
 

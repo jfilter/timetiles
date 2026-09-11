@@ -29,9 +29,6 @@ const pgState = vi.hoisted(() => {
   };
 });
 
-const mockExecFileSync = vi.hoisted(() => vi.fn());
-const mockExecSync = vi.hoisted(() => vi.fn());
-
 // ─── vi.mock ─────────────────────────────────────────────────────────
 
 vi.mock("pg", () => {
@@ -51,15 +48,9 @@ vi.mock("pg", () => {
 });
 
 vi.mock("@/lib/config/env", () => ({
-  getEnv: vi.fn(() => ({
-    CI: process.env.CI,
-    GITHUB_ACTIONS: process.env.GITHUB_ACTIONS,
-    DATABASE_URL: process.env.DATABASE_URL,
-  })),
+  getEnv: vi.fn(() => ({ DATABASE_URL: process.env.DATABASE_URL })),
   resetEnv: vi.fn(),
 }));
-
-vi.mock("node:child_process", () => ({ execFileSync: mockExecFileSync, execSync: mockExecSync }));
 
 vi.mock("@/lib/database/url", () => ({
   parseDatabaseUrl: vi.fn((url: string) => {
@@ -118,15 +109,13 @@ describe.sequential("database operations", () => {
     pgState.allClients.length = 0;
     pgState.clientFactory = null;
 
-    delete process.env.CI;
-    delete process.env.GITHUB_ACTIONS;
     delete process.env.DATABASE_URL;
   });
 
   // ─── executeDatabaseQuery ─────────────────────────────────────────
 
   describe("executeDatabaseQuery", () => {
-    describe("direct client mode (non-CI, non-shell)", () => {
+    describe("direct client execution", () => {
       it("connects, queries, and disconnects the client", async () => {
         const result = await executeDatabaseQuery("testdb", "SELECT 1");
 
@@ -169,18 +158,6 @@ describe.sequential("database operations", () => {
         expect(JSON.parse(result)).toEqual(rows);
       });
 
-      it("returns raw rows when rawResult option is true", async () => {
-        const rows = [{ id: 1 }, { id: 2 }];
-        setClientFactory(() => {
-          const c = pgState.newMockClient();
-          c.query.mockResolvedValue({ rows });
-          return c;
-        });
-
-        const result = await executeDatabaseQuery("testdb", "SELECT id FROM test", { rawResult: true });
-        expect(result).toBe(rows);
-      });
-
       it("always calls client.end even when query throws", async () => {
         setClientFactory(() => {
           const c = pgState.newMockClient();
@@ -201,132 +178,6 @@ describe.sequential("database operations", () => {
 
         const result = await executeDatabaseQuery("testdb", "SELECT 1");
         expect(JSON.parse(result)).toEqual([null]);
-      });
-    });
-
-    describe("shell mode via CI environment", () => {
-      it("uses execFileSync with psql when CI=true", async () => {
-        process.env.CI = "true";
-        process.env.DATABASE_URL = "postgresql://user:pass@dbhost:5432/mydb";
-        mockExecFileSync.mockReturnValue("  result_value  ");
-
-        const result = await executeDatabaseQuery("testdb", "SELECT 1");
-
-        expect(mockExecFileSync).toHaveBeenCalledWith(
-          "psql",
-          ["-h", "dbhost", "-U", "user", "-d", "testdb", "-t", "-c", "SELECT 1"],
-          expect.objectContaining({
-            stdio: "pipe",
-            encoding: "utf8",
-            env: expect.objectContaining({ PGPASSWORD: "pass" }),
-          })
-        );
-        expect(result).toBe("result_value");
-        expect(allClients).toHaveLength(0);
-      });
-
-      it("uses execFileSync when GITHUB_ACTIONS=true", async () => {
-        process.env.GITHUB_ACTIONS = "true";
-        process.env.DATABASE_URL = "postgresql://user:pass@dbhost:5432/mydb";
-        mockExecFileSync.mockReturnValue(" ok ");
-
-        const result = await executeDatabaseQuery("testdb", "SELECT 1");
-
-        expect(mockExecFileSync).toHaveBeenCalled();
-        expect(result).toBe("ok");
-      });
-
-      it("wraps error with description when provided", async () => {
-        process.env.CI = "true";
-        process.env.DATABASE_URL = "postgresql://user:pass@dbhost:5432/mydb";
-        mockExecFileSync.mockImplementation(() => {
-          throw new Error("connection refused");
-        });
-
-        await expect(executeDatabaseQuery("testdb", "SELECT 1", { description: "Check database" })).rejects.toThrow(
-          "Check database failed: connection refused"
-        );
-      });
-
-      it("rethrows original error when no description provided", async () => {
-        process.env.CI = "true";
-        process.env.DATABASE_URL = "postgresql://user:pass@dbhost:5432/mydb";
-        const originalError = new Error("connection refused");
-        mockExecFileSync.mockImplementation(() => {
-          throw originalError;
-        });
-
-        await expect(executeDatabaseQuery("testdb", "SELECT 1")).rejects.toThrow(originalError);
-      });
-
-      it("throws when DATABASE_URL is not set in shell mode", async () => {
-        process.env.CI = "true";
-
-        await expect(executeDatabaseQuery("testdb", "SELECT 1")).rejects.toThrow(
-          "DATABASE_URL environment variable is required"
-        );
-      });
-    });
-
-    describe("shell mode via useShell option (local dev)", () => {
-      it("uses execSync with make command when useShell=true and not CI", async () => {
-        process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
-        mockExecSync.mockReturnValue("  local_result  ");
-
-        const result = await executeDatabaseQuery("testdb", "SELECT 1", { useShell: true });
-
-        expect(mockExecSync).toHaveBeenCalledWith(
-          expect.stringContaining('make db-query DB_NAME=testdb SQL="SELECT 1"'),
-          expect.objectContaining({ stdio: "pipe", encoding: "utf8" })
-        );
-        expect(result).toBe("local_result");
-        expect(allClients).toHaveLength(0);
-      });
-
-      it("escapes double quotes in SQL for shell execution", async () => {
-        process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
-        mockExecSync.mockReturnValue("");
-
-        await executeDatabaseQuery("testdb", 'SELECT "column_name" FROM "table"', { useShell: true });
-
-        const callArg = mockExecSync.mock.calls[0]![0] as string;
-        expect(callArg).toContain(String.raw`\"column_name\"`);
-        expect(callArg).toContain(String.raw`\"table\"`);
-      });
-
-      it("wraps error with description when provided for local shell", async () => {
-        process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
-        mockExecSync.mockImplementation(() => {
-          throw new Error("make failed");
-        });
-
-        await expect(
-          executeDatabaseQuery("testdb", "SELECT 1", { useShell: true, description: "Run query" })
-        ).rejects.toThrow("Run query failed: make failed");
-      });
-
-      it("rethrows original error when no description for local shell", async () => {
-        process.env.DATABASE_URL = "postgresql://user:pass@localhost:5432/mydb";
-        const originalError = new Error("make failed");
-        mockExecSync.mockImplementation(() => {
-          throw originalError;
-        });
-
-        await expect(executeDatabaseQuery("testdb", "SELECT 1", { useShell: true })).rejects.toThrow(originalError);
-      });
-    });
-
-    describe("environment detection", () => {
-      it("uses psql when both CI=true and useShell=true", async () => {
-        process.env.CI = "true";
-        process.env.DATABASE_URL = "postgresql://user:pass@dbhost:5432/mydb";
-        mockExecFileSync.mockReturnValue("ci_result");
-
-        const result = await executeDatabaseQuery("testdb", "SELECT 1", { useShell: true });
-
-        expect(result).toBe("ci_result");
-        expect(mockExecFileSync).toHaveBeenCalled();
-        expect(mockExecSync).not.toHaveBeenCalled();
       });
     });
   });

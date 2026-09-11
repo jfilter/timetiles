@@ -61,7 +61,7 @@ export interface DatabaseInfo {
  */
 const runDatabaseQuery = async (dbName: string, sql: string, description?: string): Promise<string> => {
   try {
-    const result = await executeDatabaseQuery(dbName, sql, { connectionString: E2E_DATABASE_URL, description });
+    const result = await executeDatabaseQuery(dbName, sql, { connectionString: E2E_DATABASE_URL });
     if (description) logger.debug(`✓ ${description}: ${result.trim()}`);
     return result.trim();
   } catch (error) {
