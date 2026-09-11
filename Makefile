@@ -132,8 +132,8 @@ setup-mac:
 fresh: clean
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🐘 Creating local database..."; \
-		psql -p $(PG_PORT) -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;"; \
-		psql -p $(PG_PORT) -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;"; \
+		psql -p $(PG_PORT) -d postgres -c "CREATE DATABASE timetiles OWNER timetiles_user;" && \
+		psql -p $(PG_PORT) -d timetiles -c "CREATE SCHEMA IF NOT EXISTS payload;" && \
 		psql -p $(PG_PORT) -d timetiles -c "CREATE EXTENSION IF NOT EXISTS postgis;"; \
 	else \
 		$(MAKE) up; \

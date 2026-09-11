@@ -66,4 +66,15 @@ describe("development database commands", () => {
     expect(result.stdout).not.toContain("up -d");
     expect(result.stdout).not.toContain("Database reset complete");
   });
+
+  it.each([
+    ["CREATE DATABASE", "CREATE SCHEMA"],
+    ["CREATE SCHEMA", "CREATE EXTENSION"],
+  ])("fresh stops when %s fails", (failure, nextCommand) => {
+    const result = runMake("fresh", "local", failure);
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("simulated command failure");
+    expect(result.stdout).not.toContain(nextCommand);
+    expect(result.stdout).not.toContain("Running migrations");
+  });
 });
