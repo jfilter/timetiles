@@ -162,8 +162,8 @@ const analyzeInternalDuplicates = async (
     batchNumber++;
 
     // Heap guard: a tall-narrow CSV could keep producing unique IDs until the
-    // map exhausts memory. Surface a review — the user is expected to split
-    // the file and retry rather than silently OOM the worker.
+    // map exhausts memory. Fail the job with a split-and-re-upload message;
+    // this hard limit is not an approvable review.
     if (uniqueIdMap.size > MAX_UNIQUE_ROWS_PER_SHEET) {
       throw new AnalyzeDuplicatesReviewError(
         `File has more than ${MAX_UNIQUE_ROWS_PER_SHEET} unique rows; duplicate analysis aborted`,

@@ -69,8 +69,8 @@ export const BATCH_SIZES = {
  *
  * Guards against heap exhaustion on extremely large files (tall-narrow CSVs that
  * survive our upload size cap but produce millions of unique IDs). When exceeded
- * the job surfaces a `FILE_TOO_LARGE` review so the user sees a clean message
- * instead of a 500 / OOM crash.
+ * the job fails with `FILE_TOO_LARGE` and asks the user to split and re-upload
+ * the file. This hard limit cannot be overridden by review approval.
  */
 export const MAX_UNIQUE_ROWS_PER_SHEET = 2_000_000;
 
