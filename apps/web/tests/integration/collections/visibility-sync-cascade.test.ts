@@ -90,6 +90,50 @@ describe.sequential("Visibility and ownership sync cascade", () => {
   const readDataset = async (datasetId: number) =>
     payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
 
+  it("rolls back visibility changes when the audit owner lookup fails", async () => {
+    const catalog = await createCatalog(`Audit failure ${crypto.randomUUID()}`, false, ownerUser.id);
+    const dataset = await payload.create({
+      collection: "datasets",
+      data: {
+        name: "Audit lookup failure",
+        catalog: catalog.id,
+        language: "eng",
+        isPublic: true,
+        createdBy: ownerUser.id,
+      },
+      overrideAccess: true,
+    });
+    const event = await createEvent(dataset.id, "audit-failure");
+    const hooks = payload.collections.users.config.hooks;
+    const originalHooks = hooks.beforeRead;
+    const failure = new Error("Audit owner lookup failed");
+    let failed = false;
+    hooks.beforeRead = [
+      ...(originalHooks ?? []),
+      () => {
+        if (!failed) {
+          failed = true;
+          throw failure;
+        }
+      },
+    ];
+    try {
+      await expect(
+        payload.update({
+          collection: "datasets",
+          id: dataset.id,
+          data: { isPublic: false },
+          overrideAccess: true,
+          depth: 0,
+        })
+      ).rejects.toBe(failure);
+    } finally {
+      hooks.beforeRead = originalHooks;
+    }
+    expect((await readDataset(dataset.id)).isPublic).toBe(true);
+    expect((await readEvent(event.id)).datasetIsPublic).toBe(false);
+  });
+
   describe("Catalog → Dataset sync (syncDatasetsWithCatalog)", () => {
     let catalogId: number;
     let datasetId: number;

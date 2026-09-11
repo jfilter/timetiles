@@ -511,33 +511,31 @@ const auditDatasetVisibilityChange = async (
   const datasetOwnerId = extractRelationId<number>(doc.createdBy);
   if (!datasetOwnerId) return;
 
-  try {
-    const owner = await req.payload.findByID({
-      collection: "users",
-      id: datasetOwnerId,
-      overrideAccess: true,
-      depth: 0,
-      req,
-    });
-    await auditLog(
-      req.payload,
-      {
-        action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
-        userId: datasetOwnerId,
-        userEmail: owner.email,
-        performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
-        details: {
-          datasetId: doc.id,
-          datasetName: doc.name,
-          previousIsPublic: previousDoc?.isPublic ?? false,
-          newIsPublic: doc.isPublic ?? false,
-        },
+  const owner = await req.payload.findByID({
+    collection: "users",
+    id: datasetOwnerId,
+    overrideAccess: true,
+    depth: 0,
+    disableErrors: true,
+    req,
+  });
+  if (!owner) return;
+  await auditLog(
+    req.payload,
+    {
+      action: AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED,
+      userId: datasetOwnerId,
+      userEmail: owner.email,
+      performedBy: req.user?.id === datasetOwnerId ? undefined : req.user?.id,
+      details: {
+        datasetId: doc.id,
+        datasetName: doc.name,
+        previousIsPublic: previousDoc?.isPublic ?? false,
+        newIsPublic: doc.isPublic ?? false,
       },
-      { req }
-    );
-  } catch {
-    /* audit is best-effort */
-  }
+    },
+    { req }
+  );
 };
 
 const syncDatasetChildAccessFields = async (
