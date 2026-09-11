@@ -14,14 +14,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { useScraperRunsQuery } from "@/lib/hooks/use-scrapers-query";
-import { formatDateLocale } from "@/lib/utils/date";
+import { formatDateLocale, formatDuration } from "@/lib/utils/date";
 import type { ScraperRun } from "@/payload-types";
-
-const formatDuration = (ms: number | null | undefined) => {
-  if (ms == null) return "—";
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-};
 
 const statusColors: Record<string, string> = {
   success: "text-green-700 dark:text-green-400",
