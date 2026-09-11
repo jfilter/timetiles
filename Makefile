@@ -110,14 +110,13 @@ db-reset-tests:
 	@cd apps/web && pnpm exec dotenv -e ../../.env -e .env.local -- tsx scripts/e2e-setup-database.ts
 	@echo "✅ Test databases reset complete"
 
-# Clean up everything
+# Remove this project's development database and containers
 clean:
 	@if [ "$(PG_MODE)" = "local" ]; then \
 		echo "🧹 Cleaning local database..."; \
 		psql -p $(PG_PORT) -d postgres -c "DROP DATABASE IF EXISTS timetiles;" 2>/dev/null || true; \
 	else \
 		docker compose -f docker-compose.dev.yml down -v --remove-orphans; \
-		docker system prune -f; \
 	fi
 
 # Complete first-time development setup

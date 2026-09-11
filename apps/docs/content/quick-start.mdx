@@ -86,6 +86,8 @@ See the [Getting Started Guide](/guide/getting-started) for a detailed walkthrou
 | `make status`   | Check environment health                               |
 | `make help`     | List all available commands                            |
 
+`make fresh` deletes the existing development database before recreating and seeding it. Back up any data you need first.
+
 Fix reported formatting issues with `pnpm exec oxfmt <file>` on the named files. `pnpm format` formats all workspace packages without lint autofixes; prefer named files to avoid unrelated changes.
 
 ## Database Mode
