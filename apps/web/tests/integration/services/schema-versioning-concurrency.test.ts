@@ -10,7 +10,7 @@
  *
  * @module
  */
-import type { PayloadRequest } from "payload";
+import type { CollectionBeforeChangeHook, PayloadRequest } from "payload";
 import { commitTransaction, initTransaction, killTransaction } from "payload";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -114,6 +114,43 @@ describe.sequential("SchemaVersioningService — concurrent creation", () => {
       expect(persisted.docs.map((d) => d.versionNumber)).toEqual([1, 2, 3, 4, 5]);
     }
   );
+
+  it("does not retry outside a caller transaction after a unique violation rolls it back", async () => {
+    await SchemaVersioningService.createSchemaVersion(payload, { dataset: datasetId, schema: { type: "object" } });
+    const originalCatalog = await payload.findByID({ collection: "catalogs", id: catalogId });
+    const hooks = payload.collections["dataset-schemas"].config.hooks;
+    const originalHooks = hooks.beforeChange;
+    let attempts = 0;
+    const forceFirstCollision: CollectionBeforeChangeHook = ({ data }) => {
+      // Exercise the real unique index after the service has selected a free version.
+      if (++attempts === 1) data.versionNumber = 1;
+      return data;
+    };
+    hooks.beforeChange = [...(originalHooks ?? []), forceFirstCollision];
+    try {
+      await expect(
+        withTransaction(payload, async (req) => {
+          await payload.update({
+            collection: "catalogs",
+            id: catalogId,
+            data: { name: "Uncommitted catalog rename" },
+            req,
+          });
+          return SchemaVersioningService.createSchemaVersion(payload, {
+            dataset: datasetId,
+            schema: { type: "object" },
+            req,
+          });
+        })
+      ).rejects.toThrow();
+      expect(attempts).toBe(1);
+      const schemas = await payload.find({ collection: "dataset-schemas", where: { dataset: { equals: datasetId } } });
+      expect(schemas.docs.map((schema) => schema.versionNumber)).toEqual([1]);
+      expect((await payload.findByID({ collection: "catalogs", id: catalogId })).name).toBe(originalCatalog.name);
+    } finally {
+      hooks.beforeChange = originalHooks;
+    }
+  });
 
   it("enforces DB-level uniqueness if app-level lock is bypassed", async () => {
     await SchemaVersioningService.createSchemaVersion(payload, {

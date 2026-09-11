@@ -17,7 +17,8 @@
  * 1. `pg_advisory_xact_lock` keyed per-dataset, held across the read→write
  *    (inside the caller's Payload transaction via `req.transactionID`).
  * 2. Unique index on `(dataset_id, version_number)` (migration `20260416_092834_*`).
- * 3. Bounded retry on unique-violation — covers the lock-bypass case.
+ * 3. Bounded retry on unique-violation for standalone calls. A caller's
+ *    transaction must be retried as a whole after Payload rolls it back.
  *
  * ⚠️ Payload CMS Deadlock Prevention
  * This service uses nested Payload operations and must receive the `req` parameter.
@@ -160,6 +161,7 @@ export class SchemaVersioningService {
     const datasetId = requireRelationId(dataset, "schema.dataset");
     const normalizedDatasetId = requireStrictInteger(datasetId, "dataset");
 
+    const hasCallerTransaction = Boolean(req?.transactionID);
     await this.acquireDatasetLock(payload, normalizedDatasetId, req);
 
     let lastError: unknown;
@@ -206,7 +208,9 @@ export class SchemaVersioningService {
         return schemaVersion;
       } catch (error) {
         lastError = error;
-        if (isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
+        // Payload rolls back and clears req.transactionID on create failure.
+        // Retrying here would silently commit outside the caller's transaction.
+        if (!hasCallerTransaction && isUniqueViolation(error) && attempt < MAX_CREATE_ATTEMPTS) {
           logger.warn("Schema version unique-violation, retrying", {
             datasetId,
             attemptedVersion: nextVersion,
