@@ -19,14 +19,11 @@ import { killTransaction } from "payload";
 
 import { assertNoBulkErrors, withDenormSync } from "@/lib/collections/catalog-ownership";
 import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
-import { createLogger } from "@/lib/logger";
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
 import { createQuotaService } from "@/lib/services/quota-service";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
 import { setCreatedByHook } from "../shared-fields";
-
-const logger = createLogger("catalogs");
 
 /** Validates that private catalogs are allowed if isPublic is false. */
 const validatePrivateVisibility = async (data: Record<string, unknown>, req: PayloadRequest): Promise<void> => {
@@ -191,53 +188,50 @@ export const catalogAfterChangeHooks: CollectionAfterChangeHook[] = [
     const changes = detectCatalogChanges(previousDoc, doc);
     if (!changes.createdByChanged && !changes.isPublicChanged) return doc;
 
-    // Audit visibility and ownership changes (best-effort)
+    // Audit visibility and ownership changes in the same transaction
     const ownerId = extractRelationId<number>(doc.createdBy);
     if (ownerId) {
-      try {
-        const owner = await req.payload.findByID({
-          collection: "users",
-          id: ownerId,
-          overrideAccess: true,
-          depth: 0,
-          req,
-        });
+      const owner = await req.payload.findByID({
+        collection: "users",
+        id: ownerId,
+        overrideAccess: true,
+        depth: 0,
+        disableErrors: true,
+        req,
+      });
 
-        if (changes.isPublicChanged) {
-          await auditLog(
-            req.payload,
-            {
-              action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
-              userId: ownerId,
-              userEmail: owner.email,
-              performedBy: req.user?.id === ownerId ? undefined : req.user?.id,
-              details: {
-                catalogId: doc.id,
-                catalogName: doc.name,
-                previousIsPublic: !changes.newIsPublic,
-                newIsPublic: changes.newIsPublic,
-              },
+      if (owner && changes.isPublicChanged) {
+        await auditLog(
+          req.payload,
+          {
+            action: AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED,
+            userId: ownerId,
+            userEmail: owner.email,
+            performedBy: req.user?.id === ownerId ? undefined : req.user?.id,
+            details: {
+              catalogId: doc.id,
+              catalogName: doc.name,
+              previousIsPublic: !changes.newIsPublic,
+              newIsPublic: changes.newIsPublic,
             },
-            { req }
-          );
-        }
+          },
+          { req }
+        );
+      }
 
-        if (changes.createdByChanged) {
-          const prevOwnerId = extractRelationId<number>(previousDoc?.createdBy);
-          await auditLog(
-            req.payload,
-            {
-              action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
-              userId: prevOwnerId ?? ownerId,
-              userEmail: owner.email,
-              performedBy: req.user?.id,
-              details: { catalogId: doc.id, catalogName: doc.name, previousOwnerId: prevOwnerId, newOwnerId: ownerId },
-            },
-            { req }
-          );
-        }
-      } catch (error) {
-        logger.warn("Audit log failed for catalog change", { catalogId: doc.id, error });
+      if (owner && changes.createdByChanged) {
+        const prevOwnerId = extractRelationId<number>(previousDoc?.createdBy);
+        await auditLog(
+          req.payload,
+          {
+            action: AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED,
+            userId: prevOwnerId ?? ownerId,
+            userEmail: owner.email,
+            performedBy: req.user?.id,
+            details: { catalogId: doc.id, catalogName: doc.name, previousOwnerId: prevOwnerId, newOwnerId: ownerId },
+          },
+          { req }
+        );
       }
     }
 

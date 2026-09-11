@@ -90,7 +90,12 @@ describe.sequential("Visibility and ownership sync cascade", () => {
   const readDataset = async (datasetId: number) =>
     payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: true });
 
-  it.each(["owner lookup", "write"])("rolls back visibility changes when the audit %s fails", async (stage) => {
+  it.each([
+    ["datasets", "owner lookup"],
+    ["datasets", "write"],
+    ["catalogs", "owner lookup"],
+    ["catalogs", "write"],
+  ] as const)("rolls back %s visibility when the audit %s fails", async (collection, stage) => {
     const catalog = await createCatalog(`Audit failure ${crypto.randomUUID()}`, false, ownerUser.id);
     const dataset = await payload.create({
       collection: "datasets",
@@ -121,9 +126,9 @@ describe.sequential("Visibility and ownership sync cascade", () => {
     try {
       await expect(
         payload.update({
-          collection: "datasets",
-          id: dataset.id,
-          data: { isPublic: false },
+          collection,
+          id: collection === "catalogs" ? catalog.id : dataset.id,
+          data: { isPublic: collection === "catalogs" },
           overrideAccess: true,
           depth: 0,
         })
@@ -133,6 +138,7 @@ describe.sequential("Visibility and ownership sync cascade", () => {
       hooks.beforeRead = originalBeforeRead;
     }
     expect((await readDataset(dataset.id)).isPublic).toBe(true);
+    expect((await payload.findByID({ collection: "catalogs", id: catalog.id })).isPublic).toBe(false);
     expect((await readEvent(event.id)).datasetIsPublic).toBe(false);
   });
 
