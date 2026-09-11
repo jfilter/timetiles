@@ -100,4 +100,50 @@ describe.sequential("Deactivated user credential revocation", () => {
 
     expect(await countSessions(user.id)).toBe(before);
   });
+
+  it("preserves the revocation error and rolls back deactivation when revoking a key fails", async () => {
+    const { payload } = testEnv;
+    const user = await createLoggedInUser();
+    await payload.update({
+      collection: "users",
+      id: user.id,
+      data: { enableAPIKey: true, apiKey: `${TEST_CREDENTIALS.apiKey.key}-${user.id}` },
+      overrideAccess: true,
+    });
+    const sessionsBefore = await countSessions(user.id);
+    const db = payload.db.drizzle;
+    await db.execute(sql`
+      CREATE FUNCTION payload.test_fail_key_revocation() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'credential revocation regression';
+      END;
+      $$ LANGUAGE plpgsql
+    `);
+    try {
+      await db.execute(sql`
+        CREATE TRIGGER test_fail_key_revocation BEFORE UPDATE ON payload.users
+        FOR EACH ROW WHEN (OLD.enable_a_p_i_key = true AND NEW.enable_a_p_i_key = false)
+        EXECUTE FUNCTION payload.test_fail_key_revocation()
+      `);
+      let failure: unknown;
+      try {
+        await payload.update({ collection: "users", id: user.id, data: { isActive: false }, overrideAccess: true });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(Error);
+      const messages: string[] = [];
+      for (let error = failure; error instanceof Error; error = error.cause) messages.push(error.message);
+      expect(messages).toContain("credential revocation regression");
+
+      const unchanged = await payload.findByID({ collection: "users", id: user.id, overrideAccess: true });
+      expect(unchanged.isActive).toBe(true);
+      expect(unchanged.enableAPIKey).toBe(true);
+      expect(unchanged.apiKey).toBeTruthy();
+      expect(await countSessions(user.id)).toBe(sessionsBefore);
+    } finally {
+      await db.execute(sql`DROP TRIGGER IF EXISTS test_fail_key_revocation ON payload.users`);
+      await db.execute(sql`DROP FUNCTION payload.test_fail_key_revocation()`);
+    }
+  });
 });

@@ -18,7 +18,7 @@ import { APIError, AuthenticationError, LockedAuth } from "payload";
 import { DEFAULT_QUOTAS, normalizeTrustLevel, TRUST_LEVELS } from "@/lib/constants/quota-constants";
 import { RATE_LIMITS } from "@/lib/constants/rate-limits";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
-import { logError, logger } from "@/lib/logger";
+import { logger } from "@/lib/logger";
 import { validatePassword } from "@/lib/security/password-policy";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 import { getClientIdentifier, getRateLimitService } from "@/lib/services/rate-limit-service";
@@ -183,28 +183,22 @@ const revokeCredentialsOnDeactivation: CollectionAfterChangeHook = async ({ doc,
   if (operation !== "update" || !previousDoc) return doc;
   if (previousDoc.isActive !== true || doc.isActive !== false) return doc;
 
-  try {
-    // Raw SQL avoids re-entering the users update hooks just to revoke credentials.
-    // A nested payload.update({ req }) could share this transaction, but would still
-    // rerun the collection's hooks. Omitting req would use a separate transaction.
-    //
-    // It MUST go through getTransactionAwareDrizzle: account deletion flips isActive inside an
-    // open transaction that already holds a row lock on this user, so issuing these statements
-    // on the default pool connection would block on that lock until the test/request timed out.
-    const db = await getTransactionAwareDrizzle(req.payload, req);
-    await db.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${doc.id}`);
-    await db.execute(
-      sql`UPDATE payload.users
+  // Raw SQL avoids re-entering the users update hooks just to revoke credentials.
+  // A nested payload.update({ req }) could share this transaction, but would still
+  // rerun the collection's hooks. Omitting req would use a separate transaction.
+  //
+  // Account deletion already holds a row lock on this user, so use its transaction.
+  // Propagate failures: PostgreSQL aborts the transaction on a statement error, and
+  // continuing would mask the original cause with a later aborted-transaction error.
+  const db = await getTransactionAwareDrizzle(req.payload, req);
+  await db.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${doc.id}`);
+  await db.execute(
+    sql`UPDATE payload.users
           SET "enable_a_p_i_key" = false, "api_key" = NULL, "api_key_index" = NULL
           WHERE id = ${doc.id}`
-    );
+  );
 
-    logger.info({ userId: doc.id }, "Revoked sessions and API key for deactivated user");
-  } catch (error) {
-    // Never block the deactivation itself — a stale session is worse than nothing, but a user
-    // who cannot be deactivated at all is worse still. The authenticateRequest gate holds.
-    logError(error, "Failed to revoke credentials for deactivated user", { userId: doc.id });
-  }
+  logger.info({ userId: doc.id }, "Revoked sessions and API key for deactivated user");
 
   return doc;
 };
