@@ -159,8 +159,6 @@ export const auditFieldChanges = async (
 ): Promise<void> => {
   if (!args.previousDoc) return;
 
-  const promises: Promise<void>[] = [];
-
   for (const field of fields) {
     const oldValue = getByPath(args.previousDoc, field.fieldPath);
     const newValue = getByPath(args.doc, field.fieldPath);
@@ -168,22 +166,20 @@ export const auditFieldChanges = async (
     if (!deepEqual(oldValue, newValue)) {
       const details = field.detailsFn ? field.detailsFn(oldValue, newValue) : { previousValue: oldValue, newValue };
 
-      promises.push(
-        auditLog(
-          payload,
-          {
-            action: field.action,
-            userId: args.userId,
-            userEmail: args.userEmail,
-            performedBy: args.performedBy,
-            ipAddress: args.ipAddress,
-            details,
-          },
-          options
-        )
+      // A failed write can roll back the shared transaction. Do not start the
+      // next audit until this one has completed successfully.
+      await auditLog(
+        payload,
+        {
+          action: field.action,
+          userId: args.userId,
+          userEmail: args.userEmail,
+          performedBy: args.performedBy,
+          ipAddress: args.ipAddress,
+          details,
+        },
+        options
       );
     }
   }
-
-  await Promise.all(promises);
 };
