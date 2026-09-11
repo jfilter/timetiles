@@ -167,6 +167,17 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
     expect(data.events).toEqual([]);
   });
 
+  it.each(prototypeFieldKeys)("applies a value filter for %s", async (key) => {
+    const filters = JSON.stringify(Object.fromEntries([[key, ["1.234,56"]]]));
+    const url = `http://localhost:3000/api/v1/events?datasets=${euDatasetId}&ff=${encodeURIComponent(filters)}`;
+    const response = await GET(new NextRequest(url), { params: Promise.resolve({}) });
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.pagination.totalDocs).toBe(1);
+    expect(data.events).toHaveLength(1);
+    expect(data.events[0].data[key]).toBe("1.234,56");
+  });
+
   it("filters a US column by a min/max range (inclusive), excluding non-numeric cells", async () => {
     const data = await requestRange(usDatasetId, { price: { min: 10, max: 100 } });
     const prices = data.events.map((e) => String(e.data.price)).sort((a, b) => a.localeCompare(b));
