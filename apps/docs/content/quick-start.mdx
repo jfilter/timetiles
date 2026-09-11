@@ -15,23 +15,18 @@ You need the following installed:
 
 - **Node.js 24+** and **pnpm 10.12+**
 - **Docker & Docker Compose** (for PostgreSQL) — or a local PostgreSQL 17+ with PostGIS
-- **Git**
+- **Git and Git LFS**
 - **Make**
+- **jq and curl** for setup and diagnostic scripts
+- **PostgreSQL client tools** (`psql` and `pg_isready`), including when PostgreSQL runs in Docker
 
-```bash
-# macOS
-brew install git git-lfs node pnpm docker postgresql jq curl
-
-# Debian/Ubuntu
-sudo apt install git git-lfs make nodejs npm docker.io docker-compose postgresql-client jq curl
-sudo npm install -g pnpm
-```
-
-If you use `mise`, the repo includes a local `.mise.toml` with the pinned Node.js and pnpm versions:
+After cloning the repository, use its `.mise.toml` to install the pinned Node.js and pnpm versions with `mise`:
 
 ```bash
 mise install
 ```
+
+If you manage Node.js and pnpm another way, match the repository's pinned versions. Install the remaining prerequisites separately; `mise install` does not install Docker, Git LFS, Make, or PostgreSQL.
 
 ## Install and Run
 
