@@ -10,7 +10,6 @@
  * @category Integration Tests
  */
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -42,11 +41,6 @@ describe.sequential("Import Wizard API Endpoints", () => {
   afterAll(async () => {
     if (testEnv?.cleanup) {
       await testEnv.cleanup();
-    }
-    // Clean up wizard preview directory
-    const previewDir = path.join(os.tmpdir(), "timetiles-wizard-preview");
-    if (fs.existsSync(previewDir)) {
-      fs.rmSync(previewDir, { recursive: true, force: true });
     }
   });
 
