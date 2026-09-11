@@ -17,6 +17,7 @@ import {
   buildTestInterpretationPlan,
   createIntegrationTestEnvironment,
   withCatalog,
+  withDataset,
   withUsers,
 } from "../../setup/integration/environment";
 
@@ -39,6 +40,22 @@ describe.sequential("Config Suggestions - Integration", () => {
   beforeEach(async () => {
     const { users } = await withUsers(testEnv, { testUser: { role: "admin" } });
     testUser = users.testUser;
+  });
+
+  it("excludes another user's matching datasets from the loaded candidates", async () => {
+    const { users } = await withUsers(testEnv, { otherUser: { role: "user" } });
+    const { catalog: ownCatalog } = await withCatalog(testEnv, { user: testUser });
+    const { catalog: otherCatalog } = await withCatalog(testEnv, { user: users.otherUser });
+    const options = { fieldMappingOverrides: { titlePath: "title", timestampPath: "date" } };
+    const { dataset: ownDataset } = await withDataset(testEnv, ownCatalog.id, options);
+    const { dataset: otherDataset } = await withDataset(testEnv, otherCatalog.id, options);
+
+    const candidates = await loadConfigSuggestionDatasets(payload, testUser.id);
+    expect(candidates.map((dataset) => dataset.id)).toEqual([ownDataset.id]);
+    expect(candidates.some((dataset) => dataset.id === otherDataset.id)).toBe(false);
+    expect(findConfigSuggestions(["title", "date"], candidates).map((suggestion) => suggestion.datasetId)).toEqual([
+      ownDataset.id,
+    ]);
   });
 
   it("should return matching suggestions for similar headers", async () => {
