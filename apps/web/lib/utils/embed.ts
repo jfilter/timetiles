@@ -27,7 +27,22 @@ export const isEmbedOriginAllowed = (site: Site | null, referer: string | null):
 
   try {
     const refererOrigin = new URL(referer).origin;
-    return origins.some((entry) => refererOrigin === entry.origin);
+    return origins.some((entry) => {
+      try {
+        const allowed = new URL(entry.origin);
+        return (
+          (allowed.protocol === "https:" || allowed.protocol === "http:") &&
+          allowed.pathname === "/" &&
+          !allowed.search &&
+          !allowed.hash &&
+          !allowed.username &&
+          !allowed.password &&
+          refererOrigin === allowed.origin
+        );
+      } catch {
+        return false;
+      }
+    });
   } catch {
     return false;
   }

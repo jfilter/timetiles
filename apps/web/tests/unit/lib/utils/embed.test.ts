@@ -64,6 +64,37 @@ describe("isEmbedOriginAllowed", () => {
   describe("edge cases", () => {
     const site = siteWithOrigins("https://example.com");
 
+    it.each(["https://example.com/", "https://EXAMPLE.com", "https://example.com:443"])(
+      "normalizes the configured origin %s",
+      (origin) => {
+        expect(isEmbedOriginAllowed(siteWithOrigins(origin), "https://example.com/page")).toBe(true);
+      }
+    );
+
+    it.each([
+      "https://example.com/private",
+      "https://example.com/?query=value",
+      "https://example.com/#fragment",
+      "https://user@example.com",
+      "null",
+    ])("does not interpret %s as an origin permission", (origin) => {
+      expect(isEmbedOriginAllowed(siteWithOrigins(origin), "https://example.com/page")).toBe(false);
+    });
+
+    it.each([
+      ["null", "data:text/plain,example"],
+      ["file://", "file:///example"],
+      ["ftp://example.com", "ftp://example.com/page"],
+    ])("rejects non-web origin %s", (origin, referer) => {
+      expect(isEmbedOriginAllowed(siteWithOrigins(origin), referer)).toBe(false);
+    });
+
+    it("ignores an invalid entry before a matching origin", () => {
+      expect(
+        isEmbedOriginAllowed(siteWithOrigins("not-a-url", "https://example.com/"), "https://example.com/page")
+      ).toBe(true);
+    });
+
     it("rejects null referer when origins are configured (prevents Referrer-Policy bypass)", () => {
       expect(isEmbedOriginAllowed(site, null)).toBe(false);
     });
