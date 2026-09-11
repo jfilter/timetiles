@@ -12,6 +12,7 @@
  * - Schedule modifications during execution
  */
 
+import type { CollectionBeforeOperationHook } from "payload";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TEST_EMAILS } from "@/tests/constants/test-credentials";
@@ -343,18 +344,22 @@ describe.sequential("Schedule Edge Case Tests", () => {
   });
 
   describe("Error Handling and Recovery", () => {
-    it("should handle schedule manager errors gracefully", async () => {
-      // Mock a database error
-      const findSpy = vi.spyOn(payload, "find").mockRejectedValueOnce(new Error("Database connection lost"));
-
-      // Import and run the schedule manager
+    it("should propagate schedule read failures unchanged", async () => {
       const { scheduleManagerJob } = await import("@/lib/jobs/handlers/schedule-manager-job");
-
-      await expect(
-        scheduleManagerJob.handler({ job: { id: "test-schedule-manager-error" }, req: { payload } })
-      ).rejects.toThrow("Database connection lost");
-
-      findSpy.mockRestore();
+      const failure = new Error("Scheduled ingest read regression");
+      const hooks = payload.collections["scheduled-ingests"].config.hooks;
+      const originalBeforeOperation = hooks.beforeOperation;
+      const failRead: CollectionBeforeOperationHook = ({ operation }) => {
+        if (operation === "read") throw failure;
+      };
+      hooks.beforeOperation = [...(originalBeforeOperation ?? []), failRead];
+      try {
+        await expect(
+          scheduleManagerJob.handler({ job: { id: "test-schedule-manager-error" }, req: { payload } })
+        ).rejects.toBe(failure);
+      } finally {
+        hooks.beforeOperation = originalBeforeOperation;
+      }
     });
 
     it("should continue processing other schedules if one fails", async () => {
