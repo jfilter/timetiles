@@ -101,12 +101,12 @@ Never create migration files manually — always use Payload's generator.
 
 ## Troubleshooting
 
-| Problem                         | Solution                     |
-| ------------------------------- | ---------------------------- |
-| Port 3000 in use                | `make kill-dev`              |
-| Database connection error       | `make down && make up`       |
-| Stale state                     | `make fresh`                 |
-| TypeScript errors after updates | `pnpm install && make check` |
+| Problem                         | Solution                                |
+| ------------------------------- | --------------------------------------- |
+| Port 3000 in use                | `make kill-dev`                         |
+| Database connection error       | `make status`, then `make ensure-infra` |
+| Stale state                     | `make fresh`                            |
+| TypeScript errors after updates | `pnpm install && make check`            |
 
 ## Further Reading
 

@@ -6,7 +6,7 @@
  * @category Tests
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
@@ -17,7 +17,9 @@ let directory: string;
 
 beforeEach(() => {
   directory = mkdtempSync(resolve(tmpdir(), "timetiles-make-database-"));
-  for (const command of ["psql", "docker"]) {
+  mkdirSync(resolve(directory, "scripts"));
+  writeFileSync(resolve(directory, "scripts/setup.sh"), "#!/bin/sh\nprintf 'setup complete\\n'\n", { mode: 0o755 });
+  for (const command of ["psql", "docker", "make"]) {
     writeFileSync(
       resolve(directory, command),
       `#!/bin/sh
@@ -42,15 +44,29 @@ afterEach(() => {
 });
 
 const runMake = (target: string, mode: string, failure = "__never__") =>
-  spawnSync("/usr/bin/make", ["--no-print-directory", "-f", makefile, target, `PG_MODE=${mode}`, "SHELL=/bin/bash"], {
-    cwd: directory,
-    encoding: "utf8",
-    timeout: 10000,
-    // Only the two command stubs are on PATH; no real Docker or psql is reachable.
-    env: { NODE_ENV: "test", PATH: directory, FAIL_PATTERN: failure },
-  });
+  spawnSync(
+    "/usr/bin/make",
+    ["--no-print-directory", "-f", makefile, target, `PG_MODE=${mode}`, "SHELL=/bin/bash", "MAKE=make"],
+    {
+      cwd: directory,
+      encoding: "utf8",
+      timeout: 10000,
+      // Only command stubs are on PATH; recursive make cannot start real services.
+      env: { NODE_ENV: "test", PATH: directory, FAIL_PATTERN: failure },
+    }
+  );
 
 describe("development database commands", () => {
+  it.each(["local", "docker"])("init uses mode-aware infrastructure after setup in %s mode", (mode) => {
+    const result = runMake("init", mode);
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("setup complete");
+    expect(result.stdout).toContain("call:ensure-infra");
+    expect(result.stdout.indexOf("setup complete")).toBeLessThan(result.stdout.indexOf("call:ensure-infra"));
+    expect(result.stdout.indexOf("call:ensure-infra")).toBeLessThan(result.stdout.indexOf("call:migrate"));
+    expect(result.stdout).not.toContain("compose");
+  });
+
   it.each(["local", "docker"])("db-reset-tests stops on SQL errors in %s mode", (mode) => {
     const result = runMake("db-reset-tests", mode, "DROP DATABASE");
     expect(result.status).not.toBe(0);

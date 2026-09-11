@@ -99,7 +99,7 @@ PG_MODE=local
 DATABASE_URL=postgresql://timetiles_user:timetiles_password@localhost:5433/timetiles
 ```
 
-All `make` commands respect this setting automatically.
+`make init`, `make dev`, and the database reset/query commands respect this setting. `make up`, `make down`, and `make logs` control Docker Compose directly, regardless of the database mode. Use `make ensure-infra` to start the configured database and wait for it to become ready.
 
 ## Troubleshooting
 
@@ -112,7 +112,8 @@ make kill-dev
 **Database connection issues:**
 
 ```bash
-make down && make up
+make status
+make ensure-infra
 ```
 
 **Something broken — start fresh:**

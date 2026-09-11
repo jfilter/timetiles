@@ -378,7 +378,8 @@ demo-berlin: setup-site
 	@$(MAKE) demo-data ARGS="--trigger"
 
 # Complete first-time initialization (setup + database + seed + start dev)
-init: setup up wait-db
+init: setup
+	@$(MAKE) ensure-infra
 	@echo "🔄 Running migrations..."
 	@$(MAKE) migrate
 	@echo "🌱 Seeding development data..."
