@@ -10,13 +10,13 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resetEnv } from "@/lib/config/env";
 
 import {
-  constructDatabaseUrl,
   deriveDatabaseUrl,
   getDatabaseInfo,
   getDatabaseUrl,
   getTestDatabaseUrl,
   isTestDatabase,
   parseDatabaseUrl,
+  withDatabaseName,
 } from "../../../lib/database/url";
 import { TEST_CREDENTIALS } from "../../constants/test-credentials";
 
@@ -67,21 +67,32 @@ describe("Database URL Utilities", () => {
     });
   });
 
-  describe("constructDatabaseUrl", () => {
-    it("should construct a valid PostgreSQL URL", () => {
-      const url = constructDatabaseUrl({
-        username: TEST_DB_USER,
-        password: TEST_DB_PASS,
-        host: "localhost",
-        port: "5432",
-        database: "mydb",
-      });
-
-      expect(url).toBe(TEST_DB_URL);
+  describe("withDatabaseName", () => {
+    it("changes only the database and encodes reserved characters", () => {
+      const baseUrl = `${TEST_DB_URL}?sslmode=require&application_name=timetiles-tests`;
+      const result = new URL(withDatabaseName(baseUrl, "data/base?# %"));
+      const original = new URL(baseUrl);
+      expect(decodeURIComponent(result.pathname.slice(1))).toBe("data/base?# %");
+      expect(result.search).toBe(original.search);
+      expect(result.username).toBe(original.username);
+      expect(result.password).toBe(original.password);
+      expect(result.host).toBe(original.host);
     });
   });
 
   describe("deriveDatabaseUrl", () => {
+    it("does not double-encode the database name", () => {
+      const baseUrl = new URL(TEST_DB_URL);
+      baseUrl.pathname = "/my%20database";
+      expect(new URL(deriveDatabaseUrl(baseUrl.toString())).pathname).toBe("/my%20database_test");
+    });
+    it("preserves connection options when deriving a worker database", () => {
+      const baseUrl = `${TEST_DB_URL}?sslmode=require&application_name=timetiles-tests`;
+      const result = new URL(deriveDatabaseUrl(baseUrl, { workerId: "2" }));
+      expect(result.pathname).toBe("/mydb_test_2");
+      expect(result.search).toBe(new URL(baseUrl).search);
+    });
+
     it("should create test database URL with worker ID", () => {
       const baseUrl = TEST_DB_URL;
       const testUrl = deriveDatabaseUrl(baseUrl, { workerId: "1" });

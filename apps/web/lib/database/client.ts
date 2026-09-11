@@ -12,6 +12,8 @@ import { Client } from "pg";
 
 import { getEnv } from "@/lib/config/env";
 
+import { withDatabaseName } from "./url";
+
 /**
  * Options for creating a database client
  */
@@ -54,9 +56,9 @@ export interface DatabaseClientOptions {
  * ```
  */
 export const createDatabaseClient = (options: DatabaseClientOptions = {}): Client => {
-  const url = new URL(options.connectionString ?? getEnv().DATABASE_URL);
+  let connectionString = options.connectionString ?? getEnv().DATABASE_URL;
   if (options.database !== undefined || options.connectionString === undefined) {
-    url.pathname = `/${encodeURIComponent(options.database ?? "postgres")}`;
+    connectionString = withDatabaseName(connectionString, options.database ?? "postgres");
   }
-  return new Client({ connectionString: url.toString() });
+  return new Client({ connectionString });
 };

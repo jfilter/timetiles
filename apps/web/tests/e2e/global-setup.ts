@@ -22,7 +22,7 @@ loadEnv({ path: path.resolve(process.cwd(), ".env.local") });
 
 import { dropDatabase, listDatabasesByPrefix } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
-import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
+import { withDatabaseName } from "@/lib/database/url";
 
 import { seedE2ETestData } from "./seed-e2e-data";
 import { startGeocodingStubServer } from "./utils/geocoding-stub-server";
@@ -74,8 +74,7 @@ export default async function globalSetup(): Promise<void> {
     throw new Error("DATABASE_URL environment variable is required for E2E tests");
   }
 
-  const components = parseDatabaseUrl(baseUrl);
-  const databaseUrl = constructDatabaseUrl({ ...components, database: databaseName });
+  const databaseUrl = withDatabaseName(baseUrl, databaseName);
 
   // Start the geocoding stub server before seeding, so the seed can write
   // a geocoding-providers row with baseUrl pointing at the stub. The server

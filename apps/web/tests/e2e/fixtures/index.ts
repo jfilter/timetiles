@@ -13,7 +13,7 @@
 import { test as base } from "@playwright/test";
 import { Client } from "pg";
 
-import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
+import { withDatabaseName } from "@/lib/database/url";
 
 import { getWorktreeBasePort } from "../utils/worktree-id";
 
@@ -47,7 +47,7 @@ const setScraperRunStatusFixture = async (
   }
 
   const client = new Client({
-    connectionString: constructDatabaseUrl({ ...parseDatabaseUrl(baseUrl), database: databaseName }),
+    connectionString: withDatabaseName(baseUrl, databaseName),
   });
   await client.connect();
   try {

@@ -38,11 +38,12 @@ export const parseDatabaseUrl = (url: string): DatabaseUrlComponents => {
 };
 
 /**
- * Construct a database URL from components
+ * Change only the database name, preserving credentials and connection options.
  */
-export const constructDatabaseUrl = (components: Omit<DatabaseUrlComponents, "fullUrl">): string => {
-  const { username, password, host, port, database } = components;
-  return `postgresql://${username}:${password}@${host}:${port}/${database}`;
+export const withDatabaseName = (baseUrl: string, database: string): string => {
+  const url = new URL(baseUrl);
+  url.pathname = `/${encodeURIComponent(database)}`;
+  return url.toString();
 };
 
 /**
@@ -77,8 +78,7 @@ export interface DeriveDatabaseUrlOptions {
  * ```
  */
 export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOptions = {}): string => {
-  const components = parseDatabaseUrl(baseUrl);
-  let baseName = components.database;
+  let baseName = decodeURIComponent(new URL(baseUrl).pathname.slice(1));
 
   // Remove any existing _test suffix to avoid duplication
   // Matches: _test, _test_1, etc.
@@ -91,7 +91,7 @@ export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOpt
   // Add worker ID if provided
   const derivedName = options.workerId ? `${testBaseName}_${options.workerId}` : testBaseName;
 
-  return constructDatabaseUrl({ ...components, database: derivedName });
+  return withDatabaseName(baseUrl, derivedName);
 };
 
 /**

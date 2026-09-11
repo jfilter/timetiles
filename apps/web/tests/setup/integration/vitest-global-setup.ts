@@ -21,7 +21,7 @@ dotenv.config({ path: path.resolve(repoRoot, ".env.local"), override: true });
 import { createDatabaseClient } from "@/lib/database/client";
 import { databaseExists, dropDatabase } from "@/lib/database/operations";
 import { checkPostgreSQLConnection, setupDatabase } from "@/lib/database/setup";
-import { constructDatabaseUrl, parseDatabaseUrl } from "@/lib/database/url";
+import { withDatabaseName } from "@/lib/database/url";
 
 import { verifyDatabaseSchema } from "./schema-verification";
 
@@ -99,8 +99,7 @@ const buildTemplateUrl = (): string => {
     throw new Error("DATABASE_URL environment variable is required");
   }
 
-  const components = parseDatabaseUrl(baseUrl);
-  return constructDatabaseUrl({ ...components, database: TEMPLATE_DB_NAME });
+  return withDatabaseName(baseUrl, TEMPLATE_DB_NAME);
 };
 
 /**

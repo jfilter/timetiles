@@ -15,7 +15,7 @@ import { getEnv } from "@/lib/config/env";
 import { createLogger } from "../logger";
 import { createDatabaseClient } from "./client";
 import { createDatabase, databaseExists, dropDatabase } from "./operations";
-import { constructDatabaseUrl, parseDatabaseUrl } from "./url";
+import { parseDatabaseUrl, withDatabaseName } from "./url";
 
 const logger = createLogger("database-setup");
 
@@ -229,8 +229,7 @@ const resolveDatabaseConnection = (
     throw new Error("DATABASE_URL environment variable is required");
   }
 
-  const baseComponents = parseDatabaseUrl(baseUrl);
-  const connString = constructDatabaseUrl({ ...baseComponents, database: databaseName });
+  const connString = withDatabaseName(baseUrl, databaseName);
 
   return { dbName: databaseName, connString };
 };
