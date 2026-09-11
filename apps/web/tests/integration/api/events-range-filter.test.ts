@@ -244,6 +244,26 @@ describe.sequential("/api/v1/events - numeric range filtering", () => {
     expect(data.events).toEqual([]);
   });
 
+  it("preserves prototype-named values when creating an event through Payload", async () => {
+    const transformedData = Object.fromEntries([
+      ["__proto__", { nested: "value" }],
+      ["title", "Created event"],
+    ]);
+    const event = await payload.create({
+      collection: "events",
+      data: {
+        dataset: euDatasetId,
+        uniqueId: `prototype-create-${crypto.randomUUID()}`,
+        transformedData,
+        eventTimestamp: "2024-01-01T00:00:00.000Z",
+      },
+    });
+    const stored = await payload.db.drizzle.execute(sql`
+      SELECT transformed_data FROM payload.events WHERE id = ${event.id}
+    `);
+    expect(stored.rows[0]?.transformed_data).toEqual(transformedData);
+  });
+
   it("preserves prototype-named imported values when updating event data", async () => {
     const uniqueId = `prototype-update-${crypto.randomUUID()}`;
     const transformedData = Object.fromEntries([
