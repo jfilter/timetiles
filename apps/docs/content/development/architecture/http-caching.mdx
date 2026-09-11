@@ -142,7 +142,8 @@ The cache uses **persistent disk storage**:
 - Configurable directory and size limits (`cache.urlFetch.dir` and `cache.urlFetch.maxSizeBytes`)
 - The `cache-cleanup` job runs every 6 hours on the `ingest` queue, in the worker that owns the cache. That worker must run with `--handle-schedules`, as configured in the production Compose stack. A separate maintenance container cannot clean the ingest container's private `/tmp` directory. Size-based eviction also runs when entries are written.
 - Ordinary cache reads remove expired entries; HTTP revalidation reads may use them until cleanup or eviction
-- Binary response bodies are stored as raw bytes behind a JSON metadata header; incomplete binary payloads are rejected
+- New cache files use Node's native binary serialization in a versioned, length-checked envelope. User-data keys are not interpreted as binary markers; truncated or appended payloads are rejected. Legacy JSON files and version-one binary envelopes remain readable, but ambiguous user-data markers in old envelopes cannot be repaired retroactively.
+- Size accounting uses the actual serialized payload-file bytes, including metadata, rather than source-body size or text character counts. The separate index file is not included in this limit.
 - Index writes are serialized and atomically renamed within one storage instance; the directory must not be shared by independently initialized instances
 
 ### Relationship to the Generic Cache
