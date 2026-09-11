@@ -259,7 +259,7 @@ test:
 # Run tests with AI-friendly output
 # Usage: make test-ai [FILTER=pattern]
 # Examples:
-#   make test-ai                                    # Run all tests (Turbo cached)
+#   make test-ai                                    # Run workspace test:ai scripts (Turbo cached)
 #   make test-ai FILTER=tests/unit                  # Run unit tests directory
 #   make test-ai FILTER=date.test                   # Run tests matching pattern (faster)
 #   make test-ai FILTER=store.test                  # Run store tests
@@ -270,7 +270,7 @@ test:
 test-ai:
 	@if [ -z "$(FILTER)" ]; then \
 		TEST_WORKERS="$(or $(WORKERS),)" \
-		pnpm turbo run test:ai --filter=web --filter=timescrape; \
+		pnpm turbo run test:ai; \
 	else \
 		TEST_WORKERS="$(or $(WORKERS),)" \
 		bash -c 'cd apps/web && pnpm test:ai "$(FILTER)"'; \

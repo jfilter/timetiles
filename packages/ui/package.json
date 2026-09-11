@@ -322,6 +322,7 @@
     "lint": "pnpm -w lint:eslint packages/ui --cache --cache-location packages/ui/.eslintcache",
     "format": "oxfmt --write .",
     "test": "vitest run",
+    "test:ai": "vitest run --reporter=default --reporter=json --outputFile.json=.test-results/latest.json",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "tsup",
     "storybook": "node -e \"const major = Number(process.versions.node.split('.')[0]); if (major < 24) { console.error('Storybook in this repo requires Node 24+; current ' + process.version + '. Older runtimes can fail with misleading port errors.'); process.exit(1); }\" && storybook dev -p 6006",

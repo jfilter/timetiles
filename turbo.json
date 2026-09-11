@@ -91,42 +91,12 @@
     "storybook:build": { "dependsOn": ["^build"], "outputs": ["storybook-static/**"] },
     "test": {
       "dependsOn": ["transit"],
-      "inputs": [
-        "lib/**/*.ts",
-        "lib/**/*.tsx",
-        "app/**/*.ts",
-        "app/**/*.tsx",
-        "components/**/*.ts",
-        "components/**/*.tsx",
-        "src/**/*.ts",
-        "tests/**/*.ts",
-        "tests/**/*.tsx",
-        "migrations/**/*",
-        "vitest.config.ts",
-        "vitest.config.base.ts",
-        "vitest.workspace.ts",
-        "payload.config.ts"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "../../Makefile"],
       "outputs": [".test-results/**", "coverage/**"]
     },
     "test:ai": {
       "dependsOn": ["transit"],
-      "inputs": [
-        "lib/**/*.ts",
-        "lib/**/*.tsx",
-        "app/**/*.ts",
-        "app/**/*.tsx",
-        "components/**/*.ts",
-        "components/**/*.tsx",
-        "src/**/*.ts",
-        "tests/**/*.ts",
-        "tests/**/*.tsx",
-        "migrations/**/*",
-        "vitest.config.ts",
-        "vitest.config.base.ts",
-        "vitest.workspace.ts",
-        "payload.config.ts"
-      ],
+      "inputs": ["$TURBO_DEFAULT$", "../../Makefile"],
       "outputs": [".test-results/**"]
     },
     "test:coverage": {
