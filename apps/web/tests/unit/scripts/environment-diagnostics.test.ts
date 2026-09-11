@@ -19,6 +19,7 @@ beforeEach(() => {
   mkdirSync(resolve(directory, "apps/web"), { recursive: true });
   mkdirSync(resolve(directory, "node_modules"));
   writeFileSync(resolve(directory, ".env"), "");
+  writeFileSync(resolve(directory, ".node-version"), "24.14.0\n");
   writeFileSync(resolve(directory, "apps/web/.env.local"), "");
   for (const command of ["head", "cut", "tr"]) symlinkSync(`/usr/bin/${command}`, resolve(directory, command));
   symlinkSync("/bin/bash", resolve(directory, "bash"));
@@ -39,6 +40,17 @@ const run = (script: string, mode: string) =>
   });
 
 describe("environment diagnostics", () => {
+  it.each([
+    { version: "v22.0.0", status: 1 },
+    { version: "v24.14.0", status: 0 },
+    { version: "v25.0.0", status: 0 },
+  ])("checks Node $version against the repository's required major", ({ version, status }) => {
+    writeFileSync(resolve(directory, "node"), `#!/bin/sh\nprintf '${version}\\n'\n`, { mode: 0o755 });
+    const result = run("selftest.sh", "local");
+    expect(result.status).toBe(status);
+    if (status !== 0) expect(result.stdout).toContain("is too old; use Node 24+");
+  });
+
   it("accepts a local setup without Docker", () => {
     const result = run("selftest.sh", "local");
     expect(result.status).toBe(0);

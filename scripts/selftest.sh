@@ -74,7 +74,13 @@ check_prerequisites() {
     # Node.js
     if command -v node >/dev/null 2>&1; then
         VERSION=$(node --version)
-        print_success "node ($VERSION)"
+        REQUIRED_NODE_VERSION=$(< .node-version)
+        NODE_VERSION=${VERSION#v}
+        if [ "${NODE_VERSION%%.*}" -ge "${REQUIRED_NODE_VERSION%%.*}" ]; then
+            print_success "node ($VERSION)"
+        else
+            print_missing "node ($VERSION) is too old; use Node ${REQUIRED_NODE_VERSION%%.*}+ (run 'mise install')"
+        fi
     else
         print_missing "node not found"
     fi
