@@ -27,6 +27,7 @@ import type {
 import { readConfigSnapshot } from "@/lib/jobs/utils/resource-loading";
 import { REVIEW_REASONS } from "@/lib/jobs/workflows/review-checks";
 import { logger } from "@/lib/logger";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import type { IngestJob } from "@/payload-types";
 
@@ -238,7 +239,7 @@ export const POST = apiRoute({
   auth: "required",
   site: "default",
   rateLimit: { configName: "IMPORT_RETRY" },
-  params: z.object({ id: z.string() }),
+  params: z.object({ id: NumericIdParamSchema }),
   body: bodySchema,
   handler: async ({ payload, user, params, body }) => {
     const { id } = params;
@@ -267,7 +268,7 @@ export const POST = apiRoute({
     }
 
     // If user provided field mapping overrides (column picker), set them on the dataset
-    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, id);
+    const hasOverrides = await applyFieldMappingOverrides(payload, ingestJob, body, String(id));
 
     // Approve by setting schemaValidation.approved = true
     // The afterChange hook handles: skip flags, workflow queueing, or marking completed

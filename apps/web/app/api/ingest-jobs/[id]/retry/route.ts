@@ -18,6 +18,7 @@ import { PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { getTransactionAwareDrizzle } from "@/lib/database/drizzle-transaction";
 import { prepareIngestFileRecovery } from "@/lib/ingest/ingest-file-status";
 import { logger } from "@/lib/logger";
+import { NumericIdParamSchema } from "@/lib/schemas/common";
 import { requireRelationId } from "@/lib/utils/relation-id";
 import { ingest_jobs } from "@/payload-generated-schema";
 
@@ -25,7 +26,7 @@ export const POST = apiRoute({
   auth: "required",
   site: "default",
   rateLimit: { configName: "IMPORT_RETRY" },
-  params: z.object({ id: z.string() }),
+  params: z.object({ id: NumericIdParamSchema }),
   handler: async ({ payload, user, params }) => {
     const { id } = params;
 
