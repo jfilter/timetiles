@@ -32,7 +32,7 @@ export const parseDatabaseUrl = (url: string): DatabaseUrlComponents => {
     password: urlParts.password,
     host: urlParts.hostname,
     port: urlParts.port || "5432",
-    database: urlParts.pathname.slice(1), // Remove leading slash
+    database: decodeURIComponent(urlParts.pathname.slice(1)),
     fullUrl: url,
   };
 };
@@ -78,7 +78,7 @@ export interface DeriveDatabaseUrlOptions {
  * ```
  */
 export const deriveDatabaseUrl = (baseUrl: string, options: DeriveDatabaseUrlOptions = {}): string => {
-  let baseName = decodeURIComponent(new URL(baseUrl).pathname.slice(1));
+  let baseName = parseDatabaseUrl(baseUrl).database;
 
   // Remove any existing _test suffix to avoid duplication
   // Matches: _test, _test_1, etc.

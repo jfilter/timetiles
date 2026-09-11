@@ -38,6 +38,13 @@ describe("Database URL Utilities", () => {
   });
 
   describe("parseDatabaseUrl", () => {
+    it.each(["my database", "data/base?#", "literal%20name", "ereignisse_berlin"])(
+      "returns the actual database name for %s",
+      (database) => {
+        expect(parseDatabaseUrl(withDatabaseName(TEST_DB_URL, database)).database).toBe(database);
+      }
+    );
+
     it("should parse a standard PostgreSQL URL", () => {
       const url = TEST_DB_URL;
       const parsed = parseDatabaseUrl(url);
