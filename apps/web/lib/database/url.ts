@@ -128,20 +128,3 @@ export const getTestDatabaseUrl = (): string => {
 
   return deriveDatabaseUrl(baseUrl, { workerId });
 };
-
-/**
- * Check if a database URL points to a test database
- */
-export const isTestDatabase = (url: string): boolean => {
-  const { database } = parseDatabaseUrl(url);
-  return database.includes("_test");
-};
-
-/**
- * Get database connection info for logging (without password)
- */
-export const getDatabaseInfo = (url: string): Omit<DatabaseUrlComponents, "password" | "fullUrl"> => {
-  const components = parseDatabaseUrl(url);
-  const { password: _password, fullUrl: _fullUrl, ...safeInfo } = components;
-  return safeInfo;
-};

@@ -11,10 +11,8 @@ import { resetEnv } from "@/lib/config/env";
 
 import {
   deriveDatabaseUrl,
-  getDatabaseInfo,
   getDatabaseUrl,
   getTestDatabaseUrl,
-  isTestDatabase,
   parseDatabaseUrl,
   withDatabaseName,
 } from "../../../lib/database/url";
@@ -171,32 +169,6 @@ describe("Database URL Utilities", () => {
 
       const url = getTestDatabaseUrl();
       expect(url).toBe(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`);
-    });
-  });
-
-  describe("isTestDatabase", () => {
-    it("should identify test databases", () => {
-      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test`)).toBe(true);
-      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb_test_1`)).toBe(true);
-      // Note: We only check for _test suffix, not test_ prefix
-    });
-
-    it("should identify non-test databases", () => {
-      expect(isTestDatabase(TEST_DB_URL)).toBe(false);
-      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/production`)).toBe(false);
-      expect(isTestDatabase(`postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/test_mydb`)).toBe(false);
-    });
-  });
-
-  describe("getDatabaseInfo", () => {
-    it("should return safe database info without password", () => {
-      const url = `postgresql://${TEST_DB_USER}:${TEST_DB_PASS}@localhost:5432/mydb`;
-      const info = getDatabaseInfo(url);
-
-      expect(info).toEqual({ username: TEST_DB_USER, host: "localhost", port: "5432", database: "mydb" });
-
-      expect(info).not.toHaveProperty("password");
-      expect(info).not.toHaveProperty("fullUrl");
     });
   });
 });
