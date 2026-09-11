@@ -28,7 +28,7 @@ This approach provides several benefits:
 - **Memory efficiency**: Batch processing prevents memory exhaustion on large files
 - **Database efficiency**: Minimal database writes during processing
 - **Clean separation**: Processing logic is independent of storage
-- **Recovery support**: Processing can resume from any batch
+- **Recovery support**: Workflows retry failed tasks and resume reviewed sheets at defined processing stages
 
 ### Data Storage Strategy
 
@@ -164,7 +164,7 @@ Payload CMS deletes completed jobs by default. This has important implications:
 
 Different stages use different batch sizes optimized for their specific needs. See [Processing Stages](./stages) for batch sizes per stage.
 
-- **Duplicate analysis** — memory-efficient for hash map operations; allows pause/resume at batch boundaries
+- **Duplicate analysis** — reads the file in batches while building an in-memory duplicate map
 - **Schema detection** — larger batches for efficiency; builder state persisted between batches for progressive schema building
 - **Geocoding** — processes all unique locations in a single pass (not batched by row); each unique value geocoded once, with small API batch sizes to respect rate limits
 - **Event creation** — smaller batches to avoid database transaction timeouts; individual row failures don't stop the batch
@@ -180,9 +180,10 @@ Many stages build up results progressively across batches:
 This approach enables:
 
 - Processing files larger than available memory
-- Pause and resume at batch boundaries
 - Incremental progress tracking
 - Partial recovery from failures
+
+Batch progress is not a durable resume cursor. Review approval and manual recovery select a workflow stage; a restarted duplicate-analysis task reads the file again from the beginning.
 
 ## Data Flow Principles
 
@@ -310,7 +311,6 @@ The pipeline provides extensive observability:
 **Trade-offs**:
 
 - ✅ Memory-efficient for large files
-- ✅ Pause/resume capability
 - ✅ Tunable performance
 - ❌ Higher latency than streaming
 - ❌ Batch size tuning required
