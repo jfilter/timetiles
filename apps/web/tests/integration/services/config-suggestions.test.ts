@@ -81,6 +81,22 @@ describe.sequential("Config Suggestions - Integration", () => {
     expect(findConfigSuggestions(["old_column"], candidates)).toEqual([]);
   });
 
+  it("does not load or change admin duplicate detection settings for suggestions", async () => {
+    const { catalog } = await withCatalog(testEnv, { user: testUser });
+    const { dataset } = await withDataset(testEnv, catalog.id, {
+      fieldMappingOverrides: { titlePath: "title", timestampPath: "date" },
+    });
+    await payload.update({ collection: "datasets", id: dataset.id, data: { deduplicationConfig: { enabled: false } } });
+
+    const candidates = await loadConfigSuggestionDatasets(payload, testUser.id);
+    expect(candidates).toHaveLength(1);
+    expect(candidates[0]).not.toHaveProperty("deduplicationConfig");
+    expect(findConfigSuggestions(["title", "date"], candidates)).toHaveLength(1);
+
+    const stored = await payload.findByID({ collection: "datasets", id: dataset.id });
+    expect(stored.deduplicationConfig.enabled).toBe(false);
+  });
+
   it("should return matching suggestions for similar headers", async () => {
     const { catalog } = await withCatalog(testEnv, { user: testUser });
 

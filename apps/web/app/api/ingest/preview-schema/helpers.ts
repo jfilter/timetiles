@@ -315,7 +315,6 @@ export const loadConfigSuggestionDatasets = async (
       catalog: true,
       interpretationPlan: true,
       idStrategy: true,
-      deduplicationConfig: true,
       geoFieldDetection: true,
     },
   });
