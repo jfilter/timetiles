@@ -1,14 +1,8 @@
 /**
- * Manages the geocoding providers for the application.
+ * Loads geocoding providers from Payload and initializes their adapters.
  *
- * This class is responsible for loading geocoding provider configurations from the database
- * (or falling back to default environment variable-based configurations). It initializes
- * instances of the `node-geocoder` library for each active provider and makes them
- * available to the rest of the geocoding service.
- *
- * It handles the logic for selecting and prioritizing providers based on the system's
- * settings, ensuring that the geocoding operations can be performed in a configured,
- * resilient, and orderly manner.
+ * Applies tag filtering, provider priority, and process-local rate-limit configuration.
+ * Providers must be configured in the geocoding-providers collection.
  *
  * @module
  */
@@ -182,13 +176,7 @@ export class ProviderManager {
     }
   }
 
-  // Helper method to create geocoder based on type
-  // Default rate limits per provider type (if not configured in DB):
-  // - Google: 50 req/sec (paid API, generous limits)
-  // - LocationIQ: 2 req/sec (free tier)
-  // - OpenCage: 10 req/sec (varies by plan)
-  // - Nominatim: 1 req/sec (OSM usage policy)
-  // - Photon: 10 req/sec (no published limit — fair use)
+  // Rate defaults below are local pacing settings, not provider quotas or usage permission.
   private createGeocoderForType(doc: GeocodingProvider): ProviderConfig | null {
     switch (doc.type) {
       case "google": {

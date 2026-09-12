@@ -1,13 +1,8 @@
 /**
- * Defines the main GeocodingService class, the public interface for all geocoding operations.
+ * Coordinates provider loading, caching, and single-address or batch geocoding.
  *
- * This class acts as a facade, orchestrating the various components of the geocoding system,
- * including the provider manager, cache manager, and the core operations logic. It is responsible
- * for initializing the service, loading configurations, and exposing the primary methods for
- * single-address geocoding, batch geocoding, and configuration testing.
- *
- * The service is designed to be initialized once and then used throughout the application.
- * It handles loading settings and provider configurations from the database and environment variables.
+ * Each factory call creates a new instance that initializes lazily from Payload
+ * settings and provider records. Configuration can be refreshed on that instance.
  *
  * @module
  */
@@ -83,10 +78,8 @@ export class GeocodingService {
    * intentionally does not, so providers stay testable while disabled.
    */
   async isEnabled(): Promise<boolean> {
-    // Deliberately loads only the settings, not the providers. `initialize()` also calls
-    // `loadProviders()`, which throws when none are configured — so asking "is geocoding on?"
-    // used to THROW on an instance with geocoding switched off and no providers, failing the
-    // import instead of skipping the stage. A kill-switch check must never be able to fail.
+    // Read the kill switch without requiring configured providers. Settings read errors
+    // still propagate so imports cannot geocode with an unknown enabled state.
     if (!this.initialized) {
       await this.loadSettings();
     }
