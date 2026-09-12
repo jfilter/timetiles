@@ -171,24 +171,47 @@ describe.sequential("GeocodingOperations", () => {
 
       const providerA = createProvider("provider-a", 30, geocoderA);
       const providerB = createProvider("provider-b", 10, geocoderB);
+      providerA.group = "shared";
+      providerB.group = "shared";
 
-      const providerManager = createMockProviderManager([providerA, providerB]);
+      const fallbackGeocoder = createMockGeocoder();
+      const fallback = createProvider("fallback", 100, fallbackGeocoder);
+
+      const providerManager = createMockProviderManager([providerA, providerB, fallback]);
       const cacheManager = createMockCacheManager();
 
       const ops = new GeocodingOperations(providerManager as any, cacheManager as any, defaultSettings);
 
       // Generate enough addresses to see proportional distribution
       // Total weight = 30 + 10 = 40, so providerA should get ~75%, providerB ~25%
-      const addresses = Array.from({ length: 40 }, (_, i) => `Address ${i}`);
+      const addresses = Array.from({ length: 80 }, (_, i) => `Address ${i}`);
 
       await ops.batchGeocode(addresses, 40);
 
       const callsA = geocoderA.geocode.mock.calls.length;
       const callsB = geocoderB.geocode.mock.calls.length;
 
-      // With deterministic counter: first 30 go to A, next 10 go to B, exactly.
-      expect(callsA).toBe(30);
-      expect(callsB).toBe(10);
+      // Two complete cycles through the group, without distributing work to the fallback.
+      expect(callsA).toBe(60);
+      expect(callsB).toBe(20);
+      expect(fallbackGeocoder.geocode).not.toHaveBeenCalled();
+    });
+
+    it("keeps ungrouped providers sequential regardless of rate limit", async () => {
+      const primaryGeocoder = createMockGeocoder();
+      const fallbackGeocoder = createMockGeocoder();
+      const primary = createProvider("primary", 1, primaryGeocoder);
+      const fallback = createProvider("fallback", 100, fallbackGeocoder);
+      const ops = new GeocodingOperations(
+        createMockProviderManager([primary, fallback]) as any,
+        createMockCacheManager() as any,
+        defaultSettings
+      );
+
+      await ops.batchGeocode(["Berlin", "Hamburg", "Munich"], 3);
+
+      expect(primaryGeocoder.geocode).toHaveBeenCalledTimes(3);
+      expect(fallbackGeocoder.geocode).not.toHaveBeenCalled();
     });
 
     it("should return single provider when only one is available", async () => {

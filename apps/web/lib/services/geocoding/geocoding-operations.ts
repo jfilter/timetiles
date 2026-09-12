@@ -101,8 +101,11 @@ export class GeocodingOperations {
       return this.geocode(address, bias);
     }
 
-    // Weighted selection: pick provider based on rateLimit proportions
-    const primary = this.pickWeightedProvider(available);
+    // Only the highest-priority available provider's group shares primary work.
+    // Ungrouped providers are sequential candidates, not distribution peers.
+    const first = available[0]!;
+    const peers = first.group ? available.filter((provider) => provider.group === first.group) : [first];
+    const primary = this.pickWeightedProvider(peers);
 
     // Try the round-robin-selected provider first
     try {
