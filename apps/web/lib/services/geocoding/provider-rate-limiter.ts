@@ -166,15 +166,6 @@ export class ProviderRateLimiter {
   }
 
   /**
-   * Check if a request can be made immediately without waiting.
-   */
-  canMakeRequest(providerName: string): boolean {
-    const state = this.state.get(providerName);
-    if (!state) return true;
-    return this.isAvailable(providerName);
-  }
-
-  /**
    * Get time in ms until provider is available again.
    */
   getTimeUntilAllowed(providerName: string): number {

@@ -277,18 +277,17 @@ describe("ProviderRateLimiter", () => {
     });
   });
 
-  describe("isAvailable / canMakeRequest", () => {
+  describe("isAvailable", () => {
     it("should return true when no backoff active", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
 
       expect(rateLimiter.isAvailable("test-provider")).toBe(true);
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(true);
     });
 
     it("should return true for unconfigured provider", () => {
       const rateLimiter = new ProviderRateLimiter();
-      expect(rateLimiter.canMakeRequest("unknown-provider")).toBe(true);
+      expect(rateLimiter.isAvailable("unknown-provider")).toBe(true);
     });
 
     it("should return false during backoff", () => {
@@ -298,7 +297,6 @@ describe("ProviderRateLimiter", () => {
       rateLimiter.reportThrottle("test-provider");
 
       expect(rateLimiter.isAvailable("test-provider")).toBe(false);
-      expect(rateLimiter.canMakeRequest("test-provider")).toBe(false);
     });
   });
 
