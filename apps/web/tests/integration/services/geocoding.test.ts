@@ -16,9 +16,10 @@
  * 3. We need deterministic responses to test specific scenarios (failures, empty results, invalid coords).
  */
 
+import { sql } from "@payloadcms/db-postgres/drizzle";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { normalizeGeocodingAddress } from "../../../lib/services/geocoding/cache-manager";
+import { CacheManager, normalizeGeocodingAddress } from "../../../lib/services/geocoding/cache-manager";
 import {
   createGeocodingService,
   GeocodingError,
@@ -727,6 +728,30 @@ describe.sequential("GeocodingService", () => {
       });
 
       expect(remainingEntries.docs).toHaveLength(0);
+    });
+
+    it("propagates database cleanup failures to the caller", async () => {
+      const realPayload = testEnv.payload;
+      await realPayload.db.drizzle.transaction(async (transaction) => {
+        await transaction.execute(sql`SET TRANSACTION READ ONLY`);
+        // Bind the real transaction without changing the shared Payload connection.
+        const cacheManager = new CacheManager(
+          new Proxy(realPayload, {
+            get: (target, property, receiver) => {
+              if (property === "db") return { ...target.db, drizzle: transaction };
+              return Reflect.get(target, property, receiver);
+            },
+          }),
+          {
+            enabled: true,
+            fallbackEnabled: true,
+            providerSelection: { strategy: "priority", requiredTags: [] },
+            caching: { enabled: true, ttlDays: 30 },
+          }
+        );
+
+        await expect(cacheManager.cleanupCache()).rejects.toMatchObject({ cause: { code: "25006" } });
+      });
     });
 
     it("should not clean up frequently used cache entries", async () => {

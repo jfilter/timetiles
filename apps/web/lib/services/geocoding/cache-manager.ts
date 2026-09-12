@@ -145,20 +145,13 @@ export class CacheManager {
     cutoffDate.setDate(cutoffDate.getDate() - ttlDays);
     const cutoffIso = cutoffDate.toISOString();
 
-    try {
-      // Single bulk DELETE; no row-level hooks needed for cache cleanup.
-      // Replaces the previous find+per-row-delete loop (up to 1000 queries → 1).
-      const db = this.payload.db.drizzle;
-      const result = await db
-        .delete(location_cache)
-        .where(lt(location_cache.createdAt, cutoffIso))
-        .returning({ id: location_cache.id });
-      const deletedCount = result.length;
+    // Let deletion errors reach the caller so maintenance jobs can retry.
+    const result = await this.payload.db.drizzle
+      .delete(location_cache)
+      .where(lt(location_cache.createdAt, cutoffIso))
+      .returning({ id: location_cache.id });
 
-      logger.info(`Cleaned up ${deletedCount} expired cache entries`);
-    } catch (error) {
-      logger.error("Failed to cleanup cache", { error });
-    }
+    logger.info(`Cleaned up ${result.length} expired cache entries`);
   }
 
   private normalizeAddress(address: string): string {
