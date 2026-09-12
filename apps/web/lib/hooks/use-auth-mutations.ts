@@ -13,7 +13,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import type { User } from "@/payload-types";
 
-import { fetchJson, HttpError, postJson } from "../api/http-error";
+import { fetchJson, postJson } from "../api/http-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,39 +70,16 @@ export interface ResetPasswordInput {
  * cover REST traffic. On success, the `afterLogin` hook handles the
  * LOGIN_SUCCESS audit.
  */
-export const loginRequest = async (input: LoginInput): Promise<LoginResponse> => {
-  try {
-    return await postJson<LoginResponse>("/api/auth/login", input);
-  } catch (error) {
-    if (error instanceof HttpError) {
-      // The wrapper route serializes errors as { error } (already extracted
-      // into error.message by fetchJson) — NOT Payload's legacy { errors: [] }
-      // shape. Keep the server's message so "verify your email", "account
-      // locked", and "too many requests" aren't flattened into a wrong
-      // "invalid password" hint.
-      const body = error.body as { error?: string } | undefined;
-      throw new Error(body?.error ?? error.message ?? "Invalid email or password");
-    }
-    throw error;
-  }
-};
+export const loginRequest = (input: LoginInput): Promise<LoginResponse> =>
+  postJson<LoginResponse>("/api/auth/login", input);
 
 /** Register a new user via `/api/auth/register`. */
-export const registerRequest = async (input: RegisterInput): Promise<RegisterResponse> => {
-  try {
-    return await fetchJson<RegisterResponse>("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-  } catch (error) {
-    if (error instanceof HttpError) {
-      const body = error.body as RegisterResponse | undefined;
-      throw new Error(body?.error ?? "Registration failed. Please try again.");
-    }
-    throw error;
-  }
-};
+export const registerRequest = (input: RegisterInput): Promise<RegisterResponse> =>
+  fetchJson<RegisterResponse>("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 
 /**
  * Request a password-reset email via `/api/auth/forgot-password`.
