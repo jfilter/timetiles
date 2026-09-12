@@ -89,12 +89,12 @@ const classifyPhotonError = (response: Response): GeocodingError => {
       retryAfterMs
     );
   }
-  if (response.status === 503) {
+  if ([502, 503, 504].includes(response.status)) {
     return new GeocodingError(
       `Photon service unavailable: ${response.status}`,
       GEOCODING_ERROR_CODES.SERVICE_UNAVAILABLE,
       true,
-      503
+      response.status
     );
   }
   // Photon returns 200 with empty features for "not found", so any 404

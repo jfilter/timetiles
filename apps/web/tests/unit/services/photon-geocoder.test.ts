@@ -1,7 +1,7 @@
 /**
  * Unit tests for the Photon geocoder wrapper.
  *
- * Tests GeoJSON→Entry mapping, error classification (429/404/503),
+ * Tests GeoJSON→Entry mapping, HTTP error classification,
  * confidence scoring, and query parameter generation.
  *
  * @module
@@ -169,15 +169,15 @@ describe.sequential("Photon Geocoder", () => {
       });
     });
 
-    it("should throw retryable SERVICE_UNAVAILABLE error on 503", async () => {
-      mockFetch.mockResolvedValue(new Response("Service Unavailable", { status: 503 }));
+    it.each([502, 503, 504])("throws retryable SERVICE_UNAVAILABLE on %s", async (status) => {
+      mockFetch.mockResolvedValue(new Response("Service Unavailable", { status }));
 
       const geocoder = createPhotonGeocoder({ baseUrl: "https://example.com" });
 
       await expect(geocoder.geocode("Berlin")).rejects.toMatchObject({
         code: "SERVICE_UNAVAILABLE",
         retryable: true,
-        httpStatus: 503,
+        httpStatus: status,
       });
     });
 

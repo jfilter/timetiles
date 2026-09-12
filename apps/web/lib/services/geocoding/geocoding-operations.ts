@@ -321,7 +321,7 @@ export class GeocodingOperations {
   }
 
   /**
-   * Try a single provider with 1 retry for transient errors (429/503/404).
+   * Try a single provider with 1 retry for errors marked retryable by its adapter.
    */
   private async tryProviderWithRetry(
     provider: ProviderConfig,

@@ -63,7 +63,7 @@ For single-address geocoding (e.g., the map search), providers are tried sequent
 The system handles rate limiting automatically:
 
 - **429 (Too Many Requests)**: Retries once after exponential backoff, then falls back to the next provider
-- **503 (Service Unavailable)**: Same retry + fallback behavior
+- **502/503/504 (gateway errors or service unavailable)**: Same retry + fallback behavior
 - **404 from Photon**: Treated as throttle signal (Photon returns 200 with empty results for genuine "not found")
 - **Retry-After header**: Numeric seconds are used for 429 responses. HTTP-date values are not parsed; the normal backoff applies instead.
 
