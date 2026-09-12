@@ -5,7 +5,7 @@
  * its file must be retired together. This scheduled job runs periodically to:
  * - Expire ready exports past their `expiresAt` and delete their ZIPs
  * - Purge records older than 30 days, unlinking any file they still point at
- * - Fail exports abandoned in 'pending'/'processing' by a killed worker
+ * - Fail exports still pending/processing six hours after their request
  *
  * @module
  * @category Jobs
@@ -206,7 +206,7 @@ const reapStaleExports = async (sys: SystemPayload, now: Date): Promise<PassResu
         data: {
           status: "failed",
           completedAt: now.toISOString(),
-          errorLog: `Export abandoned — no progress for over ${STALE_EXPORT_HOURS}h (worker likely terminated)`,
+          errorLog: `Export not completed within ${STALE_EXPORT_HOURS}h of being requested`,
         },
       });
       staleFailed++;

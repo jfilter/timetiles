@@ -339,7 +339,10 @@ describe.sequential("dataExportCleanupJob", () => {
     expect(mockPayload.update).toHaveBeenCalledWith({
       collection: "data-exports",
       id: 40,
-      data: expect.objectContaining({ status: "failed", errorLog: expect.stringContaining("abandoned") }),
+      data: expect.objectContaining({
+        status: "failed",
+        errorLog: "Export not completed within 6h of being requested",
+      }),
       overrideAccess: true,
     });
     expect(result.output.staleFailed).toBe(1);
