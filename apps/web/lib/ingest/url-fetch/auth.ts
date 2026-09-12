@@ -94,12 +94,14 @@ export const buildAuthHeaders = async (
   switch (authConfig.type) {
     case "none":
       break;
-    case "api-key":
-      if (!authConfig.apiKey || !authConfig.apiKeyHeader) {
+    case "api-key": {
+      const headerName = authConfig.apiKeyHeader ?? "X-API-Key";
+      if (!authConfig.apiKey || !headerName) {
         throw new Error("API key authentication requires a key and header name");
       }
-      headers[authConfig.apiKeyHeader] = authConfig.apiKey;
+      headers[headerName] = authConfig.apiKey;
       break;
+    }
     case "bearer":
       if (!authConfig.bearerToken) {
         throw new Error("Bearer authentication requires a token");

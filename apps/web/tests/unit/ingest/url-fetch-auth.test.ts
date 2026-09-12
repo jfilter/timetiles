@@ -73,6 +73,14 @@ describe("OAuth diagnostics", () => {
 });
 
 describe("URL authentication configuration", () => {
+  it.each([undefined, null, "X-Custom-Key"])("resolves API key header name %s", async (apiKeyHeader) => {
+    const headers = await buildAuthHeaders({ type: "api-key", apiKey: TEST_CREDENTIALS.apiKey.key, apiKeyHeader });
+    expect(headers).toEqual({
+      "User-Agent": "TimeTiles/1.0 (Data Import Service)",
+      [apiKeyHeader ?? "X-API-Key"]: TEST_CREDENTIALS.apiKey.key,
+    });
+  });
+
   it("does not expose malformed custom header contents in validation errors", () => {
     expect(validateCustomHeaders(TEST_CREDENTIALS.bearer.token)).toEqual({
       ok: false,
