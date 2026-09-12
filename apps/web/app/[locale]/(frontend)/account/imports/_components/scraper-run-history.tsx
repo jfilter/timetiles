@@ -1,8 +1,7 @@
 /**
  * Expandable row detail showing recent scraper runs.
  *
- * Simplified inline version of the ScraperRunLog pattern, designed
- * to render inside an expanded table row without Card wrappers.
+ * Renders inside an expanded table row without Card wrappers.
  *
  * @module
  * @category Components
