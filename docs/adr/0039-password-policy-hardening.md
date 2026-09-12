@@ -4,6 +4,10 @@
 
 Accepted (2026-04-17) — implemented in `apps/web/lib/security/password-policy.ts`; enforced via custom routes (`register`, `change-password`) and the users collection `beforeChange` hook for Payload-managed paths (reset-password, admin-create).
 
+### Implementation correction (2026-09-12)
+
+The reset-password hook assumption above does not hold: Payload's reset operation does not invoke the users collection's `beforeChange` policy gate. TimeTiles therefore overrides `POST /api/users/reset-password` in `apps/web/app/api/users/reset-password/route.ts`. That route validates the password with the shared policy before calling `resetPasswordAndRevokeSessions` in `apps/web/lib/api/auth-helpers.ts`. The helper applies the reset and clears all sessions in one transaction, requiring every device to sign in again. The original policy decision below is unchanged.
+
 ## Context
 
 TimeTiles currently enforces only a minimum password length of 8 characters in its public flows. The policy is inconsistent across entry points:

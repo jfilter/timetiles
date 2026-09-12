@@ -98,7 +98,8 @@ export const forgotPasswordRequest = async (input: ForgotPasswordInput): Promise
 };
 
 /**
- * Reset password via Payload CMS `/api/users/reset-password`.
+ * Reset password via TimeTiles' `/api/users/reset-password` override,
+ * which enforces password policy and revokes all sessions.
  */
 export const resetPasswordRequest = (input: ResetPasswordInput): Promise<void> =>
   fetchJson<void>("/api/users/reset-password", {
