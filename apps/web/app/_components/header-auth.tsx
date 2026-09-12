@@ -42,7 +42,7 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
-      onSettled: () => {
+      onSuccess: () => {
         // Clear client-side auth cache so the navbar updates immediately
         queryClient.setQueryData(authKeys.currentUser, { user: null });
         // Full page navigation to re-render all server components with cleared session
@@ -74,76 +74,83 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const initials = user.firstName ? user.firstName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase();
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <div className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
-            {initials}
-          </div>
-          <span className="hidden md:inline">{displayName}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="flex flex-col">
-            <span className="font-medium">{displayName}</span>
-            <span className="text-muted-foreground text-xs font-normal">{user.email}</span>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2">
+            <div className="bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium">
+              {initials}
+            </div>
+            <span className="hidden md:inline">{displayName}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>
+            <div className="flex flex-col">
+              <span className="font-medium">{displayName}</span>
+              <span className="text-muted-foreground text-xs font-normal">{user.email}</span>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-        {isDefaultSite && (
-          <>
-            <DropdownMenuItem asChild>
-              <Link href="/ingest" className="cursor-pointer">
-                <Upload className="mr-2 h-4 w-4" />
-                {tHeader("importData")}
-              </Link>
-            </DropdownMenuItem>
+          {isDefaultSite && (
+            <>
+              <DropdownMenuItem asChild>
+                <Link href="/ingest" className="cursor-pointer">
+                  <Upload className="mr-2 h-4 w-4" />
+                  {tHeader("importData")}
+                </Link>
+              </DropdownMenuItem>
 
-            <DropdownMenuItem asChild>
-              <Link href="/account/imports" className="cursor-pointer">
-                <Activity className="mr-2 h-4 w-4" />
-                {tHeader("importActivity")}
-              </Link>
-            </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/account/imports" className="cursor-pointer">
+                  <Activity className="mr-2 h-4 w-4" />
+                  {tHeader("importActivity")}
+                </Link>
+              </DropdownMenuItem>
 
-            <DropdownMenuItem asChild>
-              <Link href="/account/data-packages" className="cursor-pointer">
-                <Package className="mr-2 h-4 w-4" />
-                {tHeader("dataPackages")}
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
+              <DropdownMenuItem asChild>
+                <Link href="/account/data-packages" className="cursor-pointer">
+                  <Package className="mr-2 h-4 w-4" />
+                  {tHeader("dataPackages")}
+                </Link>
+              </DropdownMenuItem>
+            </>
+          )}
 
-        <DropdownMenuItem asChild>
-          <Link href="/account/settings" className="cursor-pointer">
-            <UserIcon className="mr-2 h-4 w-4" />
-            {tHeader("accountSettings")}
-          </Link>
-        </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/account/settings" className="cursor-pointer">
+              <UserIcon className="mr-2 h-4 w-4" />
+              {tHeader("accountSettings")}
+            </Link>
+          </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          {/* Payload dashboard lives outside the [locale] tree — the i18n Link
+          <DropdownMenuItem asChild>
+            {/* Payload dashboard lives outside the [locale] tree — the i18n Link
               would prefix /de/dashboard and 404. */}
-          <NextLink href="/dashboard" className="cursor-pointer">
-            <Settings className="mr-2 h-4 w-4" />
-            {t("dashboard")}
-          </NextLink>
-        </DropdownMenuItem>
+            <NextLink href="/dashboard" className="cursor-pointer">
+              <Settings className="mr-2 h-4 w-4" />
+              {t("dashboard")}
+            </NextLink>
+          </DropdownMenuItem>
 
-        <DropdownMenuSeparator />
+          <DropdownMenuSeparator />
 
-        <DropdownMenuItem
-          onClick={handleLogout}
-          disabled={logoutMutation.isPending}
-          className="text-destructive focus:text-destructive cursor-pointer"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          {logoutMutation.isPending ? t("signingOut") : t("signOut")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
+            className="text-destructive focus:text-destructive cursor-pointer"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            {logoutMutation.isPending ? t("signingOut") : t("signOut")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {logoutMutation.isError && (
+        <p role="alert" className="text-destructive text-sm">
+          {tHeader("logoutError")}
+        </p>
+      )}
+    </>
   );
 };

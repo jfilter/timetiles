@@ -134,11 +134,7 @@ export const resetPasswordRequest = (input: ResetPasswordInput): Promise<void> =
  * Logout via Payload CMS `/api/users/logout`.
  */
 export const logoutRequest = async (): Promise<void> => {
-  try {
-    await fetchJson<void>("/api/users/logout", { method: "POST", credentials: "include" });
-  } catch {
-    // Logout may return non-JSON; swallow errors since session is cleared regardless
-  }
+  await fetchJson<void>("/api/users/logout", { method: "POST", credentials: "include" });
 };
 
 export const useLogoutMutation = () => useMutation({ mutationFn: logoutRequest });

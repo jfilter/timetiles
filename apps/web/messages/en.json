@@ -1005,6 +1005,7 @@
     "actionFailed": "Action failed. Please try again."
   },
   "Header": {
+    "logoutError": "Sign out could not be confirmed. Please try again.",
     "importData": "Import Data",
     "importActivity": "Import Activity",
     "dataPackages": "Data Packages",

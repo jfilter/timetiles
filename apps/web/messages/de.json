@@ -1005,6 +1005,7 @@
     "actionFailed": "Aktion fehlgeschlagen. Bitte erneut versuchen."
   },
   "Header": {
+    "logoutError": "Die Abmeldung konnte nicht bestätigt werden. Bitte versuche es erneut.",
     "importData": "Daten importieren",
     "importActivity": "Import-Aktivität",
     "dataPackages": "Datenpakete",
