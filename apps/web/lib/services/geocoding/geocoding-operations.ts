@@ -66,10 +66,6 @@ export class GeocodingOperations {
     // Try geocoding with enabled providers, sequential with retry on transient errors
     const result = await this.tryProviders(address, bias);
     if (result != null) {
-      // Validate the result before accepting it
-      if (!this.isResultAcceptable(result)) {
-        throw new GeocodingError("Geocoding result failed validation", "VALIDATION_FAILED", false);
-      }
       await this.cacheResult(address, result, bias);
       return result;
     }
