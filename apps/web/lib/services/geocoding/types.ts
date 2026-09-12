@@ -66,15 +66,7 @@ export const GEOCODING_ERROR_CODES = {
 } as const;
 
 /** Check if an error is transient (worth retrying). */
-export const isTransientError = (error: unknown): boolean => {
-  if (!(error instanceof GeocodingError)) return false;
-  return (
-    error.retryable ||
-    error.code === GEOCODING_ERROR_CODES.RATE_LIMITED ||
-    error.code === GEOCODING_ERROR_CODES.SERVICE_UNAVAILABLE ||
-    error.code === GEOCODING_ERROR_CODES.PROVIDER_TIMEOUT
-  );
-};
+export const isTransientError = (error: unknown): boolean => error instanceof GeocodingError && error.retryable;
 
 export interface ProviderConfig {
   /** User-defined display name (free text, e.g. "Photon (VersaTiles)"). */

@@ -501,10 +501,8 @@ describe.sequential("GeocodingOperations", () => {
       expect(geocoder.geocode).toHaveBeenCalledTimes(2);
     });
 
-    it("should not retry on permanent errors", async () => {
-      const geocoder = {
-        geocode: vi.fn().mockRejectedValue(new GeocodingError("Auth failed", "AUTH_FAILURE", false, 401)),
-      };
+    it.each(["AUTH_FAILURE", "SERVICE_UNAVAILABLE"])("does not retry non-retryable %s errors", async (code) => {
+      const geocoder = { geocode: vi.fn().mockRejectedValue(new GeocodingError("Auth failed", code, false, 401)) };
 
       const provider = createProvider("auth-fail-provider", 100, geocoder);
       const providerManager = createMockProviderManager([provider]);
@@ -517,6 +515,7 @@ describe.sequential("GeocodingOperations", () => {
       await expect(ops.geocode("Berlin")).rejects.toThrow("All geocoding providers failed");
       // Called only once — no retry for permanent errors
       expect(geocoder.geocode).toHaveBeenCalledTimes(1);
+      expect(mockRateLimiter.reportThrottle).not.toHaveBeenCalled();
     });
 
     it("should throw after max retries for persistent transient errors", async () => {
