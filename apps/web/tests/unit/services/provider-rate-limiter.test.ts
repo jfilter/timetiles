@@ -23,6 +23,7 @@ describe("ProviderRateLimiter", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
     resetProviderRateLimiter();
   });
@@ -103,6 +104,27 @@ describe("ProviderRateLimiter", () => {
       await vi.advanceTimersByTimeAsync(949);
       expect(resolved).toBe(false);
       await vi.advanceTimersByTimeAsync(1);
+      await slot;
+      expect(resolved).toBe(true);
+    });
+
+    it("waits out a backoff longer than a single timer can represent", async () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 1000);
+      const timerSpy = vi.spyOn(globalThis, "setTimeout");
+      const maxTimerDelay = 2_147_483_647;
+      rateLimiter.reportThrottle("test-provider", maxTimerDelay + 1000);
+      let resolved = false;
+      const slot = (async () => {
+        await rateLimiter.waitForSlot("test-provider");
+        resolved = true;
+      })();
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(timerSpy).toHaveBeenLastCalledWith(expect.any(Function), maxTimerDelay);
+      await vi.advanceTimersByTimeAsync(maxTimerDelay);
+      expect(resolved).toBe(false);
+      await vi.advanceTimersByTimeAsync(999);
       await slot;
       expect(resolved).toBe(true);
     });

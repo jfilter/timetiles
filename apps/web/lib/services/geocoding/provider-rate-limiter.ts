@@ -20,6 +20,8 @@ const INITIAL_BACKOFF_MS = 2000;
 const MAX_BACKOFF_MS = 30_000;
 /** Backoff multiplier for each consecutive throttle */
 const BACKOFF_MULTIPLIER = 2;
+/** Larger setTimeout delays overflow to 1ms; long backoffs are waited in chunks. */
+const MAX_TIMER_DELAY_MS = 2_147_483_647;
 
 interface RateLimitState {
   requestsPerSecond: number;
@@ -196,7 +198,7 @@ export class ProviderRateLimiter {
   }
 
   private delay(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, Math.min(ms, MAX_TIMER_DELAY_MS)));
   }
 }
 
