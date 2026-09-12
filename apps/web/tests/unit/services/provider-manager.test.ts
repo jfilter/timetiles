@@ -4,11 +4,8 @@
  * Tests that the fetch wrapper correctly intercepts HTTP error status codes
  * (429, 503) before node-geocoder can silently parse error responses as JSON.
  *
- * Note: createStatusCheckingFetch throws GeocodingError, but node-geocoder's
- * FetchAdapter wraps it in HttpError({ message, code }). The GeocodingError's
- * `code` is preserved through the wrapping, but `retryable` and `retryAfterMs`
- * are only available to code that catches the error before node-geocoder
- * (like GeocodingOperations.tryProvider). We verify the error code is correct.
+ * The node-geocoder patch preserves the original GeocodingError as HttpError.cause;
+ * these tests verify its retry metadata and safe provider-initialization diagnostics.
  *
  * @module
  * @category Unit Tests
@@ -19,6 +16,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProviderManager } from "@/lib/services/geocoding/provider-manager";
 import { GEOCODING_ERROR_CODES } from "@/lib/services/geocoding/types";
+import { TEST_SECRETS } from "@/tests/constants/test-credentials";
+import { mockLogger } from "@/tests/mocks/services/logger";
+
+const providerLogger =
+  mockLogger.createLogger.mock.results[
+    mockLogger.createLogger.mock.calls.findIndex(([name]: [string]) => name === "geocoding-provider-manager")
+  ].value;
 
 const mockFetch = vi.fn<typeof fetch>();
 vi.stubGlobal("fetch", mockFetch);
@@ -29,6 +33,25 @@ const mockPayload = { find: vi.fn() } as any;
 describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("does not log provider credentials when initialization fails", async () => {
+    mockPayload.find.mockResolvedValue({
+      docs: [
+        {
+          id: 1,
+          name: "Broken provider",
+          type: "google",
+          enabled: true,
+          apiKey: TEST_SECRETS.payloadSecret,
+          countryCodes: 42,
+        },
+      ],
+    });
+
+    expect(await new ProviderManager(mockPayload, null).loadProviders()).toEqual([]);
+    expect(providerLogger.error).toHaveBeenCalledOnce();
+    expect(JSON.stringify(providerLogger.error.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
   });
 
   /**

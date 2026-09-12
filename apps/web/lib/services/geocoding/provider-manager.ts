@@ -178,7 +178,7 @@ export class ProviderManager {
         this.providers.push(result);
       }
     } catch (error) {
-      logger.error(`Failed to initialize provider ${doc.name}`, { error, provider: doc });
+      logger.error("Failed to initialize provider", { error, providerId: doc.id, providerType: doc.type });
     }
   }
 
