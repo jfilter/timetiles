@@ -64,8 +64,8 @@ const toHeaderEntries = (
   if (typeof parsed === "string") {
     try {
       parsed = JSON.parse(parsed);
-    } catch (e) {
-      return { ok: false, error: `customHeaders is not valid JSON: ${(e as Error).message}` };
+    } catch {
+      return { ok: false, error: "customHeaders is not valid JSON" };
     }
   }
 

@@ -11,6 +11,7 @@ vi.mock("@/lib/security/safe-fetch", () => ({ safeFetch: vi.fn() }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
+import { validateCustomHeaders } from "@/lib/ingest/validate-custom-headers";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { mockLogger } from "@/tests/mocks/services/logger";
@@ -72,6 +73,13 @@ describe("OAuth diagnostics", () => {
 });
 
 describe("URL authentication configuration", () => {
+  it("does not expose malformed custom header contents in validation errors", () => {
+    expect(validateCustomHeaders(TEST_CREDENTIALS.bearer.token)).toEqual({
+      ok: false,
+      error: "customHeaders is not valid JSON",
+    });
+  });
+
   it.each([
     { type: "bearer" as const },
     { type: "api-key" as const, apiKeyHeader: "X-API-Key" },
