@@ -47,6 +47,8 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
   const {
     data: summaryData,
     isLoading: isSummaryLoading,
+    isFetching: isSummaryFetching,
+    refetch: refetchSummary,
     error: summaryError,
   } = useDeletionSummaryQuery({ enabled: open && step === "summary" });
 
@@ -151,6 +153,12 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
             )}
 
             {error && <div className="bg-destructive/10 text-destructive rounded-md p-4">{error}</div>}
+
+            {summaryError && (
+              <Button variant="outline" disabled={isSummaryFetching} onClick={() => void refetchSummary()}>
+                {tCommon("tryAgain")}
+              </Button>
+            )}
 
             {summary && !loading && (
               <>

@@ -98,6 +98,11 @@ describe("DeleteAccountModal", () => {
     fireEvent.click(proceed);
     expect(screen.queryByLabelText(en.Common.password)).not.toBeInTheDocument();
     expect(mocks.postJson).not.toHaveBeenCalled();
+
+    mocks.fetchJson.mockResolvedValue({ summary, canDelete: true, gracePeriodDays: 5 });
+    fireEvent.click(screen.getByRole("button", { name: en.Common.tryAgain }));
+    await waitFor(() => expect(proceed).toBeEnabled());
+    expect(screen.queryByText("Summary unavailable")).not.toBeInTheDocument();
   });
 
   it.each(["success", "error"])("discards late %s state after the modal closes", async (outcome) => {
