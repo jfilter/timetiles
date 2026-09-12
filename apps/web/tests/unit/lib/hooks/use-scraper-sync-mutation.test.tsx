@@ -18,9 +18,12 @@ describe("useSyncScraperRepoMutation", () => {
   beforeEach(() => vi.resetAllMocks());
   afterEach(cleanup);
 
-  it("tracks pending work and refreshes both lists only after completion", async () => {
+  it.each([false, true])("tracks completion with a previously cached result: %s", async (cached) => {
     mocks.fetchJson.mockResolvedValueOnce({ message: "Queued" }).mockResolvedValueOnce({ pending: true });
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: 60_000 }, mutations: { retry: false } },
+    });
+    if (cached) client.setQueryData(scraperKeys.sync(7), { pending: false });
     const repos = [...scraperKeys.repos, "user", 42];
     const scrapers = [...scraperKeys.byRepo(), "user", 42];
     client.setQueryData(repos, []);
