@@ -332,7 +332,28 @@ describe.sequential("Import Wizard API Endpoints", () => {
     });
   });
 
-  describe("Deduplication Configuration", () => {
+  describe("Dataset Configuration", () => {
+    it("preserves admin schema detection settings when configuring an existing dataset", async () => {
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
+      const schemaSettings = { maxSchemaDepth: 7, enumThreshold: 25, enumMode: "percentage" as const };
+      const dataset = await payload.create({
+        collection: "datasets",
+        data: { name: "Custom schema detection", catalog: catalog.id, language: "eng", schemaConfig: schemaSettings },
+      });
+      const req = Object.assign(new NextRequest("http://localhost/api/ingest/configure"), { user: testUser });
+      await processDataset(
+        payload,
+        req,
+        { sheetIndex: 0, datasetId: dataset.id, newDatasetName: "" },
+        undefined,
+        catalog.id,
+        "skip",
+        false
+      );
+      const updated = await payload.findByID({ collection: "datasets", id: dataset.id });
+      expect(updated.schemaConfig).toMatchObject(schemaSettings);
+    });
+
     it.each([false, true])(
       "preserves existing duplicate detection set to %s when configuring an import",
       async (enabled) => {
