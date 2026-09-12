@@ -13,28 +13,37 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { z } from "zod";
+
 import { logger } from "@/lib/logger";
 import { isENOENT } from "@/lib/utils/is-enoent";
 
 import type { CacheEntry, CacheSetOptions, CacheStats, CacheStorage, FileSystemCacheOptions } from "../types";
 import { decodeEntry, encodeEntry } from "./entry-codec";
 
-interface IndexEntry {
-  file: string;
-  expires?: number;
-  size: number;
-  tags?: string[];
-  /** Access metadata lives here so reads never rewrite the payload and LRU never reads it. */
-  createdAt?: number;
-  lastAccessedAt?: number;
-  accessCount?: number;
-}
-
-interface IndexData {
-  index: Record<string, IndexEntry>;
-  stats: CacheStats;
-  lastUpdated: string;
-}
+const counterSchema = z.number().int().nonnegative();
+const indexEntrySchema = z.object({
+  file: z.string().min(1),
+  expires: z.number().optional(),
+  size: counterSchema,
+  tags: z.array(z.string()).optional(),
+  createdAt: z.number().optional(),
+  lastAccessedAt: z.number().optional(),
+  accessCount: counterSchema.optional(),
+});
+const indexDataSchema = z.object({
+  index: z.record(z.string(), indexEntrySchema),
+  stats: z.object({
+    entries: counterSchema,
+    totalSize: counterSchema,
+    hits: counterSchema,
+    misses: counterSchema,
+    evictions: counterSchema,
+  }),
+  lastUpdated: z.string(),
+});
+type IndexEntry = z.infer<typeof indexEntrySchema>;
+type IndexData = z.infer<typeof indexDataSchema>;
 
 /**
  * File-backed cache for a single owner.
@@ -386,9 +395,9 @@ export class FileSystemCacheStorage implements CacheStorage {
   private async loadIndex(): Promise<void> {
     try {
       const data = await fs.readFile(this.indexFile, "utf-8");
-      const indexData: IndexData = JSON.parse(data);
+      const indexData = indexDataSchema.parse(JSON.parse(data));
       this.index = new Map(Object.entries(indexData.index));
-      this.stats = indexData.stats || this.stats;
+      this.stats = indexData.stats;
 
       // Validate index entries still exist
       const invalidKeys: string[] = [];

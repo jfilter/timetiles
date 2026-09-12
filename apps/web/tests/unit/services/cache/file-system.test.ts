@@ -175,6 +175,29 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("persistence", () => {
+    it.each(["invalid size", "invalid stats"])("discards an index containing %s", async (corruption) => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const file = path.join(tempDir, "entry.cache");
+      await fs.writeFile(file, "unused");
+      await fs.writeFile(
+        path.join(tempDir, "index.json"),
+        JSON.stringify({
+          index: { broken: { file, size: corruption === "invalid size" ? -1 : 6 } },
+          stats: {
+            entries: 1,
+            totalSize: 6,
+            hits: corruption === "invalid stats" ? "wrong" : 0,
+            misses: 0,
+            evictions: 0,
+          },
+          lastUpdated: new Date().toISOString(),
+        })
+      );
+      expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0, hits: 0 });
+      await storage.set("healthy", "value");
+      expect((await storage.get("healthy"))?.value).toBe("value");
+    });
+
     it("recovers the index write queue after a failed rename", async () => {
       await storage.set("before", "first");
       const indexFile = path.join(tempDir, "index.json");
