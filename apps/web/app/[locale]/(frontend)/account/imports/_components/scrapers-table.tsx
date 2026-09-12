@@ -101,8 +101,9 @@ const ActionsCell = ({ row }: { readonly row: ScraperRow }) => {
 export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTableProps) => {
   const t = useTranslations("ImportActivity");
   const locale = useLocale();
-  const { data: repos = [] } = useScraperReposQuery(initialRepos);
-  const { data: allScrapers = [] } = useScrapersQuery(undefined, initialScrapers);
+  const { data: repos = [], error: reposError } = useScraperReposQuery(initialRepos);
+  const { data: allScrapers = [], error: scrapersError } = useScrapersQuery(undefined, initialScrapers);
+  const error = reposError ?? scrapersError;
 
   const repoMap = useMemo(() => buildRepoMap(repos), [repos]);
   const rows = useMemo(() => flattenScraperRows(allScrapers, repoMap), [allScrapers, repoMap]);
@@ -173,8 +174,11 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
     [locale, t]
   );
 
+  if (error && rows.length === 0) return <ErrorMessage message={error.message} />;
+
   return (
     <>
+      {error && <ErrorMessage message={error.message} />}
       {repos
         .filter((repo) => repo.lastSyncStatus === "failed")
         .map((repo) => (

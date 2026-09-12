@@ -9,7 +9,7 @@
  */
 "use client";
 
-import { type ColumnDef, ContentState, DataTable } from "@timetiles/ui";
+import { type ColumnDef, ContentState, DataTable, ErrorMessage } from "@timetiles/ui";
 import { UploadIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
@@ -44,7 +44,7 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
   const t = useTranslations("ImportActivity");
   const tIngest = useTranslations("Ingest");
   const locale = useLocale();
-  const { data: ingestFiles = [], isLoading } = useIngestFilesQuery(initialData);
+  const { data: ingestFiles = [], isLoading, error } = useIngestFilesQuery(initialData);
 
   const columns = useMemo<ColumnDef<IngestFile, unknown>[]>(
     () => [
@@ -111,21 +111,26 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
     [locale, t, tIngest]
   );
 
+  if (error && ingestFiles.length === 0) return <ErrorMessage message={error.message} />;
+
   return (
-    <DataTable
-      columns={columns}
-      data={ingestFiles}
-      isLoading={isLoading}
-      emptyState={
-        <ContentState
-          variant="empty"
-          icon={<UploadIcon className="h-12 w-12" />}
-          title={t("noImports")}
-          subtitle={t("noImportsDescription")}
-        />
-      }
-      getRowId={(row) => String(row.id)}
-      renderExpandedRow={(row) => <IngestJobsDetail ingestFileId={row.id} />}
-    />
+    <>
+      {error && <ErrorMessage message={error.message} />}
+      <DataTable
+        columns={columns}
+        data={ingestFiles}
+        isLoading={isLoading}
+        emptyState={
+          <ContentState
+            variant="empty"
+            icon={<UploadIcon className="h-12 w-12" />}
+            title={t("noImports")}
+            subtitle={t("noImportsDescription")}
+          />
+        }
+        getRowId={(row) => String(row.id)}
+        renderExpandedRow={(row) => <IngestJobsDetail ingestFileId={row.id} />}
+      />
+    </>
   );
 };

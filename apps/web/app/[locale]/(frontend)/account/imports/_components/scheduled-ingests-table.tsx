@@ -105,7 +105,7 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
 export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProps) => {
   const t = useTranslations("ImportActivity");
   const locale = useLocale();
-  const { data: schedules = [], isLoading } = useScheduledIngestsQuery(initialData);
+  const { data: schedules = [], isLoading, error } = useScheduledIngestsQuery(initialData);
 
   const columns = useMemo<ColumnDef<ScheduledIngest, unknown>[]>(
     () => [
@@ -168,21 +168,26 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
     [locale, t]
   );
 
+  if (error && schedules.length === 0) return <ErrorMessage message={error.message} />;
+
   return (
-    <DataTable
-      columns={columns}
-      data={schedules}
-      isLoading={isLoading}
-      emptyState={
-        <ContentState
-          variant="empty"
-          icon={<ClockIcon className="h-12 w-12" />}
-          title={t("noSchedules")}
-          subtitle={t("noSchedulesDescription")}
-        />
-      }
-      getRowId={(row) => String(row.id)}
-      renderExpandedRow={(row) => <ScheduleRunHistory scheduleId={row.id} executionHistory={row.executionHistory} />}
-    />
+    <>
+      {error && <ErrorMessage message={error.message} />}
+      <DataTable
+        columns={columns}
+        data={schedules}
+        isLoading={isLoading}
+        emptyState={
+          <ContentState
+            variant="empty"
+            icon={<ClockIcon className="h-12 w-12" />}
+            title={t("noSchedules")}
+            subtitle={t("noSchedulesDescription")}
+          />
+        }
+        getRowId={(row) => String(row.id)}
+        renderExpandedRow={(row) => <ScheduleRunHistory scheduleId={row.id} executionHistory={row.executionHistory} />}
+      />
+    </>
   );
 };
