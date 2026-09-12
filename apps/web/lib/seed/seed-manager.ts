@@ -15,8 +15,6 @@
  *
  * @module
  */
-import type { Payload } from "payload";
-
 import { createDatabaseClient } from "../database/client";
 import { truncateTables } from "../database/operations";
 import { getDatabaseUrl } from "../database/url";
@@ -28,7 +26,6 @@ import type { CollectionConfig } from "./seed.config";
 import type { SeedOptions } from "./types";
 
 const logger = createLogger("seed");
-const truncatableTableCache = new Map<string, string[]>();
 
 const assertSafeIdentifier = (value: string, pattern: RegExp, type: string): void => {
   if (!pattern.test(value)) {
@@ -39,61 +36,6 @@ const assertSafeIdentifier = (value: string, pattern: RegExp, type: string): voi
 const toQualifiedCollectionTableName = (collection: string): string => {
   assertSafeIdentifier(collection, /^[a-z0-9-]+$/, "collection name");
   return `payload."${collection.replaceAll("-", "_")}"`;
-};
-
-const toQualifiedTableName = (tableName: string): string => {
-  assertSafeIdentifier(tableName, /^[a-z0-9_]+$/, "table name");
-  return `payload."${tableName}"`;
-};
-
-const executeTruncateWithPayloadConnection = async (payload: Payload, tableList: string): Promise<boolean> => {
-  const db = payload.db as { execute?: (query: string) => Promise<unknown> };
-  if (typeof db.execute !== "function") {
-    return false;
-  }
-
-  // Wrap in an explicit transaction so SET LOCAL lock_timeout actually applies.
-  // Without BEGIN, each db.execute runs in autocommit and SET LOCAL has no effect.
-  try {
-    await db.execute("BEGIN");
-    await db.execute(`SET LOCAL lock_timeout = '5s'`);
-    await db.execute(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
-    await db.execute("COMMIT");
-  } catch (error) {
-    await db.execute("ROLLBACK").catch(() => {});
-    throw error;
-  }
-  return true;
-};
-
-const getTruncatableTableNames = async (connectionString: string): Promise<string[]> => {
-  const cachedTableNames = truncatableTableCache.get(connectionString);
-  if (cachedTableNames) {
-    return cachedTableNames;
-  }
-
-  const client = createDatabaseClient({ connectionString });
-  try {
-    await client.connect();
-
-    const result = await client.query(
-      `
-        SELECT table_name
-        FROM information_schema.tables
-        WHERE table_schema = $1
-          AND table_type = 'BASE TABLE'
-          AND table_name NOT LIKE $2
-        ORDER BY table_name
-      `,
-      ["payload", "payload_migrations%"]
-    );
-
-    const tableNames = result.rows.map((row) => row.table_name as string);
-    truncatableTableCache.set(connectionString, tableNames);
-    return tableNames;
-  } finally {
-    await client.end();
-  }
 };
 
 export class SeedManager extends SeedManagerBase {
@@ -145,30 +87,9 @@ export class SeedManager extends SeedManagerBase {
       throw new Error("DATABASE_URL is required for truncation");
     }
 
-    const payload = this.payload!;
-
     if (collections.length === 0) {
       // Truncate all tables
       logger.info("Truncating all tables");
-
-      try {
-        const tableNames = await getTruncatableTableNames(dbUrl);
-        if (tableNames.length === 0) {
-          return;
-        }
-
-        const tableList = tableNames.map(toQualifiedTableName).join(", ");
-        const usedPayloadConnection = await executeTruncateWithPayloadConnection(payload, tableList);
-
-        if (usedPayloadConnection) {
-          logger.info(`Truncated ${tableNames.length} tables successfully`);
-          return;
-        }
-      } catch (error) {
-        logger.warn("Falling back to direct truncateTables()", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
 
       const tableCount = await truncateTables(dbUrl, { schema: "payload", excludePatterns: ["payload_migrations%"] });
       logger.info(`Truncated ${tableCount} tables successfully`);
@@ -178,26 +99,12 @@ export class SeedManager extends SeedManagerBase {
 
       const tableList = collections.map(toQualifiedCollectionTableName).join(", ");
 
-      try {
-        const usedPayloadConnection = await executeTruncateWithPayloadConnection(payload, tableList);
-        if (usedPayloadConnection) {
-          logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
-          return;
-        }
-      } catch (error) {
-        logger.warn("Falling back to dedicated truncate client for collections", {
-          collections,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-
-      // Use TRUNCATE CASCADE via a dedicated client (not Payload's pool) to avoid
-      // deadlocks with idle Payload connections. A single TRUNCATE statement
-      // handles FK dependencies automatically via CASCADE.
+      // Keep the lock timeout and TRUNCATE on one dedicated connection.
+      // CASCADE handles FK dependencies; lock contention must fail, not hang.
       const client = createDatabaseClient({ connectionString: dbUrl });
       try {
         await client.connect();
-        const tableList = collections.map(toQualifiedCollectionTableName).join(", ");
+        await client.query(`SET lock_timeout = '10s'`);
         await client.query(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`);
         logger.info({ collections }, `Truncated ${collections.length} collections successfully`);
       } finally {

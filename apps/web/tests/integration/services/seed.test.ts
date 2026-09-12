@@ -11,6 +11,8 @@
  */
 import type { Payload } from "payload";
 
+import { createDatabaseClient } from "@/lib/database/client";
+import { getDatabaseUrl } from "@/lib/database/url";
 import type { Config } from "@/payload-types";
 
 import { getCollectionConfig } from "../../../lib/seed/seed.config";
@@ -86,6 +88,21 @@ describe.sequential("Database-backed Seed Operations", () => {
   });
 
   describe.sequential("Truncation Operations", () => {
+    it("fails on a locked table and recovers after the lock is released", async () => {
+      const client = createDatabaseClient({ connectionString: getDatabaseUrl(true) });
+      await client.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query('LOCK TABLE payload."catalogs" IN ACCESS SHARE MODE');
+        await expect(testEnv.seedManager.truncate(["catalogs"])).rejects.toMatchObject({ code: "55P03" });
+      } finally {
+        await client.query("ROLLBACK");
+        await client.end();
+      }
+
+      await expect(testEnv.seedManager.truncate(["catalogs"])).resolves.toBeUndefined();
+    });
+
     it("should truncate specified collections", async () => {
       // Create a known catalog directly so we control the data
       const testCatalog = await payload.create({
