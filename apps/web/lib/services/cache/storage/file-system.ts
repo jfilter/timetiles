@@ -399,9 +399,13 @@ export class FileSystemCacheStorage implements CacheStorage {
       this.index = new Map(Object.entries(indexData.index));
       this.stats = indexData.stats;
 
-      // Validate index entries still exist
+      // Index paths must belong to their keys before any filesystem operation.
       const invalidKeys: string[] = [];
       for (const [key, entry] of this.index) {
+        if (path.resolve(entry.file) !== path.resolve(this.getCacheFilePath(key))) {
+          invalidKeys.push(key);
+          continue;
+        }
         try {
           await fs.access(entry.file);
         } catch {

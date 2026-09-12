@@ -175,6 +175,23 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("persistence", () => {
+    it("does not delete files that do not belong to the indexed key", async () => {
+      await fs.mkdir(tempDir, { recursive: true });
+      const foreignFile = path.join(tempDir, "not-a-cache-entry.txt");
+      await fs.writeFile(foreignFile, "keep me");
+      await fs.writeFile(
+        path.join(tempDir, "index.json"),
+        JSON.stringify({
+          index: { injected: { file: foreignFile, size: 7 } },
+          stats: { entries: 1, totalSize: 7, hits: 0, misses: 0, evictions: 0 },
+          lastUpdated: new Date().toISOString(),
+        })
+      );
+      expect(await storage.delete("injected")).toBe(false);
+      expect(await fs.readFile(foreignFile, "utf8")).toBe("keep me");
+      expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
+    });
+
     it.each(["invalid size", "invalid stats"])("discards an index containing %s", async (corruption) => {
       await fs.mkdir(tempDir, { recursive: true });
       const file = path.join(tempDir, "entry.cache");
