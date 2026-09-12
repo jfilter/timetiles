@@ -2,48 +2,46 @@ import { Callout } from "nextra/components";
 
 # Geocoding
 
-TimeTiles geocodes text addresses into map coordinates during imports. Three free providers work out of the box — no API keys required.
+TimeTiles geocodes text addresses into map coordinates during imports. The default provider seed includes three enabled public endpoints that do not require API keys. Existing installations may have different provider settings.
 
 ## How It Works
 
 When you import a file with address data (e.g., "Berlin, Germany"), TimeTiles:
 
-1. Extracts unique addresses from the file (10,000 rows with 200 unique locations = 200 API calls, not 10,000)
+1. Collects unique normalized locations from the file before looking them up
 2. Checks the location cache for previously geocoded addresses
 3. Distributes uncached addresses across configured providers
 4. Stores results for event creation
 
-Cached results are reused for 30 days by default, so re-importing the same data is nearly instant.
+Cached results are reused for 30 days by default. Cache hits avoid provider requests, but the rest of the import pipeline still runs. Retries and fallback can require multiple requests for an uncached address.
 
 ## Providers
 
 Configure providers at `/dashboard/collections/geocoding-providers`.
 
-### Free Providers (enabled by default)
+### Public Endpoints (enabled in the default seed)
 
-| Provider            | Rate Limit | Batch Share | Notes                                                            |
-| ------------------- | ---------- | ----------- | ---------------------------------------------------------------- |
-| Photon (VersaTiles) | 30 req/s   | ~75%        | Primary. Fast (p50 ~40ms), very stable                           |
-| Photon (Komoot)     | 10 req/s   | ~25%        | Secondary. Throttles on burst >16 concurrent                     |
-| Nominatim (OSM)     | 1 req/s    | Fallback    | Only used when both Photon instances fail. Strict 1 req/s policy |
+| Provider            | Seeded `rateLimit` | Role              |
+| ------------------- | ------------------ | ----------------- |
+| Photon (VersaTiles) | 30                 | Photon group      |
+| Photon (Komoot)     | 10                 | Photon group      |
+| Nominatim (OSM)     | 1                  | Fallback provider |
 
-Combined default throughput: **~40 requests/second**. A file with 1,000 unique addresses geocodes in about 25 seconds.
+These values configure TimeTiles' request pacing and distribution; they are not provider quotas or guaranteed throughput. Actual duration depends on latency, cache hits, retries, provider availability, and worker load.
 
-### Paid Providers (disabled by default)
+### API-Key Providers
 
-| Provider    | Rate Limit | Notes                                         |
-| ----------- | ---------- | --------------------------------------------- |
-| Google Maps | 50 req/s   | Highest accuracy. Requires API key            |
-| OpenCage    | 10 req/s   | Good international coverage. Requires API key |
-| LocationIQ  | 2 req/s    | OSM-based with API key. Free tier available   |
+| Provider    | Rate Limit | Notes            |
+| ----------- | ---------- | ---------------- |
+| Google Maps | 50 req/s   | Requires API key |
+| OpenCage    | 10 req/s   | Requires API key |
+| LocationIQ  | 2 req/s    | Requires API key |
 
-Enable and configure API keys at `/dashboard/collections/geocoding-providers`.
+These are TimeTiles' fallback rate settings for providers without an explicit rate limit, not account quotas. Configure API keys and limits appropriate to your account at `/dashboard/collections/geocoding-providers`.
 
 <Callout type="warning">
-  The free Photon and Nominatim providers are community services without guaranteed availability or SLAs. There are no
-  published rate limits for VersaTiles or Komoot — the defaults are based on empirical testing (March 2026). Please use
-  them responsibly. For high-volume production use, consider self-hosting a [Photon
-  instance](https://github.com/komoot/photon) or using a paid provider.
+  Public endpoints are external services. Check their current usage policies before sending production traffic; the
+  seeded settings do not grant permission to send at those rates. Availability and acceptable usage can change.
 </Callout>
 
 ## Weighted Distribution
@@ -67,7 +65,7 @@ The system handles rate limiting automatically:
 - **429 (Too Many Requests)**: Retries once after exponential backoff, then falls back to the next provider
 - **503 (Service Unavailable)**: Same retry + fallback behavior
 - **404 from Photon**: Treated as throttle signal (Photon returns 200 with empty results for genuine "not found")
-- **Retry-After header**: Respected when present
+- **Retry-After header**: Numeric seconds are used for 429 responses. HTTP-date values are not parsed; the normal backoff applies instead.
 
 Backoff escalates: 2s → 4s → 8s → 16s → max 30s on consecutive throttles. Resets on success.
 
@@ -103,7 +101,7 @@ How it maps per provider:
 
 ### Bounding Box
 
-Hard geographic filter — only return results within the box. Set Min/Max Longitude and Latitude.
+Set Min/Max Longitude and Latitude to request a bounding-box filter from supported providers. The Google integration does not apply this box.
 
 How it maps per provider:
 
@@ -111,7 +109,7 @@ How it maps per provider:
 - **OpenCage**: `bounds` parameter
 - **Nominatim**: `viewbox` + `bounded=1` constructor options
 - **LocationIQ**: `viewbox` + `bounded=1` query parameters
-- **Google**: `region` country code (no bbox support in free tier)
+- **Google**: No bounding-box parameter is sent; `region` comes from Country Codes and is not a hard geographic filter
 
 ### Photon-Only Filters
 
@@ -158,5 +156,5 @@ For high-volume or private use, you can run your own Photon instance:
 1. Follow the [Photon setup guide](https://github.com/komoot/photon)
 2. Create a new Photon provider in the admin panel
 3. Set the **Base URL** to your instance (e.g., `http://photon:2322`)
-4. Set a higher `rateLimit` — your own instance has no external limits
+4. Set `rateLimit` to a value your instance can sustain
 5. Optionally disable the public Photon providers
