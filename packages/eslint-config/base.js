@@ -246,6 +246,8 @@ export default [
       // ESLint Core
       "no-async-promise-executor": "error",
       "no-case-declarations": "error",
+      // Disabled again by the oxlint bridge below (oxlint owns this rule), so suppress
+      // violations with `// oxlint-disable-next-line no-console`, not an eslint-disable.
       "no-console": "error",
       "prefer-const": "error",
       "require-atomic-updates": "error",
@@ -523,5 +525,7 @@ export default [
   },
   // Add oxlint bridge at the END to auto-disable ESLint rules that oxlint handles
   // Uses buildFromOxlintConfigFile to only disable rules actually enabled in .oxlintrc.json
+  // This disables those rules repo-wide, so any package that runs this config but skips
+  // the oxlint step in its own lint script silently enforces none of them.
   ...oxlint.buildFromOxlintConfigFile(resolve(MONOREPO_ROOT, ".oxlintrc.json")),
 ];
