@@ -87,6 +87,26 @@ describe("ProviderRateLimiter", () => {
       expect(rateLimiter.isAvailable("unconfigured-provider")).toBe(true);
     }, 3000);
 
+    it("honors a throttle received while waiting for the request interval", async () => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+      let resolved = false;
+      const slot = (async () => {
+        await rateLimiter.waitForSlot("test-provider");
+        resolved = true;
+      })();
+
+      await vi.advanceTimersByTimeAsync(50);
+      rateLimiter.reportThrottle("test-provider", 1000);
+      await vi.advanceTimersByTimeAsync(50);
+      expect(resolved).toBe(false);
+      await vi.advanceTimersByTimeAsync(949);
+      expect(resolved).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await slot;
+      expect(resolved).toBe(true);
+    });
+
     it("should wait for backoff to expire before proceeding", async () => {
       vi.useRealTimers();
       const rateLimiter = new ProviderRateLimiter();

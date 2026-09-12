@@ -71,8 +71,8 @@ export class ProviderRateLimiter {
   async waitForSlot(providerName: string): Promise<void> {
     const state = this.getOrCreateState(providerName);
 
-    // Chain: this caller waits for the previous slot, then honors any active
-    // backoff, then the per-request interval. The async IIFE preserves
+    // Chain: this caller waits for the previous slot and per-request interval,
+    // then honors any active backoff before proceeding. The async IIFE preserves
     // synchronous chain assignment while avoiding a TOCTOU race between
     // concurrent callers.
     //
@@ -85,6 +85,7 @@ export class ProviderRateLimiter {
     const previousSlot = state.lastSlotPromise;
     const mySlot = (async () => {
       await previousSlot;
+      await this.delay(minInterval);
 
       let backoffWait = state.backoffUntil - Date.now();
       while (backoffWait > 0) {
@@ -92,8 +93,6 @@ export class ProviderRateLimiter {
         await this.delay(backoffWait);
         backoffWait = state.backoffUntil - Date.now();
       }
-
-      await this.delay(minInterval);
     })();
     state.lastSlotPromise = mySlot;
     await mySlot;
