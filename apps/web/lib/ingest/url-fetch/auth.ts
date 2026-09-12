@@ -46,7 +46,14 @@ const fetchOAuthToken = async (
     throw new Error(`OAuth token request failed (${response.status})`);
   }
 
-  const result = tokenResponseSchema.safeParse(await response.json());
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    // JSON parser errors can include response excerpts containing credentials.
+    data = null;
+  }
+  const result = tokenResponseSchema.safeParse(data);
   if (!result.success) {
     throw new Error("OAuth response missing valid access_token");
   }

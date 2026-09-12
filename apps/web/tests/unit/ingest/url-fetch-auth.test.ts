@@ -57,4 +57,9 @@ describe("OAuth diagnostics", () => {
       );
     }
   );
+
+  it("does not expose malformed JSON from the token endpoint", async () => {
+    vi.mocked(safeFetch).mockResolvedValue(new Response(authConfig.password));
+    await expect(buildAuthHeaders(authConfig)).rejects.toEqual(new Error("OAuth response missing valid access_token"));
+  });
 });
