@@ -1,8 +1,8 @@
 /**
  * Reset password form component for setting a new password.
  *
- * Uses Payload CMS built-in reset-password endpoint with a token
- * from the password reset email.
+ * Uses the app-managed reset endpoint, which enforces password policy and
+ * revokes existing sessions, with a token from the password reset email.
  *
  * @module
  * @category Components
