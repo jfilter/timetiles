@@ -147,6 +147,16 @@ describe("fetchJson", () => {
     }
   });
 
+  it.each([
+    [{}, "HTTP 503"],
+    [{ error: "", message: "Temporarily unavailable" }, "Temporarily unavailable"],
+    [{ error: "   ", message: "\t" }, "HTTP 503"],
+  ])("provides a nonempty message for body %j without status text", async (body, message) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status: 503 }));
+
+    await expect(fetchJson("/api/test")).rejects.toMatchObject({ status: 503, message, body });
+  });
+
   it("throws HttpError on 4xx responses for retry policy integration", async () => {
     fetchMock.mockResolvedValue({
       ok: false,

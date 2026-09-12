@@ -33,8 +33,8 @@ export class HttpError extends Error {
 const extractErrorMessage = (body: unknown, fallback: string): string => {
   if (typeof body === "object" && body !== null) {
     const record = body as Record<string, unknown>;
-    if (typeof record.error === "string") return record.error;
-    if (typeof record.message === "string") return record.message;
+    if (typeof record.error === "string" && record.error.trim()) return record.error;
+    if (typeof record.message === "string" && record.message.trim()) return record.message;
   }
   return fallback;
 };
@@ -52,7 +52,7 @@ export const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit)
 
   if (!response.ok) {
     const body = await response.json().catch(() => undefined);
-    const message = extractErrorMessage(body, response.statusText);
+    const message = extractErrorMessage(body, response.statusText.trim() || `HTTP ${response.status}`);
     throw new HttpError(response.status, message, body);
   }
 
