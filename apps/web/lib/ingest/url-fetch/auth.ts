@@ -111,7 +111,9 @@ export const buildAuthHeaders = async (
       }
       break;
     case "oauth": {
-      if (!authConfig.tokenUrl || !authConfig.username || !authConfig.password) break;
+      if (!authConfig.tokenUrl || !authConfig.username || !authConfig.password) {
+        throw new Error("OAuth requires a token URL, username and password");
+      }
       const token = await fetchOAuthToken(
         authConfig.tokenUrl,
         authConfig.clientId ?? "",

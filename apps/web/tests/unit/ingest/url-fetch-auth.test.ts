@@ -62,4 +62,11 @@ describe("OAuth diagnostics", () => {
     vi.mocked(safeFetch).mockResolvedValue(new Response(authConfig.password));
     await expect(buildAuthHeaders(authConfig)).rejects.toEqual(new Error("OAuth response missing valid access_token"));
   });
+
+  it.each(["tokenUrl", "username", "password"] as const)("rejects OAuth configuration without %s", async (field) => {
+    await expect(buildAuthHeaders({ ...authConfig, [field]: "" })).rejects.toEqual(
+      new Error("OAuth requires a token URL, username and password")
+    );
+    expect(safeFetch).not.toHaveBeenCalled();
+  });
 });
