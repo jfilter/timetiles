@@ -46,30 +46,32 @@ These are TimeTiles' fallback rate settings for providers without an explicit ra
 
 ## Weighted Distribution
 
-During batch geocoding (imports), requests are distributed across providers proportional to their `rateLimit` setting. Providers with the same `group` value share the work:
+During batch geocoding (imports), the highest-priority available provider determines the active group. Providers in that group share requests proportional to their `rateLimit` setting. An ungrouped provider handles primary requests alone; remaining providers are fallback candidates.
 
 **Default configuration**:
 
 - VersaTiles (`rateLimit: 30`, `group: "photon"`) gets ~75% of requests
 - Komoot (`rateLimit: 10`, `group: "photon"`) gets ~25%
-- Nominatim (no group) is only tried as fallback when both Photon providers fail
+- Nominatim (no group) is a fallback candidate; it can also become primary when both Photon providers are in backoff
 
 Adjust the `rateLimit` values in the admin panel to change the distribution. For example, setting both Photon providers to `rateLimit: 10` gives each 50%.
 
-For single-address geocoding (e.g., the map search), providers are tried sequentially by priority.
+For single-address calls to the geocoding service, providers are tried sequentially by priority.
+
+With **Fallback enabled** switched off, a failed or invalid result does not trigger requests to another provider, in either single-address or batch geocoding. Retrying a transient failure on the selected provider is independent of this setting.
 
 ## Throttling and Resilience
 
 The system handles rate limiting automatically:
 
-- **429 (Too Many Requests)**: Retries once after exponential backoff, then falls back to the next provider
+- **429 (Too Many Requests)**: Retries once after exponential backoff, then tries another provider if fallback is enabled
 - **502/503/504 (gateway errors or service unavailable)**: Same retry + fallback behavior
 - **404 from Photon**: Treated as throttle signal (Photon returns 200 with empty results for genuine "not found")
 - **Retry-After header**: Numeric seconds are used for 429 responses. HTTP-date values are not parsed; the normal backoff applies instead.
 
 Backoff escalates: 2s → 4s → 8s → 16s → max 30s on consecutive throttles. Resets on success.
 
-If a provider is in backoff, it is temporarily skipped — requests go to available providers instead.
+If a provider is in backoff, it is temporarily skipped — requests go to available providers instead. If all providers are in backoff, the request waits for the soonest-available provider.
 
 ## Geographic Filtering
 
@@ -136,7 +138,8 @@ The location cache (`/dashboard/collections/location-cache`) stores geocoded res
 
 - Addresses are normalized before lookup (lowercased, whitespace collapsed, special characters stripped)
 - Cache hits increment a counter and update the "last used" timestamp
-- Expired entries are cleaned up automatically every 6 hours
+- TTL is measured from creation, not the last cache hit; frequent use does not extend it
+- Expired entries are removed when looked up again. There is currently no scheduled bulk cleanup for the location cache; the six-hour cache job only cleans the URL-fetch cache
 - Admins can manually delete cache entries to force re-geocoding
 
 ## Adding a Provider
