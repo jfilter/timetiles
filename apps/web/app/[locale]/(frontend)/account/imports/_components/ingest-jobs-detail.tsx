@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { ErrorMessage } from "@timetiles/ui";
 import { ExternalLinkIcon } from "lucide-react";
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
@@ -92,18 +93,19 @@ const JobRow = ({ job }: { readonly job: IngestJob }) => {
 
 export const IngestJobsDetail = ({ ingestFileId }: IngestJobsDetailProps) => {
   const t = useTranslations("ImportActivity");
-  const { data: jobs = [], isLoading } = useIngestJobsByFileQuery(ingestFileId);
+  const { data: jobs = [], isLoading, error } = useIngestJobsByFileQuery(ingestFileId);
 
   if (isLoading) {
     return <div className="text-muted-foreground py-2 text-xs">{t("loadingJobs")}</div>;
   }
 
-  if (jobs.length === 0) {
+  if (jobs.length === 0 && !error) {
     return <div className="text-muted-foreground py-2 text-xs">{t("noJobs")}</div>;
   }
 
   return (
     <div className="space-y-0">
+      {error && <ErrorMessage message={error.message} />}
       {jobs.map((job) => (
         <JobRow key={job.id} job={job} />
       ))}

@@ -5,24 +5,40 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { IngestJobsDetail } from "@/app/[locale]/(frontend)/account/imports/_components/ingest-jobs-detail";
 
 import de from "../../../messages/de.json";
 import en from "../../../messages/en.json";
 
-const mocks = vi.hoisted(() => ({ jobs: vi.fn() }));
+const mocks = vi.hoisted(() => ({ jobs: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/hooks/use-ingest-jobs-query", () => ({
-  useIngestJobsByFileQuery: () => ({ data: mocks.jobs(), isLoading: false }),
+  useIngestJobsByFileQuery: () => ({ data: mocks.jobs(), isLoading: false, error: mocks.error() }),
 }));
 
 afterEach(cleanup);
+beforeEach(() => vi.resetAllMocks());
 
 describe.each([
   { locale: "en", messages: en },
   { locale: "de", messages: de },
 ])("IngestJobsDetail ($locale)", ({ locale, messages }) => {
+  it.each([false, true])("shows a fetch error with cached jobs: %s", (cached) => {
+    mocks.error.mockReturnValue(new Error("Jobs unavailable"));
+    mocks.jobs.mockReturnValue(
+      cached ? [{ id: 1, dataset: 1, stage: "completed", createdAt: "2024-05-15T12:00:00Z" }] : undefined
+    );
+    render(
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <IngestJobsDetail ingestFileId={1} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Jobs unavailable");
+    expect(screen.queryByText(messages.ImportActivity.noJobs)).not.toBeInTheDocument();
+    if (cached) expect(screen.getByText(messages.Ingest.stageComplete)).toBeVisible();
+  });
+
   it.each([
     ["analyze-duplicates", "stageAnalyzingDuplicates"],
     ["detect-schema", "stageDetectingSchema"],
