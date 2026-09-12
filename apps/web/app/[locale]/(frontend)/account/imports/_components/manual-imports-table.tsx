@@ -15,7 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
-import { useIngestFilesQuery } from "@/lib/hooks/use-ingest-files-query";
+import { isIngestFileActive, useIngestFilesQuery } from "@/lib/hooks/use-ingest-files-query";
 import { formatDateLocale } from "@/lib/utils/date";
 import { formatFileSize } from "@/lib/utils/format";
 import type { IngestFile } from "@/payload-types";
@@ -129,7 +129,7 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
           />
         }
         getRowId={(row) => String(row.id)}
-        renderExpandedRow={(row) => <IngestJobsDetail ingestFileId={row.id} />}
+        renderExpandedRow={(row) => <IngestJobsDetail ingestFileId={row.id} isFileActive={isIngestFileActive(row)} />}
       />
     </>
   );

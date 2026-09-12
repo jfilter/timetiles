@@ -24,6 +24,7 @@ import type { Dataset, IngestJob } from "@/payload-types";
 
 interface IngestJobsDetailProps {
   readonly ingestFileId: number;
+  readonly isFileActive?: boolean;
 }
 
 const STAGE_VARIANT_MAP: Record<string, StatusVariant> = {
@@ -91,9 +92,9 @@ const JobRow = ({ job }: { readonly job: IngestJob }) => {
   );
 };
 
-export const IngestJobsDetail = ({ ingestFileId }: IngestJobsDetailProps) => {
+export const IngestJobsDetail = ({ ingestFileId, isFileActive = false }: IngestJobsDetailProps) => {
   const t = useTranslations("ImportActivity");
-  const { data: jobs = [], isLoading, error } = useIngestJobsByFileQuery(ingestFileId);
+  const { data: jobs = [], isLoading, error } = useIngestJobsByFileQuery(ingestFileId, isFileActive);
 
   if (isLoading) {
     return <div className="text-muted-foreground py-2 text-xs">{t("loadingJobs")}</div>;

@@ -27,6 +27,9 @@ const hasSettledWithoutBackgroundWork = (file: IngestFile): boolean => {
   return file.status === "processing" && total > 0 && processed >= total;
 };
 
+export const isIngestFileActive = (file: IngestFile): boolean =>
+  !TERMINAL_STATUSES.has(file.status ?? "") && !hasSettledWithoutBackgroundWork(file);
+
 export const useIngestFilesQuery = (initialData?: IngestFile[]) => {
   const { userId } = useAuthState();
   return useQuery({
@@ -40,9 +43,6 @@ export const useIngestFilesQuery = (initialData?: IngestFile[]) => {
             ),
     initialData: userId == null ? undefined : initialData,
     ...QUERY_PRESETS.standard,
-    refetchInterval: createActivePollingInterval<IngestFile>(
-      (d) => !TERMINAL_STATUSES.has(d.status ?? "") && !hasSettledWithoutBackgroundWork(d),
-      POLL_INTERVAL
-    ),
+    refetchInterval: createActivePollingInterval<IngestFile>(isIngestFileActive, POLL_INTERVAL),
   });
 };
