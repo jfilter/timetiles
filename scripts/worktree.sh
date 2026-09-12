@@ -116,8 +116,16 @@ create_uploads() {
 # ---------------------------------------------------------------------------
 # cmd: create <name> [branch]
 # ---------------------------------------------------------------------------
+validate_name() {
+    if [[ ! "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+        error "Invalid worktree name: use letters, digits, dots, underscores or hyphens; start with a letter or digit"
+        return 1
+    fi
+}
+
 cmd_create() {
     local name="${1:?Usage: worktree.sh create <name> [branch]}"
+    validate_name "$name"
     local branch="${2:-}"
     local wt_dir="$WORKTREE_BASE/$name"
 
@@ -184,6 +192,7 @@ cmd_setup() {
 # ---------------------------------------------------------------------------
 cmd_remove() {
     local name="${1:?Usage: worktree.sh remove <name>}"
+    validate_name "$name"
     local wt_dir="$WORKTREE_BASE/$name"
 
     if [ ! -d "$wt_dir" ]; then
@@ -197,7 +206,7 @@ cmd_remove() {
     local branch
     branch=$(git -C "$wt_dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 
-    git -C "$REPO_ROOT" worktree remove --force "$wt_dir" 2>/dev/null || rm -rf "$wt_dir"
+    git -C "$REPO_ROOT" worktree remove --force "$wt_dir"
     info "Worktree removed"
 
     # Clean up the branch if it was created for this worktree
