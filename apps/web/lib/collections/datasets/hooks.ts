@@ -274,11 +274,9 @@ export const collectProtectedMappingPaths = (roles: unknown, geo: unknown): Arra
 };
 
 /**
- * Read a dataset config value from the incoming patch, falling back to the
- * stored document. Payload replaces whole groups/arrays on write (it does not
- * deep-merge), so a partial PATCH that omits a group leaves it absent from
- * `data` while `originalDoc` holds the prior value — `data ?? originalDoc` at
- * group granularity validates the effective post-write config in both cases.
+ * Read a dataset config value from Payload's hook data, falling back to the
+ * stored document when the value is absent. Group fields in hook data have
+ * already been processed by Payload; do not reconstruct them from the raw PATCH.
  */
 const mergedConfigValue = <T>(data: Record<string, unknown> | undefined, originalDoc: unknown, key: string): T =>
   (data?.[key] ?? (originalDoc as Record<string, unknown> | undefined)?.[key]) as T;

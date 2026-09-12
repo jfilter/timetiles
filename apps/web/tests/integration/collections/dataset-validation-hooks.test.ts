@@ -284,7 +284,7 @@ describe.sequential("Dataset validation hooks", () => {
         payload.update({
           collection: "datasets",
           id: dataset.id,
-          data: { idStrategy: { type: "external", externalIdPath: "location", duplicateStrategy: "skip" } },
+          data: { idStrategy: { externalIdPath: "location" } },
           overrideAccess: true,
         })
       ).rejects.toThrow(/moves the external ID field "location" to "archived_location"/);
