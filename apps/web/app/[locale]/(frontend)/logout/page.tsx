@@ -1,30 +1,14 @@
 /**
- * Logout page that signs out the user and redirects to home.
+ * Compatibility alias for Payload's native logout page.
  *
- * Server component that calls the Payload logout endpoint and redirects.
- * Uses the same endpoint as the client-side logout in use-auth-mutations.ts.
+ * Payload handles the browser request so its expired session cookie reaches
+ * the browser. A server-to-server logout fetch cannot clear browser cookies.
  *
  * @module
  * @category Pages
  */
-import { headers } from "next/headers";
-import { getLocale } from "next-intl/server";
+import { redirect } from "next/navigation";
 
-import { redirect } from "@/i18n/navigation";
-
-export const dynamic = "force-dynamic";
-
-const LOGOUT_URL = `${process.env.NEXT_PUBLIC_PAYLOAD_URL}/api/users/logout`;
-
-export default async function LogoutPage() {
-  const headersList = await headers();
-
-  try {
-    await fetch(LOGOUT_URL, { method: "POST", headers: { cookie: headersList.get("cookie") ?? "" } });
-  } catch {
-    // Ignore errors - redirect anyway (session cookie will be cleared)
-  }
-
-  const locale = await getLocale();
-  redirect({ href: "/", locale });
+export default function LogoutPage() {
+  redirect("/dashboard/logout");
 }

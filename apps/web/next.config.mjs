@@ -63,7 +63,6 @@ const nextConfig = {
   redirects: async () => [
     // Redirect Payload dashboard auth routes to main app
     { source: "/dashboard/login", destination: "/login?redirect=/dashboard", permanent: false },
-    { source: "/dashboard/logout", destination: "/logout", permanent: false },
     { source: "/dashboard/create-first-user", destination: "/", permanent: false },
     { source: "/dashboard/forgot-password", destination: "/login", permanent: false },
     { source: "/dashboard/reset-password", destination: "/login", permanent: false },
