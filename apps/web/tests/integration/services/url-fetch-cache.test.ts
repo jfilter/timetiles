@@ -403,7 +403,12 @@ describe.sequential("HTTP Cache Integration", () => {
         testServer.route("/automatic-revalidation", (req: IncomingMessage, res: ServerResponse) => {
           const conditional = req.headers[requestHeader];
           conditionalHeaders.push(conditional);
-          res.writeHead(conditional === validator ? 304 : 200, { [header]: validator, "Cache-Control": "max-age=1" });
+          // Expire the initial response quickly, but leave the revalidated entry
+          // fresh long enough for the HIT assertion even under full-suite load.
+          res.writeHead(conditional === validator ? 304 : 200, {
+            [header]: validator,
+            "Cache-Control": conditional === validator ? "max-age=60" : "max-age=1",
+          });
           res.end(conditional === validator ? undefined : "Unchanged response");
         });
 
