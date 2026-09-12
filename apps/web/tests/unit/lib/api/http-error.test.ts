@@ -177,4 +177,17 @@ describe("fetchJson", () => {
       expect(httpError.message).toBe("Access denied");
     }
   });
+
+  it.each([
+    [{ errors: [{ message: "Permission denied" }] }, "Permission denied"],
+    [{ errors: [null, { message: 42 }, { message: " " }, { message: "Invalid field" }] }, "Invalid field"],
+    [{ error: "Primary error", errors: [{ message: "Secondary error" }] }, "Primary error"],
+    [{ message: "Primary message", errors: [{ message: "Secondary error" }] }, "Primary message"],
+    [{ errors: [] }, "HTTP 400"],
+    [{ errors: { message: "Not an array" } }, "HTTP 400"],
+  ])("extracts Payload messages safely from %j", async (body, message) => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status: 400 }));
+
+    await expect(fetchJson("/api/test")).rejects.toMatchObject({ status: 400, message, body });
+  });
 });

@@ -26,15 +26,20 @@ export class HttpError extends Error {
 /**
  * Extract a human-readable error message from a parsed response body.
  *
- * Looks for an `error` or `message` string field, which is the convention
- * used by all API routes in this codebase. Falls back to `fallback` when
- * the body doesn't contain a recognizable message.
+ * Prefers custom routes' `error` or `message` fields, then Payload's
+ * `errors` array. Falls back when the body has no nonempty message.
  */
 const extractErrorMessage = (body: unknown, fallback: string): string => {
-  if (typeof body === "object" && body !== null) {
-    const record = body as Record<string, unknown>;
-    if (typeof record.error === "string" && record.error.trim()) return record.error;
-    if (typeof record.message === "string" && record.message.trim()) return record.message;
+  if (typeof body !== "object" || body === null) return fallback;
+  const record = body as Record<string, unknown>;
+  if (typeof record.error === "string" && record.error.trim()) return record.error;
+  if (typeof record.message === "string" && record.message.trim()) return record.message;
+  if (Array.isArray(record.errors)) {
+    for (const error of record.errors) {
+      if (typeof error !== "object" || error === null) continue;
+      const message: unknown = error.message;
+      if (typeof message === "string" && message.trim()) return message;
+    }
   }
   return fallback;
 };
@@ -43,9 +48,8 @@ const extractErrorMessage = (body: unknown, fallback: string): string => {
  * Thin wrapper around `fetch` that returns parsed JSON on success
  * and throws `HttpError` on non-ok responses.
  *
- * When the response body contains an `error` or `message` string field,
- * that value is used as the `HttpError` message so consumers get
- * descriptive errors instead of generic HTTP status text.
+ * Uses the response body's message, including native Payload errors,
+ * before falling back to HTTP status text or the numeric status.
  */
 export const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
   const response = await fetch(input, init);
