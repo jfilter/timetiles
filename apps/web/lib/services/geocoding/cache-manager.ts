@@ -13,7 +13,7 @@
  *
  * @module
  */
-import { inArray, lt, sql } from "@payloadcms/db-postgres/drizzle";
+import { eq, lt, sql } from "@payloadcms/db-postgres/drizzle";
 import type { Payload } from "payload";
 
 import { createLogger } from "@/lib/logger";
@@ -82,9 +82,7 @@ export class CacheManager {
         limit: 1,
       });
 
-      if (results.docs.length === 0) return null;
-
-      const cached = results.docs[0] as LocationCache;
+      const cached = results.docs[0];
       if (cached == null) return null;
 
       if (this.isCacheExpired(cached)) {
@@ -96,7 +94,7 @@ export class CacheManager {
       // Atomic increment (COALESCE(hitCount,0)+1) so two concurrent lookups of
       // the same cached address don't clobber each other via a read-modify-write
       // (both reading 5, both writing 6).
-      await this.batchUpdateHitCounts([cached.id]);
+      await this.recordCacheHit(cached.id);
 
       return this.convertCachedResult(cached);
     } catch (error) {
@@ -204,18 +202,17 @@ export class CacheManager {
   }
 
   /**
-   * Batch update hit counts and last-used timestamps for multiple cache entries
-   * in a single SQL statement.
+   * Atomically increment the hit count and refresh the last-used timestamp.
    */
-  private async batchUpdateHitCounts(ids: number[]): Promise<void> {
+  private async recordCacheHit(id: number): Promise<void> {
     try {
       const db = this.payload.db.drizzle;
       await db
         .update(location_cache)
         .set({ hitCount: sql`COALESCE(${location_cache.hitCount}, 0) + 1`, lastUsed: sql`NOW()` })
-        .where(inArray(location_cache.id, ids));
+        .where(eq(location_cache.id, id));
     } catch (error) {
-      logger.warn("Failed to batch update hit counts", { error, count: ids.length });
+      logger.warn("Failed to record cache hit", { error, id });
     }
   }
 }
