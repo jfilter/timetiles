@@ -5,7 +5,7 @@
  * @category Tests
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -41,6 +41,23 @@ describe("email verification token changes", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("allows retrying a transport failure with the same token", async () => {
+    mocks.token = TEST_TOKENS.generic;
+    const fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce(Response.json({ message: "Verified" }));
+    vi.stubGlobal("fetch", fetch);
+    renderPage();
+    expect(await screen.findByText("Failed to fetch")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: en.Common.tryAgain }));
+
+    expect(await screen.findByText(en.VerifyEmail.verified)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenLastCalledWith(`/api/users/verify/${TEST_TOKENS.generic}`, expect.any(Object));
   });
 
   it("verifies a new token after an earlier token failed", async () => {

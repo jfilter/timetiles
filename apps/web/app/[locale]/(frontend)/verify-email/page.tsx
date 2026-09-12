@@ -9,6 +9,7 @@
  */
 "use client";
 
+import { Button } from "@timetiles/ui";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -23,6 +24,7 @@ type VerificationStatus = "idle" | "loading" | "success" | "error" | "no-token";
 const VerifyEmailContent = ({ token }: { readonly token: string | null }) => {
   const router = useRouter();
   const t = useTranslations("VerifyEmail");
+  const tCommon = useTranslations("Common");
 
   const mutation = useVerifyEmailMutation();
 
@@ -82,6 +84,7 @@ const VerifyEmailContent = ({ token }: { readonly token: string | null }) => {
               <AlertCircle className="h-12 w-12 text-red-500" />
               <h2 className="text-xl font-semibold text-gray-900">{t("failed")}</h2>
               <p className="text-gray-600">{errorMessage}</p>
+              <Button onClick={() => token && mutation.mutate(token)}>{tCommon("tryAgain")}</Button>
               <div className="mt-4 flex gap-4">
                 <Link
                   href="/login"
