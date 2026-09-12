@@ -9,18 +9,24 @@
  * @category Services/Cache/Tests
  */
 
+import { mkdtemp, rm } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { getAppConfig, resetAppConfig } from "@/lib/config/app-config";
 import { buildAuthHeaders } from "@/lib/ingest/url-fetch/auth";
 import { fetchWithRetry } from "@/lib/ingest/url-fetch/fetch-utils";
 import { type Cache, getUrlFetchCache } from "@/lib/services/cache";
+import { resetUrlFetchCache } from "@/lib/services/cache/url-fetch-cache";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment } from "@/tests/setup/integration/environment";
 
 describe.sequential("HTTP Cache Integration", () => {
-  const urlFetchCache = getUrlFetchCache();
+  let urlFetchCache: ReturnType<typeof getUrlFetchCache>;
+  let cacheDir: string;
   let testServer: any;
   let serverUrl: string;
   let cleanup: () => Promise<void>;
@@ -28,6 +34,10 @@ describe.sequential("HTTP Cache Integration", () => {
   beforeAll(async () => {
     // Create integration test environment
     const testEnv = await createIntegrationTestEnvironment();
+    cacheDir = await mkdtemp(join(tmpdir(), "timetiles-http-cache-test-"));
+    getAppConfig().cache.urlFetch.dir = cacheDir;
+    resetUrlFetchCache();
+    urlFetchCache = getUrlFetchCache();
 
     // Create test server with routes before starting
     const { TestServer } = await import("@/tests/setup/integration/http-server");
@@ -73,7 +83,13 @@ describe.sequential("HTTP Cache Integration", () => {
   });
 
   afterAll(async () => {
-    await cleanup();
+    try {
+      await cleanup();
+    } finally {
+      resetUrlFetchCache();
+      resetAppConfig();
+      if (cacheDir) await rm(cacheDir, { recursive: true, force: true });
+    }
   }); // Default 10s timeout - should be plenty with direct pool.end()
 
   beforeEach(async () => {
