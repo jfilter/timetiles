@@ -95,76 +95,13 @@ export class CacheManager {
 
       // Atomic increment (COALESCE(hitCount,0)+1) so two concurrent lookups of
       // the same cached address don't clobber each other via a read-modify-write
-      // (both reading 5, both writing 6). Reuses the same SQL the batch path uses.
+      // (both reading 5, both writing 6).
       await this.batchUpdateHitCounts([cached.id]);
 
       return this.convertCachedResult(cached);
     } catch (error) {
       logger.warn("Failed to retrieve cached result", { error, addressHash: hashForLog(normalizedAddress) });
       return null;
-    }
-  }
-
-  /**
-   * Batch lookup of multiple addresses in a single query.
-   *
-   * Normalizes all addresses, queries the cache with an `in` clause,
-   * filters expired entries, and batch-updates hit counts for all hits.
-   */
-  async getCachedResults(addresses: string[]): Promise<Map<string, GeocodingResult>> {
-    if (this.settings?.caching?.enabled !== true || addresses.length === 0) {
-      return new Map();
-    }
-
-    // Build a map from normalized address back to the original address
-    const normalizedMap = new Map<string, string>();
-    for (const addr of addresses) {
-      normalizedMap.set(this.normalizeAddress(addr), addr);
-    }
-    const normalizedAddresses = Array.from(normalizedMap.keys());
-
-    try {
-      const results = await this.payload.find({
-        collection: LOCATION_CACHE_COLLECTION,
-        overrideAccess: true,
-        where: { normalizedAddress: { in: normalizedAddresses } },
-        limit: normalizedAddresses.length,
-        pagination: false,
-      });
-
-      const cachedResults = new Map<string, GeocodingResult>();
-      const hitIds: number[] = [];
-      const expiredIds: number[] = [];
-
-      for (const cached of results.docs) {
-        const doc = cached;
-
-        if (this.isCacheExpired(doc)) {
-          expiredIds.push(doc.id);
-          continue;
-        }
-
-        const originalAddress = normalizedMap.get(doc.normalizedAddress);
-        if (originalAddress) {
-          cachedResults.set(originalAddress, this.convertCachedResult(doc));
-          hitIds.push(doc.id);
-        }
-      }
-
-      // Batch update hit counts for all cache hits
-      if (hitIds.length > 0) {
-        await this.batchUpdateHitCounts(hitIds);
-      }
-
-      // Clean up expired entries in the background (fire-and-forget)
-      if (expiredIds.length > 0) {
-        void this.batchDeleteExpired(expiredIds);
-      }
-
-      return cachedResults;
-    } catch (error) {
-      logger.warn("Failed to batch retrieve cached results", { error, addressCount: addresses.length });
-      return new Map();
     }
   }
 
@@ -279,18 +216,6 @@ export class CacheManager {
         .where(inArray(location_cache.id, ids));
     } catch (error) {
       logger.warn("Failed to batch update hit counts", { error, count: ids.length });
-    }
-  }
-
-  /**
-   * Batch delete expired cache entries in a single SQL statement.
-   */
-  private async batchDeleteExpired(ids: number[]): Promise<void> {
-    try {
-      const db = this.payload.db.drizzle;
-      await db.delete(location_cache).where(inArray(location_cache.id, ids));
-    } catch (error) {
-      logger.warn("Failed to batch delete expired cache entries", { error, count: ids.length });
     }
   }
 }
