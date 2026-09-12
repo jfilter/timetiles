@@ -216,16 +216,22 @@ describe.sequential("Comprehensive File Upload Tests", () => {
 
       const diagnostics = JSON.stringify({
         errorLog: finalIngestFile.errorLog,
-        jobs: importJobs.docs.map((job: IngestJob) => ({ id: job.id, stage: job.stage, errors: job.errors })),
+        jobs: importJobs.docs.map((job: IngestJob) => ({
+          id: job.id,
+          sheetIndex: job.sheetIndex,
+          stage: job.stage,
+          errorLog: job.errorLog,
+          errors: job.errors,
+        })),
       });
       expect(completed, diagnostics).toBe(true);
       expect(finalIngestFile.status, diagnostics).toBe("completed");
-      expect(importJobs.docs.length).toBeGreaterThan(0); // At least one sheet
+      expect(importJobs.docs.map((job: IngestJob) => job.sheetIndex).sort(), diagnostics).toEqual([0, 1, 2]);
       logger.debug(`✓ Created ${importJobs.docs.length} import jobs for sheets`);
 
       // Verify jobs completed
-      importJobs.docs.forEach((job: any) => {
-        expect(job.stage).toBe(PROCESSING_STAGE.COMPLETED);
+      importJobs.docs.forEach((job: IngestJob) => {
+        expect(job.stage, diagnostics).toBe(PROCESSING_STAGE.COMPLETED);
       });
 
       // Verify events were created from sheets
