@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Partially superseded by [ADR 0030](0030-import-workflow-migration.md).
+
+**Current-state clarification (2026-09-12):** The single-process deployment restriction below is historical. Production now runs the web process and a separate worker for each of the `ingest`, `default`, and `maintenance` queues. Payload Workflows replaced `StageTransitionService`; the old component inventory and scaling checklist are not a current implementation guide. This does not establish that arbitrary horizontal replication is safe: process-local caches, provider rate limits, and shared file storage still require consideration. See the maintained [background jobs guide](../../apps/docs/content/development/architecture/background-jobs.mdx) and `deployment/docker-compose.prod.yml` for the current worker topology.
 
 ## Context
 

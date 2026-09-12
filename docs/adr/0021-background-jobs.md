@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted for the PostgreSQL-backed Payload job queue; orchestration and worker topology superseded by [ADR 0030](0030-import-workflow-migration.md).
+
+**Current-state clarification (2026-09-12):** The hook-driven pipeline, custom error recovery, job inventory, and two-queue worker model below describe the earlier implementation. Ingest orchestration now uses Payload Workflows and three queues (`ingest`, `default`, `maintenance`), with one production worker per queue and in-process `autoRun` in development. Use the maintained [background jobs guide](../../apps/docs/content/development/architecture/background-jobs.mdx), `apps/web/lib/config/payload-config-factory.ts`, and `deployment/docker-compose.prod.yml` for current configuration rather than copying the historical examples below.
 
 ## Context
 
