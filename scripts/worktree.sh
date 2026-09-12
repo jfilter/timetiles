@@ -87,9 +87,6 @@ copy_env_files() {
 install_deps() {
     local target="$1"
     header "Installing dependencies"
-    # If this hangs indefinitely (stale pnpm store lock, or an env-specific pnpm
-    # stall), symlink node_modules from the main checkout instead of installing —
-    # the worktree shares the exact lockfile, and vitest/tsc resolve deps fine.
     (cd "$target" && pnpm install --frozen-lockfile 2>&1 | tail -3)
     info "Dependencies installed"
 }
