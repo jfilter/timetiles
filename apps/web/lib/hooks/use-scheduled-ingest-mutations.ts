@@ -56,8 +56,6 @@ export const useTriggerScheduledIngestMutation = () => {
   return useMutation({
     mutationFn: async (id: number) => {
       await fetchJson(`/api/scheduled-ingests/${id}/trigger`, { method: "POST", credentials: "include" });
-      // Refresh the specific schedule to get updated lastRun
-      return fetchJson<ScheduledIngest>(`/api/scheduled-ingests/${id}`, { credentials: "include" });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: scheduledIngestKeys.all });

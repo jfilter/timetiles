@@ -84,7 +84,7 @@ describe("Account table actions", () => {
 
     await performAction();
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(mocks.fetchJson).toHaveBeenCalledTimes(action === "runNow" ? 3 : 2);
+    expect(mocks.fetchJson).toHaveBeenCalledTimes(2);
     client.clear();
   });
 });
