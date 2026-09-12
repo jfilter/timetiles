@@ -89,10 +89,16 @@ describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
     }
   });
 
-  it("should include Retry-After info in error message on 429", async () => {
+  it.each([
+    ["10", 10000],
+    ["0", 0],
+    ["-1", undefined],
+    ["5garbage", undefined],
+    ["1.5", undefined],
+  ])("validates Retry-After %s on 429", async (header, expected) => {
     const provider = await getDefaultProvider();
 
-    mockFetch.mockResolvedValue(new Response("Too Many Requests", { status: 429, headers: { "Retry-After": "10" } }));
+    mockFetch.mockResolvedValue(new Response("Too Many Requests", { status: 429, headers: { "Retry-After": header } }));
 
     try {
       await provider.geocoder.geocode("Berlin");
@@ -100,6 +106,7 @@ describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
     } catch (error: any) {
       expect(error).toBeInstanceOf(Error);
       expect(error.code).toBe(GEOCODING_ERROR_CODES.RATE_LIMITED);
+      expect(error.cause).toMatchObject({ retryable: true, httpStatus: 429, retryAfterMs: expected });
     }
   });
 

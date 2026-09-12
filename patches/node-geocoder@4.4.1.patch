@@ -1,0 +1,48 @@
+diff --git a/dist/lib/httpadapter/fetchadapter.js b/dist/lib/httpadapter/fetchadapter.js
+index 3704e917bba6ed8200108fd6ee3ff178076750e4..7ddbccc85b8c42c9113e7249ff768024220a393a 100644
+--- a/dist/lib/httpadapter/fetchadapter.js
++++ b/dist/lib/httpadapter/fetchadapter.js
+@@ -53,7 +53,8 @@ class FetchAdapter {
+             }
+             const _error = error.cause ? error.cause : error;
+             throw new HttpError(_error.message, {
+-                code: _error.code
++                code: _error.code,
++                cause: error
+             });
+         })
+             .asCallback(callback);
+@@ -85,7 +86,8 @@ class FetchAdapter {
+             }
+             const _error = error.cause ? error.cause : error;
+             throw new HttpError(_error.message, {
+-                code: _error.code
++                code: _error.code,
++                cause: error
+             });
+         })
+             .asCallback(callback);
+diff --git a/lib/httpadapter/fetchadapter.js b/lib/httpadapter/fetchadapter.js
+index 6085439ceeb35587ea9f2153604e72c177eb1313..cb58ea78753fa691278b9697895e45858291e765 100644
+--- a/lib/httpadapter/fetchadapter.js
++++ b/lib/httpadapter/fetchadapter.js
+@@ -57,7 +57,8 @@ class FetchAdapter {
+         }
+         const _error = error.cause ? error.cause : error;
+         throw new HttpError(_error.message, {
+-          code: _error.code
++          code: _error.code,
++          cause: error
+         });
+       })
+       .asCallback(callback);
+@@ -93,7 +94,8 @@ class FetchAdapter {
+         }
+         const _error = error.cause ? error.cause : error;
+         throw new HttpError(_error.message, {
+-          code: _error.code
++          code: _error.code,
++          cause: error
+         });
+       })
+       .asCallback(callback);

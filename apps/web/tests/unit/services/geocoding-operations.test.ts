@@ -468,11 +468,12 @@ describe.sequential("GeocodingOperations", () => {
   });
 
   describe("tryProviderWithRetry (via geocode)", () => {
-    it("should retry on transient errors and succeed", async () => {
+    it.each([false, true])("retries transient errors and succeeds (wrapped: %s)", async (wrapped) => {
+      const cause = new GeocodingError("Rate limited", "RATE_LIMITED", true, 429, 10);
       const geocoder = {
         geocode: vi
           .fn()
-          .mockRejectedValueOnce(new GeocodingError("Rate limited", "RATE_LIMITED", true, 429, 10))
+          .mockRejectedValueOnce(wrapped ? new Error("HTTP request failed", { cause }) : cause)
           .mockResolvedValueOnce([
             {
               latitude: 52.52,
@@ -495,6 +496,7 @@ describe.sequential("GeocodingOperations", () => {
 
       expect(result.latitude).toBe(52.52);
       expect(result.provider).toBe("retry-provider");
+      expect(mockRateLimiter.reportThrottle).toHaveBeenCalledWith("retry-provider", 10);
       // Called twice: first attempt fails, retry succeeds
       expect(geocoder.geocode).toHaveBeenCalledTimes(2);
     });

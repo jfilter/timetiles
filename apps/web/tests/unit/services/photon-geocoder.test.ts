@@ -134,8 +134,17 @@ describe.sequential("Photon Geocoder", () => {
       }
     });
 
-    it("should parse Retry-After header on 429", async () => {
-      mockFetch.mockResolvedValue(new Response("Too Many Requests", { status: 429, headers: { "Retry-After": "5" } }));
+    it.each([
+      ["5", 5000],
+      ["0", 0],
+      ["-1", undefined],
+      ["5garbage", undefined],
+      ["1.5", undefined],
+      ["9".repeat(400), undefined],
+    ])("parses Retry-After %s safely on 429", async (header, expected) => {
+      mockFetch.mockResolvedValue(
+        new Response("Too Many Requests", { status: 429, headers: { "Retry-After": header } })
+      );
 
       const geocoder = createPhotonGeocoder({ baseUrl: "https://example.com" });
 
@@ -144,7 +153,7 @@ describe.sequential("Photon Geocoder", () => {
         expect.unreachable("should have thrown");
       } catch (error) {
         expect(error).toBeInstanceOf(GeocodingError);
-        expect((error as GeocodingError).retryAfterMs).toBe(5000);
+        expect((error as GeocodingError).retryAfterMs).toBe(expected);
       }
     });
 

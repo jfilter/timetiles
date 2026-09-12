@@ -12,7 +12,7 @@ import type { Entry } from "node-geocoder";
 import { createLogger } from "@/lib/logger";
 import { hashForLog } from "@/lib/security/hash";
 
-import { GEOCODING_ERROR_CODES, GeocodingError } from "./types";
+import { GEOCODING_ERROR_CODES, GeocodingError, retryAfterMillisecondsSchema } from "./types";
 
 const logger = createLogger("photon-geocoder");
 
@@ -85,11 +85,7 @@ const buildPhotonParams = (address: string, config: PhotonConfig): URLSearchPara
 /** Classify a non-OK Photon HTTP response into a typed GeocodingError. */
 const classifyPhotonError = (response: Response): GeocodingError => {
   if (response.status === 429) {
-    // Retry-After may be an HTTP-date — only accept finite seconds (NaN would
-    // poison the rate-limiter backoff and disable the provider until restart).
-    const retryAfter = response.headers.get("Retry-After");
-    const retryAfterSecs = retryAfter == null ? Number.NaN : Number.parseInt(retryAfter, 10);
-    const retryAfterMs = Number.isFinite(retryAfterSecs) ? retryAfterSecs * 1000 : undefined;
+    const retryAfterMs = retryAfterMillisecondsSchema.safeParse(response.headers.get("Retry-After")).data;
     return new GeocodingError(
       `Photon rate limited: ${response.status}`,
       GEOCODING_ERROR_CODES.RATE_LIMITED,

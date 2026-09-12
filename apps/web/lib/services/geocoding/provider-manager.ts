@@ -28,6 +28,7 @@ import {
   GEOCODING_ERROR_CODES,
   GeocodingError,
   NOMINATIM_BASE_URL,
+  retryAfterMillisecondsSchema,
   TIMETILES_USER_AGENT,
 } from "./types";
 
@@ -120,12 +121,7 @@ export class ProviderManager {
       const response = await fetch(url, { ...init, headers });
 
       if (response.status === 429) {
-        // Retry-After may be an HTTP-date (RFC 9110) — parseInt yields NaN
-        // then, which would poison the backoff state (NaN backoffUntil
-        // disables the provider until restart). Only accept finite seconds.
-        const retryAfter = response.headers.get("Retry-After");
-        const retryAfterSecs = retryAfter == null ? Number.NaN : Number.parseInt(retryAfter, 10);
-        const retryAfterMs = Number.isFinite(retryAfterSecs) ? retryAfterSecs * 1000 : undefined;
+        const retryAfterMs = retryAfterMillisecondsSchema.safeParse(response.headers.get("Retry-After")).data;
         throw new GeocodingError("Rate limited", GEOCODING_ERROR_CODES.RATE_LIMITED, true, 429, retryAfterMs);
       }
       if (response.status === 503) {

@@ -336,7 +336,10 @@ export class GeocodingOperations {
         const result = await this.tryProvider(provider, address, bias);
         rateLimiter.reportSuccess(provider.name);
         return result;
-      } catch (error) {
+      } catch (caughtError) {
+        // node-geocoder wraps fetch failures in HttpError; its cause retains our retry metadata.
+        const error =
+          caughtError instanceof Error && caughtError.cause instanceof GeocodingError ? caughtError.cause : caughtError;
         if (isTransientError(error) && attempt < maxRetries) {
           const geocodingError = error as GeocodingError;
           rateLimiter.reportThrottle(provider.name, geocodingError.retryAfterMs);

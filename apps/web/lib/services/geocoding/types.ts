@@ -15,8 +15,16 @@
  * @module
  */
 import type NodeGeocoder from "node-geocoder";
+import { z } from "zod";
 
 import type { LocationCache } from "@/payload-types";
+
+/** Numeric Retry-After seconds; unsupported dates and invalid values use normal backoff. */
+export const retryAfterMillisecondsSchema = z
+  .string()
+  .regex(/^\d+$/)
+  .transform((seconds) => Number(seconds) * 1000)
+  .pipe(z.number().int().nonnegative());
 
 export interface GeocodingResult extends Pick<
   LocationCache,

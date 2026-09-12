@@ -83,6 +83,9 @@ overrides:
   nextra-theme-docs>zod: ^4.3.6
 
 patchedDependencies:
+  node-geocoder@4.4.1:
+    hash: 82040688b68c4234d79c09a0bffb02b9a91ea584c16d83bea25150112152132f
+    path: patches/node-geocoder@4.4.1.patch
   payload@3.86.0:
     hash: aab9cad16c1ea18527382b194e8932b42b070ae7cd024e2aa076e908c78bb221
     path: patches/payload@3.86.0.patch
@@ -362,7 +365,7 @@ importers:
         version: 0.4.6(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       node-geocoder:
         specifier: ^4.4.1
-        version: 4.4.1
+        version: 4.4.1(patch_hash=82040688b68c4234d79c09a0bffb02b9a91ea584c16d83bea25150112152132f)
       nodemailer:
         specifier: ^9.0.3
         version: 9.0.3
@@ -19489,7 +19492,7 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  node-geocoder@4.4.1:
+  node-geocoder@4.4.1(patch_hash=82040688b68c4234d79c09a0bffb02b9a91ea584c16d83bea25150112152132f):
     dependencies:
       bluebird: 3.7.2
       node-fetch: 2.7.0

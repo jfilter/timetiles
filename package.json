@@ -88,7 +88,8 @@
       }
     },
     "patchedDependencies": {
-      "payload@3.86.0": "patches/payload@3.86.0.patch"
+      "payload@3.86.0": "patches/payload@3.86.0.patch",
+      "node-geocoder@4.4.1": "patches/node-geocoder@4.4.1.patch"
     }
   }
 }
