@@ -7,6 +7,7 @@
 
 import "@/tests/mocks/services/logger";
 
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -175,6 +176,24 @@ describe.sequential("FileSystemCacheStorage", () => {
   });
 
   describe("persistence", () => {
+    it("rebuilds entry totals instead of trusting persisted summaries", async () => {
+      const hash = createHash("sha256").update("entry").digest("hex");
+      const file = path.join(tempDir, hash.substring(0, 2), `${hash}.cache`);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, "content");
+      await fs.writeFile(
+        path.join(tempDir, "index.json"),
+        JSON.stringify({
+          index: { entry: { file, size: 7 } },
+          stats: { entries: 0, totalSize: 0, hits: 3, misses: 2, evictions: 1 },
+          lastUpdated: new Date().toISOString(),
+        })
+      );
+      expect(await storage.getStats()).toMatchObject({ entries: 1, totalSize: 7, hits: 3, misses: 2, evictions: 1 });
+      await storage.delete("entry");
+      expect(await storage.getStats()).toMatchObject({ entries: 0, totalSize: 0 });
+    });
+
     it("does not delete files that do not belong to the indexed key", async () => {
       await fs.mkdir(tempDir, { recursive: true });
       const foreignFile = path.join(tempDir, "not-a-cache-entry.txt");

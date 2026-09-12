@@ -398,6 +398,9 @@ export class FileSystemCacheStorage implements CacheStorage {
       const indexData = indexDataSchema.parse(JSON.parse(data));
       this.index = new Map(Object.entries(indexData.index));
       this.stats = indexData.stats;
+      // Entry totals are derived state; persisted summaries can be stale.
+      this.stats.entries = this.index.size;
+      this.stats.totalSize = Array.from(this.index.values()).reduce((total, entry) => total + entry.size, 0);
 
       // Index paths must belong to their keys before any filesystem operation.
       const invalidKeys: string[] = [];
