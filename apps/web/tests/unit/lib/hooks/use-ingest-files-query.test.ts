@@ -14,6 +14,7 @@ import { ingestFileKeys } from "@/lib/hooks/use-ingest-files-query";
 const mockFetchCollectionDocs = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api/payload-collection", () => ({ fetchCollectionDocs: mockFetchCollectionDocs }));
+vi.mock("@/lib/hooks/use-auth-queries", () => ({ useAuthState: () => ({ userId: 42 }) }));
 
 // Mock useQuery to capture the queryFn without actually running React hooks
 const capturedOptions = vi.hoisted(
@@ -28,6 +29,7 @@ const capturedOptions = vi.hoisted(
 );
 
 vi.mock("@tanstack/react-query", () => ({
+  skipToken: Symbol("skipToken"),
   useQuery: (options: {
     queryFn: () => Promise<unknown>;
     refetchInterval?: (query: { state: { data: unknown[] | undefined } }) => number | false;
@@ -55,7 +57,9 @@ describe("useIngestFilesQuery queryFn", () => {
     mockFetchCollectionDocs.mockResolvedValue([{ id: 1 }]);
     const result = await capturedOptions.queryFn!();
 
-    expect(mockFetchCollectionDocs).toHaveBeenCalledWith("/api/ingest-files?sort=-createdAt&limit=200");
+    expect(mockFetchCollectionDocs).toHaveBeenCalledWith(
+      "/api/ingest-files?sort=-createdAt&limit=200&where[user][equals]=42"
+    );
     expect(result).toEqual([{ id: 1 }]);
   });
 
