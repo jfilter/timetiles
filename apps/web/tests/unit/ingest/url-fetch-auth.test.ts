@@ -70,3 +70,13 @@ describe("OAuth diagnostics", () => {
     expect(safeFetch).not.toHaveBeenCalled();
   });
 });
+
+describe("URL authentication configuration", () => {
+  it.each([
+    { type: "bearer" as const },
+    { type: "api-key" as const, apiKeyHeader: "X-API-Key" },
+    { type: "api-key" as const, apiKey: TEST_CREDENTIALS.apiKey.key, apiKeyHeader: "" },
+  ])("rejects incomplete %s authentication instead of returning anonymous headers", async (config) => {
+    await expect(buildAuthHeaders(config)).rejects.toThrow(/requires/);
+  });
+});
