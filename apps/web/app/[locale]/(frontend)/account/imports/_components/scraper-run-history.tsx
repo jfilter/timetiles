@@ -8,6 +8,7 @@
  */
 "use client";
 
+import { ErrorMessage } from "@timetiles/ui";
 import { ExternalLinkIcon } from "lucide-react";
 // The Payload dashboard lives outside the [locale] tree — the i18n-aware
 // Link would prefix /de/dashboard/... and 404.
@@ -63,18 +64,19 @@ const RunRow = ({ run }: { readonly run: ScraperRun }) => {
 
 export const ScraperRunHistory = ({ scraperId }: ScraperRunHistoryProps) => {
   const t = useTranslations("ImportActivity");
-  const { data: runs = [], isLoading } = useScraperRunsQuery(scraperId);
+  const { data: runs = [], isLoading, error } = useScraperRunsQuery(scraperId);
 
   if (isLoading) {
     return <div className="text-muted-foreground py-2 text-xs">{t("loadingRuns")}</div>;
   }
 
-  if (runs.length === 0) {
+  if (runs.length === 0 && !error) {
     return <div className="text-muted-foreground py-2 text-xs">{t("noRuns")}</div>;
   }
 
   return (
     <div className="space-y-0">
+      {error && <ErrorMessage message={error.message} />}
       {runs.map((run) => (
         <RunRow key={run.id} run={run} />
       ))}

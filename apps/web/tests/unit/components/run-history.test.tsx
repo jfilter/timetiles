@@ -5,7 +5,7 @@
  */
 import { cleanup, render, screen } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ScheduleRunHistory } from "@/app/[locale]/(frontend)/account/imports/_components/schedule-run-history";
 import { ScraperRunHistory } from "@/app/[locale]/(frontend)/account/imports/_components/scraper-run-history";
@@ -13,17 +13,31 @@ import { ScraperRunHistory } from "@/app/[locale]/(frontend)/account/imports/_co
 import de from "../../../messages/de.json";
 import en from "../../../messages/en.json";
 
-const mocks = vi.hoisted(() => ({ runs: vi.fn() }));
+const mocks = vi.hoisted(() => ({ runs: vi.fn(), error: vi.fn() }));
 vi.mock("@/lib/hooks/use-scrapers-query", () => ({
-  useScraperRunsQuery: () => ({ data: mocks.runs(), isLoading: false }),
+  useScraperRunsQuery: () => ({ data: mocks.runs(), isLoading: false, error: mocks.error() }),
 }));
 
 afterEach(cleanup);
+beforeEach(() => vi.resetAllMocks());
 
 describe.each([
   { locale: "en", messages: en },
   { locale: "de", messages: de },
 ])("run history ($locale)", ({ locale, messages }) => {
+  it.each([false, true])("shows fetch errors without claiming empty history (cached runs: %s)", (cached) => {
+    mocks.error.mockReturnValue(new Error("History unavailable"));
+    mocks.runs.mockReturnValue(cached ? [{ id: 1, status: "success", createdAt: "2024-05-15T12:00:00Z" }] : undefined);
+    render(
+      <NextIntlClientProvider locale={locale} messages={messages}>
+        <ScraperRunHistory scraperId={1} />
+      </NextIntlClientProvider>
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("History unavailable");
+    expect(screen.queryByText(messages.ImportActivity.noRuns)).not.toBeInTheDocument();
+    if (cached) expect(screen.getByText(messages.ImportActivity.statusSuccess)).toBeVisible();
+  });
+
   it.each(["failed", "paused"] as const)("shows the stored reason for a %s schedule run", (status) => {
     const reason = "Schema changes require approval";
     render(
