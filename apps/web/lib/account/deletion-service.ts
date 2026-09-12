@@ -701,14 +701,9 @@ export class AccountDeletionService {
    * so session deletion is rolled back together with other operations on failure.
    */
   private async invalidateAllSessions(userId: number, req?: TransactionReq): Promise<void> {
-    try {
-      const drizzle = await getTransactionAwareDrizzle(this.payload, req);
-      await drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${userId}`);
-      logger.debug({ userId }, "All user sessions invalidated");
-    } catch (error) {
-      logError(error, "Failed to invalidate sessions", { userId });
-      // Don't throw - session invalidation failure shouldn't block deletion
-    }
+    const drizzle = await getTransactionAwareDrizzle(this.payload, req);
+    await drizzle.execute(sql`DELETE FROM payload.users_sessions WHERE _parent_id = ${userId}`);
+    logger.debug({ userId }, "All user sessions invalidated");
   }
 
   /**

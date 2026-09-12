@@ -18,6 +18,7 @@
 import { sql } from "@payloadcms/db-postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { createAccountDeletionService } from "@/lib/account/deletion-service";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
 
@@ -144,6 +145,47 @@ describe.sequential("Deactivated user credential revocation", () => {
     } finally {
       await db.execute(sql`DROP TRIGGER IF EXISTS test_fail_key_revocation ON payload.users`);
       await db.execute(sql`DROP FUNCTION payload.test_fail_key_revocation()`);
+    }
+  });
+
+  it("preserves session cleanup failures when deleting an already inactive account", async () => {
+    const { payload } = testEnv;
+    const user = await createLoggedInUser();
+    await payload.update({ collection: "users", id: user.id, data: { isActive: false }, overrideAccess: true });
+    const db = payload.db.drizzle;
+    // Let Payload's own array writes finish; fail only the deletion service's
+    // explicit cleanup, after anonymization and the deactivation hook.
+    await db.execute(sql`
+      CREATE FUNCTION payload.test_fail_session_cleanup() RETURNS trigger AS $$
+      BEGIN
+        IF current_query() LIKE '%DELETE FROM payload.users_sessions WHERE _parent_id%' THEN
+          RAISE EXCEPTION 'session cleanup regression';
+        END IF;
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql
+    `);
+    try {
+      await db.execute(sql`
+        CREATE TRIGGER test_fail_session_cleanup BEFORE DELETE ON payload.users_sessions
+        FOR EACH STATEMENT EXECUTE FUNCTION payload.test_fail_session_cleanup()
+      `);
+      let failure: unknown;
+      try {
+        await createAccountDeletionService(payload).executeDeletion(user.id, { deletionType: "self" });
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(Error);
+      const messages: string[] = [];
+      for (let error = failure; error instanceof Error; error = error.cause) messages.push(error.message);
+      expect(messages).toContain("session cleanup regression");
+      const unchanged = await payload.findByID({ collection: "users", id: user.id, overrideAccess: true });
+      expect(unchanged.email).toBe(user.email);
+      expect(unchanged.deletionStatus).not.toBe("deleted");
+    } finally {
+      await db.execute(sql`DROP TRIGGER IF EXISTS test_fail_session_cleanup ON payload.users_sessions`);
+      await db.execute(sql`DROP FUNCTION payload.test_fail_session_cleanup()`);
     }
   });
 });
