@@ -27,13 +27,14 @@ const VerifyEmailContent = ({ token }: { readonly token: string | null }) => {
   const tCommon = useTranslations("Common");
 
   const mutation = useVerifyEmailMutation();
+  const { mutate } = mutation;
 
-  // Trigger verification on mount (one-shot)
+  // Defer until after effect replay; a discarded mount must not consume the token.
   useEffect(() => {
-    if (token && !mutation.isPending && !mutation.isSuccess && !mutation.isError) {
-      mutation.mutate(token);
-    }
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps -- one-shot on mount
+    if (!token) return;
+    const timeout = setTimeout(() => mutate(token), 0);
+    return () => clearTimeout(timeout);
+  }, [token, mutate]);
 
   // Auto-redirect after successful verification
   useEffect(() => {

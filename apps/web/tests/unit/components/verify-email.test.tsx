@@ -24,7 +24,7 @@ vi.mock("@/components/layout/page-layout", () => ({
   PageLayout: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-const renderPage = () => {
+const renderPage = (reactStrictMode = false) => {
   const client = new QueryClient();
   const page = () => (
     <QueryClientProvider client={client}>
@@ -33,7 +33,7 @@ const renderPage = () => {
       </NextIntlClientProvider>
     </QueryClientProvider>
   );
-  const view = render(page());
+  const view = render(page(), { reactStrictMode });
   return () => view.rerender(page());
 };
 
@@ -41,6 +41,16 @@ describe("email verification token changes", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("submits the token only once in Strict Mode", async () => {
+    mocks.token = TEST_TOKENS.generic;
+    const fetch = vi.fn().mockResolvedValue(Response.json({ message: "Verified" }));
+    vi.stubGlobal("fetch", fetch);
+    renderPage(true);
+
+    expect(await screen.findByText(en.VerifyEmail.verified)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("allows retrying a transport failure with the same token", async () => {
