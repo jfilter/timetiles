@@ -763,42 +763,53 @@ describe.sequential("GeocodingService", () => {
       });
     });
 
-    it("should not clean up frequently used cache entries", async () => {
-      // Create service instance for this test
-      await ensureServiceCreated();
+    it.each([
+      { enabled: true, ttlDays: 1, ageDays: 2, deleted: 1 },
+      { enabled: true, ttlDays: 7, ageDays: 2, deleted: 0 },
+      { enabled: false, ttlDays: 1, ageDays: 2, deleted: 0 },
+      { enabled: true, ttlDays: 1, ageDays: 0, deleted: 0 },
+    ])(
+      "honors cache settings $enabled/$ttlDays for an entry aged $ageDays days",
+      async ({ enabled, ttlDays, ageDays, deleted }) => {
+        const uniqueAddress = `Cache policy ${Date.now()}-${Math.random()}`;
+        const entry = await payload.create({
+          collection: "location-cache",
+          data: {
+            originalAddress: uniqueAddress,
+            normalizedAddress: normalizeGeocodingAddress(uniqueAddress),
+            latitude: 37.7749,
+            longitude: -122.4194,
+            provider: "nominatim",
+            confidence: 0.5,
+            hitCount: 10,
+            lastUsed: new Date().toISOString(),
+            components: {},
+            metadata: {},
+          },
+        });
 
-      // Create recent cache entry with high hit count
-      const uniqueAddress = `Popular Address ${Date.now()}-${Math.random()}`;
+        // A recent hit does not extend creation-based TTL.
+        await payload.update({
+          collection: "location-cache",
+          id: entry.id,
+          data: { createdAt: new Date(Date.now() - ageDays * 24 * 60 * 60 * 1000).toISOString() },
+        });
+        const cacheManager = new CacheManager(testEnv.payload, {
+          enabled: true,
+          fallbackEnabled: true,
+          providerSelection: { strategy: "priority", requiredTags: [] },
+          caching: { enabled, ttlDays },
+        });
+        await expect(cacheManager.cleanupCache()).resolves.toBe(deleted);
 
-      await payload.create({
-        collection: "location-cache",
-        data: {
-          originalAddress: uniqueAddress,
-          normalizedAddress: uniqueAddress
-            .toLowerCase()
-            .replaceAll(/[^a-z0-9\s]/g, "")
-            .replaceAll(/\s+/g, " ")
-            .trim(),
-          latitude: 37.7749,
-          longitude: -122.4194,
-          provider: "nominatim",
-          confidence: 0.5,
-          hitCount: 10, // High hit count
-          lastUsed: new Date().toISOString(),
-          components: {},
-          metadata: {},
-        },
-      });
+        const remainingEntries = await payload.find({
+          collection: "location-cache",
+          where: { originalAddress: { equals: uniqueAddress } },
+        });
 
-      await geocodingService.cleanupCache();
-
-      const remainingEntries = await payload.find({
-        collection: "location-cache",
-        where: { originalAddress: { equals: uniqueAddress } },
-      });
-
-      expect(remainingEntries.docs).toHaveLength(1);
-    });
+        expect(remainingEntries.docs).toHaveLength(1 - deleted);
+      }
+    );
   });
 
   describe.sequential("error handling", () => {
