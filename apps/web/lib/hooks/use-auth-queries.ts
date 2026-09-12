@@ -54,7 +54,7 @@ export const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
 /**
  * Query hook for the current authenticated user.
  *
- * Disabled by default -- callers opt in via `enabled`.
+ * Enabled by default; callers can pause the query with `enabled: false`.
  */
 export const useCurrentUserQuery = (options?: { enabled?: boolean }) => {
   return useQuery({

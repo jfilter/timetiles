@@ -22,7 +22,7 @@ export const createActivePollingInterval =
 
 /**
  * Create a refetchInterval for a single-item query that polls while a predicate holds.
- * Returns `intervalMs` while the predicate is true, `false` when it's false or data is absent.
+ * Also polls after a failed initial fetch so queries without data can recover.
  */
 export const createItemPollingInterval =
   <T>(predicate: (data: T) => boolean, intervalMs: number) =>
