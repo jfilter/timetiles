@@ -12,6 +12,8 @@
  */
 import "@/tests/mocks/services/logger";
 
+import { createServer } from "node:http";
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProviderManager } from "@/lib/services/geocoding/provider-manager";
@@ -24,6 +26,7 @@ const providerLogger =
     mockLogger.createLogger.mock.calls.findIndex(([name]: [string]) => name === "geocoding-provider-manager")
   ].value;
 
+const nativeFetch = globalThis.fetch;
 const mockFetch = vi.fn<typeof fetch>();
 vi.stubGlobal("fetch", mockFetch);
 
@@ -69,6 +72,78 @@ describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
 
     expect(await new ProviderManager(mockPayload, null).loadProviders()).toHaveLength(1);
     expect(JSON.stringify(providerLogger.debug.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
+  });
+
+  it.each(["nominatim", "photon", "google", "locationiq", "opencage"])(
+    "keeps concurrent %s abort signals independent",
+    async (type) => {
+      mockPayload.find.mockResolvedValue({
+        docs: [{ id: 1, name: "Concurrent provider", type, enabled: true, apiKey: TEST_SECRETS.payloadSecret }],
+      });
+      mockFetch.mockImplementation(async (_url, init) => {
+        const signal = init?.signal;
+        if (!signal) throw new Error("Missing request signal");
+        return new Promise<Response>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(new Error("Request aborted")), { once: true });
+        });
+      });
+      const [provider] = await new ProviderManager(mockPayload, null).loadProviders();
+      const first = new AbortController();
+      const second = new AbortController();
+      const results = Promise.allSettled([
+        provider!.geocoder.geocode("Berlin", first.signal),
+        provider!.geocoder.geocode("Hamburg", second.signal),
+      ]);
+      try {
+        await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+        expect(mockFetch.mock.calls[0]![1]?.signal).toBe(first.signal);
+        expect(mockFetch.mock.calls[1]![1]?.signal).toBe(second.signal);
+        first.abort();
+        expect(second.signal.aborted).toBe(false);
+      } finally {
+        first.abort();
+        second.abort();
+      }
+      expect((await results).map((result) => result.status)).toEqual(["rejected", "rejected"]);
+    }
+  );
+
+  it.each(["nominatim", "photon"])("aborts an in-flight %s response body", async (type) => {
+    let disconnected = false;
+    let bodyStarted = false;
+    const server = createServer((_request, response) => {
+      response.on("close", () => {
+        disconnected = true;
+      });
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.write("{");
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (!address || typeof address === "string") throw new Error("Missing test server port");
+    const controller = new AbortController();
+    try {
+      mockPayload.find.mockResolvedValue({
+        docs: [{ id: 1, name: "Streaming provider", type, enabled: true, baseUrl: `http://127.0.0.1:${address.port}` }],
+      });
+      mockFetch.mockImplementation(async (url, init) => {
+        const response = await nativeFetch(url, init);
+        bodyStarted = true;
+        return response;
+      });
+      const [provider] = await new ProviderManager(mockPayload, null).loadProviders();
+      const result = Promise.allSettled([provider!.geocoder.geocode("Berlin", controller.signal)]);
+      await vi.waitFor(() => expect(bodyStarted).toBe(true));
+
+      controller.abort();
+
+      expect((await result)[0]?.status).toBe("rejected");
+      await vi.waitFor(() => expect(disconnected).toBe(true));
+    } finally {
+      controller.abort();
+      server.closeAllConnections();
+      await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+    }
   });
 
   /**

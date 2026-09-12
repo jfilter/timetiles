@@ -61,14 +61,7 @@ const createProvider = (
   rateLimit: number,
   geocoder?: ReturnType<typeof createMockGeocoder>
 ): ProviderConfig => {
-  return {
-    name,
-    type: "nominatim",
-    geocoder: (geocoder ?? createMockGeocoder()) as unknown as ProviderConfig["geocoder"],
-    priority: 1,
-    enabled: true,
-    rateLimit,
-  };
+  return { name, type: "nominatim", geocoder: geocoder ?? createMockGeocoder(), priority: 1, enabled: true, rateLimit };
 };
 
 const createMockProviderManager = (providers: ProviderConfig[]) => ({
@@ -128,7 +121,11 @@ describe.sequential("GeocodingOperations", () => {
       vi.useFakeTimers();
       try {
         const geocoder = createMockGeocoder();
-        geocoder.geocode.mockImplementation(() => new Promise(() => {}));
+        let requestSignal: AbortSignal | undefined;
+        geocoder.geocode.mockImplementation((...args: unknown[]) => {
+          requestSignal = args[1] as AbortSignal;
+          return new Promise(() => {});
+        });
         const ops = new GeocodingOperations(
           createMockProviderManager([createProvider("test-provider", 10, geocoder)]) as any,
           createMockCacheManager() as any,
@@ -143,6 +140,7 @@ describe.sequential("GeocodingOperations", () => {
           "test-provider": { success: false, error: "Geocoding timeout" },
         });
         expect(vi.getTimerCount()).toBe(0);
+        expect(requestSignal?.aborted).toBe(true);
       } finally {
         vi.useRealTimers();
       }
@@ -223,12 +221,10 @@ describe.sequential("GeocodingOperations", () => {
         bounded: true,
       });
 
-      expect(geocoder.geocode).toHaveBeenCalledWith({
-        q: "Odessa",
-        countrycodes: "ua,pl",
-        viewbox: "22,44,41,53",
-        bounded: 1,
-      });
+      expect(geocoder.geocode).toHaveBeenCalledWith(
+        { q: "Odessa", countrycodes: "ua,pl", viewbox: "22,44,41,53", bounded: 1 },
+        expect.any(AbortSignal)
+      );
     });
 
     it("should bypass address-only cache for biased requests", async () => {
@@ -265,7 +261,7 @@ describe.sequential("GeocodingOperations", () => {
       await ops.batchGeocode(["Odessa"], 10, { countryCodes: ["UA"] });
 
       expect(cacheManager.getCachedResult).not.toHaveBeenCalled();
-      expect(geocoder.geocode).toHaveBeenCalledWith({ q: "Odessa", countrycodes: "ua" });
+      expect(geocoder.geocode).toHaveBeenCalledWith({ q: "Odessa", countrycodes: "ua" }, expect.any(AbortSignal));
       expect(cacheManager.cacheResult).not.toHaveBeenCalled();
     });
 
@@ -507,7 +503,7 @@ describe.sequential("GeocodingOperations", () => {
       await ops.batchGeocode(["Odessa"], 10, { countryCodes: ["UA"] });
 
       // The bias was dropped, so the plain-string query was sent...
-      expect(geocoder.geocode).toHaveBeenCalledWith("Odessa");
+      expect(geocoder.geocode).toHaveBeenCalledWith("Odessa", expect.any(AbortSignal));
       // ...and the address-keyed cache is read and written as usual.
       expect(cacheManager.getCachedResult).toHaveBeenCalledWith("Odessa");
       expect(cacheManager.cacheResult).toHaveBeenCalled();

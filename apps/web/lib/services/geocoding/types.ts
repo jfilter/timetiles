@@ -68,13 +68,17 @@ export const GEOCODING_ERROR_CODES = {
 /** Check if an error is transient (worth retrying). */
 export const isTransientError = (error: unknown): boolean => error instanceof GeocodingError && error.retryable;
 
+export interface GeocodingAdapter {
+  geocode(query: string | Record<string, string | number>, signal?: AbortSignal): Promise<NodeGeocoder.Entry[]>;
+}
+
 export interface ProviderConfig {
   /** User-defined display name (free text, e.g. "Photon (VersaTiles)"). */
   name: string;
   /** Provider type literal ("google" | "nominatim" | ...) — use this for any
    *  per-provider behavior (confidence scoring, query format), NEVER `name`. */
   type: string;
-  geocoder: NodeGeocoder.Geocoder;
+  geocoder: GeocodingAdapter;
   priority: number;
   enabled: boolean;
   rateLimit: number; // requests per second

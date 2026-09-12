@@ -16,7 +16,7 @@ import type { GeocodingProvider } from "@/payload-types";
 
 import { createPhotonGeocoder } from "./photon-geocoder";
 import { getProviderRateLimiter } from "./provider-rate-limiter";
-import type { GeocodingSettings, ProviderConfig } from "./types";
+import type { GeocodingAdapter, GeocodingSettings, ProviderConfig } from "./types";
 import {
   DEFAULT_NOMINATIM_RATE_LIMIT,
   GEOCODING_ERROR_CODES,
@@ -142,7 +142,7 @@ export class ProviderManager {
   // Helper method to create provider entry
   private createProviderEntry(
     doc: GeocodingProvider,
-    geocoder: NodeGeocoder.Geocoder,
+    geocoder: GeocodingAdapter,
     defaultPriority: number,
     defaultRateLimit: number = 10,
     geocodeParams?: Record<string, string | number>
@@ -248,13 +248,23 @@ export class ProviderManager {
     return typeof doc.apiKey === "string" && doc.apiKey.trim() !== "";
   }
 
-  private createGoogleGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
+  /** Bind a fresh transport to each request so concurrent abort signals cannot leak. */
+  private createNodeGeocoder(options: Options): GeocodingAdapter {
+    return {
+      geocode: (query, signal) => {
+        const requestOptions = { ...options, signal };
+        return NodeGeocoder(requestOptions).geocode(query);
+      },
+    };
+  }
+
+  private createGoogleGeocoder(doc: GeocodingProvider): GeocodingAdapter | null {
     if (!this.hasApiKey(doc)) {
       logger.warn(`Google provider ${doc.name} has no API key configured`);
       return null;
     }
 
-    return NodeGeocoder({
+    return this.createNodeGeocoder({
       provider: "google",
       apiKey: doc.apiKey,
       language: doc.language ?? undefined,
@@ -264,7 +274,7 @@ export class ProviderManager {
     } as unknown as Options);
   }
 
-  private createNominatimGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder {
+  private createNominatimGeocoder(doc: GeocodingProvider): GeocodingAdapter {
     // These fields have defaults but an admin can clear them to "", which `??`
     // would keep — an empty osmServer breaks every request and an empty
     // User-Agent gets the provider blocked (Nominatim/Photon require one).
@@ -273,7 +283,7 @@ export class ProviderManager {
     const userAgent = defaultIfEmpty(doc.userAgent, TIMETILES_USER_AGENT);
 
     const viewbox = this.getViewboxString(doc);
-    return NodeGeocoder({
+    return this.createNodeGeocoder({
       provider: "openstreetmap",
       osmServer: baseUrl,
       language: doc.language ?? undefined,
@@ -285,7 +295,7 @@ export class ProviderManager {
     } as unknown as Options);
   }
 
-  private createOpenCageGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
+  private createOpenCageGeocoder(doc: GeocodingProvider): GeocodingAdapter | null {
     if (!this.hasApiKey(doc)) {
       logger.warn(`OpenCage provider ${doc.name} has no API key configured`);
       return null;
@@ -303,7 +313,7 @@ export class ProviderManager {
       });
     }
 
-    return NodeGeocoder({
+    return this.createNodeGeocoder({
       provider: "opencage",
       apiKey: doc.apiKey,
       language: doc.language ?? undefined,
@@ -314,13 +324,13 @@ export class ProviderManager {
     } as unknown as Options);
   }
 
-  private createLocationIQGeocoder(doc: GeocodingProvider): NodeGeocoder.Geocoder | null {
+  private createLocationIQGeocoder(doc: GeocodingProvider): GeocodingAdapter | null {
     if (!this.hasApiKey(doc)) {
       logger.warn(`LocationIQ provider ${doc.name} has no API key configured`);
       return null;
     }
 
-    return NodeGeocoder({
+    return this.createNodeGeocoder({
       provider: "locationiq",
       apiKey: doc.apiKey,
       formatter: null,
@@ -346,7 +356,7 @@ export class ProviderManager {
     return { minLon: bb.minLon, minLat: bb.minLat, maxLon: bb.maxLon, maxLat: bb.maxLat };
   }
 
-  private createPhotonGeocoderInstance(doc: GeocodingProvider): NodeGeocoder.Geocoder {
+  private createPhotonGeocoderInstance(doc: GeocodingProvider): GeocodingAdapter {
     const baseUrl = defaultIfEmpty(doc.baseUrl, "https://photon.komoot.io");
 
     return createPhotonGeocoder({
@@ -359,6 +369,6 @@ export class ProviderManager {
       layer: (doc.config?.photon?.layer as string[] | undefined)?.length
         ? (doc.config?.photon?.layer as string[])
         : undefined,
-    }) as unknown as NodeGeocoder.Geocoder;
+    });
   }
 }

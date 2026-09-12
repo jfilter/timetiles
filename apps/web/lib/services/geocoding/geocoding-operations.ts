@@ -22,7 +22,14 @@ import { hashForLog } from "@/lib/security/hash";
 import type { CacheManager } from "./cache-manager";
 import type { ProviderManager } from "./provider-manager";
 import { getProviderRateLimiter } from "./provider-rate-limiter";
-import type { BatchGeocodingResult, GeocodingBias, GeocodingResult, GeocodingSettings, ProviderConfig } from "./types";
+import type {
+  BatchGeocodingResult,
+  GeocodingAdapter,
+  GeocodingBias,
+  GeocodingResult,
+  GeocodingSettings,
+  ProviderConfig,
+} from "./types";
 import { GeocodingError, isTransientError } from "./types";
 
 const logger = createLogger("geocoding-operations");
@@ -517,15 +524,20 @@ export class GeocodingOperations {
   }
 
   private async geocodeWithProvider(
-    geocoder: { geocode: (address: string | Record<string, string | number>) => Promise<Entry[]> },
+    geocoder: GeocodingAdapter,
     address: string | Record<string, string | number>,
     timeoutMs = GEOCODING_OPERATION_TIMEOUT_MS,
     timeoutMessage = "Provider timeout"
   ): Promise<Entry[]> {
-    const geocodePromise = geocoder.geocode(address);
+    const controller = new AbortController();
+    const geocodePromise = geocoder.geocode(address, controller.signal);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+      timer = setTimeout(() => {
+        const error = new Error(timeoutMessage);
+        reject(error);
+        controller.abort(error);
+      }, timeoutMs);
     });
 
     try {

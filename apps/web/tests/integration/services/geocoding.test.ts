@@ -338,7 +338,7 @@ describe("GeocodingService", () => {
       expect(result.provider).toMatch(/Nominatim.*Test/);
       expect(result.latitude).toBe(37.7749);
       expect(result.longitude).toBe(-122.4194);
-      expect(mockNominatimGeocode).toHaveBeenCalledWith(uniqueAddress);
+      expect(mockNominatimGeocode).toHaveBeenCalledWith(uniqueAddress, expect.any(AbortSignal));
     });
 
     it("should return cached result when available", async () => {
@@ -681,7 +681,7 @@ describe("GeocodingService", () => {
       expect(result2.fromCache).toBe(true);
       // First call should have created cache, second call should use cache
       expect(mockNominatimGeocode).toHaveBeenCalledTimes(1);
-      expect(mockNominatimGeocode).toHaveBeenCalledWith(address1);
+      expect(mockNominatimGeocode).toHaveBeenCalledWith(address1, expect.any(AbortSignal));
     });
 
     it("should clean up old cache entries", async () => {

@@ -116,18 +116,20 @@ const classifyPhotonError = (response: Response): GeocodingError => {
 };
 
 /**
- * Creates a geocoder object compatible with node-geocoder's Geocoder interface,
- * backed by the Photon API.
+ * Creates an abortable Photon adapter returning node-geocoder Entry results.
  */
-export const createPhotonGeocoder = (config: PhotonConfig): { geocode: (address: string) => Promise<Entry[]> } => {
+export const createPhotonGeocoder = (
+  config: PhotonConfig
+): { geocode: (address: string, signal?: AbortSignal) => Promise<Entry[]> } => {
   const { baseUrl } = config;
 
   return {
-    geocode: async (address: string): Promise<Entry[]> => {
+    geocode: async (address: string, signal?: AbortSignal): Promise<Entry[]> => {
       const params = buildPhotonParams(address, config);
       const url = `${baseUrl}/api?${params.toString()}`;
 
       const response = await fetch(url, {
+        signal,
         headers: { "User-Agent": "TimeTiles/1.0 (https://github.com/jfilter/timetiles)" },
       });
 
