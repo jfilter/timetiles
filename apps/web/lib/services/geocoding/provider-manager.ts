@@ -284,8 +284,6 @@ export class ProviderManager {
     const baseUrl = defaultIfEmpty(doc.baseUrl, NOMINATIM_BASE_URL);
     const userAgent = defaultIfEmpty(doc.userAgent, TIMETILES_USER_AGENT);
 
-    logger.debug("Creating Nominatim geocoder", { baseUrl, userAgent });
-
     const viewbox = this.getViewboxString(doc);
     return NodeGeocoder({
       provider: "openstreetmap",
@@ -362,8 +360,6 @@ export class ProviderManager {
 
   private createPhotonGeocoderInstance(doc: GeocodingProvider): NodeGeocoder.Geocoder {
     const baseUrl = defaultIfEmpty(doc.baseUrl, "https://photon.komoot.io");
-
-    logger.debug("Creating Photon geocoder", { baseUrl });
 
     return createPhotonGeocoder({
       baseUrl,

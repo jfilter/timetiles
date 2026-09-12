@@ -9,12 +9,7 @@
  */
 import type { Entry } from "node-geocoder";
 
-import { createLogger } from "@/lib/logger";
-import { hashForLog } from "@/lib/security/hash";
-
 import { GEOCODING_ERROR_CODES, GeocodingError, retryAfterMillisecondsSchema } from "./types";
-
-const logger = createLogger("photon-geocoder");
 
 interface PhotonFeature {
   type: "Feature";
@@ -131,9 +126,6 @@ export const createPhotonGeocoder = (config: PhotonConfig): { geocode: (address:
     geocode: async (address: string): Promise<Entry[]> => {
       const params = buildPhotonParams(address, config);
       const url = `${baseUrl}/api?${params.toString()}`;
-      // The URL carries the address as a query param (PII); log only the
-      // base URL and a correlation hash for the address.
-      logger.debug("Photon geocode request", { baseUrl: `${baseUrl}/api`, addressHash: hashForLog(address) });
 
       const response = await fetch(url, {
         headers: { "User-Agent": "TimeTiles/1.0 (https://github.com/jfilter/timetiles)" },

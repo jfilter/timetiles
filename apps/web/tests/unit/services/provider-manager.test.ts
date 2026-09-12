@@ -54,6 +54,23 @@ describe.sequential("ProviderManager - createStatusCheckingFetch", () => {
     expect(JSON.stringify(providerLogger.error.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
   });
 
+  it.each(["photon", "nominatim"])("does not log the %s endpoint during initialization", async (type) => {
+    mockPayload.find.mockResolvedValue({
+      docs: [
+        {
+          id: 1,
+          name: "Private endpoint",
+          type,
+          enabled: true,
+          baseUrl: `https://example.com/${TEST_SECRETS.payloadSecret}`,
+        },
+      ],
+    });
+
+    expect(await new ProviderManager(mockPayload, null).loadProviders()).toHaveLength(1);
+    expect(JSON.stringify(providerLogger.debug.mock.calls)).not.toContain(TEST_SECRETS.payloadSecret);
+  });
+
   /**
    * Helper: create a ProviderManager with a Nominatim provider from the DB,
    * then return the geocoder instance that uses createStatusCheckingFetch internally.
