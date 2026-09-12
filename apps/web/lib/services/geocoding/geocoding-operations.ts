@@ -115,7 +115,7 @@ export class GeocodingOperations {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.debug("Primary provider failed, trying fallbacks", {
+      logger.debug("Primary provider failed", {
         provider: primary.name,
         error: errorMessage,
         // Addresses are PII; log a correlation hash instead of the raw value
@@ -125,6 +125,9 @@ export class GeocodingOperations {
     }
 
     // Primary failed — try remaining providers in priority order
+    if (!this.shouldContinueWithFallback()) {
+      throw new GeocodingError("All geocoding providers failed", "ALL_PROVIDERS_FAILED", false);
+    }
     return this.tryFallbackProviders(available, primary.name, address, bias);
   }
 
@@ -138,7 +141,6 @@ export class GeocodingOperations {
     const result = await this.iterateProviders(available, address, bias, {
       skipProviderName: primaryName,
       revalidateAvailability: true,
-      continueAfterRejectedResult: true,
     });
 
     if (result != null) {
@@ -260,16 +262,12 @@ export class GeocodingOperations {
    * providers in the loop were awaited. tryProviders skips this because
    * `selectProvidersToTry` already computed the exact list to attempt,
    * including the deliberate one-provider "wait out the backoff" case.
-   *
-   * `continueAfterRejectedResult` keeps walking the list when a provider answered
-   * but the answer failed validation. The fallback path needs it: with fallback
-   * disabled, one bogus answer must not consume the remaining candidates.
    */
   private async iterateProviders(
     providers: ProviderConfig[],
     address: string,
     bias: GeocodingBias | undefined,
-    options: { skipProviderName?: string; revalidateAvailability?: boolean; continueAfterRejectedResult?: boolean } = {}
+    options: { skipProviderName?: string; revalidateAvailability?: boolean } = {}
   ): Promise<GeocodingResult | null> {
     const rateLimiter = getProviderRateLimiter();
 
@@ -280,9 +278,6 @@ export class GeocodingOperations {
       const outcome = await this.attemptProvider(provider, address, bias);
       if (outcome.accepted) return outcome.result;
 
-      // A rejected ANSWER is not a reason to stop asking the remaining providers.
-      if (outcome.rejected && options.continueAfterRejectedResult === true) continue;
-
       if (!this.shouldContinueWithFallback()) {
         break;
       }
@@ -292,18 +287,16 @@ export class GeocodingOperations {
   }
 
   /**
-   * Ask one provider. Returns the accepted result, or why it did not produce one:
-   * `rejected` means the provider answered but the answer failed validation (low
-   * confidence, bogus coordinates), as opposed to failing or answering nothing.
+   * Ask one provider and return whether it produced an accepted result.
    */
   private async attemptProvider(
     provider: ProviderConfig,
     address: string,
     bias: GeocodingBias | undefined
-  ): Promise<{ accepted: true; result: GeocodingResult } | { accepted: false; rejected: boolean }> {
+  ): Promise<{ accepted: true; result: GeocodingResult } | { accepted: false }> {
     try {
       const result = await this.tryProviderWithRetry(provider, address, bias);
-      if (result == null) return { accepted: false, rejected: false };
+      if (result == null) return { accepted: false };
 
       if (this.isResultAcceptable(result)) {
         return { accepted: true, result };
@@ -313,7 +306,7 @@ export class GeocodingOperations {
         provider: provider.name,
         addressHash: hashForLog(address),
       });
-      return { accepted: false, rejected: true };
+      return { accepted: false };
     } catch (error) {
       // Always log — silently swallowing a provider failure hides which
       // provider is failing, especially during the fallback path.
@@ -322,7 +315,7 @@ export class GeocodingOperations {
         error: errorMessage,
         addressHash: hashForLog(address),
       });
-      return { accepted: false, rejected: false };
+      return { accepted: false };
     }
   }
 
