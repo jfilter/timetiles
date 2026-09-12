@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ErrorMessage,
   useConfirmDialog,
 } from "@timetiles/ui";
 import { CodeIcon, MoreHorizontalIcon } from "lucide-react";
@@ -53,6 +54,7 @@ const ActionsCell = ({ row }: { readonly row: ScraperRow }) => {
   const syncMutation = useSyncScraperRepoMutation();
   const deleteMutation = useDeleteScraperRepoMutation();
   const { requestConfirm, confirmDialog } = useConfirmDialog();
+  const isPending = runMutation.isPending || syncMutation.isPending || deleteMutation.isPending;
 
   const handleRun = () => {
     runMutation.mutate(row.scraper.id);
@@ -76,7 +78,7 @@ const ActionsCell = ({ row }: { readonly row: ScraperRow }) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" aria-label={t("actions")}>
+          <Button variant="ghost" size="sm" aria-label={t("actions")} disabled={isPending}>
             <MoreHorizontalIcon className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -88,6 +90,9 @@ const ActionsCell = ({ row }: { readonly row: ScraperRow }) => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {runMutation.error && <ErrorMessage message={runMutation.error.message} />}
+      {syncMutation.error && <ErrorMessage message={syncMutation.error.message} />}
+      {deleteMutation.error && <ErrorMessage message={deleteMutation.error.message} />}
       {confirmDialog}
     </>
   );

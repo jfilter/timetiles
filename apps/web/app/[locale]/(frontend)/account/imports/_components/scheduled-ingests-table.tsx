@@ -18,6 +18,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  ErrorMessage,
   useConfirmDialog,
 } from "@timetiles/ui";
 import { ClockIcon, MoreHorizontalIcon } from "lucide-react";
@@ -52,6 +53,7 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
   const deleteMutation = useDeleteScheduledIngestMutation();
   const triggerMutation = useTriggerScheduledIngestMutation();
   const { requestConfirm, confirmDialog } = useConfirmDialog();
+  const isPending = toggleMutation.isPending || deleteMutation.isPending || triggerMutation.isPending;
 
   const handleToggle = () => {
     toggleMutation.mutate({ id: schedule.id, enabled: !schedule.enabled });
@@ -79,7 +81,7 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="sm" aria-label={t("actions")}>
+          <Button variant="ghost" size="sm" aria-label={t("actions")} disabled={isPending}>
             <MoreHorizontalIcon className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
@@ -92,6 +94,9 @@ const ActionsCell = ({ schedule }: { readonly schedule: ScheduledIngest }) => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {toggleMutation.error && <ErrorMessage message={toggleMutation.error.message} />}
+      {triggerMutation.error && <ErrorMessage message={triggerMutation.error.message} />}
+      {deleteMutation.error && <ErrorMessage message={deleteMutation.error.message} />}
       {confirmDialog}
     </>
   );
