@@ -6,7 +6,7 @@
  * @module
  * @category Hooks
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { DataExport, ExportListResponse, RequestExportResponse } from "@/lib/export/api-types";
 import type { ExportSummary } from "@/lib/export/types";
@@ -14,6 +14,7 @@ import type { DataExport as PayloadDataExport } from "@/payload-types";
 
 import { fetchJson } from "../api/http-error";
 import { createItemPollingInterval, QUERY_PRESETS } from "./query-presets";
+import { useAuthState } from "./use-auth-queries";
 
 export type { DataExport, ExportListResponse, RequestExportError, RequestExportResponse } from "@/lib/export/api-types";
 
@@ -22,7 +23,7 @@ export type { DataExport, ExportListResponse, RequestExportError, RequestExportR
  */
 export const dataExportQueryKeys = {
   all: ["data-exports"] as const,
-  list: () => [...dataExportQueryKeys.all, "list"] as const,
+  list: (userId: number | null) => [...dataExportQueryKeys.all, "list", userId] as const,
 };
 
 /** Shape returned by the Payload REST API for the data-exports collection. */
@@ -34,8 +35,9 @@ interface PayloadDataExportsResponse {
 /**
  * Fetch the user's data exports.
  */
-const fetchDataExports = async (): Promise<ExportListResponse> => {
-  const data = await fetchJson<PayloadDataExportsResponse>("/api/data-exports?sort=-requestedAt&limit=10");
+const fetchDataExports = async (userId: number): Promise<ExportListResponse> => {
+  const params = new URLSearchParams({ sort: "-requestedAt", limit: "10", "where[user][equals]": String(userId) });
+  const data = await fetchJson<PayloadDataExportsResponse>(`/api/data-exports?${params}`);
 
   // Transform Payload REST response to match expected format
   return {
@@ -70,9 +72,10 @@ const hasPendingExports = (data: ExportListResponse) =>
  * Hook to get the most recent/relevant export.
  */
 export const useLatestExportQuery = () => {
+  const { userId, isLoading: isAuthLoading } = useAuthState();
   const { data, isLoading } = useQuery({
-    queryKey: dataExportQueryKeys.list(),
-    queryFn: fetchDataExports,
+    queryKey: dataExportQueryKeys.list(userId),
+    queryFn: userId == null ? skipToken : () => fetchDataExports(userId),
     ...QUERY_PRESETS.frequent,
     refetchInterval: createItemPollingInterval(hasPendingExports, 5000),
   });
@@ -81,7 +84,7 @@ export const useLatestExportQuery = () => {
     data?.exports.find((exp) => exp.status === "pending" || exp.status === "processing" || exp.status === "ready") ??
     data?.exports[0];
 
-  return { latestExport, isLoading };
+  return { latestExport, isLoading: isAuthLoading || isLoading };
 };
 
 /**
