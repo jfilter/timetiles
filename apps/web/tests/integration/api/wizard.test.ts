@@ -12,9 +12,11 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { parseExcelPreview } from "@/app/api/ingest/preview-schema/helpers";
+import { processDataset } from "@/lib/ingest/configure-service";
 
 import {
   buildTestInterpretationPlan,
@@ -401,6 +403,54 @@ describe.sequential("Import Wizard API Endpoints", () => {
   });
 
   describe("Deduplication Configuration", () => {
+    it.each([false, true])(
+      "preserves existing duplicate detection set to %s when configuring an import",
+      async (enabled) => {
+        const { catalog } = await withCatalog(testEnv, { user: testUser });
+        const dataset = await payload.create({
+          collection: "datasets",
+          data: {
+            name: "Existing deduplication",
+            catalog: catalog.id,
+            language: "eng",
+            deduplicationConfig: { enabled },
+          },
+        });
+        expect(dataset.deduplicationConfig.enabled).toBe(enabled);
+        const req = Object.assign(new NextRequest("http://localhost/api/ingest/configure"), { user: testUser });
+
+        await processDataset(
+          payload,
+          req,
+          { sheetIndex: 0, datasetId: dataset.id, newDatasetName: "" },
+          undefined,
+          catalog.id,
+          "skip",
+          false
+        );
+
+        const updated = await payload.findByID({ collection: "datasets", id: dataset.id });
+        expect(updated.deduplicationConfig.enabled).toBe(enabled);
+      }
+    );
+
+    it("uses the collection default for duplicate detection on a new wizard dataset", async () => {
+      const { catalog } = await withCatalog(testEnv, { user: testUser });
+      const req = Object.assign(new NextRequest("http://localhost/api/ingest/configure"), { user: testUser });
+      const datasetId = await processDataset(
+        payload,
+        req,
+        { sheetIndex: 0, datasetId: "new", newDatasetName: "Wizard default deduplication" },
+        undefined,
+        catalog.id,
+        "skip",
+        false
+      );
+
+      const dataset = await payload.findByID({ collection: "datasets", id: datasetId });
+      expect(dataset.deduplicationConfig.enabled).toBe(true);
+    });
+
     it("stores skip duplicate strategy via idStrategy", async () => {
       const { catalog } = await withCatalog(testEnv, { user: testUser });
 

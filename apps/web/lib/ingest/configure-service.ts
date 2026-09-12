@@ -193,7 +193,6 @@ export const processDataset = async (
   transforms?: IngestTransform[]
 ): Promise<number> => {
   const idStrategy = buildIdStrategy(fieldMapping, deduplicationStrategy);
-  const deduplicationConfig = { enabled: true };
   const geoFieldDetection = buildGeoFieldDetection(fieldMapping, geocodingEnabled);
 
   // Auto-approve non-breaking schema changes for wizard imports
@@ -220,7 +219,6 @@ export const processDataset = async (
         isPublic: true, // Default to public for wizard imports
         interpretationPlan,
         idStrategy,
-        deduplicationConfig,
         geoFieldDetection,
         schemaConfig,
       },
@@ -247,12 +245,7 @@ export const processDataset = async (
     where: { dataset: { equals: sheetMapping.datasetId } },
   });
 
-  const updateData: Record<string, unknown> = {
-    interpretationPlan,
-    deduplicationConfig,
-    geoFieldDetection,
-    schemaConfig,
-  };
+  const updateData: Record<string, unknown> = { interpretationPlan, geoFieldDetection, schemaConfig };
 
   // Only update idStrategy if dataset has no events yet
   if (eventCount.totalDocs === 0) {
