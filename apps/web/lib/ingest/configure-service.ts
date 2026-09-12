@@ -468,7 +468,6 @@ export const createScheduledIngest = async ({
     {
       scheduledIngestId: scheduledIngest.id,
       name: scheduleConfig.name,
-      sourceUrl: scheduleConfig.sourceUrl,
       catalogId,
       datasetIds: datasetMappingEntries.map((e) => e.dataset),
     },
