@@ -33,7 +33,7 @@ import { createIntegrationTestEnvironment } from "../../setup/integration/enviro
 const mockGoogleGeocode = vi.fn();
 const mockNominatimGeocode = vi.fn();
 
-describe("GeocodingService", () => {
+describe.sequential("GeocodingService", () => {
   const collectionsToReset = ["location-cache", "geocoding-providers"];
 
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -56,12 +56,7 @@ describe("GeocodingService", () => {
     // Increment counter for unique addresses
     testCounter++;
 
-    // Clear collections before each test - this is now isolated per test file
-    try {
-      await testEnv.seedManager.truncate(collectionsToReset);
-    } catch {
-      // Cleanup error (non-critical) - explicitly ignore
-    }
+    await testEnv.seedManager.truncate(collectionsToReset);
 
     // Reset the mock functions completely for each test
     mockGoogleGeocode.mockReset();
