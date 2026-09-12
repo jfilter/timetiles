@@ -47,4 +47,14 @@ describe("OAuth diagnostics", () => {
     });
     expect(authLogger.debug).not.toHaveBeenCalled();
   });
+
+  it.each([null, {}, { access_token: 42 }, { access_token: {} }, { access_token: "" }, { access_token: "   " }])(
+    "rejects an invalid token response without exposing its contents (%j)",
+    async (body) => {
+      vi.mocked(safeFetch).mockResolvedValue(Response.json(body));
+      await expect(buildAuthHeaders(authConfig)).rejects.toEqual(
+        new Error("OAuth response missing valid access_token")
+      );
+    }
+  );
 });

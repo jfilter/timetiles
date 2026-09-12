@@ -8,12 +8,15 @@
  * @category Jobs/UrlFetch
  */
 
+import { z } from "zod";
+
 import { validateCustomHeaders } from "@/lib/ingest/validate-custom-headers";
 import { createLogger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 import type { ScheduledIngest } from "@/payload-types";
 
 const logger = createLogger("url-fetch-auth");
+const tokenResponseSchema = z.object({ access_token: z.string().refine((token) => token.trim().length > 0) });
 
 /**
  * Exchange OAuth credentials for an access token via Resource Owner Password Grant.
@@ -43,12 +46,12 @@ const fetchOAuthToken = async (
     throw new Error(`OAuth token request failed (${response.status})`);
   }
 
-  const data = (await response.json()) as { access_token?: string };
-  if (!data.access_token) {
-    throw new Error("OAuth response missing access_token");
+  const result = tokenResponseSchema.safeParse(await response.json());
+  if (!result.success) {
+    throw new Error("OAuth response missing valid access_token");
   }
 
-  return data.access_token;
+  return result.data.access_token;
 };
 
 /**
