@@ -134,16 +134,18 @@ Or enable a cron schedule in the manifest to run automatically.
 
 ### 7. View results
 
-After a successful run, check the scraper's run history in the dashboard or the management UI at **/account/scrapers**. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard ingestion pipeline and events appear on the map.
+After a successful run, check the scraper's run history in the dashboard or the **Scrapers** tab at `/account/imports?tab=scrapers`. If `autoImport` is enabled and a `targetDataset` is configured, the CSV flows through the standard ingestion pipeline and events appear on the map.
 
 ### Management UI
 
-Users can manage their scrapers at **/account/scrapers**. The page shows:
+Users manage scrapers in the **Scrapers** tab at `/account/imports?tab=scrapers`. The old `/account/scrapers` URL redirects there. The page shows:
 
-- Scraper repos with sync status and source details
-- Scrapers within each repo with last run status and statistics
-- Action buttons: force sync, trigger run, delete repo
-- Expandable run history with stdout/stderr log viewer
+- A table of scrapers with repository, last run status, runtime, schedule, and last run time
+- Repository synchronization errors, including repositories with no scrapers
+- Actions to sync a repository, trigger a run, or delete a repository
+- Expandable run history with status, duration, errors, and links to dashboard records for full details
+
+Manual repository synchronization refreshes the lists after the background sync finishes. Run stdout/stderr logs are available in the dashboard records, not in an inline log viewer.
 
 ---
 

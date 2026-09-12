@@ -171,12 +171,14 @@ Scraper access requires trust level 3 (Trusted) or higher:
 
 ## Management
 
-Users manage scrapers at **/account/scrapers**:
+Manage scrapers in the **Scrapers** tab at `/account/imports?tab=scrapers`:
 
-- View repos with sync status
-- See scrapers with last run status and statistics
-- Force sync, trigger runs, delete repos
-- Expand run history with stdout/stderr logs
+- View scrapers with their repository, run status, runtime, and schedule
+- See repository synchronization errors, even if no scrapers were created
+- Sync repositories, trigger runs, or delete repositories from the action menu
+- Expand run history for status, duration, and errors; follow the dashboard link for full details and stdout/stderr logs
+
+After a manual repository sync finishes, the table refreshes automatically. The previous `/account/scrapers` address redirects to this tab.
 
 ## Further Reading
 
