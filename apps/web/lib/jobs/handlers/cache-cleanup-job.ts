@@ -11,6 +11,9 @@
 
 import { logError, logger } from "@/lib/logger";
 import { getUrlFetchCache } from "@/lib/services/cache";
+import { createGeocodingService } from "@/lib/services/geocoding/geocoding-service";
+
+import type { JobHandlerContext } from "../utils/job-context";
 
 /**
  * Cache cleanup job handler
@@ -29,33 +32,23 @@ export const cacheCleanupJob = {
     },
   ],
   retries: 2,
-  handler: async () => {
+  handler: async ({ req }: JobHandlerContext) => {
     const startTime = Date.now();
     logger.info("Starting cache cleanup job");
 
     try {
-      // Clean URL fetch cache (the only concrete cache instance)
       const urlFetchCache = getUrlFetchCache();
-      const totalCleaned = await urlFetchCache.cleanup();
+      const urlCleaned = await urlFetchCache.cleanup();
       const stats = await urlFetchCache.getStats();
+      const locationsCleaned = await createGeocodingService(req.payload).cleanupCache();
+      const totalCleaned = urlCleaned + locationsCleaned;
+      const results = { urlFetchCache: { cleaned: urlCleaned, stats }, locationCache: { cleaned: locationsCleaned } };
 
       const duration = Date.now() - startTime;
 
-      logger.info("Cache cleanup completed", {
-        totalCleaned,
-        duration,
-        urlFetchCache: { cleaned: totalCleaned, stats },
-      });
+      logger.info("Cache cleanup completed", { totalCleaned, duration, ...results });
 
-      return {
-        output: {
-          success: true,
-          totalCleaned,
-          totalEvicted: 0,
-          duration,
-          results: { urlFetchCache: { cleaned: totalCleaned, stats } },
-        },
-      };
+      return { output: { success: true, totalCleaned, totalEvicted: 0, duration, results } };
     } catch (error) {
       logError(error, "Cache cleanup job failed");
       throw error;

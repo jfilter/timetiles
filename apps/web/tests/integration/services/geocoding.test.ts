@@ -680,55 +680,64 @@ describe.sequential("GeocodingService", () => {
       expect(mockNominatimGeocode).toHaveBeenCalledWith(address1, expect.any(AbortSignal));
     });
 
-    it.each([true, false])("cleans up old cache entries with initialized providers=%s", async (initialized) => {
-      if (initialized) {
-        await ensureServiceCreated();
-        await geocodingService.initialize();
-      } else {
-        geocodingService = createGeocodingService(payload);
-        const providers = await payload.count({ collection: "geocoding-providers" });
-        expect(providers.totalDocs).toBe(0);
+    it.each(["initialized service", "uninitialized service", "scheduled job"])(
+      "cleans up old cache entries via %s",
+      async (path) => {
+        if (path === "initialized service") {
+          await ensureServiceCreated();
+          await geocodingService.initialize();
+        } else {
+          geocodingService = createGeocodingService(payload);
+          const providers = await payload.count({ collection: "geocoding-providers" });
+          expect(providers.totalDocs).toBe(0);
+        }
+
+        // Create old cache entry (older than default 30 day TTL)
+        const oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days ago
+        const uniqueAddress = `Old Address ${Date.now()}-${Math.random()}`;
+
+        // Use correct address normalization
+        const normalizedAddress = normalizeGeocodingAddress(uniqueAddress);
+
+        const oldEntry = await payload.create({
+          collection: "location-cache",
+          data: {
+            originalAddress: uniqueAddress,
+            normalizedAddress: normalizedAddress,
+            latitude: 37.7749,
+            longitude: -122.4194,
+            provider: "nominatim",
+            confidence: 0.5,
+            hitCount: 1,
+            lastUsed: oldDate.toISOString(),
+            components: {},
+            metadata: {},
+          },
+        });
+
+        // Manually update the createdAt field to make it old (cleanup uses createdAt, not lastUsed)
+        await payload.update({
+          collection: "location-cache",
+          id: oldEntry.id,
+          data: { createdAt: oldDate.toISOString() },
+        });
+
+        if (path === "scheduled job") {
+          const job = await payload.jobs.queue({ task: "cache-cleanup", queue: "ingest", input: {} });
+          expect(job.taskSlug).toBe("cache-cleanup");
+          await payload.jobs.run({ queue: "ingest", limit: 1 });
+        } else {
+          await expect(geocodingService.cleanupCache()).resolves.toBe(1);
+        }
+
+        const remainingEntries = await payload.find({
+          collection: "location-cache",
+          where: { originalAddress: { equals: uniqueAddress } },
+        });
+
+        expect(remainingEntries.docs).toHaveLength(0);
       }
-
-      // Create old cache entry (older than default 30 day TTL)
-      const oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days ago
-      const uniqueAddress = `Old Address ${Date.now()}-${Math.random()}`;
-
-      // Use correct address normalization
-      const normalizedAddress = normalizeGeocodingAddress(uniqueAddress);
-
-      const oldEntry = await payload.create({
-        collection: "location-cache",
-        data: {
-          originalAddress: uniqueAddress,
-          normalizedAddress: normalizedAddress,
-          latitude: 37.7749,
-          longitude: -122.4194,
-          provider: "nominatim",
-          confidence: 0.5,
-          hitCount: 1,
-          lastUsed: oldDate.toISOString(),
-          components: {},
-          metadata: {},
-        },
-      });
-
-      // Manually update the createdAt field to make it old (cleanup uses createdAt, not lastUsed)
-      await payload.update({
-        collection: "location-cache",
-        id: oldEntry.id,
-        data: { createdAt: oldDate.toISOString() },
-      });
-
-      await geocodingService.cleanupCache();
-
-      const remainingEntries = await payload.find({
-        collection: "location-cache",
-        where: { originalAddress: { equals: uniqueAddress } },
-      });
-
-      expect(remainingEntries.docs).toHaveLength(0);
-    });
+    );
 
     it("propagates database cleanup failures to the caller", async () => {
       const realPayload = testEnv.payload;

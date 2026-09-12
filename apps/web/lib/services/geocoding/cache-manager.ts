@@ -135,9 +135,9 @@ export class CacheManager {
     }
   }
 
-  async cleanupCache(): Promise<void> {
+  async cleanupCache(): Promise<number> {
     if (this.settings?.caching?.enabled !== true) {
-      return;
+      return 0;
     }
 
     const ttlDays = this.settings.caching.ttlDays ?? 30;
@@ -152,6 +152,7 @@ export class CacheManager {
       .returning({ id: location_cache.id });
 
     logger.info(`Cleaned up ${result.length} expired cache entries`);
+    return result.length;
   }
 
   private normalizeAddress(address: string): string {

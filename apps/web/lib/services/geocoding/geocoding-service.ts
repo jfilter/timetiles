@@ -96,13 +96,13 @@ export class GeocodingService {
     await this.initialize();
   }
 
-  async cleanupCache(): Promise<void> {
+  async cleanupCache(): Promise<number> {
     // Database maintenance needs settings, not configured geocoding providers.
     if (!this.initialized) {
       await this.loadSettings();
     }
     const cacheManager = new CacheManager(this.payload, this.settings);
-    await cacheManager.cleanupCache();
+    return cacheManager.cleanupCache();
   }
 
   private async loadSettings(): Promise<void> {
