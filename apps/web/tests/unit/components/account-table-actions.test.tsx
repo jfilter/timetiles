@@ -32,6 +32,33 @@ describe("Account table actions", () => {
   beforeEach(() => vi.resetAllMocks());
   afterEach(cleanup);
 
+  it.each([0, 2])("shows a repository sync failure once with %i scraper rows", (count) => {
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <NextIntlClientProvider locale="en" messages={en}>
+          <ScrapersTable
+            initialRepos={[
+              {
+                id: 2,
+                name: "Broken repository",
+                lastSyncStatus: "failed",
+                lastSyncError: "Invalid manifest",
+              } as ScraperRepo,
+            ]}
+            initialScrapers={Array.from(
+              { length: count },
+              (_, index) => ({ id: index + 1, repo: 2, name: `Scraper ${index}` }) as Scraper
+            )}
+          />
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect(screen.getByRole("alert")).toHaveTextContent("Broken repository: Invalid manifest");
+    client.clear();
+  });
+
   it.each([
     { table: "schedule", action: "enable", confirm: false },
     { table: "schedule", action: "runNow", confirm: false },

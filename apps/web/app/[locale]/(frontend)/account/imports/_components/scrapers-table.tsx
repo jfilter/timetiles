@@ -174,20 +174,30 @@ export const ScrapersTable = ({ initialRepos, initialScrapers }: ScrapersTablePr
   );
 
   return (
-    <DataTable
-      columns={columns}
-      data={rows}
-      isLoading={false}
-      emptyState={
-        <ContentState
-          variant="empty"
-          icon={<CodeIcon className="h-12 w-12" />}
-          title={t("noScrapers")}
-          subtitle={t("noScrapersDescription")}
-        />
-      }
-      getRowId={(row) => String(row.scraper.id)}
-      renderExpandedRow={(row) => <ScraperRunHistory scraperId={row.scraper.id} />}
-    />
+    <>
+      {repos
+        .filter((repo) => repo.lastSyncStatus === "failed")
+        .map((repo) => (
+          <ErrorMessage
+            key={repo.id}
+            message={`${repo.name}: ${repo.lastSyncError?.trim() ? repo.lastSyncError : t("statusFailed")}`}
+          />
+        ))}
+      <DataTable
+        columns={columns}
+        data={rows}
+        isLoading={false}
+        emptyState={
+          <ContentState
+            variant="empty"
+            icon={<CodeIcon className="h-12 w-12" />}
+            title={t("noScrapers")}
+            subtitle={t("noScrapersDescription")}
+          />
+        }
+        getRowId={(row) => String(row.scraper.id)}
+        renderExpandedRow={(row) => <ScraperRunHistory scraperId={row.scraper.id} />}
+      />
+    </>
   );
 };
