@@ -145,7 +145,8 @@ export class ProviderRateLimiter {
     // A NaN here would set backoffUntil=NaN and disable the provider forever
     // (isAvailable's `now >= NaN` is always false).
     const backoffMs = retryAfterMs != null && Number.isFinite(retryAfterMs) ? retryAfterMs : state.currentBackoffMs;
-    state.backoffUntil = Date.now() + backoffMs;
+    // Concurrent responses may extend an active backoff, but must never shorten it.
+    state.backoffUntil = Math.max(state.backoffUntil, Date.now() + backoffMs);
     state.currentBackoffMs = Math.min(state.currentBackoffMs * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
 
     logger.warn("Provider throttled, backing off", {

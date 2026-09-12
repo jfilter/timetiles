@@ -128,6 +128,21 @@ describe("ProviderRateLimiter", () => {
       expect(wait).toBeLessThanOrEqual(5000);
     });
 
+    it.each([0, 1000, undefined])("does not shorten an active backoff with Retry-After %s", (retryAfterMs) => {
+      const rateLimiter = new ProviderRateLimiter();
+      rateLimiter.configure("test-provider", 10);
+      rateLimiter.reportThrottle("test-provider", 10_000);
+      vi.advanceTimersByTime(1000);
+
+      rateLimiter.reportThrottle("test-provider", retryAfterMs);
+
+      expect(rateLimiter.getTimeUntilAllowed("test-provider")).toBe(9000);
+      vi.advanceTimersByTime(8999);
+      expect(rateLimiter.isAvailable("test-provider")).toBe(false);
+      vi.advanceTimersByTime(1);
+      expect(rateLimiter.isAvailable("test-provider")).toBe(true);
+    });
+
     it("should apply exponential backoff on consecutive throttles", () => {
       const rateLimiter = new ProviderRateLimiter();
       rateLimiter.configure("test-provider", 10);
