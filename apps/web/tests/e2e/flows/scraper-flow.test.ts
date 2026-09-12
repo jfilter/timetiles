@@ -1,5 +1,5 @@
 /**
- * E2E API tests for the scraper flow.
+ * E2E tests for the scraper flow and account-table synchronization.
  *
  * Tests the full scraper lifecycle via REST API:
  * 1. Enable scrapers feature flag
@@ -8,9 +8,8 @@
  * 4. Trigger a manual scraper run
  * 5. Clean up the scraper-repo
  *
- * This is an API-only test — no scraper runner is available in CI, so the
- * actual scraper execution is not verified. We only confirm the API layer
- * accepts requests and creates the expected records.
+ * Manifest synchronization runs for real, including its browser refresh.
+ * No scraper runner is available in CI, so actual scraper execution is not verified.
  *
  * @module
  * @category E2E Tests
@@ -200,6 +199,34 @@ test.describe("Scraper Flow - API", () => {
     expect(scraper.enabled).toBe(true);
 
     scraperId = scraper.id;
+  });
+
+  test("should refresh the account table after a manual repository sync", async ({ page }) => {
+    const temporaryName = `Before sync ${attemptSuffix}`;
+    // Change only the derived record, not the manifest. The real sync job
+    // must restore the manifest's name, which the open table then observes.
+    const update = await page.request.patch(`${baseUrl}/api/scrapers/${scraperId}`, {
+      headers: { Authorization: `JWT ${token}` },
+      data: { name: temporaryName },
+    });
+    expect(update.status()).toBe(200);
+    await page.goto("/account/imports?tab=scrapers");
+    await page.waitForLoadState("domcontentloaded");
+    const row = page.getByRole("row").filter({ hasText: temporaryName });
+    await expect(row).toBeVisible();
+    await row.getByRole("button", { name: "Actions", exact: true }).click();
+    const queued = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === `/api/scraper-repos/${repoId}/sync` &&
+        response.request().method() === "POST"
+    );
+    await page.getByRole("menuitem", { name: "Sync Repository", exact: true }).click();
+    expect((await queued).status()).toBe(200);
+    const syncedRow = page.getByRole("row").filter({ hasText: `E2E Test Scraper Repo ${attemptSuffix} ` });
+    await expect(syncedRow.getByRole("gridcell", { name: "Test Scraper", exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(row).not.toBeVisible();
   });
 
   // The 409 case runs before the successful trigger, and both set their own
