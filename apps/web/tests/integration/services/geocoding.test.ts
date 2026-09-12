@@ -679,9 +679,15 @@ describe.sequential("GeocodingService", () => {
       expect(mockNominatimGeocode).toHaveBeenCalledWith(address1, expect.any(AbortSignal));
     });
 
-    it("should clean up old cache entries", async () => {
-      // Create service instance for this test
-      await ensureServiceCreated();
+    it.each([true, false])("cleans up old cache entries with initialized providers=%s", async (initialized) => {
+      if (initialized) {
+        await ensureServiceCreated();
+        await geocodingService.initialize();
+      } else {
+        geocodingService = createGeocodingService(payload);
+        const providers = await payload.count({ collection: "geocoding-providers" });
+        expect(providers.totalDocs).toBe(0);
+      }
 
       // Create old cache entry (older than default 30 day TTL)
       const oldDate = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000); // 40 days ago
