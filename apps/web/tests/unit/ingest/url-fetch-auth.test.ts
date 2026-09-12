@@ -73,6 +73,20 @@ describe("OAuth diagnostics", () => {
 });
 
 describe("URL authentication configuration", () => {
+  it.each(["東京", "😀"])("rejects custom header values incompatible with Fetch (%s)", (value) => {
+    expect(() => new Headers({ "X-Test": value })).toThrow(TypeError);
+    expect(validateCustomHeaders({ "X-Test": value })).toEqual({
+      ok: false,
+      error: 'customHeaders value for "X-Test" contains characters outside the HTTP byte range',
+    });
+  });
+
+  it("accepts byte-range custom header values supported by Fetch", () => {
+    const headers = { "X-Test": "ä" };
+    expect(() => new Headers(headers)).not.toThrow();
+    expect(validateCustomHeaders(headers)).toEqual({ ok: true, headers });
+  });
+
   it.each([undefined, null, "X-Custom-Key"])("resolves API key header name %s", async (apiKeyHeader) => {
     const headers = await buildAuthHeaders({ type: "api-key", apiKey: TEST_CREDENTIALS.apiKey.key, apiKeyHeader });
     expect(headers).toEqual({

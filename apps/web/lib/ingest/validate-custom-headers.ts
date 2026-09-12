@@ -20,8 +20,8 @@
 const HEADER_NAME_REGEX = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
 /**
- * Values may contain any VCHAR plus SP / HTAB, plus obs-text (bytes ≥ 0x80)
- * for UTF-8-encoded values. Explicitly disallowed: CR, LF, NUL, and the
+ * Values may contain any VCHAR plus SP / HTAB, plus obs-text (0x80–0xFF).
+ * Fetch requires ByteString values, not arbitrary Unicode. Explicitly disallowed: CR, LF, NUL, and the
  * remaining C0 control characters — these are the smuggling vectors.
  *
  * The regex deliberately matches control chars: that's what we're blocking.
@@ -83,6 +83,8 @@ const validateEntry = (name: string, value: unknown, seen: Set<string>): string 
   if (typeof value !== "string") return `customHeaders value for "${name}" must be a string (got ${typeof value})`;
   if (HEADER_VALUE_FORBIDDEN.test(value))
     return `customHeaders value for "${name}" contains disallowed control characters`;
+  if (/[\u0100-\uFFFF]/.test(value))
+    return `customHeaders value for "${name}" contains characters outside the HTTP byte range`;
 
   const lower = name.toLowerCase();
   if (DENYLIST.has(lower)) return `customHeaders may not set "${name}" (reserved/hop-by-hop)`;
