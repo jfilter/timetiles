@@ -4,7 +4,7 @@ asIndexPage: true
 
 # Data Import
 
-Three ways to get data into TimeTiles. All three go through the same pipeline: schema detection, deduplication, geocoding, and event creation.
+Upload files, schedule URL fetches, activate data packages, or run scrapers. Their data goes through the shared import pipeline, using the dataset's schema, duplicate-detection, and geocoding settings.
 
 import { Cards } from "nextra/components";
 
@@ -25,16 +25,17 @@ import { Cards } from "nextra/components";
 
 ## The Pipeline
 
-Every import — regardless of source — follows the same stages:
+Imports use the following processing stages. Review checks can pause an import when an issue needs attention; approval is not required for every import.
 
 ```
 Source (file, URL, or scraper output)
   → Detect sheets and datasets
     → Analyze for duplicates
       → Detect schema (field types, dates, locations)
-        → You review and approve the schema
-          → Geocode addresses to coordinates
-            → Create events
+        → Validate schema (pause for review when required)
+          → Create schema version
+            → Resolve locations and geocode addresses as configured
+              → Create events
 ```
 
 ## Supported Formats
@@ -42,7 +43,7 @@ Source (file, URL, or scraper output)
 | Format       | Extensions          | Notes                                                                                                                                 |
 | ------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | CSV          | `.csv`              | Comma, semicolon, or tab delimited — auto-detected                                                                                    |
-| Excel        | `.xlsx`, `.xls`     | Multi-sheet files create one dataset per sheet                                                                                        |
+| Excel        | `.xlsx`, `.xls`     | Map each sheet to a new or existing dataset.                                                                                          |
 | OpenDocument | `.ods`              | Spreadsheet format                                                                                                                    |
 | JSON         | `.json`             | Uploaded records are converted to tabular data. Remote JSON APIs are also supported through [Scheduled Imports](./scheduled-imports). |
 | GeoJSON      | `.geojson`, `.json` | Feature or FeatureCollection, converted to tabular data before preview.                                                               |
@@ -56,34 +57,25 @@ TimeTiles analyzes your data and identifies:
 - **Location fields** — addresses, coordinate pairs, or separate lat/lng columns
 - **Enum fields** — columns with few unique values (become interactive filters)
 
-You review and adjust the mappings before processing begins. If your file uses a single combined coordinate column, confirm whether the values are `lat,lng` or `lng,lat` before starting.
+In the upload wizard, you review and adjust mappings before starting the import. If your file uses a single combined coordinate column, confirm whether the values are `lat,lng` or `lng,lat` before starting. Background imports can pause for review if detection finds an unresolved issue.
 
 ## Geocoding
 
-Text addresses are converted to coordinates using multiple providers with automatic fallback:
-
-| Provider    | Notes                             |
-| ----------- | --------------------------------- |
-| Nominatim   | Free, based on OpenStreetMap      |
-| Google Maps | Paid, highest accuracy            |
-| OpenCage    | Paid, good international coverage |
-
-Results are cached. If your data already has latitude/longitude columns, geocoding is skipped.
+Text addresses can be converted to coordinates using the instance's configured providers, with fallback and caching. Valid coordinates in your data can be used directly. See [Geocoding Configuration](/self-hosting/geocoding) for provider setup.
 
 ## Deduplication
 
-When importing into a dataset that already has events, TimeTiles compares incoming rows:
+When duplicate detection is enabled, TimeTiles checks for duplicates within the incoming data and against existing events in the target dataset. The current ID strategies are:
 
 - **External ID** — use a unique identifier field from your data
-- **Computed hash** — hash a combination of fields (title + date + location)
-- **Content hash** — hash the entire row
+- **Content hash** — identify rows by their transformed content, optionally excluding configured fields
+- **Auto-generate** — assign new IDs without duplicate detection
+
+Detected duplicates can be skipped or used to update existing events, depending on the dataset's duplicate strategy.
 
 ## Schema Evolution
 
-As your data changes over time, TimeTiles tracks schema versions:
-
-- **New optional fields** — auto-approved, existing events unaffected
-- **Type changes or removed fields** — require your approval
+TimeTiles tracks schema versions as your data changes. Whether a change is accepted automatically, pauses for approval, or fails validation depends on the source's schema mode and the dataset's settings.
 
 ## Troubleshooting
 
@@ -93,4 +85,4 @@ As your data changes over time, TimeTiles tracks schema versions:
 | Schema approval needed | Review detected mappings, including combined coordinate order, before continuing |
 | Geocoding failures     | Verify API keys and address formatting                                           |
 | Duplicate events       | Configure a deduplication strategy on the dataset                                |
-| Large file timeout     | Split into smaller files or increase batch size                                  |
+| Large file timeout     | Inspect the failed job and worker logs; consider splitting the file              |
