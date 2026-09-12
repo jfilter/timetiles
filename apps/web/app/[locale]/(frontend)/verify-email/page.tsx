@@ -20,11 +20,9 @@ import { useVerifyEmailMutation } from "@/lib/hooks/use-auth-mutations";
 
 type VerificationStatus = "idle" | "loading" | "success" | "error" | "no-token";
 
-const VerifyEmailContent = () => {
-  const searchParams = useSearchParams();
+const VerifyEmailContent = ({ token }: { readonly token: string | null }) => {
   const router = useRouter();
   const t = useTranslations("VerifyEmail");
-  const token = searchParams.get("token");
 
   const mutation = useVerifyEmailMutation();
 
@@ -120,6 +118,11 @@ const VerifyEmailContent = () => {
   );
 };
 
+const VerifyEmailFromUrl = () => {
+  const token = useSearchParams().get("token");
+  return <VerifyEmailContent key={token} token={token} />;
+};
+
 export default function VerifyEmailPage() {
   const t = useTranslations("VerifyEmail");
   const tCommon = useTranslations("Common");
@@ -139,7 +142,7 @@ export default function VerifyEmailPage() {
         </div>
       }
     >
-      <VerifyEmailContent />
+      <VerifyEmailFromUrl />
     </Suspense>
   );
 }
