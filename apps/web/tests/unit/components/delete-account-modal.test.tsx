@@ -84,6 +84,22 @@ describe("DeleteAccountModal", () => {
     expect(await screen.findByText(rejectionMessage)).toBeInTheDocument();
   });
 
+  it("blocks confirmation when refreshing a cached summary fails", async () => {
+    const view = renderModal();
+    const proceed = screen.getByRole("button", { name: en.Common.continue });
+    await waitFor(() => expect(proceed).toBeEnabled());
+    mocks.fetchJson.mockRejectedValue(new Error("Summary unavailable"));
+
+    await act(() => view.client.invalidateQueries({ queryKey: accountKeys.deletionSummary() }));
+
+    expect(await screen.findByText("Summary unavailable")).toBeInTheDocument();
+    expect(screen.getByText(en.Account.dataSummary)).toBeInTheDocument();
+    expect(proceed).toBeDisabled();
+    fireEvent.click(proceed);
+    expect(screen.queryByLabelText(en.Common.password)).not.toBeInTheDocument();
+    expect(mocks.postJson).not.toHaveBeenCalled();
+  });
+
   it.each(["success", "error"])("discards late %s state after the modal closes", async (outcome) => {
     let complete!: () => void;
     const request = new Promise<typeof response>((resolve, reject) => {

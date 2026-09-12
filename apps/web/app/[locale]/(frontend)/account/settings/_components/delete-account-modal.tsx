@@ -220,7 +220,7 @@ export const DeleteAccountModal = ({ open, onOpenChange }: DeleteAccountModalPro
               <Button variant="outline" onClick={handleClose}>
                 {tCommon("cancel")}
               </Button>
-              <Button variant="destructive" onClick={handleSetStepConfirm} disabled={loading || !summary}>
+              <Button variant="destructive" onClick={handleSetStepConfirm} disabled={loading || !summary || !!error}>
                 {tCommon("continue")}
               </Button>
             </DialogFooter>
