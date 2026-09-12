@@ -1,8 +1,5 @@
 /**
- * Shared view-model utilities for scraper table and card-list views.
- *
- * Centralizes status badge logic, repo-to-row flattening, and row types
- * so the table and list components only own their layout.
+ * Status badges, repo-to-row flattening, and row types for the scraper table.
  *
  * @module
  * @category Components
@@ -46,12 +43,3 @@ export const flattenScraperRows = (scrapers: Scraper[], repoMap: Map<number, Scr
     const repo = repoMap.get(repoId);
     return { scraper, repoName: repo?.name ?? String(repoId), repoId };
   });
-
-/** Group scrapers by repo ID. */
-export const groupScrapersByRepo = (scrapers: Scraper[]): Record<number, Scraper[]> =>
-  scrapers.reduce<Record<number, Scraper[]>>((acc, scraper) => {
-    const repoId = getScraperRepoId(scraper);
-    acc[repoId] ??= [];
-    acc[repoId].push(scraper);
-    return acc;
-  }, {});
