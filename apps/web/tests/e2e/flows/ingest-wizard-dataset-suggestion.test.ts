@@ -146,7 +146,7 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
 
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
     await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
-    await expect(suggestedBanner.getByRole("button", { name: /use this config/i })).toBeVisible();
+    await expect(suggestedBanner.getByRole("button", { name: /reuse import settings/i })).toBeVisible();
     await expect(suggestedBanner.getByRole("button", { name: /ignore/i })).toBeVisible();
   });
 
@@ -175,7 +175,7 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await expect(catalogDropdown.or(catalogNameInput)).toBeVisible();
   });
 
-  test("Use this config sets catalog and sheet mappings atomically", async ({ page, request }) => {
+  test("Reuse import settings sets catalog and sheet mappings atomically", async ({ page, request }) => {
     await seedDatasetSuggestion(request);
     await importPage.goto();
     await importPage.waitForWizardLoad();
@@ -187,8 +187,7 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     const suggestedBanner = page.locator('[data-testid="dataset-suggestion-banner"]');
     await expect(suggestedBanner).toBeVisible({ timeout: 10000 });
 
-    // Click "Use this config"
-    await suggestedBanner.getByRole("button", { name: /use this config/i }).click();
+    await suggestedBanner.getByRole("button", { name: /reuse import settings/i }).click();
 
     // Suggested banner should be replaced by applied banner
     await expect(suggestedBanner).not.toBeVisible();
@@ -216,13 +215,13 @@ test.describe("Import Wizard - Dataset Selection Step", () => {
     await importPage.clickNext();
     await page
       .getByTestId("dataset-suggestion-banner")
-      .getByRole("button", { name: /use this config/i })
+      .getByRole("button", { name: /reuse import settings/i })
       .click();
     await importPage.clickNext();
     await expect(importPage.fieldMappingStep).toBeVisible();
     await page
       .getByTestId("config-suggestion-banner")
-      .getByRole("button", { name: /use this config/i })
+      .getByRole("button", { name: /reuse import settings/i })
       .click();
 
     const target = page.getByTestId("column-row-generated_title").getByRole("combobox");

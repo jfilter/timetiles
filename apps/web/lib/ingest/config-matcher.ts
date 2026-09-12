@@ -103,7 +103,6 @@ export const findConfigSuggestions = (
       config: {
         interpretationPlan: readInterpretationPlan(dataset),
         idStrategy: dataset.idStrategy ?? { type: "content-hash" },
-        deduplicationConfig: dataset.deduplicationConfig ?? { enabled: true },
         geocodingEnabled: dataset.geoFieldDetection?.autoDetect ?? false,
       },
     });

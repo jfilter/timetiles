@@ -194,7 +194,7 @@ export interface PreviewMetadata {
   authConfig?: AuthConfig;
 }
 
-/** Config from an existing dataset suggested for reuse */
+/** Wizard-editable import settings from an existing dataset suggested for reuse. */
 export interface ConfigSuggestion {
   datasetId: number;
   datasetName: string;
@@ -206,7 +206,6 @@ export interface ConfigSuggestion {
     /** The dataset's authored interpretation plan (roles + ops) for wizard prefill. */
     interpretationPlan?: DatasetInterpretationPlan | null;
     idStrategy?: { type?: string; externalIdPath?: string | null; duplicateStrategy?: string | null };
-    deduplicationConfig?: { enabled?: boolean | null };
     geocodingEnabled?: boolean;
   };
 }

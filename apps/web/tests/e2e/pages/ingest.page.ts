@@ -254,7 +254,7 @@ export class IngestPage {
    * If the dataset-suggestion banner is visible (server detected a similar
    * existing dataset), dismiss it via "Ignore" so we land on the manual
    * catalog form. The applied banner is unreachable here because this
-   * helper never clicks "Use this config".
+   * helper never clicks "Reuse import settings".
    *
    * Waits for the catalog API to finish loading before interacting,
    * since isVisible() checks immediately without waiting.

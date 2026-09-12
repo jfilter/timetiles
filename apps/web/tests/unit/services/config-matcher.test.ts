@@ -218,8 +218,18 @@ describe("findConfigSuggestions", () => {
     const config = results[0]!.config;
     expect(config.interpretationPlan?.ops).toEqual([]);
     expect(config.idStrategy).toEqual({ type: "content-hash" });
-    expect(config.deduplicationConfig).toEqual({ enabled: true });
     expect(config.geocodingEnabled).toBe(false);
+  });
+
+  it.each([true, false])("does not include admin duplicate detection settings (enabled: %s)", (enabled) => {
+    const dataset = makeDataset({ id: 1, name: "Configured", roles: { titlePath: "title" } });
+    dataset.deduplicationConfig = { enabled };
+
+    const results = findConfigSuggestions(["title"], [dataset]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]!.config).not.toHaveProperty("deduplicationConfig");
+    expect(dataset.deduplicationConfig.enabled).toBe(enabled);
   });
 
   it("uses dataset catalogName when provided", () => {
