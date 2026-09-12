@@ -96,7 +96,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST } from "@/app/api/ingest/configure/route";
 import type { AuthenticatedRequest } from "@/lib/middleware/auth";
-import { TEST_EMAILS } from "@/tests/constants/test-credentials";
+import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 
 // --- Constants ---
 
@@ -618,52 +618,57 @@ describe.sequential("POST /api/ingest/configure", () => {
   });
 
   describe("scheduled ingest Creation", () => {
-    it("should create a scheduled ingest when createSchedule is enabled", async () => {
-      const req = createRequest({
-        ...baseBody,
-        createSchedule: {
-          enabled: true,
-          sourceUrl: "https://example.com/data.csv",
-          name: "Daily Import",
-          scheduleType: "frequency",
-          frequency: "daily",
-          schemaMode: "additive",
-        },
-      });
-
-      const response = await POST(req, routeContext);
-      const body = await response.json();
-
-      expect(response.status).toBe(200);
-
-      expect(body.scheduledIngestId).toBeDefined();
-
-      // Verify scheduled ingest was created
-      expect(mocks.mockPayload.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection: "scheduled-ingests",
-          data: expect.objectContaining({
-            name: "Daily Import",
-            sourceUrl: "https://example.com/data.csv",
-            catalog: 1,
+    it.each([undefined, { type: "bearer" as const, bearerToken: TEST_CREDENTIALS.bearer.token }])(
+      "should create a scheduled ingest with request authentication %j",
+      async (authConfig) => {
+        const req = createRequest({
+          ...baseBody,
+          createSchedule: {
             enabled: true,
+            sourceUrl: "https://example.com/data.csv",
+            name: "Daily Import",
             scheduleType: "frequency",
             frequency: "daily",
             schemaMode: "additive",
-          }),
-        })
-      );
+            authConfig,
+          },
+        });
 
-      // Verify dataset schema config was updated for schedule
-      expect(mocks.mockPayload.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          collection: "datasets",
-          data: expect.objectContaining({
-            schemaConfig: expect.objectContaining({ locked: false, autoGrow: true, autoApproveNonBreaking: true }),
-          }),
-        })
-      );
-    });
+        const response = await POST(req, routeContext);
+        const body = await response.json();
+
+        expect(response.status).toBe(200);
+
+        expect(body.scheduledIngestId).toBeDefined();
+
+        // Verify scheduled ingest was created
+        expect(mocks.mockPayload.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            collection: "scheduled-ingests",
+            data: expect.objectContaining({
+              name: "Daily Import",
+              sourceUrl: "https://example.com/data.csv",
+              catalog: 1,
+              enabled: true,
+              scheduleType: "frequency",
+              frequency: "daily",
+              schemaMode: "additive",
+              authConfig: authConfig ?? { type: "none" },
+            }),
+          })
+        );
+
+        // Verify dataset schema config was updated for schedule
+        expect(mocks.mockPayload.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            collection: "datasets",
+            data: expect.objectContaining({
+              schemaConfig: expect.objectContaining({ locked: false, autoGrow: true, autoApproveNonBreaking: true }),
+            }),
+          })
+        );
+      }
+    );
 
     it("should check quota before creating scheduled ingest (Bug 15)", async () => {
       const req = createRequest({

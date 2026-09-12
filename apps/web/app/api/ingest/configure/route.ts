@@ -128,7 +128,6 @@ export const POST = apiRoute({
           datasetMappingEntries,
           user,
           ingestFileId: ingestFile.id,
-          previewMeta,
         });
       }
 

@@ -191,7 +191,6 @@ export interface PreviewMetadata {
   createdAt: string;
   expiresAt: string;
   sourceUrl?: string;
-  authConfig?: AuthConfig;
 }
 
 /** Wizard-editable import settings from an existing dataset suggested for reuse. */

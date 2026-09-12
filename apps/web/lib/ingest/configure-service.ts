@@ -413,7 +413,6 @@ interface CreateScheduledIngestArgs {
   datasetMappingEntries: DatasetMappingEntry[];
   user: User;
   ingestFileId: number;
-  previewMeta: PreviewMetadata;
 }
 
 /**
@@ -428,7 +427,6 @@ export const createScheduledIngest = async ({
   datasetMappingEntries,
   user,
   ingestFileId,
-  previewMeta,
 }: CreateScheduledIngestArgs): Promise<number | null> => {
   if (!scheduleConfig.enabled || !scheduleConfig.sourceUrl) {
     return null;
@@ -438,8 +436,7 @@ export const createScheduledIngest = async ({
   const quotaService = createQuotaService(payload);
   await quotaService.validateQuota(user, "ACTIVE_SCHEDULES", 1);
 
-  // Build auth config for scheduled ingest (use from schedule config or fall back to preview auth)
-  const authConfig = scheduleConfig.authConfig ?? previewMeta.authConfig ?? { type: "none" as const };
+  const authConfig = scheduleConfig.authConfig ?? { type: "none" as const };
 
   await applySchemaConfigToDatasets(payload, datasetMappingEntries, scheduleConfig.schemaMode);
 
