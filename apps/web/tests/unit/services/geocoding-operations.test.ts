@@ -100,6 +100,72 @@ describe.sequential("GeocodingOperations", () => {
     mockRateLimiter.waitForSlot.mockResolvedValue(undefined);
   });
 
+  describe("provider timeout cleanup", () => {
+    it.each(["geocode", "testConfiguration"] as const)("clears the timer after %s fails", async (method) => {
+      vi.useFakeTimers();
+      try {
+        const provider = createProvider("test-provider", 10, createMockGeocoder({ throws: new Error("Offline") }));
+        const ops = new GeocodingOperations(
+          createMockProviderManager([provider]) as any,
+          createMockCacheManager() as any,
+          defaultSettings
+        );
+
+        if (method === "geocode") {
+          await expect(ops.geocode("Berlin")).rejects.toThrow("All geocoding providers failed");
+        } else {
+          await expect(ops.testConfiguration("Berlin")).resolves.toMatchObject({
+            "test-provider": { success: false, error: "Offline" },
+          });
+        }
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("uses only the five-second timeout for admin configuration tests", async () => {
+      vi.useFakeTimers();
+      try {
+        const geocoder = createMockGeocoder();
+        geocoder.geocode.mockImplementation(() => new Promise(() => {}));
+        const ops = new GeocodingOperations(
+          createMockProviderManager([createProvider("test-provider", 10, geocoder)]) as any,
+          createMockCacheManager() as any,
+          defaultSettings
+        );
+        const result = ops.testConfiguration("Berlin");
+        expect(vi.getTimerCount()).toBe(1);
+
+        await vi.advanceTimersByTimeAsync(5000);
+
+        await expect(result).resolves.toMatchObject({
+          "test-provider": { success: false, error: "Geocoding timeout" },
+        });
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it.each(["geocode", "testConfiguration"] as const)("clears the timer after %s succeeds", async (method) => {
+      vi.useFakeTimers();
+      try {
+        const ops = new GeocodingOperations(
+          createMockProviderManager([createProvider("test-provider", 10)]) as any,
+          createMockCacheManager() as any,
+          defaultSettings
+        );
+
+        await ops[method]("Berlin");
+
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe("pickWeightedProvider (via batchGeocode)", () => {
     it("should distribute requests proportionally based on rateLimit", async () => {
       const geocoderA = createMockGeocoder({ city: "Berlin" });

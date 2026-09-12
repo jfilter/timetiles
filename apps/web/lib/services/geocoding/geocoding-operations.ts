@@ -490,12 +490,12 @@ export class GeocodingOperations {
 
     for (const provider of this.providerManager.getProviders().filter((p) => Boolean(p.enabled))) {
       try {
-        const geocodePromise = this.geocodeWithProvider(provider.geocoder, testAddress);
-        const timeoutPromise = new Promise((_resolve, reject) =>
-          setTimeout(() => reject(new Error("Geocoding timeout")), GEOCODING_TEST_TIMEOUT_MS)
+        const providerResults = await this.geocodeWithProvider(
+          provider.geocoder,
+          testAddress,
+          GEOCODING_TEST_TIMEOUT_MS,
+          "Geocoding timeout"
         );
-
-        const providerResults = (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];
 
         if (this.hasValidResults(providerResults)) {
           const firstResult = providerResults[0];
@@ -518,14 +518,21 @@ export class GeocodingOperations {
 
   private async geocodeWithProvider(
     geocoder: { geocode: (address: string | Record<string, string | number>) => Promise<Entry[]> },
-    address: string | Record<string, string | number>
+    address: string | Record<string, string | number>,
+    timeoutMs = GEOCODING_OPERATION_TIMEOUT_MS,
+    timeoutMessage = "Provider timeout"
   ): Promise<Entry[]> {
     const geocodePromise = geocoder.geocode(address);
-    const timeoutPromise = new Promise((_resolve, reject) =>
-      setTimeout(() => reject(new Error("Provider timeout")), GEOCODING_OPERATION_TIMEOUT_MS)
-    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error(timeoutMessage)), timeoutMs);
+    });
 
-    return (await Promise.race([geocodePromise, timeoutPromise])) as Entry[];
+    try {
+      return await Promise.race([geocodePromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private hasValidResults(results: Entry[]): boolean {
