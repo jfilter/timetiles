@@ -18,13 +18,10 @@ import { Suspense, useEffect, useState } from "react";
 import { ResetPasswordForm } from "@/components/auth";
 import { Link, useRouter } from "@/i18n/navigation";
 
-const ResetPasswordInner = () => {
-  const searchParams = useSearchParams();
+const ResetPasswordInner = ({ token }: { readonly token: string | null }) => {
   const router = useRouter();
   const t = useTranslations("Auth");
   const [success, setSuccess] = useState(false);
-
-  const token = searchParams.get("token");
 
   const handleSuccess = () => {
     setSuccess(true);
@@ -93,6 +90,11 @@ const ResetPasswordInner = () => {
   );
 };
 
+const ResetPasswordFromUrl = () => {
+  const token = useSearchParams().get("token");
+  return <ResetPasswordInner key={token} token={token} />;
+};
+
 export const ResetPasswordContent = () => {
   const tCommon = useTranslations("Common");
 
@@ -104,7 +106,7 @@ export const ResetPasswordContent = () => {
         </div>
       }
     >
-      <ResetPasswordInner />
+      <ResetPasswordFromUrl />
     </Suspense>
   );
 };
