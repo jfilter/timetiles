@@ -8,13 +8,23 @@
  */
 
 import fs from "fs";
-import { glob } from "glob";
+import { glob, globSync } from "glob";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const docsDir = path.join(__dirname, "../content");
+const repoRoot = path.join(__dirname, "../../..");
+
+/** Origin of the published documentation site. */
+const DOCS_SITE_ORIGIN = "https://docs.timetiles.io";
+const DOCS_SITE_URL_PATTERN = /https:\/\/docs\.timetiles\.io[^\s<>)"'`\]]*/g;
+const TRAILING_PUNCTUATION = new Set([".", ",", ";", ":", "!", "?"]);
+
+/** Text files scanned for docs site URLs; dot-directories are skipped except `.github`. */
+const REPO_TEXT_FILE_PATTERNS = ["**/*.{md,mdx,ts,tsx,js,mjs,py,yml,yaml}", ".github/**/*.{md,yml,yaml}"];
+const REPO_IGNORED_PATHS = ["**/node_modules/**", "**/dist/**", "**/out/**", "**/coverage/**", "apps/docs/content/**"];
 
 // Regular expressions to match different link types
 const linkPatterns = [
@@ -127,6 +137,40 @@ const resolveInternalLink = (link: string, currentFile: string): LinkCheckResult
   }
 
   return null; // External link
+};
+
+/**
+ * Resolve a published docs site URL to its content file.
+ *
+ * Returns null for URLs on any other host. Trailing sentence punctuation is not part of the path.
+ */
+const resolveDocsSiteUrl = (url: string): LinkCheckResult | null => {
+  let end = url.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(url.charAt(end - 1))) end--;
+  const trimmed = url.slice(0, end);
+
+  if (trimmed !== DOCS_SITE_ORIGIN && !trimmed.startsWith(`${DOCS_SITE_ORIGIN}/`)) return null;
+  return resolveInternalLink(new URL(trimmed).pathname, docsDir);
+};
+
+/**
+ * Find docs site URLs in repository files outside the docs content.
+ *
+ * READMEs, contributing guides and CLI templates link to the published site, and the MDX scan
+ * never sees those links, so they break silently when a page moves.
+ */
+const findRepoDocsSiteLinks = (): LinkInfo[] => {
+  const links: LinkInfo[] = [];
+  for (const file of globSync(REPO_TEXT_FILE_PATTERNS, { cwd: repoRoot, ignore: REPO_IGNORED_PATHS })) {
+    fs.readFileSync(path.join(repoRoot, file), "utf-8")
+      .split("\n")
+      .forEach((line, index) => {
+        for (const match of line.matchAll(DOCS_SITE_URL_PATTERN)) {
+          if (resolveDocsSiteUrl(match[0]) !== null) links.push({ url: match[0], file, line: index + 1 });
+        }
+      });
+  }
+  return links;
 };
 
 const checkExternalLink = async (url: string): Promise<{ valid: boolean; error?: string }> => {
@@ -266,6 +310,12 @@ const main = async (): Promise<void> => {
   const files = await findAllMdxFiles();
   const { allLinks, brokenLinks, externalLinks } = extractLinksFromFiles(files);
 
+  for (const linkInfo of findRepoDocsSiteLinks()) {
+    linkInfo.valid = resolveDocsSiteUrl(linkInfo.url)?.valid === true;
+    if (!linkInfo.valid) brokenLinks.push(linkInfo);
+    allLinks.push(linkInfo);
+  }
+
   await validateExternalLinks(externalLinks, brokenLinks);
 
   reportResults(allLinks, brokenLinks);
@@ -281,4 +331,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 }
 
-export { checkExternalLink, extractLinks, findAllMdxFiles, resolveInternalLink };
+export {
+  checkExternalLink,
+  extractLinks,
+  findAllMdxFiles,
+  findRepoDocsSiteLinks,
+  resolveDocsSiteUrl,
+  resolveInternalLink,
+};

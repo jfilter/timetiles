@@ -7,8 +7,30 @@ import { createServer } from "node:http";
 
 import { describe, expect, it } from "vitest";
 
-// eslint-disable-next-line boundaries/dependencies -- Tooling test hosted in the shared Vitest suite, not a web runtime dependency.
-import { checkExternalLink, extractLinks } from "../../../../docs/scripts/check-links";
+import {
+  checkExternalLink,
+  extractLinks,
+  findRepoDocsSiteLinks,
+  resolveDocsSiteUrl,
+  // eslint-disable-next-line boundaries/dependencies -- Tooling test hosted in the shared Vitest suite, not a web runtime dependency.
+} from "../../../../docs/scripts/check-links";
+
+describe("documentation site URLs outside the docs content", () => {
+  // Built from parts so the repository scan below never sees a broken literal URL in this file.
+  const docsSite = ["https://docs", "timetiles", "io"].join(".");
+
+  it("resolves docs site URLs against the docs content directory", () => {
+    expect(resolveDocsSiteUrl(`${docsSite}/development/packages/scrapers`)?.valid).toBe(true);
+    expect(resolveDocsSiteUrl(`${docsSite}/reference/does-not-exist`)?.valid).toBe(false);
+    expect(resolveDocsSiteUrl(`${docsSite}/development/packages/scrapers.`)?.valid).toBe(true);
+    expect(resolveDocsSiteUrl("https://timetiles.io/about")).toBeNull();
+  });
+
+  it("finds no broken docs site URL in repository files", () => {
+    const broken = findRepoDocsSiteLinks().filter((link) => !resolveDocsSiteUrl(link.url)?.valid);
+    expect(broken).toEqual([]);
+  });
+});
 
 describe("documentation link extraction", () => {
   it("falls back to GET when the server rejects HEAD", async () => {

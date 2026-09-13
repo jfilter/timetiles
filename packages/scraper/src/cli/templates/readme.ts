@@ -36,7 +36,7 @@ Edit \`scrapers.yml\` to configure scheduling, resource limits, and additional s
 
 ## Documentation
 
-- [TimeTiles Scraper Guide](https://docs.timetiles.io/reference/scrapers)
+- [TimeTiles Scraper Guide](https://docs.timetiles.io/development/packages/scrapers)
 - [@timetiles/scraper SDK](https://www.npmjs.com/package/@timetiles/scraper)
 `;
 };

@@ -25,7 +25,7 @@ export const footerSeedDe: FooterSeed = {
         { label: "Funktionen", url: "/features" },
         { label: "Erste Schritte", url: "https://docs.timetiles.io" },
         { label: "Dokumentation", url: "https://docs.timetiles.io" },
-        { label: "API-Referenz", url: "https://docs.timetiles.io/reference/api" },
+        { label: "API-Referenz", url: "https://docs.timetiles.io/development/api/rest-api" },
       ],
     },
     {
@@ -73,7 +73,7 @@ export const footerSeed: FooterSeed = {
         { label: "Features", url: "/features" },
         { label: "Get Started", url: "https://docs.timetiles.io" },
         { label: "Documentation", url: "https://docs.timetiles.io" },
-        { label: "API Reference", url: "https://docs.timetiles.io/reference/api" },
+        { label: "API Reference", url: "https://docs.timetiles.io/development/api/rest-api" },
       ],
     },
     {

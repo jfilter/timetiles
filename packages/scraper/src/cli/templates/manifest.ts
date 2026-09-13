@@ -11,7 +11,7 @@ export const manifestTemplate = (vars: {
   runtime: string;
   entrypoint: string;
 }): string => `# TimeTiles scraper manifest — defines scrapers in this repository.
-# See https://docs.timetiles.io/reference/scrapers for documentation.
+# See https://docs.timetiles.io/development/packages/scrapers for documentation.
 
 scrapers:
   - name: "${vars.name}"
