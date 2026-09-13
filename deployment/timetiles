@@ -908,16 +908,33 @@ EOF
         if [[ -d "$RESTORED_UPLOADS" ]]; then
             echo -e "${YELLOW}Restoring uploads...${NC}"
 
-            if [[ ! -d "$UPLOAD_HOST_DIR" ]]; then
-                mkdir -p "$UPLOAD_HOST_DIR"
-            fi
-
-            rm -rf "${UPLOAD_HOST_DIR:?}"/*
-            if ! cp -a "$RESTORED_UPLOADS"/. "$UPLOAD_HOST_DIR/"; then
-                echo -e "${RED}Uploads restore failed${NC}"
-                send_alert "Restore Failed" "Uploads restore failed at $(date)"
+            uploads_restore_failed() {
+                echo -e "${RED}Uploads restore failed: $1${NC}"
+                send_alert "Restore Failed" "Uploads restore failed at $(date): $1"
                 exit 1
+            }
+
+            # Copy beside the live directory, then swap by rename: a failed copy leaves
+            # current uploads untouched. A mount point cannot be renamed and fails here.
+            mkdir -p "$(dirname "$UPLOAD_HOST_DIR")"
+            UPLOAD_STAGE=$(mktemp -d "$UPLOAD_HOST_DIR.restore.XXXXXX") \
+                || uploads_restore_failed "cannot create staging directory next to $UPLOAD_HOST_DIR"
+            if ! cp -a "$RESTORED_UPLOADS" "$UPLOAD_STAGE/new"; then
+                rm -rf "$UPLOAD_STAGE"
+                uploads_restore_failed "copy failed; $UPLOAD_HOST_DIR unchanged"
             fi
+            if [[ -e "$UPLOAD_HOST_DIR" ]] && ! mv "$UPLOAD_HOST_DIR" "$UPLOAD_STAGE/previous"; then
+                rm -rf "$UPLOAD_STAGE"
+                uploads_restore_failed "cannot move $UPLOAD_HOST_DIR aside; it is unchanged"
+            fi
+            if ! mv "$UPLOAD_STAGE/new" "$UPLOAD_HOST_DIR"; then
+                if [[ -e "$UPLOAD_STAGE/previous" ]] && ! mv "$UPLOAD_STAGE/previous" "$UPLOAD_HOST_DIR"; then
+                    uploads_restore_failed "swap failed; previous uploads are kept in $UPLOAD_STAGE/previous"
+                fi
+                rm -rf "$UPLOAD_STAGE"
+                uploads_restore_failed "swap failed; $UPLOAD_HOST_DIR unchanged"
+            fi
+            rm -rf "$UPLOAD_STAGE"
             echo -e "${GREEN}Uploads restored${NC}"
             RESTORED_WHAT="${RESTORED_WHAT:+$RESTORED_WHAT, }uploads"
         fi

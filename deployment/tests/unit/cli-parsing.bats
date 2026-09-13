@@ -526,6 +526,44 @@ EOF
     [ ! -e "$TEST_TEMP_DIR/psql-input" ]
 }
 
+@test "uploads restore replaces the directory contents and leaves no staging data" {
+    setup_restore_commands
+    run "$TEST_CLI" restore up000001 --force
+    [ "$status" -eq 0 ]
+    [ "$(cat "$UPLOAD_HOST_DIR/restored.txt")" = 'up000001' ]
+    [ ! -e "$UPLOAD_HOST_DIR/old.txt" ]
+    [ -z "$(find "$TEST_TEMP_DIR" -maxdepth 1 -name 'uploads.restore.*')" ]
+}
+
+@test "uploads restore keeps current uploads when the copy fails" {
+    setup_restore_commands
+    printf '#!/bin/bash\nexit 1\n' > "$TEST_TEMP_DIR/bin/cp"
+    chmod +x "$TEST_TEMP_DIR/bin/cp"
+    run "$TEST_CLI" restore up000001 --force
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Uploads restore failed"* ]]
+    [ "$(cat "$UPLOAD_HOST_DIR/old.txt")" = 'old' ]
+    [ ! -e "$UPLOAD_HOST_DIR/restored.txt" ]
+    [ -z "$(find "$TEST_TEMP_DIR" -maxdepth 1 -name 'uploads.restore.*')" ]
+}
+
+@test "uploads restore rolls back when the swap fails" {
+    setup_restore_commands
+    cat > "$TEST_TEMP_DIR/bin/mv" << 'EOF'
+#!/bin/bash
+count=$(( $(cat "$TEST_TEMP_DIR/mv-count" 2>/dev/null || echo 0) + 1 ))
+echo "$count" > "$TEST_TEMP_DIR/mv-count"
+[[ "$count" -eq 2 ]] && exit 1
+exec /bin/mv "$@"
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/mv"
+    run "$TEST_CLI" restore up000001 --force
+    [ "$status" -eq 1 ]
+    [ "$(cat "$UPLOAD_HOST_DIR/old.txt")" = 'old' ]
+    [ ! -e "$UPLOAD_HOST_DIR/restored.txt" ]
+    [ -z "$(find "$TEST_TEMP_DIR" -maxdepth 1 -name 'uploads.restore.*')" ]
+}
+
 @test "restore by id restores only that snapshot" {
     setup_restore_commands
     run "$TEST_CLI" restore db000001 --force
