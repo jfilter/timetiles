@@ -26,6 +26,26 @@ import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode, useCallb
 import { Button } from "./button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./table";
 
+/** Visible table texts; English defaults keep the component locale-agnostic. */
+interface DataTableLabels {
+  readonly previous: string;
+  readonly next: string;
+  readonly pageOf: (page: number, total: number) => string;
+  readonly noResults: string;
+}
+
+const DEFAULT_LABELS: DataTableLabels = {
+  previous: "Previous",
+  next: "Next",
+  pageOf: (page, total) => `Page ${page} of ${total}`,
+  noResults: "No results.",
+};
+
+const ARIA_SORT = { asc: "ascending", desc: "descending" } as const;
+
+/** WAI-ARIA sort state for a sortable column header. */
+const ariaSortFor = (direction: false | "asc" | "desc") => (direction ? ARIA_SORT[direction] : "none");
+
 interface DataTableProps<TData, TValue> {
   readonly columns: ColumnDef<TData, TValue>[];
   readonly data: TData[];
@@ -38,6 +58,8 @@ interface DataTableProps<TData, TValue> {
   readonly renderExpandedRow?: (row: TData) => ReactNode;
   /** Custom row ID extractor for stable expand state. Defaults to row index. */
   readonly getRowId?: (row: TData) => string;
+  /** Translated pagination and empty-state texts. */
+  readonly labels?: DataTableLabels;
 }
 
 /**
@@ -118,6 +140,7 @@ const DataTable = <TData, TValue>({
   className,
   renderExpandedRow,
   getRowId: getRowIdProp,
+  labels = DEFAULT_LABELS,
 }: DataTableProps<TData, TValue>) => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -177,7 +200,11 @@ const DataTable = <TData, TValue>({
             <TableRow key={headerGroup.id}>
               {renderExpandedRow && <TableHead className="w-8" />}
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} colSpan={header.colSpan}>
+                <TableHead
+                  key={header.id}
+                  colSpan={header.colSpan}
+                  aria-sort={header.column.getCanSort() ? ariaSortFor(header.column.getIsSorted()) : undefined}
+                >
                   <HeaderCell header={header} />
                 </TableHead>
               ))}
@@ -221,7 +248,7 @@ const DataTable = <TData, TValue>({
           {!isLoading && table.getRowModel().rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={totalColSpan} className="h-24 text-center">
-                {emptyState ?? <span className="text-muted-foreground">No results.</span>}
+                {emptyState ?? <span className="text-muted-foreground">{labels.noResults}</span>}
               </TableCell>
             </TableRow>
           )}
@@ -230,9 +257,7 @@ const DataTable = <TData, TValue>({
 
       {showPagination && (
         <div className="flex items-center justify-between px-2">
-          <span className="text-muted-foreground text-sm">
-            Page {pageIndex + 1} of {pageCount}
-          </span>
+          <span className="text-muted-foreground text-sm">{labels.pageOf(pageIndex + 1, pageCount)}</span>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -241,10 +266,10 @@ const DataTable = <TData, TValue>({
               disabled={!table.getCanPreviousPage()}
             >
               <ChevronLeftIcon className="h-4 w-4" />
-              Previous
+              {labels.previous}
             </Button>
             <Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
-              Next
+              {labels.next}
               <ChevronRightIcon className="h-4 w-4" />
             </Button>
           </div>
@@ -255,5 +280,5 @@ const DataTable = <TData, TValue>({
 };
 
 export { DataTable };
-export type { DataTableProps };
+export type { DataTableLabels, DataTableProps };
 export { type ColumnDef } from "@tanstack/react-table";
