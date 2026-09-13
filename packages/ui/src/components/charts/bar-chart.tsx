@@ -10,6 +10,7 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import { defaultLightTheme } from "../../lib/chart-themes";
 import { escapeHtml } from "../../lib/escape-html";
@@ -26,6 +27,71 @@ const formatCompact = (value: number): string => {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}k`;
   return String(value);
+};
+
+const formatBarLabel = (params: unknown): string => {
+  if (typeof params === "object" && params !== null && "value" in params) {
+    const value = (params as { value?: unknown }).value;
+    if (typeof value === "number") return formatCompact(value);
+  }
+  return "";
+};
+
+const formatBarTooltip = (params: unknown): string => {
+  if (!Array.isArray(params) || params.length === 0) return "";
+  const p = params[0] as { data?: { name?: string }; value?: number };
+  // The category axis shows truncated labels; the data item carries the full one.
+  // It comes from imported data and ECharts renders this string as HTML, so escape it.
+  return `<strong>${escapeHtml(p.data?.name ?? "")}</strong><br/>${(p.value ?? 0).toLocaleString()}`;
+};
+
+// Formatters live at module level so equal data yields a deep-equal option and
+// echarts-for-react keeps legend and zoom state across re-renders.
+const buildBarChartOption = (sorted: BarChartDataItem[], theme: ChartTheme | undefined): EChartsOption => {
+  const maxLabelLength = sorted.length > 10 ? 16 : 22;
+  const truncatedLabels = sorted.map(({ label }) =>
+    label.length > maxLabelLength ? label.slice(0, maxLabelLength - 1) + "…" : label
+  );
+  const color = Array.isArray(theme?.itemColor)
+    ? theme.itemColor[0]
+    : (theme?.itemColor ?? (defaultLightTheme.itemColor as string));
+
+  return {
+    animation: true,
+    animationDuration: 300,
+    animationDurationUpdate: 300,
+    animationEasing: "cubicOut",
+    animationEasingUpdate: "cubicOut",
+
+    grid: { left: 8, right: 48, bottom: 4, top: 4, containLabel: true },
+
+    xAxis: {
+      type: "value",
+      axisLabel: { formatter: formatCompact, fontSize: 10, hideOverlap: true },
+      splitNumber: 3,
+      splitLine: { lineStyle: { opacity: 0.3 } },
+    },
+    yAxis: {
+      type: "category",
+      data: truncatedLabels,
+      inverse: true,
+      axisLabel: { fontSize: 11, width: 120, overflow: "truncate" },
+    },
+
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, formatter: formatBarTooltip },
+
+    series: [
+      {
+        type: "bar",
+        data: sorted.map(({ label, value }) => ({ value, name: label, itemStyle: { color } })),
+        universalTransition: true,
+        animationDuration: 300,
+        animationDurationUpdate: 300,
+        barMaxWidth: 20,
+        label: { show: true, position: "right", fontSize: 10, formatter: formatBarLabel },
+      },
+    ],
+  };
 };
 
 /** Minimum height per bar row in pixels */
@@ -97,89 +163,22 @@ export const BarChart = ({
   // Sort descending by value, carrying each item's original index — labels
   // are NOT unique (datasets in different catalogs may share a name), so the
   // click handler must map back by index, never by label.
-  const sortedEntries = data
-    .map((item, originalIndex) => ({ item, originalIndex }))
-    .sort((a, b) => b.item.value - a.item.value);
-  const sorted = sortedEntries.map((entry) => entry.item);
-  const labels = sorted.map((item) => item.label);
-  const values = sorted.map((item) => item.value);
+  const sortedEntries = useMemo(
+    () => data.map((item, originalIndex) => ({ item, originalIndex })).sort((a, b) => b.item.value - a.item.value),
+    [data]
+  );
+  const chartOption = useMemo(
+    () =>
+      buildBarChartOption(
+        sortedEntries.map((entry) => entry.item),
+        theme
+      ),
+    [sortedEntries, theme]
+  );
 
   // Auto-calculate height from data count
-  const autoHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, sorted.length * BAR_ROW_HEIGHT + 40));
+  const autoHeight = Math.min(MAX_CHART_HEIGHT, Math.max(MIN_CHART_HEIGHT, sortedEntries.length * BAR_ROW_HEIGHT + 40));
   const effectiveHeight = height ?? autoHeight;
-
-  // Truncate long y-axis labels
-  const maxLabelLength = sorted.length > 10 ? 16 : 22;
-  const truncatedLabels = labels.map((l) => (l.length > maxLabelLength ? l.slice(0, maxLabelLength - 1) + "…" : l));
-
-  const chartOption: EChartsOption = {
-    animation: true,
-    animationDuration: 300,
-    animationDurationUpdate: 300,
-    animationEasing: "cubicOut",
-    animationEasingUpdate: "cubicOut",
-
-    grid: { left: 8, right: 48, bottom: 4, top: 4, containLabel: true },
-
-    xAxis: {
-      type: "value",
-      axisLabel: { formatter: (value: number) => formatCompact(value), fontSize: 10, hideOverlap: true },
-      splitNumber: 3,
-      splitLine: { lineStyle: { opacity: 0.3 } },
-    },
-    yAxis: {
-      type: "category",
-      data: truncatedLabels,
-      inverse: true,
-      axisLabel: { fontSize: 11, width: 120, overflow: "truncate" },
-    },
-
-    tooltip: {
-      trigger: "axis",
-      axisPointer: { type: "shadow" },
-      formatter: (params: unknown) => {
-        if (!Array.isArray(params) || params.length === 0) return "";
-        const p = params[0] as { dataIndex?: number; value?: number };
-        const idx = p.dataIndex ?? 0;
-        const name = labels[idx] ?? "";
-        const val = p.value ?? 0;
-        // `name` is a catalog/dataset name from imported data and this string is rendered
-        // via innerHTML (ECharts renderMode defaults to "html") — escape it.
-        return `<strong>${escapeHtml(name)}</strong><br/>${val.toLocaleString()}`;
-      },
-    },
-
-    series: [
-      {
-        type: "bar",
-        data: values.map((value, index) => ({
-          value,
-          name: labels[index],
-          itemStyle: {
-            color: Array.isArray(theme?.itemColor)
-              ? theme.itemColor[0]
-              : (theme?.itemColor ?? (defaultLightTheme.itemColor as string)),
-          },
-        })),
-        universalTransition: true,
-        animationDuration: 300,
-        animationDurationUpdate: 300,
-        barMaxWidth: 20,
-        label: {
-          show: true,
-          position: "right",
-          fontSize: 10,
-          formatter: (params: unknown) => {
-            if (typeof params === "object" && params !== null && "value" in params) {
-              const value = (params as { value?: unknown }).value;
-              if (typeof value === "number") return formatCompact(value);
-            }
-            return "";
-          },
-        },
-      },
-    ],
-  };
 
   // Map click indices back through sort order
   const onEventsHandler = onBarClick

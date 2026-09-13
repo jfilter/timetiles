@@ -7,7 +7,7 @@
 import type { EChartsReactProps } from "echarts-for-react";
 import ReactEChartsLib from "echarts-for-react";
 import * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 // Type the ReactECharts component properly for strict TypeScript
 // Add ref support to the props
@@ -52,7 +52,7 @@ export const BaseChart = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const themedOption = applyThemeToOption(config, theme);
+  const themedOption = useMemo(() => applyThemeToOption(config, theme), [config, theme]);
 
   const containerDivStyle = { height, width };
 

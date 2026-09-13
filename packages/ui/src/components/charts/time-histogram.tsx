@@ -11,6 +11,7 @@
 "use client";
 
 import type { EChartsOption } from "echarts";
+import { useMemo } from "react";
 
 import { defaultDarkTheme, defaultLightTheme } from "../../lib/chart-themes";
 import { escapeHtml } from "../../lib/escape-html";
@@ -509,20 +510,37 @@ export const TimeHistogram = ({
   updatingLabel,
 }: TimeHistogramProps) => {
   const labels = useUILabels();
-  const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
-  const chartOption = buildHistogramChartOption({
+  const resolvedEventsLabel = eventsLabel ?? labels.events;
+  const resolvedTotalLabel = totalLabel ?? labels.total;
+  // The tooltip formatter is a closure; a fresh option per render would make
+  // echarts-for-react reset legend selection and zoom.
+  const chartOption = useMemo(() => {
+    const { effectiveTheme, isDark } = resolveHistogramTheme(theme);
+    return buildHistogramChartOption({
+      data,
+      groupedData,
+      effectiveTheme,
+      isDark,
+      bucketSizeSeconds,
+      showDataZoom,
+      dataZoomStart,
+      dataZoomEnd,
+      locale,
+      eventsLabel: resolvedEventsLabel,
+      totalLabel: resolvedTotalLabel,
+    });
+  }, [
     data,
     groupedData,
-    effectiveTheme,
-    isDark,
+    theme,
     bucketSizeSeconds,
     showDataZoom,
     dataZoomStart,
     dataZoomEnd,
     locale,
-    eventsLabel: eventsLabel ?? labels.events,
-    totalLabel: totalLabel ?? labels.total,
-  });
+    resolvedEventsLabel,
+    resolvedTotalLabel,
+  ]);
 
   const handleChartClick = (params: EChartsEventParams) => {
     const range = getClickedBarRange(params);
