@@ -54,6 +54,17 @@ teardown() {
     [[ "$output" == *"Usage"* ]]
 }
 
+@test "every timetiles command hint names an existing command" {
+    local labels hints cmd
+    labels=$(grep -oE '^    [a-z|-]+\)' "$DEPLOY_DIR/timetiles" | tr -d ' )' | tr '|' '\n')
+    hints=$(grep -E '(^|[[:space:]])(echo|print_[a-z]+) ' "$DEPLOY_DIR/timetiles" \
+        | grep -oE 'timetiles [a-z][a-z-]*' | cut -d' ' -f2 | sort -u)
+    [ -n "$hints" ]
+    for cmd in $hints; do
+        grep -qxF "$cmd" <<< "$labels" || { echo "hint names unknown command: timetiles $cmd"; return 1; }
+    done
+}
+
 # =============================================================================
 # Restart Behavior
 # =============================================================================

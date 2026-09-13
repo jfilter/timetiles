@@ -813,7 +813,7 @@ EOF
                 echo -e "${YELLOW}Restarting application services...${NC}"
                 # shellcheck disable=SC2086 # deliberate word splitting
                 $DC_CMD start $RESTORE_APP_SERVICES \
-                    || echo -e "${RED}Could not restart services - run 'timetiles start'${NC}"
+                    || echo -e "${RED}Could not restart services - run 'timetiles up'${NC}"
             fi
         }
         trap restore_cleanup EXIT INT TERM
