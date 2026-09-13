@@ -16,88 +16,37 @@ import { hashEmail, hashIpAddress } from "@/lib/security/hash";
 import { AUDIT_ACTIONS, auditFieldChanges, auditLog } from "@/lib/services/audit-log-service";
 
 describe.sequential("AUDIT_ACTIONS", () => {
-  it("defines EMAIL_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.EMAIL_CHANGED).toBe("account.email_changed");
-  });
-
-  it("defines PASSWORD_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.PASSWORD_CHANGED).toBe("account.password_changed");
-  });
-
-  it("defines DELETION_SCHEDULED action", () => {
-    expect(AUDIT_ACTIONS.DELETION_SCHEDULED).toBe("account.deletion_scheduled");
-  });
-
-  it("defines DELETION_CANCELLED action", () => {
-    expect(AUDIT_ACTIONS.DELETION_CANCELLED).toBe("account.deletion_cancelled");
-  });
-
-  it("defines DELETION_EXECUTED action", () => {
-    expect(AUDIT_ACTIONS.DELETION_EXECUTED).toBe("account.deletion_executed");
-  });
-
-  it("defines PASSWORD_VERIFY_FAILED action", () => {
-    expect(AUDIT_ACTIONS.PASSWORD_VERIFY_FAILED).toBe("account.password_verify_failed");
-  });
-
-  // Admin actions on users
-  it("defines TRUST_LEVEL_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.TRUST_LEVEL_CHANGED).toBe("admin.trust_level_changed");
-  });
-
-  it("defines ROLE_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.ROLE_CHANGED).toBe("admin.role_changed");
-  });
-
-  it("defines USER_ACTIVATED action", () => {
-    expect(AUDIT_ACTIONS.USER_ACTIVATED).toBe("admin.user_activated");
-  });
-
-  it("defines USER_DEACTIVATED action", () => {
-    expect(AUDIT_ACTIONS.USER_DEACTIVATED).toBe("admin.user_deactivated");
-  });
-
-  it("defines CUSTOM_QUOTAS_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.CUSTOM_QUOTAS_CHANGED).toBe("admin.custom_quotas_changed");
-  });
-
-  it("defines QUOTA_OVERRIDDEN action", () => {
-    expect(AUDIT_ACTIONS.QUOTA_OVERRIDDEN).toBe("admin.quota_overridden");
-  });
-
-  // Data visibility
-  it("defines CATALOG_VISIBILITY_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.CATALOG_VISIBILITY_CHANGED).toBe("data.catalog_visibility_changed");
-  });
-
-  it("defines DATASET_VISIBILITY_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.DATASET_VISIBILITY_CHANGED).toBe("data.dataset_visibility_changed");
-  });
-
-  it("defines CATALOG_OWNERSHIP_TRANSFERRED action", () => {
-    expect(AUDIT_ACTIONS.CATALOG_OWNERSHIP_TRANSFERRED).toBe("data.catalog_ownership_transferred");
-  });
-
-  it("defines DATASET_OWNERSHIP_TRANSFERRED action", () => {
-    expect(AUDIT_ACTIONS.DATASET_OWNERSHIP_TRANSFERRED).toBe("data.dataset_ownership_transferred");
-  });
-
-  // System configuration
-  it("defines FEATURE_FLAG_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.FEATURE_FLAG_CHANGED).toBe("system.feature_flag_changed");
-  });
-
-  it("defines SETTINGS_CHANGED action", () => {
-    expect(AUDIT_ACTIONS.SETTINGS_CHANGED).toBe("system.settings_changed");
-  });
-
-  // Import admin operations
-  it("defines IMPORT_JOB_STAGE_OVERRIDE action", () => {
-    expect(AUDIT_ACTIONS.IMPORT_JOB_STAGE_OVERRIDE).toBe("import.job_stage_override");
-  });
-
-  it("defines SCHEDULED_INGEST_ADMIN_MODIFIED action", () => {
-    expect(AUDIT_ACTIONS.SCHEDULED_INGEST_ADMIN_MODIFIED).toBe("import.scheduled_ingest_admin_modified");
+  it("maps every action to its stored identifier", () => {
+    expect(AUDIT_ACTIONS).toEqual({
+      EMAIL_CHANGED: "account.email_changed",
+      PASSWORD_CHANGED: "account.password_changed",
+      PASSWORD_RESET: "account.password_reset",
+      DELETION_SCHEDULED: "account.deletion_scheduled",
+      DELETION_CANCELLED: "account.deletion_cancelled",
+      DELETION_EXECUTED: "account.deletion_executed",
+      PASSWORD_VERIFY_FAILED: "account.password_verify_failed",
+      TRUST_LEVEL_CHANGED: "admin.trust_level_changed",
+      ROLE_CHANGED: "admin.role_changed",
+      USER_ACTIVATED: "admin.user_activated",
+      USER_DEACTIVATED: "admin.user_deactivated",
+      CUSTOM_QUOTAS_CHANGED: "admin.custom_quotas_changed",
+      QUOTA_OVERRIDDEN: "admin.quota_overridden",
+      CATALOG_VISIBILITY_CHANGED: "data.catalog_visibility_changed",
+      DATASET_VISIBILITY_CHANGED: "data.dataset_visibility_changed",
+      CATALOG_OWNERSHIP_TRANSFERRED: "data.catalog_ownership_transferred",
+      DATASET_OWNERSHIP_TRANSFERRED: "data.dataset_ownership_transferred",
+      FEATURE_FLAG_CHANGED: "system.feature_flag_changed",
+      SETTINGS_CHANGED: "system.settings_changed",
+      IMPORT_JOB_STAGE_OVERRIDE: "import.job_stage_override",
+      SCHEDULED_INGEST_ADMIN_MODIFIED: "import.scheduled_ingest_admin_modified",
+      SCHEDULED_INGEST_RETRIES_EXHAUSTED: "import.scheduled_ingest_retries_exhausted",
+      SCHEDULED_INGEST_CONFIG_INVALID: "import.scheduled_ingest_config_invalid",
+      SCHEDULE_MANAGER_TRIGGERED: "admin.schedule_manager_triggered",
+      WEBHOOK_TRIGGERED: "import.webhook_triggered",
+      LOGIN_SUCCESS: "account.login_success",
+      LOGIN_FAILED: "account.login_failed",
+      REGISTERED: "account.registered",
+    });
   });
 });
 

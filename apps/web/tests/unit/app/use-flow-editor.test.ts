@@ -27,7 +27,13 @@ vi.mock("@xyflow/react", () => ({
 vi.mock("@/lib/hooks/use-ingest-wizard-queries", () => ({ usePreviewSheetsQuery: mockUsePreviewSheetsQuery }));
 
 vi.mock("@/lib/ingest/types/flow-mapping", () => ({
-  createSourceNodes: () => [{ id: "src-1", type: "source-column", data: {}, position: { x: 0, y: 0 } }],
+  createSourceNodes: (headers: string[], _sampleData: unknown, sheetIndex: number) =>
+    headers.map((header) => ({
+      id: `source-${sheetIndex}-${header}`,
+      type: "source-column",
+      data: {},
+      position: { x: 0, y: 0 },
+    })),
   createTargetNodes: () => [{ id: "tgt-1", type: "target-field", data: {}, position: { x: 0, y: 0 } }],
 }));
 
@@ -40,13 +46,19 @@ vi.mock("@/lib/ingest/types/transforms", () => ({ createTransform: vi.fn(), isTr
 
 import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
 
-const makeSheet = (index: number, name: string) => ({
+const makeSheet = (index: number, name: string, headers: string[] = ["title", "date"]) => ({
   index,
   name,
   rowCount: 10,
-  headers: ["title", "date"],
-  sampleData: [{ title: "Test", date: "2025-01-01" }],
+  headers,
+  sampleData: [Object.fromEntries(headers.map((header) => [header, "value"]))],
 });
+
+/** Node ids from the most recent `setNodes` call that received a node array. */
+const lastInitializedNodeIds = (): string[] => {
+  const arrays = mockSetNodes.mock.calls.map(([arg]) => arg as unknown).filter(Array.isArray);
+  return (arrays.at(-1) ?? []).map((node: { id: string }) => node.id);
+};
 
 describe("useFlowEditor initialization reset", () => {
   beforeEach(() => {
@@ -62,12 +74,12 @@ describe("useFlowEditor initialization reset", () => {
 
     renderHook(() => useFlowEditor("preview-1", 0));
 
-    expect(mockSetNodes).toHaveBeenCalled();
+    expect(lastInitializedNodeIds()).toEqual(["source-0-title", "source-0-date", "tgt-1"]);
   });
 
   it("should re-initialize when sheetIndex changes", () => {
     mockUsePreviewSheetsQuery.mockReturnValue({
-      data: { sheets: [makeSheet(0, "Sheet1"), makeSheet(1, "Sheet2")] },
+      data: { sheets: [makeSheet(0, "Sheet1"), makeSheet(1, "Sheet2", ["venue", "starts"])] },
       isLoading: false,
       error: null,
     });
@@ -76,14 +88,13 @@ describe("useFlowEditor initialization reset", () => {
       initialProps: { previewId: "preview-1", sheetIndex: 0 },
     });
 
-    const callsAfterInit = mockSetNodes.mock.calls.length;
-    expect(callsAfterInit).toBeGreaterThan(0);
+    expect(lastInitializedNodeIds()).toEqual(["source-0-title", "source-0-date", "tgt-1"]);
 
-    // Change sheetIndex — should trigger re-initialization
+    // Change sheetIndex — nodes must be rebuilt from the second sheet's columns
     mockSetNodes.mockClear();
     rerender({ previewId: "preview-1", sheetIndex: 1 });
 
-    expect(mockSetNodes).toHaveBeenCalled();
+    expect(lastInitializedNodeIds()).toEqual(["source-1-venue", "source-1-starts", "tgt-1"]);
   });
 
   it("should re-initialize when previewId changes", () => {
@@ -97,18 +108,18 @@ describe("useFlowEditor initialization reset", () => {
       initialProps: { previewId: "preview-1", sheetIndex: 0 },
     });
 
-    expect(mockSetNodes).toHaveBeenCalled();
+    expect(lastInitializedNodeIds()).toEqual(["source-0-title", "source-0-date", "tgt-1"]);
 
-    // Change previewId — return new data (new object reference, simulating fresh query)
+    // Change previewId — nodes must be rebuilt from the new preview's columns
     mockSetNodes.mockClear();
     mockUsePreviewSheetsQuery.mockReturnValue({
-      data: { sheets: [makeSheet(0, "NewSheet")] },
+      data: { sheets: [makeSheet(0, "NewSheet", ["name"])] },
       isLoading: false,
       error: null,
     });
     rerender({ previewId: "preview-2", sheetIndex: 0 });
 
-    expect(mockSetNodes).toHaveBeenCalled();
+    expect(lastInitializedNodeIds()).toEqual(["source-0-name", "tgt-1"]);
   });
 
   it("should not re-initialize on rerender with same params", () => {
