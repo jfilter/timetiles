@@ -1,8 +1,8 @@
 /**
  * OpenAPI registry for automatic spec generation.
  *
- * This module registers all API routes with their schemas for OpenAPI generation.
- * Routes are registered using Zod schemas that provide both validation and documentation.
+ * Registers the public API routes documented in the generated OpenAPI spec, using
+ * the same Zod schemas that validate their requests and responses.
  *
  * @module
  * @category OpenAPI

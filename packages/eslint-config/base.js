@@ -198,7 +198,7 @@ export default [
             "apps/web/lib/blocks",
           ],
         },
-        // Layer 3 — Application (hooks, api helpers, blocks, jobs, etc.)
+        // Layer 3 — Application (hooks, api helpers, jobs, seed, etc.)
         { type: "web-lib", partialMatch: false, pattern: "apps/web/lib" },
         { type: "web-api", partialMatch: false, pattern: "apps/web/app/api" },
         { type: "web-components", partialMatch: false, pattern: "apps/web/components" },
