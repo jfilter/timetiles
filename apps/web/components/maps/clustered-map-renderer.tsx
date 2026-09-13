@@ -11,6 +11,8 @@
  */
 "use client";
 
+import "./maplibre-worker";
+
 import type { MapColors } from "@timetiles/ui/lib/chart-themes";
 import type { MapLayerMouseEvent } from "maplibre-gl";
 import type { ComponentProps } from "react";

@@ -18,6 +18,12 @@ export const MAP_STYLES_BY_PRESET: Record<string, { light: string; dark: string 
  */
 export const MAP_STYLES = MAP_STYLES_BY_PRESET.cartographic!;
 
+/** MapLibre worker files served by `app/maplibre/[file]/route.ts` under their dist names. */
+export const MAPLIBRE_WORKER_FILES = ["maplibre-gl-worker.mjs", "maplibre-gl-shared.mjs"] as const;
+
+/** URL MapLibre loads its worker from; the shared chunk resolves next to it. */
+export const MAPLIBRE_WORKER_URL = "/maplibre/maplibre-gl-worker.mjs";
+
 /**
  * Default cluster statistics used when no data is available.
  * These provide sensible defaults for percentile-based cluster visualization.
