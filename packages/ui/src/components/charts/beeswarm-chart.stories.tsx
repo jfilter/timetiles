@@ -154,7 +154,7 @@ export const Default: Story = {
 
 export const Loading: Story = { args: { series: [], isInitialLoad: true, height: 300 } };
 
-export const Empty: Story = { args: { series: [], height: 300 } };
+export const Empty: Story = { args: { series: [], height: 300, emptyMessage: "No events to display" } };
 
 export const ErrorState: Story = { args: { series: [], isError: true, height: 300, onRetry: () => {} } };
 
