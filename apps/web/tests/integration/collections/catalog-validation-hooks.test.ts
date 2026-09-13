@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * Integration tests for catalog beforeChange and afterDelete hooks:
- * - validateSlugUniqueness: prevents duplicate catalog slugs
+ * - unique slug field: rejects duplicate catalog slugs
  * - checkAndIncrementQuota: enforces CATALOGS_PER_USER limit
  * - afterDelete quota decrement: releases quota on catalog deletion
  *
@@ -37,7 +37,7 @@ describe.sequential("Catalog validation hooks", () => {
     await cleanup();
   });
 
-  describe("validateSlugUniqueness", () => {
+  describe("unique slug field", () => {
     it("rejects creating a catalog with a duplicate slug", async () => {
       const slug = `unique-slug-${Date.now()}`;
       await payload.create({

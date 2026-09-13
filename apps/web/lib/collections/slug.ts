@@ -120,8 +120,10 @@ export const createSlugHook =
     operation?: string;
     originalDoc?: Record<string, unknown>;
   }) => {
-    // Supplied slugs are normalized too: they end up in URLs and style selectors.
-    const value = suppliedValue ? generateSlug(suppliedValue) : suppliedValue;
+    // Supplied slugs are normalized too: they end up in URLs and style selectors. An unchanged
+    // stored slug keeps its form so URLs created before normalization keep working.
+    const isStoredSlug = suppliedValue != null && suppliedValue === originalDoc?.slug;
+    const value = suppliedValue && !isStoredSlug ? generateSlug(suppliedValue) : suppliedValue;
     const sourceValue = getSourceValue(data, options?.sourceField);
 
     // Generate new slug from source value

@@ -32,4 +32,26 @@ describe("createSlugHook", () => {
 
     expect(slug).toBe("my-site");
   });
+
+  it("keeps an unchanged stored slug that predates normalization", async () => {
+    const slug = await hook({
+      value: "Legacy_Slug",
+      data: { name: "Page" },
+      operation: "update",
+      originalDoc: { id: 1, slug: "Legacy_Slug" },
+    });
+
+    expect(slug).toBe("Legacy_Slug");
+  });
+
+  it("normalizes a slug that changes on update", async () => {
+    const slug = await hook({
+      value: "New Slug",
+      data: { name: "Page" },
+      operation: "update",
+      originalDoc: { id: 1, slug: "old-slug" },
+    });
+
+    expect(slug).toBe("new-slug");
+  });
 });
