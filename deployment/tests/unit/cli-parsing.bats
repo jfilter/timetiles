@@ -176,6 +176,80 @@ EOF
     export PATH="$TEST_TEMP_DIR/bin:$PATH"
 }
 
+setup_offsite_commands() {
+    setup_backup_commands
+    mkdir -p "$TEST_TEMP_DIR/uploads"
+    export UPLOAD_HOST_DIR="$TEST_TEMP_DIR/uploads"
+    export TIMETILES_ALERT_SCRIPT="$TEST_TEMP_DIR/bin/alert"
+    cat > "$TEST_TEMP_DIR/bin/restic" << 'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$TEST_TEMP_DIR/restic-calls"
+if [[ "$2" == s3:* ]]; then
+    for word in ${OFFSITE_FAIL:-}; do
+        if [[ " $* " == *" $word "* ]]; then
+            echo "fixture: offsite $word denied" >&2
+            exit 1
+        fi
+    done
+fi
+EOF
+    cat > "$TEST_TEMP_DIR/bin/docker" << 'EOF'
+#!/bin/bash
+[[ "$*" == *pg_dump* ]] && echo '-- fixture dump'
+exit 0
+EOF
+    cat > "$TEST_TEMP_DIR/bin/alert" << 'EOF'
+#!/bin/bash
+printf '%s|%s\n' "$1" "$2" >> "$TEST_TEMP_DIR/alerts"
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/"*
+}
+
+@test "backup db with offsite fails and alerts when the offsite backup fails" {
+    setup_offsite_commands
+    export OFFSITE_FAIL=backup
+    run "$TEST_CLI" backup db --offsite
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"fixture: offsite backup denied"* ]]
+    grep -q '^Offsite Backup Failed|.*fixture: offsite backup denied' "$TEST_TEMP_DIR/alerts"
+}
+
+@test "backup uploads with offsite fails and alerts when the offsite repository cannot be initialized" {
+    setup_offsite_commands
+    export OFFSITE_FAIL="snapshots init"
+    run "$TEST_CLI" backup uploads --offsite
+    [ "$status" -eq 1 ]
+    grep -q '^Offsite Backup Failed|' "$TEST_TEMP_DIR/alerts"
+    ! grep -q "^-r s3:fixture.test/backups backup" "$TEST_TEMP_DIR/restic-calls"
+}
+
+@test "backup with offsite fails when no offsite repository is configured" {
+    setup_offsite_commands
+    unset RESTIC_OFFSITE_REPOSITORY
+    run "$TEST_CLI" backup db --offsite
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"RESTIC_OFFSITE_REPOSITORY is not set"* ]]
+    grep -q '^Offsite Backup Failed|' "$TEST_TEMP_DIR/alerts"
+}
+
+@test "full backup still backs up uploads when the offsite database half fails" {
+    setup_offsite_commands
+    export OFFSITE_FAIL=db
+    run "$TEST_CLI" backup --offsite
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"Full backup incomplete"* ]]
+    grep -qxF -e "-r $RESTIC_REPOSITORY backup --tag uploads $UPLOAD_HOST_DIR" "$TEST_TEMP_DIR/restic-calls"
+    grep -qxF -e "-r s3:fixture.test/backups backup --tag uploads $UPLOAD_HOST_DIR" "$TEST_TEMP_DIR/restic-calls"
+}
+
+@test "backup with offsite succeeds when both repositories accept the backup" {
+    setup_offsite_commands
+    run "$TEST_CLI" backup --offsite
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Full backup complete"* ]]
+    [ ! -e "$TEST_TEMP_DIR/alerts" ]
+}
+
 @test "backup list accepts offsite after its subcommand" {
     setup_backup_commands
     run "$TEST_CLI" backup list --offsite

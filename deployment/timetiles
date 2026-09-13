@@ -49,7 +49,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
+ALERT_SCRIPT="${TIMETILES_ALERT_SCRIPT:-/opt/timetiles/scripts/alert.sh}"
 
 send_alert() {
     local subject="$1"
@@ -141,6 +141,35 @@ run_restic() {
     fi
 
     restic -r "$repo" "$@"
+}
+
+# Mirror a finished local backup to the offsite repository, passing restic backup args.
+# An explicit --offsite that cannot complete is a failed backup: alert and exit.
+offsite_backup() {
+    local what="$1"
+    shift
+    local log reason
+
+    if [[ -z "$RESTIC_OFFSITE_REPOSITORY" ]]; then
+        reason="--offsite requested but RESTIC_OFFSITE_REPOSITORY is not set"
+    else
+        echo -e "${YELLOW}Syncing $what to offsite...${NC}"
+        log=$(mktemp)
+        if init_restic_repo "$RESTIC_OFFSITE_REPOSITORY" "offsite" < /dev/null > "$log" 2>&1 \
+            && run_restic "$RESTIC_OFFSITE_REPOSITORY" backup "$@" >> "$log" 2>&1; then
+            cat "$log"
+            rm -f "$log"
+            echo -e "${GREEN}Offsite $what sync complete${NC}"
+            return 0
+        fi
+        cat "$log" >&2
+        reason="Offsite $what backup failed: $(tail -n 3 "$log")"
+        rm -f "$log"
+    fi
+
+    echo -e "${RED}${reason}${NC}" >&2
+    send_alert "Offsite Backup Failed" "$reason ($(date))"
+    exit 1
 }
 
 # Functions
@@ -533,17 +562,8 @@ case "$1" in
                 echo -e "${GREEN}Database backup complete${NC}"
 
                 # Offsite sync
-                if $OFFSITE && [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
-                    echo -e "${YELLOW}Syncing to offsite...${NC}"
-                    if init_restic_repo "$RESTIC_OFFSITE_REPOSITORY" "offsite" 2>/dev/null; then
-                        if run_restic "$RESTIC_OFFSITE_REPOSITORY" backup --tag db --stdin --stdin-filename "database.sql" < "$TEMP_DUMP" 2>/dev/null; then
-                            echo -e "${GREEN}Offsite sync complete${NC}"
-                        else
-                            echo -e "${YELLOW}Offsite sync failed (continuing - local backup succeeded)${NC}"
-                        fi
-                    else
-                        echo -e "${YELLOW}Offsite init failed (write-only credentials?) - skipping${NC}"
-                    fi
+                if $OFFSITE; then
+                    offsite_backup "database" --tag db --stdin --stdin-filename "database.sql" < "$TEMP_DUMP"
                 fi
                 ;;
 
@@ -569,13 +589,8 @@ case "$1" in
                 echo -e "${GREEN}Uploads backup complete${NC}"
 
                 # Offsite sync for uploads
-                if $OFFSITE && [[ -n "$RESTIC_OFFSITE_REPOSITORY" ]]; then
-                    echo -e "${YELLOW}Syncing uploads to offsite...${NC}"
-                    if run_restic "$RESTIC_OFFSITE_REPOSITORY" backup --tag uploads "$UPLOAD_HOST_DIR" 2>/dev/null; then
-                        echo -e "${GREEN}Offsite uploads sync complete${NC}"
-                    else
-                        echo -e "${YELLOW}Offsite uploads sync failed (continuing)${NC}"
-                    fi
+                if $OFFSITE; then
+                    offsite_backup "uploads" --tag uploads "$UPLOAD_HOST_DIR"
                 fi
                 ;;
 
@@ -586,8 +601,14 @@ case "$1" in
                 BACKUP_ARGS=""
                 $OFFSITE && BACKUP_ARGS="--offsite"
 
-                "$SCRIPT_DIR/timetiles" backup db $BACKUP_ARGS || exit 1
-                "$SCRIPT_DIR/timetiles" backup uploads $BACKUP_ARGS || exit 1
+                # A failed half (e.g. offsite db) must not skip the other half's backup.
+                FULL_FAILED=false
+                "$SCRIPT_DIR/timetiles" backup db $BACKUP_ARGS || FULL_FAILED=true
+                "$SCRIPT_DIR/timetiles" backup uploads $BACKUP_ARGS || FULL_FAILED=true
+                if $FULL_FAILED; then
+                    echo -e "${RED}Full backup incomplete${NC}" >&2
+                    exit 1
+                fi
 
                 echo -e "${GREEN}Full backup complete${NC}"
                 ;;
