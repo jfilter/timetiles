@@ -41,6 +41,7 @@ interface UILabels {
   total: string;
   subscribing: string;
   subscribed: string;
+  emailAddress: string;
   emptyTitle: string;
   emptySubtitle: string;
   noMatchTitle: string;
@@ -71,6 +72,7 @@ const DEFAULT_UI_LABELS: UILabels = {
   total: "Total",
   subscribing: "Subscribing...",
   subscribed: "Subscribed",
+  emailAddress: "Email address",
   emptyTitle: "No data yet",
   emptySubtitle: "There's nothing to show",
   noMatchTitle: "No matching results",

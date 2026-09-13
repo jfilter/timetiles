@@ -63,6 +63,7 @@ const NewsletterForm = ({
     messages,
     onSubmit,
   });
+  const errorId = React.useId();
 
   return (
     <div
@@ -103,13 +104,14 @@ const NewsletterForm = ({
             email={email}
             onEmailChange={setEmail}
             status={status}
+            errorId={errorId}
             placeholder={placeholder}
             size="sm"
           />
           <NewsletterSubmitButton status={status} buttonText={buttonText} labels={buttonLabels} size="sm" />
         </form>
 
-        <NewsletterStatusMessage status={status} message={message} />
+        <NewsletterStatusMessage status={status} message={message} errorId={errorId} />
       </div>
     </div>
   );

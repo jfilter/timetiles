@@ -11,6 +11,7 @@ import { render, screen } from "@testing-library/react";
 import { ConfirmDialog } from "@timetiles/ui/components/confirm-dialog";
 import { type ColumnDef, DataTable } from "@timetiles/ui/components/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@timetiles/ui/components/dialog";
+import { NewsletterForm } from "@timetiles/ui/components/newsletter-form";
 import { UIProvider } from "@timetiles/ui/provider";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
@@ -72,5 +73,11 @@ describe.each([
     );
 
     expect(screen.getByRole("button", { name: messages.Common.close })).toBeInTheDocument();
+  });
+
+  it("labels the newsletter email input without per-call labels", () => {
+    renderTranslated(<NewsletterForm messages={messages.Newsletter} onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole("textbox", { name: messages.Newsletter.emailAddress })).toBeInTheDocument();
   });
 });

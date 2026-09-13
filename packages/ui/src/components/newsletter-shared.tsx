@@ -111,6 +111,7 @@ export const NewsletterEmailInput = ({
   email,
   onEmailChange,
   status,
+  errorId,
   placeholder = "your@email.address",
   size = "sm",
   className,
@@ -118,17 +119,28 @@ export const NewsletterEmailInput = ({
   email: string;
   onEmailChange: (email: string) => void;
   status: NewsletterStatus;
+  /** Id of the error region from NewsletterStatusMessage, linked while the status is "error" */
+  errorId: string;
   placeholder?: string;
   /** "sm" for compact form, "md" for CTA variant */
   size?: "sm" | "md";
   className?: string;
 }) => {
+  const labels = useUILabels();
+  const inputId = React.useId();
   const isDisabled = status === "loading" || status === "success";
+  const isError = status === "error";
 
   return (
     <div className={cn("relative", size === "md" && "flex-1", className)}>
+      <label htmlFor={inputId} className="sr-only">
+        {labels.emailAddress}
+      </label>
       <input
+        id={inputId}
         type="email"
+        aria-invalid={isError}
+        aria-describedby={isError ? errorId : undefined}
         value={email}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => onEmailChange(e.target.value)}
         placeholder={placeholder}
@@ -235,10 +247,13 @@ export const NewsletterSubmitButton = ({
 export const NewsletterStatusMessage = ({
   status,
   message,
+  errorId,
   decorated = false,
 }: {
   status: NewsletterStatus;
   message: string;
+  /** Id of the error region, referenced by the email input's aria-describedby */
+  errorId: string;
   /** When true, renders a decorated panel with icons (CTA variant); otherwise a simple text line */
   decorated?: boolean;
 }) => {
@@ -248,7 +263,7 @@ export const NewsletterStatusMessage = ({
   return (
     <>
       <output aria-live="polite">{isError ? null : body}</output>
-      <div role="alert" aria-live="assertive">
+      <div id={errorId} role="alert" aria-live="assertive">
         {isError ? body : null}
       </div>
     </>

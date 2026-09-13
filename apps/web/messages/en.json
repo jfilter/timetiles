@@ -1052,7 +1052,8 @@
     "error": "Subscription failed. Please try again.",
     "networkError": "Network error. Please try again.",
     "subscribing": "Subscribing...",
-    "subscribed": "Subscribed"
+    "subscribed": "Subscribed",
+    "emailAddress": "Email address"
   },
   "DataPackages": {
     "title": "Data Packages",

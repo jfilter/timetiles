@@ -86,6 +86,7 @@ const NewsletterCTA = ({
     messages,
     onSubmit,
   });
+  const errorId = React.useId();
 
   return (
     <section ref={ref} className={cn(newsletterCtaVariants({ variant, size }), className)}>
@@ -166,6 +167,7 @@ const NewsletterCTA = ({
                 email={email}
                 onEmailChange={setEmail}
                 status={status}
+                errorId={errorId}
                 placeholder={placeholder}
                 size="md"
               />
@@ -178,7 +180,7 @@ const NewsletterCTA = ({
               />
             </div>
 
-            <NewsletterStatusMessage status={status} message={message} decorated />
+            <NewsletterStatusMessage status={status} message={message} errorId={errorId} decorated />
           </div>
 
           {/* Privacy note */}

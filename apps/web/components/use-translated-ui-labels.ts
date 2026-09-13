@@ -34,6 +34,7 @@ export const useTranslatedUILabels = (): UILabels => {
       total: t("total"),
       subscribing: tNewsletter("subscribing"),
       subscribed: tNewsletter("subscribed"),
+      emailAddress: tNewsletter("emailAddress"),
       emptyTitle: t("emptyTitle"),
       emptySubtitle: t("emptySubtitle"),
       noMatchTitle: t("noMatchTitle"),

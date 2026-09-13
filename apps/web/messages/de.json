@@ -1052,7 +1052,8 @@
     "error": "Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
     "networkError": "Netzwerkfehler. Bitte versuche es erneut.",
     "subscribing": "Wird abonniert...",
-    "subscribed": "Abonniert"
+    "subscribed": "Abonniert",
+    "emailAddress": "E-Mail-Adresse"
   },
   "DataPackages": {
     "title": "Datenpakete",
