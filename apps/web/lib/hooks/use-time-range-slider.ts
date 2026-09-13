@@ -22,6 +22,8 @@ import { formatISODate, parseISODate } from "../utils/date";
 /** Referentially stable empty array to avoid re-creating on every render */
 const EMPTY_HISTOGRAM: HistogramResponse["histogram"] = [];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 interface UseTimeRangeSliderProps {
   filters: FilterState;
   onStartDateChange: (date: string | null) => void;
@@ -215,24 +217,27 @@ export const useTimeRangeSlider = ({
   const handleHandleKeyDown = (handle: "start" | "end") => (e: React.KeyboardEvent) => {
     if (minTimestamp === maxTimestamp) return;
 
+    // The filter is date-only, so steps are whole UTC days from the start of the current day;
+    // a sub-day step would round back to the same date and leave the handle stuck.
     const currentValue = handle === "start" ? boundOr(startDate, minTimestamp) : boundOr(endDate, maxTimestamp);
-    const step = Math.max((maxTimestamp - minTimestamp) * 0.01, 1);
+    const currentDay = Math.floor(currentValue / DAY_MS) * DAY_MS;
+    const step = Math.max(1, Math.round(((maxTimestamp - minTimestamp) * 0.01) / DAY_MS)) * DAY_MS;
 
     let nextValue: number | null = null;
     switch (e.key) {
       case "ArrowLeft":
       case "ArrowDown":
-        nextValue = currentValue - step;
+        nextValue = currentDay - step;
         break;
       case "ArrowRight":
       case "ArrowUp":
-        nextValue = currentValue + step;
+        nextValue = currentDay + step;
         break;
       case "PageDown":
-        nextValue = currentValue - step * 10;
+        nextValue = currentDay - step * 10;
         break;
       case "PageUp":
-        nextValue = currentValue + step * 10;
+        nextValue = currentDay + step * 10;
         break;
       case "Home":
         nextValue = minTimestamp;

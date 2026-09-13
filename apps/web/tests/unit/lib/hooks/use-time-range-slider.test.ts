@@ -488,5 +488,45 @@ describe("useTimeRangeSlider", () => {
       expect(preventDefault).toHaveBeenCalledOnce();
       expect(props.onEndDateChange).toHaveBeenCalledWith("2024-07-01");
     });
+
+    const pressKey = (
+      range: { date: string; dateEnd: string },
+      handle: "start" | "end",
+      current: string,
+      key: string
+    ) => {
+      mockHistogramQuery.mockReturnValue({
+        data: makeHistogram([{ ...range, count: 1 }]),
+        isLoading: false,
+      } as unknown as ReturnType<typeof useFullHistogramQuery>);
+      const props = defaultProps();
+      if (handle === "start") props.filters.startDate = current;
+      else props.filters.endDate = current;
+      const { result } = renderHook(() => useTimeRangeSlider(props));
+      act(() => {
+        result.current.handleHandleKeyDown(handle)({ key, preventDefault: vi.fn() } as any);
+      });
+      return props;
+    };
+
+    it("moves the end handle forward by a whole day when 1% of the range is under a day", () => {
+      const props = pressKey({ date: "2024-01-01", dateEnd: "2024-03-01" }, "end", "2024-02-01", "ArrowRight");
+      expect(props.onEndDateChange).toHaveBeenCalledWith("2024-02-02");
+    });
+
+    it("moves the start handle forward by a whole day with ArrowUp on a short range", () => {
+      const props = pressKey({ date: "2024-01-01", dateEnd: "2024-03-01" }, "start", "2024-01-10", "ArrowUp");
+      expect(props.onStartDateChange).toHaveBeenCalledWith("2024-01-11");
+    });
+
+    it("moves PageUp by whole days and clamps to the maximum on a very short range", () => {
+      const props = pressKey({ date: "2024-01-01", dateEnd: "2024-01-06" }, "end", "2024-01-03", "PageUp");
+      expect(props.onEndDateChange).toHaveBeenCalledWith("2024-01-06");
+    });
+
+    it("moves PageDown by ten times the arrow step in whole days", () => {
+      const props = pressKey({ date: "2024-01-01", dateEnd: "2024-03-01" }, "start", "2024-02-15", "PageDown");
+      expect(props.onStartDateChange).toHaveBeenCalledWith("2024-02-05");
+    });
   });
 });
