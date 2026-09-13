@@ -8,6 +8,7 @@
  * @category OpenAPI
  */
 import { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
+import { z } from "zod";
 
 import { ErrorResponseSchema } from "../schemas/common";
 import {
@@ -30,6 +31,17 @@ const DESCRIPTIONS = { BAD_REQUEST: "Invalid request parameters", INTERNAL_ERROR
 
 // Common error response content
 const errorResponse = (schema = ErrorResponseSchema) => ({ content: { "application/json": { schema } } });
+
+// Liveness answers with the same body on success and failure; only the status code differs
+const livenessResponse = {
+  content: {
+    "application/json": {
+      schema: z
+        .object({ status: z.enum(["ok", "error"]), database: z.enum(["connected", "error"]) })
+        .openapi("LivenessResponse"),
+    },
+  },
+};
 
 // =============================================================================
 // Event API Routes
@@ -161,22 +173,12 @@ registry.registerPath({
   method: "get",
   path: "/api/health",
   tags: ["System"],
-  summary: "Health check endpoint",
-  description: "Returns the health status of the API and its dependencies.",
+  summary: "Liveness check endpoint",
+  description:
+    "Reports whether the API can reach its database. Full diagnostics are available to admins at /api/admin/health.",
   responses: {
-    200: {
-      description: "Service is healthy",
-      content: {
-        "application/json": {
-          schema: {
-            type: "object",
-            properties: {
-              status: { type: "string", example: "ok" },
-              timestamp: { type: "string", format: "date-time" },
-            },
-          },
-        },
-      },
-    },
+    200: { description: "Service is live", ...livenessResponse },
+    500: { description: "Liveness check itself failed", ...livenessResponse },
+    503: { description: "Database is unreachable", ...livenessResponse },
   },
 });

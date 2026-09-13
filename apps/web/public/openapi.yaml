@@ -380,6 +380,22 @@ components:
         - p60
         - p80
         - p100
+    LivenessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - error
+        database:
+          type: string
+          enum:
+            - connected
+            - error
+      required:
+        - status
+        - database
   parameters: {}
 paths:
   /api/v1/events:
@@ -1021,19 +1037,25 @@ paths:
     get:
       tags:
         - System
-      summary: Health check endpoint
-      description: Returns the health status of the API and its dependencies.
+      summary: Liveness check endpoint
+      description: Reports whether the API can reach its database. Full diagnostics
+        are available to admins at /api/admin/health.
       responses:
         "200":
-          description: Service is healthy
+          description: Service is live
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  timestamp:
-                    type: string
-                    format: date-time
+                $ref: "#/components/schemas/LivenessResponse"
+        "500":
+          description: Liveness check itself failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
+        "503":
+          description: Database is unreachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LivenessResponse"
