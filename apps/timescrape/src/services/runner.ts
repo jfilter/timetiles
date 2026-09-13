@@ -62,8 +62,6 @@ export const getMetrics = (): RunnerMetrics => {
   };
 };
 
-/** Default TTL for persistent output dirs when SCRAPER_OUTPUT_TTL_HOURS is unset. */
-const DEFAULT_OUTPUT_TTL_HOURS = 24;
 /** How often the output sweep runs. */
 const OUTPUT_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
@@ -78,7 +76,7 @@ const OUTPUT_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
  */
 export const sweepStaleOutputs = async (): Promise<void> => {
   const config = getConfig();
-  const ttlHours = Number(process.env.SCRAPER_OUTPUT_TTL_HOURS) || DEFAULT_OUTPUT_TTL_HOURS;
+  const ttlHours = config.SCRAPER_OUTPUT_TTL_HOURS;
   const ttlMs = ttlHours * 60 * 60 * 1000;
   const base = join(config.SCRAPER_DATA_DIR, "outputs");
 

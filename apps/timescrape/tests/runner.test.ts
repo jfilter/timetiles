@@ -27,10 +27,12 @@ const mockRm = vi.fn().mockResolvedValue(undefined);
 const mockReadFile = vi.fn();
 const mockStat = vi.fn();
 const mockCopyFile = vi.fn().mockResolvedValue(undefined);
+const mockReaddir = vi.fn().mockResolvedValue([]);
 vi.mock("node:fs/promises", () => ({
   mkdir: (...args: unknown[]) => mockMkdir(...args),
   rm: (...args: unknown[]) => mockRm(...args),
   readFile: (...args: unknown[]) => mockReadFile(...args),
+  readdir: (...args: unknown[]) => mockReaddir(...args),
   stat: (...args: unknown[]) => mockStat(...args),
   copyFile: (...args: unknown[]) => mockCopyFile(...args),
 }));
@@ -320,6 +322,26 @@ describe("runner", () => {
 
       // Verify cleanup was called with the work directory
       expect(mockRm).toHaveBeenCalledWith(expect.stringContaining("550e8400-e29b-41d4-a716-446655440003"), {
+        recursive: true,
+        force: true,
+      });
+    });
+  });
+
+  describe("sweepStaleOutputs", () => {
+    it("removes output directories older than the configured TTL", async () => {
+      Object.assign(mockConfig, { SCRAPER_OUTPUT_TTL_HOURS: 1 });
+      const hourMs = 60 * 60 * 1000;
+      mockReaddir.mockResolvedValue(["stale-run", "fresh-run"]);
+      mockStat.mockImplementation(async (dir: string) => ({
+        mtimeMs: dir.endsWith("stale-run") ? Date.now() - 2 * hourMs : Date.now(),
+      }));
+
+      const { sweepStaleOutputs } = await import("../src/services/runner.js");
+      await sweepStaleOutputs();
+
+      expect(mockRm).toHaveBeenCalledTimes(1);
+      expect(mockRm).toHaveBeenCalledWith(expect.stringMatching(/outputs\/stale-run$/), {
         recursive: true,
         force: true,
       });

@@ -25,6 +25,8 @@ const envSchema = z.object({
   SCRAPER_GIT_CLONE_TIMEOUT: z.coerce.number().default(60_000),
   // Output is served via file download endpoint. Keep conservative for disk usage.
   SCRAPER_MAX_OUTPUT_SIZE_MB: z.coerce.number().default(50),
+  // Downloadable outputs older than this are swept; the web app's DELETE is best-effort.
+  SCRAPER_OUTPUT_TTL_HOURS: z.coerce.number().positive().default(24),
   // eslint-disable-next-line sonarjs/publicly-writable-directories -- ephemeral default for the containerized runner; overridden by SCRAPER_DATA_DIR in deployments
   SCRAPER_DATA_DIR: z.string().default("/tmp/timescrape"),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
