@@ -95,17 +95,6 @@ export const createDefaultDetector = (options?: DetectionOptions): SchemaDetecto
  * - Language-aware patterns for field mapping
  * - Structural analysis for ID and enum detection
  *
- * @example
- * ```typescript
- * import { schemaDetectionPlugin, defaultDetector } from '@timetiles/payload-schema-detection';
- *
- * export default buildConfig({
- *   plugins: [
- *     schemaDetectionPlugin({
- *       detectors: [defaultDetector],
- *     }),
- *   ],
- * });
- * ```
+ * `schemaDetectionPlugin` registers it when no detectors are passed.
  */
 export const defaultDetector: SchemaDetector = createDefaultDetector();
