@@ -127,10 +127,13 @@ SCRAPER_DEFAULT_MEMORY=512
 # Maximum Git repo clone size in MB (default: 50)
 SCRAPER_MAX_REPO_SIZE_MB=50
 
-# Maximum CSV output file size in MB (default: 100)
-SCRAPER_MAX_OUTPUT_SIZE_MB=100
+# Idle timeout for git operations in milliseconds (default: 60000)
+SCRAPER_GIT_CLONE_TIMEOUT=60000
 
-# Temp directory for run workspaces (default: /tmp/timescrape)
+# Maximum CSV output file size in MB (default: 50)
+SCRAPER_MAX_OUTPUT_SIZE_MB=50
+
+# Run workspaces and downloadable outputs (default: /tmp/timescrape)
 SCRAPER_DATA_DIR=/tmp/timescrape
 ```
 
@@ -300,8 +303,9 @@ you and then verifies it by probing the runner from inside `worker-ingest`.
 | `SCRAPER_DEFAULT_TIMEOUT`    | `300`             | No       | Default timeout per run in seconds. Individual scrapers can override.           |
 | `SCRAPER_DEFAULT_MEMORY`     | `512`             | No       | Default memory limit per container in MB. Individual scrapers can override.     |
 | `SCRAPER_MAX_REPO_SIZE_MB`   | `50`              | No       | Maximum Git repo size for shallow clones.                                       |
-| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `100`             | No       | Maximum CSV output file size. Runs exceeding this fail with `INVALID_OUTPUT`.   |
-| `SCRAPER_DATA_DIR`           | `/tmp/timescrape` | No       | Temporary directory for run workspaces. Cleaned up after each run.              |
+| `SCRAPER_GIT_CLONE_TIMEOUT`  | `60000`           | No       | Idle timeout for git operations in milliseconds; a stalled clone is aborted.    |
+| `SCRAPER_MAX_OUTPUT_SIZE_MB` | `50`              | No       | Maximum CSV output size. A run exceeding it is killed and recorded as failed.   |
+| `SCRAPER_DATA_DIR`           | `/tmp/timescrape` | No       | Run workspaces (removed after each run) and downloadable outputs.               |
 | `NODE_ENV`                   | `development`     | No       | Node.js environment mode.                                                       |
 
 ### TimeTiles Variables (apps/web)
