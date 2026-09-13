@@ -426,14 +426,8 @@ describe.sequential("scraperRepoSyncJob", () => {
     );
   });
 
-  it("should default to main branch for git repos without gitBranch", async () => {
-    const repo = {
-      id: 5,
-      sourceType: "git",
-      gitUrl: "https://github.com/test/repo.git",
-      // no gitBranch - should default to "main"
-      createdBy: 100,
-    };
+  it("clones the repository default branch when gitBranch is absent", async () => {
+    const repo = { id: 5, sourceType: "git", gitUrl: "https://github.com/test/repo.git", createdBy: 100 };
     mockPayload.findByID.mockResolvedValue(repo);
 
     const fsp = await import("node:fs/promises");
@@ -448,7 +442,9 @@ describe.sequential("scraperRepoSyncJob", () => {
     const context = createMockContext({ scraperRepoId: 5 });
     await scraperRepoSyncJob.handler(context);
 
-    // Just verify it completes without error
+    const cloneCall = mocks.execFileAsync.mock.calls.find(([, args]) => (args as string[]).includes("clone"));
+    expect(cloneCall).toBeDefined();
+    expect(cloneCall![1]).not.toContain("--branch");
     expect(mockPayload.update).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: "scraper-repos",

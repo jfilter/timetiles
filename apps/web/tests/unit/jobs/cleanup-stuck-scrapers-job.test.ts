@@ -23,12 +23,10 @@ vi.mock("@/lib/services/feature-flag-service", () => ({
   getFeatureFlagService: vi.fn().mockReturnValue({ isEnabled: mockIsEnabled }),
 }));
 
-const mockIsResourceStuck = vi.hoisted(() => vi.fn());
 const mockHasActivePayloadJob = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/jobs/utils/stuck-detection", async (importOriginal) => ({
-  // Keep the real cancelOrphanedWorkflowJobs — the assertions below cover its queries.
+  // Keep the real isResourceStuck and cancelOrphanedWorkflowJobs; only the job lookup is stubbed.
   ...(await importOriginal<typeof StuckDetection>()),
-  isResourceStuck: mockIsResourceStuck,
   hasActivePayloadJob: mockHasActivePayloadJob,
 }));
 
@@ -74,10 +72,25 @@ describe.sequential("cleanupStuckScrapersJob", () => {
       jobs: { cancel: vi.fn().mockResolvedValue(undefined) },
     };
 
-    // Defaults: feature enabled, resource stuck, no active job
+    // Defaults: feature enabled, no active job; createMockScraper has been running for 5h.
     mockIsEnabled.mockResolvedValue(true);
-    mockIsResourceStuck.mockReturnValue(true);
     mockHasActivePayloadJob.mockResolvedValue(false);
+  });
+
+  it.each([
+    [3, 0],
+    [5, 1],
+  ])("against the default 4h threshold, a scraper running for %ih is reset %i time(s)", async (hours, resets) => {
+    const scraper = createMockScraper({ lastRunAt: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString() });
+    mockPayload.find
+      .mockResolvedValueOnce({ docs: [scraper], totalDocs: 1 })
+      .mockResolvedValue({ docs: [], totalDocs: 0 });
+
+    const result = await cleanupStuckScrapersJob.handler(createMockContext() as any);
+
+    expect(result.output).toEqual(expect.objectContaining({ stuckCount: resets, resetCount: resets }));
+    const scraperUpdates = mockPayload.update.mock.calls.filter(([args]) => args.collection === "scrapers");
+    expect(scraperUpdates).toHaveLength(resets);
   });
 
   it("should return skipped when scrapers feature is disabled", async () => {

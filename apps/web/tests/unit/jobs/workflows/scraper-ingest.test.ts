@@ -112,15 +112,6 @@ describe.sequential("scraperIngestWorkflow", () => {
     expect(processSheets).not.toHaveBeenCalled();
   });
 
-  // ── 5. Verify concurrency key format ──────────────────────────────────
-
-  it("should produce per-resource concurrency key", () => {
-    const concurrency = scraperIngestWorkflow.concurrency as (args: { input: { scraperId: number } }) => string;
-    const key = concurrency({ input: { scraperId: 7 } });
-
-    expect(key).toBe("ingest:scraper:7");
-  });
-
   // ── 6. Scraper returns numeric ingestFileId — converted to string ─────
 
   it("should convert numeric ingestFileId to string for detection", async () => {

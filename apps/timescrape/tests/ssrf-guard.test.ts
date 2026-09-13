@@ -14,6 +14,11 @@ describe("assertGitTargetIsPublic", () => {
     await expect(assertGitTargetIsPublic("https://10.0.0.5/repo.git")).rejects.toMatchObject({ code: "SSRF_BLOCKED" });
   });
 
+  it("blocks a hostname that resolves to loopback", async () => {
+    // localhost resolves through the hosts file, so no network is involved.
+    await expect(assertGitTargetIsPublic("https://localhost/r.git")).rejects.toMatchObject({ code: "SSRF_BLOCKED" });
+  });
+
   it("allows public IP literals without a DNS lookup", async () => {
     await expect(assertGitTargetIsPublic("https://[2606:4700:4700::1111]/repo.git")).resolves.toBeUndefined();
     await expect(assertGitTargetIsPublic("https://1.1.1.1/repo.git")).resolves.toBeUndefined();

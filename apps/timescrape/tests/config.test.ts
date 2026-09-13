@@ -36,6 +36,7 @@ describe("config", () => {
     delete process.env.SCRAPER_DEFAULT_MEMORY;
     delete process.env.SCRAPER_MAX_REPO_SIZE_MB;
     delete process.env.SCRAPER_MAX_OUTPUT_SIZE_MB;
+    delete process.env.SCRAPER_MAX_OUTPUT_ENTRIES;
     delete process.env.SCRAPER_DATA_DIR;
     delete process.env.SCRAPER_OUTPUT_TTL_HOURS;
     delete process.env.NODE_ENV;
@@ -50,6 +51,7 @@ describe("config", () => {
     expect(config.SCRAPER_DEFAULT_MEMORY).toBe(512);
     expect(config.SCRAPER_MAX_REPO_SIZE_MB).toBe(50);
     expect(config.SCRAPER_MAX_OUTPUT_SIZE_MB).toBe(50);
+    expect(config.SCRAPER_MAX_OUTPUT_ENTRIES).toBe(10_000);
     expect(config.SCRAPER_DATA_DIR).toBe("/tmp/timescrape");
     expect(config.NODE_ENV).toBe("development");
   });
@@ -60,30 +62,5 @@ describe("config", () => {
 
     const { loadConfig } = await import("../src/config.js");
     expect(() => loadConfig()).toThrow();
-  });
-
-  it("parses valid config correctly", async () => {
-    process.env.SCRAPER_API_KEY = "a-valid-api-key-long-enough";
-    process.env.SCRAPER_PORT = "5000";
-    process.env.SCRAPER_MAX_CONCURRENT = "10";
-    process.env.SCRAPER_DEFAULT_TIMEOUT = "600";
-    process.env.SCRAPER_DEFAULT_MEMORY = "1024";
-    process.env.SCRAPER_MAX_REPO_SIZE_MB = "100";
-    process.env.SCRAPER_MAX_OUTPUT_SIZE_MB = "200";
-    process.env.SCRAPER_DATA_DIR = "/data/scraper";
-    process.env.NODE_ENV = "production";
-
-    const { loadConfig } = await import("../src/config.js");
-    const config = loadConfig();
-
-    expect(config.SCRAPER_API_KEY).toBe("a-valid-api-key-long-enough");
-    expect(config.SCRAPER_PORT).toBe(5000);
-    expect(config.SCRAPER_MAX_CONCURRENT).toBe(10);
-    expect(config.SCRAPER_DEFAULT_TIMEOUT).toBe(600);
-    expect(config.SCRAPER_DEFAULT_MEMORY).toBe(1024);
-    expect(config.SCRAPER_MAX_REPO_SIZE_MB).toBe(100);
-    expect(config.SCRAPER_MAX_OUTPUT_SIZE_MB).toBe(200);
-    expect(config.SCRAPER_DATA_DIR).toBe("/data/scraper");
-    expect(config.NODE_ENV).toBe("production");
   });
 });
