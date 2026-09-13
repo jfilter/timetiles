@@ -28,23 +28,6 @@ export interface EChartsEventParams {
   data?: unknown;
 }
 
-export interface EChartsFormatterParams {
-  dataIndex?: number;
-  value?: unknown;
-  name?: string;
-  data?: unknown;
-}
-
-// Type guards for ECharts parameters
-export const isValidEventParams = (params: unknown): params is EChartsEventParams =>
-  typeof params === "object" && params !== null && "componentType" in params;
-
-export const isValidFormatterParams = (params: unknown): params is EChartsFormatterParams =>
-  typeof params === "object" && params !== null && "dataIndex" in params;
-
-export const isValidDataIndex = (value: unknown): value is number =>
-  typeof value === "number" && value >= 0 && Number.isInteger(value);
-
 export interface EChartsInstance {
   resize: () => void;
   getOption: () => EChartsOption;
