@@ -13,20 +13,20 @@ import "../blocks";
 import type { CollectionConfig } from "payload";
 
 import { getPayloadBlocks } from "../blocks/registry";
-import { createCommonConfig, createCreatedByField, createSlugField, isEditorOrAdmin } from "./shared-fields";
+import {
+  createCommonConfig,
+  createCreatedByField,
+  createSlugField,
+  isEditorOrAdmin,
+  publishedOrPrivileged,
+} from "./shared-fields";
 
 export const Pages: CollectionConfig = {
   slug: "pages",
   ...createCommonConfig(),
   admin: { useAsTitle: "title", defaultColumns: ["title", "slug", "site", "updatedAt"], group: "Content" },
   access: {
-    // Drafts are only readable by editors/admins — pages have autosave drafts,
-    // and a blanket `true` exposed unpublished content through the REST API.
-    // eslint-disable-next-line sonarjs/function-return-type
-    read: ({ req: { user } }): boolean | { _status: { equals: string } } => {
-      if (user?.role === "admin" || user?.role === "editor") return true;
-      return { _status: { equals: "published" } };
-    },
+    read: publishedOrPrivileged,
     create: isEditorOrAdmin,
     update: isEditorOrAdmin,
     delete: isEditorOrAdmin,

@@ -12,6 +12,7 @@ import type { Footer } from "@/payload-types";
 export type FooterSeed = Omit<Footer, "id" | "createdAt" | "updatedAt">;
 
 export const footerSeedDe: FooterSeed = {
+  _status: "published",
   tagline: "Räumliche und zeitliche Datenanalyse für alle zugänglich machen.",
   socialLinks: [
     { platform: "bluesky", url: "https://bsky.app/profile/timetiles.io" },
@@ -60,6 +61,7 @@ export const footerSeedDe: FooterSeed = {
 };
 
 export const footerSeed: FooterSeed = {
+  _status: "published",
   tagline: "Making spatial and temporal data analysis accessible to everyone.",
   socialLinks: [
     { platform: "bluesky", url: "https://bsky.app/profile/timetiles.io" },

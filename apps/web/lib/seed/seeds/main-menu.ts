@@ -13,6 +13,7 @@ import type { MainMenu } from "@/payload-types";
 export type MainMenuSeed = Omit<MainMenu, "id" | "createdAt" | "updatedAt">;
 
 export const mainMenuSeed: MainMenuSeed = {
+  _status: "published",
   navItems: [
     { label: "Home", url: "/" },
     { label: "Explore", url: "/explore" },
@@ -23,6 +24,7 @@ export const mainMenuSeed: MainMenuSeed = {
 };
 
 export const mainMenuSeedDe: MainMenuSeed = {
+  _status: "published",
   navItems: [
     { label: "Startseite", url: "/" },
     { label: "Erkunden", url: "/explore" },

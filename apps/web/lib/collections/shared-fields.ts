@@ -119,6 +119,10 @@ export const isAdmin = (({ req: { user } }) => user?.role === "admin") satisfies
 export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user);
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 
+/** Read access for drafts-enabled entities: editors/admins see drafts, everyone else only published state. */
+export const publishedOrPrivileged: Access = ({ req: { user } }) =>
+  isPrivileged(user) || { _status: { equals: "published" } };
+
 /**
  * Access control that denies create operations for users with pending account deletion.
  * Wraps an existing Access function, adding the deletion-status guard on top.
