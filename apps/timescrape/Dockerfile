@@ -12,7 +12,7 @@ WORKDIR /app
 # Stage 2: Prune the monorepo for the scraper package
 FROM base AS pruner
 COPY . .
-RUN pnpm dlx turbo prune timescrape --docker
+RUN TURBO_VERSION="$(sh scripts/turbo-version.sh)" && pnpm dlx "turbo@${TURBO_VERSION}" prune timescrape --docker
 
 # Stage 3: Install all dependencies and build
 FROM base AS builder
