@@ -57,12 +57,12 @@ describe("favicon icon metadata", () => {
     expect(urls).not.toContain("/media/light.png");
     expect(icons).toEqual({
       icon: [
-        { url: "/icon-32-light.png", sizes: "32x32", type: "image/png" },
-        { url: "/icon-192-light.png", sizes: "192x192", type: "image/png" },
-        { url: "/icon-512-light.png", sizes: "512x512", type: "image/png" },
+        { url: "/api/favicons/icon-32-light.png", sizes: "32x32", type: "image/png" },
+        { url: "/api/favicons/icon-192-light.png", sizes: "192x192", type: "image/png" },
+        { url: "/api/favicons/icon-512-light.png", sizes: "512x512", type: "image/png" },
       ],
-      shortcut: [{ url: "/icon-32-light.png", sizes: "32x32", type: "image/png" }],
-      apple: [{ url: "/apple-touch-icon-light.png", sizes: "180x180", type: "image/png" }],
+      shortcut: [{ url: "/api/favicons/icon-32-light.png", sizes: "32x32", type: "image/png" }],
+      apple: [{ url: "/api/favicons/apple-touch-icon-light.png", sizes: "180x180", type: "image/png" }],
     });
   });
 
@@ -77,16 +77,18 @@ describe("favicon icon metadata", () => {
     });
 
     expect(icons.icon.filter((entry) => entry.media === "(prefers-color-scheme: light)").map((e) => e.url)).toEqual([
-      "/icon-32-light.png",
-      "/icon-192-light.png",
-      "/icon-512-light.png",
+      "/api/favicons/icon-32-light.png",
+      "/api/favicons/icon-192-light.png",
+      "/api/favicons/icon-512-light.png",
     ]);
     expect(icons.icon.filter((entry) => entry.media === "(prefers-color-scheme: dark)").map((e) => e.url)).toEqual([
-      "/icon-32-dark.png",
-      "/icon-192-dark.png",
-      "/icon-512-dark.png",
+      "/api/favicons/icon-32-dark.png",
+      "/api/favicons/icon-192-dark.png",
+      "/api/favicons/icon-512-dark.png",
     ]);
-    expect(icons.apple).toEqual([{ url: "/apple-touch-icon-light.png", sizes: "180x180", type: "image/png" }]);
+    expect(icons.apple).toEqual([
+      { url: "/api/favicons/apple-touch-icon-light.png", sizes: "180x180", type: "image/png" },
+    ]);
   });
 
   it("uses the dark generated set when only the dark source produced files", () => {
@@ -100,9 +102,9 @@ describe("favicon icon metadata", () => {
     });
 
     expect(icons.icon.map((entry) => entry.url)).toEqual([
-      "/icon-32-dark.png",
-      "/icon-192-dark.png",
-      "/icon-512-dark.png",
+      "/api/favicons/icon-32-dark.png",
+      "/api/favicons/icon-192-dark.png",
+      "/api/favicons/icon-512-dark.png",
     ]);
     expect(icons.icon.every((entry) => entry.media === undefined)).toBe(true);
   });
@@ -135,7 +137,7 @@ describe("favicon icon metadata", () => {
       generatedIconsExist: (theme) => theme === "light",
     });
 
-    expect(icons.icon.map((entry) => entry.url)).toContain("/icon-192-light.png");
+    expect(icons.icon.map((entry) => entry.url)).toContain("/api/favicons/icon-192-light.png");
   });
 
   it("falls back to static app icons without duplicating the file-based favicon", () => {

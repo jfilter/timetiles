@@ -1,18 +1,21 @@
 /**
- * Shared naming for the favicon set generated from the Branding global.
+ * Shared naming and location for the favicon set generated from the Branding global.
  *
- * The Branding `afterChange` hook writes these files into `public/`, and the
- * metadata builder points browsers at exactly the same names. Keeping the
- * names in one place is what stops the generator and the consumer from
- * drifting apart — they previously did, so the generated files were written
- * and then never referenced by any page.
+ * The Branding `afterChange` hook writes these files into persistent upload
+ * storage, `app/api/favicons/[file]/route.ts` serves them, and the metadata
+ * builder links them — all three resolve names and paths here.
  *
  * @module
  * @category Constants
  */
+import { join } from "node:path";
+
+import { getEnv } from "@/lib/config/env";
 
 /** Themes a favicon set is generated for. */
 export type FaviconTheme = "light" | "dark";
+
+const FAVICON_THEMES: readonly FaviconTheme[] = ["light", "dark"];
 
 /** Base name and pixel size of every file in a generated favicon set. */
 export const FAVICON_SIZES = [
@@ -25,5 +28,14 @@ export const FAVICON_SIZES = [
 /** Filename of a generated favicon, e.g. `icon-192-dark.png`. */
 export const faviconFileName = (base: string, theme: FaviconTheme): string => `${base}-${theme}.png`;
 
-/** Public URL of a generated favicon, e.g. `/icon-192-dark.png`. */
-export const faviconPublicUrl = (base: string, theme: FaviconTheme): string => `/${faviconFileName(base, theme)}`;
+/** Every filename a generated favicon set can contain. */
+export const FAVICON_FILE_NAMES: readonly string[] = FAVICON_THEMES.flatMap((theme) =>
+  FAVICON_SIZES.map(({ base }) => faviconFileName(base, theme))
+);
+
+/** Upload-storage directory holding the generated favicons. */
+export const faviconDir = (): string => join(getEnv().UPLOAD_DIR, "favicons");
+
+/** URL of a generated favicon, e.g. `/api/favicons/icon-192-dark.png`. */
+export const faviconUrl = (base: string, theme: FaviconTheme): string =>
+  `/api/favicons/${faviconFileName(base, theme)}`;

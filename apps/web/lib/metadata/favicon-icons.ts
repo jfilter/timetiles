@@ -2,12 +2,12 @@
  * Builds favicon metadata from site and platform branding.
  *
  * When the Branding global has favicon sources configured, the Branding
- * `afterChange` hook renders a properly sized icon set into `public/`. This
- * module points browsers at that generated set rather than the full-size upload.
+ * `afterChange` hook renders a properly sized icon set into upload storage,
+ * served under `/api/favicons/`. This module points browsers at that generated
+ * set rather than the full-size upload.
  *
  * The generated files are only advertised when they are actually on disk —
- * generation can fail (unreachable media, bad image) and a `public/` directory
- * that was never regenerated must not produce 404 icons.
+ * generation can fail (unreachable media, bad image) and must not produce 404 icons.
  *
  * @module
  * @category Utils
@@ -15,7 +15,13 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import { FAVICON_SIZES, faviconFileName, faviconPublicUrl, type FaviconTheme } from "@/lib/constants/favicon-files";
+import {
+  FAVICON_SIZES,
+  faviconDir,
+  faviconFileName,
+  type FaviconTheme,
+  faviconUrl,
+} from "@/lib/constants/favicon-files";
 import type { Branding, Media, Site } from "@/payload-types";
 
 type MediaField = (number | null) | Media | undefined;
@@ -61,7 +67,7 @@ const hasMedia = (media: MediaField): boolean => media != null;
 
 /** Default on-disk check: every file of the theme's set must be present. */
 const defaultGeneratedIconsExist: GeneratedIconsExist = (theme) =>
-  FAVICON_SIZES.every(({ base }) => existsSync(join(process.cwd(), "public", faviconFileName(base, theme))));
+  FAVICON_SIZES.every(({ base }) => existsSync(join(faviconDir(), faviconFileName(base, theme))));
 
 const buildSingleIconMetadata = (url: string): FaviconIconMetadata => ({
   icon: [{ url }],
@@ -72,14 +78,14 @@ const buildSingleIconMetadata = (url: string): FaviconIconMetadata => ({
 /** `<link rel="icon">` descriptors for one generated theme set. */
 const generatedIconsFor = (theme: FaviconTheme, media?: string): IconDescriptor[] =>
   FAVICON_SIZES.filter(({ base }) => base !== APPLE_BASE).map(({ base, size }) => ({
-    url: faviconPublicUrl(base, theme),
+    url: faviconUrl(base, theme),
     sizes: `${size}x${size}`,
     type: "image/png",
     ...(media ? { media } : {}),
   }));
 
 const generatedAppleIcon = (theme: FaviconTheme): IconDescriptor => ({
-  url: faviconPublicUrl(APPLE_BASE, theme),
+  url: faviconUrl(APPLE_BASE, theme),
   sizes: "180x180",
   type: "image/png",
 });
@@ -101,7 +107,7 @@ const buildGeneratedIconMetadata = (light: boolean, dark: boolean): FaviconIconM
 
   return {
     icon,
-    shortcut: [{ url: faviconPublicUrl(SHORTCUT_BASE, primary), sizes: "32x32", type: "image/png" }],
+    shortcut: [{ url: faviconUrl(SHORTCUT_BASE, primary), sizes: "32x32", type: "image/png" }],
     apple: [generatedAppleIcon(primary)],
   };
 };

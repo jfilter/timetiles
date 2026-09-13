@@ -14,7 +14,7 @@ import type { GlobalAfterChangeHook } from "payload";
 import sharp from "sharp";
 
 import { getEnv } from "@/lib/config/env";
-import { FAVICON_SIZES, faviconFileName, type FaviconTheme } from "@/lib/constants/favicon-files";
+import { FAVICON_SIZES, faviconDir, faviconFileName, type FaviconTheme } from "@/lib/constants/favicon-files";
 import { logError, logger } from "@/lib/logger";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
@@ -42,10 +42,7 @@ const getMediaId = (field: unknown): string | null => {
 /**
  * Generates favicon files from a source image.
  */
-const generateFaviconSet = async (sourceBuffer: Buffer, publicDir: string, theme: FaviconTheme): Promise<void> => {
-  // Filenames come from the shared constant that `lib/metadata/favicon-icons.ts`
-  // also reads — that module is what points browsers at these files. Anything
-  // written here under a name nobody reads is dead weight.
+const generateFaviconSet = async (sourceBuffer: Buffer, outputDir: string, theme: FaviconTheme): Promise<void> => {
   const sizes = FAVICON_SIZES.map(({ base, size }) => ({ name: faviconFileName(base, theme), size }));
 
   await Promise.all(
@@ -53,7 +50,7 @@ const generateFaviconSet = async (sourceBuffer: Buffer, publicDir: string, theme
       sharp(sourceBuffer)
         .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
         .png()
-        .toFile(join(publicDir, name))
+        .toFile(join(outputDir, name))
     )
   );
 };
@@ -116,7 +113,8 @@ const fetchMediaBuffer = async (
 /**
  * Generates favicon files when faviconSourceLight or faviconSourceDark changes.
  *
- * Output files for each theme (`-light` / `-dark` suffix):
+ * Files are written to `faviconDir()` in upload storage and served by
+ * `app/api/favicons/[file]/route.ts`. Output files for each theme:
  * - icon-32-{theme}.png (32x32)
  * - apple-touch-icon-{theme}.png (180x180)
  * - icon-192-{theme}.png (192x192)
@@ -137,19 +135,15 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
     return doc;
   }
 
-  const publicDir = join(process.cwd(), "public");
-
-  // Ensure public directory exists
-  if (!existsSync(publicDir)) {
-    mkdirSync(publicDir, { recursive: true });
-  }
-
   try {
+    const outputDir = faviconDir();
+    mkdirSync(outputDir, { recursive: true });
+
     // Generate light theme favicons
     if (lightChanged && currentLightId) {
       const buffer = await fetchMediaBuffer(req.payload, currentLightId);
       if (buffer) {
-        await generateFaviconSet(buffer, publicDir, "light");
+        await generateFaviconSet(buffer, outputDir, "light");
         logger.info("Generated light theme favicon files");
       }
     } else if (lightChanged && !currentLightId) {
@@ -160,7 +154,7 @@ export const generateFaviconsHook: GlobalAfterChangeHook = async ({ doc, previou
     if (darkChanged && currentDarkId) {
       const buffer = await fetchMediaBuffer(req.payload, currentDarkId);
       if (buffer) {
-        await generateFaviconSet(buffer, publicDir, "dark");
+        await generateFaviconSet(buffer, outputDir, "dark");
         logger.info("Generated dark theme favicon files");
       }
     } else if (darkChanged && !currentDarkId) {

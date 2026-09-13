@@ -6,11 +6,14 @@
  *
  * @module
  */
-import { existsSync, unlinkSync } from "node:fs";
+import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
+import { NextRequest } from "next/server";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { GET as faviconGET } from "@/app/api/favicons/[file]/route";
+import { faviconDir } from "@/lib/constants/favicon-files";
 import { buildFaviconIcons } from "@/lib/metadata/favicon-icons";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
@@ -100,19 +103,11 @@ describe.sequential("Branding Global", () => {
 describe.sequential("Branding Favicon Generation", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
   let payload: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>["payload"];
-  const publicDir = join(process.cwd(), "public");
+  const outputDir = faviconDir();
 
-  // Generated favicon files to clean up after tests
-  const generatedFiles = [
-    "icon-32-light.png",
-    "icon-32-dark.png",
-    "apple-touch-icon-light.png",
-    "apple-touch-icon-dark.png",
-    "icon-192-light.png",
-    "icon-192-dark.png",
-    "icon-512-light.png",
-    "icon-512-dark.png",
-  ];
+  /** Call the real favicon route handler. */
+  const fetchFavicon = (file: string) =>
+    faviconGET(new NextRequest(`http://localhost:3000/api/favicons/${file}`), { params: Promise.resolve({ file }) });
 
   beforeAll(async () => {
     testEnv = await createIntegrationTestEnvironment();
@@ -126,17 +121,7 @@ describe.sequential("Branding Favicon Generation", () => {
   });
 
   afterEach(() => {
-    // Clean up any generated favicon files
-    for (const file of generatedFiles) {
-      const filePath = join(publicDir, file);
-      if (existsSync(filePath)) {
-        try {
-          unlinkSync(filePath);
-        } catch {
-          // Ignore cleanup errors
-        }
-      }
-    }
+    rmSync(outputDir, { recursive: true, force: true });
   });
 
   it("should not generate favicons when no source is provided", async () => {
@@ -206,17 +191,35 @@ describe.sequential("Branding Favicon Generation", () => {
     ];
 
     for (const file of expectedFiles) {
-      const filePath = join(publicDir, file);
-      expect(existsSync(filePath), `Expected ${file} to exist`).toBe(true);
+      expect(existsSync(join(outputDir, file)), `Expected ${file} to exist`).toBe(true);
     }
 
     // The page metadata must point at the files just generated — not at the
-    // raw uploaded source image, which is what browsers used to be handed.
+    // raw uploaded source image.
     const icons = buildFaviconIcons({ branding, site: null });
     const urls = [...icons.icon, ...icons.shortcut, ...icons.apple].map((entry) => entry.url);
-    expect(urls).toContain("/icon-192-light.png");
-    expect(urls).toContain("/apple-touch-icon-light.png");
+    expect(urls).toContain("/api/favicons/icon-192-light.png");
+    expect(urls).toContain("/api/favicons/apple-touch-icon-light.png");
     expect(urls).not.toContain(mediaDoc.url);
+
+    // Every advertised generated icon is served without a server restart.
+    for (const url of urls) {
+      const response = await fetchFavicon(url.replace("/api/favicons/", ""));
+      expect(response.status, url).toBe(200);
+      expect(response.headers.get("Content-Type")).toBe("image/png");
+    }
+    const served = Buffer.from(await (await fetchFavicon("icon-192-light.png")).arrayBuffer());
+    expect(await sharp(served).metadata()).toMatchObject({ format: "png", width: 192, height: 192 });
+  });
+
+  it("answers 404 for a favicon that has not been generated", async () => {
+    const response = await fetchFavicon("icon-32-dark.png");
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects file names outside the generated set", async () => {
+    const response = await fetchFavicon("..%2F..%2Fpayload.config.ts");
+    expect(response.status).toBe(422);
   });
 
   it("should generate both light and dark favicon sets", async () => {
@@ -265,8 +268,7 @@ describe.sequential("Branding Favicon Generation", () => {
     const darkFiles = ["icon-32-dark.png", "apple-touch-icon-dark.png", "icon-192-dark.png", "icon-512-dark.png"];
 
     for (const file of [...lightFiles, ...darkFiles]) {
-      const filePath = join(publicDir, file);
-      expect(existsSync(filePath), `Expected ${file} to exist`).toBe(true);
+      expect(existsSync(join(outputDir, file)), `Expected ${file} to exist`).toBe(true);
     }
   });
 });
