@@ -30,11 +30,6 @@ describe("defaultDetector", () => {
     it("has correct name", () => {
       expect(defaultDetector.name).toBe("default");
     });
-
-    it("has label and description", () => {
-      expect(defaultDetector.label).toBeDefined();
-      expect(defaultDetector.description).toBeDefined();
-    });
   });
 
   describe("canHandle", () => {

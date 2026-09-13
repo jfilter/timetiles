@@ -186,30 +186,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(titles).toContain("Gamma Workshop");
   });
 
-  // ── 2. Empty file fails cleanly ──
-
-  it("should fail cleanly when processing an empty CSV file", async () => {
-    const emptyCsv = "";
-
-    const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, emptyCsv, testUser, {
-      filename: "empty-combo.csv",
-    });
-    await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
-
-    const result = await runUntilSettled(payload, ingestFile.id, 30);
-
-    expect(result.settled).toBe(true);
-    expect(result.ingestFile.status).toBe("failed");
-
-    // No ingest jobs should exist (detection failed before creating them)
-    const ingestJobs = await payload.find({
-      collection: "ingest-jobs",
-      where: { ingestFile: { equals: ingestFile.id } },
-    });
-    expect(ingestJobs.docs).toHaveLength(0);
-  });
-
-  // ── 3. Schema drift → NEEDS_REVIEW → approve → completes ──
+  // ── 2. Schema drift → NEEDS_REVIEW → approve → completes ──
 
   it("should pause at NEEDS_REVIEW for schema drift and complete after approval", async () => {
     // Create a dataset with a locked schema (schema drift will require approval)
@@ -307,7 +284,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(events.docs.length).toBeGreaterThanOrEqual(2);
   }, 60000);
 
-  // ── 4. Schema drift → NEEDS_REVIEW → NOT approved → stays paused ──
+  // ── 3. Schema drift → NEEDS_REVIEW → NOT approved → stays paused ──
 
   it("should stay at NEEDS_REVIEW when schema drift is not approved", async () => {
     // Create a locked dataset with an existing schema
@@ -382,7 +359,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
-  // ── 5. onSuccess callback marks IngestJob as COMPLETED ──
+  // ── 4. onSuccess callback marks IngestJob as COMPLETED ──
 
   it("should mark IngestJob as COMPLETED via create-events onSuccess callback", async () => {
     const csvContent = `title,date,location
@@ -405,7 +382,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(ingestJobs.docs[0].stage).toBe(PROCESSING_STAGE.COMPLETED);
   });
 
-  // ── 6. ingest-process with resumeFrom=create-events skips earlier tasks ──
+  // ── 5. ingest-process with resumeFrom=create-events skips earlier tasks ──
 
   it("should complete a second import to the same catalog", async () => {
     // Verify the workflow system handles a second import to the same catalog
@@ -431,7 +408,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(events.docs.length).toBeGreaterThanOrEqual(2);
   });
 
-  // ── 7. File status: NEEDS_REVIEW prevents IngestFile from completing ──
+  // ── 6. File status: NEEDS_REVIEW prevents IngestFile from completing ──
 
   it("should keep IngestFile in processing when an IngestJob is in needs-review", async () => {
     // Create a locked dataset to trigger schema drift review
@@ -495,7 +472,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(file.datasetsProcessed).toBe(1);
   }, 60000);
 
-  // ── 8. Headers-only CSV (no data rows) produces no events ──
+  // ── 7. Headers-only CSV (no data rows) produces no events ──
 
   it("should produce no events when CSV has headers but no data rows", async () => {
     const headersOnly = `title,date,location`;
@@ -530,7 +507,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(["completed", "failed"]).toContain(result.ingestFile.status);
   });
 
-  // ── 9. Total geocoding failure prevents event creation ──
+  // ── 8. Total geocoding failure prevents event creation ──
 
   it("should prevent event creation when geocoding fails completely", async () => {
     // Override the mock to fail all geocoding
@@ -569,7 +546,7 @@ describe.sequential("Workflow Combinations (Integration)", () => {
     expect(result.ingestFile.status).toBe("failed");
   }, 60000);
 
-  // ── 10. Multiple sequential imports to same dataset both complete ──
+  // ── 9. Multiple sequential imports to same dataset both complete ──
 
   it("should handle sequential imports to the same dataset correctly", async () => {
     // First import

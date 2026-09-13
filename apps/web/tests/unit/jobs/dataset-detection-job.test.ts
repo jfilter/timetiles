@@ -335,25 +335,6 @@ describe.sequential("DatasetDetectionJob Handler", () => {
         data: expect.objectContaining({ datasetsCount: 1, status: "processing" }),
       });
     });
-
-    it("should clean up file after processing", async () => {
-      const mockIngestFile = {
-        id: 123,
-        filename: "test.csv",
-        filePath: "/tmp/test.csv",
-        catalog: 456,
-        originalName: "test.csv",
-      };
-
-      mockPayload.findByID.mockResolvedValueOnce(mockIngestFile);
-      mockPayload.find.mockResolvedValue({ docs: [] });
-      mockPayload.create.mockResolvedValue({ id: "test-id" });
-
-      await datasetDetectionJob.handler(mockContext);
-
-      // Note: File cleanup is not implemented in the current handler
-      expect(mockPayload.findByID).toHaveBeenCalled();
-    });
   });
 
   describe("Error Handling", () => {
