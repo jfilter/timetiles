@@ -10,7 +10,9 @@
 import fs from "node:fs";
 import { join } from "node:path";
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { resetEnv } from "@/lib/config/env";
 
 import {
   createIntegrationTestEnvironment,
@@ -89,8 +91,7 @@ describe.sequential("Import Files Collection", () => {
     expect(ingestFile.originalName).toBe("valid-events.csv"); // Set by beforeOperation hook
     expect(ingestFile.filename).toBeDefined(); // Payload auto-generated with unique name
     expect(ingestFile.filename).not.toBe("valid-events.csv"); // Should be unique
-    expect(ingestFile.rateLimitInfo).toBeDefined();
-    expect(ingestFile.metadata).toBeDefined();
+    expect(ingestFile.metadata).toMatchObject({ uploadSource: "api" });
     expect(ingestFile.uploadedAt).toBeDefined();
   });
 
@@ -121,20 +122,26 @@ describe.sequential("Import Files Collection", () => {
     ).rejects.toThrow(/[Ff]ile too large|[Mm]aximum size/);
   });
 
-  it("should apply rate limiting in beforeChange hook", async () => {
-    // Since rate limiting is applied in the hook, we can test by creating multiple records
-    // rapidly and checking that the service is called
-    const testFilePath = join(__dirname, "../../fixtures", "valid-events.csv");
-    const fileBuffer = fs.readFileSync(testFilePath);
-    const fileName = "valid-events.csv";
+  it("records the rate-limited client on uploads when rate limiting is enforced", async () => {
+    // Upload rate limiting is skipped under NODE_ENV=test, so enforce it for this upload only.
+    vi.stubEnv("NODE_ENV", "development");
+    resetEnv();
+    try {
+      const fileBuffer = fs.readFileSync(join(__dirname, "../../fixtures", "valid-events.csv"));
 
-    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
-      user: testUserId,
-      filename: fileName,
-    });
+      const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), fileBuffer, {
+        user: testUserId,
+        filename: "valid-events.csv",
+      });
 
-    // Should succeed without rate limiting errors for the first request
-    expect(ingestFile.id).toBeDefined();
-    expect(ingestFile.rateLimitInfo).toBeDefined();
+      expect(ingestFile.rateLimitInfo).toMatchObject({
+        clientId: "unknown",
+        isAuthenticated: true,
+        timestamp: expect.any(String),
+      });
+    } finally {
+      vi.unstubAllEnvs();
+      resetEnv();
+    }
   });
 });

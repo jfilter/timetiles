@@ -15,8 +15,11 @@
  * @module
  */
 
+import { readFile } from "node:fs/promises";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { getIngestFilePath } from "@/lib/ingest/upload-path";
 import { TEST_CREDENTIALS, TEST_EMAILS } from "@/tests/constants/test-credentials";
 import {
   createIntegrationTestEnvironment,
@@ -223,30 +226,30 @@ describe.sequential("Security Validation Tests", () => {
       }
     });
 
-    it("should handle invalid authentication types", async () => {
-      // Set up test server endpoint
-      testServer.respondWithCSV("/invalid-auth.csv", "test,data\n1,2");
+    it("sends custom headers without an auth type and rejects reserved headers at save time", async () => {
+      const receivedHeaders: Record<string, string | string[] | undefined>[] = [];
+      testServer.route(
+        "/custom-headers-none-auth.csv",
+        (req: { headers: Record<string, string | string[]> }, res: any) => {
+          receivedHeaders.push(req.headers);
+          res.writeHead(200, { "Content-Type": "text/csv" });
+          res.end("test,data\n1,2");
+        }
+      );
 
       const { scheduledIngest } = await withScheduledIngest(
         testEnv,
         testCatalogId,
-        `${testServerUrl}/invalid-auth.csv`,
+        `${testServerUrl}/custom-headers-none-auth.csv`,
         {
           user: adminUser,
-          name: "Invalid Auth Type Import",
+          name: "Custom Headers Without Auth Import",
           frequency: "daily",
-          authConfig: {
-            type: "none",
-            // Try to inject headers anyway
-            customHeaders: { "X-Admin": "true", "X-Bypass-Auth": "1" },
-          },
+          authConfig: { type: "none", customHeaders: { "X-Admin": "true", "X-Bypass-Auth": "1" } },
         }
       );
 
-      // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
-
-      // Execute the job
       const result = await urlFetchJob.handler({
         job: { id: "test-job-auth" },
         req: { payload },
@@ -260,8 +263,19 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Custom headers should be sent
       expect(result.output.ingestFileId).toBeDefined();
+      expect(receivedHeaders).toHaveLength(1);
+      expect(receivedHeaders[0]).toMatchObject({ "x-admin": "true", "x-bypass-auth": "1" });
+      expect(receivedHeaders[0]!.authorization).toBeUndefined();
+
+      await expect(
+        withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/custom-headers-none-auth.csv`, {
+          user: adminUser,
+          name: "Reserved Header Import",
+          frequency: "daily",
+          authConfig: { type: "none", customHeaders: { Host: "evil.example" } },
+        })
+      ).rejects.toThrow(/The following field is invalid:.*Custom Headers/i);
     });
 
     it("should validate Basic Auth credentials format", async () => {
@@ -326,50 +340,6 @@ describe.sequential("Security Validation Tests", () => {
         // Template should be stored as-is (sanitization happens on use)
         expect(scheduledIngest.ingestNameTemplate).toBe(template);
       }
-    });
-
-    it("should sanitize custom headers JSON", async () => {
-      // Set up test server endpoint
-      testServer.respondWithCSV("/custom-headers.csv", "test,data\n1,2");
-
-      const { scheduledIngest } = await withScheduledIngest(
-        testEnv,
-        testCatalogId,
-        `${testServerUrl}/custom-headers.csv`,
-        {
-          user: adminUser,
-          name: "Custom Headers Test",
-          frequency: "daily",
-          authConfig: {
-            type: "none",
-            customHeaders: {
-              "X-Custom-Header": "value",
-              // 'Content-Type': 'text/csv', // Should not override
-              // 'Host': 'evil.com', // Should not be allowed
-              // 'Authorization': 'Bearer stolen-token', // Should not override auth
-            },
-          },
-        }
-      );
-
-      // Import the job handler
-      const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
-
-      // Execute the job
-      const result = await urlFetchJob.handler({
-        job: { id: "test-job-headers" },
-        req: { payload },
-        input: {
-          scheduledIngestId: scheduledIngest.id,
-          sourceUrl: scheduledIngest.sourceUrl,
-          authConfig: scheduledIngest.authConfig,
-          catalogId: testCatalogId,
-          originalName: "Test Import",
-          userId: adminUser.id,
-        },
-      });
-
-      expect(result.output.ingestFileId).toBeDefined();
     });
   });
 
@@ -554,15 +524,15 @@ describe.sequential("Security Validation Tests", () => {
   });
 
   describe("File Content Security", () => {
-    it("should reject files with suspicious content", async () => {
+    it("stores formula-like CSV content byte-for-byte without executing or altering it", async () => {
       const { scheduledIngest } = await withScheduledIngest(testEnv, testCatalogId, `${testServerUrl}/suspicious.csv`, {
         user: adminUser,
         name: "Suspicious Content Import",
         frequency: "daily",
       });
 
-      // Set up test server endpoint with CSV injection content
-      testServer.respondWithCSV("/suspicious.csv", '=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data');
+      const suspiciousCsv = '=cmd|"/c calc"!A1,@SUM(1+9)*cmd|"/c calc"!A1\n=1+1,normal data';
+      testServer.respondWithCSV("/suspicious.csv", suspiciousCsv);
 
       // Import the job handler
       const { urlFetchJob } = await import("@/lib/jobs/handlers/url-fetch-job");
@@ -581,8 +551,12 @@ describe.sequential("Security Validation Tests", () => {
         },
       });
 
-      // Should still succeed - content validation happens during parsing
-      expect(result.output.ingestFileId).toBeDefined();
+      const ingestFile = await payload.findByID({
+        collection: "ingest-files",
+        id: result.output.ingestFileId,
+        overrideAccess: true,
+      });
+      expect(await readFile(getIngestFilePath(ingestFile.filename), "utf8")).toBe(suspiciousCsv);
     });
 
     it("should handle zip bombs and large files", async () => {

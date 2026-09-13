@@ -95,6 +95,28 @@ describe("URL authentication configuration", () => {
     });
   });
 
+  it.each(["Host", "transfer-encoding", "Connection", "Proxy-Authorization"])(
+    "rejects the reserved hop-by-hop header %s",
+    (name) => {
+      expect(validateCustomHeaders({ [name]: "value" })).toEqual({
+        ok: false,
+        error: `customHeaders may not set "${name}" (reserved/hop-by-hop)`,
+      });
+    }
+  );
+
+  it("drops invalid custom headers at request time while keeping authentication", async () => {
+    const headers = await buildAuthHeaders({
+      type: "bearer",
+      bearerToken: TEST_CREDENTIALS.bearer.token,
+      customHeaders: { Host: "evil.example", "X-Custom": "value" },
+    });
+    expect(headers).toEqual({
+      "User-Agent": "TimeTiles/1.0 (Data Import Service)",
+      Authorization: `Bearer ${TEST_CREDENTIALS.bearer.token}`,
+    });
+  });
+
   it("does not expose malformed custom header contents in validation errors", () => {
     expect(validateCustomHeaders(TEST_CREDENTIALS.bearer.token)).toEqual({
       ok: false,
