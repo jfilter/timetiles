@@ -3,9 +3,7 @@
  *
  * When the Branding global has favicon sources configured, the Branding
  * `afterChange` hook renders a properly sized icon set into `public/`. This
- * module points browsers at that generated set. It used to hand out the raw
- * uploaded source image instead, so every browser downloaded a full-size
- * upload as its favicon and the generated files were never requested at all.
+ * module points browsers at that generated set rather than the full-size upload.
  *
  * The generated files are only advertised when they are actually on disk —
  * generation can fail (unreachable media, bad image) and a `public/` directory
