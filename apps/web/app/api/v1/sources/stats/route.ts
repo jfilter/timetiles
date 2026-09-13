@@ -14,8 +14,6 @@ import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filter
 import { logger } from "@/lib/logger";
 import { executeCatalogAggregation, executeDatasetAggregation } from "@/lib/services/aggregation-service";
 
-export type { DataSourceStatsResponse } from "@/lib/types/data-source-stats";
-
 /**
  * GET handler for data source statistics.
  *

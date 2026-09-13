@@ -1,10 +1,5 @@
 /**
- * Helper functions and types for the configure-import endpoint.
- *
- * Types are imported from the shared import wizard types module.
- * Preview storage operations are delegated to `@/lib/ingest/preview-store`.
- * Preview validation is delegated to `@/lib/ingest/preview-validation`.
- * This file contains the Zod validation schema for the configure-import request body.
+ * Zod validation schema for the configure-import request body.
  *
  * @module
  * @category API Routes
@@ -19,18 +14,6 @@ import {
   sheetMappingsSchema,
   transformsSchema,
 } from "@/lib/ingest/shared-schemas";
-
-export { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
-export { validateRequest } from "@/lib/ingest/preview-validation";
-export type {
-  AuthConfig,
-  ConfigureIngestRequest,
-  CreateScheduleConfig,
-  DatasetMappingEntry,
-  FieldMapping,
-  PreviewMetadata,
-  SheetMapping,
-} from "@/lib/ingest/types/wizard";
 
 /** Zod schema for validating the configure-import request body. */
 export const ConfigureImportBodySchema = z.object({

@@ -12,7 +12,13 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
+import {
+  createCommonConfig,
+  createCreatedByField,
+  createIsPublicField,
+  createSlugField,
+  setCreatedByHook,
+} from "../shared-fields";
 import { create, deleteAccess, read, readVersions, update } from "./access";
 import {
   createDefaultView,
@@ -20,7 +26,6 @@ import {
   invalidateSiteCache,
   restrictDomainField,
   sanitizeCustomCode,
-  setCreatedBy,
 } from "./hooks";
 
 const Sites: CollectionConfig = {
@@ -34,7 +39,7 @@ const Sites: CollectionConfig = {
   },
   access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
-    beforeChange: [setCreatedBy, enforceSingleDefault, restrictDomainField, sanitizeCustomCode],
+    beforeChange: [setCreatedByHook, enforceSingleDefault, restrictDomainField, sanitizeCustomCode],
     afterChange: [invalidateSiteCache, createDefaultView],
   },
   fields: [

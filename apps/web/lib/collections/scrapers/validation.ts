@@ -6,7 +6,7 @@
  *
  * @module
  */
-import { isSafeRelativeEntrypoint } from "@timetiles/shared";
+import { ENV_KEY_PATTERN, isSafeRelativeEntrypoint } from "@timetiles/shared";
 import type { PayloadRequest } from "payload";
 
 import { isPrivileged } from "@/lib/collections/shared-fields";
@@ -29,9 +29,6 @@ export const RESERVED_ENV_PREFIXES = [
 
 /** Maximum number of environment variables per scraper. */
 export const MAX_ENV_VARS = 50;
-
-/** Valid environment variable key pattern. */
-export const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
 
 /**
  * Validates entrypoint path to prevent path traversal and absolute paths.

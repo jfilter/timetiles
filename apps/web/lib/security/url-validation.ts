@@ -14,10 +14,6 @@ import { isPrivateIP, normalizeAddressLiteral } from "@timetiles/shared";
 import { logger } from "@/lib/logger";
 import { isE2E } from "@/lib/utils/is-e2e";
 
-// The IP-range classification (patterns, embedded-IPv4 unwrapping, isPrivateIP)
-// lives in @timetiles/shared so web and timescrape cannot drift apart on it.
-export { isPrivateIP } from "@timetiles/shared";
-
 /** Hostnames that resolve to private/loopback addresses. */
 const PRIVATE_HOSTNAMES = new Set(["localhost", "localhost.localdomain", "ip6-localhost", "ip6-loopback"]);
 

@@ -142,6 +142,4 @@ export class GeocodingService {
 /** Create a new GeocodingService instance. Follows the `create*Service` convention for stateless-per-request services. */
 export const createGeocodingService = (payload: Payload): GeocodingService => new GeocodingService(payload);
 
-// Re-export types for convenience
-export type { BatchGeocodingResult, GeocodingResult } from "./types";
 export { GeocodingError } from "./types";

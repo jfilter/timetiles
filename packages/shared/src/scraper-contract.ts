@@ -77,3 +77,6 @@ export interface ScraperRunResult {
   stderr: string;
   output?: { rows: number; bytes: number; download_url: string };
 }
+
+/** Valid scraper environment variable key: `[A-Za-z_][A-Za-z0-9_]*`. */
+export const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;

@@ -120,10 +120,3 @@ export const getFeatureFlagService = (payload: Payload): FeatureFlagService => {
 export const resetFeatureFlagService = (): void => {
   slot[SERVICE_KEY] = null;
 };
-
-/**
- * Returns the default feature flags.
- *
- * Useful for testing or when database is unavailable.
- */
-export const getDefaultFeatureFlags = (): FeatureFlags => ({ ...DEFAULT_FLAGS });

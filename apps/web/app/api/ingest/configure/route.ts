@@ -17,17 +17,14 @@ import {
   getOrCreateCatalog,
   processSheetMappings,
 } from "@/lib/ingest/configure-service";
+import { cleanupPreview, loadPreviewMetadata } from "@/lib/ingest/preview-store";
+import { validateRequest } from "@/lib/ingest/preview-validation";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
+import type { ConfigureIngestRequest } from "@/lib/ingest/types/wizard";
 import { createLogger } from "@/lib/logger";
 
 import { parseFileSheets } from "../preview-schema/helpers";
-import {
-  cleanupPreview,
-  ConfigureImportBodySchema,
-  type ConfigureIngestRequest,
-  loadPreviewMetadata,
-  validateRequest,
-} from "./helpers";
+import { ConfigureImportBodySchema } from "./helpers";
 
 const logger = createLogger("api-wizard-configure-import");
 

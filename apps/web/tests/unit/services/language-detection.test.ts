@@ -10,7 +10,6 @@ import {
   detectLanguage,
   detectLanguageFromText,
   extractTextForLanguageDetection,
-  isSupportedLanguage,
   LANGUAGE_NAMES,
   SUPPORTED_LANGUAGES,
 } from "@/lib/services/schema-detection/utilities/language";
@@ -40,23 +39,6 @@ describe("language-detection", () => {
         expect(LANGUAGE_NAMES[lang]).toBeDefined();
         expect(typeof LANGUAGE_NAMES[lang]).toBe("string");
       }
-    });
-  });
-
-  describe("isSupportedLanguage", () => {
-    it("should return true for supported languages", () => {
-      expect(isSupportedLanguage("eng")).toBe(true);
-      expect(isSupportedLanguage("deu")).toBe(true);
-      expect(isSupportedLanguage("fra")).toBe(true);
-      expect(isSupportedLanguage("spa")).toBe(true);
-    });
-
-    it("should return false for unsupported languages", () => {
-      expect(isSupportedLanguage("jpn")).toBe(false);
-      expect(isSupportedLanguage("xxx")).toBe(false);
-      expect(isSupportedLanguage("")).toBe(false);
-      expect(isSupportedLanguage("zho")).toBe(false);
-      expect(isSupportedLanguage("xyz")).toBe(false);
     });
   });
 

@@ -17,8 +17,9 @@ import { ArrowLeftRight, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useMemo, useState } from "react";
 
+import type { TransformType } from "@/lib/definitions/transform-registry";
 import { buildColumnView, FIELD_MAPPING_STRING_KEYS, findTargetForColumn } from "@/lib/ingest/column-view";
-import type { ConcatenateTransform, TransformType } from "@/lib/ingest/types/transforms";
+import type { ConcatenateTransform } from "@/lib/ingest/types/transforms";
 import { createTransform } from "@/lib/ingest/types/transforms";
 import type {
   FieldMapping,
@@ -45,8 +46,6 @@ export interface ColumnMappingTableProps {
   onTransformsChange: (transforms: IngestTransform[]) => void;
   onGeocodingChange: (enabled: boolean) => void;
 }
-
-export { type ColumnViewRow } from "@/lib/ingest/column-view";
 
 // ---------------------------------------------------------------------------
 // CombinedRow (for concatenate transforms that produce virtual columns)

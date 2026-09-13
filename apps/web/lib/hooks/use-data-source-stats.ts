@@ -15,8 +15,6 @@ import { fetchJson } from "../api/http-error";
 import type { DataSourceStatsResponse } from "../types/data-source-stats";
 import { QUERY_PRESETS } from "./query-presets";
 
-export type { DataSourceStatsResponse } from "../types/data-source-stats";
-
 /**
  * Query keys for data source stats.
  */

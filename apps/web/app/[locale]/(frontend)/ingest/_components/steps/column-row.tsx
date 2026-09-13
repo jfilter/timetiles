@@ -14,7 +14,7 @@ import { cn } from "@timetiles/ui/lib/utils";
 import { useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 
-import type { TransformType } from "@/lib/ingest/types/transforms";
+import type { TransformType } from "@/lib/definitions/transform-registry";
 import type { ConfidenceLevel, FieldMappingStringField, IngestTransform } from "@/lib/ingest/types/wizard";
 
 import { TargetSelect } from "./column-mapping-shared";

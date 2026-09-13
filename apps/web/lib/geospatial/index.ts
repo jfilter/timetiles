@@ -9,6 +9,5 @@
  * @category Geospatial
  */
 
-export type { H3ClusterFilter } from "./h3";
 export { parseH3ClusterFilter } from "./h3";
 export type { MapBounds } from "./types";

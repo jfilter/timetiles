@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 
+import type { StringOperation } from "@/lib/definitions/transform-registry";
 import { interpretRows, planFromOps } from "@/lib/ingest/interpret";
 import { applyTransforms } from "@/lib/ingest/transforms";
 import type {
@@ -15,7 +16,6 @@ import type {
   IngestTransform,
   RenameTransform,
   SplitTransform,
-  StringOperation,
   StringOpTransform,
 } from "@/lib/ingest/types/transforms";
 import { getByPath } from "@/lib/utils/object-path";

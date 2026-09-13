@@ -22,8 +22,6 @@ import type { Site } from "@/payload-types";
 
 import { createEnforceSingleDefault } from "../shared-hooks";
 
-export { setCreatedByHook as setCreatedBy } from "../shared-fields";
-
 /**
  * Enforces that only one site can be the default.
  * When a site is set as default, unsets any other default sites.

@@ -161,9 +161,3 @@ export const detectLanguage = (sampleData: Record<string, unknown>[], headers: s
   const text = extractTextForLanguageDetection(sampleData, headers);
   return detectLanguageFromText(text);
 };
-
-/**
- * Checks if a language code is supported.
- */
-export const isSupportedLanguage = (code: string): code is SupportedLanguage =>
-  SUPPORTED_LANGUAGES.includes(code as SupportedLanguage);

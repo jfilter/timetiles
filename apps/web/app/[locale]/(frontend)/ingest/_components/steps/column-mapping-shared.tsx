@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import type { TransformType } from "@/lib/ingest/types/transforms";
+import type { TransformType } from "@/lib/definitions/transform-registry";
 import type { FieldMappingStringField } from "@/lib/ingest/types/wizard";
 
 // ---------------------------------------------------------------------------

@@ -18,9 +18,10 @@ import { z } from "zod";
 import { apiRoute, ValidationError } from "@/lib/api";
 import { fetchRemoteData } from "@/lib/ingest/fetch-remote-data";
 import { createLogger, logError } from "@/lib/logger";
+import { validateExternalHttpUrl } from "@/lib/security/url-validation";
 import { sanitizeUrlForLogging } from "@/lib/utils/url-sanitize";
 
-import { buildPreviewResult, getPreviewDir, getPreviewFileSizeLimit, validateUrl } from "../helpers";
+import { buildPreviewResult, getPreviewDir, getPreviewFileSizeLimit } from "../helpers";
 
 const logger = createLogger("api-preview-schema-url");
 
@@ -56,7 +57,7 @@ export const POST = apiRoute({
     const { sourceUrl, authConfig, recordsPath } = body;
 
     // Additional SSRF validation beyond Zod's z.string().url()
-    const urlResult = validateUrl(sourceUrl);
+    const urlResult = validateExternalHttpUrl(sourceUrl);
     if ("error" in urlResult) {
       throw new ValidationError(urlResult.error);
     }

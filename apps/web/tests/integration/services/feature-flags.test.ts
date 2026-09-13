@@ -7,11 +7,7 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
-import {
-  getDefaultFeatureFlags,
-  getFeatureFlagService,
-  resetFeatureFlagService,
-} from "@/lib/services/feature-flag-service";
+import { getFeatureFlagService, resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 
 import { createIntegrationTestEnvironment, withUsers } from "../../setup/integration/environment";
 
@@ -70,19 +66,6 @@ describe.sequential("Feature Flag Service", () => {
       expect(flags.enableImportCreation).toBe(true);
       expect(flags.enableScheduledJobExecution).toBe(true);
       expect(flags.enableUrlFetchCaching).toBe(true);
-    });
-
-    it("should return defaults from getDefaultFeatureFlags()", () => {
-      const defaults = getDefaultFeatureFlags();
-
-      expect(defaults.allowPrivateImports).toBe(true);
-      expect(defaults.enableScheduledIngests).toBe(true);
-      expect(defaults.enableRegistration).toBe(true);
-      expect(defaults.enableEventCreation).toBe(true);
-      expect(defaults.enableDatasetCreation).toBe(true);
-      expect(defaults.enableImportCreation).toBe(true);
-      expect(defaults.enableScheduledJobExecution).toBe(true);
-      expect(defaults.enableUrlFetchCaching).toBe(true);
     });
 
     it("should match Settings global defaults", async () => {

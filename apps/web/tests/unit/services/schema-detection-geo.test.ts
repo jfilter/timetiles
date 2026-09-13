@@ -7,13 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { FieldStatistics } from "@/lib/services/schema-detection/types";
-import {
-  detectEnumFields,
-  detectIdFields,
-  detectPatterns,
-  looksLikeCoordinate,
-  looksLikeId,
-} from "@/lib/services/schema-detection/utilities/geo";
+import { detectEnumFields, detectIdFields, detectPatterns } from "@/lib/services/schema-detection/utilities/geo";
 
 const createFieldStats = (overrides: Partial<FieldStatistics> = {}): FieldStatistics => ({
   path: "test",
@@ -199,79 +193,5 @@ describe("detectPatterns", () => {
 
     expect(resultDefault.enumFields).toContain("category");
     expect(resultLowThreshold.enumFields).not.toContain("category");
-  });
-});
-
-describe("looksLikeId", () => {
-  it("identifies UUIDs", () => {
-    expect(looksLikeId("550e8400-e29b-41d4-a716-446655440000")).toBe(true);
-    expect(looksLikeId("123e4567-e89b-12d3-a456-426614174000")).toBe(true);
-  });
-
-  it("identifies MongoDB ObjectIds", () => {
-    expect(looksLikeId("507f1f77bcf86cd799439011")).toBe(true);
-    expect(looksLikeId("5f8d0d55b54764421b7156c3")).toBe(true);
-  });
-
-  it("identifies alphanumeric IDs", () => {
-    expect(looksLikeId("abc12345")).toBe(true);
-    expect(looksLikeId("ID123456789")).toBe(true);
-  });
-
-  it("identifies large numeric IDs", () => {
-    expect(looksLikeId(1234567890)).toBe(true);
-    expect(looksLikeId(9999999)).toBe(true);
-  });
-
-  it("rejects small numbers", () => {
-    expect(looksLikeId(42)).toBe(false);
-    expect(looksLikeId(1000)).toBe(false);
-  });
-
-  it("rejects short strings", () => {
-    expect(looksLikeId("abc")).toBe(false);
-    expect(looksLikeId("id123")).toBe(false);
-  });
-
-  it("rejects non-alphanumeric strings", () => {
-    expect(looksLikeId("hello world")).toBe(false);
-    expect(looksLikeId("name-with-dashes")).toBe(false);
-  });
-});
-
-describe("looksLikeCoordinate", () => {
-  describe("latitude", () => {
-    it("accepts valid latitudes", () => {
-      expect(looksLikeCoordinate(0, "lat")).toBe(true);
-      expect(looksLikeCoordinate(45.5, "lat")).toBe(true);
-      expect(looksLikeCoordinate(-90, "lat")).toBe(true);
-      expect(looksLikeCoordinate(90, "lat")).toBe(true);
-    });
-
-    it("rejects invalid latitudes", () => {
-      expect(looksLikeCoordinate(91, "lat")).toBe(false);
-      expect(looksLikeCoordinate(-91, "lat")).toBe(false);
-      expect(looksLikeCoordinate(180, "lat")).toBe(false);
-    });
-  });
-
-  describe("longitude", () => {
-    it("accepts valid longitudes", () => {
-      expect(looksLikeCoordinate(0, "lng")).toBe(true);
-      expect(looksLikeCoordinate(100, "lng")).toBe(true);
-      expect(looksLikeCoordinate(-180, "lng")).toBe(true);
-      expect(looksLikeCoordinate(180, "lng")).toBe(true);
-    });
-
-    it("rejects invalid longitudes", () => {
-      expect(looksLikeCoordinate(181, "lng")).toBe(false);
-      expect(looksLikeCoordinate(-181, "lng")).toBe(false);
-    });
-  });
-
-  it("rejects non-number values", () => {
-    expect(looksLikeCoordinate("45.5", "lat")).toBe(false);
-    expect(looksLikeCoordinate(null, "lat")).toBe(false);
-    expect(looksLikeCoordinate(undefined, "lng")).toBe(false);
   });
 });

@@ -5,6 +5,7 @@
  * @module
  * @category Tests
  */
+import { isPrivateIP } from "@timetiles/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as UrlValidationModule from "@/lib/security/url-validation";
@@ -13,7 +14,6 @@ const mockDnsLookup = vi.hoisted(() => vi.fn());
 
 vi.mock("node:dns", () => ({ default: { promises: { lookup: mockDnsLookup } }, promises: { lookup: mockDnsLookup } }));
 
-let isPrivateIP: typeof UrlValidationModule.isPrivateIP;
 let isPrivateUrl: typeof UrlValidationModule.isPrivateUrl;
 let validateResolvedPublicHostname: typeof UrlValidationModule.validateResolvedPublicHostname;
 
@@ -25,7 +25,7 @@ beforeEach(async () => {
   vi.stubEnv("NODE_ENV", "test");
   mockDnsLookup.mockReset();
 
-  ({ isPrivateIP, isPrivateUrl, validateResolvedPublicHostname } = await import("@/lib/security/url-validation"));
+  ({ isPrivateUrl, validateResolvedPublicHostname } = await import("@/lib/security/url-validation"));
 });
 
 afterEach(() => {

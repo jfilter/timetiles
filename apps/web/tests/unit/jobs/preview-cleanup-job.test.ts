@@ -21,7 +21,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
 
-import { getPreviewDirPath, PREVIEW_EXPIRY_MS, sweepExpiredPreviews } from "@/lib/ingest/preview-store";
+import { PREVIEW_EXPIRY_MS, sweepExpiredPreviews } from "@/lib/ingest/preview-store";
 import { previewCleanupJob } from "@/lib/jobs/handlers/preview-cleanup-job";
 
 const uuid = (suffix: string): string => `aaaaaaaa-aaaa-4aaa-8aaa-${suffix.padStart(12, "0")}`;
@@ -72,10 +72,6 @@ describe.sequential("sweepExpiredPreviews", () => {
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
     }
-  });
-
-  it("exposes getPreviewDirPath() pointing inside os.tmpdir()", () => {
-    expect(getPreviewDirPath()).toBe(path.join(os.tmpdir(), "timetiles-wizard-preview"));
   });
 
   it("shares only preview storage between web and the maintenance worker", () => {

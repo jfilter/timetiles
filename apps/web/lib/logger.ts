@@ -127,13 +127,3 @@ export const logError = (error: unknown, context: string, metadata?: Record<stri
   const err = error instanceof Error ? error : new Error(String(error));
   logger.error({ err, context, ...metadata }, `Error in ${context}: ${err.message}`);
 };
-
-// Export log levels for convenience
-export const LogLevel = {
-  TRACE: "trace",
-  DEBUG: "debug",
-  INFO: "info",
-  WARN: "warn",
-  ERROR: "error",
-  FATAL: "fatal",
-} as const;

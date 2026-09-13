@@ -12,6 +12,7 @@ export type {
   ScraperRuntime,
 } from "./scraper-contract.js";
 export {
+  ENV_KEY_PATTERN,
   SCRAPER_CLONE_DEADLINE_SECONDS,
   SCRAPER_DEFAULT_OUTPUT_FILE,
   SCRAPER_MAX_REPO_SIZE_MB,

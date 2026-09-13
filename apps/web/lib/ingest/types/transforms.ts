@@ -12,10 +12,6 @@
  * @category Types
  */
 
-// Re-export canonical definitions so existing consumers don't need to update imports
-export type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
-export { DATE_FORMAT_OPTIONS, STRING_OPERATIONS } from "@/lib/definitions/transform-registry";
-
 import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
 
 /**
@@ -175,36 +171,6 @@ export type IngestTransform =
   | ParseJsonArrayTransform
   | SplitToArrayTransform
   | ExtractTransform;
-
-/**
- * Check if a transform has all required fields configured
- */
-export const isTransformValid = (transform: IngestTransform): boolean => {
-  switch (transform.type) {
-    case "rename":
-      return Boolean(transform.from && transform.to);
-    case "date-parse":
-      return Boolean(transform.from && transform.inputFormat && transform.outputFormat);
-    case "string-op":
-      if (transform.operation === "expression") {
-        return Boolean(transform.from && transform.expression);
-      }
-      return Boolean(transform.from && transform.operation);
-    case "concatenate":
-      // separator is always a string per the type definition, so we just validate the other required fields
-      return Boolean(transform.fromFields.length >= 2 && transform.to);
-    case "split":
-      return Boolean(transform.from && transform.delimiter && transform.toFields.length >= 1);
-    case "parse-json-array":
-      return Boolean(transform.from);
-    case "split-to-array":
-      return Boolean(transform.from);
-    case "extract":
-      return Boolean(transform.from && transform.to && transform.pattern);
-    default:
-      return false;
-  }
-};
 
 /**
  * Create a new transform with default values

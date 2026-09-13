@@ -16,7 +16,7 @@ import { fetchJson } from "../api/http-error";
 import { createItemPollingInterval, QUERY_PRESETS } from "./query-presets";
 import { useAuthState } from "./use-auth-queries";
 
-export type { DataExport, ExportListResponse, RequestExportError, RequestExportResponse } from "@/lib/export/api-types";
+export type { DataExport } from "@/lib/export/api-types";
 
 /**
  * Query key for data exports.

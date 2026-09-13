@@ -18,8 +18,6 @@ import type { View } from "@/payload-types";
 
 import { createEnforceSingleDefault } from "../shared-hooks";
 
-export { setCreatedByHook as setCreatedBy } from "../shared-fields";
-
 /**
  * Reject attaching a View to a Site the caller does not own.
  *

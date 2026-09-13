@@ -12,9 +12,15 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createCreatedByField, createIsPublicField, createSlugField } from "../shared-fields";
+import {
+  createCommonConfig,
+  createCreatedByField,
+  createIsPublicField,
+  createSlugField,
+  setCreatedByHook,
+} from "../shared-fields";
 import { create, deleteAccess, read, readVersions, update } from "./access";
-import { enforceSingleDefault, invalidateViewCache, setCreatedBy, validateSiteOwnership } from "./hooks";
+import { enforceSingleDefault, invalidateViewCache, validateSiteOwnership } from "./hooks";
 
 const Views: CollectionConfig = {
   slug: "views",
@@ -27,7 +33,7 @@ const Views: CollectionConfig = {
   },
   access: { read, create, update, delete: deleteAccess, readVersions },
   hooks: {
-    beforeChange: [setCreatedBy, validateSiteOwnership, enforceSingleDefault],
+    beforeChange: [setCreatedByHook, validateSiteOwnership, enforceSingleDefault],
     afterChange: [invalidateViewCache],
   },
   fields: [

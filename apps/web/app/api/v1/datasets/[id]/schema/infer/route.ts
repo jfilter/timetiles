@@ -21,8 +21,6 @@ import { SchemaInferenceBodySchema } from "@/lib/schemas/schema-inference";
 import type { SchemaInferenceResponse } from "@/lib/types/schema-inference";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
-export type { SchemaInferenceOptions, SchemaInferenceResponse } from "@/lib/types/schema-inference";
-
 export const POST = apiRoute({
   auth: "required",
   params: z.object({ id: z.string() }),

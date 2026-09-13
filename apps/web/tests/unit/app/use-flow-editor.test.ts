@@ -42,7 +42,7 @@ vi.mock("@/lib/ingest/field-mapping-utils", () => ({
   setMappingField: vi.fn(),
 }));
 
-vi.mock("@/lib/ingest/types/transforms", () => ({ createTransform: vi.fn(), isTransformValid: () => false }));
+vi.mock("@/lib/ingest/types/transforms", () => ({ createTransform: vi.fn() }));
 
 import { useFlowEditor } from "@/app/[locale]/(frontend)/ingest/flow-editor/_components/use-flow-editor";
 

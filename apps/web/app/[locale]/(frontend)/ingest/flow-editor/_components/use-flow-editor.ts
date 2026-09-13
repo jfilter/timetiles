@@ -12,11 +12,12 @@
 import { addEdge, type Connection, type Edge, type Node, useEdgesState, useNodesState } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
+import type { TransformType } from "@/lib/definitions/transform-registry";
 import { usePreviewSheetsQuery } from "@/lib/hooks/use-ingest-wizard-queries";
 import { createEmptyFieldMapping, FIELD_MAPPING_STRING_KEYS, setMappingField } from "@/lib/ingest/field-mapping-utils";
 import type { SourceColumnNodeData, TargetFieldNodeData, TransformNodeData } from "@/lib/ingest/types/flow-mapping";
 import { createSourceNodes, createTargetNodes } from "@/lib/ingest/types/flow-mapping";
-import { createTransform, type IngestTransform, type TransformType } from "@/lib/ingest/types/transforms";
+import { createTransform, type IngestTransform } from "@/lib/ingest/types/transforms";
 import type { FieldMapping, SheetInfo } from "@/lib/ingest/types/wizard";
 
 import { useWizardStore } from "../../_components/wizard-store";

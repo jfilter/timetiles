@@ -10,8 +10,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { SchemaProperty } from "@/lib/services/schema-builder";
-import { compareSchemas } from "@/lib/services/schema-builder";
+import type { SchemaProperty } from "@/lib/services/schema-builder/schema-comparison";
+import { compareSchemas } from "@/lib/services/schema-builder/schema-comparison";
 
 describe("compareSchemas — nested objects", () => {
   // Detected schemas are nested, not flattened to dot paths. Comparing only the top level

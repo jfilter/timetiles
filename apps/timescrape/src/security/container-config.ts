@@ -8,7 +8,7 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
+import { ENV_KEY_PATTERN, SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
 
 const SECCOMP_PROFILE_PATH = resolve(import.meta.dirname, "seccomp-profile.json");
 
@@ -122,7 +122,6 @@ export const buildPodmanArgs = (config: ContainerConfig): string[] => {
   ];
 
   // Environment variables — validate key names and skip reserved keys
-  const ENV_KEY_PATTERN = /^[A-Za-z_]\w*$/;
   const RESERVED_ENV_KEYS = new Set([
     "PATH",
     "LD_PRELOAD",

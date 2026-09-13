@@ -32,10 +32,8 @@ import { createPairedDateInference } from "@/lib/services/schema-detection/utili
 import { detectIdFields } from "@/lib/services/schema-detection/utilities/geo";
 import type { User } from "@/payload-types";
 
-export type { AuthConfig, SheetInfo, SuggestedMappings } from "@/lib/ingest/types/wizard";
-
-// Re-export preview storage functions for use by upload/url routes
-export { getPreviewDir, savePreviewMetadata };
+// Re-export preview storage for use by upload/url routes
+export { getPreviewDir };
 
 export const ALLOWED_MIME_TYPES = [
   "text/csv",
@@ -272,9 +270,6 @@ export const parseExcelPreview = async (filePath: string): Promise<SheetInfo[]> 
 
   return sheets;
 };
-
-// Re-export centralized URL validation for use by preview-schema routes
-export { validateExternalHttpUrl as validateUrl } from "@/lib/security/url-validation";
 
 /**
  * Parse file sheets based on file extension.

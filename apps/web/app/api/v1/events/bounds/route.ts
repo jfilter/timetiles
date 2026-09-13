@@ -22,8 +22,6 @@ import { EventFiltersSchema } from "@/lib/schemas/events";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
 import type { BoundsResponse } from "@/lib/types/event-bounds";
 
-export type { BoundsResponse } from "@/lib/types/event-bounds";
-
 /**
  * GET /api/v1/events/bounds
  *

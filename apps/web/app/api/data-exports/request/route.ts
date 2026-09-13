@@ -19,8 +19,6 @@ import { createDataExportService } from "@/lib/export/service";
 import { logger } from "@/lib/logger";
 import type { DataExport as DataExportRecord } from "@/payload-types";
 
-export type { RequestExportError, RequestExportResponse } from "@/lib/export/api-types";
-
 const DATA_EXPORTS_COLLECTION = "data-exports" as const;
 
 /** Find an active (pending or processing) export for the given user. */

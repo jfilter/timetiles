@@ -38,12 +38,6 @@ export const isValidPreviewId = (id: string): boolean => UUID_REGEX.test(id);
 const resolvePreviewDir = (): string => path.join(os.tmpdir(), PREVIEW_DIR_NAME);
 
 /**
- * Public resolver for the preview temp directory — read-only, does not
- * create the directory. Used by the preview-cleanup maintenance job.
- */
-export const getPreviewDirPath = (): string => resolvePreviewDir();
-
-/**
  * Get (and lazily create) the preview temp directory.
  * Use this for write operations that need the directory to exist.
  */

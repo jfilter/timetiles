@@ -38,8 +38,6 @@ import { EventDetailSkeleton } from "./event-detail-skeleton";
 import { FieldBox } from "./field-box";
 import { ShareButton } from "./share-button";
 
-export type { EventDetailContentProps };
-
 interface EventDetailContentProps {
   /** The event data to display */
   event: Event;
