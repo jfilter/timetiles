@@ -148,6 +148,12 @@ describe("applyTransforms", () => {
     expect(result.tags).toEqual(["Car", "Foot", "Bike"]);
   });
 
+  it("should overwrite an existing target field on rename", () => {
+    const data = { old: "old_value", new_name: "existing_value" };
+    const result = applyTransforms(data, [rename("old", "new_name")]);
+    expect(result).toEqual({ new_name: "old_value" });
+  });
+
   it("should skip transforms for non-existent fields", () => {
     const data = { name: "Event" };
     const transforms: IngestTransform[] = [rename("date", "start_date")];
@@ -265,6 +271,13 @@ describe("applyTransforms", () => {
     expect(result.location).toBe("Berlin, Germany");
   });
 
+  it("should skip null fields in concatenate", () => {
+    const data = { first: "John", middle: null, last: "Doe" };
+    const transforms: IngestTransform[] = [concatenate(["first", "middle", "last"], " ", "name")];
+    const result = applyTransforms(data, transforms);
+    expect(result.name).toBe("John Doe");
+  });
+
   it("should skip undefined fields in concatenate", () => {
     const data = { first: "John" };
     const transforms: IngestTransform[] = [concatenate(["first", "middle", "last"], " ", "name")];
@@ -286,6 +299,21 @@ describe("applyTransforms", () => {
     const result = applyTransforms(data, transforms);
     expect(result.lat).toBe("40.7128");
     expect(result.lng).toBe("-74.0060");
+  });
+
+  it("should trim whitespace around split parts", () => {
+    const data = { coords: "52.5 , 13.4" };
+    const transforms: IngestTransform[] = [split("coords", ",", ["lat", "lon"])];
+    const result = applyTransforms(data, transforms);
+    expect(result.lat).toBe("52.5");
+    expect(result.lon).toBe("13.4");
+  });
+
+  it("should split into single characters when the delimiter is empty", () => {
+    const data = { text: "abc" };
+    const transforms: IngestTransform[] = [split("text", "", ["a", "b", "c"])];
+    const result = applyTransforms(data, transforms);
+    expect([result.a, result.b, result.c]).toEqual(["a", "b", "c"]);
   });
 
   it("should handle split with fewer parts than toFields", () => {

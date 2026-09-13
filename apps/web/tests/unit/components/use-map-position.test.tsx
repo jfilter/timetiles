@@ -6,7 +6,7 @@
  */
 import { useMapPosition } from "@/lib/hooks/use-filters";
 
-import { renderWithProviders } from "../../setup/unit/react-render";
+import { act, renderWithProviders, waitFor } from "../../setup/unit/react-render";
 
 /**
  * Test component that exposes the useMapPosition hook state.
@@ -80,19 +80,20 @@ describe("useMapPosition", () => {
     expect(capturedState!.hasMapPosition).toBe(false);
   });
 
-  test("setMapPosition and clearMapPosition functions are callable", () => {
+  test("setMapPosition stores rounded values and clearMapPosition removes them", async () => {
     let capturedState: ReturnType<typeof useMapPosition> | null = null;
 
     renderWithProviders(<MapPositionTestComponent onStateChange={(s) => (capturedState = s)} />);
 
-    expect(capturedState).not.toBeNull();
-    expect(capturedState!.hasMapPosition).toBe(false);
+    act(() => capturedState!.setMapPosition({ latitude: 51.50741, longitude: -0.12784, zoom: 10.26 }));
 
-    // Verify both functions exist and are callable
-    expect(typeof capturedState!.setMapPosition).toBe("function");
-    expect(typeof capturedState!.clearMapPosition).toBe("function");
-    expect(capturedState!.setMapPosition).toBeDefined();
-    expect(capturedState!.clearMapPosition).toBeDefined();
+    await waitFor(() => expect(capturedState!.hasMapPosition).toBe(true));
+    expect(capturedState!.mapPosition).toEqual({ latitude: 51.5074, longitude: -0.1278, zoom: 10.3 });
+
+    act(() => capturedState!.clearMapPosition());
+
+    await waitFor(() => expect(capturedState!.hasMapPosition).toBe(false));
+    expect(capturedState!.mapPosition).toEqual({ latitude: null, longitude: null, zoom: null });
   });
 
   test("handles decimal zoom values correctly", () => {

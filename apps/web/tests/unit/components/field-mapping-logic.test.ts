@@ -104,314 +104,36 @@ const createFieldMapping = (overrides: Partial<FieldMapping> = {}): FieldMapping
 // ---------------------------------------------------------------------------
 
 describe("applyPreviewTransforms", () => {
-  it("should return original data when no transforms", () => {
-    const data = [{ name: "Berlin", count: "42" }];
-    expect(applyPreviewTransforms(data, [])).toEqual(data);
+  const uppercase = (from: string, active: boolean, id = "1"): IngestTransform => ({
+    id,
+    type: "string-op",
+    from,
+    operation: "uppercase",
+    active,
+    autoDetected: false,
   });
 
-  it("should apply uppercase transform", () => {
+  it("returns the same array when there are no transforms", () => {
     const data = [{ city: "berlin" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.city).toBe("BERLIN");
+    expect(applyPreviewTransforms(data, [])).toBe(data);
   });
 
-  it("should apply lowercase transform", () => {
-    const data = [{ city: "BERLIN" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "lowercase", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.city).toBe("berlin");
-  });
-
-  it("should apply replace transform", () => {
-    const data = [{ text: "hello world" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "text",
-        operation: "replace",
-        pattern: "world",
-        replacement: "earth",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.text).toBe("hello earth");
-  });
-
-  it("should apply replace with empty replacement when replacement is undefined", () => {
-    const data = [{ text: "hello world" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "text",
-        operation: "replace",
-        pattern: "world",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.text).toBe("hello ");
-  });
-
-  it("should apply rename transform", () => {
-    const data = [{ old_name: "value" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "old_name", to: "new_name", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.new_name).toBe("value");
-    expect(result[0]!.old_name).toBeUndefined();
-  });
-
-  it("should apply concatenate transform", () => {
-    const data = [{ first: "John", last: "Doe" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["first", "last"],
-        separator: " ",
-        to: "full_name",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.full_name).toBe("John Doe");
-  });
-
-  it("should apply concatenate transform with custom separator", () => {
-    const data = [{ first: "John", last: "Doe" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["first", "last"],
-        separator: ", ",
-        to: "full_name",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.full_name).toBe("John, Doe");
-  });
-
-  it("should skip null values in concatenate", () => {
-    const data = [{ first: "John", middle: null, last: "Doe" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["first", "middle", "last"],
-        separator: " ",
-        to: "full_name",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.full_name).toBe("John Doe");
-  });
-
-  it("should apply split transform", () => {
-    const data = [{ coords: "52.5,13.4" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "coords",
-        delimiter: ",",
-        toFields: ["lat", "lon"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.lat).toBe("52.5");
-    expect(result[0]!.lon).toBe("13.4");
-  });
-
-  it("should trim split values", () => {
-    const data = [{ coords: "52.5 , 13.4" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "coords",
-        delimiter: ",",
-        toFields: ["lat", "lon"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.lat).toBe("52.5");
-    expect(result[0]!.lon).toBe("13.4");
-  });
-
-  it("should handle split with fewer parts than toFields", () => {
-    const data = [{ value: "only_one" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "value",
-        delimiter: ",",
-        toFields: ["a", "b", "c"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.a).toBe("only_one");
-    expect(result[0]!.b).toBeUndefined();
-    expect(result[0]!.c).toBeUndefined();
-  });
-
-  it("should skip inactive transforms", () => {
+  it("returns the same array when every transform is inactive", () => {
     const data = [{ city: "berlin" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "uppercase", active: false, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.city).toBe("berlin");
+    expect(applyPreviewTransforms(data, [uppercase("city", false)])).toBe(data);
   });
 
-  it("should chain multiple transforms", () => {
-    const data = [{ name: "  John Doe  " }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "name", operation: "uppercase", active: true, autoDetected: false },
-      { id: "2", type: "rename", from: "name", to: "full_name", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.full_name).toBe("  JOHN DOE  ");
-    expect(result[0]!.name).toBeUndefined();
+  it("applies only the active transforms", () => {
+    const data = [{ city: "berlin", country: "germany" }];
+    const result = applyPreviewTransforms(data, [uppercase("city", true), uppercase("country", false, "2")]);
+    expect(result).toEqual([{ city: "BERLIN", country: "germany" }]);
   });
 
-  it("should handle multiple rows", () => {
+  it("transforms every row without mutating the input", () => {
     const data = [{ city: "berlin" }, { city: "paris" }, { city: "london" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
+    const result = applyPreviewTransforms(data, [uppercase("city", true)]);
     expect(result.map((r) => r.city)).toEqual(["BERLIN", "PARIS", "LONDON"]);
-  });
-
-  it("should not mutate original data", () => {
-    const data = [{ city: "berlin" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
-    ];
-    applyPreviewTransforms(data, transforms);
-    expect(data[0]!.city).toBe("berlin");
-  });
-
-  it("should skip string-op on non-string values", () => {
-    const data = [{ count: 42 }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "count", operation: "uppercase", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.count).toBe(42);
-  });
-
-  it("should handle expression as no-op in preview", () => {
-    const data = [{ price: "42.5" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "price",
-        operation: "expression",
-        expression: "toNumber(value)",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    // Expression is now evaluated using the real transform engine
-    expect(result[0]!.price).toBe(42.5);
-  });
-
-  it("should skip split on non-string values", () => {
-    const data = [{ count: 42 }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "split",
-        from: "count",
-        delimiter: ",",
-        toFields: ["a", "b"],
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.count).toBe(42);
-    expect(result[0]!.a).toBeUndefined();
-  });
-
-  it("should not rename when source field is undefined", () => {
-    const data = [{ other: "value" }];
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "rename", from: "missing", to: "new_name", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.new_name).toBeUndefined();
-    expect(result[0]!.other).toBe("value");
-  });
-
-  it("should handle empty data array", () => {
-    const transforms: IngestTransform[] = [
-      { id: "1", type: "string-op", from: "city", operation: "uppercase", active: true, autoDetected: false },
-    ];
-    const result = applyPreviewTransforms([], transforms);
-    expect(result).toEqual([]);
-  });
-
-  it("should replace all occurrences with replaceAll", () => {
-    const data = [{ text: "foo-bar-baz" }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "string-op",
-        from: "text",
-        operation: "replace",
-        pattern: "-",
-        replacement: " ",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.text).toBe("foo bar baz");
-  });
-
-  it("should not produce concatenation when all fromFields are null", () => {
-    const data = [{ a: null, b: null }];
-    const transforms: IngestTransform[] = [
-      {
-        id: "1",
-        type: "concatenate",
-        fromFields: ["a", "b"],
-        separator: " ",
-        to: "combined",
-        active: true,
-        autoDetected: false,
-      },
-    ];
-    const result = applyPreviewTransforms(data, transforms);
-    expect(result[0]!.combined).toBeUndefined();
+    expect(data.map((r) => r.city)).toEqual(["berlin", "paris", "london"]);
   });
 });
 
@@ -996,73 +718,6 @@ describe("edge cases", () => {
       expect(rows).toHaveLength(2);
       expect(rows[0]!.targetField).toBe("titleField");
       expect(rows[1]!.targetField).toBe("titleField");
-    });
-  });
-
-  describe("applyPreviewTransforms edge cases", () => {
-    it("should handle replace with undefined pattern gracefully", () => {
-      const data = [{ text: "hello" }];
-      const transforms: IngestTransform[] = [
-        {
-          id: "1",
-          type: "string-op",
-          from: "text",
-          operation: "replace",
-          // pattern is undefined — should skip replace
-          active: true,
-          autoDetected: false,
-        },
-      ];
-      const result = applyPreviewTransforms(data, transforms);
-      expect(result[0]!.text).toBe("hello");
-    });
-
-    it("should handle concatenate with single field", () => {
-      const data = [{ name: "Berlin" }];
-      const transforms: IngestTransform[] = [
-        {
-          id: "1",
-          type: "concatenate",
-          fromFields: ["name"],
-          separator: ",",
-          to: "combined",
-          active: true,
-          autoDetected: false,
-        },
-      ];
-      const result = applyPreviewTransforms(data, transforms);
-      expect(result[0]!.combined).toBe("Berlin");
-    });
-
-    it("should handle split with empty delimiter", () => {
-      const data = [{ text: "abc" }];
-      const transforms: IngestTransform[] = [
-        {
-          id: "1",
-          type: "split",
-          from: "text",
-          delimiter: "",
-          toFields: ["a", "b", "c"],
-          active: true,
-          autoDetected: false,
-        },
-      ];
-      const result = applyPreviewTransforms(data, transforms);
-      // Empty delimiter splits every character
-      expect(result[0]!.a).toBe("a");
-      expect(result[0]!.b).toBe("b");
-      expect(result[0]!.c).toBe("c");
-    });
-
-    it("should handle rename overwriting existing field", () => {
-      const data = [{ old: "old_value", new_name: "existing_value" }];
-      const transforms: IngestTransform[] = [
-        { id: "1", type: "rename", from: "old", to: "new_name", active: true, autoDetected: false },
-      ];
-      const result = applyPreviewTransforms(data, transforms);
-      // Rename should overwrite the existing field
-      expect(result[0]!.new_name).toBe("old_value");
-      expect(result[0]!.old).toBeUndefined();
     });
   });
 });

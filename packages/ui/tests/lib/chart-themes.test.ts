@@ -11,26 +11,6 @@ import { describe, expect, it } from "vitest";
 
 import { applyThemeToOption, defaultDarkTheme, defaultLightTheme } from "../../src/lib/chart-themes";
 
-describe("defaultLightTheme", () => {
-  it("has correct light theme colors", () => {
-    expect(defaultLightTheme.backgroundColor).toBe("transparent");
-    expect(defaultLightTheme.textColor).toBe("#404040");
-    expect(defaultLightTheme.axisLineColor).toBe("#4a55684D");
-    expect(defaultLightTheme.splitLineColor).toBe("#4a55681A");
-    expect(defaultLightTheme.itemColor).toBe("#0089a7");
-  });
-});
-
-describe("defaultDarkTheme", () => {
-  it("has correct dark theme colors", () => {
-    expect(defaultDarkTheme.backgroundColor).toBe("transparent");
-    expect(defaultDarkTheme.textColor).toBe("#dbd7d0");
-    expect(defaultDarkTheme.axisLineColor).toBe("#dbd7d066");
-    expect(defaultDarkTheme.splitLineColor).toBe("#dbd7d033");
-    expect(defaultDarkTheme.itemColor).toBe("#0099ae");
-  });
-});
-
 const cartographicCss = readFileSync(path.resolve(import.meta.dirname, "../../src/themes/cartographic.css"), "utf-8");
 
 // Resolves a token (following var() references) to its oklch() value in a cartographic.css block.

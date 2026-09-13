@@ -311,16 +311,20 @@ describe("DetectionOptions: scoring weight overrides", () => {
     expect(result.title?.path).toBe("label");
   });
 
-  it("equal weights balance name and validation equally", () => {
+  it("equal weights flip a winner that the default weights pick by name", () => {
     const fieldStats: Record<string, FieldStatistics> = {
-      name: makeStrongValidationFieldStats(),
-      event_title: makeTitleFieldStats(),
+      // Pattern 1/6 -> 1.0; 4-char samples validate at 0.6
+      title: makeFieldStats({ uniqueSamples: ["Talk", "Demo", "Expo"] }),
+      // Pattern 3/6 -> 0.667; validates at 1.0
+      event_name: makeTitleFieldStats(),
     };
 
-    const result = detectFieldMappings(fieldStats, "eng", { scoringWeights: [0.5, 0.5] });
+    // Default 0.6/0.4: title 0.84 vs event_name 0.80
+    expect(detectFieldMappings(fieldStats, "eng").title?.path).toBe("title");
 
-    // Both should score reasonably; the point is that the function accepts the option
-    expect(result.title).not.toBeNull();
+    // Equal 0.5/0.5: title 0.80 vs event_name 0.83
+    const result = detectFieldMappings(fieldStats, "eng", { scoringWeights: [0.5, 0.5] });
+    expect(result.title?.path).toBe("event_name");
   });
 });
 

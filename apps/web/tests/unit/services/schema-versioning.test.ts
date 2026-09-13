@@ -157,14 +157,13 @@ describe.sequential("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+      await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: mockDataset,
         schema: mockSchema,
         autoApproved: true,
         approvedBy: 1,
       });
 
-      expect(result).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "dataset-schemas",
         data: {
@@ -204,7 +203,7 @@ describe.sequential("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+      await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: "456",
         schema: mockSchema,
         fieldMetadata: mockFieldMetadata,
@@ -213,7 +212,6 @@ describe.sequential("SchemaVersioningService", () => {
         ingestSources: [{ ingestJob: "123", recordCount: 500, batchCount: 5 }],
       });
 
-      expect(result).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "dataset-schemas",
         data: {
@@ -251,12 +249,11 @@ describe.sequential("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+      await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 789,
         schema: mockSchema,
       });
 
-      expect(result).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "dataset-schemas",
         data: {
@@ -294,7 +291,7 @@ describe.sequential("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+      await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 111,
         schema: mockSchema,
         ingestSources: [
@@ -303,7 +300,6 @@ describe.sequential("SchemaVersioningService", () => {
         ],
       });
 
-      expect(result).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "dataset-schemas",
         data: {
@@ -344,13 +340,12 @@ describe.sequential("SchemaVersioningService", () => {
 
       mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
 
-      const result = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
+      await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
         dataset: 999,
         schema: mockSchema,
         approvedBy: null,
       });
 
-      expect(result).toEqual(mockCreatedSchema);
       expect(mockPayload.create).toHaveBeenCalledWith({
         collection: "dataset-schemas",
         data: {
@@ -449,86 +444,6 @@ describe.sequential("SchemaVersioningService", () => {
       ).rejects.toThrow("Invalid import job ID");
 
       expect(mockPayload.update).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("Integration scenarios", () => {
-    it("should handle complete schema versioning workflow", async () => {
-      // Mock getNextSchemaVersion
-      vi.spyOn(SchemaVersioningService, "getNextSchemaVersion").mockResolvedValue(3);
-
-      const mockSchema = {
-        type: "object",
-        properties: { id: { type: "string" }, name: { type: "string" }, createdAt: { type: "string" } },
-        required: ["id", "name"],
-      };
-
-      const mockCreatedSchema = {
-        id: 999,
-        dataset: 888,
-        versionNumber: 3,
-        schema: mockSchema,
-        fieldMetadata: {
-          id: { occurrences: 200, uniqueValues: 200 },
-          name: { occurrences: 200, uniqueValues: 180 },
-          createdAt: { occurrences: 200, uniqueValues: 200 },
-        },
-        updatedAt: "2023-01-01T00:00:00.000Z",
-        createdAt: "2023-01-01T00:00:00.000Z",
-      } as DatasetSchema;
-
-      mockPayload.create.mockResolvedValueOnce(mockCreatedSchema);
-      mockPayload.update.mockResolvedValueOnce({});
-
-      // Create schema version
-      const schemaVersion = await SchemaVersioningService.createSchemaVersion(mockPayload as unknown as BasePayload, {
-        dataset: 888,
-        schema: mockSchema,
-        fieldMetadata: {
-          id: { occurrences: 200, uniqueValues: 200 },
-          name: { occurrences: 200, uniqueValues: 180 },
-          createdAt: { occurrences: 200, uniqueValues: 200 },
-        },
-        autoApproved: true,
-        approvedBy: 1,
-        ingestSources: [{ ingestJob: 777, recordCount: 200, batchCount: 4 }],
-      });
-
-      // Link import to schema version
-      await SchemaVersioningService.linkImportToSchemaVersion(
-        mockPayload as unknown as BasePayload,
-        777,
-        schemaVersion.id
-      );
-
-      expect(schemaVersion).toEqual(mockCreatedSchema);
-      expect(mockPayload.create).toHaveBeenCalledWith({
-        collection: "dataset-schemas",
-        data: {
-          dataset: 888,
-          versionNumber: 3,
-          schema: mockSchema,
-          fieldMetadata: {
-            id: { occurrences: 200, uniqueValues: 200 },
-            name: { occurrences: 200, uniqueValues: 180 },
-            createdAt: { occurrences: 200, uniqueValues: 200 },
-          },
-          autoApproved: true,
-          approvedBy: 1,
-          ingestSources: [{ ingestJob: 777, recordCount: 200, batchCount: 4 }],
-          _status: "published",
-        },
-        req: undefined,
-        overrideAccess: true,
-      });
-
-      expect(mockPayload.update).toHaveBeenCalledWith({
-        collection: "ingest-jobs",
-        id: 777,
-        data: { datasetSchemaVersion: 999 },
-        req: undefined,
-        overrideAccess: true,
-      });
     });
   });
 });

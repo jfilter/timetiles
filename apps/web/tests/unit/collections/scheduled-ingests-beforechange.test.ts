@@ -104,19 +104,29 @@ describe("scheduled-ingests beforeChange hook", () => {
       expect(result.nextRun).toBe(existingNextRun);
     });
 
-    it("should set nextRun for frequency-based schedules", () => {
-      const data: Record<string, unknown> = { scheduleType: "frequency", frequency: "daily", enabled: true };
+    it.each([
+      { frequency: "daily", expected: "2024-01-16T00:00:00.000Z" },
+      { frequency: "weekly", expected: "2024-01-21T00:00:00.000Z" },
+      { frequency: "monthly", expected: "2024-02-01T00:00:00.000Z" },
+    ])("should set nextRun for a $frequency frequency schedule", ({ frequency, expected }) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T10:30:00.000Z")); // Monday
+      const data: Record<string, unknown> = { scheduleType: "frequency", frequency, enabled: true };
 
-      const result = beforeChangeHook({
-        data,
-        operation: "create",
-        originalDoc: undefined as never,
-        req: {} as never,
-        context: {},
-        collection: {} as never,
-      });
+      try {
+        const result = beforeChangeHook({
+          data,
+          operation: "create",
+          originalDoc: undefined as never,
+          req: {} as never,
+          context: {},
+          collection: {} as never,
+        });
 
-      expect(result.nextRun).toBeDefined();
+        expect(new Date(result.nextRun as string | Date).toISOString()).toBe(expected);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it("should set nextRun for cron on update when enabling", () => {

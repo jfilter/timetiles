@@ -583,9 +583,12 @@ describe.sequential("ProgressTrackingService", () => {
   });
 
   describe("deserializeDate edge cases", () => {
-    it("should handle number date values in stage progress", async () => {
-      const numericTimestamp = Date.now();
+    it("should use a numeric startedAt when computing throughput", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-15T10:00:10.000Z"));
+      const numericTimestamp = new Date("2024-01-15T10:00:00.000Z").getTime();
       const mockJob = {
+        id: 123,
         progress: {
           stages: {
             [PROCESSING_STAGE.DETECT_SCHEMA]: {
@@ -605,12 +608,17 @@ describe.sequential("ProgressTrackingService", () => {
         },
       } as unknown as IngestJob;
 
-      mockPayload.findByID.mockResolvedValue(mockJob);
+      try {
+        await ProgressTrackingService.updateStageProgress(mockPayload, mockJob, PROCESSING_STAGE.DETECT_SCHEMA, 50, 50);
+      } finally {
+        vi.useRealTimers();
+      }
 
-      // startStage calls deserializeStages internally
-      await ProgressTrackingService.startStage(mockPayload, 123, PROCESSING_STAGE.DETECT_SCHEMA, 800);
-
-      expect(mockPayload.update).toHaveBeenCalled();
+      // 50 rows over the 10 s since the numeric startedAt
+      const stage = mockPayload.update.mock.calls[0][0].data.progress.stages[PROCESSING_STAGE.DETECT_SCHEMA];
+      expect(stage.startedAt).toBe("2024-01-15T10:00:00.000Z");
+      expect(stage.rowsPerSecond).toBe(5);
+      expect(stage.estimatedSecondsRemaining).toBe(10);
     });
 
     it("should handle non-standard date values gracefully", async () => {

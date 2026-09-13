@@ -566,16 +566,6 @@ describe("detectFieldMappings — advanced", () => {
     expect(result.description?.path).toBe("description");
   });
 
-  it("uses custom scoring weights", () => {
-    const fieldStats: Record<string, FieldStatistics> = {
-      title: createFieldStats({ typeDistribution: { string: 100 } }),
-    };
-
-    // Override to 100% pattern, 0% validation
-    const result = detectFieldMappings(fieldStats, "eng", { scoringWeights: [1.0, 0.0] });
-    expect(result.title).not.toBeNull();
-  });
-
   it("uses custom validator for a field type", () => {
     const fieldStats: Record<string, FieldStatistics> = {
       title: createFieldStats({ typeDistribution: { string: 100 } }),

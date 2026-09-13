@@ -33,7 +33,6 @@ const mocks = vi.hoisted(() => {
     mockWriteFileSync: vi.fn(),
     mockReadFileSync: vi.fn(),
     mockUnlinkSync: vi.fn(),
-    mockIsPrivateUrl: vi.fn(),
   };
 });
 
@@ -84,24 +83,6 @@ vi.mock("@/lib/services/schema-detection", async (importOriginal) => {
   return { ...actual, detectLanguage: mocks.mockDetectLanguage };
 });
 
-vi.mock("@/lib/security/url-validation", () => ({
-  isPrivateUrl: mocks.mockIsPrivateUrl,
-  validateExternalHttpUrl: (urlString: string) => {
-    try {
-      const url = new URL(urlString);
-      if (!["http:", "https:"].includes(url.protocol)) {
-        return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
-      }
-      if (mocks.mockIsPrivateUrl(urlString)) {
-        return { error: "URLs pointing to private or internal networks are not allowed." };
-      }
-      return { url };
-    } catch {
-      return { error: "Invalid URL. Please provide a valid HTTP or HTTPS URL." };
-    }
-  },
-}));
-
 vi.mock("@/lib/middleware/auth", () => ({}));
 
 vi.mock("@/lib/middleware/rate-limit", () => ({ checkRateLimit: vi.fn().mockResolvedValue(null) }));
@@ -112,6 +93,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as UploadPOST } from "@/app/api/ingest/preview-schema/upload/route";
 import { POST as UrlPOST } from "@/app/api/ingest/preview-schema/url/route";
+import { resetEnv } from "@/lib/config/env";
 import type * as SchemaDetection from "@/lib/services/schema-detection";
 
 import { TEST_CREDENTIALS, TEST_EMAILS } from "../../../constants/test-credentials";
@@ -160,7 +142,6 @@ describe.sequential("POST /api/ingest/preview-schema/upload", () => {
     });
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });
-    mocks.mockIsPrivateUrl.mockReturnValue(false);
   });
 
   describe("Authentication", () => {
@@ -353,7 +334,9 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
     mocks.mockExistsSync.mockReturnValue(true);
     mocks.mockBuildAuthHeaders.mockReturnValue({});
     mocks.mockDetectLanguage.mockReturnValue({ code: "eng", confidence: 0.9 });
-    mocks.mockIsPrivateUrl.mockReturnValue(false);
+    // The real SSRF check runs; its opt-out must not leak in from the environment.
+    delete process.env.ALLOW_PRIVATE_URLS;
+    resetEnv();
   });
 
   describe("Authentication", () => {
@@ -381,37 +364,31 @@ describe.sequential("POST /api/ingest/preview-schema/url", () => {
       expect(body.code).toBe("VALIDATION_ERROR");
     });
 
-    it("should return 400 for non-HTTP URL protocol", async () => {
-      const request = createUrlRequest({ sourceUrl: "ftp://example.com/data.csv" });
-
-      const response = await UrlPOST(request, {} as never);
-      const body = await response.json();
-
-      // ftp:// passes Zod's z.string().url() but fails our validateUrl SSRF check
-      expect(response.status).toBe(400);
-      expect(body.error).toContain("Invalid URL");
-    });
-
-    it("should return 400 for private/internal URLs (Bug 19 - SSRF)", async () => {
-      mocks.mockIsPrivateUrl.mockReturnValue(true);
-
-      const privateUrls = [
-        "http://localhost/data.csv",
-        "http://127.0.0.1/data.csv",
-        "http://10.0.0.1/data.csv",
-        "http://192.168.1.1/data.csv",
-        "http://172.16.0.1/data.csv",
-      ];
-
-      for (const privateUrl of privateUrls) {
-        const request = createUrlRequest({ sourceUrl: privateUrl });
-
-        const response = await UrlPOST(request, {} as never);
+    it.each(["ftp://example.com/data.csv", "file:///etc/passwd"])(
+      "should return 400 for non-HTTP URL protocol %s",
+      async (sourceUrl) => {
+        const response = await UrlPOST(createUrlRequest({ sourceUrl }), {} as never);
         const body = await response.json();
 
         expect(response.status).toBe(400);
-        expect(body.error).toContain("private or internal networks");
+        expect(body.error).toContain("Invalid URL");
+        expect(mocks.mockFetchRemoteData).not.toHaveBeenCalled();
       }
+    );
+
+    it.each([
+      "http://localhost/data.csv",
+      "http://127.0.0.1/data.csv",
+      "http://10.0.0.1/data.csv",
+      "http://192.168.1.1/data.csv",
+      "http://172.16.0.1/data.csv",
+    ])("should return 400 for private/internal URL %s (SSRF)", async (sourceUrl) => {
+      const response = await UrlPOST(createUrlRequest({ sourceUrl }), {} as never);
+      const body = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(body.error).toContain("private or internal networks");
+      expect(mocks.mockFetchRemoteData).not.toHaveBeenCalled();
     });
 
     it("should return 400 for unsupported file type from URL", async () => {

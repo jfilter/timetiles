@@ -46,7 +46,7 @@ describe.sequential("scheduleManagerJob", () => {
   describe("handler", () => {
     const createUpdateBuilder = (result: unknown[]) => {
       const builder = {
-        set: vi.fn(() => builder),
+        set: vi.fn((_values: Record<string, unknown>) => builder),
         where: vi.fn(() => builder),
         returning: vi.fn(() => Promise.resolve(result)),
       };
@@ -485,7 +485,10 @@ describe.sequential("scheduleManagerJob", () => {
 
         await scheduleManagerJob.handler({ job: mockJob, req: mockReq });
 
-        expect(mockPayload.db.drizzle.update).toHaveBeenCalled();
+        const claimData = mockPayload.db.drizzle.update.mock.results
+          .map((r) => (r.value as ReturnType<typeof createUpdateBuilder>).set.mock.calls[0]?.[0])
+          .find((data) => (data as { lastStatus?: string } | undefined)?.lastStatus === "running");
+        expect(claimData, testCase.frequency).toMatchObject({ nextRun: testCase.expectedNext.toISOString() });
         expect(mockPayload.jobs.queue).toHaveBeenCalled();
       }
     });

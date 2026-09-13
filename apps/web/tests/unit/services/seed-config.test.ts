@@ -108,17 +108,17 @@ describe("Configuration System", () => {
     expect(datasetsIndex).toBeLessThan(eventsIndex);
   });
 
-  it("should handle circular dependency detection", () => {
-    const developmentCollections = getEnabledCollections("development");
-    const testingCollections = getEnabledCollections("testing");
-    const e2eCollections = getEnabledCollections("e2e");
-
-    expect(developmentCollections.length).toBeGreaterThan(0);
-    expect(testingCollections.length).toBeGreaterThan(0);
-    expect(e2eCollections.length).toBeGreaterThan(0);
-    expect(developmentCollections).toContain("main-menu");
-    expect(testingCollections).toContain("main-menu");
-    expect(e2eCollections).toContain("main-menu");
+  it("should throw on a circular dependency between two collections", () => {
+    SEED_CONFIG.collections["_test_a"] = { count: 1, dependencies: ["_test_b"] };
+    SEED_CONFIG.collections["_test_b"] = { count: 1, dependencies: ["_test_a"] };
+    SEED_CONFIG.presets["_test_cycle"] = { description: "cycle", enabled: ["_test_a", "_test_b"] };
+    try {
+      expect(() => getEnabledCollections("_test_cycle")).toThrow("Circular dependency detected");
+    } finally {
+      delete SEED_CONFIG.collections["_test_a"];
+      delete SEED_CONFIG.collections["_test_b"];
+      delete SEED_CONFIG.presets["_test_cycle"];
+    }
   });
 
   it("should provide preset-specific settings", () => {
@@ -245,11 +245,16 @@ describe("Configuration Validation", () => {
     expect(mainMenuConfig?.dependencies).toEqual([]);
   });
 
-  it("should have valid dependency graph without circular dependencies", () => {
-    Object.entries(SEED_CONFIG.collections).forEach(([collectionName, config]) => {
-      if (config.dependencies) {
-        expect(config.dependencies).not.toContain(collectionName);
-      }
-    });
+  it("should throw on a collection that depends on itself", () => {
+    SEED_CONFIG.collections["_test_self"] = { count: 1, dependencies: ["_test_self"] };
+    SEED_CONFIG.presets["_test_self_cycle"] = { description: "self cycle", enabled: ["_test_self"] };
+    try {
+      expect(() => getEnabledCollections("_test_self_cycle")).toThrow(
+        "Circular dependency detected involving: _test_self"
+      );
+    } finally {
+      delete SEED_CONFIG.collections["_test_self"];
+      delete SEED_CONFIG.presets["_test_self_cycle"];
+    }
   });
 });
