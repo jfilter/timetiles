@@ -863,35 +863,5 @@ describe.sequential("GeocodingService", () => {
       expect(result.summary.failed).toBe(1);
       expect(result.results.get(testAddresses[1]!)).toBeInstanceOf(GeocodingError);
     });
-
-    it("should handle cache errors gracefully", async () => {
-      // Create service instance for this test
-      await ensureServiceCreated();
-
-      // Create a unique address to avoid conflicts
-      const uniqueAddress = `Test Address ${Date.now()}-${Math.random()}`;
-
-      // Mock payload to throw error on cache operations using spyOn (auto-restored by vi.restoreAllMocks)
-      vi.spyOn(payload, "find").mockRejectedValue(new Error("Database error"));
-      vi.spyOn(payload, "update").mockRejectedValue(new Error("Database error"));
-      vi.spyOn(payload, "create").mockRejectedValue(new Error("Database error"));
-
-      mockNominatimGeocode.mockResolvedValue([
-        {
-          latitude: 37.7749,
-          longitude: -122.4194,
-          formattedAddress: uniqueAddress,
-          city: "Test City",
-          country: "USA",
-          extra: { importance: 0.8 },
-        },
-      ]);
-
-      // Should still work even if cache lookup fails
-      const result = await geocodingService.geocode(uniqueAddress);
-
-      expect(result).toHaveProperty("latitude");
-      expect(result.fromCache).toBeFalsy();
-    });
   });
 });

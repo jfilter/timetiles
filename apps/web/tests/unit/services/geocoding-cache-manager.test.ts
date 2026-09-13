@@ -1,15 +1,20 @@
 /**
- * Unit tests for geocoding address normalization.
+ * Unit tests for the geocoding cache layer.
  *
  * The normalized form is BOTH the cache key and the string sent to the
- * geocoding providers, so it must preserve non-ASCII letters.
+ * geocoding providers, so it must preserve non-ASCII letters. Cache database
+ * failures must degrade to a cache miss instead of failing the lookup.
  *
  * @module
  * @category Tests
  */
-import { describe, expect, it } from "vitest";
+import "@/tests/mocks/services/logger";
 
-import { normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
+import type { Payload } from "payload";
+import { describe, expect, it, vi } from "vitest";
+
+import { CacheManager, normalizeGeocodingAddress } from "@/lib/services/geocoding/cache-manager";
+import type { GeocodingResult, GeocodingSettings } from "@/lib/services/geocoding/types";
 
 describe("normalizeGeocodingAddress", () => {
   it("lowercases, trims, and collapses whitespace", () => {
@@ -54,5 +59,58 @@ describe("normalizeGeocodingAddress", () => {
 
   it("collapses duplicate commas and trims leading/trailing separators", () => {
     expect(normalizeGeocodingAddress(",,Berlin,, Mitte,")).toBe("berlin, mitte");
+  });
+});
+
+describe("CacheManager database failures", () => {
+  const settings: GeocodingSettings = {
+    enabled: true,
+    fallbackEnabled: true,
+    providerSelection: { strategy: "priority", requiredTags: [] },
+    caching: { enabled: true, ttlDays: 30 },
+  };
+
+  const result: GeocodingResult = {
+    latitude: 52.52,
+    longitude: 13.405,
+    confidence: 0.9,
+    provider: "nominatim",
+    normalizedAddress: "berlin",
+    components: { streetNumber: null, streetName: null, city: "Berlin", region: null, postalCode: null, country: null },
+    metadata: {
+      requestTimestamp: "2024-01-01T00:00:00.000Z",
+      responseTime: null,
+      accuracy: null,
+      formattedAddress: null,
+    },
+    fromCache: false,
+  };
+
+  const createFailingPayload = () => {
+    const dbError = new Error("Database error");
+    return {
+      find: vi.fn().mockRejectedValue(dbError),
+      create: vi.fn().mockRejectedValue(dbError),
+      update: vi.fn().mockRejectedValue(dbError),
+      delete: vi.fn().mockRejectedValue(dbError),
+    };
+  };
+
+  it("treats a failing cache lookup as a miss", async () => {
+    const payload = createFailingPayload();
+    const cache = new CacheManager(payload as unknown as Payload, settings);
+
+    await expect(cache.getCachedResult("Berlin")).resolves.toBeNull();
+    expect(payload.find).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { normalizedAddress: { equals: "berlin" } } })
+    );
+  });
+
+  it("swallows a failing cache write", async () => {
+    const payload = createFailingPayload();
+    const cache = new CacheManager(payload as unknown as Payload, settings);
+
+    await expect(cache.cacheResult("Berlin", result)).resolves.toBeUndefined();
+    expect(payload.create).toHaveBeenCalledTimes(1);
   });
 });
