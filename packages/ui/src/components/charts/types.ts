@@ -73,38 +73,3 @@ export interface BarChartDataItem {
   color?: string;
   metadata?: unknown;
 }
-
-export interface BarChartProps {
-  data: BarChartDataItem[];
-  height?: number | string;
-  className?: string;
-  theme?: ChartTheme;
-  isInitialLoad?: boolean;
-  isUpdating?: boolean;
-  isError?: boolean;
-  onRetry?: () => void;
-  onBarClick?: (item: BarChartDataItem, index: number) => void;
-}
-
-export interface TimeHistogramDataItem {
-  date: string | Date | number;
-  /** End date of the bucket (for adaptive tooltips showing date ranges) */
-  dateEnd?: string | Date | number;
-  count: number;
-}
-
-export interface TimeHistogramProps {
-  data?: TimeHistogramDataItem[];
-  /** Fires with the bucket's [start, end) range, not just its start. */
-  onBarClick?: (start: Date, end: Date) => void;
-  theme?: ChartTheme;
-  height?: number | string;
-  className?: string;
-  isInitialLoad?: boolean;
-  isUpdating?: boolean;
-  isError?: boolean;
-  onRetry?: () => void;
-  loadingMessage?: string;
-  emptyMessage?: string;
-  updatingLabel?: string;
-}
