@@ -9,6 +9,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { isSafeRelativeEntrypoint } from "@timetiles/shared";
 import { simpleGit } from "simple-git";
 
 import { getConfig } from "../config.js";
@@ -97,8 +98,8 @@ const writeInlineCode = async (code: Record<string, string>, codeDir: string): P
   logger.info({ fileCount: Object.keys(code).length }, "Writing inline code");
 
   for (const [filename, content] of Object.entries(code)) {
-    // Prevent path traversal
-    if (filename.includes("..") || filename.startsWith("/")) {
+    // Same path rule the manifest entrypoint must satisfy on both sides.
+    if (!isSafeRelativeEntrypoint(filename)) {
       throw new RunnerError(`Invalid filename: ${filename}`, "INVALID_REQUEST", 400);
     }
 
