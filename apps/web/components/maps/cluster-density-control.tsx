@@ -57,8 +57,8 @@ export const ClusterDensityControl = () => {
 
   return (
     <MapControlPopover
-      trigger={({ onClick }) => (
-        <MapControlButton title={t("clusterDensity")} onClick={onClick}>
+      trigger={({ onClick, isOpen }) => (
+        <MapControlButton title={t("clusterDensity")} onClick={onClick} aria-expanded={isOpen}>
           <Layers className="h-4 w-4 text-gray-600 dark:text-gray-300" />
         </MapControlButton>
       )}

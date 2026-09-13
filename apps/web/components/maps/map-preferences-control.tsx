@@ -53,8 +53,8 @@ export const MapPreferencesControl = () => {
 
   return (
     <MapControlPopover
-      trigger={({ onClick }) => (
-        <MapControlButton title={t("preferences")} onClick={onClick}>
+      trigger={({ onClick, isOpen }) => (
+        <MapControlButton title={t("preferences")} onClick={onClick} aria-expanded={isOpen}>
           <Settings className="h-4 w-4 text-gray-600 dark:text-gray-300" />
         </MapControlButton>
       )}

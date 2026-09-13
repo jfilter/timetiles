@@ -57,16 +57,23 @@ export const MapControlPopover = ({
     [onOpenChange]
   );
 
-  // Close on outside click
+  // Close on outside click or Escape
   useEffect(() => {
     if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
+    const handlePointer = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointer);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handlePointer);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [isOpen, setOpen]);
 
   const handleToggle = useCallback(() => setOpen(!isOpen), [setOpen, isOpen]);
