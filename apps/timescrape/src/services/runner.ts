@@ -11,6 +11,7 @@
  * @category Services
  */
 
+import type { ChildProcess } from "node:child_process";
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
 import type { FileHandle } from "node:fs/promises";
@@ -22,7 +23,7 @@ import { SCRAPER_DEFAULT_OUTPUT_FILE } from "@timetiles/shared";
 
 import { getConfig } from "../config.js";
 import { countCsvDataRows } from "../lib/csv.js";
-import { ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../lib/errors.js";
+import { ConcurrencyError, OutputValidationError, RunnerError } from "../lib/errors.js";
 import { logError, logger } from "../lib/logger.js";
 import { buildPodmanArgs, CONTAINER_STOP_GRACE_SECS } from "../security/container-config.js";
 import type { RunRequest, RunResult } from "../types.js";
@@ -116,30 +117,6 @@ if (process.env.NODE_ENV !== "test") {
   startOutputSweep();
 }
 
-const runPodmanContainer = async (
-  podmanArgs: string[],
-  timeoutSecs: number
-): Promise<{ stdout: string; stderr: string; exitCode: number }> => {
-  const timeoutMs = timeoutSecs * 1000 + 5000; // 5s grace
-  try {
-    const result = await execFileAsync("podman", podmanArgs, { timeout: timeoutMs, maxBuffer: 10 * 1024 * 1024 });
-    return { stdout: result.stdout, stderr: result.stderr, exitCode: 0 };
-  } catch (error: unknown) {
-    if (error && typeof error === "object" && "killed" in error && error.killed) {
-      throw new TimeoutError(timeoutSecs);
-    }
-    // `code` is typed number but Node sets STRING codes for non-exit failures
-    // ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER" when stdout exceeds maxBuffer,
-    // "ENOENT" when podman is missing) — those must not leak into the numeric
-    // exit_code contract, where they fail the web side's run-record validation
-    // and discard the run's logs. Surface them in stderr instead.
-    const execError = error as { stdout?: string; stderr?: string; code?: number | string };
-    const exitCode = typeof execError.code === "number" ? execError.code : 1;
-    const codeNote = typeof execError.code === "string" ? `\n[runner] process error: ${execError.code}` : "";
-    return { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${codeNote}`, exitCode };
-  }
-};
-
 /**
  * Terminate a run's container, escalating until it is actually gone.
  *
@@ -183,6 +160,60 @@ const forceKillContainer = async (runId: string): Promise<void> => {
   } catch {
     // Already removed by `--rm`, or never created. Nothing left to do.
   }
+};
+
+/** Headroom on top of the run timeout for podman to create and start the container. */
+const CONTAINER_START_GRACE_MS = 5000;
+
+type ContainerOutcome = { stdout: string; stderr: string; exitCode: number; timedOut: boolean };
+
+/**
+ * Run the container under a deadline the runner enforces itself.
+ *
+ * execFile's `timeout` only SIGTERMs the podman client, which proxies it to the
+ * container, so a scraper ignoring TERM kept running and could still report
+ * success. At the deadline the container is killed through podman, then the
+ * client is SIGKILLed, and the run counts as timed out whatever it exited with.
+ */
+const runPodmanContainer = async (
+  runId: string,
+  podmanArgs: string[],
+  timeoutSecs: number
+): Promise<ContainerOutcome> => {
+  const run = execFileAsync("podman", podmanArgs, { maxBuffer: 10 * 1024 * 1024 });
+  let killing: Promise<void> | undefined;
+  const timer = setTimeout(
+    () => {
+      killing = killContainerAndClient(runId, run.child);
+    },
+    timeoutSecs * 1000 + CONTAINER_START_GRACE_MS
+  );
+
+  let result: Omit<ContainerOutcome, "timedOut">;
+  try {
+    const { stdout, stderr } = await run;
+    result = { stdout, stderr, exitCode: 0 };
+  } catch (error: unknown) {
+    // `code` is typed number but Node sets STRING codes for non-exit failures
+    // ("ERR_CHILD_PROCESS_STDIO_MAXBUFFER", "ENOENT"); keep those out of the numeric exit_code.
+    const execError = error as { stdout?: string; stderr?: string; code?: number | string };
+    const exitCode = typeof execError.code === "number" ? execError.code : 1;
+    const codeNote = typeof execError.code === "string" ? `\n[runner] process error: ${execError.code}` : "";
+    result = { stdout: execError.stdout ?? "", stderr: `${execError.stderr ?? ""}${codeNote}`, exitCode };
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (killing) {
+    await killing;
+    return { ...result, exitCode: -1, timedOut: true };
+  }
+  return { ...result, timedOut: false };
+};
+
+const killContainerAndClient = async (runId: string, client: ChildProcess): Promise<void> => {
+  await forceKillContainer(runId);
+  client.kill("SIGKILL");
 };
 
 /** How often the output watchdog samples the output directory. */
@@ -431,6 +462,8 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
     // write and `collectOutput` reads the same name back.
     const outputFileName = request.output_file ?? SCRAPER_DEFAULT_OUTPUT_FILE;
 
+    const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
+
     // Build podman args with full hardening
     const podmanArgs = buildPodmanArgs({
       runId,
@@ -440,29 +473,35 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       outputDir,
       outputFile: outputFileName,
       env: request.env ?? {},
-      limits: {
-        timeoutSecs: request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT,
-        memoryMb: request.limits?.memory_mb ?? config.SCRAPER_DEFAULT_MEMORY,
-      },
+      limits: { timeoutSecs, memoryMb: request.limits?.memory_mb ?? config.SCRAPER_DEFAULT_MEMORY },
     });
 
     logger.info({ runId, runtime: request.runtime, entrypoint: request.entrypoint }, "Starting scraper container");
 
-    const timeoutSecs = request.limits?.timeout_secs ?? config.SCRAPER_DEFAULT_TIMEOUT;
-
     // Bound the output write while it happens; the post-run size check in
     // collectOutput cannot, because by then the bytes are already on disk.
     const watchdog = startOutputWatchdog(runId, outputDir, config.SCRAPER_MAX_OUTPUT_SIZE_MB);
-    let stdout: string;
-    let stderr: string;
-    let exitCode: number;
+    let outcome: ContainerOutcome;
     try {
-      ({ stdout, stderr, exitCode } = await runPodmanContainer(podmanArgs, timeoutSecs));
+      outcome = await runPodmanContainer(runId, podmanArgs, timeoutSecs);
     } finally {
       watchdog.stop();
     }
+    const { stdout, stderr, exitCode } = outcome;
 
     const durationMs = Date.now() - runStartedAt;
+
+    if (outcome.timedOut) {
+      totalTimeout++;
+      logger.info({ runId, status: "timeout", durationMs }, "Scraper run killed at its timeout");
+      return {
+        status: "timeout",
+        exit_code: -1,
+        duration_ms: durationMs,
+        stdout: "",
+        stderr: `Scraper exceeded timeout of ${timeoutSecs}s`,
+      };
+    }
 
     // A watchdog kill is a failed run, full stop. Whatever the scraper managed
     // to write is a truncated fragment of a result it never finished, so it is
@@ -503,24 +542,6 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
       output,
     };
   } catch (error) {
-    const durationMs = Date.now() - runStartedAt;
-
-    if (error instanceof TimeoutError) {
-      totalTimeout++;
-      // Escalate all the way to SIGKILL. A container that ignores SIGTERM must
-      // still die here, or it outlives the timeout and keeps its memory, pids
-      // and network slot until something else notices.
-      await forceKillContainer(runId);
-
-      return {
-        status: "timeout",
-        exit_code: -1,
-        duration_ms: durationMs,
-        stdout: "",
-        stderr: `Scraper exceeded timeout of ${request.limits?.timeout_secs ?? getConfig().SCRAPER_DEFAULT_TIMEOUT}s`,
-      };
-    }
-
     // Count non-timeout failures (clone errors, unexpected throws) so
     // /metrics stays consistent: total = success + failed + timeout.
     totalFailed++;

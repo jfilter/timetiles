@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { AuthError, ConcurrencyError, OutputValidationError, RunnerError, TimeoutError } from "../src/lib/errors.js";
+import { AuthError, ConcurrencyError, OutputValidationError, RunnerError } from "../src/lib/errors.js";
 
 describe("RunnerError", () => {
   it("has correct name, code, statusCode, and message", () => {
@@ -18,18 +18,6 @@ describe("RunnerError", () => {
     const error = new RunnerError("internal", "INTERNAL");
 
     expect(error.statusCode).toBe(500);
-  });
-});
-
-describe("TimeoutError", () => {
-  it("has correct defaults", () => {
-    const error = new TimeoutError(60);
-
-    expect(error).toBeInstanceOf(RunnerError);
-    expect(error.name).toBe("TimeoutError");
-    expect(error.code).toBe("TIMEOUT");
-    expect(error.statusCode).toBe(408);
-    expect(error.message).toBe("Scraper exceeded timeout of 60s");
   });
 });
 

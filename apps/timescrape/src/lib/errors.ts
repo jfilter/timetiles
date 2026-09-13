@@ -16,13 +16,6 @@ export class RunnerError extends Error {
   }
 }
 
-export class TimeoutError extends RunnerError {
-  constructor(timeoutSecs: number) {
-    super(`Scraper exceeded timeout of ${timeoutSecs}s`, "TIMEOUT", 408);
-    this.name = "TimeoutError";
-  }
-}
-
 export class OutputValidationError extends RunnerError {
   constructor(message: string) {
     super(message, "INVALID_OUTPUT", 422);

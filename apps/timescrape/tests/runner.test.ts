@@ -198,6 +198,33 @@ describe("runner", () => {
       expect(result.exit_code).toBe(-1);
       expect(result.stderr).toContain("exceeded timeout");
     });
+
+    it(
+      "kills a container that ignores SIGTERM instead of reporting its late success",
+      { timeout: 25_000 },
+      async () => {
+        const runId = randomUUID();
+        const result = await runStub(
+          { STUB_IGNORE_TERM: "1", STUB_SLEEP_MS: "12000", STUB_OUTPUT: "id\n1\n" },
+          { run_id: runId, limits: { timeout_secs: 1 } }
+        );
+
+        expect(result.status).toBe("timeout");
+        expect(result.duration_ms).toBeLessThan(10_000);
+        expect(readFileSync(join(stateDir, "calls.log"), "utf-8")).toContain(`stop run-${runId}`);
+        expect(existsSync(persistedOutput(runId))).toBe(false);
+      }
+    );
+
+    it("releases the run slot when podman cannot kill the container", { timeout: 25_000 }, async () => {
+      process.env.STUB_UNKILLABLE = "1";
+
+      const result = await runStub({ STUB_IGNORE_TERM: "1", STUB_SLEEP_MS: "12000" }, { limits: { timeout_secs: 1 } });
+
+      expect(result.status).toBe("timeout");
+      expect(result.duration_ms).toBeLessThan(10_000);
+      expect(getActiveRunCount()).toBe(0);
+    });
   });
 
   describe("sweepStaleOutputs", () => {
