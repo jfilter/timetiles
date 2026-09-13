@@ -93,6 +93,16 @@ const handleSchemaApproval = (
   }
 };
 
+/**
+ * An approval belongs to one review: entering NEEDS_REVIEW drops the previous approval.
+ * `data` arrives merged with the stored doc, so only the stage transition tells a new review apart.
+ */
+const clearStaleApproval = (data: Partial<IngestJob>, operation: string, originalDoc?: IngestJob): void => {
+  if (operation !== "update" || data.stage !== PROCESSING_STAGE.NEEDS_REVIEW) return;
+  if (originalDoc?.stage === PROCESSING_STAGE.NEEDS_REVIEW) return;
+  data.schemaValidation = { ...data.schemaValidation, approved: false, approvedAt: null, approvedBy: null };
+};
+
 const validateIngestFileOwnership = async (
   ingestFile: IngestJob["ingestFile"] | undefined,
   userId: number,
@@ -158,6 +168,8 @@ export const beforeChangeHooks: CollectionBeforeChangeHook[] = [
 
       enforceCompletedTerminalState(fromStage, toStage, req, originalDoc);
     }
+
+    clearStaleApproval(data, operation, originalDoc);
 
     // Handle schema approval workflow
     handleSchemaApproval(data, operation, req, originalDoc);

@@ -476,6 +476,55 @@ describe.sequential("Review Checks Pipeline", () => {
     }
   }, 60_000);
 
+  it("resumes when a second review on the same job is approved", async () => {
+    const csvContent = "name,notes\nConference,first\nWorkshop,second\n";
+
+    const { ingestFile } = await withIngestFile(testEnv, Number.parseInt(testCatalogId, 10), csvContent, {
+      filename: "approve-twice.csv",
+      mimeType: "text/csv",
+      user: uploadUserId,
+      triggerWorkflow: true,
+    });
+
+    await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+    let job = (await payload.find({ collection: "ingest-jobs", where: { ingestFile: { equals: ingestFile.id } } }))
+      .docs[0];
+    expect(job.stage).toBe("needs-review");
+    expect(job.reviewReason).toBe("no-timestamp");
+
+    await approveAndResume(payload, ingestFile.id, job.id, job.schemaValidation, uploadUserId);
+
+    job = await payload.findByID({ collection: "ingest-jobs", id: job.id });
+    expect(job.stage).toBe("needs-review");
+    expect(job.reviewReason).toBe("no-location");
+    expect(job.schemaValidation?.approved).not.toBe(true);
+
+    const approver = await payload.findByID({ collection: "users", id: uploadUserId });
+    await payload.update({
+      collection: "ingest-jobs",
+      id: job.id,
+      data: { schemaValidation: { ...job.schemaValidation, approved: true } },
+      user: approver,
+    });
+
+    const pendingResumes = await payload.find({
+      collection: "payload-jobs",
+      where: { workflowSlug: { equals: "ingest-process" }, completedAt: { exists: false } },
+      overrideAccess: true,
+    });
+    expect(pendingResumes.docs.map((d: { input: { ingestJobId: string } }) => d.input.ingestJobId)).toContain(
+      String(job.id)
+    );
+
+    const updatedFile = await payload.findByID({ collection: "ingest-files", id: ingestFile.id });
+    const checks = (updatedFile.processingOptions as Record<string, unknown>)?.reviewChecks as Record<string, unknown>;
+    const perSheet0 = (checks?.perSheet as Record<string, Record<string, unknown>> | undefined)?.["0"];
+    expect(perSheet0?.skipLocationCheck).toBe(true);
+
+    const settled = await runJobsUntilIngestJobStage(payload, ingestFile.id, isSettled);
+    expect(settled.ingestJob?.stage).toBe("completed");
+  }, 90_000);
+
   it("should complete after approving no-location (sets skip flag)", async () => {
     const csvContent = "name,date\nConference,2024-06-15\nWorkshop,2024-07-20\n";
 
