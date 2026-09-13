@@ -131,3 +131,24 @@ run_ensure_symlink() {
             || { echo "Not gitignored in deployment/.gitignore: $relative"; return 1; }
     done
 }
+
+# =============================================================================
+# sparse_checkout_patterns
+# =============================================================================
+
+@test "sparse_checkout_patterns leaves app sources out when the scraper is skipped" {
+    run env SKIP_SCRAPER=true bash -c 'source "$1/steps/05-clone-repo.sh"; sparse_checkout_patterns' _ "$BOOTSTRAP_DIR"
+
+    [ "$status" -eq 0 ]
+    [ "$output" = $'deployment/\napps/web/config/' ]
+}
+
+@test "sparse_checkout_patterns includes the SDK sources the scraper images build from" {
+    run env SKIP_SCRAPER=false bash -c 'source "$1/steps/05-clone-repo.sh"; sparse_checkout_patterns' _ "$BOOTSTRAP_DIR"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'apps/timescrape/\n'* ]]
+    [[ "$output" == *$'packages/python/\n'* ]]
+    [[ "$output" == *$'packages/scraper/\n'* ]]
+    [[ "$output" == *'packages/typescript-config/'* ]]
+}

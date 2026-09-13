@@ -48,15 +48,7 @@ run_step() {
         git init -q
         git remote add origin "$repo_url"
         git config core.sparseCheckout true
-        {
-            echo "deployment/"
-            # Bundled data-package manifests + the timetiles.example.yml
-            # template. Tiny dir, but lets `git pull` deliver new packages.
-            echo "apps/web/config/"
-            if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
-                echo "apps/timescrape/"
-            fi
-        } > .git/info/sparse-checkout
+        sparse_checkout_patterns > .git/info/sparse-checkout
 
         retry 3 5 git fetch --depth 1 origin "$repo_branch"
         git checkout -q -B "$repo_branch" "origin/$repo_branch"
@@ -98,6 +90,21 @@ run_step() {
     rm -rf "${src_dir}.old"
 
     print_success "Deployment files ready"
+}
+
+# Paths the install host checks out. SKIP_SCRAPER defaults to true.
+sparse_checkout_patterns() {
+    echo "deployment/"
+    # Bundled data-package manifests + the timetiles.example.yml
+    # template. Tiny dir, but lets `git pull` deliver new packages.
+    echo "apps/web/config/"
+    if [[ "${SKIP_SCRAPER:-true}" != "true" ]]; then
+        echo "apps/timescrape/"
+        # Scraper base images build the SDKs from these sources.
+        echo "packages/python/"
+        echo "packages/scraper/"
+        echo "packages/typescript-config/"
+    fi
 }
 
 # Move the operator's gitignored state from the outgoing tree into the fresh
