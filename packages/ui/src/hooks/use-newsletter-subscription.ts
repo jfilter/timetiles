@@ -46,9 +46,12 @@ interface UseNewsletterSubscriptionReturn {
   handleSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
 }
 
-/** `fetch` rejects with a TypeError when the request never reaches the server. */
+/**
+ * Localized message for a failed submission. `fetch` rejects with a TypeError when the
+ * request never reaches the server; server error texts are not shown to readers.
+ */
 const toErrorMessage = (error: unknown, messages: NewsletterMessages): string =>
-  error instanceof Error && !(error instanceof TypeError) ? error.message : messages.networkError;
+  error instanceof TypeError ? messages.networkError : messages.error;
 
 export const useNewsletterSubscription = ({
   resetDelay = 5000,

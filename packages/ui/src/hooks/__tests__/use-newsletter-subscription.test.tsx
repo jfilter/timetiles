@@ -29,7 +29,7 @@ describe("useNewsletterSubscription", () => {
     expect(await submitWith(new TypeError("Failed to fetch"))).toBe("Network error");
   });
 
-  it("shows the message of a rejected submission", async () => {
-    expect(await submitWith(new Error("Too many requests"))).toBe("Too many requests");
+  it("shows the localized error message instead of the server text", async () => {
+    expect(await submitWith(new Error("Too many requests"))).toBe("Subscription failed");
   });
 });

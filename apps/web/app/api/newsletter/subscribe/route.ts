@@ -17,6 +17,9 @@ import { logError, logger } from "@/lib/logger";
 import { maskEmail } from "@/lib/security/masking";
 import { safeFetch } from "@/lib/security/safe-fetch";
 
+/** Shown for every service failure; the service's own error text stays out of public responses. */
+const SUBSCRIBE_FAILED_MESSAGE = "Failed to subscribe. Please try again later.";
+
 interface Settings {
   newsletter?: { serviceUrl?: string; authHeader?: string };
 }
@@ -58,13 +61,13 @@ export const POST = apiRoute({
       });
     } catch (err) {
       logError(err, "Failed to reach newsletter service", { email: maskEmail(email) });
-      throw new AppError(500, "Failed to subscribe. Please try again later.", "NEWSLETTER_SERVICE_ERROR");
+      throw new AppError(500, SUBSCRIBE_FAILED_MESSAGE, "NEWSLETTER_SERVICE_ERROR");
     }
 
     // Parse response body safely — some services return non-JSON (204, HTML errors)
-    let responseData: { message?: string; error?: string } = {};
+    let responseData: { message?: string } = {};
     try {
-      responseData = (await serviceResponse.json()) as { message?: string; error?: string };
+      responseData = (await serviceResponse.json()) as { message?: string };
     } catch {
       // Non-JSON response — continue with empty responseData
     }
@@ -85,11 +88,7 @@ export const POST = apiRoute({
         email: maskEmail(email),
         status: serviceResponse.status,
       });
-      throw new AppError(
-        500,
-        responseData.error ?? "Failed to subscribe. Please try again later.",
-        "NEWSLETTER_SERVICE_ERROR"
-      );
+      throw new AppError(500, SUBSCRIBE_FAILED_MESSAGE, "NEWSLETTER_SERVICE_ERROR");
     }
 
     logger.info({ email: maskEmail(email) }, "Successfully subscribed email");

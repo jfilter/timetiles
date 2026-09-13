@@ -217,4 +217,32 @@ describe.sequential("/api/newsletter/subscribe", () => {
       });
     }
   });
+
+  it("does not forward the newsletter service's error text", async () => {
+    await payload.updateGlobal({
+      slug: "settings",
+      data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe-fail` } },
+    });
+
+    try {
+      const response = await POST(
+        new NextRequest("http://localhost:3000/api/newsletter/subscribe", {
+          method: "POST",
+          // eslint-disable-next-line sonarjs/no-hardcoded-ip -- Test IP address
+          headers: { "Content-Type": "application/json", "x-forwarded-for": "192.168.1.203" },
+          body: JSON.stringify({ email: "service-error@example.com" }),
+        }),
+        {} as any
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data).toEqual({ error: "Failed to subscribe. Please try again later.", code: "NEWSLETTER_SERVICE_ERROR" });
+    } finally {
+      await payload.updateGlobal({
+        slug: "settings",
+        data: { newsletter: { serviceUrl: `${mockServerUrl}/subscribe`, authHeader: "Bearer test-token-12345" } },
+      });
+    }
+  });
 });
