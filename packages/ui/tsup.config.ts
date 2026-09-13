@@ -21,7 +21,6 @@ const clientEntry: Record<string, string> = {
   "components/collapsible": "./src/components/collapsible.tsx",
   "components/confirm-dialog": "./src/components/confirm-dialog.tsx",
   "components/content-state": "./src/components/content-state.tsx",
-  "components/call-to-action": "./src/components/call-to-action.tsx",
   "components/data-table": "./src/components/data-table.tsx",
   "components/details-grid": "./src/components/details-grid.tsx",
   "components/dialog": "./src/components/dialog.tsx",
@@ -53,7 +52,6 @@ const serverEntry: Record<string, string> = {
   "lib/escape-html": "./src/lib/escape-html.ts",
   "components/button": "./src/components/button.tsx",
   "components/card": "./src/components/card.tsx",
-  "components/empty-state": "./src/components/empty-state.tsx",
   "components/header": "./src/components/header.tsx",
   "components/header-actions": "./src/components/header-actions.tsx",
   "components/header-brand": "./src/components/header-brand.tsx",
@@ -102,7 +100,6 @@ const shared = {
     "echarts-for-react",
     "lucide-react",
     "tw-animate-css",
-    "zod",
   ],
 };
 
