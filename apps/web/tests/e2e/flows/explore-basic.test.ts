@@ -97,6 +97,10 @@ test.describe("Explore Page - Basic Functionality", () => {
     const initialUrl = new URL(page.url());
     expect(initialUrl.pathname).toBe("/explore");
 
+    // Global view keeps the seeded events inside the map bounds, like the other catalog-selection tests
+    await explorePage.goto({ globalView: true });
+    await explorePage.waitForMapLoad();
+
     // Select all datasets in a catalog (tri-state checkbox)
     await explorePage.selectAllInCatalog("Environmental Data");
 

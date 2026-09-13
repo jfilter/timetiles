@@ -196,7 +196,6 @@ export class ExplorePage {
 
     const catalogCheckbox = this.page.locator(`[role="checkbox"][aria-label*="${catalogName}"]`).first();
     await catalogCheckbox.waitFor({ state: "visible", timeout: 10000 });
-    await catalogCheckbox.scrollIntoViewIfNeeded();
     await catalogCheckbox.click({ timeout: 10000 });
 
     // Catalog click must push `datasets` into the URL — nuqs is `history: "replace"`
@@ -226,7 +225,6 @@ export class ExplorePage {
       const button = this.page.locator("button:has(.lucide-chevron-right)").first();
       const visible = await button.isVisible({ timeout: 500 }).catch(() => false);
       if (!visible) break;
-      await button.scrollIntoViewIfNeeded();
       await button.click();
     }
   }
@@ -248,7 +246,6 @@ export class ExplorePage {
       .filter({ hasText: new RegExp(datasetName, "i") })
       .first();
     await datasetLabel.waitFor({ state: "visible", timeout: 10000 });
-    await datasetLabel.scrollIntoViewIfNeeded();
     await datasetLabel.click({ timeout: 10000 });
     await this.waitForApiResponse();
   }
