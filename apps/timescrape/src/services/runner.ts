@@ -65,27 +65,25 @@ export const getMetrics = (): RunnerMetrics => {
   };
 };
 
-/** How often the output sweep runs. */
-const OUTPUT_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
+/** How often the run-data sweep runs. */
+const RUN_DATA_SWEEP_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
 /**
- * Remove persistent output dirs under {SCRAPER_DATA_DIR}/outputs whose mtime is
- * older than the configured TTL.
+ * Remove run data nothing will clean up any more.
  *
- * The runner owns the persistent outputs dir but cannot rely on the web app's
- * best-effort `DELETE /output/:runId` to clean it up: that call only fires on
- * the autoImport-success path, so disabled-autoImport runs and any failed
- * download/DELETE leak files forever. This sweep is the backstop.
+ * Persistent outputs older than the TTL: the web app's `DELETE /output/:runId`
+ * is best-effort and skipped without autoImport. Work directories of runs that
+ * are not active: a crash or restart skips executeRun's own cleanup.
  */
-export const sweepStaleOutputs = async (): Promise<void> => {
+export const sweepStaleRunData = async (): Promise<void> => {
   const config = getConfig();
   const ttlHours = config.SCRAPER_OUTPUT_TTL_HOURS;
   const ttlMs = ttlHours * 60 * 60 * 1000;
-  const base = join(config.SCRAPER_DATA_DIR, "outputs");
+  const outputsBase = join(config.SCRAPER_DATA_DIR, "outputs");
+  const runsBase = join(config.SCRAPER_DATA_DIR, "runs");
 
-  const entries = await readdir(base).catch(() => [] as string[]);
-  for (const entry of entries) {
-    const dir = join(base, entry);
+  for (const entry of await readdir(outputsBase).catch(() => [] as string[])) {
+    const dir = join(outputsBase, entry);
     try {
       const stats = await stat(dir);
       if (Date.now() - stats.mtimeMs > ttlMs) {
@@ -96,26 +94,33 @@ export const sweepStaleOutputs = async (): Promise<void> => {
       logError(error, "Failed to sweep scraper output directory", { dir });
     }
   }
+
+  for (const entry of await readdir(runsBase).catch(() => [] as string[])) {
+    if (activeRuns.has(entry)) continue;
+    const dir = join(runsBase, entry);
+    try {
+      await removeContainerWrittenDir(dir);
+      logger.info({ dir }, "Swept leftover scraper work directory");
+    } catch (error) {
+      logError(error, "Failed to sweep scraper work directory", { dir });
+    }
+  }
 };
 
 let sweepTimer: ReturnType<typeof setInterval> | undefined;
 
 /**
- * Start the periodic output-directory sweep. Idempotent. The interval handle is
- * unref'd so it never keeps the process alive on its own.
+ * Sweep now, then hourly. Idempotent; the interval is unref'd so it never keeps
+ * the process alive. Sweeping at startup clears what a crashed process left.
  */
-export const startOutputSweep = (): void => {
+export const startRunDataSweep = (): void => {
   if (sweepTimer) return;
+  void sweepStaleRunData();
   sweepTimer = setInterval(() => {
-    void sweepStaleOutputs();
-  }, OUTPUT_SWEEP_INTERVAL_MS);
+    void sweepStaleRunData();
+  }, RUN_DATA_SWEEP_INTERVAL_MS);
   sweepTimer.unref();
 };
-
-// Auto-start the sweep on module load (skipped under test to avoid leaking timers).
-if (process.env.NODE_ENV !== "test") {
-  startOutputSweep();
-}
 
 /**
  * Terminate a run's container, escalating until it is actually gone.

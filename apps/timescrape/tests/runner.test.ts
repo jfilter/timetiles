@@ -27,7 +27,7 @@ vi.mock("../src/lib/logger.js", () => ({
   logError: vi.fn(),
 }));
 
-const { executeRun, getActiveRunCount, getMetrics, isRunActive, sweepStaleOutputs } =
+const { executeRun, getActiveRunCount, getMetrics, isRunActive, startRunDataSweep, sweepStaleRunData } =
   await import("../src/services/runner.js");
 
 const STUB_DIR = resolve(import.meta.dirname, "fixtures/podman-stub");
@@ -246,7 +246,7 @@ describe("runner", () => {
     });
   });
 
-  describe("sweepStaleOutputs", () => {
+  describe("sweepStaleRunData", () => {
     it("removes output directories older than the configured TTL", async () => {
       const stale = join(dataDir, "outputs", "stale-run");
       const fresh = join(dataDir, "outputs", "fresh-run");
@@ -255,10 +255,33 @@ describe("runner", () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
       utimesSync(stale, twoHoursAgo, twoHoursAgo);
 
-      await sweepStaleOutputs();
+      await sweepStaleRunData();
 
       expect(existsSync(stale)).toBe(false);
       expect(existsSync(fresh)).toBe(true);
+    });
+
+    it("removes work directories of runs that are no longer active", { timeout: 15_000 }, async () => {
+      const leftover = join(dataDir, "runs", randomUUID(), "output");
+      mkdirSync(leftover, { recursive: true });
+      const activeId = randomUUID();
+      const active = runStub({ STUB_SLEEP_MS: "1500", STUB_OUTPUT: "id\n1\n" }, { run_id: activeId });
+      await vi.waitFor(() => expect(isRunActive(activeId)).toBe(true));
+
+      await sweepStaleRunData();
+
+      expect(existsSync(leftover)).toBe(false);
+      expect(existsSync(join(dataDir, "runs", activeId))).toBe(true);
+      expect((await active).status).toBe("success");
+    });
+
+    it("sweeps once immediately when started", async () => {
+      const leftover = join(dataDir, "runs", randomUUID());
+      mkdirSync(leftover, { recursive: true });
+
+      startRunDataSweep();
+
+      await vi.waitFor(() => expect(existsSync(leftover)).toBe(false));
     });
   });
 

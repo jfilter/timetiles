@@ -15,7 +15,7 @@ import { AuthError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
 import { createShutdownHandler } from "./lib/shutdown.js";
 import { assertSecurityAssets } from "./security/container-config.js";
-import { getActiveRunIds, stopRun } from "./services/runner.js";
+import { getActiveRunIds, startRunDataSweep, stopRun } from "./services/runner.js";
 
 const config = loadConfig();
 
@@ -23,6 +23,8 @@ const config = loadConfig();
 // once per scraper run as a podman exit 125, long after this process reported
 // itself healthy.
 assertSecurityAssets();
+
+startRunDataSweep();
 
 const app = new Hono();
 
