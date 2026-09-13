@@ -24,7 +24,7 @@ keywords = ["timetiles", "scraper", "csv", "events"]
 [project.urls]
 Homepage = "https://docs.timetiles.io"
 Repository = "https://github.com/jfilter/timetiles"
-Documentation = "https://docs.timetiles.io/reference/scrapers"
+Documentation = "https://docs.timetiles.io/development/packages/python"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/timetiles"]

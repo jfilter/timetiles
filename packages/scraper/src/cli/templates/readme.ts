@@ -6,7 +6,11 @@
  */
 
 export const readmeTemplate = (vars: { name: string; runtime: string; entrypoint: string }): string => {
-  const installStep = vars.runtime === "node" ? "\n2. Install the SDK: `npm install @timetiles/scraper`" : "";
+  const steps = [
+    `Edit \`${vars.entrypoint}\` with your scraping logic`,
+    ...(vars.runtime === "node" ? ["Install the SDK: `npm install @timetiles/scraper`"] : []),
+    "Push to a git repository and add it as a scraper repo in TimeTiles",
+  ];
 
   const testCommand =
     vars.runtime === "python"
@@ -19,8 +23,7 @@ A [TimeTiles](https://docs.timetiles.io) scraper (${vars.runtime}).
 
 ## Getting Started
 
-1. Edit \`${vars.entrypoint}\` with your scraping logic${installStep}
-3. Push to a git repository and add it as a scraper repo in TimeTiles
+${steps.map((step, index) => `${index + 1}. ${step}`).join("\n")}
 
 ## Local Testing
 

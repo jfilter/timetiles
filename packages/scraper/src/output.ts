@@ -26,6 +26,13 @@ const escapeCsvField = (str: string): string => {
 };
 
 /**
+ * One CRLF-terminated record, as Python's csv module writes it. A lone empty
+ * field is quoted, otherwise the record is a blank line that readers skip.
+ */
+const formatRecord = (fields: string[]): string =>
+  fields.length === 1 && fields[0] === "" ? '""' : fields.map(escapeCsvField).join(",");
+
+/**
  * CSV output writer with optional generic type parameter for row schema.
  *
  * @example
@@ -111,11 +118,11 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
   toCsvString(): string {
     const headers = this.#columns();
     if (!headers.length) return "";
-    const lines = [headers.map(escapeCsvField).join(",")];
+    const lines = [formatRecord(headers)];
     for (const row of this.#rows) {
-      lines.push(headers.map((h) => escapeCsvField(String(row[h] ?? ""))).join(","));
+      lines.push(formatRecord(headers.map((h) => String(row[h] ?? ""))));
     }
-    return lines.join("\n") + "\n";
+    return lines.join("\r\n") + "\r\n";
   }
 }
 
