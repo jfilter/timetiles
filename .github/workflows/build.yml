@@ -65,11 +65,6 @@ jobs:
 
           pnpm lint:devops
 
-      - name: Build UI package
-        timeout-minutes: 2
-        run: pnpm build
-        working-directory: packages/ui
-
       # The unit-test workflow runs `pnpm test:coverage` with working-directory
       # apps/web, so it never reaches this package. Without this step nothing in
       # CI executes packages/ui's suite -- a test asserting a class the source

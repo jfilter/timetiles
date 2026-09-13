@@ -99,9 +99,9 @@ ENV NEXT_PUBLIC_PAYLOAD_URL=http://localhost
 ARG DEFAULT_LOCALE
 ENV DEFAULT_LOCALE=${DEFAULT_LOCALE:-en}
 
-# Build UI package (must be built before web app can resolve @timetiles/ui)
-WORKDIR /build/packages/ui
-RUN pnpm build
+# Build every workspace package the web app imports; their exports point at dist/
+WORKDIR /build
+RUN pnpm exec turbo run build --filter=web^...
 
 # Build the application with experimental compile mode (no DB connection needed)
 WORKDIR /build/apps/web

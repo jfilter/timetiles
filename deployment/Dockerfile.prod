@@ -58,9 +58,9 @@ ENV DEFAULT_LOCALE=${DEFAULT_LOCALE:-en}
 # rather than a readable error.
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# Build UI package (must be built before web app can resolve @timetiles/ui)
-WORKDIR /app/packages/ui
-RUN pnpm build
+# Build every workspace package the web app imports; their exports point at dist/
+WORKDIR /app
+RUN pnpm exec turbo run build --filter=web^...
 
 # Build the application
 WORKDIR /app/apps/web
