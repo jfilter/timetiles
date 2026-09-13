@@ -50,10 +50,7 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
 
   constructor(outputDir?: string, filename?: string) {
     this.#outputDir = outputDir ?? process.env.TIMESCRAPE_OUTPUT_DIR ?? "/output";
-    // The runner passes the filename the scraper's manifest declared via
-    // `output:`. Without this the SDK always wrote data.csv while the runner
-    // looked for the configured name, so every manifest declaring anything
-    // else failed its run with "no output file produced".
+    // The runner passes the filename declared by the manifest's `output:` field
     this.#filename = filename ?? process.env.TIMESCRAPE_OUTPUT_FILE ?? "data.csv";
   }
 
@@ -75,12 +72,8 @@ export class OutputWriter<T extends OutputRow = OutputRow> {
   }
 
   /**
-   * Column set for the CSV: the union of every row's keys, in first-seen order.
-   *
-   * Deriving headers from the FIRST row only silently dropped every field that
-   * appears solely in later rows — a listing where only some entries carry a
-   * `price` lost that column entirely. Mirrors `unparseRowsToCsv` in the web
-   * app (`apps/web/lib/utils/csv-escape.ts`), which fixed the same bug there.
+   * Column set for the CSV: the union of every row's keys, in first-seen order,
+   * so fields that only later rows carry keep their column.
    */
   #columns(): string[] {
     const columns: string[] = [];
