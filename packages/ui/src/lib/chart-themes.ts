@@ -16,16 +16,16 @@ interface EChartsSeriesItem {
 const isSeriesItem = (value: unknown): value is EChartsSeriesItem => typeof value === "object" && value !== null;
 
 // Default color palette (hex values for ECharts compatibility).
-// Matches the Cartographic design system. Override via UIProvider's
-// lightChartTheme / darkChartTheme for custom palettes.
+// Hand-tuned sRGB palette named after the Cartographic tokens; only blue equals its token.
+// Override via UIProvider's lightChartTheme / darkChartTheme for custom palettes.
 const defaultColors = {
-  parchment: "#f8f5f0", // oklch(0.96 0.01 80)
-  charcoal: "#404040", // oklch(0.25 0 0)
-  navy: "#4a5568", // oklch(0.35 0.06 250)
-  blue: "#0089a7", // oklch(0.58 0.11 220)
-  terracotta: "#cd853f", // oklch(0.56 0.14 35)
-  forest: "#5f9e6e", // oklch(0.42 0.08 145)
-  cream: "#e8e4dd", // oklch(0.88 0.01 80)
+  parchment: "#f8f5f0",
+  charcoal: "#404040",
+  navy: "#4a5568",
+  blue: "#0089a7",
+  terracotta: "#cd853f",
+  forest: "#5f9e6e",
+  cream: "#e8e4dd",
 
   // Map visualization colors (cartographic palette)
   mapPoint: "#0089a7", // cartographic-blue for individual event points
