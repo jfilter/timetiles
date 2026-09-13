@@ -22,7 +22,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
   return [
     {
       ingestFile: "city-events-2026.csv",
-      dataset: "Air Quality Measurements",
+      dataset: "environmental-data-air-quality-measurements",
       stage: "completed",
       progress: {
         overallPercentage: 100,
@@ -38,7 +38,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
     },
     {
       ingestFile: "weather-stations.xlsx",
-      dataset: "Water Quality Assessments",
+      dataset: "environmental-data-water-quality-assessments",
       stage: "completed",
       progress: {
         overallPercentage: 100,
@@ -54,7 +54,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
     },
     {
       ingestFile: "weather-stations.xlsx",
-      dataset: "Climate Station Data",
+      dataset: "environmental-data-climate-station-data",
       stage: "completed",
       progress: {
         overallPercentage: 100,
@@ -70,7 +70,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
     },
     {
       ingestFile: "museum-exhibits.csv",
-      dataset: "Research Study Results",
+      dataset: "academic-research-portal-research-study-results",
       stage: "completed",
       progress: {
         overallPercentage: 100,
@@ -86,7 +86,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
     },
     {
       ingestFile: "broken-economic-data.csv",
-      dataset: "GDP Growth Rates",
+      dataset: "economic-indicators-gdp-growth-rates",
       stage: "failed",
       progress: {
         overallPercentage: 35,
@@ -105,7 +105,7 @@ export const ingestJobSeeds = (environment: string): IngestJobSeed[] => {
     },
     {
       ingestFile: "transit-routes-update.csv",
-      dataset: "Air Quality Measurements",
+      dataset: "environmental-data-air-quality-measurements",
       stage: "needs-review",
       progress: {
         overallPercentage: 45,

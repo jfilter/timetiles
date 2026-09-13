@@ -104,7 +104,7 @@ export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
   // Ingest jobs depend on ingest files and datasets
   "ingest-jobs": [
     { field: "ingestFile", targetCollection: "ingest-files", searchField: "originalName", required: true },
-    { field: "dataset", targetCollection: "datasets", searchField: "name", fallbackSearch: "slug", required: true },
+    { field: "dataset", targetCollection: "datasets", searchField: "slug", required: true },
   ],
 
   // Scraper repos depend on users and catalogs
