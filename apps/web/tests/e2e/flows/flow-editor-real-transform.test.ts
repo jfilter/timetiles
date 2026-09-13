@@ -2,7 +2,7 @@
  * E2E tests for real user interactions with transforms in the import wizard.
  *
  * These tests verify the full flow of adding a transform via the inline
- * TransformList UI (no localStorage injection), round-tripping through
+ * per-row transform editor (no localStorage injection), round-tripping through
  * the visual flow editor, and submitting to the import API.
  *
  * @module
