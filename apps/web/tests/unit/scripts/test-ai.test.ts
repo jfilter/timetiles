@@ -29,11 +29,14 @@ vi.mock("node:fs", () => ({
   },
 }));
 
+const PNPM_ENTRY = "/opt/pnpm/bin/pnpm.cjs";
+
 describe.sequential("AI test runner exit status", () => {
   const originalArgv = process.argv;
 
   beforeEach(() => {
     process.argv = ["node", "test-ai.ts"];
+    vi.stubEnv("npm_execpath", PNPM_ENTRY);
     vi.resetModules();
     vi.resetAllMocks();
     vi.spyOn(console, "log").mockImplementation(() => {});
@@ -46,6 +49,7 @@ describe.sequential("AI test runner exit status", () => {
 
   afterEach(() => {
     process.argv = originalArgv;
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -105,8 +109,9 @@ describe.sequential("AI test runner exit status", () => {
     await import("@/scripts/test-ai");
 
     expect(mocks.execFileSync).toHaveBeenCalledWith(
-      "pnpm",
+      process.execPath,
       [
+        PNPM_ENTRY,
         "exec",
         "vitest",
         "run",
@@ -125,6 +130,18 @@ describe.sequential("AI test runner exit status", () => {
         env: { ...process.env, NODE_OPTIONS: "--no-warnings", DOTENV_CONFIG_SILENT: "true" },
       }
     );
+  });
+
+  it("fails without spawning when it was not started through a pnpm script", async () => {
+    vi.stubEnv("npm_execpath", "");
+    mocks.readFileSync.mockImplementation(() => {
+      throw new Error("Report does not exist");
+    });
+
+    await import("@/scripts/test-ai");
+
+    expect(mocks.execFileSync).not.toHaveBeenCalled();
+    expect(mocks.exit).toHaveBeenCalledWith(1);
   });
 
   it("fails when its own report is missing even if another run wrote a passing report", async () => {
@@ -160,8 +177,8 @@ describe.sequential("AI test runner exit status", () => {
     await import("@/scripts/test-ai");
 
     expect(mocks.execFileSync).toHaveBeenCalledWith(
-      "pnpm",
-      expect.any(Array),
+      process.execPath,
+      expect.arrayContaining([PNPM_ENTRY]),
       expect.objectContaining({ stdio: ["ignore", "ignore", "inherit"] })
     );
     expect(mocks.exit).toHaveBeenCalledWith(1);
