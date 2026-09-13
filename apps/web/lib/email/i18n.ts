@@ -53,6 +53,15 @@ const interpolate = (text: string, params: EmailParams | undefined, escape: bool
 };
 
 /**
+ * The locale email content will actually be rendered in.
+ *
+ * Shared so that date formatting and message lookup cannot disagree — they did,
+ * and German emails carried English dates as a result.
+ */
+export const resolveEmailLocale = (locale?: string | null): string =>
+  locale && locale in messages ? locale : DEFAULT_LOCALE;
+
+/**
  * Get a translation function for the given locale.
  *
  * Falls back to {@link DEFAULT_LOCALE} if the locale is not supported.
@@ -64,15 +73,6 @@ const interpolate = (text: string, params: EmailParams | undefined, escape: bool
  * t("footer"); // "Dies ist eine automatische Nachricht von TimeTiles..."
  * ```
  */
-/**
- * The locale email content will actually be rendered in.
- *
- * Shared so that date formatting and message lookup cannot disagree — they did,
- * and German emails carried English dates as a result.
- */
-export const resolveEmailLocale = (locale?: string | null): string =>
-  locale && locale in messages ? locale : DEFAULT_LOCALE;
-
 export const getEmailTranslations = (locale?: string | null, defaults?: EmailParams): EmailTranslator => {
   const msgs = messages[resolveEmailLocale(locale)]!;
 
