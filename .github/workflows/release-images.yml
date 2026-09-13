@@ -292,7 +292,7 @@ jobs:
           EOF
 
           # Bind mounts must be writable by the container's nextjs uid (1001).
-          install -d -o 1001 -g 1001 logs uploads config
+          install -d -o 1001 -g 1001 logs uploads exports config
 
           echo "==> Pulling images..."
           docker compose -f docker-compose.prod.yml --env-file .env.production pull postgres web
@@ -319,6 +319,14 @@ jobs:
 
           echo "==> Payload CLI is reachable for workers..."
           docker exec timetiles-web node -e "require('fs').accessSync('/app/node_modules/.pnpm/node_modules/payload/bin.js')"
+
+          echo "==> Starting job workers..."
+          # Workers load the Payload config at startup; a broken image crash-loops
+          # them while web stays healthy, so gate on them staying up.
+          docker compose -f docker-compose.prod.yml --env-file .env.production up -d --no-deps \
+            worker-ingest worker-general worker-maintenance
+          bash "$GITHUB_WORKSPACE/.github/scripts/assert-containers-stable.sh" 60 \
+            timetiles-worker-ingest timetiles-worker-general timetiles-worker-maintenance
 
       - name: Smoke test timescrape image
         if: ${{ needs.merge-timescrape.result == 'success' }}

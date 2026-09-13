@@ -82,6 +82,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "worker containers stay running without restarts" {
+    skip_if_services_not_running
+    local service id started age state
+    for service in worker-ingest worker-general worker-maintenance; do
+        id=$($DC_CMD ps -q "$service")
+        [ -n "$id" ] || { echo "$service has no container"; return 1; }
+        # A config load failure crashes a worker within seconds of its start.
+        started=$(docker inspect --format '{{.State.StartedAt}}' "$id")
+        age=$(( $(date +%s) - $(date -d "$started" +%s) ))
+        if (( age < 30 )); then sleep $(( 30 - age )); fi
+        state=$(docker inspect --format '{{.State.Status}} restarts={{.RestartCount}}' "$id")
+        echo "$service: $state"
+        [ "$state" = "running restarts=0" ]
+    done
+}
+
 # =============================================================================
 # Scraper Runner Integration
 # =============================================================================
