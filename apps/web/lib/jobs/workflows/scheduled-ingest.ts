@@ -12,6 +12,7 @@ import type { Payload, WorkflowConfig } from "payload";
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
 import { logError, logger } from "@/lib/logger";
 import { asSystem } from "@/lib/services/system-payload";
+import { sleep } from "@/lib/utils/sleep";
 import type { ScheduledIngest } from "@/payload-types";
 
 import {
@@ -126,11 +127,6 @@ const LIFECYCLE_RECONCILE_ATTEMPTS = 5;
  * to repeat anyway.
  */
 const LIFECYCLE_RECONCILE_BASE_DELAY_MS = 500;
-
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 
 /**
  * Write a non-failure lifecycle result, retrying with backoff and never rethrowing.

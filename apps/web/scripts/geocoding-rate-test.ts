@@ -7,6 +7,7 @@
  *
  * @module
  */
+import { sleep } from "@/lib/utils/sleep";
 
 const PROVIDERS = {
   "photon-komoot": {
@@ -97,8 +98,6 @@ const fireRequest = async (url: string): Promise<RequestResult> => {
     return { status: 0, latencyMs, error: (err as Error).message };
   }
 };
-
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 const summarize = (
   results: RequestResult[]
