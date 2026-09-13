@@ -469,6 +469,72 @@ run_application_check() {
     [[ "$output" == *"RESTIC_PASSWORD not set"* ]]
 }
 
+setup_restore_commands() {
+    export RESTIC_PASSWORD='fixture-password'
+    export RESTIC_REPOSITORY="$TEST_TEMP_DIR/local-repo"
+    export UPLOAD_HOST_DIR="$TEST_TEMP_DIR/uploads"
+    mkdir -p "$UPLOAD_HOST_DIR" "$TEST_TEMP_DIR/bin"
+    echo old > "$UPLOAD_HOST_DIR/old.txt"
+    # A db-only backup after the last full backup: the newest snapshot overall is db.
+    export SNAPSHOT_FIXTURE='[{"short_id":"db000001","time":"2026-01-01T01:00:00Z","tags":["db"]},{"short_id":"up000001","time":"2026-01-01T01:01:00Z","tags":["uploads"]},{"short_id":"db000002","time":"2026-01-01T03:00:00Z","tags":["db"]}]'
+    cat > "$TEST_TEMP_DIR/bin/restic" << 'EOF'
+#!/bin/bash
+# Called as: restic -r <repo> <command> ...
+case "$3" in
+    snapshots)
+        if [[ -n "${5:-}" ]]; then
+            jq -c --arg id "$5" '[.[] | select(.short_id == $id)]' <<< "$SNAPSHOT_FIXTURE"
+        else
+            echo "$SNAPSHOT_FIXTURE"
+        fi
+        ;;
+    restore)
+        printf '%s\n' "$4" >> "$TEST_TEMP_DIR/restored-snapshots"
+        case "$4" in
+            db*) echo "-- dump $4" > "$6/database.sql" ;;
+            up*) mkdir -p "$6$UPLOAD_HOST_DIR" && echo "$4" > "$6$UPLOAD_HOST_DIR/restored.txt" ;;
+        esac
+        ;;
+esac
+EOF
+    cat > "$TEST_TEMP_DIR/bin/docker" << 'EOF'
+#!/bin/bash
+[[ "$*" == *psql* ]] && cat > "$TEST_TEMP_DIR/psql-input"
+exit 0
+EOF
+    chmod +x "$TEST_TEMP_DIR/bin/"*
+    export PATH="$TEST_TEMP_DIR/bin:$PATH"
+}
+
+@test "restore latest restores the newest db and the newest uploads snapshot" {
+    setup_restore_commands
+    run "$TEST_CLI" restore latest --force
+    [ "$status" -eq 0 ]
+    [ "$(sort "$TEST_TEMP_DIR/restored-snapshots" | tr '\n' ' ')" = 'db000002 up000001 ' ]
+    grep -qxF -e '-- dump db000002' "$TEST_TEMP_DIR/psql-input"
+    [ "$(cat "$UPLOAD_HOST_DIR/restored.txt")" = 'up000001' ]
+    [[ "$output" == *"Restored: database, uploads"* ]]
+}
+
+@test "restore latest refuses when a tag has no snapshot" {
+    setup_restore_commands
+    export SNAPSHOT_FIXTURE='[{"short_id":"db000001","time":"2026-01-01T01:00:00Z","tags":["db"]}]'
+    run "$TEST_CLI" restore latest --force
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"No 'uploads' snapshot found"* ]]
+    [ ! -e "$TEST_TEMP_DIR/restored-snapshots" ]
+    [ ! -e "$TEST_TEMP_DIR/psql-input" ]
+}
+
+@test "restore by id restores only that snapshot" {
+    setup_restore_commands
+    run "$TEST_CLI" restore db000001 --force
+    [ "$status" -eq 0 ]
+    [ "$(cat "$TEST_TEMP_DIR/restored-snapshots")" = 'db000001' ]
+    [ -f "$UPLOAD_HOST_DIR/old.txt" ]
+    [[ "$output" == *"Restored: database"* ]]
+}
+
 # =============================================================================
 # Environment Checks
 # =============================================================================

@@ -782,25 +782,37 @@ EOF
             exit 0
         fi
 
-        # Handle 'latest' keyword
+        # A full backup writes one db and one uploads snapshot, so `latest`
+        # restores the newest of each tag and refuses if either is missing.
         if [[ "$SNAPSHOT" == "latest" ]]; then
-            SNAPSHOT=$(run_restic "$REPO" snapshots --json 2>/dev/null | jq -r 'sort_by(.time) | last | .short_id // empty')
-            if [[ -z "$SNAPSHOT" ]]; then
-                echo -e "${RED}No snapshots found${NC}"
+            if ! ALL_SNAPSHOTS=$(run_restic "$REPO" snapshots --json); then
+                echo -e "${RED}Failed to list snapshots${NC}"
                 exit 1
             fi
-            echo "Latest snapshot: $SNAPSHOT"
+            SNAPSHOTS=()
+            for tag in db uploads; do
+                id=$(jq -r --arg tag "$tag" '[.[] | select((.tags // []) | index($tag))] | sort_by(.time) | last | .short_id // empty' <<< "$ALL_SNAPSHOTS")
+                if [[ -z "$id" ]]; then
+                    echo -e "${RED}No '$tag' snapshot found; 'latest' needs both a db and an uploads snapshot${NC}"
+                    echo "Restore a single snapshot instead: timetiles restore <snapshot-id>"
+                    exit 1
+                fi
+                echo "Latest $tag snapshot: $id"
+                SNAPSHOTS+=("$id")
+            done
+        else
+            SNAPSHOTS=("$SNAPSHOT")
         fi
 
-        # Get snapshot info
-        SNAPSHOT_INFO=$(run_restic "$REPO" snapshots --json "$SNAPSHOT" 2>/dev/null)
-        if [[ -z "$SNAPSHOT_INFO" ]] || [[ "$SNAPSHOT_INFO" == "[]" ]]; then
-            echo -e "${RED}Snapshot not found: $SNAPSHOT${NC}"
-            exit 1
-        fi
-
-        TAGS=$(echo "$SNAPSHOT_INFO" | jq -r '.[0].tags // [] | join(",")')
-        echo "Snapshot $SNAPSHOT tags: $TAGS"
+        for id in "${SNAPSHOTS[@]}"; do
+            SNAPSHOT_INFO=$(run_restic "$REPO" snapshots --json "$id" 2>/dev/null)
+            if [[ -z "$SNAPSHOT_INFO" ]] || [[ "$SNAPSHOT_INFO" == "[]" ]]; then
+                echo -e "${RED}Snapshot not found: $id${NC}"
+                exit 1
+            fi
+            TAGS=$(echo "$SNAPSHOT_INFO" | jq -r '.[0].tags // [] | join(",")')
+            echo "Snapshot $id tags: $TAGS"
+        done
 
         # Skip confirmation with --force flag
         FORCE=false
@@ -840,11 +852,13 @@ EOF
         trap restore_cleanup EXIT INT TERM
 
         # Restore snapshot to temp directory
-        echo -e "${YELLOW}Extracting snapshot...${NC}"
-        if ! run_restic "$REPO" restore "$SNAPSHOT" --target "$RESTORE_DIR"; then
-            echo -e "${RED}Failed to extract snapshot${NC}"
-            exit 1
-        fi
+        for id in "${SNAPSHOTS[@]}"; do
+            echo -e "${YELLOW}Extracting snapshot $id...${NC}"
+            if ! run_restic "$REPO" restore "$id" --target "$RESTORE_DIR"; then
+                echo -e "${RED}Failed to extract snapshot $id${NC}"
+                exit 1
+            fi
+        done
 
         # Track what actually landed. Both steps below are conditional, and the
         # uploads path is reconstructed from the CURRENT config while restic stored
@@ -908,8 +922,8 @@ EOF
             RESTORED_WHAT="${RESTORED_WHAT:+$RESTORED_WHAT, }uploads"
         fi
 
-        if [[ -z "$RESTORED_WHAT" ]]; then
-            echo -e "${RED}Restore failed: snapshot $SNAPSHOT contained neither database.sql nor uploads${NC}"
+        if [[ -z "$RESTORED_WHAT" ]] || { [[ "$SNAPSHOT" == "latest" ]] && [[ "$RESTORED_WHAT" != "database, uploads" ]]; }; then
+            echo -e "${RED}Restore failed: snapshot(s) ${SNAPSHOTS[*]} restored ${RESTORED_WHAT:-neither database.sql nor uploads}${NC}"
             echo -e "${YELLOW}Looked for uploads at: $RESTORED_UPLOADS${NC}"
             echo -e "${YELLOW}Snapshots keep the original host paths. If this host uses a different${NC}"
             echo -e "${YELLOW}install directory, set UPLOAD_HOST_DIR to the path stored in the${NC}"

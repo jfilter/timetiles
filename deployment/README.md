@@ -82,7 +82,7 @@ Uses restic for encrypted, deduplicated backups.
 ./timetiles backup --offsite    # Include S3 offsite sync
 ./timetiles backup list         # Show snapshots
 ./timetiles backup prune        # Apply retention policy
-./timetiles restore latest      # Restore most recent
+./timetiles restore latest      # Restore newest db and uploads snapshots
 ```
 
 Configuration in `.env.production`:

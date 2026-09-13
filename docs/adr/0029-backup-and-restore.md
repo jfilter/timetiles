@@ -81,8 +81,8 @@ timetiles backup list             # List local snapshots
 timetiles backup prune            # Apply retention policy
 timetiles backup verify           # Check repository integrity
 
-# Restore (one snapshot at a time — see the note below)
-timetiles restore latest          # Restore the newest snapshot of ANY tag
+# Restore — see the note below
+timetiles restore latest          # Restore the newest db and newest uploads snapshot
 timetiles restore <snapshot-id>   # Restore specific snapshot
 
 # Automation
@@ -93,7 +93,7 @@ timetiles backup auto --disable   # Remove cron job
 
 Repository initialization (`restic init`) runs automatically on first backup if the repository does not exist. This is idempotent for offsite repositories.
 
-A full backup writes **two** snapshots — one tagged `db`, one tagged `uploads` — and restore consumes one snapshot per invocation. Full recovery is therefore two `timetiles restore <id>` calls, one per tag. `restore latest` resolves the newest snapshot regardless of tag, which after a full backup is always the `uploads` one, so it is not a disaster-recovery command. See [Maintenance](../../apps/docs/content/self-hosting/maintenance.mdx) for the procedure.
+A full backup writes **two** snapshots — one tagged `db`, one tagged `uploads` — and a snapshot ID restores exactly that snapshot. `restore latest` resolves the newest snapshot of each tag and restores both, refusing when either tag has no snapshot. See [Maintenance](../../apps/docs/content/self-hosting/maintenance.mdx) for the procedure.
 
 ### CI-Tested Backup and Restore
 

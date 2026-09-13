@@ -57,8 +57,8 @@ including `--offsite` if it was enabled. Updating the checkout alone does not re
 
 ### Restore
 
-Restore operates on **one snapshot at a time**, and each snapshot holds either the database or the
-uploads. A full recovery is therefore two commands.
+Each snapshot holds either the database or the uploads. A snapshot ID restores that one half; `latest`
+restores the newest `db` snapshot and the newest `uploads` snapshot together.
 
 ```bash
 timetiles backup list         # Find the snapshot IDs and their tags
@@ -69,23 +69,12 @@ timetiles restore abc123 --offsite  # Restore it from S3
 #### Full disaster recovery
 
 ```bash
-# 1. List snapshots and note the newest `db` id and the newest `uploads` id
-timetiles backup list
-
-# 2. Restore the database
-timetiles restore <newest-db-id>
-
-# 3. Restore the uploads
-timetiles restore <newest-uploads-id>
+timetiles restore latest      # Newest db snapshot + newest uploads snapshot
 ```
 
-<Callout type="warning">
-  Do **not** use `timetiles restore latest` for disaster recovery. `latest` resolves to the newest snapshot of any tag,
-  not the newest complete backup pair. A full backup writes the database first and uploads second, so immediately
-  afterward `latest` normally selects uploads; a subsequent database-only backup changes that. Always select and restore
-  both snapshot IDs explicitly. The command reports which half it restored, for example `Restore complete! Restored:
-  uploads`.
-</Callout>
+`latest` refuses to run unless the repository holds at least one snapshot of each tag, and fails unless both halves
+were restored. To recover an older state, restore the chosen `db` and `uploads` snapshot IDs one after the other. The
+command reports what it restored, for example `Restore complete! Restored: database, uploads`.
 
 `timetiles restore` with no arguments lists the available snapshots, same as `timetiles backup list`.
 
