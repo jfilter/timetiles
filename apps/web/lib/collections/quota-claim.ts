@@ -12,8 +12,11 @@ import { createQuotaService } from "@/lib/services/quota-service";
 
 /** The three hook steps of one metered create. */
 export interface QuotaClaimLifecycle {
-  /** `beforeChange` on create: enforce the limit, increment usage, and claim compensation. */
-  claim: (req: PayloadRequest) => Promise<void>;
+  /**
+   * `beforeChange` on create: enforce the limit, increment usage, and claim compensation.
+   * Without `req.user`, `ownerId` names the user charged; without either, nothing is metered.
+   */
+  claim: (req: PayloadRequest, ownerId?: string | number | null) => Promise<void>;
   /** `afterChange` on create: the row exists, so the increment is final. */
   clear: (req: PayloadRequest) => void;
   /** `afterError`: hand the increment back, but only if this request still holds the claim. */
@@ -49,13 +52,18 @@ export const createQuotaClaimLifecycle = ({
   };
 
   return {
-    claim: async (req) => {
-      if (!req.user) return;
+    claim: async (req, ownerId) => {
+      const user =
+        req.user ??
+        (ownerId == null
+          ? null
+          : await req.payload.findByID({ collection: "users", id: ownerId, overrideAccess: true, depth: 0, req }));
+      if (!user) return;
 
-      await createQuotaService(req.payload).checkAndIncrementUsage(req.user, quotaKey, 1, req);
+      await createQuotaService(req.payload).checkAndIncrementUsage(user, quotaKey, 1, req);
 
       if (req.transactionID) return;
-      writeClaim(req, req.user.id);
+      writeClaim(req, user.id);
     },
 
     clear: (req) => {

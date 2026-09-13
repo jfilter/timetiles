@@ -10,6 +10,8 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { getOrCreateCatalog } from "@/lib/jobs/handlers/dataset-detection/catalog-dataset-helpers";
+import { createQuotaService } from "@/lib/services/quota-service";
 import type { User } from "@/payload-types";
 import {
   createIntegrationTestEnvironment,
@@ -29,7 +31,8 @@ describe.sequential("Catalog validation hooks", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, { owner: { role: "user" } });
+    // Slug tests create many catalogs for this owner; each counts against CATALOGS_PER_USER.
+    const { users } = await withUsers(testEnv, { owner: { role: "user", customQuotas: { maxCatalogsPerUser: 100 } } });
     ownerUser = users.owner;
   }, 60000);
 
@@ -191,14 +194,36 @@ describe.sequential("Catalog validation hooks", () => {
       expect(cat3.id).toBeDefined();
     });
 
-    it("skips quota check when no user context (overrideAccess)", async () => {
-      // Creating without user context should bypass quota
-      const catalog = await payload.create({
+    it("charges and refunds the owner of a system-created catalog", async () => {
+      const importer = await createUserWithCatalogQuota(`sys-${Date.now()}`, 5);
+      const quotaService = createQuotaService(payload);
+      const before = (await quotaService.getOrCreateUsageRecord(importer.id)).currentCatalogs ?? 0;
+
+      const catalogId = await getOrCreateCatalog(payload, undefined, importer.id);
+
+      expect((await quotaService.getOrCreateUsageRecord(importer.id)).currentCatalogs).toBe(before + 1);
+
+      await payload.delete({ collection: "catalogs", id: catalogId, overrideAccess: true });
+
+      expect((await quotaService.getOrCreateUsageRecord(importer.id)).currentCatalogs).toBe(before);
+    });
+
+    it("rejects a system-created catalog when the owner is at the limit", async () => {
+      const importer = await createUserWithCatalogQuota(`sys-full-${Date.now()}`, 1);
+      await payload.create({
         collection: "catalogs",
-        data: { name: `No User ${Date.now()}`, isPublic: true, createdBy: ownerUser.id },
+        data: { name: `Own Cat ${Date.now()}`, isPublic: true },
+        user: importer,
+      });
+
+      await expect(getOrCreateCatalog(payload, undefined, importer.id)).rejects.toThrow(/Maximum catalogs reached/);
+
+      const owned = await payload.find({
+        collection: "catalogs",
+        where: { createdBy: { equals: importer.id } },
         overrideAccess: true,
       });
-      expect(catalog.id).toBeDefined();
+      expect(owned.totalDocs).toBe(1);
     });
   });
 });

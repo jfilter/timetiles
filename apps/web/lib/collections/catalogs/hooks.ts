@@ -167,8 +167,10 @@ export const catalogBeforeChangeHooks: CollectionBeforeChangeHook[] = [
     }
 
     // Handle quota check and increment for new catalogs
-    if (operation === "create") {
-      await catalogQuota.claim(req);
+    // afterDelete refunds `createdBy`, so a create without a user charges that same owner.
+    // Seeded catalogs are fixtures, not usage.
+    if (operation === "create" && req.context?.seed !== true) {
+      await catalogQuota.claim(req, extractRelationId<number>(data.createdBy));
     }
 
     return data;

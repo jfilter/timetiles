@@ -14,6 +14,7 @@ import { createQuotaClaimLifecycle } from "@/lib/collections/quota-claim";
 import { createLogger } from "@/lib/logger";
 import { hasUrlEmbeddedCredentials, isPrivateUrl } from "@/lib/security/url-validation";
 import { createQuotaService } from "@/lib/services/quota-service";
+import { extractRelationId } from "@/lib/utils/relation-id";
 
 const COLLECTION_SLUG = "scraper-repos" as const;
 const logger = createLogger(COLLECTION_SLUG);
@@ -212,8 +213,9 @@ const ScraperRepos: CollectionConfig = {
       setCreatedByHook,
       async ({ data, req, operation }) => {
         if (req.context?.seed) return data;
+        // afterDelete refunds `createdBy`, so a create without a user charges that same owner.
         if (operation === "create") {
-          await scraperRepoQuota.claim(req);
+          await scraperRepoQuota.claim(req, extractRelationId<number>(data.createdBy));
         }
         return data;
       },

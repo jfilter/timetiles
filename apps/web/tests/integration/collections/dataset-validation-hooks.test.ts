@@ -35,7 +35,8 @@ describe.sequential("Dataset validation hooks", () => {
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin" },
       editor: { role: "editor" },
-      owner: { role: "user" },
+      // Catalogs created for this owner count against CATALOGS_PER_USER.
+      owner: { role: "user", customQuotas: { maxCatalogsPerUser: 100 } },
       other: { role: "user" },
     });
     adminUser = users.admin;

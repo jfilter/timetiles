@@ -31,7 +31,11 @@ describe.sequential("Visibility and ownership sync cascade", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, { admin: { role: "admin" }, owner: { role: "user" } });
+    // Catalogs created for this owner count against CATALOGS_PER_USER.
+    const { users } = await withUsers(testEnv, {
+      admin: { role: "admin" },
+      owner: { role: "user", customQuotas: { maxCatalogsPerUser: 100 } },
+    });
     adminUser = users.admin;
     ownerUser = users.owner;
   }, 60000);

@@ -38,7 +38,8 @@ describe.sequential("Scraper Collections Access Control", () => {
     const { users } = await withUsers(testEnv, {
       admin: { role: "admin", trustLevel: "5" },
       trusted: { role: "user", trustLevel: "3" },
-      regular: { role: "user", trustLevel: "2" },
+      // Repos forced onto this owner count against SCRAPER_REPOS; creation stays trust-gated.
+      regular: { role: "user", trustLevel: "2", customQuotas: { maxScraperRepos: 10 } },
     });
 
     adminUser = users.admin;

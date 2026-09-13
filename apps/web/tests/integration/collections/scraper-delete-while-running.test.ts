@@ -58,7 +58,8 @@ describe.sequential("Deleting a scraper while a run is in flight", () => {
     payload = testEnv.payload;
     cleanup = testEnv.cleanup;
 
-    const { users } = await withUsers(testEnv, { owner: { role: "admin" } });
+    // The repo below counts against the owner's SCRAPER_REPOS quota.
+    const { users } = await withUsers(testEnv, { owner: { role: "admin", customQuotas: { maxScraperRepos: 10 } } });
     user = users.owner;
 
     const repo = await payload.create({
