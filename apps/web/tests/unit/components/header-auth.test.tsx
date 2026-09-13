@@ -7,7 +7,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NextIntlClientProvider } from "next-intl";
+import { NextIntlClientProvider, useLocale } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HeaderAuth } from "@/app/_components/header-auth";
@@ -53,6 +53,26 @@ describe("HeaderAuth logout", () => {
 
     expect(mocks.mutate).toHaveBeenCalledWith(undefined, { onSuccess: expect.any(Function) });
     expect(client.getQueryData(authKeys.currentUser)).toEqual({ user });
+  });
+
+  it.each([
+    { locale: "en", messages: en, home: "/" },
+    { locale: "de", messages: de, home: "/de" },
+  ])("returns to the home page of the active locale after logout ($locale)", async ({ locale, messages, home }) => {
+    const location = { href: "/account" };
+    vi.stubGlobal("location", location);
+    vi.mocked(useLocale).mockReturnValue(locale);
+    const events = userEvent.setup();
+    const client = renderHeader(locale, messages);
+    await events.click(screen.getByRole("button", { name: /Admin/ }));
+    await events.click(screen.getByRole("menuitem", { name: messages.Common.signOut }));
+
+    const [, options] = mocks.mutate.mock.calls[0] as [undefined, { onSuccess: () => void }];
+    options.onSuccess();
+
+    expect(location.href).toBe(home);
+    expect(client.getQueryData(authKeys.currentUser)).toEqual({ user: null });
+    vi.unstubAllGlobals();
   });
 
   it.each([

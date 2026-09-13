@@ -21,8 +21,9 @@ import {
 } from "@timetiles/ui";
 import { Activity, LogOut, Package, Settings, Upload, User as UserIcon } from "lucide-react";
 import NextLink from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
+import { localizePath } from "@/i18n/localize-path";
 import { Link } from "@/i18n/navigation";
 import { useSite } from "@/lib/context/site-context";
 import { useLogoutMutation } from "@/lib/hooks/use-auth-mutations";
@@ -36,6 +37,7 @@ interface HeaderAuthProps {
 export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
   const queryClient = useQueryClient();
   const { isDefaultSite } = useSite();
+  const locale = useLocale();
   const t = useTranslations("Common");
   const tHeader = useTranslations("Header");
   const logoutMutation = useLogoutMutation();
@@ -45,8 +47,9 @@ export const HeaderAuth = ({ user }: Readonly<HeaderAuthProps>) => {
       onSuccess: () => {
         // Clear client-side auth cache so the navbar updates immediately
         queryClient.setQueryData(authKeys.currentUser, { user: null });
-        // Full page navigation to re-render all server components with cleared session
-        globalThis.location.href = "/";
+        // Full page navigation re-renders server components with the cleared session;
+        // the localized home keeps the user's language
+        globalThis.location.href = localizePath("/", locale);
       },
     });
   };

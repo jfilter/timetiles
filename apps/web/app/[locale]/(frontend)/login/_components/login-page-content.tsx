@@ -15,7 +15,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Suspense } from "react";
 
 import { AuthTabs } from "@/components/auth";
-import { DEFAULT_LOCALE } from "@/i18n/config";
+import { localizePath } from "@/i18n/localize-path";
 import { getSafeLocalRedirectPath } from "@/lib/utils/local-redirect";
 
 const LoginContent = () => {
@@ -25,13 +25,8 @@ const LoginContent = () => {
 
   const redirectTo = getSafeLocalRedirectPath(searchParams.get("redirect"));
 
-  // The redirect param carries an unlocalized path ("/account/imports") —
-  // prefix it with the active locale (localePrefix "as-needed": the default
-  // locale stays unprefixed) so login doesn't switch the user's language.
-  const localizedRedirect =
-    locale === DEFAULT_LOCALE || redirectTo.startsWith(`/${locale}/`) || redirectTo === `/${locale}`
-      ? redirectTo
-      : `/${locale}${redirectTo}`;
+  // The redirect param carries an unlocalized path, so login keeps the user's language
+  const localizedRedirect = localizePath(redirectTo, locale);
 
   const handleLoginSuccess = () => {
     // Use full page navigation to ensure server components re-render with new auth state
