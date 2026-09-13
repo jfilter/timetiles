@@ -16,7 +16,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           ST_Intersects(e.geom, CASE WHEN p_min_lng <= p_max_lng THEN true END)
           COALESCE((p_filters->>'includePublic')::boolean, true)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },
@@ -25,7 +25,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           CASE WHEN (p_filters->'bounds'->>'minLng')::double precision <= 1 THEN true END
           COALESCE((p_filters->>'includePublic')::boolean, true)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },
@@ -34,7 +34,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           CASE WHEN (p_filters->'bounds'->>'minLng')::double precision <= 1 THEN true END
           COALESCE((p_filters->>'includePublic')::boolean, true)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },
@@ -58,7 +58,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           ST_Intersects(e.geom, CASE WHEN p_min_lng <= p_max_lng THEN true END)
           COALESCE((p_filters->>'includePublic')::boolean, false)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },
@@ -67,7 +67,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           CASE WHEN (p_filters->'bounds'->>'minLng')::double precision <= 1 THEN true END
           COALESCE((p_filters->>'includePublic')::boolean, false)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },
@@ -76,7 +76,7 @@ describe("findFunctionDefinitionIssues", () => {
         definition: `
           CASE WHEN (p_filters->'bounds'->>'minLng')::double precision <= 1 THEN true END
           COALESCE((p_filters->>'includePublic')::boolean, false)
-          e.dataset_is_public = true
+          e.dataset_is_public = true AND e._status = 'published'
           e.catalog_owner_id = (p_filters->>'ownerId')::int
         `,
       },

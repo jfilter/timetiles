@@ -9,11 +9,14 @@ import {
   denyPendingDeletion,
   isAuthenticated,
   isEditorOrAdmin,
+  withPublishedStatus,
 } from "../shared-fields";
 
 export const catalogsAccess = {
   // Public catalogs can be read by anyone, private ones only by creator or admins
-  read: createPublicReadAccess({ isPublic: { equals: true } }, (userId) => ({ createdBy: { equals: userId } })),
+  read: createPublicReadAccess(withPublishedStatus({ isPublic: { equals: true } }), (userId) => ({
+    createdBy: { equals: userId },
+  })),
 
   // Only authenticated users can create catalogs (denied for pending-deletion accounts)
   create: denyPendingDeletion(isAuthenticated),

@@ -29,7 +29,7 @@ const CRITICAL_FUNCTION_EXPECTATIONS: FunctionDefinitionExpectation[] = [
     name: "cluster_events",
     requiredSnippets: [
       "COALESCE((p_filters->>'includePublic')::boolean, true)",
-      "e.dataset_is_public = true",
+      "e.dataset_is_public = true AND e._status = 'published'",
       "e.catalog_owner_id = (p_filters->>'ownerId')::int",
       "ST_Intersects(e.geom, CASE WHEN p_min_lng <= p_max_lng",
     ],
@@ -39,7 +39,7 @@ const CRITICAL_FUNCTION_EXPECTATIONS: FunctionDefinitionExpectation[] = [
     name: "calculate_event_histogram",
     requiredSnippets: [
       "COALESCE((p_filters->>'includePublic')::boolean, true)",
-      "e.dataset_is_public = true",
+      "e.dataset_is_public = true AND e._status = 'published'",
       "e.catalog_owner_id = (p_filters->>'ownerId')::int",
       "CASE WHEN (p_filters->'bounds'->>'minLng')::double precision",
     ],
@@ -49,7 +49,7 @@ const CRITICAL_FUNCTION_EXPECTATIONS: FunctionDefinitionExpectation[] = [
     name: "cluster_events_temporal",
     requiredSnippets: [
       "COALESCE((p_filters->>'includePublic')::boolean, true)",
-      "e.dataset_is_public = true",
+      "e.dataset_is_public = true AND e._status = 'published'",
       "e.catalog_owner_id = (p_filters->>'ownerId')::int",
       "CASE WHEN (p_filters->'bounds'->>'minLng')::double precision",
     ],

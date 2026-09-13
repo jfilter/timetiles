@@ -87,8 +87,8 @@ export default async function EventDetailsPage({ params }: Readonly<EventDetails
   const t = await getTranslations("Events");
 
   // Fetch the event with draft mode support. Outside draft mode, unpublished
-  // (draft-only) events must 404 — access control filters by dataset
-  // visibility, not _status, so the filter is needed here.
+  // (draft-only) events must 404 — access control still lets catalog owners
+  // read their own drafts, so the filter is needed here.
   const result = await payload.find({
     collection: "events",
     where: { id: { equals: id }, ...(isDraftMode ? {} : { _status: { equals: "published" } }) },

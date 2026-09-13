@@ -15,7 +15,13 @@
  */
 import type { Access } from "payload";
 
-import { createOwnershipAccess, createPublicReadAccess, denyPendingDeletion, isEditorOrAdmin } from "../shared-fields";
+import {
+  createOwnershipAccess,
+  createPublicReadAccess,
+  denyPendingDeletion,
+  isEditorOrAdmin,
+  withPublishedStatus,
+} from "../shared-fields";
 
 /**
  * Read access: Datasets visible if both dataset AND catalog are public, OR if user owns the catalog.
@@ -26,7 +32,7 @@ import { createOwnershipAccess, createPublicReadAccess, denyPendingDeletion, isE
  */
 export const read: Access = createPublicReadAccess(
   // Both dataset and catalog must be public for general access
-  { and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] },
+  withPublishedStatus({ and: [{ isPublic: { equals: true } }, { catalogIsPublic: { equals: true } }] }),
   // Catalog owner can see everything in their catalog
   (userId) => ({ catalogCreatorId: { equals: userId } })
 );

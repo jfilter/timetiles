@@ -101,7 +101,8 @@ const buildEventAccessCondition = (filters: CanonicalEventFilters): SqlFragment 
   const accessConditions: SqlFragment[] = [];
 
   if (filters.includePublic !== false) {
-    accessConditions.push(sql`e.dataset_is_public = true`);
+    // Same grant as the events read access: public rows only once published.
+    accessConditions.push(sql`(e.dataset_is_public = true AND e._status = 'published')`);
   }
 
   if (filters.ownerId != null) {

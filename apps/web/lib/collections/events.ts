@@ -30,6 +30,7 @@ import {
   createPublicReadAccess,
   isEditorOrAdmin,
   isPrivileged,
+  withPublishedStatus,
 } from "./shared-fields";
 
 const Events: CollectionConfig = {
@@ -50,7 +51,7 @@ const Events: CollectionConfig = {
   access: {
     // Events: public data visible to all, private data visible to catalog owner
     // Uses denormalized fields for zero-query access control
-    read: createPublicReadAccess({ datasetIsPublic: { equals: true } }, (userId) => ({
+    read: createPublicReadAccess(withPublishedStatus({ datasetIsPublic: { equals: true } }), (userId) => ({
       catalogOwnerId: { equals: userId },
     })),
 

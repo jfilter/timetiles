@@ -16,15 +16,15 @@ const accessClause = (filters: Parameters<typeof toPayloadWhere>[0]) => {
   return (where.and as unknown[])[0];
 };
 
+const PUBLISHED_PUBLIC = { and: [{ datasetIsPublic: { equals: true } }, { _status: { equals: "published" } }] };
+
 describe("toPayloadWhere access control", () => {
-  it("defaults to public events only", () => {
-    expect(accessClause({})).toEqual({ datasetIsPublic: { equals: true } });
+  it("defaults to published public events only", () => {
+    expect(accessClause({})).toEqual(PUBLISHED_PUBLIC);
   });
 
-  it("grants public OR owner when an owner is present", () => {
-    expect(accessClause({ ownerId: 7 })).toEqual({
-      or: [{ datasetIsPublic: { equals: true } }, { catalogOwnerId: { equals: 7 } }],
-    });
+  it("grants published public OR owner when an owner is present", () => {
+    expect(accessClause({ ownerId: 7 })).toEqual({ or: [PUBLISHED_PUBLIC, { catalogOwnerId: { equals: 7 } }] });
   });
 
   it("restricts to owner-only when includePublic is false", () => {

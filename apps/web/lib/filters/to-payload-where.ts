@@ -43,7 +43,7 @@ const buildAccessWhere = (filters: CanonicalEventFilters): Where => {
   const grants: Where[] = [];
 
   if (filters.includePublic !== false) {
-    grants.push({ datasetIsPublic: { equals: true } });
+    grants.push({ and: [{ datasetIsPublic: { equals: true } }, { _status: { equals: "published" } }] });
   }
 
   if (filters.ownerId != null) {
