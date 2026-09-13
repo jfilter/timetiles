@@ -396,7 +396,6 @@
     "@testing-library/user-event": "^14.6.1",
     "@timetiles/eslint-config": "workspace:*",
     "@timetiles/typescript-config": "workspace:*",
-    "@turbo/gen": "^2.10.5",
     "@types/d3-force": "^3.0.10",
     "@types/node": "^26.1.1",
     "@types/react": "catalog:",
