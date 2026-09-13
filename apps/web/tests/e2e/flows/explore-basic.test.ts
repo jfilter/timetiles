@@ -105,31 +105,36 @@ test.describe("Explore Page - Basic Functionality", () => {
     expect(url.searchParams.has("datasets")).toBe(true);
   });
 
-  test("should handle keyboard navigation", async ({ page }) => {
-    // Focus the page body first to start keyboard navigation from a known state
+  test("should operate the dataset filters with the keyboard", async ({ page }) => {
+    const datasetsTrigger = explorePage.dataSourcesSection;
+    await expect(datasetsTrigger).toBeVisible();
+
+    // Tab from the start of the document until the Datasets section trigger has focus
     await page.locator("body").focus();
-
-    // Tab to navigate through interactive elements
-    await page.keyboard.press("Tab");
-
-    // Check if we can interact with form elements via keyboard
-    const focusedElement = await page.evaluate(() => {
-      const el = document.activeElement;
-      return { tagName: el?.tagName, id: el?.id, type: (el as HTMLInputElement)?.type };
-    });
-
-    // We should be on some interactive element (link, select, input, button, or custom component)
-    const interactiveElements = ["A", "SELECT", "INPUT", "BUTTON", "DIV"];
-    expect(interactiveElements).toContain(focusedElement.tagName);
-
-    // Continue tabbing to ensure we can navigate through the form
-    for (let i = 0; i < 5; i++) {
+    let reached = false;
+    for (let i = 0; i < 60 && !reached; i++) {
       await page.keyboard.press("Tab");
+      reached = await datasetsTrigger.evaluate((el) => el === document.activeElement);
     }
+    expect(reached).toBe(true);
+    await expect(datasetsTrigger).toBeFocused();
 
-    // Verify we're still on an interactive element
-    const laterElement = await page.evaluate(() => document.activeElement?.tagName);
-    expect(interactiveElements).toContain(laterElement);
+    // Enter and Space toggle the collapsible section
+    const initiallyExpanded = await datasetsTrigger.getAttribute("aria-expanded");
+    const toggled = initiallyExpanded === "true" ? "false" : "true";
+    await page.keyboard.press("Enter");
+    await expect(datasetsTrigger).toHaveAttribute("aria-expanded", toggled);
+    await page.keyboard.press("Space");
+    await expect(datasetsTrigger).toHaveAttribute("aria-expanded", initiallyExpanded ?? "true");
+
+    // Space on a focused catalog checkbox changes its checked state
+    const catalogCheckbox = explorePage.catalogButtons.first();
+    await expect(catalogCheckbox).toBeVisible();
+    await catalogCheckbox.focus();
+    await expect(catalogCheckbox).toBeFocused();
+    const initiallyChecked = await catalogCheckbox.getAttribute("aria-checked");
+    await page.keyboard.press("Space");
+    await expect(catalogCheckbox).not.toHaveAttribute("aria-checked", initiallyChecked ?? "false");
   });
 
   test("should show loading state while fetching events", async ({ page }) => {
