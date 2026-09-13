@@ -10,6 +10,8 @@
   "servers": [{ "url": "/", "description": "Current server" }],
   "tags": [
     { "name": "Events", "description": "Event querying and aggregation endpoints" },
+    { "name": "Sources", "description": "Catalog and dataset listing endpoints" },
+    { "name": "Datasets", "description": "Dataset maintenance endpoints" },
     { "name": "System", "description": "System health and status endpoints" }
   ],
   "components": {
@@ -200,6 +202,83 @@
         },
         "required": ["p20", "p40", "p60", "p80", "p100"]
       },
+      "BoundsResponse": {
+        "type": "object",
+        "properties": { "bounds": { "$ref": "#/components/schemas/Bounds" }, "count": { "type": "integer" } },
+        "required": ["bounds", "count"]
+      },
+      "DataSourcesResponse": {
+        "type": "object",
+        "properties": {
+          "catalogs": { "type": "array", "items": { "$ref": "#/components/schemas/DataSourceCatalog" } },
+          "datasets": { "type": "array", "items": { "$ref": "#/components/schemas/DataSourceDataset" } },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "number" },
+              "limit": { "type": "number" },
+              "totalDocs": { "type": "number" },
+              "totalPages": { "type": "number" },
+              "hasNextPage": { "type": "boolean" },
+              "hasPrevPage": { "type": "boolean" },
+              "nextPage": { "type": "number", "nullable": true },
+              "prevPage": { "type": "number", "nullable": true }
+            },
+            "required": ["page", "limit", "totalDocs", "totalPages", "hasNextPage", "hasPrevPage"]
+          }
+        },
+        "required": ["catalogs", "datasets", "pagination"]
+      },
+      "DataSourceCatalog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "number" },
+          "name": { "type": "string" },
+          "isOwned": { "type": "boolean" },
+          "description": { "type": "string" }
+        },
+        "required": ["id", "name", "isOwned"]
+      },
+      "DataSourceDataset": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "number" },
+          "name": { "type": "string" },
+          "catalogId": { "type": "number", "nullable": true },
+          "hasTemporalData": { "type": "boolean" },
+          "description": { "type": "string" },
+          "language": { "type": "string" }
+        },
+        "required": ["id", "name", "catalogId", "hasTemporalData"]
+      },
+      "SchemaInferenceResponse": {
+        "type": "object",
+        "properties": {
+          "generated": { "type": "boolean" },
+          "message": { "type": "string" },
+          "eventsSampled": { "type": "number" },
+          "schema": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "number" },
+              "versionNumber": { "type": "number" },
+              "createdAt": { "type": "string" },
+              "eventCountAtCreation": { "type": "number" }
+            },
+            "required": ["id", "versionNumber", "createdAt"]
+          }
+        },
+        "required": ["generated", "message", "schema"]
+      },
+      "SchemaInferenceRequest": {
+        "type": "object",
+        "properties": {
+          "sampleSize": { "type": "integer", "minimum": 0, "exclusiveMinimum": true },
+          "batchSize": { "type": "integer", "minimum": 0, "exclusiveMinimum": true },
+          "forceRegenerate": { "type": "boolean" }
+        }
+      },
       "LivenessResponse": {
         "type": "object",
         "properties": {
@@ -301,7 +380,7 @@
             "description": "Paginated event list",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EventListResponse" } } }
           },
-          "400": {
+          "422": {
             "description": "Invalid request parameters",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
@@ -389,7 +468,7 @@
             "description": "Aggregated event counts",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AggregateResponse" } } }
           },
-          "400": {
+          "422": {
             "description": "Invalid request parameters",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
@@ -489,7 +568,7 @@
             "description": "Temporal histogram data",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HistogramResponse" } } }
           },
-          "400": {
+          "422": {
             "description": "Invalid request parameters",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
@@ -614,7 +693,7 @@
             "description": "GeoJSON FeatureCollection of clustered events",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MapClustersResponse" } } }
           },
-          "400": {
+          "422": {
             "description": "Invalid request parameters",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
@@ -696,6 +775,92 @@
             "description": "Cluster size percentile statistics",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClusterStatsResponse" } } }
           },
+          "422": {
+            "description": "Invalid request parameters",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/events/bounds": {
+      "get": {
+        "tags": ["Events"],
+        "summary": "Get the geographic bounds of filtered events",
+        "description": "Returns the bounding box of all located events matching the filters, or null bounds when none match. West is greater than east when the box crosses the antimeridian.",
+        "parameters": [
+          { "schema": { "type": "integer", "nullable": true }, "required": false, "name": "catalog", "in": "query" },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "datasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "startDate", "in": "query" },
+          { "schema": { "type": "string", "format": "date" }, "required": false, "name": "endDate", "in": "query" },
+          { "schema": { "$ref": "#/components/schemas/Bounds" }, "required": false, "name": "bounds", "in": "query" },
+          {
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": { "type": "string", "maxLength": 500 },
+                "maxItems": 100
+              },
+              "maxProperties": 20
+            },
+            "required": false,
+            "name": "ff",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "min": { "type": "number", "nullable": true },
+                  "max": { "type": "number", "nullable": true }
+                }
+              },
+              "maxProperties": 20
+            },
+            "required": false,
+            "name": "rf",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeCatalogs",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "array", "items": { "type": "integer" } },
+            "required": false,
+            "name": "scopeDatasets",
+            "in": "query"
+          },
+          { "schema": { "type": "string" }, "required": false, "name": "clusterCells", "in": "query" },
+          {
+            "schema": { "type": "integer", "minimum": 2, "maximum": 15 },
+            "required": false,
+            "name": "h3Resolution",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bounding box and event count",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BoundsResponse" } } }
+          },
+          "422": {
+            "description": "Invalid request parameters",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
           "500": {
             "description": "Internal server error",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
@@ -724,6 +889,90 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/data-sources": {
+      "get": {
+        "tags": ["Sources"],
+        "summary": "List catalogs and datasets",
+        "description": "Returns every catalog and one page of datasets visible to the caller, with the metadata the filter UI needs.",
+        "parameters": [
+          {
+            "schema": { "type": "integer", "minimum": 1, "default": 1 },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": { "type": "integer", "minimum": 1, "maximum": 500, "default": 250 },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Catalogs and a page of datasets",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DataSourcesResponse" } } }
+          },
+          "422": {
+            "description": "Invalid request parameters",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/datasets/{id}/schema/infer": {
+      "post": {
+        "tags": ["Datasets"],
+        "summary": "Infer a dataset schema from its events",
+        "description": "Samples existing events to generate a schema version for a dataset created outside the import pipeline. Requires an editor or admin session.",
+        "parameters": [
+          {
+            "schema": { "type": "string", "description": "Dataset ID", "example": "42" },
+            "required": true,
+            "description": "Dataset ID",
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SchemaInferenceRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Inference result",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SchemaInferenceResponse" } } }
+          },
+          "400": {
+            "description": "Invalid dataset ID",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "403": {
+            "description": "Editor or admin role required",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "404": {
+            "description": "Dataset not found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
+          },
+          "422": {
+            "description": "Invalid request body",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
           },
           "500": {
             "description": "Internal server error",

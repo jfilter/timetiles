@@ -59,6 +59,8 @@ All event endpoints support common filter parameters:
   servers: [{ url: "/", description: "Current server" }],
   tags: [
     { name: "Events", description: "Event querying and aggregation endpoints" },
+    { name: "Sources", description: "Catalog and dataset listing endpoints" },
+    { name: "Datasets", description: "Dataset maintenance endpoints" },
     { name: "System", description: "System health and status endpoints" },
   ],
 });

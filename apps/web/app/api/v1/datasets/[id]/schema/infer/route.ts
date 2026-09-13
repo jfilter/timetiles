@@ -17,21 +17,16 @@ import { z } from "zod";
 import { apiRoute, NotFoundError, requirePrivileged, ValidationError } from "@/lib/api";
 import { SchemaInferenceService } from "@/lib/ingest/schema-inference";
 import { logger } from "@/lib/logger";
+import { SchemaInferenceBodySchema } from "@/lib/schemas/schema-inference";
 import type { SchemaInferenceResponse } from "@/lib/types/schema-inference";
 import { parseStrictInteger } from "@/lib/utils/event-params";
 
 export type { SchemaInferenceOptions, SchemaInferenceResponse } from "@/lib/types/schema-inference";
 
-const schemaInferBody = z.object({
-  sampleSize: z.number().int().positive().optional(),
-  batchSize: z.number().int().positive().optional(),
-  forceRegenerate: z.boolean().optional(),
-});
-
 export const POST = apiRoute({
   auth: "required",
   params: z.object({ id: z.string() }),
-  body: schemaInferBody,
+  body: SchemaInferenceBodySchema,
   handler: async ({ user, payload, params, body }) => {
     const datasetId = parseStrictInteger(params.id);
 

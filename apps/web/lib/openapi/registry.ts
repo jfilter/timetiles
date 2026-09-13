@@ -11,9 +11,12 @@ import { OpenAPIRegistry } from "@asteasolutions/zod-to-openapi";
 import { z } from "zod";
 
 import { ErrorResponseSchema } from "../schemas/common";
+import { DataSourcesQuerySchema, DataSourcesResponseSchema } from "../schemas/data-sources";
 import {
   AggregateQuerySchema,
   AggregateResponseSchema,
+  BoundsQuerySchema,
+  BoundsResponseSchema,
   ClusterStatsQuerySchema,
   ClusterStatsResponseSchema,
   EventListQuerySchema,
@@ -23,11 +26,15 @@ import {
   MapClustersQuerySchema,
   MapClustersResponseSchema,
 } from "../schemas/events";
+import { SchemaInferenceBodySchema, SchemaInferenceResponseSchema } from "../schemas/schema-inference";
 
 export const registry = new OpenAPIRegistry();
 
 // Common response descriptions
-const DESCRIPTIONS = { BAD_REQUEST: "Invalid request parameters", INTERNAL_ERROR: "Internal server error" } as const;
+const DESCRIPTIONS = {
+  INVALID_PARAMETERS: "Invalid request parameters",
+  INTERNAL_ERROR: "Internal server error",
+} as const;
 
 // Common error response content
 const errorResponse = (schema = ErrorResponseSchema) => ({ content: { "application/json": { schema } } });
@@ -57,7 +64,7 @@ registry.registerPath({
   request: { query: EventListQuerySchema },
   responses: {
     200: { description: "Paginated event list", content: { "application/json": { schema: EventListResponseSchema } } },
-    400: { description: DESCRIPTIONS.BAD_REQUEST, ...errorResponse() },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });
@@ -75,7 +82,7 @@ registry.registerPath({
       description: "Aggregated event counts",
       content: { "application/json": { schema: AggregateResponseSchema } },
     },
-    400: { description: DESCRIPTIONS.BAD_REQUEST, ...errorResponse() },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });
@@ -93,7 +100,7 @@ registry.registerPath({
       description: "Temporal histogram data",
       content: { "application/json": { schema: HistogramResponseSchema } },
     },
-    400: { description: DESCRIPTIONS.BAD_REQUEST, ...errorResponse() },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });
@@ -111,7 +118,7 @@ registry.registerPath({
       description: "GeoJSON FeatureCollection of clustered events",
       content: { "application/json": { schema: MapClustersResponseSchema } },
     },
-    400: { description: DESCRIPTIONS.BAD_REQUEST, ...errorResponse() },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });
@@ -129,6 +136,25 @@ registry.registerPath({
       description: "Cluster size percentile statistics",
       content: { "application/json": { schema: ClusterStatsResponseSchema } },
     },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
+    500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/events/bounds",
+  tags: ["Events"],
+  summary: "Get the geographic bounds of filtered events",
+  description:
+    "Returns the bounding box of all located events matching the filters, or null bounds when none match. West is greater than east when the box crosses the antimeridian.",
+  request: { query: BoundsQuerySchema },
+  responses: {
+    200: {
+      description: "Bounding box and event count",
+      content: { "application/json": { schema: BoundsResponseSchema } },
+    },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });
@@ -161,6 +187,53 @@ registry.registerPath({
         },
       },
     },
+    500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
+  },
+});
+
+registry.registerPath({
+  method: "get",
+  path: "/api/v1/data-sources",
+  tags: ["Sources"],
+  summary: "List catalogs and datasets",
+  description:
+    "Returns every catalog and one page of datasets visible to the caller, with the metadata the filter UI needs.",
+  request: { query: DataSourcesQuerySchema },
+  responses: {
+    200: {
+      description: "Catalogs and a page of datasets",
+      content: { "application/json": { schema: DataSourcesResponseSchema } },
+    },
+    422: { description: DESCRIPTIONS.INVALID_PARAMETERS, ...errorResponse() },
+    500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
+  },
+});
+
+// =============================================================================
+// Dataset API Routes
+// =============================================================================
+
+registry.registerPath({
+  method: "post",
+  path: "/api/v1/datasets/{id}/schema/infer",
+  tags: ["Datasets"],
+  summary: "Infer a dataset schema from its events",
+  description:
+    "Samples existing events to generate a schema version for a dataset created outside the import pipeline. Requires an editor or admin session.",
+  request: {
+    params: z.object({ id: z.string().openapi({ description: "Dataset ID", example: "42" }) }),
+    body: { content: { "application/json": { schema: SchemaInferenceBodySchema } } },
+  },
+  responses: {
+    200: {
+      description: "Inference result",
+      content: { "application/json": { schema: SchemaInferenceResponseSchema } },
+    },
+    400: { description: "Invalid dataset ID", ...errorResponse() },
+    401: { description: "Authentication required", ...errorResponse() },
+    403: { description: "Editor or admin role required", ...errorResponse() },
+    404: { description: "Dataset not found", ...errorResponse() },
+    422: { description: "Invalid request body", ...errorResponse() },
     500: { description: DESCRIPTIONS.INTERNAL_ERROR, ...errorResponse() },
   },
 });

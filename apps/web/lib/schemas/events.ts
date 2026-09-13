@@ -9,6 +9,7 @@
  */
 import {
   BoundsParamSchema,
+  BoundsSchema,
   CatalogParamSchema,
   DatasetsParamSchema,
   DateParamSchema,
@@ -173,6 +174,18 @@ export const HistogramResponseSchema = z
   .openapi("HistogramResponse");
 
 export type HistogramResponse = z.infer<typeof HistogramResponseSchema>;
+
+// =============================================================================
+// Bounds Endpoint
+// =============================================================================
+
+/** Query parameters for GET /api/v1/events/bounds */
+export const BoundsQuerySchema = EventFiltersSchema.openapi("BoundsQuery");
+
+/** Response for GET /api/v1/events/bounds */
+export const BoundsResponseSchema = z
+  .object({ bounds: BoundsSchema.nullable(), count: z.number().int() })
+  .openapi("BoundsResponse");
 
 // =============================================================================
 // Map Clusters Endpoint

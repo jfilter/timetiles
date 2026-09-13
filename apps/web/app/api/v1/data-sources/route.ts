@@ -7,9 +7,8 @@
  *
  * @module
  */
-import { z } from "zod";
-
 import { apiRoute } from "@/lib/api";
+import { DataSourcesQuerySchema } from "@/lib/schemas/data-sources";
 import type { DataSourceCatalog, DataSourceDataset } from "@/lib/types/data-sources";
 import { extractRelationId } from "@/lib/utils/relation-id";
 import { richTextToPlainText } from "@/lib/utils/rich-text";
@@ -22,14 +21,6 @@ export type {
 } from "@/lib/types/data-sources";
 
 const DESCRIPTION_MAX_LENGTH = 120;
-const DEFAULT_DATASET_PAGE = 1;
-const DEFAULT_DATASET_LIMIT = 250;
-const MAX_DATASET_LIMIT = 500;
-
-const DataSourcesQuerySchema = z.object({
-  page: z.coerce.number().int().min(1).default(DEFAULT_DATASET_PAGE),
-  limit: z.coerce.number().int().min(1).max(MAX_DATASET_LIMIT).default(DEFAULT_DATASET_LIMIT),
-});
 
 export const GET = apiRoute({
   auth: "optional",
