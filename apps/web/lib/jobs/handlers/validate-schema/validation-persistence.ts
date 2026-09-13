@@ -11,6 +11,7 @@
 import type { Payload } from "payload";
 
 import { COLLECTION_NAMES, PROCESSING_STAGE } from "@/lib/constants/ingest-constants";
+import { REVIEW_REASONS } from "@/lib/constants/review-reasons";
 import { ProgressTrackingService } from "@/lib/ingest/progress-tracking";
 import type { createJobLogger } from "@/lib/logger";
 import type { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
@@ -86,9 +87,12 @@ export const applyValidationResult = async (
     },
   };
 
-  // Only set stage when pausing for review -- workflow handles all other transitions
+  // Only set stage when pausing for review -- workflow handles all other transitions.
+  // The reason is set explicitly so an earlier review's reason cannot pick the resume point.
   if (resultData.requiresApproval) {
     updateData.stage = PROCESSING_STAGE.NEEDS_REVIEW;
+    updateData.reviewReason = REVIEW_REASONS.SCHEMA_DRIFT;
+    updateData.reviewDetails = null;
   }
 
   await payload.update({ collection: COLLECTION_NAMES.INGEST_JOBS, id: jobIdTyped, data: updateData });
@@ -165,6 +169,8 @@ export const guardAgainstConcurrentReview = async (
     id: jobIdTyped,
     data: {
       stage: PROCESSING_STAGE.NEEDS_REVIEW,
+      reviewReason: REVIEW_REASONS.SCHEMA_DRIFT,
+      reviewDetails: null,
       schemaValidation: {
         isCompatible: true,
         breakingChanges: [],

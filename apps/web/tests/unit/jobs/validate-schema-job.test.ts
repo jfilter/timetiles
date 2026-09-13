@@ -291,6 +291,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             transformSuggestions: [],
           },
           stage: "needs-review",
+          reviewReason: "schema-drift",
+          reviewDetails: null,
         },
       });
     });
@@ -380,6 +382,8 @@ describe.sequential("ValidateSchemaJob Handler", () => {
             transformSuggestions: [],
           },
           stage: "needs-review",
+          reviewReason: "schema-drift",
+          reviewDetails: null,
         },
       });
     });

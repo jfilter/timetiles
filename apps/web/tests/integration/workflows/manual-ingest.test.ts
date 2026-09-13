@@ -199,8 +199,7 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
 
   // ── 2. Schema drift -> NEEDS_REVIEW -> ingest-process -> completed ──
 
-  it("should pause at NEEDS_REVIEW for schema drift and resume after approval", async () => {
-    // Create a dataset with an existing published schema version and locked config
+  const createLockedDatasetWithSchema = async () => {
     const { dataset } = await withDataset(testEnv, testCatalogId, {
       schemaConfig: { locked: true, autoGrow: false, autoApproveNonBreaking: false },
     });
@@ -233,6 +232,24 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     // Update dataset to point to the published schema
     const schemas = await payload.find({ collection: "dataset-schemas", where: { dataset: { equals: dataset.id } } });
     await payload.update({ collection: "datasets", id: dataset.id, data: { currentSchema: schemas.docs[0].id } });
+    return dataset;
+  };
+
+  const approveJob = async (ingestJobId: string | number) => {
+    const currentJob = await payload.findByID({ collection: "ingest-jobs", id: ingestJobId });
+    await payload.update({
+      collection: "ingest-jobs",
+      id: ingestJobId,
+      data: { schemaValidation: { ...currentJob.schemaValidation, approved: true } },
+      user: testUser,
+    });
+  };
+
+  const isPausedOrDone = (ingestJob: { stage?: string | null }) =>
+    ingestJob.stage === PROCESSING_STAGE.NEEDS_REVIEW || ingestJob.stage === PROCESSING_STAGE.COMPLETED;
+
+  it("should pause at NEEDS_REVIEW for schema drift and resume after approval", async () => {
+    const dataset = await createLockedDatasetWithSchema();
 
     // CSV with a new column (schema drift)
     const csvContent = `title,date,location,category
@@ -293,6 +310,37 @@ describe.sequential("Manual Ingest Workflow (Integration)", () => {
     const events = await payload.find({ collection: "events", where: { dataset: { equals: dataset.id } }, limit: 10 });
     expect(events.docs.length).toBeGreaterThanOrEqual(2);
   }, 60000);
+
+  it("should resume schema drift found after an earlier review from the schema version step", async () => {
+    const dataset = await createLockedDatasetWithSchema();
+
+    // No date column: detection pauses for no-timestamp before validation sees the drift
+    const csvContent = `title,location,category
+"Drift Event 1","Berlin","tech"
+"Drift Event 2","Munich","science"`;
+
+    const ingestFile = await createIngestFileForWorkflow(payload, testCatalogId, csvContent, testUser, {
+      datasetId: dataset.id,
+    });
+    await payload.jobs.queue({ workflow: "manual-ingest", input: { ingestFileId: String(ingestFile.id) } });
+
+    const firstReview = await runJobsUntilIngestJobStage(payload, ingestFile.id, isPausedOrDone, { maxIterations: 40 });
+    expect(firstReview.ingestJob!.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
+    expect(firstReview.ingestJob!.reviewReason).toBe("no-timestamp");
+
+    const ingestJobId = firstReview.ingestJob!.id;
+    await approveJob(ingestJobId);
+
+    const driftReview = await runJobsUntilIngestJobStage(payload, ingestFile.id, isPausedOrDone, { maxIterations: 40 });
+    expect(driftReview.ingestJob!.stage).toBe(PROCESSING_STAGE.NEEDS_REVIEW);
+    expect(driftReview.ingestJob!.schemaValidation?.requiresApproval).toBe(true);
+    expect(driftReview.ingestJob!.reviewReason).toBe("schema-drift");
+
+    await approveJob(ingestJobId);
+
+    const finalResult = await runUntilSettled(payload, ingestFile.id, 80);
+    expect(finalResult.ingestFile.status).toBe("completed");
+  }, 120000);
 
   // ── 3. Empty file -> detection fails cleanly ──
 
