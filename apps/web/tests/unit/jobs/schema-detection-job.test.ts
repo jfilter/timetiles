@@ -950,7 +950,7 @@ describe.sequential("SchemaDetectionJob Handler", () => {
     });
 
     // The ambiguous-coordinate gate's logic is covered by the
-    // shouldReviewAmbiguousCoordinates unit tests; its wiring into
+    // shouldReviewAmbiguousInterpretation unit tests; its wiring into
     // runSchemaReviewChecks (import + call) is exercised by every test above,
     // which runs the real review-check sequence with the check mocked to pass.
     // A full handler-level trigger test belongs in the DB-backed integration

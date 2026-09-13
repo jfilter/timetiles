@@ -10,8 +10,6 @@ import {
   parseReviewChecksConfig,
   REVIEW_REASONS,
   setNeedsReview,
-  shouldReviewAmbiguousCoordinates,
-  shouldReviewAmbiguousDateOrder,
   shouldReviewAmbiguousInterpretation,
   shouldReviewGeocodingPartial,
   shouldReviewHighDuplicates,
@@ -286,39 +284,55 @@ describe.sequential("review-checks", () => {
     });
   });
 
-  // ── shouldReviewAmbiguousCoordinates ──────────────────────────────────
+  // ── shouldReviewAmbiguousInterpretation (coordinate descriptor) ──────
 
-  describe("shouldReviewAmbiguousCoordinates", () => {
+  describe("shouldReviewAmbiguousInterpretation (coordinates)", () => {
+    const coordinateCheck = AMBIGUOUS_INTERPRETATION_CHECKS.find((c) => c.pathKey === "coordinatePath")!;
+
     it("should return needsReview true when a combined column has ambiguous order", () => {
-      const result = shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "ambiguous" });
+      const result = shouldReviewAmbiguousInterpretation(
+        { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        coordinateCheck
+      );
       expect(result).toEqual({ needsReview: true });
     });
 
-    it("should return needsReview false when the combined order is explicit", () => {
-      expect(shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "lat,lng" })).toEqual({
-        needsReview: false,
-      });
-      expect(shouldReviewAmbiguousCoordinates({ coordinatePath: "coords", coordinateFormat: "lng,lat" })).toEqual({
-        needsReview: false,
-      });
+    it.each(["lat,lng", "lng,lat"])("should return needsReview false when the combined order is %s", (format) => {
+      expect(
+        shouldReviewAmbiguousInterpretation({ coordinatePath: "coords", coordinateFormat: format }, coordinateCheck)
+      ).toEqual({ needsReview: false });
     });
 
     it("should return needsReview false when there is no combined column", () => {
-      const result = shouldReviewAmbiguousCoordinates({ coordinatePath: null, coordinateFormat: "ambiguous" });
+      const result = shouldReviewAmbiguousInterpretation(
+        { coordinatePath: null, coordinateFormat: "ambiguous" },
+        coordinateCheck
+      );
       expect(result).toEqual({ needsReview: false });
     });
 
     it("should return needsReview false when skipAmbiguousCoordinateCheck is true", () => {
-      const result = shouldReviewAmbiguousCoordinates(
+      const result = shouldReviewAmbiguousInterpretation(
         { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        coordinateCheck,
         { skipAmbiguousCoordinateCheck: true }
       );
       expect(result).toEqual({ needsReview: false });
     });
 
-    it("should return needsReview false under the best-effort dataset policy", () => {
-      const result = shouldReviewAmbiguousCoordinates(
+    it("should not be suppressed by skipAmbiguousDateCheck", () => {
+      const result = shouldReviewAmbiguousInterpretation(
         { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        coordinateCheck,
+        { skipAmbiguousDateCheck: true }
+      );
+      expect(result).toEqual({ needsReview: true });
+    });
+
+    it("should return needsReview false under the best-effort dataset policy", () => {
+      const result = shouldReviewAmbiguousInterpretation(
+        { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        coordinateCheck,
         undefined,
         "best-effort"
       );
@@ -326,8 +340,9 @@ describe.sequential("review-checks", () => {
     });
 
     it("should still review ambiguous order under the explicit strict policy", () => {
-      const result = shouldReviewAmbiguousCoordinates(
+      const result = shouldReviewAmbiguousInterpretation(
         { coordinatePath: "coords", coordinateFormat: "ambiguous" },
+        coordinateCheck,
         undefined,
         "strict"
       );
@@ -335,45 +350,52 @@ describe.sequential("review-checks", () => {
     });
   });
 
-  // ── shouldReviewAmbiguousDateOrder ────────────────────────────────────
+  // ── shouldReviewAmbiguousInterpretation (start-date descriptor) ───────
 
-  describe("shouldReviewAmbiguousDateOrder", () => {
+  describe("shouldReviewAmbiguousInterpretation (start date)", () => {
+    const dateCheck = AMBIGUOUS_INTERPRETATION_CHECKS.find((c) => c.pathKey === "timestampPath")!;
+
     it("should return needsReview true when a timestamp column has ambiguous order", () => {
-      const result = shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "ambiguous" });
+      const result = shouldReviewAmbiguousInterpretation(
+        { timestampPath: "date", timestampOrder: "ambiguous" },
+        dateCheck
+      );
       expect(result).toEqual({ needsReview: true });
     });
 
-    it("should return needsReview false when the date order is explicit", () => {
-      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "D/M" })).toEqual({
-        needsReview: false,
-      });
-      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: "M/D" })).toEqual({
+    it.each(["D/M", "M/D"])("should return needsReview false when the date order is %s", (order) => {
+      expect(shouldReviewAmbiguousInterpretation({ timestampPath: "date", timestampOrder: order }, dateCheck)).toEqual({
         needsReview: false,
       });
     });
 
     it("should return needsReview false when the order is unset (e.g. ISO-only column)", () => {
-      expect(shouldReviewAmbiguousDateOrder({ timestampPath: "date", timestampOrder: null })).toEqual({
+      expect(shouldReviewAmbiguousInterpretation({ timestampPath: "date", timestampOrder: null }, dateCheck)).toEqual({
         needsReview: false,
       });
     });
 
     it("should return needsReview false when there is no timestamp column", () => {
-      const result = shouldReviewAmbiguousDateOrder({ timestampPath: null, timestampOrder: "ambiguous" });
+      const result = shouldReviewAmbiguousInterpretation(
+        { timestampPath: null, timestampOrder: "ambiguous" },
+        dateCheck
+      );
       expect(result).toEqual({ needsReview: false });
     });
 
     it("should return needsReview false when skipAmbiguousDateCheck is true", () => {
-      const result = shouldReviewAmbiguousDateOrder(
+      const result = shouldReviewAmbiguousInterpretation(
         { timestampPath: "date", timestampOrder: "ambiguous" },
+        dateCheck,
         { skipAmbiguousDateCheck: true }
       );
       expect(result).toEqual({ needsReview: false });
     });
 
     it("should return needsReview false under the best-effort dataset policy (opt-in per-row guessing)", () => {
-      const result = shouldReviewAmbiguousDateOrder(
+      const result = shouldReviewAmbiguousInterpretation(
         { timestampPath: "date", timestampOrder: "ambiguous" },
+        dateCheck,
         undefined,
         "best-effort"
       );
@@ -381,8 +403,9 @@ describe.sequential("review-checks", () => {
     });
 
     it("should still review ambiguous order under the explicit strict policy", () => {
-      const result = shouldReviewAmbiguousDateOrder(
+      const result = shouldReviewAmbiguousInterpretation(
         { timestampPath: "date", timestampOrder: "ambiguous" },
+        dateCheck,
         undefined,
         "strict"
       );

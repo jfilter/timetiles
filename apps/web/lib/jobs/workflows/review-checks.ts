@@ -422,8 +422,8 @@ export const AMBIGUOUS_INTERPRETATION_CHECKS: readonly AmbiguousInterpretationCh
  * persistent per-dataset `best-effort` policy, which makes the same per-row
  * guessing sticky and explicit rather than a one-off approval side effect.
  *
- * Used by the public wrappers below and by the schema-detection job's review loop
- * (driven by {@link AMBIGUOUS_INTERPRETATION_CHECKS}).
+ * Used by the schema-detection job's review loop (driven by
+ * {@link AMBIGUOUS_INTERPRETATION_CHECKS}).
  */
 export const shouldReviewAmbiguousInterpretation = (
   fieldMappings: Partial<
@@ -440,53 +440,5 @@ export const shouldReviewAmbiguousInterpretation = (
       Boolean(fieldMappings[check.pathKey]) && fieldMappings[check.orderKey] === AMBIGUOUS_INTERPRETATION_VALUE,
   };
 };
-
-/**
- * Check if a single combined-coordinate column was detected but its axis order
- * is ambiguous (every sample fit both "lat,lng" and "lng,lat"). The order is a
- * per-column decision the data cannot settle, so we must ask rather than guess —
- * a wrong guess renders points on the wrong continent. Returns true when a
- * combined column exists with `coordinateFormat === "ambiguous"` and the check
- * is not skipped. Separate lat/lng columns and explicit-order combined columns
- * never trigger this.
- *
- * Thin wrapper over {@link shouldReviewAmbiguousInterpretation}; see
- * {@link AMBIGUOUS_INTERPRETATION_CHECKS} for the shared shape.
- */
-export const shouldReviewAmbiguousCoordinates = (
-  fieldMappings: { coordinatePath?: string | null; coordinateFormat?: string | null },
-  reviewChecks?: ReviewChecksConfig,
-  ambiguityResolution: AmbiguityResolution = "strict"
-): { needsReview: boolean } =>
-  shouldReviewAmbiguousInterpretation(
-    fieldMappings,
-    { pathKey: "coordinatePath", orderKey: "coordinateFormat", skipFlag: "skipAmbiguousCoordinateCheck" },
-    reviewChecks,
-    ambiguityResolution
-  );
-
-/**
- * Check if a timestamp column was detected but its day/month order is ambiguous
- * (every sample fit both D/M and M/D — typical when all parts are ≤ 12). The
- * order is a per-column decision the data cannot settle, so we must ask rather
- * than guess — a wrong guess silently maps `01/02` to the wrong month for every
- * such row. Returns true when a timestamp column exists with
- * `timestampOrder === "ambiguous"` and the check is not skipped. Explicit-order
- * (D/M | M/D) and ISO-only columns never trigger this.
- *
- * Thin wrapper over {@link shouldReviewAmbiguousInterpretation}; see
- * {@link AMBIGUOUS_INTERPRETATION_CHECKS} for the shared shape.
- */
-export const shouldReviewAmbiguousDateOrder = (
-  fieldMappings: { timestampPath?: string | null; timestampOrder?: string | null },
-  reviewChecks?: ReviewChecksConfig,
-  ambiguityResolution: AmbiguityResolution = "strict"
-): { needsReview: boolean } =>
-  shouldReviewAmbiguousInterpretation(
-    fieldMappings,
-    { pathKey: "timestampPath", orderKey: "timestampOrder", skipFlag: "skipAmbiguousDateCheck" },
-    reviewChecks,
-    ambiguityResolution
-  );
 
 export { REVIEW_REASONS } from "@/lib/constants/review-reasons";
