@@ -46,6 +46,10 @@ interface UseNewsletterSubscriptionReturn {
   handleSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
 }
 
+/** `fetch` rejects with a TypeError when the request never reaches the server. */
+const toErrorMessage = (error: unknown, messages: NewsletterMessages): string =>
+  error instanceof Error && !(error instanceof TypeError) ? error.message : messages.networkError;
+
 export const useNewsletterSubscription = ({
   resetDelay = 5000,
   additionalData,
@@ -101,8 +105,7 @@ export const useNewsletterSubscription = ({
           setEmail("");
         } catch (error: unknown) {
           setStatus("error");
-          const errorMessage = error instanceof Error ? error.message : messages.networkError;
-          setMessage(errorMessage);
+          setMessage(toErrorMessage(error, messages));
         } finally {
           scheduleReset(resetDelay);
         }
