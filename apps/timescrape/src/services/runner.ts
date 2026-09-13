@@ -437,6 +437,11 @@ const collectOutput = async (
 export const executeRun = async (request: RunRequest): Promise<RunResult> => {
   const config = getConfig();
 
+  // A second request under an active id would share, and then delete, the first run's work directory.
+  if (activeRuns.has(request.run_id)) {
+    throw new RunnerError(`Run ${request.run_id} is already active`, "RUN_ALREADY_ACTIVE", 409);
+  }
+
   if (activeRuns.size >= config.SCRAPER_MAX_CONCURRENT) {
     throw new ConcurrencyError(config.SCRAPER_MAX_CONCURRENT);
   }

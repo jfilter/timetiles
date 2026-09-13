@@ -80,6 +80,20 @@ describe("runner", () => {
       }
     });
 
+    it("rejects a run id that is already active without disturbing the first run", { timeout: 15_000 }, async () => {
+      const runId = randomUUID();
+      const first = runStub({ STUB_SLEEP_MS: "1500", STUB_OUTPUT: "id\n1\n" }, { run_id: runId });
+      await vi.waitFor(() => expect(isRunActive(runId)).toBe(true));
+
+      await expect(runStub({ STUB_OUTPUT: "id\n2\n" }, { run_id: runId })).rejects.toMatchObject({
+        code: "RUN_ALREADY_ACTIVE",
+        statusCode: 409,
+      });
+
+      expect((await first).status).toBe("success");
+      expect(readFileSync(join(persistedOutput(runId), "data.csv"), "utf-8")).toBe("id\n1\n");
+    });
+
     it("returns success with persisted output and removes the work directory", async () => {
       const csv = "id,title\n1,Event A\n2,Event B\n";
       const runId = randomUUID();
