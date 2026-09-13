@@ -97,7 +97,7 @@ test.describe("Import Wizard - Authentication", () => {
     // Should see auth form with sign in heading and email input
     const signInHeading = page.getByRole("heading", { name: /sign in to continue/i });
     await expect(signInHeading).toBeVisible({ timeout: 5000 });
-    await expect(page.getByLabel(/email/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel("Email", { exact: true })).toBeVisible({ timeout: 5000 });
   });
 
   test("should show wizard steps on auth step for unauthenticated users", async ({ page }) => {

@@ -76,7 +76,8 @@ export class IngestPage {
     this.authStep = page.locator('[data-testid="step-auth"]');
     this.loginTab = page.getByRole("tab", { name: /Login|Sign In/i });
     this.registerTab = page.getByRole("tab", { name: /Register|Sign Up/i });
-    this.emailInput = page.getByLabel(/Email/i);
+    // Exact name: the footer newsletter field is labelled "Email address"
+    this.emailInput = page.getByLabel("Email", { exact: true });
     this.passwordInput = page.getByLabel(/Password/i).first();
     this.loginButton = page.getByRole("button", { name: /Login|Sign In/i });
     this.registerButton = page.getByRole("button", { name: /Register|Sign Up/i });
