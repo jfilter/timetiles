@@ -35,9 +35,6 @@ export interface CollectionConfig {
   options?: Record<string, unknown>;
 }
 
-/** Valid preset names. `deploy` is idempotent on-boot bootstrap; the others run via `pnpm seed`. */
-export type PresetName = "testing" | "e2e" | "development" | "deploy";
-
 /**
  * Preset configuration - bundles together related settings for a specific use case.
  */

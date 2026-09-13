@@ -61,14 +61,6 @@ export interface ValidateSchemaOutput {
   reason?: string;
 }
 
-/** Output from `create-schema-version` task. */
-export interface CreateSchemaVersionOutput {
-  schemaVersionId?: number | string;
-  versionNumber?: number;
-  skipped?: boolean;
-  reason?: string;
-}
-
 /** Output from `geocode-batch` task. */
 export interface GeocodeBatchOutput {
   needsReview?: boolean;

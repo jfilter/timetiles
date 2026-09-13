@@ -528,7 +528,6 @@ const DEFAULT_REVIEW_THRESHOLDS = {
 // Types
 // ---------------------------------------------------------------------------
 
-export type RateLimitWindowConfig = z.infer<typeof rateLimitWindowSchema>;
 export type RateLimitConfig = z.infer<typeof rateLimitConfigSchema>;
 export type UserQuotasConfig = z.infer<typeof userQuotasSchema>;
 export type TrustLevelRateLimitsConfig = z.infer<typeof trustLevelRateLimitsSchema>;

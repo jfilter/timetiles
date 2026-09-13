@@ -255,15 +255,6 @@ export const buildNormalizedNumericExpr = (fieldKey: string, format: NumberForma
 /** Validate H3 cell ID format (15 hex characters). */
 export const isValidH3CellId = (cell: string): boolean => /^[0-9a-fA-F]{15}$/.test(cell);
 
-/**
- * Clamp and format an H3 resolution into a valid column name.
- * Columns h3_r2 through h3_r15 exist in the events table.
- */
-export const h3ColumnName = (h3Resolution: number, tableAlias = "e"): string => {
-  const res = Math.min(15, Math.max(2, Math.round(h3Resolution)));
-  return `${tableAlias}.h3_r${String(res)}`;
-};
-
 const EVENT_H3_COLUMNS: Record<number, SqlFragment> = {
   2: sql`e.h3_r2`,
   3: sql`e.h3_r3`,

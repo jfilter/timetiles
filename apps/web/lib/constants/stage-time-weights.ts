@@ -60,13 +60,3 @@ export const STAGE_DISPLAY_NAMES = {
   [PROCESSING_STAGE.COMPLETED]: "Completed",
   [PROCESSING_STAGE.FAILED]: "Failed",
 } as const;
-
-/**
- * Type for stage time weights.
- */
-export type StageTimeWeights = typeof STAGE_TIME_WEIGHTS;
-
-/**
- * Type for stage display names.
- */
-export type StageDisplayNames = typeof STAGE_DISPLAY_NAMES;

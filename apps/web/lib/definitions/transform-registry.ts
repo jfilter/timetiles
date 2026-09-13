@@ -67,14 +67,6 @@ export const STRING_OPERATIONS = ["uppercase", "lowercase", "trim", "replace", "
 
 export type StringOperation = (typeof STRING_OPERATIONS)[number];
 
-export const STRING_OPERATION_LABELS: Record<StringOperation, string> = {
-  uppercase: "Uppercase",
-  lowercase: "Lowercase",
-  trim: "Trim Whitespace",
-  replace: "Find & Replace",
-  expression: "Custom Expression",
-};
-
 // ---------------------------------------------------------------------------
 // Date format options
 // ---------------------------------------------------------------------------
@@ -96,21 +88,6 @@ export const DATE_OUTPUT_FORMAT_OPTIONS = [
   { value: "ISO 8601", label: "ISO 8601 (2024-12-31T00:00:00.000Z)" },
   ...DATE_FORMAT_OPTIONS,
 ] as const;
-
-// ---------------------------------------------------------------------------
-// Helpers for CMS / UI consumption
-// ---------------------------------------------------------------------------
-
-/** Generate Payload CMS select options from TRANSFORM_DEFINITIONS. */
-export const getTransformTypeOptions = () =>
-  TRANSFORM_TYPES.map((type) => ({ label: TRANSFORM_DEFINITIONS[type].label, value: type }));
-
-/** Generate Payload CMS select options for string operations. */
-export const getStringOperationOptions = () =>
-  STRING_OPERATIONS.map((op) => ({ label: STRING_OPERATION_LABELS[op], value: op }));
-
-/** Generate Payload CMS select options for date input formats. */
-export const getDateFormatInputOptions = () => DATE_FORMAT_OPTIONS.map(({ value, label }) => ({ label, value }));
 
 /**
  * A suggested transform detected by comparing schema versions.

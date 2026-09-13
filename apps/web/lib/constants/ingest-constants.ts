@@ -85,7 +85,6 @@ export const MAX_UNIQUE_ROWS_PER_SHEET = 2_000_000;
 export const MAX_EVENT_PAYLOAD_BYTES = 256 * 1024;
 
 export type ProcessingStage = (typeof PROCESSING_STAGE)[keyof typeof PROCESSING_STAGE];
-export type JobType = (typeof JOB_TYPES)[keyof typeof JOB_TYPES];
 export type CollectionName = (typeof COLLECTION_NAMES)[keyof typeof COLLECTION_NAMES];
 
 /** Lifecycle status of an ingest file — derived from the Payload collection. */

@@ -160,20 +160,16 @@ export const initialState: WizardState = {
   error: null,
 };
 
-// Step definitions — single source of truth for titles and labels
-export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; title: string; label: string; shortLabel: string }> = [
-  { step: 1, title: "Sign In", label: "Sign In", shortLabel: "Auth" },
-  { step: 2, title: "Upload File", label: "Upload", shortLabel: "Upload" },
-  { step: 3, title: "Select Dataset", label: "Dataset", shortLabel: "Dataset" },
-  { step: 4, title: "Map Fields", label: "Mapping", shortLabel: "Map" },
-  { step: 5, title: "Schedule", label: "Schedule", shortLabel: "Schedule" },
-  { step: 6, title: "Review", label: "Review", shortLabel: "Review" },
-  { step: 7, title: "Processing", label: "Import", shortLabel: "Import" },
+// Step definitions — single source of truth for labels
+export const WIZARD_STEPS: ReadonlyArray<{ step: WizardStep; label: string; shortLabel: string }> = [
+  { step: 1, label: "Sign In", shortLabel: "Auth" },
+  { step: 2, label: "Upload", shortLabel: "Upload" },
+  { step: 3, label: "Dataset", shortLabel: "Dataset" },
+  { step: 4, label: "Mapping", shortLabel: "Map" },
+  { step: 5, label: "Schedule", shortLabel: "Schedule" },
+  { step: 6, label: "Review", shortLabel: "Review" },
+  { step: 7, label: "Import", shortLabel: "Import" },
 ];
-
-export const STEP_TITLES: Record<WizardStep, string> = Object.fromEntries(
-  WIZARD_STEPS.map((s) => [s.step, s.title])
-) as Record<WizardStep, string>;
 
 /** Maximum wizard step (last step in the array). */
 const MAX_STEP = WIZARD_STEPS.length as WizardStep;

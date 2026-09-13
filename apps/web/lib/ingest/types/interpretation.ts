@@ -162,11 +162,3 @@ export interface DatasetInterpretationPlan {
   roles: InterpretationRoles;
   ambiguityResolution: AmbiguityResolution;
 }
-
-/** A single value change produced by `interpretRow`, for transform-diff reporting. */
-export interface InterpretationChange {
-  path: string;
-  oldValue: unknown;
-  newValue: unknown;
-  error?: string;
-}
