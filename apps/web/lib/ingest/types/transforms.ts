@@ -17,7 +17,6 @@ export type { StringOperation, TransformType } from "@/lib/definitions/transform
 export { DATE_FORMAT_OPTIONS, STRING_OPERATIONS } from "@/lib/definitions/transform-registry";
 
 import type { StringOperation, TransformType } from "@/lib/definitions/transform-registry";
-import { TRANSFORM_DEFINITIONS } from "@/lib/definitions/transform-registry";
 
 /**
  * Base properties shared by all transform rules.
@@ -176,24 +175,6 @@ export type IngestTransform =
   | ParseJsonArrayTransform
   | SplitToArrayTransform
   | ExtractTransform;
-
-/**
- * Display labels for transform types.
- *
- * Derived from the canonical {@link TRANSFORM_DEFINITIONS} registry.
- */
-export const TRANSFORM_TYPE_LABELS: Record<TransformType, string> = Object.fromEntries(
-  Object.entries(TRANSFORM_DEFINITIONS).map(([key, def]) => [key, def.label])
-) as Record<TransformType, string>;
-
-/**
- * Descriptions for transform types.
- *
- * Derived from the canonical {@link TRANSFORM_DEFINITIONS} registry.
- */
-export const TRANSFORM_TYPE_DESCRIPTIONS: Record<TransformType, string> = Object.fromEntries(
-  Object.entries(TRANSFORM_DEFINITIONS).map(([key, def]) => [key, def.description])
-) as Record<TransformType, string>;
 
 /**
  * Check if a transform has all required fields configured

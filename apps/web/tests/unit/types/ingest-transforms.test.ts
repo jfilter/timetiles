@@ -6,14 +6,9 @@
  */
 import { describe, expect, it, vi } from "vitest";
 
+import { TRANSFORM_DEFINITIONS, TRANSFORM_TYPES } from "@/lib/definitions/transform-registry";
 import type { IngestTransform } from "@/lib/ingest/types/transforms";
-import {
-  createTransform,
-  DATE_FORMAT_OPTIONS,
-  isTransformValid,
-  TRANSFORM_TYPE_DESCRIPTIONS,
-  TRANSFORM_TYPE_LABELS,
-} from "@/lib/ingest/types/transforms";
+import { createTransform, DATE_FORMAT_OPTIONS, isTransformValid } from "@/lib/ingest/types/transforms";
 
 // Mock crypto.randomUUID for deterministic tests
 vi.stubGlobal("crypto", { randomUUID: () => "test-uuid" });
@@ -264,13 +259,14 @@ describe("import-transforms", () => {
   });
 
   describe("constants", () => {
-    it("should have labels for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_LABELS)).toHaveLength(8);
-      expect(TRANSFORM_TYPE_LABELS.rename).toBe("Rename Field");
-    });
-
-    it("should have descriptions for all transform types", () => {
-      expect(Object.keys(TRANSFORM_TYPE_DESCRIPTIONS)).toHaveLength(8);
+    it("defines a label and description for every transform type", () => {
+      expect(Object.keys(TRANSFORM_DEFINITIONS)).toHaveLength(TRANSFORM_TYPES.length);
+      expect(Object.keys(TRANSFORM_DEFINITIONS)).toEqual(expect.arrayContaining([...TRANSFORM_TYPES]));
+      expect(TRANSFORM_DEFINITIONS.rename.label).toBe("Rename Field");
+      for (const type of TRANSFORM_TYPES) {
+        expect(TRANSFORM_DEFINITIONS[type].label.trim()).not.toBe("");
+        expect(TRANSFORM_DEFINITIONS[type].description.trim()).not.toBe("");
+      }
     });
 
     it("should have date format options", () => {
