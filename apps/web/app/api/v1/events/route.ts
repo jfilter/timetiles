@@ -17,6 +17,7 @@ import type { CanonicalEventFilters } from "@/lib/filters/canonical-event-filter
 import { isValidFieldKey } from "@/lib/filters/field-validation";
 import { jsonTextAtPathOrKey } from "@/lib/filters/json-field-sql";
 import { toPayloadWhere } from "@/lib/filters/to-payload-where";
+import { MAX_PAGE } from "@/lib/schemas/common";
 import type { EventListItem, EventListQuery } from "@/lib/schemas/events";
 import { EventListQuerySchema } from "@/lib/schemas/events";
 import { resolveEventQueryContext } from "@/lib/services/resolve-event-query-context";
@@ -286,16 +287,20 @@ const buildListResponse = (result: {
   hasPrevPage: boolean;
   nextPage?: number | null;
   prevPage?: number | null;
-}) => ({
-  events: result.docs.map(transformEvent),
-  pagination: {
-    page: result.page,
-    limit: result.limit,
-    totalDocs: result.totalDocs,
-    totalPages: result.totalPages,
-    hasNextPage: result.hasNextPage,
-    hasPrevPage: result.hasPrevPage,
-    nextPage: result.nextPage,
-    prevPage: result.prevPage,
-  },
-});
+}) => {
+  // A page past MAX_PAGE fails query validation, so never advertise one.
+  const hasNextPage = result.hasNextPage && (result.page ?? 1) < MAX_PAGE;
+  return {
+    events: result.docs.map(transformEvent),
+    pagination: {
+      page: result.page,
+      limit: result.limit,
+      totalDocs: result.totalDocs,
+      totalPages: result.totalPages,
+      hasNextPage,
+      hasPrevPage: result.hasPrevPage,
+      nextPage: hasNextPage ? result.nextPage : null,
+      prevPage: result.prevPage,
+    },
+  };
+};

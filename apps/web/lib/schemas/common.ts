@@ -28,12 +28,15 @@ export const BoundsSchema = z
   })
   .openapi("Bounds");
 
+/** Highest page number the paginated list endpoints accept. */
+export const MAX_PAGE = 1000;
+
 /**
  * Pagination parameters.
  */
 export const PaginationSchema = z
   .object({
-    page: z.coerce.number().int().min(1).max(1000).default(1),
+    page: z.coerce.number().int().min(1).max(MAX_PAGE).default(1),
     limit: z.coerce.number().int().min(1).max(1000).default(100),
   })
   .openapi("Pagination");

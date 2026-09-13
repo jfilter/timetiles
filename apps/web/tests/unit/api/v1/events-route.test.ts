@@ -206,4 +206,35 @@ describe.sequential("GET /api/v1/events", () => {
       prevPage: 1,
     });
   });
+
+  it("reports no next page at the maximum requestable page on the Payload path", async () => {
+    mocks.mockPayloadFind.mockResolvedValue({
+      docs: [],
+      page: 1000,
+      limit: 1,
+      totalDocs: 5000,
+      totalPages: 5000,
+      hasNextPage: true,
+      hasPrevPage: true,
+      nextPage: 1001,
+      prevPage: 999,
+    });
+
+    const response = await GET(createRequest("?limit=1&page=1000"), { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.pagination).toMatchObject({ page: 1000, totalPages: 5000, hasNextPage: false, nextPage: null });
+  });
+
+  it("reports no next page at the maximum requestable page on the SQL path", async () => {
+    queueSelectResults({ result: [{ total: 5000 }], resolveOn: "where" }, { result: [], resolveOn: "offset" });
+
+    const fieldFilters = encodeURIComponent(JSON.stringify({ category: ["Music"] }));
+    const response = await GET(createRequest(`?ff=${fieldFilters}&limit=1&page=1000`), { params: Promise.resolve({}) });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.pagination).toMatchObject({ page: 1000, totalPages: 5000, hasNextPage: false, nextPage: null });
+  });
 });
