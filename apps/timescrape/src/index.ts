@@ -13,6 +13,7 @@ import { loadConfig } from "./config.js";
 import { createApiKeyAuth } from "./lib/auth-middleware.js";
 import { AuthError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
+import { createShutdownHandler } from "./lib/shutdown.js";
 import { assertSecurityAssets } from "./security/container-config.js";
 import { getActiveRunIds, stopRun } from "./services/runner.js";
 
@@ -48,27 +49,14 @@ const server = serve({ fetch: app.fetch, port: config.SCRAPER_PORT }, (info) => 
   );
 });
 
-/**
- * Stop in-flight containers on shutdown.
- *
- * This process is PID 1 in its container, so without a handler a stop or
- * redeploy kills it outright and every running scraper container is left for
- * the web side's stuck-run reaper to notice an hour later.
- */
-let shuttingDown = false;
-const shutdown = (signal: NodeJS.Signals): void => {
-  if (shuttingDown) return;
-  shuttingDown = true;
+// This process is PID 1 in its container: without a handler a stop or redeploy
+// leaves every running scraper container for the web side's stuck-run reaper.
+const shutdown = createShutdownHandler({
+  closeServer: (done) => server.close(() => done()),
+  getActiveRunIds,
+  stopRun,
+  exit: (code) => process.exit(code),
+});
 
-  const runIds = getActiveRunIds();
-  logger.info({ signal, activeRuns: runIds.length }, "Shutting down TimeScrape runner");
-
-  server.close(() => {
-    void Promise.allSettled(runIds.map((runId) => stopRun(runId))).then(() => {
-      process.exit(0);
-    });
-  });
-};
-
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
