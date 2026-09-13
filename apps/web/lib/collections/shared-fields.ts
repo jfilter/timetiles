@@ -119,9 +119,14 @@ export const isAdmin = (({ req: { user } }) => user?.role === "admin") satisfies
 export const isEditorOrAdmin: Access = ({ req: { user } }) => isPrivileged(user);
 export const isAuthenticated: Access = ({ req: { user } }) => Boolean(user);
 
+const PUBLISHED_WHERE: Where = { _status: { equals: "published" } };
+
+/** Narrows a read Where to published docs, so drafts stay hidden from callers it grants access to. */
+export const withPublishedStatus = (where?: Where): Where =>
+  where ? { and: [where, PUBLISHED_WHERE] } : PUBLISHED_WHERE;
+
 /** Read access for drafts-enabled entities: editors/admins see drafts, everyone else only published state. */
-export const publishedOrPrivileged: Access = ({ req: { user } }) =>
-  isPrivileged(user) || { _status: { equals: "published" } };
+export const publishedOrPrivileged: Access = ({ req: { user } }) => isPrivileged(user) || withPublishedStatus();
 
 /**
  * Access control that denies create operations for users with pending account deletion.
@@ -205,7 +210,9 @@ export const createPublicOwnershipAccess = (
   const update = createOwnershipAccess(ownerField);
 
   return {
-    read: createPublicReadAccess({ isPublic: { equals: true } }, (userId) => ({ [ownerField]: { equals: userId } })),
+    read: createPublicReadAccess(withPublishedStatus({ isPublic: { equals: true } }), (userId) => ({
+      [ownerField]: { equals: userId },
+    })),
     create: denyPendingDeletion(isAuthenticated),
     update,
     deleteAccess: update,

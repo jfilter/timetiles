@@ -12,7 +12,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createCreatedByField, isEditorOrAdmin } from "./shared-fields";
+import { createCommonConfig, createCreatedByField, isEditorOrAdmin, publishedOrPrivileged } from "./shared-fields";
 
 export const LayoutTemplates: CollectionConfig = {
   slug: "layout-templates",
@@ -24,7 +24,7 @@ export const LayoutTemplates: CollectionConfig = {
     description: "Layout templates controlling page structure (header, footer, width)",
   },
   access: {
-    read: () => true,
+    read: publishedOrPrivileged,
     create: isEditorOrAdmin,
     update: isEditorOrAdmin,
     delete: isEditorOrAdmin,

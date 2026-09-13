@@ -10,7 +10,7 @@
  */
 import type { CollectionConfig } from "payload";
 
-import { createCommonConfig, createCreatedByField, isEditorOrAdmin } from "./shared-fields";
+import { createCommonConfig, createCreatedByField, isEditorOrAdmin, publishedOrPrivileged } from "./shared-fields";
 
 const colorField = (name: string, description: string) => ({ name, type: "text", admin: { description } }) as const;
 
@@ -24,7 +24,7 @@ export const Themes: CollectionConfig = {
     description: "Reusable theme presets for site branding",
   },
   access: {
-    read: () => true,
+    read: publishedOrPrivileged,
     create: isEditorOrAdmin,
     update: isEditorOrAdmin,
     delete: isEditorOrAdmin,

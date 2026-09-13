@@ -18,7 +18,7 @@ import {
 } from "@/lib/collections/catalog-ownership";
 import { extractRelationId } from "@/lib/utils/relation-id";
 
-import { createCommonConfig, createPublicReadAccess, isEditorOrAdmin } from "./shared-fields";
+import { createCommonConfig, createPublicReadAccess, isEditorOrAdmin, withPublishedStatus } from "./shared-fields";
 
 /** Denormalized access-control fields — derived from the dataset, never client-supplied. */
 const SCHEMA_DENORM_FIELDS = ["datasetIsPublic", "catalogOwnerId"] as const;
@@ -34,7 +34,7 @@ const DatasetSchemas: CollectionConfig = {
   },
   access: {
     // Schema access uses denormalized fields for zero-query access control
-    read: createPublicReadAccess({ datasetIsPublic: { equals: true } }, (userId) => ({
+    read: createPublicReadAccess(withPublishedStatus({ datasetIsPublic: { equals: true } }), (userId) => ({
       catalogOwnerId: { equals: userId },
     })),
 
