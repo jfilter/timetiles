@@ -200,6 +200,18 @@ print_usage() {
     echo ""
 }
 
+# Upstream ref the deployment files must match: the release tag for a pinned
+# TIMETILES_VERSION, otherwise the tracked branch.
+deploy_files_ref() {
+    local version
+    version=$(grep "^TIMETILES_VERSION=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"') || true
+    if [[ -n "$version" && "$version" != "edge" && "$version" != "latest" ]]; then
+        echo "v$version"
+    else
+        echo "${TIMETILES_REPO_BRANCH:-main}"
+    fi
+}
+
 check_env() {
     if [ ! -f "$ENV_FILE" ]; then
         echo -e "${RED}Error: $ENV_FILE not found!${NC}"
@@ -1109,12 +1121,7 @@ EOF
         # cert hostname issue, May 2026). Compare local files against the
         # version actually running to surface drift.
 
-        DEPLOYED_VERSION=$(grep "^TIMETILES_VERSION=" "$ENV_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"')
-        if [[ -n "$DEPLOYED_VERSION" && "$DEPLOYED_VERSION" != "edge" && "$DEPLOYED_VERSION" != "latest" ]]; then
-            CHECK_REF="v$DEPLOYED_VERSION"
-        else
-            CHECK_REF="${TIMETILES_REPO_BRANCH:-main}"
-        fi
+        CHECK_REF=$(deploy_files_ref)
         print_ok "Comparing against upstream ref: $CHECK_REF"
 
         # Files that ship from deployment/ and should match the running release.
@@ -1401,8 +1408,7 @@ EOF
 
         # Self-update: pull latest CLI script from GitHub (unless --no-self-update)
         if [[ "${2:-}" != "--no-self-update" ]] && ! git rev-parse --git-dir &>/dev/null 2>&1; then
-            REPO_BRANCH="${TIMETILES_REPO_BRANCH:-main}"
-            SCRIPT_URL="https://raw.githubusercontent.com/jfilter/timetiles/${REPO_BRANCH}/deployment/timetiles"
+            SCRIPT_URL="https://raw.githubusercontent.com/jfilter/timetiles/$(deploy_files_ref)/deployment/timetiles"
             echo -e "${YELLOW}Updating CLI script...${NC}"
             NEW_SCRIPT="$SCRIPT_DIR/timetiles.new"
             if curl -fsSL "$SCRIPT_URL" -o "$NEW_SCRIPT"; then
@@ -1429,8 +1435,8 @@ EOF
         # set up by the bootstrap.
         REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
         if [ -d "$REPO_ROOT/.git" ]; then
-            REPO_BRANCH="${TIMETILES_REPO_BRANCH:-main}"
-            echo -e "${YELLOW}Pulling latest deployment files (${REPO_BRANCH})...${NC}"
+            DEPLOY_REF=$(deploy_files_ref)
+            echo -e "${YELLOW}Pulling deployment files (${DEPLOY_REF})...${NC}"
             # fetch + reset --hard converges to remote even if a tracked file was
             # locally edited; operator state lives in .gitignored files and is
             # untouched. Files marked assume-unchanged (the substituted nginx
@@ -1438,8 +1444,9 @@ EOF
             # Cannot merge" once upstream touches them, so drop the marks first.
             git -C "$REPO_ROOT" ls-files -v | awk '/^h /{print $2}' \
                 | xargs -r git -C "$REPO_ROOT" update-index --no-assume-unchanged
-            git -C "$REPO_ROOT" fetch --depth 1 origin "$REPO_BRANCH"
-            git -C "$REPO_ROOT" reset --hard "origin/$REPO_BRANCH"
+            # FETCH_HEAD works for both a branch and a release tag.
+            git -C "$REPO_ROOT" fetch --depth 1 origin "$DEPLOY_REF"
+            git -C "$REPO_ROOT" reset --hard FETCH_HEAD
 
             # Re-apply ${DOMAIN_NAME} substitution on nginx site files
             # (mirrors deployment/bootstrap/lib/common.sh:configure_nginx).

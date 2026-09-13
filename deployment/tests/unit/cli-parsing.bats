@@ -574,6 +574,44 @@ EOF
 }
 
 # =============================================================================
+# Update Command
+# =============================================================================
+
+setup_update_commands() {
+    mkdir -p "$TEST_TEMP_DIR/.git" "$TEST_TEMP_DIR/bin"
+    cat > "$TEST_TEMP_DIR/bin/git" << 'EOF'
+#!/bin/bash
+printf '%s\n' "$*" >> "$TEST_TEMP_DIR/git-calls"
+exit 0
+EOF
+    printf '#!/bin/bash\nexit 0\n' > "$TEST_TEMP_DIR/bin/docker"
+    printf '#!/bin/bash\necho "unexpected network call: curl $*" >&2\nexit 1\n' > "$TEST_TEMP_DIR/bin/curl"
+    chmod +x "$TEST_TEMP_DIR/bin/"*
+    export PATH="$TEST_TEMP_DIR/bin:$PATH"
+    unset TIMETILES_REPO_BRANCH
+}
+
+@test "update fetches deployment files from the release tag of a pinned version" {
+    setup_update_commands
+    echo 'TIMETILES_VERSION=1.4.0' >> "$TEST_TEMP_DIR/deployment/.env.production"
+    run "$TEST_CLI" update
+    [ "$status" -eq 0 ]
+    grep -qxF -e "-C $TEST_TEMP_DIR fetch --depth 1 origin v1.4.0" "$TEST_TEMP_DIR/git-calls"
+    grep -qxF -e "-C $TEST_TEMP_DIR reset --hard FETCH_HEAD" "$TEST_TEMP_DIR/git-calls"
+    ! grep -q 'origin main' "$TEST_TEMP_DIR/git-calls"
+}
+
+@test "update follows the tracked branch for edge deployments" {
+    setup_update_commands
+    echo 'TIMETILES_VERSION=edge' >> "$TEST_TEMP_DIR/deployment/.env.production"
+    export TIMETILES_REPO_BRANCH=staging
+    run "$TEST_CLI" update
+    [ "$status" -eq 0 ]
+    grep -qxF -e "-C $TEST_TEMP_DIR fetch --depth 1 origin staging" "$TEST_TEMP_DIR/git-calls"
+    grep -qxF -e "-C $TEST_TEMP_DIR reset --hard FETCH_HEAD" "$TEST_TEMP_DIR/git-calls"
+}
+
+# =============================================================================
 # Environment Checks
 # =============================================================================
 
