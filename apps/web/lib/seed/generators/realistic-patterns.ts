@@ -16,8 +16,6 @@ import { SeededRandom } from "./seeded-random";
 export interface RealisticPatternOptions {
   useGeographicClustering?: boolean;
   temporalDistribution?: "uniform" | "realistic";
-  includeGeocoding?: boolean;
-  debugOutput?: boolean;
   seed?: number;
   clusterCenters?: Array<{ lat: number; lng: number }>;
   weekdayBias?: number; // 0-1, probability of weekday vs weekend

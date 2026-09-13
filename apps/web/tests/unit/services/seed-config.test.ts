@@ -129,7 +129,8 @@ describe("Configuration System", () => {
     // still held the values the constants held. Both are gone.)
     const devPreset = SEED_CONFIG.presets.development!;
     expect(devPreset.enabled).toContain("events");
-    expect(devPreset.overrides?.events?.customGenerator).toBe("realistic-temporal-spatial-patterns");
+    expect(getCollectionConfig("events", "development")?.customGenerator).toBe("realistic-temporal-spatial-patterns");
+    expect(getCollectionConfig("events", "testing")?.customGenerator).toBe("simple-patterns");
 
     const testPreset = SEED_CONFIG.presets.testing!;
     expect(testPreset.enabled).toContain("events");
@@ -236,13 +237,12 @@ describe("Configuration Validation", () => {
     });
   });
 
-  it("should configure main-menu as a static global with count of 1", () => {
+  it("should configure main-menu as a global with count of 1", () => {
     const mainMenuConfig = getCollectionConfig("main-menu", "development");
 
     expect(mainMenuConfig).toBeDefined();
     expect(mainMenuConfig?.count).toBe(1);
     expect(mainMenuConfig?.dependencies).toEqual([]);
-    expect(mainMenuConfig?.options?.staticContent).toBe(true);
   });
 
   it("should have valid dependency graph without circular dependencies", () => {

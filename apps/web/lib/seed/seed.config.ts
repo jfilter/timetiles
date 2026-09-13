@@ -1,33 +1,13 @@
 /**
- * This file defines the centralized configuration for the database seeding system.
+ * Centralized configuration for the database seeding system.
  *
- * It provides a structured way to manage all aspects of seeding, including:
- * - How many documents to create for each collection, with environment-specific counts.
- * - Which collections are enabled or disabled for different environments (e.g., development, test).
- * - The dependency order between collections to ensure data integrity.
- * - Overrides for specific collections in different environments.
- * - Configuration for custom data generators to create more realistic seed data.
- *
- * This configuration-driven approach makes the seeding process flexible, maintainable,
- * and easy to adapt for various scenarios.
+ * Declares per-collection counts, dependencies, generators and options, and the
+ * presets that select which collections are seeded and how they are overridden.
  *
  * @module
  */
 
-/**
- * Configuration-Driven Seeding System.
- *
- * This configuration file centralizes all seeding behavior, making it easy to:
- * - Control collection counts per environment
- * - Define dependencies between collections
- * - Enable/disable collections per environment
- * - Override behavior with environment-specific settings
- * - Configure custom data generators.
- */
-
 import { COLLECTION_GEOCODING_PROVIDERS, FOOTER_SLUG, MAIN_MENU_SLUG, SETTINGS_SLUG } from "./constants";
-import type { RelationshipConfig } from "./relationship-config";
-import { RELATIONSHIP_CONFIG } from "./relationship-config";
 
 const getLocationCacheCount = (preset: string): number => {
   switch (preset) {
@@ -55,13 +35,6 @@ export interface CollectionConfig {
   options?: Record<string, unknown>;
 }
 
-export interface GeneratorConfig {
-  /** Type of generator (temporal, spatial, etc.) */
-  type: "temporal" | "spatial" | "realistic" | "custom";
-  /** Generator-specific options */
-  options: Record<string, unknown>;
-}
-
 /** Valid preset names. `deploy` is idempotent on-boot bootstrap; the others run via `pnpm seed`. */
 export type PresetName = "testing" | "e2e" | "development" | "deploy";
 
@@ -86,12 +59,8 @@ export interface SeedConfiguration {
   collections: Record<string, CollectionConfig>;
   /** Configuration for globals */
   globals?: Record<string, CollectionConfig>;
-  /** Relationship configurations (imported from existing system) */
-  relationships: Record<string, RelationshipConfig[]>;
   /** Seeding presets */
   presets: Record<string, PresetConfig>;
-  /** Custom data generators */
-  generators: Record<string, GeneratorConfig>;
 }
 
 export const SEED_CONFIG: SeedConfiguration = {
@@ -111,7 +80,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: { includeTestUsers: true, createAdminUser: true },
+      options: { includeTestUsers: true },
     },
 
     // Catalogs - organizational structure
@@ -129,7 +98,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: { includeArchivedCatalogs: false },
     },
 
     // Datasets - depend on catalogs
@@ -147,7 +115,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: ["catalogs"],
-      options: { includeArchivedDatasets: false, generateSchemas: true },
+      options: { generateSchemas: true },
     },
 
     // Events - depend on datasets, high volume
@@ -166,25 +134,22 @@ export const SEED_CONFIG: SeedConfiguration = {
       },
       dependencies: ["catalogs", "datasets"],
       customGenerator: "realistic-temporal-spatial-patterns",
-      options: { useGeographicClustering: true, temporalDistribution: "realistic", includeGeocoding: true },
     },
 
     // Sites - multi-domain configuration
     sites: {
       count: 1, // Default site
       dependencies: [],
-      options: { staticContent: true },
     },
 
     // Views - UI configuration per site
     views: {
       count: 1, // Default view per site
       dependencies: ["sites"],
-      options: { staticContent: true },
     },
 
     // Pages - static content (home, about, contact, terms, privacy)
-    pages: { count: 5, dependencies: ["sites"], options: { staticContent: true } },
+    pages: { count: 5, dependencies: ["sites"] },
 
     // Scheduled ingests - recurring URL imports (development only)
     "scheduled-ingests": { count: 5, dependencies: ["users", "catalogs"] },
@@ -212,11 +177,7 @@ export const SEED_CONFIG: SeedConfiguration = {
     },
 
     // Location cache - geocoding support
-    "location-cache": {
-      count: (preset) => getLocationCacheCount(preset),
-      dependencies: [],
-      options: { includeCommonLocations: true },
-    },
+    "location-cache": { count: (preset) => getLocationCacheCount(preset), dependencies: [] },
 
     // Geocoding providers - service configuration
     [COLLECTION_GEOCODING_PROVIDERS]: {
@@ -233,7 +194,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         }
       },
       dependencies: [],
-      options: { includeTestProviders: true },
     },
   },
 
@@ -243,72 +203,16 @@ export const SEED_CONFIG: SeedConfiguration = {
     [MAIN_MENU_SLUG]: {
       count: 1, // Single global menu
       dependencies: [],
-      options: { staticContent: true },
     },
     // Footer - global footer content
     [FOOTER_SLUG]: {
       count: 1, // Single global footer
       dependencies: [],
-      options: { staticContent: true },
     },
     // Settings - legal notices, feature flags, etc.
     [SETTINGS_SLUG]: {
       count: 1, // Single global settings
       dependencies: [],
-      options: { staticContent: true },
-    },
-  },
-
-  // Import existing relationship configurations
-  relationships: RELATIONSHIP_CONFIG,
-
-  generators: {
-    "realistic-temporal-spatial-patterns": {
-      type: "temporal",
-      options: {
-        // Temporal patterns
-        seasonality: true,
-        weekdayBias: 0.7, // 70% weekday events
-        timeOfDayDistribution: "business-hours", // Peak during business hours
-        holidayAvoidance: true,
-
-        // Spatial patterns
-        geographicClustering: true,
-        clusters: 5,
-        clusterRadius: 10, // 10km radius
-        outlierRate: 0.1, // 10% outliers
-
-        // Realism features
-        eventTypeBias: true, // Different types have different patterns
-        capacityRealism: true, // Realistic venue capacities
-        coordinateAccuracy: "realistic", // Some coordinate uncertainty
-      },
-    },
-
-    "simple-patterns": {
-      type: "realistic",
-      options: {
-        // Simplified for fast test execution
-        seasonality: false,
-        weekdayBias: 0.5, // No bias
-        timeOfDayDistribution: "uniform",
-        geographicClustering: false,
-        coordinateAccuracy: "precise",
-      },
-    },
-
-    "geographic-clustering": {
-      type: "spatial",
-      options: {
-        clusters: 3,
-        clusterRadius: 15, // km
-        outlierRate: 0.15,
-        centerPoints: [
-          { latitude: 40.7128, longitude: -74.006 }, // NYC
-          { latitude: 37.7749, longitude: -122.4194 }, // SF
-          { latitude: 41.8781, longitude: -87.6298 }, // Chicago
-        ],
-      },
     },
   },
 
@@ -329,10 +233,7 @@ export const SEED_CONFIG: SeedConfiguration = {
         SETTINGS_SLUG,
       ],
       overrides: {
-        events: {
-          customGenerator: "simple-patterns",
-          options: { useGeographicClustering: false, temporalDistribution: "uniform", includeGeocoding: false },
-        },
+        events: { customGenerator: "simple-patterns" },
         datasets: {
           options: { generateSchemas: false }, // Faster test execution
         },
@@ -383,18 +284,6 @@ export const SEED_CONFIG: SeedConfiguration = {
         "scrapers",
         "scraper-runs",
       ],
-      overrides: {
-        events: {
-          customGenerator: "realistic-temporal-spatial-patterns",
-          options: {
-            useGeographicClustering: true,
-            temporalDistribution: "realistic",
-            includeGeocoding: true,
-            debugOutput: true,
-          },
-        },
-        datasets: { options: { includeArchivedDatasets: true, generateExtendedSchemas: true } },
-      },
     },
 
     // Deploy: idempotent on-boot bootstrap for staging/production/dev. Skip-if-exists per

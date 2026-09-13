@@ -12,9 +12,6 @@ import { parseDateInput } from "@/lib/utils/date";
 import { SeededRandom } from "./seeded-random";
 
 export interface SimplePatternOptions {
-  useGeographicClustering?: boolean;
-  temporalDistribution?: "uniform" | "realistic";
-  includeGeocoding?: boolean;
   seed?: number;
 }
 

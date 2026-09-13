@@ -1,24 +1,11 @@
 /**
- * This file defines the configuration for resolving relationships between collections
- * during the seeding process.
+ * Declarative relationship configuration for the seeding process.
  *
- * It provides a centralized, declarative way to specify how relationships should be handled,
- * replacing the need for hardcoded logic. This system defines which fields in a source
- * collection relate to a target collection, how to find the related document, and whether
- * the relationship is required.
- *
- * It also includes a function to determine the correct seeding order of collections based
- * on these defined dependencies, ensuring data integrity.
+ * Defines which fields in a source collection relate to a target collection,
+ * which field identifies the related document, and whether the relationship is
+ * required. Seeding order is derived from collection dependencies in `seed.config.ts`.
  *
  * @module
- */
-
-/**
- * Relationship Configuration System.
- *
- * This file defines the configuration for resolving relationships between collections
- * during the seeding process. It replaces the hardcoded relationship mappings
- * with a flexible, maintainable configuration system.
  */
 
 export interface RelationshipConfig {
@@ -36,12 +23,7 @@ export interface RelationshipConfig {
   transform?: (value: string) => string;
 }
 
-/**
- * Configuration for all collection relationships.
- *
- * This replaces the massive hardcoded switch statement in the original code
- * with a clean, maintainable configuration structure.
- */
+/** Relationship configuration per seeded collection. */
 export const RELATIONSHIP_CONFIG: Record<string, RelationshipConfig[]> = {
   // Datasets depend on catalogs
   datasets: [

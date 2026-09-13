@@ -193,8 +193,4 @@ export abstract class SeedManagerBase {
   get relationshipResolverInstance() {
     return this.relationshipResolver;
   }
-
-  get databaseOperationsInstance() {
-    return this.databaseOperations;
-  }
 }

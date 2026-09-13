@@ -13,14 +13,6 @@
  * @module
  */
 
-/**
- * RelationshipResolver.
- *
- * This class handles dynamic resolution of relationships between collections
- * during the seeding process. It replaces the hardcoded relationship mappings
- * with a flexible, configuration-driven approach.
- */
-
 import type { Payload } from "payload";
 
 import { getEnv } from "@/lib/config/env";
@@ -438,88 +430,9 @@ export class RelationshipResolver {
   }
 
   /**
-   * Build an in-memory ID map for a collection to avoid individual lookups.
-   *
-   * This method fetches all items from a collection at once and populates the cache,
-   * eliminating the need for individual database queries during relationship resolution.
-   * This is particularly beneficial when seeding to an empty database where we can
-   * be confident about the complete set of available items.
-   *
-   * @param collection - The collection to build the ID map for
-   * @param keyField - The field to use as the lookup key (e.g., 'slug', 'name')
-   * @returns Map of key values to item IDs
-   *
-   * @example
-   * ```typescript
-   * // After seeding catalogs, build ID map
-   * await relationshipResolver.buildIdMap('catalogs', 'slug');
-   *
-   * // Now when seeding datasets that reference catalogs, the lookups will be instant
-   * ```
-   */
-  async buildIdMap(collection: string, keyField: string): Promise<Map<string, number>> {
-    logger.debug(`Building ID map for ${collection} by ${keyField}`);
-    const startTime = performance.now();
-
-    try {
-      const collectionSlug = collection as keyof Config["collections"];
-
-      // Fetch all items from the collection
-      const result = await this.payload.find({
-        collection: collectionSlug,
-        limit: 10000, // High limit to get all items
-        depth: 0, // No nested relationships needed
-      });
-
-      const idMap = new Map<string, number>();
-
-      // Initialize collection cache if it doesn't exist
-      if (!this.cache.has(collection)) {
-        this.cache.set(collection, new Map());
-      }
-      const collectionCache = this.cache.get(collection)!;
-
-      // Populate both the ID map and the cache
-      for (const item of result.docs) {
-        const itemRecord = item as unknown as Record<string, unknown>;
-        const key = itemRecord[keyField];
-        const id = itemRecord.id as number;
-
-        if (typeof key === "string") {
-          idMap.set(key, id);
-
-          // Also populate the cache for this item
-          const cacheKey = `${collection}:${keyField}:${key}`;
-          collectionCache.set(cacheKey, item);
-        }
-      }
-
-      const duration = performance.now() - startTime;
-      logger.info(
-        { collection, keyField, count: idMap.size, duration: `${duration.toFixed(2)}ms` },
-        `Built ID map for ${collection}: ${idMap.size} items in ${duration.toFixed(2)}ms`
-      );
-
-      return idMap;
-    } catch (error) {
-      logger.error(`Failed to build ID map for ${collection}:`, error);
-      throw error;
-    }
-  }
-
-  /**
    * Get resolution statistics.
    */
   getStats(): Map<string, ResolutionStats> {
     return new Map(this.stats);
-  }
-
-  /**
-   * Convert a value to string representation for cache keys.
-   */
-  private convertToStringValue(value: unknown): string {
-    if (typeof value === "string") return value;
-    if (typeof value === "number") return String(value);
-    return JSON.stringify(value);
   }
 }
