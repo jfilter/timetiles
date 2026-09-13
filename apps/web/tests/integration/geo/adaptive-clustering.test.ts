@@ -59,6 +59,7 @@ const createEventsInGrid = async (payload: Payload, datasetId: number, prefix: s
         return payload.create({
           collection: "events",
           data: {
+            _status: "published",
             uniqueId: `${prefix}-${idx}`,
             dataset: datasetId,
             sourceData: { title: `Event ${idx}` },

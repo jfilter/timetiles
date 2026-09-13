@@ -42,13 +42,17 @@ describe.sequential("Visibility and ownership sync cascade", () => {
 
   // Helper: create catalog bypassing quota (no user → quota hook skips)
   const createCatalog = async (name: string, isPublic: boolean, createdBy: number) =>
-    payload.create({ collection: "catalogs", data: { name, isPublic, createdBy }, overrideAccess: true });
+    payload.create({
+      collection: "catalogs",
+      data: { _status: "published", name, isPublic, createdBy },
+      overrideAccess: true,
+    });
 
   // Helper: create dataset
   const createDataset = async (catalogId: number, name: string, isPublic: boolean) =>
     payload.create({
       collection: "datasets",
-      data: { name, catalog: catalogId, language: "eng", isPublic },
+      data: { _status: "published", name, catalog: catalogId, language: "eng", isPublic },
       overrideAccess: true,
     });
 
@@ -57,6 +61,7 @@ describe.sequential("Visibility and ownership sync cascade", () => {
     payload.create({
       collection: "events",
       data: {
+        _status: "published",
         dataset: datasetId,
         sourceData: { test: suffix },
         transformedData: { test: suffix },
@@ -100,6 +105,7 @@ describe.sequential("Visibility and ownership sync cascade", () => {
     const dataset = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         name: "Audit lookup failure",
         catalog: catalog.id,
         language: "eng",

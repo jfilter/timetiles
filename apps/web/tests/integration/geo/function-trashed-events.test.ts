@@ -68,6 +68,7 @@ describe.sequential("event SQL functions and trashed events", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `trashed-events-${index}`,
           dataset: dataset.id as number,
           sourceData: { title: `Event ${index}` },

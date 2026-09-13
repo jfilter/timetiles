@@ -148,6 +148,7 @@ describe.sequential("/api/v1/datasets/[id]/enum-stats - filtering", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `enum-stats-${i}`,
           dataset: testDatasetId,
           sourceData: e,

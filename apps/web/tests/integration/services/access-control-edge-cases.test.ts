@@ -80,19 +80,26 @@ describe.sequential("Access Control Edge Cases", () => {
     it("keeps a public event readable to other users after its parent dataset is deleted", async () => {
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Catalog for Orphan Test", isPublic: true },
+        data: { _status: "published", name: "Catalog for Orphan Test", isPublic: true },
         user: ownerUser,
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Dataset to be deleted", catalog: catalog.id, language: "eng", isPublic: true },
+        data: {
+          _status: "published",
+          name: "Dataset to be deleted",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: true,
+        },
         user: adminUser,
       });
 
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: dataset.id,
           sourceData: { test: "orphaned event" },
           transformedData: { test: "orphaned event" },
@@ -123,13 +130,13 @@ describe.sequential("Access Control Edge Cases", () => {
     it("keeps a public dataset readable to other users after its parent catalog is deleted", async () => {
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Catalog to be deleted", isPublic: true },
+        data: { _status: "published", name: "Catalog to be deleted", isPublic: true },
         user: ownerUser,
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Orphaned Dataset", catalog: catalog.id, language: "eng", isPublic: true },
+        data: { _status: "published", name: "Orphaned Dataset", catalog: catalog.id, language: "eng", isPublic: true },
         user: adminUser,
       });
 
@@ -159,19 +166,26 @@ describe.sequential("Access Control Edge Cases", () => {
     it("drops the catalog-derived grants from datasets and events when the catalog is deleted", async () => {
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Catalog granting access", isPublic: false },
+        data: { _status: "published", name: "Catalog granting access", isPublic: false },
         user: ownerUser,
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Dataset of another user", catalog: catalog.id, language: "eng", isPublic: false },
+        data: {
+          _status: "published",
+          name: "Dataset of another user",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: false,
+        },
         user: adminUser,
       });
 
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: dataset.id,
           sourceData: { test: "grant" },
           transformedData: { test: "grant" },
@@ -227,7 +241,7 @@ describe.sequential("Access Control Edge Cases", () => {
       console.log("[TEST] Creating catalog...");
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Import Test Catalog", isPublic: false },
+        data: { _status: "published", name: "Import Test Catalog", isPublic: false },
         user: ownerUser,
       });
       console.log(`[TEST] Catalog created: ${catalog.id}`);
@@ -235,7 +249,13 @@ describe.sequential("Access Control Edge Cases", () => {
       console.log("[TEST] Creating dataset...");
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Import Test Dataset", catalog: catalog.id, language: "eng", isPublic: false },
+        data: {
+          _status: "published",
+          name: "Import Test Dataset",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: false,
+        },
         user: adminUser,
       });
       console.log(`[TEST] Dataset created: ${dataset.id}`);
@@ -387,13 +407,19 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create public catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Initially Public Catalog", isPublic: true },
+        data: { _status: "published", name: "Initially Public Catalog", isPublic: true },
         user: ownerUser,
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Dataset in Catalog", catalog: catalog.id, language: "eng", isPublic: true },
+        data: {
+          _status: "published",
+          name: "Dataset in Catalog",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: true,
+        },
         user: ownerUser,
       });
 
@@ -452,7 +478,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create public catalog
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Public Catalog for Visibility Test", isPublic: true },
+        data: { _status: "published", name: "Public Catalog for Visibility Test", isPublic: true },
         user: adminUser,
       });
 
@@ -461,7 +487,13 @@ describe.sequential("Access Control Edge Cases", () => {
       await expect(
         payload.create({
           collection: "datasets",
-          data: { name: "Cannot Be Private Dataset", catalog: catalog.id, language: "eng", isPublic: false },
+          data: {
+            _status: "published",
+            name: "Cannot Be Private Dataset",
+            catalog: catalog.id,
+            language: "eng",
+            isPublic: false,
+          },
           user: adminUser,
         })
       ).rejects.toThrow("Datasets in public catalogs must be public");
@@ -469,7 +501,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Creating a public dataset in a public catalog should succeed
       const publicDataset = await payload.create({
         collection: "datasets",
-        data: { name: "Public Dataset", catalog: catalog.id, language: "eng", isPublic: true },
+        data: { _status: "published", name: "Public Dataset", catalog: catalog.id, language: "eng", isPublic: true },
         user: adminUser,
       });
 
@@ -489,13 +521,19 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create public catalog and dataset
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Concurrent Access Catalog", isPublic: true },
+        data: { _status: "published", name: "Concurrent Access Catalog", isPublic: true },
         user: ownerUser,
       });
 
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Concurrent Access Dataset", catalog: catalog.id, language: "eng", isPublic: true },
+        data: {
+          _status: "published",
+          name: "Concurrent Access Dataset",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: true,
+        },
         user: adminUser,
       });
 
@@ -515,7 +553,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create private catalog
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Race Condition Test Catalog", isPublic: false },
+        data: { _status: "published", name: "Race Condition Test Catalog", isPublic: false },
         user: ownerUser,
       });
 
@@ -567,6 +605,7 @@ describe.sequential("Access Control Edge Cases", () => {
       const catalog = await payload.create({
         collection: "catalogs",
         data: {
+          _status: "published",
           name: "System Catalog",
           isPublic: true,
           // No createdBy - testing null ownership
@@ -619,7 +658,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create private catalog hierarchy (admin creates it, so only admin can access)
       const catalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Private Chain Test Catalog", isPublic: false },
+        data: { _status: "published", name: "Private Chain Test Catalog", isPublic: false },
         user: adminUser,
       });
       console.log(`[CHAIN TEST] Step 1 done: catalog ${catalog.id}`);
@@ -627,7 +666,13 @@ describe.sequential("Access Control Edge Cases", () => {
       console.log("[CHAIN TEST] Step 2: Creating dataset...");
       const dataset = await payload.create({
         collection: "datasets",
-        data: { name: "Private Chain Test Dataset", catalog: catalog.id, language: "eng", isPublic: false },
+        data: {
+          _status: "published",
+          name: "Private Chain Test Dataset",
+          catalog: catalog.id,
+          language: "eng",
+          isPublic: false,
+        },
         user: adminUser,
       });
       console.log(`[CHAIN TEST] Step 2 done: dataset ${dataset.id}`);
@@ -636,6 +681,7 @@ describe.sequential("Access Control Edge Cases", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: dataset.id,
           sourceData: { test: "chain test" },
           transformedData: { test: "chain test" },
@@ -699,7 +745,7 @@ describe.sequential("Access Control Edge Cases", () => {
       // Create private catalog (admin only)
       const privateCatalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Private scheduled ingest Catalog", isPublic: false },
+        data: { _status: "published", name: "Private scheduled ingest Catalog", isPublic: false },
         user: adminUser,
       });
 

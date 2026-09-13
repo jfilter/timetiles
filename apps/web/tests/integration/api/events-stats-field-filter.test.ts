@@ -70,6 +70,7 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `stats-field-filter-berlin-${i + 1}`,
           dataset: berlinDatasetId,
           sourceData: { title: `Berlin Stats Event ${i + 1}`, venue: { address: { city: "Berlin" } } },
@@ -87,6 +88,7 @@ describe.sequential("/api/v1/events stats - deeply nested field filtering", () =
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `stats-field-filter-paris-${i + 1}`,
           dataset: parisDatasetId,
           sourceData: { title: `Paris Stats Event ${i + 1}`, venue: { address: { city: "Paris" } } },

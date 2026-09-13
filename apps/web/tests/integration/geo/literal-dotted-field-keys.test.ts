@@ -131,6 +131,7 @@ describe.sequential("literal dotted field keys across the read paths", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: row.uniqueId,
           dataset: datasetId,
           sourceData: row.data,

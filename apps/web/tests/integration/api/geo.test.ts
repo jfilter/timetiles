@@ -50,6 +50,7 @@ describe.sequential("/api/v1/events/geo", () => {
     const dataset = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         catalog: Number.parseInt(testCatalogId),
         name: "Test Dataset for Clustering",
         slug: `test-clustering-dataset-${uniqueSuffix}`,
@@ -96,6 +97,7 @@ describe.sequential("/api/v1/events/geo", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `cluster-test-event-${i + 1}`,
           dataset: Number.parseInt(testDatasetId),
           sourceData: {

@@ -93,13 +93,23 @@ describe.sequential("Hierarchical Access Control", () => {
     // Create test catalogs (as owner) - Note: user context matters for access control
     publicCatalog = await payload.create({
       collection: "catalogs",
-      data: { name: "Public Test Catalog", description: "A public catalog for testing", isPublic: true },
+      data: {
+        _status: "published",
+        name: "Public Test Catalog",
+        description: "A public catalog for testing",
+        isPublic: true,
+      },
       user: ownerUser,
     });
 
     privateCatalog = await payload.create({
       collection: "catalogs",
-      data: { name: "Private Test Catalog", description: "A private catalog for testing", isPublic: false },
+      data: {
+        _status: "published",
+        name: "Private Test Catalog",
+        description: "A private catalog for testing",
+        isPublic: false,
+      },
       user: ownerUser,
     });
 
@@ -107,6 +117,7 @@ describe.sequential("Hierarchical Access Control", () => {
     publicDatasetInPublicCatalog = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         name: "Public Dataset in Public Catalog",
         description: "Should be accessible to everyone",
         catalog: publicCatalog.id,
@@ -119,6 +130,7 @@ describe.sequential("Hierarchical Access Control", () => {
     privateDatasetInPublicCatalog = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         name: "Public Dataset in Public Catalog (Secondary)",
         description: "Secondary public dataset for access control testing",
         catalog: publicCatalog.id,
@@ -131,6 +143,7 @@ describe.sequential("Hierarchical Access Control", () => {
     publicDatasetInPrivateCatalog = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         name: "Public Dataset in Private Catalog",
         description: "Dataset is public but catalog is private",
         catalog: privateCatalog.id,
@@ -143,6 +156,7 @@ describe.sequential("Hierarchical Access Control", () => {
     privateDatasetInPrivateCatalog = await payload.create({
       collection: "datasets",
       data: {
+        _status: "published",
         name: "Private Dataset in Private Catalog",
         description: "Both dataset and catalog are private",
         catalog: privateCatalog.id,
@@ -253,7 +267,7 @@ describe.sequential("Hierarchical Access Control", () => {
       // Create a catalog to delete
       const tempCatalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Temp Catalog for Delete Test", isPublic: true },
+        data: { _status: "published", name: "Temp Catalog for Delete Test", isPublic: true },
         user: ownerUser,
       });
 
@@ -430,6 +444,7 @@ describe.sequential("Hierarchical Access Control", () => {
       publicEvent = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: publicDatasetInPublicCatalog.id,
           sourceData: { test: "public event" },
           transformedData: { test: "public event" },
@@ -441,6 +456,7 @@ describe.sequential("Hierarchical Access Control", () => {
       privateEvent = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: privateDatasetInPrivateCatalog.id,
           sourceData: { test: "private event" },
           transformedData: { test: "private event" },
@@ -533,7 +549,7 @@ describe.sequential("Hierarchical Access Control", () => {
       await expect(
         payload.create({
           collection: "datasets",
-          data: { name: "Unauthorized Dataset", catalog: privateCatalog.id, language: "eng" },
+          data: { _status: "published", name: "Unauthorized Dataset", catalog: privateCatalog.id, language: "eng" },
           user: otherUser,
           overrideAccess: false,
         })
@@ -544,7 +560,13 @@ describe.sequential("Hierarchical Access Control", () => {
       await expect(
         payload.create({
           collection: "datasets",
-          data: { name: "Dataset by Other User", catalog: publicCatalog.id, language: "eng", isPublic: true },
+          data: {
+            _status: "published",
+            name: "Dataset by Other User",
+            catalog: publicCatalog.id,
+            language: "eng",
+            isPublic: true,
+          },
           user: otherUser,
           overrideAccess: false,
         })
@@ -579,6 +601,7 @@ describe.sequential("Hierarchical Access Control", () => {
       const tempEvent = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           dataset: privateDatasetInPrivateCatalog.id,
           sourceData: { test: "to be deleted" },
           transformedData: { test: "to be deleted" },
@@ -602,7 +625,7 @@ describe.sequential("Hierarchical Access Control", () => {
       // Create and update a catalog to generate versions
       const testCatalog = await payload.create({
         collection: "catalogs",
-        data: { name: "Version Test Catalog", isPublic: true },
+        data: { _status: "published", name: "Version Test Catalog", isPublic: true },
         user: ownerUser,
       });
 

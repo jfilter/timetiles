@@ -47,6 +47,7 @@ describe.sequential("/api/v1/events - location filtering", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `with-coords-${i + 1}`,
           dataset: testDatasetId,
           sourceData: { title: `Event with coords ${i + 1}` },
@@ -62,6 +63,7 @@ describe.sequential("/api/v1/events - location filtering", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `no-coords-${i + 1}`,
           dataset: testDatasetId,
           sourceData: { title: `Event without coords ${i + 1}` },

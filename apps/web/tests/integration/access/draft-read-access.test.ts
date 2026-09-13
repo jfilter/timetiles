@@ -3,7 +3,8 @@
  *
  * Each document is published and then gets an autosaved draft. Editors and
  * owners read the draft; anonymous callers and other users only ever see the
- * published state, and none of them may list version history.
+ * published state, and none of them may list version history. Rows that were
+ * never published stay hidden from everyone but their owner and editors.
  *
  * @module
  */
@@ -20,17 +21,41 @@ import {
   withUsers,
 } from "../../setup/integration/environment";
 
-type DraftCollection = "themes" | "layout-templates" | "sites" | "views" | "dataset-schemas";
+type DraftCollection =
+  | "themes"
+  | "layout-templates"
+  | "sites"
+  | "views"
+  | "dataset-schemas"
+  | "catalogs"
+  | "datasets"
+  | "events";
+
+type DataCollection = "catalogs" | "datasets" | "events";
 
 interface DraftCase {
   id: number;
-  field: "name" | "approvalNotes";
+  field: "name" | "approvalNotes" | "locationName";
   published: string;
   draft: string;
 }
 
-const ALL_COLLECTIONS: DraftCollection[] = ["themes", "layout-templates", "sites", "views", "dataset-schemas"];
-const OWNED_COLLECTIONS: DraftCollection[] = ["sites", "views", "dataset-schemas"];
+const DATA_COLLECTIONS: DataCollection[] = ["catalogs", "datasets", "events"];
+const ALL_COLLECTIONS: DraftCollection[] = [
+  "themes",
+  "layout-templates",
+  "sites",
+  "views",
+  "dataset-schemas",
+  ...DATA_COLLECTIONS,
+];
+const OWNED_COLLECTIONS: DraftCollection[] = ["sites", "views", "dataset-schemas", ...DATA_COLLECTIONS];
+
+/** Minimal 1x1 PNG for the media upload. */
+const PNG_BUFFER = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 describe.sequential("Draft read access", () => {
   let testEnv: Awaited<ReturnType<typeof createIntegrationTestEnvironment>>;
@@ -39,6 +64,7 @@ describe.sequential("Draft read access", () => {
   let otherUser: User;
   let editor: User;
   const cases = {} as Record<DraftCollection, DraftCase>;
+  const draftOnlyIds = {} as Record<DataCollection, number>;
 
   const publishThenDraft = async (
     collection: DraftCollection,
@@ -50,6 +76,20 @@ describe.sequential("Draft read access", () => {
     await payload.update({ collection, id, data: { [field]: published, _status: "published" } });
     await payload.update({ collection, id, draft: true, data: { [field]: draft } });
     cases[collection] = { id, field, published, draft };
+  };
+
+  const createEvent = async (datasetId: number, uniqueId: string, status: "draft" | "published") => {
+    return payload.create({
+      collection: "events",
+      data: {
+        uniqueId,
+        dataset: datasetId,
+        sourceData: {},
+        transformedData: {},
+        eventTimestamp: new Date(2024, 0, 1).toISOString(),
+        _status: status,
+      },
+    });
   };
 
   beforeAll(async () => {
@@ -101,6 +141,32 @@ describe.sequential("Draft read access", () => {
     const { dataset } = await withDataset(testEnv, catalog.id, { isPublic: true });
     const { schema } = await withSchemaVersion(testEnv, dataset.id, { status: "published" });
     await publishThenDraft("dataset-schemas", schema.id, "approvalNotes");
+
+    const event = await createEvent(dataset.id, `draft-event-${suffix}`, "published");
+    await publishThenDraft("events", event.id, "locationName");
+    await publishThenDraft("datasets", dataset.id);
+    await publishThenDraft("catalogs", catalog.id);
+
+    const draftCatalog = await payload.create({
+      collection: "catalogs",
+      data: { name: "Draft-only catalog", slug: `draft-only-catalog-${suffix}`, isPublic: true, _status: "draft" },
+      user: owner,
+    });
+    const draftDataset = await payload.create({
+      collection: "datasets",
+      data: {
+        name: "Draft-only dataset",
+        slug: `draft-only-dataset-${suffix}`,
+        catalog: catalog.id,
+        language: "eng",
+        isPublic: true,
+        _status: "draft",
+      },
+    });
+    const draftEvent = await createEvent(dataset.id, `draft-only-event-${suffix}`, "draft");
+    draftOnlyIds.catalogs = draftCatalog.id;
+    draftOnlyIds.datasets = draftDataset.id;
+    draftOnlyIds.events = draftEvent.id;
   }, 120000);
 
   afterAll(async () => {
@@ -125,6 +191,16 @@ describe.sequential("Draft read access", () => {
     return result.docs.map((doc) => Reflect.get(doc, field));
   };
 
+  const findDraftOnly = async (collection: DataCollection, user: User | undefined) => {
+    const result = await payload.find({
+      collection,
+      where: { id: { equals: draftOnlyIds[collection] } },
+      overrideAccess: false,
+      user,
+    });
+    return result.docs.map((doc) => doc.id);
+  };
+
   describe.each([
     ["anonymous", () => undefined],
     ["another user", () => otherUser],
@@ -140,6 +216,10 @@ describe.sequential("Draft read access", () => {
     it.each(ALL_COLLECTIONS)("cannot list %s versions", async (collection) => {
       await expect(payload.findVersions({ collection, overrideAccess: false, user: getUser() })).rejects.toThrow();
     });
+
+    it.each(DATA_COLLECTIONS)("cannot find a never-published %s", async (collection) => {
+      expect(await findDraftOnly(collection, getUser())).toEqual([]);
+    });
   });
 
   describe("owner", () => {
@@ -151,12 +231,57 @@ describe.sequential("Draft read access", () => {
     it.each(OWNED_COLLECTIONS)("cannot list %s versions", async (collection) => {
       await expect(payload.findVersions({ collection, overrideAccess: false, user: owner })).rejects.toThrow();
     });
+
+    it.each(DATA_COLLECTIONS)("finds the own never-published %s", async (collection) => {
+      expect(await findDraftOnly(collection, owner)).toEqual([draftOnlyIds[collection]]);
+    });
   });
 
   describe("editor", () => {
     it.each(ALL_COLLECTIONS)("reads the %s draft", async (collection) => {
       expect(await readFindByID(collection, editor)).toBe(cases[collection].draft);
       expect(await readFind(collection, editor)).toEqual([cases[collection].draft]);
+    });
+
+    it.each(DATA_COLLECTIONS)("finds a never-published %s", async (collection) => {
+      expect(await findDraftOnly(collection, editor)).toEqual([draftOnlyIds[collection]]);
+    });
+  });
+
+  describe("media", () => {
+    it("has no draft state, so a draft save is what anonymous readers get", async () => {
+      const media = await payload.create({
+        collection: "media",
+        data: { alt: "Original" },
+        file: {
+          data: PNG_BUFFER,
+          mimetype: "image/png",
+          name: `draft-media-${Date.now()}.png`,
+          size: PNG_BUFFER.length,
+        },
+        user: owner,
+        overrideAccess: false,
+      });
+      expect(media).not.toHaveProperty("_status");
+
+      await payload.update({
+        collection: "media",
+        id: media.id,
+        draft: true,
+        data: { alt: "Updated" },
+        user: owner,
+        overrideAccess: false,
+      });
+
+      const live = await payload.findByID({ collection: "media", id: media.id, overrideAccess: false });
+      const withDraft = await payload.findByID({
+        collection: "media",
+        id: media.id,
+        draft: true,
+        overrideAccess: false,
+      });
+      expect(live.alt).toBe("Updated");
+      expect(withDraft).toEqual(live);
     });
   });
 });

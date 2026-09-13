@@ -58,7 +58,7 @@ describe.sequential("denyPendingDeletion Access Control", () => {
     await expect(
       testEnv.payload.create({
         collection: "catalogs",
-        data: { name: "Should Not Be Created", isPublic: true },
+        data: { _status: "published", name: "Should Not Be Created", isPublic: true },
         user: pendingDeletionUser,
         overrideAccess: false,
       })
@@ -68,7 +68,7 @@ describe.sequential("denyPendingDeletion Access Control", () => {
   it("should allow catalog creation for a normal user without pending deletion", async () => {
     const catalog = await testEnv.payload.create({
       collection: "catalogs",
-      data: { name: "Normal User Catalog", isPublic: true },
+      data: { _status: "published", name: "Normal User Catalog", isPublic: true },
       user: normalUser,
       overrideAccess: false,
     });
@@ -81,7 +81,7 @@ describe.sequential("denyPendingDeletion Access Control", () => {
     // Create a public catalog via admin/override
     const catalog = await testEnv.payload.create({
       collection: "catalogs",
-      data: { name: "Public Catalog For Read Test", isPublic: true },
+      data: { _status: "published", name: "Public Catalog For Read Test", isPublic: true },
       overrideAccess: true,
     });
 

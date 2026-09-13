@@ -80,6 +80,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `filter-logic-${i + 1}`,
           dataset: testDatasetId,
           sourceData: eventData,
@@ -108,6 +109,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `tag-filter-${i + 1}`,
           dataset: tagDatasetId,
           sourceData: { tags: tagEvents[i] },
@@ -208,6 +210,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "filter-null-field",
         dataset: testDatasetId,
         sourceData: { category: "Music" },
@@ -240,6 +243,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "filter-special-paren",
         dataset: testDatasetId,
         sourceData: { category: "State-based (conflict)" },
@@ -265,6 +269,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "filter-special-chars",
         dataset: testDatasetId,
         sourceData: { summary: "Gov't — Region/Area, District" },
@@ -323,6 +328,7 @@ describe.sequential("/api/v1/events - field filter logic", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "temporal-null-status",
         dataset: testDatasetId,
         sourceData: { category: "Music" },

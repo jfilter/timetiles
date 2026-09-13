@@ -49,6 +49,7 @@ describe.sequential("/api/v1/events/bounds - antimeridian", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `antimeridian-${i}`,
           dataset: datasetId,
           sourceData: {},

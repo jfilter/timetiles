@@ -72,6 +72,7 @@ describe.sequential("event list sorting by a transformedData field", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `sort-parity-${index + 1}-${RUN_ID}`,
           dataset: datasetId,
           sourceData: row,

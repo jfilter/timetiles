@@ -132,6 +132,7 @@ describe.sequential("/api/v1/datasets/[id]/numeric-stats", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `us-stats-${i + 1}`,
           dataset: usDatasetId,
           sourceData: { title: `US ${i + 1}`, ...usRows[i] },
@@ -148,6 +149,7 @@ describe.sequential("/api/v1/datasets/[id]/numeric-stats", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `eu-stats-${i + 1}`,
           dataset: euDatasetId,
           sourceData: { title: `EU ${i + 1}`, ...euRows[i] },

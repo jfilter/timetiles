@@ -88,6 +88,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       const event = await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: uid(`histogram-test-event-${i + 1}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: {
@@ -359,6 +360,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: uid(`histogram-single-ts-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Single TS ${i}` },
@@ -393,6 +395,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: uid(`histogram-divisible-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Divisible ${i}` },
@@ -431,6 +434,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: uid(`histogram-centuries-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `Centuries ${i}` },
@@ -465,6 +469,7 @@ describe.sequential("/api/v1/events/temporal", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: uid(`histogram-minmax-${i}`),
           dataset: Number.parseInt(testDatasetId),
           sourceData: { title: `MinMax ${i}` },
@@ -504,6 +509,7 @@ describe.sequential("/api/v1/events/temporal", () => {
         await payload.create({
           collection: "events",
           data: {
+            _status: "published",
             uniqueId: `ranked-${randomUUID()}`,
             dataset: dataset.id,
             sourceData: { title: "Ranked event" },

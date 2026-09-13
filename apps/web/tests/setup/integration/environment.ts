@@ -571,6 +571,7 @@ export const withCatalog = async (
       slug: options.slug ?? `test-catalog-${timestamp}-${randomSuffix}`,
       description: options.description ?? ("Test catalog" as any),
       isPublic: options.isPublic ?? false,
+      _status: "published",
     },
     user: options.user,
   });
@@ -656,6 +657,7 @@ export const withDataset = async (
       language: options?.language ?? "eng",
       schemaConfig: options?.schemaConfig ?? { locked: false, autoGrow: true },
       isPublic: options?.isPublic ?? false,
+      _status: "published",
       idStrategy: options?.idStrategy as any,
       description: options?.description,
       ...(interpretationPlan ? { interpretationPlan: interpretationPlan as any } : {}),

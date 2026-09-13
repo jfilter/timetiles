@@ -53,6 +53,7 @@ describe.sequential("/api/v1/events - field filtering", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `field-filter-${i + 1}`,
           dataset: testDatasetId,
           sourceData: { title: `Event ${i + 1}`, category: categories[i] },
@@ -71,6 +72,7 @@ describe.sequential("/api/v1/events - field filtering", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `nested-field-filter-${i + 1}`,
           dataset: nestedDatasetId,
           sourceData: { title: `Nested Event ${i + 1}`, venue: { city, address: { city } } },

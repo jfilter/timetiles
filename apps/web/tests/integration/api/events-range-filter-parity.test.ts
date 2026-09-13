@@ -140,6 +140,7 @@ describe.sequential("numeric range filter — list/map/temporal parity", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `us-parity-${i + 1}`,
           dataset: usDatasetId,
           sourceData: { title: `US ${i + 1}`, price: row.price },
@@ -160,6 +161,7 @@ describe.sequential("numeric range filter — list/map/temporal parity", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `eu-parity-${i + 1}`,
           dataset: euDatasetId,
           sourceData: { title: `EU ${i + 1}`, betrag: euRows[i]!.betrag },

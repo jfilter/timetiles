@@ -71,6 +71,7 @@ describe.sequential("Event API Access Control Consistency", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `private-event-${Date.now()}-${i}`,
           dataset: privateDatasetId,
           sourceData: { title: `Private Event ${i + 1}` },
@@ -86,6 +87,7 @@ describe.sequential("Event API Access Control Consistency", () => {
       await payload.create({
         collection: "events",
         data: {
+          _status: "published",
           uniqueId: `public-event-${Date.now()}-${i}`,
           dataset: publicDatasetId,
           sourceData: { title: `Public Event ${i + 1}` },

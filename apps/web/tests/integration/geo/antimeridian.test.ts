@@ -42,6 +42,7 @@ describe.sequential("Anti-meridian longitude filtering", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "antimeridian-event-a-fiji",
         dataset: testDatasetId,
         sourceData: { title: "Fiji Event" },
@@ -55,6 +56,7 @@ describe.sequential("Anti-meridian longitude filtering", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "antimeridian-event-b-samoa",
         dataset: testDatasetId,
         sourceData: { title: "Samoa Event" },
@@ -68,6 +70,7 @@ describe.sequential("Anti-meridian longitude filtering", () => {
     await payload.create({
       collection: "events",
       data: {
+        _status: "published",
         uniqueId: "antimeridian-event-c-greenwich",
         dataset: testDatasetId,
         sourceData: { title: "Greenwich Event" },

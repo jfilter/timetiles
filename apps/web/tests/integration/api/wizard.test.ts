@@ -16,7 +16,7 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { parseExcelPreview } from "@/app/api/ingest/preview-schema/helpers";
-import { processDataset } from "@/lib/ingest/configure-service";
+import { getOrCreateCatalog, processDataset } from "@/lib/ingest/configure-service";
 
 import {
   buildTestInterpretationPlan,
@@ -400,6 +400,26 @@ describe.sequential("Import Wizard API Endpoints", () => {
 
       const dataset = await payload.findByID({ collection: "datasets", id: datasetId });
       expect(dataset.deduplicationConfig.enabled).toBe(true);
+    });
+
+    it("publishes the catalog and dataset it creates", async () => {
+      const req = Object.assign(new NextRequest("http://localhost/api/ingest/configure"), { user: testUser });
+      const catalogId = await getOrCreateCatalog(payload, req, "new", `Wizard catalog ${Date.now()}`, testUser);
+      expect(typeof catalogId).toBe("number");
+      const datasetId = await processDataset(
+        payload,
+        req,
+        { sheetIndex: 0, datasetId: "new", newDatasetName: "Wizard published dataset" },
+        undefined,
+        catalogId as number,
+        "skip",
+        false
+      );
+
+      const catalog = await payload.findByID({ collection: "catalogs", id: catalogId, overrideAccess: false });
+      const dataset = await payload.findByID({ collection: "datasets", id: datasetId, overrideAccess: false });
+      expect(catalog._status).toBe("published");
+      expect(dataset._status).toBe("published");
     });
 
     it("stores skip duplicate strategy via idStrategy", async () => {
