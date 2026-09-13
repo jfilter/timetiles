@@ -147,8 +147,8 @@ count_snapshots() {
     count=$(run_sql_quiet "SELECT COUNT(*) FROM payload.users WHERE email = 'bats-test@example.com';")
     [ "$count" -eq 1 ]
 
-    # Backup
-    "$DEPLOY_DIR/timetiles" backup db
+    # Full backup: `restore latest` needs both a db and an uploads snapshot
+    "$DEPLOY_DIR/timetiles" backup full
 
     # Delete data
     run_sql "DELETE FROM payload.users WHERE email = 'bats-test@example.com';"
