@@ -105,22 +105,20 @@ class FeatureFlagService {
   }
 }
 
-// Singleton: must be shared across requests because the in-memory flag cache
-// is process-level state. Creating a fresh instance per request would cause
-// redundant database queries on every call.
-let featureFlagService: FeatureFlagService | null = null;
+// Route handlers and pages are bundled separately, so a module-level singleton exists once
+// per bundle; the process-wide slot lets a settings save invalidate every copy.
+const SERVICE_KEY = Symbol.for("timetiles.featureFlagService");
+type ServiceSlot = { [SERVICE_KEY]?: FeatureFlagService | null };
+const slot = globalThis as ServiceSlot;
 
 export const getFeatureFlagService = (payload: Payload): FeatureFlagService => {
-  featureFlagService ??= new FeatureFlagService(payload);
-  return featureFlagService;
+  slot[SERVICE_KEY] ??= new FeatureFlagService(payload);
+  return slot[SERVICE_KEY];
 };
 
-/**
- * Reset the feature flag service singleton (for testing).
- * Call this in beforeEach to ensure clean state between tests.
- */
+/** Drops the cached flags in every bundle of this process. */
 export const resetFeatureFlagService = (): void => {
-  featureFlagService = null;
+  slot[SERVICE_KEY] = null;
 };
 
 /**
