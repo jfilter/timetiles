@@ -19,15 +19,23 @@ import type { PayloadRequest } from "payload";
 import { getByPath } from "@/lib/utils/object-path";
 import type { Config } from "@/payload-types";
 
+/** German umlauts and sharp s use their conventional two-letter spelling. */
+const GERMAN_TRANSLITERATIONS: Record<string, string> = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
+
 /**
  * Generates a basic slug from a string by:
- * - Converting to lowercase
- * - Replacing non-alphanumeric characters with hyphens
+ * - Converting to lowercase and transliterating German umlauts (ü → ue)
+ * - Dropping the diacritics of other accented letters (é → e)
+ * - Replacing remaining non-alphanumeric characters with hyphens
  * - Removing leading/trailing hyphens.
  */
 export const generateSlug = (text: string): string =>
   text
     .toLowerCase()
+    .normalize("NFC")
+    .replaceAll(/[äöüß]/g, (char) => GERMAN_TRANSLITERATIONS[char] ?? char)
+    .normalize("NFKD")
+    .replaceAll(/\p{M}/gu, "")
     .replaceAll(/[^a-z0-9]+/g, "-")
     .replaceAll(/(^-|-$)/g, "");
 

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { createSlugHook } from "@/lib/collections/slug";
+import { createSlugHook, generateSlug } from "@/lib/collections/slug";
 
 describe("createSlugHook", () => {
   const hook = createSlugHook("sites");
@@ -53,5 +53,20 @@ describe("createSlugHook", () => {
     });
 
     expect(slug).toBe("new-slug");
+  });
+});
+
+describe("generateSlug", () => {
+  it("transliterates German umlauts and sharp s", () => {
+    expect(generateSlug("Über uns")).toBe("ueber-uns");
+    expect(generateSlug("Straßenfest Köln – Märkte")).toBe("strassenfest-koeln-maerkte");
+  });
+
+  it("drops diacritics from other accented letters", () => {
+    expect(generateSlug("Café Crème à Paris")).toBe("cafe-creme-a-paris");
+  });
+
+  it("treats decomposed umlauts like composed ones", () => {
+    expect(generateSlug("U\u0308ber")).toBe("ueber");
   });
 });
