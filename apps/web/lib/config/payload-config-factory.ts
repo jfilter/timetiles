@@ -40,10 +40,6 @@ import {
   DEFAULT_UPLOAD_CONFIG,
 } from "./payload-shared-config";
 
-// Re-export for convenience
-export type { CollectionName } from "./payload-shared-config";
-export { COLLECTIONS } from "./payload-shared-config";
-
 export interface PayloadConfigOptions {
   // Environment type
   environment?: "production" | "test" | "development";

@@ -23,9 +23,8 @@ import fs from "node:fs";
 import type { Payload } from "payload";
 import { getPayload } from "payload";
 
-import type { CollectionName } from "@/lib/config/payload-config-factory";
 import { createTestConfig } from "@/lib/config/payload-config-factory";
-import { COLLECTIONS } from "@/lib/config/payload-shared-config";
+import { type CollectionName, COLLECTIONS } from "@/lib/config/payload-shared-config";
 import { readInterpretationPlan } from "@/lib/ingest/interpret";
 import {
   buildPlanFromPaths,
