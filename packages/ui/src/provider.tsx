@@ -31,6 +31,7 @@ interface UILabels {
   navigation: string;
   navigationDescription: string;
   closeNavigation: string;
+  close: string;
   loading: string;
   tryAgain: string;
   confirm: string;
@@ -60,6 +61,7 @@ const DEFAULT_UI_LABELS: UILabels = {
   navigation: "Navigation",
   navigationDescription: "Site navigation menu",
   closeNavigation: "Close navigation menu",
+  close: "Close",
   loading: "Loading...",
   tryAgain: "Try again",
   confirm: "Confirm",

@@ -10,6 +10,7 @@ import "@testing-library/jest-dom/vitest";
 import { render, screen } from "@testing-library/react";
 import { ConfirmDialog } from "@timetiles/ui/components/confirm-dialog";
 import { type ColumnDef, DataTable } from "@timetiles/ui/components/data-table";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@timetiles/ui/components/dialog";
 import { UIProvider } from "@timetiles/ui/provider";
 import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
@@ -58,5 +59,18 @@ describe.each([
 
     expect(screen.getByRole("button", { name: messages.Common.confirm })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: messages.Common.cancel })).toBeInTheDocument();
+  });
+
+  it("names the dialog close button without per-call labels", () => {
+    renderTranslated(
+      <Dialog open>
+        <DialogContent>
+          <DialogTitle>Title</DialogTitle>
+          <DialogDescription>Description</DialogDescription>
+        </DialogContent>
+      </Dialog>
+    );
+
+    expect(screen.getByRole("button", { name: messages.Common.close })).toBeInTheDocument();
   });
 });

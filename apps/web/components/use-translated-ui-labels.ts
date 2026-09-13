@@ -24,6 +24,7 @@ export const useTranslatedUILabels = (): UILabels => {
       navigation: t("navigation"),
       navigationDescription: t("navigationDescription"),
       closeNavigation: t("closeNavigation"),
+      close: t("close"),
       loading: t("loading"),
       tryAgain: t("tryAgain"),
       confirm: t("confirm"),

@@ -15,6 +15,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 import * as React from "react";
 
+import { useUILabels } from "../provider";
+
 // Type for Lucide React icons with React 19 compatibility
 type IconComponent = React.ComponentType<{ className?: string }>;
 
@@ -74,20 +76,24 @@ interface DialogContentProps
   showCloseButton?: boolean;
 }
 
-const DialogContent = ({ className, children, variant, showCloseButton = true, ref, ...props }: DialogContentProps) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content ref={ref} className={cn(dialogContentVariants({ variant }), className)} {...props}>
-      {children}
-      {showCloseButton && (
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none">
-          {React.createElement(X as IconComponent, { className: "h-4 w-4" })}
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-);
+const DialogContent = ({ className, children, variant, showCloseButton = true, ref, ...props }: DialogContentProps) => {
+  const labels = useUILabels();
+
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Content ref={ref} className={cn(dialogContentVariants({ variant }), className)} {...props}>
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-none disabled:pointer-events-none">
+            {React.createElement(X as IconComponent, { className: "h-4 w-4" })}
+            <span className="sr-only">{labels.close}</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  );
+};
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
