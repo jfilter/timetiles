@@ -64,6 +64,7 @@ import type {
   TestimonialsBlock,
   TimelineBlock,
 } from "@/lib/types/cms-blocks";
+import { isCssColor } from "@/lib/utils/css-color";
 
 import { IconMapper } from "./icon-mapper";
 import { RichText } from "./layout/rich-text";
@@ -256,7 +257,7 @@ const renderSeparator = (separator: string | null | undefined): React.ReactEleme
 };
 
 const buildInlineStyle = (style: BlockStyle): React.CSSProperties | undefined => {
-  if (!style.backgroundColor) return undefined;
+  if (!style.backgroundColor || !isCssColor(style.backgroundColor)) return undefined;
   return { backgroundColor: style.backgroundColor };
 };
 

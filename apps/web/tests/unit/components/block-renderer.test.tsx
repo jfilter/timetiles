@@ -11,19 +11,26 @@
  *    ones that catch that class of bug — a DOM assertion alone cannot.
  * 2. The Hero block's `background` select mapped "gradient" onto "grid", so
  *    both CMS options rendered identically.
+ * 3. Block Style `backgroundColor` is free text placed into an inline style,
+ *    so anything but a single colour value must be rejected.
  *
  * @module
  * @category Tests
  */
+import "@/lib/blocks";
+
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { NextIntlClientProvider } from "next-intl";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { BlockRenderer } from "@/components/block-renderer";
 import { blockStyleFields } from "@/lib/blocks/block-style-fields";
 import type { Block } from "@/lib/types/cms-blocks";
 
+import en from "../../../messages/en.json";
 import { renderWithProviders } from "../../setup/unit/react-render";
 
 const BLOCK_RENDERER_SOURCE = readFileSync(join(process.cwd(), "components", "block-renderer.tsx"), "utf8");
@@ -44,6 +51,15 @@ const optionValuesFor = (fieldName: string): string[] => {
     }
   }
   return [];
+};
+
+/** The Block Style `backgroundColor` field's validate function from the Payload config. */
+const backgroundColorValidate = () => {
+  const groupFields = "fields" in blockStyleFields ? blockStyleFields.fields : [];
+  const field = groupFields.find((candidate) => "name" in candidate && candidate.name === "backgroundColor");
+  if (!field || !("validate" in field) || typeof field.validate !== "function") throw new Error("validate missing");
+  const validate = field.validate as (value: string) => true | string;
+  return (value: string) => validate(value);
 };
 
 const heroBlock = (overrides: Partial<Block> = {}): Block =>
@@ -130,5 +146,32 @@ describe("BlockRenderer hero background", () => {
   it("defaults to the grid background when unset", () => {
     const { container } = renderWithProviders(<BlockRenderer blocks={[heroBlock()]} />);
     expect(container.querySelector("section")?.className).toContain("bg-background");
+  });
+});
+
+describe("BlockRenderer block background color", () => {
+  /** Server-render a hero with the given background, as the page is delivered to browsers. */
+  const serverMarkup = (backgroundColor: string) =>
+    renderToStaticMarkup(
+      <NextIntlClientProvider locale="en" messages={en}>
+        <BlockRenderer blocks={[heroBlock({ blockStyle: { backgroundColor } })]} />
+      </NextIntlClientProvider>
+    );
+
+  it("applies a valid color", () => {
+    expect(serverMarkup("#f5f5f5")).toContain('style="background-color:#f5f5f5"');
+  });
+
+  it("does not render a value that smuggles extra declarations", () => {
+    const markup = serverMarkup("red;position:fixed;inset:0;z-index:9999");
+    expect(markup).not.toContain("position:fixed");
+    expect(markup).not.toContain("style=");
+  });
+
+  it("rejects invalid colors in the field validator", () => {
+    const validate = backgroundColorValidate();
+    expect(validate("oklch(0.96 0.01 80)")).toBe(true);
+    expect(validate("")).toBe(true);
+    expect(validate("red;position:fixed")).toEqual(expect.any(String));
   });
 });

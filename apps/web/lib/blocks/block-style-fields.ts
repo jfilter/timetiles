@@ -10,6 +10,8 @@
  */
 import type { Field } from "payload";
 
+import { isCssColor } from "@/lib/utils/css-color";
+
 /** Block-level style control fields shared by all blocks. */
 export const blockStyleFields: Field = {
   name: "blockStyle",
@@ -81,6 +83,10 @@ export const blockStyleFields: Field = {
     {
       name: "backgroundColor",
       type: "text",
+      validate: (value: string | null | undefined) =>
+        !value ||
+        isCssColor(value) ||
+        "Enter a single CSS color, e.g. #f5f5f5, rgb(245 245 245) or oklch(0.96 0.01 80).",
       admin: { description: "Background color (CSS value, e.g., #f5f5f5 or oklch(0.96 0.01 80))" },
     },
     { name: "anchorId", type: "text", admin: { description: "HTML anchor ID for scroll-to links (e.g., 'features')" } },
