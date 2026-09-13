@@ -45,4 +45,26 @@ describe("MapControlPopover", () => {
 
     expect(screen.queryByText("Panel content")).not.toBeInTheDocument();
   });
+
+  it("returns focus to the trigger when Escape is pressed inside the panel", async () => {
+    const user = userEvent.setup();
+    render(
+      <MapControlPopover
+        trigger={({ onClick, isOpen }) => (
+          <button type="button" onClick={onClick} aria-expanded={isOpen}>
+            Settings
+          </button>
+        )}
+      >
+        <input aria-label="Radius" />
+      </MapControlPopover>
+    );
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("textbox", { name: "Radius" }));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("textbox", { name: "Radius" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Settings" })).toHaveFocus();
+  });
 });

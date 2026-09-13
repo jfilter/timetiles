@@ -66,7 +66,12 @@ export const MapControlPopover = ({
       }
     };
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      const container = containerRef.current;
+      const focusWasInside = container?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      // The trigger renders before the panel, so it is the first focusable element
+      if (focusWasInside) container?.querySelector<HTMLElement>("button, [href], [tabindex]")?.focus();
     };
     document.addEventListener("mousedown", handlePointer);
     document.addEventListener("keydown", handleKey);
