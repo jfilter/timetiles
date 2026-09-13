@@ -17,7 +17,6 @@ import {
   createCreatedByField,
   createOwnershipAccess,
   isAuthenticated,
-  isEditorOrAdmin,
   setCreatedByHook,
 } from "./shared-fields";
 
@@ -36,7 +35,7 @@ const preserveUploadMetadata: CollectionBeforeValidateHook = ({ data, operation,
 
 const Media: CollectionConfig = {
   slug: "media",
-  ...createCommonConfig(),
+  ...createCommonConfig({ versions: false }),
   upload: {
     staticDir: `${getEnv().UPLOAD_DIR}/media`,
     imageSizes: [
@@ -71,9 +70,6 @@ const Media: CollectionConfig = {
     // Only owner, editors, or admins can update/delete
     update: createOwnershipAccess(),
     delete: createOwnershipAccess(),
-
-    // Only admins and editors can read version history
-    readVersions: isEditorOrAdmin,
   },
   fields: [
     createCreatedByField("User who uploaded this media"),

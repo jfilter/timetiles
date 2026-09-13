@@ -317,18 +317,6 @@ export const enum_users_deletion_status = db_schema.enum(
   "enum_users_deletion_status",
   ["active", "pending_deletion", "deleted"],
 );
-export const enum_media_status = db_schema.enum("enum_media_status", [
-  "draft",
-  "published",
-]);
-export const enum__media_v_version_status = db_schema.enum(
-  "enum__media_v_version_status",
-  ["draft", "published"],
-);
-export const enum__media_v_published_locale = db_schema.enum(
-  "enum__media_v_published_locale",
-  ["en", "de"],
-);
 export const enum_location_cache_status = db_schema.enum(
   "enum_location_cache_status",
   ["draft", "published"],
@@ -4150,7 +4138,6 @@ export const media = db_schema.table(
       withTimezone: true,
       precision: 3,
     }),
-    _status: enum_media_status("_status").default("draft"),
     url: varchar("url"),
     thumbnailURL: varchar("thumbnail_u_r_l"),
     filename: varchar("filename"),
@@ -4188,7 +4175,6 @@ export const media = db_schema.table(
     index("media_updated_at_idx").on(columns.updatedAt),
     index("media_created_at_idx").on(columns.createdAt),
     index("media_deleted_at_idx").on(columns.deletedAt),
-    index("media__status_idx").on(columns._status),
     uniqueIndex("media_filename_idx").on(columns.filename),
     index("media_sizes_thumbnail_sizes_thumbnail_filename_idx").on(
       columns.sizes_thumbnail_filename,
@@ -4199,139 +4185,6 @@ export const media = db_schema.table(
     index("media_sizes_tablet_sizes_tablet_filename_idx").on(
       columns.sizes_tablet_filename,
     ),
-  ],
-);
-
-export const _media_v = db_schema.table(
-  "_media_v",
-  {
-    id: serial("id").primaryKey(),
-    parent: integer("parent_id").references((): AnyPgColumn => media.id, {
-      onDelete: "set null",
-    }),
-    version_createdBy: integer("version_created_by_id").references((): AnyPgColumn => users.id,
-      {
-        onDelete: "set null",
-      },
-    ),
-    version_alt: varchar("version_alt"),
-    version_updatedAt: timestamp("version_updated_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_createdAt: timestamp("version_created_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version_deletedAt: timestamp("version_deleted_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    }),
-    version__status:
-      enum__media_v_version_status("version__status").default("draft"),
-    version_url: varchar("version_url"),
-    version_thumbnailURL: varchar("version_thumbnail_u_r_l"),
-    version_filename: varchar("version_filename"),
-    version_mimeType: varchar("version_mime_type"),
-    version_filesize: numeric("version_filesize", { mode: "number" }),
-    version_width: numeric("version_width", { mode: "number" }),
-    version_height: numeric("version_height", { mode: "number" }),
-    version_focalX: numeric("version_focal_x", { mode: "number" }),
-    version_focalY: numeric("version_focal_y", { mode: "number" }),
-    version_sizes_thumbnail_url: varchar("version_sizes_thumbnail_url"),
-    version_sizes_thumbnail_width: numeric("version_sizes_thumbnail_width", {
-      mode: "number",
-    }),
-    version_sizes_thumbnail_height: numeric("version_sizes_thumbnail_height", {
-      mode: "number",
-    }),
-    version_sizes_thumbnail_mimeType: varchar(
-      "version_sizes_thumbnail_mime_type",
-    ),
-    version_sizes_thumbnail_filesize: numeric(
-      "version_sizes_thumbnail_filesize",
-      { mode: "number" },
-    ),
-    version_sizes_thumbnail_filename: varchar(
-      "version_sizes_thumbnail_filename",
-    ),
-    version_sizes_card_url: varchar("version_sizes_card_url"),
-    version_sizes_card_width: numeric("version_sizes_card_width", {
-      mode: "number",
-    }),
-    version_sizes_card_height: numeric("version_sizes_card_height", {
-      mode: "number",
-    }),
-    version_sizes_card_mimeType: varchar("version_sizes_card_mime_type"),
-    version_sizes_card_filesize: numeric("version_sizes_card_filesize", {
-      mode: "number",
-    }),
-    version_sizes_card_filename: varchar("version_sizes_card_filename"),
-    version_sizes_tablet_url: varchar("version_sizes_tablet_url"),
-    version_sizes_tablet_width: numeric("version_sizes_tablet_width", {
-      mode: "number",
-    }),
-    version_sizes_tablet_height: numeric("version_sizes_tablet_height", {
-      mode: "number",
-    }),
-    version_sizes_tablet_mimeType: varchar("version_sizes_tablet_mime_type"),
-    version_sizes_tablet_filesize: numeric("version_sizes_tablet_filesize", {
-      mode: "number",
-    }),
-    version_sizes_tablet_filename: varchar("version_sizes_tablet_filename"),
-    createdAt: timestamp("created_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    })
-      .defaultNow()
-      .notNull(),
-    updatedAt: timestamp("updated_at", {
-      mode: "string",
-      withTimezone: true,
-      precision: 3,
-    })
-      .defaultNow()
-      .notNull(),
-    snapshot: boolean("snapshot"),
-    publishedLocale: enum__media_v_published_locale("published_locale"),
-    latest: boolean("latest"),
-    autosave: boolean("autosave"),
-  },
-  (columns) => [
-    index("_media_v_parent_idx").on(columns.parent),
-    index("_media_v_version_version_created_by_idx").on(
-      columns.version_createdBy,
-    ),
-    index("_media_v_version_version_updated_at_idx").on(
-      columns.version_updatedAt,
-    ),
-    index("_media_v_version_version_created_at_idx").on(
-      columns.version_createdAt,
-    ),
-    index("_media_v_version_version_deleted_at_idx").on(
-      columns.version_deletedAt,
-    ),
-    index("_media_v_version_version__status_idx").on(columns.version__status),
-    index("_media_v_version_version_filename_idx").on(columns.version_filename),
-    index("_media_v_version_sizes_thumbnail_version_sizes_thumbnail_idx").on(
-      columns.version_sizes_thumbnail_filename,
-    ),
-    index("_media_v_version_sizes_card_version_sizes_card_filename_idx").on(
-      columns.version_sizes_card_filename,
-    ),
-    index("_media_v_version_sizes_tablet_version_sizes_tablet_filen_idx").on(
-      columns.version_sizes_tablet_filename,
-    ),
-    index("_media_v_created_at_idx").on(columns.createdAt),
-    index("_media_v_updated_at_idx").on(columns.updatedAt),
-    index("_media_v_snapshot_idx").on(columns.snapshot),
-    index("_media_v_published_locale_idx").on(columns.publishedLocale),
-    index("_media_v_latest_idx").on(columns.latest),
-    index("_media_v_autosave_idx").on(columns.autosave),
   ],
 );
 
@@ -9488,18 +9341,6 @@ export const relations_media = relations(media, ({ one }) => ({
     relationName: "createdBy",
   }),
 }));
-export const relations__media_v = relations(_media_v, ({ one }) => ({
-  parent: one(media, {
-    fields: [_media_v.parent],
-    references: [media.id],
-    relationName: "parent",
-  }),
-  version_createdBy: one(users, {
-    fields: [_media_v.version_createdBy],
-    references: [users.id],
-    relationName: "version_createdBy",
-  }),
-}));
 export const relations_location_cache = relations(location_cache, () => ({}));
 export const relations__location_cache_v = relations(
   _location_cache_v,
@@ -11213,9 +11054,6 @@ type DatabaseSchema = {
   enum_users_locale: typeof enum_users_locale;
   enum_users_trust_level: typeof enum_users_trust_level;
   enum_users_deletion_status: typeof enum_users_deletion_status;
-  enum_media_status: typeof enum_media_status;
-  enum__media_v_version_status: typeof enum__media_v_version_status;
-  enum__media_v_published_locale: typeof enum__media_v_published_locale;
   enum_location_cache_status: typeof enum_location_cache_status;
   enum__location_cache_v_version_status: typeof enum__location_cache_v_version_status;
   enum__location_cache_v_published_locale: typeof enum__location_cache_v_published_locale;
@@ -11360,7 +11198,6 @@ type DatabaseSchema = {
   users: typeof users;
   user_usage: typeof user_usage;
   media: typeof media;
-  _media_v: typeof _media_v;
   location_cache: typeof location_cache;
   _location_cache_v: typeof _location_cache_v;
   geocoding_providers_config_photon_layer: typeof geocoding_providers_config_photon_layer;
@@ -11533,7 +11370,6 @@ type DatabaseSchema = {
   relations_users: typeof relations_users;
   relations_user_usage: typeof relations_user_usage;
   relations_media: typeof relations_media;
-  relations__media_v: typeof relations__media_v;
   relations_location_cache: typeof relations_location_cache;
   relations__location_cache_v: typeof relations__location_cache_v;
   relations_geocoding_providers_config_photon_layer: typeof relations_geocoding_providers_config_photon_layer;

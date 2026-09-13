@@ -2313,7 +2313,6 @@ export interface Media {
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
   url?: string | null;
   thumbnailURL?: string | null;
   filename?: string | null;
@@ -4796,7 +4795,6 @@ export interface MediaSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
-  _status?: T;
   url?: T;
   thumbnailURL?: T;
   filename?: T;

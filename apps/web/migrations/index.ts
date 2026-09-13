@@ -75,6 +75,7 @@ import * as migration_20260813_181000_drop_duplicate_dataset_name_index from './
 import * as migration_20260813_200000_pg_functions_literal_key_first from './20260813_200000_pg_functions_literal_key_first';
 import * as migration_20260909_093926 from './20260909_093926';
 import * as migration_20260913_153257 from './20260913_153257';
+import * as migration_20260913_162013 from './20260913_162013';
 
 export const migrations = [
   {
@@ -460,6 +461,11 @@ export const migrations = [
   {
     up: migration_20260913_153257.up,
     down: migration_20260913_153257.down,
-    name: '20260913_153257'
+    name: '20260913_153257',
+  },
+  {
+    up: migration_20260913_162013.up,
+    down: migration_20260913_162013.down,
+    name: '20260913_162013',
   },
 ];
