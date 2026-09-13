@@ -85,6 +85,24 @@ curl_https_head() {
     [[ "$output" == *"X-Content-Type-Options"* ]] || [[ "$output" == *"x-content-type-options"* ]]
 }
 
+@test "security headers present on a Next.js static asset" {
+    # The static locations set Cache-Control, which drops inherited add_header lines.
+    local asset
+    asset=$(curl -fskL --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}/explore" \
+        | grep -oE '/_next/static/[^"]+\.js' | head -1)
+    echo "asset: $asset"
+    [ -n "$asset" ]
+
+    run curl_https_head "$asset"
+    local headers="${output,,}"
+    [[ "$headers" =~ http/[0-9.]+\ 200 ]]
+    [[ "$headers" == *"cache-control: public, immutable"* ]]
+    [[ "$headers" == *"x-frame-options"* ]]
+    [[ "$headers" == *"x-content-type-options"* ]]
+    [[ "$headers" == *"content-security-policy"* ]]
+    [[ "$headers" == *"strict-transport-security"* ]]
+}
+
 @test "Strict-Transport-Security header present" {
     run curl_https_head /api/health
     [[ "$output" == *"Strict-Transport-Security"* ]] || \
