@@ -39,10 +39,6 @@ export interface BeeswarmChartProps {
   isUpdating?: boolean;
   isError?: boolean;
   onRetry?: () => void;
-  /** Total event count (show "X of Y" when limited) */
-  totalCount?: number;
-  /** Number of visible points */
-  visibleCount?: number;
   emptyMessage?: string;
   /** Label for the corner badge shown while isUpdating is true */
   updatingLabel?: string;
