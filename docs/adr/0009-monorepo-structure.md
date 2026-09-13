@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-TimeTiles consists of a main web application, a documentation site, shared UI components, shared assets, and several tooling configuration packages. These need to be developed, tested, and built together while keeping clear boundaries between concerns. The project needed a monorepo strategy that supports this without introducing excessive tooling complexity.
+TimeTiles consists of a main web application, a documentation site, an optional scraper runner, shared UI components and assets, code shared between the web app and the runner, scraper SDKs, and tooling configuration packages. These need to be developed, tested, and built together while keeping clear boundaries between concerns. The project needed a monorepo strategy that supports this without introducing excessive tooling complexity.
 
 ## Decision
 
@@ -18,14 +18,16 @@ TimeTiles uses **pnpm workspaces** for package management and **Turborepo** for 
 timetiles/
 ├── apps/
 │   ├── web/                          # Main application
-│   └── docs/                         # Documentation site
+│   ├── docs/                         # Documentation site
+│   └── timescrape/                   # Optional Podman scraper runner
 ├── packages/
 │   ├── ui/                           # Shared UI component library
 │   ├── assets/                       # Shared logos and images
-│   ├── payload-schema-detection/     # Schema detection plugin
+│   ├── shared/                       # Code shared by web and timescrape
+│   ├── scraper/                      # Node.js scraper SDK and CLI
+│   ├── python/                       # Python scraper SDK
 │   ├── eslint-config/                # Shared ESLint configuration
-│   ├── typescript-config/            # Shared TypeScript configuration
-│   └── prettier-config/              # Shared Prettier configuration
+│   └── typescript-config/            # Shared TypeScript configuration
 ├── pnpm-workspace.yaml               # Workspace definition
 ├── turbo.json                        # Task pipeline configuration
 ├── Makefile                          # Developer command interface
@@ -34,16 +36,18 @@ timetiles/
 
 ### Workspace Packages
 
-| Package                             | Name                                  | Purpose                                                          | Consumers              |
-| ----------------------------------- | ------------------------------------- | ---------------------------------------------------------------- | ---------------------- |
-| `apps/web`                          | `web`                                 | Next.js 16 + Payload CMS application, main product               | Deployed to production |
-| `apps/docs`                         | `docs`                                | Nextra 4 documentation site, deployed to GitHub Pages            | Deployed separately    |
-| `packages/ui`                       | `@timetiles/ui`                       | Shared UI components (Radix UI, shadcn/ui, charts, icons)        | `web`, `docs`          |
-| `packages/assets`                   | `@timetiles/assets`                   | Shared logos and static assets                                   | `web`, `docs`          |
-| `packages/payload-schema-detection` | `@timetiles/payload-schema-detection` | Payload CMS plugin for import schema detection                   | `web`                  |
-| `packages/eslint-config`            | `@timetiles/eslint-config`            | ESLint flat configs (base, next-js, react-internal, mdx, vitest) | All packages           |
-| `packages/typescript-config`        | `@timetiles/typescript-config`        | Shared `tsconfig.json` base files                                | All packages           |
-| `packages/prettier-config`          | `@timetiles/prettier-config`          | Shared Prettier settings                                         | All packages           |
+| Package                      | Name                           | Purpose                                                     | Consumers                       |
+| ---------------------------- | ------------------------------ | ----------------------------------------------------------- | ------------------------------- |
+| `apps/web`                   | `web`                          | Next.js + Payload CMS application, main product             | Deployed to production          |
+| `apps/docs`                  | `docs`                         | Nextra documentation site                                   | Deployed to GitHub Pages        |
+| `apps/timescrape`            | `timescrape`                   | Runs user-defined scrapers in isolated Podman containers    | Deployed separately (optional)  |
+| `packages/ui`                | `@timetiles/ui`                | Shared UI components (Radix UI, shadcn/ui, charts, icons)   | `web`, `docs`; published to npm |
+| `packages/assets`            | `@timetiles/assets`            | Shared logos and static assets                              | `web`, `docs`                   |
+| `packages/shared`            | `@timetiles/shared`            | SSRF address classification and the scraper run contract    | `web`, `timescrape`             |
+| `packages/scraper`           | `@timetiles/scraper`           | Node.js scraper output SDK and `timetiles-scraper init` CLI | Published to npm                |
+| `packages/python`            | `timetiles`                    | Python scraper output SDK                                   | Published to PyPI               |
+| `packages/eslint-config`     | `@timetiles/eslint-config`     | ESLint flat configs                                         | All JavaScript packages         |
+| `packages/typescript-config` | `@timetiles/typescript-config` | Shared `tsconfig.json` base files                           | All JavaScript packages         |
 
 ### Why pnpm + Turborepo
 
@@ -61,7 +65,7 @@ timetiles/
 - Incremental adoption -- each package keeps its own `package.json` scripts, Turbo just orchestrates them
 - Minimal footprint -- a single `turbo` devDependency at the root, no generators or plugins required
 - Nx was considered but brings a heavier runtime, plugin ecosystem, and project graph model that exceeds what TimeTiles needs
-- Lerna was ruled out as it targets publishable package workflows (versioning, changelogs, npm publishing) which are unnecessary for a private monorepo
+- Lerna was ruled out as it targets publishable package workflows (versioning, changelogs, npm publishing); the few published packages are released by tag-triggered GitHub Actions workflows instead
 
 ### Build Pipeline
 
@@ -71,27 +75,27 @@ Turborepo's `turbo.json` defines a task dependency graph. The key relationships:
 build
   └── ^build              (build dependencies first)
 
-lint / typecheck
-  └── transit             (ensures internal packages are ready)
-      └── ^transit
+typecheck
+  └── ^build              (types resolve through built dist output)
 
-test / test:ai
-  └── ^build              (tests depend on built packages)
+lint / test / test:ai
+  └── transit             (orders tasks along the workspace graph)
+      └── ^transit
 ```
 
-The `transit` task is a lightweight dependency gate: it ensures packages like `@timetiles/ui` and `@timetiles/payload-schema-detection` (which have `tsc --build` as their build step) are compiled before downstream lint and typecheck tasks run. This avoids TypeScript errors from unresolved workspace imports.
+`transit` has no command of its own: depending on it orders tasks across the dependency graph without building anything. `typecheck` depends on `^build` instead, because `apps/web` and `apps/timescrape` resolve `@timetiles/shared` and `@timetiles/ui` through their built `dist` types, and a stale build would typecheck against old exports.
 
 When `turbo run build` executes, it:
 
-1. Builds `packages/ui` and `packages/payload-schema-detection` (no external deps, run in parallel)
-2. Builds `apps/web` (depends on `@timetiles/ui`, `@timetiles/payload-schema-detection`, `@timetiles/assets`)
-3. Builds `apps/docs` (depends on `@timetiles/ui`, `@timetiles/assets`, and generates TypeDoc API docs from `apps/web` source)
+1. Builds the tsup packages (`packages/shared`, `packages/ui`, `packages/scraper`) in parallel
+2. Builds `apps/web` and `apps/timescrape` against those builds
+3. Builds `apps/docs` (depends on `@timetiles/ui` and `@timetiles/assets`)
 
-Turborepo caches outputs (`.next/**`, `.test-results/**`, `coverage/**`) and skips unchanged tasks on subsequent runs.
+Turborepo caches build outputs (`.next/**`, `dist/**`, `out/**`) and test outputs (`.test-results/**`, `coverage/**`), and skips unchanged tasks on subsequent runs.
 
 ### Shared UI Library
 
-`packages/ui` (`@timetiles/ui`) is a private package that exports components consumed by both `apps/web` and `apps/docs`. It follows the shadcn/ui pattern:
+`packages/ui` (`@timetiles/ui`) exports components consumed by both `apps/web` and `apps/docs`, and is also published to npm. It follows the shadcn/ui pattern:
 
 - Components built on Radix UI primitives with Tailwind CSS styling
 - Exports organized by concern: `@timetiles/ui` (components), `@timetiles/ui/charts` (ECharts wrappers), `@timetiles/ui/icons` (Lucide icons), `@timetiles/ui/lib/utils` (utility functions)
@@ -100,17 +104,7 @@ Turborepo caches outputs (`.next/**`, `.test-results/**`, `coverage/**`) and ski
 
 ### Version Catalog
 
-`pnpm-workspace.yaml` defines a `catalog:` section that pins versions of shared dependencies across all packages:
-
-```yaml
-catalog:
-  react: ^19.2.4
-  react-dom: ^19.2.4
-  next: ^16.1.6
-  typescript: ^5.9.3
-  vitest: ^4.0.18
-  # ... 12 more entries
-```
+`pnpm-workspace.yaml` defines a `catalog:` section that pins versions of shared dependencies across all packages — the framework (React, Next.js), type definitions, build tooling, the Vitest family and shared libraries. The pinned versions live only there.
 
 Packages reference these with `"react": "catalog:"` instead of hardcoded versions. This ensures a single source of truth for framework versions and eliminates version drift between apps.
 
@@ -148,12 +142,12 @@ ci.yml (push to main, PRs)
 │   └── Verify Payload CMS generated types are in sync
 │
 ├── test-unit-integration.yml  (needs: build, check-payload-types)
-│   ├── PostgreSQL 17 + PostGIS 3.5 service container
+│   ├── PostgreSQL + PostGIS service container
 │   ├── Run tests with coverage (Vitest)
 │   └── SonarCloud scan
 │
 └── test-e2e.yml  (needs: build, check-payload-types)
-    ├── PostgreSQL 17 + PostGIS 3.5 service container
+    ├── PostgreSQL + PostGIS service container
     ├── Download build artifact from build job
     ├── Playwright tests (parallel workers)
     └── Upload failure artifacts (traces, screenshots)
@@ -161,11 +155,15 @@ ci.yml (push to main, PRs)
 
 Additional standalone workflows:
 
-| Workflow             | Trigger                        | Purpose                               |
-| -------------------- | ------------------------------ | ------------------------------------- |
-| `deploy-docs.yml`    | Push to main (docs paths), PRs | Build and deploy docs to GitHub Pages |
-| `release-images.yml` | Manual / release               | Build and push Docker images to GHCR  |
-| `security.yml`       | Scheduled / manual             | Security scanning                     |
+| Workflow                     | Trigger                             | Purpose                                                                                             |
+| ---------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `deploy-docs.yml`            | Push to main (docs paths), PRs      | Build and deploy docs to GitHub Pages                                                               |
+| `release-images.yml`         | `v*` tags, nightly, manual          | Build and push Docker images to GHCR, using the reusable `build-image.yml` and `merge-manifest.yml` |
+| `security.yml`               | Push and PRs to main, daily, manual | Security scanning                                                                                   |
+| `publish-ui.yml`             | `ui-v*` tags                        | Publish `@timetiles/ui` to npm                                                                      |
+| `publish-scraper.yml`        | `scraper-v*` tags                   | Publish `@timetiles/scraper` to npm                                                                 |
+| `publish-scraper-python.yml` | `python-v*` tags                    | Publish the Python SDK to PyPI                                                                      |
+| `logo-assets.yml`            | Manual                              | Generate logo assets                                                                                |
 
 The build artifact (`.next` directory) is shared between the build job and E2E tests via `actions/upload-artifact`, avoiding a redundant rebuild.
 
@@ -173,7 +171,7 @@ The build artifact (`.next` directory) is shared between the build job and E2E t
 
 - All packages share a single `pnpm-lock.yaml`, ensuring consistent dependency resolution across the monorepo
 - Adding a new package requires only creating a directory under `apps/` or `packages/` and adding a `package.json` -- Turborepo discovers it automatically via the pnpm workspace globs
-- The three configuration packages (`eslint-config`, `typescript-config`, `prettier-config`) enforce consistent code style without per-package configuration duplication
+- The two configuration packages (`eslint-config`, `typescript-config`) keep lint and compiler settings consistent without per-package duplication; formatting is a single root oxfmt configuration (ADR 0014)
 - CI runs lint and typecheck across all packages in a single job, catching cross-package breakages early
 - The `catalog:` version pinning means upgrading React or Next.js is a single-line change in `pnpm-workspace.yaml` rather than editing every `package.json`
 - Turborepo's caching means incremental builds and test runs are fast, but the cache can occasionally serve stale results -- `turbo run build --force` bypasses it when needed
