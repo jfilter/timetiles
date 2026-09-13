@@ -250,7 +250,8 @@ podman_as_deploy_user() {
     local timeout_s="$1"
     shift
 
-    local runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
+    local runtime_dir
+    runtime_dir="/run/user/$(id -u "${DEPLOY_USER:-timetiles}")"
     as_deploy_user timeout "$timeout_s" env \
         "XDG_RUNTIME_DIR=$runtime_dir" \
         podman "$@"
@@ -292,9 +293,9 @@ init_ssl() {
     echo -e "${YELLOW}Requesting certificate for $DOMAIN_NAME...${NC}"
     
     # Check if www DNS exists before requesting both domains
-    SSL_DOMAINS="-d $DOMAIN_NAME"
+    SSL_DOMAINS=(-d "$DOMAIN_NAME")
     if host "www.$DOMAIN_NAME" >/dev/null 2>&1; then
-        SSL_DOMAINS="$SSL_DOMAINS -d www.$DOMAIN_NAME"
+        SSL_DOMAINS+=(-d "www.$DOMAIN_NAME")
     else
         echo -e "${YELLOW}No DNS record for www.$DOMAIN_NAME, requesting cert for $DOMAIN_NAME only${NC}"
     fi
@@ -312,7 +313,7 @@ init_ssl() {
         --email "$LETSENCRYPT_EMAIL" \
         --agree-tos \
         --no-eff-email \
-        $SSL_DOMAINS; then
+        "${SSL_DOMAINS[@]}"; then
         echo -e "${GREEN}SSL certificate obtained successfully!${NC}"
 
         # Remove self-signed SSL override if present (so nginx uses the letsencrypt volume)
@@ -335,6 +336,139 @@ init_ssl() {
         exit 1
     fi
 }
+
+# Replace the scraper runner and its base images with the configured release, then prove it serves.
+# Exits non-zero on any failure; the installed runner is only replaced by a complete extraction.
+update_scraper_runner() {
+    load_env_vars TIMETILES_VERSION SCRAPER_IMAGE SCRAPER_PYTHON_IMAGE SCRAPER_NODE_IMAGE
+    local version runner_dir image src_root python_image node_image
+    version="${TIMETILES_VERSION:-latest}"
+    runner_dir="$SCRIPT_DIR/scraper-runner"
+
+    echo -e "${YELLOW}Updating scraper runner...${NC}"
+
+    # Update runner: try GHCR image first, fall back to local build
+    image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
+
+    # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks).
+    # Extracts into a staging dir and swaps only a complete runner in, so any failure keeps the old one.
+    extract_runner() {
+        local img="$1"
+        local staging part
+        docker rm -f tt-scraper-extract 2>/dev/null || true
+        docker create --name tt-scraper-extract "$img"
+        mkdir -p "$runner_dir"
+        staging=$(mktemp -d "$runner_dir/.staging.XXXXXX")
+        if ! docker export tt-scraper-extract | tar -xf - -C "$staging" --strip-components=1 app/dist app/node_modules app/package.json; then
+            docker rm -f tt-scraper-extract 2>/dev/null || true
+            rm -rf "$staging"
+            echo -e "${RED}Failed to extract runner from image $img${NC}"
+            exit 1
+        fi
+        docker rm tt-scraper-extract
+
+        if [[ ! -f "$staging/dist/index.js" ]]; then
+            rm -rf "$staging"
+            echo -e "${RED}Runner extraction failed — dist/index.js not found${NC}"
+            exit 1
+        fi
+
+        for part in dist node_modules package.json; do
+            rm -rf "${runner_dir:?}/$part"
+            mv "$staging/$part" "$runner_dir/$part"
+        done
+        rm -rf "$staging"
+    }
+
+    # The local build needs the monorepo ROOT, not just the app dir:
+    # apps/timescrape/Dockerfile runs `turbo prune`, which reads
+    # package.json / pnpm-workspace.yaml / turbo.json and the workspace
+    # packages timescrape takes workspace:* deps on. Install hosts have
+    # a sparse checkout (deployment/, apps/web/config/, apps/timescrape/
+    # — see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
+    # present says nothing about the context being buildable. Testing
+    # only for the Dockerfile sent bootstrap into a build that failed
+    # inside prune with an error naming neither the sparse checkout nor
+    # the missing files. Same guard as
+    # bootstrap/steps/13-scraper-setup.sh.
+    src_root="$SCRIPT_DIR/.."
+    if docker pull "$image" 2>/dev/null; then
+        extract_runner "$image"
+    elif [[ -f "$src_root/apps/timescrape/Dockerfile" \
+        && -f "$src_root/pnpm-workspace.yaml" \
+        && -f "$src_root/package.json" \
+        && -f "$src_root/turbo.json" ]]; then
+        echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
+        if ! docker build -t timescrape-runner-local -f "$src_root/apps/timescrape/Dockerfile" "$src_root"; then
+            echo -e "${RED}Failed to build the scraper runner image${NC}"
+            exit 1
+        fi
+        extract_runner timescrape-runner-local
+    elif [[ -f "$src_root/apps/timescrape/Dockerfile" ]]; then
+        echo -e "${RED}Cannot pull the runner image, and $src_root is not a full checkout${NC}"
+        echo -e "${YELLOW}The local build runs 'turbo prune' and needs the monorepo root${NC}"
+        echo -e "${YELLOW}(package.json, pnpm-workspace.yaml, turbo.json) plus packages/.${NC}"
+        echo -e "${YELLOW}Install hosts carry a sparse checkout that has none of them.${NC}"
+        echo -e "${YELLOW}Restore registry access, or run:${NC}"
+        echo -e "${YELLOW}  git -C $src_root sparse-checkout disable && git -C $src_root checkout -- .${NC}"
+        exit 1
+    else
+        # The installed runner is untouched, but it would not match the release.
+        echo -e "${RED}Cannot pull or build scraper runner${NC}"
+        exit 1
+    fi
+    chown -R "$DEPLOY_USER:$DEPLOY_USER" "$runner_dir"
+
+    # Update base images: try GHCR first, fall back to local build
+    python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
+    node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
+
+    # Neither branch matches when the registry pull fails (rate limit,
+    # transient network, bad tag) and no local sources exist — the sparse
+    # checkout only includes apps/timescrape/ when SKIP_SCRAPER != true.
+    # Falling through silently left timescrape-python/node on the old
+    # version while "Scraper runner updated!" printed, so scrapes ran on an
+    # image that did not match the deployed release. Bootstrap dies here
+    # too — see bootstrap/steps/13-scraper-setup.sh:156 and :167.
+    if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
+        podman_as_deploy_user 60 tag "$python_image" timescrape-python
+    elif [[ -f "$src_root/apps/timescrape/images/python/Dockerfile" && -d "$src_root/packages/python" ]]; then
+        podman_as_deploy_user 1800 build -t timescrape-python \
+            -f "$src_root/apps/timescrape/images/python/Dockerfile" \
+            --ignorefile "$src_root/apps/timescrape/images/python/Dockerfile.dockerignore" "$src_root"
+    else
+        echo -e "${RED}Cannot pull or build timescrape-python image${NC}"
+        exit 1
+    fi
+
+    if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
+        podman_as_deploy_user 60 tag "$node_image" timescrape-node
+    elif [[ -f "$src_root/apps/timescrape/images/node/Dockerfile" && -d "$src_root/packages/scraper" ]]; then
+        podman_as_deploy_user 1800 build -t timescrape-node \
+            -f "$src_root/apps/timescrape/images/node/Dockerfile" \
+            --ignorefile "$src_root/apps/timescrape/images/node/Dockerfile.dockerignore" "$src_root"
+    else
+        echo -e "${RED}Cannot pull or build timescrape-node image${NC}"
+        exit 1
+    fi
+
+    sudo -n /bin/systemctl restart timescrape-runner.service
+
+    # restart exits 0 for a unit that dies right after starting; only the health endpoint proves it runs.
+    trap - EXIT INT TERM
+    source "$SCRIPT_DIR/bootstrap/lib/common.sh"
+    trap - EXIT INT TERM
+    if ! wait_for_health "http://localhost:4000/health" 60 2; then
+        echo -e "${RED}Scraper runner is not healthy after the update; see: journalctl -u timescrape-runner -n 100${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}Scraper runner updated!${NC}"
+}
+
+# Sourced by unit tests: define the functions, dispatch no command.
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+    return 0
+fi
 
 case "$1" in
     setup)
@@ -556,7 +690,7 @@ case "$1" in
 
                 # Create temp SQL dump
                 TEMP_DUMP=$(mktemp)
-                trap "rm -f $TEMP_DUMP" EXIT INT TERM
+                trap 'rm -f "$TEMP_DUMP"' EXIT INT TERM
 
                 if ! $DC_CMD exec -T postgres bash -c 'PGPASSWORD=$POSTGRES_PASS pg_dump -h localhost -U $POSTGRES_USER --clean --if-exists $POSTGRES_DBNAME' > "$TEMP_DUMP"; then
                     echo -e "${RED}Database dump failed${NC}"
@@ -1494,115 +1628,7 @@ EOF
 
         # Update scraper runner if configured
         if grep -q "^SCRAPER_RUNNER_URL=" "$ENV_FILE" 2>/dev/null; then
-            load_env_vars TIMETILES_VERSION SCRAPER_IMAGE SCRAPER_PYTHON_IMAGE SCRAPER_NODE_IMAGE
-            version="${TIMETILES_VERSION:-latest}"
-            runner_dir="$SCRIPT_DIR/scraper-runner"
-
-            echo -e "${YELLOW}Updating scraper runner...${NC}"
-
-            # Update runner: try GHCR image first, fall back to local build
-            image="${SCRAPER_IMAGE:-ghcr.io/jfilter/timetiles-timescrape}:$version"
-            rm -rf "${runner_dir:?}/dist" "${runner_dir:?}/node_modules" "${runner_dir:?}/package.json"
-
-            # Helper: extract /app from image using tar (docker cp breaks pnpm symlinks)
-            extract_runner() {
-                local img="$1"
-                docker rm -f tt-scraper-extract 2>/dev/null || true
-                docker create --name tt-scraper-extract "$img"
-                # dist/, node_modules/ and package.json were already wiped above, so a
-                # half-finished extraction leaves a gutted runner. systemctl restart
-                # still exits 0 for a Type=simple unit that starts and immediately
-                # dies, so without these checks the update reports success and the
-                # runner is dead. Mirrors bootstrap/steps/13-scraper-setup.sh:209-218.
-                if ! docker export tt-scraper-extract | tar -xf - -C "$runner_dir" --strip-components=1 app/dist app/node_modules app/package.json; then
-                    docker rm -f tt-scraper-extract 2>/dev/null || true
-                    echo -e "${RED}Failed to extract runner from image $img${NC}"
-                    exit 1
-                fi
-                docker rm tt-scraper-extract
-
-                if [[ ! -f "$runner_dir/dist/index.js" ]]; then
-                    echo -e "${RED}Runner extraction failed — dist/index.js not found${NC}"
-                    exit 1
-                fi
-            }
-
-            # The local build needs the monorepo ROOT, not just the app dir:
-            # apps/timescrape/Dockerfile runs `turbo prune`, which reads
-            # package.json / pnpm-workspace.yaml / turbo.json and the workspace
-            # packages timescrape takes workspace:* deps on. Install hosts have
-            # a sparse checkout (deployment/, apps/web/config/, apps/timescrape/
-            # — see bootstrap/steps/05-clone-repo.sh), so the Dockerfile being
-            # present says nothing about the context being buildable. Testing
-            # only for the Dockerfile sent bootstrap into a build that failed
-            # inside prune with an error naming neither the sparse checkout nor
-            # the missing files. Same guard as
-            # bootstrap/steps/13-scraper-setup.sh.
-            src_root="$SCRIPT_DIR/.."
-            if docker pull "$image" 2>/dev/null; then
-                extract_runner "$image"
-            elif [[ -f "$src_root/apps/timescrape/Dockerfile" \
-                && -f "$src_root/pnpm-workspace.yaml" \
-                && -f "$src_root/package.json" \
-                && -f "$src_root/turbo.json" ]]; then
-                echo -e "${YELLOW}Registry pull failed, building runner locally...${NC}"
-                if ! docker build -t timescrape-runner-local -f "$src_root/apps/timescrape/Dockerfile" "$src_root"; then
-                    echo -e "${RED}Failed to build the scraper runner image${NC}"
-                    exit 1
-                fi
-                extract_runner timescrape-runner-local
-            elif [[ -f "$src_root/apps/timescrape/Dockerfile" ]]; then
-                echo -e "${RED}Cannot pull the runner image, and $src_root is not a full checkout${NC}"
-                echo -e "${YELLOW}The local build runs 'turbo prune' and needs the monorepo root${NC}"
-                echo -e "${YELLOW}(package.json, pnpm-workspace.yaml, turbo.json) plus packages/.${NC}"
-                echo -e "${YELLOW}Install hosts carry a sparse checkout that has none of them.${NC}"
-                echo -e "${YELLOW}Restore registry access, or run:${NC}"
-                echo -e "${YELLOW}  git -C $src_root sparse-checkout disable && git -C $src_root checkout -- .${NC}"
-                exit 1
-            else
-                # The rm -rf above already emptied runner_dir, so continuing here
-                # restarts the service against no runner at all and still reports
-                # success. Same failure as a partial extraction — fail loudly.
-                echo -e "${RED}Cannot pull or build scraper runner${NC}"
-                exit 1
-            fi
-            chown -R "$DEPLOY_USER:$DEPLOY_USER" "$runner_dir"
-
-            # Update base images: try GHCR first, fall back to local build
-            python_image="${SCRAPER_PYTHON_IMAGE:-ghcr.io/jfilter/timetiles-scraper-python:$version}"
-            node_image="${SCRAPER_NODE_IMAGE:-ghcr.io/jfilter/timetiles-scraper-node:$version}"
-
-            # Neither branch matches when the registry pull fails (rate limit,
-            # transient network, bad tag) and no local sources exist — the sparse
-            # checkout only includes apps/timescrape/ when SKIP_SCRAPER != true.
-            # Falling through silently left timescrape-python/node on the old
-            # version while "Scraper runner updated!" printed, so scrapes ran on an
-            # image that did not match the deployed release. Bootstrap dies here
-            # too — see bootstrap/steps/13-scraper-setup.sh:156 and :167.
-            if podman_as_deploy_user 900 pull "$python_image" 2>/dev/null; then
-                podman_as_deploy_user 60 tag "$python_image" timescrape-python
-            elif [[ -f "$src_root/apps/timescrape/images/python/Dockerfile" && -d "$src_root/packages/python" ]]; then
-                podman_as_deploy_user 1800 build -t timescrape-python \
-                    -f "$src_root/apps/timescrape/images/python/Dockerfile" \
-                    --ignorefile "$src_root/apps/timescrape/images/python/Dockerfile.dockerignore" "$src_root"
-            else
-                echo -e "${RED}Cannot pull or build timescrape-python image${NC}"
-                exit 1
-            fi
-
-            if podman_as_deploy_user 900 pull "$node_image" 2>/dev/null; then
-                podman_as_deploy_user 60 tag "$node_image" timescrape-node
-            elif [[ -f "$src_root/apps/timescrape/images/node/Dockerfile" && -d "$src_root/packages/scraper" ]]; then
-                podman_as_deploy_user 1800 build -t timescrape-node \
-                    -f "$src_root/apps/timescrape/images/node/Dockerfile" \
-                    --ignorefile "$src_root/apps/timescrape/images/node/Dockerfile.dockerignore" "$src_root"
-            else
-                echo -e "${RED}Cannot pull or build timescrape-node image${NC}"
-                exit 1
-            fi
-
-            sudo -n /bin/systemctl restart timescrape-runner.service
-            echo -e "${GREEN}Scraper runner updated!${NC}"
+            update_scraper_runner
         fi
 
         # Reclaim disk from images this update orphaned. Services were just

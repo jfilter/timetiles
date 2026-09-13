@@ -4,8 +4,13 @@
 
 HEALTH_URL="http://localhost/api/health"
 MAX_FAILURES=3
-FAILURE_COUNT_FILE="/var/lib/timetiles/.health-failures"
 ALERT_SCRIPT="/opt/timetiles/scripts/alert.sh"
+STATE_DIR="/var/lib/timetiles"
+FAILURE_COUNT_FILE="$STATE_DIR/.health-failures"
+COOLDOWN_FILE="$STATE_DIR/.last-restart"
+SCRAPER_FAILURE_COUNT_FILE="$STATE_DIR/.scraper-health-failures"
+SCRAPER_COOLDOWN_FILE="$STATE_DIR/.scraper-last-restart"
+SCRAPER_UNIT_FILE="/etc/systemd/system/timescrape-runner.service"
 
 # Both subsystems are checked on every run, and each reports through its own
 # exit status rather than ending the script. They used to exit directly, which
@@ -39,7 +44,6 @@ if [[ $failures -ge $MAX_FAILURES ]]; then
     logger -t timetiles "Max failures reached, restarting services"
 
     # Check cooldown to prevent restart loops
-    COOLDOWN_FILE="/var/lib/timetiles/.last-restart"
     if [[ -f "$COOLDOWN_FILE" ]]; then
         last_restart=$(cat "$COOLDOWN_FILE")
         now=$(date +%s)
@@ -66,13 +70,11 @@ return 1
 check_scraper() {
 
 # Check scraper runner (if configured as a systemd service)
-SCRAPER_FAILURE_COUNT_FILE="/var/lib/timetiles/.scraper-health-failures"
-SCRAPER_COOLDOWN_FILE="/var/lib/timetiles/.scraper-last-restart"
 
-# The scraper is optional. A host without it is healthy, not failing -- without
-# this the function would fall through to its closing `return 1` and report a
-# failure on every run.
-if ! systemctl is-active --quiet timescrape-runner.service 2>/dev/null; then
+# The scraper is optional: only a host without the unit counts as healthy here.
+# An installed unit that is inactive or crash-looping fails the probe below.
+if ! systemctl is-enabled --quiet timescrape-runner.service 2>/dev/null \
+    && [[ ! -f "$SCRAPER_UNIT_FILE" ]]; then
     return 0
 fi
 
@@ -121,6 +123,9 @@ fi
 return 1
 }
 
-check_web || STATUS=1
-check_scraper || STATUS=1
-exit $STATUS
+# Sourced by unit tests: define the checks without running them.
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    check_web || STATUS=1
+    check_scraper || STATUS=1
+    exit $STATUS
+fi
