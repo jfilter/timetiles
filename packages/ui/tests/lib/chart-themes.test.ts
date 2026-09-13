@@ -3,6 +3,9 @@
  *
  * @module
  */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import type { EChartsOption } from "echarts";
 import { describe, expect, it } from "vitest";
 
@@ -21,10 +24,71 @@ describe("defaultLightTheme", () => {
 describe("defaultDarkTheme", () => {
   it("has correct dark theme colors", () => {
     expect(defaultDarkTheme.backgroundColor).toBe("transparent");
-    expect(defaultDarkTheme.textColor).toBe("#404040");
-    expect(defaultDarkTheme.axisLineColor).toBe("#40404066");
-    expect(defaultDarkTheme.splitLineColor).toBe("#40404033");
-    expect(defaultDarkTheme.itemColor).toBe("#0089a7");
+    expect(defaultDarkTheme.textColor).toBe("#dbd7d0");
+    expect(defaultDarkTheme.axisLineColor).toBe("#dbd7d066");
+    expect(defaultDarkTheme.splitLineColor).toBe("#dbd7d033");
+    expect(defaultDarkTheme.itemColor).toBe("#0099ae");
+  });
+});
+
+const cartographicCss = readFileSync(path.resolve(import.meta.dirname, "../../src/themes/cartographic.css"), "utf-8");
+
+// Resolves a token (following var() references) to its oklch() value in a cartographic.css block.
+const readToken = (block: ":root" | ".dark", name: string): string => {
+  const selector = block === ".dark" ? String.raw`\.dark` : ":root";
+  const body = new RegExp(String.raw`^${selector} \{([^}]*)\}`, "m").exec(cartographicCss)?.[1] ?? "";
+  const value = new RegExp(`--${name}:\\s*([^;]+);`).exec(body)?.[1];
+  if (!value) throw new Error(`Token --${name} not found in ${block}`);
+  const reference = /^var\(--([\w-]+)\)$/.exec(value);
+  return reference?.[1] ? readToken(block, reference[1]) : value;
+};
+
+const oklchToLinearRgb = (value: string): [number, number, number] => {
+  const [l = 0, c = 0, h = 0] = value.slice(6, -1).trim().split(/\s+/).map(Number);
+  const a = c * Math.cos((h * Math.PI) / 180);
+  const b = c * Math.sin((h * Math.PI) / 180);
+  const lms = [
+    l + 0.3963377774 * a + 0.2158037573 * b,
+    l - 0.1055613458 * a - 0.0638541728 * b,
+    l - 0.0894841775 * a - 1.291485548 * b,
+  ].map((x) => x ** 3) as [number, number, number];
+  const clamp = (x: number) => Math.min(1, Math.max(0, x));
+  return [
+    clamp(4.0767416621 * lms[0] - 3.3077115913 * lms[1] + 0.2309699292 * lms[2]),
+    clamp(-1.2684380046 * lms[0] + 2.6097574011 * lms[1] - 0.3413193965 * lms[2]),
+    clamp(-0.0041960863 * lms[0] - 0.7034186147 * lms[1] + 1.707614701 * lms[2]),
+  ];
+};
+
+const hexToLinearRgb = (hex: string): [number, number, number] => {
+  const channel = (offset: number) => {
+    const x = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+  };
+  return [channel(1), channel(3), channel(5)];
+};
+
+const contrast = (a: [number, number, number], b: [number, number, number]): number => {
+  const luminance = ([r, g, bl]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+describe.each([
+  { mode: "light", block: ":root", theme: defaultLightTheme },
+  { mode: "dark", block: ".dark", theme: defaultDarkTheme },
+] as const)("default $mode theme contrast", ({ block, theme }) => {
+  it.each(["background", "card"])("text meets WCAG AA against --%s", (surface) => {
+    const ratio = contrast(hexToLinearRgb(theme.textColor ?? ""), oklchToLinearRgb(readToken(block, surface)));
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("tooltip text meets WCAG AA against the tooltip background", () => {
+    const ratio = contrast(
+      hexToLinearRgb(theme.tooltipForeground ?? ""),
+      hexToLinearRgb(theme.tooltipBackground ?? "")
+    );
+    expect(ratio).toBeGreaterThanOrEqual(4.5);
   });
 });
 

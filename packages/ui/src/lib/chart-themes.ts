@@ -50,15 +50,23 @@ export const defaultLightTheme: ChartTheme = {
   emphasisColor: defaultColors.navy,
 };
 
+// Hex values of the cartographic `.dark` tokens.
+const darkColors = {
+  charcoal: "#dbd7d0", // oklch(0.88 0.01 80)
+  navy: "#4f99bc", // oklch(0.65 0.09 230)
+  blue: "#0099ae", // oklch(0.62 0.12 210)
+  cream: "#25292e", // oklch(0.28 0.01 250)
+};
+
 export const defaultDarkTheme: ChartTheme = {
   backgroundColor: "transparent",
-  textColor: defaultColors.charcoal,
-  axisLineColor: `${defaultColors.charcoal}66`, // charcoal at 40% opacity
-  splitLineColor: `${defaultColors.charcoal}33`, // charcoal at 20% opacity
-  itemColor: defaultColors.blue,
-  tooltipBackground: defaultColors.charcoal,
-  tooltipForeground: defaultColors.parchment,
-  emphasisColor: defaultColors.navy,
+  textColor: darkColors.charcoal,
+  axisLineColor: `${darkColors.charcoal}66`, // charcoal at 40% opacity
+  splitLineColor: `${darkColors.charcoal}33`, // charcoal at 20% opacity
+  itemColor: darkColors.blue,
+  tooltipBackground: darkColors.cream,
+  tooltipForeground: darkColors.charcoal,
+  emphasisColor: darkColors.navy,
 };
 
 /** Configuration for map point and cluster visualization colors. */
