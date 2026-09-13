@@ -48,7 +48,11 @@
     "previous": "Previous",
     "next": "Next",
     "pageOf": "Page {page} of {total}",
-    "noResults": "No results."
+    "noResults": "No results.",
+    "navigation": "Navigation",
+    "navigationDescription": "Site navigation menu",
+    "openNavigation": "Open navigation menu",
+    "closeNavigation": "Close navigation menu"
   },
   "Auth": {
     "welcomeBack": "Welcome back",

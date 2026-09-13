@@ -143,8 +143,12 @@ export const AdaptiveHeader = ({
 
         {/* Mobile navigation drawer */}
         <MobileNavDrawer>
-          <MobileNavDrawerTrigger />
-          <MobileNavDrawerContent>
+          <MobileNavDrawerTrigger aria-label={t("openNavigation")} />
+          <MobileNavDrawerContent
+            title={t("navigation")}
+            description={t("navigationDescription")}
+            closeLabel={t("closeNavigation")}
+          >
             {filteredMenu.navItems?.map((item) => (
               <MobileNavDrawerLink key={`mobile-${item.url}-${item.label}`} active={pathname === item.url} asChild>
                 <Link href={item.url}>{item.label}</Link>
