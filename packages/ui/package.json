@@ -265,6 +265,41 @@
         "default": "./dist/components/newsletter-form.js"
       }
     },
+    "./components/labeled-slider": {
+      "source": "./src/components/labeled-slider.tsx",
+      "import": {
+        "types": "./dist/components/labeled-slider.d.ts",
+        "default": "./dist/components/labeled-slider.js"
+      }
+    },
+    "./components/map-control-button": {
+      "source": "./src/components/map-control-button.tsx",
+      "import": {
+        "types": "./dist/components/map-control-button.d.ts",
+        "default": "./dist/components/map-control-button.js"
+      }
+    },
+    "./components/map-control-popover": {
+      "source": "./src/components/map-control-popover.tsx",
+      "import": {
+        "types": "./dist/components/map-control-popover.d.ts",
+        "default": "./dist/components/map-control-popover.js"
+      }
+    },
+    "./components/popover": {
+      "source": "./src/components/popover.tsx",
+      "import": {
+        "types": "./dist/components/popover.d.ts",
+        "default": "./dist/components/popover.js"
+      }
+    },
+    "./components/preset-button-group": {
+      "source": "./src/components/preset-button-group.tsx",
+      "import": {
+        "types": "./dist/components/preset-button-group.d.ts",
+        "default": "./dist/components/preset-button-group.js"
+      }
+    },
     "./components/select": {
       "source": "./src/components/select.tsx",
       "import": {

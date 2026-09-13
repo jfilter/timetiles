@@ -4,7 +4,7 @@
  * @module
  * @category Constants
  */
-import type { ChartTheme } from "@timetiles/ui/components/charts/types";
+import type { ChartTheme } from "@timetiles/ui/charts";
 import type { MapColors } from "@timetiles/ui/lib/chart-themes";
 
 export const THEME_PRESET_STORAGE_KEY = "timetiles-theme-preset";
