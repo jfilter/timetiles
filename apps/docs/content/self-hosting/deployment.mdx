@@ -282,7 +282,7 @@ A bootstrapped host keeps the deployment files in a real git working tree at `/o
 
 ```
 /opt/timetiles-src/
-├── .git/                              # sparse-checkout: deployment/
+├── .git/                              # sparse-checkout: deployment/, apps/web/config/ (+ scraper sources)
 └── deployment/
     ├── timetiles                      # CLI script (tracked)
     ├── docker-compose.prod.yml        # Service orchestration (tracked)

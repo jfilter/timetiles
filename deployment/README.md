@@ -30,7 +30,9 @@ timetiles check      # full verification
 ## Directory Structure
 
 After installation, the bootstrap places a real git working tree at
-`/opt/timetiles-src/` (sparse-checkout: `deployment/`) and points
+`/opt/timetiles-src/` (sparse-checkout: `deployment/`, `apps/web/config/`, plus
+`apps/timescrape/` and the scraper SDK sources under `packages/` when the
+scraper is enabled) and points
 `/opt/timetiles` at it via a symlink. `timetiles update` then refreshes
 tracked files with a plain `git pull`; operator state is `.gitignore`d
 inside `deployment/` so it survives the pull.

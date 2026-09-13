@@ -50,17 +50,19 @@ This must return `true`. If it does not, consult the [Podman rootless tutorial](
 
 ### 2. Build Base Images
 
-The runner spawns containers from two pre-built base images. Build them from the `apps/timescrape/images/` directory:
+The runner spawns containers from two pre-built base images. Both install the scraper SDK from `packages/python` and `packages/scraper`, so build them from the repository root with the ignore file next to each Dockerfile:
 
 ```bash
-cd apps/timescrape
+# Python runtime (requests, beautifulsoup4, lxml, pandas, cssselect, timetiles SDK)
+podman build -t timescrape-python -f apps/timescrape/images/python/Dockerfile \
+  --ignorefile apps/timescrape/images/python/Dockerfile.dockerignore .
 
-# Python runtime (requests, beautifulsoup4, lxml, pandas, cssselect)
-podman build -t timescrape-python images/python/
-
-# Node.js runtime (cheerio, axios)
-podman build -t timescrape-node images/node/
+# Node.js runtime (cheerio, axios, @timetiles/scraper SDK)
+podman build -t timescrape-node -f apps/timescrape/images/node/Dockerfile \
+  --ignorefile apps/timescrape/images/node/Dockerfile.dockerignore .
 ```
+
+From a full checkout, `make timescrape-images` runs both builds.
 
 The image names `timescrape-python` and `timescrape-node` are expected by the runner. Do not change the tags.
 
@@ -510,7 +512,7 @@ podman run --rm --network=scraper-sandbox timescrape-python \
 | `podman: command not found`                  | Install Podman. See the Installation section above.                                                                                                                  |
 | Rootless check returns `false`               | On macOS: `podman machine init && podman machine start`. On Linux: consult the Podman rootless docs.                                                                 |
 | Health check returns connection refused      | Verify `SCRAPER_PORT` and that the service is running. Check firewall rules.                                                                                         |
-| Runs fail with "image not found"             | Build base images: `podman build -t timescrape-python images/python/` and `podman build -t timescrape-node images/node/`.                                            |
+| Runs fail with "image not found"             | Build the base images from the repository root: `make timescrape-images` (see Build Base Images).                                                                    |
 | Runs fail with "network not found"           | Create the sandbox network: `podman network create scraper-sandbox`.                                                                                                 |
 | TimeTiles cannot reach the runner            | Verify `SCRAPER_RUNNER_URL` is correct and the port is accessible from the TimeTiles host.                                                                           |
 | "API key must be at least 16 characters"     | Set `SCRAPER_API_KEY` to a string of 16 or more characters.                                                                                                          |
@@ -525,8 +527,8 @@ podman run --rm --network=scraper-sandbox timescrape-python \
 
 When new library versions are available or you need to add a library:
 
-1. Update the Dockerfile in `apps/timescrape/images/python/` or `apps/timescrape/images/node/`.
-2. Rebuild the image: `podman build -t timescrape-python images/python/`.
+1. Update the Dockerfile in `apps/timescrape/images/python/` or `apps/timescrape/images/node/`. SDK changes in `packages/python` or `packages/scraper` need no Dockerfile change.
+2. Rebuild the images from the repository root: `make timescrape-images`.
 3. New scraper runs will use the updated image immediately (no runner restart needed).
 
 Old containers that are currently running are not affected -- they continue with the image they were started with.

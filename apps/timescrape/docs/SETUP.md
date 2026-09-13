@@ -35,17 +35,19 @@ This must return `true`. If it does not, consult the [Podman rootless tutorial](
 
 ## 2. Build Base Images
 
-The runner spawns containers from two base images. Build them from the `images/` directory inside `apps/timescrape/`.
+The runner spawns containers from two base images. Both install the scraper SDK from `packages/python` and `packages/scraper`, so build them from the repository root with the ignore file next to each Dockerfile:
 
 ```bash
-cd apps/timescrape
+# Python runtime (requests, beautifulsoup4, lxml, pandas, cssselect, timetiles SDK)
+podman build -t timescrape-python -f apps/timescrape/images/python/Dockerfile \
+  --ignorefile apps/timescrape/images/python/Dockerfile.dockerignore .
 
-# Python runtime (requests, beautifulsoup4, lxml, pandas, cssselect)
-podman build -t timescrape-python images/python/
-
-# Node.js runtime (cheerio, axios)
-podman build -t timescrape-node images/node/
+# Node.js runtime (cheerio, axios, @timetiles/scraper SDK)
+podman build -t timescrape-node -f apps/timescrape/images/node/Dockerfile \
+  --ignorefile apps/timescrape/images/node/Dockerfile.dockerignore .
 ```
+
+From a full checkout, `make timescrape-images` runs both builds.
 
 The image names `timescrape-python` and `timescrape-node` are expected by the runner. Do not change the tags unless you also change the runtime-to-image mapping in the runner code.
 
@@ -222,7 +224,7 @@ Rotate the key periodically and whenever you suspect it may have been exposed.
 | `podman: command not found`                | Install Podman (see section 1)                                                            |
 | Rootless check returns `false`             | Run `podman machine init && podman machine start` (macOS) or consult Podman rootless docs |
 | Health check returns connection refused    | Verify `SCRAPER_PORT` and that the service is running                                     |
-| Scraper runs fail with "image not found"   | Build the base images (see section 2): `podman build -t timescrape-python images/python/` |
+| Scraper runs fail with "image not found"   | Build the base images from the repository root (see section 2): `make timescrape-images`  |
 | Scraper runs fail with "network not found" | Create the sandbox network: `podman network create scraper-sandbox`                       |
 | TimeTiles cannot reach the runner          | Verify `SCRAPER_RUNNER_URL` is correct and the runner port is accessible                  |
 | "API key must be at least 16 characters"   | Set `SCRAPER_API_KEY` to a string of 16+ characters                                       |
