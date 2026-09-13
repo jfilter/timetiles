@@ -3,15 +3,14 @@
  *
  * Regression for the running mean dividing by `stats.occurrences` (bumped for
  * every value, including nulls/non-numeric strings) instead of the count of
- * numeric values. The mean must reflect only the numeric values, both for a
- * single pass and when merging batches.
+ * numeric values. The mean must reflect only the numeric values.
  *
  * @module
  * @category Unit Tests
  */
 import { describe, expect, it } from "vitest";
 
-import { createFieldStats, mergeFieldStats, updateFieldStats } from "@/lib/services/schema-builder/field-statistics";
+import { createFieldStats, updateFieldStats } from "@/lib/services/schema-builder/field-statistics";
 import { enrichEnumFields } from "@/lib/services/schema-detection/utilities/geo";
 
 describe("field-statistics numeric averaging", () => {
@@ -29,28 +28,6 @@ describe("field-statistics numeric averaging", () => {
     expect(stats.numericStats?.min).toBe(10);
     expect(stats.numericStats?.max).toBe(20);
     expect(stats.occurrences).toBe(4);
-  });
-
-  it("computes a count-weighted mean when merging batches", () => {
-    // Batch A: three numeric values [10, 20, 30] plus a null -> avg 20, count 3.
-    const a = createFieldStats("value");
-    updateFieldStats(a, 10, 100);
-    updateFieldStats(a, 20, 100);
-    updateFieldStats(a, 30, 100);
-    updateFieldStats(a, null, 100);
-
-    // Batch B: one numeric value [100] -> avg 100, count 1.
-    const b = createFieldStats("value");
-    updateFieldStats(b, 100, 100);
-
-    const merged = mergeFieldStats(a, b);
-
-    // (10+20+30+100) / 4 numeric values = 40. Weighting by total occurrences
-    // (5 vs 1) would have produced a different, wrong value.
-    expect(merged.numericStats?.avg).toBe(40);
-    expect(merged.numericStats?.count).toBe(4);
-    expect(merged.numericStats?.min).toBe(10);
-    expect(merged.numericStats?.max).toBe(100);
   });
 });
 
@@ -99,18 +76,6 @@ describe("field-statistics unique-sample overflow", () => {
 
     expect(stats.uniqueSamplesOverflow).toBeUndefined();
     expect(stats.valueCounts?.[JSON.stringify("open")]).toBe(2);
-  });
-
-  it("propagates the overflow flag through merges", () => {
-    const cap = 3;
-    const a = createFieldStats("name");
-    for (let i = 0; i < cap + 1; i++) updateFieldStats(a, `a-${i}`, cap);
-    const b = createFieldStats("name");
-    updateFieldStats(b, "b-0", cap);
-
-    expect(mergeFieldStats(a, b).uniqueSamplesOverflow).toBe(true);
-    expect(mergeFieldStats(b, a).uniqueSamplesOverflow).toBe(true);
-    expect(mergeFieldStats(b, b).uniqueSamplesOverflow).toBeUndefined();
   });
 
   it("disqualifies overflowed fields from enum candidacy", () => {

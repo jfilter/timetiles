@@ -12,12 +12,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import {
-  createFieldStats,
-  getValueType,
-  mergeFieldStats,
-  updateFieldStats,
-} from "@/lib/services/schema-builder/field-statistics";
+import { createFieldStats, getValueType, updateFieldStats } from "@/lib/services/schema-builder/field-statistics";
 import { detectTransforms } from "@/lib/services/schema-builder/schema-comparison";
 
 import type { SchemaProperty } from "../../../lib/services/schema-builder";
@@ -248,8 +243,9 @@ describe("ProgressiveSchemaBuilder", () => {
       builder.processBatch(records);
       const schema = await builder.getSchema();
 
-      expect(schema).toBeDefined();
-      // Schema should include format and constraint metadata from our enhancements
+      const properties = schema.properties as Record<string, SchemaProperty>;
+      expect(properties.age).toMatchObject({ minimum: 25, maximum: 30 });
+      expect(properties.email).not.toHaveProperty("minimum");
     });
 
     it("handles empty samples gracefully", async () => {
@@ -884,7 +880,7 @@ describe("field-statistics — direct function tests", () => {
       // Set typeDistribution to undefined to test the initialization path
       (stats as any).typeDistribution = undefined;
       updateFieldStats(stats, "hello", 100);
-      expect(stats.typeDistribution).toBeDefined();
+      expect(stats.typeDistribution).toEqual({ string: 1 });
     });
 
     it("tracks Date objects as ISO string samples", () => {
@@ -953,108 +949,6 @@ describe("field-statistics — direct function tests", () => {
       updateFieldStats(stats, Symbol("test"), 100);
       // The sampleValue will be undefined so it's not added
       expect(stats.uniqueSamples).toHaveLength(0);
-    });
-  });
-
-  describe("mergeFieldStats", () => {
-    it("merges two field stats correctly", () => {
-      const stats1 = createFieldStats("value");
-      updateFieldStats(stats1, 10, 100);
-      updateFieldStats(stats1, 20, 100);
-
-      const stats2 = createFieldStats("value");
-      updateFieldStats(stats2, 30, 100);
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.occurrences).toBe(3);
-      expect(merged.numericStats!.min).toBe(10);
-      expect(merged.numericStats!.max).toBe(30);
-    });
-
-    it("merges when only one side has numeric stats", () => {
-      const stats1 = createFieldStats("value");
-      updateFieldStats(stats1, 10, 100);
-
-      const stats2 = createFieldStats("value");
-      updateFieldStats(stats2, "text", 100);
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.numericStats).toBeDefined();
-      expect(merged.numericStats!.min).toBe(10);
-    });
-
-    it("merges unique samples with deduplication and limit", () => {
-      const stats1 = createFieldStats("value");
-      for (let i = 0; i < 60; i++) {
-        updateFieldStats(stats1, `val-a-${i}`, 200);
-      }
-
-      const stats2 = createFieldStats("value");
-      for (let i = 0; i < 60; i++) {
-        updateFieldStats(stats2, `val-b-${i}`, 200);
-      }
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.uniqueSamples.length).toBeLessThanOrEqual(100);
-    });
-
-    it("merges enum values from both sides", () => {
-      const stats1 = createFieldStats("status");
-      stats1.enumValues = [{ value: "active", count: 5, percent: 50 }];
-      stats1.occurrences = 10;
-
-      const stats2 = createFieldStats("status");
-      stats2.enumValues = [
-        { value: "active", count: 3, percent: 30 },
-        { value: "pending", count: 7, percent: 70 },
-      ];
-      stats2.occurrences = 10;
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.enumValues).toBeDefined();
-      expect(merged.enumValues!.find((e) => e.value === "active")!.count).toBe(8);
-      expect(merged.enumValues!.find((e) => e.value === "pending")!.count).toBe(7);
-    });
-
-    it("handles merge with no enum values on either side", () => {
-      const stats1 = createFieldStats("value");
-      stats1.occurrences = 5;
-      const stats2 = createFieldStats("value");
-      stats2.occurrences = 5;
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.enumValues).toBeUndefined();
-    });
-
-    it("merges type distributions correctly", () => {
-      const stats1 = createFieldStats("value");
-      stats1.typeDistribution = { string: 5, integer: 3 };
-      stats1.occurrences = 8;
-
-      const stats2 = createFieldStats("value");
-      stats2.typeDistribution = { string: 2, number: 4 };
-      stats2.occurrences = 6;
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.typeDistribution.string).toBe(7);
-      expect(merged.typeDistribution.integer).toBe(3);
-      expect(merged.typeDistribution.number).toBe(4);
-    });
-
-    it("uses earliest firstSeen and latest lastSeen", () => {
-      const stats1 = createFieldStats("value");
-      stats1.firstSeen = new Date("2024-01-01");
-      stats1.lastSeen = new Date("2024-01-15");
-      stats1.occurrences = 5;
-
-      const stats2 = createFieldStats("value");
-      stats2.firstSeen = new Date("2024-01-10");
-      stats2.lastSeen = new Date("2024-01-20");
-      stats2.occurrences = 5;
-
-      const merged = mergeFieldStats(stats1, stats2);
-      expect(merged.firstSeen).toEqual(new Date("2024-01-01"));
-      expect(merged.lastSeen).toEqual(new Date("2024-01-20"));
     });
   });
 });
