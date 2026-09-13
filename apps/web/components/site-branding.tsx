@@ -51,7 +51,10 @@ export const SiteBranding = () => {
   const siteContext = useSite();
   const { colors, typography, style: brandingStyle } = siteContext.branding;
   const customCode = siteContext.customCode;
-  const siteSlug = siteContext.site?.slug;
+  // The layouts render one site per document, so attribute presence scopes the rule.
+  // The slug itself is editor-controlled and must never be interpolated into <style>.
+  const hasSite = Boolean(siteContext.site?.slug);
+  const scope = hasSite ? "[data-site]" : ":root";
 
   const brandingCSS = useMemo((): string | null => {
     const declarations: string[] = [];
@@ -91,16 +94,13 @@ export const SiteBranding = () => {
     const sanitized = sanitizeCSS(declarations.join(" "));
     if (!sanitized) return null;
 
-    const scope = siteSlug ? `[data-site="${siteSlug}"]` : ":root";
     return `${scope} { ${sanitized} }`;
-  }, [colors, typography, brandingStyle, siteSlug]);
+  }, [colors, typography, brandingStyle, scope]);
 
   const sanitizedCSS = useMemo(() => {
     if (!customCode?.customCSS) return null;
-    return siteSlug
-      ? `[data-site="${siteSlug}"] { ${sanitizeCSS(customCode.customCSS)} }`
-      : sanitizeCSS(customCode.customCSS);
-  }, [customCode?.customCSS, siteSlug]);
+    return hasSite ? `${scope} { ${sanitizeCSS(customCode.customCSS)} }` : sanitizeCSS(customCode.customCSS);
+  }, [customCode?.customCSS, hasSite, scope]);
 
   const combinedCSS = [brandingCSS, sanitizedCSS].filter(Boolean).join("\n");
 

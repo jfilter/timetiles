@@ -12,6 +12,7 @@
  * @category Unit Tests
  */
 import { render } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { SiteBranding } from "@/components/site-branding";
@@ -42,7 +43,7 @@ describe("SiteBranding", () => {
     const style = container.querySelector("style");
     expect(style).not.toBeNull();
     const css = style!.textContent ?? "";
-    expect(css).toContain('[data-site="test-site"]');
+    expect(css).toContain("[data-site] {");
     expect(css).toContain("--primary: #ff0000;");
     expect(css).toContain("--radius: 1rem;");
     expect(css).toContain("--site-font-pairing: classic;");
@@ -57,6 +58,21 @@ describe("SiteBranding", () => {
 
     expect(container.querySelector("style")).toBeNull();
     expect(container.querySelector("[data-site-branding]")).toBeNull();
+  });
+
+  it("keeps the site slug out of the server-rendered stylesheet", () => {
+    // Editors may set any slug; interpolating it into <style> let `</style>` end the tag early.
+    const site = makeSite({ slug: 'x"]{}</style><script>alert(1)</script><style>' });
+
+    const html = renderToStaticMarkup(
+      <SiteProvider site={site}>
+        <SiteBranding />
+      </SiteProvider>
+    );
+
+    expect(html).not.toContain("<script>");
+    expect(html.match(/<\/style>/g)).toHaveLength(1);
+    expect(html).toContain("[data-site] {");
   });
 
   it("strips dangerous values via the CSS sanitizer", () => {
