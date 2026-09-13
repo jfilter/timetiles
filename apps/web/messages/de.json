@@ -44,7 +44,11 @@
     "switchToDarkMode": "Zum dunklen Modus wechseln",
     "loadingFilters": "Filter werden geladen",
     "switchToGerman": "Auf Deutsch wechseln",
-    "switchToEnglish": "Auf Englisch wechseln"
+    "switchToEnglish": "Auf Englisch wechseln",
+    "previous": "Zurück",
+    "next": "Weiter",
+    "pageOf": "Seite {page} von {total}",
+    "noResults": "Keine Ergebnisse."
   },
   "Auth": {
     "welcomeBack": "Willkommen zurück",

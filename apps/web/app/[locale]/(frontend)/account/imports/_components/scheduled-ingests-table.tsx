@@ -13,7 +13,6 @@ import {
   Button,
   type ColumnDef,
   ContentState,
-  DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +28,7 @@ import {
   getScheduleFrequencyKey,
   getScheduleStatusVariant,
 } from "@/app/[locale]/(frontend)/account/_components/schedule-view-model";
+import { LocalizedDataTable } from "@/components/ui/localized-data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { useRouter } from "@/i18n/navigation";
 import {
@@ -173,7 +173,7 @@ export const ScheduledIngestsTable = ({ initialData }: ScheduledIngestsTableProp
   return (
     <>
       {error && <ErrorMessage message={error.message} />}
-      <DataTable
+      <LocalizedDataTable
         columns={columns}
         data={schedules}
         isLoading={isLoading}

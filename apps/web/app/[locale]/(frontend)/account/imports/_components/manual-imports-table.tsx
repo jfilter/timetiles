@@ -9,11 +9,12 @@
  */
 "use client";
 
-import { type ColumnDef, ContentState, DataTable, ErrorMessage } from "@timetiles/ui";
+import { type ColumnDef, ContentState, ErrorMessage } from "@timetiles/ui";
 import { UploadIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo } from "react";
 
+import { LocalizedDataTable } from "@/components/ui/localized-data-table";
 import { StatusBadge, type StatusVariant } from "@/components/ui/status-badge";
 import { isIngestFileActive, useIngestFilesQuery } from "@/lib/hooks/use-ingest-files-query";
 import { formatDateLocale } from "@/lib/utils/date";
@@ -116,7 +117,7 @@ export const ManualImportsTable = ({ initialData }: ManualImportsTableProps) => 
   return (
     <>
       {error && <ErrorMessage message={error.message} />}
-      <DataTable
+      <LocalizedDataTable
         columns={columns}
         data={ingestFiles}
         isLoading={isLoading}

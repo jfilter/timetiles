@@ -44,7 +44,11 @@
     "switchToDarkMode": "Switch to dark mode",
     "loadingFilters": "Loading filters",
     "switchToGerman": "Switch to German",
-    "switchToEnglish": "Switch to English"
+    "switchToEnglish": "Switch to English",
+    "previous": "Previous",
+    "next": "Next",
+    "pageOf": "Page {page} of {total}",
+    "noResults": "No results."
   },
   "Auth": {
     "welcomeBack": "Welcome back",
