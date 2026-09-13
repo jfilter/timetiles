@@ -129,6 +129,20 @@ describe("applyPreviewTransforms", () => {
     expect(result).toEqual([{ city: "BERLIN", country: "germany" }]);
   });
 
+  it("skips incomplete transforms exactly like the import does", () => {
+    const data = [{ coords: "52.5,13.4" }];
+    const split: IngestTransform = {
+      id: "1",
+      type: "split",
+      from: "coords",
+      delimiter: "",
+      toFields: ["lat", "lng"],
+      active: true,
+      autoDetected: false,
+    };
+    expect(applyPreviewTransforms(data, [split])).toBe(data);
+  });
+
   it("transforms every row without mutating the input", () => {
     const data = [{ city: "berlin" }, { city: "paris" }, { city: "london" }];
     const result = applyPreviewTransforms(data, [uppercase("city", true)]);

@@ -16,6 +16,7 @@
 import { Parser } from "expr-eval";
 
 import { safeExtractMatch } from "@/lib/ingest/safe-regex";
+import { buildTransformsFromDataset } from "@/lib/ingest/transform-builders";
 import type {
   ConcatenateTransform,
   DateParseTransform,
@@ -99,16 +100,16 @@ export const applyTransforms = (
 /**
  * Apply transforms to an array of rows for preview display.
  *
- * Uses the same transform engine as the import pipeline to ensure
- * preview results match actual import behavior.
+ * Filters through the same active/complete builders as the import pipeline,
+ * so the preview never shows a transform the import would drop.
  */
 export const applyPreviewTransforms = (
   dataArray: Record<string, unknown>[],
   transforms: IngestTransform[]
 ): Record<string, unknown>[] => {
-  const active = transforms.filter((t) => t.active);
-  if (active.length === 0) return dataArray;
-  return dataArray.map((row) => applyTransforms(row, active));
+  const applicable = buildTransformsFromDataset({ ingestTransforms: transforms });
+  if (applicable.length === 0) return dataArray;
+  return dataArray.map((row) => applyTransforms(row, applicable));
 };
 
 /**
