@@ -498,8 +498,8 @@ export const executeRun = async (request: RunRequest): Promise<RunResult> => {
         status: "timeout",
         exit_code: -1,
         duration_ms: durationMs,
-        stdout: "",
-        stderr: `Scraper exceeded timeout of ${timeoutSecs}s`,
+        stdout: truncateLog(stdout),
+        stderr: truncateLog(`${stderr}\n[runner] Scraper exceeded timeout of ${timeoutSecs}s`),
       };
     }
 

@@ -191,11 +191,16 @@ describe("runner", () => {
       expect(result.stderr).toContain("not a regular file");
     });
 
-    it("returns timeout status when the run exceeds its limit", { timeout: 20_000 }, async () => {
-      const result = await runStub({ STUB_SLEEP_MS: "15000" }, { limits: { timeout_secs: 1 } });
+    it("returns timeout status with the logs written before the limit", { timeout: 20_000 }, async () => {
+      const result = await runStub(
+        { STUB_SLEEP_MS: "15000", STUB_STDOUT: "fetched page 3", STUB_STDERR: "slow response" },
+        { limits: { timeout_secs: 1 } }
+      );
 
       expect(result.status).toBe("timeout");
       expect(result.exit_code).toBe(-1);
+      expect(result.stdout).toContain("fetched page 3");
+      expect(result.stderr).toContain("slow response");
       expect(result.stderr).toContain("exceeded timeout");
     });
 
