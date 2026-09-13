@@ -17,7 +17,7 @@ import { useCallback, useMemo } from "react";
 import { formatISODate } from "@/lib/utils/date";
 
 import type { FilterState } from "../types/filter-state";
-import { clearAllFilters, getActiveFilterCount, hasActiveFilters, removeFilter } from "../types/filter-state";
+import { clearAllFilters, getActiveFilterCount, hasActiveFilters } from "../types/filter-state";
 
 // Re-export FilterState for external use
 export type { FilterState };
@@ -202,9 +202,6 @@ export const useFilters = () => {
     });
   };
 
-  const handleRemoveFilter = (filterType: keyof FilterState, value?: string) =>
-    applyFilterState(removeFilter(filters, filterType, value));
-
   const handleClearAllFilters = () => applyFilterState(clearAllFilters(filters));
 
   const setBucketRangeFilter = (start: Date, end: Date) => {
@@ -247,7 +244,6 @@ export const useFilters = () => {
     clearDateRange,
 
     // Helper functions
-    removeFilter: handleRemoveFilter,
     clearAllFilters: handleClearAllFilters,
 
     // Computed values

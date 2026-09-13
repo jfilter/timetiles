@@ -47,62 +47,6 @@ export const hasActiveFilters = (filters: FilterState): boolean => {
   );
 };
 
-// Helper function to remove a specific field filter value
-const removeFieldFilterValue = (fieldFilters: Record<string, string[]>, value: string): Record<string, string[]> => {
-  const result = { ...fieldFilters };
-
-  if (!value.includes(":")) {
-    delete result[value];
-    return result;
-  }
-
-  const [fieldPath, filterValue] = value.split(":");
-  if (!fieldPath || !result[fieldPath]) return result;
-
-  result[fieldPath] = result[fieldPath].filter((v) => v !== filterValue);
-  if (result[fieldPath].length === 0) {
-    delete result[fieldPath];
-  }
-  return result;
-};
-
-export const removeFilter = (filters: FilterState, filterType: keyof FilterState, value?: string): FilterState => {
-  const newFilters = {
-    ...filters,
-    fieldFilters: { ...filters.fieldFilters },
-    rangeFilters: { ...filters.rangeFilters },
-  };
-
-  switch (filterType) {
-    case "datasets":
-      newFilters.datasets = value != null && value !== "" ? newFilters.datasets.filter((id) => id !== value) : [];
-      newFilters.fieldFilters = {};
-      // Range filters are single-dataset and number-format specific; clear them
-      // whenever the dataset selection changes, mirroring fieldFilters.
-      newFilters.rangeFilters = {};
-      break;
-    case "startDate":
-      newFilters.startDate = null;
-      break;
-    case "endDate":
-      newFilters.endDate = null;
-      break;
-    case "fieldFilters":
-      newFilters.fieldFilters =
-        value != null && value !== "" ? removeFieldFilterValue(newFilters.fieldFilters, value) : {};
-      break;
-    case "rangeFilters":
-      if (value != null && value !== "") {
-        delete newFilters.rangeFilters[value];
-      } else {
-        newFilters.rangeFilters = {};
-      }
-      break;
-  }
-
-  return newFilters;
-};
-
 /**
  * Clear all filters except dataset selection (datasets are a data scope, not a filter).
  */
