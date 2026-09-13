@@ -10,6 +10,7 @@
 import type { GlobalConfig } from "payload";
 
 import { AUDIT_ACTIONS, auditLog } from "@/lib/services/audit-log-service";
+import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 
 export const Settings: GlobalConfig = {
   slug: "settings",
@@ -23,6 +24,8 @@ export const Settings: GlobalConfig = {
   hooks: {
     afterChange: [
       async ({ doc, previousDoc, req }) => {
+        // Flags are cached per process; a settings save must take effect immediately.
+        resetFeatureFlagService();
         if (!req.user || !previousDoc) return doc;
 
         // Detect feature flag changes

@@ -8,7 +8,6 @@ import { NextRequest } from "next/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { GET } from "@/app/api/scraper-repos/[id]/sync/route";
-import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 import type { User } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 
@@ -41,12 +40,10 @@ describe.sequential("Scraper sync status", () => {
   beforeEach(async () => {
     await env.seedManager.truncate(["scraper-repos", "scrapers", "scraper-runs", "payload-jobs", "user-usage"]);
     await env.payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScrapers: true } } });
-    resetFeatureFlagService();
   });
 
   afterAll(async () => {
     await env.payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScrapers: false } } });
-    resetFeatureFlagService();
     await env.cleanup?.();
   });
 

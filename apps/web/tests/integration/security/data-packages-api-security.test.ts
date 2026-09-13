@@ -22,7 +22,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { POST as activatePOST } from "@/app/api/data-packages/[slug]/activate/route";
 import { GET as listGET } from "@/app/api/data-packages/route";
-import { resetFeatureFlagService } from "@/lib/services/feature-flag-service";
 import type { User } from "@/payload-types";
 import { TEST_CREDENTIALS } from "@/tests/constants/test-credentials";
 import { createIntegrationTestEnvironment, withUsers } from "@/tests/setup/integration/environment";
@@ -112,9 +111,6 @@ describe.sequential("Data package API security", () => {
 
   const setScheduledIngestsEnabled = async (enabled: boolean): Promise<void> => {
     await payload.updateGlobal({ slug: "settings", data: { featureFlags: { enableScheduledIngests: enabled } } });
-    // The flag service caches for a minute in-process; drop it so the route
-    // handler reads the value this test just wrote.
-    resetFeatureFlagService();
   };
 
   beforeAll(async () => {
